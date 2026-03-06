@@ -535,6 +535,16 @@ class Default(_Protocol):
     pass
 
 
+class Send(_Protocol):
+    """Marker for types safe to transfer across threads."""
+    pass
+
+
+class Sync(_Protocol):
+    """Marker for types safe to share references across threads."""
+    pass
+
+
 class Hashable(_Protocol):
     """Protocol for types supporting hash() via __hash__."""
     def __hash__(self) -> int: ...

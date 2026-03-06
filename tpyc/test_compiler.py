@@ -6,7 +6,11 @@ import pytest
 
 from .compiler import Compiler, BuildLayout
 from .sema.diagnostics import SemanticError
-from .typesys import INT32, INT64, BIGINT
+from .typesys import (
+    INT32, INT64, BIGINT, BOOL, FLOAT, STR, CHAR, VOID,
+    PtrType, SpanType, ListType, DictType, ArrayType, OptionalType,
+    TupleType, UnionType, OwnType, ReadonlyType, StrViewType, NamedType,
+)
 
 
 class TestCompilerFromSource:
@@ -80,6 +84,182 @@ class TestCodegenRegression:
         compiler = Compiler.from_source(source)
         with pytest.raises(SemanticError, match="cannot be constructed from"):
             compiler.compile()
+
+
+class TestSendSync:
+    """Test Send/Sync auto-derivation on built-in types."""
+
+    # -- Primitive value types: all Send + Sync --
+
+    @pytest.mark.parametrize("typ", [INT32, INT64, BIGINT, BOOL, FLOAT, STR, CHAR])
+    def test_primitives_are_send_and_sync(self, typ):
+        assert typ.is_send()
+        assert typ.is_sync()
+
+    # -- StrView: borrows, not Send, but Sync (read-only) --
+
+    def test_strview_not_send(self):
+        assert not StrViewType().is_send()
+
+    def test_strview_is_sync(self):
+        assert StrViewType().is_sync()
+
+    # -- Ptr: not Send; Sync only if readonly --
+
+    def test_ptr_not_send(self):
+        assert not PtrType(INT32).is_send()
+        assert not PtrType(INT32, is_readonly=True).is_send()
+
+    def test_mutable_ptr_not_sync(self):
+        assert not PtrType(INT32).is_sync()
+
+    def test_readonly_ptr_sync_if_pointee_sync(self):
+        assert PtrType(INT32, is_readonly=True).is_sync()
+        # ReadOnlyPtr to a mutable list: list is not Sync
+        assert not PtrType(ListType(INT32), is_readonly=True).is_sync()
+
+    # -- Span: not Send; Sync only if readonly --
+
+    def test_span_not_send(self):
+        assert not SpanType(INT32).is_send()
+        assert not SpanType(INT32, is_readonly=True).is_send()
+
+    def test_mutable_span_not_sync(self):
+        assert not SpanType(INT32).is_sync()
+
+    def test_readonly_span_sync_if_element_sync(self):
+        assert SpanType(INT32, is_readonly=True).is_sync()
+
+    # -- list: Send if element Send, never Sync --
+
+    def test_list_send_if_element_send(self):
+        assert ListType(INT32).is_send()
+        assert not ListType(PtrType(INT32)).is_send()
+
+    def test_list_not_sync(self):
+        assert not ListType(INT32).is_sync()
+
+    # -- dict: Send if elements Send, never Sync --
+
+    def test_dict_send_if_elements_send(self):
+        assert DictType(STR, INT32).is_send()
+        assert not DictType(STR, PtrType(INT32)).is_send()
+
+    def test_dict_not_sync(self):
+        assert not DictType(STR, INT32).is_sync()
+
+    # -- Array: Send/Sync based on element --
+
+    def test_array_send_sync_based_on_element(self):
+        assert ArrayType(INT32, 10).is_send()
+        assert ArrayType(INT32, 10).is_sync()
+        assert not ArrayType(PtrType(INT32), 10).is_send()
+
+    # -- Tuple: Send/Sync if all elements are --
+
+    def test_tuple_send_sync(self):
+        assert TupleType((INT32, STR)).is_send()
+        assert TupleType((INT32, STR)).is_sync()
+        assert not TupleType((INT32, PtrType(STR))).is_send()
+
+    # -- Optional: delegates to inner --
+
+    def test_optional_delegates(self):
+        assert OptionalType(INT32).is_send()
+        assert not OptionalType(PtrType(INT32)).is_send()
+
+    # -- Union: all members --
+
+    def test_union_all_members(self):
+        assert UnionType((INT32, STR)).is_send()
+        assert not UnionType((INT32, PtrType(STR))).is_send()
+
+    # -- Own: delegates to wrapped --
+
+    def test_own_delegates(self):
+        assert OwnType(ListType(INT32)).is_send()
+        assert not OwnType(ListType(INT32)).is_sync()
+
+    # -- readonly: makes mutable containers Sync --
+
+    def test_readonly_makes_sync(self):
+        assert not ListType(INT32).is_sync()
+        assert ReadonlyType(ListType(INT32)).is_sync()
+
+    def test_readonly_of_readonly_ptr_is_sync(self):
+        rop = PtrType(INT32, is_readonly=True)
+        assert not rop.is_send()
+        assert rop.is_sync()
+        assert ReadonlyType(rop).is_sync()
+
+    def test_readonly_of_non_send_not_sync(self):
+        # readonly[list[Ptr[T]]]: Ptr not Send, so list not Send, not Sync
+        assert not ReadonlyType(ListType(PtrType(INT32))).is_sync()
+
+
+class TestSendSyncRecordDerivation:
+    """Test Send/Sync auto-derivation on user-defined records."""
+
+    def test_record_with_value_fields_is_send_sync(self):
+        source = (
+            "from tpy import Int32\n"
+            "class Point:\n"
+            "    x: Int32\n"
+            "    y: Int32\n"
+            "    def __init__(self, x: Int32, y: Int32) -> None:\n"
+            "        self.x = x\n"
+            "        self.y = y\n"
+            "def main() -> None:\n"
+            "    p = Point(Int32(1), Int32(2))\n"
+            "    print(p.x)\n"
+            "main()\n"
+        )
+        compiler = Compiler.from_source(source)
+        compiler.compile()
+        point_type = NamedType("Point")
+        assert point_type.is_send()
+        assert point_type.is_sync()
+
+    def test_record_with_ptr_field_not_send(self):
+        source = (
+            "from tpy import Ptr, Int32\n"
+            "class Wrapper:\n"
+            "    x: Int32\n"
+            "    def __init__(self, x: Int32) -> None:\n"
+            "        self.x = x\n"
+            "class Holder:\n"
+            "    p: Ptr[Wrapper]\n"
+            "    def __init__(self, p: Ptr[Wrapper]) -> None:\n"
+            "        self.p = p\n"
+            "def main() -> None:\n"
+            "    w = Wrapper(Int32(1))\n"
+            "    h = Holder(Ptr(w))\n"
+            "    print(h.p.x)\n"
+            "main()\n"
+        )
+        compiler = Compiler.from_source(source)
+        compiler.compile()
+        holder_type = NamedType("Holder")
+        assert not holder_type.is_send()
+        assert not holder_type.is_sync()
+
+    def test_record_with_list_field_send_not_sync(self):
+        source = (
+            "from tpy import Int32\n"
+            "class Container:\n"
+            "    items: list[Int32]\n"
+            "    def __init__(self) -> None:\n"
+            "        self.items = [Int32(1)]\n"
+            "def main() -> None:\n"
+            "    c = Container()\n"
+            "    print(len(c.items))\n"
+            "main()\n"
+        )
+        compiler = Compiler.from_source(source)
+        compiler.compile()
+        container_type = NamedType("Container")
+        assert container_type.is_send()
+        assert not container_type.is_sync()
 
 
 class TestBuildLayout:

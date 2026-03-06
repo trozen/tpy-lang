@@ -8,7 +8,7 @@
 |---|---------|--------|--------|---------|
 | 5 | Ptr `is not None` narrowing | S | Done | [5](#5-ptr-narrowing-after-is-not-none) |
 | 7a | `@pure` annotation (trusted, no enforcement) | S | Done | [7](#7-pure-annotation) |
-| 10a | Send/Sync auto-derivation (markers only) | S | Not started | [10](#10-thread-safety-sendsync) |
+| 10a | Send/Sync auto-derivation (markers only) | S | Done | [10](#10-thread-safety-sendsync) |
 
 ### Phase 2: Intra-Function Borrow Checking
 

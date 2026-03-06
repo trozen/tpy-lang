@@ -31,6 +31,8 @@ class TypeParamKind(Enum):
 _native_cpp_names: dict[str, str] = {}
 _union_alias_names: dict[tuple['TpyType', ...], str] = {}
 _value_type_record_names: set[str] = set()
+_send_record_names: set[str] = set()
+_sync_record_names: set[str] = set()
 _protocol_modules: dict[str, str] = {}  # protocol_name -> module_name
 
 
@@ -47,6 +49,16 @@ def register_union_alias(members: tuple['TpyType', ...], alias_name: str) -> Non
 def register_value_type_record(name: str) -> None:
     """Register a record as a value type (ValueType marker protocol)."""
     _value_type_record_names.add(name)
+
+
+def register_send_record(name: str) -> None:
+    """Register a record as Send (safe to transfer across threads)."""
+    _send_record_names.add(name)
+
+
+def register_sync_record(name: str) -> None:
+    """Register a record as Sync (safe to share references across threads)."""
+    _sync_record_names.add(name)
 
 
 def register_protocol_module(protocol_name: str, module_name: str) -> None:
@@ -90,8 +102,9 @@ def impl_proto_matches_name(impl_proto: 'NamedType', protocol_name: str,
 def clear_codegen_state() -> None:
     """Clear per-module codegen state (called before each module's codegen).
 
-    Does NOT clear _value_type_record_names -- those are accumulated during
-    sema across all modules and must persist for the full build.
+    Does NOT clear _value_type_record_names, _send_record_names, or
+    _sync_record_names -- those are accumulated during sema across all
+    modules and must persist for the full build.
     """
     _native_cpp_names.clear()
     _union_alias_names.clear()
@@ -102,6 +115,8 @@ def clear_all_compilation_state() -> None:
     _native_cpp_names.clear()
     _union_alias_names.clear()
     _value_type_record_names.clear()
+    _send_record_names.clear()
+    _sync_record_names.clear()
     _protocol_modules.clear()
 
 
@@ -135,6 +150,22 @@ class TpyType:
     def is_expensive_copy(self) -> bool:
         """Return True if copying this value type involves heap allocation."""
         return False
+
+    def is_send(self) -> bool:
+        """Return True if this type is safe to transfer across threads.
+
+        Default: value types are Send (copied, no aliasing). Override for
+        pointer-like types (Ptr, Span) and containers (list, dict).
+        """
+        return self.is_value_type()
+
+    def is_sync(self) -> bool:
+        """Return True if this type is safe to share references across threads.
+
+        Default: value types are Sync (no mutable shared state). Override for
+        mutable containers (list, dict) and pointer types.
+        """
+        return self.is_value_type()
 
     def to_cpp_return(self) -> str:
         """Return the C++ representation for function return types.
@@ -368,6 +399,14 @@ class StrViewType(TpyType):
         return "tpy.StrView"
 
     def is_value_type(self) -> bool:
+        return True
+
+    def is_send(self) -> bool:
+        # StrView borrows from another string -- not safe to transfer
+        return False
+
+    def is_sync(self) -> bool:
+        # Read-only view -- safe to share
         return True
 
     def get_element_type(self) -> Optional['TpyType']:
@@ -744,6 +783,16 @@ class NamedType(TpyType):
             return True
         return False
 
+    def is_send(self) -> bool:
+        if self.name in _send_record_names:
+            return True
+        return self.is_value_type()
+
+    def is_sync(self) -> bool:
+        if self.name in _sync_record_names:
+            return True
+        return self.is_value_type()
+
     def get_element_type(self) -> Optional['TpyType']:
         if self._module_qname:
             # Convention: first type param is the element type
@@ -848,6 +897,14 @@ class PtrType(TpyType):
     def is_value_type(self) -> bool:
         return True
 
+    def is_send(self) -> bool:
+        return False
+
+    def is_sync(self) -> bool:
+        if self.is_readonly:
+            return self.pointee.is_sync()
+        return False
+
     def to_cpp_return(self) -> str:
         return self.to_cpp()
 
@@ -891,6 +948,12 @@ class OwnType(TpyType):
         # Own[T] is always passed by value (ownership transfer)
         return True
 
+    def is_send(self) -> bool:
+        return self.wrapped.is_send()
+
+    def is_sync(self) -> bool:
+        return self.wrapped.is_sync()
+
     def to_cpp_return(self) -> str:
         return self.to_cpp()
 
@@ -918,6 +981,14 @@ class ReadonlyType(TpyType):
 
     def is_value_type(self) -> bool:
         return self.wrapped.is_value_type()
+
+    def is_send(self) -> bool:
+        return self.wrapped.is_send()
+
+    def is_sync(self) -> bool:
+        # readonly prevents mutation, so a Send type frozen by readonly is
+        # safe to share (effectively Sync). Already-Sync types stay Sync.
+        return self.wrapped.is_send() or self.wrapped.is_sync()
 
     def to_cpp_param(self, name: str) -> str:
         return self.wrapped.to_cpp_const_param(name)
@@ -972,6 +1043,12 @@ class FinalType(TpyType):
 
     def is_value_type(self) -> bool:
         return self.wrapped.is_value_type()
+
+    def is_send(self) -> bool:
+        return self.wrapped.is_send()
+
+    def is_sync(self) -> bool:
+        return self.wrapped.is_sync()
 
     def __str__(self) -> str:
         return f"Final[{self.wrapped}]"
@@ -1072,6 +1149,12 @@ class OptionalType(TpyType):
     def is_value_type(self) -> bool:
         return self.inner.is_value_type()
 
+    def is_send(self) -> bool:
+        return self.inner.is_send()
+
+    def is_sync(self) -> bool:
+        return self.inner.is_sync()
+
     def uses_pointer_repr(self) -> bool:
         """Whether this Optional uses T* (pointer) repr instead of std::optional<T>.
 
@@ -1154,6 +1237,12 @@ class UnionType(TpyType):
     def is_value_type(self) -> bool:
         return all(m.is_value_type() for m in self.members)
 
+    def is_send(self) -> bool:
+        return all(m.is_send() for m in self.members)
+
+    def is_sync(self) -> bool:
+        return all(m.is_sync() for m in self.members)
+
     def to_cpp_param(self, name: str) -> str:
         if self.is_value_type():
             return f"const {self.to_cpp()}& {name}"
@@ -1193,6 +1282,12 @@ class TupleType(TpyType):
 
     def is_value_type(self) -> bool:
         return True
+
+    def is_send(self) -> bool:
+        return all(t.is_send() for t in self.element_types)
+
+    def is_sync(self) -> bool:
+        return all(t.is_sync() for t in self.element_types)
 
     def is_expensive_copy(self) -> bool:
         return any(t.is_expensive_copy() for t in self.element_types)
@@ -1341,6 +1436,12 @@ class ArrayType(NamedType):
     def qualified_name(self) -> Optional[str]:
         return "tpy.Array"
 
+    def is_send(self) -> bool:
+        return self.element_type.is_send()
+
+    def is_sync(self) -> bool:
+        return self.element_type.is_sync()
+
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
 
@@ -1387,6 +1488,15 @@ class SpanType(NamedType):
     def is_value_type(self) -> bool:
         # Spans are lightweight views (ptr + size), passed/returned by value
         return True
+
+    def is_send(self) -> bool:
+        # Spans borrow from another container -- not safe to transfer
+        return False
+
+    def is_sync(self) -> bool:
+        if self.is_readonly:
+            return self.element_type.is_sync()
+        return False
 
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
@@ -1438,6 +1548,13 @@ class ListType(NamedType):
     def qualified_name(self) -> Optional[str]:
         return "builtins.list"
 
+    def is_send(self) -> bool:
+        return self.element_type.is_send()
+
+    def is_sync(self) -> bool:
+        # Mutable container -- not safe to share references across threads
+        return False
+
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
 
@@ -1471,6 +1588,13 @@ class DictType(NamedType):
 
     def qualified_name(self) -> Optional[str]:
         return "builtins.dict"
+
+    def is_send(self) -> bool:
+        return self.key_type.is_send() and self.value_type.is_send()
+
+    def is_sync(self) -> bool:
+        # Mutable container -- not safe to share references across threads
+        return False
 
     def get_element_type(self) -> Optional[TpyType]:
         # Subscript result type: d[k] -> V
@@ -1511,6 +1635,12 @@ class DictKeysViewType(NamedType):
     def is_value_type(self) -> bool:
         return True
 
+    def is_send(self) -> bool:
+        return False
+
+    def is_sync(self) -> bool:
+        return False
+
     def __str__(self) -> str:
         return f"dict_keys[{self.key_type}]"
 
@@ -1545,6 +1675,12 @@ class DictValuesViewType(NamedType):
     def is_value_type(self) -> bool:
         return True
 
+    def is_send(self) -> bool:
+        return False
+
+    def is_sync(self) -> bool:
+        return False
+
     def __str__(self) -> str:
         return f"dict_values[{self.value_type}]"
 
@@ -1578,6 +1714,12 @@ class DictItemsViewType(NamedType):
 
     def is_value_type(self) -> bool:
         return True
+
+    def is_send(self) -> bool:
+        return False
+
+    def is_sync(self) -> bool:
+        return False
 
     def __str__(self) -> str:
         return f"dict_items[{self.key_type}, {self.value_type}]"

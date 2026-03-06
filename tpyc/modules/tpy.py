@@ -472,6 +472,20 @@ def init_module() -> BuiltinModule:
         cpp_concept="tpy::ValueType",
     )
 
+    # Send protocol -- marker for types safe to transfer across threads
+    module.protocol("Send",
+        type_params=[],
+        methods={},
+        cpp_concept="tpy::Send",
+    )
+
+    # Sync protocol -- marker for types safe to share references across threads
+    module.protocol("Sync",
+        type_params=[],
+        methods={},
+        cpp_concept="tpy::Sync",
+    )
+
     # Default protocol -- marker for types that support default construction
     module.protocol("Default",
         type_params=[],

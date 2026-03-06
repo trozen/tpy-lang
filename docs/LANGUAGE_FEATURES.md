@@ -4146,6 +4146,32 @@ Generated C++ emits `extern` declarations before the module namespace. Reference
 
 ## Concurrency
 
+### Thread Safety Markers (Send/Sync)
+
+- **Working**: `is_send()` / `is_sync()` methods on all types in the type system
+- **Working**: Auto-derivation for user records based on field types
+  - A record is Send if all fields are Send (safe to transfer across threads)
+  - A record is Sync if all fields are Sync (safe to share references across threads)
+  - Parent class Send/Sync status is also considered
+- **Working**: `Send` and `Sync` marker protocols in `tpy` module (for future explicit opt-in)
+- **Working**: C++ `is_send<T>` / `is_sync<T>` traits and `Send` / `Sync` concepts in runtime
+- **Planned**: Enforcement at channel/shared-reference boundaries (Phase 4)
+
+Send/Sync rules for built-in types:
+
+| Type | Send | Sync | Notes |
+|------|------|------|-------|
+| Value types (Int32, bool, float, str, ...) | Yes | Yes | Copied, no aliasing |
+| `Ptr[T]` | No | No | Raw pointer, no ownership guarantee |
+| `ReadOnlyPtr[T]` | No | Yes (if T Sync) | Read-only shared access |
+| `list[T]` | Yes (if T Send) | No | Mutable container |
+| `dict[K, V]` | Yes (if K,V Send) | No | Mutable container |
+| `Array[T, N]` | Yes (if T Send) | Yes (if T Sync) | Fixed-size |
+| `Span[T]` / `ReadOnlySpan[T]` | No | ReadOnly: Yes (if T Sync) | Non-owning view |
+| `StrView` | No | Yes | Non-owning read-only view |
+| `readonly[T]` | Same as T | Yes (if T Send or Sync) | Immutable wrapper |
+| `tuple[T1, T2, ...]` | Yes (if all Ti Send) | Yes (if all Ti Sync) | Composite |
+
 - **Open**: `async`/`await` → coroutines or state machines
 
 ---

@@ -6,10 +6,12 @@
 
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <vector>
 
 namespace tpy {
 
@@ -45,6 +47,61 @@ template<> struct is_value_type<BigInt> : std::true_type {};
 // C++ concept for the ValueType marker protocol
 template<typename T>
 concept ValueType = is_value_type<T>::value;
+
+// --- Thread safety markers ---
+
+/**
+ * is_send - Type trait for thread-safe ownership transfer.
+ *
+ * Send types can be safely moved to another thread. All value types are Send
+ * by default. Raw pointers and non-owning views are not Send.
+ * User records specialize this trait when auto-derived by the compiler.
+ */
+template<typename T> struct is_send : is_value_type<T> {};
+
+// Pointers are not Send (raw pointer, no ownership guarantee)
+template<typename T> struct is_send<T*> : std::false_type {};
+template<typename T> struct is_send<const T*> : std::false_type {};
+
+// string_view is not Send (borrows from another string)
+template<> struct is_send<std::string_view> : std::false_type {};
+
+// Containers: Send if elements are Send
+template<typename T, typename A> struct is_send<std::vector<T, A>> : is_send<T> {};
+template<typename T, std::size_t N> struct is_send<std::array<T, N>> : is_send<T> {};
+
+// Forward declaration for ordered_map specialization
+template<typename K, typename V> class ordered_map;
+
+// ordered_map: Send if both key and value are Send
+template<typename K, typename V>
+struct is_send<ordered_map<K, V>>
+    : std::bool_constant<is_send<K>::value && is_send<V>::value> {};
+
+template<typename T>
+concept Send = is_send<T>::value;
+
+/**
+ * is_sync - Type trait for thread-safe shared access.
+ *
+ * Sync types can be safely referenced from multiple threads. Immutable types
+ * are Sync. Mutable containers (vector, ordered_map) are not Sync.
+ * User records specialize this trait when auto-derived by the compiler.
+ */
+template<typename T> struct is_sync : is_value_type<T> {};
+
+// Mutable pointers are not Sync
+template<typename T> struct is_sync<T*> : std::false_type {};
+// Const pointers are Sync if the pointee is Sync
+template<typename T> struct is_sync<const T*> : is_sync<T> {};
+
+// Mutable containers are not Sync
+template<typename T, typename A> struct is_sync<std::vector<T, A>> : std::false_type {};
+template<typename K, typename V> struct is_sync<ordered_map<K, V>> : std::false_type {};
+template<typename T, std::size_t N> struct is_sync<std::array<T, N>> : is_sync<T> {};
+
+template<typename T>
+concept Sync = is_sync<T>::value;
 
 /**
  * Return type helpers for generic code.

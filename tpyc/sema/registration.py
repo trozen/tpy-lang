@@ -12,7 +12,8 @@ from ..typesys import (
     TypeParamKind, OptionalType, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
     IMPLICIT_READONLY_METHODS, FinalType, EnumType, IntEnumType, BoolType, SpanType,
     FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL, UINT64,
-    register_value_type_record, attach_type_param_bounds,
+    register_value_type_record, register_send_record, register_sync_record,
+    attach_type_param_bounds,
 )
 from ..parse import (
     TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
@@ -801,6 +802,28 @@ class TypeRegistrar:
                     # Only add if not already declared
                     if not any(p.name == "NativeIterable" for p in record_info.implemented_protocols):
                         record_info.implemented_protocols.append(ni_proto)
+
+        # Auto-derive Send/Sync based on field types.
+        # A record is Send if all its fields are Send (safe to move across threads).
+        # A record is Sync if all its fields are Sync (safe to share across threads).
+        # TypeParamRef fields are assumed OK -- enforced at C++ instantiation via concepts.
+        # NOTE: Modules are compiled in dependency order, so parent records from
+        # imported modules are already registered in the global sets.
+        is_send = all(
+            f.type.is_send() or isinstance(f.type, TypeParamRef)
+            for f in record_info.fields
+        )
+        is_sync = all(
+            f.type.is_sync() or isinstance(f.type, TypeParamRef)
+            for f in record_info.fields
+        )
+        if record_info.parent is not None:
+            is_send = is_send and record_info.parent.is_send()
+            is_sync = is_sync and record_info.parent.is_sync()
+        if is_send:
+            register_send_record(record.name)
+        if is_sync:
+            register_sync_record(record.name)
 
     def validate_value_type_fields(self, record: TpyRecord) -> None:
         """Validate that all fields of a ValueType record are themselves value types,
