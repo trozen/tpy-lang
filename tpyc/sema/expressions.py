@@ -20,7 +20,7 @@ from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_REPR, FSTRING_CONV_STR,
     TpyBoolLiteral,
-    TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct,
+    TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat, TpyListComprehension,
     TpySlice, TpySubscript, TpyCoerce,
@@ -95,6 +95,8 @@ class ExpressionAnalyzer:
             typ = self._analyze_name(expr)
         elif isinstance(expr, TpyBinOp):
             typ = self._analyze_binop(expr)
+        elif isinstance(expr, TpyChainedCompare):
+            typ = self._analyze_chained_compare(expr)
         elif isinstance(expr, TpyUnaryOp):
             typ = self._analyze_unaryop(expr)
         elif isinstance(expr, TpyCall):
@@ -716,6 +718,18 @@ class ExpressionAnalyzer:
         except (OverflowError, ValueError):
             return None
         return None
+
+    def _analyze_chained_compare(self, expr: TpyChainedCompare) -> TpyType:
+        """Analyze a chained comparison (a < b < c, etc.)."""
+        pairs: list[TpyBinOp] = []
+        prev = expr.left
+        for op, comp in zip(expr.ops, expr.comparators):
+            pair = TpyBinOp(prev, op, comp, loc=expr.loc)
+            self.analyze_expr(pair)
+            pairs.append(pair)
+            prev = comp
+        expr.pairs = pairs
+        return BOOL
 
     def _analyze_unaryop(self, expr: TpyUnaryOp) -> TpyType:
         """Analyze a unary operation."""

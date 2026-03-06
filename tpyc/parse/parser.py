@@ -22,7 +22,7 @@ from .nodes import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_ASCII,
     TpyBoolLiteral,
-    TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct, TpyCall, TpyMethodCall,
+    TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct, TpyCall, TpyMethodCall,
     TpyFieldAccess, TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat,
     TpyComprehensionGenerator, TpyListComprehension,
     TpySlice, TpySubscript, TpyCoerce,
@@ -1857,12 +1857,21 @@ class Parser:
             return TpyBinOp(left, op, right, loc=loc)
 
         elif isinstance(node, ast.Compare):
-            if len(node.ops) != 1 or len(node.comparators) != 1:
-                raise ParseError("Chained comparisons not supported", node)
             left = self._parse_expr(node.left)
-            right = self._parse_expr(node.comparators[0])
-            op = self._cmpop_to_str(node.ops[0])
-            return TpyBinOp(left, op, right, loc=loc)
+            if len(node.ops) == 1:
+                right = self._parse_expr(node.comparators[0])
+                op = self._cmpop_to_str(node.ops[0])
+                return TpyBinOp(left, op, right, loc=loc)
+            # Chained comparison: a < b < c
+            ops = []
+            for ast_op in node.ops:
+                op = self._cmpop_to_str(ast_op)
+                if op in ("is", "is not", "in", "not in"):
+                    raise ParseError(
+                        f"'{op}' cannot be used in chained comparisons", node)
+                ops.append(op)
+            comparators = [self._parse_expr(c) for c in node.comparators]
+            return TpyChainedCompare(left, ops, comparators, loc=loc)
 
         elif isinstance(node, ast.UnaryOp):
             operand = self._parse_expr(node.operand)

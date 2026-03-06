@@ -2544,6 +2544,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 
 ### Comparison
 - **Working**: `==`, `!=`, `<`, `<=`, `>`, `>=`
+- **Working**: Chained comparisons (`a < b < c`, `a <= b <= c`, `1 < x < 10`, etc.) -- each operand evaluated exactly once
 - **Working**: `is`, `is not` (identity comparison with `None` only)
 - **Working**: Mixed `int`/`float` comparisons (BigInt promoted to double)
 

@@ -21,7 +21,7 @@ from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_REPR, FSTRING_CONV_STR,
     TpyBoolLiteral,
-    TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct,
+    TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyTupleLiteral, TupleElemCapture, TpyDictLiteral, TpyListRepeat, TpyListComprehension,
     TpySlice, TpySubscript, TpyCoerce,
@@ -380,6 +380,9 @@ class ExpressionGenerator:
 
         elif isinstance(expr, TpyBinOp):
             return self._gen_binop(expr, target_type)
+
+        elif isinstance(expr, TpyChainedCompare):
+            return self._gen_chained_compare(expr)
 
         elif isinstance(expr, TpyUnaryOp):
             return self._gen_unaryop(expr, target_type)
@@ -768,6 +771,96 @@ class ExpressionGenerator:
             return f"({left} {cpp_op} {right})"
 
         raise RuntimeError(f"No codegen for binary operator {expr.op} with {left_type} and {right_type}")
+
+    def _gen_comparison_pair(self, pair: TpyBinOp,
+                             left_str: str, right_str: str) -> str:
+        """Render a single comparison from pre-generated operand strings.
+
+        Applies the same post-generation casts as _gen_binop (BigInt, IntEnum).
+        """
+        left_type = self.types.get_resolved_type(pair.left)
+        right_type = self.types.get_resolved_type(pair.right)
+
+        # BigInt/float mixed cast
+        left_cmp = left_type
+        right_cmp = right_type
+        if isinstance(left_type, OptionalType):
+            left_cmp = left_type.inner
+        if isinstance(right_type, OptionalType):
+            right_cmp = right_type.inner
+        if isinstance(left_cmp, BigIntType) and isinstance(right_cmp, (FloatType, Float32Type)):
+            left_str = f"static_cast<{right_cmp.to_cpp()}>({left_str})"
+        elif isinstance(right_cmp, BigIntType) and isinstance(left_cmp, (FloatType, Float32Type)):
+            right_str = f"static_cast<{left_cmp.to_cpp()}>({right_str})"
+
+        # IntEnum coercion
+        if pair.int_enum_coercion:
+            underlying_cpp = self.types.type_to_cpp(pair.int_enum_coercion.underlying_type)
+            if isinstance(left_type, IntEnumType):
+                left_str = f"static_cast<{underlying_cpp}>({left_str})"
+            if isinstance(right_type, IntEnumType):
+                right_str = f"static_cast<{underlying_cpp}>({right_str})"
+
+        return f"({left_str} {pair.op} {right_str})"
+
+    @staticmethod
+    def _is_simple_expr(expr: TpyExpr) -> bool:
+        """Check if an expression is side-effect-free (safe to duplicate)."""
+        return isinstance(expr, (
+            TpyName, TpyIntLiteral, TpyFloatLiteral,
+            TpyStrLiteral, TpyBoolLiteral, TpyNoneLiteral,
+            TpyFieldAccess,
+        ))
+
+    def _gen_chained_compare(self, expr: TpyChainedCompare) -> str:
+        """Generate chained comparison with hybrid strategy.
+
+        Simple intermediates (names, literals): inline && chain.
+        Complex intermediates (calls, subscripts): lambda IIFE with temp vars.
+        """
+        assert expr.pairs is not None
+        intermediates = expr.comparators[:-1]
+        if all(self._is_simple_expr(e) for e in intermediates):
+            return self._gen_chained_compare_inline(expr)
+        return self._gen_chained_compare_lambda(expr)
+
+    def _gen_chained_compare_inline(self, expr: TpyChainedCompare) -> str:
+        """Simple path: all intermediates are pure, desugar to && chain."""
+        assert expr.pairs is not None
+        parts = [self._gen_binop(pair, None) for pair in expr.pairs]
+        result = parts[0]
+        for part in parts[1:]:
+            result = f"({result} && {part})"
+        return result
+
+    def _gen_chained_compare_lambda(self, expr: TpyChainedCompare) -> str:
+        """Complex path: lambda IIFE with temp vars for single evaluation.
+
+        Interleaves operand evaluation with comparisons for short-circuit:
+        operands after a failed comparison are never evaluated.
+        """
+        assert expr.pairs is not None
+        all_operands = [expr.left] + expr.comparators
+        lines: list[str] = []
+        temps: list[str] = []
+        for i, pair in enumerate(expr.pairs):
+            # Generate left operand (or reuse previous right)
+            if i == 0:
+                tmp_l = f"_cmp{i}"
+                temps.append(tmp_l)
+                lines.append(f"auto&& {tmp_l} = {self.gen_expr_deref(all_operands[i])};")
+            # Generate right operand
+            tmp_r = f"_cmp{i + 1}"
+            temps.append(tmp_r)
+            lines.append(f"auto&& {tmp_r} = {self.gen_expr_deref(all_operands[i + 1])};")
+            # Generate comparison with short-circuit
+            cmp_str = self._gen_comparison_pair(pair, temps[i], tmp_r)
+            if i < len(expr.pairs) - 1:
+                lines.append(f"if (!{cmp_str}) return false;")
+            else:
+                lines.append(f"return {cmp_str};")
+        body = " ".join(lines)
+        return f"[&]() -> bool {{ {body} }}()"
 
     def _gen_unaryop(self, expr: TpyUnaryOp, target_type: TpyType | None) -> str:
         """Generate unary operation code."""

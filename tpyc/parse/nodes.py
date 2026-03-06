@@ -126,6 +126,16 @@ class TpyBinOp(TpyExpr):
 
 
 @dataclass
+class TpyChainedCompare(TpyExpr):
+    """Chained comparison: a < b < c desugars to (a < b) and (b < c)."""
+    left: TpyExpr
+    ops: list[str]
+    comparators: list[TpyExpr]
+    # Set by sema: synthetic TpyBinOp for each comparison pair
+    pairs: list['TpyBinOp'] | None = None
+
+
+@dataclass
 class TpyUnaryOp(TpyExpr):
     """Unary operation."""
     op: str  # '-', 'not'
