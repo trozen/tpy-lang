@@ -19,7 +19,7 @@ from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
     TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyAssert,
     TpyExprStmt, TpyRaiseStopIteration,
-    TpyName, TpyCall, TpyMethodCall, TpyBinOp, TpyUnaryOp,
+    TpyName, TpyCall, TpyMethodCall, TpyBinOp, TpyChainedCompare, TpyUnaryOp,
     TpyTypeParamConstruct,
     TpyFieldAccess, TpySubscript, TpyArrayLiteral, TpyListRepeat,
     TpyCoerce, TpyIfExpr,
@@ -537,6 +537,12 @@ def _collect_reads_expr(expr: TpyExpr) -> list[TpyName]:
 
     elif isinstance(expr, TpyBinOp):
         return _collect_reads_expr(expr.left) + _collect_reads_expr(expr.right)
+
+    elif isinstance(expr, TpyChainedCompare):
+        result = _collect_reads_expr(expr.left)
+        for comp in expr.comparators:
+            result.extend(_collect_reads_expr(comp))
+        return result
 
     elif isinstance(expr, TpyUnaryOp):
         return _collect_reads_expr(expr.operand)

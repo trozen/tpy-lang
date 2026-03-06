@@ -806,11 +806,14 @@ class ExpressionGenerator:
     @staticmethod
     def _is_simple_expr(expr: TpyExpr) -> bool:
         """Check if an expression is side-effect-free (safe to duplicate)."""
-        return isinstance(expr, (
+        if isinstance(expr, (
             TpyName, TpyIntLiteral, TpyFloatLiteral,
             TpyStrLiteral, TpyBoolLiteral, TpyNoneLiteral,
-            TpyFieldAccess,
-        ))
+        )):
+            return True
+        if isinstance(expr, TpyFieldAccess):
+            return ExpressionGenerator._is_simple_expr(expr.obj)
+        return False
 
     def _gen_chained_compare(self, expr: TpyChainedCompare) -> str:
         """Generate chained comparison with hybrid strategy.
@@ -833,6 +836,46 @@ class ExpressionGenerator:
             result = f"({result} && {part})"
         return result
 
+    def _comparison_targets(self, pair: TpyBinOp) -> tuple[TpyType | None, TpyType | None]:
+        """Determine target types for a comparison pair's operands.
+
+        Handles Optional unwrapping and Char literal coercion,
+        matching the logic in _gen_binop's comparison branch.
+        """
+        left_type = self.types.get_resolved_type(pair.left)
+        right_type = self.types.get_resolved_type(pair.right)
+        left_target: TpyType | None = None
+        right_target: TpyType | None = None
+
+        if pair.optional_safe_eq:
+            left_analyzed = self.ctx.get_expr_type(pair.left)
+            right_analyzed = self.ctx.get_expr_type(pair.right)
+            if isinstance(left_type, OptionalType) and not left_type.uses_pointer_repr():
+                if not isinstance(left_analyzed, OptionalType):
+                    left_target = left_type.inner
+                elif not (isinstance(right_type, OptionalType) and not right_type.uses_pointer_repr()):
+                    right_target = left_type.inner
+            if isinstance(right_type, OptionalType) and not right_type.uses_pointer_repr():
+                if not isinstance(right_analyzed, OptionalType):
+                    right_target = right_type.inner
+                elif not (isinstance(left_type, OptionalType) and not left_type.uses_pointer_repr()):
+                    left_target = right_type.inner
+        else:
+            if isinstance(left_type, OptionalType) and not left_type.uses_pointer_repr():
+                left_target = left_type.inner
+            if isinstance(right_type, OptionalType) and not right_type.uses_pointer_repr():
+                right_target = right_type.inner
+
+        # Char literal coercion
+        if left_target is None and isinstance(right_type, CharType):
+            if not (pair.optional_safe_eq and isinstance(left_type, OptionalType)):
+                left_target = CHAR
+        if right_target is None and isinstance(left_type, CharType):
+            if not (pair.optional_safe_eq and isinstance(right_type, OptionalType)):
+                right_target = CHAR
+
+        return left_target, right_target
+
     def _gen_chained_compare_lambda(self, expr: TpyChainedCompare) -> str:
         """Complex path: lambda IIFE with temp vars for single evaluation.
 
@@ -844,15 +887,16 @@ class ExpressionGenerator:
         lines: list[str] = []
         temps: list[str] = []
         for i, pair in enumerate(expr.pairs):
+            left_target, right_target = self._comparison_targets(pair)
             # Generate left operand (or reuse previous right)
             if i == 0:
                 tmp_l = f"_cmp{i}"
                 temps.append(tmp_l)
-                lines.append(f"auto&& {tmp_l} = {self.gen_expr_deref(all_operands[i])};")
+                lines.append(f"auto&& {tmp_l} = {self.gen_expr_deref(all_operands[i], left_target)};")
             # Generate right operand
             tmp_r = f"_cmp{i + 1}"
             temps.append(tmp_r)
-            lines.append(f"auto&& {tmp_r} = {self.gen_expr_deref(all_operands[i + 1])};")
+            lines.append(f"auto&& {tmp_r} = {self.gen_expr_deref(all_operands[i + 1], right_target)};")
             # Generate comparison with short-circuit
             cmp_str = self._gen_comparison_pair(pair, temps[i], tmp_r)
             if i < len(expr.pairs) - 1:

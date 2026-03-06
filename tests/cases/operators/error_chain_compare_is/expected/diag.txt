@@ -1,0 +1,1 @@
+main.py:5: error: 'is' cannot be used in chained comparisons

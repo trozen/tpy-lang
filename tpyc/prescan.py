@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
     TpyIf, TpyWhile, TpyForEach, TpyName, TpySubscript,
-    TpyCall, TpyBinOp, TpyUnaryOp, TpyMethodCall,
+    TpyCall, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyMethodCall,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat,
     TpyCoerce, TpyFieldAccess, TpyIfExpr,
@@ -96,7 +96,7 @@ def is_scan_rvalue(expr: TpyExpr | None) -> bool:
         return False
     if isinstance(expr, TpyFieldAccess):
         return is_scan_rvalue(expr.obj)
-    return isinstance(expr, (TpyCall, TpyBinOp, TpyUnaryOp, TpyMethodCall,
+    return isinstance(expr, (TpyCall, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyMethodCall,
                              TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
                              TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat,
                              TpyIfExpr))
