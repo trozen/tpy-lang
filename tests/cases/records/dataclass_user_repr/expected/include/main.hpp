@@ -11,7 +11,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// @dataclass(order=True)
+// @dataclass
 // 6: class Point:
 struct Point {
     // 7:     x: Int32
@@ -22,26 +22,18 @@ struct Point {
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
+    // 10:     def __repr__(self) -> str:
+    std::string __repr__() const {
+        // 11:         return f"Point[{self.x},{self.y}]"
+        return std::format("Point[{},{}]", this->x, this->y);
+    }
+
     bool __eq__(const Point& other) const {
         return ((this->x == other.x) && (this->y == other.y));
     }
 
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
-    }
-
-    friend auto operator<=>(const Point& lhs, const Point& rhs) {
-        return std::tie(lhs.x, lhs.y) <=> std::tie(rhs.x, rhs.y);
-    }
-
-    std::string __repr__() const {
-        std::ostringstream __os;
-        __os << "Point("
-           << "x=" << this->x
-           << ", "
-           << "y=" << this->y
-           << ")";
-        return __os.str();
     }
 };
 

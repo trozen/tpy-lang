@@ -30,14 +30,20 @@ struct Point {
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "Point("
+           << "x=" << this->x
+           << ", "
+           << "y=" << this->y
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    os << "Point("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 
@@ -57,16 +63,22 @@ struct Point3D : Point {
     friend bool operator==(const Point3D& lhs, const Point3D& other) {
         return lhs.__eq__(other);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "Point3D("
+           << "x=" << this->x
+           << ", "
+           << "y=" << this->y
+           << ", "
+           << "z=" << this->z
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point3D& obj) {
-    os << "Point3D("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ", "
-       << "z=" << obj.z
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 

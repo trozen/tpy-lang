@@ -43,14 +43,20 @@ struct Rect {
     friend bool operator==(const Rect& lhs, const Rect& other) {
         return lhs.__eq__(other);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "Rect("
+           << "width=" << this->width
+           << ", "
+           << "height=" << this->height
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
-    os << "Rect("
-       << "width=" << obj.width
-       << ", "
-       << "height=" << obj.height
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 

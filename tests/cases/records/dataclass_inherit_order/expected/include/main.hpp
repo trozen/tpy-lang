@@ -34,14 +34,20 @@ struct Base {
     friend auto operator<=>(const Base& lhs, const Base& rhs) {
         return std::tie(lhs.x, lhs.y) <=> std::tie(rhs.x, rhs.y);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "Base("
+           << "x=" << this->x
+           << ", "
+           << "y=" << this->y
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
-    os << "Base("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 
@@ -65,16 +71,22 @@ struct Child : Base {
     friend auto operator<=>(const Child& lhs, const Child& rhs) {
         return std::tie(lhs.x, lhs.y, lhs.z) <=> std::tie(rhs.x, rhs.y, rhs.z);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "Child("
+           << "x=" << this->x
+           << ", "
+           << "y=" << this->y
+           << ", "
+           << "z=" << this->z
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
-    os << "Child("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ", "
-       << "z=" << obj.z
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 

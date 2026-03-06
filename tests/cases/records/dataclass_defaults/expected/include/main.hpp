@@ -33,18 +33,24 @@ struct Color {
     friend bool operator==(const Color& lhs, const Color& other) {
         return lhs.__eq__(other);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "Color("
+           << "r=" << this->r
+           << ", "
+           << "g=" << this->g
+           << ", "
+           << "b=" << this->b
+           << ", "
+           << "a=" << this->a
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Color& obj) {
-    os << "Color("
-       << "r=" << obj.r
-       << ", "
-       << "g=" << obj.g
-       << ", "
-       << "b=" << obj.b
-       << ", "
-       << "a=" << obj.a
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 

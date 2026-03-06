@@ -39,16 +39,22 @@ struct Version {
     friend auto operator<=>(const Version& lhs, const Version& rhs) {
         return std::tie(lhs.major, lhs.minor, lhs.patch) <=> std::tie(rhs.major, rhs.minor, rhs.patch);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "Version("
+           << "major=" << this->major
+           << ", "
+           << "minor=" << this->minor
+           << ", "
+           << "patch=" << this->patch
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Version& obj) {
-    os << "Version("
-       << "major=" << obj.major
-       << ", "
-       << "minor=" << obj.minor
-       << ", "
-       << "patch=" << obj.patch
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 

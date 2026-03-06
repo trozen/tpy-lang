@@ -33,14 +33,20 @@ struct Point {
     uint64_t __hash__() const {
         return tpy::hash_combine(0, this->x, this->y);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "Point("
+           << "x=" << this->x
+           << ", "
+           << "y=" << this->y
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    os << "Point("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 

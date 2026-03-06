@@ -29,12 +29,18 @@ struct A {
     friend bool operator==(const A& lhs, const A& other) {
         return lhs.__eq__(other);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "A("
+           << "x=" << this->x
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
-    os << "A("
-       << "x=" << obj.x
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 
@@ -54,14 +60,20 @@ struct B : A {
     friend bool operator==(const B& lhs, const B& other) {
         return lhs.__eq__(other);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "B("
+           << "x=" << this->x
+           << ", "
+           << "y=" << this->y
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
-    os << "B("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 
@@ -81,16 +93,22 @@ struct C : B {
     friend bool operator==(const C& lhs, const C& other) {
         return lhs.__eq__(other);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "C("
+           << "x=" << this->x
+           << ", "
+           << "y=" << this->y
+           << ", "
+           << "z=" << this->z
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const C& obj) {
-    os << "C("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ", "
-       << "z=" << obj.z
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 

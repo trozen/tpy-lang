@@ -34,14 +34,20 @@ struct Vec2 {
     uint64_t __hash__() const {
         return tpy::hash_combine(0, this->x, this->y);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "Vec2("
+           << "x=" << this->x
+           << ", "
+           << "y=" << this->y
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
-    os << "Vec2("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 
@@ -65,16 +71,22 @@ struct Vec3 : Vec2 {
     uint64_t __hash__() const {
         return tpy::hash_combine(0, this->x, this->y, this->z);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "Vec3("
+           << "x=" << this->x
+           << ", "
+           << "y=" << this->y
+           << ", "
+           << "z=" << this->z
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Vec3& obj) {
-    os << "Vec3("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ", "
-       << "z=" << obj.z
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 

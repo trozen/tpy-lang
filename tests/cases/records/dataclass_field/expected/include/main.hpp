@@ -30,14 +30,20 @@ struct Point {
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "Point("
+           << "x=" << this->x
+           << ", "
+           << "y=" << this->y
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    os << "Point("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 
@@ -63,18 +69,24 @@ struct Config {
     friend bool operator==(const Config& lhs, const Config& other) {
         return lhs.__eq__(other);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "Config("
+           << "name=" << "'" << this->name << "'"
+           << ", "
+           << "value=" << this->value
+           << ", "
+           << "tags=" << tpy::ListPrinter(this->tags)
+           << ", "
+           << "lookup=" << tpy::DictPrinter(this->lookup)
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
-    os << "Config("
-       << "name=" << "'" << obj.name << "'"
-       << ", "
-       << "value=" << obj.value
-       << ", "
-       << "tags=" << tpy::ListPrinter(obj.tags)
-       << ", "
-       << "lookup=" << tpy::DictPrinter(obj.lookup)
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 
@@ -97,14 +109,20 @@ struct Canvas {
     friend bool operator==(const Canvas& lhs, const Canvas& other) {
         return lhs.__eq__(other);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "Canvas("
+           << "name=" << "'" << this->name << "'"
+           << ", "
+           << "origin=" << this->origin
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Canvas& obj) {
-    os << "Canvas("
-       << "name=" << "'" << obj.name << "'"
-       << ", "
-       << "origin=" << obj.origin
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 

@@ -558,6 +558,16 @@ class TypeRegistrar:
                     copy_loc,
                 )
 
+        # Synthesize __repr__ for @dataclass without explicit __repr__
+        if record.is_dataclass and all_dc_fields and "__repr__" not in methods:
+            methods["__repr__"] = [FunctionInfo(
+                name="__repr__",
+                params=[],
+                return_type=StrType(),
+                is_method=True,
+                is_readonly=True,
+            )]
+
         # Synthesize __hash__ for frozen dataclasses without explicit __hash__
         if record.is_frozen and all_dc_fields and "__hash__" not in methods:
             methods["__hash__"] = [FunctionInfo(
@@ -846,7 +856,7 @@ class TypeRegistrar:
         # Synthesized dataclass methods intentionally hide parent versions
         skip_dc: set[str] = set()
         if record_info.is_dataclass:
-            skip_dc = {"__eq__", "__hash__"}
+            skip_dc = {"__eq__", "__hash__", "__repr__"}
         if record_info.is_ordered:
             skip_dc.update({"__lt__", "__le__", "__gt__", "__ge__"})
 

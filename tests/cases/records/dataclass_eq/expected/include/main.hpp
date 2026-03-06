@@ -29,12 +29,18 @@ struct Id {
     friend bool operator==(const Id& lhs, const Id& other) {
         return lhs.__eq__(other);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "Id("
+           << "value=" << this->value
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Id& obj) {
-    os << "Id("
-       << "value=" << obj.value
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 
@@ -56,14 +62,20 @@ struct Point {
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "Point("
+           << "x=" << this->x
+           << ", "
+           << "y=" << this->y
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
-    os << "Point("
-       << "x=" << obj.x
-       << ", "
-       << "y=" << obj.y
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 
@@ -87,16 +99,22 @@ struct Config {
     friend bool operator==(const Config& lhs, const Config& other) {
         return lhs.__eq__(other);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "Config("
+           << "name=" << "'" << this->name << "'"
+           << ", "
+           << "value=" << this->value
+           << ", "
+           << "label=" << (this->label.has_value() ? std::string("'") + std::string(this->label.value()) + "'" : std::string("None"))
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
-    os << "Config("
-       << "name=" << "'" << obj.name << "'"
-       << ", "
-       << "value=" << obj.value
-       << ", "
-       << "label=" << (obj.label.has_value() ? std::string("'") + std::string(obj.label.value()) + "'" : std::string("None"))
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 

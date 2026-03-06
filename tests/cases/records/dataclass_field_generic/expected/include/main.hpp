@@ -62,14 +62,20 @@ struct Wrapper {
     friend bool operator==(const Wrapper& lhs, const Wrapper& other) {
         return lhs.__eq__(other);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "Wrapper("
+           << "name=" << "'" << this->name << "'"
+           << ", "
+           << "pair=" << this->pair
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
-    os << "Wrapper("
-       << "name=" << "'" << obj.name << "'"
-       << ", "
-       << "pair=" << obj.pair
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 

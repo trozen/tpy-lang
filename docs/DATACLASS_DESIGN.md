@@ -13,7 +13,7 @@
 
 | Feature | Notes |
 |---------|-------|
-| `__repr__` auto-generation | Not needed initially -- TPy already auto-generates `operator<<` for all records with `TypeName(field=value, ...)` format |
+| `__repr__` auto-generation | Done. Generates `__repr__` returning `TypeName(field=value, ...)` format; `operator<<` delegates to it |
 | `__post_init__` | 1 use in compiler source (`Scope` sets `self.depth` from parent). Low priority |
 | `field(default_factory=...)` | Done. `field(default=X)` and `field(default_factory=X)` where X is a Default-constructible type |
 | `field(kw_only=True)` | 2 uses in compiler source. Low priority |
@@ -330,17 +330,15 @@ no benefit.
 
 ### D2: `__repr__` Auto-Generation
 
-**Chosen: Not needed initially.**
+**Chosen: Synthesize `__repr__` for `@dataclass` (CPython parity).**
 
-TPy already auto-generates `operator<<` for all records, producing
-`TypeName(field=value, ...)` format. This covers `print()` and f-string formatting.
+`@dataclass` generates a `__repr__` method returning `TypeName(field=value, ...)`
+format via `std::ostringstream`. The existing `operator<<` detects `__repr__` and
+delegates to it. User-defined `__repr__` takes precedence (no synthesis).
 
-Python's `@dataclass` generates `__repr__` returning the same format. Since TPy's
-auto-generated printing already matches, explicit `__repr__` synthesis is redundant
-for Phase 1.
-
-If needed later, `__repr__` synthesis would follow the same pattern as `__eq__` --
-create a synthetic method that builds the string.
+For dataclass children, `__repr__` includes all fields (parent + own), matching
+CPython behavior. Non-dataclass records still use the existing inline `operator<<`
+formatting.
 
 ### D3: Interaction with Existing Record Features
 

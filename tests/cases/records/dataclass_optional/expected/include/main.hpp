@@ -29,14 +29,20 @@ struct Node {
     friend bool operator==(const Node& lhs, const Node& other) {
         return lhs.__eq__(other);
     }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "Node("
+           << "value=" << this->value
+           << ", "
+           << "label=" << (this->label.has_value() ? std::string("'") + std::string(this->label.value()) + "'" : std::string("None"))
+           << ")";
+        return __os.str();
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
-    os << "Node("
-       << "value=" << obj.value
-       << ", "
-       << "label=" << (obj.label.has_value() ? std::string("'") + std::string(obj.label.value()) + "'" : std::string("None"))
-       << ")";
+    os << obj.__repr__();
     return os;
 }
 

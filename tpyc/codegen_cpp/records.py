@@ -332,6 +332,9 @@ class RecordGenerator:
         # Generate operator<=> for @dataclass(order=True)
         self._gen_order_operator(out, record)
 
+        # Generate __repr__ for @dataclass
+        self._gen_repr_method(out, record)
+
         # Synthesize __iter__() -> self for iterator types (has __next__ but no explicit __iter__)
         has_next = any(m.name == "__next__" for m in record.methods)
         has_iter = any(m.name == "__iter__" for m in record.methods)
@@ -384,57 +387,8 @@ class RecordGenerator:
                 print_fields = record_info.dataclass_fields
             else:
                 print_fields = record.fields
-            out.write(f'{INDENT}os << "{record.name}("')
-
-            for i, fld in enumerate(print_fields):
-                cpp_fld = escape_cpp_name(fld.name)
-                if i > 0:
-                    out.write(f'\n{INDENT}   << ", "')
-                out.write(f'\n{INDENT}   << "{fld.name}="')
-                # Handle strings - quote them
-                if is_any_str_type(fld.type):
-                    out.write(f" << \"'\" << obj.{cpp_fld} << \"'\"")
-
-                elif isinstance(fld.type, OptionalType):
-                    inner = fld.type.inner
-                    inner_cpp = inner.to_cpp()
-                    if isinstance(inner, BoolType):
-                        out.write(f' << tpy::print_optional_val<tpy::print_bool, {inner_cpp}>(obj.{cpp_fld})')
-                    elif isinstance(inner, (FloatType, Float32Type)):
-                        out.write(f' << tpy::print_optional_val<tpy::print_float, {inner_cpp}>(obj.{cpp_fld})')
-                    elif is_any_str_type(inner):
-                        # Quoted string: None or 'value'
-                        out.write(f' << (obj.{cpp_fld}.has_value() ? std::string("\'") + std::string(obj.{cpp_fld}.value()) + "\'" : std::string("None"))')
-                    elif isinstance(inner, TupleType):
-                        out.write(f';\n{INDENT}if (obj.{cpp_fld}.has_value()) os << tpy::TuplePrinter(obj.{cpp_fld}.value()); else os << "None";\n{INDENT}os')
-                    elif isinstance(inner, DictType):
-                        out.write(f';\n{INDENT}if (obj.{cpp_fld}.has_value()) os << tpy::DictPrinter(obj.{cpp_fld}.value()); else os << "None";\n{INDENT}os')
-                    elif isinstance(inner, (ListType, ArrayType, SpanType)):
-                        out.write(f';\n{INDENT}if (obj.{cpp_fld}.has_value()) os << tpy::ListPrinter(obj.{cpp_fld}.value()); else os << "None";\n{INDENT}os')
-                    else:
-                        out.write(f' << tpy::print_optional_val(obj.{cpp_fld})')
-                elif isinstance(fld.type, BoolType):
-                    out.write(f' << tpy::print_bool(obj.{cpp_fld})')
-                elif isinstance(fld.type, FloatType):
-                    out.write(f' << tpy::print_float(obj.{cpp_fld})')
-                elif isinstance(fld.type, Float32Type):
-                    out.write(f' << tpy::print_float(static_cast<double>(obj.{cpp_fld}))')
-                elif isinstance(fld.type, TypeParamRef):
-                    # Type parameter - use ValuePrinter which handles both scalars and containers
-                    out.write(f' << tpy::ValuePrinter(obj.{cpp_fld})')
-                elif isinstance(fld.type, TupleType):
-                    out.write(f' << tpy::TuplePrinter(obj.{cpp_fld})')
-                elif isinstance(fld.type, DictType):
-                    out.write(f' << tpy::DictPrinter(obj.{cpp_fld})')
-                elif isinstance(fld.type, (ListType, ArrayType, SpanType)):
-                    out.write(f' << tpy::ListPrinter(obj.{cpp_fld})')
-                elif isinstance(fld.type, NamedType) and fld.type.is_module_type:
-                    # Module-defined types may not be printable -- use placeholder
-                    out.write(f' << "<{fld.type}>"')
-                else:
-                    out.write(f' << obj.{cpp_fld}')
-
-            out.write(f'\n{INDENT}   << ")";\n')
+            self._write_field_format(out, print_fields, record.name,
+                                     "os", "obj.", INDENT)
 
         out.write(f"{INDENT}return os;\n")
         out.write("}\n")
@@ -786,3 +740,76 @@ class RecordGenerator:
         out.write(f"\n{INDENT}friend auto operator<=>(const {name}& lhs, const {name}& rhs) {{\n")
         out.write(f"{INDENT}{INDENT}return std::tie({lhs_fields}) <=> std::tie({rhs_fields});\n")
         out.write(f"{INDENT}}}\n")
+
+    def _gen_repr_method(self, out: TextIO, record: TpyRecord) -> None:
+        """Generate __repr__() for @dataclass."""
+        if any(m.name == "__repr__" for m in record.methods):
+            return
+        record_info = self.ctx.analyzer.registry.get_record(record.name)
+        if record_info is None or not record_info.is_dataclass:
+            return
+        dc_fields = record_info.dataclass_fields
+        if not dc_fields:
+            return
+        out.write(f"\n{INDENT}std::string __repr__() const {{\n")
+        out.write(f"{INDENT}{INDENT}std::ostringstream __os;\n")
+        self._write_field_format(out, dc_fields, record.name,
+                                 "__os", "this->", INDENT + INDENT)
+        out.write(f"{INDENT}{INDENT}return __os.str();\n")
+        out.write(f"{INDENT}}}\n")
+
+    def _write_field_format(
+        self, out: TextIO, fields: list, record_name: str,
+        stream: str, prefix: str, indent: str,
+    ) -> None:
+        """Write field-by-field formatting using stream operator<<.
+
+        Used by _gen_record_ostream (inline) and _gen_repr_method (__repr__).
+        """
+        out.write(f'{indent}{stream} << "{record_name}("')
+
+        for i, fld in enumerate(fields):
+            cpp_fld = escape_cpp_name(fld.name)
+            acc = f"{prefix}{cpp_fld}"
+            if i > 0:
+                out.write(f'\n{indent}   << ", "')
+            out.write(f'\n{indent}   << "{fld.name}="')
+            if is_any_str_type(fld.type):
+                out.write(f" << \"'\" << {acc} << \"'\"")
+            elif isinstance(fld.type, OptionalType):
+                inner = fld.type.inner
+                inner_cpp = inner.to_cpp()
+                if isinstance(inner, BoolType):
+                    out.write(f' << tpy::print_optional_val<tpy::print_bool, {inner_cpp}>({acc})')
+                elif isinstance(inner, (FloatType, Float32Type)):
+                    out.write(f' << tpy::print_optional_val<tpy::print_float, {inner_cpp}>({acc})')
+                elif is_any_str_type(inner):
+                    out.write(f' << ({acc}.has_value() ? std::string("\'") + std::string({acc}.value()) + "\'" : std::string("None"))')
+                elif isinstance(inner, TupleType):
+                    out.write(f';\n{indent}if ({acc}.has_value()) {stream} << tpy::TuplePrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
+                elif isinstance(inner, DictType):
+                    out.write(f';\n{indent}if ({acc}.has_value()) {stream} << tpy::DictPrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
+                elif isinstance(inner, (ListType, ArrayType, SpanType)):
+                    out.write(f';\n{indent}if ({acc}.has_value()) {stream} << tpy::ListPrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
+                else:
+                    out.write(f' << tpy::print_optional_val({acc})')
+            elif isinstance(fld.type, BoolType):
+                out.write(f' << tpy::print_bool({acc})')
+            elif isinstance(fld.type, FloatType):
+                out.write(f' << tpy::print_float({acc})')
+            elif isinstance(fld.type, Float32Type):
+                out.write(f' << tpy::print_float(static_cast<double>({acc}))')
+            elif isinstance(fld.type, TypeParamRef):
+                out.write(f' << tpy::ValuePrinter({acc})')
+            elif isinstance(fld.type, TupleType):
+                out.write(f' << tpy::TuplePrinter({acc})')
+            elif isinstance(fld.type, DictType):
+                out.write(f' << tpy::DictPrinter({acc})')
+            elif isinstance(fld.type, (ListType, ArrayType, SpanType)):
+                out.write(f' << tpy::ListPrinter({acc})')
+            elif isinstance(fld.type, NamedType) and fld.type.is_module_type:
+                out.write(f' << "<{fld.type}>"')
+            else:
+                out.write(f' << {acc}')
+
+        out.write(f'\n{indent}   << ")";\n')
