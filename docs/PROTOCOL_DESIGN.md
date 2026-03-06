@@ -248,9 +248,9 @@ class NamedType(TpyType):
 
 ## 9. Compiler Traits (Data-Driven Type Behavior)
 
-A key goal is enabling types like `StaticList` to be fully defined in source code, without hardcoded compiler references. Protocols provide the mechanism: types declare their capabilities, and the compiler queries these declarations instead of checking `isinstance(type, SomeType)`.
+A key goal is enabling types to be fully defined in source code, without hardcoded compiler references. Protocols provide the mechanism: types declare their capabilities, and the compiler queries these declarations instead of checking `isinstance(type, SomeType)`.
 
-**Status**: `StaticList` is now fully module-defined via `ModuleType` - no hardcoded `StaticListType` class exists in the compiler. The type's behavior (C++ codegen, methods, protocol conformance) is entirely driven by its module definition in `tpyc/modules/tpy.py`.
+**Status**: Module-defined types use `ModuleType` with no hardcoded type classes in the compiler. The type's behavior (C++ codegen, methods, protocol conformance) is entirely driven by its module definition in `tpyc/modules/`.
 
 ### Built-in Trait Protocols
 
@@ -303,17 +303,16 @@ Types declare their capabilities through two parallel mechanisms:
 
 **1. Structural conformance** - types that have all required methods automatically conform:
 ```python
-# StaticList has __len__ and __getitem__, so it conforms to Sequence[T]
-class StaticList(Generic[T, N]):
-    def __len__(self) -> Int32: ...         # → conforms to Sized
-    def __getitem__(self, i: Int32) -> T: ...  # + __len__ → conforms to Sequence[T]
+# ArrayList has __len__ and __getitem__, so it conforms to Sequence[T]
+class ArrayList(Generic[T, N]):
+    def __len__(self) -> Int32: ...         # -> conforms to Sized
+    def __getitem__(self, i: Int32) -> T: ...  # + __len__ -> conforms to Sequence[T]
     def __setitem__(self, i: Int32, v: T) -> None: ...
 ```
 
 **2. Explicit extends** - for marker protocols with no methods:
 ```python
 # In module system, types declare protocol conformance
-module.type("StaticList", ..., extends=["NativeIterable[T]", "ReadOnlySpanLike[T]"])
 module.type("list", ..., extends=["NativeIterable[T]", "ReadOnlySpanLike[T]"])
 module.register_type(STR, ..., extends=["NativeIterable[Char]"])  # str is not ReadOnlySpanLike
 ```
@@ -405,7 +404,7 @@ No runtime vtables or dynamic dispatch—everything resolves to direct method ca
      - Unified `tpy::from_range<Container>(range)` template using iterator-pair constructor
      - Reserves capacity if container supports `reserve()` and range has known size
      - C++20 concept `tpy::NativeRangeConstructible<ElemT>`
-     - list and StaticList extend this protocol
+     - list extends this protocol
 7. ~~**Phase 7**: User-defined protocols~~ ✅ **COMPLETE** (moved to Phase 1)
 8. **Phase 8**: Python-compatible `Iterable[T]` and `Iterator[T]` (future)
    - `Iterator[T]` with `__next__() -> T` + `raise StopIteration`
@@ -455,7 +454,7 @@ def sum_all(items: NativeIterable[Int32]) -> Int32:
 - Defined in `tpy` module (TurboPython-specific)
 - **Marker protocol** - types declare conformance via `extends`, no methods required
 - Uses C++ `begin()`/`end()` under the hood
-- All built-in containers (list, Array, Span, StaticList, str) conform via `extends`
+- All built-in containers (list, Array, Span, str) conform via `extends`
 - Users **cannot** create custom NativeIterable types (requires C++ begin/end)
 - Zero overhead - compiles to C++ range-based for
 

@@ -421,9 +421,7 @@ class RecordGenerator:
                     out.write(f' << tpy::TuplePrinter(obj.{cpp_fld})')
                 elif isinstance(fld.type, DictType):
                     out.write(f' << tpy::DictPrinter(obj.{cpp_fld})')
-                elif isinstance(fld.type, (ListType, ArrayType, SpanType)) or (
-                    isinstance(fld.type, NamedType) and fld.type.qualified_name() == "tpy.StaticList"
-                ):
+                elif isinstance(fld.type, (ListType, ArrayType, SpanType)):
                     out.write(f' << tpy::ListPrinter(obj.{cpp_fld})')
                 elif isinstance(fld.type, NamedType) and fld.type.is_module_type:
                     # Module-defined types may not be printable -- use placeholder

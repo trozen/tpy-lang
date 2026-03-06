@@ -116,7 +116,7 @@ Parser/typing normalization goal:
 
 These coercions are intentionally excluded from merge decisions:
 - Record/pointer coercions (`T` <-> `Ptr[T]`, `ReadOnlyPtr[T]`)
-- View coercions (`list/Array/StaticList` -> `Span`)
+- View coercions (`list/Array` -> `Span`)
 - Other coercions requiring lvalue/mutability/lifetime constraints
 
 Reason:

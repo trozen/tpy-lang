@@ -95,7 +95,7 @@ concept Iterable = requires(T& t) {
  *
  * A type is ReadOnlySpanLike<ElemT> if tpy::as_span(t) yields something convertible
  * to std::span<const ElemT>. This covers both builtin types (vector, array,
- * StaticList, ReadOnlySpan) via as_span overloads and user types via __span__() const.
+ * ReadOnlySpan) via as_span overloads and user types via __span__() const.
  */
 template<typename T, typename ElemT>
 concept ReadOnlySpanLike = requires(const T& t) {

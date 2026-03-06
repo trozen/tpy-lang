@@ -253,9 +253,7 @@ class BuiltinGenerator:
             elif isinstance(arg_type, (DictKeysViewType, DictValuesViewType, DictItemsViewType)):
                 # Dict views use their own operator<< for printing
                 parts.append(self._gen_expr_deref(arg))
-            elif isinstance(arg_type, (ListType, ListRepeatType, ArrayType, SpanType)) or (
-                isinstance(arg_type, NamedType) and arg_type.qualified_name() == "tpy.StaticList"
-            ):
+            elif isinstance(arg_type, (ListType, ListRepeatType, ArrayType, SpanType)):
                 # Sequence containers use ListPrinter for [a, b, c] formatting
                 if isinstance(arg, TpyArrayLiteral):
                     # Array literals need explicit type for ListPrinter CTAD

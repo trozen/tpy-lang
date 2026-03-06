@@ -1,7 +1,7 @@
 """
 TurboPython-specific types (tpy module).
 
-Defines types like Array, Span, StaticList, Int32, etc.
+Defines types like Array, Span, Int32, etc.
 """
 
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
@@ -363,109 +363,6 @@ def init_module() -> BuiltinModule:
                                        cpp="std::span({self}, static_cast<size_t>({0}))",
                                        is_readonly=True)],
                 })
-
-    # StaticList[T, N]: Fixed-capacity container
-    module.type("StaticList", cpp_type="StaticList<{T}, {N}>", type_params=["T", "N"],
-                param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
-                type_factory=lambda t, n: NamedType("StaticList", (t, n), _module_qname="tpy.StaticList"),
-                extends=["NativeIterable[T]", "NativeRangeConstructible[T]", "ReadOnlySpanLike[T]", "Iterable[T]"],
-                constructors=[
-                    MethodDef(params=[], returns=VOID, cpp=""),
-                    MethodDef(params=[ParamDef("items", SpanType(T, is_readonly=True))], returns=VOID, cpp="{0}"),
-                ],
-                methods={
-        "__iter__": [MethodDef(
-            params=[],
-            returns=NamedType("Iterator", (T,), is_protocol=True),
-            cpp="tpy::__iter__({self})",
-            is_readonly=True,
-        )],
-        "__len__": [MethodDef(
-            params=[],
-            returns=INT32,
-            cpp="{self}.size()",
-            is_readonly=True,
-        )],
-        "append": [MethodDef(
-            params=[ParamDef("value", OwnType(T))],
-            returns=VOID,
-            cpp="{self}.push_back({0})",
-        )],
-        "pop": [
-            MethodDef(
-                params=[],
-                returns=T,
-                cpp="{self}.pop_back()",
-            ),
-            MethodDef(
-                params=[ParamDef("index", INT32)],
-                returns=T,
-                cpp="tpy::staticlist_pop_at({self}, {0})",
-            ),
-        ],
-        "clear": [MethodDef(
-            params=[],
-            returns=VOID,
-            cpp="{self}.clear()",
-        )],
-        "push_empty": [MethodDef(
-            params=[],
-            returns=PtrType(T),
-            cpp="{self}.push_empty()",
-        )],
-        "get_mut": [MethodDef(
-            params=[ParamDef("index", INT32)],
-            returns=PtrType(T),
-            cpp="tpy::get_mut({self}, {0})",
-        )],
-        "__getitem__": [MethodDef(
-            params=[ParamDef("index", INT32)],
-            returns=T,
-            cpp="tpy::__getitem__({self}, {0})",
-            is_readonly=True,
-        )],
-        "__setitem__": [MethodDef(
-            params=[ParamDef("index", INT32), ParamDef("value", OwnType(T))],
-            returns=VOID,
-            cpp="tpy::__setitem__({self}, {0}, {1})",
-        )],
-        "extend": [MethodDef(
-            params=[ParamDef("other", NamedType("Iterable", (T,), is_protocol=True))],
-            returns=VOID,
-            cpp="tpy::staticlist_extend({self}, {0})",
-        )],
-        "insert": [MethodDef(
-            params=[ParamDef("index", INT32), ParamDef("value", OwnType(T))],
-            returns=VOID,
-            cpp="tpy::staticlist_insert({self}, {0}, {1})",
-        )],
-        "remove": [MethodDef(
-            params=[ParamDef("value", T)],
-            returns=VOID,
-            cpp="tpy::staticlist_remove({self}, {0})",
-        )],
-        "index": [MethodDef(
-            params=[ParamDef("value", T)],
-            returns=INT32,
-            cpp="tpy::staticlist_index({self}, {0})",
-            is_readonly=True,
-        )],
-        "count": [MethodDef(
-            params=[ParamDef("value", T)],
-            returns=INT32,
-            cpp="tpy::staticlist_count({self}, {0})",
-            is_readonly=True,
-        )],
-        "reverse": [MethodDef(
-            params=[],
-            returns=VOID,
-            cpp="tpy::staticlist_reverse({self})",
-        )],
-        "__span__": [MethodDef(
-            params=[], returns=SpanType(T, is_readonly=True),
-            cpp="tpy::as_span({self})", is_readonly=True,
-        )],
-    })
 
     # Deref[T] protocol: types that can be dereferenced to yield T
     # Structural protocol -- any type with __deref__() -> T conforms automatically.

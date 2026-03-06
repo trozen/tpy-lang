@@ -74,8 +74,8 @@ class TestCodegenRegression:
     def test_generic_ctor_invalid_arg_rejected(self):
         """Invalid generic constructor arg (Int32 for Span[T] param) must be rejected by sema."""
         source = (
-            'from tpy import StaticList, Int32\n'
-            'x: StaticList[Int32, 4] = StaticList[Int32, 4](Int32(1))\n'
+            'from tpy import Span, Int32\n'
+            'x: Span[Int32] = Span[Int32](Int32(1))\n'
         )
         compiler = Compiler.from_source(source)
         with pytest.raises(SemanticError, match="cannot be constructed from"):

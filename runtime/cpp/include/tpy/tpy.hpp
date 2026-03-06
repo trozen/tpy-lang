@@ -33,9 +33,6 @@
 // Range iterator (depends on core, fixed_int)
 #include "range.hpp"
 
-// StaticList (depends on core)
-#include "static_list.hpp"
-
 // Uninitialized storage (depends on core)
 #include "uninit_array_storage.hpp"
 #include "uninit_heap_storage.hpp"
@@ -46,10 +43,10 @@
 // Builtin function helpers (depends on core, fixed_int, bigint)
 #include "builtins.hpp"
 
-// Container operations (depends on core, type_traits, static_list)
+// Container operations (depends on core, type_traits)
 #include "container_ops.hpp"
 
-// Protocols and concepts (depends on static_list, ranges)
+// Protocols and concepts (depends on ranges)
 #include "protocols.hpp"
 
 // Iterator adapter: __next_opt__() -> C++ begin/end (depends on <optional>)
@@ -58,7 +55,7 @@
 // Non-range overloads for container ops (depends on iter_adapt, container_ops)
 #include "iterable_ops.hpp"
 
-// Collection printing (depends on static_list, bigint)
+// Collection printing (depends on bigint)
 #include "printing.hpp"
 
 // Ordered map (no runtime dependencies beyond standard library)
@@ -71,7 +68,6 @@
 #include "system.hpp"
 
 // Expose types in global namespace for TurboPython generated code
-using tpy::StaticList;
 using tpy::UninitArrayStorage;
 using tpy::UninitHeapStorage;
 using tpy::tpy_panic;

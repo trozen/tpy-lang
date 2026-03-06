@@ -136,7 +136,6 @@ Larger, mutable, passed by reference:
 - Classes/structs (by default)
 - `str` (dynamic string)
 - `list`, `dict`, `set`
-- Containers like `StaticList[T, N]`
 
 ### Parameter Passing Convention
 For object types, `T` in a parameter implicitly means reference:
@@ -144,16 +143,6 @@ For object types, `T` in a parameter implicitly means reference:
 def process(data: MyClass) -> None:  # data is passed by reference
     data.value = 42  # modifies original
 ```
-
-### Container Element Semantics (Open Question)
-How to differentiate:
-- `StaticList[Point, 100]` - list contains Point values inline
-- `StaticList[Ptr[Point], 100]` - list contains pointers to Points
-
-Possible syntax options:
-- Explicit: `StaticList[Point, 100]` vs `StaticList[Ptr[Point], 100]`
-- Marker: `StaticList[Value[Point], 100]` vs `StaticList[Point, 100]`
-- Default by size: small types inline, large types by pointer
 
 ---
 
@@ -358,7 +347,6 @@ log(f"x={x}")
 ### Containers
 - **Working**: `list[T]` - dynamic list → `std::vector<T>` (with context-dependent inference)
 - **Working**: `list[T] + list[T]` concatenation → new list, `list[T] += list[T]` extend in-place, `del lst[i]` element removal
-- **Working**: `StaticList[T, N]` (fixed-capacity, no allocation)
 - **Working**: Array literals `[1, 2, 3]` → `std::array<T, N>` or `std::vector<T>` (context-dependent)
 - **Working**: `Array[T, N]` - fixed-size array with explicit type annotation
 - **Working**: `Span[T]` - non-owning mutable view into contiguous memory → `std::span<T>`
@@ -460,7 +448,7 @@ Note: Passing literals (`[]`, `[1,2,3]`) or constructors (`list()`) directly to 
 `Span[T]` is a non-owning mutable view into contiguous memory. `ReadOnlySpan[T]` is the read-only variant. This follows the same pattern as `Ptr[T]`/`ReadOnlyPtr[T]`:
 
 ```python
-from tpy import Int32, Span, ReadOnlySpan, Array, StaticList
+from tpy import Int32, Span, ReadOnlySpan, Array
 
 # Mutable span -- can read and write elements
 def zero_first(values: Span[Int32]) -> None:
@@ -493,7 +481,7 @@ Key features:
 - `unchecked_get(index)` for raw unchecked access (no bounds check, no negative index normalization)
 - Zero-allocation passing of fixed-size arrays to functions that work with any size
 - Constructors: `Span(Ptr[T], Int32)` and `ReadOnlySpan(ReadOnlyPtr[T], Int32)` for low-level span creation
-- Explicit construction from containers: `Span[T](arr)`, `ReadOnlySpan[T](lst)` for any `ReadOnlySpanLike[T]` source (list, Array, StaticList)
+- Explicit construction from containers: `Span[T](arr)`, `ReadOnlySpan[T](lst)` for any `ReadOnlySpanLike[T]` source (list, Array)
 - Containers coerce to `Optional[Span[T]]` / `Optional[ReadOnlySpan[T]]` at call sites
 - `Ptr[T].span(length)` returns `Span[T]`, `ReadOnlyPtr[T].span(length)` returns `ReadOnlySpan[T]`
 
@@ -1347,7 +1335,7 @@ int32_t count(const T_items& items) {
 }
 ```
 
-The `tpy::Sized` concept uses the `tpy::__len__()` free function, which has overloads for `std::vector`, `std::array`, `std::span`, `std::string_view`, and `StaticList`, plus a default template for user types with `__len__()` method.
+The `tpy::Sized` concept uses the `tpy::__len__()` free function, which has overloads for `std::vector`, `std::array`, `std::span`, and `std::string_view`, plus a default template for user types with `__len__()` method.
 
 #### Working: Built-in `Truthy` Protocol
 
@@ -1367,7 +1355,7 @@ def is_truthy(x: Truthy) -> bool:
 
 Generated C++ uses `tpy::__bool__()` free function dispatch, with a default template forwarding to user-defined `__bool__()` methods. The `tpy::Truthy` concept constrains generic parameters.
 
-Implicit truthiness is supported: `if obj:`, `while obj:`, `not obj`, `and`/`or` all call `__bool__()` automatically for types that define it. Built-in containers (`list`, `str`, `Array`, `Span`, `StaticList`) use `__len__() != 0` for truthiness, matching Python semantics where empty containers are falsy.
+Implicit truthiness is supported: `if obj:`, `while obj:`, `not obj`, `and`/`or` all call `__bool__()` automatically for types that define it. Built-in containers (`list`, `str`, `Array`, `Span`) use `__len__() != 0` for truthiness, matching Python semantics where empty containers are falsy.
 
 #### Working: Built-in `Hashable` Protocol
 
@@ -1827,7 +1815,7 @@ def bad(items: Sequence) -> Int32:  # ERROR: Generic protocol 'Sequence' require
 ```
 
 **Conforming types**:
-- `list[T]`, `Array[T, N]`, `Span[T]`, `StaticList[T, N]` - built-in containers
+- `list[T]`, `Array[T, N]`, `Span[T]` - built-in containers
 - `str` conforms to `Sequence[Char]` - strings are sequences of characters
 - User records with `__len__` and `__getitem__` methods (see below)
 
@@ -2110,7 +2098,7 @@ print(sum_all(nums))  # 6
 - **Marker protocol**: Types declare conformance via `extends`, no methods required
 - **Built-in conformance**: All built-in container types extend both `NativeIterable[T]` and `Iterable[T]`
 - **Codegen optimization**: The compiler uses NativeIterable extends to select zero-overhead C++ range-based for loops for built-in types
-- **API methods use `Iterable[T]`**: `list.extend()`, `str.join()`, `list()` constructor, `dict()` constructor, `StaticList.extend()` all accept `Iterable[T]`
+- **API methods use `Iterable[T]`**: `list.extend()`, `str.join()`, `list()` constructor, `dict()` constructor all accept `Iterable[T]`
 
 See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design rationale.
 
@@ -2297,7 +2285,7 @@ val = try_next(it)  # Int32 | None
 
 **Auto-synthesis of `__iter__`**: Types that define `__next__` (or `__next_opt__`) but not `__iter__` automatically get `__iter__` synthesized, returning `self`. This matches Python's convention where iterators are their own iterables.
 
-**Built-in `Iterable[T]` conformance**: All standard container and string types conform to `Iterable[T]`: `list[T]`, `Array[T, N]`, `Span[T]`, `ReadOnlySpan[T]`, `StaticList[T, N]`, `Range[T]`, `str`, `String`, `StrView` (as `Iterable[Char]`), `dict[K,V]` (as `Iterable[K]`), `dict_keys`, `dict_values`, `dict_items`. This enables passing any builtin container to generic functions accepting `Iterable[T]`, calling `__iter__()` explicitly, and using the `iter()` builtin. Direct `for` loops over these types still use fast range-based C++ iteration (`NativeIterable`) as an optimization.
+**Built-in `Iterable[T]` conformance**: All standard container and string types conform to `Iterable[T]`: `list[T]`, `Array[T, N]`, `Span[T]`, `ReadOnlySpan[T]`, `Range[T]`, `str`, `String`, `StrView` (as `Iterable[Char]`), `dict[K,V]` (as `Iterable[K]`), `dict_keys`, `dict_values`, `dict_items`. This enables passing any builtin container to generic functions accepting `Iterable[T]`, calling `__iter__()` explicitly, and using the `iter()` builtin. Direct `for` loops over these types still use fast range-based C++ iteration (`NativeIterable`) as an optimization.
 
 #### Working: `__span__` Protocol (Zero-Cost User-Defined Iteration)
 
@@ -2357,14 +2345,14 @@ def sum_all(c: ReadOnlySpanLike[Int32]) -> Int32:
         total += x
     return total
 
-# Works with user types, list, Array, Span, ReadOnlySpan, StaticList
+# Works with user types, list, Array, Span, ReadOnlySpan
 print(sum_all(Buffer()))           # 6
 data: list[Int32] = [10, 20, 30]
 print(sum_all(data))               # 60
 ```
 
 **Conformance**: Any type with `__span__() -> Span[T]` or `__span__() -> ReadOnlySpan[T]`
-structurally conforms. Builtins (list, Array, Span, ReadOnlySpan, StaticList) also conform
+structurally conforms. Builtins (list, Array, Span, ReadOnlySpan) also conform
 via explicit `extends` declarations. User types implementing `__span__() -> Span[T]` satisfy
 the readonly protocol via covariant return (the compiler auto-generates a const overload).
 
@@ -2393,7 +2381,7 @@ def sum_generic[T: Iterable[Int32]](items: T) -> Int32:
 Types extending `ReadOnlySpanLike[T]` (which provides `__span__() -> ReadOnlySpan[T]`) can be implicitly coerced to `Span[T]`. This unifies span coercion with the `ReadOnlySpanLike` protocol -- no separate marker protocol is needed.
 
 ```python
-from tpy import Int32, Span, Array, StaticList
+from tpy import Int32, Span, Array
 
 def sum_span(values: Span[Int32]) -> Int32:
     total: Int32 = 0
@@ -2401,12 +2389,9 @@ def sum_span(values: Span[Int32]) -> Int32:
         total += v
     return total
 
-# All these work - Array, StaticList, list extend ReadOnlySpanLike[T]
+# All these work - Array, list extend ReadOnlySpanLike[T]
 arr: Array[Int32, 3] = [1, 2, 3]
 sum_span(arr)  # OK
-
-sl: StaticList[Int32, 8] = StaticList[Int32, 8]()
-sum_span(sl)  # OK
 
 lst: list[Int32] = [4, 5, 6]
 sum_span(lst)  # OK
@@ -2417,7 +2402,7 @@ sum_span(lst)  # OK
 ```
 
 **Key points:**
-- **Built-in conformance**: `list[T]`, `Array[T, N]`, `Span[T]`, `StaticList[T, N]` extend `ReadOnlySpanLike[T]`
+- **Built-in conformance**: `list[T]`, `Array[T, N]`, `Span[T]` extend `ReadOnlySpanLike[T]`
 - **str excluded**: `str` iterates over `Char` but doesn't extend `ReadOnlySpanLike` (design choice)
 - **Zero overhead**: Uses C++ `std::span` implicit construction from contiguous ranges
 
@@ -3175,7 +3160,7 @@ class LabeledContainer(Container[Int32]):
 - Must be inside a non-static method
 - Class must have a parent class
 - `super()` in `@staticmethod` is an error
-- `super()` not supported for builtin type parents (`list`, `StaticList`, etc.) - use implicit default construction instead
+- `super()` not supported for builtin type parents (`list`, etc.) - use implicit default construction instead
 
 **Working**: Inheriting from generic classes with concrete type arguments:
 ```python
@@ -3273,16 +3258,16 @@ items: list[str] = c.get()  # Returns list[str]
 
 **Working**: Inheriting from builtin types with concrete type arguments:
 ```python
-from tpy import StaticList, Int32
+from tpy import Int32
 
-class IntStack(StaticList[Int32, 100]):
+class IntStack(list[Int32]):
     name: str
 
     def __init__(self, name: str) -> None:
         self.name = name
 
     def push(self, value: Int32) -> None:
-        self.append(value)  # Inherited from StaticList
+        self.append(value)  # Inherited from list
 
 def main() -> Int32:
     stack = IntStack("my_stack")
@@ -3303,35 +3288,13 @@ def main() -> Int32:
     return Int32(0)
 ```
 
-Generated C++:
-```cpp
-struct IntStack : StaticList<int32_t, 100> {
-  std::string name;
-
-  IntStack() = default;
-  explicit IntStack(std::string_view name) : name(name) {}
-
-  void push(int32_t value) {
-    (*this).push_back(value);  // Calls inherited method
-  }
-};
-
-// Usage
-IntStack stack("my_stack");
-stack.push(10);
-stack.push(20);
-std::cout << tpy::__len__(stack) << "\n";  // 2
-std::cout << stack[0] << "\n";              // 10
-```
-
 **Supported builtin parents:**
-- `StaticList[T, N]` - fixed-capacity list
+- `list[T]` - dynamic list
 - `Array[T, N]` - fixed-size array (planned)
-- `list[T]` - dynamic list (planned)
 
 **Key points:**
 - Inherited methods from builtins work automatically (e.g., `append`, `__getitem__`, `__len__`)
-- Type parameters are substituted with concrete types (e.g., `T` → `Int32`)
+- Type parameters are substituted with concrete types (e.g., `T` -> `Int32`)
 - No `super().__init__()` needed - C++ base class default constructor is called automatically
 - Can add custom fields and methods to the child class
 - Subscript (`stack[i]`) and `len(stack)` work on child types
@@ -3339,7 +3302,7 @@ std::cout << stack[0] << "\n";              // 10
 **Limitations:**
 - Generic parent without type args rejected (`class Child(Parent)` where `Parent[T]` is generic)
 - No `super()` calls - child must initialize parent fields directly
-- Cannot inherit from builtins with forwarded type parameters (`class Child[T](StaticList[T, 100])`)
+- Cannot inherit from builtins with forwarded type parameters (`class Child[T](list[T])`)
 
 ### Explicit Protocol Implementation
 
@@ -3444,11 +3407,6 @@ class Car(Vehicle, Printable, Measurable):
   - Generic type parameters use `ValuePrinter` for runtime dispatch (bool/float correctly formatted)
 - **Working**: List methods: `append()`, `pop()`, `insert()`, `remove()`, `clear()`, `extend()`
   - **Note**: `remove(value)` silently does nothing when value not found (Python raises `ValueError`)
-- **Working**: StaticList methods: `append()`, `pop()`, `clear()`, `push_empty()`, `get_mut()`
-  - Use subscript notation `items[i]` for element access (same as list)
-  - Initializer list constructor: `StaticList[Int32, 8]([1, 2, 3])`
-  - Fill constructor via list repetition: `StaticList[Int32, 64]([0]*64)`
-  - Multi-element list repetition: `StaticList[Int32, 6]([1, 2]*3)` → `[1, 2, 1, 2, 1, 2]`
 - **Working**: List repetition: `[element] * N` and `[elements...] * N`
   - Single-element: uses efficient fill constructor
   - Multi-element: uses `tpy::repeat_range` to repeat the sequence N times
@@ -3460,7 +3418,7 @@ class Car(Vehicle, Printable, Measurable):
   - Lazy `repeat[T]` conforms to `Iterable[T]`, `Sized`, `NativeIterable[T]`
   - Explicit annotation (`z: list[T] = [v]*N`) always produces `list[T]`
   - Inline repeat cannot be passed directly to `Span` -- assign to a variable first
-- **Working**: Negative indexing for list, StaticList, Array, Span: `items[-1]` (last element)
+- **Working**: Negative indexing for list, Array, Span: `items[-1]` (last element)
 - **Working**: `hash(x)` → `UInt64` hash value. Works on all `Hashable` types (str, int, fixed ints, float, bool, Char, Enum). Uses `tpy::__hash__()` free function dispatch.
 - **Working**: `abs()`, `min()`, `max()`, `ord()`, `pow()`, `round()`, `divmod()` for numeric types
   - `round(x)` uses banker's rounding (round half to even, matching Python)
@@ -3609,7 +3567,7 @@ s = repr([1, 2, 3])          # → "[1, 2, 3]" (same as str for containers)
 
 ## Modules & Imports
 
-- **Working**: `from tpy import ...` (built-in types like `Int32`, `Span`, `StaticList`)
+- **Working**: `from tpy import ...` (built-in types like `Int32`, `Span`, `Array`)
   - **Note**: tpy types require explicit import -- using `Int32` without `from tpy import Int32` produces an error with a helpful suggestion
 - **Working**: `from typing import ...` (type annotations like `Optional`, `Protocol`, `Self`, `Sized`, `Sequence`, `MutableSequence`, `Iterator`, `Iterable`)
   - **Note**: typing names require explicit import -- using `Optional` without `from typing import Optional` produces an error with a helpful suggestion

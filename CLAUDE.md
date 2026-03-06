@@ -126,7 +126,7 @@ tpyc/
 ```
 tests/
 ├── cases/                    # Main test suite
-│   ├── array_span/           # Array, Span, StaticList
+│   ├── array_span/           # Array, Span
 │   ├── assert/               # assert statements, narrowing integration
 │   ├── bool/                 # bool type and conversion
 │   ├── builtins/             # Built-in functions, stdlib modules
@@ -218,7 +218,7 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 |--------|---------|
 | `cli.py` | CLI entry point, argument parsing, error handling |
 | `parse.py` | Uses Python's `ast` module to build TurboPython AST nodes |
-| `typesys.py` | Type definitions (Int32, BigInt, Float, bool, Void, Str, Char, Record, Ptr, ReadOnlyPtr, Own, Optional, List, Array, Span, StaticList, Tuple) and TypeRegistry |
+| `typesys.py` | Type definitions (Int32, BigInt, Float, bool, Void, Str, Char, Record, Ptr, ReadOnlyPtr, Own, Optional, List, Array, Span, Tuple) and TypeRegistry |
 | `sema/` | Multi-pass semantic analysis (see below) |
 | `codegen_cpp/` | C++ code generation (see below) |
 | `compiler.py` | Multi-module orchestration: discovery, dependency resolution, compilation order |
@@ -295,7 +295,6 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `type_traits.hpp` | `is_value_type` trait for value/reference semantics |
 | `ranges.hpp` | `repeat_range`, `to_vector`, `from_range` utilities |
 | `range.hpp` | `Range<T>` Python-style range with upfront overflow checking |
-| `static_list.hpp` | `StaticList<T, N>` fixed-capacity container |
 | `bigint.hpp` | `BigInt` arbitrary precision integer (custom runtime implementation) |
 | `container_ops.hpp` | Index normalization, `get_item`/`set_item`, list methods |
 | `ordered_map.hpp` | `tpy::ordered_map<K,V>` insertion-order-preserving hash map |
@@ -368,7 +367,6 @@ The compiler is a proof-of-concept. Not yet implemented:
 | `Array[T, N]` | `std::array<T, N>` |
 | `Span[T]` | `std::span<T>` |
 | `ReadOnlySpan[T]` | `std::span<const T>` |
-| `StaticList[T, N]` | `StaticList<T, N>` |
 | `Ptr[T]` | `T*` |
 | `ReadOnlyPtr[T]` | `const T*` |
 | `Own[T]` | `T` (by value, for returns/params) |

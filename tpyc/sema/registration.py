@@ -114,7 +114,7 @@ class TypeRegistrar:
         """
         tpy_module = builtin_modules.get_tpy()
 
-        # Register all tpy types (Int32, Array, StaticList, Span, etc.)
+        # Register all tpy types (Int32, Array, Span, etc.)
         for qname, type_def in tpy_module.types.items():
             # Extract simple name from qualified name (tpy.Int32 -> Int32)
             simple_name = qname.split(".")[-1]
@@ -848,7 +848,7 @@ class TypeRegistrar:
     def _is_inheritable_builtin(self, typ: TpyType) -> bool:
         """Check if a type is a builtin type that can be inherited from.
 
-        Returns True for module-defined types (like StaticList, Array) that have
+        Returns True for module-defined types (like Array) that have
         a registered RecordInfo in the builtin_records registry.
         """
         qname = typ.qualified_name()

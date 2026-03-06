@@ -2,23 +2,24 @@
  * TurboPython Runtime - Container Operations
  *
  * Helper functions for containers: index normalization, element access,
- * and list/staticlist methods (insert, remove, extend, etc.).
+ * and list methods (insert, remove, extend, etc.).
  */
 
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
 #include <ranges>
+#include <span>
 #include <string_view>
 #include <utility>
 #include <vector>
 
 #include "core.hpp"
 #include "type_traits.hpp"
-#include "static_list.hpp"
 
 namespace tpy {
 
@@ -54,16 +55,6 @@ T pop_back(std::vector<T>& v) {
     v.pop_back();
     return result;
 }
-
-/**
- * get_mut - Get mutable pointer to element (StaticList-specific, for noalloc patterns).
- */
-template<typename T, std::size_t N>
-T* get_mut(StaticList<T, N>& sl, int32_t index) {
-    auto i = normalize_index(sl, index, "StaticList index out of bounds");
-    return &sl[i];
-}
-
 
 /**
  * str_slice - Python-style string slicing with clamping semantics.
@@ -213,129 +204,60 @@ std::vector<T> list_copy(const std::vector<T>& v) {
 }
 
 // =============================================
-// StaticList helper functions
+// Span helpers (as_span, as_mut_span)
 // =============================================
 
-/**
- * staticlist_extend - Python list.extend() for StaticList.
- *
- * Extends StaticList with elements from another container.
- * Panics if capacity would be exceeded.
- */
-template<typename T, std::size_t N, typename Container>
-    requires std::ranges::input_range<const Container>
-void staticlist_extend(StaticList<T, N>& sl, const Container& other) {
-    for (const auto& elem : other) {
-        sl.push_back(elem);
-    }
+template <typename T, std::size_t N>
+inline std::span<const T> as_span(const std::array<T, N>& arr) {
+    return std::span<const T>(arr);
 }
 
-template<typename T, std::size_t N>
-void staticlist_extend(StaticList<T, N>& sl, std::initializer_list<T> other) {
-    for (const auto& elem : other) {
-        sl.push_back(elem);
-    }
+template <typename T>
+inline std::span<const T> as_span(const std::vector<T>& vec) {
+    return std::span<const T>(vec.data(), vec.size());
 }
 
-/**
- * staticlist_insert - Python list.insert() for StaticList.
- *
- * Inserts value at index. Supports negative indexing and clamps to valid range.
- * Panics if capacity would be exceeded.
- * Does not require T to be default-constructible.
- */
-template<typename T, std::size_t N, typename V>
-void staticlist_insert(StaticList<T, N>& sl, int32_t index, V&& value) {
-    std::ptrdiff_t i = index;
-    auto sz = static_cast<std::ptrdiff_t>(sl.size());
-    if (i < 0) {
-        i += sz;
-        if (i < 0) i = 0;
-    } else if (i > sz) {
-        i = sz;
-    }
-    // Inserting at end is just push_back
-    if (i == sz) {
-        sl.push_back(std::forward<V>(value));
-        return;
-    }
-    // Store value, extend by copying last element, shift, then place value
-    T temp(std::forward<V>(value));
-    sl.push_back(std::move(sl[sz - 1]));
-    for (std::ptrdiff_t j = sz - 1; j > i; --j) {
-        sl[j] = std::move(sl[j - 1]);
-    }
-    sl[i] = std::move(temp);
+template <typename T>
+inline std::span<const T> as_span(std::span<const T> span) {
+    return span;
 }
 
-/**
- * staticlist_remove - Python list.remove() for StaticList.
- *
- * Removes first occurrence of value. Panics if not found.
- */
-template<typename T, std::size_t N>
-void staticlist_remove(StaticList<T, N>& sl, const T& value) {
-    auto it = std::find(sl.begin(), sl.end(), value);
-    if (it == sl.end()) {
-        tpy_panic("list.remove(x): x not in list");
-    }
-    // Shift elements left
-    for (auto p = it; p + 1 != sl.end(); ++p) {
-        *p = std::move(*(p + 1));
-    }
-    sl.pop_back();  // Decrease size (discards return value)
+template <typename T>
+inline std::span<const T> as_span(std::span<T> span) {
+    return span;
 }
 
-/**
- * staticlist_pop_at - Python list.pop(index) for StaticList.
- *
- * Removes and returns element at index. Supports negative indexing.
- * Panics if index is out of bounds.
- */
-template<typename T, std::size_t N>
-T staticlist_pop_at(StaticList<T, N>& sl, int32_t index) {
-    auto i = normalize_index(sl, index, "pop index out of range");
-    T result = std::move(sl[i]);
-    // Shift elements left
-    for (std::size_t j = i; j + 1 < static_cast<std::size_t>(sl.size()); ++j) {
-        sl[j] = std::move(sl[j + 1]);
-    }
-    sl.pop_back();  // Decrease size (discards return value)
-    return result;
+// User types with __span__(): delegate to their method.
+// The !contiguous_range guard avoids ambiguity with builtins (vector, array)
+// which have their own as_span overloads above.
+template <typename T>
+    requires requires(const T& t) { t.__span__(); }
+        && (!std::ranges::contiguous_range<T>)
+inline auto as_span(const T& t) {
+    return t.__span__();
 }
 
-/**
- * staticlist_index - Python list.index(value) for StaticList.
- *
- * Returns index of first occurrence of value. Panics if not found.
- */
-template<typename T, std::size_t N>
-int32_t staticlist_index(const StaticList<T, N>& sl, const T& value) {
-    auto it = std::find(sl.begin(), sl.end(), value);
-    if (it == sl.end()) {
-        tpy_panic("list.index(x): x not in list");
-    }
-    return static_cast<int32_t>(it - sl.begin());
+// --- Mutable span helpers ---
+
+template <typename T, std::size_t N>
+inline std::span<T> as_mut_span(std::array<T, N>& arr) {
+    return std::span<T>(arr);
 }
 
-/**
- * staticlist_count - Python list.count(value) for StaticList.
- *
- * Returns number of occurrences of value.
- */
-template<typename T, std::size_t N>
-int32_t staticlist_count(const StaticList<T, N>& sl, const T& value) {
-    return static_cast<int32_t>(std::count(sl.begin(), sl.end(), value));
+// Rvalue overload: safe when span is consumed within the full-expression (ARG context)
+template <typename T, std::size_t N>
+inline std::span<T> as_mut_span(std::array<T, N>&& arr) {
+    return std::span<T>(arr.data(), arr.size());
 }
 
-/**
- * staticlist_reverse - Python list.reverse() for StaticList.
- *
- * Reverses the list in place.
- */
-template<typename T, std::size_t N>
-void staticlist_reverse(StaticList<T, N>& sl) {
-    std::reverse(sl.begin(), sl.end());
+template <typename T>
+inline std::span<T> as_mut_span(std::vector<T>& vec) {
+    return std::span<T>(vec.data(), vec.size());
+}
+
+template <typename T>
+inline std::span<T> as_mut_span(std::span<T> span) {
+    return span;
 }
 
 } // namespace tpy

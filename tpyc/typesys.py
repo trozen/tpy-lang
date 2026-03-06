@@ -5,7 +5,7 @@ Defines the core types available in TurboPython:
 - Int32: 32-bit integer (maps to int32_t)
 - Ptr[T]: Mutable pointer (maps to T*)
 - ReadOnlyPtr[T]: Read-only pointer (maps to const T*)
-- Array[T, N], Span[T], list[T]: Container types
+- Array[T, N], Span[T], list[T], dict[K, V]: Container types
 - User-defined records (classes)
 - NamedType: User-defined records/protocols and module-defined generics
 """
@@ -667,8 +667,8 @@ class NamedType(TpyType):
     For generic records with integer type parameters like Matrix[T, N: int]:
     - type_args can contain both TpyType and int values (e.g., (Int32, 8))
 
-    For module-defined types like StaticList[T, N]:
-    - _module_qname stores the qualified name (e.g., "tpy.StaticList")
+    For module-defined types (e.g. user-library generics):
+    - _module_qname stores the qualified name
     - Behavior (methods, constructors) is looked up via the module system
     """
     name: str
@@ -689,7 +689,7 @@ class NamedType(TpyType):
 
     @property
     def is_module_type(self) -> bool:
-        """Return True if this is a module-defined builtin type (e.g. StaticList).
+        """Return True if this is a module-defined builtin type.
 
         Transitional -- should go away when builtin/user lookup paths are unified.
         """
@@ -808,7 +808,7 @@ class SuperType(TpyType):
     The super().__init__(name) call resolves to calling Animal.__init__.
 
     The parent_type can be either a RecordType (user-defined class) or a
-    builtin type like StaticListType.
+    builtin type.
     """
     parent_type: 'TpyType'  # Can be RecordType or builtin type
     child_record_name: str
@@ -1755,8 +1755,6 @@ def container_to_str_template(typ: TpyType) -> str | None:
     if isinstance(typ, TupleType):
         return "tpy::tuple_to_str({0})"
     if isinstance(typ, (ListType, ArrayType, SpanType)):
-        return "tpy::list_to_str({0})"
-    if isinstance(typ, NamedType) and typ.qualified_name() == "tpy.StaticList":
         return "tpy::list_to_str({0})"
     if isinstance(typ, DictType):
         return "tpy::dict_to_str({0})"

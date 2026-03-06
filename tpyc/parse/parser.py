@@ -1586,7 +1586,7 @@ class Parser:
         """Extract type arguments from a subscript for generic function calls like first[Int32](x).
 
         Raises ParseError if any element is not a valid type. The caller should catch
-        this for cases where non-type arguments are valid (e.g., StaticList[Int32, 8]).
+        this for cases where non-type arguments are valid (e.g., Array[Int32, 8]).
         """
         slices = _extract_subscript_slices(node)
 
@@ -1900,7 +1900,7 @@ class Parser:
                 if isinstance(node.func.value, ast.Name):
                     name = node.func.value.id
                     # Try to extract type_args for potential generic function call
-                    # (for type instantiations like StaticList[Int32, 8], non-type args are valid
+                    # (for type instantiations like Array[Int32, 8], non-type args are valid
                     # so parse error is stored and sema decides whether to report it)
                     type_args, type_args_parse_error = self._try_parse_type_args(node.func)
                     # If name looks like a type (starts with uppercase or is registered), also parse as call_type

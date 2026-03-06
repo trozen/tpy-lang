@@ -339,8 +339,7 @@ User types inheriting `ReadOnlySpanLike` get iteration for free in both runtimes
 
 **`ReadOnlySpanLike[T]` protocol**: Readonly protocol for types with `__span__()`. Enables
 generic functions accepting any span-producing type
-(`def sum_all(c: ReadOnlySpanLike[Int32])`). Builtins (list, Array, Span, ReadOnlySpan,
-StaticList) conform via `extends`. User types conform structurally -- `__span__() -> Span[T]`
+(`def sum_all(c: ReadOnlySpanLike[Int32])`). Builtins (list, Array, Span, ReadOnlySpan) conform via `extends`. User types conform structurally -- `__span__() -> Span[T]`
 satisfies the readonly protocol via covariant return. `ReadOnlySpanLike[T]` values coerce to
 `ReadOnlySpan[T]` and support for-loop iteration.
 

@@ -25,7 +25,6 @@
 
 #include "bigint.hpp"
 #include "format.hpp"
-#include "static_list.hpp"
 #include "container_ops.hpp"
 #include "ordered_map.hpp"
 
@@ -73,12 +72,6 @@ inline int32_t __len__(const char* x) {
     return static_cast<int32_t>(std::string_view(x).size());
 }
 
-// Overload: StaticList
-template<typename T, std::size_t N>
-int32_t __len__(const StaticList<T, N>& x) {
-    return x.size();  // StaticList::size() already returns int32_t
-}
-
 // Overload: ordered_map (dict)
 template<typename K, typename V>
 int32_t __len__(const ordered_map<K, V>& x) {
@@ -107,19 +100,6 @@ decltype(auto) __getitem__(const std::vector<T>& x, int32_t i) {
 template<typename T>
 decltype(auto) __getitem__(std::vector<T>& x, int32_t i) {
     auto idx = normalize_index(x, i, "list index out of bounds");
-    return x[idx];
-}
-
-// Overload: StaticList
-template<typename T, std::size_t N>
-decltype(auto) __getitem__(const StaticList<T, N>& x, int32_t i) {
-    auto idx = normalize_index(x, i, "StaticList index out of bounds");
-    return x[idx];
-}
-
-template<typename T, std::size_t N>
-decltype(auto) __getitem__(StaticList<T, N>& x, int32_t i) {
-    auto idx = normalize_index(x, i, "StaticList index out of bounds");
     return x[idx];
 }
 
@@ -198,13 +178,6 @@ decltype(auto) __getitem__(T& x, int32_t i) {
 template<typename T, typename V>
 void __setitem__(std::vector<T>& x, int32_t i, V&& v) {
     auto idx = normalize_index(x, i, "list index out of bounds");
-    x[idx] = std::forward<V>(v);
-}
-
-// Overload: StaticList
-template<typename T, std::size_t N, typename V>
-void __setitem__(StaticList<T, N>& x, int32_t i, V&& v) {
-    auto idx = normalize_index(x, i, "StaticList index out of bounds");
     x[idx] = std::forward<V>(v);
 }
 
@@ -494,12 +467,6 @@ inline auto __iter__(std::string_view x) {
 // Overload: const char* (string literals)
 inline auto __iter__(const char* x) {
     return __iter__(std::string_view(x));
-}
-
-// Overload: StaticList
-template<typename T, std::size_t N>
-auto __iter__(const StaticList<T, N>& x) {
-    return native_iterator<typename StaticList<T, N>::const_iterator, T>{x.begin(), x.end()};
 }
 
 // Generic overload: any C++ range type not covered above (e.g., tpy::Range<T>)

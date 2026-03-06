@@ -25,7 +25,7 @@ TPY_TYPES = {
     "UInt8", "UInt16", "UInt32", "UInt64",  # Unsigned fixed-width integers
     "Float32", "Float64",  # Explicit-width float types
     "Char",  # Character type
-    "Span", "Array", "StaticList",  # Container types
+    "Span", "Array",  # Container types
     "Ptr", "ReadOnlyPtr", "Own",  # Pointer types
     "Hashable", "Comparable", "Deref", "Default",  # Protocols (user-facing)
     "Truthy", "Stringable", "Representable",  # Protocols (less common)

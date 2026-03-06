@@ -35,7 +35,7 @@
 
 - Allow `@runtime_checkable` decorator on protocols (no-op in tpyc, enables CPython compatibility for isinstance checks on user-defined protocols)
 - `del x` (variable unbinding): complex in compiled context -- needs lifetime/scope analysis. Low priority.
-- list/StaticList operator (+=, *, +, in), sort
+- list operator (+=, *, +, in), sort
 - allow type annotation to use "" (forward decl)
 - for-each: preserve loop variable after loop exit (if used after the loop)
 - C-style for loop: reassigning loop variable affects iteration (differs from Python)

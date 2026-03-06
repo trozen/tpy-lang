@@ -50,7 +50,7 @@ for x in expr:
 
 **Path 2: `__iter__` protocol** — types with `__iter__()` returning an OptIterator. The container is materialized first, then `__iter__()` is called to obtain a separate iterator object.
 
-**Path 3: NativeIterable** — C++ containers with `begin()`/`end()` (`list`, `Array`, `Span`, `StaticList`, `str`). Uses C++ range-based `for` directly.
+**Path 3: NativeIterable** -- C++ containers with `begin()`/`end()` (`list`, `Array`, `Span`, `str`). Uses C++ range-based `for` directly.
 
 ### Key Types
 
@@ -289,7 +289,7 @@ for (int32_t x : items) {
 }
 ```
 
-Conforming built-in types: `list[T]`, `Array[T, N]`, `Span[T]`, `StaticList[T, N]`, `str` (as `NativeIterable[Char]`).
+Conforming built-in types: `list[T]`, `Array[T, N]`, `Span[T]`, `str` (as `NativeIterable[Char]`).
 
 This path is not user-extensible — it requires the C++ type to support `std::ranges::begin()`/`std::ranges::end()`.
 

@@ -19,7 +19,6 @@
 #include <type_traits>
 #include <vector>
 
-#include "static_list.hpp"
 #include "bigint.hpp"
 #include "format.hpp"
 
@@ -130,17 +129,6 @@ std::ostream& operator<<(std::ostream& os, const ListPrinter<std::array<T, N>>& 
 template <typename T>
 std::ostream& operator<<(std::ostream& os, const ListPrinter<std::span<T>>& p) {
     detail::print_list_contents(os, p.value.begin(), p.value.end());
-    return os;
-}
-
-template <typename T, std::size_t N>
-std::ostream& operator<<(std::ostream& os, const ListPrinter<StaticList<T, N>>& p) {
-    os << '[';
-    for (int32_t i = 0; i < p.value.size(); ++i) {
-        if (i > 0) os << ", ";
-        detail::print_element(os, p.value[static_cast<std::size_t>(i)]);
-    }
-    os << ']';
     return os;
 }
 

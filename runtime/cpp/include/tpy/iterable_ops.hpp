@@ -16,7 +16,6 @@
 #include <vector>
 
 #include "iter_adapt.hpp"
-#include "static_list.hpp"
 #include "ordered_map.hpp"
 
 namespace tpy {
@@ -31,16 +30,6 @@ template<typename T, typename Container>
 void list_extend(std::vector<T>& v, Container& other) {
     for (auto __range = iter_adapt_container(other); auto&& elem : __range) {
         v.push_back(std::move(elem));
-    }
-}
-
-// -- staticlist_extend for non-range iterables ------------------------------
-
-template<typename T, std::size_t N, typename Container>
-    requires (!std::ranges::input_range<const Container>)
-void staticlist_extend(StaticList<T, N>& sl, Container& other) {
-    for (auto __range = iter_adapt_container(other); auto&& elem : __range) {
-        sl.push_back(std::move(elem));
     }
 }
 

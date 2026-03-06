@@ -7,7 +7,7 @@ TurboPython is a compiler that translates Python source code to C++. The goal is
 The type system already supports:
 - Value types: `int` (arbitrary precision), `float`, `Int32`, `Bool`, `Char`
 - User-defined records (classes mapped to C++ structs)
-- Containers: `list[T]` (vector), `Array[T, N]` (fixed-size), `StaticList[T, N]` (fixed-capacity), `Span[T]` (read-only view)
+- Containers: `list[T]` (vector), `Array[T, N]` (fixed-size), `Span[T]` (read-only view)
 - Pointers: `Ptr[T]` (raw mutable pointer), `ReadOnlyPtr[T]` (raw const pointer)
 - Ownership transfer: `Own[T]` (return by value with move semantics)
 - Generics, protocols (concepts), single inheritance

@@ -106,11 +106,10 @@ template<typename T, std::size_t N> struct is_std_array<std::array<T, N>> : std:
  * Constructs container using iterator-pair constructor (begin, end).
  * If container supports reserve() and range has known size, reserves first.
  * For std::array (aggregate, no iterator-pair ctor), fills element-by-element.
- * Works with std::vector, StaticList, std::array, and any container with
+ * Works with std::vector, std::array, and any container with
  * an iterator-pair constructor.
  *
- * Usage: tpy::from_range<StaticList<int, 10>>(some_range)
- *        tpy::from_range<std::vector<int>>(some_range)
+ * Usage: tpy::from_range<std::vector<int>>(some_range)
  *        tpy::from_range<std::array<int, 5>>(some_range)
  */
 template<typename Container, std::ranges::input_range R>

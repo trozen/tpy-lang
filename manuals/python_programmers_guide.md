@@ -93,17 +93,14 @@ if p is not None:
 ### Containers
 
 ```python
-from tpy import Int32, Array, StaticList, Span
+from tpy import Int32, Array, Span
 
 items: list[Int32] = [1, 2, 3]    # heap-allocated, growable
 items.append(4)
 
 arr: Array[Int32, 3] = [10, 20, 30]  # stack, fixed size
 
-sl: StaticList[Int32, 100] = StaticList[Int32, 100]()  # stack, fixed capacity
-sl.append(Int32(1))
-
-def sum_all(data: Span[Int32]) -> Int32:  # read-only view, accepts any of the above
+def sum_all(data: Span[Int32]) -> Int32:  # read-only view, accepts list or Array
     total: Int32 = 0
     for x in data:
         total += x

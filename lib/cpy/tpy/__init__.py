@@ -206,140 +206,6 @@ class Own(metaclass=_OwnMeta):
 # Container types
 # ---------------------------------------------------------------------------
 
-class StaticListMeta(type):
-    """Metaclass to support StaticList[T, N] syntax."""
-
-    def __getitem__(cls, params):
-        if not isinstance(params, tuple) or len(params) != 2:
-            raise TypeError("StaticList requires [T, N] syntax")
-        elem_type, capacity = params
-
-        class BoundStaticList(StaticList):
-            _elem_type = elem_type
-            _capacity = capacity
-
-        return BoundStaticList
-
-
-class StaticList(metaclass=StaticListMeta):
-    """Fixed-capacity list with no dynamic allocation."""
-
-    _elem_type = None
-    _capacity = 0
-
-    def __new__(cls, *args, **kwargs):
-        instance = super().__new__(cls)
-        instance._data = []
-        return instance
-
-    def __init__(self, init=None):
-        if init is not None:
-            if len(init) > self._capacity:
-                raise RuntimeError(f"StaticList initializer exceeds capacity {self._capacity}")
-            self._data = list(init)
-
-    def append(self, value) -> None:
-        if len(self._data) >= self._capacity:
-            raise RuntimeError(f"StaticList overflow: capacity is {self._capacity}")
-        self._data.append(value)
-
-    def push_empty(self):
-        """Reserve space and return pointer to the new element."""
-        if len(self._data) >= self._capacity:
-            raise RuntimeError(f"StaticList overflow: capacity is {self._capacity}")
-        obj = self._elem_type()
-        self._data.append(obj)
-        return Ptr(obj)
-
-    def _normalize_index(self, index: int, msg: str) -> int:
-        i = index
-        if i < 0:
-            i += len(self._data)
-        if i < 0 or i >= len(self._data):
-            raise RuntimeError(msg)
-        return i
-
-    def get(self, index: int):
-        i = self._normalize_index(index, f"StaticList index out of bounds: {index}")
-        return self._data[i]
-
-    def get_mut(self, index: int):
-        i = self._normalize_index(index, f"StaticList index out of bounds: {index}")
-        return Ptr(self._data[i])
-
-    def set(self, index: int, value) -> None:
-        i = self._normalize_index(index, f"StaticList index out of bounds: {index}")
-        self._data[i] = value
-
-    def __setitem__(self, index: int, value) -> None:
-        self.set(index, value)
-
-    def __getitem__(self, index: int):
-        return self.get(index)
-
-    def size(self) -> Int32:
-        return Int32(len(self._data))
-
-    def __len__(self) -> int:
-        return len(self._data)
-
-    def __iter__(self):
-        return iter(self._data)
-
-    def pop(self, index: int = None):
-        if len(self._data) == 0:
-            raise RuntimeError("StaticList pop from empty list")
-        if index is None:
-            return self._data.pop()
-        if index < 0:
-            index += len(self._data)
-        if index < 0 or index >= len(self._data):
-            raise RuntimeError(f"pop index out of range")
-        return self._data.pop(index)
-
-    def clear(self) -> None:
-        self._data.clear()
-
-    def extend(self, iterable) -> None:
-        for item in iterable:
-            self.append(item)
-
-    def insert(self, index: int, value) -> None:
-        if len(self._data) >= self._capacity:
-            raise RuntimeError(f"StaticList capacity exceeded")
-        if index < 0:
-            index += len(self._data)
-            if index < 0:
-                index = 0
-        elif index > len(self._data):
-            index = len(self._data)
-        self._data.insert(index, value)
-
-    def remove(self, value) -> None:
-        try:
-            self._data.remove(value)
-        except ValueError:
-            raise RuntimeError("list.remove(x): x not in list")
-
-    def index(self, value) -> Int32:
-        try:
-            return Int32(self._data.index(value))
-        except ValueError:
-            raise RuntimeError("list.index(x): x not in list")
-
-    def count(self, value) -> Int32:
-        return Int32(self._data.count(value))
-
-    def reverse(self) -> None:
-        self._data.reverse()
-
-    def __repr__(self) -> str:
-        return repr(self._data)
-
-    def __str__(self) -> str:
-        return repr(self._data)
-
-
 class ArrayMeta(type):
     """Metaclass to support Array[T, N] syntax."""
 
@@ -420,7 +286,7 @@ class Span(metaclass=SpanMeta):
     _elem_type = None
 
     def __init__(self, data):
-        if isinstance(data, (list, Array, StaticList)):
+        if isinstance(data, (list, Array)):
             if hasattr(data, '_data'):
                 self._data = data._data
             else:
@@ -488,7 +354,7 @@ class ReadOnlySpan(metaclass=ReadOnlySpanMeta):
     _elem_type = None
 
     def __init__(self, data):
-        if isinstance(data, (list, Array, StaticList, Span)):
+        if isinstance(data, (list, Array, Span)):
             if hasattr(data, '_data'):
                 self._data = data._data
             else:

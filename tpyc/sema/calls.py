@@ -363,7 +363,7 @@ class CallAnalyzer:
                     expr
                 )
 
-        # Generic type instantiation (e.g., Container[T, N](), StaticList[Int32, 8]())
+        # Generic type instantiation (e.g., Container[T, N](), Array[Int32, 8]())
         # Only if it's actually a type - for generic functions with uppercase names,
         # call_type may be set but we should use type_args instead
         if expr.call_type is not None:
@@ -479,7 +479,7 @@ class CallAnalyzer:
                     if record_info := self.ctx.registry.get_builtin_record(qname):
                         if record_info.constructors and not record_info.type_params:
                             return self._check_builtin_constructor(expr, record_info)
-                    # Generic types (StaticList, Array, list) - mark as found and fall through
+                    # Generic types (Array, list) - mark as found and fall through
                     if builtin_modules.lookup_generic_type_in_module(func_name, module_name):
                         imported_generic_name = func_name
                         imported_generic_module = module_name
@@ -503,7 +503,7 @@ class CallAnalyzer:
                         f"'{expr.func}' requires: from tpy import {expr.func}",
                         expr
                     )
-            # Also check generic tpy types (StaticList, Array, Span)
+            # Also check generic tpy types (Array, Span)
             if lookup := builtin_modules.lookup_generic_type(expr.func):
                 if lookup.qualified_name.startswith("tpy."):
                     raise self.ctx.error(
