@@ -708,7 +708,7 @@ def get_extends_protocol_type_arg(
 
 def get_native_iterator_element_type(tpy_type: "TpyType", registry: "TypeRegistry | None" = None) -> "TpyType | None":
     """If type is/extends OptIterator[T], return T. Otherwise None."""
-    from tpyc.typesys import is_protocol_type
+    from tpyc.typesys import NamedType, is_protocol_type
 
     # Direct OptIterator[T] protocol type
     if is_protocol_type(tpy_type) and tpy_type.qualified_name() == "tpy.OptIterator":
@@ -716,28 +716,16 @@ def get_native_iterator_element_type(tpy_type: "TpyType", registry: "TypeRegistr
             return tpy_type.type_args[0]
         return None
 
-    # TODO: extract shared helper with type_conforms_to_protocol() -- both do
-    # the same regex-based extends string parsing to resolve protocol type args.
-    type_def = lookup_type(tpy_type)
-    if type_def is None:
-        # Check user-defined records with __next_opt__()/__next__() -> Optional[T]
-        if registry is not None:
-            from tpyc.typesys import NamedType, OptionalType
-            if isinstance(tpy_type, NamedType) and tpy_type.is_user_record:
-                return _find_record_next_element(tpy_type.name, tpy_type.type_args, registry)
-        return None
+    # Builtin type extending OptIterator (no registry: user records handled
+    # below via method introspection, not implemented_protocols)
+    result = get_extends_protocol_type_arg(tpy_type, "OptIterator")
+    if result is not None:
+        return result
 
-    type_params = extract_type_params(tpy_type)
-
-    for ext in type_def.extends:
-        match = re.match(r"(\w+)\[(\w+)\]", ext)
-        if match and match.group(1) == "OptIterator":
-            ext_type_name = match.group(2)
-            if ext_type_name in type_params:
-                return type_params[ext_type_name]
-            resolved = _resolve_concrete_type_name(ext_type_name)
-            if resolved is not None:
-                return resolved
+    # User-defined records with __next_opt__()/__next__() -> Optional[T]
+    if registry is not None:
+        if isinstance(tpy_type, NamedType) and tpy_type.is_user_record:
+            return _find_record_next_element(tpy_type.name, tpy_type.type_args, registry)
 
     return None
 
