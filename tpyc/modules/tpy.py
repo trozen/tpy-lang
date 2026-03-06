@@ -81,7 +81,7 @@ def _register_fixed_int(module: BuiltinModule, typ: FixedIntType) -> None:
     methods["__hash__"] = [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)]
     methods["__lt__"] = [MethodDef(params=[ParamDef("other", typ)], returns=BOOL, cpp="{self} < {0}", is_readonly=True)]
 
-    module.register_type(typ, cpp_type=cpp_t, constructors=constructors, methods=methods, extends=["Comparable"])
+    module.register_type(typ, cpp_type=cpp_t, constructors=constructors, methods=methods, extends=["Comparable", "Equatable"])
 
 
 def init_module() -> BuiltinModule:
@@ -196,7 +196,7 @@ def init_module() -> BuiltinModule:
         ],
         "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)],
         "__lt__": [MethodDef(params=[ParamDef("other", FLOAT32)], returns=BOOL, cpp="{self} < {0}", is_readonly=True)],
-    }, extends=["Comparable"])
+    }, extends=["Comparable", "Equatable"])
 
     # Array[T, N]: Fixed-size array
     module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"],
@@ -406,9 +406,19 @@ def init_module() -> BuiltinModule:
     # Comparable protocol
     module.protocol("Comparable",
         methods={
-            "__lt__": MethodDef(params=[ParamDef("other", SELF)], returns=BOOL, cpp="{self} < {0}"),
+            "__lt__": MethodDef(params=[ParamDef("other", SELF)], returns=BOOL, cpp="{self} < {0}",
+                                is_readonly=True),
         },
         cpp_concept="tpy::Comparable",
+    )
+
+    # Equatable protocol
+    module.protocol("Equatable",
+        methods={
+            "__eq__": MethodDef(params=[ParamDef("other", SELF)], returns=BOOL, cpp="{self} == {0}",
+                                is_readonly=True),
+        },
+        cpp_concept="tpy::Equatable",
     )
 
     # Hashable protocol: types that support hash() via __hash__()
@@ -479,7 +489,7 @@ def init_module() -> BuiltinModule:
 
     # String: Explicit owned string type (std::string)
     module.register_type(STRING, cpp_type="std::string",
-        extends=["NativeIterable[Char]", "Iterable[Char]"],
+        extends=["NativeIterable[Char]", "Iterable[Char]", "Equatable"],
         constructors=[
             MethodDef(params=[], returns=STRING, cpp="std::string()"),
             MethodDef(params=[ParamDef("x", STR)], returns=STRING, cpp="std::string({0})"),
@@ -655,7 +665,7 @@ def init_module() -> BuiltinModule:
 
     # StrView: Explicit string view type (std::string_view)
     module.register_type(STRVIEW, cpp_type="std::string_view",
-        extends=["NativeIterable[Char]", "Iterable[Char]"],
+        extends=["NativeIterable[Char]", "Iterable[Char]", "Equatable"],
         constructors=[
             MethodDef(params=[], returns=STRVIEW, cpp='std::string_view()'),
             MethodDef(params=[ParamDef("x", STR)], returns=STRVIEW, cpp="std::string_view({0})"),
@@ -888,7 +898,7 @@ def init_module() -> BuiltinModule:
         cpp_type="double",
         constructors=_f64_constructors,
         methods={},
-        extends=["Comparable"],
+        extends=["Comparable", "Equatable"],
     )
 
     return module

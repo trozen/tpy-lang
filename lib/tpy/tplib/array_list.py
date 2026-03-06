@@ -4,7 +4,7 @@
 # TODO: construct with fixed-extent Span[T, N] (deduce both T and N from the argument)
 from __future__ import annotations
 from typing import MutableSequence, Iterable
-from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, Span, ReadOnlySpanLike, copy, Default, Comparable, make_default, span
+from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, Span, ReadOnlySpanLike, copy, Default, Comparable, Equatable, make_default, span
 from tpy.mem import UninitArrayStorage
 
 
@@ -55,20 +55,20 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
         self._storage.init(ui, value)
         self._size += 1
 
-    def index(self, value: T) -> Int32:
+    def index[T: Equatable](self, value: T) -> Int32:
         for i in range(self._size):
             if self._storage.load(UInt32.trunc(i)) == value:
                 return i
         assert False, "list.index(x): x not in list"
 
-    def count(self, value: T) -> Int32:
+    def count[T: Equatable](self, value: T) -> Int32:
         n: Int32 = 0
         for ui in range(UInt32.trunc(self._size)):
             if self._storage.load(ui) == value:
                 n += 1
         return n
 
-    def remove(self, value: T) -> None:
+    def remove[T: Equatable](self, value: T) -> None:
         self.pop(self.index(value))
 
     def reverse(self) -> None:
@@ -126,13 +126,13 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
         self._storage.shift(ui + 1, ui, UInt32.trunc(self._size - index - 1))
         self._size -= 1
 
-    def __contains__(self, value: T) -> bool:
+    def __contains__[T: Equatable](self, value: T) -> bool:
         for ui in range(UInt32.trunc(self._size)):
             if self._storage.load(ui) == value:
                 return True
         return False
 
-    def __eq__(self, other: ArrayList[T, N]) -> bool:
+    def __eq__[T: Equatable](self, other: ArrayList[T, N]) -> bool:
         if self._size != len(other):
             return False
         for ui in range(UInt32.trunc(self._size)):

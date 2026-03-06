@@ -1,0 +1,1 @@
+main.py:12: error: 'in' requires element type 'Foo' to conform to 'Equatable' (no '__eq__' method)

@@ -83,9 +83,9 @@ class ProtocolChecker:
         if isinstance(actual, PendingListType):
             return self.type_conforms_to_protocol(ListType(actual.element_type), protocol)
 
-        # Enum/IntEnum: hashable and comparable at C++ level
+        # Enum/IntEnum: hashable, comparable, and equatable at C++ level
         if isinstance(actual, (EnumType, IntEnumType)):
-            if protocol.qualified_name() in ("tpy.Hashable", "tpy.Comparable"):
+            if protocol.qualified_name() in ("tpy.Hashable", "tpy.Comparable", "tpy.Equatable"):
                 return True
 
         # Bounded type parameter: T: Sized conforms to Sized (and any protocol its bound conforms to)

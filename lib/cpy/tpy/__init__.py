@@ -497,6 +497,12 @@ class Comparable(_Protocol):
 
 
 @_runtime_checkable
+class Equatable(_Protocol):
+    """Protocol for types supporting equality with ==."""
+    def __eq__(self, other: object) -> bool: ...
+
+
+@_runtime_checkable
 class Truthy(_Protocol):
     """Protocol for types supporting bool() conversion via __bool__."""
     def __bool__(self) -> bool: ...

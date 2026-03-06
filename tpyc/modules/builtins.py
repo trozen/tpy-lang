@@ -331,6 +331,8 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("value", T)],
             returns=VOID,
             cpp="tpy::list_remove({self}, {0})",
+            type_params=["T"],
+            type_param_bounds={"T": NamedType("Equatable", is_protocol=True)},
         )],
         "extend": [MethodDef(
             params=[ParamDef("other", NamedType("Iterable", (T,), is_protocol=True))],
@@ -342,12 +344,16 @@ def init_module() -> BuiltinModule:
             returns=INT32,
             cpp="tpy::list_index({self}, {0})",
             is_readonly=True,
+            type_params=["T"],
+            type_param_bounds={"T": NamedType("Equatable", is_protocol=True)},
         )],
         "count": [MethodDef(
             params=[ParamDef("value", T)],
             returns=INT32,
             cpp="tpy::list_count({self}, {0})",
             is_readonly=True,
+            type_params=["T"],
+            type_param_bounds={"T": NamedType("Equatable", is_protocol=True)},
         )],
         "reverse": [MethodDef(
             params=[],
@@ -573,7 +579,7 @@ def init_module() -> BuiltinModule:
     })
 
     module.register_type(STR, cpp_type="std::string",
-        extends=["NativeIterable[Char]", "Iterable[Char]"],
+        extends=["NativeIterable[Char]", "Iterable[Char]", "Equatable"],
         constructors=[
             MethodDef(params=[], returns=STR, cpp='std::string()'),
             MethodDef(params=[ParamDef("x", STR)], returns=STR, cpp="std::string({0})"),
@@ -780,7 +786,7 @@ def init_module() -> BuiltinModule:
         "__invert__": [MethodDef(params=[], returns=BIGINT, cpp="~({self})")],
         "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)],
         "__lt__": [MethodDef(params=[ParamDef("other", BIGINT)], returns=BOOL, cpp="{self} < {0}", is_readonly=True)],
-    }, extends=["Comparable"])
+    }, extends=["Comparable", "Equatable"])
 
     # float: 64-bit IEEE 754 double precision floating point
     module.register_type(FLOAT, cpp_type="double", constructors=[
@@ -870,7 +876,7 @@ def init_module() -> BuiltinModule:
         ],
         "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)],
         "__lt__": [MethodDef(params=[ParamDef("other", FLOAT)], returns=BOOL, cpp="{self} < {0}", is_readonly=True)],
-    }, extends=["Comparable"])
+    }, extends=["Comparable", "Equatable"])
 
     # bool: Boolean type
     module.register_type(BOOL, cpp_type="bool", constructors=[
@@ -884,7 +890,7 @@ def init_module() -> BuiltinModule:
         MethodDef(params=[ParamDef("x", TRUTHY)], returns=BOOL, cpp="tpy::__bool__({0})", is_readonly=True),
     ], methods={
         "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)],
-    })
+    }, extends=["Equatable"])
 
     # Char: Single character type
     module.register_type(CHAR, cpp_type="char", constructors=[
@@ -893,7 +899,7 @@ def init_module() -> BuiltinModule:
         MethodDef(params=[ParamDef("x", BIGINT)], returns=CHAR, cpp="static_cast<char>(({0}).to_fixed_check<int32_t>())"),
     ], methods={
         "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)],
-    })
+    }, extends=["Equatable"])
 
     # None: Void type (used for function returns)
     module.register_type(VOID, cpp_type="void", methods={})

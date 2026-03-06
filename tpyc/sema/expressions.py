@@ -544,6 +544,16 @@ class ExpressionAnalyzer:
                             f"Cannot check '{left_type}' membership in str (expected str or Char)",
                             expr.loc
                         )
+                else:
+                    # Non-string collections use std::find which requires ==
+                    elem_type = right_type.get_element_type()
+                    if elem_type is not None:
+                        equatable = NamedType("Equatable", is_protocol=True)
+                        if not self.protocols.type_conforms_to_protocol(elem_type, equatable):
+                            raise self.ctx.error(
+                                f"'in' requires element type '{elem_type}' to "
+                                f"conform to 'Equatable' (no '__eq__' method)",
+                                expr)
                 return BOOL
             raise self.ctx.error(f"Cannot use '{expr.op}' with non-iterable type {right_type}", expr)
 

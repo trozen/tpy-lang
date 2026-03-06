@@ -148,6 +148,14 @@ concept Comparable = requires(const T& a, const T& b) {
 };
 
 /**
+ * Equatable concept - types that support the == operator
+ */
+template<typename T>
+concept Equatable = requires(const T& a, const T& b) {
+    { a == b } -> std::convertible_to<bool>;
+};
+
+/**
  * Truthy concept - types that support tpy::__bool__()
  *
  * A type is Truthy if tpy::__bool__(x) is valid and returns bool.
