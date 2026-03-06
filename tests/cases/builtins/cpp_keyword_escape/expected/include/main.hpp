@@ -10,6 +10,7 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t get_or_default(int32_t x, int32_t default_);
 void test_local_keywords();
 void test_for_loop_keyword();
+int32_t delete_(int32_t x);
 void main();
 
 void __tpy_init();

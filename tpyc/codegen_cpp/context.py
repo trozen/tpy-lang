@@ -112,7 +112,7 @@ def qualified_cpp_name(module_name: str, name: str) -> str:
 
     Example: ("shapes", "Circle") -> "::tpy_user::shapes::Circle"
     """
-    return f"::{module_to_cpp_namespace(module_name)}::{name}"
+    return f"::{module_to_cpp_namespace(module_name)}::{escape_cpp_name(name)}"
 
 
 DUNDER_TO_BINARY_OP: dict[str, str] = {

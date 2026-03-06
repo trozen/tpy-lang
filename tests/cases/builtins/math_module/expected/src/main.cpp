@@ -54,11 +54,11 @@ void main() {
     }
     // 33:     # Test math.floor/ceil
     // 34:     f = math.floor(3.7)
-    double f = std::floor(3.7);
+    tpy::BigInt f = BigInt::from_float(std::floor(3.7));
     // 35:     ce = math.ceil(3.2)
-    double ce = std::ceil(3.2);
+    tpy::BigInt ce = BigInt::from_float(std::ceil(3.2));
     // 36:     if f > 2.99 and f < 3.01 and ce > 3.99 and ce < 4.01:
-    if (((((f > 2.99) && (f < 3.01)) && (ce > 3.99)) && (ce < 4.01))) {
+    if (((((static_cast<double>(f) > 2.99) && (static_cast<double>(f) < 3.01)) && (static_cast<double>(ce) > 3.99)) && (static_cast<double>(ce) < 4.01))) {
         // 37:         print("floor/ceil ok")
         std::cout << "floor/ceil ok" << "\n";
     } else {

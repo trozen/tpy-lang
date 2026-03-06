@@ -2,9 +2,9 @@ from typing import Sized
 from tpy import Int32
 
 class WrongReturn:
-    value: Int32
+    value: str
 
-    def __len__(self) -> int:  # Returns BigInt instead of Int32
+    def __len__(self) -> str:  # Returns str instead of Int32
         return self.value
 
 def count(items: Sized) -> Int32:

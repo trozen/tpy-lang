@@ -13,6 +13,9 @@ extern tpy::BigInt big1;
 extern tpy::BigInt big2;
 extern double f1;
 extern double f2;
+extern int32_t c;
+extern int32_t z;
+extern double f3;
 inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();

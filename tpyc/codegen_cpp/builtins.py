@@ -198,6 +198,13 @@ class BuiltinGenerator:
             if isinstance(end_expr, TpyStrLiteral):
                 end_str = escape_cpp_string(end_expr.value)
 
+        # Determine separator (default is space)
+        sep_str = " "
+        if "sep" in kwargs:
+            sep_expr = kwargs["sep"]
+            if isinstance(sep_expr, TpyStrLiteral):
+                sep_str = escape_cpp_string(sep_expr.value)
+
         if not args:
             if end_str:
                 return f'std::cout << "{end_str}"'
@@ -206,7 +213,7 @@ class BuiltinGenerator:
         parts = []
         for i, arg in enumerate(args):
             if i > 0:
-                parts.append('" "')  # Space separator between args
+                parts.append(f'"{sep_str}"')
 
             arg_type = unwrap_readonly(self.types.get_resolved_type(arg))
             if isinstance(arg_type, OwnType):

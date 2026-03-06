@@ -188,6 +188,21 @@ class ExpressionGenerator:
             return self._resolve_field_declared_type(expr)
         return None
 
+    def _maybe_unwrap_narrowed_optional(self, expr_obj: TpyExpr, obj: str, needs_deref: bool) -> str:
+        """Unwrap narrowed value-Optional receivers for method calls.
+
+        When sema has proven a std::optional<T> variable holds a value,
+        the C++ variable is still optional -- dereference it with (*obj).
+        """
+        if isinstance(expr_obj, TpyName) and not needs_deref:
+            cpp_decl = self._get_cpp_declared_type(expr_obj)
+            analyzed = self.ctx.get_expr_type(expr_obj)
+            if (cpp_decl is not None
+                    and isinstance(cpp_decl, OptionalType) and not cpp_decl.uses_pointer_repr()
+                    and not isinstance(analyzed, OptionalType)):
+                return f"(*{obj})"
+        return obj
+
     def _resolve_field_declared_type(self, expr: TpyFieldAccess) -> TpyType | None:
         """Resolve the declared type of a field on its record/object."""
         obj_type = self._get_cpp_declared_type(expr.obj)
@@ -523,8 +538,10 @@ class ExpressionGenerator:
                 # Keys view membership: O(1) via underlying map's hash lookup
                 find_expr = f"({right}.contains({left}))"
             elif is_any_str_type(right_resolved):
-                # String contains: use .find() (works for both std::string and string_view)
-                find_expr = f"({right}.find({left}) != std::string::npos)"
+                # String contains: use .find(). Wrap string literals in
+                # std::string_view since C string literals lack .find().
+                rhs = f"std::string_view({right})" if isinstance(expr.right, TpyStrLiteral) else right
+                find_expr = f"({rhs}.find({left}) != std::string::npos)"
             else:
                 # Collection: use std::find
                 find_expr = f"(std::find({right}.begin(), {right}.end(), {left}) != {right}.end())"
@@ -1168,7 +1185,7 @@ class ExpressionGenerator:
                     gen_args.append(self.gen_call_arg(arg, resolved_ptype))
 
             # Determine function name
-            func_cpp_name = expr.func
+            func_cpp_name = escape_cpp_name(expr.func)
             if func_info.is_native_import or func_info.is_extern_c:
                 # @native/@native_c/@extern_c: use the C/C++ symbol name directly.
                 # For @native_c, the calling module's header has a local re-declaration
@@ -1399,7 +1416,9 @@ class ExpressionGenerator:
                 obj, an = self._apply_assign_narrowing(expr.obj, obj)
                 # Dereference Ptr-typed fields when method was resolved through deref chain
                 is_ptr_deref = expr.deref_depth > 0 and self.types.get_resolved_type(expr.obj).is_pointer()
-                method_obj = f"(*{obj})" if (self.ctx.is_indirect_name(expr.obj) and not an) or is_ptr_deref else obj
+                needs_deref = (self.ctx.is_indirect_name(expr.obj) and not an) or is_ptr_deref
+                method_obj = f"(*{obj})" if needs_deref else obj
+                method_obj = self._maybe_unwrap_narrowed_optional(expr.obj, method_obj, needs_deref)
                 return self.builtins.gen_method_from_function_info(method_obj, expr.args, method_info)
 
         # Build explicit template args for generic method calls
@@ -1481,6 +1500,7 @@ class ExpressionGenerator:
                 is_ptr_deref = expr.deref_depth > 0 and obj_type is not None and obj_type.is_pointer()
                 needs_deref = (self.ctx.is_indirect_name(expr.obj) and not is_assign_narrowed) or is_ptr_deref
                 method_obj = f"(*{obj})" if needs_deref else obj
+                method_obj = self._maybe_unwrap_narrowed_optional(expr.obj, method_obj, needs_deref)
                 return self.builtins.gen_method_from_function_info(method_obj, expr.args, method_info)
 
         # User-defined record methods may need temp handling for TypeParamRef params

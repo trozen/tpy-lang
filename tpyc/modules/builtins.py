@@ -189,15 +189,33 @@ def init_module() -> BuiltinModule:
             is_readonly=True,
         ),
         MethodDef(
+            params=[ParamDef("a", INT32), ParamDef("b", INT32), ParamDef("c", INT32)],
+            returns=INT32,
+            cpp="std::min(std::min({0}, {1}), {2})",
+            is_readonly=True,
+        ),
+        MethodDef(
             params=[ParamDef("a", BIGINT), ParamDef("b", BIGINT)],
             returns=BIGINT,
             cpp="(({0}) < ({1}) ? ({0}) : ({1}))",
             is_readonly=True,
         ),
         MethodDef(
+            params=[ParamDef("a", BIGINT), ParamDef("b", BIGINT), ParamDef("c", BIGINT)],
+            returns=BIGINT,
+            cpp="tpy::bigint_min({0}, {1}, {2})",
+            is_readonly=True,
+        ),
+        MethodDef(
             params=[ParamDef("a", FLOAT), ParamDef("b", FLOAT)],
             returns=FLOAT,
             cpp="std::fmin({0}, {1})",
+            is_readonly=True,
+        ),
+        MethodDef(
+            params=[ParamDef("a", FLOAT), ParamDef("b", FLOAT), ParamDef("c", FLOAT)],
+            returns=FLOAT,
+            cpp="std::fmin(std::fmin({0}, {1}), {2})",
             is_readonly=True,
         ),
     ])
@@ -210,15 +228,33 @@ def init_module() -> BuiltinModule:
             is_readonly=True,
         ),
         MethodDef(
+            params=[ParamDef("a", INT32), ParamDef("b", INT32), ParamDef("c", INT32)],
+            returns=INT32,
+            cpp="std::max(std::max({0}, {1}), {2})",
+            is_readonly=True,
+        ),
+        MethodDef(
             params=[ParamDef("a", BIGINT), ParamDef("b", BIGINT)],
             returns=BIGINT,
             cpp="(({0}) > ({1}) ? ({0}) : ({1}))",
             is_readonly=True,
         ),
         MethodDef(
+            params=[ParamDef("a", BIGINT), ParamDef("b", BIGINT), ParamDef("c", BIGINT)],
+            returns=BIGINT,
+            cpp="tpy::bigint_max({0}, {1}, {2})",
+            is_readonly=True,
+        ),
+        MethodDef(
             params=[ParamDef("a", FLOAT), ParamDef("b", FLOAT)],
             returns=FLOAT,
             cpp="std::fmax({0}, {1})",
+            is_readonly=True,
+        ),
+        MethodDef(
+            params=[ParamDef("a", FLOAT), ParamDef("b", FLOAT), ParamDef("c", FLOAT)],
+            returns=FLOAT,
+            cpp="std::fmax(std::fmax({0}, {1}), {2})",
             is_readonly=True,
         ),
     ])
@@ -590,6 +626,14 @@ def init_module() -> BuiltinModule:
                 cpp="tpy::str_concat({self}, {0})",
             ),
         ],
+        "__mul__": [MethodDef(
+            params=[ParamDef("n", INT32)],
+            returns=STR, cpp="tpy::str_repeat({self}, {0})", is_readonly=True,
+        )],
+        "__rmul__": [MethodDef(
+            params=[ParamDef("n", INT32)],
+            returns=STR, cpp="tpy::str_repeat({self}, {0})", is_readonly=True,
+        )],
         "split": [
             MethodDef(
                 params=[],

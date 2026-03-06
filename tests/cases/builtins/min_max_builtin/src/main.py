@@ -25,3 +25,16 @@ f1: float = 3.14
 f2: float = 2.71
 print(min(f1, f2))
 print(max(f1, f2))
+
+# Test 3-argument min/max
+c: Int32 = 5
+print(min(a, b, c))
+print(max(a, b, c))
+
+z = 200
+print(min(x, y, z))
+print(max(x, y, z))
+
+f3: float = 1.0
+print(min(f1, f2, f3))
+print(max(f1, f2, f3))

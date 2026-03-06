@@ -50,8 +50,21 @@ class TypeOperations:
 
         During parsing, NamedType may be created with is_protocol=False for
         names that are actually protocols. This method sets the flag correctly.
+        Also converts NamedType("T") to TypeParamRef("T") when T is a type
+        parameter in the current function or record scope.
         """
         if isinstance(typ, NamedType):
+            # Convert bare NamedType to TypeParamRef when it matches a type
+            # parameter name in scope (method-level type params in annotations
+            # are parsed as NamedType but should be TypeParamRef).
+            if not typ.type_args and not typ.is_protocol:
+                from ..parse import TpyFunction
+                func = self.ctx.current_function
+                if isinstance(func, TpyFunction) and typ.name in func.type_params:
+                    bound = func.type_param_bounds.get(typ.name)
+                    return TypeParamRef(typ.name, bound=bound)
+                if typ.name in (self.ctx.record_ctx.type_params or []):
+                    return TypeParamRef(typ.name)
             # Check if this should have is_protocol set
             protocol_info = self.ctx.registry.get_protocol(typ.name)
             resolved_is_protocol = protocol_info is not None

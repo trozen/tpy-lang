@@ -21,10 +21,14 @@ def test_for_loop_keyword() -> None:
         total = total + operator
     print(total)
 
+def delete(x: Int32) -> Int32:
+    return x * 2
+
 def main() -> None:
     print(get_or_default(5, 42))
     print(get_or_default(-1, 42))
     test_local_keywords()
     test_for_loop_keyword()
+    print(delete(7))
 
 main()

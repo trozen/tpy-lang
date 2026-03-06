@@ -440,14 +440,15 @@ class CallAnalyzer:
                         return self._analyze_isinstance(expr)
                     if qname == "builtins.print":
                         for kw_name in expr.kwargs:
-                            if kw_name != "end":
+                            if kw_name not in ("end", "sep"):
                                 raise self.ctx.error(
                                     f"print() does not support keyword argument '{kw_name}'", expr)
-                        if "end" in expr.kwargs:
-                            if not isinstance(expr.kwargs["end"], TpyStrLiteral):
-                                raise self.ctx.error(
-                                    "print() 'end' argument must be a string literal", expr)
-                            self.expr.analyze_expr(expr.kwargs["end"])
+                        for kw_name in ("end", "sep"):
+                            if kw_name in expr.kwargs:
+                                if not isinstance(expr.kwargs[kw_name], TpyStrLiteral):
+                                    raise self.ctx.error(
+                                        f"print() '{kw_name}' argument must be a string literal", expr)
+                                self.expr.analyze_expr(expr.kwargs[kw_name])
                         for arg in expr.args:
                             self.expr.analyze_expr(arg)
                         expr.resolved_function_info = FunctionInfo(
@@ -607,14 +608,15 @@ class CallAnalyzer:
             return self._analyze_isinstance(expr)
         if qname == "builtins.print":
             for kw_name in expr.kwargs:
-                if kw_name != "end":
+                if kw_name not in ("end", "sep"):
                     raise self.ctx.error(
                         f"print() does not support keyword argument '{kw_name}'", expr)
-            if "end" in expr.kwargs:
-                if not isinstance(expr.kwargs["end"], TpyStrLiteral):
-                    raise self.ctx.error(
-                        "print() 'end' argument must be a string literal", expr)
-                self.expr.analyze_expr(expr.kwargs["end"])
+            for kw_name in ("end", "sep"):
+                if kw_name in expr.kwargs:
+                    if not isinstance(expr.kwargs[kw_name], TpyStrLiteral):
+                        raise self.ctx.error(
+                            f"print() '{kw_name}' argument must be a string literal", expr)
+                    self.expr.analyze_expr(expr.kwargs[kw_name])
             for arg in expr.args:
                 self.expr.analyze_expr(arg)
             expr.resolved_function_info = FunctionInfo(

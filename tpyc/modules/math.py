@@ -76,21 +76,21 @@ def init_module() -> BuiltinModule:
         ),
     ])
 
-    # math.floor(x) - largest integer <= x
+    # math.floor(x) - largest integer <= x (Python 3 returns int)
     module.function("floor", overloads=[
         MethodDef(
             params=[ParamDef("x", FLOAT)],
-            returns=FLOAT,
-            cpp="std::floor({0})",
+            returns=BIGINT,
+            cpp="BigInt::from_float(std::floor({0}))",
         ),
     ])
 
-    # math.ceil(x) - smallest integer >= x
+    # math.ceil(x) - smallest integer >= x (Python 3 returns int)
     module.function("ceil", overloads=[
         MethodDef(
             params=[ParamDef("x", FLOAT)],
-            returns=FLOAT,
-            cpp="std::ceil({0})",
+            returns=BIGINT,
+            cpp="BigInt::from_float(std::ceil({0}))",
         ),
     ])
 

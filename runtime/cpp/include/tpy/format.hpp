@@ -397,6 +397,16 @@ inline std::string str_lower(std::string_view s) {
     return result;
 }
 
+// -- str.__mul__ (string repetition) ---------------------------------------
+
+inline std::string str_repeat(std::string_view s, int32_t n) {
+    if (n <= 0) return {};
+    std::string result;
+    result.reserve(s.size() * static_cast<size_t>(n));
+    for (int32_t i = 0; i < n; ++i) result.append(s);
+    return result;
+}
+
 // -- str.count -------------------------------------------------------------
 
 inline int32_t str_count(std::string_view s, std::string_view sub) {

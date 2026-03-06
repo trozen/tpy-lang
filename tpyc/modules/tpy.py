@@ -530,6 +530,14 @@ def init_module() -> BuiltinModule:
                 cpp="tpy::str_concat({self}, {0})",
             ),
         ],
+        "__mul__": [MethodDef(
+            params=[ParamDef("n", INT32)],
+            returns=STR, cpp="tpy::str_repeat({self}, {0})", is_readonly=True,
+        )],
+        "__rmul__": [MethodDef(
+            params=[ParamDef("n", INT32)],
+            returns=STR, cpp="tpy::str_repeat({self}, {0})", is_readonly=True,
+        )],
         "split": [
             MethodDef(
                 params=[],
@@ -690,6 +698,14 @@ def init_module() -> BuiltinModule:
                 cpp="tpy::str_concat({self}, {0})",
             ),
         ],
+        "__mul__": [MethodDef(
+            params=[ParamDef("n", INT32)],
+            returns=STR, cpp="tpy::str_repeat({self}, {0})", is_readonly=True,
+        )],
+        "__rmul__": [MethodDef(
+            params=[ParamDef("n", INT32)],
+            returns=STR, cpp="tpy::str_repeat({self}, {0})", is_readonly=True,
+        )],
         "split": [
             MethodDef(
                 params=[],

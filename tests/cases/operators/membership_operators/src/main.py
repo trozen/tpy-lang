@@ -63,6 +63,14 @@ def test_string_membership() -> None:
     else:
         print("'z' in string: no")
 
+    # Substring 'in' string literal (RHS is literal)
+    if "ell" in "hello world":
+        print("'ell' in literal: yes")
+    if "xyz" in "hello world":
+        print("'xyz' in literal: yes")
+    else:
+        print("'xyz' in literal: no")
+
     # 'not in' for string
     if "z" not in text:
         print("'z' not in string: yes")

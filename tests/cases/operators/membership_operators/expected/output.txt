@@ -9,6 +9,8 @@
 999 in span: no
 'o' in string: yes
 'z' in string: no
+'ell' in literal: yes
+'xyz' in literal: no
 'z' not in string: yes
 'e' not in string: no
 both 2 and 4 in list

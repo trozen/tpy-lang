@@ -423,6 +423,11 @@ class ProtocolChecker:
             return True
         if is_protocol_safe_coercion(actual, expected):
             return True
+        # Allow BigInt where a fixed int is expected (e.g. __len__() -> int
+        # satisfies Sized which expects -> Int32). The C++ side uses
+        # std::convertible_to<int32_t> so the implicit conversion is safe.
+        if isinstance(expected, FixedIntType) and isinstance(unwrapped, BigIntType):
+            return True
         # If expected is a protocol, check if actual conforms to it
         if is_protocol_type(expected) and isinstance(expected, NamedType):
             return self.type_conforms_to_protocol(unwrapped, expected)

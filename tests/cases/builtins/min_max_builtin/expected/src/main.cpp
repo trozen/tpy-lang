@@ -23,6 +23,13 @@ tpy::BigInt big2;
 double f1{};
 // 25: f2: float = 2.71
 double f2{};
+// # Test 3-argument min/max
+// 30: c: Int32 = 5
+int32_t c{};
+// 34: z = 200
+int32_t z{};
+// 38: f3: float = 1.0
+double f3{};
 
 void __tpy_init() {
     static bool initialized = false;
@@ -69,6 +76,25 @@ void __tpy_init() {
     std::cout << tpy::print_float(std::fmin(f1, f2)) << "\n";
     // 27: print(max(f1, f2))
     std::cout << tpy::print_float(std::fmax(f1, f2)) << "\n";
+    // 29: # Test 3-argument min/max
+    // 30: c: Int32 = 5
+    c = 5;
+    // 31: print(min(a, b, c))
+    std::cout << std::min(std::min(a, b), c) << "\n";
+    // 32: print(max(a, b, c))
+    std::cout << std::max(std::max(a, b), c) << "\n";
+    // 34: z = 200
+    z = 200;
+    // 35: print(min(x, y, z))
+    std::cout << std::min(std::min(x, y), z) << "\n";
+    // 36: print(max(x, y, z))
+    std::cout << std::max(std::max(x, y), z) << "\n";
+    // 38: f3: float = 1.0
+    f3 = 1.0;
+    // 39: print(min(f1, f2, f3))
+    std::cout << tpy::print_float(std::fmin(std::fmin(f1, f2), f3)) << "\n";
+    // 40: print(max(f1, f2, f3))
+    std::cout << tpy::print_float(std::fmax(std::fmax(f1, f2), f3)) << "\n";
 }
 
 } // namespace tpy_user::main

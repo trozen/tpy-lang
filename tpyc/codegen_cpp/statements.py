@@ -264,10 +264,15 @@ class StatementGenerator:
                         ret_expr = f"tpy::deref_optional_check({ret_expr})"
                     else:
                         ret_expr = f"(*{ret_expr})"
-                # StrView local returned as str needs explicit conversion
+                # StrView local returned as str needs explicit conversion.
+                # Also wrap str-typed params (which are string_view in C++).
                 elif isinstance(ret_type, StrType):
                     expr_type = self.types.get_resolved_type(stmt.value)
                     if isinstance(expr_type, StrViewType):
+                        ret_expr = f"std::string({ret_expr})"
+                    elif (isinstance(expr_type, StrType)
+                          and isinstance(stmt.value, TpyName)
+                          and stmt.value.name in self.ctx.current_func_params):
                         ret_expr = f"std::string({ret_expr})"
                 # Consuming method: move self fields on return (this->field is lvalue)
                 if (self.ctx.in_consuming_method
@@ -1080,6 +1085,7 @@ class StatementGenerator:
             return self._is_value_optional_var(expr.name)
         declared = self.expressions._get_cpp_declared_type(expr)
         return (isinstance(declared, OptionalType) and not declared.uses_pointer_repr())
+
 
     def _emit_isinstance_extractions(
         self, out: TextIO, type_facts: dict[str, TpyType], indent_extra: int = 1,

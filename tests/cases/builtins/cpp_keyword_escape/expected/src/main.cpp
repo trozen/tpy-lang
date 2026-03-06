@@ -46,16 +46,24 @@ void test_for_loop_keyword() {
     std::cout << total << "\n";
 }
 
-// 24: def main() -> None:
+// 24: def delete(x: Int32) -> Int32:
+int32_t delete_(int32_t x) {
+    // 25:     return x * 2
+    return (tpy::mul_check<int32_t>(x, 2));
+}
+
+// 27: def main() -> None:
 void main() {
-    // 25:     print(get_or_default(5, 42))
+    // 28:     print(get_or_default(5, 42))
     std::cout << get_or_default(5, 42) << "\n";
-    // 26:     print(get_or_default(-1, 42))
+    // 29:     print(get_or_default(-1, 42))
     std::cout << get_or_default(-1, 42) << "\n";
-    // 27:     test_local_keywords()
+    // 30:     test_local_keywords()
     test_local_keywords();
-    // 28:     test_for_loop_keyword()
+    // 31:     test_for_loop_keyword()
     test_for_loop_keyword();
+    // 32:     print(delete(7))
+    std::cout << delete_(7) << "\n";
 }
 
 void __tpy_init() {
@@ -63,7 +71,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 30: main()
+    // 34: main()
     main();
 }
 

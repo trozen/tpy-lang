@@ -86,6 +86,14 @@ int32_t __len__(const T& x) {
     return x.__len__();
 }
 
+// User types returning BigInt from __len__()
+template<typename T>
+    requires (requires(const T& t) { { t.__len__() } -> std::same_as<BigInt>; }
+              && !requires(const T& t) { { t.__len__() } -> std::convertible_to<int32_t>; })
+int32_t __len__(const T& x) {
+    return x.__len__().template to_fixed_check<int32_t>();
+}
+
 // =============================================
 // tpy::__getitem__
 // =============================================
