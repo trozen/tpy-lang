@@ -446,6 +446,11 @@ struct native_iterator {
     }
 
     native_iterator& __iter__() { return *this; }
+
+    // Opaque repr, matching CPython's behavior for iterator objects.
+    friend std::ostream& operator<<(std::ostream& os, const native_iterator&) {
+        return os << "<iterator>";
+    }
 };
 
 // =============================================

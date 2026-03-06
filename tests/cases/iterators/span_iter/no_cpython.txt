@@ -1,0 +1,1 @@
+print(iter(span)) output differs: CPython shows <list_iterator object at 0x...>, tpyc shows <iterator>
