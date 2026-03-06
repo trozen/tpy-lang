@@ -246,6 +246,16 @@ class ExpressionAnalyzer:
                 self.ctx.set_expr_type(expr, result)
                 return result
 
+        # List comprehension with list type hint: propagate element type
+        if isinstance(expr, TpyListComprehension):
+            inner_hint = unwrap_readonly(type_hint)
+            if isinstance(inner_hint, OwnType):
+                inner_hint = inner_hint.wrapped
+            if isinstance(inner_hint, ListType):
+                typ = self._analyze_list_comprehension(expr, expected_elem=inner_hint.element_type)
+                self.ctx.set_expr_type(expr, typ)
+                return typ
+
         # Non-empty dict literal with dict type hint
         if isinstance(expr, TpyDictLiteral) and expr.keys:
             inner_hint = unwrap_readonly(type_hint)
@@ -1253,7 +1263,9 @@ class ExpressionAnalyzer:
 
         return PendingListType(first_type, size, literal_id)
 
-    def _analyze_list_comprehension(self, expr: TpyListComprehension) -> TpyType:
+    def _analyze_list_comprehension(
+        self, expr: TpyListComprehension, expected_elem: TpyType | None = None
+    ) -> TpyType:
         """Analyze a list comprehension: [expr for var in iterable if cond]"""
         gen = expr.generator
 
@@ -1291,25 +1303,37 @@ class ExpressionAnalyzer:
                             stack.enter_context(
                                 self.scopes.loop_var(inner_scope, uvar, utype,
                                                      inner_scope.depth, is_foreach=False))
-                    result_elem_type = self._analyze_comp_body(gen, expr)
+                    result_elem_type = self._analyze_comp_body(gen, expr, expected_elem)
             else:
                 with self.scopes.loop_var(inner_scope, gen.var, elem_type,
                                           inner_scope.depth, is_foreach=False):
-                    result_elem_type = self._analyze_comp_body(gen, expr)
+                    result_elem_type = self._analyze_comp_body(gen, expr, expected_elem)
 
-        # 6. Resolve IntLiteralType
+        # 6. Resolve IntLiteralType (only when no annotation hint)
         if isinstance(result_elem_type, IntLiteralType):
-            result_elem_type = self.ctx.default_int_type
+            result_elem_type = expected_elem if expected_elem is not None else self.ctx.default_int_type
 
-        # 7. Store on node for codegen
+        # 7. Coerce element expression if annotation requires it
+        if expected_elem is not None and result_elem_type != expected_elem:
+            expr.element_expr = self.compat.coerce_expr(
+                expr.element_expr, result_elem_type, expected_elem,
+                "list comprehension element", coercion_ctx=CoercionContext.INIT)
+            result_elem_type = expected_elem
+
+        # 8. Store on node for codegen
         expr.result_elem_type = result_elem_type
 
         return ListType(result_elem_type)
 
-    def _analyze_comp_body(self, gen: TpyComprehensionGenerator, expr: TpyListComprehension) -> TpyType:
+    def _analyze_comp_body(
+        self, gen: TpyComprehensionGenerator, expr: TpyListComprehension,
+        elem_hint: TpyType | None = None
+    ) -> TpyType:
         """Analyze filter conditions and element expression of a comprehension."""
         for cond in gen.conditions:
             self.analyze_expr(cond)
+        if elem_hint is not None:
+            return self.analyze_expr_with_hint(expr.element_expr, elem_hint)
         return self.analyze_expr(expr.element_expr)
 
     def _analyze_tuple_literal(

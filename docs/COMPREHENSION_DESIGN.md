@@ -7,7 +7,7 @@
 | 1 | List comprehension: `[expr for var in iterable]`, single generator, no filter | Done |
 | 2 | Filter clause: `[expr for var in iterable if cond]` | Done |
 | 3 | Tuple unpacking in generator: `[v for k, v in pairs]` | Done |
-| 4 | Annotation propagation: `result: list[Int32] = [x for x in items]` | Not started |
+| 4 | Annotation propagation: `result: list[Int32] = [x for x in items]` | Done |
 | 5 | Optimizations: `range(N)` -> Array, Sized iterables -> reserve | Not started |
 
 ### Future Extensions
@@ -199,9 +199,9 @@ def _analyze_list_comprehension(self, expr: TpyListComprehension) -> TpyType:
         self.scopes.declare(gen.var, elem_type)
 
         # 4. Analyze filter conditions (Phase 2)
+        # No type restriction -- matches if/while behavior (truthy dispatch in codegen)
         for cond in gen.conditions:
-            cond_type = self.analyze_expr(cond)
-            # Validate bool-convertible
+            self.analyze_expr(cond)
 
         # 5. Analyze element expression
         result_elem_type = self.analyze_expr(expr.element_expr)
@@ -224,8 +224,9 @@ without break/continue support.
 
 - **Element type**: Determined by analyzing `element_expr` with the loop variable in
   scope. Standard expression analysis, no special rules.
-- **Filter conditions**: Must be bool-convertible (same rules as `if`/`while`
-  conditions). Filter does not affect element type.
+- **Filter conditions**: No type restriction -- conditions are passed to
+  `gen_truthy_expr` in codegen, same as `if`/`while`. Filter does not affect
+  element type.
 - **Result type**: `ListType(result_elem_type)` -- always a `list[T]`. Unlike array
   literals, comprehensions don't use `PendingListType` in Phase 1 because the result
   size is generally unknown. Phase 5 adds optimization for known-size cases.
@@ -350,12 +351,16 @@ When the user provides an explicit type annotation:
 result: list[Int32] = [x for x in items]
 ```
 
-The expected element type (`Int32`) should propagate into the comprehension's element
-expression, enabling coercions (e.g., int literal -> Int32). This follows the same
-pattern as list literal annotation propagation.
+The expected element type (`Int32`) propagates into the comprehension's element
+expression via `analyze_expr_with_hint`, enabling coercions (e.g., Int32 -> int,
+Int32 -> Int64). This follows the same pattern as list literal annotation propagation.
 
 Without annotation, the element type is inferred purely from the element expression
 (bottom-up). With annotation, the expected type also flows top-down (bi-directional).
+
+Works in all hint-providing contexts: variable declarations, return statements
+(`Own[list[T]]`), and function arguments. Incompatible annotations produce a clear
+error: "Type mismatch in list comprehension element".
 
 ---
 
@@ -530,7 +535,7 @@ with zero overhead and zero new runtime infrastructure. Tier 3 is the safe fallb
 | Nested generators | `[x+y for x in a for y in b]` | "Nested comprehensions not yet supported" |
 | Async comprehension | `[x async for x in aiter]` | "Async comprehensions not yet supported" |
 | Non-iterable source | `[x for x in 42]` | "Type 'Int32' is not iterable" (existing error) |
-| Non-bool filter | `[x for x in items if "yes"]` | Depends on `__bool__` support for str (existing rules) |
+| Incompatible annotation | `x: list[Int32] = [s for s in strs]` | "Type mismatch in list comprehension element" |
 
 ---
 
@@ -541,9 +546,11 @@ tests/cases/list/
     list_comp_basic/           # Phase 1: [x*2 for x in range(5)], [p.name for p in items]
     list_comp_filter/          # Phase 2: [x for x in items if x > 0]
     list_comp_unpack/          # Phase 3: [v for k, v in pairs]
+    list_comp_annotation/      # Phase 4: annotation propagation (Int32->int, Int32->Int64)
     list_comp_types/           # Various element types: records, Optional, str
     list_comp_nested_expr/     # Complex element expressions: method calls, f-strings
     list_comp_in_context/      # Comprehension as function arg, return value, in print()
+    error_list_comp_annotation/    # Error: incompatible annotation type
     error_list_comp_nested/    # Error: nested generators
     error_list_comp_not_iterable/  # Error: non-iterable source
     error_list_comp_unpack_count/  # Error: unpack count mismatch

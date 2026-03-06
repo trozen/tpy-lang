@@ -15,8 +15,8 @@ from ..typesys import (
 )
 from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
-    TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat, TpyCoerce, TpyBinOp,
-    TpyUnaryOp, TpyMethodCall, TpySubscript, TpyCall, TpyName, TpyFieldAccess
+    TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat, TpyListComprehension,
+    TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall, TpySubscript, TpyCall, TpyName, TpyFieldAccess
 )
 from ..namespace import Namespace, BindingKind
 
@@ -583,7 +583,7 @@ class CodeGenContext:
         # Constructor calls, literals, ops are rvalues
         if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
                              TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat,
-                             TpyBinOp, TpyUnaryOp, TpyMethodCall)):
+                             TpyListComprehension, TpyBinOp, TpyUnaryOp, TpyMethodCall)):
             return True
         # Coercions: depends on inner expr
         if isinstance(expr, TpyCoerce):
@@ -626,8 +626,8 @@ class CodeGenContext:
         # Scalar literals: 1, 3.14, "x", True, None
         if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral, TpyNoneLiteral)):
             return True
-        # Container literals: [], [1,2,3], [0]*10
-        if isinstance(expr, (TpyArrayLiteral, TpyListRepeat)):
+        # Container literals: [], [1,2,3], [0]*10, [x for x in items]
+        if isinstance(expr, (TpyArrayLiteral, TpyListRepeat, TpyListComprehension)):
             return True
         # Explicit coercions: Ptr[T]->T is dereference (lvalue), others produce temporaries
         if isinstance(expr, TpyCoerce):
