@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FunctionInfo, FunctionLinkage,
+    TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage,
     TypeParamKind, OptionalType, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
     IMPLICIT_READONLY_METHODS, FinalType, EnumType, IntEnumType, BoolType,
     FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL, UINT64,
@@ -16,7 +16,7 @@ from ..typesys import (
 )
 from ..parse import (
     TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
-    TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn,
+    TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn, TpyMethodCall, TpyCall, TpyExprStmt,
 )
 from .diagnostics import SemanticError
 from .operators import DUNDER_CPP_TEMPLATES
@@ -270,6 +270,32 @@ class TypeRegistrar:
                     del_method.loc or record.loc,
                 )
 
+        # Collect inherited fields from parent @dataclass (if any)
+        parent_dc_fields = self._get_parent_dataclass_fields(record)
+        # All fields for __eq__/__hash__/order: parent fields first, then own
+        all_dc_fields = parent_dc_fields + record.fields
+
+        # Validate frozen consistency in dataclass inheritance (CPython raises TypeError)
+        if record.is_dataclass and parent_dc_fields:
+            for base in record.bases:
+                if not isinstance(base, NamedType):
+                    continue
+                parent_info = self.ctx.registry.get_record(base.name)
+                if parent_info is not None and parent_info.is_dataclass:
+                    if parent_info.is_frozen and not record.is_frozen:
+                        raise SemanticError(
+                            f"Cannot inherit non-frozen @dataclass '{record.name}' "
+                            f"from frozen @dataclass '{base.name}'",
+                            record.loc,
+                        )
+                    if not parent_info.is_frozen and record.is_frozen:
+                        raise SemanticError(
+                            f"Cannot inherit frozen @dataclass '{record.name}' "
+                            f"from non-frozen @dataclass '{base.name}'",
+                            record.loc,
+                        )
+                    break
+
         # Synthesize __init__ for @dataclass classes without explicit __init__
         if record.is_dataclass and record.init_method:
             self.ctx.warning_from_loc(
@@ -278,14 +304,14 @@ class TypeRegistrar:
                 record.init_method.loc or record.loc,
             )
         elif record.is_dataclass and not record.init_method:
-            if not record.fields:
+            if not all_dc_fields:
                 raise SemanticError(
                     f"@dataclass class '{record.name}' must have at least one field annotation",
                     record.loc,
                 )
-            # Validate field ordering: fields with defaults must come after fields without
+            # Validate field ordering across parent + child: no non-default after default
             seen_default = False
-            for fld in record.fields:
+            for fld in all_dc_fields:
                 if fld.default_expr is not None:
                     seen_default = True
                 elif seen_default:
@@ -298,13 +324,24 @@ class TypeRegistrar:
             params: list[tuple[str, TpyType]] = []
             defaults: list[TpyExpr | None] = []
             body: list[TpyStmt] = []
-            for fld in record.fields:
-                # Non-value types get Own[T] for move semantics
+            # Parent fields come first as params; forwarded via super().__init__()
+            for fld in parent_dc_fields:
                 param_type = fld.type if fld.type.is_value_type() else OwnType(fld.type)
                 params.append((fld.name, param_type))
                 defaults.append(fld.default_expr)
-                # loc intentionally omitted -- suppresses copy-into-field warning
-                # in statements.py (synthetic init doesn't need user-facing warnings)
+            if parent_dc_fields:
+                super_args = [TpyName(fld.name) for fld in parent_dc_fields]
+                super_call = TpyMethodCall(
+                    obj=TpyCall(func="super", args=[]),
+                    method="__init__",
+                    args=super_args,
+                )
+                body.append(TpyExprStmt(expr=super_call))
+            # Own fields
+            for fld in record.fields:
+                param_type = fld.type if fld.type.is_value_type() else OwnType(fld.type)
+                params.append((fld.name, param_type))
+                defaults.append(fld.default_expr)
                 body.append(TpyAssign(
                     target=TpyFieldAccess(obj=TpyName("self"), field=fld.name),
                     value=TpyName(fld.name),
@@ -320,7 +357,7 @@ class TypeRegistrar:
             record.methods.insert(0, init_fn)
 
         # Synthesize __eq__ for @dataclass classes without explicit __eq__
-        if record.is_dataclass and record.fields:
+        if record.is_dataclass and all_dc_fields:
             eq_method = next((m for m in record.methods if m.name == "__eq__"), None)
             if eq_method is not None:
                 self.ctx.warning_from_loc(
@@ -330,25 +367,17 @@ class TypeRegistrar:
                 )
             else:
                 other_type = NamedType(record.name)
-                # Build field-by-field equality: self.f1 == other.f1 and self.f2 == other.f2 ...
-                if len(record.fields) == 1:
-                    eq_expr: TpyExpr = TpyBinOp(
-                        left=TpyFieldAccess(obj=TpyName("self"), field=record.fields[0].name),
+                comparisons = [
+                    TpyBinOp(
+                        left=TpyFieldAccess(obj=TpyName("self"), field=fld.name),
                         op="==",
-                        right=TpyFieldAccess(obj=TpyName("other"), field=record.fields[0].name),
+                        right=TpyFieldAccess(obj=TpyName("other"), field=fld.name),
                     )
-                else:
-                    comparisons = [
-                        TpyBinOp(
-                            left=TpyFieldAccess(obj=TpyName("self"), field=fld.name),
-                            op="==",
-                            right=TpyFieldAccess(obj=TpyName("other"), field=fld.name),
-                        )
-                        for fld in record.fields
-                    ]
-                    eq_expr = comparisons[0]
-                    for cmp in comparisons[1:]:
-                        eq_expr = TpyBinOp(left=eq_expr, op="&&", right=cmp)
+                    for fld in all_dc_fields
+                ]
+                eq_expr: TpyExpr = comparisons[0]
+                for cmp in comparisons[1:]:
+                    eq_expr = TpyBinOp(left=eq_expr, op="&&", right=cmp)
                 eq_fn = TpyFunction(
                     name="__eq__",
                     params=[("other", other_type)],
@@ -530,7 +559,7 @@ class TypeRegistrar:
                 )
 
         # Synthesize __hash__ for frozen dataclasses without explicit __hash__
-        if record.is_frozen and record.fields and "__hash__" not in methods:
+        if record.is_frozen and all_dc_fields and "__hash__" not in methods:
             methods["__hash__"] = [FunctionInfo(
                 name="__hash__",
                 params=[],
@@ -541,7 +570,7 @@ class TypeRegistrar:
 
         # Synthesize ordering methods for @dataclass(order=True)
         _ORDER_DUNDERS = ("__lt__", "__le__", "__gt__", "__ge__")
-        if record.is_ordered and record.fields:
+        if record.is_ordered and all_dc_fields:
             for dunder in _ORDER_DUNDERS:
                 if dunder in methods:
                     raise SemanticError(
@@ -576,6 +605,8 @@ class TypeRegistrar:
             is_native=is_native,
             is_native_c=is_native_c,
             is_nocopy=record.is_nocopy,
+            is_dataclass=record.is_dataclass,
+            dataclass_fields=all_dc_fields,
             is_frozen=record.is_frozen,
             is_ordered=record.is_ordered,
             has_del=record.del_method is not None,
@@ -812,10 +843,19 @@ class TypeRegistrar:
         if not parent_info:
             return
 
+        # Synthesized dataclass methods intentionally hide parent versions
+        skip_dc: set[str] = set()
+        if record_info.is_dataclass:
+            skip_dc = {"__eq__", "__hash__"}
+        if record_info.is_ordered:
+            skip_dc.update({"__lt__", "__le__", "__gt__", "__ge__"})
+
         # Check each method defined in this class
         for method_name in record_info.methods:
             if method_name in ("__init__", "__del__"):
                 continue  # constructor/destructor hiding is expected
+            if method_name in skip_dc:
+                continue
 
             # Check if any ancestor has this method
             ancestor_with_method = self._find_ancestor_with_method(parent_info, method_name)
@@ -844,6 +884,22 @@ class TypeRegistrar:
                 return self._find_ancestor_with_method(parent_info, method_name)
 
         return None
+
+    def _get_parent_dataclass_fields(self, record: TpyRecord) -> list[FieldInfo]:
+        """Get inherited fields from parent @dataclass chain.
+
+        Returns parent's full dataclass_fields (including grandparent fields),
+        or empty list if no parent is a @dataclass.
+        """
+        if not record.is_dataclass:
+            return []
+        for base in record.bases:
+            if not isinstance(base, NamedType):
+                continue
+            parent_info = self.ctx.registry.get_record(base.name)
+            if parent_info is not None and parent_info.is_dataclass:
+                return list(parent_info.dataclass_fields)
+        return []
 
     def _is_inheritable_builtin(self, typ: TpyType) -> bool:
         """Check if a type is a builtin type that can be inherited from.

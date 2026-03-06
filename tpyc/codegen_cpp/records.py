@@ -379,9 +379,14 @@ class RecordGenerator:
         elif has_repr:
             out.write(f"{INDENT}os << obj.__repr__();\n")
         else:
+            # For dataclass children, include parent + own fields
+            if record_info and record_info.is_dataclass and record_info.dataclass_fields:
+                print_fields = record_info.dataclass_fields
+            else:
+                print_fields = record.fields
             out.write(f'{INDENT}os << "{record.name}("')
 
-            for i, fld in enumerate(record.fields):
+            for i, fld in enumerate(print_fields):
                 cpp_fld = escape_cpp_name(fld.name)
                 if i > 0:
                     out.write(f'\n{INDENT}   << ", "')
@@ -755,9 +760,12 @@ class RecordGenerator:
         if any(m.name == "__hash__" for m in record.methods):
             return
         record_info = self.ctx.analyzer.registry.get_record(record.name)
-        if record_info is None or not record_info.is_frozen or not record_info.fields:
+        if record_info is None or not record_info.is_frozen:
             return
-        hash_fields = ", ".join(f"this->{escape_cpp_name(fld.name)}" for fld in record_info.fields)
+        dc_fields = record_info.dataclass_fields if record_info.is_dataclass else record_info.fields
+        if not dc_fields:
+            return
+        hash_fields = ", ".join(f"this->{escape_cpp_name(fld.name)}" for fld in dc_fields)
         out.write(f"\n{INDENT}uint64_t __hash__() const {{\n")
         out.write(f"{INDENT}{INDENT}return tpy::hash_combine(0, {hash_fields});\n")
         out.write(f"{INDENT}}}\n")
@@ -767,11 +775,14 @@ class RecordGenerator:
         if any(m.name == "__lt__" for m in record.methods):
             return
         record_info = self.ctx.analyzer.registry.get_record(record.name)
-        if record_info is None or not record_info.is_ordered or not record_info.fields:
+        if record_info is None or not record_info.is_ordered:
+            return
+        dc_fields = record_info.dataclass_fields if record_info.is_dataclass else record_info.fields
+        if not dc_fields:
             return
         name = escape_cpp_name(record.name)
-        lhs_fields = ", ".join(f"lhs.{escape_cpp_name(fld.name)}" for fld in record_info.fields)
-        rhs_fields = ", ".join(f"rhs.{escape_cpp_name(fld.name)}" for fld in record_info.fields)
+        lhs_fields = ", ".join(f"lhs.{escape_cpp_name(fld.name)}" for fld in dc_fields)
+        rhs_fields = ", ".join(f"rhs.{escape_cpp_name(fld.name)}" for fld in dc_fields)
         out.write(f"\n{INDENT}friend auto operator<=>(const {name}& lhs, const {name}& rhs) {{\n")
         out.write(f"{INDENT}{INDENT}return std::tie({lhs_fields}) <=> std::tie({rhs_fields});\n")
         out.write(f"{INDENT}}}\n")

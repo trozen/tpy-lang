@@ -1,0 +1,1 @@
+main.py:12: error: Field 'z' without default follows field with default in @dataclass class 'Bad'

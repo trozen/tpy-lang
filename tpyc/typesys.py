@@ -1823,6 +1823,8 @@ class RecordInfo:
     is_native: bool = False       # True for @native or @native_c records
     is_native_c: bool = False     # True for @native_c specifically
     is_nocopy: bool = False       # True for @nocopy records (copy deleted, move-only)
+    is_dataclass: bool = False    # True for @dataclass classes
+    dataclass_fields: list[FieldInfo] = field(default_factory=list)  # All dataclass fields (parent + own)
     is_frozen: bool = False       # True for @dataclass(frozen=True) (field mutation rejected)
     is_ordered: bool = False      # True for @dataclass(order=True) (auto __lt__ etc.)
     is_value_type: bool = False   # True for ValueType marker protocol
