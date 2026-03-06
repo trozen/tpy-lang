@@ -318,6 +318,11 @@ def init_module() -> BuiltinModule:
             returns=VOID,
             cpp="tpy::list_reverse({self})",
         )],
+        "sort": [MethodDef(
+            params=[],
+            returns=VOID,
+            cpp="std::stable_sort({self}.begin(), {self}.end())",  # stable to match Python
+        )],
         "copy": [MethodDef(
             params=[],
             returns=ListType(T),
