@@ -637,40 +637,7 @@ class ExpressionGenerator:
 
         # Comparison operators - generate C++ directly.
         if expr.op in ("==", "!=", "<", ">", "<=", ">="):
-            left_target = None
-            right_target = None
-
-            if expr.optional_safe_eq:
-                # None-safe ==/!=: let C++ std::optional<T> handle None comparison.
-                # Only unwrap operands that flow analysis has proven non-None.
-                left_analyzed = self.ctx.get_expr_type(expr.left)
-                right_analyzed = self.ctx.get_expr_type(expr.right)
-                if isinstance(left_type, OptionalType) and not left_type.uses_pointer_repr():
-                    if not isinstance(left_analyzed, OptionalType):
-                        left_target = left_type.inner
-                    elif not (isinstance(right_type, OptionalType) and not right_type.uses_pointer_repr()):
-                        right_target = left_type.inner
-                if isinstance(right_type, OptionalType) and not right_type.uses_pointer_repr():
-                    if not isinstance(right_analyzed, OptionalType):
-                        right_target = right_type.inner
-                    elif not (isinstance(left_type, OptionalType) and not left_type.uses_pointer_repr()):
-                        left_target = right_type.inner
-            else:
-                # Ordering operators / non-Optional: unwrap with runtime check
-                if isinstance(left_type, OptionalType) and not left_type.uses_pointer_repr():
-                    left_target = left_type.inner
-                if isinstance(right_type, OptionalType) and not right_type.uses_pointer_repr():
-                    right_target = right_type.inner
-
-            # When comparing Char with string literal, output literal as char.
-            # Skip for Optional sides in None-safe eq (would cause unwrapping).
-            if left_target is None and isinstance(right_type, CharType):
-                if not (expr.optional_safe_eq and isinstance(left_type, OptionalType)):
-                    left_target = CHAR
-            if right_target is None and isinstance(left_type, CharType):
-                if not (expr.optional_safe_eq and isinstance(right_type, OptionalType)):
-                    right_target = CHAR
-            # Use gen_expr_deref for pointer-locals/globals (T* needs dereferencing)
+            left_target, right_target = self._comparison_targets(expr)
             left = self.gen_expr_deref(expr.left, left_target)
             right = self.gen_expr_deref(expr.right, right_target)
 
