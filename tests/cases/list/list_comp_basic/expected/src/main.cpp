@@ -10,7 +10,9 @@ void main() {
     // 13:     squares: list[Int32] = [x * x for x in range(5)]
     std::vector<int32_t> squares = [&]() {
         std::vector<int32_t> __result;
-        for (int32_t x = 0; x < 5; ++x) {
+        const int32_t __stop_0 = 5;
+        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
+        for (int32_t x = 0; x < __stop_0; ++x) {
             __result.push_back((tpy::mul_check<int32_t>(x, x)));
         }
         return __result;
@@ -23,11 +25,12 @@ void main() {
     // 18:     copy = [x for x in items]
     std::vector<int32_t> copy = [&]() {
         std::vector<int32_t> __result;
-        auto& __obj_0 = items;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            int32_t x = *__beg_0;
+        auto& __obj_1 = items;
+        __result.reserve(__obj_1.size());
+        auto __beg_1 = __obj_1.begin();
+        auto __end_1 = __obj_1.end();
+        for (; __beg_1 != __end_1; ++__beg_1) {
+            int32_t x = *__beg_1;
             __result.push_back(x);
         }
         return __result;
@@ -38,7 +41,10 @@ void main() {
     // 22:     shifted = [x for x in range(3, 7)]
     std::vector<int32_t> shifted = [&]() {
         std::vector<int32_t> __result;
-        for (int32_t x = 3; x < 7; ++x) {
+        const int32_t __start_2 = 3;
+        const int32_t __stop_3 = 7;
+        if (__stop_3 > __start_2) __result.reserve(static_cast<size_t>(__stop_3 - __start_2));
+        for (int32_t x = __start_2; x < __stop_3; ++x) {
             __result.push_back(x);
         }
         return __result;
@@ -51,11 +57,12 @@ void main() {
     // 27:     xs = [p.x for p in points]
     std::vector<int32_t> xs = [&]() {
         std::vector<int32_t> __result;
-        auto& __obj_1 = points;
-        auto __beg_1 = __obj_1.begin();
-        auto __end_1 = __obj_1.end();
-        for (; __beg_1 != __end_1; ++__beg_1) {
-            auto&& p = *__beg_1;
+        auto& __obj_4 = points;
+        __result.reserve(__obj_4.size());
+        auto __beg_4 = __obj_4.begin();
+        auto __end_4 = __obj_4.end();
+        for (; __beg_4 != __end_4; ++__beg_4) {
+            auto&& p = *__beg_4;
             __result.push_back(p.x);
         }
         return __result;
@@ -66,7 +73,9 @@ void main() {
     // 31:     print([x + 1 for x in range(3)])
     std::cout << tpy::ListPrinter([&]() {
         std::vector<int32_t> __result;
-        for (int32_t x = 0; x < 3; ++x) {
+        const int32_t __stop_5 = 3;
+        if (__stop_5 > 0) __result.reserve(static_cast<size_t>(__stop_5));
+        for (int32_t x = 0; x < __stop_5; ++x) {
             __result.push_back((tpy::add_check<int32_t>(x, 1)));
         }
         return __result;
@@ -77,11 +86,12 @@ void main() {
     // 35:     upper = [str(len(w)) for w in words]
     std::vector<std::string> upper = [&]() {
         std::vector<std::string> __result;
-        auto& __obj_2 = words;
-        auto __beg_2 = __obj_2.begin();
-        auto __end_2 = __obj_2.end();
-        for (; __beg_2 != __end_2; ++__beg_2) {
-            std::string w = *__beg_2;
+        auto& __obj_6 = words;
+        __result.reserve(__obj_6.size());
+        auto __beg_6 = __obj_6.begin();
+        auto __end_6 = __obj_6.end();
+        for (; __beg_6 != __end_6; ++__beg_6) {
+            std::string w = *__beg_6;
             __result.push_back(tpy::fixed_to_str<int32_t>(tpy::__len__(w)));
         }
         return __result;
@@ -95,11 +105,11 @@ void main() {
     // 42:     stepped = [x for x in range(0, 10, 3)]
     std::vector<int32_t> stepped = [&]() {
         std::vector<int32_t> __result;
-        auto __obj_3 = tpy::Range<int32_t>(0, 10, 3);
-        auto __beg_3 = __obj_3.begin();
-        auto __end_3 = __obj_3.end();
-        for (; __beg_3 != __end_3; ++__beg_3) {
-            int32_t x = *__beg_3;
+        auto __obj_7 = tpy::Range<int32_t>(0, 10, 3);
+        auto __beg_7 = __obj_7.begin();
+        auto __end_7 = __obj_7.end();
+        for (; __beg_7 != __end_7; ++__beg_7) {
+            int32_t x = *__beg_7;
             __result.push_back(x);
         }
         return __result;
@@ -113,7 +123,9 @@ std::vector<int32_t> make_list(int32_t n) {
     // 46:     return [x * 10 for x in range(n)]
     return [&]() {
         std::vector<int32_t> __result;
-        for (int32_t x = 0; x < n; ++x) {
+        const int32_t __stop_0 = n;
+        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
+        for (int32_t x = 0; x < __stop_0; ++x) {
             __result.push_back((tpy::mul_check<int32_t>(x, 10)));
         }
         return __result;

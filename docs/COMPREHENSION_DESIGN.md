@@ -8,12 +8,13 @@
 | 2 | Filter clause: `[expr for var in iterable if cond]` | Done |
 | 3 | Tuple unpacking in generator: `[v for k, v in pairs]` | Done |
 | 4 | Annotation propagation: `result: list[Int32] = [x for x in items]` | Done |
-| 5 | Optimizations: `range(N)` -> Array, Sized iterables -> reserve | Not started |
+| 5 | Optimizations: Sized iterables -> `reserve()`, range -> `reserve()` | Done |
 
 ### Future Extensions
 
 | Feature | Notes |
 |---------|-------|
+| `range(N)` -> Array | `[i*i for i in range(5)]` -> `std::array<T, 5>` (zero heap alloc). Requires literal N, no filter, value-type elements |
 | Dict comprehension | `{k: v for k, v in items}` -- same generator model, produces `dict[K, V]`. See [Dict comprehension](#dict-comprehension-future) section |
 | Set comprehension | `{x for x in items}` -- requires `set` type (D9) |
 | Generator expressions | `sum(x*x for x in items)` -- lazy evaluation, no allocation. See [Generator expressions](#generator-expressions-future) section |
@@ -366,49 +367,51 @@ error: "Type mismatch in list comprehension element".
 
 ## Phase 5: Optimizations
 
-### range(N) with literal N -> Array
-
-When the iterable is `range(N)` with a compile-time-known `N` and no filter:
-
-```python
-squares = [i * i for i in range(5)]
-```
-
-Could produce `Array[Int32, 5]` instead of `list[Int32]`:
-
-```cpp
-auto squares = std::array<int32_t, 5>{0, 1, 4, 9, 16};
-// Or, if element expr is complex:
-auto squares = [&]() {
-    std::array<int32_t, 5> __result;
-    for (int32_t i = 0; i < 5; ++i) {
-        __result[i] = i * i;
-    }
-    return __result;
-}();
-```
-
-This is purely an optimization -- the semantics are identical. Requires:
-- `range()` with literal argument (no variable)
-- No filter clause (filter makes size unpredictable)
-- Element type is a value type (references in arrays need care)
-
 ### Sized iterables -> reserve
 
-When the iterable conforms to `Sized` (has `len()`), insert a `reserve()` call:
+For Sized iterables (list, array, dict, span, dict views), `reserve()` is emitted
+before the loop to pre-allocate the result vector:
 
 ```cpp
 [&]() {
     std::vector<int32_t> __result;
     auto& __obj_1 = items;
-    __result.reserve(__obj_1.size());    // <-- optimization
+    __result.reserve(__obj_1.size());
     auto __beg_1 = __obj_1.begin();
     // ...
 }()
 ```
 
-This avoids repeated reallocations for large collections. The `reserve()` is a
-no-regret optimization even with filters (over-reserves but never under-reserves).
+For `range()` iterables, range arguments are hoisted into temporaries (to avoid
+double-evaluation when used in both `reserve()` and the loop), with a guard
+against negative values:
+
+```cpp
+// range(N) with FixedInt:
+const int32_t __stop_0 = N;
+if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
+for (int32_t i = 0; i < __stop_0; ++i) { ... }
+
+// range(start, stop) with FixedInt:
+const int32_t __start_0 = start;
+const int32_t __stop_1 = stop;
+if (__stop_1 > __start_0) __result.reserve(static_cast<size_t>(__stop_1 - __start_0));
+for (int32_t i = __start_0; i < __stop_1; ++i) { ... }
+
+// range(N) with BigInt (uses checked conversion):
+{ size_t __sz; if (__stop_0.to_size_checked(__sz)) __result.reserve(__sz); }
+```
+
+The `reserve()` is a no-regret optimization even with filters (over-reserves but
+never under-reserves). For 3-arg `range(start, stop, step)`, no `reserve()` is
+emitted since the element count cannot be cheaply computed.
+
+### range(N) with literal N -> Array (future)
+
+A further optimization could produce `Array[Int32, N]` instead of `list[Int32]`
+when N is a compile-time literal and there is no filter. This would eliminate heap
+allocation entirely. Deferred to Future Extensions due to sema/codegen complexity
+(type changes, PendingListType interaction, annotation conflicts).
 
 ---
 

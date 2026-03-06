@@ -12,6 +12,7 @@ std::vector<tpy::BigInt> make_bigints() {
     return [&]() {
         std::vector<tpy::BigInt> __result;
         auto& __obj_0 = items;
+        __result.reserve(__obj_0.size());
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -37,6 +38,7 @@ void main() {
     std::vector<tpy::BigInt> big = [&]() {
         std::vector<tpy::BigInt> __result;
         auto& __obj_0 = items;
+        __result.reserve(__obj_0.size());
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -52,6 +54,7 @@ void main() {
     std::vector<int64_t> wide = [&]() {
         std::vector<int64_t> __result;
         auto& __obj_1 = items;
+        __result.reserve(__obj_1.size());
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
@@ -72,6 +75,7 @@ void main() {
     std::vector<tpy::BigInt> doubled = [&]() {
         std::vector<tpy::BigInt> __result;
         auto& __obj_2 = items;
+        __result.reserve(__obj_2.size());
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
@@ -87,6 +91,7 @@ void main() {
     std::vector<tpy::BigInt> big_pos = [&]() {
         std::vector<tpy::BigInt> __result;
         auto& __obj_3 = items;
+        __result.reserve(__obj_3.size());
         auto __beg_3 = __obj_3.begin();
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
@@ -104,6 +109,7 @@ void main() {
     std::vector<int64_t> __tmp_1 = [&]() {
         std::vector<int64_t> __result;
         auto& __obj_4 = items;
+        __result.reserve(__obj_4.size());
         auto __beg_4 = __obj_4.begin();
         auto __end_4 = __obj_4.end();
         for (; __beg_4 != __end_4; ++__beg_4) {
@@ -118,6 +124,7 @@ void main() {
     std::vector<int32_t> same = [&]() {
         std::vector<int32_t> __result;
         auto& __obj_5 = items;
+        __result.reserve(__obj_5.size());
         auto __beg_5 = __obj_5.begin();
         auto __end_5 = __obj_5.end();
         for (; __beg_5 != __end_5; ++__beg_5) {

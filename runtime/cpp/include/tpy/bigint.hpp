@@ -602,6 +602,21 @@ public:
                 from_sign_mag(b_sign, std::move(adjusted))};
     }
 
+    // Try to convert to size_t for container pre-allocation.
+    // Returns false for negative values or values exceeding uint64_t range.
+    bool to_size_checked(size_t& out) const {
+        if (is_small()) {
+            int64_t v = small_value();
+            if (v < 0) return false;
+            out = static_cast<size_t>(v);
+            return true;
+        }
+        const HeapBig* p = heap_ptr();
+        if (p->sign < 0 || p->len > 1) return false;
+        out = (p->len == 0) ? 0 : static_cast<size_t>(p->limbs[0]);
+        return true;
+    }
+
 private:
     struct HeapBig {
         uint32_t len;     // Number of used limbs.

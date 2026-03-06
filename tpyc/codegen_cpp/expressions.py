@@ -10,7 +10,8 @@ from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, CharType,
-    NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, DictType, DictKeysViewType,
+    NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, DictType,
+    DictKeysViewType, DictValuesViewType, DictItemsViewType,
     PendingListType, ListRepeatType,
     SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     EnumType, IntEnumType, TupleType,
@@ -1821,6 +1822,9 @@ class ExpressionGenerator:
         obj_binding = "auto&" if is_lvalue else "auto"
 
         buf.write(f"{ind1}{obj_binding} __obj_{n} = {iterable_code};\n")
+        iterable_type = self.types.get_resolved_type(gen.iterable)
+        if self._is_sized_type(iterable_type):
+            buf.write(f"{ind1}__result.reserve(__obj_{n}.size());\n")
         buf.write(f"{ind1}auto __beg_{n} = __obj_{n}.begin();\n")
         buf.write(f"{ind1}auto __end_{n} = __obj_{n}.end();\n")
         buf.write(f"{ind1}for (; __beg_{n} != __end_{n}; ++__beg_{n}) {{\n")
@@ -1860,14 +1864,47 @@ class ExpressionGenerator:
         assert isinstance(range_call, TpyCall)
         nargs = len(range_call.args)
         cpp_elem = elem_type.to_cpp()
+        is_bigint = isinstance(elem_type, BigIntType)
 
         if nargs == 1:
-            stop = self.gen_expr_deref(range_call.args[0], elem_type)
-            buf.write(f"{ind1}for ({cpp_elem} {cpp_var} = 0; {cpp_var} < {stop}; ++{cpp_var}) {{\n")
+            stop_expr = self.gen_expr_deref(range_call.args[0], elem_type)
+            is_literal = isinstance(range_call.args[0], TpyIntLiteral)
+            if is_literal:
+                stop_var = stop_expr
+            else:
+                n = self.ctx.iter_counter
+                self.ctx.iter_counter += 1
+                stop_var = f"__stop_{n}"
+                buf.write(f"{ind1}const {cpp_elem} {stop_var} = {stop_expr};\n")
+            if is_bigint:
+                buf.write(f"{ind1}{{ size_t __sz; if ({stop_var}.to_size_checked(__sz)) __result.reserve(__sz); }}\n")
+            else:
+                buf.write(f"{ind1}if ({stop_var} > 0) __result.reserve(static_cast<size_t>({stop_var}));\n")
+            buf.write(f"{ind1}for ({cpp_elem} {cpp_var} = 0; {cpp_var} < {stop_var}; ++{cpp_var}) {{\n")
         elif nargs == 2:
-            start = self.gen_expr_deref(range_call.args[0], elem_type)
-            stop = self.gen_expr_deref(range_call.args[1], elem_type)
-            buf.write(f"{ind1}for ({cpp_elem} {cpp_var} = {start}; {cpp_var} < {stop}; ++{cpp_var}) {{\n")
+            start_expr = self.gen_expr_deref(range_call.args[0], elem_type)
+            stop_expr = self.gen_expr_deref(range_call.args[1], elem_type)
+            start_lit = isinstance(range_call.args[0], TpyIntLiteral)
+            stop_lit = isinstance(range_call.args[1], TpyIntLiteral)
+            if start_lit:
+                start_var = start_expr
+            else:
+                n = self.ctx.iter_counter
+                self.ctx.iter_counter += 1
+                start_var = f"__start_{n}"
+                buf.write(f"{ind1}const {cpp_elem} {start_var} = {start_expr};\n")
+            if stop_lit:
+                stop_var = stop_expr
+            else:
+                n = self.ctx.iter_counter
+                self.ctx.iter_counter += 1
+                stop_var = f"__stop_{n}"
+                buf.write(f"{ind1}const {cpp_elem} {stop_var} = {stop_expr};\n")
+            if is_bigint:
+                buf.write(f"{ind1}if ({stop_var} > {start_var}) {{ size_t __sz; if (({stop_var} - {start_var}).to_size_checked(__sz)) __result.reserve(__sz); }}\n")
+            else:
+                buf.write(f"{ind1}if ({stop_var} > {start_var}) __result.reserve(static_cast<size_t>({stop_var} - {start_var}));\n")
+            buf.write(f"{ind1}for ({cpp_elem} {cpp_var} = {start_var}; {cpp_var} < {stop_var}; ++{cpp_var}) {{\n")
         else:
             # 3-arg range: fall back to Range<T> begin/end
             self._gen_comp_begin_end_loop(buf, gen, elem_type, ind1, ind2, cpp_var, iterable_code)
@@ -1894,6 +1931,14 @@ class ExpressionGenerator:
             ret_type = self.types.get_resolved_type(expr)
             return not ret_type.is_value_type() and not isinstance(ret_type, OptionalType)
         return False
+
+    @staticmethod
+    def _is_sized_type(typ: TpyType) -> bool:
+        """Check if a type has .size() in C++ (all STL containers)."""
+        typ = unwrap_readonly(typ)
+        return isinstance(typ, (ListType, ArrayType, SpanType, DictType,
+                                DictKeysViewType, DictValuesViewType,
+                                DictItemsViewType))
 
     def _gen_tuple_literal(self, expr: TpyTupleLiteral, target_type: TpyType | None) -> str:
         """Generate tuple literal code."""

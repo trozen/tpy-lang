@@ -13,6 +13,7 @@ void main() {
     std::vector<int32_t> pos = [&]() {
         std::vector<int32_t> __result;
         auto& __obj_0 = data;
+        __result.reserve(__obj_0.size());
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -29,7 +30,9 @@ void main() {
     // 11:     evens = [x * x for x in range(10) if x % 2 == 0]
     std::vector<int32_t> evens = [&]() {
         std::vector<int32_t> __result;
-        for (int32_t x = 0; x < 10; ++x) {
+        const int32_t __stop_1 = 10;
+        if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
+        for (int32_t x = 0; x < __stop_1; ++x) {
             if (((tpy::mod_check<int32_t>(x, 2)) == 0)) {
                 __result.push_back((tpy::mul_check<int32_t>(x, x)));
             }
@@ -42,7 +45,9 @@ void main() {
     // 15:     result = [x for x in range(20) if x % 2 == 0 if x % 3 == 0]
     std::vector<int32_t> result = [&]() {
         std::vector<int32_t> __result;
-        for (int32_t x = 0; x < 20; ++x) {
+        const int32_t __stop_2 = 20;
+        if (__stop_2 > 0) __result.reserve(static_cast<size_t>(__stop_2));
+        for (int32_t x = 0; x < __stop_2; ++x) {
             if (((tpy::mod_check<int32_t>(x, 2)) == 0) && ((tpy::mod_check<int32_t>(x, 3)) == 0)) {
                 __result.push_back(x);
             }
@@ -57,11 +62,12 @@ void main() {
     // 20:     short = [w for w in words if len(w) <= 3]
     std::vector<std::string> short_ = [&]() {
         std::vector<std::string> __result;
-        auto& __obj_1 = words;
-        auto __beg_1 = __obj_1.begin();
-        auto __end_1 = __obj_1.end();
-        for (; __beg_1 != __end_1; ++__beg_1) {
-            std::string w = *__beg_1;
+        auto& __obj_3 = words;
+        __result.reserve(__obj_3.size());
+        auto __beg_3 = __obj_3.begin();
+        auto __end_3 = __obj_3.end();
+        for (; __beg_3 != __end_3; ++__beg_3) {
+            std::string w = *__beg_3;
             if ((tpy::__len__(w) <= 3)) {
                 __result.push_back(w);
             }
