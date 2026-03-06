@@ -37,7 +37,7 @@ class IterableHelper:
         - Has __iter__() returning an iterator type
         """
         # NativeIterable[T], OptIterator[T], Iterator[T], Iterable[T], ReadOnlySpanLike[T] protocol type
-        if is_protocol_type(typ) and typ.name in ("NativeIterable", "OptIterator", "Iterator", "Iterable", "ReadOnlySpanLike"):
+        if is_protocol_type(typ) and typ.qualified_name() in ("tpy.NativeIterable", "tpy.OptIterator", "typing.Iterator", "typing.Iterable", "tpy.ReadOnlySpanLike"):
             return True
         # Check if type extends NativeIterable or Iterable
         if record_extends_any(typ, "NativeIterable", self.ctx.registry):
@@ -60,19 +60,19 @@ class IterableHelper:
         For types extending NativeIterable[T] or OptIterator[T], returns T.
         """
         # Handle NativeIterable[T] protocol type
-        if is_protocol_type(iterable_type) and iterable_type.name == "NativeIterable":
+        if is_protocol_type(iterable_type) and iterable_type.qualified_name() == "tpy.NativeIterable":
             if iterable_type.type_args:
                 return iterable_type.type_args[0]
             return None
 
         # Handle OptIterator[T] protocol type
-        if is_protocol_type(iterable_type) and iterable_type.name == "OptIterator":
+        if is_protocol_type(iterable_type) and iterable_type.qualified_name() == "tpy.OptIterator":
             if iterable_type.type_args:
                 return iterable_type.type_args[0]
             return None
 
         # Handle Iterator[T], Iterable[T], ReadOnlySpanLike[T] protocol types
-        if is_protocol_type(iterable_type) and iterable_type.name in ("Iterator", "Iterable", "ReadOnlySpanLike"):
+        if is_protocol_type(iterable_type) and iterable_type.qualified_name() in ("typing.Iterator", "typing.Iterable", "tpy.ReadOnlySpanLike"):
             if iterable_type.type_args:
                 return iterable_type.type_args[0]
             return None

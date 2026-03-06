@@ -1774,17 +1774,17 @@ class StatementGenerator:
                 resolved_type = bound
 
         # Handle protocol-typed iterables (Iterator[T], Iterable[T])
-        if is_protocol_type(resolved_type) and resolved_type.name in ("Iterator", "Iterable"):
+        if is_protocol_type(resolved_type) and resolved_type.qualified_name() in ("typing.Iterator", "typing.Iterable"):
             elem_type = sema_elem or resolved_type.type_args[0]
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
-            if resolved_type.name == "Iterator":
+            if resolved_type.qualified_name() == "typing.Iterator":
                 self._gen_adapted_loop(out, stmt, indent, iterable, elem_type, "iter_adapt")
             else:
                 self._gen_adapted_loop(out, stmt, indent, iterable, elem_type, "iter_adapt_container")
             return
 
         # Handle ReadOnlySpanLike[T] protocol-typed iterables (uses tpy::as_span)
-        if is_protocol_type(resolved_type) and resolved_type.name == "ReadOnlySpanLike":
+        if is_protocol_type(resolved_type) and resolved_type.qualified_name() == "tpy.ReadOnlySpanLike":
             elem_type = sema_elem or resolved_type.type_args[0]
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
             self._gen_captured_call_loop(out, stmt, indent, iterable, elem_type,
@@ -1839,7 +1839,7 @@ class StatementGenerator:
         if sema_elem is not None:
             elem_type = sema_elem
         elif is_protocol_type(iterable_type):
-            if iterable_type.name == "NativeIterable" and iterable_type.type_args:
+            if iterable_type.qualified_name() == "tpy.NativeIterable" and iterable_type.type_args:
                 elem_type = iterable_type.type_args[0]
             else:
                 elem_type = None

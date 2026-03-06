@@ -300,18 +300,20 @@ def lookup_protocol(name: str) -> ProtocolDef | None:
     return None
 
 
-def get_all_protocols() -> list[ProtocolDef]:
-    """Return all registered builtin protocols across all modules."""
-    result = []
+def get_all_protocols() -> list[tuple[ProtocolDef, str]]:
+    """Return all registered builtin protocols with their module names."""
+    result: list[tuple[ProtocolDef, str]] = []
     for module in _all_modules():
-        result.extend(module.protocols.values())
+        for pdef in module.protocols.values():
+            result.append((pdef, module.name))
     # Also include typing module protocols
     typing_mod = get_typing()
-    result.extend(typing_mod.protocols.values())
+    for pdef in typing_mod.protocols.values():
+        result.append((pdef, typing_mod.name))
     return result
 
 
-def protocol_def_to_info(pdef: ProtocolDef) -> ProtocolInfo:
+def protocol_def_to_info(pdef: ProtocolDef, module_name: str = "") -> ProtocolInfo:
     """Convert builtin ProtocolDef to unified ProtocolInfo."""
     methods = []
     for name, method_def in pdef.methods.items():
@@ -331,6 +333,7 @@ def protocol_def_to_info(pdef: ProtocolDef) -> ProtocolInfo:
         cpp_concept=pdef.cpp_concept,
         is_marker=len(pdef.methods) == 0,
         is_readonly=pdef.is_readonly,
+        module=module_name,
     )
 
 
@@ -707,7 +710,7 @@ def get_native_iterator_element_type(tpy_type: "TpyType", registry: "TypeRegistr
     from tpyc.typesys import is_protocol_type
 
     # Direct OptIterator[T] protocol type
-    if is_protocol_type(tpy_type) and tpy_type.name == "OptIterator":
+    if is_protocol_type(tpy_type) and tpy_type.qualified_name() == "tpy.OptIterator":
         if tpy_type.type_args:
             return tpy_type.type_args[0]
         return None

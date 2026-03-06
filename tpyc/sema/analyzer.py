@@ -146,8 +146,8 @@ class SemanticAnalyzer:
         # Register all builtins at init time, before user modules are registered
         # User modules registered later (in Compiler._analyze_module) will overwrite
         # builtins with the same name, allowing user code to shadow math/time/sys.
-        for protocol_def in builtin_modules.get_all_protocols():
-            info = builtin_modules.protocol_def_to_info(protocol_def)
+        for protocol_def, module_name in builtin_modules.get_all_protocols():
+            info = builtin_modules.protocol_def_to_info(protocol_def, module_name)
             self.ctx.registry.register_protocol(info)
         self.registrar.register_builtin_types()
         self.registrar.register_builtin_functions()

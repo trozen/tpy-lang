@@ -722,7 +722,7 @@ class TypeRegistrar:
         # ValueType marker: set flag (field validation deferred to a second pass
         # so that all ValueType records in the module are registered first)
         for protocol in record_info.implemented_protocols:
-            if protocol.name == "ValueType":
+            if protocol.qualified_name() == "tpy.ValueType":
                 if record_info.is_nocopy:
                     raise SemanticError(
                         f"@nocopy class '{record.name}' cannot implement ValueType "
@@ -866,6 +866,7 @@ class TypeRegistrar:
             type_params=protocol.type_params,
             parent_protocols=protocol.parent_protocols,
             is_dynamic=protocol.is_dynamic,
+            module=self.ctx.module_name,
         )
         self.ctx.registry.register_protocol(info)
 

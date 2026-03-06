@@ -31,6 +31,7 @@ class TypeParamKind(Enum):
 _native_cpp_names: dict[str, str] = {}
 _union_alias_names: dict[tuple['TpyType', ...], str] = {}
 _value_type_record_names: set[str] = set()
+_protocol_modules: dict[str, str] = {}  # protocol_name -> module_name
 
 
 def register_native_cpp_name(py_name: str, cpp_name: str) -> None:
@@ -48,6 +49,15 @@ def register_value_type_record(name: str) -> None:
     _value_type_record_names.add(name)
 
 
+def register_protocol_module(protocol_name: str, module_name: str) -> None:
+    """Register the module that defines a protocol, for qualified_name() lookups.
+
+    Builtins are registered first and never overwritten by user protocols.
+    """
+    if protocol_name not in _protocol_modules:
+        _protocol_modules[protocol_name] = module_name
+
+
 def clear_codegen_state() -> None:
     """Clear per-module codegen state (called before each module's codegen).
 
@@ -63,6 +73,7 @@ def clear_all_compilation_state() -> None:
     _native_cpp_names.clear()
     _union_alias_names.clear()
     _value_type_record_names.clear()
+    _protocol_modules.clear()
 
 
 @dataclass(frozen=True)
@@ -584,7 +595,7 @@ class TypeParamRef(TpyType):
         if self.kind == TypeParamKind.INT:
             # INT type params are std::size_t values
             return True
-        if self.bound is not None and isinstance(self.bound, NamedType) and self.bound.name == "ValueType":
+        if self.bound is not None and isinstance(self.bound, NamedType) and self.bound.qualified_name() == "tpy.ValueType":
             return True
         # Unknown at definition time - the trait decides at C++ instantiation
         return False
@@ -634,7 +645,7 @@ class NamedType(TpyType):
     name: str
     type_args: tuple['TpyType | int', ...] = ()
     is_protocol: bool = False
-    _module_qname: str | None = None
+    _module_qname: str | None = field(default=None, compare=False, hash=False)
     is_dynamic_protocol: bool = field(default=False, compare=False, hash=False)
 
     @property
@@ -653,7 +664,7 @@ class NamedType(TpyType):
 
         Transitional -- should go away when builtin/user lookup paths are unified.
         """
-        return self._module_qname is not None
+        return self._module_qname is not None and not self.is_protocol
 
     def with_protocol_flag(self, is_protocol: bool) -> 'NamedType':
         """Return a copy with is_protocol set."""
@@ -693,7 +704,9 @@ class NamedType(TpyType):
         if self._module_qname:
             return self._module_qname
         if self.is_protocol:
-            return f"typing.{self.name}"
+            mod = _protocol_modules.get(self.name)
+            if mod:
+                return f"{mod}.{self.name}"
         return None
 
     def is_value_type(self) -> bool:
@@ -1700,7 +1713,7 @@ def get_covariant_params(record_info: 'RecordInfo') -> set[str]:
     """Get type param names marked covariant via Covariant[T] protocol."""
     result: set[str] = set()
     for proto in record_info.implemented_protocols:
-        if proto.name == "Covariant" and proto.type_args:
+        if proto.qualified_name() == "tpy.Covariant" and proto.type_args:
             for arg in proto.type_args:
                 if isinstance(arg, TypeParamRef):
                     result.add(arg.name)
@@ -1949,6 +1962,7 @@ class ProtocolInfo:
     is_marker: bool = False  # Marker protocols require explicit extends
     is_readonly: bool = False  # All methods are read-only (safe for readonly[T] args)
     is_dynamic: bool = False  # Supports runtime dispatch via base/adapter
+    module: str = ""  # Module that defines this protocol (e.g. "typing", "tpy")
 
 
 @dataclass
@@ -2028,6 +2042,8 @@ class TypeRegistry:
                   Used for imported protocols that may have a local alias.
         """
         self.protocols[name or info.name] = info
+        if info.module:
+            register_protocol_module(info.name, info.module)
 
     def register_enum(self, info: 'EnumType', name: str | None = None) -> None:
         """Register an enum type.

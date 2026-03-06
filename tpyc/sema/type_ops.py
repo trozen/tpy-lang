@@ -56,8 +56,13 @@ class TypeOperations:
             protocol_info = self.ctx.registry.get_protocol(typ.name)
             resolved_is_protocol = protocol_info is not None
             resolved_is_dynamic = bool(protocol_info and protocol_info.is_dynamic)
+            # Set _module_qname for protocols from their ProtocolInfo.module
+            resolved_qname = typ._module_qname
+            if resolved_is_protocol and not resolved_qname and protocol_info and protocol_info.module:
+                resolved_qname = f"{protocol_info.module}.{typ.name}"
             needs_flag_update = (typ.is_protocol != resolved_is_protocol
-                                 or typ.is_dynamic_protocol != resolved_is_dynamic)
+                                 or typ.is_dynamic_protocol != resolved_is_dynamic
+                                 or typ._module_qname != resolved_qname)
             # Recursively resolve type arguments
             if typ.type_args:
                 new_args = tuple(
@@ -71,15 +76,15 @@ class TypeOperations:
                 )
                 if args_changed or needs_flag_update:
                     if needs_flag_update:
-                        # Protocol flag changed -- only for user records/protocols
+                        # Protocol/qname flag changed -- only for user records/protocols
                         return NamedType(typ.name, new_args, resolved_is_protocol,
-                                         typ._module_qname, resolved_is_dynamic)
+                                         resolved_qname, resolved_is_dynamic)
                     # Only type_args changed -- use with_inner_types to preserve subclass
                     new_inner = tuple(a for a in new_args if isinstance(a, TpyType))
                     return typ.with_inner_types(new_inner)
             elif needs_flag_update:
                 return NamedType(typ.name, typ.type_args, resolved_is_protocol,
-                                 typ._module_qname, resolved_is_dynamic)
+                                 resolved_qname, resolved_is_dynamic)
         elif isinstance(typ, PtrType):
             resolved_pointee = self.resolve_type(typ.pointee)
             if resolved_pointee is not typ.pointee:
@@ -505,11 +510,11 @@ class TypeOperations:
         from tpyc import modules as builtin_modules
 
         protocol_name = param_type.name
-        if protocol_name == "Iterator":
+        if param_type.qualified_name() == "typing.Iterator":
             # Iterator[T] needs special handling: types may implement
             # __next_opt__() (OptIterator) instead of __next__() (Iterator).
             # Check OptIterator conformance as a bridge.
-            if is_protocol_type(arg_type) and arg_type.name == "Iterator" and arg_type.type_args:
+            if is_protocol_type(arg_type) and arg_type.qualified_name() == "typing.Iterator" and arg_type.type_args:
                 elem_type = arg_type.type_args[0]
             else:
                 elem_type = builtin_modules.get_native_iterator_element_type(
@@ -523,7 +528,7 @@ class TypeOperations:
         else:
             # General path: direct protocol match, extends declarations,
             # then structural inference from method signatures.
-            if is_protocol_type(arg_type) and arg_type.name == protocol_name and arg_type.type_args:
+            if is_protocol_type(arg_type) and arg_type.qualified_name() == param_type.qualified_name() and arg_type.type_args:
                 elem_type = arg_type.type_args[0]
             else:
                 elem_type = builtin_modules.get_extends_protocol_type_arg(

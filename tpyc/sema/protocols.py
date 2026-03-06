@@ -82,7 +82,7 @@ class ProtocolChecker:
 
         # Enum/IntEnum: hashable and comparable at C++ level
         if isinstance(actual, (EnumType, IntEnumType)):
-            if protocol.name in ("Hashable", "Comparable"):
+            if protocol.qualified_name() in ("tpy.Hashable", "tpy.Comparable"):
                 return True
 
         # Bounded type parameter: T: Sized conforms to Sized (and any protocol its bound conforms to)
@@ -109,10 +109,10 @@ class ProtocolChecker:
         # Marker protocols require explicit extends declaration
         if protocol_info.is_marker:
             # ValueType: any type with value semantics conforms implicitly
-            if protocol.name == "ValueType" and actual.is_value_type():
+            if protocol.qualified_name() == "tpy.ValueType" and actual.is_value_type():
                 return True
             # Default: types that support default construction
-            if protocol.name == "Default" and self._is_default_constructible(actual):
+            if protocol.qualified_name() == "tpy.Default" and self._is_default_constructible(actual):
                 return True
             return self._check_record_extends(actual, protocol)
 

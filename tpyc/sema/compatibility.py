@@ -311,7 +311,7 @@ class TypeCompatibility:
                             coercion = SPAN_METHOD_TO_SPAN
         if coercion is None:
             # ReadOnlySpanLike[T] protocol -> ReadOnlySpan[T] coercion via __span__()
-            if (is_protocol_type(actual) and actual.name == "ReadOnlySpanLike"
+            if (is_protocol_type(actual) and actual.qualified_name() == "tpy.ReadOnlySpanLike"
                     and actual.type_args and isinstance(expected, SpanType)
                     and expected.is_readonly and actual.type_args[0] == expected.element_type):
                 if ctx == CoercionContext.ARG:
@@ -473,7 +473,7 @@ class TypeCompatibility:
         if not self.type_ops:
             return False
         bound = self.type_ops.get_type_param_bound(typ.name)
-        return bound is not None and isinstance(bound, NamedType) and bound.name == "ValueType"
+        return bound is not None and isinstance(bound, NamedType) and bound.qualified_name() == "tpy.ValueType"
 
     def _check_covariant_args(
         self, record_info: 'RecordInfo', covariant: set[str],

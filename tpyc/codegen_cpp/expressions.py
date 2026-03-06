@@ -1760,7 +1760,7 @@ class ExpressionGenerator:
         if isinstance(actual_type, SpanType):
             return gen_inner
         # ReadOnlySpanLike[T] protocol type: always uses as_span (readonly)
-        if is_protocol_type(actual_type) and actual_type.name == "ReadOnlySpanLike":
+        if is_protocol_type(actual_type) and actual_type.qualified_name() == "tpy.ReadOnlySpanLike":
             return f"tpy::as_span({gen_inner})"
         # User type with __span__() method: call it directly
         if isinstance(actual_type, NamedType) and actual_type.is_user_record:
