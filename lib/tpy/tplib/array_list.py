@@ -1,14 +1,12 @@
 # ArrayList[T, N] -- fixed-capacity list with stack-allocated uninitialized storage.
 # Elements are placement-constructed on append and explicitly destroyed on pop/clear/__del__.
 #
-# TODO: to fully replace builtin StaticList[T, N]:
-# - Constructor: accept items: Iterable[T] | None = None. Inside the body, use
-#   isinstance(items, Sized) to detect sized inputs (Span, list) and preallocate.
-#   Needs: Optional[StaticProtocol] codegen (B14), isinstance on static protocols (B15).
-#   Future: with fixed-extent Span[T, N], the constructor could accept Span[T, N]
-#   (same N as the class) and deduce both T and N from the argument, enabling
-#   `ArrayList(span)` without explicit type args. Needs: Span[T, N] type, constructor
-#   type arg inference from arguments, int type param deduction.
+# TODO: construct with fixed-extent Span[T, N] (deduce both T and N from the argument)
+# TODO: __contains__(value) -> bool (enables `x in list`)
+# TODO: __eq__ (element-wise comparison)
+# TODO: swap(i, j) -- O(1) element swap (3 moves vs take+take+init+init)
+# TODO: truncate(new_len) -- drop tail elements via drop_n
+# TODO: __repr__
 from __future__ import annotations
 from typing import MutableSequence, Iterable
 from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, Span, ReadOnlySpanLike, copy, Default, make_default, span
@@ -22,15 +20,8 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
     def __init__(self, items: ReadOnlySpanLike[T] | Iterable[T] | None = None) -> None:
         self._storage = UninitArrayStorage[T, N]()
         self._size = 0
-        if isinstance(items, ReadOnlySpanLike):
-            items_span = span(items)
-            size = len(items_span)
-            assert size <= self._storage.capacity()
-            self._storage.init_from_span(items_span)
-            self._size = size
-        elif isinstance(items, Iterable):
-            for item in items:
-                self.append(copy(item))
+        if items is not None:
+            self.extend(items)
 
     def __del__(self) -> None:
         self._storage.drop_n(0, UInt32.trunc(self._size))
@@ -121,6 +112,17 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
 
     def __span__(self) -> Span[T]:
         return self._storage.ptr().span(self._size)
+
+    def extend(self, items: ReadOnlySpanLike[T] | Iterable[T]) -> None:
+        if isinstance(items, ReadOnlySpanLike):
+            items_span = span(items)
+            size = len(items_span)
+            assert self._size + size <= self._storage.capacity()
+            self._storage.init_from_span(UInt32.trunc(self._size), items_span)
+            self._size += size
+        elif isinstance(items, Iterable):
+            for item in items:
+                self.append(copy(item))
 
     def clear(self) -> None:
         self._storage.drop_n(0, UInt32.trunc(self._size))

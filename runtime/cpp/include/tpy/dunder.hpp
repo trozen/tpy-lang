@@ -21,6 +21,8 @@
 #include <type_traits>
 #include <vector>
 
+#include "bigint.hpp"
+#include "format.hpp"
 #include "static_list.hpp"
 #include "container_ops.hpp"
 #include "ordered_map.hpp"
@@ -277,6 +279,23 @@ bool __bool__(const T& x) {
 // =============================================
 // tpy::__str__
 // =============================================
+
+// Builtin type overloads (needed for generic T contexts)
+inline std::string __str__(bool x) { return x ? "True" : "False"; }
+inline std::string __str__(char x) { return std::string(1, x); }
+inline std::string __str__(int8_t x) { return std::to_string(x); }
+inline std::string __str__(int16_t x) { return std::to_string(x); }
+inline std::string __str__(int32_t x) { return std::to_string(x); }
+inline std::string __str__(int64_t x) { return std::to_string(x); }
+inline std::string __str__(uint8_t x) { return std::to_string(x); }
+inline std::string __str__(uint16_t x) { return std::to_string(x); }
+inline std::string __str__(uint32_t x) { return std::to_string(x); }
+inline std::string __str__(uint64_t x) { return std::to_string(x); }
+inline std::string __str__(double x) { return format_float(x); }
+inline std::string __str__(float x) { return format_float(static_cast<double>(x)); }
+inline std::string __str__(const std::string& x) { return x; }
+inline std::string __str__(std::string_view x) { return std::string(x); }
+inline std::string __str__(const BigInt& x) { return x.to_string(); }
 
 // Default template: user types that define __str__() method
 template<typename T>

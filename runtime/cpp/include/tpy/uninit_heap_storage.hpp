@@ -184,23 +184,23 @@ public:
 
     uint32_t capacity() const { return capacity_; }
 
-    void init_from_span(std::span<const T> src) {
+    void init_from_span(uint32_t start, std::span<const T> src) {
 #ifndef NDEBUG
-        if (src.size() > capacity_) {
+        if (start + src.size() > capacity_) {
             tpy_panic("UninitHeapStorage::init_from_span: span exceeds capacity");
         }
         for (std::size_t i = 0; i < src.size(); ++i) {
-            if (alive_[i]) {
+            if (alive_[start + i]) {
                 tpy_panic("UninitHeapStorage::init_from_span on already-alive slot");
             }
-            alive_[i] = true;
+            alive_[start + i] = true;
         }
 #endif
         if constexpr (std::is_trivially_copyable_v<T>) {
-            std::memcpy(static_cast<void*>(&data_[0]), src.data(), src.size() * sizeof(T));
+            std::memcpy(static_cast<void*>(&data_[start]), src.data(), src.size() * sizeof(T));
         } else {
             for (std::size_t i = 0; i < src.size(); ++i) {
-                ::new (static_cast<void*>(&data_[i])) T(src[i]);
+                ::new (static_cast<void*>(&data_[start + i])) T(src[i]);
             }
         }
     }

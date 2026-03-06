@@ -109,7 +109,7 @@ class ExpressionGenerator:
                 return f"&({tmp})"
             return f"&({gen})"
         # Required multi-protocol union: pass by reference, template deduction works.
-        return self.gen_expr(arg)
+        return self.gen_expr_deref(arg)
 
     def _gen_optional_ptr_arg(self, arg: TpyExpr, ptype: TpyType) -> str | None:
         """Generate argument for a non-protocol Optional pointer-repr param, or None if not applicable."""

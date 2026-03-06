@@ -74,9 +74,9 @@ def init_module() -> BuiltinModule:
             )],
             # Bulk operations
             "init_from_span": [MethodDef(
-                params=[ParamDef("src", SpanType(T, is_readonly=True))],
+                params=[ParamDef("start", UINT32), ParamDef("src", SpanType(T, is_readonly=True))],
                 returns=VOID,
-                cpp="{self}.init_from_span({0})",
+                cpp="{self}.init_from_span({0}, {1})",
             )],
             "drop_n": [MethodDef(
                 params=[ParamDef("start", UINT32), ParamDef("count", UINT32)],

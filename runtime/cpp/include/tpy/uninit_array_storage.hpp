@@ -158,23 +158,23 @@ public:
 
     static constexpr uint32_t capacity() { return static_cast<uint32_t>(N); }
 
-    void init_from_span(std::span<const T> src) {
+    void init_from_span(uint32_t start, std::span<const T> src) {
 #ifndef NDEBUG
-        if (src.size() > N) {
+        if (start + src.size() > N) {
             tpy_panic("UninitArrayStorage::init_from_span: span exceeds capacity");
         }
         for (std::size_t i = 0; i < src.size(); ++i) {
-            if (alive_.test(i)) {
+            if (alive_.test(start + i)) {
                 tpy_panic("UninitArrayStorage::init_from_span on already-alive slot");
             }
-            alive_.set(i);
+            alive_.set(start + i);
         }
 #endif
         if constexpr (std::is_trivially_copyable_v<T>) {
-            std::memcpy(static_cast<void*>(&elems_[0]), src.data(), src.size() * sizeof(T));
+            std::memcpy(static_cast<void*>(&elems_[start]), src.data(), src.size() * sizeof(T));
         } else {
             for (std::size_t i = 0; i < src.size(); ++i) {
-                ::new (static_cast<void*>(&elems_[i])) T(src[i]);
+                ::new (static_cast<void*>(&elems_[start + i])) T(src[i]);
             }
         }
     }

@@ -72,9 +72,9 @@ class UninitArrayStorage(metaclass=_StorageMeta):
     def capacity(self) -> int:
         return self._resolved_capacity
 
-    def init_from_span(self, src) -> None:
+    def init_from_span(self, start: int, src) -> None:
         for i, val in enumerate(src):
-            self._slots[i] = val
+            self._slots[start + i] = val
 
     def drop_n(self, start: int, count: int) -> None:
         for i in range(start, start + count):
@@ -133,9 +133,9 @@ class UninitHeapStorage(metaclass=_StorageMeta):
     def capacity(self) -> int:
         return self._capacity
 
-    def init_from_span(self, src) -> None:
+    def init_from_span(self, start: int, src) -> None:
         for i, val in enumerate(src):
-            self._slots[i] = val
+            self._slots[start + i] = val
 
     def drop_n(self, start: int, count: int) -> None:
         for i in range(start, start + count):
