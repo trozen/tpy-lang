@@ -35,6 +35,9 @@ class MethodDef:
     is_noalloc: bool = False
     is_readonly: bool = False
     is_static: bool = False
+    # Per-method type params and bounds (for constraining class-level type params)
+    type_params: list[str] = field(default_factory=list)
+    type_param_bounds: dict[str, "NamedType"] = field(default_factory=dict)
 
 
 @dataclass
@@ -359,6 +362,8 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
                 is_noalloc=method.is_noalloc,
                 is_readonly=method.is_readonly or resolved_readonly,
                 cpp_template=method.cpp,
+                type_params=method.type_params,
+                type_param_bounds=method.type_param_bounds,
             )
             for method in overloads
         ]
@@ -643,6 +648,8 @@ def resolve_method(method: MethodDef, type_params: dict[str, "TpyType"]) -> Meth
         cpp=method.cpp,
         is_noalloc=method.is_noalloc,
         is_readonly=method.is_readonly,
+        type_params=method.type_params,
+        type_param_bounds=method.type_param_bounds,
     )
 
 

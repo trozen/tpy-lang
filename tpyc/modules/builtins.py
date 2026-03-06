@@ -322,6 +322,8 @@ def init_module() -> BuiltinModule:
             params=[],
             returns=VOID,
             cpp="std::stable_sort({self}.begin(), {self}.end())",  # stable to match Python
+            type_params=["T"],
+            type_param_bounds={"T": NamedType("Comparable", is_protocol=True)},
         )],
         "copy": [MethodDef(
             params=[],
