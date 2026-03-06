@@ -23,13 +23,13 @@ No external C/C++ libraries are required by the runtime. A C++23 compiler is eno
 uv sync
 
 # Compile and run a program
-tpyc -x examples/hello.py
+uv run tpyc -x examples/hello.py
 
 # Release build (optimized)
-tpyc -xO examples/hello.py
+uv run tpyc -xO examples/hello.py
 
 # Interactive REPL
-tpyc -i
+uv run tpyc -i
 ```
 
 ## CLI Reference
@@ -44,6 +44,7 @@ Options:
   -i, --repl        Start interactive REPL
   -o <dir>          Output directory (default: __tpyc__/ next to source)
   --dump-code       Print generated C++ to stdout (no build)
+  --print-types     Print built-in type documentation (pipe to `glow -p` for formatting)
   --default-int     Default type for unannotated integer literals: Int32|Int64|BigInt (default: Int32)
   --emit-source     Embed Python source lines as comments in generated C++
   -L <path>         Extra library search path (can be repeated)
@@ -57,13 +58,13 @@ Examples:
 
 ```bash
 # Performance-first default (same as implicit default)
-tpyc -x --default-int=Int32 examples/hello.py
+uv run tpyc -x --default-int=Int32 examples/hello.py
 
 # CPython-like unbounded integer behavior for unannotated literals
-tpyc -x --default-int=BigInt examples/hello.py
+uv run tpyc -x --default-int=BigInt examples/hello.py
 
 # Extra library search paths
-tpyc -x -L /my/libs examples/main.py
+uv run tpyc -x -L /my/libs examples/main.py
 ```
 
 ## Testing
@@ -81,7 +82,7 @@ uv run pytest -k hello
 For pretty printing:
 
 ```
-tpyc --print-types | glow -p
+uv run tpyc --print-types | glow -p
 ```
 
 ## Manual Build
@@ -89,7 +90,7 @@ tpyc --print-types | glow -p
 If you need to compile the generated C++ manually:
 
 ```bash
-tpyc examples/hello.py -o out/
-g++ -std=c++23 -I runtime -o out/program out/hello.d/hello.cpp
-./out/program
+uv run tpyc examples/hello.py -o out/
+g++ -std=c++23 -I runtime/cpp/include -o out/hello.d/hello out/hello.d/src/hello.cpp
+./out/hello.d/hello
 ```

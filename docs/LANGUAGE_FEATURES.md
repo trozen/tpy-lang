@@ -2540,7 +2540,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 ### Arithmetic
 - **Working**: `+`, `-`, `*`, `//`, `%`, `/`, unary `-`
 - **Working**: `**` (power) for `int`, `Int32`, and `float`
-- **Planned**: `**` with negative integer exponent (e.g., `2 ** -3`) - use `2.0 ** -3` instead
+- **Working**: `**` with negative integer exponent (e.g., `2 ** -3`) - compiles but panics at runtime (use `2.0 ** -3` for float result)
 
 ### Comparison
 - **Working**: `==`, `!=`, `<`, `<=`, `>`, `>=`
@@ -3442,7 +3442,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `int(float)` → truncates toward zero, panics on NaN/infinity
 - **Working**: `float(int)`, `float(Int32)` → converts to float
 - **Working**: `str()` → string conversions for scalars, containers, and Stringable/Representable types (see below)
-- **Open**: `int(str)` → string-to-int parsing
+- **Working**: `int(str)` → string-to-int parsing (via `BigInt::from_str`)
 - **Working**: `iter(x)` → calls `x.__iter__()`, returns `Iterator[T]`
 - **Working**: `try_next(it)` → calls `it.__next_opt__()`, returns `T | None` (safe iterator advancement)
 - **Working**: `make_default[T]()` / `make_default()` → default-constructs `T` (maps to `T{}` in C++). Requires `T: Default`. Type can be explicit or inferred from context. Portable alternative to `T()`.

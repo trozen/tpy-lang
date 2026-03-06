@@ -130,7 +130,10 @@ tests/
 │   ├── assert/               # assert statements, narrowing integration
 │   ├── bool/                 # bool type and conversion
 │   ├── builtins/             # Built-in functions, stdlib modules
+│   ├── calls/                # Function calls, argument passing
 │   ├── control_flow/         # if/else, for loops, break/continue
+│   ├── defaults/             # Default argument values
+│   ├── dict/                 # Dict type, subscript, methods
 │   ├── enum/                 # Enum types, auto(), cross-module, comparison
 │   ├── float/                # Float operations
 │   ├── generics/             # Generic types, functions, inference, bounds
@@ -139,8 +142,11 @@ tests/
 │   ├── inference/            # Type inference, variable type deduction
 │   ├── inheritance/          # Class inheritance, super calls, method override
 │   ├── int/                  # int, Int8-64, UInt8-64, BigInt
+│   ├── int_default_override/ # --default-int flag behavior
 │   ├── iterators/            # Iterators, range, __iter__/__next__, NativeIterable
+│   ├── kwargs/               # Keyword arguments
 │   ├── list/                 # List, container methods
+│   ├── native/               # Native C++ interop (@native decorator)
 │   ├── none_safety/          # Optional types, narrowing
 │   ├── operators/            # Operators, coercion, assignment, subscript
 │   ├── auto_move/            # Auto-move at last use, forwarding refs
@@ -150,7 +156,8 @@ tests/
 │   ├── records/              # Class/record methods, dunder, staticmethod
 │   ├── returns/              # Return value semantics
 │   ├── str/                  # str, Char, string operations
-│   └── tuple/                # Tuple types, access, generics
+│   ├── tuple/                # Tuple types, access, generics
+│   └── union/                # Union types (A | B), variant codegen
 │       ├── {name}/           # Success test
 │       ├── error_{name}/     # Compilation error test
 │       └── panic_{name}/     # Runtime panic test
@@ -219,7 +226,7 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | Module | Purpose |
 |--------|---------|
 | `cli.py` | CLI entry point, argument parsing, error handling |
-| `parse.py` | Uses Python's `ast` module to build TurboPython AST nodes |
+| `parse/` | Parser package: `parser.py` (AST builder using Python's `ast`), `nodes.py` (TurboPython AST node definitions), `imports.py` (import resolution helpers) |
 | `typesys.py` | Type definitions (Int32, BigInt, Float, bool, Void, Str, Char, Record, Ptr, ReadOnlyPtr, Own, Optional, List, Array, Span, Tuple) and TypeRegistry |
 | `sema/` | Multi-pass semantic analysis (see below) |
 | `codegen_cpp/` | C++ code generation (see below) |
@@ -227,6 +234,9 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | `modules/` | Built-in function/type definitions and module resolution (see below) |
 | `namespace.py` | Unified namespace system for name resolution |
 | `coercions.py` | Type coercion rules (numeric widening, etc.) |
+| `liveness.py` | Last-use liveness analysis for auto-move optimization |
+| `prescan.py` | Pre-scan utilities for function bodies |
+| `dump_types.py` | Type documentation generation (`--print-types`) |
 | `repl.py` | Interactive REPL implementation |
 
 ### Semantic Analysis (`tpyc/sema/`)
@@ -246,7 +256,7 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | `registration.py` | Symbol registration and scope binding |
 | `scope_tracker.py` | Variable scope tracking |
 | `init_tracker.py` | Variable initialization tracking |
-| `reassignment_inference.py` | Type inference for reassigned variables |
+| `local_deduction.py` | Type deduction for reassigned variables |
 | `list_literals.py` | List literal type inference |
 | `numeric_lattice.py` | Numeric type lattice for inference |
 | `narrowing.py` | Optional narrowing tracker (None-safety flow analysis) |
@@ -283,6 +293,8 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | `math.py` | `math` module |
 | `sys.py` | `sys` module |
 | `time.py` | `time` module |
+| `dataclasses.py` | `dataclasses` module (decorator, frozen, order, etc.) |
+| `enum.py` | `enum` module (Enum, auto(), comparison) |
 
 ### Runtime (`runtime/`)
 
@@ -307,6 +319,11 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `uninit_array_storage.hpp` | `UninitArrayStorage<T, N>` inline uninitialized storage |
 | `uninit_heap_storage.hpp` | `UninitHeapStorage<T>` heap-allocated uninitialized storage |
 | `system.hpp` | `time_*`, `sys_argv` |
+| `builtins.hpp` | Runtime support for `round()`, `divmod()`, and related builtins |
+| `enum.hpp` | `EnumUtil<T>` primary template for enum name/value/members support |
+| `dynamic.hpp` | `Adapter<Base, T>` and `RefAdapter<Base, T>` for `@dynamic` protocols |
+| `iterable_ops.hpp` | Non-range overloads for container operations (`list_extend`, `str_join`, etc.) |
+| `iter_adapt.hpp` | Wraps `__next_opt__()` types into C++ input iterators (begin/end) |
 
 Generated code requires C++23 (for `std::ranges` concepts).
 
