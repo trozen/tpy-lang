@@ -26,45 +26,33 @@ void takes_array(std::array<int32_t, 3>& x) {
     std::cout << tpy::__getitem__(x, 0) << "\n";
 }
 
-// 14: def takes_static(x: StaticList[Int32, 10]) -> None:
-void takes_static(StaticList<int32_t, 10>& x) {
-    // 15:     x.append(Int32(1))
-    x.push_back(1);
-    // 16:     print(len(x))
-    std::cout << tpy::__len__(x) << "\n";
-}
-
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // 18: # Empty list literals
-    // 19: takes_list([])
+    // 14: # Empty list literals
+    // 15: takes_list([])
     std::vector<tpy::BigInt> __tmp_1 = std::vector<tpy::BigInt>{};
     takes_list(__tmp_1);
-    // 20: takes_list_int32([])
+    // 16: takes_list_int32([])
     std::vector<int32_t> __tmp_2 = std::vector<int32_t>{};
     takes_list_int32(__tmp_2);
-    // 22: # Empty list constructors
-    // 23: takes_list(list())
+    // 18: # Empty list constructors
+    // 19: takes_list(list())
     std::vector<tpy::BigInt> __tmp_3 = std::vector<tpy::BigInt>();
     takes_list(__tmp_3);
-    // 24: takes_list_int32(list())
+    // 20: takes_list_int32(list())
     std::vector<int32_t> __tmp_4 = std::vector<int32_t>();
     takes_list_int32(__tmp_4);
-    // 26: # Non-empty list literals
-    // 27: takes_list([1, 2, 3])
+    // 22: # Non-empty list literals
+    // 23: takes_list([1, 2, 3])
     std::vector<tpy::BigInt> __tmp_5 = {1, 2, 3};
     takes_list(__tmp_5);
-    // 29: # Array literals
-    // 30: takes_array([Int32(10), Int32(20), Int32(30)])
+    // 25: # Array literals
+    // 26: takes_array([Int32(10), Int32(20), Int32(30)])
     std::array<int32_t, 3> __tmp_6 = {10, 20, 30};
     takes_array(__tmp_6);
-    // 32: # StaticList constructors
-    // 33: takes_static(StaticList[Int32, 10]())
-    StaticList<int32_t, 10> __tmp_7 = StaticList<int32_t, 10>();
-    takes_static(__tmp_7);
 }
 
 } // namespace tpy_user::main

@@ -4,59 +4,61 @@
 namespace tpy_user::main {
 
 
-// 4: def from_list() -> None:
+// 5: def from_list() -> None:
 void from_list() {
-    // 5:     data: list[Int32] = [1, 2, 3]
+    // 6:     data: list[Int32] = [1, 2, 3]
     std::vector<int32_t> data = {1, 2, 3};
-    // 6:     s = data.__span__()
+    // 7:     s = data.__span__()
     std::span<const int32_t> s = tpy::as_span(data);
-    // 7:     print(len(s), s[0], s[1], s[2])
+    // 8:     print(len(s), s[0], s[1], s[2])
     std::cout << tpy::__len__(s) << " " << tpy::__getitem__(s, 0) << " " << tpy::__getitem__(s, 1) << " " << tpy::__getitem__(s, 2) << "\n";
 }
 
-// 9: def from_array() -> None:
+// 10: def from_array() -> None:
 void from_array() {
-    // 10:     a: Array[Int32, 3] = [10, 20, 30]
+    // 11:     a: Array[Int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> a = {10, 20, 30};
-    // 11:     s = a.__span__()
+    // 12:     s = a.__span__()
     std::span<const int32_t> s = tpy::as_span(a);
-    // 12:     print(len(s), s[0], s[1], s[2])
+    // 13:     print(len(s), s[0], s[1], s[2])
     std::cout << tpy::__len__(s) << " " << tpy::__getitem__(s, 0) << " " << tpy::__getitem__(s, 1) << " " << tpy::__getitem__(s, 2) << "\n";
 }
 
-// 14: def from_span() -> None:
+// 15: def from_span() -> None:
 void from_span() {
-    // 15:     a: Array[Int32, 3] = [4, 5, 6]
+    // 16:     a: Array[Int32, 3] = [4, 5, 6]
     std::array<int32_t, 3> a = {4, 5, 6};
-    // 16:     sp: Span[Int32] = a
+    // 17:     sp: Span[Int32] = a
     std::span<int32_t> sp = tpy::as_mut_span(a);
-    // 17:     s = sp.__span__()
+    // 18:     s = sp.__span__()
     std::span<const int32_t> s = tpy::as_span(sp);
-    // 18:     print(len(s), s[0], s[1], s[2])
+    // 19:     print(len(s), s[0], s[1], s[2])
     std::cout << tpy::__len__(s) << " " << tpy::__getitem__(s, 0) << " " << tpy::__getitem__(s, 1) << " " << tpy::__getitem__(s, 2) << "\n";
 }
 
-// 20: def from_readonly_span() -> None:
+// 21: def from_readonly_span() -> None:
 void from_readonly_span() {
-    // 21:     a: Array[Int32, 3] = [7, 8, 9]
+    // 22:     a: Array[Int32, 3] = [7, 8, 9]
     std::array<int32_t, 3> a = {7, 8, 9};
-    // 22:     ro: ReadOnlySpan[Int32] = a
+    // 23:     ro: ReadOnlySpan[Int32] = a
     std::span<const int32_t> ro = tpy::as_span(a);
-    // 23:     s = ro.__span__()
+    // 24:     s = ro.__span__()
     std::span<const int32_t> s = tpy::as_span(ro);
-    // 24:     print(len(s), s[0], s[1], s[2])
+    // 25:     print(len(s), s[0], s[1], s[2])
     std::cout << tpy::__len__(s) << " " << tpy::__getitem__(s, 0) << " " << tpy::__getitem__(s, 1) << " " << tpy::__getitem__(s, 2) << "\n";
 }
 
-// 26: def from_static_list() -> None:
-void from_static_list() {
-    // 27:     a: Array[Int32, 2] = [100, 200]
-    std::array<int32_t, 2> a = {100, 200};
-    // 28:     sl: StaticList[Int32, 4] = StaticList[Int32, 4](a)
-    StaticList<int32_t, 4> sl = StaticList<int32_t, 4>(a);
-    // 29:     s = sl.__span__()
-    std::span<const int32_t> s = tpy::as_span(sl);
-    // 30:     print(len(s), s[0], s[1])
+// 27: def from_arraylist() -> None:
+void from_arraylist() {
+    // 28:     al = ArrayList[Int32, 4]()
+    ::tpy_user::tplib::ArrayList<int32_t, 4> al = ::tpy_user::tplib::ArrayList<int32_t, 4>();
+    // 29:     al.append(100)
+    al.append(100);
+    // 30:     al.append(200)
+    al.append(200);
+    // 31:     s = al.__span__()
+    std::span<int32_t> s = al.__span__();
+    // 32:     print(len(s), s[0], s[1])
     std::cout << tpy::__len__(s) << " " << tpy::__getitem__(s, 0) << " " << tpy::__getitem__(s, 1) << "\n";
 }
 
@@ -65,16 +67,18 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 32: from_list()
+    // 3: from tplib import ArrayList
+    ::tpy_user::tplib::__tpy_init();
+    // 34: from_list()
     from_list();
-    // 33: from_array()
+    // 35: from_array()
     from_array();
-    // 34: from_span()
+    // 36: from_span()
     from_span();
-    // 35: from_readonly_span()
+    // 37: from_readonly_span()
     from_readonly_span();
-    // 36: from_static_list()
-    from_static_list();
+    // 38: from_arraylist()
+    from_arraylist();
 }
 
 } // namespace tpy_user::main

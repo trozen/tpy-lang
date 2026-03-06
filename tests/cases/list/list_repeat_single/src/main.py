@@ -1,5 +1,5 @@
 """Tests single-element list repeat with repeat_range codegen."""
-from tpy import Int32, StaticList, Array
+from tpy import Int32, Array
 
 # Single element repeat - list
 zeros: list[Int32] = [0] * 5
@@ -7,8 +7,8 @@ print(len(zeros))
 print(zeros[0])
 print(zeros[4])
 
-# Single element repeat - StaticList (via constructor)
-filled: StaticList[Int32, 10] = StaticList[Int32, 10]([42] * 10)
+# Single element repeat - list (via constructor)
+filled: list[Int32] = [42] * 10
 print(len(filled))
 print(filled[0])
 print(filled[9])

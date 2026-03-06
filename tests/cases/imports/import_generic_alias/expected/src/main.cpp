@@ -3,26 +3,22 @@
 
 namespace tpy_user::main {
 
-// 3: x: SL[int, 3] = SL[int, 3]()
-StaticList<tpy::BigInt, 3>* x{};
+// 4: x: Arr[Int32, 3] = [1, 2, 3]
+std::array<int32_t, 3>* x{};
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // 3: x: SL[int, 3] = SL[int, 3]()
-    static StaticList<tpy::BigInt, 3> __global_slot_1 = StaticList<tpy::BigInt, 3>();
+    // 4: x: Arr[Int32, 3] = [1, 2, 3]
+    static std::array<int32_t, 3> __global_slot_1 = {1, 2, 3};
     x = &__global_slot_1;
-    // 4: x.append(1)
-    (*x).push_back(1);
-    // 5: x.append(2)
-    (*x).push_back(2);
-    // 6: print(len(x))
+    // 5: print(len(x))
     std::cout << tpy::__len__((*x)) << "\n";
-    // 7: print(x[0])
+    // 6: print(x[0])
     std::cout << tpy::__getitem__((*x), 0) << "\n";
-    // 8: print(x[1])
+    // 7: print(x[1])
     std::cout << tpy::__getitem__((*x), 1) << "\n";
 }
 

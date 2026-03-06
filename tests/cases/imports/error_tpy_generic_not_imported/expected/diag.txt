@@ -1,1 +1,0 @@
-main.py:1: error: 'StaticList' requires: from tpy import StaticList

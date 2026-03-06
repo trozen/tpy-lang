@@ -6,9 +6,9 @@ namespace tpy_user::main {
 // # Test 1: Uppercase generic function (inferred) - critical for routing test
 // 20: nums = [10, 20, 30]
 std::vector<int32_t>* nums{};
-// # Test 2: Builtin type constructor in same file (tests routing still works)
-// 24: sl: StaticList[Int32, 3] = StaticList[Int32, 3]([1, 2, 3])
-StaticList<int32_t, 3>* sl{};
+// # Test 2: list constructor in same file (tests routing still works)
+// 24: nums2: list[Int32] = [1, 2, 3]
+std::vector<int32_t>* nums2{};
 // # Test 3: list constructor in same file
 // 28: items = list[Int32]()
 std::vector<int32_t>* items{};
@@ -40,12 +40,12 @@ void __tpy_init() {
     nums = &__global_slot_1;
     // 21: print(First(nums))
     std::cout << First<int32_t>((*nums)) << "\n";
-    // 23: # Test 2: Builtin type constructor in same file (tests routing still works)
-    // 24: sl: StaticList[Int32, 3] = StaticList[Int32, 3]([1, 2, 3])
-    static StaticList<int32_t, 3> __global_slot_2 = StaticList<int32_t, 3>({1, 2, 3});
-    sl = &__global_slot_2;
-    // 25: print(len(sl))
-    std::cout << tpy::__len__((*sl)) << "\n";
+    // 23: # Test 2: list constructor in same file (tests routing still works)
+    // 24: nums2: list[Int32] = [1, 2, 3]
+    static std::vector<int32_t> __global_slot_2 = {1, 2, 3};
+    nums2 = &__global_slot_2;
+    // 25: print(len(nums2))
+    std::cout << tpy::__len__((*nums2)) << "\n";
     // 27: # Test 3: list constructor in same file
     // 28: items = list[Int32]()
     static std::vector<int32_t> __global_slot_3 = std::vector<int32_t>();

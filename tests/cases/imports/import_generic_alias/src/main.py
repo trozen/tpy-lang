@@ -1,8 +1,7 @@
-from tpy import StaticList as SL
+from tpy import Array as Arr
+from tpy import Int32
 
-x: SL[int, 3] = SL[int, 3]()
-x.append(1)
-x.append(2)
+x: Arr[Int32, 3] = [1, 2, 3]
 print(len(x))
 print(x[0])
 print(x[1])

@@ -1,12 +1,12 @@
 """Test inherited builtin methods with multiple overloads.
 
-When a user class inherits from a builtin type like StaticList,
+When a user class inherits from a builtin type like list,
 methods with multiple overloads (like pop) should all be accessible.
 """
-from tpy import Int32, StaticList
+from tpy import Int32
 
-# User class inheriting from StaticList
-class MyList(StaticList[Int32, 10]):
+# User class inheriting from list
+class MyList(list[Int32]):
     name: str
 
     def __init__(self, name: str) -> None:
@@ -23,7 +23,6 @@ last: Int32 = ml.pop()
 print(last)  # 40
 
 # Test pop(index) - should remove and return element at index
-# This was failing before the fix: "expects 0 arguments, got 1"
 first: Int32 = ml.pop(0)
 print(first)  # 10
 

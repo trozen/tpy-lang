@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 extern std::array<int32_t, 3>* arr;
-extern StaticList<int32_t, 4>* items;
+extern std::vector<int32_t>* items;
 inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();

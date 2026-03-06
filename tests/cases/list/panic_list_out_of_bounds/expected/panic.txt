@@ -1,1 +1,1 @@
-TurboPython panic: StaticList index out of bounds
+TurboPython panic: list index out of bounds

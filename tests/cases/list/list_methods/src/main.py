@@ -1,9 +1,8 @@
-from tpy import Int32, Array, StaticList
+from tpy import Int32, Array
 
 # Test all list methods: pop(), insert(), remove(), clear(), extend()
 
 def print_list(nums: list[Int32]) -> None:
-    """Helper to print list contents."""
     i: Int32 = 0
     while i < len(nums):
         print(nums[i])
@@ -11,7 +10,6 @@ def print_list(nums: list[Int32]) -> None:
     print("---")
 
 def test_pop() -> None:
-    """Test pop() - remove and return last element."""
     nums: list[Int32] = [10, 20, 30, 40]
 
     # Pop last element
@@ -27,7 +25,6 @@ def test_pop() -> None:
     print_list(nums)
 
 def test_insert() -> None:
-    """Test insert(index, value) - insert at specific position."""
     nums: list[Int32] = [10, 30, 40]
 
     # Insert at beginning
@@ -43,7 +40,6 @@ def test_insert() -> None:
     print_list(nums)
 
 def test_remove() -> None:
-    """Test remove(value) - remove first occurrence of value."""
     nums: list[Int32] = [10, 20, 30, 20, 40]
 
     # Remove first occurrence of 20
@@ -59,7 +55,6 @@ def test_remove() -> None:
     print_list(nums)
 
 def test_clear() -> None:
-    """Test clear() - remove all elements."""
     nums: list[Int32] = [1, 2, 3, 4, 5]
     print(len(nums))
 
@@ -72,7 +67,6 @@ def test_clear() -> None:
     print(nums[0])
 
 def test_extend() -> None:
-    """Test extend(iterable) - add all elements from another collection."""
     nums: list[Int32] = [1, 2, 3]
 
     # Extend with array literal
@@ -89,15 +83,12 @@ def test_extend() -> None:
     nums.extend(arr)
     print_list(nums)
 
-    # Extend with StaticList
-    sl: StaticList[Int32, 3] = StaticList[Int32, 3]()
-    sl.append(11)
-    sl.append(12)
-    nums.extend(sl)
+    # Extend with another list
+    extra: list[Int32] = [11, 12]
+    nums.extend(extra)
     print_list(nums)
 
 def test_combined_operations() -> None:
-    """Test combining multiple list methods."""
     nums: list[Int32] = [5]
 
     nums.append(10)

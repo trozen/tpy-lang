@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-extern StaticList<tpy::BigInt, 3>* x;
+extern std::array<int32_t, 3>* x;
 inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();

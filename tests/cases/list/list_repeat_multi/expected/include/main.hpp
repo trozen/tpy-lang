@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-extern StaticList<int32_t, 8>* sl;
+extern std::vector<int32_t>* repeated;
 extern std::vector<int32_t>* nums;
 extern std::vector<int32_t>* empty;
 extern std::vector<int32_t>* neg;

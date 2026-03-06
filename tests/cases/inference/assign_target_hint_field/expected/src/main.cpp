@@ -18,12 +18,12 @@ void main() {
     l.items.push_back(42);
     // 44:     print("list:", l.items)
     std::cout << "list:" << " " << tpy::ListPrinter(l.items) << "\n";
-    // 46:     s = WithStaticList[Int32]()
-    WithStaticList<int32_t> s = WithStaticList<int32_t>();
-    // 47:     s.buf.append(Int32(99))
-    s.buf.push_back(99);
-    // 48:     print("static_list:", s.buf)
-    std::cout << "static_list:" << " " << tpy::ListPrinter(s.buf) << "\n";
+    // 46:     d = WithDict[str, Int32]()
+    WithDict<std::string, int32_t> d = WithDict<std::string, int32_t>();
+    // 47:     d.data["x"] = Int32(99)
+    tpy::__setitem__(d.data, "x", 99);
+    // 48:     print("dict:", d.data)
+    std::cout << "dict:" << " " << tpy::DictPrinter(d.data) << "\n";
     // 50:     h = WithHeapStorage[Int32](Int32(7))
     WithHeapStorage<int32_t> h = WithHeapStorage<int32_t>(7);
     // 51:     print("heap:", h.get())

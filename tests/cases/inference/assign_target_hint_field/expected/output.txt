@@ -1,5 +1,5 @@
 array: 10
 list: [42]
-static_list: [99]
+dict: {'x': 99}
 heap: 7
 done

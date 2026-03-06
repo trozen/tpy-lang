@@ -10,7 +10,6 @@ inline constexpr std::string_view __name__ = "__main__";
 void takes_list(std::vector<tpy::BigInt>& x);
 void takes_list_int32(std::vector<int32_t>& x);
 void takes_array(std::array<int32_t, 3>& x);
-void takes_static(StaticList<int32_t, 10>& x);
 
 void __tpy_init();
 } // namespace tpy_user::main

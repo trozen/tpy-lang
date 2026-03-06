@@ -3,7 +3,8 @@
 These methods are defined in the module system and should be
 correctly resolved by codegen (not emitted as literal C++ method calls).
 """
-from tpy import StaticList, Array, Int32
+from tpy import Array, Int32
+from tplib import ArrayList
 
 
 # Test list dunders
@@ -24,20 +25,20 @@ items.__setitem__(Int32(1), Int32(99))
 print(items.__getitem__(Int32(1)))  # 99
 
 
-# Test StaticList dunders
-sl = StaticList[Int32, 10]()
-sl.append(Int32(100))
-sl.append(Int32(200))
+# Test ArrayList dunders (user/library type)
+al = ArrayList[Int32, 10]()
+al.append(Int32(100))
+al.append(Int32(200))
 
 # Explicit __len__
-print(sl.__len__())  # 2
+print(al.__len__())  # 2
 
 # Explicit __getitem__
-print(sl.__getitem__(Int32(0)))  # 100
+print(al.__getitem__(Int32(0)))  # 100
 
 # Explicit __setitem__
-sl.__setitem__(Int32(0), Int32(111))
-print(sl.__getitem__(Int32(0)))  # 111
+al.__setitem__(Int32(0), Int32(111))
+print(al.__getitem__(Int32(0)))  # 111
 
 
 # Test Array dunders

@@ -8,7 +8,7 @@ namespace tpy_user::main {
 struct Point;
 
 extern std::vector<int32_t>* nums;
-extern StaticList<int32_t, 3>* sl;
+extern std::vector<int32_t>* nums2;
 extern std::vector<int32_t>* items;
 extern std::vector<std::string>* strs;
 extern std::vector<Point>* points;

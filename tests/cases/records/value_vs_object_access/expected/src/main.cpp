@@ -4,56 +4,56 @@
 namespace tpy_user::main {
 
 
-// 12: def test_value_types():
+// 13: def test_value_types():
 void test_value_types() {
-    // 13:     # Value type - get_value (copy semantics)
-    // 14:     nums: StaticList[Int32, 4] = StaticList[Int32, 4]()
-    StaticList<int32_t, 4> nums = StaticList<int32_t, 4>();
-    // 15:     nums.append(10)
-    nums.push_back(10);
-    // 16:     nums.append(20)
-    nums.push_back(20);
-    // 17:     val: Int32 = nums[0]
-    int32_t val = tpy::__getitem__(nums, 0);
-    // 18:     print(val)  # 10
+    // 14:     # Value type on ArrayList - get_value (copy semantics)
+    // 15:     nums = ArrayList[Int32, 4]()
+    ::tpy_user::tplib::ArrayList<int32_t, 4> nums = ::tpy_user::tplib::ArrayList<int32_t, 4>();
+    // 16:     nums.append(10)
+    nums.append(10);
+    // 17:     nums.append(20)
+    nums.append(20);
+    // 18:     val: Int32 = nums[0]
+    int32_t val = nums[0];
+    // 19:     print(val)  # 10
     std::cout << val << "\n";
-    // 20:     # Modifying val doesn't affect nums[0] (value semantics)
-    // 21:     val = 99
+    // 21:     # Modifying val doesn't affect nums[0] (value semantics)
+    // 22:     val = 99
     val = 99;
-    // 22:     print(nums[0])  # Still 10
-    std::cout << tpy::__getitem__(nums, 0) << "\n";
-    // 24:     # Test with list[T] as well
-    // 25:     int_list: list[Int32] = [5, 6, 7]
+    // 23:     print(nums[0])  # Still 10
+    std::cout << nums[0] << "\n";
+    // 25:     # Test with list[T] as well
+    // 26:     int_list: list[Int32] = [5, 6, 7]
     std::vector<int32_t> int_list = {5, 6, 7};
-    // 26:     v: Int32 = int_list[1]  # get_value for Int32 element
+    // 27:     v: Int32 = int_list[1]  # get_value for Int32 element
     int32_t v = tpy::__getitem__(int_list, 1);
-    // 27:     print(v)  # 6
+    // 28:     print(v)  # 6
     std::cout << v << "\n";
 }
 
-// 30: def test_object_types():
+// 31: def test_object_types():
 void test_object_types() {
-    // 31:     # Object type - get_ref (reference semantics)
-    // 32:     points: StaticList[Point, 4] = StaticList[Point, 4]()
-    StaticList<Point, 4> points = StaticList<Point, 4>();
-    // 33:     points.append(Point(1, 2))
-    points.push_back(Point(1, 2));
-    // 34:     points.append(Point(3, 4))
-    points.push_back(Point(3, 4));
-    // 36:     # Accessing object field through subscript
-    // 37:     print(points[0].x)  # 1
-    std::cout << tpy::__getitem__(points, 0).x << "\n";
-    // 39:     # Modifying object through subscript reference
-    // 40:     points[0].x = 100
-    tpy::__getitem__(points, 0).x = 100;
-    // 41:     print(points[0].x)  # 100
-    std::cout << tpy::__getitem__(points, 0).x << "\n";
-    // 43:     # Test with list[Point] as well
-    // 44:     obj_list: list[Point] = [Point(10, 20)]
+    // 32:     # Object type on ArrayList - get_ref (reference semantics)
+    // 33:     points = ArrayList[Point, 4]()
+    ::tpy_user::tplib::ArrayList<Point, 4> points = ::tpy_user::tplib::ArrayList<Point, 4>();
+    // 34:     points.append(Point(1, 2))
+    points.append(Point(1, 2));
+    // 35:     points.append(Point(3, 4))
+    points.append(Point(3, 4));
+    // 37:     # Accessing object field through subscript
+    // 38:     print(points[0].x)  # 1
+    std::cout << points[0].x << "\n";
+    // 40:     # Modifying object through subscript reference
+    // 41:     points[0].x = 100
+    points[0].x = 100;
+    // 42:     print(points[0].x)  # 100
+    std::cout << points[0].x << "\n";
+    // 44:     # Test with list[Point] as well
+    // 45:     obj_list: list[Point] = [Point(10, 20)]
     std::vector<Point> obj_list = {Point(10, 20)};
-    // 45:     obj_list[0].y = 200  # get_ref for Point element
+    // 46:     obj_list[0].y = 200  # get_ref for Point element
     tpy::__getitem__(obj_list, 0).y = 200;
-    // 46:     print(obj_list[0].y)  # 200
+    // 47:     print(obj_list[0].y)  # 200
     std::cout << tpy::__getitem__(obj_list, 0).y << "\n";
 }
 
@@ -62,9 +62,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 49: test_value_types()
+    // 2: from tplib import ArrayList
+    ::tpy_user::tplib::__tpy_init();
+    // 50: test_value_types()
     test_value_types();
-    // 50: test_object_types()
+    // 51: test_object_types()
     test_object_types();
 }
 

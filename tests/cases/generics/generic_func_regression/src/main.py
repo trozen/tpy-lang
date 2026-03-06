@@ -1,5 +1,5 @@
 """Regression tests for generic functions with various edge cases."""
-from tpy import Int32, StaticList, Array
+from tpy import Int32, Array
 
 # Uppercase generic function (tests routing: function vs type)
 def First[T](items: list[T]) -> T:
@@ -20,9 +20,9 @@ def get_item[T](items: list[T], idx: Int32) -> T:
 nums = [10, 20, 30]
 print(First(nums))
 
-# Test 2: Builtin type constructor in same file (tests routing still works)
-sl: StaticList[Int32, 3] = StaticList[Int32, 3]([1, 2, 3])
-print(len(sl))
+# Test 2: list constructor in same file (tests routing still works)
+nums2: list[Int32] = [1, 2, 3]
+print(len(nums2))
 
 # Test 3: list constructor in same file
 items = list[Int32]()

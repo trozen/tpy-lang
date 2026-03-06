@@ -4,47 +4,47 @@
 namespace tpy_user::main {
 
 
-// 15: def use_span(s: Span[Int32]) -> Int32:
+// 16: def use_span(s: Span[Int32]) -> Int32:
 int32_t use_span(std::span<int32_t> s) {
-    // 16:     # Pass Span to Sequence-accepting function
-    // 17:     return sum_all(s)
+    // 17:     # Pass Span to Sequence-accepting function
+    // 18:     return sum_all(s)
     return sum_all(s);
 }
 
-// 19: def main() -> None:
+// 20: def main() -> None:
 void main() {
-    // 20:     # Test with list[Int32]
-    // 21:     nums: list[Int32] = [1, 2, 3, 4, 5]
+    // 21:     # Test with list[Int32]
+    // 22:     nums: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
-    // 22:     print(first(nums))     # 1
+    // 23:     print(first(nums))     # 1
     std::cout << first(nums) << "\n";
-    // 23:     print(sum_all(nums))   # 15
+    // 24:     print(sum_all(nums))   # 15
     std::cout << sum_all(nums) << "\n";
-    // 25:     # Test with Array[Int32, N]
-    // 26:     arr: Array[Int32, 3] = [10, 20, 30]
+    // 26:     # Test with Array[Int32, N]
+    // 27:     arr: Array[Int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    // 27:     print(first(arr))      # 10
+    // 28:     print(first(arr))      # 10
     std::cout << first(arr) << "\n";
-    // 28:     print(sum_all(arr))    # 60
+    // 29:     print(sum_all(arr))    # 60
     std::cout << sum_all(arr) << "\n";
-    // 30:     # Test with Span[Int32]
-    // 31:     print(use_span(arr))   # 60 (Span from Array)
+    // 31:     # Test with Span[Int32]
+    // 32:     print(use_span(arr))   # 60 (Span from Array)
     std::cout << use_span(tpy::as_mut_span(arr)) << "\n";
-    // 32:     print(use_span(nums))  # 15 (Span from list)
+    // 33:     print(use_span(nums))  # 15 (Span from list)
     std::cout << use_span(tpy::as_mut_span(nums)) << "\n";
-    // 34:     # Test with StaticList[Int32, N]
-    // 35:     sl: StaticList[Int32, 8] = StaticList[Int32, 8]()
-    StaticList<int32_t, 8> sl = StaticList<int32_t, 8>();
-    // 36:     sl.append(100)
-    sl.push_back(100);
-    // 37:     sl.append(200)
-    sl.push_back(200);
-    // 38:     sl.append(300)
-    sl.push_back(300);
-    // 39:     print(first(sl))       # 100
-    std::cout << first(sl) << "\n";
-    // 40:     print(sum_all(sl))     # 600
-    std::cout << sum_all(sl) << "\n";
+    // 35:     # Test with ArrayList[Int32, N] (user/library type)
+    // 36:     al = ArrayList[Int32, 8]()
+    ::tpy_user::tplib::ArrayList<int32_t, 8> al = ::tpy_user::tplib::ArrayList<int32_t, 8>();
+    // 37:     al.append(100)
+    al.append(100);
+    // 38:     al.append(200)
+    al.append(200);
+    // 39:     al.append(300)
+    al.append(300);
+    // 40:     print(first(al))       # 100
+    std::cout << first(al) << "\n";
+    // 41:     print(sum_all(al))     # 600
+    std::cout << sum_all(al) << "\n";
 }
 
 void __tpy_init() {
@@ -52,7 +52,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 42: main()
+    // 3: from tplib import ArrayList
+    ::tpy_user::tplib::__tpy_init();
+    // 43: main()
     main();
 }
 

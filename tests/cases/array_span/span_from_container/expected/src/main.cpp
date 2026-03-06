@@ -24,10 +24,10 @@ void main() {
     tpy::__setitem__(s, 0, 99);
     // 14:     print(arr[0])
     std::cout << tpy::__getitem__(arr, 0) << "\n";
-    // 16:     sl: StaticList[Int32, 4] = StaticList[Int32, 4]([5, 6])
-    StaticList<int32_t, 4> sl = StaticList<int32_t, 4>({5, 6});
-    // 17:     ros2: ReadOnlySpan[Int32] = ReadOnlySpan[Int32](sl)
-    std::span<const int32_t> ros2 = std::span<const int32_t>(sl);
+    // 16:     lst2: list[Int32] = [5, 6]
+    std::vector<int32_t> lst2 = {5, 6};
+    // 17:     ros2: ReadOnlySpan[Int32] = ReadOnlySpan[Int32](lst2)
+    std::span<const int32_t> ros2 = std::span<const int32_t>(lst2);
     // 18:     print(len(ros2))
     std::cout << tpy::__len__(ros2) << "\n";
     // 19:     print(ros2[0])

@@ -1,1 +1,1 @@
-UninitHeapStorage and StaticList not available in CPython
+UninitHeapStorage not fully available in CPython

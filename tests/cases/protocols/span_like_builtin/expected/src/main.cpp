@@ -40,16 +40,16 @@ void test_ro_span() {
     std::cout << sum_span(s) << "\n";
 }
 
-// 29: def test_static_list() -> None:
-void test_static_list() {
-    // 30:     sl: StaticList[Int32, 4] = StaticList()
-    StaticList<int32_t, 4> sl = StaticList<int32_t, 4>();
-    // 31:     sl.append(Int32(100))
-    sl.push_back(100);
-    // 32:     sl.append(Int32(200))
-    sl.push_back(200);
-    // 33:     print(sum_span(sl))
-    std::cout << sum_span(sl) << "\n";
+// 29: def test_arraylist() -> None:
+void test_arraylist() {
+    // 30:     al = ArrayList[Int32, 4]()
+    ::tpy_user::tplib::ArrayList<int32_t, 4> al = ::tpy_user::tplib::ArrayList<int32_t, 4>();
+    // 31:     al.append(Int32(100))
+    al.append(100);
+    // 32:     al.append(Int32(200))
+    al.append(200);
+    // 33:     print(sum_span(al))
+    std::cout << sum_span(al) << "\n";
 }
 
 void __tpy_init() {
@@ -57,6 +57,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // 3: from tplib import ArrayList
+    ::tpy_user::tplib::__tpy_init();
     // 35: test_list()
     test_list();
     // 36: test_array()
@@ -65,8 +67,8 @@ void __tpy_init() {
     test_span();
     // 38: test_ro_span()
     test_ro_span();
-    // 39: test_static_list()
-    test_static_list();
+    // 39: test_arraylist()
+    test_arraylist();
     // 40: print("done")
     std::cout << "done" << "\n";
 }

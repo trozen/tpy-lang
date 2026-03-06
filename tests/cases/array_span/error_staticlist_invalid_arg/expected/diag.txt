@@ -1,1 +1,0 @@
-main.py:2: error: StaticList() cannot be constructed from Int32

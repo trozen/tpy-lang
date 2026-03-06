@@ -20,7 +20,7 @@ Ptr -> ReadOnlyPtr coercions:
 3
 5
 7
-StaticList -> Span coercions:
+ArrayList -> Span coercions:
 6
 Array -> Span coercions:
 60

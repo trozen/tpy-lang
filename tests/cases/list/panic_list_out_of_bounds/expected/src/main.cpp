@@ -4,21 +4,15 @@
 namespace tpy_user::main {
 
 
-// # Test that out-of-bounds access on StaticList panics at runtime
+// # Test that out-of-bounds access on list panics at runtime
 // 5: def test_out_of_bounds() -> None:
 void test_out_of_bounds() {
-    // 6:     items: StaticList[Int32, 5] = StaticList[Int32, 5]()
-    StaticList<int32_t, 5> items = StaticList<int32_t, 5>();
-    // 7:     items.append(10)
-    items.push_back(10);
-    // 8:     items.append(20)
-    items.push_back(20);
-    // 9:     items.append(30)
-    items.push_back(30);
-    // 11:     # Access index 10 which is out of bounds (only 3 elements)
-    // 12:     x: Int32 = items[10]
+    // 6:     items: list[Int32] = [10, 20, 30]
+    std::vector<int32_t> items = {10, 20, 30};
+    // 8:     # Access index 10 which is out of bounds (only 3 elements)
+    // 9:     x: Int32 = items[10]
     int32_t x = tpy::__getitem__(items, 10);
-    // 13:     print(x)
+    // 10:     print(x)
     std::cout << x << "\n";
 }
 
@@ -27,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 15: test_out_of_bounds()
+    // 12: test_out_of_bounds()
     test_out_of_bounds();
 }
 

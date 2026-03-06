@@ -6,7 +6,8 @@ Each coercion is tested in multiple contexts:
 - Return statement
 - Function argument
 """
-from tpy import Int32, Ptr, ReadOnlyPtr, Span, StaticList, Array
+from tpy import Int32, Ptr, ReadOnlyPtr, Span, Array
+from tplib import ArrayList
 
 # --- Records for pointer coercion tests ---
 
@@ -175,18 +176,18 @@ def test_ptr_to_const_ptr() -> None:
     print(take_const_ptr_val(ptr3))  # 7
 
 
-# --- StaticList -> Span coercion ---
+# --- ArrayList -> Span coercion ---
 
-def test_staticlist_to_span() -> None:
-    print("StaticList -> Span coercions:")
+def test_arraylist_to_span() -> None:
+    print("ArrayList -> Span coercions:")
 
-    sl: StaticList[Int32, 5] = StaticList[Int32, 5]()
-    sl.append(1)
-    sl.append(2)
-    sl.append(3)
+    al = ArrayList[Int32, 8]()
+    al.append(1)
+    al.append(2)
+    al.append(3)
 
     # Function argument
-    print(take_span(sl))  # 6
+    print(take_span(al))  # 6
 
 
 # --- Array -> Span coercion ---
@@ -233,7 +234,7 @@ test_record_to_ptr()
 test_record_to_const_ptr()
 test_ptr_to_record()
 test_ptr_to_const_ptr()
-test_staticlist_to_span()
+test_arraylist_to_span()
 test_array_to_span()
 test_list_to_span()
 test_subscript_to_ptr()

@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 template<typename T, std::size_t N> struct WithArray;
 template<typename T> struct WithList;
-template<typename T> struct WithStaticList;
+template<typename K, typename V> struct WithDict;
 template<typename T> struct WithHeapStorage;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -50,20 +50,20 @@ inline std::ostream& operator<<(std::ostream& os, const WithList<T>& obj) {
     return os;
 }
 
-// 18: class WithStaticList[T]:
-template<typename T>
-struct WithStaticList {
-    // 19:     buf: StaticList[T, 4]
-    StaticList<T, 4> buf;
+// 18: class WithDict[K, V]:
+template<typename K, typename V>
+struct WithDict {
+    // 19:     data: dict[K, V]
+    tpy::ordered_map<K, V> data;
 
     // 21:     def __init__(self):
-    WithStaticList() : buf(StaticList<T, 4>()) {}
+    WithDict() : data(tpy::ordered_map<K, V>()) {}
 };
 
-template<typename T>
-inline std::ostream& operator<<(std::ostream& os, const WithStaticList<T>& obj) {
-    os << "WithStaticList("
-       << "buf=" << tpy::ListPrinter(obj.buf)
+template<typename K, typename V>
+inline std::ostream& operator<<(std::ostream& os, const WithDict<K, V>& obj) {
+    os << "WithDict("
+       << "data=" << tpy::DictPrinter(obj.data)
        << ")";
     return os;
 }

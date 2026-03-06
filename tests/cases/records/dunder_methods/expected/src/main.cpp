@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 // # Test list dunders
-// 10: items: list[Int32] = []
+// 11: items: list[Int32] = []
 std::vector<int32_t>* items{};
-// # Test StaticList dunders
-// 28: sl = StaticList[Int32, 10]()
-StaticList<int32_t, 10>* sl{};
+// # Test ArrayList dunders (user/library type)
+// 29: al = ArrayList[Int32, 10]()
+::tpy_user::tplib::ArrayList<int32_t, 10>* al{};
 // # Test Array dunders
-// 44: arr: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
+// 45: arr: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
 std::array<int32_t, 3>* arr{};
 
 void __tpy_init() {
@@ -18,59 +18,61 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 9: # Test list dunders
-    // 10: items: list[Int32] = []
+    // 7: from tplib import ArrayList
+    ::tpy_user::tplib::__tpy_init();
+    // 10: # Test list dunders
+    // 11: items: list[Int32] = []
     static std::vector<int32_t> __global_slot_1 = std::vector<int32_t>{};
     items = &__global_slot_1;
-    // 11: items.append(Int32(10))
+    // 12: items.append(Int32(10))
     (*items).push_back(10);
-    // 12: items.append(Int32(20))
+    // 13: items.append(Int32(20))
     (*items).push_back(20);
-    // 13: items.append(Int32(30))
+    // 14: items.append(Int32(30))
     (*items).push_back(30);
-    // 15: # Explicit __len__
-    // 16: print(items.__len__())  # 3
+    // 16: # Explicit __len__
+    // 17: print(items.__len__())  # 3
     std::cout << static_cast<int32_t>((*items).size()) << "\n";
-    // 18: # Explicit __getitem__
-    // 19: print(items.__getitem__(Int32(0)))  # 10
+    // 19: # Explicit __getitem__
+    // 20: print(items.__getitem__(Int32(0)))  # 10
     std::cout << tpy::__getitem__((*items), 0) << "\n";
-    // 20: print(items.__getitem__(Int32(1)))  # 20
+    // 21: print(items.__getitem__(Int32(1)))  # 20
     std::cout << tpy::__getitem__((*items), 1) << "\n";
-    // 22: # Explicit __setitem__
-    // 23: items.__setitem__(Int32(1), Int32(99))
+    // 23: # Explicit __setitem__
+    // 24: items.__setitem__(Int32(1), Int32(99))
     tpy::__setitem__((*items), 1, 99);
-    // 24: print(items.__getitem__(Int32(1)))  # 99
+    // 25: print(items.__getitem__(Int32(1)))  # 99
     std::cout << tpy::__getitem__((*items), 1) << "\n";
-    // 27: # Test StaticList dunders
-    // 28: sl = StaticList[Int32, 10]()
-    static StaticList<int32_t, 10> __global_slot_2 = StaticList<int32_t, 10>();
-    sl = &__global_slot_2;
-    // 29: sl.append(Int32(100))
-    (*sl).push_back(100);
-    // 30: sl.append(Int32(200))
-    (*sl).push_back(200);
-    // 32: # Explicit __len__
-    // 33: print(sl.__len__())  # 2
-    std::cout << (*sl).size() << "\n";
-    // 35: # Explicit __getitem__
-    // 36: print(sl.__getitem__(Int32(0)))  # 100
-    std::cout << tpy::__getitem__((*sl), 0) << "\n";
-    // 38: # Explicit __setitem__
-    // 39: sl.__setitem__(Int32(0), Int32(111))
-    tpy::__setitem__((*sl), 0, 111);
-    // 40: print(sl.__getitem__(Int32(0)))  # 111
-    std::cout << tpy::__getitem__((*sl), 0) << "\n";
-    // 43: # Test Array dunders
-    // 44: arr: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
+    // 28: # Test ArrayList dunders (user/library type)
+    // 29: al = ArrayList[Int32, 10]()
+    static ::tpy_user::tplib::ArrayList<int32_t, 10> __global_slot_2 = ::tpy_user::tplib::ArrayList<int32_t, 10>();
+    al = &__global_slot_2;
+    // 30: al.append(Int32(100))
+    al->append(100);
+    // 31: al.append(Int32(200))
+    al->append(200);
+    // 33: # Explicit __len__
+    // 34: print(al.__len__())  # 2
+    std::cout << al->__len__() << "\n";
+    // 36: # Explicit __getitem__
+    // 37: print(al.__getitem__(Int32(0)))  # 100
+    std::cout << al->__getitem__(0) << "\n";
+    // 39: # Explicit __setitem__
+    // 40: al.__setitem__(Int32(0), Int32(111))
+    al->__setitem__(0, 111);
+    // 41: print(al.__getitem__(Int32(0)))  # 111
+    std::cout << al->__getitem__(0) << "\n";
+    // 44: # Test Array dunders
+    // 45: arr: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
     static std::array<int32_t, 3> __global_slot_3 = {1, 2, 3};
     arr = &__global_slot_3;
-    // 46: # Explicit __len__
-    // 47: print(arr.__len__())  # 3
+    // 47: # Explicit __len__
+    // 48: print(arr.__len__())  # 3
     std::cout << static_cast<int32_t>((*arr).size()) << "\n";
-    // 49: # Explicit __getitem__
-    // 50: print(arr.__getitem__(Int32(0)))  # 1
+    // 50: # Explicit __getitem__
+    // 51: print(arr.__getitem__(Int32(0)))  # 1
     std::cout << tpy::__getitem__((*arr), 0) << "\n";
-    // 51: print(arr.__getitem__(Int32(2)))  # 3
+    // 52: print(arr.__getitem__(Int32(2)))  # 3
     std::cout << tpy::__getitem__((*arr), 2) << "\n";
 }
 

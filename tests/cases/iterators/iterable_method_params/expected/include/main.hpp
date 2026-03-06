@@ -9,8 +9,6 @@ inline constexpr std::string_view __name__ = "__main__";
 
 template<tpy::Iterable<int32_t> T_items>
 void extend_from(std::vector<int32_t>& target, T_items& items);
-template<tpy::Iterable<int32_t> T_items>
-void sl_extend_from(StaticList<int32_t, 16>& target, T_items& items);
 template<tpy::Iterable<std::string> T_items>
 std::string join_from(std::string_view sep, T_items& items);
 template<tpy::Iterable<int32_t> T_items>
@@ -23,22 +21,16 @@ void extend_from(std::vector<int32_t>& target, T_items& items) {
     // 6:     target.extend(items)
     tpy::list_extend(target, items);
 }
-// 8: def sl_extend_from(target: StaticList[Int32, 16], items: Iterable[Int32]) -> None:
-template<tpy::Iterable<int32_t> T_items>
-void sl_extend_from(StaticList<int32_t, 16>& target, T_items& items) {
-    // 9:     target.extend(items)
-    tpy::staticlist_extend(target, items);
-}
-// 11: def join_from(sep: str, items: Iterable[str]) -> str:
+// 8: def join_from(sep: str, items: Iterable[str]) -> str:
 template<tpy::Iterable<std::string> T_items>
 std::string join_from(std::string_view sep, T_items& items) {
-    // 12:     return sep.join(items)
+    // 9:     return sep.join(items)
     return tpy::str_join(sep, items);
 }
-// 14: def list_from(items: Iterable[Int32]) -> Own[list[Int32]]:
+// 11: def list_from(items: Iterable[Int32]) -> Own[list[Int32]]:
 template<tpy::Iterable<int32_t> T_items>
 std::vector<int32_t> list_from(T_items& items) {
-    // 15:     return list(items)
+    // 12:     return list(items)
     return tpy::from_range<std::vector<int32_t>>(items);
 }
 

@@ -6,9 +6,9 @@ namespace tpy_user::main {
 // # Single element repeat - list
 // 5: zeros: list[Int32] = [0] * 5
 std::vector<int32_t>* zeros{};
-// # Single element repeat - StaticList (via constructor)
-// 11: filled: StaticList[Int32, 10] = StaticList[Int32, 10]([42] * 10)
-StaticList<int32_t, 10>* filled{};
+// # Single element repeat - list (via constructor)
+// 11: filled: list[Int32] = [42] * 10
+std::vector<int32_t>* filled{};
 // # Zero count repeat - produces empty list
 // 17: empty: list[Int32] = [99] * 0
 std::vector<int32_t>* empty{};
@@ -33,9 +33,9 @@ void __tpy_init() {
     std::cout << tpy::__getitem__((*zeros), 0) << "\n";
     // 8: print(zeros[4])
     std::cout << tpy::__getitem__((*zeros), 4) << "\n";
-    // 10: # Single element repeat - StaticList (via constructor)
-    // 11: filled: StaticList[Int32, 10] = StaticList[Int32, 10]([42] * 10)
-    static StaticList<int32_t, 10> __global_slot_2 = tpy::from_range<StaticList<int32_t, 10>>(tpy::repeat_range<int32_t>(10, {42}));
+    // 10: # Single element repeat - list (via constructor)
+    // 11: filled: list[Int32] = [42] * 10
+    static std::vector<int32_t> __global_slot_2 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(10, {42}));
     filled = &__global_slot_2;
     // 12: print(len(filled))
     std::cout << tpy::__len__((*filled)) << "\n";

@@ -1,12 +1,12 @@
-from tpy import Int32, StaticList
+from tpy import Int32
 
-# Multi-element list repetition with StaticList
-sl: StaticList[Int32, 8] = StaticList[Int32, 8]([1, 2] * 3)
-print(len(sl))
-for i in range(len(sl)):
-    print(sl[i])
+# Multi-element list repetition
+repeated: list[Int32] = [1, 2] * 3
+print(len(repeated))
+for i in range(len(repeated)):
+    print(repeated[i])
 
-# Multi-element with std::vector (list)
+# Multi-element with list
 nums: list[Int32] = [10, 20] * 2
 print(len(nums))
 for i in range(len(nums)):

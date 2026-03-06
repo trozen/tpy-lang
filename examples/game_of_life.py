@@ -1,16 +1,14 @@
-from tpy import Int32, StaticList
+from tpy import Int32
 
 # Compile-time constants
 WIDTH: Int32 = 10
 HEIGHT: Int32 = 8
 
 class Grid:
-    cells: StaticList[Int32, 80]
+    cells: list[Int32]
 
     def __init__(self):
-        self.cells = StaticList[Int32, 80]()
-        for i in range(80):
-            self.cells.append(0)
+        self.cells = [0] * 80
 
     def idx(self, x: Int32, y: Int32) -> Int32:
         return y * WIDTH + x

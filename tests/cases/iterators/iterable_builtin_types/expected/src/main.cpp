@@ -34,149 +34,145 @@ void test_iterable_params() {
     std::span<const int32_t> rosp = tpy::as_span(arr);
     // 45:     print(sum_items(rosp))
     std::cout << sum_items(rosp) << "\n";
-    // 47:     # StaticList
-    // 48:     sl: StaticList[Int32, 4] = StaticList()
-    StaticList<int32_t, 4> sl = StaticList<int32_t, 4>();
-    // 49:     sl.append(100)
-    sl.push_back(100);
-    // 50:     sl.append(200)
-    sl.push_back(200);
-    // 51:     print(sum_items(sl))
+    // 47:     # list (another)
+    // 48:     sl: list[Int32] = [100, 200]
+    std::vector<int32_t> sl = {100, 200};
+    // 49:     print(sum_items(sl))
     std::cout << sum_items(sl) << "\n";
-    // 53:     # String
-    // 54:     s: String = String("ab")
+    // 51:     # String
+    // 52:     s: String = String("ab")
     std::string s = std::string("ab");
-    // 55:     print(count_chars(s))
+    // 53:     print(count_chars(s))
     std::cout << count_chars(s) << "\n";
-    // 57:     # StrView
-    // 58:     sv: StrView = StrView("xyz")
+    // 55:     # StrView
+    // 56:     sv: StrView = StrView("xyz")
     std::string_view sv = std::string_view("xyz");
-    // 59:     print(count_chars(sv))
+    // 57:     print(count_chars(sv))
     std::cout << count_chars(sv) << "\n";
-    // 61:     # dict (iterates over keys)
-    // 62:     d: dict[str, Int32] = {"a": 1, "b": 2}
+    // 59:     # dict (iterates over keys)
+    // 60:     d: dict[str, Int32] = {"a": 1, "b": 2}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    // 63:     print(sum_strs(d))
+    // 61:     print(sum_strs(d))
     std::cout << sum_strs(d) << "\n";
 }
 
-// 65: def test_manual_iter() -> None:
+// 63: def test_manual_iter() -> None:
 void test_manual_iter() {
-    // 66:     # Call __iter__() explicitly on concrete types
-    // 67:     nums: list[Int32] = [1, 2, 3]
+    // 64:     # Call __iter__() explicitly on concrete types
+    // 65:     nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    // 68:     it = nums.__iter__()
+    // 66:     it = nums.__iter__()
     auto it = tpy::__iter__(nums);
-    // 69:     total: Int32 = 0
+    // 67:     total: Int32 = 0
     int32_t total = 0;
-    // 70:     for x in it:
+    // 68:     for x in it:
     auto& __src_0 = it;
     auto __obj_0 = tpy::iter_adapt(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 71:         total += x
+        // 69:         total += x
         total = tpy::add_check<int32_t>(total, x);
     }
-    // 72:     print(total)
+    // 70:     print(total)
     std::cout << total << "\n";
-    // 74:     # str.__iter__()
-    // 75:     chars: str = "hi"
+    // 72:     # str.__iter__()
+    // 73:     chars: str = "hi"
     std::string chars = "hi";
-    // 76:     char_it = chars.__iter__()
+    // 74:     char_it = chars.__iter__()
     auto char_it = tpy::__iter__(chars);
-    // 77:     for c in char_it:
+    // 75:     for c in char_it:
     auto& __src_1 = char_it;
     auto __obj_1 = tpy::iter_adapt(__src_1);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         char c = *__beg_1;
-        // 78:         print(c)
+        // 76:         print(c)
         std::cout << c << "\n";
     }
-    // 80:     # Array.__iter__()
-    // 81:     arr: Array[Int32, 2] = [7, 8]
+    // 78:     # Array.__iter__()
+    // 79:     arr: Array[Int32, 2] = [7, 8]
     std::array<int32_t, 2> arr = {7, 8};
-    // 82:     arr_it = arr.__iter__()
+    // 80:     arr_it = arr.__iter__()
     auto arr_it = tpy::__iter__(arr);
-    // 83:     for v in arr_it:
+    // 81:     for v in arr_it:
     auto& __src_2 = arr_it;
     auto __obj_2 = tpy::iter_adapt(__src_2);
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         int32_t v = *__beg_2;
-        // 84:         print(v)
+        // 82:         print(v)
         std::cout << v << "\n";
     }
-    // 86:     # dict.__iter__()
-    // 87:     d: dict[str, Int32] = {"x": 10, "y": 20}
+    // 84:     # dict.__iter__()
+    // 85:     d: dict[str, Int32] = {"x": 10, "y": 20}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}});
-    // 88:     d_it = d.__iter__()
+    // 86:     d_it = d.__iter__()
     auto d_it = tpy::__iter__(d);
-    // 89:     for k in d_it:
+    // 87:     for k in d_it:
     auto& __src_3 = d_it;
     auto __obj_3 = tpy::iter_adapt(__src_3);
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         std::string_view k = *__beg_3;
-        // 90:         print(k)
+        // 88:         print(k)
         std::cout << k << "\n";
     }
 }
 
-// 100: def test_iter_builtin() -> None:
+// 98: def test_iter_builtin() -> None:
 void test_iter_builtin() {
-    // 101:     # iter() builtin with builtin container types
-    // 102:     nums: list[Int32] = [4, 5, 6]
+    // 99:     # iter() builtin with builtin container types
+    // 100:     nums: list[Int32] = [4, 5, 6]
     std::vector<int32_t> nums = {4, 5, 6};
-    // 103:     it = iter(nums)
+    // 101:     it = iter(nums)
     auto it = tpy::__iter__(nums);
-    // 104:     total: Int32 = 0
+    // 102:     total: Int32 = 0
     int32_t total = 0;
-    // 105:     for x in it:
+    // 103:     for x in it:
     auto& __src_0 = it;
     auto __obj_0 = tpy::iter_adapt(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 106:         total += x
+        // 104:         total += x
         total = tpy::add_check<int32_t>(total, x);
     }
-    // 107:     print(total)
+    // 105:     print(total)
     std::cout << total << "\n";
-    // 109:     # iter() on dict
-    // 110:     d: dict[str, Int32] = {"p": 1, "q": 2}
+    // 107:     # iter() on dict
+    // 108:     d: dict[str, Int32] = {"p": 1, "q": 2}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"p", 1}, {"q", 2}});
-    // 111:     d_it = iter(d)
+    // 109:     d_it = iter(d)
     auto d_it = tpy::__iter__(d);
-    // 112:     for k in d_it:
+    // 110:     for k in d_it:
     auto& __src_1 = d_it;
     auto __obj_1 = tpy::iter_adapt(__src_1);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
-        // 113:         print(k)
+        // 111:         print(k)
         std::cout << k << "\n";
     }
 }
 
-// 115: def main() -> None:
+// 113: def main() -> None:
 void main() {
-    // 116:     test_iterable_params()
+    // 114:     test_iterable_params()
     test_iterable_params();
-    // 117:     test_manual_iter()
+    // 115:     test_manual_iter()
     test_manual_iter();
-    // 118:     proto_input: list[Int32] = [10, 20]
+    // 116:     proto_input: list[Int32] = [10, 20]
     std::vector<int32_t> proto_input = {10, 20};
-    // 119:     test_iter_on_protocol(proto_input)
+    // 117:     test_iter_on_protocol(proto_input)
     test_iter_on_protocol(proto_input);
-    // 120:     test_iter_builtin()
+    // 118:     test_iter_builtin()
     test_iter_builtin();
 }
 
@@ -185,7 +181,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 122: main()
+    // 120: main()
     main();
 }
 

@@ -23,8 +23,3 @@ last > second_last
 10
 20
 30
-=== staticlist ===
-30
-20
-10
-99

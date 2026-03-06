@@ -1,5 +1,6 @@
 from __future__ import annotations
-from tpy import Int32, Char, Array, StaticList
+from tpy import Int32, Char, Array
+from tplib import ArrayList
 
 # None literal
 print(None)
@@ -27,8 +28,10 @@ print(items)
 arr: Array[Int32, 3] = [10, 20, 30]
 print(arr)
 
-sl: StaticList[Int32, 4] = StaticList[Int32, 4]([5, 6])
-print(sl)
+al = ArrayList[Int32, 4]()
+al.append(5)
+al.append(6)
+print(al)
 
 # Range (has its own operator<<, not ListPrinter)
 print(range(5))

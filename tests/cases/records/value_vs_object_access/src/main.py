@@ -1,4 +1,5 @@
-from tpy import Int32, StaticList
+from tpy import Int32
+from tplib import ArrayList
 
 class Point:
     x: Int32
@@ -10,8 +11,8 @@ class Point:
 
 
 def test_value_types():
-    # Value type - get_value (copy semantics)
-    nums: StaticList[Int32, 4] = StaticList[Int32, 4]()
+    # Value type on ArrayList - get_value (copy semantics)
+    nums = ArrayList[Int32, 4]()
     nums.append(10)
     nums.append(20)
     val: Int32 = nums[0]
@@ -28,8 +29,8 @@ def test_value_types():
 
 
 def test_object_types():
-    # Object type - get_ref (reference semantics)
-    points: StaticList[Point, 4] = StaticList[Point, 4]()
+    # Object type on ArrayList - get_ref (reference semantics)
+    points = ArrayList[Point, 4]()
     points.append(Point(1, 2))
     points.append(Point(3, 4))
 

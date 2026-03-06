@@ -6,9 +6,9 @@ namespace tpy_user::main {
 // # Array subscript assignment
 // 4: arr: Array[Int32, 3] = [1, 2, 3]
 std::array<int32_t, 3>* arr{};
-// # StaticList subscript assignment
-// 13: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
-StaticList<int32_t, 4>* items{};
+// # list subscript assignment
+// 13: items: list[Int32] = [10, 20]
+std::vector<int32_t>* items{};
 
 void __tpy_init() {
     static bool initialized = false;
@@ -31,21 +31,17 @@ void __tpy_init() {
     std::cout << tpy::__getitem__((*arr), 1) << "\n";
     // 10: print(arr[2])
     std::cout << tpy::__getitem__((*arr), 2) << "\n";
-    // 12: # StaticList subscript assignment
-    // 13: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
-    static StaticList<int32_t, 4> __global_slot_2 = StaticList<int32_t, 4>();
+    // 12: # list subscript assignment
+    // 13: items: list[Int32] = [10, 20]
+    static std::vector<int32_t> __global_slot_2 = {10, 20};
     items = &__global_slot_2;
-    // 14: items.append(10)
-    (*items).push_back(10);
-    // 15: items.append(20)
-    (*items).push_back(20);
-    // 16: items[0] = 99
+    // 14: items[0] = 99
     tpy::__setitem__((*items), 0, 99);
-    // 17: items[1] = 88
+    // 15: items[1] = 88
     tpy::__setitem__((*items), 1, 88);
-    // 18: print(items[0])
+    // 16: print(items[0])
     std::cout << tpy::__getitem__((*items), 0) << "\n";
-    // 19: print(items[1])
+    // 17: print(items[1])
     std::cout << tpy::__getitem__((*items), 1) << "\n";
 }
 

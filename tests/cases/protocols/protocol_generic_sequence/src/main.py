@@ -1,5 +1,6 @@
 from typing import Sequence
-from tpy import Int32, Array, Span, StaticList
+from tpy import Int32, Array, Span
+from tplib import ArrayList
 
 def first(items: Sequence[Int32]) -> Int32:
     return items[0]
@@ -31,12 +32,12 @@ def main() -> None:
     print(use_span(arr))   # 60 (Span from Array)
     print(use_span(nums))  # 15 (Span from list)
 
-    # Test with StaticList[Int32, N]
-    sl: StaticList[Int32, 8] = StaticList[Int32, 8]()
-    sl.append(100)
-    sl.append(200)
-    sl.append(300)
-    print(first(sl))       # 100
-    print(sum_all(sl))     # 600
+    # Test with ArrayList[Int32, N] (user/library type)
+    al = ArrayList[Int32, 8]()
+    al.append(100)
+    al.append(200)
+    al.append(300)
+    print(first(al))       # 100
+    print(sum_all(al))     # 600
 
 main()

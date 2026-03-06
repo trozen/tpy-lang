@@ -2,6 +2,7 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tplib.hpp"
 
 namespace tpy_user::main {
 
@@ -13,7 +14,7 @@ void test_list();
 void test_array();
 void test_span();
 void test_ro_span();
-void test_static_list();
+void test_arraylist();
 
 // 5: def sum_span(c: ReadOnlySpanLike[Int32]) -> Int32:
 template<tpy::ReadOnlySpanLike<int32_t> T_c>

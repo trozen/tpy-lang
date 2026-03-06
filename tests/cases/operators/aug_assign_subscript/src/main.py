@@ -1,4 +1,5 @@
-from tpy import Int32, Array, StaticList
+from tpy import Int32, Array
+from tplib import ArrayList
 
 def test_list_aug_assign() -> None:
     nums: list[Int32] = [1, 2, 3]
@@ -9,8 +10,8 @@ def test_list_aug_assign() -> None:
     nums[2] -= 1
     print(nums[2])  # 2
 
-def test_staticlist_aug_assign() -> None:
-    items: StaticList[Int32, 4] = StaticList[Int32, 4]()
+def test_arraylist_aug_assign() -> None:
+    items = ArrayList[Int32, 4]()
     items.append(100)
     items.append(200)
     items[0] += 5
@@ -33,6 +34,6 @@ def test_array_aug_assign() -> None:
     print(arr[-1])  # 60
 
 test_list_aug_assign()
-test_staticlist_aug_assign()
+test_arraylist_aug_assign()
 test_negative_index_aug_assign()
 test_array_aug_assign()

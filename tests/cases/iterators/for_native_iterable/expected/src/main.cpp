@@ -14,30 +14,26 @@ void main() {
     std::array<int32_t, 3> arr = {10, 20, 30};
     // 35:     print(sum_iter(arr))   # 60
     std::cout << sum_iter(arr) << "\n";
-    // 37:     sl: StaticList[Int32, 8] = StaticList[Int32, 8]()
-    StaticList<int32_t, 8> sl = StaticList<int32_t, 8>();
-    // 38:     sl.append(100)
-    sl.push_back(100);
-    // 39:     sl.append(200)
-    sl.push_back(200);
-    // 40:     print(sum_iter(sl))    # 300
-    std::cout << sum_iter(sl) << "\n";
-    // 42:     print_all(nums)  # 1, 2, 3
+    // 37:     more: Array[Int32, 2] = [100, 200]
+    std::array<int32_t, 2> more = {100, 200};
+    // 38:     print(sum_iter(more))  # 300
+    std::cout << sum_iter(more) << "\n";
+    // 40:     print_all(nums)  # 1, 2, 3
     print_all(nums);
-    // 44:     # Test protocol-to-protocol passing
-    // 45:     print(process_and_sum(arr))  # prints 10, 20, 30 then 60
+    // 42:     # Test protocol-to-protocol passing
+    // 43:     print(process_and_sum(arr))  # prints 10, 20, 30 then 60
     std::cout << process_and_sum(arr) << "\n";
-    // 47:     # Test nested iteration
-    // 48:     a: list[Int32] = [1, 2]
+    // 45:     # Test nested iteration
+    // 46:     a: list[Int32] = [1, 2]
     std::vector<int32_t> a = {1, 2};
-    // 49:     b: list[Int32] = [10, 20]
+    // 47:     b: list[Int32] = [10, 20]
     std::vector<int32_t> b = {10, 20};
-    // 50:     print(nested_iteration(a, b))  # (1*10 + 1*20) + (2*10 + 2*20) = 30 + 60 = 90
+    // 48:     print(nested_iteration(a, b))  # (1*10 + 1*20) + (2*10 + 2*20) = 30 + 60 = 90
     std::cout << nested_iteration(a, b) << "\n";
-    // 52:     # Test "in" operator with NativeIterable
-    // 53:     print(contains_value(nums, 2))   # True
+    // 50:     # Test "in" operator with NativeIterable
+    // 51:     print(contains_value(nums, 2))   # True
     std::cout << tpy::print_bool(contains_value(nums, 2)) << "\n";
-    // 54:     print(contains_value(nums, 99))  # False
+    // 52:     print(contains_value(nums, 99))  # False
     std::cout << tpy::print_bool(contains_value(nums, 99)) << "\n";
 }
 
@@ -46,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 56: main()
+    // 54: main()
     main();
 }
 

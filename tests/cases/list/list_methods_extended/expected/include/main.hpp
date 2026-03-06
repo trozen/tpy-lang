@@ -5,47 +5,15 @@
 
 namespace tpy_user::main {
 
-struct Item;
-
 inline constexpr std::string_view __name__ = "__main__";
 
 void print_list(std::vector<int32_t>& nums);
-void print_staticlist(StaticList<int32_t, 16>& nums);
 void test_pop_at_index();
 void test_index();
 void test_count();
 void test_reverse();
 void test_copy();
 void test_setitem();
-void test_staticlist_extend();
-void test_staticlist_insert();
-void test_staticlist_insert_no_default_ctor();
-void test_staticlist_remove();
-void test_staticlist_pop_at();
-void test_staticlist_index();
-void test_staticlist_count();
-void test_staticlist_reverse();
-void test_staticlist_pop();
-void test_staticlist_clear();
-void print_item_list(StaticList<Item, 16>& items);
-void test_staticlist_get_mut();
-
-// 229: class Item:
-struct Item {
-    // 230:     value: Int32
-    int32_t value;
-
-    // 232:     def __init__(self, v: Int32):
-    Item() = default;
-    explicit Item(int32_t v) : value(v) {}
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
-    os << "Item("
-       << "value=" << obj.value
-       << ")";
-    return os;
-}
 
 void __tpy_init();
 } // namespace tpy_user::main

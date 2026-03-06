@@ -1,4 +1,4 @@
-from tpy import Int32, StaticList
+from tpy import Int32
 
 class Point:
     x: Int32
@@ -6,6 +6,5 @@ class Point:
 
 # ERROR: returning reference to element of local container
 def bad_local_subscript() -> Point:
-    local: StaticList[Point, 4] = StaticList[Point, 4]()
-    local.append(Point())
+    local: list[Point] = [Point()]
     return local[0]  # tpyc: error(/Cannot return local or temporary/)

@@ -1,6 +1,6 @@
-# Test that builtin types (list, Array, Span, ReadOnlySpan, StaticList) conform
-# to ReadOnlySpanLike[T].
-from tpy import Int32, Array, Span, ReadOnlySpan, StaticList, ReadOnlySpanLike
+# Test that builtin types and user types (ArrayList) conform to ReadOnlySpanLike[T].
+from tpy import Int32, Array, Span, ReadOnlySpan, ReadOnlySpanLike
+from tplib import ArrayList
 
 def sum_span(c: ReadOnlySpanLike[Int32]) -> Int32:
     total: Int32 = 0
@@ -26,15 +26,15 @@ def test_ro_span() -> None:
     s: ReadOnlySpan[Int32] = data
     print(sum_span(s))
 
-def test_static_list() -> None:
-    sl: StaticList[Int32, 4] = StaticList()
-    sl.append(Int32(100))
-    sl.append(Int32(200))
-    print(sum_span(sl))
+def test_arraylist() -> None:
+    al = ArrayList[Int32, 4]()
+    al.append(Int32(100))
+    al.append(Int32(200))
+    print(sum_span(al))
 
 test_list()
 test_array()
 test_span()
 test_ro_span()
-test_static_list()
+test_arraylist()
 print("done")

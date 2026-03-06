@@ -4,56 +4,54 @@
 namespace tpy_user::main {
 
 
-// 17: def main() -> None:
+// 14: def main() -> None:
 void main() {
-    // 18:     # list.extend with Iterable param
-    // 19:     nums: list[Int32] = [1, 2]
+    // 15:     # list.extend with Iterable param
+    // 16:     nums: list[Int32] = [1, 2]
     std::vector<int32_t> nums = {1, 2};
-    // 20:     more: list[Int32] = [3, 4, 5]
+    // 17:     more: list[Int32] = [3, 4, 5]
     std::vector<int32_t> more = {3, 4, 5};
-    // 21:     extend_from(nums, more)
+    // 18:     extend_from(nums, more)
     extend_from(nums, more);
-    // 22:     print(nums)
+    // 19:     print(nums)
     std::cout << tpy::ListPrinter(nums) << "\n";
-    // 24:     # list.extend with list literal
-    // 25:     nums2: list[Int32] = [10]
+    // 21:     # list.extend with list literal
+    // 22:     nums2: list[Int32] = [10]
     std::vector<int32_t> nums2 = {10};
-    // 26:     extend_from(nums2, [20, 30])
+    // 23:     extend_from(nums2, [20, 30])
     auto __tmp_1 = {20, 30};
     extend_from(nums2, __tmp_1);
-    // 27:     print(nums2)
+    // 24:     print(nums2)
     std::cout << tpy::ListPrinter(nums2) << "\n";
-    // 29:     # StaticList.extend with Iterable param
-    // 30:     sl: StaticList[Int32, 16] = StaticList[Int32, 16]()
-    StaticList<int32_t, 16> sl = StaticList<int32_t, 16>();
-    // 31:     sl.append(100)
-    sl.push_back(100);
-    // 32:     vals: list[Int32] = [200, 300]
+    // 26:     # list.extend with another list via Iterable
+    // 27:     target: list[Int32] = [100]
+    std::vector<int32_t> target = {100};
+    // 28:     vals: list[Int32] = [200, 300]
     std::vector<int32_t> vals = {200, 300};
-    // 33:     sl_extend_from(sl, vals)
-    sl_extend_from(sl, vals);
-    // 34:     print(sl)
-    std::cout << tpy::ListPrinter(sl) << "\n";
-    // 36:     # str.join with Iterable param
-    // 37:     words: list[str] = ["a", "b", "c"]
+    // 29:     extend_from(target, vals)
+    extend_from(target, vals);
+    // 30:     print(target)
+    std::cout << tpy::ListPrinter(target) << "\n";
+    // 32:     # str.join with Iterable param
+    // 33:     words: list[str] = ["a", "b", "c"]
     std::vector<std::string> words = {"a", "b", "c"};
-    // 38:     print(join_from("-", words))
+    // 34:     print(join_from("-", words))
     std::cout << join_from("-", words) << "\n";
-    // 40:     # list() from Iterable param
-    // 41:     src: list[Int32] = [7, 8, 9]
+    // 36:     # list() from Iterable param
+    // 37:     src: list[Int32] = [7, 8, 9]
     std::vector<int32_t> src = {7, 8, 9};
-    // 42:     result = list_from(src)
+    // 38:     result = list_from(src)
     std::vector<int32_t> result = list_from(src);
-    // 43:     print(result)
+    // 39:     print(result)
     std::cout << tpy::ListPrinter(result) << "\n";
-    // 45:     # Direct calls (not through Iterable param)
-    // 46:     direct: list[Int32] = [1]
+    // 41:     # Direct calls (not through Iterable param)
+    // 42:     direct: list[Int32] = [1]
     std::vector<int32_t> direct = {1};
-    // 47:     direct.extend([2, 3])
+    // 43:     direct.extend([2, 3])
     tpy::list_extend(direct, {2, 3});
-    // 48:     print(direct)
+    // 44:     print(direct)
     std::cout << tpy::ListPrinter(direct) << "\n";
-    // 50:     print(",".join(["x", "y"]))
+    // 46:     print(",".join(["x", "y"]))
     std::cout << tpy::str_join(",", {"x", "y"}) << "\n";
 }
 
@@ -62,7 +60,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 52: main()
+    // 48: main()
     main();
 }
 

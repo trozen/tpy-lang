@@ -1,14 +1,15 @@
 """Tests that methods work on all container types via unified module lookup."""
-from tpy import Int32, StaticList, Array, Span
+from tpy import Int32, Array, Span
+from tplib import ArrayList
 
-# StaticList methods (append, len, subscript)
-sl: StaticList[Int32, 8] = StaticList[Int32, 8]()
-sl.append(10)
-sl.append(20)
-sl.append(30)
-print(len(sl))
-print(sl[0])
-print(sl[2])
+# ArrayList methods (append, len, subscript)
+al = ArrayList[Int32, 8]()
+al.append(10)
+al.append(20)
+al.append(30)
+print(len(al))
+print(al[0])
+print(al[2])
 
 # Array methods (subscript, len)
 arr: Array[Int32, 3] = [100, 200, 300]

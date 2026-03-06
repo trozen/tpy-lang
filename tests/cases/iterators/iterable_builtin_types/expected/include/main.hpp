@@ -74,25 +74,25 @@ std::string sum_strs(T_items& items) {
     // 22:     return result
     return result;
 }
-// 92: def test_iter_on_protocol(items: Iterable[Int32]) -> None:
+// 90: def test_iter_on_protocol(items: Iterable[Int32]) -> None:
 template<tpy::Iterable<int32_t> T_items>
 void test_iter_on_protocol(T_items& items) {
-    // 93:     # __iter__() on a protocol-typed variable
-    // 94:     it = items.__iter__()
+    // 91:     # __iter__() on a protocol-typed variable
+    // 92:     it = items.__iter__()
     auto it = tpy::__iter__(items);
-    // 95:     total: Int32 = 0
+    // 93:     total: Int32 = 0
     int32_t total = 0;
-    // 96:     for x in it:
+    // 94:     for x in it:
     auto& __src_0 = it;
     auto __obj_0 = tpy::iter_adapt(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 97:         total += x
+        // 95:         total += x
         total = tpy::add_check<int32_t>(total, x);
     }
-    // 98:     print(total)
+    // 96:     print(total)
     std::cout << total << "\n";
 }
 

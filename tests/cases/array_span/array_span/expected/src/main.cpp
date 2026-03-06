@@ -9,9 +9,9 @@ std::array<int32_t, 3>* nums{};
 // # Test 3: Array with explicit type annotation
 // 19: arr: Array[Int32, 3] = [100, 200, 300]
 std::array<int32_t, 3>* arr{};
-// # Test 4: StaticList -> Span conversion
-// 23: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
-StaticList<int32_t, 4>* items{};
+// # Test 4: list -> Span conversion
+// 23: items: list[Int32] = [1000, 2000, 3000, 4000]
+std::vector<int32_t>* items{};
 
 // 3: def sum_span(values: Span[Int32]) -> Int32:
 int32_t sum_span(std::span<int32_t> values) {
@@ -50,19 +50,11 @@ void __tpy_init() {
     arr = &__global_slot_2;
     // 20: print(sum_span(arr))
     std::cout << sum_span(tpy::as_mut_span((*arr))) << "\n";
-    // 22: # Test 4: StaticList -> Span conversion
-    // 23: items: StaticList[Int32, 4] = StaticList[Int32, 4]()
-    static StaticList<int32_t, 4> __global_slot_3 = StaticList<int32_t, 4>();
+    // 22: # Test 4: list -> Span conversion
+    // 23: items: list[Int32] = [1000, 2000, 3000, 4000]
+    static std::vector<int32_t> __global_slot_3 = {1000, 2000, 3000, 4000};
     items = &__global_slot_3;
-    // 24: items.append(1000)
-    (*items).push_back(1000);
-    // 25: items.append(2000)
-    (*items).push_back(2000);
-    // 26: items.append(3000)
-    (*items).push_back(3000);
-    // 27: items.append(4000)
-    (*items).push_back(4000);
-    // 28: print(sum_span(items))
+    // 24: print(sum_span(items))
     std::cout << sum_span(tpy::as_mut_span((*items))) << "\n";
 }
 

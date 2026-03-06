@@ -1,6 +1,6 @@
 # Field assignment inference: generic type args deduced from field annotation.
-# Covers no-arg constructors (Array, list, StaticList) and with-arg (UninitHeapStorage).
-from tpy import Int32, Array, StaticList, Own
+# Covers no-arg constructors (Array, list, dict) and with-arg (UninitHeapStorage).
+from tpy import Int32, Array, Own
 from tpy.mem import UninitHeapStorage
 
 class WithArray[T, N: int]:
@@ -15,11 +15,11 @@ class WithList[T]:
     def __init__(self):
         self.items = list()  # tpyc: ok -- infer list[T]
 
-class WithStaticList[T]:
-    buf: StaticList[T, 4]
+class WithDict[K, V]:
+    data: dict[K, V]
 
     def __init__(self):
-        self.buf = StaticList()  # tpyc: ok -- infer StaticList[T, 4]
+        self.data = dict()  # tpyc: ok -- infer dict[K, V]
 
 class WithHeapStorage[T]:
     _storage: UninitHeapStorage[T]
@@ -43,9 +43,9 @@ def main():
     l.items.append(Int32(42))
     print("list:", l.items)
 
-    s = WithStaticList[Int32]()
-    s.buf.append(Int32(99))
-    print("static_list:", s.buf)
+    d = WithDict[str, Int32]()
+    d.data["x"] = Int32(99)
+    print("dict:", d.data)
 
     h = WithHeapStorage[Int32](Int32(7))
     print("heap:", h.get())

@@ -1,9 +1,8 @@
-from tpy import Int32, Array, StaticList
+from tpy import Int32, Array
 
 # Test negative indexing for various container types
 
 def test_list_negative_indexing() -> None:
-    """Test negative indexing on list."""
     nums: list[Int32] = [10, 20, 30, 40, 50]
 
     # Last element
@@ -19,7 +18,6 @@ def test_list_negative_indexing() -> None:
     print(nums[-5])
 
 def test_array_negative_indexing() -> None:
-    """Test negative indexing on Array."""
     arr: Array[Int32, 4] = [100, 200, 300, 400]
 
     print(arr[-1])
@@ -27,7 +25,6 @@ def test_array_negative_indexing() -> None:
     print(arr[-4])
 
 def test_string_negative_indexing() -> None:
-    """Test negative indexing on string."""
     text: str = "hello"
 
     # Last character
@@ -40,7 +37,6 @@ def test_string_negative_indexing() -> None:
     print(text[-5])
 
 def test_negative_index_assignment() -> None:
-    """Test assignment using negative index."""
     nums: list[Int32] = [1, 2, 3, 4, 5]
 
     # Modify last element
@@ -56,7 +52,6 @@ def test_negative_index_assignment() -> None:
     print(nums[4])
 
 def test_negative_index_in_expression() -> None:
-    """Test negative index used in expressions."""
     nums: list[Int32] = [5, 10, 15, 20]
 
     # Arithmetic with negative indexed values
@@ -70,7 +65,6 @@ def test_negative_index_in_expression() -> None:
         print("last <= second_last")
 
 def test_array_negative_assignment() -> None:
-    """Test assignment using negative index on Array."""
     arr: Array[Int32, 3] = [1, 2, 3]
 
     arr[-1] = 30
@@ -80,19 +74,6 @@ def test_array_negative_assignment() -> None:
     print(arr[0])
     print(arr[1])
     print(arr[2])
-
-def test_staticlist_negative_indexing() -> None:
-    items: StaticList[Int32, 4] = StaticList[Int32, 4]()
-    items.append(10)
-    items.append(20)
-    items.append(30)
-
-    print(items[-1])
-    print(items[-2])
-    print(items[-3])
-
-    items[-1] = 99
-    print(items[-1])
 
 # Run all tests
 print("=== list ===")
@@ -107,5 +88,3 @@ print("=== expression ===")
 test_negative_index_in_expression()
 print("=== array assignment ===")
 test_array_negative_assignment()
-print("=== staticlist ===")
-test_staticlist_negative_indexing()

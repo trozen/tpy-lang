@@ -2,6 +2,7 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tplib.hpp"
 
 namespace tpy_user::main {
 
@@ -22,20 +23,20 @@ Point& return_record_from_ptr(Point* p);
 void test_ptr_to_record();
 int32_t take_const_ptr_val(const Point* p);
 void test_ptr_to_const_ptr();
-void test_staticlist_to_span();
+void test_arraylist_to_span();
 void test_array_to_span();
 void test_list_to_span();
 void test_subscript_to_ptr();
 
 // # --- Records for pointer coercion tests ---
-// 13: class Point:
+// 14: class Point:
 struct Point {
-    // 14:     x: Int32
+    // 15:     x: Int32
     int32_t x;
-    // 15:     y: Int32
+    // 16:     y: Int32
     int32_t y;
 
-    // 17:     def __init__(self, x: Int32, y: Int32) -> None:
+    // 18:     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

@@ -13,9 +13,9 @@ extern int32_t first;
 extern std::vector<int32_t>* items;
 inline constexpr std::string_view __name__ = "__main__";
 
-// # User class inheriting from StaticList
-// 9: class MyList(StaticList[Int32, 10]):
-struct MyList : StaticList<int32_t, 10> {
+// # User class inheriting from list
+// 9: class MyList(list[Int32]):
+struct MyList : std::vector<int32_t> {
     // 10:     name: str
     std::string name;
 

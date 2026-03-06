@@ -7,128 +7,106 @@ namespace tpy_user::main {
 // # Test negative indexing for various container types
 // 5: def test_list_negative_indexing() -> None:
 void test_list_negative_indexing() {
-    // 7:     nums: list[Int32] = [10, 20, 30, 40, 50]
+    // 6:     nums: list[Int32] = [10, 20, 30, 40, 50]
     std::vector<int32_t> nums = {10, 20, 30, 40, 50};
-    // 9:     # Last element
-    // 10:     print(nums[-1])
+    // 8:     # Last element
+    // 9:     print(nums[-1])
     std::cout << tpy::__getitem__(nums, -1) << "\n";
-    // 12:     # Second to last
-    // 13:     print(nums[-2])
+    // 11:     # Second to last
+    // 12:     print(nums[-2])
     std::cout << tpy::__getitem__(nums, -2) << "\n";
-    // 15:     # Third to last
-    // 16:     print(nums[-3])
+    // 14:     # Third to last
+    // 15:     print(nums[-3])
     std::cout << tpy::__getitem__(nums, -3) << "\n";
-    // 18:     # First element via negative (should be same as nums[0])
-    // 19:     print(nums[-5])
+    // 17:     # First element via negative (should be same as nums[0])
+    // 18:     print(nums[-5])
     std::cout << tpy::__getitem__(nums, -5) << "\n";
 }
 
-// 21: def test_array_negative_indexing() -> None:
+// 20: def test_array_negative_indexing() -> None:
 void test_array_negative_indexing() {
-    // 23:     arr: Array[Int32, 4] = [100, 200, 300, 400]
+    // 21:     arr: Array[Int32, 4] = [100, 200, 300, 400]
     std::array<int32_t, 4> arr = {100, 200, 300, 400};
-    // 25:     print(arr[-1])
+    // 23:     print(arr[-1])
     std::cout << tpy::__getitem__(arr, -1) << "\n";
-    // 26:     print(arr[-2])
+    // 24:     print(arr[-2])
     std::cout << tpy::__getitem__(arr, -2) << "\n";
-    // 27:     print(arr[-4])
+    // 25:     print(arr[-4])
     std::cout << tpy::__getitem__(arr, -4) << "\n";
 }
 
-// 29: def test_string_negative_indexing() -> None:
+// 27: def test_string_negative_indexing() -> None:
 void test_string_negative_indexing() {
-    // 31:     text: str = "hello"
+    // 28:     text: str = "hello"
     std::string text = "hello";
-    // 33:     # Last character
-    // 34:     print(text[-1])
+    // 30:     # Last character
+    // 31:     print(text[-1])
     std::cout << tpy::__getitem__(text, -1) << "\n";
-    // 36:     # Second to last
-    // 37:     print(text[-2])
+    // 33:     # Second to last
+    // 34:     print(text[-2])
     std::cout << tpy::__getitem__(text, -2) << "\n";
-    // 39:     # First character via negative
-    // 40:     print(text[-5])
+    // 36:     # First character via negative
+    // 37:     print(text[-5])
     std::cout << tpy::__getitem__(text, -5) << "\n";
 }
 
-// 42: def test_negative_index_assignment() -> None:
+// 39: def test_negative_index_assignment() -> None:
 void test_negative_index_assignment() {
-    // 44:     nums: list[Int32] = [1, 2, 3, 4, 5]
+    // 40:     nums: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
-    // 46:     # Modify last element
-    // 47:     nums[-1] = 50
+    // 42:     # Modify last element
+    // 43:     nums[-1] = 50
     tpy::__setitem__(nums, -1, 50);
-    // 48:     print(nums[-1])
+    // 44:     print(nums[-1])
     std::cout << tpy::__getitem__(nums, -1) << "\n";
-    // 50:     # Modify second to last
-    // 51:     nums[-2] = 40
+    // 46:     # Modify second to last
+    // 47:     nums[-2] = 40
     tpy::__setitem__(nums, -2, 40);
-    // 52:     print(nums[-2])
+    // 48:     print(nums[-2])
     std::cout << tpy::__getitem__(nums, -2) << "\n";
-    // 54:     # Verify list contents
-    // 55:     print(nums[3])
+    // 50:     # Verify list contents
+    // 51:     print(nums[3])
     std::cout << tpy::__getitem__(nums, 3) << "\n";
-    // 56:     print(nums[4])
+    // 52:     print(nums[4])
     std::cout << tpy::__getitem__(nums, 4) << "\n";
 }
 
-// 58: def test_negative_index_in_expression() -> None:
+// 54: def test_negative_index_in_expression() -> None:
 void test_negative_index_in_expression() {
-    // 60:     nums: list[Int32] = [5, 10, 15, 20]
+    // 55:     nums: list[Int32] = [5, 10, 15, 20]
     std::vector<int32_t> nums = {5, 10, 15, 20};
-    // 62:     # Arithmetic with negative indexed values
-    // 63:     total: Int32 = nums[-1] + nums[-2]
+    // 57:     # Arithmetic with negative indexed values
+    // 58:     total: Int32 = nums[-1] + nums[-2]
     int32_t total = (tpy::add_check<int32_t>(tpy::__getitem__(nums, -1), tpy::__getitem__(nums, -2)));
-    // 64:     print(total)
+    // 59:     print(total)
     std::cout << total << "\n";
-    // 66:     # Comparison with negative indexed values
-    // 67:     if nums[-1] > nums[-2]:
+    // 61:     # Comparison with negative indexed values
+    // 62:     if nums[-1] > nums[-2]:
     if ((tpy::__getitem__(nums, -1) > tpy::__getitem__(nums, -2))) {
-        // 68:         print("last > second_last")
+        // 63:         print("last > second_last")
         std::cout << "last > second_last" << "\n";
     } else {
-        // 70:         print("last <= second_last")
+        // 65:         print("last <= second_last")
         std::cout << "last <= second_last" << "\n";
     }
 }
 
-// 72: def test_array_negative_assignment() -> None:
+// 67: def test_array_negative_assignment() -> None:
 void test_array_negative_assignment() {
-    // 74:     arr: Array[Int32, 3] = [1, 2, 3]
+    // 68:     arr: Array[Int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> arr = {1, 2, 3};
-    // 76:     arr[-1] = 30
+    // 70:     arr[-1] = 30
     tpy::__setitem__(arr, -1, 30);
-    // 77:     arr[-2] = 20
+    // 71:     arr[-2] = 20
     tpy::__setitem__(arr, -2, 20);
-    // 78:     arr[-3] = 10
+    // 72:     arr[-3] = 10
     tpy::__setitem__(arr, -3, 10);
-    // 80:     print(arr[0])
+    // 74:     print(arr[0])
     std::cout << tpy::__getitem__(arr, 0) << "\n";
-    // 81:     print(arr[1])
+    // 75:     print(arr[1])
     std::cout << tpy::__getitem__(arr, 1) << "\n";
-    // 82:     print(arr[2])
+    // 76:     print(arr[2])
     std::cout << tpy::__getitem__(arr, 2) << "\n";
-}
-
-// 84: def test_staticlist_negative_indexing() -> None:
-void test_staticlist_negative_indexing() {
-    // 85:     items: StaticList[Int32, 4] = StaticList[Int32, 4]()
-    StaticList<int32_t, 4> items = StaticList<int32_t, 4>();
-    // 86:     items.append(10)
-    items.push_back(10);
-    // 87:     items.append(20)
-    items.push_back(20);
-    // 88:     items.append(30)
-    items.push_back(30);
-    // 90:     print(items[-1])
-    std::cout << tpy::__getitem__(items, -1) << "\n";
-    // 91:     print(items[-2])
-    std::cout << tpy::__getitem__(items, -2) << "\n";
-    // 92:     print(items[-3])
-    std::cout << tpy::__getitem__(items, -3) << "\n";
-    // 94:     items[-1] = 99
-    tpy::__setitem__(items, -1, 99);
-    // 95:     print(items[-1])
-    std::cout << tpy::__getitem__(items, -1) << "\n";
 }
 
 void __tpy_init() {
@@ -136,35 +114,31 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 97: # Run all tests
-    // 98: print("=== list ===")
+    // 78: # Run all tests
+    // 79: print("=== list ===")
     std::cout << "=== list ===" << "\n";
-    // 99: test_list_negative_indexing()
+    // 80: test_list_negative_indexing()
     test_list_negative_indexing();
-    // 100: print("=== array ===")
+    // 81: print("=== array ===")
     std::cout << "=== array ===" << "\n";
-    // 101: test_array_negative_indexing()
+    // 82: test_array_negative_indexing()
     test_array_negative_indexing();
-    // 102: print("=== string ===")
+    // 83: print("=== string ===")
     std::cout << "=== string ===" << "\n";
-    // 103: test_string_negative_indexing()
+    // 84: test_string_negative_indexing()
     test_string_negative_indexing();
-    // 104: print("=== assignment ===")
+    // 85: print("=== assignment ===")
     std::cout << "=== assignment ===" << "\n";
-    // 105: test_negative_index_assignment()
+    // 86: test_negative_index_assignment()
     test_negative_index_assignment();
-    // 106: print("=== expression ===")
+    // 87: print("=== expression ===")
     std::cout << "=== expression ===" << "\n";
-    // 107: test_negative_index_in_expression()
+    // 88: test_negative_index_in_expression()
     test_negative_index_in_expression();
-    // 108: print("=== array assignment ===")
+    // 89: print("=== array assignment ===")
     std::cout << "=== array assignment ===" << "\n";
-    // 109: test_array_negative_assignment()
+    // 90: test_array_negative_assignment()
     test_array_negative_assignment();
-    // 110: print("=== staticlist ===")
-    std::cout << "=== staticlist ===" << "\n";
-    // 111: test_staticlist_negative_indexing()
-    test_staticlist_negative_indexing();
 }
 
 } // namespace tpy_user::main

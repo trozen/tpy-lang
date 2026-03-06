@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 extern std::vector<int32_t>* zeros;
-extern StaticList<int32_t, 10>* filled;
+extern std::vector<int32_t>* filled;
 extern std::vector<int32_t>* empty;
 extern int32_t n;
 extern std::vector<int32_t>* dynamic;

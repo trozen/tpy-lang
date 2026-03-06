@@ -2,6 +2,7 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tplib.hpp"
 
 namespace tpy_user::main {
 
@@ -11,7 +12,7 @@ void from_list();
 void from_array();
 void from_span();
 void from_readonly_span();
-void from_static_list();
+void from_arraylist();
 
 void __tpy_init();
 } // namespace tpy_user::main

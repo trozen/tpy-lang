@@ -3,10 +3,10 @@
 
 namespace tpy_user::main {
 
-// # Multi-element list repetition with StaticList
-// 4: sl: StaticList[Int32, 8] = StaticList[Int32, 8]([1, 2] * 3)
-StaticList<int32_t, 8>* sl{};
-// # Multi-element with std::vector (list)
+// # Multi-element list repetition
+// 4: repeated: list[Int32] = [1, 2] * 3
+std::vector<int32_t>* repeated{};
+// # Multi-element with list
 // 10: nums: list[Int32] = [10, 20] * 2
 std::vector<int32_t>* nums{};
 // # Empty list repetition (always produces empty list)
@@ -21,19 +21,19 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: # Multi-element list repetition with StaticList
-    // 4: sl: StaticList[Int32, 8] = StaticList[Int32, 8]([1, 2] * 3)
-    static StaticList<int32_t, 8> __global_slot_1 = tpy::from_range<StaticList<int32_t, 8>>(tpy::repeat_range<int32_t>(3, {1, 2}));
-    sl = &__global_slot_1;
-    // 5: print(len(sl))
-    std::cout << tpy::__len__((*sl)) << "\n";
-    // 6: for i in range(len(sl)):
-    int32_t __stop_0 = tpy::__len__((*sl));
+    // 3: # Multi-element list repetition
+    // 4: repeated: list[Int32] = [1, 2] * 3
+    static std::vector<int32_t> __global_slot_1 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(3, {1, 2}));
+    repeated = &__global_slot_1;
+    // 5: print(len(repeated))
+    std::cout << tpy::__len__((*repeated)) << "\n";
+    // 6: for i in range(len(repeated)):
+    int32_t __stop_0 = tpy::__len__((*repeated));
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // 7:     print(sl[i])
-        std::cout << tpy::__getitem__((*sl), i) << "\n";
+        // 7:     print(repeated[i])
+        std::cout << tpy::__getitem__((*repeated), i) << "\n";
     }
-    // 9: # Multi-element with std::vector (list)
+    // 9: # Multi-element with list
     // 10: nums: list[Int32] = [10, 20] * 2
     static std::vector<int32_t> __global_slot_2 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(2, {10, 20}));
     nums = &__global_slot_2;

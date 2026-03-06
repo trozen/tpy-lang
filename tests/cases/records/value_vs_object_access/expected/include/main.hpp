@@ -2,6 +2,7 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tplib.hpp"
 
 namespace tpy_user::main {
 
@@ -12,14 +13,14 @@ inline constexpr std::string_view __name__ = "__main__";
 void test_value_types();
 void test_object_types();
 
-// 3: class Point:
+// 4: class Point:
 struct Point {
-    // 4:     x: Int32
+    // 5:     x: Int32
     int32_t x;
-    // 5:     y: Int32
+    // 6:     y: Int32
     int32_t y;
 
-    // 7:     def __init__(self, x: Int32, y: Int32):
+    // 8:     def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

@@ -1,4 +1,4 @@
-from tpy import Int32, Array, StaticList, NativeIterable
+from tpy import Int32, Array, NativeIterable
 
 def sum_iter(items: NativeIterable[Int32]) -> Int32:
     total: Int32 = 0
@@ -34,10 +34,8 @@ def main() -> None:
     arr: Array[Int32, 3] = [10, 20, 30]
     print(sum_iter(arr))   # 60
 
-    sl: StaticList[Int32, 8] = StaticList[Int32, 8]()
-    sl.append(100)
-    sl.append(200)
-    print(sum_iter(sl))    # 300
+    more: Array[Int32, 2] = [100, 200]
+    print(sum_iter(more))  # 300
 
     print_all(nums)  # 1, 2, 3
 

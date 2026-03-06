@@ -1,11 +1,8 @@
 # Test Iterable[T] as param type for extend, join, list() constructors
 from typing import Iterable
-from tpy import Int32, Own, StaticList
+from tpy import Int32, Own
 
 def extend_from(target: list[Int32], items: Iterable[Int32]) -> None:
-    target.extend(items)
-
-def sl_extend_from(target: StaticList[Int32, 16], items: Iterable[Int32]) -> None:
     target.extend(items)
 
 def join_from(sep: str, items: Iterable[str]) -> str:
@@ -26,12 +23,11 @@ def main() -> None:
     extend_from(nums2, [20, 30])
     print(nums2)
 
-    # StaticList.extend with Iterable param
-    sl: StaticList[Int32, 16] = StaticList[Int32, 16]()
-    sl.append(100)
+    # list.extend with another list via Iterable
+    target: list[Int32] = [100]
     vals: list[Int32] = [200, 300]
-    sl_extend_from(sl, vals)
-    print(sl)
+    extend_from(target, vals)
+    print(target)
 
     # str.join with Iterable param
     words: list[str] = ["a", "b", "c"]

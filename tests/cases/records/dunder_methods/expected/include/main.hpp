@@ -2,11 +2,12 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tplib.hpp"
 
 namespace tpy_user::main {
 
 extern std::vector<int32_t>* items;
-extern StaticList<int32_t, 10>* sl;
+extern ::tpy_user::tplib::ArrayList<int32_t, 10>* al;
 extern std::array<int32_t, 3>* arr;
 inline constexpr std::string_view __name__ = "__main__";
 
