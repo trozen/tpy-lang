@@ -1,1 +1,0 @@
-ArrayList uses __span__ protocol for iteration (tpyc-only)

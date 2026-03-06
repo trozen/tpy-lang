@@ -115,6 +115,12 @@ class _Ptr(Generic[T]):
     def __deref__(self) -> T:
         return self._obj
 
+    def span(self, length):
+        """Ptr[T].span(n) -> Span[T] over the first n elements of the storage."""
+        n = int(length)
+        data = [self._obj._slots[i] for i in range(n)]
+        return _make_span(data)
+
     def __getattr__(self, name: str):
         return getattr(self._obj, name)
 
@@ -459,6 +465,11 @@ class Span(metaclass=SpanMeta):
         new_span = object.__new__(type(self))
         new_span._data = self._data
         return new_span
+
+
+def _make_span(data):
+    """Helper for _Ptr.span() -- avoids forward reference to Span."""
+    return Span(data)
 
 
 class ReadOnlySpanMeta(type):
