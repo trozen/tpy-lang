@@ -1613,7 +1613,17 @@ class Parser:
                 var=gen.target.id, iterable=iterable,
                 conditions=conditions, unpack_vars=None)
         elif isinstance(gen.target, ast.Tuple):
-            raise ParseError("Tuple unpacking in comprehensions not yet supported", gen.target)
+            for elt in gen.target.elts:
+                if not isinstance(elt, ast.Name):
+                    raise ParseError(
+                        "Comprehension unpacking targets must be simple variables", gen.target)
+            unpack_vars: list[str | None] = [
+                None if elt.id == "_" else elt.id  # type: ignore[union-attr]
+                for elt in gen.target.elts
+            ]
+            return TpyComprehensionGenerator(
+                var="__comp_tup", iterable=iterable,
+                conditions=conditions, unpack_vars=unpack_vars)
         else:
             raise ParseError("Unsupported comprehension target", gen.target)
 

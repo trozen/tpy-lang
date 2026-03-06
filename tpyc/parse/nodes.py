@@ -236,7 +236,7 @@ class TpyComprehensionGenerator:
     var: str
     iterable: TpyExpr
     conditions: list[TpyExpr]
-    unpack_vars: list[str] | None = None  # Phase 3: tuple unpacking
+    unpack_vars: list[str | None] | None = None  # Phase 3: tuple unpacking
 
 
 @dataclass

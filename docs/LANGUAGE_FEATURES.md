@@ -4117,7 +4117,7 @@ Generated C++ emits `extern` declarations before the module namespace. Reference
 
 - **Working**: Binary/unary ops, calls, field access
 - **Working**: Ternary `x if cond else y` (see [Conditionals](#conditionals))
-- **Working**: List comprehensions `[expr for x in iterable if cond]` -> IIFE with loop + push_back
+- **Working**: List comprehensions `[expr for x in iterable if cond]` -> IIFE with loop + push_back. Supports tuple unpacking: `[v for k, v in pairs]`
 - **Open**: Dict comprehensions
 - **Open**: Lambda → anonymous struct with `operator()` or inline
 - **Working**: String slice `s[start:end]` -> `std::string_view` (clamping, negative indices)

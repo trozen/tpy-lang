@@ -1772,11 +1772,32 @@ class ExpressionGenerator:
         buf.write(f"{ind1}auto __end_{n} = __obj_{n}.end();\n")
         buf.write(f"{ind1}for (; __beg_{n} != __end_{n}; ++__beg_{n}) {{\n")
 
-        if elem_type.is_value_type():
+        if gen.unpack_vars is not None:
+            self._gen_comp_tuple_unpack(buf, gen, elem_type, ind2, n)
+        elif elem_type.is_value_type():
             cpp_elem = elem_type.to_cpp()
             buf.write(f"{ind2}{cpp_elem} {cpp_var} = *__beg_{n};\n")
         else:
             buf.write(f"{ind2}auto&& {cpp_var} = *__beg_{n};\n")
+
+    def _gen_comp_tuple_unpack(self, buf: io.StringIO, gen: TpyComprehensionGenerator,
+                                elem_type: TpyType, ind: str, iter_n: int) -> None:
+        """Generate tuple unpacking bindings inside comprehension loop body."""
+        assert gen.unpack_vars is not None
+        assert isinstance(elem_type, TupleType)
+        self.ctx.unpack_counter += 1
+        tmp = f"__tup_{self.ctx.unpack_counter}"
+        buf.write(f"{ind}const auto& {tmp} = *__beg_{iter_n};\n")
+        for i, uvar in enumerate(gen.unpack_vars):
+            if uvar is None:
+                continue
+            utype = elem_type.element_types[i]
+            cpp_type = self.types.type_to_cpp(utype)
+            cpp_name = escape_cpp_name(uvar)
+            if utype.is_value_type():
+                buf.write(f"{ind}{cpp_type} {cpp_name} = std::get<{i}>({tmp});\n")
+            else:
+                buf.write(f"{ind}const auto& {cpp_name} = std::get<{i}>({tmp});\n")
 
     def _gen_comp_range_loop(self, buf: io.StringIO, gen: TpyComprehensionGenerator,
                               elem_type: TpyType, ind1: str, ind2: str,

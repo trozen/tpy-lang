@@ -5,6 +5,7 @@ Core expression analysis including literals, names, operators, field access, and
 """
 
 from __future__ import annotations
+from contextlib import ExitStack
 from typing import TYPE_CHECKING
 
 from ..typesys import (
@@ -22,7 +23,8 @@ from ..parse import (
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat, TpyListComprehension,
+    TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat,
+    TpyListComprehension, TpyComprehensionGenerator,
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr,
 )
@@ -1264,14 +1266,26 @@ class ExpressionAnalyzer:
         if self.scopes is None:
             raise RuntimeError("list comprehension requires ScopeTracker; wire via set_cross_deps()")
         with self.scopes.comprehension_scope() as inner_scope:
-            with self.scopes.loop_var(inner_scope, gen.var, elem_type,
-                                      inner_scope.depth, is_foreach=False):
-                # 4. Analyze filter conditions (no type restriction -- matches if/while)
-                for cond in gen.conditions:
-                    self.analyze_expr(cond)
-
-                # 5. Analyze element expression
-                result_elem_type = self.analyze_expr(expr.element_expr)
+            if gen.unpack_vars is not None:
+                # Tuple unpacking: validate element type and register each var
+                if not isinstance(elem_type, TupleType):
+                    raise self.ctx.error(
+                        f"Cannot unpack non-tuple type {elem_type}", expr)
+                if len(gen.unpack_vars) != len(elem_type.element_types):
+                    raise self.ctx.error(
+                        f"Cannot unpack tuple of {len(elem_type.element_types)} "
+                        f"elements into {len(gen.unpack_vars)} targets", expr)
+                with ExitStack() as stack:
+                    for uvar, utype in zip(gen.unpack_vars, elem_type.element_types):
+                        if uvar is not None:
+                            stack.enter_context(
+                                self.scopes.loop_var(inner_scope, uvar, utype,
+                                                     inner_scope.depth, is_foreach=False))
+                    result_elem_type = self._analyze_comp_body(gen, expr)
+            else:
+                with self.scopes.loop_var(inner_scope, gen.var, elem_type,
+                                          inner_scope.depth, is_foreach=False):
+                    result_elem_type = self._analyze_comp_body(gen, expr)
 
         # 6. Resolve IntLiteralType
         if isinstance(result_elem_type, IntLiteralType):
@@ -1281,6 +1295,12 @@ class ExpressionAnalyzer:
         expr.result_elem_type = result_elem_type
 
         return ListType(result_elem_type)
+
+    def _analyze_comp_body(self, gen: TpyComprehensionGenerator, expr: TpyListComprehension) -> TpyType:
+        """Analyze filter conditions and element expression of a comprehension."""
+        for cond in gen.conditions:
+            self.analyze_expr(cond)
+        return self.analyze_expr(expr.element_expr)
 
     def _analyze_tuple_literal(
         self, expr: TpyTupleLiteral, element_hints: list[TpyType | None] | None = None

@@ -6,7 +6,7 @@
 |-------|-------------|--------|
 | 1 | List comprehension: `[expr for var in iterable]`, single generator, no filter | Done |
 | 2 | Filter clause: `[expr for var in iterable if cond]` | Done |
-| 3 | Tuple unpacking in generator: `[v for k, v in pairs]` | Not started |
+| 3 | Tuple unpacking in generator: `[v for k, v in pairs]` | Done |
 | 4 | Annotation propagation: `result: list[Int32] = [x for x in items]` | Not started |
 | 5 | Optimizations: `range(N)` -> Array, Sized iterables -> reserve | Not started |
 
@@ -546,4 +546,6 @@ tests/cases/list/
     list_comp_in_context/      # Comprehension as function arg, return value, in print()
     error_list_comp_nested/    # Error: nested generators
     error_list_comp_not_iterable/  # Error: non-iterable source
+    error_list_comp_unpack_count/  # Error: unpack count mismatch
+    error_list_comp_unpack_non_tuple/  # Error: unpack on non-tuple
 ```
