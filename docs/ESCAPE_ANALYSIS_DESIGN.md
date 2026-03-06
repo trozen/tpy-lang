@@ -7,7 +7,7 @@
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
 | 5 | Ptr `is not None` narrowing | S | Done | [5](#5-ptr-narrowing-after-is-not-none) |
-| 7a | `@pure` annotation (builtins only, trusted) | S | Not started | [7](#7-pure-annotation) |
+| 7a | `@pure` annotation (trusted, no enforcement) | S | Done | [7](#7-pure-annotation) |
 | 10a | Send/Sync auto-derivation (markers only) | S | Not started | [10](#10-thread-safety-sendsync) |
 
 ### Phase 2: Intra-Function Borrow Checking
@@ -414,8 +414,9 @@ Incremental rollout:
 **Effort**: S-M
 
 A function marked `@pure` has no observable side effects: no mutation of non-local
-state, no I/O, no exceptions. `@pure` subsumes `@readonly` (which only promises no
-mutation of `self`).
+state, no I/O, deterministic output for the same inputs. `@pure` subsumes `@readonly`
+(which only promises no mutation of `self`). Heap allocation is permitted -- it is
+not considered an observable side effect since the returned object is fresh and owned.
 
 ```python
 @pure
@@ -435,9 +436,10 @@ These can be marked `@pure` in their module definitions.
 before enforcement was added). Phase 2 adds verification: the function body is checked
 for mutation of non-local state, I/O calls, and calls to non-`@pure` functions.
 
-**Interaction with effects**: `@pure` = `@readonly` + `@noalloc` + `@nothrow` + no I/O.
-It's the strongest effect annotation. See `FEATURE_ROADMAP.md` Section IV for the
-general effect system.
+**Interaction with effects**: `@pure` = `@readonly` + no I/O + no mutation of non-local
+state. `@noalloc` is orthogonal -- `@pure @noalloc` gives the strongest guarantee
+(pure + no heap allocation, suitable for hot paths). See `FEATURE_ROADMAP.md`
+Section IV for the general effect system.
 
 ### 8. Cross-Function Borrow Inference
 

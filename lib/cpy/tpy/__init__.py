@@ -440,6 +440,11 @@ class readonly:
         return func_or_flag
 
 
+def pure(func):
+    """No-op in CPython. The compiler tracks purity metadata at compile time."""
+    return func
+
+
 # ---------------------------------------------------------------------------
 # Functions
 # ---------------------------------------------------------------------------

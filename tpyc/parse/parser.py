@@ -1152,12 +1152,17 @@ class Parser:
         is_staticmethod = False
         is_readonly = False
         readonly_opt_out = False
+        is_pure = False
         method_linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"method '{node.name}'")
             if qname == "builtins.staticmethod":
                 is_staticmethod = True
+            elif qname == "tpy.pure":
+                if arg is not None:
+                    raise ParseError("@pure does not take arguments", dec)
+                is_pure = True
             elif qname == "tpy.readonly":
                 is_readonly, readonly_opt_out = self._parse_readonly_arg(arg, dec)
             elif qname in self._METHOD_LINKAGE_MAP:
@@ -1255,6 +1260,7 @@ class Parser:
             is_consuming=is_consuming,
             is_readonly=is_readonly,
             readonly_opt_out=readonly_opt_out,
+            is_pure=is_pure,
             is_stub=is_stub,
             linkage=method_linkage,
             native_name=native_name,
@@ -1275,6 +1281,7 @@ class Parser:
         is_noalloc = False
         is_readonly = False
         readonly_opt_out = False
+        is_pure = False
         linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
         for dec in node.decorator_list:
@@ -1283,6 +1290,10 @@ class Parser:
                 if arg is not None:
                     raise ParseError("@noalloc does not take arguments", dec)
                 is_noalloc = True
+            elif qname == "tpy.pure":
+                if arg is not None:
+                    raise ParseError("@pure does not take arguments", dec)
+                is_pure = True
             elif qname == "tpy.readonly":
                 is_readonly, readonly_opt_out = self._parse_readonly_arg(arg, dec)
             elif qname in self._FUNCTION_LINKAGE_MAP:
@@ -1368,6 +1379,7 @@ class Parser:
             is_noalloc=is_noalloc,
             is_readonly=is_readonly,
             readonly_opt_out=readonly_opt_out,
+            is_pure=is_pure,
             linkage=linkage,
             native_name=native_name,
             is_stub=is_stub,

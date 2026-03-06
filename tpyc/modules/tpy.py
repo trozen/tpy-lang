@@ -78,8 +78,8 @@ def _register_fixed_int(module: BuiltinModule, typ: FixedIntType) -> None:
     if typ.signed:
         methods["__neg__"] = [MethodDef(params=[], returns=typ, cpp=f"tpy::neg_check<{cpp_t}>({{self}})")]
 
-    methods["__hash__"] = [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)]
-    methods["__lt__"] = [MethodDef(params=[ParamDef("other", typ)], returns=BOOL, cpp="{self} < {0}", is_readonly=True)]
+    methods["__hash__"] = [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True, is_pure=True)]
+    methods["__lt__"] = [MethodDef(params=[ParamDef("other", typ)], returns=BOOL, cpp="{self} < {0}", is_readonly=True, is_pure=True)]
 
     module.register_type(typ, cpp_type=cpp_t, constructors=constructors, methods=methods, extends=["Comparable", "Equatable"])
 
@@ -194,8 +194,8 @@ def init_module() -> BuiltinModule:
             MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT32, cpp="std::pow(static_cast<float>({0}), {self})"),
             MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT32, cpp="std::pow(static_cast<float>({0}), {self})"),
         ],
-        "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)],
-        "__lt__": [MethodDef(params=[ParamDef("other", FLOAT32)], returns=BOOL, cpp="{self} < {0}", is_readonly=True)],
+        "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True, is_pure=True)],
+        "__lt__": [MethodDef(params=[ParamDef("other", FLOAT32)], returns=BOOL, cpp="{self} < {0}", is_readonly=True, is_pure=True)],
     }, extends=["Comparable", "Equatable"])
 
     # Array[T, N]: Fixed-size array
@@ -208,25 +208,25 @@ def init_module() -> BuiltinModule:
             params=[],
             returns=NamedType("Iterator", (T,), is_protocol=True),
             cpp="tpy::__iter__({self})",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "__len__": [MethodDef(
             params=[],
             returns=INT32,
             cpp="static_cast<int32_t>({self}.size())",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "unchecked_get": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=T,
             cpp="{self}[{0}]",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "__getitem__": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=T,
             cpp="tpy::__getitem__({self}, {0})",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "__setitem__": [MethodDef(
             params=[ParamDef("index", INT32), ParamDef("value", OwnType(T))],
@@ -235,7 +235,7 @@ def init_module() -> BuiltinModule:
         )],
         "__span__": [MethodDef(
             params=[], returns=SpanType(T, is_readonly=True),
-            cpp="tpy::as_span({self})", is_readonly=True,
+            cpp="tpy::as_span({self})", is_readonly=True, is_pure=True,
         )],
     })
 
@@ -257,25 +257,25 @@ def init_module() -> BuiltinModule:
             params=[],
             returns=NamedType("Iterator", (T,), is_protocol=True),
             cpp="tpy::__iter__({self})",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "__len__": [MethodDef(
             params=[],
             returns=INT32,
             cpp="static_cast<int32_t>({self}.size())",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "unchecked_get": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=T,
             cpp="{self}[{0}]",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "__getitem__": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=T,
             cpp="tpy::__getitem__({self}, {0})",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "__setitem__": [MethodDef(
             params=[ParamDef("index", INT32), ParamDef("value", OwnType(T))],
@@ -284,7 +284,7 @@ def init_module() -> BuiltinModule:
         )],
         "__span__": [MethodDef(
             params=[], returns=SpanType(T, is_readonly=True),
-            cpp="tpy::as_span({self})", is_readonly=True,
+            cpp="tpy::as_span({self})", is_readonly=True, is_pure=True,
         )],
         "sort": [MethodDef(
             params=[],
@@ -313,29 +313,29 @@ def init_module() -> BuiltinModule:
             params=[],
             returns=NamedType("Iterator", (T,), is_protocol=True),
             cpp="tpy::__iter__({self})",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "__len__": [MethodDef(
             params=[],
             returns=INT32,
             cpp="static_cast<int32_t>({self}.size())",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "unchecked_get": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=T,
             cpp="{self}[{0}]",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "__getitem__": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=T,
             cpp="tpy::__getitem__({self}, {0})",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "__span__": [MethodDef(
             params=[], returns=SpanType(T, is_readonly=True),
-            cpp="tpy::as_span({self})", is_readonly=True,
+            cpp="tpy::as_span({self})", is_readonly=True, is_pure=True,
         )],
     })
 
@@ -352,7 +352,7 @@ def init_module() -> BuiltinModule:
                     "__deref__": [MethodDef(params=[], returns=T, cpp="tpy::deref_check({self})")],
                     "span": [MethodDef(params=[ParamDef("length", INT32)], returns=SpanType(T),
                                        cpp="std::span({self}, static_cast<size_t>({0}))",
-                                       is_readonly=True)],
+                                       is_readonly=True, is_pure=True)],
                 })
 
     # ReadOnlyPtr[T]: Read-only pointer
@@ -368,7 +368,7 @@ def init_module() -> BuiltinModule:
                     "__deref__": [MethodDef(params=[], returns=T, cpp="tpy::deref_check({self})")],
                     "span": [MethodDef(params=[ParamDef("length", INT32)], returns=SpanType(T, is_readonly=True),
                                        cpp="std::span({self}, static_cast<size_t>({0}))",
-                                       is_readonly=True)],
+                                       is_readonly=True, is_pure=True)],
                 })
 
     # Deref[T] protocol: types that can be dereferenced to yield T
@@ -509,19 +509,19 @@ def init_module() -> BuiltinModule:
             params=[],
             returns=NamedType("Iterator", (CHAR,), is_protocol=True),
             cpp="tpy::__iter__({self})",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "__len__": [MethodDef(
             params=[],
             returns=INT32,
             cpp="static_cast<int32_t>({self}.size())",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "__getitem__": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=CHAR,
             cpp="tpy::__getitem__({self}, {0})",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "__add__": [
             MethodDef(
@@ -542,125 +542,125 @@ def init_module() -> BuiltinModule:
         ],
         "__mul__": [MethodDef(
             params=[ParamDef("n", INT32)],
-            returns=STR, cpp="tpy::str_repeat({self}, {0})", is_readonly=True,
+            returns=STR, cpp="tpy::str_repeat({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "__rmul__": [MethodDef(
             params=[ParamDef("n", INT32)],
-            returns=STR, cpp="tpy::str_repeat({self}, {0})", is_readonly=True,
+            returns=STR, cpp="tpy::str_repeat({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "split": [
             MethodDef(
                 params=[],
                 returns=ListType(STR),
                 cpp="tpy::str_split_whitespace({self})",
-                is_readonly=True,
+                is_readonly=True, is_pure=True,
             ),
             MethodDef(
                 params=[ParamDef("sep", STR)],
                 returns=ListType(STR),
                 cpp="tpy::str_split({self}, {0})",
-                is_readonly=True,
+                is_readonly=True, is_pure=True,
             ),
             MethodDef(
                 params=[ParamDef("sep", STR), ParamDef("maxsplit", INT32)],
                 returns=ListType(STR),
                 cpp="tpy::str_split({self}, {0}, {1})",
-                is_readonly=True,
+                is_readonly=True, is_pure=True,
             ),
         ],
         "join": [MethodDef(
             params=[ParamDef("items", NamedType("Iterable", (STR,), is_protocol=True))],
             returns=STR,
             cpp="tpy::str_join({self}, {0})",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "strip": [MethodDef(
-            params=[], returns=STRVIEW, cpp="tpy::str_strip({self})", is_readonly=True,
+            params=[], returns=STRVIEW, cpp="tpy::str_strip({self})", is_readonly=True, is_pure=True,
         )],
         "lstrip": [MethodDef(
-            params=[], returns=STRVIEW, cpp="tpy::str_lstrip({self})", is_readonly=True,
+            params=[], returns=STRVIEW, cpp="tpy::str_lstrip({self})", is_readonly=True, is_pure=True,
         )],
         "rstrip": [MethodDef(
-            params=[], returns=STRVIEW, cpp="tpy::str_rstrip({self})", is_readonly=True,
+            params=[], returns=STRVIEW, cpp="tpy::str_rstrip({self})", is_readonly=True, is_pure=True,
         )],
         "replace": [MethodDef(
             params=[ParamDef("old", STR), ParamDef("new", STR)],
-            returns=STR, cpp="tpy::str_replace({self}, {0}, {1})", is_readonly=True,
+            returns=STR, cpp="tpy::str_replace({self}, {0}, {1})", is_readonly=True, is_pure=True,
         )],
         "find": [MethodDef(
             params=[ParamDef("sub", STR)],
-            returns=INT32, cpp="tpy::str_find({self}, {0})", is_readonly=True,
+            returns=INT32, cpp="tpy::str_find({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "rfind": [MethodDef(
             params=[ParamDef("sub", STR)],
-            returns=INT32, cpp="tpy::str_rfind({self}, {0})", is_readonly=True,
+            returns=INT32, cpp="tpy::str_rfind({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "index": [MethodDef(
             params=[ParamDef("sub", STR)],
-            returns=INT32, cpp="tpy::str_index({self}, {0})", is_readonly=True,
+            returns=INT32, cpp="tpy::str_index({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "startswith": [MethodDef(
             params=[ParamDef("prefix", STR)],
-            returns=BOOL, cpp="tpy::str_startswith({self}, {0})", is_readonly=True,
+            returns=BOOL, cpp="tpy::str_startswith({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "endswith": [MethodDef(
             params=[ParamDef("suffix", STR)],
-            returns=BOOL, cpp="tpy::str_endswith({self}, {0})", is_readonly=True,
+            returns=BOOL, cpp="tpy::str_endswith({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "upper": [MethodDef(
-            params=[], returns=STR, cpp="tpy::str_upper({self})", is_readonly=True,
+            params=[], returns=STR, cpp="tpy::str_upper({self})", is_readonly=True, is_pure=True,
         )],
         "lower": [MethodDef(
-            params=[], returns=STR, cpp="tpy::str_lower({self})", is_readonly=True,
+            params=[], returns=STR, cpp="tpy::str_lower({self})", is_readonly=True, is_pure=True,
         )],
         "count": [MethodDef(
             params=[ParamDef("sub", STR)],
-            returns=INT32, cpp="tpy::str_count({self}, {0})", is_readonly=True,
+            returns=INT32, cpp="tpy::str_count({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "isdigit": [MethodDef(
-            params=[], returns=BOOL, cpp="tpy::str_isdigit({self})", is_readonly=True,
+            params=[], returns=BOOL, cpp="tpy::str_isdigit({self})", is_readonly=True, is_pure=True,
         )],
         "isalpha": [MethodDef(
-            params=[], returns=BOOL, cpp="tpy::str_isalpha({self})", is_readonly=True,
+            params=[], returns=BOOL, cpp="tpy::str_isalpha({self})", is_readonly=True, is_pure=True,
         )],
         "isalnum": [MethodDef(
-            params=[], returns=BOOL, cpp="tpy::str_isalnum({self})", is_readonly=True,
+            params=[], returns=BOOL, cpp="tpy::str_isalnum({self})", is_readonly=True, is_pure=True,
         )],
         "isspace": [MethodDef(
-            params=[], returns=BOOL, cpp="tpy::str_isspace({self})", is_readonly=True,
+            params=[], returns=BOOL, cpp="tpy::str_isspace({self})", is_readonly=True, is_pure=True,
         )],
         "isupper": [MethodDef(
-            params=[], returns=BOOL, cpp="tpy::str_isupper({self})", is_readonly=True,
+            params=[], returns=BOOL, cpp="tpy::str_isupper({self})", is_readonly=True, is_pure=True,
         )],
         "islower": [MethodDef(
-            params=[], returns=BOOL, cpp="tpy::str_islower({self})", is_readonly=True,
+            params=[], returns=BOOL, cpp="tpy::str_islower({self})", is_readonly=True, is_pure=True,
         )],
         "capitalize": [MethodDef(
-            params=[], returns=STR, cpp="tpy::str_capitalize({self})", is_readonly=True,
+            params=[], returns=STR, cpp="tpy::str_capitalize({self})", is_readonly=True, is_pure=True,
         )],
         "title": [MethodDef(
-            params=[], returns=STR, cpp="tpy::str_title({self})", is_readonly=True,
+            params=[], returns=STR, cpp="tpy::str_title({self})", is_readonly=True, is_pure=True,
         )],
         "swapcase": [MethodDef(
-            params=[], returns=STR, cpp="tpy::str_swapcase({self})", is_readonly=True,
+            params=[], returns=STR, cpp="tpy::str_swapcase({self})", is_readonly=True, is_pure=True,
         )],
         "removeprefix": [MethodDef(
             params=[ParamDef("prefix", STR)],
-            returns=STRVIEW, cpp="tpy::str_removeprefix({self}, {0})", is_readonly=True,
+            returns=STRVIEW, cpp="tpy::str_removeprefix({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "removesuffix": [MethodDef(
             params=[ParamDef("suffix", STR)],
-            returns=STRVIEW, cpp="tpy::str_removesuffix({self}, {0})", is_readonly=True,
+            returns=STRVIEW, cpp="tpy::str_removesuffix({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "rindex": [MethodDef(
             params=[ParamDef("sub", STR)],
-            returns=INT32, cpp="tpy::str_rindex({self}, {0})", is_readonly=True,
+            returns=INT32, cpp="tpy::str_rindex({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "splitlines": [MethodDef(
             params=[], returns=ListType(STR),
-            cpp="tpy::str_splitlines({self})", is_readonly=True,
+            cpp="tpy::str_splitlines({self})", is_readonly=True, is_pure=True,
         )],
-        "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)],
+        "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True, is_pure=True)],
     })
 
     # StrView: Explicit string view type (std::string_view)
@@ -677,19 +677,19 @@ def init_module() -> BuiltinModule:
             params=[],
             returns=NamedType("Iterator", (CHAR,), is_protocol=True),
             cpp="tpy::__iter__({self})",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "__len__": [MethodDef(
             params=[],
             returns=INT32,
             cpp="static_cast<int32_t>({self}.size())",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "__getitem__": [MethodDef(
             params=[ParamDef("index", INT32)],
             returns=CHAR,
             cpp="tpy::__getitem__({self}, {0})",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "__add__": [
             MethodDef(
@@ -710,125 +710,125 @@ def init_module() -> BuiltinModule:
         ],
         "__mul__": [MethodDef(
             params=[ParamDef("n", INT32)],
-            returns=STR, cpp="tpy::str_repeat({self}, {0})", is_readonly=True,
+            returns=STR, cpp="tpy::str_repeat({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "__rmul__": [MethodDef(
             params=[ParamDef("n", INT32)],
-            returns=STR, cpp="tpy::str_repeat({self}, {0})", is_readonly=True,
+            returns=STR, cpp="tpy::str_repeat({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "split": [
             MethodDef(
                 params=[],
                 returns=ListType(STR),
                 cpp="tpy::str_split_whitespace({self})",
-                is_readonly=True,
+                is_readonly=True, is_pure=True,
             ),
             MethodDef(
                 params=[ParamDef("sep", STR)],
                 returns=ListType(STR),
                 cpp="tpy::str_split({self}, {0})",
-                is_readonly=True,
+                is_readonly=True, is_pure=True,
             ),
             MethodDef(
                 params=[ParamDef("sep", STR), ParamDef("maxsplit", INT32)],
                 returns=ListType(STR),
                 cpp="tpy::str_split({self}, {0}, {1})",
-                is_readonly=True,
+                is_readonly=True, is_pure=True,
             ),
         ],
         "join": [MethodDef(
             params=[ParamDef("items", NamedType("Iterable", (STR,), is_protocol=True))],
             returns=STR,
             cpp="tpy::str_join({self}, {0})",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         )],
         "strip": [MethodDef(
-            params=[], returns=STRVIEW, cpp="tpy::str_strip({self})", is_readonly=True,
+            params=[], returns=STRVIEW, cpp="tpy::str_strip({self})", is_readonly=True, is_pure=True,
         )],
         "lstrip": [MethodDef(
-            params=[], returns=STRVIEW, cpp="tpy::str_lstrip({self})", is_readonly=True,
+            params=[], returns=STRVIEW, cpp="tpy::str_lstrip({self})", is_readonly=True, is_pure=True,
         )],
         "rstrip": [MethodDef(
-            params=[], returns=STRVIEW, cpp="tpy::str_rstrip({self})", is_readonly=True,
+            params=[], returns=STRVIEW, cpp="tpy::str_rstrip({self})", is_readonly=True, is_pure=True,
         )],
         "replace": [MethodDef(
             params=[ParamDef("old", STR), ParamDef("new", STR)],
-            returns=STR, cpp="tpy::str_replace({self}, {0}, {1})", is_readonly=True,
+            returns=STR, cpp="tpy::str_replace({self}, {0}, {1})", is_readonly=True, is_pure=True,
         )],
         "find": [MethodDef(
             params=[ParamDef("sub", STR)],
-            returns=INT32, cpp="tpy::str_find({self}, {0})", is_readonly=True,
+            returns=INT32, cpp="tpy::str_find({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "rfind": [MethodDef(
             params=[ParamDef("sub", STR)],
-            returns=INT32, cpp="tpy::str_rfind({self}, {0})", is_readonly=True,
+            returns=INT32, cpp="tpy::str_rfind({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "index": [MethodDef(
             params=[ParamDef("sub", STR)],
-            returns=INT32, cpp="tpy::str_index({self}, {0})", is_readonly=True,
+            returns=INT32, cpp="tpy::str_index({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "startswith": [MethodDef(
             params=[ParamDef("prefix", STR)],
-            returns=BOOL, cpp="tpy::str_startswith({self}, {0})", is_readonly=True,
+            returns=BOOL, cpp="tpy::str_startswith({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "endswith": [MethodDef(
             params=[ParamDef("suffix", STR)],
-            returns=BOOL, cpp="tpy::str_endswith({self}, {0})", is_readonly=True,
+            returns=BOOL, cpp="tpy::str_endswith({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "upper": [MethodDef(
-            params=[], returns=STR, cpp="tpy::str_upper({self})", is_readonly=True,
+            params=[], returns=STR, cpp="tpy::str_upper({self})", is_readonly=True, is_pure=True,
         )],
         "lower": [MethodDef(
-            params=[], returns=STR, cpp="tpy::str_lower({self})", is_readonly=True,
+            params=[], returns=STR, cpp="tpy::str_lower({self})", is_readonly=True, is_pure=True,
         )],
         "count": [MethodDef(
             params=[ParamDef("sub", STR)],
-            returns=INT32, cpp="tpy::str_count({self}, {0})", is_readonly=True,
+            returns=INT32, cpp="tpy::str_count({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "isdigit": [MethodDef(
-            params=[], returns=BOOL, cpp="tpy::str_isdigit({self})", is_readonly=True,
+            params=[], returns=BOOL, cpp="tpy::str_isdigit({self})", is_readonly=True, is_pure=True,
         )],
         "isalpha": [MethodDef(
-            params=[], returns=BOOL, cpp="tpy::str_isalpha({self})", is_readonly=True,
+            params=[], returns=BOOL, cpp="tpy::str_isalpha({self})", is_readonly=True, is_pure=True,
         )],
         "isalnum": [MethodDef(
-            params=[], returns=BOOL, cpp="tpy::str_isalnum({self})", is_readonly=True,
+            params=[], returns=BOOL, cpp="tpy::str_isalnum({self})", is_readonly=True, is_pure=True,
         )],
         "isspace": [MethodDef(
-            params=[], returns=BOOL, cpp="tpy::str_isspace({self})", is_readonly=True,
+            params=[], returns=BOOL, cpp="tpy::str_isspace({self})", is_readonly=True, is_pure=True,
         )],
         "isupper": [MethodDef(
-            params=[], returns=BOOL, cpp="tpy::str_isupper({self})", is_readonly=True,
+            params=[], returns=BOOL, cpp="tpy::str_isupper({self})", is_readonly=True, is_pure=True,
         )],
         "islower": [MethodDef(
-            params=[], returns=BOOL, cpp="tpy::str_islower({self})", is_readonly=True,
+            params=[], returns=BOOL, cpp="tpy::str_islower({self})", is_readonly=True, is_pure=True,
         )],
         "capitalize": [MethodDef(
-            params=[], returns=STR, cpp="tpy::str_capitalize({self})", is_readonly=True,
+            params=[], returns=STR, cpp="tpy::str_capitalize({self})", is_readonly=True, is_pure=True,
         )],
         "title": [MethodDef(
-            params=[], returns=STR, cpp="tpy::str_title({self})", is_readonly=True,
+            params=[], returns=STR, cpp="tpy::str_title({self})", is_readonly=True, is_pure=True,
         )],
         "swapcase": [MethodDef(
-            params=[], returns=STR, cpp="tpy::str_swapcase({self})", is_readonly=True,
+            params=[], returns=STR, cpp="tpy::str_swapcase({self})", is_readonly=True, is_pure=True,
         )],
         "removeprefix": [MethodDef(
             params=[ParamDef("prefix", STR)],
-            returns=STRVIEW, cpp="tpy::str_removeprefix({self}, {0})", is_readonly=True,
+            returns=STRVIEW, cpp="tpy::str_removeprefix({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "removesuffix": [MethodDef(
             params=[ParamDef("suffix", STR)],
-            returns=STRVIEW, cpp="tpy::str_removesuffix({self}, {0})", is_readonly=True,
+            returns=STRVIEW, cpp="tpy::str_removesuffix({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "rindex": [MethodDef(
             params=[ParamDef("sub", STR)],
-            returns=INT32, cpp="tpy::str_rindex({self}, {0})", is_readonly=True,
+            returns=INT32, cpp="tpy::str_rindex({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "splitlines": [MethodDef(
             params=[], returns=ListType(STR),
-            cpp="tpy::str_splitlines({self})", is_readonly=True,
+            cpp="tpy::str_splitlines({self})", is_readonly=True, is_pure=True,
         )],
-        "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True)],
+        "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True, is_pure=True)],
     })
 
     # copy() - explicit copy for ownership transfer
@@ -858,7 +858,7 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("x", NamedType("ReadOnlySpanLike", (T,), is_protocol=True))],
             returns=SpanType(T, is_readonly=True),
             cpp="tpy::as_span({0})",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         ),
     ], type_params=["T"])
 
@@ -868,7 +868,7 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("x", NamedType("Deref", (T,), is_protocol=True))],
             returns=T,
             cpp="tpy::deref_check({0})",
-            is_readonly=True,
+            is_readonly=True, is_pure=True,
         ),
     ], type_params=["T"])
 

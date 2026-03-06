@@ -2620,6 +2620,12 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   - `readonly[T | None]` and `readonly[T] | None` normalize to the same C++ type (`const T*`)
   - `readonly[Protocol]` generates `const T_name&` for template protocol params
   - See `docs/READONLY_DESIGN.md` for full design rationale
+- **Working**: `@pure` (no observable side effects -- no mutation of non-local state, no I/O)
+  - Trusted annotation (Phase 1): no enforcement, metadata only for future borrow checker / escape analysis
+  - Pure implies readonly -- `@pure` methods can be called on `readonly` receivers
+  - Heap allocation is permitted (not considered an observable side effect); `@noalloc` is orthogonal
+  - Marked on built-in functions (`len`, `repr`, `hash`, `chr`, `ord`, `pow`, `round`, `divmod`, `abs`, `min`, `max`, `range`, `iter`), all `math.*` functions, and all readonly methods on builtin types
+  - Supported on user functions and methods via `from tpy import pure`
 - **Open**: Custom decorators → compile-time transforms
 
 ### Type Polymorphism

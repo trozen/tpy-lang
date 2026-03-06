@@ -1902,6 +1902,7 @@ class FunctionInfo:
     return_type: TpyType
     is_noalloc: bool = False
     is_readonly: bool = False
+    is_pure: bool = False
     is_consuming: bool = False
     is_method: bool = False
     is_staticmethod: bool = False

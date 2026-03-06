@@ -444,7 +444,7 @@ class TypeRegistrar:
                         f"Only @dynamic protocols can be used as return types",
                         method.loc or record.loc,
                     )
-            resolved_readonly = method.is_readonly or (
+            resolved_readonly = method.is_readonly or method.is_pure or (
                 method.name in IMPLICIT_READONLY_METHODS and not method.readonly_opt_out
             ) or (
                 record.is_frozen and method.name != "__init__"
@@ -472,6 +472,7 @@ class TypeRegistrar:
                 ],
                 return_type=method_return,
                 is_readonly=resolved_readonly,
+                is_pure=method.is_pure,
                 is_consuming=method.is_consuming,
                 is_method=True,
                 is_staticmethod=method.is_staticmethod,
@@ -1142,7 +1143,8 @@ class TypeRegistrar:
             ],
             return_type=resolved_return,
             is_noalloc=func.is_noalloc,
-            is_readonly=func.is_readonly,
+            is_readonly=func.is_readonly or func.is_pure,
+            is_pure=func.is_pure,
             linkage=fi_linkage,
             native_name=func.native_name,
             type_params=func.type_params,

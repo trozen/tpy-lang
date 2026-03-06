@@ -34,6 +34,7 @@ class MethodDef:
     cpp: str  # Template: "{0}" for args, "{self}" for receiver
     is_noalloc: bool = False
     is_readonly: bool = False
+    is_pure: bool = False
     is_static: bool = False
     # Per-method type params and bounds (for constraining class-level type params)
     type_params: list[str] = field(default_factory=list)
@@ -361,6 +362,7 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
                 is_staticmethod=method.is_static,
                 is_noalloc=method.is_noalloc,
                 is_readonly=method.is_readonly or resolved_readonly,
+                is_pure=method.is_pure,
                 cpp_template=method.cpp,
                 type_params=method.type_params,
                 type_param_bounds=method.type_param_bounds,
@@ -377,6 +379,7 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
             return_type=ctor.returns,
             is_noalloc=ctor.is_noalloc,
             is_readonly=ctor.is_readonly,
+            is_pure=ctor.is_pure,
             cpp_template=ctor.cpp,
         ))
 
@@ -412,6 +415,7 @@ def builtin_function_to_info(fn_def: BuiltinFunctionDef, module_name: str = "") 
             return_type=overload.returns,
             is_noalloc=overload.is_noalloc,
             is_readonly=overload.is_readonly,
+            is_pure=overload.is_pure,
             cpp_template=overload.cpp,
             is_builtin_function=True,
             special_handling=fn_def.special_handling,
@@ -648,6 +652,7 @@ def resolve_method(method: MethodDef, type_params: dict[str, "TpyType"]) -> Meth
         cpp=method.cpp,
         is_noalloc=method.is_noalloc,
         is_readonly=method.is_readonly,
+        is_pure=method.is_pure,
         type_params=method.type_params,
         type_param_bounds=method.type_param_bounds,
     )

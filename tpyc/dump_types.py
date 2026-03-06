@@ -18,7 +18,9 @@ def _format_annotations(overload: MethodDef) -> str:
     annotations: list[str] = []
     if overload.is_noalloc:
         annotations.append("@noalloc")
-    if overload.is_readonly:
+    if overload.is_pure:
+        annotations.append("@pure")
+    elif overload.is_readonly:
         annotations.append("@readonly")
     return " ".join(annotations)
 

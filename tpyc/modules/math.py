@@ -22,12 +22,14 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("x", FLOAT)],
             returns=FLOAT,
             cpp="std::log({0})",
+            is_readonly=True, is_pure=True,
         ),
         # Two arguments: log with base
         MethodDef(
             params=[ParamDef("x", FLOAT), ParamDef("base", FLOAT)],
             returns=FLOAT,
             cpp="(std::log({0}) / std::log({1}))",
+            is_readonly=True, is_pure=True,
         ),
     ])
 
@@ -37,6 +39,7 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("x", FLOAT)],
             returns=FLOAT,
             cpp="std::log10({0})",
+            is_readonly=True, is_pure=True,
         ),
     ])
 
@@ -46,6 +49,7 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("x", FLOAT)],
             returns=FLOAT,
             cpp="std::log2({0})",
+            is_readonly=True, is_pure=True,
         ),
     ])
 
@@ -55,6 +59,7 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("x", FLOAT)],
             returns=FLOAT,
             cpp="std::sqrt({0})",
+            is_readonly=True, is_pure=True,
         ),
     ])
 
@@ -64,6 +69,7 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("x", FLOAT), ParamDef("y", FLOAT)],
             returns=FLOAT,
             cpp="std::pow({0}, {1})",
+            is_readonly=True, is_pure=True,
         ),
     ])
 
@@ -73,6 +79,7 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("x", FLOAT)],
             returns=FLOAT,
             cpp="std::exp({0})",
+            is_readonly=True, is_pure=True,
         ),
     ])
 
@@ -82,6 +89,7 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("x", FLOAT)],
             returns=BIGINT,
             cpp="BigInt::from_float(std::floor({0}))",
+            is_readonly=True, is_pure=True,
         ),
     ])
 
@@ -91,6 +99,7 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("x", FLOAT)],
             returns=BIGINT,
             cpp="BigInt::from_float(std::ceil({0}))",
+            is_readonly=True, is_pure=True,
         ),
     ])
 
@@ -100,6 +109,7 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("x", FLOAT)],
             returns=FLOAT,
             cpp="std::sin({0})",
+            is_readonly=True, is_pure=True,
         ),
     ])
 
@@ -109,6 +119,7 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("x", FLOAT)],
             returns=FLOAT,
             cpp="std::cos({0})",
+            is_readonly=True, is_pure=True,
         ),
     ])
 
@@ -118,6 +129,7 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("x", FLOAT)],
             returns=FLOAT,
             cpp="std::tan({0})",
+            is_readonly=True, is_pure=True,
         ),
     ])
 
@@ -127,6 +139,7 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("x", FLOAT)],
             returns=FLOAT,
             cpp="std::fabs({0})",
+            is_readonly=True, is_pure=True,
         ),
     ])
 
