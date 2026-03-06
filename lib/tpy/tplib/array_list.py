@@ -2,7 +2,6 @@
 # Elements are placement-constructed on append and explicitly destroyed on pop/clear/__del__.
 #
 # TODO: construct with fixed-extent Span[T, N] (deduce both T and N from the argument)
-# TODO: sort()
 from __future__ import annotations
 from typing import MutableSequence, Iterable
 from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, Span, ReadOnlySpanLike, copy, Default, make_default, span
@@ -96,6 +95,9 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
         b = self._storage.take(uj)
         self._storage.init(ui, b)
         self._storage.init(uj, a)
+
+    def sort(self) -> None:
+        self.__span__().sort()
 
     def truncate(self, new_len: Int32) -> None:
         assert new_len >= 0

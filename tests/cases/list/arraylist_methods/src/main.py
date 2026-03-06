@@ -1,5 +1,5 @@
 # Test ArrayList methods: __contains__, __eq__, __repr__, swap, truncate, index,
-# count, remove, reverse, and index panic on not-found
+# count, remove, reverse, sort
 from tpy import Int32
 from tplib import ArrayList
 
@@ -81,6 +81,42 @@ def test_reverse() -> None:
     a.reverse()
     print(a)
 
+def test_sort() -> None:
+    # General case
+    a = ArrayList[Int32, 8]()
+    a.append(5)
+    a.append(3)
+    a.append(1)
+    a.append(4)
+    a.append(2)
+    a.sort()
+    print(a)
+    # Duplicates
+    b = ArrayList[Int32, 8]()
+    b.append(3)
+    b.append(1)
+    b.append(3)
+    b.append(2)
+    b.append(1)
+    b.sort()
+    print(b)
+    # Empty
+    c = ArrayList[Int32, 4]()
+    c.sort()
+    print(c)
+    # Single element
+    d = ArrayList[Int32, 4]()
+    d.append(42)
+    d.sort()
+    print(d)
+    # Already sorted
+    e = ArrayList[Int32, 4]()
+    e.append(1)
+    e.append(2)
+    e.append(3)
+    e.sort()
+    print(e)
+
 def main() -> None:
     test_contains()
     test_eq()
@@ -91,5 +127,6 @@ def main() -> None:
     test_count()
     test_remove()
     test_reverse()
+    test_sort()
 
 main()

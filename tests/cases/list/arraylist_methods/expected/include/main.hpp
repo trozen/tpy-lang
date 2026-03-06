@@ -17,6 +17,7 @@ void test_index();
 void test_count();
 void test_remove();
 void test_reverse();
+void test_sort();
 void main();
 
 void __tpy_init();

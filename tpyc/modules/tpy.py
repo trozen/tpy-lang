@@ -286,6 +286,11 @@ def init_module() -> BuiltinModule:
             params=[], returns=SpanType(T, is_readonly=True),
             cpp="tpy::as_span({self})", is_readonly=True,
         )],
+        "sort": [MethodDef(
+            params=[],
+            returns=VOID,
+            cpp="std::stable_sort({self}.begin(), {self}.end())",  # stable to match Python
+        )],
     })
 
     # ReadOnlySpan[T]: Non-owning read-only view

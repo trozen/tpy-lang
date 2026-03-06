@@ -479,6 +479,7 @@ Key features:
 - Requires C++23 (`-std=c++23`)
 - Standard Python `len()` and `[]` indexing work for both (with bounds checking and negative index support)
 - `unchecked_get(index)` for raw unchecked access (no bounds check, no negative index normalization)
+- `sort()` for in-place stable sort via `std::stable_sort` (matches Python's stable sort guarantee)
 - Zero-allocation passing of fixed-size arrays to functions that work with any size
 - Constructors: `Span(Ptr[T], Int32)` and `ReadOnlySpan(ReadOnlyPtr[T], Int32)` for low-level span creation
 - Explicit construction from containers: `Span[T](arr)`, `ReadOnlySpan[T](lst)` for any `ReadOnlySpanLike[T]` source (list, Array)
@@ -2102,6 +2103,7 @@ print(sum_all(nums))  # 6
 
 **Key characteristics**:
 - **Marker protocol**: Types declare conformance via `extends`, no methods required
+- **Auto-derivation from `__span__()`**: Any user type with `__span__() -> Span[T]` automatically conforms to `NativeIterable[T]`. The compiler synthesizes C++ `begin()`/`end()` methods that delegate to `__span__()`.
 - **Built-in conformance**: All built-in container types extend both `NativeIterable[T]` and `Iterable[T]`
 - **Codegen optimization**: The compiler uses NativeIterable extends to select zero-overhead C++ range-based for loops for built-in types
 - **API methods use `Iterable[T]`**: `list.extend()`, `str.join()`, `list()` constructor, `dict()` constructor all accept `Iterable[T]`
@@ -3807,7 +3809,7 @@ TurboPython has two library search roots that provide reusable modules:
 | Module | Description |
 |--------|-------------|
 | `tplib.Box[T]` | Heap-allocated owning container (similar to Rust's `Box<T>`) |
-| `tplib.ArrayList[T, N]` | Fixed-capacity list with stack-allocated uninitialized storage |
+| `tplib.ArrayList[T, N]` | Fixed-capacity list with stack-allocated uninitialized storage; full list API (`append`, `pop`, `insert`, `index`, `count`, `remove`, `reverse`, `sort`, `swap`, `truncate`, `extend`, `clear`, `__contains__`, `__eq__`, `__repr__`) |
 | `tplib.FixStr[N]` | Fixed-capacity string with stack-allocated storage; `__str__() -> StrView` for zero-copy printing |
 
 ```python

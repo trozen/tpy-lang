@@ -119,7 +119,10 @@ class _Ptr(Generic[T]):
         """Ptr[T].span(n) -> Span[T] over the first n elements of the storage."""
         n = int(length)
         data = [self._obj._slots[i] for i in range(n)]
-        return _make_span(data)
+        s = _make_span(data)
+        s._backing_slots = self._obj._slots
+        s._backing_len = n
+        return s
 
     def __getattr__(self, name: str):
         return getattr(self._obj, name)
@@ -331,6 +334,12 @@ class Span(metaclass=SpanMeta):
         new_span = object.__new__(type(self))
         new_span._data = self._data
         return new_span
+
+    def sort(self):
+        self._data.sort()
+        if hasattr(self, '_backing_slots'):
+            for i in range(self._backing_len):
+                self._backing_slots[i] = self._data[i]
 
 
 def _make_span(data):

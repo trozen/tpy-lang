@@ -380,6 +380,7 @@ See `docs/LANGUAGE_FEATURES.md` for comprehensive documentation of all language 
 ## Development Guidelines
 
 When implementing new features:
+- **Never commit, amend, or stage without explicit user request.** Do not run `git commit`, `git commit --amend`, or `git add` unless the user explicitly asks for it.
 - **Never make design decisions autonomously.** If during implementation you discover that the plan needs to change (e.g., a new concept, a split in behavior, a workaround for an unforeseen constraint), **stop and consult the user** before proceeding. Do not invent new design concepts or alter the agreed-upon design without explicit approval.
 - If you encounter a hard problem or are unsure how to proceed, **ask first** before attempting a complex solution
 - **Do NOT use heredocs (`<<EOF`)** in Bash commands -- they trigger permission prompts in Claude Code. Write snippets to files under `/tmp/agents/` instead.
