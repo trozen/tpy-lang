@@ -693,7 +693,13 @@ Multi-hop chains are supported — if `Box.__deref__() -> Ref` and `Ref.__deref_
 - `p is None` / `p is not None` work for `Ptr[T]` and `ReadOnlyPtr[T]`
 - `p == None` / `p != None` are rejected; use identity checks (`is` / `is not`)
 
-**Null-safety:** Auto-deref through `Ptr[T]`/`ReadOnlyPtr[T]` is null-checked at runtime via `tpy::deref_check()`. A null pointer access panics with "null pointer dereference" instead of causing undefined behavior. Pointers with known non-null provenance (e.g., `Ptr(x)` constructed from a local variable) skip the null check and use direct `->` access.
+**Null-safety:** Auto-deref through `Ptr[T]`/`ReadOnlyPtr[T]` is null-checked at runtime via `tpy::deref_check()`. A null pointer access panics with "null pointer dereference" instead of causing undefined behavior. Pointers with known non-null provenance skip the null check and use direct `->` access. Non-null provenance is established by:
+
+- Constructor: `p = Ptr(x)` (pointer to a local variable)
+- Condition narrowing: `if p is not None:` / `if p is None: return` / `assert p is not None` / `while p is not None:`
+- Assignment from a known non-null variable
+
+Narrowing supports negation and `and`/`or` composition. Branch merging uses intersection (non-null only if all paths agree). Reassignment from an unknown source (e.g., function return) clears non-null provenance.
 
 **C++ interop:** User-defined types with `__deref__()` get `operator*()` generated in C++, enabling `*box` syntax from C++ code.
 

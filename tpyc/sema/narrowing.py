@@ -282,6 +282,49 @@ class NarrowingTracker:
         """Get (true_facts, false_facts) for type narrowing (isinstance, is None, truthiness)."""
         return self._isinstance_facts(condition)
 
+    def condition_ptr_null_facts(
+        self, condition: TpyExpr,
+    ) -> tuple[set[str], set[str]]:
+        """Get (true_nonnull, false_nonnull) for Ptr is/is not None checks.
+
+        Returns names proven non-null in the true branch and names proven
+        non-null in the false branch, respectively. When `p is not None`
+        and p is a Ptr[T], returns ({p}, {}) -- p is non-null when the
+        condition is true. When `p is None`, returns ({}, {p}) -- p is
+        non-null when the condition is false.
+        """
+        return self._ptr_null_facts(condition)
+
+    def _ptr_null_facts(
+        self, expr: TpyExpr,
+    ) -> tuple[set[str], set[str]]:
+        match = match_is_none(expr)
+        if match is not None:
+            key, is_not_none = match
+            if "." not in key:
+                declared = self.declared_type_for_name(key)
+                if isinstance(declared, PtrType):
+                    if is_not_none:
+                        return {key}, set()
+                    else:
+                        return set(), {key}
+
+        if isinstance(expr, TpyUnaryOp) and expr.op == "!":
+            non_null, null = self._ptr_null_facts(expr.operand)
+            return null, non_null
+
+        if isinstance(expr, TpyBinOp):
+            if expr.op == "&&":
+                l_nn, l_n = self._ptr_null_facts(expr.left)
+                r_nn, r_n = self._ptr_null_facts(expr.right)
+                return l_nn | r_nn, l_n & r_n
+            if expr.op == "||":
+                l_nn, l_n = self._ptr_null_facts(expr.left)
+                r_nn, r_n = self._ptr_null_facts(expr.right)
+                return l_nn & r_nn, l_n | r_n
+
+        return set(), set()
+
     # -- Truthiness warnings -------------------------------------------
 
     def _truthy_names(self, expr: TpyExpr) -> set[str]:

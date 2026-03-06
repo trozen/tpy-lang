@@ -275,9 +275,13 @@ class MethodAnalyzer:
                 expr.deref_depth = deref_depth
                 if (deref_depth > 0
                         and isinstance(original_type, PtrType)
-                        and isinstance(expr.obj, TpyName)
-                        and expr.obj.name in self.ctx.non_null_ptr_vars):
-                    expr.ptr_non_null = True
+                        and isinstance(expr.obj, TpyName)):
+                    if expr.obj.name in self.ctx.non_null_ptr_vars:
+                        expr.ptr_non_null = True
+                    if expr.loc:
+                        self.ctx.ptr_deref_facts[
+                            (expr.loc.line, expr.obj.name)
+                        ] = expr.ptr_non_null
                 # Enforce readonly: cannot call non-readonly method on readonly receiver
                 if is_readonly_receiver:
                     info = expr.resolved_function_info

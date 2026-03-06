@@ -18,6 +18,7 @@ from conftest import (
     get_case_default_int,
     validate_annotations,
     validate_type_annotations,
+    validate_non_null_annotations,
     parse_annotations,
     check_or_update,
     discover_cases,
@@ -125,3 +126,9 @@ def test_comp(case_dir, main_src, tmp_path):
         type_errors = validate_type_annotations(main_src, result.declared_var_types)
         if type_errors:
             pytest.fail("\n".join(type_errors), pytrace=False)
+
+    # Validate # tpyc: non_null/nullable annotations against ptr deref facts
+    if not UPDATE_EXPECTED and result.ptr_deref_facts is not None:
+        nn_errors = validate_non_null_annotations(main_src, result.ptr_deref_facts)
+        if nn_errors:
+            pytest.fail("\n".join(nn_errors), pytrace=False)

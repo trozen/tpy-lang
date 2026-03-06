@@ -78,6 +78,8 @@ class CompileResult:
     all_modules: list[tuple[str, Path, Path, bool]] = field(default_factory=list)
     # Resolved types for variable declarations (from sema), for # tpyc: type(...) validation
     declared_var_types: dict[tuple[int, str], object] | None = None
+    # Ptr dereference facts (from sema), for # tpyc: non_null/nullable validation
+    ptr_deref_facts: dict[tuple[int, str], bool] | None = None
 
 
 def _validate_default_int_name(name: str) -> str:
@@ -167,8 +169,10 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         hpp_path = layout.hpp_path(entry_module.name)
         cpp_path = layout.cpp_path(entry_module.name)
         declared_var_types = entry_module.analyzer.ctx.declared_var_types if entry_module.analyzer else None
+        ptr_deref_facts = entry_module.analyzer.ctx.ptr_deref_facts if entry_module.analyzer else None
         return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path,
-                             all_modules=all_modules, declared_var_types=declared_var_types)
+                             all_modules=all_modules, declared_var_types=declared_var_types,
+                             ptr_deref_facts=ptr_deref_facts)
 
     except CompileError as e:
         return CompileResult(success=False, diagnostics=e.format() + "\n")
@@ -443,6 +447,70 @@ def validate_type_annotations(
                     f"Line {ann.line}: expected type '{expected}' "
                     f"for '{var_name}' but got '{actual_str}'"
                 )
+
+    return errors
+
+
+@dataclass
+class NonNullAnnotation:
+    """A non-null annotation from source code (# tpyc: non_null/nullable(var))."""
+    line: int
+    var_name: str
+    expected_non_null: bool  # True for non_null, False for nullable
+
+
+def parse_non_null_annotations(source: str) -> list[NonNullAnnotation]:
+    """Parse # tpyc: non_null(var) and # tpyc: nullable(var) annotations."""
+    annotations = []
+    pattern = re.compile(r'#\s*tpyc:\s*(non_null|nullable)\(\s*(\w+)\s*\)')
+
+    for lineno, line in enumerate(source.splitlines(), start=1):
+        stripped = line.lstrip()
+        if stripped.startswith('#'):
+            continue
+        match = pattern.search(line)
+        if match:
+            kind = match.group(1)
+            var_name = match.group(2)
+            annotations.append(NonNullAnnotation(
+                line=lineno,
+                var_name=var_name,
+                expected_non_null=(kind == "non_null"),
+            ))
+
+    return annotations
+
+
+def validate_non_null_annotations(
+    src_file: Path,
+    ptr_deref_facts: dict[tuple[int, str], bool],
+) -> list[str]:
+    """Validate # tpyc: non_null/nullable annotations against compiler facts.
+
+    Returns list of validation errors (empty if all pass).
+    """
+    source = src_file.read_text()
+    annotations = parse_non_null_annotations(source)
+    errors = []
+
+    for ann in annotations:
+        key = (ann.line, ann.var_name)
+        actual = ptr_deref_facts.get(key)
+        if actual is None:
+            errors.append(
+                f"Line {ann.line}: no ptr dereference found for '{ann.var_name}'"
+            )
+            continue
+        if ann.expected_non_null and not actual:
+            errors.append(
+                f"Line {ann.line}: expected '{ann.var_name}' to be non_null "
+                f"but deref_check is used"
+            )
+        elif not ann.expected_non_null and actual:
+            errors.append(
+                f"Line {ann.line}: expected '{ann.var_name}' to be nullable "
+                f"but deref_check is skipped (proven non-null)"
+            )
 
     return errors
 

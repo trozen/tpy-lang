@@ -372,6 +372,7 @@ class StatementAnalyzer:
             self.expr.analyze_expr(stmt.condition)
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             then_type_facts, else_type_facts = self.narrowing.condition_type_facts(stmt.condition)
+            ptr_nn_then, ptr_nn_else = self.narrowing.condition_ptr_null_facts(stmt.condition)
             stmt.then_type_facts = self._filter_union_codegen_facts(then_type_facts)
             stmt.else_type_facts = self._filter_union_codegen_facts(else_type_facts)
             scope_before = set(self.ctx.current_scope.bindings.keys())
@@ -381,6 +382,7 @@ class StatementAnalyzer:
             bindings_before = dict(self.ctx.current_scope.bindings)
             ns_types_before = self._save_ns_var_types()
             self.ctx.narrowed_types.update(then_type_facts)
+            self.ctx.non_null_ptr_vars |= ptr_nn_then
             for s in stmt.then_body:
                 self.analyze_stmt(s)
             then_state = self.init.save()
@@ -390,6 +392,7 @@ class StatementAnalyzer:
             self._restore_ns_var_types(ns_types_before)
             self.init.restore(before)
             self.ctx.narrowed_types.update(else_type_facts)
+            self.ctx.non_null_ptr_vars |= ptr_nn_else
             for s in stmt.else_body:
                 self.analyze_stmt(s)
             else_state = self.init.save()
@@ -433,6 +436,7 @@ class StatementAnalyzer:
             self.expr.analyze_expr(stmt.condition)
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             then_type_facts, _ = self.narrowing.condition_type_facts(stmt.condition)
+            ptr_nn, _ = self.narrowing.condition_ptr_null_facts(stmt.condition)
             stmt.then_type_facts = self._filter_union_codegen_facts(then_type_facts)
             before = self.init.save()
             # Save namespace types -- loop_scope() restores scope bindings
@@ -443,6 +447,9 @@ class StatementAnalyzer:
                     before,
                     condition_type_facts=then_type_facts,
                 )
+                # Applied separately from apply_loop_entry_facts because
+                # that method only handles type narrowing, not ptr non-null.
+                self.ctx.non_null_ptr_vars |= ptr_nn
                 for s in stmt.body:
                     self.analyze_stmt(s)
             # Vars reassigned from unknown inside the body lose non-null provenance
@@ -549,8 +556,10 @@ class StatementAnalyzer:
                 if not isinstance(stmt.message, TpyStrLiteral):
                     raise self.ctx.error("assert message must be a string literal", stmt)
             then_type_facts, _ = self.narrowing.condition_type_facts(stmt.condition)
+            ptr_nn, _ = self.narrowing.condition_ptr_null_facts(stmt.condition)
             stmt.then_type_facts = self._filter_union_codegen_facts(then_type_facts)
             self.ctx.narrowed_types.update(then_type_facts)
+            self.ctx.non_null_ptr_vars |= ptr_nn
         elif isinstance(stmt, TpyGlobal):
             self._analyze_global_stmt(stmt)
         elif isinstance(stmt, TpyRaiseStopIteration):

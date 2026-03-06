@@ -183,6 +183,8 @@ tests/
    - `# tpyc: ok` - line should compile without error
    - `# tpyc: error(/regex/)` - line should produce an error matching the regex
    - `# tpyc: type(TypeName)` - assert the compiler-inferred type of the variable declared on this line (e.g. `s = "hello"  # tpyc: type(StrView)`). Supports regex with `/pattern/` syntax. Validated in `test_comp` only (not in update mode).
+   - `# tpyc: non_null(var)` - assert that `var` is proven non-null at this ptr dereference (skips `deref_check`). Validated in `test_comp` only.
+   - `# tpyc: nullable(var)` - assert that `var` is NOT proven non-null at this ptr dereference (uses `deref_check`). Validated in `test_comp` only.
 4. Run `uv run python tests/update_snapshots.py {name}` to generate expected outputs
 5. Run `uv run pytest -k {name}` to verify (parallel execution is automatic via `addopts`)
 

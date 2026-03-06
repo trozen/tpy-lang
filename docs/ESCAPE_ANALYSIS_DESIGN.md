@@ -6,7 +6,7 @@
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
-| 5 | Ptr `is not None` narrowing | S | Not started | [5](#5-ptr-narrowing-after-is-not-none) |
+| 5 | Ptr `is not None` narrowing | S | Done | [5](#5-ptr-narrowing-after-is-not-none) |
 | 7a | `@pure` annotation (builtins only, trusted) | S | Not started | [7](#7-pure-annotation) |
 | 10a | Send/Sync auto-derivation (markers only) | S | Not started | [10](#10-thread-safety-sendsync) |
 
@@ -14,6 +14,7 @@
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
+| -- | FlowFacts refactor (unified flow state class) | M | Not started | -- |
 | 6 | Borrow set tracking + conflict detection | L | Not started | [6](#6-intra-function-borrow-checking) |
 | 6a | Container mutation during iteration | S-M | Not started | [6a](#6a-container-mutation-during-iteration) |
 | 6b | For-loop const-ref binding | S-M | Not started | [6b](#6b-for-loop-const-ref-binding) |
@@ -55,6 +56,7 @@ Integer range tracking (11) can proceed in parallel with borrow checking (6).
 | Scope escape detection (loop-local hoisting) | [1](#1-dangling-return-detection) |
 | Parameter provenance tracking | [1](#1-dangling-return-detection) |
 | Ptr non-null provenance elision | [2](#2-ptr-non-null-provenance-elision) |
+| Ptr `is not None` / assert / while narrowing | [5](#5-ptr-narrowing-after-is-not-none) |
 | String view safety (`is_view_compatible_source`) | [3](#3-string-view-safety) |
 | Liveness analysis (auto-move at last use) | [4](#4-liveness-analysis) |
 
@@ -255,23 +257,34 @@ The borrow rule is a **unifying principle** that replaces several ad-hoc analyse
 
 ### 5. Ptr Narrowing After `is not None`
 
-**Effort**: S -- independent of the borrow system, can be done now.
+**Status**: Done.
 
-After `if p is not None:` where `p: Ptr[T]`, the compiler still emits
-`tpy::deref_check(p)` on every access inside the branch. The `is not None` guard
-already proved `p` is non-null.
+When a `Ptr[T]` or `ReadOnlyPtr[T]` variable is guarded by an `is not None` check,
+the compiler adds it to `non_null_ptr_vars`, skipping `deref_check()` inside the
+guarded scope. Works at three narrowing sites:
 
-**Proposed approach**: In the narrowing path for `is not None` checks (`statements.py`),
-when the variable type is `PtrType` or `ReadOnlyPtrType`, add the variable to
-`non_null_ptr_vars` for the true-branch. All existing infrastructure (flow tracking,
-branch merging, codegen `ptr_non_null` flag) handles the rest.
+- **`if p is not None:`** -- non-null in the then-branch
+- **`if p is None: return`** -- non-null after the early return (via branch merge
+  with terminated then-branch)
+- **`assert p is not None`** -- non-null for the rest of the function
+- **`while p is not None:`** -- non-null inside the loop body
+
+Supports negation (`not (p is not None)`) and `and`/`or` composition. Branch
+merging uses intersection (conservative -- non-null only if all paths agree).
 
 ```python
 def process(p: Ptr[Point]) -> Int32:
     if p is not None:
         return p.x      # skip deref_check (p proven non-null)
     return Int32(0)
+
+def with_assert(p: Ptr[Point]) -> Int32:
+    assert p is not None
+    return p.x           # skip deref_check
 ```
+
+**Files**: `sema/narrowing.py` (`condition_ptr_null_facts`, `_ptr_null_facts`),
+`sema/statements.py` (if/while/assert application sites).
 
 ### 6. Intra-Function Borrow Checking
 

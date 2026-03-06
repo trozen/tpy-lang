@@ -73,6 +73,11 @@ class SemanticContext:
     # reset_function_tracking) so the test framework can query after full compilation.
     declared_var_types: dict[tuple[int, str], TpyType] = field(default_factory=dict)
 
+    # --- Ptr deref facts (for test annotations) ---
+    # Records whether each ptr dereference (field access / method call) skips
+    # deref_check. Keyed by (line, varname). True = non-null proven.
+    ptr_deref_facts: dict[tuple[int, str], bool] = field(default_factory=dict)
+
     # --- String local tracking (PendingStrType inference) ---
     str_var_counter: int = 0
     str_vars: dict[int, StrVarInfo] = field(default_factory=dict)

@@ -864,9 +864,13 @@ class ExpressionAnalyzer:
                 expr.deref_depth = deref_depth
                 if (deref_depth > 0
                         and isinstance(actual_type, PtrType)
-                        and isinstance(expr.obj, TpyName)
-                        and expr.obj.name in self.ctx.non_null_ptr_vars):
-                    expr.ptr_non_null = True
+                        and isinstance(expr.obj, TpyName)):
+                    if expr.obj.name in self.ctx.non_null_ptr_vars:
+                        expr.ptr_non_null = True
+                    if expr.loc:
+                        self.ctx.ptr_deref_facts[
+                            (expr.loc.line, expr.obj.name)
+                        ] = expr.ptr_non_null
                 # Propagate readonly: accessing a non-value field through a
                 # readonly reference yields a readonly result.
                 # Ptr[T] fields become ReadOnlyPtr[T], Span[T] -> ReadOnlySpan[T].
