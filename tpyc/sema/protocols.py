@@ -169,10 +169,24 @@ class ProtocolChecker:
             return False
 
         # User records: check implemented_protocols (concrete NamedTypes)
+        # Build substitution map for generic records (e.g., ArrayList[T, N] instantiated as ArrayList[Int32, 8])
+        type_subst: dict[str, TpyType] = {}
+        if record_info.type_params and isinstance(actual, NamedType) and actual.type_args:
+            for param_name, arg in zip(record_info.type_params, actual.type_args):
+                if isinstance(arg, TpyType):  # skip int-kind params (e.g. N: int)
+                    type_subst[param_name] = arg
+
         target_qname = protocol.qualified_name() or get_protocol_qname(protocol.name)
         for impl_proto in record_info.implemented_protocols:
             if impl_proto_matches_name(impl_proto, protocol.name, target_qname):
-                if len(protocol.type_args) == 0 or impl_proto.type_args == protocol.type_args:
+                if len(protocol.type_args) == 0:
+                    return True
+                # Substitute type params in impl_proto's type_args before comparing
+                resolved_args = tuple(
+                    self.type_ops.substitute_types(a, type_subst) if type_subst else a
+                    for a in impl_proto.type_args
+                )
+                if resolved_args == protocol.type_args:
                     return True
 
         # Builtin types: check extends_protocols strings

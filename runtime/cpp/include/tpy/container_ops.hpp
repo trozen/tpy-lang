@@ -228,11 +228,10 @@ inline std::span<const T> as_span(std::span<T> span) {
 }
 
 // User types with __span__(): delegate to their method.
-// The !contiguous_range guard avoids ambiguity with builtins (vector, array)
-// which have their own as_span overloads above.
+// The specific overloads above (vector, array, span) are more specialized
+// and always preferred over this template.
 template <typename T>
     requires requires(const T& t) { t.__span__(); }
-        && (!std::ranges::contiguous_range<T>)
 inline auto as_span(const T& t) {
     return t.__span__();
 }

@@ -1973,7 +1973,7 @@ class ResolvedUnaryop:
 
 
 IMPLICIT_READONLY_METHODS = frozenset({
-    "__bool__", "__len__", "__getitem__", "__str__", "__repr__", "__hash__", "__eq__", "__ne__",
+    "__bool__", "__len__", "__getitem__", "__contains__", "__str__", "__repr__", "__hash__", "__eq__", "__ne__",
     "__lt__", "__le__", "__gt__", "__ge__",
     "__add__", "__sub__", "__mul__", "__truediv__", "__floordiv__", "__mod__", "__pow__",
     "__and__", "__or__", "__xor__", "__lshift__", "__rshift__",

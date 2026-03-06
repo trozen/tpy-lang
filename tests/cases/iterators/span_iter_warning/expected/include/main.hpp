@@ -75,6 +75,9 @@ struct Dual {
         // 23:         return MyIter(Int32(3))
         return MyIter(3);
     }
+
+    auto begin() const { return __span__().begin(); }
+    auto end() const { return __span__().end(); }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dual& obj) {

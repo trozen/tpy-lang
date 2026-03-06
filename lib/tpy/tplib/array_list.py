@@ -2,11 +2,7 @@
 # Elements are placement-constructed on append and explicitly destroyed on pop/clear/__del__.
 #
 # TODO: construct with fixed-extent Span[T, N] (deduce both T and N from the argument)
-# TODO: __contains__(value) -> bool (enables `x in list`)
-# TODO: __eq__ (element-wise comparison)
-# TODO: swap(i, j) -- O(1) element swap (3 moves vs take+take+init+init)
-# TODO: truncate(new_len) -- drop tail elements via drop_n
-# TODO: __repr__
+# TODO: sort()
 from __future__ import annotations
 from typing import MutableSequence, Iterable
 from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, Span, ReadOnlySpanLike, copy, Default, make_default, span
@@ -64,7 +60,7 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
         for i in range(self._size):
             if self._storage.load(UInt32.trunc(i)) == value:
                 return i
-        return -1
+        assert False, "list.index(x): x not in list"
 
     def count(self, value: T) -> Int32:
         n: Int32 = 0
@@ -89,6 +85,24 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
             lo += 1
             hi -= 1
 
+    def swap(self, i: Int32, j: Int32) -> None:
+        ui = UInt32.trunc(i)
+        uj = UInt32.trunc(j)
+        assert ui < self._size
+        assert uj < self._size
+        if ui == uj:
+            return
+        a = self._storage.take(ui)
+        b = self._storage.take(uj)
+        self._storage.init(ui, b)
+        self._storage.init(uj, a)
+
+    def truncate(self, new_len: Int32) -> None:
+        assert new_len >= 0
+        if new_len < self._size:
+            self._storage.drop_n(UInt32.trunc(new_len), UInt32.trunc(self._size - new_len))
+            self._size = new_len
+
     def __len__(self) -> Int32:
         return self._size
 
@@ -110,6 +124,20 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
         self._storage.shift(ui + 1, ui, UInt32.trunc(self._size - index - 1))
         self._size -= 1
 
+    def __contains__(self, value: T) -> bool:
+        for ui in range(UInt32.trunc(self._size)):
+            if self._storage.load(ui) == value:
+                return True
+        return False
+
+    def __eq__(self, other: ArrayList[T, N]) -> bool:
+        if self._size != len(other):
+            return False
+        for ui in range(UInt32.trunc(self._size)):
+            if self._storage.load(ui) != other._storage.load(ui):
+                return False
+        return True
+
     def __span__(self) -> Span[T]:
         return self._storage.ptr().span(self._size)
 
@@ -128,7 +156,7 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
         self._storage.drop_n(0, UInt32.trunc(self._size))
         self._size = 0
 
-    def __str__(self) -> str:
+    def __repr__(self) -> str:
         s = "["
         sep = False
         for item in self:
@@ -136,6 +164,9 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
                 s += ", "
             else:
                 sep = True
-            s += str(item)
+            s += repr(item)
         s += "]"
         return s
+
+    def __str__(self) -> str:
+        return repr(self)

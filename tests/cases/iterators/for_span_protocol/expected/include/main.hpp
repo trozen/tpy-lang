@@ -35,6 +35,9 @@ struct MutBuffer {
         // 13:         return self._data
         return tpy::as_span(this->_data);
     }
+
+    auto begin() const { return __span__().begin(); }
+    auto end() const { return __span__().end(); }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MutBuffer& obj) {
@@ -57,6 +60,9 @@ struct ROBuffer {
         // 22:         return self._data
         return tpy::as_span(this->_data);
     }
+
+    auto begin() const { return __span__().begin(); }
+    auto end() const { return __span__().end(); }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const ROBuffer& obj) {

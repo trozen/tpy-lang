@@ -341,6 +341,12 @@ class RecordGenerator:
         if has_next and not has_iter:
             out.write(f"\n{INDENT}auto& __iter__() {{ return *this; }}\n")
 
+        # Synthesize begin()/end() for types with __span__() (makes them C++ ranges)
+        has_span = any(m.name == "__span__" for m in record.methods)
+        if has_span:
+            out.write(f"\n{INDENT}auto begin() const {{ return __span__().begin(); }}\n")
+            out.write(f"{INDENT}auto end() const {{ return __span__().end(); }}\n")
+
         out.write("};\n")
         self._gen_record_ostream(out, record)
 

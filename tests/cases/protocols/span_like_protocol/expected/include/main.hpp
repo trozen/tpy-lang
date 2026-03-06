@@ -35,6 +35,9 @@ struct Buffer {
         // 11:         return self._data
         return tpy::as_span(this->_data);
     }
+
+    auto begin() const { return __span__().begin(); }
+    auto end() const { return __span__().end(); }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {

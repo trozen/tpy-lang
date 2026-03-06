@@ -670,8 +670,16 @@ UNARYOP_TO_METHOD = {
 def is_native_iterable(tpy_type: "TpyType", registry: "TypeRegistry") -> bool:
     """Check if type extends NativeIterable (uses range-based for in C++)."""
     record = registry.get_record_for_type(tpy_type)
-    if record and record.extends_protocols:
-        return any(ext.startswith("NativeIterable") for ext in record.extends_protocols)
+    if record is None:
+        return False
+    # Builtin types: check extends_protocols strings
+    if record.extends_protocols:
+        if any(ext.startswith("NativeIterable") for ext in record.extends_protocols):
+            return True
+    # User records: check implemented_protocols (includes auto-derived from __span__)
+    for proto in record.implemented_protocols:
+        if proto.name == "NativeIterable":
+            return True
     return False
 
 

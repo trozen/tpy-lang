@@ -1,0 +1,1 @@
+TurboPython panic: list.index(x): x not in list
