@@ -58,6 +58,35 @@ def register_protocol_module(protocol_name: str, module_name: str) -> None:
         _protocol_modules[protocol_name] = module_name
 
 
+def get_protocol_qname(protocol_name: str) -> str | None:
+    """Get the qualified name for a protocol from the global registry."""
+    mod = _protocol_modules.get(protocol_name)
+    if mod:
+        return f"{mod}.{protocol_name}"
+    return None
+
+
+def impl_proto_matches_name(impl_proto: 'NamedType', protocol_name: str,
+                            target_qname: str | None = None) -> bool:
+    """Check if an implemented protocol matches a target by qualified name.
+
+    Uses qualified_name() on impl_proto and the _protocol_modules registry
+    to avoid false matches with user protocols that shadow builtin names.
+    Falls back to short name if qualified names aren't available.
+
+    Args:
+        target_qname: Pre-computed qualified name for the target protocol.
+            If None, computed from protocol_name via _protocol_modules.
+    """
+    impl_qname = impl_proto.qualified_name()
+    if impl_qname:
+        if target_qname is None:
+            target_qname = get_protocol_qname(protocol_name)
+        if target_qname:
+            return impl_qname == target_qname
+    return impl_proto.name == protocol_name
+
+
 def clear_codegen_state() -> None:
     """Clear per-module codegen state (called before each module's codegen).
 

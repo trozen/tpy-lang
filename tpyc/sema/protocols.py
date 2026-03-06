@@ -15,6 +15,7 @@ from ..typesys import (
     FixedIntType, BigIntType, FloatType, Float32Type, BoolType, StrType, StringType, StrViewType, CharType,
     ListType, ListRepeatType, DictType, ArrayType, TupleType, SpanType, OptionalType, IntLiteralType, PendingListType, BIGINT,
     EnumType, IntEnumType,
+    impl_proto_matches_name, get_protocol_qname,
 )
 from ..coercions import is_protocol_safe_coercion, resolve_coercion, CoercionContext
 
@@ -35,9 +36,11 @@ def record_extends_any(actual: TpyType, protocol_name: str, registry: 'TypeRegis
     record_info = registry.get_record_for_type(actual)
     if record_info is None:
         return False
+    target_qname = get_protocol_qname(protocol_name)
     for impl_proto in record_info.implemented_protocols:
-        if impl_proto.name == protocol_name:
+        if impl_proto_matches_name(impl_proto, protocol_name, target_qname):
             return True
+    # Extends strings are unqualified (only set on builtin types)
     for ext in record_info.extends_protocols:
         match = re.match(r"(\w+)(?:\[.+\])?$", ext)
         if match and match.group(1) == protocol_name:
@@ -166,8 +169,9 @@ class ProtocolChecker:
             return False
 
         # User records: check implemented_protocols (concrete NamedTypes)
+        target_qname = protocol.qualified_name() or get_protocol_qname(protocol.name)
         for impl_proto in record_info.implemented_protocols:
-            if impl_proto.name == protocol.name:
+            if impl_proto_matches_name(impl_proto, protocol.name, target_qname):
                 if len(protocol.type_args) == 0 or impl_proto.type_args == protocol.type_args:
                     return True
 
@@ -262,11 +266,12 @@ class ProtocolChecker:
             return False
 
         # User records: check implemented_protocols
+        target_qname = get_protocol_qname(protocol_name)
         for impl_proto in record_info.implemented_protocols:
-            if impl_proto.name == protocol_name:
+            if impl_proto_matches_name(impl_proto, protocol_name, target_qname):
                 return True
 
-        # Builtin types: check extends_protocols strings
+        # Extends strings are unqualified (only set on builtin types)
         for ext in record_info.extends_protocols:
             match = re.match(r"(\w+)(?:\[.+\])?$", ext)
             if match and match.group(1) == protocol_name:

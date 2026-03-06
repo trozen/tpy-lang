@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Callable
 if TYPE_CHECKING:
     from tpyc.typesys import TpyType
 
-from tpyc.typesys import TypeParamRef, NamedType, PtrType, ProtocolInfo, MethodSignature, TypeParamKind, ParamInfo, TupleType
+from tpyc.typesys import TypeParamRef, NamedType, PtrType, ProtocolInfo, MethodSignature, TypeParamKind, ParamInfo, TupleType, impl_proto_matches_name, get_protocol_qname
 
 
 @dataclass
@@ -698,8 +698,9 @@ def get_extends_protocol_type_arg(
     if registry is not None:
         record_info = registry.get_record_for_type(tpy_type)
         if record_info is not None:
+            target_qname = get_protocol_qname(protocol_name)
             for impl_proto in record_info.implemented_protocols:
-                if impl_proto.name == protocol_name and impl_proto.type_args:
+                if impl_proto_matches_name(impl_proto, protocol_name, target_qname) and impl_proto.type_args:
                     return impl_proto.type_args[0]
 
     return None

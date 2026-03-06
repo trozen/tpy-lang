@@ -637,6 +637,16 @@ class TypeRegistrar:
             if is_protocol_base:
                 # It's a protocol implementation - set the is_protocol flag correctly
                 protocol_type = base_type.with_protocol_flag(True) if isinstance(base_type, NamedType) else base_type
+                # Set _module_qname from the protocol's registry entry so that
+                # qualified_name() returns the correct module (not just the
+                # _protocol_modules fallback which is first-write-wins)
+                if isinstance(protocol_type, NamedType) and not protocol_type._module_qname:
+                    proto_info = self.ctx.registry.get_protocol(base_name)
+                    if proto_info and proto_info.module:
+                        protocol_type = NamedType(
+                            protocol_type.name, protocol_type.type_args, True,
+                            f"{proto_info.module}.{protocol_type.name}",
+                            protocol_type.is_dynamic_protocol)
                 implemented_protocols.append(protocol_type)
             elif isinstance(base_type, NamedType) and base_type.is_user_record:
                 # It's a user-defined class - check for multiple inheritance
