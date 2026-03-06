@@ -5,6 +5,7 @@ Generates C++ code from TurboPython expressions.
 """
 
 from __future__ import annotations
+import io
 from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
@@ -22,12 +23,13 @@ from ..parse import (
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpyTupleLiteral, TupleElemCapture, TpyDictLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
+    TpyArrayLiteral, TpyTupleLiteral, TupleElemCapture, TpyDictLiteral, TpyListRepeat, TpyListComprehension,
+    TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr,
 )
 from ..prescan import match_is_none
 from ..namespace import BindingKind
-from .context import escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, expand_cpp_template
+from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, expand_cpp_template
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -402,6 +404,9 @@ class ExpressionGenerator:
 
         elif isinstance(expr, TpyListRepeat):
             return self._gen_list_repeat(expr, target_type)
+
+        elif isinstance(expr, TpyListComprehension):
+            return self._gen_list_comprehension(expr)
 
         elif isinstance(expr, TpySubscript):
             return self._gen_subscript(expr)
@@ -1600,6 +1605,128 @@ class ExpressionGenerator:
         # Materialized: wrap in from_range to construct the target container
         cpp_type = result_type.to_cpp()
         return f"tpy::from_range<{cpp_type}>({range_expr})"
+
+    def _gen_list_comprehension(self, expr: TpyListComprehension) -> str:
+        """Generate list comprehension as IIFE: [&]() { vector; loop; return; }()"""
+        gen = expr.generator
+        result_elem_type = expr.result_elem_type
+        assert result_elem_type is not None
+
+        if isinstance(result_elem_type, IntLiteralType):
+            result_elem_type = self.ctx.analyzer.ctx.default_int_type
+
+        cpp_elem = self.types.type_to_cpp(result_elem_type)
+        cpp_var = escape_cpp_name(gen.var)
+
+        # Indentation: stmt level for closing, one deeper for body
+        stmt_ind = INDENT * self.ctx.indent_level
+        ind1 = stmt_ind + INDENT
+        ind2 = ind1 + INDENT
+        ind3 = ind2 + INDENT
+
+        buf = io.StringIO()
+        buf.write(f"[&]() {{\n")
+        buf.write(f"{ind1}std::vector<{cpp_elem}> __result;\n")
+
+        # Generate the loop
+        iterable_code = self.gen_expr_deref(gen.iterable)
+        iterable_type = self.types.get_resolved_type(gen.iterable)
+
+        # Determine element type for loop variable binding
+        sema_elem = result_elem_type  # fallback
+        iter_elem_type = iterable_type.get_iteration_element_type()
+        if iter_elem_type is not None:
+            if isinstance(iter_elem_type, IntLiteralType):
+                iter_elem_type = self.ctx.analyzer.ctx.default_int_type
+            sema_elem = iter_elem_type
+
+        # Dispatch iteration strategy
+        if isinstance(gen.iterable, TpyCall) and gen.iterable.func == "range":
+            self._gen_comp_range_loop(buf, gen, sema_elem, ind1, ind2, cpp_var, iterable_code)
+        else:
+            self._gen_comp_begin_end_loop(buf, gen, sema_elem, ind1, ind2, cpp_var, iterable_code)
+
+        # Loop body: push_back with optional filter
+        element_code = self.gen_expr_deref(expr.element_expr, result_elem_type)
+        if gen.conditions:
+            cond_parts = [self.gen_truthy_expr(c) for c in gen.conditions]
+            cond_str = " && ".join(cond_parts)
+            buf.write(f"{ind2}if ({cond_str}) {{\n")
+            buf.write(f"{ind3}__result.push_back({element_code});\n")
+            buf.write(f"{ind2}}}\n")
+        else:
+            buf.write(f"{ind2}__result.push_back({element_code});\n")
+
+        buf.write(f"{ind1}}}\n")
+        buf.write(f"{ind1}return __result;\n")
+        buf.write(f"{stmt_ind}}}()")
+
+        return buf.getvalue()
+
+    def _gen_comp_begin_end_loop(self, buf: io.StringIO, gen: TpyComprehensionGenerator,
+                                  elem_type: TpyType, ind1: str, ind2: str,
+                                  cpp_var: str, iterable_code: str) -> None:
+        """Generate begin/end loop header for comprehension."""
+        n = self.ctx.iter_counter
+        self.ctx.iter_counter += 1
+
+        # Determine lvalue vs rvalue binding
+        is_lvalue = self._comp_is_lvalue(gen.iterable)
+        obj_binding = "auto&" if is_lvalue else "auto"
+
+        buf.write(f"{ind1}{obj_binding} __obj_{n} = {iterable_code};\n")
+        buf.write(f"{ind1}auto __beg_{n} = __obj_{n}.begin();\n")
+        buf.write(f"{ind1}auto __end_{n} = __obj_{n}.end();\n")
+        buf.write(f"{ind1}for (; __beg_{n} != __end_{n}; ++__beg_{n}) {{\n")
+
+        if elem_type.is_value_type():
+            cpp_elem = elem_type.to_cpp()
+            buf.write(f"{ind2}{cpp_elem} {cpp_var} = *__beg_{n};\n")
+        else:
+            buf.write(f"{ind2}auto&& {cpp_var} = *__beg_{n};\n")
+
+    def _gen_comp_range_loop(self, buf: io.StringIO, gen: TpyComprehensionGenerator,
+                              elem_type: TpyType, ind1: str, ind2: str,
+                              cpp_var: str, iterable_code: str) -> None:
+        """Generate counter loop for range() in comprehension."""
+        range_call = gen.iterable
+        assert isinstance(range_call, TpyCall)
+        nargs = len(range_call.args)
+        cpp_elem = elem_type.to_cpp()
+
+        if nargs == 1:
+            stop = self.gen_expr_deref(range_call.args[0], elem_type)
+            buf.write(f"{ind1}for ({cpp_elem} {cpp_var} = 0; {cpp_var} < {stop}; ++{cpp_var}) {{\n")
+        elif nargs == 2:
+            start = self.gen_expr_deref(range_call.args[0], elem_type)
+            stop = self.gen_expr_deref(range_call.args[1], elem_type)
+            buf.write(f"{ind1}for ({cpp_elem} {cpp_var} = {start}; {cpp_var} < {stop}; ++{cpp_var}) {{\n")
+        else:
+            # 3-arg range: fall back to Range<T> begin/end
+            self._gen_comp_begin_end_loop(buf, gen, elem_type, ind1, ind2, cpp_var, iterable_code)
+            return
+
+    def _comp_is_lvalue(self, expr: TpyExpr) -> bool:
+        """Check if an iterable expression is a C++ lvalue (for comprehensions).
+
+        Mirrors _is_lvalue_iterable in StatementGenerator.
+        """
+        while isinstance(expr, TpyCoerce):
+            expr = expr.expr
+        if isinstance(expr, TpyName):
+            return True
+        if isinstance(expr, TpyFieldAccess):
+            return self._comp_is_lvalue(expr.obj)
+        if isinstance(expr, TpySubscript):
+            return self._comp_is_lvalue(expr.obj)
+        if isinstance(expr, (TpyMethodCall, TpyCall)):
+            if isinstance(expr, TpyCall) and expr.call_type is not None:
+                return False
+            if isinstance(expr, TpyCall) and self.ctx.analyzer.registry.get_record(expr.func):
+                return False
+            ret_type = self.types.get_resolved_type(expr)
+            return not ret_type.is_value_type() and not isinstance(ret_type, OptionalType)
+        return False
 
     def _gen_tuple_literal(self, expr: TpyTupleLiteral, target_type: TpyType | None) -> str:
         """Generate tuple literal code."""

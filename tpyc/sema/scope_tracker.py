@@ -42,6 +42,17 @@ class ScopeTracker:
             self.ctx.current_scope = old_scope
 
     @contextmanager
+    def comprehension_scope(self) -> Iterator[Scope]:
+        """Create an inner scope for a comprehension (no loop_depth bump)."""
+        inner_scope = Scope(self.ctx.current_scope)
+        old_scope = self.ctx.current_scope
+        self.ctx.current_scope = inner_scope
+        try:
+            yield inner_scope
+        finally:
+            self.ctx.current_scope = old_scope
+
+    @contextmanager
     def loop_var(self, scope: Scope, name: str, var_type: TpyType,
                  depth: int, is_foreach: bool = False) -> Iterator[None]:
         """Bind a loop variable in scope/namespace and track its depth."""

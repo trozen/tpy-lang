@@ -22,7 +22,8 @@ from ..parse import (
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
+    TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat, TpyListComprehension,
+    TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr,
 )
 from ..namespace import BindingKind
@@ -30,6 +31,7 @@ from ..coercions import CoercionContext
 from .diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .narrowing import NarrowingTracker
 from .numeric_lattice import widen_numeric_types
+from .list_literals import IterableHelper
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -39,6 +41,7 @@ if TYPE_CHECKING:
     from .compatibility import TypeCompatibility
     from .calls import CallAnalyzer
     from .methods import MethodAnalyzer
+    from .scope_tracker import ScopeTracker
 
 from tpyc import modules as builtin_modules
 
@@ -64,11 +67,15 @@ class ExpressionAnalyzer:
         # Set via set_cross_deps() to break circular dependency
         self.calls: CallAnalyzer | None = None
         self.methods: MethodAnalyzer | None = None
+        self.scopes: ScopeTracker | None = None
 
-    def set_cross_deps(self, calls: CallAnalyzer, methods: MethodAnalyzer) -> None:
+    def set_cross_deps(self, calls: CallAnalyzer, methods: MethodAnalyzer,
+                       scopes: ScopeTracker | None = None) -> None:
         """Wire circular dependencies (must be called before analyze_expr)."""
         self.calls = calls
         self.methods = methods
+        if scopes is not None:
+            self.scopes = scopes
 
     def analyze_expr(self, expr: TpyExpr) -> TpyType:
         """Analyze an expression and return its type."""
@@ -106,6 +113,8 @@ class ExpressionAnalyzer:
             typ = self._analyze_dict_literal(expr)
         elif isinstance(expr, TpyListRepeat):
             typ = self._analyze_list_repeat(expr)
+        elif isinstance(expr, TpyListComprehension):
+            typ = self._analyze_list_comprehension(expr)
         elif isinstance(expr, TpySubscript):
             typ = self._analyze_subscript(expr)
         elif isinstance(expr, TpyFString):
@@ -522,7 +531,6 @@ class ExpressionAnalyzer:
                 )
                 return BOOL
             # Right side must be iterable (intrinsically or via NativeIterable protocol)
-            from .list_literals import IterableHelper
             helper = IterableHelper(self.ctx)
             if helper.is_type_iterable(right_type):
                 # For string containers, LHS must be str or Char
@@ -1214,6 +1222,47 @@ class ExpressionAnalyzer:
         self.ctx.pending_resolutions.append(literal_id)
 
         return PendingListType(first_type, size, literal_id)
+
+    def _analyze_list_comprehension(self, expr: TpyListComprehension) -> TpyType:
+        """Analyze a list comprehension: [expr for var in iterable if cond]"""
+        gen = expr.generator
+
+        # 1. Analyze iterable (in enclosing scope)
+        iterable_type = self.analyze_expr(gen.iterable)
+        inner_iterable_type = unwrap_readonly(iterable_type)
+
+        # Resolve TypeParamRef to bound for element type extraction
+        resolved_for_iter = inner_iterable_type
+        if isinstance(inner_iterable_type, TypeParamRef):
+            bound = self.type_ops.get_type_param_bound(inner_iterable_type.name)
+            if bound is not None and is_protocol_type(bound):
+                resolved_for_iter = bound
+
+        # 2. Extract element type from iterable
+        helper = IterableHelper(self.ctx)
+        elem_type = helper.get_iterable_element_type(resolved_for_iter, loc=expr.loc)
+
+        # 3. Comprehension scope: own scope for loop var, no loop_depth bump
+        if self.scopes is None:
+            raise RuntimeError("list comprehension requires ScopeTracker; wire via set_cross_deps()")
+        with self.scopes.comprehension_scope() as inner_scope:
+            with self.scopes.loop_var(inner_scope, gen.var, elem_type,
+                                      inner_scope.depth, is_foreach=False):
+                # 4. Analyze filter conditions (no type restriction -- matches if/while)
+                for cond in gen.conditions:
+                    self.analyze_expr(cond)
+
+                # 5. Analyze element expression
+                result_elem_type = self.analyze_expr(expr.element_expr)
+
+        # 6. Resolve IntLiteralType
+        if isinstance(result_elem_type, IntLiteralType):
+            result_elem_type = self.ctx.default_int_type
+
+        # 7. Store on node for codegen
+        expr.result_elem_type = result_elem_type
+
+        return ListType(result_elem_type)
 
     def _analyze_tuple_literal(
         self, expr: TpyTupleLiteral, element_hints: list[TpyType | None] | None = None

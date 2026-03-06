@@ -113,7 +113,7 @@ struct GenericNotLastUse {
     GenericNotLastUse() = default;
     explicit GenericNotLastUse(T item) : item(item) {
         // 43:         print(item)
-        std::cout << item << "\n";
+        std::cout << tpy::ValuePrinter(item) << "\n";
     }
 };
 

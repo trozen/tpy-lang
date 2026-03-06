@@ -221,6 +221,23 @@ class TpyListRepeat(TpyExpr):
 
 
 @dataclass
+class TpyComprehensionGenerator:
+    """Single generator clause: for var in iterable [if cond]*"""
+    var: str
+    iterable: TpyExpr
+    conditions: list[TpyExpr]
+    unpack_vars: list[str] | None = None  # Phase 3: tuple unpacking
+
+
+@dataclass
+class TpyListComprehension(TpyExpr):
+    """List comprehension: [expr for var in iterable if cond]"""
+    element_expr: TpyExpr
+    generator: TpyComprehensionGenerator
+    result_elem_type: 'TpyType | None' = None  # set by sema
+
+
+@dataclass
 class TpyDictLiteral(TpyExpr):
     """Dict literal: {key: value, key: value, ...}"""
     keys: list[TpyExpr]

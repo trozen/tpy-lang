@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, CharType,
     NamedType, OptionalType, NoneType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
     ListType, ListRepeatType, DictType, DictKeysViewType, DictValuesViewType, DictItemsViewType,
-    ArrayType, SpanType, TupleType, is_protocol_type, unwrap_readonly, is_any_str_type,
+    ArrayType, SpanType, TupleType, OwnType, is_protocol_type, unwrap_readonly, is_any_str_type,
 )
 from ..parse import (
     TpyExpr, TpyCall, TpyStrLiteral, TpyArrayLiteral, TpyNoneLiteral, TpyCoerce,
@@ -209,6 +209,8 @@ class BuiltinGenerator:
                 parts.append('" "')  # Space separator between args
 
             arg_type = unwrap_readonly(self.types.get_resolved_type(arg))
+            if isinstance(arg_type, OwnType):
+                arg_type = arg_type.wrapped
 
             if isinstance(arg, TpyNoneLiteral):
                 parts.append('"None"')

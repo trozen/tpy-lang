@@ -23,7 +23,9 @@ from .nodes import (
     TpyFStringValue, TpyFString, FSTRING_CONV_ASCII,
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyUnaryOp, TpyTypeParamConstruct, TpyCall, TpyMethodCall,
-    TpyFieldAccess, TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat, TpySlice, TpySubscript, TpyCoerce,
+    TpyFieldAccess, TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat,
+    TpyComprehensionGenerator, TpyListComprehension,
+    TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
@@ -1602,6 +1604,19 @@ class Parser:
             type_args.append(self._parse_type_annotation(s))
         return tuple(type_args)
 
+    def _parse_comprehension_generator(self, gen: ast.comprehension) -> TpyComprehensionGenerator:
+        """Parse a single comprehension generator clause."""
+        iterable = self._parse_expr(gen.iter)
+        conditions = [self._parse_expr(c) for c in gen.ifs]
+        if isinstance(gen.target, ast.Name):
+            return TpyComprehensionGenerator(
+                var=gen.target.id, iterable=iterable,
+                conditions=conditions, unpack_vars=None)
+        elif isinstance(gen.target, ast.Tuple):
+            raise ParseError("Tuple unpacking in comprehensions not yet supported", gen.target)
+        else:
+            raise ParseError("Unsupported comprehension target", gen.target)
+
     def _try_parse_type_args(self, node: ast.Subscript) -> tuple[tuple[TpyType, ...], str | None]:
         """Try to parse type args from a subscript, capturing parse errors.
 
@@ -1933,6 +1948,16 @@ class Parser:
         elif isinstance(node, ast.List):
             elements = [self._parse_expr(elt) for elt in node.elts]
             return TpyArrayLiteral(elements=elements, loc=loc)
+
+        elif isinstance(node, ast.ListComp):
+            if len(node.generators) != 1:
+                raise ParseError("Nested comprehensions not yet supported", node)
+            gen = node.generators[0]
+            if gen.is_async:
+                raise ParseError("Async comprehensions not yet supported", node)
+            generator = self._parse_comprehension_generator(gen)
+            element_expr = self._parse_expr(node.elt)
+            return TpyListComprehension(element_expr, generator, loc=loc)
 
         elif isinstance(node, ast.Dict):
             if any(k is None for k in node.keys):

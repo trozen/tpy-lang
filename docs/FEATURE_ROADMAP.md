@@ -44,7 +44,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B6 | `# tpy:` directives | S-M | Not started | [I](#tpy-directives) |
 | B7 | Float32 type | S | Done | [I](#float32-type) |
 | B8 | Dataclasses | M | Done | [VII](#dataclasses) |
-| B9 | List comprehensions | M | Not started | [VI](#list-comprehensions) |
+| B9 | List comprehensions | M | Done | [VI](#list-comprehensions) |
 | B10 | Union dispatch flattening | M | Not started | [VII](#union-dispatch-flattening) |
 | B11 | List slicing | M | Not started | [VII](#list-slicing) |
 | B12 | `Self` type | S | Done | [I](#self-type) |
@@ -77,6 +77,10 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D8 | `@override` decorator | S | Not started | [VII](#override-decorator) |
 | D9 | set type | L | Not started | [VII](#set-type) |
 | D10 | bytes type | M | Not started | [VII](#bytes-type) |
+| D11 | Dict comprehension | S-M | Not started | [VI](#dict-comprehension) |
+| D12 | Set comprehension | S | Not started | [VI](#set-comprehension) |
+| D13 | Generator expressions | M | Not started | [VI](#generator-expressions) |
+| D14 | Walrus operator (`:=`) | S-M | Not started | [VI](#walrus-operator) |
 
 ### Phase E: Advanced Safety
 
@@ -1306,13 +1310,21 @@ squares = [x * x for x in range(10)]
 evens = [x for x in items if x % 2 == 0]
 ```
 
-Maps to loop + `push_back` or range pipeline. Very Pythonic, high-frequency usage.
+Expression that builds a list from an iterable with optional filtering. Maps to an
+immediately-invoked lambda (IIFE) containing a loop + `push_back`. Single generator
+only (no nested `for x in a for y in b`).
 
-**Current state**: Not started.
+See `docs/COMPREHENSION_DESIGN.md` for full design including phased rollout,
+codegen strategy, and future extensions (dict/set comprehensions, generator expressions).
 
-**Dependencies**: None for basic form. Filter clause needs bool coercion.
+**Current state**: Done (Phase 1+2). Single-generator list comprehensions with optional
+filter clause. Codegen uses IIFE pattern (`[&]() { ... }()`). Supports range() counter
+optimization and begin/end iteration for native containers. Tuple unpacking in generators,
+annotation propagation, and Array optimization are future phases.
 
-**Effort**: M
+**Dependencies**: None for basic form. Filter clause needs bool coercion (done).
+
+**Effort**: M (done)
 
 ---
 
@@ -1371,6 +1383,116 @@ cleanup before scope end.
 **Current state**: Not started.
 
 **Dependencies**: `init_tracker` (done). Move semantics (done).
+
+**Effort**: S-M
+
+---
+
+### Dict Comprehension
+
+```python
+scores = {name: len(name) for name in names}
+filtered = {k: v for k, v in d.items() if v > 0}
+```
+
+Builds a `dict[K, V]` from an iterable with optional filtering. Same IIFE codegen
+pattern as list comprehensions, producing `tpy::ordered_map<K, V>`.
+
+See `docs/COMPREHENSION_DESIGN.md` for design sketch.
+
+**Current state**: Not started.
+
+**Dependencies**: Dict type (done). List comprehension infrastructure (B9).
+Tuple unpacking in generators for the `for k, v in` pattern.
+
+**Effort**: S-M (incremental once list comprehensions land)
+
+---
+
+### Set Comprehension
+
+```python
+unique_lengths = {len(name) for name in names}
+```
+
+Builds a `set[T]` from an iterable with optional filtering. Same generator model
+as list/dict comprehensions.
+
+**Current state**: Not started.
+
+**Dependencies**: Set type (D9). List comprehension infrastructure (B9).
+
+**Effort**: S (incremental once set type and list comprehensions exist)
+
+---
+
+### Generator Expressions
+
+```python
+total = sum(x * x for x in items)
+has_negative = any(x < 0 for x in items)
+words = list(word.lower() for word in raw_words)
+```
+
+Lazy iteration expressions. In Python these produce generator objects; in TPy the
+key optimization is **fusing** the generator into a consuming builtin to avoid
+any intermediate allocation.
+
+**Codegen strategy** (tiered):
+
+1. **Fused IIFE** (primary): When the generator is the sole argument to a known
+   builtin (`sum`, `any`, `all`, `min`, `max`, `list`, `dict`), fuse the loop
+   into the consumer. Zero allocation, single pass:
+   ```cpp
+   // sum(x * x for x in items)
+   auto total = [&]() {
+       int64_t __acc = 0;
+       for (auto& x : items) { __acc += x * x; }
+       return __acc;
+   }();
+   ```
+
+2. **Materialize fallback**: When passed to a user-defined function or stored in a
+   variable, materialize to `list[T]` (equivalent to wrapping in `list(...)`).
+   A warning could suggest using an explicit list comprehension instead.
+
+A future alternative for user-defined consumers is passing a callable (lambda) to a
+template function, but fused IIFE covers the high-value cases with zero new runtime
+infrastructure.
+
+See `docs/COMPREHENSION_DESIGN.md` for full design.
+
+**Current state**: Not started.
+
+**Dependencies**: List comprehension infrastructure (B9). Builtin function awareness
+in sema for fusion.
+
+**Effort**: M
+
+---
+
+### Walrus Operator
+
+```python
+if (n := len(items)) > 10:
+    print(f"too many: {n}")
+
+filtered = [y for x in items if (y := transform(x)) is not None]
+```
+
+Assignment expression (`:=`) that assigns and returns a value. PEP 572.
+
+**Why it matters**: Common in filter-and-transform patterns, especially in
+comprehension filters where you want to compute a value, test it, and keep it.
+Also useful in `while` loops (`while (line := read_line()) is not None`).
+
+Maps to C++ assignment-in-expression or a preceding variable declaration
+depending on context.
+
+**Current state**: Not started.
+
+**Dependencies**: None for basic form. Comprehension integration needs list
+comprehensions (B9).
 
 **Effort**: S-M
 
