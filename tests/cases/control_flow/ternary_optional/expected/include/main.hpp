@@ -7,11 +7,11 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-tpy::BigInt safe_len(std::optional<std::string> s);
+tpy::BigInt safe_len(std::optional<std::string_view> s);
 std::optional<std::string> value_or_none(bool flag);
 std::optional<std::string> none_or_value(bool flag);
-std::string with_default(std::optional<std::string> val);
-std::string truthy_narrowing(std::optional<std::string> s);
+std::string with_default(std::optional<std::string_view> val);
+std::string truthy_narrowing(std::optional<std::string_view> s);
 void main();
 
 void __tpy_init();

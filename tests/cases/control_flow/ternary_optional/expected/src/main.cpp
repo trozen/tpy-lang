@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 4: def safe_len(s: Optional[str]) -> int:
-tpy::BigInt safe_len(std::optional<std::string> s) {
+tpy::BigInt safe_len(std::optional<std::string_view> s) {
     // 5:     # Optional narrowing: s is narrowed to str in the then-branch
     // 6:     return len(s) if s is not None else 0
     return tpy::BigInt((((s.has_value())) ? (tpy::__len__((*s))) : (0)));
@@ -26,17 +26,17 @@ std::optional<std::string> none_or_value(bool flag) {
 }
 
 // 16: def with_default(val: Optional[str]) -> str:
-std::string with_default(std::optional<std::string> val) {
+std::string with_default(std::optional<std::string_view> val) {
     // 17:     # Common pattern: provide a default for Optional
     // 18:     return val if val is not None else "default"
-    return (((val.has_value())) ? ((*val)) : ("default"));
+    return std::string((((val.has_value())) ? ((*val)) : ("default")));
 }
 
 // 20: def truthy_narrowing(s: Optional[str]) -> str:
-std::string truthy_narrowing(std::optional<std::string> s) {
+std::string truthy_narrowing(std::optional<std::string_view> s) {
     // 21:     # Truthy condition narrows Optional[str] to str in then-branch
     // 22:     return s if s else "empty"
-    return ((tpy::is_truthy(s)) ? ((*s)) : ("empty"));
+    return std::string(((tpy::is_truthy(s)) ? ((*s)) : ("empty")));
 }
 
 // 24: def main() -> None:

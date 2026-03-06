@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 4: def check_truthy(s: Optional[str]) -> None:
-void check_truthy(std::optional<std::string> s) {
+void check_truthy(std::optional<std::string_view> s) {
     // 5:     if s:
     if (tpy::is_truthy(s)) {
         // 6:         print(s)
@@ -17,7 +17,7 @@ void check_truthy(std::optional<std::string> s) {
 }
 
 // 10: def check_none(s: Optional[str]) -> None:
-void check_none(std::optional<std::string> s) {
+void check_none(std::optional<std::string_view> s) {
     // 11:     if s is not None:
     if ((s.has_value())) {
         // 12:         print(s)

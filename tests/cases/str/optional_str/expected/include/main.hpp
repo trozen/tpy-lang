@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void check_truthy(std::optional<std::string> s);
-void check_none(std::optional<std::string> s);
+void check_truthy(std::optional<std::string_view> s);
+void check_none(std::optional<std::string_view> s);
 void main();
 
 void __tpy_init();

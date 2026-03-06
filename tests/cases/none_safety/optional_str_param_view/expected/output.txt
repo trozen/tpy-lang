@@ -1,0 +1,9 @@
+hello
+None
+world
+none
+value
+default
+3
+hello
+default

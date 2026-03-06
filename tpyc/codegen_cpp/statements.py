@@ -70,7 +70,13 @@ class StatementGenerator:
             for pname, ptype in self._reassigned_param_copies:
                 cpp_name = escape_cpp_name(pname)
                 cpp_type = ptype.to_cpp()
-                body_buf.write(f"{indent}{cpp_type} {cpp_name} = __param_{cpp_name};\n")
+                param_ref = f"__param_{cpp_name}"
+                if isinstance(ptype, OptionalType) and isinstance(ptype.inner, StrType):
+                    init = (f"{param_ref} ? std::make_optional("
+                            f"std::string(*{param_ref})) : std::nullopt")
+                else:
+                    init = param_ref
+                body_buf.write(f"{indent}{cpp_type} {cpp_name} = {init};\n")
             self._reassigned_param_copies = []
         for stmt in stmts:
             if track_stmt_line:
@@ -264,6 +270,10 @@ class StatementGenerator:
                         ret_expr = f"tpy::deref_optional_check({ret_expr})"
                     else:
                         ret_expr = f"(*{ret_expr})"
+                        # Narrowed Optional[str] param: (*s) yields string_view
+                        if (isinstance(ret_type, StrType)
+                                and self._is_optional_str_param(stmt.value)):
+                            ret_expr = f"std::string({ret_expr})"
                 # StrView local returned as str needs explicit conversion.
                 # Also wrap str-typed params (which are string_view in C++).
                 elif isinstance(ret_type, StrType):
@@ -273,6 +283,9 @@ class StatementGenerator:
                     elif (isinstance(expr_type, StrType)
                           and isinstance(stmt.value, TpyName)
                           and stmt.value.name in self.ctx.current_func_params):
+                        ret_expr = f"std::string({ret_expr})"
+                    elif (isinstance(expr_type, StrType)
+                          and self._expr_uses_optional_str_param(stmt.value)):
                         ret_expr = f"std::string({ret_expr})"
                 # Consuming method: move self fields on return (this->field is lvalue)
                 if (self.ctx.in_consuming_method
@@ -1070,6 +1083,23 @@ class StatementGenerator:
             return f"{indent}{code};\n"
         else:
             return f"{indent}tpy::__setitem__({subscript_obj}, {index_expr}, {result_expr});\n"
+
+    def _is_optional_str_param(self, expr: TpyExpr) -> bool:
+        """Check if expr is an Optional[str] function parameter (string_view in C++)."""
+        if not isinstance(expr, TpyName):
+            return False
+        declared = self.ctx.current_func_params.get(expr.name)
+        return (isinstance(declared, OptionalType)
+                and isinstance(declared.inner, StrType))
+
+    def _expr_uses_optional_str_param(self, expr: TpyExpr) -> bool:
+        """Check if expr (e.g. ternary) dereferences an Optional[str] param."""
+        if self._is_optional_str_param(expr):
+            return True
+        if isinstance(expr, TpyIfExpr):
+            return (self._expr_uses_optional_str_param(expr.then_expr)
+                    or self._expr_uses_optional_str_param(expr.else_expr))
+        return False
 
     def _is_value_optional_var(self, name: str) -> bool:
         """Check if a variable's C++ declared type is a value-type std::optional<T>."""

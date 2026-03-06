@@ -90,7 +90,7 @@ struct Config {
     std::optional<std::string> label = std::nullopt;
 
     Config() = default;
-    explicit Config(std::string_view name, int32_t value, std::optional<std::string> label = std::nullopt) : name(name), value(value), label(label) {}
+    explicit Config(std::string_view name, int32_t value, std::optional<std::string_view> label = std::nullopt) : name(name), value(value), label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
 
     bool __eq__(const Config& other) const {
         return (((this->name == other.name) && (this->value == other.value)) && (this->label == other.label));

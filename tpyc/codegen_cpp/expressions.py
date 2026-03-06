@@ -162,10 +162,13 @@ class ExpressionGenerator:
             cpp_declared_type is not None
             and isinstance(cpp_declared_type, OptionalType) and not cpp_declared_type.uses_pointer_repr()
         )
+        effective_target = target_type
+        if isinstance(effective_target, OwnType):
+            effective_target = effective_target.wrapped
         if (
             target_type is not None
             and is_value_optional
-            and not isinstance(target_type, OptionalType)
+            and not isinstance(effective_target, OptionalType)
         ):
             # If sema already narrowed this expression to non-Optional, unwrap
             # without an extra runtime check. Otherwise keep checked dereference.
@@ -173,6 +176,24 @@ class ExpressionGenerator:
                 result = f"tpy::deref_optional_check({result})"
             else:
                 result = f"(*{result})"
+        return result
+
+    def _maybe_convert_opt_str_param(self, name: str, result: str,
+                                      target_type: TpyType | None) -> str:
+        """Convert Optional[str] param (optional<string_view>) to optional<string>
+        when needed by the target type."""
+        if target_type is None:
+            return result
+        declared = self.ctx.current_func_params.get(name)
+        if not (isinstance(declared, OptionalType)
+                and isinstance(declared.inner, StrType)):
+            return result
+        target = target_type
+        if isinstance(target, OwnType):
+            target = target.wrapped
+        if isinstance(target, OptionalType) and isinstance(target.inner, StrType):
+            return (f"{result} ? std::make_optional("
+                    f"std::string(*{result})) : std::nullopt")
         return result
 
     def _get_cpp_declared_type(self, expr: TpyExpr) -> TpyType | None:
@@ -391,7 +412,8 @@ class ExpressionGenerator:
                 # Use qualified import reference (convert dotted name to C++ namespace)
                 source_module, original_name = self.ctx.user_imported_variables[expr.name]
                 return qualified_cpp_name(source_module, original_name)
-            return escape_cpp_name(expr.name)
+            result = escape_cpp_name(expr.name)
+            return self._maybe_convert_opt_str_param(expr.name, result, target_type)
 
         elif isinstance(expr, TpyBinOp):
             return self._gen_binop(expr, target_type)

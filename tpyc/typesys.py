@@ -1098,12 +1098,19 @@ class OptionalType(TpyType):
     def to_cpp_param(self, name: str) -> str:
         if self.uses_pointer_repr():
             return f"{self.inner.to_cpp()}* {name}"
+        if isinstance(self.inner, StrType):
+            return f"std::optional<std::string_view> {name}"
         return f"{self.to_cpp()} {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
         if self.uses_pointer_repr():
             return f"const {self.inner.to_cpp()}* {name}"
+        if isinstance(self.inner, StrType):
+            return f"std::optional<std::string_view> {name}"
         return f"{self.to_cpp()} {name}"
+
+    def param_needs_copy_for_reassign(self) -> bool:
+        return isinstance(self.inner, StrType)
 
     def is_ref_param(self) -> bool:
         # Optional params are T* (pointer), not T& (reference)

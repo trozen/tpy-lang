@@ -6,7 +6,7 @@ namespace tpy_user::main {
 
 // # Test calling methods on narrowed Optional[str] values.
 // 3: def greet(name: str | None) -> None:
-void greet(std::optional<std::string> name) {
+void greet(std::optional<std::string_view> name) {
     // 4:     if name is not None:
     if ((name.has_value())) {
         // 5:         print(name.upper())

@@ -20,7 +20,7 @@ struct Node {
     std::optional<std::string> label = std::nullopt;
 
     Node() = default;
-    explicit Node(int32_t value, std::optional<std::string> label = std::nullopt) : value(value), label(label) {}
+    explicit Node(int32_t value, std::optional<std::string_view> label = std::nullopt) : value(value), label(label ? std::make_optional(std::string(*label)) : std::nullopt) {}
 
     bool __eq__(const Node& other) const {
         return ((this->value == other.value) && (this->label == other.label));
