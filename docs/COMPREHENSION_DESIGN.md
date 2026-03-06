@@ -199,9 +199,9 @@ def _analyze_list_comprehension(self, expr: TpyListComprehension) -> TpyType:
         self.scopes.declare(gen.var, elem_type)
 
         # 4. Analyze filter conditions (Phase 2)
+        # No type restriction -- matches if/while behavior (truthy dispatch in codegen)
         for cond in gen.conditions:
-            cond_type = self.analyze_expr(cond)
-            # Validate bool-convertible
+            self.analyze_expr(cond)
 
         # 5. Analyze element expression
         result_elem_type = self.analyze_expr(expr.element_expr)
@@ -224,8 +224,9 @@ without break/continue support.
 
 - **Element type**: Determined by analyzing `element_expr` with the loop variable in
   scope. Standard expression analysis, no special rules.
-- **Filter conditions**: Must be bool-convertible (same rules as `if`/`while`
-  conditions). Filter does not affect element type.
+- **Filter conditions**: No type restriction -- conditions are passed to
+  `gen_truthy_expr` in codegen, same as `if`/`while`. Filter does not affect
+  element type.
 - **Result type**: `ListType(result_elem_type)` -- always a `list[T]`. Unlike array
   literals, comprehensions don't use `PendingListType` in Phase 1 because the result
   size is generally unknown. Phase 5 adds optimization for known-size cases.
@@ -530,7 +531,6 @@ with zero overhead and zero new runtime infrastructure. Tier 3 is the safe fallb
 | Nested generators | `[x+y for x in a for y in b]` | "Nested comprehensions not yet supported" |
 | Async comprehension | `[x async for x in aiter]` | "Async comprehensions not yet supported" |
 | Non-iterable source | `[x for x in 42]` | "Type 'Int32' is not iterable" (existing error) |
-| Non-bool filter | `[x for x in items if "yes"]` | Depends on `__bool__` support for str (existing rules) |
 
 ---
 
