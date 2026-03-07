@@ -4142,7 +4142,7 @@ Generated C++ emits `extern` declarations before the module namespace. Reference
 - **Working**: Binary/unary ops, calls, field access
 - **Working**: Ternary `x if cond else y` (see [Conditionals](#conditionals))
 - **Working**: List comprehensions `[expr for x in iterable if cond]` -> IIFE with loop + push_back. Supports tuple unpacking (`[v for k, v in pairs]`), annotation propagation (`result: list[int] = [x for x in int32_items]` coerces elements), and `reserve()` optimization for Sized iterables
-- **Open**: Dict comprehensions
+- **Working**: Dict comprehensions `{key: value for x in iterable if cond}` -> IIFE with loop + `insert_or_assign`. Supports tuple unpacking, annotation propagation, all iteration strategies
 - **Open**: Lambda → anonymous struct with `operator()` or inline
 - **Working**: String slice `s[start:end]` -> `std::string_view` (clamping, negative indices)
 - **Open**: List slice `lst[start:end]` -> new `std::vector`

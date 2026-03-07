@@ -248,6 +248,16 @@ class TpyListComprehension(TpyExpr):
 
 
 @dataclass
+class TpyDictComprehension(TpyExpr):
+    """Dict comprehension: {key: value for var in iterable if cond}"""
+    key_expr: TpyExpr
+    value_expr: TpyExpr
+    generator: TpyComprehensionGenerator
+    result_key_type: 'TpyType | None' = None  # set by sema
+    result_value_type: 'TpyType | None' = None  # set by sema
+
+
+@dataclass
 class TpyDictLiteral(TpyExpr):
     """Dict literal: {key: value, key: value, ...}"""
     keys: list[TpyExpr]

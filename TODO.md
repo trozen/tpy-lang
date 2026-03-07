@@ -1,6 +1,7 @@
 # TODO
 
 ## Next
+- `ordered_map::insert_or_assign` rvalue key overload: currently takes `const K&`, causing double-copy for string keys in dict comprehensions and literals. Add `void insert_or_assign(K&& key, V value)` overload.
 - Warn on wasteful field reassignment in `__init__`: when a field is initialized unconditionally (member initializer list) and then reassigned inside control flow, warn that this constructs then discards the initial value. Relevant for heavy types like BigInt. Users can avoid this with a `@staticmethod` helper or (once supported) ternary isinstance.
 - Union return copies non-value members: `f() -> A | B` returns `std::variant<A, B>` by value, copying record members. Python returns by reference. `std::variant<A&, B&>` is not valid C++. Params are fine (`&` for non-value unions). See `docs/UNION_TYPES_DESIGN.md` Known Semantic Gaps.
 - Avoid copying expensive value types in for-loops: `for x in items` where `items: list[int]` generates `for (tpy::BigInt x : items)`, copying every element. Would need `const auto&` for read-only expensive value types, but requires proving the container isn't mutated during iteration (escape analysis). Tuple unpack const-ref is done.

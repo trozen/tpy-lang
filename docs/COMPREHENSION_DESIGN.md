@@ -9,13 +9,13 @@
 | 3 | Tuple unpacking in generator: `[v for k, v in pairs]` | Done |
 | 4 | Annotation propagation: `result: list[Int32] = [x for x in items]` | Done |
 | 5 | Optimizations: Sized iterables -> `reserve()`, range -> `reserve()` | Done |
+| 6 | Dict comprehension: `{key: value for var in iterable if cond}` | Done |
 
 ### Future Extensions
 
 | Feature | Notes |
 |---------|-------|
 | `range(N)` -> Array | `[i*i for i in range(5)]` -> `std::array<T, 5>` (zero heap alloc). Requires literal N, no filter, value-type elements |
-| Dict comprehension | `{k: v for k, v in items}` -- same generator model, produces `dict[K, V]`. See [Dict comprehension](#dict-comprehension-future) section |
 | Set comprehension | `{x for x in items}` -- requires `set` type (D9) |
 | Generator expressions | `sum(x*x for x in items)` -- lazy evaluation, no allocation. See [Generator expressions](#generator-expressions-future) section |
 | Nested generators | `[f(x, y) for x in a for y in b]` -- multiple `comprehension` nodes. Low priority (rare in practice) |
@@ -415,7 +415,7 @@ allocation entirely. Deferred to Future Extensions due to sema/codegen complexit
 
 ---
 
-## Dict Comprehension (Future)
+## Dict Comprehension (Phase 6)
 
 Dict comprehensions share the generator infrastructure but produce `dict[K, V]`:
 
@@ -432,6 +432,8 @@ class TpyDictComprehension(TpyExpr):
     key_expr: TpyExpr
     value_expr: TpyExpr
     generator: TpyComprehensionGenerator
+    result_key_type: TpyType | None = None    # set by sema
+    result_value_type: TpyType | None = None  # set by sema
 ```
 
 ### Codegen
@@ -448,10 +450,12 @@ class TpyDictComprehension(TpyExpr):
 }()
 ```
 
-Same IIFE pattern, same generator reuse. Depends on tuple unpacking in generators
-(Phase 3) for the common `for k, v in d.items()` pattern.
+Same IIFE pattern, same generator reuse. No `reserve()` since `ordered_map` doesn't
+expose it. Uses `insert_or_assign` for correct Python overwrite semantics (later keys
+replace earlier ones).
 
-**Dependencies**: Dict type (done), tuple unpacking in generators (Phase 3).
+Supports all iteration strategies (range, begin/end), filters, tuple unpacking,
+and annotation propagation (both key and value types independently).
 
 ---
 
@@ -558,4 +562,11 @@ tests/cases/list/
     error_list_comp_not_iterable/  # Error: non-iterable source
     error_list_comp_unpack_count/  # Error: unpack count mismatch
     error_list_comp_unpack_non_tuple/  # Error: unpack on non-tuple
+
+tests/cases/dict/
+    dict_comp_basic/           # Phase 6: range->dict, list->dict, dict rebuild, 2-arg range
+    dict_comp_filter/          # Phase 6: single/multiple filter conditions
+    dict_comp_unpack/          # Phase 6: tuple unpacking from dict.items(), list of tuples
+    dict_comp_annotation/      # Phase 6: annotation propagation (Int32->int, Int32->Int64)
+    error_dict_comp_nested/    # Error: nested generators
 ```

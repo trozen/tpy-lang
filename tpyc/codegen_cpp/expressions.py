@@ -24,7 +24,8 @@ from ..parse import (
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpyTupleLiteral, TupleElemCapture, TpyDictLiteral, TpySetLiteral, TpyListRepeat, TpyListComprehension,
+    TpyArrayLiteral, TpyTupleLiteral, TupleElemCapture, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
+    TpyListComprehension, TpyDictComprehension,
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr,
 )
@@ -451,6 +452,9 @@ class ExpressionGenerator:
 
         elif isinstance(expr, TpyListComprehension):
             return self._gen_list_comprehension(expr)
+
+        elif isinstance(expr, TpyDictComprehension):
+            return self._gen_dict_comprehension(expr)
 
         elif isinstance(expr, TpySubscript):
             return self._gen_subscript(expr)
@@ -1830,7 +1834,8 @@ class ExpressionGenerator:
 
     def _gen_comp_begin_end_loop(self, buf: io.StringIO, gen: TpyComprehensionGenerator,
                                   elem_type: TpyType, ind1: str, ind2: str,
-                                  cpp_var: str, iterable_code: str) -> None:
+                                  cpp_var: str, iterable_code: str,
+                                  skip_reserve: bool = False) -> None:
         """Generate begin/end loop header for comprehension."""
         n = self.ctx.iter_counter
         self.ctx.iter_counter += 1
@@ -1841,7 +1846,7 @@ class ExpressionGenerator:
 
         buf.write(f"{ind1}{obj_binding} __obj_{n} = {iterable_code};\n")
         iterable_type = self.types.get_resolved_type(gen.iterable)
-        if self._is_sized_type(iterable_type):
+        if not skip_reserve and self._is_sized_type(iterable_type):
             buf.write(f"{ind1}__result.reserve(__obj_{n}.size());\n")
         buf.write(f"{ind1}auto __beg_{n} = __obj_{n}.begin();\n")
         buf.write(f"{ind1}auto __end_{n} = __obj_{n}.end();\n")
@@ -1876,7 +1881,8 @@ class ExpressionGenerator:
 
     def _gen_comp_range_loop(self, buf: io.StringIO, gen: TpyComprehensionGenerator,
                               elem_type: TpyType, ind1: str, ind2: str,
-                              cpp_var: str, iterable_code: str) -> None:
+                              cpp_var: str, iterable_code: str,
+                              skip_reserve: bool = False) -> None:
         """Generate counter loop for range() in comprehension."""
         range_call = gen.iterable
         assert isinstance(range_call, TpyCall)
@@ -1894,10 +1900,11 @@ class ExpressionGenerator:
                 self.ctx.iter_counter += 1
                 stop_var = f"__stop_{n}"
                 buf.write(f"{ind1}const {cpp_elem} {stop_var} = {stop_expr};\n")
-            if is_bigint:
-                buf.write(f"{ind1}{{ size_t __sz; if ({stop_var}.to_size_checked(__sz)) __result.reserve(__sz); }}\n")
-            else:
-                buf.write(f"{ind1}if ({stop_var} > 0) __result.reserve(static_cast<size_t>({stop_var}));\n")
+            if not skip_reserve:
+                if is_bigint:
+                    buf.write(f"{ind1}{{ size_t __sz; if ({stop_var}.to_size_checked(__sz)) __result.reserve(__sz); }}\n")
+                else:
+                    buf.write(f"{ind1}if ({stop_var} > 0) __result.reserve(static_cast<size_t>({stop_var}));\n")
             buf.write(f"{ind1}for ({cpp_elem} {cpp_var} = 0; {cpp_var} < {stop_var}; ++{cpp_var}) {{\n")
         elif nargs == 2:
             start_expr = self.gen_expr_deref(range_call.args[0], elem_type)
@@ -1918,14 +1925,16 @@ class ExpressionGenerator:
                 self.ctx.iter_counter += 1
                 stop_var = f"__stop_{n}"
                 buf.write(f"{ind1}const {cpp_elem} {stop_var} = {stop_expr};\n")
-            if is_bigint:
-                buf.write(f"{ind1}if ({stop_var} > {start_var}) {{ size_t __sz; if (({stop_var} - {start_var}).to_size_checked(__sz)) __result.reserve(__sz); }}\n")
-            else:
-                buf.write(f"{ind1}if ({stop_var} > {start_var}) __result.reserve(static_cast<size_t>({stop_var} - {start_var}));\n")
+            if not skip_reserve:
+                if is_bigint:
+                    buf.write(f"{ind1}if ({stop_var} > {start_var}) {{ size_t __sz; if (({stop_var} - {start_var}).to_size_checked(__sz)) __result.reserve(__sz); }}\n")
+                else:
+                    buf.write(f"{ind1}if ({stop_var} > {start_var}) __result.reserve(static_cast<size_t>({stop_var} - {start_var}));\n")
             buf.write(f"{ind1}for ({cpp_elem} {cpp_var} = {start_var}; {cpp_var} < {stop_var}; ++{cpp_var}) {{\n")
         else:
             # 3-arg range: fall back to Range<T> begin/end
-            self._gen_comp_begin_end_loop(buf, gen, elem_type, ind1, ind2, cpp_var, iterable_code)
+            self._gen_comp_begin_end_loop(buf, gen, elem_type, ind1, ind2, cpp_var,
+                                          iterable_code, skip_reserve=skip_reserve)
             return
 
     def _comp_is_lvalue(self, expr: TpyExpr) -> bool:
@@ -1957,6 +1966,65 @@ class ExpressionGenerator:
         return isinstance(typ, (ListType, ArrayType, SpanType, DictType, SetType,
                                 DictKeysViewType, DictValuesViewType,
                                 DictItemsViewType))
+
+    def _gen_dict_comprehension(self, expr: TpyDictComprehension) -> str:
+        """Generate dict comprehension as IIFE: [&]() { ordered_map; loop; return; }()"""
+        gen = expr.generator
+        key_type = expr.result_key_type
+        value_type = expr.result_value_type
+        assert key_type is not None and value_type is not None
+
+        if isinstance(key_type, IntLiteralType):
+            key_type = self.ctx.analyzer.ctx.default_int_type
+        if isinstance(value_type, IntLiteralType):
+            value_type = self.ctx.analyzer.ctx.default_int_type
+
+        cpp_key = self.types.type_to_cpp(key_type)
+        cpp_val = self.types.type_to_cpp(value_type)
+        cpp_var = escape_cpp_name(gen.var)
+
+        stmt_ind = INDENT * self.ctx.indent_level
+        ind1 = stmt_ind + INDENT
+        ind2 = ind1 + INDENT
+        ind3 = ind2 + INDENT
+
+        buf = io.StringIO()
+        buf.write(f"[&]() {{\n")
+        buf.write(f"{ind1}tpy::ordered_map<{cpp_key}, {cpp_val}> __result;\n")
+
+        iterable_code = self.gen_expr_deref(gen.iterable)
+        iterable_type = self.types.get_resolved_type(gen.iterable)
+
+        sema_elem = key_type  # fallback; always overwritten since sema rejects non-iterables
+        iter_elem_type = iterable_type.get_iteration_element_type()
+        if iter_elem_type is not None:
+            if isinstance(iter_elem_type, IntLiteralType):
+                iter_elem_type = self.ctx.analyzer.ctx.default_int_type
+            sema_elem = iter_elem_type
+
+        if isinstance(gen.iterable, TpyCall) and gen.iterable.func == "range":
+            self._gen_comp_range_loop(buf, gen, sema_elem, ind1, ind2, cpp_var,
+                                      iterable_code, skip_reserve=True)
+        else:
+            self._gen_comp_begin_end_loop(buf, gen, sema_elem, ind1, ind2, cpp_var,
+                                          iterable_code, skip_reserve=True)
+
+        key_code = self.gen_expr_deref(expr.key_expr, key_type)
+        value_code = self.gen_expr_deref(expr.value_expr, value_type)
+        if gen.conditions:
+            cond_parts = [self.gen_truthy_expr(c) for c in gen.conditions]
+            cond_str = " && ".join(cond_parts)
+            buf.write(f"{ind2}if ({cond_str}) {{\n")
+            buf.write(f"{ind3}__result.insert_or_assign({key_code}, {value_code});\n")
+            buf.write(f"{ind2}}}\n")
+        else:
+            buf.write(f"{ind2}__result.insert_or_assign({key_code}, {value_code});\n")
+
+        buf.write(f"{ind1}}}\n")
+        buf.write(f"{ind1}return __result;\n")
+        buf.write(f"{stmt_ind}}}()")
+
+        return buf.getvalue()
 
     def _gen_tuple_literal(self, expr: TpyTupleLiteral, target_type: TpyType | None) -> str:
         """Generate tuple literal code."""
