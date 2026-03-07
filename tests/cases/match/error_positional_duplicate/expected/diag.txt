@@ -1,0 +1,1 @@
+main.py:15: error: field 'x' is bound both positionally and by keyword in pattern for 'Pair'

@@ -796,15 +796,37 @@ class StatementAnalyzer:
         seen_types.add(cls_name)
         pattern.resolved_type = named_type
 
+        # Use all fields in constructor order for positional resolution and field lookup.
+        # For @dataclass, dataclass_fields includes inherited fields; for others, use own fields.
+        all_fields = record.dataclass_fields if record.is_dataclass else record.fields
+
+        # Resolve positional patterns to keyword patterns via field declaration order
         if pattern.positional:
-            raise self.ctx.error(
-                "positional patterns are not yet supported (use keyword patterns)", pattern
-            )
+            n = len(all_fields)
+            if len(pattern.positional) > n:
+                noun = "positional pattern" if n == 1 else "positional patterns"
+                raise self.ctx.error(
+                    f"'{cls_name}' accepts {n} {noun} "
+                    f"but {len(pattern.positional)} were given", pattern
+                )
+            kwd_names = {name for name, _ in pattern.keywords}
+            resolved: list[tuple[str, TpyPattern]] = []
+            for i, sub_pat in enumerate(pattern.positional):
+                field_name = all_fields[i].name
+                if field_name in kwd_names:
+                    raise self.ctx.error(
+                        f"field '{field_name}' is bound both positionally and by keyword "
+                        f"in pattern for '{cls_name}'", pattern
+                    )
+                resolved.append((field_name, sub_pat))
+            resolved.extend(pattern.keywords)
+            pattern.keywords = resolved
+            pattern.positional = []
 
         # Validate keyword field bindings
         for field_name, sub_pattern in pattern.keywords:
             field_info = None
-            for f in record.fields:
+            for f in all_fields:
                 if f.name == field_name:
                     field_info = f
                     break
