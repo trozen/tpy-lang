@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, DictType,
+    TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, DictType, SetType,
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly,
 )
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from .expressions import ExpressionAnalyzer
     from .calls import CallAnalyzer
 
-from tpyc.modules.builtins import LIST_MUTATION_METHODS, LIST_ITER_INVALIDATING, DICT_MUTATION_METHODS
+from tpyc.modules.builtins import LIST_MUTATION_METHODS, LIST_ITER_INVALIDATING, DICT_MUTATION_METHODS, SET_MUTATION_METHODS
 
 
 class MethodAnalyzer:
@@ -272,6 +272,8 @@ class MethodAnalyzer:
                 is_mutation = expr.method in LIST_ITER_INVALIDATING
             elif isinstance(obj_type, DictType):
                 is_mutation = expr.method in DICT_MUTATION_METHODS
+            elif isinstance(obj_type, SetType):
+                is_mutation = expr.method in SET_MUTATION_METHODS
             if is_mutation:
                 self.ctx.warning(
                     f"Mutation of '{expr.obj.name}' while iterating over it"

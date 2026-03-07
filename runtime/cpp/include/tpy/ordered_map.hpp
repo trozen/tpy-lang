@@ -225,15 +225,16 @@ public:
 
     // -- Modifiers ----------------------------------------------------------
 
-    void insert_or_assign(const K& key, V value) {
+    template<typename KK>
+    void insert_or_assign(KK&& key, V value) {
         auto it = table_.find(key);
         if (it != table_.end()) {
             it->second->value = std::move(value);
             return;
         }
-        auto* node = new Node(key, std::move(value));
+        auto* node = new Node(std::forward<KK>(key), std::move(value));
         link_back(node);
-        table_.emplace(key, node);
+        table_.emplace(node->key, node);
     }
 
     bool erase(const K& key) {

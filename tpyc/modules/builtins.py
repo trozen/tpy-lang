@@ -50,6 +50,10 @@ DICT_MUTATION_METHODS = frozenset({
     "__setitem__", "__delitem__", "pop", "clear", "update", "setdefault",
 })
 
+SET_MUTATION_METHODS = frozenset({
+    "add", "remove", "discard", "pop", "clear", "update",
+})
+
 
 def init_module() -> BuiltinModule:
     """Initialize and return the builtins module."""

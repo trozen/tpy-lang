@@ -75,9 +75,9 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D6 | Properties (@property) | M | Not started | [VII](#properties) |
 | D7 | String literal types (Literal[...]) | M | Not started | [III](#string-literal-types) |
 | D8 | `@override` decorator | S | Not started | [VII](#override-decorator) |
-| D9 | set type | L | Not started | [VII](#set-type) |
+| D9 | set type | L | Done | [VII](#set-type) |
 | D10 | bytes type | M | Not started | [VII](#bytes-type) |
-| D11 | Dict comprehension | S-M | Not started | [VI](#dict-comprehension) |
+| D11 | Dict comprehension | S-M | Done | [VI](#dict-comprehension) |
 | D12 | Set comprehension | S | Not started | [VI](#set-comprehension) |
 | D13 | Generator expressions | M | Not started | [VI](#generator-expressions) |
 | D14 | Walrus operator (`:=`) | S-M | Not started | [VI](#walrus-operator) |
@@ -86,8 +86,8 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
-| E1 | Send/Sync markers | S-M | Not started | [IV](#thread-safety-markers-send--sync) |
-| E2 | Container mutation during iteration | S-M | Not started | [IV](#container-mutation-during-iteration) |
+| E1 | Send/Sync markers | S-M | Phase 1 done | [IV](#thread-safety-markers-send--sync) |
+| E2 | Container mutation during iteration | S-M | Done | [IV](#container-mutation-during-iteration) |
 | E3 | del statement | S-M | Not started | [VI](#del-statement-explicit-destruction) |
 | E4 | Ptr escape analysis | XL | Partial | [IV](#ptrt-escape-analysis--lifetime-tracking) |
 | E5 | Auto-detect readonly | M-L | Not started | [IV](#auto-detect-readonly-from-method-body) |
@@ -969,11 +969,13 @@ with `Sendable` -- years of warnings and gradual migration. The compiler already
 `is_value_type`. Extending to `is_sendable` (value types + types with only sendable fields)
 is incremental.
 
-**Current state**: Not on the radar. Concurrency deferred.
+**Current state**: Phase 1 done. `is_send` and `is_sync` auto-derivation markers
+on all built-in types (`type_traits.hpp`). Records auto-derive Send/Sync based on
+field types. Infrastructure ready for enforcement when concurrency arrives.
 
-**Dependencies**: None -- can add marker protocols now, enforce when concurrency arrives.
+**Dependencies**: None -- markers added now, enforce when concurrency arrives.
 
-**Effort**: S for markers, M for full propagation and checking
+**Effort**: S for markers (done), M for full propagation and checking
 
 ---
 
@@ -993,11 +995,13 @@ This is a simplified, high-value subset of full borrow checking. No lifetime ann
 no escape analysis -- just a scoped rule: during for-each over `x`, mutating method calls
 on `x` are an error.
 
-**Current state**: Not started. Infrastructure exists (`@readonly` on methods).
+**Current state**: Done. Sema detects mutating method calls on the iteration target
+inside for-loop bodies and reports a compile-time warning. Uses hard-coded mutation
+method sets for list, dict, and set.
 
-**Dependencies**: `@readonly` annotation on container methods (partially done).
+**Dependencies**: `@readonly` annotation on container methods (done).
 
-**Effort**: S-M (scoped analysis in sema, leverage existing readonly info)
+**Effort**: S-M (done)
 
 ---
 
@@ -1400,12 +1404,13 @@ pattern as list comprehensions, producing `tpy::ordered_map<K, V>`.
 
 See `docs/COMPREHENSION_DESIGN.md` for design sketch.
 
-**Current state**: Not started.
+**Current state**: Done. Single-generator dict comprehensions with optional filter
+clause and tuple unpacking (`for k, v in`). Codegen uses IIFE pattern, producing
+`tpy::ordered_map<K, V>`. Annotation hints propagate key/value types.
 
-**Dependencies**: Dict type (done). List comprehension infrastructure (B9).
-Tuple unpacking in generators for the `for k, v in` pattern.
+**Dependencies**: Dict type (done). List comprehension infrastructure (B9, done).
 
-**Effort**: S-M (incremental once list comprehensions land)
+**Effort**: S-M (done)
 
 ---
 
@@ -1751,20 +1756,33 @@ Error if the method doesn't actually override anything (typo protection).
 ```python
 s: set[Int32] = {1, 2, 3}
 s.add(4)
+s |= {5, 6}
 if 2 in s:
     print("found")
+for x in s:
+    print(x)
 ```
 
-Maps to `std::unordered_set<T>`.
+Maps to `tpy::ordered_set<T>` -- a hash set (`std::unordered_map<T, Node*>`) combined
+with an intrusive doubly-linked list to preserve insertion order (matching Python 3.7+
+dict ordering convention, though CPython sets don't guarantee order).
 
 **Why it matters**: Common Python data structure for membership testing and deduplication.
 Less critical than dict but still frequently used.
 
-**Current state**: Not started.
+**Current state**: Done. Covers `SetType` in type system, set literals `{a, b}`,
+`set()` constructor, `len(s)`, `x in s`, `for x in s` iteration, `print(s)`,
+methods `add()`/`remove()`/`discard()`/`pop()`/`clear()`/`copy()`/`update()`,
+operators `|` (union), `&` (intersection), `-` (difference), `^` (symmetric
+difference), augmented assignment `|=`/`&=`/`-=`/`^=` (in-place mutation),
+comparison `==`/`!=`, nested container support (`list[set[T]]`, `tuple[set[T], ...]`).
+Operator dispatch uses declarative type registry (`__ior__`, `__iand__`, etc.)
+rather than hard-coded paths. Runtime backed by `tpy::ordered_set<T>` with
+insertion-order preservation.
 
 **Dependencies**: `Hashable` protocol (for elements).
 
-**Effort**: L (type + literals + methods + iteration)
+**Effort**: L (done)
 
 ---
 

@@ -1,0 +1,6 @@
+main.py:7: warning: Mutation of 's' while iterating over it ('add' invalidates the iterator)
+main.py:12: warning: Mutation of 's' while iterating over it ('remove' invalidates the iterator)
+main.py:17: warning: Mutation of 's' while iterating over it ('discard' invalidates the iterator)
+main.py:22: warning: Mutation of 's' while iterating over it ('pop' invalidates the iterator)
+main.py:27: warning: Mutation of 's' while iterating over it ('clear' invalidates the iterator)
+main.py:33: warning: Mutation of 's' while iterating over it ('update' invalidates the iterator)

@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- `ordered_map::insert_or_assign` rvalue key overload: currently takes `const K&`, causing double-copy for string keys in dict comprehensions and literals. Add `void insert_or_assign(K&& key, V value)` overload.
 - Warn on wasteful field reassignment in `__init__`: when a field is initialized unconditionally (member initializer list) and then reassigned inside control flow, warn that this constructs then discards the initial value. Relevant for heavy types like BigInt. Users can avoid this with a `@staticmethod` helper or (once supported) ternary isinstance.
 - Union return copies non-value members: `f() -> A | B` returns `std::variant<A, B>` by value, copying record members. Python returns by reference. `std::variant<A&, B&>` is not valid C++. Params are fine (`&` for non-value unions). See `docs/UNION_TYPES_DESIGN.md` Known Semantic Gaps.
 - Avoid copying expensive value types in for-loops: `for x in items` where `items: list[int]` generates `for (tpy::BigInt x : items)`, copying every element. Would need `const auto&` for read-only expensive value types, but requires proving the container isn't mutated during iteration (escape analysis). Tuple unpack const-ref is done.
@@ -57,7 +56,7 @@
 - c++ generation profiles: utf8 strings vs char strings
 - static_cast<char> -- should rather use checked cast (policy based)
 - `Own[T]` for argument passing: callee takes ownership (how to pass an object from pointer? require explicit copy?)
-- support more dunder methods: `__eq__`, `__ne__`, `__contains__`, etc.
+- support more dunder methods: `__eq__`, `__ne__`, `__contains__` (user-defined), etc.
 - extract built-in function defintions to separate files (len, print)
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
 - better class operator<< tests (but missing str formatting/concatenation)
