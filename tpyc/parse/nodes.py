@@ -266,6 +266,14 @@ class TpyDictLiteral(TpyExpr):
 
 
 @dataclass
+class TpySetComprehension(TpyExpr):
+    """Set comprehension: {expr for var in iterable if cond}"""
+    element_expr: TpyExpr
+    generator: TpyComprehensionGenerator
+    result_elem_type: 'TpyType | None' = None  # set by sema
+
+
+@dataclass
 class TpySetLiteral(TpyExpr):
     """Set literal: {value, value, ...}"""
     elements: list[TpyExpr]

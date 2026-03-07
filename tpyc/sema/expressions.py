@@ -6,7 +6,7 @@ Core expression analysis including literals, names, operators, field access, and
 
 from __future__ import annotations
 from contextlib import ExitStack
-from typing import TYPE_CHECKING
+from typing import Literal, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, CharType,
@@ -24,7 +24,7 @@ from ..parse import (
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
-    TpyListComprehension, TpyDictComprehension, TpyComprehensionGenerator,
+    TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyComprehensionGenerator,
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr,
 )
@@ -123,6 +123,8 @@ class ExpressionAnalyzer:
             typ = self._analyze_list_comprehension(expr)
         elif isinstance(expr, TpyDictComprehension):
             typ = self._analyze_dict_comprehension(expr)
+        elif isinstance(expr, TpySetComprehension):
+            typ = self._analyze_set_comprehension(expr)
         elif isinstance(expr, TpySubscript):
             typ = self._analyze_subscript(expr)
         elif isinstance(expr, TpyFString):
@@ -281,6 +283,17 @@ class ExpressionAnalyzer:
                 result = self._analyze_dict_literal(expr, inner_hint.key_type, inner_hint.value_type)
                 self.ctx.set_expr_type(expr, result)
                 return result
+
+        # Set comprehension with set type hint: propagate element type
+        if isinstance(expr, TpySetComprehension):
+            inner_hint = unwrap_readonly(type_hint)
+            if isinstance(inner_hint, OwnType):
+                inner_hint = inner_hint.wrapped
+            if isinstance(inner_hint, SetType):
+                typ = self._analyze_set_comprehension(
+                    expr, expected_elem=inner_hint.element_type)
+                self.ctx.set_expr_type(expr, typ)
+                return typ
 
         # Non-empty set literal with set type hint
         if isinstance(expr, TpySetLiteral) and expr.elements:
@@ -1341,75 +1354,40 @@ class ExpressionAnalyzer:
     def _analyze_list_comprehension(
         self, expr: TpyListComprehension, expected_elem: TpyType | None = None
     ) -> TpyType:
-        """Analyze a list comprehension: [expr for var in iterable if cond]"""
+        return self._analyze_elem_comprehension(expr, expected_elem, kind="list")
+
+    def _analyze_set_comprehension(
+        self, expr: TpySetComprehension, expected_elem: TpyType | None = None
+    ) -> TpyType:
+        return self._analyze_elem_comprehension(expr, expected_elem, kind="set")
+
+    def _analyze_elem_comprehension(
+        self, expr: TpyListComprehension | TpySetComprehension,
+        expected_elem: TpyType | None,
+        kind: Literal["list", "set"],
+    ) -> TpyType:
+        """Shared analysis for list and set comprehensions."""
         gen = expr.generator
+        elem_type = self._resolve_comp_iterable(gen, expr)
 
-        # 1. Analyze iterable (in enclosing scope)
-        iterable_type = self.analyze_expr(gen.iterable)
-        inner_iterable_type = unwrap_readonly(iterable_type)
-
-        # Resolve TypeParamRef to bound for element type extraction
-        resolved_for_iter = inner_iterable_type
-        if isinstance(inner_iterable_type, TypeParamRef):
-            bound = self.type_ops.get_type_param_bound(inner_iterable_type.name)
-            if bound is not None and is_protocol_type(bound):
-                resolved_for_iter = bound
-
-        # 2. Extract element type from iterable
-        helper = IterableHelper(self.ctx)
-        elem_type = helper.get_iterable_element_type(resolved_for_iter, loc=expr.loc)
-
-        # 3. Comprehension scope: own scope for loop var, no loop_depth bump
         if self.scopes is None:
-            raise RuntimeError("list comprehension requires ScopeTracker; wire via set_cross_deps()")
-        with self.scopes.comprehension_scope() as inner_scope:
-            if gen.unpack_vars is not None:
-                # Tuple unpacking: validate element type and register each var
-                if not isinstance(elem_type, TupleType):
-                    raise self.ctx.error(
-                        f"Cannot unpack non-tuple type {elem_type}", expr)
-                if len(gen.unpack_vars) != len(elem_type.element_types):
-                    raise self.ctx.error(
-                        f"Cannot unpack tuple of {len(elem_type.element_types)} "
-                        f"elements into {len(gen.unpack_vars)} targets", expr)
-                with ExitStack() as stack:
-                    for uvar, utype in zip(gen.unpack_vars, elem_type.element_types):
-                        if uvar is not None:
-                            stack.enter_context(
-                                self.scopes.loop_var(inner_scope, uvar, utype,
-                                                     inner_scope.depth, is_foreach=False))
-                    result_elem_type = self._analyze_comp_body(gen, expr, expected_elem)
-            else:
-                with self.scopes.loop_var(inner_scope, gen.var, elem_type,
-                                          inner_scope.depth, is_foreach=False):
-                    result_elem_type = self._analyze_comp_body(gen, expr, expected_elem)
+            raise RuntimeError(f"{kind} comprehension requires ScopeTracker")
+        result_elem_type = self._enter_comp_scope(gen, expr, elem_type, expected_elem)
 
-        # 6. Resolve IntLiteralType (only when no annotation hint)
         if isinstance(result_elem_type, IntLiteralType):
             result_elem_type = expected_elem if expected_elem is not None else self.ctx.default_int_type
 
-        # 7. Coerce element expression if annotation requires it
         if expected_elem is not None and result_elem_type != expected_elem:
             expr.element_expr = self.compat.coerce_expr(
                 expr.element_expr, result_elem_type, expected_elem,
-                "list comprehension element", coercion_ctx=CoercionContext.INIT)
+                f"{kind} comprehension element", coercion_ctx=CoercionContext.INIT)
             result_elem_type = expected_elem
 
-        # 8. Store on node for codegen
+        if kind == "set":
+            self._validate_dict_key_type(result_elem_type, expr)
+
         expr.result_elem_type = result_elem_type
-
-        return ListType(result_elem_type)
-
-    def _analyze_comp_body(
-        self, gen: TpyComprehensionGenerator, expr: TpyListComprehension,
-        elem_hint: TpyType | None = None
-    ) -> TpyType:
-        """Analyze filter conditions and element expression of a comprehension."""
-        for cond in gen.conditions:
-            self.analyze_expr(cond)
-        if elem_hint is not None:
-            return self.analyze_expr_with_hint(expr.element_expr, elem_hint)
-        return self.analyze_expr(expr.element_expr)
+        return SetType(result_elem_type) if kind == "set" else ListType(result_elem_type)
 
     def _analyze_dict_comprehension(
         self, expr: TpyDictComprehension,
@@ -1418,54 +1396,18 @@ class ExpressionAnalyzer:
     ) -> TpyType:
         """Analyze a dict comprehension: {key: value for var in iterable if cond}"""
         gen = expr.generator
+        elem_type = self._resolve_comp_iterable(gen, expr)
 
-        # 1. Analyze iterable (in enclosing scope)
-        iterable_type = self.analyze_expr(gen.iterable)
-        inner_iterable_type = unwrap_readonly(iterable_type)
-
-        resolved_for_iter = inner_iterable_type
-        if isinstance(inner_iterable_type, TypeParamRef):
-            bound = self.type_ops.get_type_param_bound(inner_iterable_type.name)
-            if bound is not None and is_protocol_type(bound):
-                resolved_for_iter = bound
-
-        # 2. Extract element type from iterable
-        helper = IterableHelper(self.ctx)
-        elem_type = helper.get_iterable_element_type(resolved_for_iter, loc=expr.loc)
-
-        # 3. Comprehension scope
         if self.scopes is None:
             raise RuntimeError("dict comprehension requires ScopeTracker")
-        with self.scopes.comprehension_scope() as inner_scope:
-            if gen.unpack_vars is not None:
-                if not isinstance(elem_type, TupleType):
-                    raise self.ctx.error(
-                        f"Cannot unpack non-tuple type {elem_type}", expr)
-                if len(gen.unpack_vars) != len(elem_type.element_types):
-                    raise self.ctx.error(
-                        f"Cannot unpack tuple of {len(elem_type.element_types)} "
-                        f"elements into {len(gen.unpack_vars)} targets", expr)
-                with ExitStack() as stack:
-                    for uvar, utype in zip(gen.unpack_vars, elem_type.element_types):
-                        if uvar is not None:
-                            stack.enter_context(
-                                self.scopes.loop_var(inner_scope, uvar, utype,
-                                                     inner_scope.depth, is_foreach=False))
-                    key_type, value_type = self._analyze_dict_comp_body(
-                        gen, expr, expected_key, expected_value)
-            else:
-                with self.scopes.loop_var(inner_scope, gen.var, elem_type,
-                                          inner_scope.depth, is_foreach=False):
-                    key_type, value_type = self._analyze_dict_comp_body(
-                        gen, expr, expected_key, expected_value)
+        key_type, value_type = self._enter_comp_scope(
+            gen, expr, elem_type, (expected_key, expected_value))
 
-        # 4. Resolve IntLiteralType
         if isinstance(key_type, IntLiteralType):
             key_type = expected_key if expected_key is not None else self.ctx.default_int_type
         if isinstance(value_type, IntLiteralType):
             value_type = expected_value if expected_value is not None else self.ctx.default_int_type
 
-        # 5. Coerce if annotation requires it
         if expected_key is not None and key_type != expected_key:
             expr.key_expr = self.compat.coerce_expr(
                 expr.key_expr, key_type, expected_key,
@@ -1477,32 +1419,69 @@ class ExpressionAnalyzer:
                 "dict comprehension value", coercion_ctx=CoercionContext.INIT)
             value_type = expected_value
 
-        # 6. Validate key type
         self._validate_dict_key_type(key_type, expr)
-
-        # 7. Store on node for codegen
         expr.result_key_type = key_type
         expr.result_value_type = value_type
-
         return DictType(key_type, value_type)
 
-    def _analyze_dict_comp_body(
-        self, gen: TpyComprehensionGenerator, expr: TpyDictComprehension,
-        key_hint: TpyType | None = None,
-        value_hint: TpyType | None = None,
-    ) -> tuple[TpyType, TpyType]:
-        """Analyze filter conditions and key/value expressions of a dict comprehension."""
+    def _resolve_comp_iterable(
+        self, gen: TpyComprehensionGenerator, expr: TpyExpr
+    ) -> TpyType:
+        """Analyze the iterable and extract its element type (shared by all comprehensions)."""
+        iterable_type = self.analyze_expr(gen.iterable)
+        inner = unwrap_readonly(iterable_type)
+        if isinstance(inner, TypeParamRef):
+            bound = self.type_ops.get_type_param_bound(inner.name)
+            if bound is not None and is_protocol_type(bound):
+                inner = bound
+        return IterableHelper(self.ctx).get_iterable_element_type(inner, loc=expr.loc)
+
+    def _enter_comp_scope(
+        self,
+        gen: TpyComprehensionGenerator,
+        expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension,
+        elem_type: TpyType,
+        hint: TpyType | tuple[TpyType | None, TpyType | None] | None,
+    ) -> TpyType | tuple[TpyType, TpyType]:
+        with self.scopes.comprehension_scope() as inner_scope:
+            if gen.unpack_vars is not None:
+                if not isinstance(elem_type, TupleType):
+                    raise self.ctx.error(
+                        f"Cannot unpack non-tuple type {elem_type}", expr)
+                if len(gen.unpack_vars) != len(elem_type.element_types):
+                    raise self.ctx.error(
+                        f"Cannot unpack tuple of {len(elem_type.element_types)} "
+                        f"elements into {len(gen.unpack_vars)} targets", expr)
+                with ExitStack() as stack:
+                    for uvar, utype in zip(gen.unpack_vars, elem_type.element_types):
+                        if uvar is not None:
+                            stack.enter_context(
+                                self.scopes.loop_var(inner_scope, uvar, utype,
+                                                     inner_scope.depth, is_foreach=False))
+                    return self._analyze_comp_body(gen, expr, hint)
+            else:
+                with self.scopes.loop_var(inner_scope, gen.var, elem_type,
+                                          inner_scope.depth, is_foreach=False):
+                    return self._analyze_comp_body(gen, expr, hint)
+
+    def _analyze_comp_body(
+        self,
+        gen: TpyComprehensionGenerator,
+        expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension,
+        hint: TpyType | tuple[TpyType | None, TpyType | None] | None,
+    ) -> TpyType | tuple[TpyType, TpyType]:
         for cond in gen.conditions:
             self.analyze_expr(cond)
-        if key_hint is not None:
-            key_type = self.analyze_expr_with_hint(expr.key_expr, key_hint)
-        else:
-            key_type = self.analyze_expr(expr.key_expr)
-        if value_hint is not None:
-            value_type = self.analyze_expr_with_hint(expr.value_expr, value_hint)
-        else:
-            value_type = self.analyze_expr(expr.value_expr)
-        return key_type, value_type
+        if isinstance(expr, TpyDictComprehension):
+            key_hint, value_hint = hint
+            key_type = (self.analyze_expr_with_hint(expr.key_expr, key_hint)
+                        if key_hint else self.analyze_expr(expr.key_expr))
+            value_type = (self.analyze_expr_with_hint(expr.value_expr, value_hint)
+                          if value_hint else self.analyze_expr(expr.value_expr))
+            return key_type, value_type
+        if hint is not None:
+            return self.analyze_expr_with_hint(expr.element_expr, hint)
+        return self.analyze_expr(expr.element_expr)
 
     def _analyze_tuple_literal(
         self, expr: TpyTupleLiteral, element_hints: list[TpyType | None] | None = None

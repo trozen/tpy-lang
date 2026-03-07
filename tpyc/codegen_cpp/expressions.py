@@ -25,7 +25,7 @@ from ..parse import (
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyTupleLiteral, TupleElemCapture, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
-    TpyListComprehension, TpyDictComprehension,
+    TpyListComprehension, TpyDictComprehension, TpySetComprehension,
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr,
 )
@@ -455,6 +455,9 @@ class ExpressionGenerator:
 
         elif isinstance(expr, TpyDictComprehension):
             return self._gen_dict_comprehension(expr)
+
+        elif isinstance(expr, TpySetComprehension):
+            return self._gen_set_comprehension(expr)
 
         elif isinstance(expr, TpySubscript):
             return self._gen_subscript(expr)
@@ -1769,18 +1772,46 @@ class ExpressionGenerator:
         return f"tpy::from_range<{cpp_type}>({range_expr})"
 
     def _gen_list_comprehension(self, expr: TpyListComprehension) -> str:
-        """Generate list comprehension as IIFE: [&]() { vector; loop; return; }()"""
-        gen = expr.generator
-        result_elem_type = expr.result_elem_type
-        assert result_elem_type is not None
+        elem_type = self._resolve_int_literal(expr.result_elem_type)
+        cpp_elem = self.types.type_to_cpp(elem_type)
+        insert_code = self.gen_expr_deref(expr.element_expr, elem_type)
+        return self._gen_comprehension_iife(
+            expr.generator, f"std::vector<{cpp_elem}>",
+            f"__result.push_back({insert_code})", skip_reserve=False)
 
-        if isinstance(result_elem_type, IntLiteralType):
-            result_elem_type = self.ctx.analyzer.ctx.default_int_type
+    def _gen_dict_comprehension(self, expr: TpyDictComprehension) -> str:
+        key_type = self._resolve_int_literal(expr.result_key_type)
+        value_type = self._resolve_int_literal(expr.result_value_type)
+        cpp_key = self.types.type_to_cpp(key_type)
+        cpp_val = self.types.type_to_cpp(value_type)
+        key_code = self.gen_expr_deref(expr.key_expr, key_type)
+        value_code = self.gen_expr_deref(expr.value_expr, value_type)
+        return self._gen_comprehension_iife(
+            expr.generator, f"tpy::ordered_map<{cpp_key}, {cpp_val}>",
+            f"__result.insert_or_assign({key_code}, {value_code})", skip_reserve=True)
 
-        cpp_elem = self.types.type_to_cpp(result_elem_type)
+    def _gen_set_comprehension(self, expr: TpySetComprehension) -> str:
+        elem_type = self._resolve_int_literal(expr.result_elem_type)
+        cpp_elem = self.types.type_to_cpp(elem_type)
+        insert_code = self.gen_expr_deref(expr.element_expr, elem_type)
+        return self._gen_comprehension_iife(
+            expr.generator, f"tpy::ordered_set<{cpp_elem}>",
+            f"__result.insert({insert_code})", skip_reserve=True)
+
+    def _resolve_int_literal(self, typ: TpyType | None) -> TpyType:
+        assert typ is not None
+        if isinstance(typ, IntLiteralType):
+            return self.ctx.analyzer.ctx.default_int_type
+        return typ
+
+    def _gen_comprehension_iife(
+        self, gen: TpyComprehensionGenerator,
+        container_type: str, insert_stmt: str,
+        skip_reserve: bool,
+    ) -> str:
+        """Generate comprehension as IIFE: [&]() { container; loop; return; }()"""
         cpp_var = escape_cpp_name(gen.var)
 
-        # Indentation: stmt level for closing, one deeper for body
         stmt_ind = INDENT * self.ctx.indent_level
         ind1 = stmt_ind + INDENT
         ind2 = ind1 + INDENT
@@ -1788,36 +1819,32 @@ class ExpressionGenerator:
 
         buf = io.StringIO()
         buf.write(f"[&]() {{\n")
-        buf.write(f"{ind1}std::vector<{cpp_elem}> __result;\n")
+        buf.write(f"{ind1}{container_type} __result;\n")
 
-        # Generate the loop
         iterable_code = self.gen_expr_deref(gen.iterable)
         iterable_type = self.types.get_resolved_type(gen.iterable)
 
-        # Determine element type for loop variable binding
-        sema_elem = result_elem_type  # fallback
-        iter_elem_type = iterable_type.get_iteration_element_type()
-        if iter_elem_type is not None:
-            if isinstance(iter_elem_type, IntLiteralType):
-                iter_elem_type = self.ctx.analyzer.ctx.default_int_type
-            sema_elem = iter_elem_type
+        sema_elem = iterable_type.get_iteration_element_type()
+        if sema_elem is not None and isinstance(sema_elem, IntLiteralType):
+            sema_elem = self.ctx.analyzer.ctx.default_int_type
+        if sema_elem is None:
+            sema_elem = self.ctx.analyzer.ctx.default_int_type  # fallback; sema should reject non-iterables
 
-        # Dispatch iteration strategy
         if isinstance(gen.iterable, TpyCall) and gen.iterable.func == "range":
-            self._gen_comp_range_loop(buf, gen, sema_elem, ind1, ind2, cpp_var, iterable_code)
+            self._gen_comp_range_loop(buf, gen, sema_elem, ind1, ind2, cpp_var,
+                                      iterable_code, skip_reserve=skip_reserve)
         else:
-            self._gen_comp_begin_end_loop(buf, gen, sema_elem, ind1, ind2, cpp_var, iterable_code)
+            self._gen_comp_begin_end_loop(buf, gen, sema_elem, ind1, ind2, cpp_var,
+                                          iterable_code, skip_reserve=skip_reserve)
 
-        # Loop body: push_back with optional filter
-        element_code = self.gen_expr_deref(expr.element_expr, result_elem_type)
         if gen.conditions:
             cond_parts = [self.gen_truthy_expr(c) for c in gen.conditions]
             cond_str = " && ".join(cond_parts)
             buf.write(f"{ind2}if ({cond_str}) {{\n")
-            buf.write(f"{ind3}__result.push_back({element_code});\n")
+            buf.write(f"{ind3}{insert_stmt};\n")
             buf.write(f"{ind2}}}\n")
         else:
-            buf.write(f"{ind2}__result.push_back({element_code});\n")
+            buf.write(f"{ind2}{insert_stmt};\n")
 
         buf.write(f"{ind1}}}\n")
         buf.write(f"{ind1}return __result;\n")
@@ -1959,65 +1986,6 @@ class ExpressionGenerator:
         return isinstance(typ, (ListType, ArrayType, SpanType, DictType, SetType,
                                 DictKeysViewType, DictValuesViewType,
                                 DictItemsViewType))
-
-    def _gen_dict_comprehension(self, expr: TpyDictComprehension) -> str:
-        """Generate dict comprehension as IIFE: [&]() { ordered_map; loop; return; }()"""
-        gen = expr.generator
-        key_type = expr.result_key_type
-        value_type = expr.result_value_type
-        assert key_type is not None and value_type is not None
-
-        if isinstance(key_type, IntLiteralType):
-            key_type = self.ctx.analyzer.ctx.default_int_type
-        if isinstance(value_type, IntLiteralType):
-            value_type = self.ctx.analyzer.ctx.default_int_type
-
-        cpp_key = self.types.type_to_cpp(key_type)
-        cpp_val = self.types.type_to_cpp(value_type)
-        cpp_var = escape_cpp_name(gen.var)
-
-        stmt_ind = INDENT * self.ctx.indent_level
-        ind1 = stmt_ind + INDENT
-        ind2 = ind1 + INDENT
-        ind3 = ind2 + INDENT
-
-        buf = io.StringIO()
-        buf.write(f"[&]() {{\n")
-        buf.write(f"{ind1}tpy::ordered_map<{cpp_key}, {cpp_val}> __result;\n")
-
-        iterable_code = self.gen_expr_deref(gen.iterable)
-        iterable_type = self.types.get_resolved_type(gen.iterable)
-
-        sema_elem = key_type  # fallback; always overwritten since sema rejects non-iterables
-        iter_elem_type = iterable_type.get_iteration_element_type()
-        if iter_elem_type is not None:
-            if isinstance(iter_elem_type, IntLiteralType):
-                iter_elem_type = self.ctx.analyzer.ctx.default_int_type
-            sema_elem = iter_elem_type
-
-        if isinstance(gen.iterable, TpyCall) and gen.iterable.func == "range":
-            self._gen_comp_range_loop(buf, gen, sema_elem, ind1, ind2, cpp_var,
-                                      iterable_code, skip_reserve=True)
-        else:
-            self._gen_comp_begin_end_loop(buf, gen, sema_elem, ind1, ind2, cpp_var,
-                                          iterable_code, skip_reserve=True)
-
-        key_code = self.gen_expr_deref(expr.key_expr, key_type)
-        value_code = self.gen_expr_deref(expr.value_expr, value_type)
-        if gen.conditions:
-            cond_parts = [self.gen_truthy_expr(c) for c in gen.conditions]
-            cond_str = " && ".join(cond_parts)
-            buf.write(f"{ind2}if ({cond_str}) {{\n")
-            buf.write(f"{ind3}__result.insert_or_assign({key_code}, {value_code});\n")
-            buf.write(f"{ind2}}}\n")
-        else:
-            buf.write(f"{ind2}__result.insert_or_assign({key_code}, {value_code});\n")
-
-        buf.write(f"{ind1}}}\n")
-        buf.write(f"{ind1}return __result;\n")
-        buf.write(f"{stmt_ind}}}()")
-
-        return buf.getvalue()
 
     def _gen_tuple_literal(self, expr: TpyTupleLiteral, target_type: TpyType | None) -> str:
         """Generate tuple literal code."""

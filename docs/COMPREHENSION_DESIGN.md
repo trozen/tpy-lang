@@ -10,13 +10,13 @@
 | 4 | Annotation propagation: `result: list[Int32] = [x for x in items]` | Done |
 | 5 | Optimizations: Sized iterables -> `reserve()`, range -> `reserve()` | Done |
 | 6 | Dict comprehension: `{key: value for var in iterable if cond}` | Done |
+| 7 | Set comprehension: `{expr for var in iterable if cond}` | Done |
 
 ### Future Extensions
 
 | Feature | Notes |
 |---------|-------|
 | `range(N)` -> Array | `[i*i for i in range(5)]` -> `std::array<T, 5>` (zero heap alloc). Requires literal N, no filter, value-type elements |
-| Set comprehension | `{x for x in items}` -- requires `set` type (D9) |
 | Generator expressions | `sum(x*x for x in items)` -- lazy evaluation, no allocation. See [Generator expressions](#generator-expressions-future) section |
 | Nested generators | `[f(x, y) for x in a for y in b]` -- multiple `comprehension` nodes. Low priority (rare in practice) |
 | Walrus operator in filter | `[y for x in items if (y := f(x)) > 0]` -- requires walrus operator |
@@ -569,4 +569,17 @@ tests/cases/dict/
     dict_comp_unpack/          # Phase 6: tuple unpacking from dict.items(), list of tuples
     dict_comp_annotation/      # Phase 6: annotation propagation (Int32->int, Int32->Int64)
     error_dict_comp_nested/    # Error: nested generators
+    error_dict_comp_not_iterable/      # Error: non-iterable source
+    error_dict_comp_unpack_count/      # Error: unpack count mismatch
+    error_dict_comp_unpack_non_tuple/  # Error: unpack on non-tuple
+
+tests/cases/set/
+    set_comp_basic/            # Phase 7: range->set, list->set, dedup, 2-arg range
+    set_comp_filter/           # Phase 7: single filter, string filtering
+    set_comp_unpack/           # Phase 7: tuple unpacking from dict.items(), list of tuples
+    set_comp_annotation/       # Phase 7: annotation propagation (Int32->Int64, Int32->int)
+    error_set_comp_nested/     # Error: nested generators
+    error_set_comp_not_iterable/       # Error: non-iterable source
+    error_set_comp_unpack_count/       # Error: unpack count mismatch
+    error_set_comp_unpack_non_tuple/   # Error: unpack on non-tuple
 ```
