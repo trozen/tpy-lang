@@ -47,25 +47,25 @@ void main() {
     // 30:     e: set[Int32] = {1, 2}
     tpy::ordered_set<int32_t> e = tpy::ordered_set<int32_t>({1, 2});
     // 31:     e |= b
-    e = tpy::set_union(e, b);
+    tpy::set_update(e, b);
     // 32:     print(e)
     std::cout << tpy::SetPrinter(e) << "\n";
     // 33:     f: set[Int32] = {1, 2, 3, 4}
     tpy::ordered_set<int32_t> f = tpy::ordered_set<int32_t>({1, 2, 3, 4});
     // 34:     f &= a
-    f = tpy::set_intersection(f, a);
+    tpy::set_intersection_update(f, a);
     // 35:     print(f)
     std::cout << tpy::SetPrinter(f) << "\n";
     // 36:     g: set[Int32] = {1, 2, 3}
     tpy::ordered_set<int32_t> g = tpy::ordered_set<int32_t>({1, 2, 3});
     // 37:     g -= b
-    g = tpy::set_difference(g, b);
+    tpy::set_difference_update(g, b);
     // 38:     print(g)
     std::cout << tpy::SetPrinter(g) << "\n";
     // 39:     h: set[Int32] = {1, 2, 3}
     tpy::ordered_set<int32_t> h = tpy::ordered_set<int32_t>({1, 2, 3});
     // 40:     h ^= b
-    h = tpy::set_symmetric_difference(h, b);
+    tpy::set_symmetric_difference_update(h, b);
     // 41:     print(h)
     std::cout << tpy::SetPrinter(h) << "\n";
 }

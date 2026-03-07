@@ -12,7 +12,7 @@ from enum import Enum, IntEnum
 from typing import Optional, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, FieldInfo,
+    TpyType, NamedType, FieldInfo, FunctionInfo,
     MethodSignature, TypeParamKind,
     EnumType, IntEnumType,
 )
@@ -121,6 +121,7 @@ class TpyBinOp(TpyExpr):
     op: str  # '+', '-', '*', '/', '%', '==', '!=', '<', '>', '<=', '>='
     right: TpyExpr
     resolved_binop: 'ResolvedBinop | None' = None  # Set by sema for builtin ops
+    resolved_contains: 'FunctionInfo | None' = None  # Set by sema for 'in'/'not in' with __contains__
     optional_safe_eq: bool = False  # Set by sema: ==/!= with Optional value-type operand(s)
     int_enum_coercion: 'IntEnumType | None' = None  # Set by sema: IntEnum arithmetic coerced to underlying type
 
@@ -363,7 +364,7 @@ class TpyAugAssign(TpyStmt):
     op: str
     value: TpyExpr
     resolved_binop: 'ResolvedBinop | None' = None  # Set by sema for builtin ops
-    is_list_extend: bool = False  # Set by sema for list += (extend semantics)
+    resolved_inplace: 'ResolvedBinop | None' = None  # Set by sema for in-place ops (__iadd__, __ior__, etc.)
 
 
 @dataclass

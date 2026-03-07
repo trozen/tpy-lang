@@ -999,13 +999,14 @@ class StatementGenerator:
         if isinstance(stmt.target, TpySubscript):
             return self._gen_aug_assign_subscript_code(stmt, indent)
 
-        # list += other_list -> extend in place
-        if stmt.is_list_extend:
+        # In-place operator (__iadd__, __ior__, etc.) -- mutates target directly
+        if inplace := stmt.resolved_inplace:
             target = self.expressions.gen_expr(stmt.target)
             if self.ctx.is_indirect_name(stmt.target):
                 target = f"(*{target})"
             value = self.expressions.gen_expr_deref(stmt.value)
-            return f"{indent}tpy::list_extend({target}, {value});\n"
+            result = self.expressions._gen_binop_from_result(inplace, target, value)
+            return f"{indent}{result};\n"
 
         target = self.expressions.gen_expr(stmt.target)
         target_type = self.ctx.get_expr_type(stmt.target)

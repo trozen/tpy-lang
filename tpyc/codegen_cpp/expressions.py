@@ -560,17 +560,10 @@ class ExpressionGenerator:
             # Dereference globals for .begin()/.end() calls
             if self.ctx.is_indirect_name(expr.right):
                 right = f"(*{right})"
-            right_resolved = self.types.get_resolved_type(expr.right)
-            if isinstance(right_resolved, DictType):
-                # Dict membership: use .contains()
-                find_expr = f"({right}.contains({left}))"
-            elif isinstance(right_resolved, SetType):
-                # Set membership: O(1) via hash lookup
-                find_expr = f"({right}.contains({left}))"
-            elif isinstance(right_resolved, DictKeysViewType):
-                # Keys view membership: O(1) via underlying map's hash lookup
-                find_expr = f"({right}.contains({left}))"
-            elif is_any_str_type(right_resolved):
+            if expr.resolved_contains:
+                # Use registered __contains__ method (dict, set, dict_keys)
+                find_expr = f"({expand_cpp_template(expr.resolved_contains.cpp_template, right, left)})"
+            elif is_any_str_type(self.types.get_resolved_type(expr.right)):
                 # String contains: use .find(). Wrap string literals in
                 # std::string_view since C string literals lack .find().
                 rhs = f"std::string_view({right})" if isinstance(expr.right, TpyStrLiteral) else right

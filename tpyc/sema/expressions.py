@@ -562,22 +562,25 @@ class ExpressionAnalyzer:
 
         # Membership operators (in, not in) return Bool
         if expr.op in ("in", "not in"):
-            # Dict membership checks key type
-            if isinstance(right_type, DictType):
-                self.compat.check_type_compatible(
-                    left_type, right_type.key_type,
-                    f"dict key (expected {right_type.key_type})",
-                    loc=expr.loc,
-                )
-                return BOOL
-            # Set membership checks element type (O(1) hash lookup)
-            if isinstance(right_type, SetType):
-                self.compat.check_type_compatible(
-                    left_type, right_type.element_type,
-                    f"set element (expected {right_type.element_type})",
-                    loc=expr.loc,
-                )
-                return BOOL
+            # Try __contains__ method from builtin types (O(1) for dict, set, dict_keys)
+            right_record = self.ctx.registry.get_record_for_type(right_type)
+            if right_record:
+                contains_overloads = right_record.get_method_overloads("__contains__")
+                if contains_overloads and contains_overloads[0].cpp_template:
+                    method = contains_overloads[0]
+                    # Substitute type params for generic containers
+                    from .operators import _substitute_type_params
+                    type_subst = builtin_modules.extract_type_params(right_type)
+                    param_type = method.params[0].type
+                    if type_subst:
+                        param_type = _substitute_type_params(param_type, type_subst)
+                    self.compat.check_type_compatible(
+                        left_type, param_type,
+                        f"membership test (expected {param_type})",
+                        loc=expr.loc,
+                    )
+                    expr.resolved_contains = method
+                    return BOOL
             # Right side must be iterable (intrinsically or via NativeIterable protocol)
             helper = IterableHelper(self.ctx)
             if helper.is_type_iterable(right_type):

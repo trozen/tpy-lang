@@ -386,6 +386,11 @@ def init_module() -> BuiltinModule:
             cpp="tpy::list_concat({self}, {0})",
             is_readonly=True, is_pure=True,
         )],
+        "__iadd__": [MethodDef(
+            params=[ParamDef("other", ListType(T))],
+            returns=VOID,
+            cpp="tpy::list_extend({self}, {0})",
+        )],
         "__span__": [MethodDef(
             params=[], returns=SpanType(T, is_readonly=True),
             cpp="tpy::as_span({self})", is_readonly=True, is_pure=True,
@@ -444,6 +449,12 @@ def init_module() -> BuiltinModule:
             params=[ParamDef("key", K)],
             returns=VOID,
             cpp="tpy::__delitem__({self}, {0})",
+        )],
+        "__contains__": [MethodDef(
+            params=[ParamDef("key", K)],
+            returns=BOOL,
+            cpp="{self}.contains({0})",
+            is_readonly=True, is_pure=True,
         )],
         "get": [
             MethodDef(
@@ -541,6 +552,12 @@ def init_module() -> BuiltinModule:
             cpp="tpy::__iter__({self})",
             is_readonly=True, is_pure=True,
         )],
+        "__contains__": [MethodDef(
+            params=[ParamDef("key", K)],
+            returns=BOOL,
+            cpp="{self}.contains({0})",
+            is_readonly=True, is_pure=True,
+        )],
     })
 
     # dict_values[K, V]: Values view backed by tpy::dict_values_view<K, V>
@@ -602,6 +619,12 @@ def init_module() -> BuiltinModule:
             params=[],
             returns=NamedType("Iterator", (T,), is_protocol=True),
             cpp="tpy::__iter__({self})",
+            is_readonly=True, is_pure=True,
+        )],
+        "__contains__": [MethodDef(
+            params=[ParamDef("value", T)],
+            returns=BOOL,
+            cpp="{self}.contains({0})",
             is_readonly=True, is_pure=True,
         )],
         "add": [MethodDef(

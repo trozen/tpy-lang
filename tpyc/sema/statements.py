@@ -1855,28 +1855,13 @@ class StatementAnalyzer:
                 f"to keep {type_name} arithmetic.",
                 stmt,
             )
-        # Target must be numeric, owned string, or list (for +=).
+        # Target must be numeric, owned string, or a type with registered operators.
         # StrView is excluded -- it's non-owning, so += would dangle.
         is_numeric_target = isinstance(target_type, (Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type))
         is_str_target = isinstance(target_type, (StrType, StringType, PendingStrType))
-        is_list_target = isinstance(target_type, ListType)
         # PendingStrType += promotes to owned str
         if isinstance(target_type, PendingStrType) and isinstance(stmt.target, TpyName):
             self.deduction.mark_str_augassign(stmt.target.name)
-        # list += only supports += (extend semantics)
-        if is_list_target:
-            if stmt.op != "+":
-                raise self.ctx.error(
-                    f"Only '+=' is supported for list types, got '{stmt.op}='",
-                    stmt,
-                )
-            if not isinstance(value_type, ListType) or value_type.element_type != target_type.element_type:
-                raise self.ctx.error(
-                    f"Cannot extend {target_type} with {value_type}",
-                    stmt,
-                )
-            stmt.is_list_extend = True
-            return
         if not is_numeric_target and not is_str_target:
             # StrView += would dangle (result is a temporary string assigned to a view)
             if isinstance(target_type, StrViewType):
@@ -1884,9 +1869,11 @@ class StatementAnalyzer:
                     f"Augmented assignment is not supported for StrView (result would dangle)",
                     stmt,
                 )
-            # For non-numeric/string types, try resolving the binary operator
-            # via the type registry (e.g. set |=, &=, -=, ^=)
+            # Try in-place method first (e.g. __iadd__, __ior__), then binary operator
             operators = OperatorResolver(self.ctx)
+            if result := operators.resolve_aug_inplace(target_type, stmt.op, value_type):
+                stmt.resolved_inplace = result
+                return
             if result := operators.resolve_binop(target_type, stmt.op, value_type):
                 stmt.resolved_binop = result
                 return

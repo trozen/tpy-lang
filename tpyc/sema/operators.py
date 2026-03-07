@@ -232,6 +232,33 @@ class OperatorResolver:
 
         return None
 
+    def resolve_aug_inplace(self, target_type: TpyType, op: str, value_type: TpyType) -> ResolvedBinop | None:
+        """Resolve in-place augmented assignment operator (e.g. __iadd__, __ior__).
+
+        Returns a ResolvedBinop whose method has a void return type and a cpp
+        template that mutates {self} in place (e.g. tpy::set_update({self}, {0})).
+        """
+        method_name = builtin_modules.AUGOP_TO_IMETHOD.get(op)
+        if not method_name:
+            return None
+
+        target_effective = self.get_effective_type_for_binop(target_type)
+        record = self.ctx.registry.get_record_for_type(target_effective)
+        if not record:
+            return None
+
+        type_subst = self._build_type_subst(target_effective, value_type)
+        value_arg = self._resolve_pending_types(value_type)
+
+        overloads = record.get_method_overloads(method_name)
+        # Only match builtin methods with cpp_template; user-defined __iadd__
+        # etc. have no template and should fall through to __add__ resolution
+        builtin_overloads = [m for m in overloads if m.cpp_template]
+        if method := self._find_matching_overload(builtin_overloads, value_arg, type_subst):
+            return self._make_resolved(method, type_subst, target_effective)
+
+        return None
+
     def resolve_unaryop(self, operand_type: TpyType, op: str) -> ResolvedUnaryop | None:
         """Resolve unary operator using registry."""
         method_name = builtin_modules.UNARYOP_TO_METHOD.get(op)
