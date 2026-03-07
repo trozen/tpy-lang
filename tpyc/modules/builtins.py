@@ -34,8 +34,15 @@ NAME = "builtins"
 
 # Methods that mutate the list (used by sema to track list literal mutation)
 LIST_MUTATION_METHODS = frozenset({
-    "append", "pop", "insert", "remove", "clear", "extend", "reverse",
+    "append", "pop", "insert", "remove", "clear", "extend", "reverse", "sort",
     "__setitem__", "__delitem__",
+})
+
+# Subset that invalidates std::vector iterators (size-changing operations).
+# __setitem__ is excluded: element replacement doesn't invalidate iterators.
+LIST_ITER_INVALIDATING = frozenset({
+    "append", "pop", "insert", "remove", "clear", "extend", "reverse", "sort",
+    "__delitem__",
 })
 
 # Reserved for future dict literal type deduction (cf. LIST_MUTATION_METHODS)

@@ -84,6 +84,7 @@ class FlowFacts:
     non_null_ptr_vars: frozenset[str] = frozenset()
     narrowed_types: frozenset[tuple[str, TpyType]] = frozenset()
     consumed_vars: frozenset[str] = frozenset()
+    loop_borrowed_vars: frozenset[str] = frozenset()
 
     @staticmethod
     def merge(then: FlowFacts, else_: FlowFacts) -> FlowFacts:
@@ -114,6 +115,10 @@ class FlowFacts:
             ),
             consumed_vars=_merge_sets(
                 then.consumed_vars, else_.consumed_vars,
+                then_term, else_term, _MergePolicy.UNION,
+            ),
+            loop_borrowed_vars=_merge_sets(
+                then.loop_borrowed_vars, else_.loop_borrowed_vars,
                 then_term, else_term, _MergePolicy.UNION,
             ),
         )

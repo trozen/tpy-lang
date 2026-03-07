@@ -169,6 +169,9 @@ class SemanticContext:
     # --- Consumed variable tracking (use-after-consume detection) ---
     consumed_vars: set[str] = field(default_factory=set)
 
+    # --- Borrow tracking (iteration safety) ---
+    loop_borrowed_vars: set[str] = field(default_factory=set)
+
     # --- Expression type hint (for context-dependent functions like unsafe_cast) ---
     expr_type_hint: TpyType | None = None
 
@@ -320,3 +323,4 @@ class SemanticContext:
         self.param_provenance_vars.clear()
         self.non_null_ptr_vars.clear()
         self.consumed_vars.clear()
+        self.loop_borrowed_vars.clear()

@@ -16,7 +16,7 @@
 |---|---------|--------|--------|---------|
 | -- | FlowFacts refactor (unified flow state class) | M | Done | -- |
 | 6 | Borrow set tracking + conflict detection | L | Not started | [6](#6-intra-function-borrow-checking) |
-| 6a | Container mutation during iteration | S-M | Not started | [6a](#6a-container-mutation-during-iteration) |
+| 6a | Container mutation during iteration | S-M | Done | [6a](#6a-container-mutation-during-iteration) |
 | 6b | For-loop const-ref binding | S-M | Not started | [6b](#6b-for-loop-const-ref-binding) |
 | 6c | String view extension (Array, records) | M | Not started | [6c](#6c-string-view-extension-to-containers) |
 | 11 | Integer range tracking (loop patterns) | M | Not started | [11](#11-integer-range-tracking) |
@@ -373,6 +373,18 @@ body. Any operation that could mutate the iterable is a conflict:
 
 **Scope**: Start with direct variable names (the iterable is a `TpyName`). Field-path
 iterables (`self.items`) and aliased mutation are Phase 2 (cross-function inference).
+
+**Current limitations** (6a implementation):
+
+- Only method calls known to invalidate iterators (`LIST_ITER_INVALIDATING`,
+  `DICT_MUTATION_METHODS`) and `del` are detected. Subscript assignment
+  (`d[k] = v`) is not warned -- it is element replacement for sequences but may
+  insert new keys for mappings. Distinguishing structural mutation from element
+  replacement generically (without hardcoding types) requires the general borrow
+  infrastructure (Phase 2).
+- Passing a borrowed iterable to a non-`@pure` function is not yet detected.
+- Only simple `TpyName` iterables are tracked (not `self.items`, `obj.field`,
+  or aliased names).
 
 #### 6b. For-Loop Const-Ref Binding
 

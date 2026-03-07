@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType,
+    TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, DictType,
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly,
 )
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from .expressions import ExpressionAnalyzer
     from .calls import CallAnalyzer
 
-from tpyc.modules.builtins import LIST_MUTATION_METHODS
+from tpyc.modules.builtins import LIST_MUTATION_METHODS, LIST_ITER_INVALIDATING, DICT_MUTATION_METHODS
 
 
 class MethodAnalyzer:
@@ -264,6 +264,18 @@ class MethodAnalyzer:
         if isinstance(obj_type, (PendingListType, ListType)):
             if expr.method in LIST_MUTATION_METHODS:
                 self.deduction.mark_list_mutated(expr.obj)
+
+        # Borrow conflict: mutating a container that is being iterated over
+        if isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.loop_borrowed_vars:
+            is_mutation = False
+            if isinstance(obj_type, (PendingListType, ListType)):
+                is_mutation = expr.method in LIST_ITER_INVALIDATING
+            elif isinstance(obj_type, DictType):
+                is_mutation = expr.method in DICT_MUTATION_METHODS
+            if is_mutation:
+                self.ctx.warning(
+                    f"Mutation of '{expr.obj.name}' while iterating over it"
+                    f" ('{expr.method}' invalidates the iterator)", expr)
 
         # Deref chain -- resolves through Ptr, ReadOnlyPtr, and any Deref[T] type
         original_type = obj_type

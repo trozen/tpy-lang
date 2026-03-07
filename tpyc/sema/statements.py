@@ -501,6 +501,8 @@ class StatementAnalyzer:
                 ns_types_before_foreach = self._save_ns_var_types()
                 with self.scopes.loop_scope() as inner_scope:
                     self.init.apply_loop_entry_facts(before)
+                    if isinstance(stmt.iterable, TpyName):
+                        self.ctx.loop_borrowed_vars.add(stmt.iterable.name)
                     # OptIterator and __iter__-based types produce fresh values each iteration
                     is_native_iterator = builtin_modules.get_native_iterator_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
                     is_span_based = builtin_modules.get_span_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
@@ -1459,6 +1461,11 @@ class StatementAnalyzer:
             # Analyze obj and index separately to avoid triggering __getitem__
             # validation (del doesn't read the element, only deletes it).
             self.expr.analyze_expr(subscript.obj)
+            # Borrow conflict: del on a container being iterated
+            if isinstance(subscript.obj, TpyName) and subscript.obj.name in self.ctx.loop_borrowed_vars:
+                self.ctx.warning(
+                    f"Mutation of '{subscript.obj.name}' while iterating over it"
+                    " ('del' invalidates the iterator)", stmt)
             self._enforce_readonly_assignment_target(subscript)
             obj_type = self.ctx.get_expr_type(subscript.obj)
             actual = unwrap_readonly(obj_type)

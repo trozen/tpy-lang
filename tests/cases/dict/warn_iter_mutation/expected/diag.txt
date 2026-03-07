@@ -1,0 +1,6 @@
+main.py:7: warning: Mutation of 'd' while iterating over it ('pop' invalidates the iterator)
+main.py:12: warning: Mutation of 'd' while iterating over it ('clear' invalidates the iterator)
+main.py:18: warning: Mutation of 'd' while iterating over it ('update' invalidates the iterator)
+main.py:23: warning: Mutation of 'd' while iterating over it ('setdefault' invalidates the iterator)
+main.py:28: warning: Mutation of 'd' while iterating over it ('del' invalidates the iterator)
+main.py:34: warning: Mutation of 'd' while iterating over it ('pop' invalidates the iterator)
