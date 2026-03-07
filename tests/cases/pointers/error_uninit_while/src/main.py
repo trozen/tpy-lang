@@ -11,4 +11,4 @@ def while_record(cond: bool) -> None:
     while cond:
         x: Point = Point(1, 2)
         break
-    print(x)  # tpyc: error(/may be used before assignment/)
+    print(x)  # tpyc: error(/may not be assigned at this point/)

@@ -24,6 +24,8 @@ from ..parse import (
     TpyAssert, TpyBoolLiteral,
     TpyFieldAccess, TpyMethodCall,
     TpyCall, TpyIntLiteral, TpyUnaryOp, TpyCoerce, TpyIfExpr,
+    TpyMatch, TpyMatchCase, TpyPattern, TpyWildcardPattern, TpyCapturePattern,
+    TpyClassPattern, TpyLiteralPattern, TpyAsPattern,
 )
 from ..namespace import Namespace
 from .context import INDENT, CodeGenError, escape_cpp_name, qualified_cpp_name, expand_cpp_template
@@ -192,6 +194,9 @@ class StatementGenerator:
         elif isinstance(stmt, TpyTupleUnpack):
             self.ctx.emit_source_comment(out, stmt.loc, indent)
             self._gen_tuple_unpack(out, stmt, indent)
+        elif isinstance(stmt, TpyMatch):
+            self.ctx.emit_source_comment(out, stmt.loc, indent)
+            self._gen_match(out, stmt, indent)
         else:
             # Simple statements - single flush point for all
             code = self._gen_simple_stmt(stmt, indent)
@@ -1268,6 +1273,136 @@ class StatementGenerator:
         # so we do NOT call _restore_narrowed_vars.
         self._emit_isinstance_extractions(out, stmt.then_type_facts, indent_extra=0)
 
+    def _gen_match(self, out: TextIO, stmt: TpyMatch, indent: str) -> None:
+        """Generate a match/case statement as an if/elif/else chain."""
+        assert stmt.subject_type is not None
+        inner = INDENT * (self.ctx.indent_level + 1)
+
+        # Pre-declare variables first declared inside match arms
+        self._emit_branch_decls(out, stmt, indent)
+
+        # Evaluate subject and bind to a local
+        subject_code = self.expressions.gen_expr(stmt.subject)
+        self.ctx.temps.flush(out, indent)
+        out.write(f"{indent}auto& __match_subject = {subject_code};\n")
+
+        for i, case in enumerate(stmt.cases):
+            keyword = "if" if i == 0 else "} else if"
+            pattern = case.pattern
+
+            if isinstance(pattern, TpyClassPattern):
+                self._gen_match_class_arm(
+                    out, pattern, i, keyword, indent, inner, case.body,
+                    type_facts=case.type_facts,
+                )
+
+            elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
+                if i == 0:
+                    out.write(f"{indent}{{\n")
+                else:
+                    out.write(f"{indent}}} else {{\n")
+                if isinstance(pattern, TpyCapturePattern):
+                    name = escape_cpp_name(pattern.name)
+                    if pattern.name in self.ctx.declared_vars:
+                        out.write(f"{inner}{name} = __match_subject;\n")
+                    else:
+                        out.write(f"{inner}auto& {name} = __match_subject;\n")
+                self.ctx.indent_level += 1
+                for s in case.body:
+                    self.gen_stmt(out, s)
+                self.ctx.indent_level -= 1
+
+            elif isinstance(pattern, TpyAsPattern):
+                inner_pat = pattern.pattern
+                as_name = escape_cpp_name(pattern.name)
+                if isinstance(inner_pat, TpyClassPattern):
+                    self._gen_match_class_arm(
+                        out, inner_pat, i, keyword, indent, inner, case.body,
+                        as_name=as_name,
+                        as_raw_name=pattern.name,
+                        type_facts=case.type_facts,
+                    )
+                elif isinstance(inner_pat, (TpyWildcardPattern, TpyCapturePattern)):
+                    # case _ as x: / case y as x: -- catch-all with binding
+                    if i == 0:
+                        out.write(f"{indent}{{\n")
+                    else:
+                        out.write(f"{indent}}} else {{\n")
+                    if pattern.name in self.ctx.declared_vars:
+                        out.write(f"{inner}{as_name} = __match_subject;\n")
+                    else:
+                        out.write(f"{inner}auto& {as_name} = __match_subject;\n")
+                    if isinstance(inner_pat, TpyCapturePattern):
+                        inner_name = escape_cpp_name(inner_pat.name)
+                        if inner_pat.name in self.ctx.declared_vars:
+                            out.write(f"{inner}{inner_name} = __match_subject;\n")
+                        else:
+                            out.write(f"{inner}auto& {inner_name} = __match_subject;\n")
+                    self.ctx.indent_level += 1
+                    for s in case.body:
+                        self.gen_stmt(out, s)
+                    self.ctx.indent_level -= 1
+                else:
+                    raise CodeGenError(f"Unsupported as-pattern inner: {type(inner_pat).__name__}")
+
+            else:
+                raise CodeGenError(f"Unsupported match pattern: {type(pattern).__name__}")
+
+        out.write(f"{indent}}}\n")
+
+    def _gen_match_class_arm(
+        self, out: TextIO, pattern: TpyClassPattern, arm_idx: int,
+        keyword: str, indent: str, inner: str, body: list[TpyStmt],
+        as_name: str | None = None,
+        as_raw_name: str | None = None,
+        type_facts: dict[str, TpyType] | None = None,
+    ) -> None:
+        """Generate a single class-pattern match arm."""
+        assert pattern.resolved_type is not None
+        cpp_type = self.types.type_to_cpp(pattern.resolved_type)
+        out.write(f"{indent}{keyword} (std::holds_alternative<{cpp_type}>(__match_subject)) {{\n")
+        # Emit std::get extraction -- either for field bindings or for subject narrowing.
+        # Reuse the same extraction variable for both to avoid a duplicate std::get.
+        case_var: str | None = None
+        if pattern.keywords or type_facts:
+            case_var = f"__case_{arm_idx}"
+            out.write(f"{inner}auto& {case_var} = std::get<{cpp_type}>(__match_subject);\n")
+        if pattern.keywords:
+            self._gen_match_field_bindings(out, pattern, case_var, inner)
+        if as_name is not None:
+            if as_raw_name and as_raw_name in self.ctx.declared_vars:
+                out.write(f"{inner}{as_name} = std::get<{cpp_type}>(__match_subject);\n")
+            else:
+                out.write(f"{inner}auto& {as_name} = std::get<{cpp_type}>(__match_subject);\n")
+        # Register narrowed subject in narrowed_vars (reuse __case_N, no second std::get)
+        saved_narrow: dict[str, str | None] = {}
+        if type_facts:
+            for var_name in type_facts:
+                saved_narrow[var_name] = self.ctx.narrowed_vars.get(var_name)
+                self.ctx.narrowed_vars[var_name] = case_var
+        self.ctx.indent_level += 1
+        for s in body:
+            self.gen_stmt(out, s)
+        self.ctx.indent_level -= 1
+        self._restore_narrowed_vars(saved_narrow)
+
+    def _gen_match_field_bindings(
+        self, out: TextIO, pattern: TpyClassPattern, case_var: str, indent: str,
+    ) -> None:
+        """Emit local variable bindings for class pattern keyword fields."""
+        for field_name, sub_pattern in pattern.keywords:
+            if isinstance(sub_pattern, TpyCapturePattern):
+                name = escape_cpp_name(sub_pattern.name)
+                if sub_pattern.name in self.ctx.declared_vars:
+                    # Pre-declared (leaks out of match) -- assign, don't redeclare
+                    out.write(f"{indent}{name} = {case_var}.{field_name};\n")
+                else:
+                    out.write(f"{indent}auto& {name} = {case_var}.{field_name};\n")
+            elif isinstance(sub_pattern, TpyWildcardPattern):
+                pass
+            elif isinstance(sub_pattern, TpyLiteralPattern):
+                pass  # Literal sub-patterns handled as conditions (future)
+
     def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str) -> None:
         """Generate an if/elif/else chain as flat C++ if/else if/else."""
         # Collect the elif chain into a flat list of branches.
@@ -1398,8 +1533,8 @@ class StatementGenerator:
             for ty in type_facts.values()
         )
 
-    def _emit_branch_decls(self, out: TextIO, stmt: TpyIf, indent: str) -> None:
-        """Pre-declare variables first declared inside if/elif branches."""
+    def _emit_branch_decls(self, out: TextIO, stmt: TpyStmt, indent: str) -> None:
+        """Pre-declare variables first declared inside if/elif/match branches."""
         branch_decls = self.ctx.analyzer.if_branch_decls.get(id(stmt), {})
         for name, var_type in branch_decls.items():
             if (name not in self.ctx.declared_vars

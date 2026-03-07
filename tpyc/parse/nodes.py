@@ -443,6 +443,81 @@ class TpyRaiseStopIteration(TpyStmt):
     pass
 
 
+# -- Pattern matching nodes --
+
+@dataclass
+class TpyPattern:
+    """Base class for match/case patterns."""
+    loc: SourceLocation | None = field(default=None, kw_only=True)
+
+
+@dataclass
+class TpyWildcardPattern(TpyPattern):
+    """case _:"""
+    pass
+
+
+@dataclass
+class TpyCapturePattern(TpyPattern):
+    """case x:"""
+    name: str
+
+
+@dataclass
+class TpyClassPattern(TpyPattern):
+    """case Circle(): / case Circle(radius=r):"""
+    cls: TpyExpr
+    positional: list[TpyPattern]
+    keywords: list[tuple[str, TpyPattern]]
+    # Set by sema: resolved record type for this class pattern
+    resolved_type: TpyType | None = None
+
+
+@dataclass
+class TpyLiteralPattern(TpyPattern):
+    """case 42: / case "hello": / case True: / case None:"""
+    value: int | float | str | bool | None
+
+
+@dataclass
+class TpyValuePattern(TpyPattern):
+    """case Color.RED: -- named constant via attribute access"""
+    expr: TpyExpr
+
+
+@dataclass
+class TpyOrPattern(TpyPattern):
+    """case Dog() | Cat():"""
+    patterns: list[TpyPattern]
+
+
+@dataclass
+class TpyAsPattern(TpyPattern):
+    """case P() as x:"""
+    pattern: TpyPattern
+    name: str
+
+
+@dataclass
+class TpyMatchCase:
+    """A single case arm in a match statement."""
+    pattern: TpyPattern
+    guard: TpyExpr | None
+    body: list[TpyStmt]
+    loc: SourceLocation | None = None
+    # Set by sema: narrowing facts for the subject variable in this arm
+    type_facts: dict[str, TpyType] = field(default_factory=dict)
+
+
+@dataclass
+class TpyMatch(TpyStmt):
+    """match/case statement."""
+    subject: TpyExpr
+    cases: list[TpyMatchCase]
+    # Set by sema: resolved type of the subject expression
+    subject_type: TpyType | None = None
+
+
 @dataclass(frozen=True)
 class RelativeImportKey:
     """Structured key for relative import placeholders in import dicts.

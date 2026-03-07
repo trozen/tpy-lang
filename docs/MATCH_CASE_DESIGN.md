@@ -4,12 +4,12 @@
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 1 | Parser: handle `ast.Match`, TPy AST nodes for all Phase 1 patterns | Not started |
-| 2 | Sema + codegen: wildcard, capture, class patterns (no field binding) on union subjects | Not started |
+| 1 | Parser + sema + codegen: union subjects with class patterns (keyword field binding), wildcard, capture, as-pattern. Subject narrowing. if/elif codegen. | Done |
+| 2 | Positional class patterns (`Point(x, y)`) via `__match_args__` | Not started |
 | 3 | Literal, singleton (`None`/`True`/`False`), and value (`Color.RED`) patterns; enum and primitive subjects | Not started |
-| 4 | Class patterns with field binding: keyword (`radius=r`), positional (`Point(x, y)`), sub-patterns, concrete record subjects | Not started |
+| 4 | Concrete record subjects (field-value matching), Optional subjects | Not started |
 | 5 | Or-patterns (`Dog() \| Cat():`), guard clauses (`if cond`) | Not started |
-| 6 | Exhaustiveness warnings (union, enum, Optional), unreachable/duplicate case detection | Not started |
+| 6 | Exhaustiveness warnings (union, enum, Optional) | Not started (duplicate case + unreachable-after-wildcard detection done in Phase 1) |
 | 7 | `switch` codegen for unions (`switch (s.index())`) and enums (`switch (e)`); if/elif fallback when guards present | Not started |
 
 ### Future Extensions
@@ -363,6 +363,17 @@ auto __match_subject = expr;   // rvalue/temporary: bind by value
 ```
 
 For union subjects, the reference avoids copying the variant.
+
+**TODO (optimization):** When the subject is a simple name (e.g. `match s:`
+where `s` is already a local/param), skip the `__match_subject` binding and
+use `s` directly -- consistent with isinstance codegen which operates on the
+original variable.
+
+**TODO (optimization):** Pattern bindings for `str` fields (e.g.
+`case Dog(name=n):`) currently pre-declare as `std::string` (copy). When the
+binding is read-only (not reassigned in the body), it could be
+`std::string_view` for zero-copy. Requires integrating pattern bindings with
+the local str deduction system (`local_deduction.py`).
 
 ### Union subjects
 

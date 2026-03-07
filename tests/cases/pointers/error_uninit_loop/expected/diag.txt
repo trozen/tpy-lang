@@ -1,1 +1,1 @@
-main.py:7: error: variable 'x' may be used before assignment
+main.py:7: error: variable 'x' may not be assigned at this point

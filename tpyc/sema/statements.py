@@ -24,6 +24,8 @@ from ..parse import (
     TpySubscript, TpyStrLiteral, TpyName, TpyTupleLiteral,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyUnaryOp,
     TpyFieldAccess, TpyFunction, TupleElemCapture,
+    TpyMatch, TpyMatchCase, TpyPattern, TpyWildcardPattern, TpyCapturePattern,
+    TpyClassPattern, TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
 )
 from ..coercions import CoercionContext
 from ..namespace import BindingKind
@@ -569,6 +571,8 @@ class StatementAnalyzer:
             if not isinstance(func, TpyFunction) or func.name != "__next__":
                 raise self.ctx.error("'raise StopIteration' can only be used inside a __next__ method", stmt)
             self.init.mark_terminated()
+        elif isinstance(stmt, TpyMatch):
+            self._analyze_match(stmt)
 
     def _filter_union_codegen_facts(
         self, facts: dict[str, TpyType],
@@ -582,6 +586,231 @@ class StatementAnalyzer:
             name: ty for name, ty in facts.items()
             if isinstance(unwrap_readonly(self.narrowing.declared_type_for_name(name)), UnionType)
         }
+
+    def _analyze_match(self, stmt: TpyMatch) -> None:
+        """Analyze a match/case statement."""
+        from .flow_facts import FlowFacts
+
+        subject_type = self.expr.analyze_expr(stmt.subject)
+        stmt.subject_type = subject_type
+
+        effective_type = unwrap_readonly(subject_type)
+        if not isinstance(effective_type, UnionType):
+            raise self.ctx.error(
+                f"match subject must be a union type, got '{subject_type}'", stmt
+            )
+
+        # Subject variable name for narrowing (only if simple name)
+        subject_name: str | None = None
+        if isinstance(stmt.subject, TpyName):
+            subject_name = stmt.subject.name
+
+        had_wildcard = False
+        seen_types: set[str] = set()
+
+        scope_before = set(self.ctx.current_scope.bindings.keys())
+        assigned_before = frozenset(self.ctx.definitely_assigned)
+        bindings_before = dict(self.ctx.current_scope.bindings)
+        ns_types_before = self._save_ns_var_types()
+        before = self.init.save()
+
+        arm_states: list[FlowFacts] = []
+        arm_bindings: list[dict[str, TpyType]] = []
+
+        for case in stmt.cases:
+            if had_wildcard:
+                raise self.ctx.error(
+                    "unreachable case after wildcard pattern", case.pattern
+                )
+            if case.guard is not None:
+                raise self.ctx.error(
+                    "guard clauses in match/case are not yet supported",
+                    case.guard,
+                )
+
+            # Restore state to pre-match for each arm
+            self.init.restore(before)
+            self.ctx.current_scope.bindings = dict(bindings_before)
+            self._restore_ns_var_types(ns_types_before)
+
+            pattern_bindings: dict[str, TpyType] = {}
+            self._analyze_pattern(case.pattern, effective_type, seen_types, pattern_bindings, stmt)
+
+            for name, ty in pattern_bindings.items():
+                self.ctx.current_scope.define(name, ty)
+                self.init.mark_assigned(name)
+                if name not in self.ctx.var_scope_depth:
+                    self.ctx.var_scope_depth[name] = self.ctx.current_scope.depth
+
+            # Narrow subject variable for class patterns
+            narrowing_facts = self._match_case_narrowing_facts(
+                case.pattern, subject_name, effective_type,
+            )
+            if narrowing_facts:
+                case.type_facts = self._filter_union_codegen_facts(narrowing_facts)
+                self.ctx.narrowed_types.update(narrowing_facts)
+
+            for s in case.body:
+                self.analyze_stmt(s)
+
+            arm_states.append(self.init.save())
+            arm_bindings.append(dict(self.ctx.current_scope.bindings))
+
+            pat = case.pattern
+            if isinstance(pat, TpyAsPattern):
+                pat = pat.pattern
+            if isinstance(pat, (TpyWildcardPattern, TpyCapturePattern)):
+                had_wildcard = True
+
+        # Merge flow states across all arms
+        self._merge_match_arms(arm_states, before)
+
+        # Restore scope bindings, merging types from arms
+        self.ctx.current_scope.bindings = dict(bindings_before)
+        self._restore_ns_var_types(ns_types_before)
+        for arm_b in arm_bindings:
+            for name, ty in arm_b.items():
+                if name not in bindings_before:
+                    self.ctx.current_scope.define(name, ty)
+
+        self._sync_promoted_var_types(
+            set().union(*(set(b) for b in arm_bindings))
+        )
+
+        # Pre-declare variables first declared inside match arms
+        if not self.ctx.init_terminated:
+            branch_new = set(self.ctx.current_scope.bindings.keys()) - scope_before
+            newly_assigned = self.ctx.definitely_assigned - assigned_before
+            predecl = (branch_new & newly_assigned) - self.ctx.global_declarations
+        else:
+            predecl = set()
+        if predecl:
+            self.ctx.if_branch_decls[id(stmt)] = {
+                name: self.ctx.current_scope.lookup(name)
+                for name in sorted(predecl)
+            }
+
+    def _match_case_narrowing_facts(
+        self, pattern: TpyPattern, subject_name: str | None,
+        subject_type: UnionType,
+    ) -> dict[str, TpyType]:
+        """Compute narrowing facts for a match case pattern."""
+        if subject_name is None:
+            return {}
+        # Unwrap as-pattern to get inner
+        inner = pattern
+        if isinstance(inner, TpyAsPattern):
+            inner = inner.pattern
+        if isinstance(inner, TpyClassPattern) and inner.resolved_type is not None:
+            return {subject_name: inner.resolved_type}
+        return {}
+
+    def _merge_match_arms(
+        self, arm_states: list['FlowFacts'], before: 'FlowFacts',
+    ) -> None:
+        """Merge flow states from multiple match arms.
+
+        Uses the same logic as merge_branches: intersect definitely_assigned
+        across non-terminated arms, union across terminated arms.
+        """
+        if not arm_states:
+            self.init.restore(before)
+            return
+        if len(arm_states) == 1:
+            self.init.restore(arm_states[0])
+            return
+        # Pairwise merge: merge first two, then merge result with next, etc.
+        self.init.restore(arm_states[0])
+        for i in range(1, len(arm_states)):
+            current = self.init.save()
+            self.init.restore(before)
+            self.init.merge_branches(current, arm_states[i])
+
+    def _analyze_pattern(
+        self, pattern: TpyPattern, subject_type: UnionType,
+        seen_types: set[str], bindings: dict[str, TpyType], stmt: TpyMatch,
+    ) -> None:
+        """Analyze a pattern against the subject type and collect bindings."""
+        if isinstance(pattern, TpyWildcardPattern):
+            return
+
+        elif isinstance(pattern, TpyCapturePattern):
+            bindings[pattern.name] = subject_type
+
+        elif isinstance(pattern, TpyAsPattern):
+            self._analyze_pattern(pattern.pattern, subject_type, seen_types, bindings, stmt)
+            # Bind as-variable to narrowed type when inner pattern is a class
+            if isinstance(pattern.pattern, TpyClassPattern) and pattern.pattern.resolved_type is not None:
+                bindings[pattern.name] = pattern.pattern.resolved_type
+            else:
+                bindings[pattern.name] = subject_type
+
+        elif isinstance(pattern, TpyClassPattern):
+            self._analyze_class_pattern(pattern, subject_type, seen_types, bindings, stmt)
+
+        else:
+            raise self.ctx.error(
+                f"Unsupported pattern type in match on union: "
+                f"{type(pattern).__name__}", pattern
+            )
+
+    def _analyze_class_pattern(
+        self, pattern: TpyClassPattern, subject_type: UnionType,
+        seen_types: set[str], bindings: dict[str, TpyType], stmt: TpyMatch,
+    ) -> None:
+        """Analyze a class pattern: validate union membership and field bindings."""
+        if not isinstance(pattern.cls, TpyName):
+            raise self.ctx.error(
+                "class pattern must use a simple name", pattern
+            )
+        cls_name = pattern.cls.name
+
+        # Resolve to a NamedType and check union membership
+        record = self.ctx.registry.get_record(cls_name)
+        if record is None:
+            raise self.ctx.error(f"unknown type '{cls_name}' in match pattern", pattern)
+
+        named_type = NamedType(cls_name)
+        if not any(m == named_type for m in subject_type.members):
+            raise self.ctx.error(
+                f"'{cls_name}' is not a member of union '{subject_type}'", pattern
+            )
+
+        if cls_name in seen_types:
+            raise self.ctx.error(
+                f"duplicate case for '{cls_name}' in match statement", pattern
+            )
+        seen_types.add(cls_name)
+        pattern.resolved_type = named_type
+
+        if pattern.positional:
+            raise self.ctx.error(
+                "positional patterns are not yet supported (use keyword patterns)", pattern
+            )
+
+        # Validate keyword field bindings
+        for field_name, sub_pattern in pattern.keywords:
+            field_info = None
+            for f in record.fields:
+                if f.name == field_name:
+                    field_info = f
+                    break
+            if field_info is None:
+                raise self.ctx.error(
+                    f"'{cls_name}' has no field '{field_name}'", pattern
+                )
+            # Sub-pattern bindings
+            if isinstance(sub_pattern, TpyCapturePattern):
+                bindings[sub_pattern.name] = field_info.type
+            elif isinstance(sub_pattern, TpyWildcardPattern):
+                pass
+            elif isinstance(sub_pattern, TpyLiteralPattern):
+                pass  # Literal comparison -- validated at codegen time
+            else:
+                raise self.ctx.error(
+                    f"Unsupported sub-pattern in field binding: "
+                    f"{type(sub_pattern).__name__}", sub_pattern
+                )
 
     def _analyze_global_stmt(self, stmt: TpyGlobal) -> None:
         """Analyze a `global x, y` statement."""

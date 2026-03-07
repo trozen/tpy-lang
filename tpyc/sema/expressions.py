@@ -340,7 +340,7 @@ class ExpressionAnalyzer:
                 and self.ctx.var_scope_depth[expr.name] >= 1
                 and expr.name not in self.ctx.definitely_assigned):
             raise self.ctx.error(
-                f"variable '{expr.name}' may be used before assignment", expr)
+                f"variable '{expr.name}' may not be assigned at this point", expr)
 
     def _analyze_binop(self, expr: TpyBinOp) -> TpyType:
         """Analyze a binary operation."""

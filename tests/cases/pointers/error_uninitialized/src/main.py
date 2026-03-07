@@ -10,4 +10,4 @@ class Point:
 def cond_record(cond: bool) -> None:
     if cond:
         x: Point = Point(1, 2)
-    print(x)  # tpyc: error(/may be used before assignment/)
+    print(x)  # tpyc: error(/may not be assigned at this point/)

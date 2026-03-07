@@ -30,6 +30,9 @@ from .nodes import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
     TpyPassStmt, TpyGlobal, TpyRaiseStopIteration,
+    TpyPattern, TpyWildcardPattern, TpyCapturePattern, TpyClassPattern,
+    TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
+    TpyMatchCase, TpyMatch,
     RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol, TpyEnum, TpyModule,
 )
 from .imports import (
@@ -1806,6 +1809,9 @@ class Parser:
         elif isinstance(node, ast.Delete):
             return self._parse_delete(node, loc)
 
+        elif isinstance(node, ast.Match):
+            return self._parse_match(node, loc)
+
         else:
             raise ParseError(f"Unsupported statement: {type(node).__name__}", node)
 
@@ -1839,6 +1845,56 @@ class Parser:
             else:
                 raise ParseError(f"Unsupported del target: {type(target).__name__}", node)
         return TpyDelItem(subscripts, loc=loc)
+
+    def _parse_match(self, node: ast.Match, loc: SourceLocation | None) -> TpyMatch:
+        """Parse a match/case statement."""
+        subject = self._parse_expr(node.subject)
+        cases: list[TpyMatchCase] = []
+        for case in node.cases:
+            pattern = self._parse_pattern(case.pattern)
+            guard = self._parse_expr(case.guard) if case.guard else None
+            body = [self._parse_stmt(s) for s in case.body]
+            cases.append(TpyMatchCase(pattern, guard, body, loc=self._loc(case)))
+        return TpyMatch(subject, cases, loc=loc)
+
+    def _parse_pattern(self, node: ast.pattern) -> TpyPattern:
+        """Parse a match/case pattern."""
+        loc = self._loc(node)
+
+        if isinstance(node, ast.MatchAs):
+            if node.pattern is None and node.name is None:
+                return TpyWildcardPattern(loc=loc)
+            if node.pattern is None and node.name is not None:
+                return TpyCapturePattern(node.name, loc=loc)
+            if node.pattern is not None and node.name is not None:
+                inner = self._parse_pattern(node.pattern)
+                return TpyAsPattern(inner, node.name, loc=loc)
+
+        elif isinstance(node, ast.MatchClass):
+            cls = self._parse_expr(node.cls)
+            positional = [self._parse_pattern(p) for p in node.patterns]
+            keywords = [
+                (attr, self._parse_pattern(pat))
+                for attr, pat in zip(node.kwd_attrs, node.kwd_patterns)
+            ]
+            return TpyClassPattern(cls, positional, keywords, loc=loc)
+
+        elif isinstance(node, ast.MatchValue):
+            if isinstance(node.value, ast.Constant):
+                return TpyLiteralPattern(node.value.value, loc=loc)
+            if isinstance(node.value, ast.Attribute):
+                expr = self._parse_expr(node.value)
+                return TpyValuePattern(expr, loc=loc)
+            raise ParseError("Unsupported match value pattern", node)
+
+        elif isinstance(node, ast.MatchSingleton):
+            return TpyLiteralPattern(node.value, loc=loc)
+
+        elif isinstance(node, ast.MatchOr):
+            patterns = [self._parse_pattern(p) for p in node.patterns]
+            return TpyOrPattern(patterns, loc=loc)
+
+        raise ParseError(f"Unsupported pattern: {type(node).__name__}", node)
 
     def _parse_expr(self, node: ast.expr) -> TpyExpr:
         """Parse an expression."""

@@ -2480,7 +2480,8 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Emits C++ `using Shape = std::variant<Circle, Rect>;` in the header
   - `isinstance(x, Shape)` where `Shape` is a type alias is not yet supported; isinstance on concrete member types only
   - Type aliases can be imported cross-module: `from shapes import Shape`
-  - **Not yet supported**: `isinstance(x, (A, B))` tuple form, pattern matching on variants, `isinstance(x, Protocol)` on concrete-typed variables
+  - **Not yet supported**: `isinstance(x, (A, B))` tuple form, `isinstance(x, Protocol)` on concrete-typed variables
+  - **Working**: `match`/`case` pattern matching on union subjects (see Control Flow > Other)
 - **Working**: `T | None` for non-value types (records, lists, arrays) → nullable pointer (`T*`)
   - Locals, parameters, returns: `T*` (nullable pointer)
   - `x is None` / `x is not None` for null checks
@@ -2593,7 +2594,13 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 ### Other
 - **Working**: `return`, `pass`
 - **Working**: `del obj[key]` -- element deletion via `__delitem__` dunder (dict, list, user types)
-- **Open**: `match`/`case` → switch or if/else chain
+- **Partial**: `match`/`case` -- structural pattern matching on union subjects
+  - Class patterns (`case Circle():`, `case Circle(radius=r):`), wildcard (`case _:`), capture (`case x:`), as-pattern (`case Dog() as d:`)
+  - Keyword field bindings in class patterns
+  - Subject narrowing: direct field access on the subject variable inside arms (e.g., `case Circle(): print(s.radius)`)
+  - Compiles to if/elif chain with `std::holds_alternative`/`std::get`
+  - Error diagnostics: non-member type, duplicate case, non-union subject, unreachable case after wildcard
+  - **Not yet**: positional patterns, literal/value/enum patterns, or-patterns, guard clauses, exhaustiveness warnings, switch codegen
 
 ---
 

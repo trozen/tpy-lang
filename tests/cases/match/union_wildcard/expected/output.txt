@@ -1,0 +1,4 @@
+dog: Rex
+other
+is dog
+not dog
