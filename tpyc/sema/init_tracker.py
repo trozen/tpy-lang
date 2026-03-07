@@ -9,16 +9,11 @@ would be undefined behavior in generated C++.
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+from .flow_facts import FlowFacts
+
 if TYPE_CHECKING:
     from ..typesys import TpyType
     from .context import SemanticContext
-
-# (definitely_assigned, init_terminated, rvalue_vars, param_provenance_vars,
-#  non_null_ptr_vars, narrowed_types, consumed_vars)
-FlowState = tuple[frozenset[str], bool, frozenset[str], frozenset[str],
-                  frozenset[str],
-                  frozenset[tuple[str, 'TpyType']],
-                  frozenset[str]]
 
 
 class InitTracker:
@@ -27,23 +22,25 @@ class InitTracker:
     def __init__(self, ctx: SemanticContext):
         self.ctx = ctx
 
-    def save(self) -> FlowState:
-        return (frozenset(self.ctx.definitely_assigned),
-                self.ctx.init_terminated,
-                frozenset(self.ctx.rvalue_vars),
-                frozenset(self.ctx.param_provenance_vars),
-                frozenset(self.ctx.non_null_ptr_vars),
-                frozenset(self.ctx.narrowed_types.items()),
-                frozenset(self.ctx.consumed_vars))
+    def save(self) -> FlowFacts:
+        return FlowFacts(
+            definitely_assigned=frozenset(self.ctx.definitely_assigned),
+            init_terminated=self.ctx.init_terminated,
+            rvalue_vars=frozenset(self.ctx.rvalue_vars),
+            param_provenance_vars=frozenset(self.ctx.param_provenance_vars),
+            non_null_ptr_vars=frozenset(self.ctx.non_null_ptr_vars),
+            narrowed_types=frozenset(self.ctx.narrowed_types.items()),
+            consumed_vars=frozenset(self.ctx.consumed_vars),
+        )
 
-    def restore(self, state: FlowState) -> None:
-        self.ctx.definitely_assigned = set(state[0])
-        self.ctx.init_terminated = state[1]
-        self.ctx.rvalue_vars = set(state[2])
-        self.ctx.param_provenance_vars = set(state[3])
-        self.ctx.non_null_ptr_vars = set(state[4])
-        self.ctx.narrowed_types = dict(state[5])
-        self.ctx.consumed_vars = set(state[6])
+    def restore(self, state: FlowFacts) -> None:
+        self.ctx.definitely_assigned = set(state.definitely_assigned)
+        self.ctx.init_terminated = state.init_terminated
+        self.ctx.rvalue_vars = set(state.rvalue_vars)
+        self.ctx.param_provenance_vars = set(state.param_provenance_vars)
+        self.ctx.non_null_ptr_vars = set(state.non_null_ptr_vars)
+        self.ctx.narrowed_types = dict(state.narrowed_types)
+        self.ctx.consumed_vars = set(state.consumed_vars)
 
     def mark_assigned(self, name: str) -> None:
         self.ctx.definitely_assigned.add(name)
@@ -73,92 +70,25 @@ class InitTracker:
 
     def apply_loop_entry_facts(
         self,
-        before: FlowState,
+        before: FlowFacts,
         condition_type_facts: dict[str, TpyType] | None = None,
     ) -> None:
         """Apply flow facts at loop body entry.
 
-        Restores the state from just before the loop (before[5]), so that
-        outer narrowing proven by enclosing if-blocks is preserved inside
-        the loop body. Any additional narrowing the loop condition itself
+        Restores the state from just before the loop, so that outer
+        narrowing proven by enclosing if-blocks is preserved inside the
+        loop body. Any additional narrowing the loop condition itself
         proves (e.g. ``while x is not None``) is layered on top.
         """
-        self.ctx.definitely_assigned = set(before[0])
+        self.ctx.definitely_assigned = set(before.definitely_assigned)
         self.ctx.init_terminated = False
-        self.ctx.rvalue_vars = set(before[2])
-        self.ctx.param_provenance_vars = set(before[3])
-        self.ctx.non_null_ptr_vars = set(before[4])
-        # Restore outer narrowing from saved state, then layer on any
-        # narrowing the loop condition itself proves.
-        self.ctx.narrowed_types = dict(before[5])
-        self.ctx.consumed_vars = set(before[6])
+        self.ctx.rvalue_vars = set(before.rvalue_vars)
+        self.ctx.param_provenance_vars = set(before.param_provenance_vars)
+        self.ctx.non_null_ptr_vars = set(before.non_null_ptr_vars)
+        self.ctx.narrowed_types = dict(before.narrowed_types)
+        self.ctx.consumed_vars = set(before.consumed_vars)
         if condition_type_facts is not None:
             self.ctx.narrowed_types.update(condition_type_facts)
 
-    def merge_branches(self, then_state: FlowState, else_state: FlowState) -> None:
-        then_assigned, then_term, then_rvalue, then_prov, then_nn_ptr, then_narrowed, then_consumed = then_state
-        else_assigned, else_term, else_rvalue, else_prov, else_nn_ptr, else_narrowed, else_consumed = else_state
-        if then_term and else_term:
-            self.ctx.definitely_assigned = set(then_assigned | else_assigned)
-            self.ctx.init_terminated = True
-        elif then_term:
-            self.ctx.definitely_assigned = set(else_assigned)
-            self.ctx.init_terminated = False
-        elif else_term:
-            self.ctx.definitely_assigned = set(then_assigned)
-            self.ctx.init_terminated = False
-        else:
-            self.ctx.definitely_assigned = set(then_assigned & else_assigned)
-            self.ctx.init_terminated = False
-        # Rvalue merge follows the same logic as definitely_assigned:
-        # a terminated branch can't reach the code after the if-statement.
-        if then_term and else_term:
-            self.ctx.rvalue_vars = set(then_rvalue | else_rvalue)
-        elif then_term:
-            self.ctx.rvalue_vars = set(else_rvalue)
-        elif else_term:
-            self.ctx.rvalue_vars = set(then_rvalue)
-        else:
-            self.ctx.rvalue_vars = set(then_rvalue & else_rvalue)
-        # Provenance merge: intersection when both branches reach the merge
-        # point -- the variable is only param-derived if both paths agree.
-        if then_term and else_term:
-            self.ctx.param_provenance_vars = set(then_prov | else_prov)
-        elif then_term:
-            self.ctx.param_provenance_vars = set(else_prov)
-        elif else_term:
-            self.ctx.param_provenance_vars = set(then_prov)
-        else:
-            self.ctx.param_provenance_vars = set(then_prov & else_prov)
-        # Non-null pointer merge: intersection when both branches live.
-        if then_term and else_term:
-            self.ctx.non_null_ptr_vars = set(then_nn_ptr | else_nn_ptr)
-        elif then_term:
-            self.ctx.non_null_ptr_vars = set(else_nn_ptr)
-        elif else_term:
-            self.ctx.non_null_ptr_vars = set(then_nn_ptr)
-        else:
-            self.ctx.non_null_ptr_vars = set(then_nn_ptr & else_nn_ptr)
-        # Type narrowing merge: intersection when both branches live.
-        then_narrowed_dict = dict(then_narrowed)
-        else_narrowed_dict = dict(else_narrowed)
-        if then_term and else_term:
-            merged = {**then_narrowed_dict, **else_narrowed_dict}
-        elif then_term:
-            merged = else_narrowed_dict
-        elif else_term:
-            merged = then_narrowed_dict
-        else:
-            merged = {k: v for k, v in then_narrowed_dict.items()
-                      if k in else_narrowed_dict and else_narrowed_dict[k] == v}
-        self.ctx.narrowed_types = merged
-        # Consumed-vars merge: union when both branches live (conservative --
-        # if either path consumed a variable, it may be consumed after the if).
-        if then_term and else_term:
-            self.ctx.consumed_vars = set(then_consumed | else_consumed)
-        elif then_term:
-            self.ctx.consumed_vars = set(else_consumed)
-        elif else_term:
-            self.ctx.consumed_vars = set(then_consumed)
-        else:
-            self.ctx.consumed_vars = set(then_consumed | else_consumed)
+    def merge_branches(self, then_state: FlowFacts, else_state: FlowFacts) -> None:
+        self.restore(FlowFacts.merge(then_state, else_state))

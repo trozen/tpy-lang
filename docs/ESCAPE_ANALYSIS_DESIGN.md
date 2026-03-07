@@ -14,7 +14,7 @@
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
-| -- | FlowFacts refactor (unified flow state class) | M | Not started | -- |
+| -- | FlowFacts refactor (unified flow state class) | M | Done | -- |
 | 6 | Borrow set tracking + conflict detection | L | Not started | [6](#6-intra-function-borrow-checking) |
 | 6a | Container mutation during iteration | S-M | Not started | [6a](#6a-container-mutation-during-iteration) |
 | 6b | For-loop const-ref binding | S-M | Not started | [6b](#6b-for-loop-const-ref-binding) |
