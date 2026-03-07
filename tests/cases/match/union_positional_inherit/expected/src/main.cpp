@@ -8,18 +8,23 @@ namespace tpy_user::main {
 void describe(std::variant<Child, Other>& s) {
     // 18:     match s:
     auto& __match_subject = s;
-    if (std::holds_alternative<Child>(__match_subject)) {
-        auto& __case_0 = std::get<Child>(__match_subject);
+    switch (__match_subject.index()) {
+    case 0: {
+        auto& __case_0 = std::get<0>(__match_subject);
         auto& a = __case_0.x;
         auto& b = __case_0.y;
         auto& c = __case_0.z;
         // 20:             print(a + b + c)
         std::cout << tpy::print_float(((((a) + (b))) + (c))) << "\n";
-    } else if (std::holds_alternative<Other>(__match_subject)) {
-        auto& __case_1 = std::get<Other>(__match_subject);
+        break;
+    }
+    case 1: {
+        auto& __case_1 = std::get<1>(__match_subject);
         auto& v = __case_1.v;
         // 22:             print(v)
         std::cout << tpy::print_float(v) << "\n";
+        break;
+    }
     }
 }
 

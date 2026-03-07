@@ -8,18 +8,23 @@ namespace tpy_user::main {
 void describe(std::variant<Label, Point>& s) {
     // 15:     match s:
     auto& __match_subject = s;
-    if (std::holds_alternative<Point>(__match_subject)) {
-        auto& __case_0 = std::get<Point>(__match_subject);
+    switch (__match_subject.index()) {
+    case 1: {
+        auto& __case_0 = std::get<1>(__match_subject);
         auto& px = __case_0.x;
         auto& py = __case_0.y;
         auto& pz = __case_0.z;
         // 17:             print(px + py + pz)
         std::cout << tpy::print_float(((((px) + (py))) + (pz))) << "\n";
-    } else if (std::holds_alternative<Label>(__match_subject)) {
-        auto& __case_1 = std::get<Label>(__match_subject);
+        break;
+    }
+    case 0: {
+        auto& __case_1 = std::get<0>(__match_subject);
         auto& t = __case_1.text;
         // 19:             print(t)
         std::cout << t << "\n";
+        break;
+    }
     }
 }
 

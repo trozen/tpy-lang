@@ -9,16 +9,21 @@ std::string describe(std::variant<Cat, Dog>& a) {
     // 13:     match a:
     std::string n;
     auto& __match_subject = a;
-    if (std::holds_alternative<Dog>(__match_subject)) {
-        auto& __case_0 = std::get<Dog>(__match_subject);
+    switch (__match_subject.index()) {
+    case 1: {
+        auto& __case_0 = std::get<1>(__match_subject);
         n = __case_0.name;
         // 15:             n = "dog:" + n
         n = (tpy::str_concat("dog:", n));
-    } else if (std::holds_alternative<Cat>(__match_subject)) {
-        auto& __case_1 = std::get<Cat>(__match_subject);
+        break;
+    }
+    case 0: {
+        auto& __case_1 = std::get<0>(__match_subject);
         n = __case_1.name;
         // 17:             n = "cat:" + n
         n = (tpy::str_concat("cat:", n));
+        break;
+    }
     }
     // 18:     return n
     return n;

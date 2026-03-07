@@ -8,15 +8,20 @@ namespace tpy_user::main {
 std::string describe(std::variant<Cat, Dog>& a) {
     // 13:     match a:
     auto& __match_subject = a;
-    if (std::holds_alternative<Dog>(__match_subject)) {
-        auto& __case_0 = std::get<Dog>(__match_subject);
+    switch (__match_subject.index()) {
+    case 1: {
+        auto& __case_0 = std::get<1>(__match_subject);
         auto& n = __case_0.name;
-        auto& d = std::get<Dog>(__match_subject);
+        auto& d = __case_0;
         // 15:             return "dog: " + n + " (" + d.name + ")"
         return (tpy::str_concat((tpy::str_concat((tpy::str_concat((tpy::str_concat("dog: ", n)), " (")), d.name)), ")"));
-    } else {
+        break;
+    }
+    default: {
         // 17:             return "other"
         return "other";
+        break;
+    }
     }
 }
 

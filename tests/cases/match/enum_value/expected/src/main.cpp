@@ -50,15 +50,22 @@ namespace tpy_user::main {
 std::string describe(Color c) {
     // 10:     match c:
     auto& __match_subject = c;
-    if (__match_subject == Color::Red) {
+    switch (__match_subject) {
+    case Color::Red: {
         // 12:             return "red"
         return "red";
-    } else if (__match_subject == Color::Green) {
+        break;
+    }
+    case Color::Green: {
         // 14:             return "green"
         return "green";
-    } else {
+        break;
+    }
+    default: {
         // 16:             return "other"
         return "other";
+        break;
+    }
     }
 }
 

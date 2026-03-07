@@ -8,16 +8,21 @@ namespace tpy_user::main {
 void describe(std::variant<Circle, Rect>& s) {
     // 14:     match s:
     auto& __match_subject = s;
-    if (std::holds_alternative<Circle>(__match_subject)) {
-        auto& __case_0 = std::get<Circle>(__match_subject);
+    switch (__match_subject.index()) {
+    case 0: {
+        auto& __case_0 = std::get<0>(__match_subject);
         auto& r = __case_0.radius;
         // 16:             print(r)
         std::cout << tpy::print_float(r) << "\n";
-    } else if (std::holds_alternative<Rect>(__match_subject)) {
-        auto& __case_1 = std::get<Rect>(__match_subject);
+        break;
+    }
+    case 1: {
+        auto& __case_1 = std::get<1>(__match_subject);
         auto& h = __case_1.height;
         // 18:             print(h)
         std::cout << tpy::print_float(h) << "\n";
+        break;
+    }
     }
 }
 

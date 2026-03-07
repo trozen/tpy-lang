@@ -8,17 +8,24 @@ namespace tpy_user::main {
 std::string describe(std::variant<Bird, Cat, Dog>& a) {
     // 18:     match a:
     auto& __match_subject = a;
-    if (std::holds_alternative<Dog>(__match_subject)) {
-        auto& __case_0 = std::get<Dog>(__match_subject);
+    switch (__match_subject.index()) {
+    case 2: {
+        auto& __case_0 = std::get<2>(__match_subject);
         // 20:             return "dog"
         return "dog";
-    } else if (std::holds_alternative<Cat>(__match_subject)) {
-        auto& __case_1 = std::get<Cat>(__match_subject);
+        break;
+    }
+    case 1: {
+        auto& __case_1 = std::get<1>(__match_subject);
         // 22:             return "cat"
         return "cat";
-    } else {
+        break;
+    }
+    default: {
         // 24:             return "other"
         return "other";
+        break;
+    }
     }
 }
 

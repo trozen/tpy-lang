@@ -10,7 +10,7 @@
 | 4 | Concrete record subjects (field-value matching), Optional subjects | Not started |
 | 5 | Or-patterns (`Dog() \| Cat():`), guard clauses (`if cond`) | Not started |
 | 6 | Exhaustiveness warnings (union, enum, Optional) | Not started (duplicate case + unreachable-after-wildcard detection done in Phase 1) |
-| 7 | `switch` codegen for unions (`switch (s.index())`) and enums (`switch (e)`); if/elif fallback when guards present | Not started |
+| 7 | `switch` codegen for unions (`switch (s.index())`) and enums (`switch (e)`); if/elif fallback when guards present | Done |
 
 ### Future Extensions
 
@@ -23,6 +23,7 @@
 | Builtin type patterns | `case int():` / `case str():` as type checks |
 | Or-pattern body dedup | Lambda-based body sharing instead of codegen duplication |
 | User-defined `__match_args__` | Explicit override of auto-generated positional mapping |
+| String switch via hash | `switch (hash(s))` with `==` verification per case; eliminates linear scan for many string patterns |
 
 ---
 

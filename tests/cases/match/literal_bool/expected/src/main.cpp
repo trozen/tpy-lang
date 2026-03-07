@@ -9,12 +9,17 @@ namespace tpy_user::main {
 std::string describe(bool b) {
     // 3:     match b:
     auto& __match_subject = b;
-    if (__match_subject == true) {
+    switch (__match_subject) {
+    case true: {
         // 5:             return "yes"
         return "yes";
-    } else if (__match_subject == false) {
+        break;
+    }
+    case false: {
         // 7:             return "no"
         return "no";
+        break;
+    }
     }
 }
 

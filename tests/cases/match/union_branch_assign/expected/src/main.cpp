@@ -9,14 +9,19 @@ int32_t describe(std::variant<Cat, Dog>& a) {
     // 15:     match a:
     int32_t result;
     auto& __match_subject = a;
-    if (std::holds_alternative<Dog>(__match_subject)) {
-        auto& __case_0 = std::get<Dog>(__match_subject);
+    switch (__match_subject.index()) {
+    case 1: {
+        auto& __case_0 = std::get<1>(__match_subject);
         auto& x = __case_0.age;
         // 17:             result: Int32 = x
         result = x;
-    } else {
+        break;
+    }
+    default: {
         // 19:             result = 0
         result = 0;
+        break;
+    }
     }
     // 20:     return result
     return result;

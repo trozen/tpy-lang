@@ -2595,15 +2595,15 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: `return`, `pass`
 - **Working**: `del obj[key]` -- element deletion via `__delitem__` dunder (dict, list, user types)
 - **Partial**: `match`/`case` -- structural pattern matching
-  - **Union subjects**: class patterns (`case Circle():`, `case Circle(radius=r):`), subject narrowing, `std::holds_alternative`/`std::get` codegen
-  - **Enum subjects**: value patterns (`case Color.Red:`), `==` comparison codegen
-  - **Primitive subjects** (`int`, `str`, `bool`, `float`): literal patterns (`case 42:`, `case "quit":`, `case True:`), `==` comparison codegen
+  - **Union subjects**: class patterns (`case Circle():`, `case Circle(radius=r):`), subject narrowing, `switch (s.index())` codegen with `std::get<N>`
+  - **Enum subjects**: value patterns (`case Color.Red:`), `switch` codegen
+  - **Primitive subjects** (`int`, `bool`): literal patterns, `switch` codegen; (`str`, `float`): if/elif fallback
   - Wildcard (`case _:`), capture (`case x:`), as-pattern (`case Dog() as d:`)
   - Keyword and positional field bindings in class patterns (`case Rect(w, h):`, `case Point(x, y, z=pz):`)
   - Positional patterns resolved via field declaration order (implicit `__match_args__` for all records, not just `@dataclass` -- CPython extension)
   - Pattern binding scope: bindings leak to enclosing scope (like Python), pre-declared when defined in all arms
   - Error diagnostics: non-member type, duplicate case, type mismatch, unreachable case after wildcard, too many positional patterns, positional/keyword overlap
-  - **Not yet**: or-patterns, guard clauses, None singleton pattern, exhaustiveness warnings, switch codegen
+  - **Not yet**: or-patterns, guard clauses, None singleton pattern, exhaustiveness warnings
 
 ---
 
