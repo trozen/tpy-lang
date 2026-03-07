@@ -1611,6 +1611,45 @@ class DictType(NamedType):
         return DictType(types[0], types[1])
 
 
+class SetType(NamedType):
+    """Set type: set[T] -> tpy::ordered_set<T>"""
+
+    def __init__(self, element_type: TpyType):
+        NamedType.__init__(self, name="set", type_args=(element_type,),
+                           _module_qname="builtins.set")
+
+    @property
+    def element_type(self) -> TpyType:
+        return self.type_args[0]
+
+    def to_cpp(self) -> str:
+        return f"tpy::ordered_set<{self.element_type.to_cpp()}>"
+
+    def __str__(self) -> str:
+        return f"set[{self.element_type}]"
+
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.set"
+
+    def is_send(self) -> bool:
+        return self.element_type.is_send()
+
+    def is_sync(self) -> bool:
+        return False
+
+    def get_element_type(self) -> Optional[TpyType]:
+        return self.element_type
+
+    def get_iteration_element_type(self) -> Optional[TpyType]:
+        return self.element_type
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.element_type,)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return SetType(types[0])
+
+
 class DictKeysViewType(NamedType):
     """Dict keys view: d.keys() -> tpy::dict_keys_view<K, V>"""
 
@@ -1907,6 +1946,8 @@ def container_to_str_template(typ: TpyType) -> str | None:
         return "tpy::list_to_str({0})"
     if isinstance(typ, DictType):
         return "tpy::dict_to_str({0})"
+    if isinstance(typ, SetType):
+        return "tpy::set_to_str({0})"
     return None
 
 

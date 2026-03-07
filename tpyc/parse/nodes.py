@@ -255,6 +255,12 @@ class TpyDictLiteral(TpyExpr):
 
 
 @dataclass
+class TpySetLiteral(TpyExpr):
+    """Set literal: {value, value, ...}"""
+    elements: list[TpyExpr]
+
+
+@dataclass
 class TpySlice(TpyExpr):
     """Slice expression: lower:upper (step not yet supported)."""
     lower: TpyExpr | None = None

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, CharType,
     NamedType, OptionalType, NoneType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
-    ListType, ListRepeatType, DictType, DictKeysViewType, DictValuesViewType, DictItemsViewType,
+    ListType, ListRepeatType, DictType, SetType, DictKeysViewType, DictValuesViewType, DictItemsViewType,
     ArrayType, SpanType, TupleType, OwnType, is_protocol_type, unwrap_readonly, is_any_str_type,
 )
 from ..parse import (
@@ -259,6 +259,9 @@ class BuiltinGenerator:
             elif isinstance(arg_type, DictType):
                 # Dict uses DictPrinter for {k: v, ...} formatting
                 parts.append(f'tpy::DictPrinter({self._gen_expr_deref(arg)})')
+            elif isinstance(arg_type, SetType):
+                # Set uses SetPrinter for {a, b, c} or set() formatting
+                parts.append(f'tpy::SetPrinter({self._gen_expr_deref(arg)})')
             elif isinstance(arg_type, (DictKeysViewType, DictValuesViewType, DictItemsViewType)):
                 # Dict views use their own operator<< for printing
                 parts.append(self._gen_expr_deref(arg))

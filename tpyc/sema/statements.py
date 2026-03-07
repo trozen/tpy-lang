@@ -1541,8 +1541,20 @@ class StatementAnalyzer:
             stmt.is_list_extend = True
             return
         if not is_numeric_target and not is_str_target:
+            # StrView += would dangle (result is a temporary string assigned to a view)
+            if isinstance(target_type, StrViewType):
+                raise self.ctx.error(
+                    f"Augmented assignment is not supported for StrView (result would dangle)",
+                    stmt,
+                )
+            # For non-numeric/string types, try resolving the binary operator
+            # via the type registry (e.g. set |=, &=, -=, ^=)
+            operators = OperatorResolver(self.ctx)
+            if result := operators.resolve_binop(target_type, stmt.op, value_type):
+                stmt.resolved_binop = result
+                return
             raise self.ctx.error(
-                f"Augmented assignment target must be a numeric or string type, got {target_type}",
+                f"Operator '{stmt.op}=' is not supported for {target_type}",
                 stmt,
             )
         if is_numeric_target and not isinstance(value_type, (Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type)):

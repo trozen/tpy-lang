@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 
 from ..typesys import (
-    TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType, ListRepeatType, DictType,
+    TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType, ListRepeatType, DictType, SetType,
     PendingListType, PendingStrType, SpanType, StrType, StringType, StrViewType,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
     NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
@@ -17,7 +17,7 @@ from ..typesys import (
 )
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
-    TpyDictLiteral, TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp,
+    TpyDictLiteral, TpySetLiteral, TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp,
     TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyFunction,
     TpyIfExpr, TpyTupleLiteral, SourceLocation
 )
@@ -304,6 +304,12 @@ class TypeCompatibility:
             key_err = self.check_type_compatible(actual.key_type, expected.key_type, context, loc, source_expr)
             val_err = self.check_type_compatible(actual.value_type, expected.value_type, context, loc, source_expr)
             if key_err is None and val_err is None:
+                return None
+
+        # SetType compatibility: element types must be compatible
+        if isinstance(actual, SetType) and isinstance(expected, SetType):
+            elem_err = self.check_type_compatible(actual.element_type, expected.element_type, context, loc, source_expr)
+            if elem_err is None:
                 return None
 
         # Allow PendingStrType compatibility during first phase (before resolution)
@@ -668,7 +674,7 @@ class TypeCompatibility:
         if isinstance(expr, TpyCoerce):
             return self.is_dangling_return(expr.expr)
         # Array/dict literal - creates temporary
-        if isinstance(expr, (TpyArrayLiteral, TpyDictLiteral)):
+        if isinstance(expr, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
             return True
 
         # List repeat - creates temporary

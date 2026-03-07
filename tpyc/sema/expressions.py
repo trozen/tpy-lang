@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, CharType,
-    NamedType, PtrType, OwnType, ListType, DictType, PendingListType, ListRepeatType, TupleType, SpanType,
+    NamedType, PtrType, OwnType, ListType, DictType, SetType, PendingListType, ListRepeatType, TupleType, SpanType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
     FixedIntType, StringType, StrViewType, make_union,
@@ -23,7 +23,7 @@ from ..parse import (
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat,
+    TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyComprehensionGenerator,
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr,
@@ -115,6 +115,8 @@ class ExpressionAnalyzer:
             typ = self._analyze_tuple_literal(expr)
         elif isinstance(expr, TpyDictLiteral):
             typ = self._analyze_dict_literal(expr)
+        elif isinstance(expr, TpySetLiteral):
+            typ = self._analyze_set_literal(expr)
         elif isinstance(expr, TpyListRepeat):
             typ = self._analyze_list_repeat(expr)
         elif isinstance(expr, TpyListComprehension):
@@ -263,6 +265,16 @@ class ExpressionAnalyzer:
                 inner_hint = inner_hint.wrapped
             if isinstance(inner_hint, DictType):
                 result = self._analyze_dict_literal(expr, inner_hint.key_type, inner_hint.value_type)
+                self.ctx.set_expr_type(expr, result)
+                return result
+
+        # Non-empty set literal with set type hint
+        if isinstance(expr, TpySetLiteral) and expr.elements:
+            inner_hint = unwrap_readonly(type_hint)
+            if isinstance(inner_hint, OwnType):
+                inner_hint = inner_hint.wrapped
+            if isinstance(inner_hint, SetType):
+                result = self._analyze_set_literal(expr, inner_hint.element_type)
                 self.ctx.set_expr_type(expr, result)
                 return result
 
@@ -541,6 +553,14 @@ class ExpressionAnalyzer:
                 self.compat.check_type_compatible(
                     left_type, right_type.key_type,
                     f"dict key (expected {right_type.key_type})",
+                    loc=expr.loc,
+                )
+                return BOOL
+            # Set membership checks element type (O(1) hash lookup)
+            if isinstance(right_type, SetType):
+                self.compat.check_type_compatible(
+                    left_type, right_type.element_type,
+                    f"set element (expected {right_type.element_type})",
                     loc=expr.loc,
                 )
                 return BOOL
@@ -1211,6 +1231,44 @@ class ExpressionAnalyzer:
 
         self._validate_dict_key_type(key_type, expr)
         return DictType(key_type, value_type)
+
+    def _analyze_set_literal(
+        self, expr: TpySetLiteral,
+        expected_elem: TpyType | None = None,
+    ) -> TpyType:
+        """Analyze a set literal {value, ...}"""
+        if not expr.elements:
+            raise self.ctx.error(
+                "Empty set literal requires type annotation "
+                "(e.g. s: set[int] = set())", expr,
+            )
+
+        if expected_elem:
+            elem_types = [self.analyze_expr_with_hint(e, expected_elem) for e in expr.elements]
+        else:
+            elem_types = [self.analyze_expr(e) for e in expr.elements]
+
+        # Unify element types
+        elem_type = elem_types[0]
+        for i, et in enumerate(elem_types[1:], 2):
+            if isinstance(elem_type, IntLiteralType) and isinstance(et, IntLiteralType):
+                continue
+            if isinstance(et, IntLiteralType) and isinstance(elem_type, (Int32Type, BigIntType)):
+                continue
+            if isinstance(elem_type, IntLiteralType) and isinstance(et, (Int32Type, BigIntType)):
+                elem_type = et
+                continue
+            if et != elem_type:
+                raise self.ctx.error(
+                    f"Set has mixed element types: element {i} is {et}, "
+                    f"but earlier elements are {elem_type}", expr,
+                )
+
+        if isinstance(elem_type, IntLiteralType):
+            elem_type = expected_elem if expected_elem else self.ctx.default_int_for_literal(elem_type)
+
+        self._validate_dict_key_type(elem_type, expr)
+        return SetType(elem_type)
 
     def _analyze_list_repeat(self, expr: TpyListRepeat) -> TpyType:
         """Analyze a list repetition: [elements...] * count"""

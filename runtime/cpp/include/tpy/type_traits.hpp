@@ -70,13 +70,18 @@ template<> struct is_send<std::string_view> : std::false_type {};
 template<typename T, typename A> struct is_send<std::vector<T, A>> : is_send<T> {};
 template<typename T, std::size_t N> struct is_send<std::array<T, N>> : is_send<T> {};
 
-// Forward declaration for ordered_map specialization
+// Forward declarations for container specializations
 template<typename K, typename V> class ordered_map;
+template<typename T> class ordered_set;
 
 // ordered_map: Send if both key and value are Send
 template<typename K, typename V>
 struct is_send<ordered_map<K, V>>
     : std::bool_constant<is_send<K>::value && is_send<V>::value> {};
+
+// ordered_set: Send if element is Send
+template<typename T>
+struct is_send<ordered_set<T>> : is_send<T> {};
 
 template<typename T>
 concept Send = is_send<T>::value;
@@ -98,6 +103,7 @@ template<typename T> struct is_sync<const T*> : is_sync<T> {};
 // Mutable containers are not Sync
 template<typename T, typename A> struct is_sync<std::vector<T, A>> : std::false_type {};
 template<typename K, typename V> struct is_sync<ordered_map<K, V>> : std::false_type {};
+template<typename T> struct is_sync<ordered_set<T>> : std::false_type {};
 template<typename T, std::size_t N> struct is_sync<std::array<T, N>> : is_sync<T> {};
 
 template<typename T>

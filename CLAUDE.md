@@ -134,6 +134,7 @@ tests/
 │   ├── control_flow/         # if/else, for loops, break/continue
 │   ├── defaults/             # Default argument values
 │   ├── dict/                 # Dict type, subscript, methods
+│   ├── set/                  # Set type, methods, operators, algebra
 │   ├── enum/                 # Enum types, auto(), cross-module, comparison
 │   ├── float/                # Float operations
 │   ├── generics/             # Generic types, functions, inference, bounds
@@ -312,7 +313,9 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `bigint.hpp` | `BigInt` arbitrary precision integer (custom runtime implementation) |
 | `container_ops.hpp` | Index normalization, `get_item`/`set_item`, list methods |
 | `ordered_map.hpp` | `tpy::ordered_map<K,V>` insertion-order-preserving hash map |
+| `ordered_set.hpp` | `tpy::ordered_set<T>` insertion-order-preserving hash set |
 | `dict_ops.hpp` | Dict helpers: `dict_get`, `dict_pop`, `DictPrinter` |
+| `set_ops.hpp` | Set helpers: `set_remove`, `set_pop`, `set_union`, `SetPrinter` |
 | `dunder.hpp` | Protocol free functions (`__len__`, `__getitem__`, `__setitem__`, `__delitem__`) |
 | `protocols.hpp` | `Sized`, `Sequence` concepts |
 | `printing.hpp` | `ListPrinter`, `ValuePrinter` for collections |
@@ -359,7 +362,6 @@ Note: `@noalloc` is parsed but not yet enforced. See `docs/LANGUAGE_FEATURES.md`
 ## Current Limitations
 
 The compiler is a proof-of-concept. Not yet implemented:
-- `set`
 - Exception handling (`try`/`except`/`raise`)
 - `async`/`await`, `lambda`, `yield`
 - List slicing (`items[1:3]`)
@@ -382,6 +384,7 @@ The compiler is a proof-of-concept. Not yet implemented:
 | `Optional[T]` | `std::optional<T>` |
 | `tuple[T1, T2, ...]` | `std::tuple<T1, T2, ...>` |
 | `dict[K, V]` | `tpy::ordered_map<K, V>` |
+| `set[T]` | `tpy::ordered_set<T>` |
 | `list[T]` | `std::vector<T>` |
 | `Array[T, N]` | `std::array<T, N>` |
 | `Span[T]` | `std::span<T>` |

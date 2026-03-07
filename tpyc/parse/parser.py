@@ -23,7 +23,7 @@ from .nodes import (
     TpyFStringValue, TpyFString, FSTRING_CONV_ASCII,
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct, TpyCall, TpyMethodCall,
-    TpyFieldAccess, TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpyListRepeat,
+    TpyFieldAccess, TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyComprehensionGenerator, TpyListComprehension,
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr,
@@ -153,7 +153,6 @@ class Parser:
     """Parser for TurboPython source code."""
 
     FORBIDDEN_CONSTRUCTS = {
-        "set",
         "try", "with", "async", "await",
         "lambda", "yield", "nonlocal",
     }
@@ -1996,6 +1995,10 @@ class Parser:
             keys = [self._parse_expr(k) for k in node.keys]
             values = [self._parse_expr(v) for v in node.values]
             return TpyDictLiteral(keys=keys, values=values, loc=loc)
+
+        elif isinstance(node, ast.Set):
+            elements = [self._parse_expr(e) for e in node.elts]
+            return TpySetLiteral(elements=elements, loc=loc)
 
         elif isinstance(node, ast.Subscript):
             # Subscript can be indexing (values[i]) or type annotation (Array[T, N])

@@ -360,7 +360,18 @@ log(f"x={x}")
   - `Iterable[T]` conformance: `dict[K,V]` and views conform to `Iterable` (`d` is `Iterable[K]`, `d.keys()` is `Iterable[K]`, `d.values()` is `Iterable[V]`, `d.items()` is `Iterable[tuple[K, V]]`) and can be passed to generic functions accepting `Iterable[T]`
   - Keys: `str`, `int`, fixed-width ints, `float`, `bool`, `Char`
   - Return by value requires `Own[dict[K, V]]`
-- **Planned**: `set` - hash set (requires allocation)
+- **Working**: `set[T]` - ordered hash set -> `tpy::ordered_set<T>` (insertion-order preserving)
+  - Literals `{a, b, ...}`, `len(s)`, `x in s`, `for x in s`
+  - Constructor: `set(iterable)` from any iterable
+  - Methods: `add(v)`, `discard(v)`, `remove(v)`, `pop()`, `clear()`, `copy()`
+  - Algebra: `union(other)`, `intersection(other)`, `difference(other)`, `symmetric_difference(other)`
+  - Predicates: `issubset(other)`, `issuperset(other)`, `isdisjoint(other)`
+  - In-place: `update(other)`, `intersection_update(other)`, `difference_update(other)`, `symmetric_difference_update(other)`
+  - Operators: `|` (union), `&` (intersection), `-` (difference), `^` (symmetric difference)
+  - Comparison: `<=` (subset), `<` (strict subset), `>=` (superset), `>` (strict superset)
+  - Augmented: `|=`, `&=`, `-=`, `^=`
+  - Elements must be hashable (same constraint as dict keys)
+  - Return by value requires `Own[set[T]]`
 - **Open**: Bounded variants: `BoundedList[T, N]`, `BoundedDict[K, V, N]`
 
 #### Array Literals and Span (Working)

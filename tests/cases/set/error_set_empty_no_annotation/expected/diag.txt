@@ -1,0 +1,1 @@
+main.py:3: error: Cannot infer element type for set(); use set[T](), provide a type annotation, or pass an iterable

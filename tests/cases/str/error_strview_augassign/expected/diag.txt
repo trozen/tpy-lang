@@ -1,1 +1,1 @@
-main.py:6: error: Augmented assignment target must be a numeric or string type, got StrView
+main.py:6: error: Augmented assignment is not supported for StrView (result would dangle)

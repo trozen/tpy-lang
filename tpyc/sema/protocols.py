@@ -13,7 +13,7 @@ from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, OwnType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, is_protocol_type,
     FixedIntType, BigIntType, FloatType, Float32Type, BoolType, StrType, StringType, StrViewType, CharType,
-    ListType, ListRepeatType, DictType, ArrayType, TupleType, SpanType, OptionalType, IntLiteralType, PendingListType, BIGINT,
+    ListType, ListRepeatType, DictType, SetType, ArrayType, TupleType, SpanType, OptionalType, IntLiteralType, PendingListType, BIGINT,
     EnumType, IntEnumType,
     impl_proto_matches_name, get_protocol_qname,
 )
@@ -230,7 +230,7 @@ class ProtocolChecker:
                                StrType, StringType, StrViewType, CharType)):
             return True
         # Empty containers are default-constructible
-        if isinstance(actual, (ListType, DictType, SpanType)):
+        if isinstance(actual, (ListType, DictType, SetType, SpanType)):
             return True
         # Optional[T] is default-constructible (std::nullopt)
         if isinstance(actual, OptionalType):

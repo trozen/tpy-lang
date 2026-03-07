@@ -8,7 +8,7 @@ from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import (
     INT32, UINT64, BIGINT, FLOAT, FLOAT32, CHAR, STR, STRING, STRVIEW, VOID, BOOL, RANGE, RangeType, ListType,
-    DictType, DictKeysViewType, DictValuesViewType, DictItemsViewType,
+    DictType, DictKeysViewType, DictValuesViewType, DictItemsViewType, SetType,
     NamedType, TypeParamRef, OwnType, OptionalType, TupleType, SpanType, ALL_FIXED_INTS, FixedIntType,
 )
 
@@ -584,6 +584,181 @@ def init_module() -> BuiltinModule:
             is_readonly=True, is_pure=True,
         )],
     })
+
+    # set[T]: Ordered hash set backed by tpy::ordered_set<T>
+    module.type("set", cpp_type="tpy::ordered_set<{T}>",
+                type_params=["T"],
+                param_kinds=[TypeParamKind.TYPE],
+                type_factory=lambda t: SetType(t),
+                extends=["NativeIterable[T]", "Iterable[T]"],
+                methods={
+        "__len__": [MethodDef(
+            params=[],
+            returns=INT32,
+            cpp="{self}.size()",
+            is_readonly=True, is_pure=True,
+        )],
+        "__iter__": [MethodDef(
+            params=[],
+            returns=NamedType("Iterator", (T,), is_protocol=True),
+            cpp="tpy::__iter__({self})",
+            is_readonly=True, is_pure=True,
+        )],
+        "add": [MethodDef(
+            params=[ParamDef("value", OwnType(T))],
+            returns=VOID,
+            cpp="{self}.insert({0})",
+        )],
+        "discard": [MethodDef(
+            params=[ParamDef("value", T)],
+            returns=VOID,
+            cpp="{self}.erase({0})",
+        )],
+        "remove": [MethodDef(
+            params=[ParamDef("value", T)],
+            returns=VOID,
+            cpp="tpy::set_remove({self}, {0})",
+        )],
+        "pop": [MethodDef(
+            params=[],
+            returns=T,
+            cpp="tpy::set_pop({self})",
+        )],
+        "clear": [MethodDef(
+            params=[],
+            returns=VOID,
+            cpp="{self}.clear()",
+        )],
+        "copy": [MethodDef(
+            params=[],
+            returns=SetType(T),
+            cpp="tpy::set_copy({self})",
+            is_readonly=True, is_pure=True,
+        )],
+        "union": [MethodDef(
+            params=[ParamDef("other", SetType(T))],
+            returns=SetType(T),
+            cpp="tpy::set_union({self}, {0})",
+            is_readonly=True, is_pure=True,
+        )],
+        "intersection": [MethodDef(
+            params=[ParamDef("other", SetType(T))],
+            returns=SetType(T),
+            cpp="tpy::set_intersection({self}, {0})",
+            is_readonly=True, is_pure=True,
+        )],
+        "difference": [MethodDef(
+            params=[ParamDef("other", SetType(T))],
+            returns=SetType(T),
+            cpp="tpy::set_difference({self}, {0})",
+            is_readonly=True, is_pure=True,
+        )],
+        "symmetric_difference": [MethodDef(
+            params=[ParamDef("other", SetType(T))],
+            returns=SetType(T),
+            cpp="tpy::set_symmetric_difference({self}, {0})",
+            is_readonly=True, is_pure=True,
+        )],
+        "issubset": [MethodDef(
+            params=[ParamDef("other", SetType(T))],
+            returns=BOOL,
+            cpp="tpy::set_issubset({self}, {0})",
+            is_readonly=True, is_pure=True,
+        )],
+        "issuperset": [MethodDef(
+            params=[ParamDef("other", SetType(T))],
+            returns=BOOL,
+            cpp="tpy::set_issuperset({self}, {0})",
+            is_readonly=True, is_pure=True,
+        )],
+        "isdisjoint": [MethodDef(
+            params=[ParamDef("other", SetType(T))],
+            returns=BOOL,
+            cpp="tpy::set_isdisjoint({self}, {0})",
+            is_readonly=True, is_pure=True,
+        )],
+        "update": [MethodDef(
+            params=[ParamDef("other", SetType(T))],
+            returns=VOID,
+            cpp="tpy::set_update({self}, {0})",
+        )],
+        "intersection_update": [MethodDef(
+            params=[ParamDef("other", SetType(T))],
+            returns=VOID,
+            cpp="tpy::set_intersection_update({self}, {0})",
+        )],
+        "difference_update": [MethodDef(
+            params=[ParamDef("other", SetType(T))],
+            returns=VOID,
+            cpp="tpy::set_difference_update({self}, {0})",
+        )],
+        "symmetric_difference_update": [MethodDef(
+            params=[ParamDef("other", SetType(T))],
+            returns=VOID,
+            cpp="tpy::set_symmetric_difference_update({self}, {0})",
+        )],
+        # Operators
+        "__or__": [MethodDef(
+            params=[ParamDef("other", SetType(T))],
+            returns=SetType(T),
+            cpp="tpy::set_union({self}, {0})",
+            is_readonly=True, is_pure=True,
+        )],
+        "__and__": [MethodDef(
+            params=[ParamDef("other", SetType(T))],
+            returns=SetType(T),
+            cpp="tpy::set_intersection({self}, {0})",
+            is_readonly=True, is_pure=True,
+        )],
+        "__sub__": [MethodDef(
+            params=[ParamDef("other", SetType(T))],
+            returns=SetType(T),
+            cpp="tpy::set_difference({self}, {0})",
+            is_readonly=True, is_pure=True,
+        )],
+        "__xor__": [MethodDef(
+            params=[ParamDef("other", SetType(T))],
+            returns=SetType(T),
+            cpp="tpy::set_symmetric_difference({self}, {0})",
+            is_readonly=True, is_pure=True,
+        )],
+        # In-place operators
+        "__ior__": [MethodDef(
+            params=[ParamDef("other", SetType(T))],
+            returns=VOID,
+            cpp="tpy::set_update({self}, {0})",
+        )],
+        "__iand__": [MethodDef(
+            params=[ParamDef("other", SetType(T))],
+            returns=VOID,
+            cpp="tpy::set_intersection_update({self}, {0})",
+        )],
+        "__isub__": [MethodDef(
+            params=[ParamDef("other", SetType(T))],
+            returns=VOID,
+            cpp="tpy::set_difference_update({self}, {0})",
+        )],
+        "__ixor__": [MethodDef(
+            params=[ParamDef("other", SetType(T))],
+            returns=VOID,
+            cpp="tpy::set_symmetric_difference_update({self}, {0})",
+        )],
+    }, constructors=[
+        # set(iterator) from OptIterator
+        MethodDef(
+            params=[ParamDef("x", NamedType("OptIterator", (T,), is_protocol=True))],
+            returns=T,
+            cpp="tpy::set_collect<{T}>({0})",
+            is_readonly=True, is_pure=True,
+        ),
+        # set(iterable) from any iterable
+        MethodDef(
+            params=[ParamDef("x", NamedType("Iterable", (T,), is_protocol=True))],
+            returns=T,
+            cpp="tpy::set_from_range<{T}>({0})",
+            is_readonly=True, is_pure=True,
+        ),
+    ])
 
     module.register_type(STR, cpp_type="std::string",
         extends=["NativeIterable[Char]", "Iterable[Char]", "Equatable"],

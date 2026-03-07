@@ -10,7 +10,7 @@ from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, CharType,
-    NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, DictType,
+    NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, DictType, SetType,
     DictKeysViewType, DictValuesViewType, DictItemsViewType,
     PendingListType, ListRepeatType,
     SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
@@ -24,7 +24,7 @@ from ..parse import (
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
-    TpyArrayLiteral, TpyTupleLiteral, TupleElemCapture, TpyDictLiteral, TpyListRepeat, TpyListComprehension,
+    TpyArrayLiteral, TpyTupleLiteral, TupleElemCapture, TpyDictLiteral, TpySetLiteral, TpyListRepeat, TpyListComprehension,
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr,
 )
@@ -443,6 +443,9 @@ class ExpressionGenerator:
         elif isinstance(expr, TpyDictLiteral):
             return self._gen_dict_literal(expr)
 
+        elif isinstance(expr, TpySetLiteral):
+            return self._gen_set_literal(expr)
+
         elif isinstance(expr, TpyListRepeat):
             return self._gen_list_repeat(expr, target_type)
 
@@ -556,6 +559,9 @@ class ExpressionGenerator:
             right_resolved = self.types.get_resolved_type(expr.right)
             if isinstance(right_resolved, DictType):
                 # Dict membership: use .contains()
+                find_expr = f"({right}.contains({left}))"
+            elif isinstance(right_resolved, SetType):
+                # Set membership: O(1) via hash lookup
                 find_expr = f"({right}.contains({left}))"
             elif isinstance(right_resolved, DictKeysViewType):
                 # Keys view membership: O(1) via underlying map's hash lookup
@@ -1709,6 +1715,18 @@ class ExpressionGenerator:
             pairs.append(f"{{{k_cpp}, {v_cpp}}}")
         return f"tpy::ordered_map<{cpp_key}, {cpp_val}>({{{', '.join(pairs)}}})"
 
+    def _gen_set_literal(self, expr: TpySetLiteral) -> str:
+        """Generate set literal code: {a, b, ...} -> tpy::ordered_set<T>({a, b, ...})"""
+        set_type = self.ctx.get_expr_type(expr)
+        assert isinstance(set_type, SetType)
+        cpp_elem = set_type.element_type.to_cpp()
+
+        if not expr.elements:
+            return f"tpy::ordered_set<{cpp_elem}>()"
+
+        elems = [self.gen_expr_deref(e, set_type.element_type) for e in expr.elements]
+        return f"tpy::ordered_set<{cpp_elem}>({{{', '.join(elems)}}})"
+
     def _gen_list_repeat(self, expr: TpyListRepeat, target_type: TpyType | None) -> str:
         """Generate list repeat code."""
         # [elements...] * N -> repeated sequence
@@ -1936,7 +1954,7 @@ class ExpressionGenerator:
     def _is_sized_type(typ: TpyType) -> bool:
         """Check if a type has .size() in C++ (all STL containers)."""
         typ = unwrap_readonly(typ)
-        return isinstance(typ, (ListType, ArrayType, SpanType, DictType,
+        return isinstance(typ, (ListType, ArrayType, SpanType, DictType, SetType,
                                 DictKeysViewType, DictValuesViewType,
                                 DictItemsViewType))
 

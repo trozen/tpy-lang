@@ -9,7 +9,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, StrType, BoolType, FloatType, Float32Type, OptionalType, OwnType, ReadonlyType,
-    TypeParamRef, TypeParamKind, RecordInfo, TupleType, DictType,
+    TypeParamRef, TypeParamKind, RecordInfo, TupleType, DictType, SetType,
     ListType, ArrayType, SpanType, unwrap_readonly, unwrap_optional_own, is_any_str_type,
     get_covariant_params,
 )
@@ -795,6 +795,8 @@ class RecordGenerator:
                     out.write(f';\n{indent}if ({acc}.has_value()) {stream} << tpy::TuplePrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
                 elif isinstance(inner, DictType):
                     out.write(f';\n{indent}if ({acc}.has_value()) {stream} << tpy::DictPrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
+                elif isinstance(inner, SetType):
+                    out.write(f';\n{indent}if ({acc}.has_value()) {stream} << tpy::SetPrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
                 elif isinstance(inner, (ListType, ArrayType, SpanType)):
                     out.write(f';\n{indent}if ({acc}.has_value()) {stream} << tpy::ListPrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
                 else:
@@ -811,6 +813,8 @@ class RecordGenerator:
                 out.write(f' << tpy::TuplePrinter({acc})')
             elif isinstance(fld.type, DictType):
                 out.write(f' << tpy::DictPrinter({acc})')
+            elif isinstance(fld.type, SetType):
+                out.write(f' << tpy::SetPrinter({acc})')
             elif isinstance(fld.type, (ListType, ArrayType, SpanType)):
                 out.write(f' << tpy::ListPrinter({acc})')
             elif isinstance(fld.type, NamedType) and fld.type.is_module_type:
