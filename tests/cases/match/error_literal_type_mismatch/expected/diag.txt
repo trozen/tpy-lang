@@ -1,0 +1,1 @@
+main.py:6: error: str literal pattern not valid for subject type 'Int32'

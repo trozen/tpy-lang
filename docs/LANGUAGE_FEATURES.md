@@ -2594,13 +2594,15 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 ### Other
 - **Working**: `return`, `pass`
 - **Working**: `del obj[key]` -- element deletion via `__delitem__` dunder (dict, list, user types)
-- **Partial**: `match`/`case` -- structural pattern matching on union subjects
-  - Class patterns (`case Circle():`, `case Circle(radius=r):`), wildcard (`case _:`), capture (`case x:`), as-pattern (`case Dog() as d:`)
+- **Partial**: `match`/`case` -- structural pattern matching
+  - **Union subjects**: class patterns (`case Circle():`, `case Circle(radius=r):`), subject narrowing, `std::holds_alternative`/`std::get` codegen
+  - **Enum subjects**: value patterns (`case Color.Red:`), `==` comparison codegen
+  - **Primitive subjects** (`int`, `str`, `bool`, `float`): literal patterns (`case 42:`, `case "quit":`, `case True:`), `==` comparison codegen
+  - Wildcard (`case _:`), capture (`case x:`), as-pattern (`case Dog() as d:`)
   - Keyword field bindings in class patterns
-  - Subject narrowing: direct field access on the subject variable inside arms (e.g., `case Circle(): print(s.radius)`)
-  - Compiles to if/elif chain with `std::holds_alternative`/`std::get`
-  - Error diagnostics: non-member type, duplicate case, non-union subject, unreachable case after wildcard
-  - **Not yet**: positional patterns, literal/value/enum patterns, or-patterns, guard clauses, exhaustiveness warnings, switch codegen
+  - Pattern binding scope: bindings leak to enclosing scope (like Python), pre-declared when defined in all arms
+  - Error diagnostics: non-member type, duplicate case, type mismatch, unreachable case after wildcard
+  - **Not yet**: positional patterns, or-patterns, guard clauses, None singleton pattern, exhaustiveness warnings, switch codegen
 
 ---
 

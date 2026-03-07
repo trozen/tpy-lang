@@ -1,0 +1,1 @@
+main.py:8: error: duplicate case for 0 in match statement

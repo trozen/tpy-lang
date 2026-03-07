@@ -13,7 +13,7 @@ from ..typesys import (
     ArrayType, ListType, PendingListType, PendingStrType, OwnType, OptionalType,
     NoneType, NamedType, StrType, StrViewType, STR, TupleType,
     INT32, BIGINT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
-    ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType,
+    ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, EnumType,
     local_var_is_movable, resolve_int_literals,
 )
 from ..parse import (
@@ -25,10 +25,10 @@ from ..parse import (
     TpyFieldAccess, TpyMethodCall,
     TpyCall, TpyIntLiteral, TpyUnaryOp, TpyCoerce, TpyIfExpr,
     TpyMatch, TpyMatchCase, TpyPattern, TpyWildcardPattern, TpyCapturePattern,
-    TpyClassPattern, TpyLiteralPattern, TpyAsPattern,
+    TpyClassPattern, TpyLiteralPattern, TpyValuePattern, TpyAsPattern,
 )
 from ..namespace import Namespace
-from .context import INDENT, CodeGenError, escape_cpp_name, qualified_cpp_name, expand_cpp_template
+from .context import INDENT, CodeGenError, escape_cpp_name, escape_cpp_string, qualified_cpp_name, expand_cpp_template
 from .type_resolution import resolve_stmt_binding_type
 from ..prescan import match_is_none
 
@@ -1284,7 +1284,9 @@ class StatementGenerator:
         # Evaluate subject and bind to a local
         subject_code = self.expressions.gen_expr(stmt.subject)
         self.ctx.temps.flush(out, indent)
-        out.write(f"{indent}auto& __match_subject = {subject_code};\n")
+        # Use auto& for variables (safe reference), auto for temporaries (avoid dangling)
+        binding = "auto&" if isinstance(stmt.subject, TpyName) else "auto"
+        out.write(f"{indent}{binding} __match_subject = {subject_code};\n")
 
         for i, case in enumerate(stmt.cases):
             keyword = "if" if i == 0 else "} else if"
@@ -1307,6 +1309,23 @@ class StatementGenerator:
                         out.write(f"{inner}{name} = __match_subject;\n")
                     else:
                         out.write(f"{inner}auto& {name} = __match_subject;\n")
+                self.ctx.indent_level += 1
+                for s in case.body:
+                    self.gen_stmt(out, s)
+                self.ctx.indent_level -= 1
+
+            elif isinstance(pattern, TpyLiteralPattern):
+                cond = self._gen_match_literal_cond(pattern)
+                out.write(f"{indent}{keyword} ({cond}) {{\n")
+                self.ctx.indent_level += 1
+                for s in case.body:
+                    self.gen_stmt(out, s)
+                self.ctx.indent_level -= 1
+
+            elif isinstance(pattern, TpyValuePattern):
+                val_code = self.expressions.gen_expr(pattern.expr)
+                self.ctx.temps.flush(out, indent)
+                out.write(f"{indent}{keyword} (__match_subject == {val_code}) {{\n")
                 self.ctx.indent_level += 1
                 for s in case.body:
                     self.gen_stmt(out, s)
@@ -1338,6 +1357,22 @@ class StatementGenerator:
                             out.write(f"{inner}{inner_name} = __match_subject;\n")
                         else:
                             out.write(f"{inner}auto& {inner_name} = __match_subject;\n")
+                    self.ctx.indent_level += 1
+                    for s in case.body:
+                        self.gen_stmt(out, s)
+                    self.ctx.indent_level -= 1
+                elif isinstance(inner_pat, (TpyLiteralPattern, TpyValuePattern)):
+                    if isinstance(inner_pat, TpyLiteralPattern):
+                        cond = self._gen_match_literal_cond(inner_pat)
+                    else:
+                        val_code = self.expressions.gen_expr(inner_pat.expr)
+                        self.ctx.temps.flush(out, indent)
+                        cond = f"__match_subject == {val_code}"
+                    out.write(f"{indent}{keyword} ({cond}) {{\n")
+                    if pattern.name in self.ctx.declared_vars:
+                        out.write(f"{inner}{as_name} = __match_subject;\n")
+                    else:
+                        out.write(f"{inner}auto& {as_name} = __match_subject;\n")
                     self.ctx.indent_level += 1
                     for s in case.body:
                         self.gen_stmt(out, s)
@@ -1402,6 +1437,20 @@ class StatementGenerator:
                 pass
             elif isinstance(sub_pattern, TpyLiteralPattern):
                 pass  # Literal sub-patterns handled as conditions (future)
+
+    def _gen_match_literal_cond(self, pattern: TpyLiteralPattern) -> str:
+        """Generate a C++ comparison condition for a literal pattern."""
+        val = pattern.value
+        if isinstance(val, bool):
+            return f"__match_subject == {'true' if val else 'false'}"
+        elif isinstance(val, int):
+            return f"__match_subject == {val}"
+        elif isinstance(val, float):
+            return f"__match_subject == {val!r}"
+        elif isinstance(val, str):
+            return f'__match_subject == "{escape_cpp_string(val)}"'
+        else:
+            raise CodeGenError(f"Unsupported literal pattern value: {val!r}")
 
     def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str) -> None:
         """Generate an if/elif/else chain as flat C++ if/else if/else."""

@@ -1,0 +1,3 @@
+quitting
+showing help
+unknown: foo

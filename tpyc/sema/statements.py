@@ -595,9 +595,16 @@ class StatementAnalyzer:
         stmt.subject_type = subject_type
 
         effective_type = unwrap_readonly(subject_type)
-        if not isinstance(effective_type, UnionType):
+        is_union = isinstance(effective_type, UnionType)
+        is_enum = isinstance(effective_type, EnumType)
+        is_primitive = isinstance(effective_type, (
+            Int32Type, BigIntType, FixedIntType, FloatType, Float32Type,
+            BoolType, StrType, StrViewType, StringType, CharType,
+        ))
+        if not (is_union or is_enum or is_primitive):
             raise self.ctx.error(
-                f"match subject must be a union type, got '{subject_type}'", stmt
+                f"match subject must be a union, enum, or primitive type, "
+                f"got '{subject_type}'", stmt
             )
 
         # Subject variable name for narrowing (only if simple name)
@@ -607,6 +614,7 @@ class StatementAnalyzer:
 
         had_wildcard = False
         seen_types: set[str] = set()
+        seen_values: set[object] = set()
 
         scope_before = set(self.ctx.current_scope.bindings.keys())
         assigned_before = frozenset(self.ctx.definitely_assigned)
@@ -634,7 +642,12 @@ class StatementAnalyzer:
             self._restore_ns_var_types(ns_types_before)
 
             pattern_bindings: dict[str, TpyType] = {}
-            self._analyze_pattern(case.pattern, effective_type, seen_types, pattern_bindings, stmt)
+            if is_union:
+                self._analyze_pattern(case.pattern, effective_type, seen_types, pattern_bindings, stmt)
+            else:
+                self._analyze_pattern_nonunion(
+                    case.pattern, effective_type, seen_values, pattern_bindings, stmt,
+                )
 
             for name, ty in pattern_bindings.items():
                 self.ctx.current_scope.define(name, ty)
@@ -642,10 +655,10 @@ class StatementAnalyzer:
                 if name not in self.ctx.var_scope_depth:
                     self.ctx.var_scope_depth[name] = self.ctx.current_scope.depth
 
-            # Narrow subject variable for class patterns
+            # Narrow subject variable for class patterns (union only)
             narrowing_facts = self._match_case_narrowing_facts(
                 case.pattern, subject_name, effective_type,
-            )
+            ) if is_union else {}
             if narrowing_facts:
                 case.type_facts = self._filter_union_codegen_facts(narrowing_facts)
                 self.ctx.narrowed_types.update(narrowing_facts)
@@ -692,7 +705,7 @@ class StatementAnalyzer:
 
     def _match_case_narrowing_facts(
         self, pattern: TpyPattern, subject_name: str | None,
-        subject_type: UnionType,
+        subject_type: TpyType,
     ) -> dict[str, TpyType]:
         """Compute narrowing facts for a match case pattern."""
         if subject_name is None:
@@ -811,6 +824,101 @@ class StatementAnalyzer:
                     f"Unsupported sub-pattern in field binding: "
                     f"{type(sub_pattern).__name__}", sub_pattern
                 )
+
+    def _analyze_pattern_nonunion(
+        self, pattern: TpyPattern, subject_type: TpyType,
+        seen_values: set[object], bindings: dict[str, TpyType], stmt: TpyMatch,
+    ) -> None:
+        """Analyze a pattern for non-union subjects (enum, primitive, literal, wildcard, capture, as)."""
+        if isinstance(pattern, TpyWildcardPattern):
+            return
+
+        elif isinstance(pattern, TpyCapturePattern):
+            bindings[pattern.name] = subject_type
+
+        elif isinstance(pattern, TpyAsPattern):
+            self._analyze_pattern_nonunion(
+                pattern.pattern, subject_type, seen_values, bindings, stmt,
+            )
+            bindings[pattern.name] = subject_type
+
+        elif isinstance(pattern, TpyLiteralPattern):
+            self._validate_literal_pattern(pattern, subject_type)
+            key = pattern.value
+            if key in seen_values:
+                raise self.ctx.error(
+                    f"duplicate case for {key!r} in match statement", pattern
+                )
+            seen_values.add(key)
+
+        elif isinstance(pattern, TpyValuePattern):
+            self._validate_value_pattern(pattern, subject_type)
+            if isinstance(pattern.expr, TpyFieldAccess):
+                obj_name = pattern.expr.obj.name if isinstance(pattern.expr.obj, TpyName) else "?"
+                key = (obj_name, pattern.expr.field)
+                if key in seen_values:
+                    raise self.ctx.error(
+                        f"duplicate case for '{obj_name}.{pattern.expr.field}' "
+                        f"in match statement", pattern
+                    )
+                seen_values.add(key)
+
+        else:
+            raise self.ctx.error(
+                f"Unsupported pattern for {subject_type} subject: "
+                f"{type(pattern).__name__}", pattern
+            )
+
+    def _validate_literal_pattern(
+        self, pattern: TpyLiteralPattern, subject_type: TpyType,
+    ) -> None:
+        """Validate that a literal pattern is compatible with the subject type."""
+        val = pattern.value
+        if val is None:
+            raise self.ctx.error(
+                "None literal pattern requires an Optional subject", pattern
+            )
+        if isinstance(val, bool):
+            if not isinstance(subject_type, BoolType):
+                raise self.ctx.error(
+                    f"bool literal pattern not valid for subject type '{subject_type}'",
+                    pattern,
+                )
+        elif isinstance(val, int):
+            if not isinstance(subject_type, (Int32Type, BigIntType, FixedIntType, EnumType)):
+                raise self.ctx.error(
+                    f"int literal pattern not valid for subject type '{subject_type}'",
+                    pattern,
+                )
+        elif isinstance(val, float):
+            if not isinstance(subject_type, (FloatType, Float32Type)):
+                raise self.ctx.error(
+                    f"float literal pattern not valid for subject type '{subject_type}'",
+                    pattern,
+                )
+        elif isinstance(val, str):
+            if not isinstance(subject_type, (StrType, StrViewType, StringType)):
+                raise self.ctx.error(
+                    f"str literal pattern not valid for subject type '{subject_type}'",
+                    pattern,
+                )
+
+    def _validate_value_pattern(
+        self, pattern: TpyValuePattern, subject_type: TpyType,
+    ) -> None:
+        """Validate a value pattern (e.g., Color.RED) against the subject type."""
+        val_type = self.expr.analyze_expr(pattern.expr)
+        if isinstance(subject_type, EnumType):
+            if not isinstance(val_type, EnumType) or val_type.name != subject_type.name:
+                raise self.ctx.error(
+                    f"value pattern type '{val_type}' does not match "
+                    f"subject type '{subject_type}'", pattern
+                )
+        else:
+            raise self.ctx.error(
+                f"value pattern (dotted name) not valid for subject type "
+                f"'{subject_type}'", pattern
+            )
 
     def _analyze_global_stmt(self, stmt: TpyGlobal) -> None:
         """Analyze a `global x, y` statement."""

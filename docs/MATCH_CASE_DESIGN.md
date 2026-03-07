@@ -6,7 +6,7 @@
 |-------|-------------|--------|
 | 1 | Parser + sema + codegen: union subjects with class patterns (keyword field binding), wildcard, capture, as-pattern. Subject narrowing. if/elif codegen. | Done |
 | 2 | Positional class patterns (`Point(x, y)`) via `__match_args__` | Not started |
-| 3 | Literal, singleton (`None`/`True`/`False`), and value (`Color.RED`) patterns; enum and primitive subjects | Not started |
+| 3 | Literal, singleton (`True`/`False`), and value (`Color.RED`) patterns; enum and primitive subjects | Done |
 | 4 | Concrete record subjects (field-value matching), Optional subjects | Not started |
 | 5 | Or-patterns (`Dog() \| Cat():`), guard clauses (`if cond`) | Not started |
 | 6 | Exhaustiveness warnings (union, enum, Optional) | Not started (duplicate case + unreachable-after-wildcard detection done in Phase 1) |
