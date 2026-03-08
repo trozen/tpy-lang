@@ -6,3 +6,6 @@ greeting
 greeting
 farewell
 unknown
+small: 1
+small: 2
+other

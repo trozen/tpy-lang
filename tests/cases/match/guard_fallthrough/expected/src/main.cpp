@@ -8,18 +8,27 @@ namespace tpy_user::main {
 std::string classify(int32_t x) {
     // 5:     match x:
     auto& __match_subject = x;
-    if (__match_subject == 1 && false) {
-        // 7:             return "never"
-        return "never";
-    } else if (__match_subject == 1) {
-        // 9:             return "one (fallthrough)"
-        return "one (fallthrough)";
-    } else if (__match_subject == 2) {
+    switch (__match_subject) {
+    case 1: {
+        if (false) {
+            // 7:             return "never"
+            return "never";
+        } else {
+            // 9:             return "one (fallthrough)"
+            return "one (fallthrough)";
+        }
+        break;
+    }
+    case 2: {
         // 11:             return "two"
         return "two";
-    } else {
+        break;
+    }
+    default: {
         // 13:             return "other"
         return "other";
+        break;
+    }
     }
     // 14:     return ""
     return "";

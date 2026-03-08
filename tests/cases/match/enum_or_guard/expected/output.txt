@@ -4,3 +4,13 @@ green
 red allowed
 red blocked
 other
+warm
+guarded-green
+other
+warm+flag
+other
+other
+green+x
+green+y
+green
+other

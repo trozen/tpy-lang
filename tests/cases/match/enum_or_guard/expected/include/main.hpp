@@ -32,6 +32,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 std::string classify(Color c);
 std::string check(Color c, bool allow_red);
+std::string mixed(Color c, bool allow);
+std::string or_guard(Color c, bool flag);
+std::string multi_guard(Color c, bool x, bool y);
 void main();
 
 void __tpy_init();

@@ -8,18 +8,23 @@ namespace tpy_user::main {
 std::string literal_as_guard(int32_t x) {
     // 5:     match x:
     auto& __match_subject = x;
-    if (__match_subject == 1) {
+    switch (__match_subject) {
+    case 1: {
         auto& y = __match_subject;
         if ((y > 0)) {
             // 7:             return "one positive"
             return "one positive";
+        } else {
+            // 9:             return "one"
+            return "one";
         }
-    } else if (__match_subject == 1) {
-        // 9:             return "one"
-        return "one";
-    } else {
+        break;
+    }
+    default: {
         // 11:             return "other"
         return "other";
+        break;
+    }
     }
     // 12:     return ""
     return "";
@@ -29,13 +34,18 @@ std::string literal_as_guard(int32_t x) {
 std::string wildcard_as_guard(int32_t x) {
     // 15:     match x:
     auto& __match_subject = x;
-    auto& y = __match_subject;
-    if ((y > 10)) {
-        // 17:             return "big"
-        return "big";
-    } else {
-        // 19:             return "small"
-        return "small";
+    switch (__match_subject) {
+    default: {
+        auto& y = __match_subject;
+        if ((y > 10)) {
+            // 17:             return "big"
+            return "big";
+        } else {
+            // 19:             return "small"
+            return "small";
+        }
+        break;
+    }
     }
     // 20:     return ""
     return "";

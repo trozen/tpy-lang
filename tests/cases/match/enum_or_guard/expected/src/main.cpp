@@ -50,12 +50,19 @@ namespace tpy_user::main {
 std::string classify(Color c) {
     // 10:     match c:
     auto& __match_subject = c;
-    if (__match_subject == Color::Red || __match_subject == Color::Blue) {
+    switch (__match_subject) {
+    case Color::Red:
+    case Color::Blue:
+    {
         // 12:             return "warm-ish"
         return "warm-ish";
-    } else if (__match_subject == Color::Green) {
+        break;
+    }
+    case Color::Green: {
         // 14:             return "green"
         return "green";
+        break;
+    }
     }
     // 15:     return ""
     return "";
@@ -65,34 +72,144 @@ std::string classify(Color c) {
 std::string check(Color c, bool allow_red) {
     // 18:     match c:
     auto& __match_subject = c;
-    if (__match_subject == Color::Red && allow_red) {
-        // 20:             return "red allowed"
-        return "red allowed";
-    } else if (__match_subject == Color::Red) {
-        // 22:             return "red blocked"
-        return "red blocked";
-    } else {
+    switch (__match_subject) {
+    case Color::Red: {
+        if (allow_red) {
+            // 20:             return "red allowed"
+            return "red allowed";
+        } else {
+            // 22:             return "red blocked"
+            return "red blocked";
+        }
+        break;
+    }
+    default: {
         // 24:             return "other"
         return "other";
+        break;
+    }
     }
     // 25:     return ""
     return "";
 }
 
-// 27: def main() -> None:
+// 27: def mixed(c: Color, allow: bool) -> str:
+std::string mixed(Color c, bool allow) {
+    // 28:     match c:
+    auto& __match_subject = c;
+    switch (__match_subject) {
+    case Color::Red:
+    case Color::Blue:
+    {
+        // 30:             return "warm"
+        return "warm";
+        break;
+    }
+    case Color::Green: {
+        if (allow) {
+            // 32:             return "guarded-green"
+            return "guarded-green";
+        }
+        goto __match_default_1;
+        break;
+    }
+    default: __match_default_1: {
+        // 34:             return "other"
+        return "other";
+        break;
+    }
+    }
+    // 35:     return ""
+    return "";
+}
+
+// 37: def or_guard(c: Color, flag: bool) -> str:
+std::string or_guard(Color c, bool flag) {
+    // 38:     match c:
+    auto& __match_subject = c;
+    switch (__match_subject) {
+    case Color::Red:
+    case Color::Blue:
+    {
+        if (flag) {
+            // 40:             return "warm+flag"
+            return "warm+flag";
+        }
+        goto __match_default_2;
+        break;
+    }
+    default: __match_default_2: {
+        // 42:             return "other"
+        return "other";
+        break;
+    }
+    }
+    // 43:     return ""
+    return "";
+}
+
+// 45: def multi_guard(c: Color, x: bool, y: bool) -> str:
+std::string multi_guard(Color c, bool x, bool y) {
+    // 46:     match c:
+    auto& __match_subject = c;
+    switch (__match_subject) {
+    case Color::Green: {
+        if (x) {
+            // 48:             return "green+x"
+            return "green+x";
+        } else if (y) {
+            // 50:             return "green+y"
+            return "green+y";
+        } else {
+            // 52:             return "green"
+            return "green";
+        }
+        break;
+    }
+    default: {
+        // 54:             return "other"
+        return "other";
+        break;
+    }
+    }
+    // 55:     return ""
+    return "";
+}
+
+// 57: def main() -> None:
 void main() {
-    // 28:     print(classify(Color.Red))
+    // 58:     print(classify(Color.Red))
     std::cout << classify(Color::Red) << "\n";
-    // 29:     print(classify(Color.Blue))
+    // 59:     print(classify(Color.Blue))
     std::cout << classify(Color::Blue) << "\n";
-    // 30:     print(classify(Color.Green))
+    // 60:     print(classify(Color.Green))
     std::cout << classify(Color::Green) << "\n";
-    // 31:     print(check(Color.Red, True))
+    // 61:     print(check(Color.Red, True))
     std::cout << check(Color::Red, true) << "\n";
-    // 32:     print(check(Color.Red, False))
+    // 62:     print(check(Color.Red, False))
     std::cout << check(Color::Red, false) << "\n";
-    // 33:     print(check(Color.Green, True))
+    // 63:     print(check(Color.Green, True))
     std::cout << check(Color::Green, true) << "\n";
+    // 64:     print(mixed(Color.Red, True))
+    std::cout << mixed(Color::Red, true) << "\n";
+    // 65:     print(mixed(Color.Green, True))
+    std::cout << mixed(Color::Green, true) << "\n";
+    // 66:     print(mixed(Color.Green, False))
+    std::cout << mixed(Color::Green, false) << "\n";
+    // 67:     print(or_guard(Color.Red, True))
+    std::cout << or_guard(Color::Red, true) << "\n";
+    // 68:     print(or_guard(Color.Red, False))
+    std::cout << or_guard(Color::Red, false) << "\n";
+    // 69:     print(or_guard(Color.Green, True))
+    std::cout << or_guard(Color::Green, true) << "\n";
+    // 70:     print(multi_guard(Color.Green, True, True))
+    std::cout << multi_guard(Color::Green, true, true) << "\n";
+    // 71:     print(multi_guard(Color.Green, False, True))
+    std::cout << multi_guard(Color::Green, false, true) << "\n";
+    // 72:     print(multi_guard(Color.Green, False, False))
+    std::cout << multi_guard(Color::Green, false, false) << "\n";
+    // 73:     print(multi_guard(Color.Red, True, True))
+    std::cout << multi_guard(Color::Red, true, true) << "\n";
 }
 
 void __tpy_init() {
@@ -100,7 +217,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 35: main()
+    // 75: main()
     main();
 }
 

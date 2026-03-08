@@ -1,3 +1,6 @@
 mammal
 mammal
 bird
+dog
+other
+other

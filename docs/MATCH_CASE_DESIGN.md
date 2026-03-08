@@ -530,22 +530,8 @@ if (__match_subject.x == 0 && __match_subject.y == 0) {
 Guards add a condition that must be true for the case to match. The key
 constraint: a failed guard must fall through to the next case.
 
-C++ `switch` does not support guards natively. When **any** case in the
-match statement has a guard, the entire match falls back to an if/elif
-chain (for union and enum subjects). When no guards are present, `switch`
-is used.
-
-**Simple cases** (literal/value/primitive patterns with guards): the guard
-is `&&`-ed with the pattern check:
-
-```cpp
-// case 42 if flag:
-if (__match_subject == 42 && flag) { ... }
-```
-
-**Union/class patterns with guards**: the pattern needs to extract
-variables before the guard can reference them. Uses standalone `if` blocks
-with `goto`-based forward jumps to skip remaining arms after a match:
+**Union subjects with guards**: uses standalone `if` blocks with
+`goto`-based forward jumps to skip remaining arms after a match:
 
 ```cpp
 // case Dog(name=n) if n == "Rex":  ->  case Dog():
@@ -561,10 +547,6 @@ if (std::holds_alternative<Dog>(__match_subject)) {
     // unguarded fallback for Dog
     goto __match_end_0;
 }
-if (std::holds_alternative<Cat>(__match_subject)) {
-    // next case...
-    goto __match_end_0;
-}
 __match_end_0:;
 ```
 
@@ -573,9 +555,60 @@ from a failed guard to a later case for the same type) and avoids
 `do/while(false)+break` (which would capture `break`/`continue` from
 user code inside the match body).
 
+**Enum/primitive subjects with guards**: still uses `switch`, with
+if/else guard chains inside each case arm. Same-value cases with
+different guards are merged. Failed guards use `goto` to the default
+arm:
+
+```cpp
+// case Color.Green if x: / case Color.Green if y: / case Color.Green: / case _:
+switch (__match_subject) {
+case Color::Green: {
+    if (x) {
+        return "green+x";
+    } else if (y) {
+        return "green+y";
+    } else {
+        return "green";
+    }
+    break;
+}
+default: {
+    return "other";
+    break;
+}
+}
+
+// case Color.Green if allow: / case _:  (no unguarded same-value fallback)
+switch (__match_subject) {
+case Color::Green: {
+    if (allow) {
+        return "guarded-green";
+    }
+    goto __match_default_1;
+    break;
+}
+default: __match_default_1: {
+    return "other";
+    break;
+}
+}
+```
+
+**String/float subjects with guards**: uses `&&` inlining in if/elif
+chains (switch not available for these types):
+
+```cpp
+// case "hello" if formal:
+if (__match_subject == "hello" && formal) { ... }
+```
+
 ### Or-patterns
 
-Without bindings -- simple disjunction:
+Or-patterns use `switch` with case fallthrough for union, enum, and
+primitive subjects. String/float subjects fall back to if/elif with `||`.
+
+Without bindings -- case fallthrough:
 
 ```python
 case Dog() | Cat():
@@ -583,13 +616,33 @@ case Dog() | Cat():
 ```
 
 ```cpp
-if (std::holds_alternative<Dog>(__match_subject) ||
-    std::holds_alternative<Cat>(__match_subject)) {
+// Union: switch on .index()
+case 1:   // Cat
+case 2:   // Dog
+{
     std::cout << "pet" << "\n";
+    break;
+}
+
+// Enum: switch on value
+case Color::Red:
+case Color::Blue:
+{
+    // body
+    break;
+}
+
+// Primitive: switch on value
+case 1:
+case 2:
+case 3:
+{
+    // body
+    break;
 }
 ```
 
-With bindings -- body duplication per alternative:
+With bindings -- body duplication per alternative inside switch:
 
 ```python
 case Dog(name=n) | Cat(name=n):
@@ -597,16 +650,21 @@ case Dog(name=n) | Cat(name=n):
 ```
 
 ```cpp
-if (std::holds_alternative<Dog>(__match_subject)) {
-    auto& __variant = std::get<Dog>(__match_subject);
-    auto& n = __variant.name;
+case 2: {  // Dog
+    auto& __case_0_0 = std::get<2>(__match_subject);
+    auto& n = __case_0_0.name;
     std::cout << n << "\n";
-} else if (std::holds_alternative<Cat>(__match_subject)) {
-    auto& __variant = std::get<Cat>(__match_subject);
-    auto& n = __variant.name;
+    break;
+}
+case 1: {  // Cat
+    auto& __case_0_1 = std::get<1>(__match_subject);
+    auto& n = __case_0_1.name;
     std::cout << n << "\n";
+    break;
 }
 ```
+
+Wildcard alternatives (`case Dog() | _:`) emit `default:` in the switch.
 
 Body duplication is acceptable since case bodies are typically small.
 Lambda-based body sharing is a future optimization.

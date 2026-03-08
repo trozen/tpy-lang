@@ -1289,28 +1289,16 @@ class StatementGenerator:
         binding = "auto&" if isinstance(stmt.subject, TpyName) else "auto"
         out.write(f"{indent}{binding} __match_subject = {subject_code};\n")
 
-        # Guards and or-patterns force if/elif (can't use switch)
-        has_guard = any(c.guard is not None for c in stmt.cases)
-        has_or = any(isinstance(c.pattern, TpyOrPattern) for c in stmt.cases)
-        use_if_elif = has_guard or has_or
-
         if isinstance(subject_type, UnionType):
+            has_guard = any(c.guard is not None for c in stmt.cases)
             if has_guard:
                 self._gen_match_guarded_union(out, stmt, subject_type, indent)
-            elif has_or:
-                self._gen_match_elif_union(out, stmt, subject_type, indent)
             else:
                 self._gen_match_switch_union(out, stmt, subject_type, indent)
         elif isinstance(subject_type, EnumType):
-            if use_if_elif:
-                self._gen_match_if_elif(out, stmt, indent)
-            else:
-                self._gen_match_switch_enum(out, stmt, indent)
+            self._gen_match_switch_enum(out, stmt, indent)
         elif isinstance(subject_type, (FixedIntType, BoolType)):
-            if use_if_elif:
-                self._gen_match_if_elif(out, stmt, indent)
-            else:
-                self._gen_match_switch_primitive(out, stmt, indent)
+            self._gen_match_switch_primitive(out, stmt, indent)
         else:
             self._gen_match_if_elif(out, stmt, indent)
 
@@ -1354,6 +1342,56 @@ class StatementGenerator:
                 out.write(f"{inner}break;\n")
                 out.write(f"{indent}}}\n")
 
+            elif isinstance(pattern, TpyOrPattern):
+                has_bindings = any(
+                    isinstance(alt, TpyClassPattern) and alt.keywords
+                    for alt in pattern.patterns
+                )
+                has_wildcard = any(
+                    isinstance(alt, (TpyWildcardPattern, TpyCapturePattern))
+                    for alt in pattern.patterns
+                )
+                if has_wildcard:
+                    # Wildcard subsumes all alternatives -> default
+                    out.write(f"{indent}default: {{\n")
+                    self.ctx.indent_level += 1
+                    for s in case.body:
+                        self.gen_stmt(out, s)
+                    self.ctx.indent_level -= 1
+                    out.write(f"{inner}break;\n")
+                    out.write(f"{indent}}}\n")
+                elif not has_bindings:
+                    # No bindings: case fallthrough
+                    for alt in pattern.patterns:
+                        assert isinstance(alt, TpyClassPattern) and alt.resolved_type is not None
+                        idx = self._variant_index(subject_type, alt.resolved_type)
+                        out.write(f"{indent}case {idx}:\n")
+                    out.write(f"{indent}{{\n")
+                    self.ctx.indent_level += 1
+                    for s in case.body:
+                        self.gen_stmt(out, s)
+                    self.ctx.indent_level -= 1
+                    out.write(f"{inner}break;\n")
+                    out.write(f"{indent}}}\n")
+                else:
+                    # With bindings: body duplication per alternative
+                    for j, alt in enumerate(pattern.patterns):
+                        assert isinstance(alt, TpyClassPattern) and alt.resolved_type is not None
+                        idx = self._variant_index(subject_type, alt.resolved_type)
+                        out.write(f"{indent}case {idx}: {{\n")
+                        case_var = f"__case_{i}_{j}"
+                        out.write(f"{inner}auto& {case_var} = std::get<{idx}>(__match_subject);\n")
+                        if alt.keywords:
+                            self._gen_match_field_bindings(out, alt, case_var, inner)
+                        saved = self._apply_narrowing(case.type_facts, case_var)
+                        self.ctx.indent_level += 1
+                        for s in case.body:
+                            self.gen_stmt(out, s)
+                        self.ctx.indent_level -= 1
+                        self._restore_narrowed_vars(saved)
+                        out.write(f"{inner}break;\n")
+                        out.write(f"{indent}}}\n")
+
             elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
                 self._gen_switch_default_arm(out, pattern, as_name, as_raw_name, case.body, indent, inner)
 
@@ -1364,59 +1402,212 @@ class StatementGenerator:
 
     def _gen_match_switch_enum(self, out: TextIO, stmt: TpyMatch, indent: str) -> None:
         """Generate switch (__match_subject) for enum subjects."""
-        inner = INDENT * (self.ctx.indent_level + 1)
-        out.write(f"{indent}switch (__match_subject) {{\n")
-
-        for case in stmt.cases:
-            pattern, as_name, as_raw_name = self._unwrap_as_pattern(case.pattern)
-
-            if isinstance(pattern, TpyValuePattern):
-                # Enum value patterns are simple attribute accesses (e.g. Color::Red),
-                # so gen_expr never produces temporaries.
-                val_code = self.expressions.gen_expr(pattern.expr)
-                out.write(f"{indent}case {val_code}: {{\n")
-                self._gen_switch_as_binding(out, as_name, as_raw_name, inner)
-                self.ctx.indent_level += 1
-                for s in case.body:
-                    self.gen_stmt(out, s)
-                self.ctx.indent_level -= 1
-                out.write(f"{inner}break;\n")
-                out.write(f"{indent}}}\n")
-
-            elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
-                self._gen_switch_default_arm(out, pattern, as_name, as_raw_name, case.body, indent, inner)
-
-            else:
-                raise CodeGenError(f"Unsupported pattern in enum switch: {type(pattern).__name__}")
-
-        out.write(f"{indent}}}\n")
+        groups = self._group_switch_arms(stmt, kind="enum")
+        self._emit_switch_groups(out, groups, indent)
 
     def _gen_match_switch_primitive(self, out: TextIO, stmt: TpyMatch, indent: str) -> None:
         """Generate switch (__match_subject) for int/bool subjects."""
-        inner = INDENT * (self.ctx.indent_level + 1)
-        out.write(f"{indent}switch (__match_subject) {{\n")
+        groups = self._group_switch_arms(stmt, kind="primitive")
+        self._emit_switch_groups(out, groups, indent)
+
+    # Entry in a switch arm group:
+    # (guard, body, capture_escaped, as_escaped, raw_names)
+    # raw_names: set of raw Python names for declared_vars lookup
+    _SwitchEntry = tuple[
+        TpyExpr | None, list['TpyStmt'], str | None, str | None, set[str],
+    ]
+
+    def _group_switch_arms(
+        self, stmt: TpyMatch, kind: str,
+    ) -> list[tuple[list[str], list[_SwitchEntry]]]:
+        """Group match cases by switch label for enum/primitive subjects.
+
+        Returns a list of (labels, entries) where:
+        - labels: list of case label strings, or ["default"] for wildcard
+        - entries: list of (guard, body, cap_escaped, as_escaped, raw_names)
+        Same-value cases with guards are merged into a single group.
+        Entries are ordered guarded-first, unguarded-last (enforced by sema
+        duplicate-case check which only allows same-value repeats with guards).
+        """
+        groups: dict[str, tuple[list[str], list[StatementGenerator._SwitchEntry]]] = {}
+        default_entries: list[StatementGenerator._SwitchEntry] = []
 
         for case in stmt.cases:
-            pattern, as_name, as_raw_name = self._unwrap_as_pattern(case.pattern)
+            pattern, as_escaped, as_raw = self._unwrap_as_pattern(case.pattern)
+            raw_names: set[str] = set()
+            if as_raw is not None:
+                raw_names.add(as_raw)
 
-            if isinstance(pattern, TpyLiteralPattern):
-                label = self._switch_literal_label(pattern)
-                out.write(f"{indent}case {label}: {{\n")
-                self._gen_switch_as_binding(out, as_name, as_raw_name, inner)
-                self.ctx.indent_level += 1
-                for s in case.body:
-                    self.gen_stmt(out, s)
-                self.ctx.indent_level -= 1
-                out.write(f"{inner}break;\n")
-                out.write(f"{indent}}}\n")
+            if isinstance(pattern, (TpyValuePattern, TpyLiteralPattern)):
+                if kind == "enum":
+                    assert isinstance(pattern, TpyValuePattern)
+                    label = self.expressions.gen_expr(pattern.expr)
+                else:
+                    assert isinstance(pattern, TpyLiteralPattern)
+                    label = self._switch_literal_label(pattern)
+                entry: StatementGenerator._SwitchEntry = (
+                    case.guard, case.body, None, as_escaped, raw_names,
+                )
+                if label in groups:
+                    groups[label][1].append(entry)
+                else:
+                    groups[label] = ([label], [entry])
+
+            elif isinstance(pattern, TpyOrPattern):
+                has_wild = any(
+                    isinstance(alt, (TpyWildcardPattern, TpyCapturePattern))
+                    for alt in pattern.patterns
+                )
+                if has_wild:
+                    default_entries.append((case.guard, case.body, None, as_escaped, raw_names))
+                else:
+                    labels = []
+                    for alt in pattern.patterns:
+                        if kind == "enum":
+                            assert isinstance(alt, TpyValuePattern)
+                            labels.append(self.expressions.gen_expr(alt.expr))
+                        else:
+                            assert isinstance(alt, TpyLiteralPattern)
+                            labels.append(self._switch_literal_label(alt))
+                    key = "|".join(labels)
+                    entry = (case.guard, case.body, None, as_escaped, raw_names)
+                    if key in groups:
+                        groups[key][1].append(entry)
+                    else:
+                        groups[key] = (labels, [entry])
 
             elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
-                self._gen_switch_default_arm(out, pattern, as_name, as_raw_name, case.body, indent, inner)
+                cap_escaped = escape_cpp_name(pattern.name) if isinstance(pattern, TpyCapturePattern) else None
+                if isinstance(pattern, TpyCapturePattern):
+                    raw_names.add(pattern.name)
+                default_entries.append((case.guard, case.body, cap_escaped, as_escaped, raw_names))
 
             else:
-                raise CodeGenError(f"Unsupported pattern in primitive switch: {type(pattern).__name__}")
+                raise CodeGenError(f"Unsupported pattern in {kind} switch: {type(pattern).__name__}")
+
+        result = list(groups.values())
+        if default_entries:
+            result.append((["default"], default_entries))
+        return result
+
+    def _emit_switch_groups(
+        self, out: TextIO,
+        groups: list[tuple[list[str], list[_SwitchEntry]]],
+        indent: str,
+    ) -> None:
+        """Emit a switch statement from grouped arms."""
+        inner = INDENT * (self.ctx.indent_level + 1)
+
+        # Check if any non-default group needs guard fallback to default
+        has_default = any(labels == ["default"] for labels, _ in groups)
+        needs_default_goto = has_default and any(
+            labels != ["default"]
+            and all(g is not None for g, _, _, _, _ in entries)
+            for labels, entries in groups
+        )
+        default_label: str | None = None
+        if needs_default_goto:
+            self.ctx.match_counter += 1
+            default_label = f"__match_default_{self.ctx.match_counter}"
+
+        out.write(f"{indent}switch (__match_subject) {{\n")
+
+        for labels, entries in groups:
+            # Emit case labels
+            if labels == ["default"]:
+                if default_label is not None:
+                    out.write(f"{indent}default: {default_label}: {{\n")
+                else:
+                    out.write(f"{indent}default: {{\n")
+            elif len(labels) == 1:
+                out.write(f"{indent}case {labels[0]}: {{\n")
+            else:
+                for label in labels:
+                    out.write(f"{indent}case {label}:\n")
+                out.write(f"{indent}{{\n")
+
+            # Single entry, no guard -> simple body
+            if len(entries) == 1 and entries[0][0] is None:
+                _, body, cap, as_name, raw_names = entries[0]
+                self._emit_switch_binding(out, cap, as_name, raw_names, inner)
+                self.ctx.indent_level += 1
+                for s in body:
+                    self.gen_stmt(out, s)
+                self.ctx.indent_level -= 1
+            else:
+                # Emit capture/as binding before the guard chain so guards
+                # can reference the bound variable
+                bindings_emitted: set[str] = set()
+                for _g, _b, cap, as_name, raw_names in entries:
+                    for escaped, raw in self._binding_pairs(cap, as_name, raw_names):
+                        if escaped not in bindings_emitted:
+                            if raw in self.ctx.declared_vars:
+                                out.write(f"{inner}{escaped} = __match_subject;\n")
+                            else:
+                                out.write(f"{inner}auto& {escaped} = __match_subject;\n")
+                            bindings_emitted.add(escaped)
+
+                # Guard chain: if (g1) { body1 } else if (g2) { body2 } else { fallback }
+                has_unguarded = any(g is None for g, _, _, _, _ in entries)
+                if_opened = False
+                for _j, (guard, body, _cap, _as, _raw) in enumerate(entries):
+                    if guard is not None:
+                        guard_code = self.expressions.gen_expr(guard)
+                        self.ctx.temps.flush(out, inner)
+                        keyword = "if" if not if_opened else "} else if"
+                        if_opened = True
+                        out.write(f"{inner}{keyword} ({guard_code}) {{\n")
+                        self.ctx.indent_level += 2
+                        for s in body:
+                            self.gen_stmt(out, s)
+                        self.ctx.indent_level -= 2
+                    else:
+                        # Unguarded entry: final else
+                        out.write(f"{inner}}} else {{\n")
+                        self.ctx.indent_level += 2
+                        for s in body:
+                            self.gen_stmt(out, s)
+                        self.ctx.indent_level -= 2
+                # Close last if/else and add goto fallback if needed
+                if has_unguarded:
+                    out.write(f"{inner}}}\n")
+                elif default_label is not None and labels != ["default"]:
+                    out.write(f"{inner}}}\n")
+                    out.write(f"{inner}goto {default_label};\n")
+                else:
+                    out.write(f"{inner}}}\n")
+
+            out.write(f"{inner}break;\n")
+            out.write(f"{indent}}}\n")
 
         out.write(f"{indent}}}\n")
+
+    def _emit_switch_binding(
+        self, out: TextIO, cap: str | None, as_name: str | None,
+        raw_names: set[str], inner: str,
+    ) -> None:
+        """Emit capture/as binding in a switch arm, respecting declared_vars."""
+        for escaped, raw in self._binding_pairs(cap, as_name, raw_names):
+            if raw in self.ctx.declared_vars:
+                out.write(f"{inner}{escaped} = __match_subject;\n")
+            else:
+                out.write(f"{inner}auto& {escaped} = __match_subject;\n")
+
+    @staticmethod
+    def _binding_pairs(
+        cap: str | None, as_name: str | None, raw_names: set[str],
+    ) -> list[tuple[str, str]]:
+        """Return (escaped_name, raw_name) pairs for binding emission."""
+        pairs: list[tuple[str, str]] = []
+        # raw_names may contain 1 or 2 entries; match escaped names to raw
+        raw_list = list(raw_names)
+        if cap is not None:
+            raw = next((r for r in raw_list if escape_cpp_name(r) == cap), cap)
+            pairs.append((cap, raw))
+        if as_name is not None and as_name != cap:
+            raw = next((r for r in raw_list if escape_cpp_name(r) == as_name), as_name)
+            pairs.append((as_name, raw))
+        return pairs
 
     def _unwrap_as_pattern(
         self, pattern: TpyPattern,
@@ -1610,125 +1801,6 @@ class StatementGenerator:
                 else:
                     raise CodeGenError(f"Unsupported or-pattern alternative with bindings: {type(alt).__name__}")
 
-    def _gen_match_elif_union(
-        self, out: TextIO, stmt: TpyMatch, subject_type: UnionType, indent: str,
-    ) -> None:
-        """Generate if/elif chain for union subjects (or-patterns only, no guards)."""
-        inner = INDENT * (self.ctx.indent_level + 1)
-
-        for i, case in enumerate(stmt.cases):
-            keyword = "if" if i == 0 else "} else if"
-            pattern, as_name, as_raw_name = self._unwrap_as_pattern(case.pattern)
-
-            if isinstance(pattern, TpyClassPattern):
-                self._gen_if_elif_union_class_arm(
-                    out, pattern, i, keyword, indent, inner, case.body,
-                    as_name, as_raw_name, case.type_facts,
-                )
-
-            elif isinstance(pattern, TpyOrPattern):
-                self._gen_if_elif_union_or_arm(
-                    out, pattern, i, keyword, indent, inner, case.body,
-                    subject_type, case.type_facts,
-                )
-
-            elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
-                if i == 0:
-                    out.write(f"{indent}{{\n")
-                else:
-                    out.write(f"{indent}}} else {{\n")
-                if isinstance(pattern, TpyCapturePattern):
-                    name = escape_cpp_name(pattern.name)
-                    if pattern.name in self.ctx.declared_vars:
-                        out.write(f"{inner}{name} = __match_subject;\n")
-                    else:
-                        out.write(f"{inner}auto& {name} = __match_subject;\n")
-                if as_name is not None:
-                    if as_raw_name and as_raw_name in self.ctx.declared_vars:
-                        out.write(f"{inner}{as_name} = __match_subject;\n")
-                    else:
-                        out.write(f"{inner}auto& {as_name} = __match_subject;\n")
-                self.ctx.indent_level += 1
-                for s in case.body:
-                    self.gen_stmt(out, s)
-                self.ctx.indent_level -= 1
-
-            else:
-                raise CodeGenError(f"Unsupported pattern in union if/elif: {type(pattern).__name__}")
-
-        out.write(f"{indent}}}\n")
-
-    def _gen_if_elif_union_class_arm(
-        self, out: TextIO, pattern: TpyClassPattern, arm_idx: int | str,
-        keyword: str, indent: str, inner: str, body: list[TpyStmt],
-        as_name: str | None, as_raw_name: str | None,
-        type_facts: dict[str, TpyType] | None,
-    ) -> None:
-        """Generate a single class-pattern arm as if/elif for union subjects (no guards)."""
-        assert pattern.resolved_type is not None
-        cpp_type = self.types.type_to_cpp(pattern.resolved_type)
-
-        cond = f"std::holds_alternative<{cpp_type}>(__match_subject)"
-        out.write(f"{indent}{keyword} ({cond}) {{\n")
-        case_var: str | None = None
-        if pattern.keywords or type_facts:
-            case_var = f"__case_{arm_idx}"
-            out.write(f"{inner}auto& {case_var} = std::get<{cpp_type}>(__match_subject);\n")
-        if pattern.keywords:
-            self._gen_match_field_bindings(out, pattern, case_var, inner)
-        if as_name is not None:
-            src = case_var if case_var else f"std::get<{cpp_type}>(__match_subject)"
-            if as_raw_name and as_raw_name in self.ctx.declared_vars:
-                out.write(f"{inner}{as_name} = {src};\n")
-            else:
-                out.write(f"{inner}auto& {as_name} = {src};\n")
-        saved_narrow = self._apply_narrowing(type_facts, case_var)
-        self.ctx.indent_level += 1
-        for s in body:
-            self.gen_stmt(out, s)
-        self.ctx.indent_level -= 1
-        self._restore_narrowed_vars(saved_narrow)
-
-    def _gen_if_elif_union_or_arm(
-        self, out: TextIO, pattern: TpyOrPattern, arm_idx: int,
-        keyword: str, indent: str, inner: str, body: list[TpyStmt],
-        subject_type: UnionType,
-        type_facts: dict[str, TpyType] | None,
-    ) -> None:
-        """Generate an or-pattern arm as if/elif for union subjects (no guards)."""
-        has_bindings = any(
-            isinstance(alt, TpyClassPattern) and alt.keywords
-            for alt in pattern.patterns
-        )
-
-        if not has_bindings:
-            conds = []
-            for alt in pattern.patterns:
-                if isinstance(alt, TpyClassPattern):
-                    assert alt.resolved_type is not None
-                    cpp_type = self.types.type_to_cpp(alt.resolved_type)
-                    conds.append(f"std::holds_alternative<{cpp_type}>(__match_subject)")
-                elif isinstance(alt, (TpyWildcardPattern, TpyCapturePattern)):
-                    conds.append("true")
-                else:
-                    raise CodeGenError(f"Unsupported or-pattern alternative: {type(alt).__name__}")
-            cond = " || ".join(conds)
-            out.write(f"{indent}{keyword} ({cond}) {{\n")
-            self.ctx.indent_level += 1
-            for s in body:
-                self.gen_stmt(out, s)
-            self.ctx.indent_level -= 1
-        else:
-            for j, alt in enumerate(pattern.patterns):
-                kw = keyword if j == 0 else "} else if"
-                if isinstance(alt, TpyClassPattern):
-                    self._gen_if_elif_union_class_arm(
-                        out, alt, f"{arm_idx}_{j}", kw, indent, inner, body,
-                        None, None, type_facts,
-                    )
-                else:
-                    raise CodeGenError(f"Unsupported or-pattern alternative with bindings: {type(alt).__name__}")
-
     def _apply_narrowing(
         self, type_facts: dict[str, TpyType] | None, case_var: str | None,
     ) -> dict[str, str | None]:
@@ -1741,7 +1813,7 @@ class StatementGenerator:
         return saved
 
     def _gen_match_if_elif(self, out: TextIO, stmt: TpyMatch, indent: str) -> None:
-        """Generate match/case as an if/elif/else chain (fallback for str, float, enum/primitive with guards)."""
+        """Generate match/case as an if/elif/else chain (for str and float subjects)."""
         inner = INDENT * (self.ctx.indent_level + 1)
 
         for i, case in enumerate(stmt.cases):
@@ -1761,28 +1833,11 @@ class StatementGenerator:
                     self.gen_stmt(out, s)
                 self.ctx.indent_level -= 1
 
-            elif isinstance(pattern, TpyValuePattern):
-                val_code = self.expressions.gen_expr(pattern.expr)
-                self.ctx.temps.flush(out, indent)
-                cond = f"__match_subject == {val_code}"
-                if guard is not None:
-                    guard_code = self.expressions.gen_expr(guard)
-                    self.ctx.temps.flush(out, indent)
-                    cond = f"{cond} && {guard_code}"
-                out.write(f"{indent}{keyword} ({cond}) {{\n")
-                self.ctx.indent_level += 1
-                for s in case.body:
-                    self.gen_stmt(out, s)
-                self.ctx.indent_level -= 1
-
             elif isinstance(pattern, TpyOrPattern):
                 conds = []
                 for alt in pattern.patterns:
                     if isinstance(alt, TpyLiteralPattern):
                         conds.append(self._gen_match_literal_cond(alt))
-                    elif isinstance(alt, TpyValuePattern):
-                        val_code = self.expressions.gen_expr(alt.expr)
-                        conds.append(f"__match_subject == {val_code}")
                     else:
                         raise CodeGenError(f"Unsupported or-pattern alternative: {type(alt).__name__}")
                 cond = " || ".join(conds)

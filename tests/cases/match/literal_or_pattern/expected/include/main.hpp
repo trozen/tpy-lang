@@ -9,6 +9,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 std::string classify_num(int32_t x);
 std::string classify_str(std::string_view s);
+std::string classify_as(int32_t x);
 void main();
 
 void __tpy_init();

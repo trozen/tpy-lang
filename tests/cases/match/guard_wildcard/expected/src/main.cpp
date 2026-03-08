@@ -8,15 +8,20 @@ namespace tpy_user::main {
 std::string classify(int32_t x) {
     // 5:     match x:
     auto& __match_subject = x;
-    if ((x > 10)) {
-        // 7:             return "big"
-        return "big";
-    } else if ((x > 5)) {
-        // 9:             return "medium"
-        return "medium";
-    } else {
-        // 11:             return "small"
-        return "small";
+    switch (__match_subject) {
+    default: {
+        if ((x > 10)) {
+            // 7:             return "big"
+            return "big";
+        } else if ((x > 5)) {
+            // 9:             return "medium"
+            return "medium";
+        } else {
+            // 11:             return "small"
+            return "small";
+        }
+        break;
+    }
     }
     // 12:     return ""
     return "";
@@ -26,14 +31,18 @@ std::string classify(int32_t x) {
 std::string describe(int32_t x) {
     // 15:     match x:
     auto& __match_subject = x;
-    auto& n = __match_subject;
-    if ((n == 0)) {
-        // 17:             return "zero"
-        return "zero";
-    } else {
+    switch (__match_subject) {
+    default: {
         auto& n = __match_subject;
-        // 19:             return "nonzero: " + str(n)
-        return (tpy::str_concat("nonzero: ", tpy::fixed_to_str<int32_t>(n)));
+        if ((n == 0)) {
+            // 17:             return "zero"
+            return "zero";
+        } else {
+            // 19:             return "nonzero: " + str(n)
+            return (tpy::str_concat("nonzero: ", tpy::fixed_to_str<int32_t>(n)));
+        }
+        break;
+    }
     }
     // 20:     return ""
     return "";

@@ -8,15 +8,27 @@ namespace tpy_user::main {
 std::string classify_num(int32_t x) {
     // 5:     match x:
     auto& __match_subject = x;
-    if (__match_subject == 1 || __match_subject == 2 || __match_subject == 3) {
+    switch (__match_subject) {
+    case 1:
+    case 2:
+    case 3:
+    {
         // 7:             return "small"
         return "small";
-    } else if (__match_subject == 4 || __match_subject == 5) {
+        break;
+    }
+    case 4:
+    case 5:
+    {
         // 9:             return "medium"
         return "medium";
-    } else {
+        break;
+    }
+    default: {
         // 11:             return "large"
         return "large";
+        break;
+    }
     }
     // 12:     return ""
     return "";
@@ -40,24 +52,53 @@ std::string classify_str(std::string_view s) {
     return "";
 }
 
-// 24: def main() -> None:
+// 24: def classify_as(x: Int32) -> str:
+std::string classify_as(int32_t x) {
+    // 25:     match x:
+    auto& __match_subject = x;
+    switch (__match_subject) {
+    case 1:
+    case 2:
+    {
+        auto& n = __match_subject;
+        // 27:             return "small: " + str(n)
+        return (tpy::str_concat("small: ", tpy::fixed_to_str<int32_t>(n)));
+        break;
+    }
+    default: {
+        // 29:             return "other"
+        return "other";
+        break;
+    }
+    }
+    // 30:     return ""
+    return "";
+}
+
+// 32: def main() -> None:
 void main() {
-    // 25:     print(classify_num(Int32(1)))
+    // 33:     print(classify_num(Int32(1)))
     std::cout << classify_num(1) << "\n";
-    // 26:     print(classify_num(Int32(3)))
+    // 34:     print(classify_num(Int32(3)))
     std::cout << classify_num(3) << "\n";
-    // 27:     print(classify_num(Int32(5)))
+    // 35:     print(classify_num(Int32(5)))
     std::cout << classify_num(5) << "\n";
-    // 28:     print(classify_num(Int32(9)))
+    // 36:     print(classify_num(Int32(9)))
     std::cout << classify_num(9) << "\n";
-    // 29:     print(classify_str("hello"))
+    // 37:     print(classify_str("hello"))
     std::cout << classify_str("hello") << "\n";
-    // 30:     print(classify_str("hi"))
+    // 38:     print(classify_str("hi"))
     std::cout << classify_str("hi") << "\n";
-    // 31:     print(classify_str("goodbye"))
+    // 39:     print(classify_str("goodbye"))
     std::cout << classify_str("goodbye") << "\n";
-    // 32:     print(classify_str("wow"))
+    // 40:     print(classify_str("wow"))
     std::cout << classify_str("wow") << "\n";
+    // 41:     print(classify_as(Int32(1)))
+    std::cout << classify_as(1) << "\n";
+    // 42:     print(classify_as(Int32(2)))
+    std::cout << classify_as(2) << "\n";
+    // 43:     print(classify_as(Int32(9)))
+    std::cout << classify_as(9) << "\n";
 }
 
 void __tpy_init() {
@@ -65,7 +106,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 34: main()
+    // 45: main()
     main();
 }
 

@@ -21,6 +21,14 @@ def classify_str(s: str) -> str:
             return "unknown"
     return ""
 
+def classify_as(x: Int32) -> str:
+    match x:
+        case 1 | 2 as n:
+            return "small: " + str(n)
+        case _:
+            return "other"
+    return ""
+
 def main() -> None:
     print(classify_num(Int32(1)))
     print(classify_num(Int32(3)))
@@ -30,5 +38,8 @@ def main() -> None:
     print(classify_str("hi"))
     print(classify_str("goodbye"))
     print(classify_str("wow"))
+    print(classify_as(Int32(1)))
+    print(classify_as(Int32(2)))
+    print(classify_as(Int32(9)))
 
 main()
