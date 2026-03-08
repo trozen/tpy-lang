@@ -51,6 +51,7 @@ std::string classify(Color c) {
     // 10:     match c:
     auto& __match_subject = c;
     switch (__match_subject) {
+    // 11:         case Color.Red | Color.Blue:
     case Color::Red:
     case Color::Blue:
     {
@@ -58,6 +59,7 @@ std::string classify(Color c) {
         return "warm-ish";
         break;
     }
+    // 13:         case Color.Green:
     case Color::Green: {
         // 14:             return "green"
         return "green";
@@ -73,6 +75,7 @@ std::string check(Color c, bool allow_red) {
     // 18:     match c:
     auto& __match_subject = c;
     switch (__match_subject) {
+    // 19:         case Color.Red if allow_red:
     case Color::Red: {
         if (allow_red) {
             // 20:             return "red allowed"
@@ -83,6 +86,7 @@ std::string check(Color c, bool allow_red) {
         }
         break;
     }
+    // 23:         case _:
     default: {
         // 24:             return "other"
         return "other";
@@ -98,6 +102,7 @@ std::string mixed(Color c, bool allow) {
     // 28:     match c:
     auto& __match_subject = c;
     switch (__match_subject) {
+    // 29:         case Color.Red | Color.Blue:
     case Color::Red:
     case Color::Blue:
     {
@@ -105,6 +110,7 @@ std::string mixed(Color c, bool allow) {
         return "warm";
         break;
     }
+    // 31:         case Color.Green if allow:
     case Color::Green: {
         if (allow) {
             // 32:             return "guarded-green"
@@ -113,6 +119,7 @@ std::string mixed(Color c, bool allow) {
         goto __match_default_1;
         break;
     }
+    // 33:         case _:
     default: __match_default_1: {
         // 34:             return "other"
         return "other";
@@ -128,6 +135,7 @@ std::string or_guard(Color c, bool flag) {
     // 38:     match c:
     auto& __match_subject = c;
     switch (__match_subject) {
+    // 39:         case Color.Red | Color.Blue if flag:
     case Color::Red:
     case Color::Blue:
     {
@@ -138,6 +146,7 @@ std::string or_guard(Color c, bool flag) {
         goto __match_default_2;
         break;
     }
+    // 41:         case _:
     default: __match_default_2: {
         // 42:             return "other"
         return "other";
@@ -153,6 +162,7 @@ std::string multi_guard(Color c, bool x, bool y) {
     // 46:     match c:
     auto& __match_subject = c;
     switch (__match_subject) {
+    // 47:         case Color.Green if x:
     case Color::Green: {
         if (x) {
             // 48:             return "green+x"
@@ -166,6 +176,7 @@ std::string multi_guard(Color c, bool x, bool y) {
         }
         break;
     }
+    // 53:         case _:
     default: {
         // 54:             return "other"
         return "other";

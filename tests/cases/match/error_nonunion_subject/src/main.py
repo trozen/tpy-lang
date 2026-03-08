@@ -1,11 +1,7 @@
-# error: match subject must be a union, enum, or primitive type
-class Foo:
-    x: int
-    def __init__(self, x: int) -> None:
-        self.x = x
+# error: match subject must be a supported type (list is not matchable)
 
-def describe(f: Foo) -> str:
-    match f:  # tpyc: error(/must be a union, enum, or primitive type/)
+def describe(items: list[int]) -> str:
+    match items:  # tpyc: error(/must be a union, enum, primitive, record, or Optional type/)
         case _:
             return "something"
     return ""

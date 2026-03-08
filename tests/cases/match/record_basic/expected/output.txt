@@ -1,0 +1,10 @@
+origin
+x-axis: 3
+y-axis: 5
+(3, 4)
+origin
+not origin
+origin
+x-axis
+other
+point: 7, 8

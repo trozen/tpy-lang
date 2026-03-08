@@ -8,16 +8,19 @@ namespace tpy_user::main {
 std::string describe(std::variant<Bird, Cat, Dog>& a, bool verbose) {
     // 17:     match a:
     auto& __match_subject = a;
+    // 18:         case Dog() | Cat() if verbose:
     if ((std::holds_alternative<Dog>(__match_subject) || std::holds_alternative<Cat>(__match_subject)) && verbose) {
         // 19:             return "verbose pet"
         return "verbose pet";
         goto __match_end_1;
     }
+    // 20:         case Dog() | Cat():
     if (std::holds_alternative<Dog>(__match_subject) || std::holds_alternative<Cat>(__match_subject)) {
         // 21:             return "pet"
         return "pet";
         goto __match_end_1;
     }
+    // 22:         case Bird():
     if (std::holds_alternative<Bird>(__match_subject)) {
         auto& __case_2 = std::get<Bird>(__match_subject);
         // 23:             return "bird"
@@ -33,6 +36,7 @@ __match_end_1:;
 std::string find(std::variant<Bird, Cat, Dog>& a) {
     // 27:     match a:
     auto& __match_subject = a;
+    // 28:         case Dog(name=n) | Cat(name=n) if n == "Rex":
     if (std::holds_alternative<Dog>(__match_subject)) {
         auto& __case_0_0 = std::get<Dog>(__match_subject);
         auto& n = __case_0_0.name;
@@ -51,6 +55,7 @@ std::string find(std::variant<Bird, Cat, Dog>& a) {
             goto __match_end_2;
         }
     }
+    // 30:         case Dog(name=n) | Cat(name=n):
     if (std::holds_alternative<Dog>(__match_subject)) {
         auto& __case_1_0 = std::get<Dog>(__match_subject);
         auto& n = __case_1_0.name;
@@ -65,6 +70,7 @@ std::string find(std::variant<Bird, Cat, Dog>& a) {
         return (tpy::str_concat("other pet: ", n));
         goto __match_end_2;
     }
+    // 32:         case Bird(name=n):
     if (std::holds_alternative<Bird>(__match_subject)) {
         auto& __case_2 = std::get<Bird>(__match_subject);
         auto& n = __case_2.name;

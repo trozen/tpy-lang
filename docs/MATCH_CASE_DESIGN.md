@@ -7,10 +7,12 @@
 | 1 | Parser + sema + codegen: union subjects with class patterns (keyword field binding), wildcard, capture, as-pattern. Subject narrowing. if/elif codegen. | Done |
 | 2 | Positional class patterns (`Point(x, y)`) via `__match_args__` | Done |
 | 3 | Literal, singleton (`True`/`False`), and value (`Color.RED`) patterns; enum and primitive subjects | Done |
-| 4 | Concrete record subjects (field-value matching), Optional subjects | Not started |
+| 4 | Concrete record subjects (field-value matching), Optional subjects | Done |
+| 4b | Optional codegen: `if/else+switch` for Optional enum/primitive, hoisted null check for Optional record | Not started |
 | 5 | Or-patterns (`Dog() \| Cat():`), guard clauses (`if cond`) | Done |
 | 6 | Exhaustiveness warnings (union, enum, Optional) | Not started (duplicate case + unreachable-after-wildcard detection done in Phase 1) |
 | 7 | `switch` codegen for unions (`switch (s.index())`) and enums (`switch (e)`); if/elif fallback when guards present | Done |
+| 8 | Optimized string dispatch: for N+ string literal cases (N~4-6), emit O(1) dispatch instead of linear if/elif. Start with length-based partitioning (`switch (s.length())` + `==` per bucket), consider perfect hashing for large case counts. Also applies to generated code like `EnumUtil::try_parse`/`from_name` which are string-to-enum lookups. | Not started |
 
 ### Future Extensions
 
@@ -23,7 +25,6 @@
 | Builtin type patterns | `case int():` / `case str():` as type checks |
 | Or-pattern body dedup | Lambda-based body sharing instead of codegen duplication |
 | User-defined `__match_args__` | Explicit override of auto-generated positional mapping |
-| String switch via hash | `switch (hash(s))` with `==` verification per case; eliminates linear scan for many string patterns |
 
 ---
 
@@ -37,8 +38,12 @@ Related: `UNION_TYPES_DESIGN.md` (union types, isinstance narrowing),
 ### Goals
 
 - **CPython-compatible**: standard `match`/`case` syntax, same semantics
-- **Zero-overhead**: compile to if/elif chains -- no runtime
-  pattern-matching library
+- **Better than if/elif**: match/case is not just syntactic sugar --
+  the compiler exploits pattern structure to emit `switch` statements
+  for enums, unions, and primitives (O(1) dispatch), and hoists shared
+  checks (e.g. null guard for Optional subjects). Users should expect
+  match/case to be at least as fast as hand-written if/elif, and often
+  faster.
 - **Exhaustiveness checking**: warn when union/enum members are not covered
 - **Reuse existing infrastructure**: isinstance narrowing, union codegen,
   enum comparison
@@ -128,9 +133,9 @@ are deferred to Phase 2.
 |--------------|-----------------|----------------|
 | Union (`A \| B \| C`) | `switch (s.index())` + `std::get<N>` | Yes (all members) |
 | Enum | `switch (e)` | Yes (all members) |
-| Optional (`T \| None`) | if/elif with `has_value()` or `holds_alternative` | Yes (T + None) |
+| Optional (`T \| None`) | if/elif with `has_value()`/`== nullptr` | Yes (T + None) |
 | Primitive (`int`, `str`, `bool`) | if/elif with `==` comparison | No (infinite domain) |
-| Record (concrete class) | Field-value matching via if/elif | No |
+| Record (concrete class) | if/elif on field values; goto for guards | No |
 
 ---
 
@@ -516,12 +521,60 @@ auto& __match_subject = point;
 if (__match_subject.x == 0 && __match_subject.y == 0) {
     std::cout << "origin" << "\n";
 } else if (__match_subject.y == 0) {
-    auto x = __match_subject.x;
-    std::cout << ("on x-axis at " + std::to_string(x)) << "\n";
+    auto& x = __match_subject.x;
+    std::cout << ("on x-axis at " + ...) << "\n";
 } else {
-    auto x = __match_subject.x;
-    auto y = __match_subject.y;
-    std::cout << ("at (" + std::to_string(x) + ", " + std::to_string(y) + ")") << "\n";
+    auto& x = __match_subject.x;
+    auto& y = __match_subject.y;
+    std::cout << ("at (" + ... + ")") << "\n";
+}
+```
+
+Class patterns with no literal sub-patterns (all captures/wildcards) are
+always-matching and act as a default arm. With guards, record matches use
+standalone `if` blocks with `goto` (same approach as guarded unions).
+
+### Optional subjects
+
+For value-type optionals (`std::optional<T>`):
+
+```python
+match maybe_val:
+    case None:
+        print("nothing")
+    case 42:
+        print("answer")
+    case _:
+        print("other")
+```
+
+```cpp
+auto& __match_subject = maybe_val;
+if (!__match_subject.has_value()) {
+    std::cout << "nothing" << "\n";
+} else if (__match_subject.has_value() && (*__match_subject) == 42) {
+    std::cout << "answer" << "\n";
+} else {
+    std::cout << "other" << "\n";
+}
+```
+
+For pointer-repr optionals (`T*`, where T is a record):
+
+```python
+match maybe_point:
+    case None:
+        print("nothing")
+    case Point(x=0, y=0):
+        print("origin")
+```
+
+```cpp
+auto& __match_subject = maybe_point;
+if (__match_subject == nullptr) {
+    // None arm
+} else if (__match_subject != nullptr && (*__match_subject).x == 0 && (*__match_subject).y == 0) {
+    // origin arm
 }
 ```
 
@@ -595,6 +648,24 @@ default: __match_default_1: {
 }
 ```
 
+**Record subjects with guards**: uses standalone `if` blocks with
+`goto` (same approach as unions). Field conditions are checked first,
+then captures bound, then guard evaluated inside a nested `if`:
+
+```cpp
+// case Point(x=x) if x > 0:
+if (true) {
+    auto& x = __match_subject.x;
+    if (x > 0) {
+        // body
+        goto __match_end_1;
+    }
+}
+// case _:
+{ ... }
+__match_end_1:;
+```
+
 **String/float subjects with guards**: uses `&&` inlining in if/elif
 chains (switch not available for these types):
 
@@ -602,6 +673,9 @@ chains (switch not available for these types):
 // case "hello" if formal:
 if (__match_subject == "hello" && formal) { ... }
 ```
+
+**Optional subjects with guards**: uses `&&` inlining (guards don't
+reference pattern bindings for Optional).
 
 ### Or-patterns
 

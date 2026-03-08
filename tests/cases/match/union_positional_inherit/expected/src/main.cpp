@@ -9,6 +9,7 @@ void describe(std::variant<Child, Other>& s) {
     // 18:     match s:
     auto& __match_subject = s;
     switch (__match_subject.index()) {
+    // 19:         case Child(a, b, c):
     case 0: {
         auto& __case_0 = std::get<0>(__match_subject);
         auto& a = __case_0.x;
@@ -18,6 +19,7 @@ void describe(std::variant<Child, Other>& s) {
         std::cout << tpy::print_float(((((a) + (b))) + (c))) << "\n";
         break;
     }
+    // 21:         case Other(v):
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject);
         auto& v = __case_1.v;

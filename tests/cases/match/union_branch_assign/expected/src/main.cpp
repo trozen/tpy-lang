@@ -10,6 +10,7 @@ int32_t describe(std::variant<Cat, Dog>& a) {
     int32_t result;
     auto& __match_subject = a;
     switch (__match_subject.index()) {
+    // 16:         case Dog(age=x):
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject);
         auto& x = __case_0.age;
@@ -17,6 +18,7 @@ int32_t describe(std::variant<Cat, Dog>& a) {
         result = x;
         break;
     }
+    // 18:         case _:
     default: {
         // 19:             result = 0
         result = 0;

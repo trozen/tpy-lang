@@ -9,6 +9,7 @@ std::string classify_num(int32_t x) {
     // 5:     match x:
     auto& __match_subject = x;
     switch (__match_subject) {
+    // 6:         case 1 | 2 | 3:
     case 1:
     case 2:
     case 3:
@@ -17,6 +18,7 @@ std::string classify_num(int32_t x) {
         return "small";
         break;
     }
+    // 8:         case 4 | 5:
     case 4:
     case 5:
     {
@@ -24,6 +26,7 @@ std::string classify_num(int32_t x) {
         return "medium";
         break;
     }
+    // 10:         case _:
     default: {
         // 11:             return "large"
         return "large";
@@ -38,12 +41,15 @@ std::string classify_num(int32_t x) {
 std::string classify_str(std::string_view s) {
     // 15:     match s:
     auto& __match_subject = s;
+    // 16:         case "hello" | "hi":
     if (__match_subject == "hello" || __match_subject == "hi") {
         // 17:             return "greeting"
         return "greeting";
+    // 18:         case "bye" | "goodbye":
     } else if (__match_subject == "bye" || __match_subject == "goodbye") {
         // 19:             return "farewell"
         return "farewell";
+    // 20:         case _:
     } else {
         // 21:             return "unknown"
         return "unknown";
@@ -57,6 +63,7 @@ std::string classify_as(int32_t x) {
     // 25:     match x:
     auto& __match_subject = x;
     switch (__match_subject) {
+    // 26:         case 1 | 2 as n:
     case 1:
     case 2:
     {
@@ -65,6 +72,7 @@ std::string classify_as(int32_t x) {
         return (tpy::str_concat("small: ", tpy::fixed_to_str<int32_t>(n)));
         break;
     }
+    // 28:         case _:
     default: {
         // 29:             return "other"
         return "other";

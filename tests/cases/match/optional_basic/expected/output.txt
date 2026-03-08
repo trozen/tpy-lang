@@ -1,0 +1,6 @@
+nothing
+zero
+something
+none
+greeting
+other: world

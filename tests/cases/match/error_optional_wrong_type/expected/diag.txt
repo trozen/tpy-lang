@@ -1,0 +1,1 @@
+main.py:20: error: class pattern 'Rect' does not match subject type 'Point'

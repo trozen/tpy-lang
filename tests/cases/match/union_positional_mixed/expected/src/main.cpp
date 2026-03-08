@@ -9,6 +9,7 @@ void describe(std::variant<Label, Point>& s) {
     // 15:     match s:
     auto& __match_subject = s;
     switch (__match_subject.index()) {
+    // 16:         case Point(px, py, z=pz):
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject);
         auto& px = __case_0.x;
@@ -18,6 +19,7 @@ void describe(std::variant<Label, Point>& s) {
         std::cout << tpy::print_float(((((px) + (py))) + (pz))) << "\n";
         break;
     }
+    // 18:         case Label(t):
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject);
         auto& t = __case_1.text;

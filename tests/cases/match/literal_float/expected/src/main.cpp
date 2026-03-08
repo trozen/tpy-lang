@@ -9,12 +9,15 @@ namespace tpy_user::main {
 std::string classify(double x) {
     // 3:     match x:
     auto& __match_subject = x;
+    // 4:         case 0.0:
     if (__match_subject == 0.0) {
         // 5:             return "zero"
         return "zero";
+    // 6:         case 1.0:
     } else if (__match_subject == 1.0) {
         // 7:             return "one"
         return "one";
+    // 8:         case other:
     } else {
         auto& other = __match_subject;
         // 9:             return "other"

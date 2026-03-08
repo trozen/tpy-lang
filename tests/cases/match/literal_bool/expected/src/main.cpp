@@ -10,11 +10,13 @@ std::string describe(bool b) {
     // 3:     match b:
     auto& __match_subject = b;
     switch (__match_subject) {
+    // 4:         case True:
     case true: {
         // 5:             return "yes"
         return "yes";
         break;
     }
+    // 6:         case False:
     case false: {
         // 7:             return "no"
         return "no";

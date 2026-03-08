@@ -10,12 +10,14 @@ std::string describe(std::variant<Cat, Dog>& a) {
     std::string n;
     auto& __match_subject = a;
     switch (__match_subject.index()) {
+    // 14:         case Dog(name=n):
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject);
         n = __case_0.name;
         // 15:             pass
         break;
     }
+    // 16:         case Cat(name=n):
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject);
         n = __case_1.name;

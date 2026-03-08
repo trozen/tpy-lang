@@ -9,6 +9,7 @@ std::string classify(int32_t x) {
     // 5:     match x:
     auto& __match_subject = x;
     switch (__match_subject) {
+    // 6:         case 1 if False:
     case 1: {
         if (false) {
             // 7:             return "never"
@@ -19,11 +20,13 @@ std::string classify(int32_t x) {
         }
         break;
     }
+    // 10:         case 2:
     case 2: {
         // 11:             return "two"
         return "two";
         break;
     }
+    // 12:         case _:
     default: {
         // 13:             return "other"
         return "other";

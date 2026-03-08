@@ -9,12 +9,15 @@ namespace tpy_user::main {
 std::string handle(std::string_view cmd) {
     // 3:     match cmd:
     auto& __match_subject = cmd;
+    // 4:         case "quit":
     if (__match_subject == "quit") {
         // 5:             return "quitting"
         return "quitting";
+    // 6:         case "help":
     } else if (__match_subject == "help") {
         // 7:             return "showing help"
         return "showing help";
+    // 8:         case other:
     } else {
         auto& other = __match_subject;
         // 9:             return "unknown: " + other

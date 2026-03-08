@@ -9,6 +9,7 @@ std::string describe(std::variant<Cat, Dog>& a) {
     // 13:     match a:
     auto& __match_subject = a;
     switch (__match_subject.index()) {
+    // 14:         case Dog(name=n):
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject);
         auto& n = __case_0.name;
@@ -16,6 +17,7 @@ std::string describe(std::variant<Cat, Dog>& a) {
         return (tpy::str_concat("dog: ", n));
         break;
     }
+    // 16:         case _:
     default: {
         // 17:             return "other"
         return "other";
@@ -29,12 +31,14 @@ std::string classify(std::variant<Cat, Dog>& a) {
     // 20:     match a:
     auto& __match_subject = a;
     switch (__match_subject.index()) {
+    // 21:         case Dog():
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject);
         // 22:             return "is dog"
         return "is dog";
         break;
     }
+    // 23:         case x:
     default: {
         auto& x = __match_subject;
         // 24:             return "not dog"

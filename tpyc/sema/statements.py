@@ -622,10 +622,16 @@ class StatementAnalyzer:
             Int32Type, BigIntType, FixedIntType, FloatType, Float32Type,
             BoolType, StrType, StrViewType, StringType, CharType,
         ))
-        if not (is_union or is_enum or is_primitive):
+        is_record = (
+            isinstance(effective_type, NamedType)
+            and effective_type.is_user_record
+            and self.ctx.registry.get_record(effective_type.name) is not None
+        )
+        is_optional = isinstance(effective_type, OptionalType)
+        if not (is_union or is_enum or is_primitive or is_record or is_optional):
             raise self.ctx.error(
-                f"match subject must be a union, enum, or primitive type, "
-                f"got '{subject_type}'", stmt
+                f"match subject must be a union, enum, primitive, record, "
+                f"or Optional type, got '{subject_type}'", stmt
             )
 
         # Subject variable name for narrowing (only if simple name)
@@ -664,6 +670,14 @@ class StatementAnalyzer:
             saved_seen_values = set(seen_values) if has_guard else None
             if is_union:
                 self._analyze_pattern(case.pattern, effective_type, seen_types, pattern_bindings, stmt)
+            elif is_record:
+                self._analyze_pattern_record(
+                    case.pattern, effective_type, pattern_bindings, stmt,
+                )
+            elif is_optional:
+                self._analyze_pattern_optional(
+                    case.pattern, effective_type, seen_values, pattern_bindings, stmt,
+                )
             else:
                 self._analyze_pattern_nonunion(
                     case.pattern, effective_type, seen_values, pattern_bindings, stmt,
@@ -688,6 +702,15 @@ class StatementAnalyzer:
                 case.type_facts = self._filter_union_codegen_facts(narrowing_facts)
                 self.ctx.narrowed_types.update(narrowing_facts)
 
+            # Narrow Optional subject to inner type in non-None arms
+            if is_optional and subject_name is not None:
+                pat = case.pattern
+                if isinstance(pat, TpyAsPattern):
+                    pat = pat.pattern
+                is_none_arm = isinstance(pat, TpyLiteralPattern) and pat.value is None
+                if not is_none_arm:
+                    self.ctx.narrowed_types[subject_name] = effective_type.inner
+
             # Analyze guard expression (pattern bindings are in scope)
             if case.guard is not None:
                 self.expr.analyze_expr(case.guard)
@@ -702,6 +725,12 @@ class StatementAnalyzer:
             if isinstance(pat, TpyAsPattern):
                 pat = pat.pattern
             if isinstance(pat, (TpyWildcardPattern, TpyCapturePattern)) and case.guard is None:
+                had_wildcard = True
+            # Class pattern on concrete record with no conditions is always-matching
+            elif ((is_record or is_optional) and isinstance(pat, TpyClassPattern)
+                  and case.guard is None
+                  and not any(isinstance(sub, (TpyLiteralPattern, TpyValuePattern))
+                              for _, sub in pat.keywords)):
                 had_wildcard = True
 
         # Merge flow states across all arms
@@ -828,6 +857,38 @@ class StatementAnalyzer:
         seen_types.add(cls_name)
         pattern.resolved_type = named_type
 
+        self._resolve_class_pattern_fields(pattern, record, bindings)
+
+    def _analyze_class_pattern_record(
+        self, pattern: TpyClassPattern, subject_type: NamedType,
+        bindings: dict[str, TpyType], stmt: TpyMatch,
+    ) -> None:
+        """Analyze a class pattern on a concrete record subject (field-value matching)."""
+        if not isinstance(pattern.cls, TpyName):
+            raise self.ctx.error(
+                "class pattern must use a simple name", pattern
+            )
+        cls_name = pattern.cls.name
+
+        record = self.ctx.registry.get_record(cls_name)
+        if record is None:
+            raise self.ctx.error(f"unknown type '{cls_name}' in match pattern", pattern)
+
+        if cls_name != subject_type.name:
+            raise self.ctx.error(
+                f"class pattern '{cls_name}' does not match "
+                f"subject type '{subject_type.name}'", pattern
+            )
+
+        self._resolve_class_pattern_fields(pattern, record, bindings)
+
+    def _resolve_class_pattern_fields(
+        self, pattern: TpyClassPattern, record: 'RecordInfo',
+        bindings: dict[str, TpyType],
+    ) -> None:
+        """Resolve positional patterns and validate keyword field bindings."""
+        cls_name = pattern.cls.name if isinstance(pattern.cls, TpyName) else "?"
+
         # Use all fields in constructor order for positional resolution and field lookup.
         # For @dataclass, dataclass_fields includes inherited fields; for others, use own fields.
         all_fields = record.dataclass_fields if record.is_dataclass else record.fields
@@ -926,10 +987,114 @@ class StatementAnalyzer:
                 f"{type(pattern).__name__}", pattern
             )
 
+    def _analyze_pattern_record(
+        self, pattern: TpyPattern, subject_type: NamedType,
+        bindings: dict[str, TpyType], stmt: TpyMatch,
+    ) -> None:
+        """Analyze a pattern for concrete record subjects (field-value matching)."""
+        if isinstance(pattern, TpyWildcardPattern):
+            return
+
+        elif isinstance(pattern, TpyCapturePattern):
+            bindings[pattern.name] = subject_type
+
+        elif isinstance(pattern, TpyAsPattern):
+            self._analyze_pattern_record(
+                pattern.pattern, subject_type, bindings, stmt,
+            )
+            bindings[pattern.name] = subject_type
+
+        elif isinstance(pattern, TpyClassPattern):
+            self._analyze_class_pattern_record(pattern, subject_type, bindings, stmt)
+
+        elif isinstance(pattern, TpyOrPattern):
+            self._analyze_or_pattern(
+                pattern, subject_type, set(), bindings, stmt,
+                is_union=False, is_record=True,
+            )
+
+        else:
+            raise self.ctx.error(
+                f"Unsupported pattern for record subject '{subject_type.name}': "
+                f"{type(pattern).__name__}", pattern
+            )
+
+    def _analyze_pattern_optional(
+        self, pattern: TpyPattern, subject_type: OptionalType,
+        seen_values: set[object], bindings: dict[str, TpyType], stmt: TpyMatch,
+    ) -> None:
+        """Analyze a pattern for Optional subjects."""
+        if isinstance(pattern, TpyWildcardPattern):
+            return
+
+        elif isinstance(pattern, TpyCapturePattern):
+            bindings[pattern.name] = subject_type
+
+        elif isinstance(pattern, TpyAsPattern):
+            self._analyze_pattern_optional(
+                pattern.pattern, subject_type, seen_values, bindings, stmt,
+            )
+            bindings[pattern.name] = subject_type
+
+        elif isinstance(pattern, TpyLiteralPattern):
+            if pattern.value is None:
+                if None in seen_values:
+                    raise self.ctx.error(
+                        "duplicate case for None in match statement", pattern
+                    )
+                seen_values.add(None)
+            else:
+                # Literal match on the inner type (e.g. case 42: on Optional[Int32])
+                self._validate_literal_pattern(pattern, subject_type.inner)
+                key = pattern.value
+                if key in seen_values:
+                    raise self.ctx.error(
+                        f"duplicate case for {key!r} in match statement", pattern
+                    )
+                seen_values.add(key)
+
+        elif isinstance(pattern, TpyValuePattern):
+            # Value pattern on inner type (e.g. case Color.RED: on Optional[Color])
+            self._validate_value_pattern(pattern, subject_type.inner)
+            if isinstance(pattern.expr, TpyFieldAccess):
+                obj_name = pattern.expr.obj.name if isinstance(pattern.expr.obj, TpyName) else "?"
+                key = (obj_name, pattern.expr.field)
+                if key in seen_values:
+                    raise self.ctx.error(
+                        f"duplicate case for '{obj_name}.{pattern.expr.field}' "
+                        f"in match statement", pattern
+                    )
+                seen_values.add(key)
+
+        elif isinstance(pattern, TpyClassPattern):
+            # Class pattern on the inner type (e.g. case Point(): on Optional[Point])
+            inner = subject_type.inner
+            if isinstance(inner, NamedType) and inner.is_user_record:
+                record = self.ctx.registry.get_record(inner.name)
+                if record is not None:
+                    self._analyze_class_pattern_record(pattern, inner, bindings, stmt)
+                    return
+            raise self.ctx.error(
+                f"class pattern not valid for Optional inner type '{inner}'",
+                pattern,
+            )
+
+        elif isinstance(pattern, TpyOrPattern):
+            self._analyze_or_pattern(
+                pattern, subject_type, seen_values, bindings, stmt,
+                is_union=False, is_optional=True,
+            )
+
+        else:
+            raise self.ctx.error(
+                f"Unsupported pattern for Optional subject: "
+                f"{type(pattern).__name__}", pattern
+            )
+
     def _analyze_or_pattern(
         self, pattern: TpyOrPattern, subject_type: TpyType,
         seen: set, bindings: dict[str, TpyType], stmt: TpyMatch,
-        is_union: bool,
+        is_union: bool, is_record: bool = False, is_optional: bool = False,
     ) -> None:
         """Analyze an or-pattern: all alternatives must bind same variables with compatible types."""
         if len(pattern.patterns) < 2:
@@ -940,6 +1105,10 @@ class StatementAnalyzer:
             alt_bindings: dict[str, TpyType] = {}
             if is_union:
                 self._analyze_pattern(alt, subject_type, seen, alt_bindings, stmt)
+            elif is_record:
+                self._analyze_pattern_record(alt, subject_type, alt_bindings, stmt)
+            elif is_optional:
+                self._analyze_pattern_optional(alt, subject_type, seen, alt_bindings, stmt)
             else:
                 self._analyze_pattern_nonunion(alt, subject_type, seen, alt_bindings, stmt)
 

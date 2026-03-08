@@ -9,18 +9,23 @@ namespace tpy_user::main {
 std::string greet(std::string_view s, bool formal) {
     // 3:     match s:
     auto& __match_subject = s;
+    // 4:         case "hello" if formal:
     if (__match_subject == "hello" && formal) {
         // 5:             return "Good day"
         return "Good day";
+    // 6:         case "hello":
     } else if (__match_subject == "hello") {
         // 7:             return "Hey"
         return "Hey";
+    // 8:         case "bye" if formal:
     } else if (__match_subject == "bye" && formal) {
         // 9:             return "Farewell"
         return "Farewell";
+    // 10:         case "bye":
     } else if (__match_subject == "bye") {
         // 11:             return "Later"
         return "Later";
+    // 12:         case _:
     } else {
         // 13:             return "?"
         return "?";
@@ -33,12 +38,15 @@ std::string greet(std::string_view s, bool formal) {
 std::string bucket(double x) {
     // 17:     match x:
     auto& __match_subject = x;
+    // 18:         case 0.0 if True:
     if (__match_subject == 0.0 && true) {
         // 19:             return "zero"
         return "zero";
+    // 20:         case 1.0:
     } else if (__match_subject == 1.0) {
         // 21:             return "one"
         return "one";
+    // 22:         case _:
     } else {
         // 23:             return "other"
         return "other";

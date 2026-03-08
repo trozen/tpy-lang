@@ -2602,14 +2602,16 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   - **Union subjects**: class patterns (`case Circle():`, `case Circle(radius=r):`), subject narrowing, `switch (s.index())` codegen with `std::get<N>`
   - **Enum subjects**: value patterns (`case Color.Red:`), `switch` codegen
   - **Primitive subjects** (`int`, `bool`): literal patterns, `switch` codegen; (`str`, `float`): if/elif fallback
+  - **Record subjects**: field-value matching (`case Point(x=0, y=0):`), if/elif codegen; `goto`-based fallthrough for guards
+  - **Optional subjects**: `case None:` + literal/class/value patterns on inner type; if/elif with `has_value()`/`nullptr`; value-type and pointer-repr
   - Wildcard (`case _:`), capture (`case x:`), as-pattern (`case Dog() as d:`)
   - Keyword and positional field bindings in class patterns (`case Rect(w, h):`, `case Point(x, y, z=pz):`)
   - Positional patterns resolved via field declaration order (implicit `__match_args__` for all records, not just `@dataclass` -- CPython extension)
   - Pattern binding scope: bindings leak to enclosing scope (like Python), pre-declared when defined in all arms
   - Or-patterns (`case Dog() | Cat():`) with `switch` case fallthrough; with bindings (`case Dog(name=n) | Cat(name=n):`) via body duplication in switch (str/float fall back to if/elif with `||`)
-  - Guard clauses (`case Dog(name=n) if n == "Rex":`) with `goto`-based fallthrough for unions, `switch` with if/else guard chains + `goto` to default for enums/int/bool, `&&` inlining for str/float
-  - Error diagnostics: non-member type, duplicate case, type mismatch, unreachable case after wildcard, too many positional patterns, positional/keyword overlap, or-pattern variable name mismatch
-  - **Not yet**: None singleton pattern, exhaustiveness warnings
+  - Guard clauses (`case Dog(name=n) if n == "Rex":`) with `goto`-based fallthrough for unions and records, `switch` with if/else guard chains + `goto` to default for enums/int/bool, `&&` inlining for str/float
+  - Error diagnostics: non-member type, duplicate case, type mismatch, unreachable case after wildcard, too many positional patterns, positional/keyword overlap, or-pattern variable name mismatch, wrong class for record subject
+  - **Not yet**: exhaustiveness warnings
 
 ---
 

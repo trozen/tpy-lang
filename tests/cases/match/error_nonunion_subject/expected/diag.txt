@@ -1,1 +1,1 @@
-main.py:8: error: match subject must be a union, enum, or primitive type, got 'Foo'
+main.py:4: error: match subject must be a union, enum, primitive, record, or Optional type, got 'list[int]'

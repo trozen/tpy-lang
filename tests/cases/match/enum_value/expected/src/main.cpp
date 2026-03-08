@@ -51,16 +51,19 @@ std::string describe(Color c) {
     // 10:     match c:
     auto& __match_subject = c;
     switch (__match_subject) {
+    // 11:         case Color.Red:
     case Color::Red: {
         // 12:             return "red"
         return "red";
         break;
     }
+    // 13:         case Color.Green:
     case Color::Green: {
         // 14:             return "green"
         return "green";
         break;
     }
+    // 15:         case _:
     default: {
         // 16:             return "other"
         return "other";

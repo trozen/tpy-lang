@@ -9,6 +9,7 @@ std::string classify(int32_t x) {
     // 5:     match x:
     auto& __match_subject = x;
     switch (__match_subject) {
+    // 6:         case _ if x > 10:
     default: {
         if ((x > 10)) {
             // 7:             return "big"
@@ -32,6 +33,7 @@ std::string describe(int32_t x) {
     // 15:     match x:
     auto& __match_subject = x;
     switch (__match_subject) {
+    // 16:         case n if n == 0:
     default: {
         auto& n = __match_subject;
         if ((n == 0)) {

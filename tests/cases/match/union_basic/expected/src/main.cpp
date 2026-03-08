@@ -9,18 +9,21 @@ std::string describe(std::variant<Bird, Cat, Dog>& a) {
     // 18:     match a:
     auto& __match_subject = a;
     switch (__match_subject.index()) {
+    // 19:         case Dog():
     case 2: {
         auto& __case_0 = std::get<2>(__match_subject);
         // 20:             return "dog"
         return "dog";
         break;
     }
+    // 21:         case Cat():
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject);
         // 22:             return "cat"
         return "cat";
         break;
     }
+    // 23:         case _:
     default: {
         // 24:             return "other"
         return "other";

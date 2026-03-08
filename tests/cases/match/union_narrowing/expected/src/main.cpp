@@ -9,12 +9,14 @@ void describe(std::variant<Circle, Rect>& s) {
     // 15:     match s:
     auto& __match_subject = s;
     switch (__match_subject.index()) {
+    // 16:         case Circle():
     case 0: {
         auto& __case_0 = std::get<0>(__match_subject);
         // 17:             print(s.radius)
         std::cout << tpy::print_float(__case_0.radius) << "\n";
         break;
     }
+    // 18:         case Rect():
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject);
         // 19:             print(s.width * s.height)

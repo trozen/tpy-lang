@@ -1854,7 +1854,8 @@ class Parser:
             pattern = self._parse_pattern(case.pattern)
             guard = self._parse_expr(case.guard) if case.guard else None
             body = [self._parse_stmt(s) for s in case.body]
-            cases.append(TpyMatchCase(pattern, guard, body, loc=self._loc(case)))
+            # match_case nodes lack lineno; use the pattern's location instead
+            cases.append(TpyMatchCase(pattern, guard, body, loc=self._loc(case.pattern)))
         return TpyMatch(subject, cases, loc=loc)
 
     def _parse_pattern(self, node: ast.pattern) -> TpyPattern:

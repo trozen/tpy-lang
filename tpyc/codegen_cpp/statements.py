@@ -1299,6 +1299,14 @@ class StatementGenerator:
             self._gen_match_switch_enum(out, stmt, indent)
         elif isinstance(subject_type, (FixedIntType, BoolType)):
             self._gen_match_switch_primitive(out, stmt, indent)
+        elif isinstance(subject_type, NamedType) and subject_type.is_user_record:
+            has_guard = any(c.guard is not None for c in stmt.cases)
+            if has_guard:
+                self._gen_match_guarded_record(out, stmt, indent)
+            else:
+                self._gen_match_if_elif_record(out, stmt, indent)
+        elif isinstance(subject_type, OptionalType):
+            self._gen_match_if_elif_optional(out, stmt, subject_type, indent)
         else:
             self._gen_match_if_elif(out, stmt, indent)
 
@@ -1310,6 +1318,7 @@ class StatementGenerator:
         out.write(f"{indent}switch (__match_subject.index()) {{\n")
 
         for i, case in enumerate(stmt.cases):
+            self.ctx.emit_source_comment(out, case.loc, indent)
             pattern, as_name, as_raw_name = self._unwrap_as_pattern(case.pattern)
 
             if isinstance(pattern, TpyClassPattern):
@@ -1411,10 +1420,11 @@ class StatementGenerator:
         self._emit_switch_groups(out, groups, indent)
 
     # Entry in a switch arm group:
-    # (guard, body, capture_escaped, as_escaped, raw_names)
+    # (guard, body, capture_escaped, as_escaped, raw_names, loc)
     # raw_names: set of raw Python names for declared_vars lookup
     _SwitchEntry = tuple[
         TpyExpr | None, list['TpyStmt'], str | None, str | None, set[str],
+        'SourceLocation | None',
     ]
 
     def _group_switch_arms(
@@ -1424,7 +1434,7 @@ class StatementGenerator:
 
         Returns a list of (labels, entries) where:
         - labels: list of case label strings, or ["default"] for wildcard
-        - entries: list of (guard, body, cap_escaped, as_escaped, raw_names)
+        - entries: list of (guard, body, cap_escaped, as_escaped, raw_names, loc)
         Same-value cases with guards are merged into a single group.
         Entries are ordered guarded-first, unguarded-last (enforced by sema
         duplicate-case check which only allows same-value repeats with guards).
@@ -1446,7 +1456,7 @@ class StatementGenerator:
                     assert isinstance(pattern, TpyLiteralPattern)
                     label = self._switch_literal_label(pattern)
                 entry: StatementGenerator._SwitchEntry = (
-                    case.guard, case.body, None, as_escaped, raw_names,
+                    case.guard, case.body, None, as_escaped, raw_names, case.loc,
                 )
                 if label in groups:
                     groups[label][1].append(entry)
@@ -1459,7 +1469,7 @@ class StatementGenerator:
                     for alt in pattern.patterns
                 )
                 if has_wild:
-                    default_entries.append((case.guard, case.body, None, as_escaped, raw_names))
+                    default_entries.append((case.guard, case.body, None, as_escaped, raw_names, case.loc))
                 else:
                     labels = []
                     for alt in pattern.patterns:
@@ -1470,7 +1480,7 @@ class StatementGenerator:
                             assert isinstance(alt, TpyLiteralPattern)
                             labels.append(self._switch_literal_label(alt))
                     key = "|".join(labels)
-                    entry = (case.guard, case.body, None, as_escaped, raw_names)
+                    entry = (case.guard, case.body, None, as_escaped, raw_names, case.loc)
                     if key in groups:
                         groups[key][1].append(entry)
                     else:
@@ -1480,7 +1490,7 @@ class StatementGenerator:
                 cap_escaped = escape_cpp_name(pattern.name) if isinstance(pattern, TpyCapturePattern) else None
                 if isinstance(pattern, TpyCapturePattern):
                     raw_names.add(pattern.name)
-                default_entries.append((case.guard, case.body, cap_escaped, as_escaped, raw_names))
+                default_entries.append((case.guard, case.body, cap_escaped, as_escaped, raw_names, case.loc))
 
             else:
                 raise CodeGenError(f"Unsupported pattern in {kind} switch: {type(pattern).__name__}")
@@ -1502,7 +1512,7 @@ class StatementGenerator:
         has_default = any(labels == ["default"] for labels, _ in groups)
         needs_default_goto = has_default and any(
             labels != ["default"]
-            and all(g is not None for g, _, _, _, _ in entries)
+            and all(g is not None for g, _, _, _, _, _ in entries)
             for labels, entries in groups
         )
         default_label: str | None = None
@@ -1513,6 +1523,9 @@ class StatementGenerator:
         out.write(f"{indent}switch (__match_subject) {{\n")
 
         for labels, entries in groups:
+            # Emit source comment for first entry in group
+            if entries:
+                self.ctx.emit_source_comment(out, entries[0][5], indent)
             # Emit case labels
             if labels == ["default"]:
                 if default_label is not None:
@@ -1528,7 +1541,7 @@ class StatementGenerator:
 
             # Single entry, no guard -> simple body
             if len(entries) == 1 and entries[0][0] is None:
-                _, body, cap, as_name, raw_names = entries[0]
+                _, body, cap, as_name, raw_names, _loc = entries[0]
                 self._emit_switch_binding(out, cap, as_name, raw_names, inner)
                 self.ctx.indent_level += 1
                 for s in body:
@@ -1538,7 +1551,7 @@ class StatementGenerator:
                 # Emit capture/as binding before the guard chain so guards
                 # can reference the bound variable
                 bindings_emitted: set[str] = set()
-                for _g, _b, cap, as_name, raw_names in entries:
+                for _g, _b, cap, as_name, raw_names, _loc in entries:
                     for escaped, raw in self._binding_pairs(cap, as_name, raw_names):
                         if escaped not in bindings_emitted:
                             if raw in self.ctx.declared_vars:
@@ -1548,9 +1561,9 @@ class StatementGenerator:
                             bindings_emitted.add(escaped)
 
                 # Guard chain: if (g1) { body1 } else if (g2) { body2 } else { fallback }
-                has_unguarded = any(g is None for g, _, _, _, _ in entries)
+                has_unguarded = any(g is None for g, _, _, _, _, _ in entries)
                 if_opened = False
-                for _j, (guard, body, _cap, _as, _raw) in enumerate(entries):
+                for _j, (guard, body, _cap, _as, _raw, _loc) in enumerate(entries):
                     if guard is not None:
                         guard_code = self.expressions.gen_expr(guard)
                         self.ctx.temps.flush(out, inner)
@@ -1662,6 +1675,7 @@ class StatementGenerator:
         inner = INDENT * (self.ctx.indent_level + 1)
 
         for i, case in enumerate(stmt.cases):
+            self.ctx.emit_source_comment(out, case.loc, indent)
             pattern, as_name, as_raw_name = self._unwrap_as_pattern(case.pattern)
 
             if isinstance(pattern, TpyClassPattern):
@@ -1817,6 +1831,7 @@ class StatementGenerator:
         inner = INDENT * (self.ctx.indent_level + 1)
 
         for i, case in enumerate(stmt.cases):
+            self.ctx.emit_source_comment(out, case.loc, indent)
             keyword = "if" if i == 0 else "} else if"
             pattern = case.pattern
             guard = case.guard
@@ -1963,6 +1978,440 @@ class StatementGenerator:
                 raise CodeGenError(f"Unsupported match pattern: {type(pattern).__name__}")
 
         out.write(f"{indent}}}\n")
+
+    def _gen_match_if_elif_record(self, out: TextIO, stmt: TpyMatch, indent: str) -> None:
+        """Generate match/case as if/elif chain for concrete record subjects (no guards)."""
+        inner = INDENT * (self.ctx.indent_level + 1)
+
+        for i, case in enumerate(stmt.cases):
+            self.ctx.emit_source_comment(out, case.loc, indent)
+            keyword = "if" if i == 0 else "} else if"
+            pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
+
+            if isinstance(pattern, TpyClassPattern):
+                conds = self._record_field_conditions(pattern)
+                if conds:
+                    out.write(f"{indent}{keyword} ({' && '.join(conds)}) {{\n")
+                elif i == 0:
+                    out.write(f"{indent}{{\n")
+                else:
+                    out.write(f"{indent}}} else {{\n")
+                self._gen_match_field_bindings(out, pattern, "__match_subject", inner)
+                if as_name is not None:
+                    if as_raw and as_raw in self.ctx.declared_vars:
+                        out.write(f"{inner}{as_name} = __match_subject;\n")
+                    else:
+                        out.write(f"{inner}auto& {as_name} = __match_subject;\n")
+                self.ctx.indent_level += 1
+                for s in case.body:
+                    self.gen_stmt(out, s)
+                self.ctx.indent_level -= 1
+
+            elif isinstance(pattern, TpyOrPattern):
+                or_parts: list[str] = []
+                for alt in pattern.patterns:
+                    if isinstance(alt, TpyClassPattern):
+                        alt_conds = self._record_field_conditions(alt)
+                        if alt_conds:
+                            or_parts.append("(" + " && ".join(alt_conds) + ")")
+                    elif isinstance(alt, TpyWildcardPattern):
+                        or_parts.clear()
+                        break
+                    else:
+                        raise CodeGenError(
+                            f"Unsupported or-pattern alternative for record: "
+                            f"{type(alt).__name__}"
+                        )
+                if or_parts:
+                    out.write(f"{indent}{keyword} ({' || '.join(or_parts)}) {{\n")
+                elif i == 0:
+                    out.write(f"{indent}{{\n")
+                else:
+                    out.write(f"{indent}}} else {{\n")
+                self.ctx.indent_level += 1
+                for s in case.body:
+                    self.gen_stmt(out, s)
+                self.ctx.indent_level -= 1
+
+            elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
+                if i == 0:
+                    out.write(f"{indent}{{\n")
+                else:
+                    out.write(f"{indent}}} else {{\n")
+                if isinstance(pattern, TpyCapturePattern):
+                    cap_name = escape_cpp_name(pattern.name)
+                    if pattern.name in self.ctx.declared_vars:
+                        out.write(f"{inner}{cap_name} = __match_subject;\n")
+                    else:
+                        out.write(f"{inner}auto& {cap_name} = __match_subject;\n")
+                if as_name is not None:
+                    if as_raw and as_raw in self.ctx.declared_vars:
+                        out.write(f"{inner}{as_name} = __match_subject;\n")
+                    else:
+                        out.write(f"{inner}auto& {as_name} = __match_subject;\n")
+                self.ctx.indent_level += 1
+                for s in case.body:
+                    self.gen_stmt(out, s)
+                self.ctx.indent_level -= 1
+
+            else:
+                raise CodeGenError(f"Unsupported match pattern for record: {type(pattern).__name__}")
+
+        out.write(f"{indent}}}\n")
+
+    def _gen_match_guarded_record(self, out: TextIO, stmt: TpyMatch, indent: str) -> None:
+        """Generate match/case for record subjects with guards using standalone ifs + goto."""
+        inner = INDENT * (self.ctx.indent_level + 1)
+        self.ctx.match_counter += 1
+        end_label = f"__match_end_{self.ctx.match_counter}"
+
+        for i, case in enumerate(stmt.cases):
+            self.ctx.emit_source_comment(out, case.loc, indent)
+            pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
+            guard = case.guard
+
+            if isinstance(pattern, TpyClassPattern):
+                conds = self._record_field_conditions(pattern)
+                if conds:
+                    out.write(f"{indent}if ({' && '.join(conds)}) {{\n")
+                else:
+                    out.write(f"{indent}{{\n")
+                self._gen_match_field_bindings(out, pattern, "__match_subject", inner)
+                if as_name is not None:
+                    if as_raw and as_raw in self.ctx.declared_vars:
+                        out.write(f"{inner}{as_name} = __match_subject;\n")
+                    else:
+                        out.write(f"{inner}auto& {as_name} = __match_subject;\n")
+                if guard is not None:
+                    guard_code = self.expressions.gen_expr(guard)
+                    self.ctx.temps.flush(out, inner)
+                    out.write(f"{inner}if ({guard_code}) {{\n")
+                    self.ctx.indent_level += 2
+                    for s in case.body:
+                        self.gen_stmt(out, s)
+                    self.ctx.indent_level -= 2
+                    out.write(f"{inner}    goto {end_label};\n")
+                    out.write(f"{inner}}}\n")
+                else:
+                    self.ctx.indent_level += 1
+                    for s in case.body:
+                        self.gen_stmt(out, s)
+                    self.ctx.indent_level -= 1
+                    out.write(f"{inner}goto {end_label};\n")
+                out.write(f"{indent}}}\n")
+
+            elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
+                if isinstance(pattern, TpyCapturePattern):
+                    cap_name = escape_cpp_name(pattern.name)
+                    if pattern.name in self.ctx.declared_vars:
+                        out.write(f"{indent}{cap_name} = __match_subject;\n")
+                    else:
+                        out.write(f"{indent}auto& {cap_name} = __match_subject;\n")
+                if as_name is not None:
+                    if as_raw and as_raw in self.ctx.declared_vars:
+                        out.write(f"{indent}{as_name} = __match_subject;\n")
+                    else:
+                        out.write(f"{indent}auto& {as_name} = __match_subject;\n")
+                if guard is not None:
+                    guard_code = self.expressions.gen_expr(guard)
+                    self.ctx.temps.flush(out, indent)
+                    out.write(f"{indent}if ({guard_code}) {{\n")
+                    self.ctx.indent_level += 1
+                    for s in case.body:
+                        self.gen_stmt(out, s)
+                    self.ctx.indent_level -= 1
+                    out.write(f"{inner}goto {end_label};\n")
+                    out.write(f"{indent}}}\n")
+                else:
+                    out.write(f"{indent}{{\n")
+                    self.ctx.indent_level += 1
+                    for s in case.body:
+                        self.gen_stmt(out, s)
+                    self.ctx.indent_level -= 1
+                    out.write(f"{indent}}}\n")
+
+            elif isinstance(pattern, TpyOrPattern):
+                or_parts: list[str] = []
+                for alt in pattern.patterns:
+                    if isinstance(alt, TpyClassPattern):
+                        alt_conds = self._record_field_conditions(alt)
+                        if alt_conds:
+                            or_parts.append("(" + " && ".join(alt_conds) + ")")
+                    elif isinstance(alt, TpyWildcardPattern):
+                        or_parts.clear()
+                        break
+                    else:
+                        raise CodeGenError(
+                            f"Unsupported or-pattern alternative for record: "
+                            f"{type(alt).__name__}"
+                        )
+                if or_parts:
+                    cond = " || ".join(or_parts)
+                    if guard is not None:
+                        guard_code = self.expressions.gen_expr(guard)
+                        self.ctx.temps.flush(out, indent)
+                        cond = f"({cond}) && {guard_code}"
+                    out.write(f"{indent}if ({cond}) {{\n")
+                else:
+                    if guard is not None:
+                        guard_code = self.expressions.gen_expr(guard)
+                        self.ctx.temps.flush(out, indent)
+                        out.write(f"{indent}if ({guard_code}) {{\n")
+                    else:
+                        out.write(f"{indent}{{\n")
+                self.ctx.indent_level += 1
+                for s in case.body:
+                    self.gen_stmt(out, s)
+                self.ctx.indent_level -= 1
+                out.write(f"{inner}goto {end_label};\n")
+                out.write(f"{indent}}}\n")
+
+            else:
+                raise CodeGenError(f"Unsupported match pattern for record: {type(pattern).__name__}")
+
+        out.write(f"{indent}{end_label}:;\n")
+
+    def _record_field_conditions(self, pattern: 'TpyClassPattern') -> list[str]:
+        """Generate C++ field comparison conditions for a record class pattern."""
+        conds: list[str] = []
+        for field_name, sub_pattern in pattern.keywords:
+            if isinstance(sub_pattern, TpyLiteralPattern):
+                val = sub_pattern.value
+                if isinstance(val, bool):
+                    conds.append(f"__match_subject.{field_name} == {'true' if val else 'false'}")
+                elif isinstance(val, int):
+                    conds.append(f"__match_subject.{field_name} == {val}")
+                elif isinstance(val, float):
+                    conds.append(f"__match_subject.{field_name} == {val!r}")
+                elif isinstance(val, str):
+                    conds.append(f'__match_subject.{field_name} == "{escape_cpp_string(val)}"')
+        return conds
+
+    def _gen_match_if_elif_optional(
+        self, out: TextIO, stmt: TpyMatch, subject_type: OptionalType, indent: str,
+    ) -> None:
+        """Generate match/case as if/elif chain for Optional subjects."""
+        inner = INDENT * (self.ctx.indent_level + 1)
+        uses_ptr = subject_type.uses_pointer_repr()
+        # Determine how to check null and dereference
+        null_cond = "__match_subject == nullptr" if uses_ptr else "!__match_subject.has_value()"
+        has_val_cond = "__match_subject != nullptr" if uses_ptr else "__match_subject.has_value()"
+        deref = "(*__match_subject)"
+
+        for i, case in enumerate(stmt.cases):
+            self.ctx.emit_source_comment(out, case.loc, indent)
+            keyword = "if" if i == 0 else "} else if"
+            pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
+            guard = case.guard
+
+            if isinstance(pattern, TpyLiteralPattern) and pattern.value is None:
+                # case None:
+                cond = null_cond
+                if guard is not None:
+                    guard_code = self.expressions.gen_expr(guard)
+                    self.ctx.temps.flush(out, indent)
+                    cond = f"{cond} && {guard_code}"
+                out.write(f"{indent}{keyword} ({cond}) {{\n")
+                if as_name is not None:
+                    # as-binding for None case binds the whole optional
+                    if as_raw and as_raw in self.ctx.declared_vars:
+                        out.write(f"{inner}{as_name} = __match_subject;\n")
+                    else:
+                        out.write(f"{inner}auto& {as_name} = __match_subject;\n")
+                self.ctx.indent_level += 1
+                for s in case.body:
+                    self.gen_stmt(out, s)
+                self.ctx.indent_level -= 1
+
+            elif isinstance(pattern, TpyLiteralPattern):
+                # Literal match on inner value (e.g. case 42: on Optional[Int32])
+                lit_cond = self._gen_optional_literal_cond(pattern, uses_ptr)
+                cond = f"{has_val_cond} && {lit_cond}"
+                if guard is not None:
+                    guard_code = self.expressions.gen_expr(guard)
+                    self.ctx.temps.flush(out, indent)
+                    cond = f"{cond} && {guard_code}"
+                out.write(f"{indent}{keyword} ({cond}) {{\n")
+                if as_name is not None:
+                    if as_raw and as_raw in self.ctx.declared_vars:
+                        out.write(f"{inner}{as_name} = {deref};\n")
+                    else:
+                        out.write(f"{inner}auto& {as_name} = {deref};\n")
+                self.ctx.indent_level += 1
+                for s in case.body:
+                    self.gen_stmt(out, s)
+                self.ctx.indent_level -= 1
+
+            elif isinstance(pattern, TpyValuePattern):
+                # Value pattern on inner type (e.g. case Color.RED: on Optional[Color])
+                val_code = self.expressions.gen_expr(pattern.expr)
+                self.ctx.temps.flush(out, indent)
+                cond = f"{has_val_cond} && {deref} == {val_code}"
+                if guard is not None:
+                    guard_code = self.expressions.gen_expr(guard)
+                    self.ctx.temps.flush(out, indent)
+                    cond = f"{cond} && {guard_code}"
+                out.write(f"{indent}{keyword} ({cond}) {{\n")
+                if as_name is not None:
+                    if as_raw and as_raw in self.ctx.declared_vars:
+                        out.write(f"{inner}{as_name} = {deref};\n")
+                    else:
+                        out.write(f"{inner}auto& {as_name} = {deref};\n")
+                self.ctx.indent_level += 1
+                for s in case.body:
+                    self.gen_stmt(out, s)
+                self.ctx.indent_level -= 1
+
+            elif isinstance(pattern, TpyClassPattern):
+                # Class pattern on inner record type (e.g. case Point(x=0): on Optional[Point])
+                field_conds = self._record_field_conditions_on(pattern, deref)
+                cond_parts = [has_val_cond] + field_conds
+                cond = " && ".join(cond_parts)
+                if guard is not None:
+                    guard_code = self.expressions.gen_expr(guard)
+                    self.ctx.temps.flush(out, indent)
+                    cond = f"{cond} && {guard_code}"
+                out.write(f"{indent}{keyword} ({cond}) {{\n")
+                # Emit field bindings using dereferenced subject
+                val_var = f"{deref}"
+                for field_name, sub in pattern.keywords:
+                    if isinstance(sub, TpyCapturePattern):
+                        name = escape_cpp_name(sub.name)
+                        acc = f"{val_var}.{field_name}"
+                        if sub.name in self.ctx.declared_vars:
+                            out.write(f"{inner}{name} = {acc};\n")
+                        else:
+                            out.write(f"{inner}auto& {name} = {acc};\n")
+                if as_name is not None:
+                    if as_raw and as_raw in self.ctx.declared_vars:
+                        out.write(f"{inner}{as_name} = {deref};\n")
+                    else:
+                        out.write(f"{inner}auto& {as_name} = {deref};\n")
+                self.ctx.indent_level += 1
+                for s in case.body:
+                    self.gen_stmt(out, s)
+                self.ctx.indent_level -= 1
+
+            elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
+                if isinstance(pattern, TpyCapturePattern) and guard is not None:
+                    cap_name = escape_cpp_name(pattern.name)
+                    if i > 0:
+                        out.write(f"{indent}}}\n")
+                    if pattern.name in self.ctx.declared_vars:
+                        out.write(f"{indent}{cap_name} = __match_subject;\n")
+                    else:
+                        out.write(f"{indent}auto& {cap_name} = __match_subject;\n")
+                    guard_code = self.expressions.gen_expr(guard)
+                    self.ctx.temps.flush(out, indent)
+                    out.write(f"{indent}if ({guard_code}) {{\n")
+                elif guard is not None:
+                    guard_code = self.expressions.gen_expr(guard)
+                    self.ctx.temps.flush(out, indent)
+                    out.write(f"{indent}{keyword} ({guard_code}) {{\n")
+                elif i == 0:
+                    out.write(f"{indent}{{\n")
+                else:
+                    out.write(f"{indent}}} else {{\n")
+                if isinstance(pattern, TpyCapturePattern) and guard is None:
+                    cap_name = escape_cpp_name(pattern.name)
+                    if pattern.name in self.ctx.declared_vars:
+                        out.write(f"{inner}{cap_name} = __match_subject;\n")
+                    else:
+                        out.write(f"{inner}auto& {cap_name} = __match_subject;\n")
+                if as_name is not None:
+                    if as_raw and as_raw in self.ctx.declared_vars:
+                        out.write(f"{inner}{as_name} = __match_subject;\n")
+                    else:
+                        out.write(f"{inner}auto& {as_name} = __match_subject;\n")
+                self.ctx.indent_level += 1
+                for s in case.body:
+                    self.gen_stmt(out, s)
+                self.ctx.indent_level -= 1
+
+            elif isinstance(pattern, TpyOrPattern):
+                # OR of None/literal/value/class conditions
+                or_conds: list[str] = []
+                for alt in pattern.patterns:
+                    if isinstance(alt, TpyLiteralPattern) and alt.value is None:
+                        or_conds.append(null_cond)
+                    elif isinstance(alt, TpyLiteralPattern):
+                        lit_c = self._gen_optional_literal_cond(alt, uses_ptr)
+                        or_conds.append(f"({has_val_cond} && {lit_c})")
+                    elif isinstance(alt, TpyValuePattern):
+                        val_code = self.expressions.gen_expr(alt.expr)
+                        self.ctx.temps.flush(out, indent)
+                        or_conds.append(f"({has_val_cond} && {deref} == {val_code})")
+                    elif isinstance(alt, TpyClassPattern):
+                        fc = self._record_field_conditions_on(alt, deref)
+                        parts = [has_val_cond] + fc
+                        or_conds.append("(" + " && ".join(parts) + ")")
+                    elif isinstance(alt, TpyWildcardPattern):
+                        or_conds.clear()
+                        break
+                    else:
+                        raise CodeGenError(
+                            f"Unsupported or-pattern alt for Optional: {type(alt).__name__}"
+                        )
+                if or_conds:
+                    cond = " || ".join(or_conds)
+                    if guard is not None:
+                        guard_code = self.expressions.gen_expr(guard)
+                        self.ctx.temps.flush(out, indent)
+                        cond = f"({cond}) && {guard_code}"
+                    out.write(f"{indent}{keyword} ({cond}) {{\n")
+                else:
+                    if guard is not None:
+                        guard_code = self.expressions.gen_expr(guard)
+                        self.ctx.temps.flush(out, indent)
+                        out.write(f"{indent}{keyword} ({guard_code}) {{\n")
+                    elif i == 0:
+                        out.write(f"{indent}{{\n")
+                    else:
+                        out.write(f"{indent}}} else {{\n")
+                self.ctx.indent_level += 1
+                for s in case.body:
+                    self.gen_stmt(out, s)
+                self.ctx.indent_level -= 1
+
+            else:
+                raise CodeGenError(
+                    f"Unsupported match pattern for Optional: {type(pattern).__name__}"
+                )
+
+        out.write(f"{indent}}}\n")
+
+    def _gen_optional_literal_cond(self, pattern: 'TpyLiteralPattern', uses_ptr: bool) -> str:
+        """Generate condition for literal match on Optional inner value."""
+        val = pattern.value
+        deref = "(*__match_subject)"
+        if isinstance(val, bool):
+            return f"{deref} == {'true' if val else 'false'}"
+        elif isinstance(val, int):
+            return f"{deref} == {val}"
+        elif isinstance(val, float):
+            return f"{deref} == {val!r}"
+        elif isinstance(val, str):
+            return f'{deref} == "{escape_cpp_string(val)}"'
+        else:
+            raise CodeGenError(f"Unsupported literal in Optional match: {val!r}")
+
+    def _record_field_conditions_on(
+        self, pattern: 'TpyClassPattern', subject_expr: str,
+    ) -> list[str]:
+        """Generate field conditions using a custom subject expression (e.g. dereferenced pointer)."""
+        conds: list[str] = []
+        for field_name, sub_pattern in pattern.keywords:
+            if isinstance(sub_pattern, TpyLiteralPattern):
+                val = sub_pattern.value
+                if isinstance(val, bool):
+                    conds.append(f"{subject_expr}.{field_name} == {'true' if val else 'false'}")
+                elif isinstance(val, int):
+                    conds.append(f"{subject_expr}.{field_name} == {val}")
+                elif isinstance(val, float):
+                    conds.append(f"{subject_expr}.{field_name} == {val!r}")
+                elif isinstance(val, str):
+                    conds.append(f'{subject_expr}.{field_name} == "{escape_cpp_string(val)}"')
+        return conds
 
     def _variant_index(self, union_type: UnionType, member_type: TpyType) -> int:
         """Find the index of a member type in a union's canonical member ordering."""

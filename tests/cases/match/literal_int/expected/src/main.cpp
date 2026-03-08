@@ -9,16 +9,19 @@ std::string classify(int32_t n) {
     // 5:     match n:
     auto& __match_subject = n;
     switch (__match_subject) {
+    // 6:         case 0:
     case 0: {
         // 7:             return "zero"
         return "zero";
         break;
     }
+    // 8:         case 1:
     case 1: {
         // 9:             return "one"
         return "one";
         break;
     }
+    // 10:         case x:
     default: {
         auto& x = __match_subject;
         // 11:             return "other"

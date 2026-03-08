@@ -9,6 +9,7 @@ std::string describe(std::variant<Bird, Cat, Dog>& a) {
     // 17:     match a:
     auto& __match_subject = a;
     switch (__match_subject.index()) {
+    // 18:         case Dog(name=n) | Cat(name=n):
     case 2: {
         auto& __case_0_0 = std::get<2>(__match_subject);
         auto& n = __case_0_0.name;
@@ -23,6 +24,7 @@ std::string describe(std::variant<Bird, Cat, Dog>& a) {
         return (tpy::str_concat("pet: ", n));
         break;
     }
+    // 20:         case Bird(name=n):
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject);
         auto& n = __case_1.name;
