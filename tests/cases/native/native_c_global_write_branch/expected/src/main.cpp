@@ -30,6 +30,18 @@ void update_renamed(int32_t a, int32_t b) {
     }
 }
 
+// 24: def main() -> None:
+void main() {
+    // 25:     update_same_name(Int32(10), Int32(20))
+    update_same_name(10, 20);
+    // 26:     print(opentop)
+    std::cout << opentop << "\n";
+    // 27:     update_renamed(Int32(30), Int32(40))
+    update_renamed(30, 40);
+    // 28:     print(counter)
+    std::cout << g_counter << "\n";
+}
+
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -38,10 +50,8 @@ void __tpy_init() {
     // 1: from tpy.extern import native_c_global
     // 4: # Write to native_c_global inside if/else branches (no prior function-scope assignment).
     // 5: # Must NOT emit a local declaration that shadows the extern global.
-    // 24: update_same_name(Int32(10), Int32(20))
-    update_same_name(10, 20);
-    // 25: update_renamed(Int32(30), Int32(40))
-    update_renamed(30, 40);
+    // 30: main()
+    main();
 }
 
 } // namespace tpy_user::main

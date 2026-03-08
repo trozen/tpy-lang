@@ -18,6 +18,18 @@ void set_renamed(int32_t val) {
     g_counter = val;
 }
 
+// 18: def main() -> None:
+void main() {
+    // 19:     set_same_name(Int32(10))
+    set_same_name(10);
+    // 20:     print(opentop)
+    std::cout << opentop << "\n";
+    // 21:     set_renamed(Int32(20))
+    set_renamed(20);
+    // 22:     print(counter)
+    std::cout << g_counter << "\n";
+}
+
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -26,10 +38,8 @@ void __tpy_init() {
     // 1: from tpy.extern import native_c_global
     // 4: # Write to native_c_global at function scope.
     // 5: # Renamed globals must use the C name in the assignment target.
-    // 18: set_same_name(Int32(10))
-    set_same_name(10);
-    // 19: set_renamed(Int32(20))
-    set_renamed(20);
+    // 24: main()
+    main();
 }
 
 } // namespace tpy_user::main

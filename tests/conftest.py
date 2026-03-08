@@ -359,7 +359,7 @@ def validate_annotations(src_file: Path, diagnostics: str) -> list[str]:
         if ann.level == "ok":
             # Expect no diagnostics on this line
             if line_diags:
-                errors.append(f"Line {ann.line}: expected no diagnostics but got: {line_diags}")
+                errors.append(f"{src_file.name}:{ann.line}: expected no diagnostics but got: {line_diags}")
         else:
             # Expect a matching diagnostic
             found = False
@@ -370,7 +370,7 @@ def validate_annotations(src_file: Path, diagnostics: str) -> list[str]:
                         break
             if not found:
                 errors.append(
-                    f"Line {ann.line}: expected {ann.level}(/{ann.pattern}/) but got: {line_diags or 'nothing'}"
+                    f"{src_file.name}:{ann.line}: expected {ann.level}(/{ann.pattern}/) but got: {line_diags or 'nothing'}"
                 )
 
     return errors

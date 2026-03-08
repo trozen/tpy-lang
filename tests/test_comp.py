@@ -70,12 +70,15 @@ def test_comp(case_dir, main_src, tmp_path):
     expected_diag = expected_dir / "diag.txt"
     check_or_update(result.diagnostics, expected_diag, "Diagnostics")
 
-    # Validate inline annotations (only in test mode)
+    # Validate inline annotations for all local source files (only in test mode)
     if not UPDATE_EXPECTED:
-        annotation_errors = validate_annotations(main_src, result.diagnostics)
-        if annotation_errors:
+        src_dir = case_dir / "src"
+        all_annotation_errors = []
+        for src_file in sorted(src_dir.rglob("*.py")):
+            all_annotation_errors.extend(validate_annotations(src_file, result.diagnostics))
+        if all_annotation_errors:
             pytest.fail(
-                "\n".join(annotation_errors),
+                "\n".join(all_annotation_errors),
                 pytrace=False,
             )
 

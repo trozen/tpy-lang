@@ -21,5 +21,10 @@ def update_renamed(a: Int32, b: Int32) -> None:
     else:
         counter = b
 
-update_same_name(Int32(10), Int32(20))
-update_renamed(Int32(30), Int32(40))
+def main() -> None:
+    update_same_name(Int32(10), Int32(20))
+    print(opentop)
+    update_renamed(Int32(30), Int32(40))
+    print(counter)
+
+main()

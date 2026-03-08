@@ -212,18 +212,20 @@ class ExpressionGenerator:
         return None
 
     def _maybe_unwrap_narrowed_optional(self, expr_obj: TpyExpr, obj: str, needs_deref: bool) -> str:
-        """Unwrap narrowed value-Optional receivers for method calls.
+        """Unwrap narrowed value-Optional receivers.
 
         When sema has proven a std::optional<T> variable holds a value,
         the C++ variable is still optional -- dereference it with (*obj).
+        Handles both simple names and field access expressions.
         """
-        if isinstance(expr_obj, TpyName) and not needs_deref:
-            cpp_decl = self._get_cpp_declared_type(expr_obj)
-            analyzed = self.ctx.get_expr_type(expr_obj)
-            if (cpp_decl is not None
-                    and isinstance(cpp_decl, OptionalType) and not cpp_decl.uses_pointer_repr()
-                    and not isinstance(analyzed, OptionalType)):
-                return f"(*{obj})"
+        if needs_deref:
+            return obj
+        cpp_decl = self._get_cpp_declared_type(expr_obj)
+        analyzed = self.ctx.get_expr_type(expr_obj)
+        if (cpp_decl is not None
+                and isinstance(cpp_decl, OptionalType) and not cpp_decl.uses_pointer_repr()
+                and not isinstance(analyzed, OptionalType)):
+            return f"(*{obj})"
         return obj
 
     def _resolve_field_declared_type(self, expr: TpyFieldAccess) -> TpyType | None:
@@ -2047,12 +2049,22 @@ class ExpressionGenerator:
 
         obj = self.gen_expr(expr.obj)
 
+        # Narrowed value-Optional: sema sees T but C++ var is still std::optional<T>
+        obj = self._maybe_unwrap_narrowed_optional(
+            expr.obj, obj, self.ctx.is_indirect_name(expr.obj))
+
         # Slice: obj[start:stop]
         if isinstance(expr.index, TpySlice):
             subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
             return self._gen_slice(subscript_obj, expr.index)
 
         obj_type = self.types.get_resolved_type(expr.obj)
+
+        # When narrowed from Optional, use inner type for method lookup
+        if isinstance(obj_type, OptionalType) and not obj_type.uses_pointer_repr():
+            analyzed = self.ctx.get_expr_type(expr.obj)
+            if not isinstance(analyzed, OptionalType):
+                obj_type = obj_type.inner
 
         # Tuple subscript: std::get<N>(obj)
         if isinstance(unwrap_readonly(obj_type), TupleType):

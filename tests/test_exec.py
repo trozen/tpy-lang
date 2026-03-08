@@ -55,15 +55,11 @@ def test_exec(case_dir, main_src):
                                force_includes=force_includes or None)
 
     if run_result.cpp_build_failed:
-        # C++ build failure — only acceptable for codegen-only tests (no expected output)
-        has_expected = (expected_dir / "output.txt").exists() or (expected_dir / "panic.txt").exists()
-        if has_expected:
-            pytest.fail(
-                f"C++ compilation failed for {main_src}.\n"
-                f"--- stderr ---\n{run_result.stderr}",
-                pytrace=False,
-            )
-        pytest.skip("C++ build failed (codegen-only test, no expected output)")
+        pytest.fail(
+            f"C++ compilation failed for {main_src}.\n"
+            f"--- stderr ---\n{run_result.stderr}",
+            pytrace=False,
+        )
 
     if run_result.success:
         expected_output = expected_dir / "output.txt"

@@ -15,5 +15,10 @@ def set_renamed(val: Int32) -> None:
     global counter
     counter = val
 
-set_same_name(Int32(10))
-set_renamed(Int32(20))
+def main() -> None:
+    set_same_name(Int32(10))
+    print(opentop)
+    set_renamed(Int32(20))
+    print(counter)
+
+main()
