@@ -1819,6 +1819,31 @@ class ListRepeatType(TpyType):
         return None
 
 
+@dataclass(frozen=True)
+class GenExprType(TpyType):
+    """Generator expression type -- lazy iterable producing T.
+
+    Internal type, not user-facing. Satisfies Iterable[T].
+    C++ representation is tpy::generator_wrapper<T, lambda> (auto-deduced).
+    """
+    element_type: TpyType
+
+    def get_element_type(self) -> Optional[TpyType]:
+        return self.element_type
+
+    def get_iteration_element_type(self) -> Optional[TpyType]:
+        return self.element_type
+
+    def to_cpp(self) -> str:
+        return "auto"
+
+    def __str__(self) -> str:
+        return f"<genexpr>[{self.element_type}]"
+
+    def qualified_name(self) -> Optional[str]:
+        return None
+
+
 @dataclass
 class ListLiteralInfo:
     """Tracks usage information for a list literal to determine its resolved type."""

@@ -25,7 +25,7 @@ from ..parse import (
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyTupleLiteral, TupleElemCapture, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
-    TpyListComprehension, TpyDictComprehension, TpySetComprehension,
+    TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression,
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr,
 )
@@ -460,6 +460,9 @@ class ExpressionGenerator:
 
         elif isinstance(expr, TpySetComprehension):
             return self._gen_set_comprehension(expr)
+
+        elif isinstance(expr, TpyGeneratorExpression):
+            return self._gen_generator_expression(expr)
 
         elif isinstance(expr, TpySubscript):
             return self._gen_subscript(expr)
@@ -1875,6 +1878,138 @@ class ExpressionGenerator:
         return self._gen_comprehension_iife(
             expr.generator, f"tpy::ordered_set<{cpp_elem}>",
             f"__result.insert({insert_code})", skip_reserve=True)
+
+    def _gen_generator_expression(self, expr: TpyGeneratorExpression) -> str:
+        gen = expr.generator
+        elem_type = self._resolve_int_literal(expr.result_elem_type)
+        cpp_elem = self.types.type_to_cpp(elem_type)
+        cpp_var = escape_cpp_name(gen.var)
+
+        stmt_ind = INDENT * self.ctx.indent_level
+        ind1 = stmt_ind + INDENT
+        ind2 = ind1 + INDENT
+        ind3 = ind2 + INDENT
+
+        iterable_code = self.gen_expr_deref(gen.iterable)
+        iterable_type = self.types.get_resolved_type(gen.iterable)
+        yield_code = self.gen_expr_deref(expr.element_expr, elem_type)
+
+        sema_elem = iterable_type.get_iteration_element_type()
+        if sema_elem is not None and isinstance(sema_elem, IntLiteralType):
+            sema_elem = self.ctx.analyzer.ctx.default_int_type
+        if sema_elem is None:
+            sema_elem = self.ctx.analyzer.ctx.default_int_type
+
+        buf = io.StringIO()
+
+        is_range = isinstance(gen.iterable, TpyCall) and gen.iterable.func == "range"
+        nargs = len(gen.iterable.args) if is_range else 0
+
+        # Simple range (1 or 2 args): counter state fits in lambda init-captures
+        if is_range and nargs <= 2:
+            self._gen_genexpr_counter_lambda(buf, gen, sema_elem, cpp_var, cpp_elem,
+                                             yield_code, stmt_ind, ind1, ind2, ind3)
+            return buf.getvalue()
+
+        # Begin/end sources (3-arg range, containers): wrap in IIFE so that
+        # begin/end iterators are computed before the lambda and captured by
+        # value into the lambda's init-capture list.
+        is_lvalue = self._comp_is_lvalue(gen.iterable)
+        buf.write(f"[&]() {{\n")
+
+        if is_range:
+            cpp_iter = sema_elem.to_cpp()
+            start_code = self.gen_expr_deref(gen.iterable.args[0], sema_elem)
+            stop_code = self.gen_expr_deref(gen.iterable.args[1], sema_elem)
+            step_code = self.gen_expr_deref(gen.iterable.args[2], sema_elem)
+            buf.write(f"{ind1}auto __src = tpy::Range<{cpp_iter}>({start_code}, {stop_code}, {step_code});\n")
+        elif is_lvalue:
+            buf.write(f"{ind1}auto& __src = {iterable_code};\n")
+        else:
+            buf.write(f"{ind1}auto __src = {iterable_code};\n")
+
+        buf.write(f"{ind1}return tpy::make_generator<{cpp_elem}>(\n")
+
+        ind2i = ind2 + INDENT
+        ind3i = ind2i + INDENT
+        # Capture begin/end by value in the lambda's init-capture
+        buf.write(f"{ind2}[__beg = __src.begin(), __end = __src.end()]"
+                  f"() mutable -> std::optional<{cpp_elem}> {{\n")
+        buf.write(f"{ind2i}while (__beg != __end) {{\n")
+
+        if gen.unpack_vars is not None:
+            assert isinstance(sema_elem, TupleType)
+            self.ctx.unpack_counter += 1
+            tmp = f"__tup_{self.ctx.unpack_counter}"
+            buf.write(f"{ind3i}const auto& {tmp} = *__beg++;\n")
+            for i, uvar in enumerate(gen.unpack_vars):
+                if uvar is None:
+                    continue
+                utype = sema_elem.element_types[i]
+                cpp_utype = self.types.type_to_cpp(utype)
+                cpp_name = escape_cpp_name(uvar)
+                if utype.is_value_type():
+                    buf.write(f"{ind3i}{cpp_utype} {cpp_name} = std::get<{i}>({tmp});\n")
+                else:
+                    buf.write(f"{ind3i}const auto& {cpp_name} = std::get<{i}>({tmp});\n")
+        elif sema_elem.is_value_type():
+            cpp_iter_elem = sema_elem.to_cpp()
+            buf.write(f"{ind3i}{cpp_iter_elem} {cpp_var} = *__beg++;\n")
+        else:
+            buf.write(f"{ind3i}auto&& {cpp_var} = *__beg++;\n")
+
+        self._gen_genexpr_yield(buf, gen, yield_code, cpp_elem, ind3i, ind3i + INDENT)
+        buf.write(f"{ind2i}}}\n")
+        buf.write(f"{ind2i}return std::nullopt;\n")
+        buf.write(f"{ind2}}}\n")
+        buf.write(f"{ind1});\n")
+        buf.write(f"{stmt_ind}}}()")
+        return buf.getvalue()
+
+    def _gen_genexpr_counter_lambda(
+        self, buf: io.StringIO, gen: TpyComprehensionGenerator,
+        elem_type: TpyType, cpp_var: str, cpp_elem: str,
+        yield_code: str,
+        stmt_ind: str, ind1: str, ind2: str, ind3: str,
+    ) -> None:
+        """Generate make_generator with counter-based lambda for range(N) or range(start, stop)."""
+        range_call = gen.iterable
+        assert isinstance(range_call, TpyCall)
+        nargs = len(range_call.args)
+        cpp_iter = elem_type.to_cpp()
+
+        if nargs == 1:
+            stop_code = self.gen_expr_deref(range_call.args[0], elem_type)
+            captures = f"__i = {cpp_iter}(0), __stop = static_cast<{cpp_iter}>({stop_code})"
+        else:
+            start_code = self.gen_expr_deref(range_call.args[0], elem_type)
+            stop_code = self.gen_expr_deref(range_call.args[1], elem_type)
+            captures = f"__i = static_cast<{cpp_iter}>({start_code}), __stop = static_cast<{cpp_iter}>({stop_code})"
+
+        buf.write(f"tpy::make_generator<{cpp_elem}>(\n")
+        buf.write(f"{ind1}[&, {captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
+        buf.write(f"{ind2}while (__i < __stop) {{\n")
+        buf.write(f"{ind3}{cpp_iter} {cpp_var} = __i++;\n")
+        self._gen_genexpr_yield(buf, gen, yield_code, cpp_elem, ind3, ind3 + INDENT)
+        buf.write(f"{ind2}}}\n")
+        buf.write(f"{ind2}return std::nullopt;\n")
+        buf.write(f"{ind1}}}\n")
+        buf.write(f"{stmt_ind})")
+
+    def _gen_genexpr_yield(
+        self, buf: io.StringIO, gen: TpyComprehensionGenerator,
+        yield_code: str, cpp_elem: str,
+        ind: str, ind_inner: str,
+    ) -> None:
+        """Generate the yield statement, optionally wrapped in filter conditions."""
+        if gen.conditions:
+            cond_parts = [self.gen_truthy_expr(c) for c in gen.conditions]
+            cond_str = " && ".join(cond_parts)
+            buf.write(f"{ind}if ({cond_str}) {{\n")
+            buf.write(f"{ind_inner}return std::optional<{cpp_elem}>({yield_code});\n")
+            buf.write(f"{ind}}}\n")
+        else:
+            buf.write(f"{ind}return std::optional<{cpp_elem}>({yield_code});\n")
 
     def _resolve_int_literal(self, typ: TpyType | None) -> TpyType:
         assert typ is not None

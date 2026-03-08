@@ -118,4 +118,25 @@ IterAdaptContainerRange<Container> iter_adapt_container(Container& c) {
     return IterAdaptContainerRange<Container>(c);
 }
 
+// Generator expression wrapper: stores a mutable callable returning optional<T>,
+// provides __next_opt__() and __iter__() so it integrates with iter_adapt.
+template<typename T, typename F>
+class generator_wrapper {
+    F fn_;
+public:
+    explicit generator_wrapper(F&& fn) : fn_(std::move(fn)) {}
+
+    std::optional<T> __next_opt__() { return fn_(); }
+    generator_wrapper& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const generator_wrapper&) {
+        return os << "<generator>";
+    }
+};
+
+template<typename T, typename F>
+generator_wrapper<T, F> make_generator(F&& fn) {
+    return generator_wrapper<T, F>(std::forward<F>(fn));
+}
+
 } // namespace tpy

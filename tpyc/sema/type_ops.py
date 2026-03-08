@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, TypeParamRef, NamedType, PtrType, is_readonly_ptr, OwnType, ReadonlyType,
-    ArrayType, SpanType, ListType, PendingListType, SelfType, OptionalType, UnionType,
+    ArrayType, SpanType, ListType, PendingListType, GenExprType, SelfType, OptionalType, UnionType,
     TupleType,
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
     NoneType, VoidType,
@@ -521,6 +521,12 @@ class TypeOperations:
     ) -> bool:
         """Match a protocol with TypeParamRef type_args against arg_type (e.g., NativeIterable[T], OptIterator[T])."""
         from tpyc import modules as builtin_modules
+
+        # GenExprType satisfies Iterable[T] and OptIterator[T]
+        if isinstance(arg_type, GenExprType) and param_type.name in ("Iterable", "OptIterator"):
+            if len(param_type.type_args) == 1:
+                return self.match_type_with_inference(param_type.type_args[0], arg_type.element_type, inferred)
+            return True
 
         protocol_name = param_type.name
         if param_type.qualified_name() == "typing.Iterator":

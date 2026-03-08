@@ -10,7 +10,7 @@ from typing import Literal, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, CharType,
-    NamedType, PtrType, OwnType, ListType, DictType, SetType, ArrayType, PendingListType, ListRepeatType, TupleType, SpanType,
+    NamedType, PtrType, OwnType, ListType, DictType, SetType, ArrayType, PendingListType, ListRepeatType, GenExprType, TupleType, SpanType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
     FixedIntType, StringType, StrViewType, make_union,
@@ -24,7 +24,7 @@ from ..parse import (
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
-    TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyComprehensionGenerator,
+    TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression, TpyComprehensionGenerator,
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr,
 )
@@ -125,6 +125,8 @@ class ExpressionAnalyzer:
             typ = self._analyze_dict_comprehension(expr)
         elif isinstance(expr, TpySetComprehension):
             typ = self._analyze_set_comprehension(expr)
+        elif isinstance(expr, TpyGeneratorExpression):
+            typ = self._analyze_generator_expression(expr)
         elif isinstance(expr, TpySubscript):
             typ = self._analyze_subscript(expr)
         elif isinstance(expr, TpyFString):
@@ -1375,6 +1377,20 @@ class ExpressionAnalyzer:
     ) -> TpyType:
         return self._analyze_elem_comprehension(expr, expected_elem, kind="set")
 
+    def _analyze_generator_expression(self, expr: TpyGeneratorExpression) -> TpyType:
+        gen = expr.generator
+        elem_type = self._resolve_comp_iterable(gen, expr)
+
+        if self.scopes is None:
+            raise RuntimeError("generator expression requires ScopeTracker")
+        result_elem_type = self._enter_comp_scope(gen, expr, elem_type, None)
+
+        if isinstance(result_elem_type, IntLiteralType):
+            result_elem_type = self.ctx.default_int_type
+
+        expr.result_elem_type = result_elem_type
+        return GenExprType(result_elem_type)
+
     def _analyze_elem_comprehension(
         self, expr: TpyListComprehension | TpySetComprehension,
         expected_elem: TpyType | None,
@@ -1523,7 +1539,7 @@ class ExpressionAnalyzer:
     def _enter_comp_scope(
         self,
         gen: TpyComprehensionGenerator,
-        expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension,
+        expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension | TpyGeneratorExpression,
         elem_type: TpyType,
         hint: TpyType | tuple[TpyType | None, TpyType | None] | None,
     ) -> TpyType | tuple[TpyType, TpyType]:
@@ -1551,7 +1567,7 @@ class ExpressionAnalyzer:
     def _analyze_comp_body(
         self,
         gen: TpyComprehensionGenerator,
-        expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension,
+        expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension | TpyGeneratorExpression,
         hint: TpyType | tuple[TpyType | None, TpyType | None] | None,
     ) -> TpyType | tuple[TpyType, TpyType]:
         for cond in gen.conditions:

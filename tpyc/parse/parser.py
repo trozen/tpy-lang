@@ -24,7 +24,7 @@ from .nodes import (
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct, TpyCall, TpyMethodCall,
     TpyFieldAccess, TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
-    TpyComprehensionGenerator, TpyListComprehension, TpyDictComprehension, TpySetComprehension,
+    TpyComprehensionGenerator, TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression,
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
@@ -2072,6 +2072,16 @@ class Parser:
             generator = self._parse_comprehension_generator(gen)
             element_expr = self._parse_expr(node.elt)
             return TpySetComprehension(element_expr, generator, loc=loc)
+
+        elif isinstance(node, ast.GeneratorExp):
+            if len(node.generators) != 1:
+                raise ParseError("Nested comprehensions not yet supported", node)
+            gen = node.generators[0]
+            if gen.is_async:
+                raise ParseError("Async comprehensions not yet supported", node)
+            generator = self._parse_comprehension_generator(gen)
+            element_expr = self._parse_expr(node.elt)
+            return TpyGeneratorExpression(element_expr, generator, loc=loc)
 
         elif isinstance(node, ast.Set):
             elements = [self._parse_expr(e) for e in node.elts]

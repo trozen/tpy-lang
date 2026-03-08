@@ -78,8 +78,8 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D9 | set type | L | Done | [VII](#set-type) |
 | D10 | bytes type | M | Not started | [VII](#bytes-type) |
 | D11 | Dict comprehension | S-M | Done | [VI](#dict-comprehension) |
-| D12 | Set comprehension | S | Not started | [VI](#set-comprehension) |
-| D13 | Generator expressions | M | Not started | [VI](#generator-expressions) |
+| D12 | Set comprehension | S | Done | [VI](#set-comprehension) |
+| D13 | Generator expressions | M | Done | [VI](#generator-expressions) |
 | D14 | Walrus operator (`:=`) | S-M | Not started | [VI](#walrus-operator) |
 
 ### Phase E: Advanced Safety

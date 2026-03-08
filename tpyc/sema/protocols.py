@@ -13,7 +13,7 @@ from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, OwnType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, is_protocol_type,
     FixedIntType, BigIntType, FloatType, Float32Type, BoolType, StrType, StringType, StrViewType, CharType,
-    ListType, ListRepeatType, DictType, SetType, ArrayType, TupleType, SpanType, OptionalType, IntLiteralType, PendingListType, BIGINT,
+    ListType, ListRepeatType, GenExprType, DictType, SetType, ArrayType, TupleType, SpanType, OptionalType, IntLiteralType, PendingListType, BIGINT,
     EnumType, IntEnumType,
     impl_proto_matches_name, get_protocol_qname,
 )
@@ -82,6 +82,14 @@ class ProtocolChecker:
         # PendingListType: delegate to list[T] (resolves to list or Array, both conform)
         if isinstance(actual, PendingListType):
             return self.type_conforms_to_protocol(ListType(actual.element_type), protocol)
+
+        # GenExprType: satisfies Iterable[T] and OptIterator[T]
+        if isinstance(actual, GenExprType):
+            if protocol.name in ("Iterable", "OptIterator"):
+                if protocol.type_args and len(protocol.type_args) == 1:
+                    return self.type_ops.types_match_for_inference(actual.element_type, protocol.type_args[0])
+                return True
+            return False
 
         # Enum/IntEnum: hashable, comparable, and equatable at C++ level
         if isinstance(actual, (EnumType, IntEnumType)):
@@ -264,6 +272,7 @@ class ProtocolChecker:
 
     # Protocols that ListRepeatType conforms to (lazy repeat range)
     _LIST_REPEAT_PROTOCOLS = {"Iterable", "Sized", "NativeIterable", "NativeRangeConstructible"}
+    _GENEXPR_PROTOCOLS = {"Iterable", "OptIterator"}
 
     def type_extends_any_protocol(self, actual: TpyType, protocol_name: str) -> bool:
         """Check if a type extends any variant of a protocol (ignoring type args).
@@ -274,6 +283,8 @@ class ProtocolChecker:
         # ListRepeatType conforms to iteration/sizing protocols
         if isinstance(actual, ListRepeatType):
             return protocol_name in self._LIST_REPEAT_PROTOCOLS
+        if isinstance(actual, GenExprType):
+            return protocol_name in self._GENEXPR_PROTOCOLS
 
         record_info = self.ctx.registry.get_record_for_type(actual)
         if record_info is None:

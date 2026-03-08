@@ -13,6 +13,7 @@
 #include <ranges>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 #include "iter_adapt.hpp"
@@ -20,14 +21,16 @@
 
 namespace tpy {
 
-// All overloads take non-const Container&: iter_adapt_container requires
-// mutable access since __iter__() mutates the iterator state.
+// Forwarding-ref overloads: accept both lvalue containers (user iterables)
+// and rvalue temporaries (generator expressions).  The requires clause
+// excludes standard ranges so these never compete with the primary overloads
+// in container_ops.hpp / format.hpp.
 
 // -- list_extend for non-range iterables ------------------------------------
 
 template<typename T, typename Container>
-    requires (!std::ranges::input_range<const Container>)
-void list_extend(std::vector<T>& v, Container& other) {
+    requires (!std::ranges::input_range<std::remove_reference_t<Container>>)
+void list_extend(std::vector<T>& v, Container&& other) {
     for (auto __range = iter_adapt_container(other); auto&& elem : __range) {
         v.push_back(std::move(elem));
     }
@@ -36,8 +39,8 @@ void list_extend(std::vector<T>& v, Container& other) {
 // -- str_join for non-range iterables ---------------------------------------
 
 template<typename Container>
-    requires (!std::ranges::input_range<const Container>)
-inline std::string str_join(std::string_view sep, Container& items) {
+    requires (!std::ranges::input_range<std::remove_reference_t<Container>>)
+inline std::string str_join(std::string_view sep, Container&& items) {
     std::string result;
     bool first = true;
     for (auto __range = iter_adapt_container(items); auto&& item : __range) {
@@ -51,8 +54,8 @@ inline std::string str_join(std::string_view sep, Container& items) {
 // -- from_range for non-range iterables -------------------------------------
 
 template<typename Container, typename Iterable>
-    requires (!std::ranges::input_range<Iterable>)
-Container from_range(Iterable& iterable) {
+    requires (!std::ranges::input_range<std::remove_reference_t<Iterable>>)
+Container from_range(Iterable&& iterable) {
     Container result;
     for (auto __range = iter_adapt_container(iterable); auto&& elem : __range) {
         result.push_back(std::move(elem));
@@ -63,8 +66,8 @@ Container from_range(Iterable& iterable) {
 // -- dict_from_pairs for non-range iterables --------------------------------
 
 template<typename K, typename V, typename Iterable>
-    requires (!std::ranges::input_range<Iterable>)
-ordered_map<K, V> dict_from_pairs(Iterable& iterable) {
+    requires (!std::ranges::input_range<std::remove_reference_t<Iterable>>)
+ordered_map<K, V> dict_from_pairs(Iterable&& iterable) {
     ordered_map<K, V> result;
     for (auto __range = iter_adapt_container(iterable); auto&& elem : __range) {
         result.insert_or_assign(std::get<0>(elem), std::get<1>(elem));

@@ -16,6 +16,7 @@ from ..typesys import (
 from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat, TpyListComprehension,
+    TpyGeneratorExpression,
     TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall, TpySubscript, TpyCall, TpyName, TpyFieldAccess
 )
 from ..namespace import Namespace, BindingKind
@@ -631,6 +632,9 @@ class CodeGenContext:
             return True
         # Container literals: [], [1,2,3], [0]*10, [x for x in items]
         if isinstance(expr, (TpyArrayLiteral, TpyListRepeat, TpyListComprehension)):
+            return True
+        # Generator expressions produce rvalue temporaries
+        if isinstance(expr, TpyGeneratorExpression):
             return True
         # Explicit coercions: Ptr[T]->T is dereference (lvalue), others produce temporaries
         if isinstance(expr, TpyCoerce):

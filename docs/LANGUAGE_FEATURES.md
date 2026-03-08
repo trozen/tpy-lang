@@ -2197,8 +2197,9 @@ while (auto __opt_0 = __iter_0.__next_opt__()) {
 | 6. Iterator[T]/Iterable[T] | **Working** | Built-in protocols from `typing`, for-loop support, `iter()`, `try_next()` builtins |
 | 7. `__span__` protocol | **Working** | `__span__() -> Span[T]` for zero-cost range-based for, implicit Span coercion |
 | 7b. `ReadOnlySpanLike[T]` protocol | **Working** | Readonly protocol for types with `__span__()`, for-loop and ReadOnlySpan coercion |
-| 8. Generator functions | Open | `yield` → state-machine class implementing OptIterator |
-| 9. Iterator combinators | Open | `enumerate()`, `zip()`, `filter()`, `map()`, `reversed()` |
+| 8. Generator expressions | **Working** | `(expr for x in iterable)` → lazy `make_generator` wrapper, satisfies `Iterable[T]` |
+| 9. Generator functions | Open | `yield` → state-machine class implementing OptIterator |
+| 10. Iterator combinators | Open | `enumerate()`, `zip()`, `filter()`, `map()`, `reversed()` |
 
 See [docs/ITERATOR_DESIGN.md](ITERATOR_DESIGN.md) for the full iterator design document.
 
@@ -4202,8 +4203,8 @@ Send/Sync rules for built-in types:
 
 ## Generators
 
+- **Working**: Generator expressions `(expr for x in iterable if cond)` → `tpy::make_generator<T>(lambda)` wrapper satisfying `Iterable[T]`. Supports range sources, container sources, filter clauses, tuple unpacking, outer local capture. See [COMPREHENSION_DESIGN.md](COMPREHENSION_DESIGN.md#generator-expressions).
 - **Open**: `yield` → generator as state-machine class implementing OptIterator (see iterator roadmap)
-- **Open**: Generator expressions → lazy iterators with known bounds
 - Could be zero-alloc if state machine is stack-allocated
 
 ---

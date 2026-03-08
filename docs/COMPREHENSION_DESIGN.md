@@ -18,7 +18,7 @@
 | Feature | Notes |
 |---------|-------|
 | `Span[T, N]` -> Array | When fixed-size span is available, `[x for x in span]` can produce `std::array<T, N>` |
-| Generator expressions | `sum(x*x for x in items)` -- lazy evaluation, no allocation. See [Generator expressions](#generator-expressions-future) section |
+| Generator expressions | `sum(x*x for x in items)` -- lazy evaluation, no allocation. See [Generator expressions](#generator-expressions) section | Done |
 | Nested generators | `[f(x, y) for x in a for y in b]` -- multiple `comprehension` nodes. Low priority (rare in practice) |
 | Walrus operator in filter | `[y for x in items if (y := f(x)) > 0]` -- requires walrus operator |
 | Async comprehensions | `[x async for x in aiter]` -- requires async/await (G1) |
@@ -474,162 +474,87 @@ and annotation propagation (both key and value types independently).
 
 ---
 
-## Generator Expressions (Future)
+## Generator Expressions
 
-Generator expressions look like list comprehensions without brackets:
+Generator expressions produce lazy iterators consumed by functions accepting
+`Iterable[T]`:
 
 ```python
-total = sum(x * x for x in items)
-any_negative = any(x < 0 for x in items)
-result = sum_positive(x * x for x in data if x > 0)
+total = sum_items(x * x for x in items)
+joined = ", ".join(str(x) for x in nums)
+squares: list[Int32] = list(x * x for x in range(5))
 ```
 
-In Python, these produce lazy iterators. The goal for TPy is a general approach
-that works with both builtins and user-defined functions, without hardcoding
-specific consumer functions.
+### Implementation
 
-### Approach: Lambda-based generator
-
-Generate a mutable C++ lambda that returns `optional<T>`, wrapped in a thin
-runtime adapter (`tpy::make_generator`) that provides begin/end iterators:
+The codegen produces a mutable C++ lambda returning `optional<T>`, wrapped in
+`tpy::generator_wrapper<T, F>` via `tpy::make_generator<T>(lambda)`. The
+wrapper provides `__next_opt__()` and `__iter__()`, integrating with
+`iter_adapt.hpp` for for-loop and iterable infrastructure.
 
 ```python
 result = sum_positive(x * x for x in data if x > 0)
 ```
 
 ```cpp
-auto result = sum_positive(tpy::make_generator(
-    [&, __idx = size_t(0)]() mutable -> std::optional<int32_t> {
-        while (__idx < data.size()) {
-            auto& x = data[__idx++];
-            if (x > 0) { return x * x; }
+auto __tmp_1 = tpy::make_generator<int32_t>(
+    [&, __beg = data.begin(), __end = data.end()]() mutable
+        -> std::optional<int32_t> {
+        while (__beg != __end) {
+            int32_t x = *__beg++;
+            if (x > 0) { return std::optional<int32_t>(x * x); }
         }
         return std::nullopt;
     }
-));
+);
+auto result = sum_positive(__tmp_1);
 ```
 
 Key properties:
-- **General** -- works with any function that accepts an iterable, not just builtins
-- **Lazy** -- elements are computed on demand, no intermediate collection
-- **Zero allocation** -- no heap allocation for the generator itself
-- **Simple codegen** -- `[&]` handles variable capture automatically, mutable
-  lambda handles iteration state, no need to generate named structs
-- **Reuses existing infrastructure** -- `tpy::make_generator` wraps the lambda
-  into something with begin/end via `iter_adapt.hpp`, plugging into existing
-  for-loop and iterable infrastructure
+- **General** -- works with any function accepting `Iterable[T]`, not just builtins
+- **Lazy** -- elements computed on demand, no intermediate collection
+- **Zero allocation** -- lambda + wrapper live on stack
+- **Zero-cost with templates** -- `Iterable[T]` params compile as C++ templates,
+  so the compiler inlines through `make_generator` + lambda
 
-### Iteration state variants
+### Codegen strategies
 
-The lambda body follows the same iteration strategy dispatch as comprehensions:
+| Source | Strategy | State |
+|--------|----------|-------|
+| `range(N)`, `range(start, stop)` | Counter lambda | `__i`, `__stop` init-captures |
+| `range(start, stop, step)` | IIFE + Range iterator | `tpy::Range<T>` begin/end captures |
+| Containers (list, dict, etc.) | IIFE + begin/end captures | Iterator init-captures |
 
-| Source | State | Loop pattern |
-|--------|-------|-------------|
-| `list[T]`, containers | `size_t __idx` | `while (__idx < __obj.size())` |
-| `range(N)` | counter variable | `while (__i < __stop)` |
-| `range(start, stop)` | counter + bounds | `while (__i < __stop)` |
-| Iterator/Iterable | nested `__next_opt__` | `while (auto __v = src.__next_opt__())` |
+### Rvalue binding
 
-Tuple unpacking works identically to comprehensions -- destructure inside the
-while loop body.
+Generator expressions produce rvalue temporaries. Two mechanisms handle this:
 
-### Runtime component
+1. **User-defined functions** with protocol template params (`T_items& items`):
+   `is_temporary_expr` recognizes `TpyGeneratorExpression`, triggering temp
+   hoisting (`auto __tmp_N = make_generator<T>(...);`).
 
-A small addition to `iter_adapt.hpp`:
-
-```cpp
-// Wraps a callable returning optional<T> into an input range with begin/end
-template<typename F>
-auto make_generator(F&& fn);
-```
-
-This produces an object with `__next_opt__()` semantics (delegating to the
-callable), which `iter_adapt` already knows how to wrap into C++ iterators.
+2. **Runtime functions** (`str_join`, `list_extend`, `from_range`, `dict_from_pairs`):
+   Non-range overloads in `iterable_ops.hpp` use forwarding references
+   (`Container&&`) to accept both lvalues and rvalue temporaries directly.
 
 ### Type system
 
-A generator expression `(expr for x in iterable if cond)` has type
-`Generator[T]` where `T` is the element type of `expr`. In sema:
+`GenExprType(element_type)` is an internal-only type (not user-facing). It
+satisfies `Iterable[T]` and `OptIterator[T]` protocols via special cases in
+`protocols.py`. The C++ type is always `auto` (deduced from `make_generator`).
 
-- `Generator[T]` is iterable (element type `T`)
-- Compatible with any function parameter that accepts an iterable of `T`
-- Can be used in `for x in gen` loops
-- Can be assigned to a variable (the lambda captures by reference, so lifetime
-  is scoped to the enclosing expression/statement)
+### Future optimization: fused IIFE for builtins
 
-### Performance characteristics
-
-Performance depends on how the consuming function is compiled:
-
-| Consumer | Mechanism | Overhead |
-|----------|-----------|----------|
-| Template function (`Iterable[T]` as template param) | Compiler inlines lambda through `make_generator` | **Zero** -- equivalent to hand-written loop |
-| Concrete function (type-erased iterable) | Virtual dispatch per `__next_opt__()` call | Per-element indirection |
-| Built-in (`sum`, `any`, `list`, etc.) | Same as template (builtins are inlined) | **Zero** |
-
-The key insight: if functions taking `Iterable[T]` compile as templates (which
-is the natural C++ mapping), the lambda approach is zero-cost. The compiler
-sees through `make_generator` + the lambda and optimizes to the same code as
-a hand-fused loop.
-
-### Optional optimization: fused IIFE for builtins
-
-As a transparent compiler optimization (not language-level behavior), the
-compiler can recognize `builtin(genexpr)` patterns and fuse them into a
-single IIFE, bypassing the generator object entirely:
+As a transparent optimization, the compiler could fuse `builtin(genexpr)`
+patterns into a single IIFE, bypassing the generator wrapper:
 
 ```python
 total = sum(x * x for x in range(100))
+# -> fused accumulation loop, no make_generator
 ```
 
-Optimized codegen:
-
-```cpp
-auto total = [&]() {
-    int64_t __acc = 0;
-    for (int32_t x = 0; x < 100; ++x) {
-        __acc += x * x;
-    }
-    return __acc;
-}();
-```
-
-This is analogous to how `reserve()` is a transparent optimization for
-comprehensions -- the semantics are the same with or without it, but the
-optimized version avoids the generator machinery entirely.
-
-Known fusible patterns:
-
-| Builtin | Accumulator init | Accumulation | Short-circuit |
-|---------|-----------------|--------------|---------------|
-| `sum` | `0` (element type) | `__acc += expr` | No |
-| `any` | `false` | `if (expr) return true` | Yes |
-| `all` | `true` | `if (!expr) return false` | Yes |
-| `min` | first element | `if (expr < __acc) __acc = expr` | No |
-| `max` | first element | `if (expr > __acc) __acc = expr` | No |
-| `list` | `vector<T>{}` | `push_back(expr)` | No |
-
-This optimization is deferred -- the lambda approach is correct and efficient
-enough as the baseline. Fusion can be added later without changing semantics.
-
-### Materialization
-
-When a generator expression is used in a context that requires a concrete
-collection (e.g., assigned to `list[T]`), it materializes:
-
-```python
-items: list[Int32] = list(x * x for x in range(10))
-```
-
-This is equivalent to a list comprehension. The compiler could warn if a list
-comprehension would be clearer.
-
-### Dependencies
-
-- List comprehensions (done)
-- `iter_adapt.hpp` extension (`make_generator`)
-- `Generator[T]` type in the type system
-- Functions accepting `Iterable[T]` parameters (for general usage)
+This is deferred -- the lambda approach is correct and efficient enough as
+baseline. Fusion can be added later without changing semantics.
 
 ---
 
