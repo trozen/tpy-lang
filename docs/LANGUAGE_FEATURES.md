@@ -267,7 +267,7 @@ This ensures fixed-width variables stay in the checked arithmetic domain. If the
 
 #### String Type Semantics (Working)
 
-`str` is context-dependent, matching Python's actual semantics where parameters are borrowed and returns/fields are owned. Locals are inferred: `std::string_view` when safe (literal or param source), `std::string` when ownership is needed:
+`str` is context-dependent, matching Python's actual semantics where parameters are borrowed and returns/fields are owned. Locals are inferred: `std::string_view` when safe (literal, param, Array element, or record field source), `std::string` when ownership is needed:
 
 ```python
 def greet(name: str) -> str:   # param=string_view, return=std::string
@@ -281,6 +281,13 @@ t = name                       # local = std::string_view (param source)
 u = str(42)                    # local = std::string (owned source)
 v = "start"
 v += " end"                    # local = std::string (augmented assignment)
+
+# Array/record sources are view-safe unless the source is mutated:
+arr: Array[str, 3] = ["a", "b", "c"]
+x = arr[0]                     # local = std::string_view (stable storage)
+p = Config("test")
+y = p.name                     # local = std::string_view (stable storage)
+p.name = "new"                 # source mutated -> y falls back to std::string
 ```
 
 For explicit control, use `String` or `StrView` from the `tpy` module:

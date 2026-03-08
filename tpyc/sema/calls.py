@@ -1060,6 +1060,7 @@ class CallAnalyzer:
         A non-pure, non-readonly function receiving a container by mutable
         reference could structurally mutate it, invalidating element borrows.
         Resolves aliases so that passing an alias of a borrowed container warns.
+        Also marks str_source_borrows as mutated for string view fallback.
         """
         fi = expr.resolved_function_info
         if fi is None or fi.is_pure or fi.is_readonly:
@@ -1070,17 +1071,17 @@ class CallAnalyzer:
             arg = expr.args[i]
             if not isinstance(arg, TpyName):
                 continue
-            storage = self.ctx.effective_storage(arg.name)
-            if not self.ctx.has_element_borrow(storage):
-                continue
             # readonly[T] param -- function promises not to mutate
             if isinstance(param.type, ReadonlyType):
                 continue
-            self.ctx.warning(
-                f"Passing borrowed container '{storage}' to non-readonly parameter "
-                f"'{param.name}' (function may invalidate references)",
-                expr,
-            )
+            storage = self.ctx.effective_storage(arg.name)
+            if self.ctx.has_element_borrow(storage):
+                self.ctx.warning(
+                    f"Passing borrowed container '{storage}' to non-readonly parameter "
+                    f"'{param.name}' (function may invalidate references)",
+                    expr,
+                )
+            self.ctx.mark_str_borrowers_mutated(storage)
 
     def _check_loop_var_arg_mutation(self, expr: TpyCall | TpyMethodCall) -> None:
         """Mark for-each loop variables as mutated when passed to non-readonly params."""

@@ -1305,11 +1305,23 @@ class StatementAnalyzer:
                 is_owned = not self.deduction.is_view_compatible_source(init_expr, init_type)
             else:
                 is_owned = False
+            # Track source storage for subscript/field views so that
+            # mutations on the source fall back to std::string.
+            source_storage: str | None = None
+            if not is_owned and init_expr is not None:
+                unwrapped_init = init_expr.expr if isinstance(init_expr, TpyCoerce) else init_expr
+                if isinstance(unwrapped_init, (TpySubscript, TpyFieldAccess)):
+                    root = _borrow_storage_root(unwrapped_init)
+                    if root is not None:
+                        source_storage = self.ctx.effective_storage(root)
             sv_info = StrVarInfo(str_var_id=str_var_id, variable_name=name,
                                 decl_line=line,
-                                initialized_from_owned=is_owned)
+                                initialized_from_owned=is_owned,
+                                source_storage=source_storage)
             self.ctx.str_vars[str_var_id] = sv_info
             self.ctx.variable_to_str_var[name] = str_var_id
+            if source_storage is not None:
+                self.ctx.str_source_borrows.setdefault(source_storage, set()).add(str_var_id)
             self.ctx.pending_str_resolutions.append(str_var_id)
             return PendingStrType(str_var_id)
         elif isinstance(var_type, PendingStrType):
@@ -1768,6 +1780,7 @@ class StatementAnalyzer:
                 and var_type is not None and not var_type.is_value_type()):
             self.ctx.mark_loop_var_mutated(stmt.init.name)
         # Borrow tracking: reassignment breaks aliases in both directions
+        self.ctx.mark_str_borrowers_mutated(stmt.name)
         self.ctx.remove_borrower(stmt.name)
         self.ctx.remove_storage_borrows(stmt.name)
         # Create borrow when the target aliases another variable's storage
@@ -2031,6 +2044,7 @@ class StatementAnalyzer:
             # Note: borrow creation is skipped for reassigned vars (they use T*
             # pointer-locals in codegen); tracking borrows for them would require
             # pointer-alias analysis beyond the current design scope.
+            self.ctx.mark_str_borrowers_mutated(stmt.target.name)
             self.ctx.remove_borrower(stmt.target.name)
             self.ctx.remove_storage_borrows(stmt.target.name)
             if self.ctx.current_ns:
@@ -2098,6 +2112,7 @@ class StatementAnalyzer:
                     msg = (f"Mutation of '{storage}' while borrowed"
                            " (subscript assignment may invalidate references)")
                     self.ctx.warning(msg, stmt)
+            self.ctx.mark_str_borrowers_mutated(storage)
         elif isinstance(stmt.target, TpyFieldAccess) and isinstance(stmt.target.obj, TpyName):
             storage = self.ctx.effective_storage(stmt.target.obj.name)
             borrowers = self.ctx.borrows.get(storage)
@@ -2110,6 +2125,7 @@ class StatementAnalyzer:
                     msg = (f"Mutation of '{storage}' while borrowed"
                            " (field assignment may invalidate references)")
                     self.ctx.warning(msg, stmt)
+            self.ctx.mark_str_borrowers_mutated(storage)
 
         stmt.value = self.compat.coerce_expr(stmt.value, value_type, target_type, "assignment",
                                               coercion_ctx=CoercionContext.ASSIGN)
@@ -2183,6 +2199,7 @@ class StatementAnalyzer:
                         msg = (f"Mutation of '{storage}' while borrowed"
                                " ('del' may invalidate references)")
                     self.ctx.warning(msg, stmt)
+                self.ctx.mark_str_borrowers_mutated(storage)
             self._enforce_readonly_assignment_target(subscript)
             obj_type = self.ctx.get_expr_type(subscript.obj)
             actual = unwrap_readonly(obj_type)
@@ -2243,6 +2260,7 @@ class StatementAnalyzer:
                         " (subscript assignment may invalidate references)",
                         stmt,
                     )
+            self.ctx.mark_str_borrowers_mutated(storage)
         elif isinstance(stmt.target, TpyFieldAccess) and isinstance(stmt.target.obj, TpyName):
             storage = self.ctx.effective_storage(stmt.target.obj.name)
             borrowers = self.ctx.borrows.get(storage)
@@ -2257,6 +2275,7 @@ class StatementAnalyzer:
                         " (field assignment may invalidate references)",
                         stmt,
                     )
+            self.ctx.mark_str_borrowers_mutated(storage)
         if (
             isinstance(stmt.target, TpyName)
             and isinstance(target_type, BigIntType)

@@ -318,12 +318,15 @@ class MethodAnalyzer:
                 if info is not None and info.is_consuming:
                     self._validate_consuming_call(expr)
                 # Track non-readonly method calls on for-each loop variables
+                # and string view sources (receiver mutation invalidates views)
                 info = expr.resolved_function_info
                 if info is not None and not info.is_readonly:
                     from .statements import _root_name_of_expr
                     obj_root = _root_name_of_expr(expr.obj)
                     if obj_root is not None:
                         self.ctx.mark_loop_var_mutated(obj_root)
+                        storage = self.ctx.effective_storage(obj_root)
+                        self.ctx.mark_str_borrowers_mutated(storage)
                 return result
 
             deref_target = self.expr.get_deref_target_type(current_type)

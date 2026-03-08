@@ -22,7 +22,7 @@
 | 6.4 | Conflict detection at all mutation points | M | Done | [6](#6-intra-function-borrow-checking) |
 | 6.5 | Function parameter mutation detection | S-M | Done | [6](#6-intra-function-borrow-checking) |
 | 6b | For-loop const-ref binding | S | Done | [6b](#6b-for-loop-const-ref-binding) |
-| 6c | String view extension (Array, records) | M | Not started | [6c](#6c-string-view-extension-to-containers) |
+| 6c | String view extension (Array, records) | M | Done | [6c](#6c-string-view-extension-to-containers) |
 | -- | Extract BorrowTracker class from SemanticContext | S | Not started | -- |
 | 11 | Integer range tracking (loop patterns) | M | Not started | [11](#11-integer-range-tracking) |
 | 11a | Bounds check elision | S | Not started | [11a](#11a-bounds-check-elision) |
@@ -449,9 +449,16 @@ If the borrow checker proves `names` is not mutated between the assignment and t
 last use of `x`, the string can be a `string_view` instead of a copy.
 
 Incremental rollout:
-- **Phase A**: `Array[T, N]` -- no reallocation risk, only element mutation
-- **Phase B**: Record fields -- no reallocation risk
-- **Phase C**: `list[T]` / `dict[K, V]` -- reallocation risk from growth operations
+- **Phase A (Done)**: `Array[T, N]` subscript -- no reallocation risk, only element mutation
+- **Phase B (Done)**: Record field access -- no reallocation risk
+- **Phase C**: `list[T]` / `dict[K, V]` -- reallocation risk from growth operations (see 6c+)
+
+**Implementation**: Since `PendingStrType.is_value_type()` returns True, the main borrow
+system does not track string variables. A separate `str_source_borrows` dict on
+`SemanticContext` maps storage variable names to `str_var_id` sets. When the source
+storage is mutated (subscript/field assignment, aug-assign, del, variable reassignment,
+or passed to a non-readonly function), `mark_str_borrowers_mutated()` sets the
+`source_mutated` flag on `StrVarInfo`, causing resolution to fall back to `std::string`.
 
 ### 7. `@pure` Annotation
 

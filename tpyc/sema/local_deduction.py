@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from ..coercions import CoercionContext
 from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce, TpyFunction, TpyListRepeat
-from ..parse.nodes import TpyStrLiteral, TpySubscript
+from ..parse.nodes import TpyStrLiteral, TpySubscript, TpyFieldAccess
 from ..typesys import (
     ArrayType,
     BigIntType,
@@ -477,13 +477,25 @@ class LocalTypeDeduction:
             if isinstance(init_type, StrViewType):
                 return True
 
-        # Subscript on lvalue tuple -- immutable, so element storage is stable.
-        # TODO: extend to Array and record field access once source-mutation
-        # tracking is implemented (arr[0]="new" or p.name="x" would
-        # invalidate a view taken before the mutation).
+        # Subscript on lvalue tuple or Array -- element storage is stable.
+        # Tuple elements are immutable; Array elements may be overwritten,
+        # but source-mutation tracking (source_mutated flag on StrVarInfo)
+        # will fall back to std::string if the source is mutated.
         if isinstance(init_expr, TpySubscript) and self.compat.is_lvalue(init_expr):
             obj_type = self.ctx.get_expr_type(init_expr.obj)
             if isinstance(obj_type, TupleType):
+                return True
+            # Array subscript: only single-level (arr[i] where arr is a name)
+            # to ensure _borrow_storage_root can track the source.
+            if isinstance(obj_type, ArrayType) and isinstance(init_expr.obj, TpyName):
+                return True
+
+        # Field access on lvalue record -- field storage is stable unless
+        # the record field is reassigned (tracked by source_mutated).
+        # Only single-level access (obj.field where obj is a name) is safe;
+        # nested chains (p.inner.name) cannot be tracked by _borrow_storage_root.
+        if isinstance(init_expr, TpyFieldAccess) and self.compat.is_lvalue(init_expr):
+            if isinstance(init_expr.obj, TpyName):
                 return True
 
         return False
@@ -543,6 +555,7 @@ class LocalTypeDeduction:
                 or info.used_in_augassign
                 or info.passed_to_string_param
                 or info.reassigned_from_owned
+                or info.source_mutated
             )
 
             info.resolved_type = STR if needs_owned else STRVIEW

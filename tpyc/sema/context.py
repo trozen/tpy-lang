@@ -92,6 +92,7 @@ class SemanticContext:
     str_var_counter: int = 0
     str_vars: dict[int, StrVarInfo] = field(default_factory=dict)
     variable_to_str_var: dict[str, int] = field(default_factory=dict)
+    str_source_borrows: dict[str, set[int]] = field(default_factory=dict)  # storage -> str_var_ids
     pending_str_resolutions: list[int] = field(default_factory=list)
 
     # --- Import tracking ---
@@ -314,6 +315,7 @@ class SemanticContext:
         self.variable_to_literal.clear()
         self.pending_resolutions.clear()
         self.variable_to_str_var.clear()
+        self.str_source_borrows.clear()
         self.pending_str_resolutions.clear()
         self.super_init_call = None
         self.super_del_call = None
@@ -408,6 +410,22 @@ class SemanticContext:
         """Mark a for-each loop variable as mutated (prevents const-ref binding)."""
         if name in self.loop_vars:
             self.mutated_loop_vars.add(name)
+
+    def mark_str_borrowers_mutated(self, storage: str) -> None:
+        """Mark PendingStrType borrowers of storage as source-mutated.
+
+        Called at mutation sites so that string view resolution falls
+        back to std::string when the view's source storage is mutated.
+        Uses str_source_borrows (separate from the main borrow system,
+        since PendingStrType is a value type and not tracked there).
+        """
+        str_var_ids = self.str_source_borrows.get(storage)
+        if not str_var_ids:
+            return
+        for str_var_id in str_var_ids:
+            info = self.str_vars.get(str_var_id)
+            if info is not None:
+                info.source_mutated = True
 
     def remove_storage_borrows(self, storage: str) -> None:
         """Remove all borrows of ``storage`` (e.g. when storage is reassigned)."""
