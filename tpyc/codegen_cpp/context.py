@@ -269,6 +269,9 @@ class CodeGenContext:
     # --- Tuple unpacking counter ---
     unpack_counter: int = 0
 
+    # --- Match/case label counter (for goto-based guard fallthrough) ---
+    match_counter: int = 0
+
     # --- Cross-module import tracking ---
     user_module_imports: set[str] = field(default_factory=set)
     all_user_modules: set[str] = field(default_factory=set)

@@ -1,0 +1,7 @@
+verbose pet
+pet
+verbose pet
+bird
+found Rex
+other pet: Luna
+bird: Tweety

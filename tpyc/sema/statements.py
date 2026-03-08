@@ -651,24 +651,28 @@ class StatementAnalyzer:
                 raise self.ctx.error(
                     "unreachable case after wildcard pattern", case.pattern
                 )
-            if case.guard is not None:
-                raise self.ctx.error(
-                    "guard clauses in match/case are not yet supported",
-                    case.guard,
-                )
-
             # Restore state to pre-match for each arm
             self.init.restore(before)
             self.ctx.current_scope.bindings = dict(bindings_before)
             self._restore_ns_var_types(ns_types_before)
 
             pattern_bindings: dict[str, TpyType] = {}
+            # Guarded cases don't consume types/values for duplicate detection,
+            # because the guard may fail and fall through.
+            has_guard = case.guard is not None
+            saved_seen_types = set(seen_types) if has_guard else None
+            saved_seen_values = set(seen_values) if has_guard else None
             if is_union:
                 self._analyze_pattern(case.pattern, effective_type, seen_types, pattern_bindings, stmt)
             else:
                 self._analyze_pattern_nonunion(
                     case.pattern, effective_type, seen_values, pattern_bindings, stmt,
                 )
+            if has_guard:
+                seen_types.clear()
+                seen_types.update(saved_seen_types)  # type: ignore[arg-type]
+                seen_values.clear()
+                seen_values.update(saved_seen_values)  # type: ignore[arg-type]
 
             for name, ty in pattern_bindings.items():
                 self.ctx.current_scope.define(name, ty)
@@ -684,6 +688,10 @@ class StatementAnalyzer:
                 case.type_facts = self._filter_union_codegen_facts(narrowing_facts)
                 self.ctx.narrowed_types.update(narrowing_facts)
 
+            # Analyze guard expression (pattern bindings are in scope)
+            if case.guard is not None:
+                self.expr.analyze_expr(case.guard)
+
             for s in case.body:
                 self.analyze_stmt(s)
 
@@ -693,7 +701,7 @@ class StatementAnalyzer:
             pat = case.pattern
             if isinstance(pat, TpyAsPattern):
                 pat = pat.pattern
-            if isinstance(pat, (TpyWildcardPattern, TpyCapturePattern)):
+            if isinstance(pat, (TpyWildcardPattern, TpyCapturePattern)) and case.guard is None:
                 had_wildcard = True
 
         # Merge flow states across all arms
@@ -781,6 +789,9 @@ class StatementAnalyzer:
 
         elif isinstance(pattern, TpyClassPattern):
             self._analyze_class_pattern(pattern, subject_type, seen_types, bindings, stmt)
+
+        elif isinstance(pattern, TpyOrPattern):
+            self._analyze_or_pattern(pattern, subject_type, seen_types, bindings, stmt, is_union=True)
 
         else:
             raise self.ctx.error(
@@ -906,11 +917,60 @@ class StatementAnalyzer:
                     )
                 seen_values.add(key)
 
+        elif isinstance(pattern, TpyOrPattern):
+            self._analyze_or_pattern(pattern, subject_type, seen_values, bindings, stmt, is_union=False)
+
         else:
             raise self.ctx.error(
                 f"Unsupported pattern for {subject_type} subject: "
                 f"{type(pattern).__name__}", pattern
             )
+
+    def _analyze_or_pattern(
+        self, pattern: TpyOrPattern, subject_type: TpyType,
+        seen: set, bindings: dict[str, TpyType], stmt: TpyMatch,
+        is_union: bool,
+    ) -> None:
+        """Analyze an or-pattern: all alternatives must bind same variables with compatible types."""
+        if len(pattern.patterns) < 2:
+            raise self.ctx.error("or-pattern must have at least 2 alternatives", pattern)
+
+        first_bindings: dict[str, TpyType] | None = None
+        for alt in pattern.patterns:
+            alt_bindings: dict[str, TpyType] = {}
+            if is_union:
+                self._analyze_pattern(alt, subject_type, seen, alt_bindings, stmt)
+            else:
+                self._analyze_pattern_nonunion(alt, subject_type, seen, alt_bindings, stmt)
+
+            if first_bindings is None:
+                first_bindings = alt_bindings
+            else:
+                # Check same variable names
+                if set(alt_bindings.keys()) != set(first_bindings.keys()):
+                    missing = set(first_bindings.keys()) - set(alt_bindings.keys())
+                    extra = set(alt_bindings.keys()) - set(first_bindings.keys())
+                    if missing:
+                        raise self.ctx.error(
+                            f"variable(s) {', '.join(sorted(missing))} not bound "
+                            f"in all alternatives of or-pattern", alt
+                        )
+                    if extra:
+                        raise self.ctx.error(
+                            f"variable(s) {', '.join(sorted(extra))} not bound "
+                            f"in all alternatives of or-pattern", alt
+                        )
+                # Check compatible types
+                for name, ty in alt_bindings.items():
+                    first_ty = first_bindings[name]
+                    if ty != first_ty:
+                        raise self.ctx.error(
+                            f"variable '{name}' has type '{first_ty}' in first alternative "
+                            f"but '{ty}' in another", alt
+                        )
+
+        if first_bindings:
+            bindings.update(first_bindings)
 
     def _validate_literal_pattern(
         self, pattern: TpyLiteralPattern, subject_type: TpyType,

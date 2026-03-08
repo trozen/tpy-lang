@@ -1,0 +1,1 @@
+main.py:14: error: variable 'n' has type 'str' in first alternative but 'int' in another

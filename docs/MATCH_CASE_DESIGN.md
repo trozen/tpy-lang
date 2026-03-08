@@ -8,7 +8,7 @@
 | 2 | Positional class patterns (`Point(x, y)`) via `__match_args__` | Done |
 | 3 | Literal, singleton (`True`/`False`), and value (`Color.RED`) patterns; enum and primitive subjects | Done |
 | 4 | Concrete record subjects (field-value matching), Optional subjects | Not started |
-| 5 | Or-patterns (`Dog() \| Cat():`), guard clauses (`if cond`) | Not started |
+| 5 | Or-patterns (`Dog() \| Cat():`), guard clauses (`if cond`) | Done |
 | 6 | Exhaustiveness warnings (union, enum, Optional) | Not started (duplicate case + unreachable-after-wildcard detection done in Phase 1) |
 | 7 | `switch` codegen for unions (`switch (s.index())`) and enums (`switch (e)`); if/elif fallback when guards present | Done |
 
@@ -544,25 +544,34 @@ if (__match_subject == 42 && flag) { ... }
 ```
 
 **Union/class patterns with guards**: the pattern needs to extract
-variables before the guard can reference them. Use a two-level structure
-with a `__matched` flag:
+variables before the guard can reference them. Uses standalone `if` blocks
+with `goto`-based forward jumps to skip remaining arms after a match:
 
 ```cpp
-bool __matched = false;
+// case Dog(name=n) if n == "Rex":  ->  case Dog():
 if (std::holds_alternative<Dog>(__match_subject)) {
-    auto& __dog = std::get<Dog>(__match_subject);
-    if (__dog.age > 5) {  // guard
-        __matched = true;
-        // body
+    auto& __case_0 = std::get<Dog>(__match_subject);
+    auto& n = __case_0.name;
+    if (n == "Rex") {
+        // guarded body
+        goto __match_end_0;
     }
 }
-if (!__matched && std::holds_alternative<Cat>(__match_subject)) {
-    // next case...
+if (std::holds_alternative<Dog>(__match_subject)) {
+    // unguarded fallback for Dog
+    goto __match_end_0;
 }
+if (std::holds_alternative<Cat>(__match_subject)) {
+    // next case...
+    goto __match_end_0;
+}
+__match_end_0:;
 ```
 
-The flag approach is straightforward and the C++ compiler will optimize it
-away in most cases.
+The `goto` approach avoids `if/elif` chains (which prevent fallthrough
+from a failed guard to a later case for the same type) and avoids
+`do/while(false)+break` (which would capture `break`/`continue` from
+user code inside the match body).
 
 ### Or-patterns
 

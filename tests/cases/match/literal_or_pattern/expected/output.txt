@@ -1,0 +1,8 @@
+small
+small
+medium
+large
+greeting
+greeting
+farewell
+unknown

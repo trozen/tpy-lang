@@ -2602,8 +2602,10 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   - Keyword and positional field bindings in class patterns (`case Rect(w, h):`, `case Point(x, y, z=pz):`)
   - Positional patterns resolved via field declaration order (implicit `__match_args__` for all records, not just `@dataclass` -- CPython extension)
   - Pattern binding scope: bindings leak to enclosing scope (like Python), pre-declared when defined in all arms
-  - Error diagnostics: non-member type, duplicate case, type mismatch, unreachable case after wildcard, too many positional patterns, positional/keyword overlap
-  - **Not yet**: or-patterns, guard clauses, None singleton pattern, exhaustiveness warnings
+  - Or-patterns (`case Dog() | Cat():`) with `||` disjunction; with bindings (`case Dog(name=n) | Cat(name=n):`) via body duplication
+  - Guard clauses (`case Dog(name=n) if n == "Rex":`) with `goto`-based fallthrough for unions, `&&` inlining for primitives
+  - Error diagnostics: non-member type, duplicate case, type mismatch, unreachable case after wildcard, too many positional patterns, positional/keyword overlap, or-pattern variable name mismatch
+  - **Not yet**: None singleton pattern, exhaustiveness warnings
 
 ---
 

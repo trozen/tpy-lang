@@ -1,0 +1,6 @@
+warm-ish
+warm-ish
+green
+red allowed
+red blocked
+other
