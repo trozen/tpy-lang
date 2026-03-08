@@ -132,6 +132,7 @@ class SemanticContext:
     super_init_call: TpyMethodCall | None = None
     super_del_call: TpyMethodCall | None = None
     loop_vars: set[str] = field(default_factory=set)
+    mutated_loop_vars: set[str] = field(default_factory=set)
 
     # --- Scope escape tracking ---
     var_scope_depth: dict[str, int] = field(default_factory=dict)
@@ -317,6 +318,7 @@ class SemanticContext:
         self.super_init_call = None
         self.super_del_call = None
         self.loop_vars.clear()
+        self.mutated_loop_vars.clear()
         self.var_scope_depth.clear()
         self.hoisted_vars.clear()
         self.rvalue_vars.clear()
@@ -401,6 +403,11 @@ class SemanticContext:
                     to_clean.append(storage)
         for storage in to_clean:
             del self.borrows[storage]
+
+    def mark_loop_var_mutated(self, name: str) -> None:
+        """Mark a for-each loop variable as mutated (prevents const-ref binding)."""
+        if name in self.loop_vars:
+            self.mutated_loop_vars.add(name)
 
     def remove_storage_borrows(self, storage: str) -> None:
         """Remove all borrows of ``storage`` (e.g. when storage is reassigned)."""

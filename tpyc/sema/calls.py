@@ -337,6 +337,7 @@ class CallAnalyzer:
                 is_readonly=False,
             )
             self._check_borrow_arg_conflicts(expr)
+            self._check_loop_var_arg_mutation(expr)
             return
 
         # Implicit default constructor (no user __init__)
@@ -1081,6 +1082,23 @@ class CallAnalyzer:
                 expr,
             )
 
+    def _check_loop_var_arg_mutation(self, expr: TpyCall | TpyMethodCall) -> None:
+        """Mark for-each loop variables as mutated when passed to non-readonly params."""
+        fi = expr.resolved_function_info
+        if fi is None or fi.is_readonly:
+            return
+        from .statements import _root_name_of_expr
+        for i, param in enumerate(fi.params):
+            if i >= len(expr.args):
+                break
+            arg = expr.args[i]
+            if isinstance(param.type, ReadonlyType):
+                continue
+            if not unwrap_readonly(param.type).is_value_type():
+                arg_root = _root_name_of_expr(arg)
+                if arg_root is not None:
+                    self.ctx.mark_loop_var_mutated(arg_root)
+
     def _validate_ptr_constructor(self, expr: TpyCall) -> None:
         """Validate pointer constructor arguments (type match, no void args).
 
@@ -1102,6 +1120,9 @@ class CallAnalyzer:
         if arg_type != pointee:
             raise self.ctx.error(
                 f"{kind} to {pointee} expects {pointee}, got {arg_type}", expr)
+        # Mutable pointer to a for-each loop var prevents const-ref binding
+        if not expr.call_type.is_readonly and isinstance(arg, TpyName):
+            self.ctx.mark_loop_var_mutated(arg.name)
 
     def _check_builtin_constructor(self, expr: TpyCall, record_info: RecordInfo) -> TpyType:
         """Check a builtin type constructor call using unified RecordInfo.constructors."""
@@ -1453,6 +1474,7 @@ class CallAnalyzer:
                 self.deduction.mark_str_param_context(arg, ptype)
 
         self._check_borrow_arg_conflicts(expr)
+        self._check_loop_var_arg_mutation(expr)
         return func.return_type
 
     def _analyze_generic_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
@@ -1581,6 +1603,7 @@ class CallAnalyzer:
                 )
 
         self._check_borrow_arg_conflicts(expr)
+        self._check_loop_var_arg_mutation(expr)
         return resolved_return
 
     def _validate_generic_defaults(self, expr: TpyCall, func: FunctionInfo,
@@ -1791,4 +1814,5 @@ class CallAnalyzer:
                 self.deduction.mark_str_param_context(arg, ptype)
 
         self._check_borrow_arg_conflicts(expr)
+        self._check_loop_var_arg_mutation(expr)
         return func.return_type

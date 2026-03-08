@@ -45,7 +45,7 @@ void test_user_type_sort() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& p = *__beg_0;
+        const auto& p = *__beg_0;
         // 39:         print(p)
         std::cout << p << "\n";
     }
@@ -62,7 +62,7 @@ void test_stable_sort() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& p = *__beg_0;
+        const auto& p = *__beg_0;
         // 51:         print(p)
         std::cout << p << "\n";
     }

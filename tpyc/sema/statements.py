@@ -67,6 +67,17 @@ def _borrow_storage_root(expr: TpyExpr) -> str | None:
     return None
 
 
+def _root_name_of_expr(expr: TpyExpr) -> str | None:
+    """Extract the root TpyName from a chain of field/subscript accesses.
+
+    e.g. p.inner.v -> "p", c.items[0] -> "c", x -> "x".
+    Returns None for non-name roots (calls, literals, etc.).
+    """
+    while isinstance(expr, (TpyFieldAccess, TpySubscript)):
+        expr = expr.obj
+    return expr.name if isinstance(expr, TpyName) else None
+
+
 class StatementAnalyzer:
     """Statement analysis."""
 
@@ -390,6 +401,9 @@ class StatementAnalyzer:
                         stmt.value, expected, is_return=True)
                 # Check for dangling reference (returning local/temporary as reference)
                 self.compat.check_dangling_reference(stmt.value, expected, stmt.loc)
+                # Returning a loop variable by reference takes its address
+                if isinstance(stmt.value, TpyName):
+                    self.ctx.mark_loop_var_mutated(stmt.value.name)
             self.init.mark_terminated()
         elif isinstance(stmt, TpyIf):
             self.expr.analyze_expr(stmt.condition)
@@ -555,11 +569,18 @@ class StatementAnalyzer:
                     )
                     if track_loop_prov:
                         self.init.add_loop_var_provenance(stmt.var)
+                    self.ctx.mutated_loop_vars.discard(stmt.var)
                     with self.scopes.loop_var(inner_scope, stmt.var, elem_type, iter_depth, is_foreach=True):
                         for s in stmt.body:
                             self.analyze_stmt(s)
                     if track_loop_prov:
                         self.init.remove_loop_var_provenance(stmt.var)
+                # Set const-ref binding when the loop var was never mutated.
+                # mutated_loop_vars was cleared for stmt.var before entering the
+                # loop body, so it only reflects mutations from this loop.
+                if (not unwrap_readonly(elem_type).is_value_type()
+                        and stmt.var not in self.ctx.mutated_loop_vars):
+                    stmt.const_loop_var = True
                 body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
                 self.init.restore(before)
                 self.ctx.non_null_ptr_vars &= body_end_nn_ptr
@@ -1742,6 +1763,10 @@ class StatementAnalyzer:
             self.ctx.current_scope.define(stmt.name, var_type)
         # Reassignment revives a consumed variable
         self.ctx.consumed_vars.discard(stmt.name)
+        # Assigning a loop var to a non-value-type local takes &(var) in codegen
+        if (stmt.init is not None and isinstance(stmt.init, TpyName)
+                and var_type is not None and not var_type.is_value_type()):
+            self.ctx.mark_loop_var_mutated(stmt.init.name)
         # Borrow tracking: reassignment breaks aliases in both directions
         self.ctx.remove_borrower(stmt.name)
         self.ctx.remove_storage_borrows(stmt.name)
@@ -1951,6 +1976,10 @@ class StatementAnalyzer:
         target_type = self.expr.analyze_expr(stmt.target)
         value_type = self.expr.analyze_expr_with_hint(stmt.value, target_type)
         self._enforce_readonly_assignment_target(stmt.target)
+        # Track mutation of for-each loop variables (prevents const-ref binding)
+        root = _root_name_of_expr(stmt.target)
+        if root is not None:
+            self.ctx.mark_loop_var_mutated(root)
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
             declared_target_type = self.narrowing.declared_type_for_expr(stmt.target)
             if declared_target_type is not None:
@@ -2109,6 +2138,9 @@ class StatementAnalyzer:
         # Scope escape check for assignments to named variables
         if isinstance(stmt.target, TpyName) and not target_type.is_value_type():
             self.scopes.check_escape(stmt.target.name, stmt.value, stmt)
+            # Assigning a loop var to a pointer-local takes &(var) in codegen
+            if isinstance(stmt.value, TpyName):
+                self.ctx.mark_loop_var_mutated(stmt.value.name)
 
         # Track provenance for non-value-type and pointer-type name targets
         if isinstance(stmt.target, TpyName) and (not target_type.is_value_type() or isinstance(target_type, PtrType)):
@@ -2136,6 +2168,10 @@ class StatementAnalyzer:
             # Analyze obj and index separately to avoid triggering __getitem__
             # validation (del doesn't read the element, only deletes it).
             self.expr.analyze_expr(subscript.obj)
+            # Track mutation of for-each loop variables
+            del_root = _root_name_of_expr(subscript.obj)
+            if del_root is not None:
+                self.ctx.mark_loop_var_mutated(del_root)
             # Borrow conflict: del on a container with element-level borrows
             if isinstance(subscript.obj, TpyName):
                 storage = self.ctx.effective_storage(subscript.obj.name)
@@ -2185,6 +2221,10 @@ class StatementAnalyzer:
         from .operators import OperatorResolver
         target_type = self.expr.analyze_expr(stmt.target)
         value_type = self.expr.analyze_expr_with_hint(stmt.value, target_type)
+        # Track mutation of for-each loop variables
+        aug_root = _root_name_of_expr(stmt.target)
+        if aug_root is not None:
+            self.ctx.mark_loop_var_mutated(aug_root)
         self._enforce_readonly_assignment_target(stmt.target)
         # Borrow conflict: augmented assignment may mutate borrowed storage
         if isinstance(stmt.target, TpySubscript) and isinstance(stmt.target.obj, TpyName):

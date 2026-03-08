@@ -438,6 +438,7 @@ class TpyForEach(TpyStmt):
     body: list[TpyStmt]
     enum_iterable: 'EnumType | None' = None  # set by sema when iterating over enum type
     elem_type: 'TpyType | None' = None  # set by sema: resolved element type for codegen
+    const_loop_var: bool = False  # set by sema: loop var is never mutated, safe for const auto&
 
 
 @dataclass

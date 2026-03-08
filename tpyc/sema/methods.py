@@ -147,6 +147,7 @@ class MethodAnalyzer:
 
         if self.calls is not None:
             self.calls._check_borrow_arg_conflicts(expr)
+            self.calls._check_loop_var_arg_mutation(expr)
         return resolved.return_type
 
     @staticmethod
@@ -316,6 +317,13 @@ class MethodAnalyzer:
                 info = expr.resolved_function_info
                 if info is not None and info.is_consuming:
                     self._validate_consuming_call(expr)
+                # Track non-readonly method calls on for-each loop variables
+                info = expr.resolved_function_info
+                if info is not None and not info.is_readonly:
+                    from .statements import _root_name_of_expr
+                    obj_root = _root_name_of_expr(expr.obj)
+                    if obj_root is not None:
+                        self.ctx.mark_loop_var_mutated(obj_root)
                 return result
 
             deref_target = self.expr.get_deref_target_type(current_type)
