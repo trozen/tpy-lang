@@ -12,13 +12,13 @@
 | 6 | Dict comprehension: `{key: value for var in iterable if cond}` | Done |
 | 7 | Set comprehension: `{expr for var in iterable if cond}` | Done |
 | 8 | `range(N)` -> Array: compile-time-known size produces `std::array<T, N>` | Done |
+| 9 | Generator expressions: `(expr for x in iterable)` -> lazy `make_generator` wrapper | Done |
 
 ### Future Extensions
 
 | Feature | Notes |
 |---------|-------|
 | `Span[T, N]` -> Array | When fixed-size span is available, `[x for x in span]` can produce `std::array<T, N>` |
-| Generator expressions | `sum(x*x for x in items)` -- lazy evaluation, no allocation. See [Generator expressions](#generator-expressions) section | Done |
 | Nested generators | `[f(x, y) for x in a for y in b]` -- multiple `comprehension` nodes. Low priority (rare in practice) |
 | Walrus operator in filter | `[y for x in items if (y := f(x)) > 0]` -- requires walrus operator |
 | Async comprehensions | `[x async for x in aiter]` -- requires async/await (G1) |
