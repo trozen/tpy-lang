@@ -8,7 +8,8 @@ Usage:
     tpyc input.py --exec       # Compile, build, and run
     tpyc --exec <<EOF          # Read from stdin, build, and run
     tpyc --dump-code <<EOF     # Print generated C++ to stdout
-    tpyc --repl                # Start interactive REPL
+    tpyc --repl                # Start interactive REPL (auto-detect backend)
+    tpyc --repl --backend gcc  # Force gcc backend
     tpyc --repl file.py        # Load file then start REPL
     tpyc --repl -v             # REPL with timing
     tpyc --repl -vv            # REPL with timing + generated C++
@@ -84,6 +85,12 @@ def main() -> int:
         "--no-stdlib", action="store_true",
         help="Disable Python stdlib analogs",
     )
+    parser.add_argument(
+        "--backend",
+        choices=["auto", "clang-repl", "clang", "gcc"],
+        default="auto",
+        help="REPL backend (default: auto = clang-repl -> clang -> gcc)",
+    )
 
     args = parser.parse_args()
 
@@ -105,7 +112,7 @@ def main() -> int:
             # Support multiple files separated by the input arg
             preload_files = [Path(args.input).resolve()]
         return REPLSession(verbose=args.verbose, preload_files=preload_files,
-                           lib_dirs=lib_dirs).run()
+                           lib_dirs=lib_dirs, backend=args.backend).run()
 
     # Handle --print-types
     if args.print_types:

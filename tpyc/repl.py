@@ -5,7 +5,7 @@ Provides an interactive Python-like experience with:
 - Multi-line input support (for function/class definitions)
 - Expression auto-printing (bare `5+3` prints the result)
 - Error/panic recovery (failed statements don't accumulate)
-- Precompiled headers for fast C++ compilation
+- Configurable backends: clang-repl (default), clang++, g++
 - Verbose mode: -v for timing, -vv for generated C++
 - Trailing backslash continues to next line
 """
@@ -16,7 +16,6 @@ import atexit
 import difflib
 import readline  # For history support
 import shutil
-import subprocess
 import sys
 import tempfile
 import time
@@ -25,28 +24,18 @@ from pathlib import Path
 from .parse import ParseError, TpyExprStmt
 from .sema import SemanticError, DiagnosticLevel
 from .typesys import VoidType, CharType, is_any_str_type
-from .compiler import Compiler, CppCompilerConfig
-
-
-def get_runtime_dir() -> Path:
-    """Get the path to the runtime directory."""
-    package_root = Path(__file__).parent.parent
-    return package_root / "runtime"
-
-
-def _fmt_ms(seconds: float) -> str:
-    """Format seconds as milliseconds string."""
-    ms = seconds * 1000
-    if ms < 1:
-        return "<1ms"
-    return f"{ms:.0f}ms"
+from .compiler import Compiler
+from .repl_backends import (
+    REPLBackend, BackendResult, detect_backend, _fmt_ms,
+)
 
 
 class REPLSession:
     """Interactive TurboPython REPL session."""
 
     def __init__(self, verbose: int = 0, preload_files: list[Path] | None = None,
-                 lib_dirs: list[Path] | None = None):
+                 lib_dirs: list[Path] | None = None,
+                 backend: str = "auto"):
         self.accumulated_lines: list[str] = []
         self.verbose = verbose
         self.preload_files = preload_files or []
@@ -54,77 +43,9 @@ class REPLSession:
         self.temp_dir = Path(tempfile.mkdtemp(prefix="tpyc_repl_"))
         self.prev_cpp_lines: list[str] = []  # For verbose diff
         self._module_name = "repl"
-        self._cpp_config: CppCompilerConfig | None = None
-        self._pch_path: Path | None = None
-        self._prev_entry_hpp: str | None = None
-        self._prev_entry_cpp: str | None = None
-        self._binary_path = self.temp_dir / self._module_name
+        self._backend_name = backend
+        self._backend: REPLBackend | None = None
         atexit.register(self.cleanup)
-
-    def _get_cpp_config(self) -> CppCompilerConfig:
-        if self._cpp_config is None:
-            self._cpp_config = CppCompilerConfig.from_env()
-        return self._cpp_config
-
-    def _get_pch_cache_dir(self) -> Path:
-        """Get the cache directory for precompiled headers."""
-        import hashlib
-        config = self._get_cpp_config()
-        runtime_dir = get_runtime_dir()
-        # Cache key: compiler + standard + runtime location
-        key_data = f"{config.compiler}:{config.std}:{runtime_dir}"
-        key = hashlib.md5(key_data.encode()).hexdigest()[:12]
-        cache_dir = Path.home() / ".cache" / "tpyc" / f"pch_{key}"
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        return cache_dir
-
-    def _setup_pch(self) -> None:
-        """Pre-compile tpy runtime header for faster subsequent compilations.
-
-        Caches the PCH in ~/.cache/tpyc/ and reuses across sessions.
-        Rebuilds only when runtime headers change.
-        """
-        runtime_dir = get_runtime_dir()
-        config = self._get_cpp_config()
-        cache_dir = self._get_pch_cache_dir()
-
-        pch_header = cache_dir / "tpy_pch.hpp"
-        pch_gch = cache_dir / "tpy_pch.hpp.gch"
-
-        # Check if cached PCH is still valid
-        if pch_gch.exists():
-            pch_mtime = pch_gch.stat().st_mtime
-            runtime_include = runtime_dir / "cpp" / "include" / "tpy"
-            needs_rebuild = False
-            for header in runtime_include.glob("**/*.hpp"):
-                if header.stat().st_mtime > pch_mtime:
-                    needs_rebuild = True
-                    break
-
-            if not needs_rebuild:
-                self._pch_path = pch_header
-                return
-
-        # Build PCH (first session or after runtime header changes)
-        pch_header.write_text('#include <tpy/tpy.hpp>\n')
-        cmd = [
-            config.compiler, f"-std={config.std}",
-            *config.extra_flags,
-            "-I", str(runtime_dir / "cpp" / "include"),
-            "-x", "c++-header",
-            str(pch_header), "-o", str(pch_gch),
-        ]
-
-        print("Precompiling C++ headers...", end="", flush=True)
-        t0 = time.monotonic()
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        elapsed = time.monotonic() - t0
-
-        if result.returncode == 0:
-            self._pch_path = pch_header
-            print(f" done ({_fmt_ms(elapsed)})")
-        else:
-            print(f" failed, headers will be parsed each time")
 
     def _preload_file(self, filepath: Path) -> bool:
         """Load and execute a file, accumulating its definitions.
@@ -204,13 +125,16 @@ class REPLSession:
 
     def run(self) -> int:
         """Main REPL loop. Returns exit code."""
-        print("TurboPython REPL v0.1")
+        # Detect and start backend
+        self._backend = detect_backend(
+            self._backend_name, self.temp_dir, self._module_name
+        )
+        print(f"TurboPython REPL v0.1 (backend: {self._backend.name})")
         print("Variables, functions, and classes are remembered between inputs.")
         print("Empty line unindents (or ends block at col 0). Trailing \\ continues input. Ctrl+D to exit.")
         print("Type .paste (or .p) for multiline input mode.")
 
-        # Precompile runtime headers
-        self._setup_pch()
+        self._backend.startup()
 
         if self.verbose >= 2:
             print(f"[src] {self.temp_dir}/")
@@ -487,7 +411,7 @@ class REPLSession:
         for mod in compiled_modules:
             hpp_code, cpp_code = compiler.generate_code_to_strings(mod)
 
-            # Write dependency headers preserving directory structure for #include
+            # Write files preserving directory structure for #include
             mod_parts = mod.name.split('.')
             if len(mod_parts) > 1:
                 hpp_subdir = self.temp_dir / Path(*mod_parts[:-1])
@@ -530,56 +454,12 @@ class REPLSession:
 
             self.prev_cpp_lines = current_lines
 
-        # Check if C++ changed -- skip build if identical to previous
-        entry_hpp = all_hpp_code[-1]
-        entry_cpp = all_cpp_code[-1]
-        cpp_changed = (
-            entry_hpp != self._prev_entry_hpp
-            or entry_cpp != self._prev_entry_cpp
-            or not self._binary_path.exists()
-        )
+        # Execute via backend
+        result = self._backend.execute(all_hpp_code, all_cpp_code, all_hpp_paths, all_cpp_paths)
 
-        if cpp_changed:
-            # Build
-            t_build_start = time.monotonic()
-            runtime_dir = get_runtime_dir()
-            config = self._get_cpp_config()
-            compile_cmd = [
-                config.compiler, f"-std={config.std}",
-                *config.extra_flags,
-                "-I", str(runtime_dir / "cpp" / "include"),
-                "-I", str(self.temp_dir),
-            ]
-            if self._pch_path:
-                compile_cmd += ["-include", str(self._pch_path)]
-            compile_cmd += [
-                "-o", str(self._binary_path),
-                *[str(p) for p in all_cpp_paths],
-                *config.link_flags,
-            ]
-
-            result = subprocess.run(compile_cmd, capture_output=True, text=True)
-            t_build = time.monotonic() - t_build_start
-
-            if result.returncode != 0:
-                return False, f"C++ compilation failed:\n{result.stderr}"
-
-            self._prev_entry_hpp = entry_hpp
-            self._prev_entry_cpp = entry_cpp
-        else:
-            t_build = 0.0
-
-        # Run
-        t_run_start = time.monotonic()
-        result = subprocess.run([str(self._binary_path)], capture_output=True, text=True)
-        t_run = time.monotonic() - t_run_start
-
-        if result.returncode != 0:
-            # Runtime panic
-            output = result.stdout + result.stderr
-            if not output.strip():
-                output = f"Runtime error (exit code {result.returncode})\n"
-            return False, output
+        if not result.success:
+            error_msg = result.stderr or "Unknown error\n"
+            return False, source_output + error_msg
 
         # For strings/chars, wrap output in quotes like Python's REPL
         program_output = result.stdout
@@ -590,16 +470,18 @@ class REPLSession:
         timing_output = ""
         if self.verbose >= 1:
             t_total = time.monotonic() - t_start
-            build_str = _fmt_ms(t_build) if cpp_changed else "cached"
+            build_str = _fmt_ms(result.t_build) if not result.build_cached else "cached"
             timing_output = (
                 f"  [{_fmt_ms(t_total)}] compile: {_fmt_ms(t_compile)}  "
                 f"build: {build_str}  "
-                f"run: {_fmt_ms(t_run)}\n"
+                f"run: {_fmt_ms(result.t_run)}\n"
             )
 
         return True, source_output + verbose_output + timing_output + warning_output + program_output
 
     def cleanup(self) -> None:
-        """Remove temp directory on exit."""
+        """Remove temp directory and stop backend on exit."""
+        if self._backend:
+            self._backend.cleanup()
         if self.temp_dir.exists():
             shutil.rmtree(self.temp_dir, ignore_errors=True)

@@ -4212,6 +4212,11 @@ Send/Sync rules for built-in types:
 - Supports function and class definitions that persist across inputs
 - Expressions are evaluated and printed automatically
 - Multi-line input with automatic continuation detection
+- Configurable backends via `--backend`:
+  - `clang-repl` -- incremental JIT, fastest for iteration (~20-80ms per expression)
+  - `clang` -- compile-and-run via clang++ with PCH caching
+  - `gcc` -- compile-and-run via g++ with PCH caching
+  - `auto` (default) -- picks clang-repl if available, falls back to clang/gcc
 
 ---
 

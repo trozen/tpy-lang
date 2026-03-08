@@ -48,6 +48,7 @@ Options:
   --default-int     Default type for unannotated integer literals: Int32|Int64|BigInt (default: Int32)
   --emit-source     Embed Python source lines as comments in generated C++
   -L <path>         Extra library search path (can be repeated)
+  --backend <name>  REPL backend: auto|clang-repl|clang|gcc (default: auto)
   --no-tplib        Disable tplib standard library
   --no-stdlib       Disable Python stdlib analogs
   -v                Verbose output

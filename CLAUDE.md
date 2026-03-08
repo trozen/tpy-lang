@@ -39,8 +39,11 @@ uv run tpyc examples/hello.py -o out/
 # Verbose mode (-v for commands+timing, -vv for generated C++)
 uv run tpyc -x examples/hello.py -vv
 
-# Interactive REPL
+# Interactive REPL (auto-detects best backend: clang-repl > clang > gcc)
 uv run tpyc -i
+
+# Force a specific REPL backend
+uv run tpyc -i --backend gcc
 
 # Extra library search paths
 uv run tpyc -x -L /my/libs examples/main.py
@@ -239,6 +242,7 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | `prescan.py` | Pre-scan utilities for function bodies |
 | `dump_types.py` | Type documentation generation (`--print-types`) |
 | `repl.py` | Interactive REPL implementation |
+| `repl_backends.py` | REPL execution backends (clang-repl JIT, g++/clang++ compile) |
 
 ### Semantic Analysis (`tpyc/sema/`)
 
