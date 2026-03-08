@@ -13,6 +13,8 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
+from .context import BorrowKind
+
 if TYPE_CHECKING:
     from ..typesys import TpyType
 
@@ -73,6 +75,46 @@ def _merge_narrowed(
     return frozenset(merged.items())
 
 
+def _merge_borrow_triples(
+    then_borrows: frozenset[tuple[str, str, BorrowKind]],
+    else_borrows: frozenset[tuple[str, str, BorrowKind]],
+    then_term: bool,
+    else_term: bool,
+) -> frozenset[tuple[str, str, BorrowKind]]:
+    """Merge borrow (storage, borrower, kind) triples across branch endpoints.
+
+    Uses UNION policy: a borrow exists after the merge if it exists in
+    either live branch (conservative -- may hold on either path).
+    When the same (storage, borrower) has different kinds on the two branches,
+    the more dangerous kind wins (element > alias, ptr > alias, iter > alias).
+    """
+    if then_term and else_term:
+        combined = then_borrows | else_borrows
+    elif then_term:
+        combined = else_borrows
+    elif else_term:
+        combined = then_borrows
+    else:
+        combined = then_borrows | else_borrows
+    # Deduplicate (storage, borrower) pairs, keeping the more dangerous kind
+    best: dict[tuple[str, str], BorrowKind] = {}
+    for storage, borrower, kind in combined:
+        key = (storage, borrower)
+        prev = best.get(key)
+        if prev is None or _BORROW_KIND_RANK[kind] > _BORROW_KIND_RANK[prev]:
+            best[key] = kind
+    return frozenset((s, b, k) for (s, b), k in best.items())
+
+
+_BORROW_KIND_RANK: dict[BorrowKind, int] = {
+    BorrowKind.ALIAS: 0,
+    BorrowKind.FIELD: 1,
+    BorrowKind.ITER: 2,
+    BorrowKind.ELEMENT: 3,
+    BorrowKind.PTR: 3,
+}
+
+
 @dataclass(frozen=True, slots=True)
 class FlowFacts:
     """Immutable snapshot of flow-sensitive analysis state."""
@@ -84,7 +126,9 @@ class FlowFacts:
     non_null_ptr_vars: frozenset[str] = frozenset()
     narrowed_types: frozenset[tuple[str, TpyType]] = frozenset()
     consumed_vars: frozenset[str] = frozenset()
-    loop_borrowed_vars: frozenset[str] = frozenset()
+    # Borrow map: (storage_name, borrower_name, BorrowKind) triples.
+    # "__for_iter" is used as the borrower for implicit for-loop iterator borrows.
+    borrows: frozenset[tuple[str, str, BorrowKind]] = frozenset()
 
     @staticmethod
     def merge(then: FlowFacts, else_: FlowFacts) -> FlowFacts:
@@ -117,8 +161,8 @@ class FlowFacts:
                 then.consumed_vars, else_.consumed_vars,
                 then_term, else_term, _MergePolicy.UNION,
             ),
-            loop_borrowed_vars=_merge_sets(
-                then.loop_borrowed_vars, else_.loop_borrowed_vars,
-                then_term, else_term, _MergePolicy.UNION,
+            borrows=_merge_borrow_triples(
+                then.borrows, else_.borrows,
+                then_term, else_term,
             ),
         )

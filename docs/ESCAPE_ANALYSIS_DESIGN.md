@@ -15,9 +15,13 @@
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
 | -- | FlowFacts refactor (unified flow state class) | M | Done | -- |
-| 6 | Borrow set tracking + conflict detection | L | Not started | [6](#6-intra-function-borrow-checking) |
 | 6a | Container mutation during iteration | S-M | Done | [6a](#6a-container-mutation-during-iteration) |
-| 6b | For-loop const-ref binding | S-M | Not started | [6b](#6b-for-loop-const-ref-binding) |
+| 6.1 | Borrow map infrastructure (migrate loop_borrowed_vars) | S | Done | [6](#6-intra-function-borrow-checking) |
+| 6.2 | Assignment borrows (`y = x` non-value alias) | M | Done | [6](#6-intra-function-borrow-checking) |
+| 6.3 | Ptr/subscript/field borrows | M | Done | [6](#6-intra-function-borrow-checking) |
+| 6.4 | Conflict detection at all mutation points | M | Done | [6](#6-intra-function-borrow-checking) |
+| 6.5 | Function parameter mutation detection | S-M | Done | [6](#6-intra-function-borrow-checking) |
+| 6b | For-loop const-ref binding | S | Not started | [6b](#6b-for-loop-const-ref-binding) |
 | 6c | String view extension (Array, records) | M | Not started | [6c](#6c-string-view-extension-to-containers) |
 | 11 | Integer range tracking (loop patterns) | M | Not started | [11](#11-integer-range-tracking) |
 | 11a | Bounds check elision | S | Not started | [11a](#11a-bounds-check-elision) |
@@ -293,24 +297,51 @@ def with_assert(p: Ptr[Point]) -> Int32:
 This is the core of the borrow system. For each function body, the compiler tracks
 which variables hold borrows of which storage, and flags conflicts.
 
-**Implementation approach**:
+**Representation**: A general borrow map replaces the ad-hoc `loop_borrowed_vars`.
+The mutable version on `AnalysisContext` is `dict[str, set[str]]` (storage_name ->
+set of borrower names). The immutable version in `FlowFacts` is
+`frozenset[tuple[str, str]]` (storage, borrower) pairs. A special borrower name
+`__for_iter` represents the implicit for-loop iterator borrow (no named variable).
 
-**Step 1: Borrow set tracking.** Extend `InitTracker`'s flow state with a
-`borrows: dict[str, set[str]]` mapping: storage_name -> set of borrower names.
-When `y = x` (non-value, lvalue), add `"y"` to `borrows["x"]`. When `y` goes out
-of scope or is reassigned, remove it.
+**Merge policy**: UNION -- a borrow exists after a branch if it exists in either
+path (conservative, same as `loop_borrowed_vars` today).
 
-**Step 2: Conflict detection.** On every mutating operation (field write, method call
-without `@pure`/`@readonly` on `self`, subscript write, `del`), check if the target
-storage has any live borrows. If so, emit a diagnostic.
+**Borrow lifetime**: A borrow `(storage, borrower)` is removed when:
+- `borrower` is reassigned (no longer aliases storage)
+- `storage` is reassigned (old storage gone -- borrowers now dangle, separate check)
+- Branch merge via `FlowFacts.restore()` (borrows from the analyzed branch are
+  discarded; only borrows saved before the branch survive unless UNION merge
+  re-introduces them)
 
-**Step 3: Branch merging.** At if/else merge points, borrows use union (conservative --
-a borrow exists after the branch if it exists in either path). At loop entry, borrows
-from the iterable are active for the entire body.
+Note: explicit scope-exit cleanup is not implemented. Python has no block scoping,
+so a variable declared inside an `if` block is visible after it. The `FlowFacts`
+save/restore mechanism covers branch boundaries, which handles the practical cases.
 
-**Step 4: Codegen benefits.** When the borrow checker proves no mutation of a container
-during a borrow scope, codegen can use `const auto&` (for-loops), `string_view`
-(container subscripts), and skip `deref_check` (Ptr borrows).
+**Implementation steps**:
+
+**Step 6.1: Borrow map infrastructure.** Replace `loop_borrowed_vars` with the
+general borrow map. For-loop iteration becomes `borrows["items"].add("__for_iter")`.
+All existing 6a conflict detection keeps working, just uses the new structure.
+Existing tests pass, no new behavior.
+
+**Step 6.2: Assignment borrows.** Track `y = x` where `x` is non-value type and `y`
+is a lvalue alias (from prescan's `alias_sources`). Creates borrow
+`("x", "y")`. Removed on reassignment of `y`. This is the core new tracking.
+
+**Step 6.3: Ptr/subscript/field borrows.** Track `p = Ptr(x)` as `("x", "p")`,
+`v = items[i]` as `("items", "v")`, and `v = obj.field` as `("obj", "v")` for
+non-value types.
+
+**Step 6.4: Conflict detection at all mutation points.** Extend conflict checks
+beyond method calls and `del` (6a) to: subscript assignment (`items[i] = val`),
+field assignment (`obj.field = val`), augmented assignment on borrowed storage.
+
+**Step 6.5: Function parameter mutation detection.** Detect passing borrowed storage
+to non-`@readonly` / non-`@pure` function parameters.
+
+**Step 6b/6c: Codegen benefits.** When the borrow checker proves no mutation of a
+container during a borrow scope, codegen can use `const auto&` (for-loops),
+`string_view` (container subscripts), and skip `deref_check` (Ptr borrows).
 
 **Key design questions**:
 

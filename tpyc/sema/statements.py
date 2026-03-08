@@ -43,7 +43,28 @@ if TYPE_CHECKING:
     from .expressions import ExpressionAnalyzer
     from .protocols import ProtocolChecker
 
+from .context import BorrowKind
 from tpyc import modules as builtin_modules
+
+
+def _borrow_storage_root(expr: TpyExpr) -> str | None:
+    """Extract the root variable name whose storage is borrowed by this expression.
+
+    Only handles one level of indirection (items[i], obj.field).
+    Nested access like matrix[i][j] or chain.field.subfield returns None
+    (conservative -- no borrow tracked).
+
+    Returns None for rvalues (calls, literals, etc.) that own fresh storage.
+    """
+    if isinstance(expr, TpyCoerce):
+        return _borrow_storage_root(expr.expr)
+    if isinstance(expr, TpyName):
+        return expr.name
+    if isinstance(expr, TpySubscript) and isinstance(expr.obj, TpyName):
+        return expr.obj.name
+    if isinstance(expr, TpyFieldAccess) and isinstance(expr.obj, TpyName):
+        return expr.obj.name
+    return None
 
 
 class StatementAnalyzer:
@@ -504,7 +525,7 @@ class StatementAnalyzer:
                 with self.scopes.loop_scope() as inner_scope:
                     self.init.apply_loop_entry_facts(before)
                     if isinstance(stmt.iterable, TpyName):
-                        self.ctx.loop_borrowed_vars.add(stmt.iterable.name)
+                        self.ctx.add_borrow(stmt.iterable.name, "__for_iter", BorrowKind.ITER)
                     # OptIterator and __iter__-based types produce fresh values each iteration
                     is_native_iterator = builtin_modules.get_native_iterator_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
                     is_span_based = builtin_modules.get_span_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
@@ -1492,6 +1513,35 @@ class StatementAnalyzer:
             self.ctx.current_scope.define(stmt.name, var_type)
         # Reassignment revives a consumed variable
         self.ctx.consumed_vars.discard(stmt.name)
+        # Borrow tracking: reassignment breaks aliases in both directions
+        self.ctx.remove_borrower(stmt.name)
+        self.ctx.remove_storage_borrows(stmt.name)
+        # Create borrow when the target aliases another variable's storage
+        if (stmt.init is not None
+                and stmt.name not in self.ctx.current_reassigned_vars
+                and var_type is not None):
+            if not var_type.is_value_type():
+                # Non-value lvalue: y = x, v = items[i], v = obj.field
+                init_unwrapped = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
+                root = _borrow_storage_root(stmt.init)
+                if root is not None:
+                    if isinstance(init_unwrapped, TpySubscript):
+                        kind = BorrowKind.ELEMENT
+                    elif isinstance(init_unwrapped, TpyFieldAccess):
+                        kind = BorrowKind.FIELD
+                    else:
+                        kind = BorrowKind.ALIAS
+                    self.ctx.add_borrow(root, stmt.name, kind)
+            elif isinstance(var_type, PtrType):
+                # Ptr(x) borrows x's storage even though Ptr is a value type
+                init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
+                if (isinstance(init_inner, TpyCall)
+                        and init_inner.call_type is not None
+                        and init_inner.call_type.is_pointer()
+                        and len(init_inner.args) > 0):
+                    root = _borrow_storage_root(init_inner.args[0])
+                    if root is not None:
+                        self.ctx.add_borrow(root, stmt.name, BorrowKind.PTR)
         if stmt.init:
             self.init.mark_assigned(stmt.name)
         self.narrowing.update_after_write(stmt.name, var_type, init_type if stmt.init else None, stmt.init)
@@ -1719,6 +1769,12 @@ class StatementAnalyzer:
             self.ctx.current_scope.define(stmt.target.name, target_type)
             # Reassignment revives a consumed variable
             self.ctx.consumed_vars.discard(stmt.target.name)
+            # Borrow tracking: reassignment breaks aliases in both directions.
+            # Note: borrow creation is skipped for reassigned vars (they use T*
+            # pointer-locals in codegen); tracking borrows for them would require
+            # pointer-alias analysis beyond the current design scope.
+            self.ctx.remove_borrower(stmt.target.name)
+            self.ctx.remove_storage_borrows(stmt.target.name)
             if self.ctx.current_ns:
                 self.ctx.current_ns.update_variable_type(stmt.target.name, target_type)
             self.ctx.set_expr_type(stmt.target, target_type)
@@ -1765,6 +1821,37 @@ class StatementAnalyzer:
                 obj_type = self.ctx.get_expr_type(stmt.target.obj)
                 if is_readonly_ptr(obj_type):
                     raise self.ctx.error("Cannot assign through read-only pointer", stmt)
+
+        # Borrow conflict: subscript/field write on borrowed storage.
+        # Resolves aliases so alias[i] = val warns when the underlying storage
+        # has element borrows.
+        # Subscript assignment (items[i] = val) is in-place element replacement --
+        # safe for iterators, but overwrites the element that element/ptr borrows
+        # reference. Field assignment (obj.field = val) invalidates field borrows.
+        if isinstance(stmt.target, TpySubscript) and isinstance(stmt.target.obj, TpyName):
+            storage = self.ctx.effective_storage(stmt.target.obj.name)
+            borrowers = self.ctx.borrows.get(storage)
+            if borrowers:
+                has_ref_borrow = any(
+                    self.ctx.borrow_kinds.get((storage, b)) in (BorrowKind.ELEMENT, BorrowKind.PTR)
+                    for b in borrowers
+                )
+                if has_ref_borrow:
+                    msg = (f"Mutation of '{storage}' while borrowed"
+                           " (subscript assignment may invalidate references)")
+                    self.ctx.warning(msg, stmt)
+        elif isinstance(stmt.target, TpyFieldAccess) and isinstance(stmt.target.obj, TpyName):
+            storage = self.ctx.effective_storage(stmt.target.obj.name)
+            borrowers = self.ctx.borrows.get(storage)
+            if borrowers:
+                has_ref_borrow = any(
+                    self.ctx.borrow_kinds.get((storage, b)) in (BorrowKind.FIELD, BorrowKind.ELEMENT, BorrowKind.PTR, BorrowKind.ITER)
+                    for b in borrowers
+                )
+                if has_ref_borrow:
+                    msg = (f"Mutation of '{storage}' while borrowed"
+                           " (field assignment may invalidate references)")
+                    self.ctx.warning(msg, stmt)
 
         stmt.value = self.compat.coerce_expr(stmt.value, value_type, target_type, "assignment",
                                               coercion_ctx=CoercionContext.ASSIGN)
@@ -1820,11 +1907,17 @@ class StatementAnalyzer:
             # Analyze obj and index separately to avoid triggering __getitem__
             # validation (del doesn't read the element, only deletes it).
             self.expr.analyze_expr(subscript.obj)
-            # Borrow conflict: del on a container being iterated
-            if isinstance(subscript.obj, TpyName) and subscript.obj.name in self.ctx.loop_borrowed_vars:
-                self.ctx.warning(
-                    f"Mutation of '{subscript.obj.name}' while iterating over it"
-                    " ('del' invalidates the iterator)", stmt)
+            # Borrow conflict: del on a container with element-level borrows
+            if isinstance(subscript.obj, TpyName):
+                storage = self.ctx.effective_storage(subscript.obj.name)
+                if self.ctx.has_element_borrow(storage):
+                    if self.ctx.has_iter_borrow(storage):
+                        msg = (f"Mutation of '{storage}' while iterating over it"
+                               " ('del' invalidates the iterator)")
+                    else:
+                        msg = (f"Mutation of '{storage}' while borrowed"
+                               " ('del' may invalidate references)")
+                    self.ctx.warning(msg, stmt)
             self._enforce_readonly_assignment_target(subscript)
             obj_type = self.ctx.get_expr_type(subscript.obj)
             actual = unwrap_readonly(obj_type)
@@ -1864,6 +1957,37 @@ class StatementAnalyzer:
         target_type = self.expr.analyze_expr(stmt.target)
         value_type = self.expr.analyze_expr_with_hint(stmt.value, target_type)
         self._enforce_readonly_assignment_target(stmt.target)
+        # Borrow conflict: augmented assignment may mutate borrowed storage
+        if isinstance(stmt.target, TpySubscript) and isinstance(stmt.target.obj, TpyName):
+            storage = self.ctx.effective_storage(stmt.target.obj.name)
+            borrowers = self.ctx.borrows.get(storage)
+            if borrowers:
+                # Subscript aug-assign (items[i] += x) modifies element in-place;
+                # safe for iterators but invalidates element/ptr borrows.
+                has_ref_borrow = any(
+                    self.ctx.borrow_kinds.get((storage, b)) in (BorrowKind.ELEMENT, BorrowKind.PTR)
+                    for b in borrowers
+                )
+                if has_ref_borrow:
+                    self.ctx.warning(
+                        f"Mutation of '{storage}' while borrowed"
+                        " (subscript assignment may invalidate references)",
+                        stmt,
+                    )
+        elif isinstance(stmt.target, TpyFieldAccess) and isinstance(stmt.target.obj, TpyName):
+            storage = self.ctx.effective_storage(stmt.target.obj.name)
+            borrowers = self.ctx.borrows.get(storage)
+            if borrowers:
+                has_ref_borrow = any(
+                    self.ctx.borrow_kinds.get((storage, b)) in (BorrowKind.FIELD, BorrowKind.ELEMENT, BorrowKind.PTR, BorrowKind.ITER)
+                    for b in borrowers
+                )
+                if has_ref_borrow:
+                    self.ctx.warning(
+                        f"Mutation of '{storage}' while borrowed"
+                        " (field assignment may invalidate references)",
+                        stmt,
+                    )
         if (
             isinstance(stmt.target, TpyName)
             and isinstance(target_type, BigIntType)

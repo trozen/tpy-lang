@@ -9,11 +9,24 @@ would be undefined behavior in generated C++.
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+from .context import BorrowKind
 from .flow_facts import FlowFacts
 
 if TYPE_CHECKING:
     from ..typesys import TpyType
     from .context import SemanticContext
+
+
+def _borrows_from_frozen(
+    triples: frozenset[tuple[str, str, BorrowKind]],
+) -> tuple[dict[str, set[str]], dict[tuple[str, str], BorrowKind]]:
+    """Convert frozen (storage, borrower, kind) triples back to mutable maps."""
+    borrow_map: dict[str, set[str]] = {}
+    kind_map: dict[tuple[str, str], BorrowKind] = {}
+    for storage, borrower, kind in triples:
+        borrow_map.setdefault(storage, set()).add(borrower)
+        kind_map[(storage, borrower)] = kind
+    return borrow_map, kind_map
 
 
 class InitTracker:
@@ -31,7 +44,11 @@ class InitTracker:
             non_null_ptr_vars=frozenset(self.ctx.non_null_ptr_vars),
             narrowed_types=frozenset(self.ctx.narrowed_types.items()),
             consumed_vars=frozenset(self.ctx.consumed_vars),
-            loop_borrowed_vars=frozenset(self.ctx.loop_borrowed_vars),
+            borrows=frozenset(
+                (storage, borrower, self.ctx.borrow_kinds.get((storage, borrower), BorrowKind.ALIAS))
+                for storage, borrowers in self.ctx.borrows.items()
+                for borrower in borrowers
+            ),
         )
 
     def restore(self, state: FlowFacts) -> None:
@@ -42,7 +59,7 @@ class InitTracker:
         self.ctx.non_null_ptr_vars = set(state.non_null_ptr_vars)
         self.ctx.narrowed_types = dict(state.narrowed_types)
         self.ctx.consumed_vars = set(state.consumed_vars)
-        self.ctx.loop_borrowed_vars = set(state.loop_borrowed_vars)
+        self.ctx.borrows, self.ctx.borrow_kinds = _borrows_from_frozen(state.borrows)
 
     def mark_assigned(self, name: str) -> None:
         self.ctx.definitely_assigned.add(name)
@@ -89,7 +106,7 @@ class InitTracker:
         self.ctx.non_null_ptr_vars = set(before.non_null_ptr_vars)
         self.ctx.narrowed_types = dict(before.narrowed_types)
         self.ctx.consumed_vars = set(before.consumed_vars)
-        self.ctx.loop_borrowed_vars = set(before.loop_borrowed_vars)
+        self.ctx.borrows, self.ctx.borrow_kinds = _borrows_from_frozen(before.borrows)
         if condition_type_facts is not None:
             self.ctx.narrowed_types.update(condition_type_facts)
 

@@ -145,6 +145,8 @@ class MethodAnalyzer:
                     expr.args, overloads[idx], type_subst, self.type_ops,
                     lambda msg: self.ctx.error(msg, expr))
 
+        if self.calls is not None:
+            self.calls._check_borrow_arg_conflicts(expr)
         return resolved.return_type
 
     @staticmethod
@@ -265,19 +267,26 @@ class MethodAnalyzer:
             if expr.method in LIST_MUTATION_METHODS:
                 self.deduction.mark_list_mutated(expr.obj)
 
-        # Borrow conflict: mutating a container that is being iterated over
-        if isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.loop_borrowed_vars:
-            is_mutation = False
-            if isinstance(obj_type, (PendingListType, ListType)):
-                is_mutation = expr.method in LIST_ITER_INVALIDATING
-            elif isinstance(obj_type, DictType):
-                is_mutation = expr.method in DICT_MUTATION_METHODS
-            elif isinstance(obj_type, SetType):
-                is_mutation = expr.method in SET_MUTATION_METHODS
-            if is_mutation:
-                self.ctx.warning(
-                    f"Mutation of '{expr.obj.name}' while iterating over it"
-                    f" ('{expr.method}' invalidates the iterator)", expr)
+        # Borrow conflict: structural mutation on a container with element-level borrows.
+        # Resolves aliases so that alias.append() warns when items has element borrows.
+        if isinstance(expr.obj, TpyName):
+            storage = self.ctx.effective_storage(expr.obj.name)
+            if self.ctx.has_element_borrow(storage):
+                is_mutation = False
+                if isinstance(obj_type, (PendingListType, ListType)):
+                    is_mutation = expr.method in LIST_ITER_INVALIDATING
+                elif isinstance(obj_type, DictType):
+                    is_mutation = expr.method in DICT_MUTATION_METHODS
+                elif isinstance(obj_type, SetType):
+                    is_mutation = expr.method in SET_MUTATION_METHODS
+                if is_mutation:
+                    if self.ctx.has_iter_borrow(storage):
+                        msg = (f"Mutation of '{storage}' while iterating over it"
+                               f" ('{expr.method}' invalidates the iterator)")
+                    else:
+                        msg = (f"Mutation of '{storage}' while borrowed"
+                               f" ('{expr.method}' may invalidate references)")
+                    self.ctx.warning(msg, expr)
 
         # Deref chain -- resolves through Ptr, ReadOnlyPtr, and any Deref[T] type
         original_type = obj_type

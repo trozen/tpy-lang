@@ -6,6 +6,7 @@ Contains the shared state that is passed to all semantic analysis components.
 
 from __future__ import annotations
 from dataclasses import dataclass, field
+from enum import Enum
 
 from ..typesys import (
     TpyType, TypeRegistry, ListLiteralInfo, StrVarInfo, TypeParamKind, IntLiteralType,
@@ -15,6 +16,15 @@ from ..typesys import (
 from ..namespace import Namespace
 from ..parse import TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall
 from .diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
+
+
+class BorrowKind(Enum):
+    """Kind of borrow relationship between a borrower and its storage."""
+    ALIAS = "alias"       # whole-container alias (safe through mutations)
+    FIELD = "field"       # field-level reference
+    ITER = "iter"         # for-loop iterator
+    ELEMENT = "element"   # subscript element reference
+    PTR = "ptr"           # pointer into storage
 
 
 class _ModuleInitSentinel:
@@ -169,8 +179,11 @@ class SemanticContext:
     # --- Consumed variable tracking (use-after-consume detection) ---
     consumed_vars: set[str] = field(default_factory=set)
 
-    # --- Borrow tracking (iteration safety) ---
-    loop_borrowed_vars: set[str] = field(default_factory=set)
+    # --- Borrow tracking ---
+    # storage_name -> set of borrower names (e.g. {"items": {"__for_iter"}})
+    borrows: dict[str, set[str]] = field(default_factory=dict)
+    # (storage, borrower) -> BorrowKind
+    borrow_kinds: dict[tuple[str, str], BorrowKind] = field(default_factory=dict)
 
     # --- Expression type hint (for context-dependent functions like unsafe_cast) ---
     expr_type_hint: TpyType | None = None
@@ -323,4 +336,75 @@ class SemanticContext:
         self.param_provenance_vars.clear()
         self.non_null_ptr_vars.clear()
         self.consumed_vars.clear()
-        self.loop_borrowed_vars.clear()
+        self.borrows.clear()
+        self.borrow_kinds.clear()
+
+    def is_borrowed(self, storage_name: str) -> bool:
+        """Check if a variable's storage has any active borrows."""
+        borrowers = self.borrows.get(storage_name)
+        return bool(borrowers)
+
+    def has_iter_borrow(self, storage_name: str) -> bool:
+        """Check if a variable is borrowed by an active for-loop iterator."""
+        borrowers = self.borrows.get(storage_name)
+        return borrowers is not None and "__for_iter" in borrowers
+
+    def has_element_borrow(self, storage_name: str) -> bool:
+        """Check if a variable has element-level or iterator borrows.
+
+        Returns True for borrows that can be invalidated by structural
+        mutations (reallocation, insertion, deletion). Returns False for
+        whole-container alias borrows which are safe through mutations.
+        """
+        borrowers = self.borrows.get(storage_name)
+        if not borrowers:
+            return False
+        _INVALIDATING = (BorrowKind.ITER, BorrowKind.ELEMENT, BorrowKind.PTR)
+        return any(
+            self.borrow_kinds.get((storage_name, b)) in _INVALIDATING
+            for b in borrowers
+        )
+
+    def effective_storage(self, name: str) -> str:
+        """Resolve alias chains to find the underlying storage.
+
+        If ``name`` is an alias of another variable, follows the chain
+        (e.g. b -> a -> items) and returns the root storage.  Returns
+        ``name`` itself when it is not an alias borrower.
+        """
+        visited: set[str] = {name}
+        current = name
+        while True:
+            found = None
+            for storage, borrowers in self.borrows.items():
+                if current in borrowers and self.borrow_kinds.get((storage, current)) is BorrowKind.ALIAS:
+                    found = storage
+                    break
+            if found is None or found in visited:
+                return current
+            visited.add(found)
+            current = found
+
+    def add_borrow(self, storage: str, borrower: str, kind: BorrowKind = BorrowKind.ALIAS) -> None:
+        """Record that ``borrower`` borrows from ``storage``."""
+        self.borrows.setdefault(storage, set()).add(borrower)
+        self.borrow_kinds[(storage, borrower)] = kind
+
+    def remove_borrower(self, borrower: str) -> None:
+        """Remove all borrows held by ``borrower`` (e.g. on reassignment)."""
+        to_clean: list[str] = []
+        for storage, borrowers in self.borrows.items():
+            if borrower in borrowers:
+                borrowers.discard(borrower)
+                self.borrow_kinds.pop((storage, borrower), None)
+                if not borrowers:
+                    to_clean.append(storage)
+        for storage in to_clean:
+            del self.borrows[storage]
+
+    def remove_storage_borrows(self, storage: str) -> None:
+        """Remove all borrows of ``storage`` (e.g. when storage is reassigned)."""
+        borrowers = self.borrows.pop(storage, None)
+        if borrowers:
+            for b in borrowers:
+                self.borrow_kinds.pop((storage, b), None)

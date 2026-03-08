@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingStrType,
     IntLiteralType, FloatType, Float32Type, BoolType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
-    PtrType, is_readonly_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType,
+    PtrType, is_readonly_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType, ReadonlyType,
     UnionType, EnumType, VOID, BIGINT, BOOL, STR, is_protocol_type, unwrap_readonly, unwrap_optional_own,
     is_any_str_type, container_to_str_template,
     is_protocol_union, protocol_union_protocols,
@@ -336,6 +336,7 @@ class CallAnalyzer:
                 return_type=return_type,
                 is_readonly=False,
             )
+            self._check_borrow_arg_conflicts(expr)
             return
 
         # Implicit default constructor (no user __init__)
@@ -1052,6 +1053,34 @@ class CallAnalyzer:
                     raise self.ctx.error(
                         f"argument '{param.name}' must be an lvalue", expr)
 
+    def _check_borrow_arg_conflicts(self, expr: TpyCall | TpyMethodCall) -> None:
+        """Warn when a borrowed container is passed to a non-readonly parameter.
+
+        A non-pure, non-readonly function receiving a container by mutable
+        reference could structurally mutate it, invalidating element borrows.
+        Resolves aliases so that passing an alias of a borrowed container warns.
+        """
+        fi = expr.resolved_function_info
+        if fi is None or fi.is_pure or fi.is_readonly:
+            return
+        for i, param in enumerate(fi.params):
+            if i >= len(expr.args):
+                break
+            arg = expr.args[i]
+            if not isinstance(arg, TpyName):
+                continue
+            storage = self.ctx.effective_storage(arg.name)
+            if not self.ctx.has_element_borrow(storage):
+                continue
+            # readonly[T] param -- function promises not to mutate
+            if isinstance(param.type, ReadonlyType):
+                continue
+            self.ctx.warning(
+                f"Passing borrowed container '{storage}' to non-readonly parameter "
+                f"'{param.name}' (function may invalidate references)",
+                expr,
+            )
+
     def _validate_ptr_constructor(self, expr: TpyCall) -> None:
         """Validate pointer constructor arguments (type match, no void args).
 
@@ -1423,6 +1452,7 @@ class CallAnalyzer:
             if isinstance(arg_type, PendingStrType):
                 self.deduction.mark_str_param_context(arg, ptype)
 
+        self._check_borrow_arg_conflicts(expr)
         return func.return_type
 
     def _analyze_generic_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
@@ -1550,6 +1580,7 @@ class CallAnalyzer:
                     expr,
                 )
 
+        self._check_borrow_arg_conflicts(expr)
         return resolved_return
 
     def _validate_generic_defaults(self, expr: TpyCall, func: FunctionInfo,
@@ -1759,4 +1790,5 @@ class CallAnalyzer:
             if isinstance(arg_type, PendingStrType):
                 self.deduction.mark_str_param_context(arg, ptype)
 
+        self._check_borrow_arg_conflicts(expr)
         return func.return_type
