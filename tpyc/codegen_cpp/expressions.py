@@ -453,7 +453,7 @@ class ExpressionGenerator:
             return self._gen_list_repeat(expr, target_type)
 
         elif isinstance(expr, TpyListComprehension):
-            return self._gen_list_comprehension(expr)
+            return self._gen_list_comprehension(expr, target_type)
 
         elif isinstance(expr, TpyDictComprehension):
             return self._gen_dict_comprehension(expr)
@@ -1773,13 +1773,89 @@ class ExpressionGenerator:
         cpp_type = result_type.to_cpp()
         return f"tpy::from_range<{cpp_type}>({range_expr})"
 
-    def _gen_list_comprehension(self, expr: TpyListComprehension) -> str:
+    def _gen_list_comprehension(self, expr: TpyListComprehension,
+                                target_type: TpyType | None = None) -> str:
         elem_type = self._resolve_int_literal(expr.result_elem_type)
         cpp_elem = self.types.type_to_cpp(elem_type)
+
+        if isinstance(target_type, ArrayType):
+            return self._gen_array_comprehension(expr, elem_type, cpp_elem, target_type.size)
+
         insert_code = self.gen_expr_deref(expr.element_expr, elem_type)
         return self._gen_comprehension_iife(
             expr.generator, f"std::vector<{cpp_elem}>",
             f"__result.push_back({insert_code})", skip_reserve=False)
+
+    def _gen_array_comprehension(self, expr: TpyListComprehension,
+                                  elem_type: TpyType, cpp_elem: str,
+                                  size: int) -> str:
+        """Generate comprehension as IIFE producing std::array with indexed assignment."""
+        gen = expr.generator
+        insert_code = self.gen_expr_deref(expr.element_expr, elem_type)
+
+        stmt_ind = INDENT * self.ctx.indent_level
+        ind1 = stmt_ind + INDENT
+        ind2 = ind1 + INDENT
+
+        buf = io.StringIO()
+        buf.write(f"[&]() {{\n")
+        buf.write(f"{ind1}std::array<{cpp_elem}, {size}> __result;\n")
+
+        is_range = isinstance(gen.iterable, TpyCall) and gen.iterable.func == "range"
+        nargs = len(gen.iterable.args) if is_range else 0
+        cpp_var = escape_cpp_name(gen.var)
+
+        if is_range and nargs <= 2:
+            sema_elem = self.types.get_resolved_type(gen.iterable).get_iteration_element_type()
+            if sema_elem is not None and isinstance(sema_elem, IntLiteralType):
+                sema_elem = self.ctx.analyzer.ctx.default_int_type
+            if sema_elem is None:
+                sema_elem = self.ctx.analyzer.ctx.default_int_type
+            cpp_iter_type = sema_elem.to_cpp()
+
+            if nargs == 1:
+                buf.write(f"{ind1}for ({cpp_iter_type} {cpp_var} = 0; {cpp_var} < {size}; ++{cpp_var}) {{\n")
+            else:
+                start_code = self.gen_expr_deref(gen.iterable.args[0])
+                buf.write(f"{ind1}const {cpp_iter_type} __start_0 = {start_code};\n")
+                buf.write(f"{ind1}for ({cpp_iter_type} {cpp_var} = __start_0, __idx_0 = 0;"
+                          f" __idx_0 < {size}; ++{cpp_var}, ++__idx_0) {{\n")
+            idx_expr = cpp_var if nargs == 1 else "__idx_0"
+            buf.write(f"{ind2}__result[{idx_expr}] = {insert_code};\n")
+        else:
+            # Array/container source -- begin/end loop with index counter
+            n = self.ctx.iter_counter
+            self.ctx.iter_counter += 1
+            iterable_code = self.gen_expr_deref(gen.iterable)
+            is_lvalue = self._comp_is_lvalue(gen.iterable)
+            obj_binding = "auto&" if is_lvalue else "auto"
+
+            sema_elem = self.types.get_resolved_type(gen.iterable).get_iteration_element_type()
+            if sema_elem is not None and isinstance(sema_elem, IntLiteralType):
+                sema_elem = self.ctx.analyzer.ctx.default_int_type
+            if sema_elem is None:
+                sema_elem = self.ctx.analyzer.ctx.default_int_type
+
+            buf.write(f"{ind1}{obj_binding} __obj_{n} = {iterable_code};\n")
+            buf.write(f"{ind1}auto __beg_{n} = __obj_{n}.begin();\n")
+            buf.write(f"{ind1}auto __end_{n} = __obj_{n}.end();\n")
+            buf.write(f"{ind1}for (size_t __idx_{n} = 0; __beg_{n} != __end_{n}; ++__beg_{n}, ++__idx_{n}) {{\n")
+
+            if gen.unpack_vars is not None:
+                self._gen_comp_tuple_unpack(buf, gen, sema_elem, ind2, n)
+            elif sema_elem.is_value_type():
+                cpp_iter_elem = sema_elem.to_cpp()
+                buf.write(f"{ind2}{cpp_iter_elem} {cpp_var} = *__beg_{n};\n")
+            else:
+                buf.write(f"{ind2}auto&& {cpp_var} = *__beg_{n};\n")
+
+            buf.write(f"{ind2}__result[__idx_{n}] = {insert_code};\n")
+
+        buf.write(f"{ind1}}}\n")
+        buf.write(f"{ind1}return __result;\n")
+        buf.write(f"{stmt_ind}}}()")
+
+        return buf.getvalue()
 
     def _gen_dict_comprehension(self, expr: TpyDictComprehension) -> str:
         key_type = self._resolve_int_literal(expr.result_key_type)

@@ -18,8 +18,9 @@ def main() -> None:
     copy = [x for x in items]
     print(copy)
 
-    # Two-arg range
-    shifted = [x for x in range(3, 7)]
+    # Two-arg range (non-literal stop to stay on list path)
+    stop: Int32 = 7
+    shifted = [x for x in range(3, stop)]
     print(shifted)
 
     # Record field access
@@ -38,8 +39,9 @@ def main() -> None:
     # Comprehension as return value
     print(make_list(4))
 
-    # Three-arg range (fallback to Range begin/end)
-    stepped = [x for x in range(0, 10, 3)]
+    # Three-arg range (non-literal step to stay on list path)
+    step: Int32 = 3
+    stepped = [x for x in range(0, 10, step)]
     print(stepped)
 
 def make_list(n: Int32) -> Own[list[Int32]]:

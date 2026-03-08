@@ -37,24 +37,26 @@ void main() {
     }();
     // 19:     print(copy)
     std::cout << tpy::ListPrinter(copy) << "\n";
-    // 21:     # Two-arg range
-    // 22:     shifted = [x for x in range(3, 7)]
+    // 21:     # Two-arg range (non-literal stop to stay on list path)
+    // 22:     stop: Int32 = 7
+    int32_t stop = 7;
+    // 23:     shifted = [x for x in range(3, stop)]
     std::vector<int32_t> shifted = [&]() {
         std::vector<int32_t> __result;
         const int32_t __start_2 = 3;
-        const int32_t __stop_3 = 7;
+        const int32_t __stop_3 = stop;
         if (__stop_3 > __start_2) __result.reserve(static_cast<size_t>(__stop_3 - __start_2));
         for (int32_t x = __start_2; x < __stop_3; ++x) {
             __result.push_back(x);
         }
         return __result;
     }();
-    // 23:     print(shifted)
+    // 24:     print(shifted)
     std::cout << tpy::ListPrinter(shifted) << "\n";
-    // 25:     # Record field access
-    // 26:     points: list[Point] = [Point(1, 2), Point(3, 4), Point(5, 6)]
+    // 26:     # Record field access
+    // 27:     points: list[Point] = [Point(1, 2), Point(3, 4), Point(5, 6)]
     std::vector<Point> points = {Point(1, 2), Point(3, 4), Point(5, 6)};
-    // 27:     xs = [p.x for p in points]
+    // 28:     xs = [p.x for p in points]
     std::vector<int32_t> xs = [&]() {
         std::vector<int32_t> __result;
         auto& __obj_4 = points;
@@ -67,10 +69,10 @@ void main() {
         }
         return __result;
     }();
-    // 28:     print(xs)
+    // 29:     print(xs)
     std::cout << tpy::ListPrinter(xs) << "\n";
-    // 30:     # Comprehension as function argument
-    // 31:     print([x + 1 for x in range(3)])
+    // 31:     # Comprehension as function argument
+    // 32:     print([x + 1 for x in range(3)])
     std::cout << tpy::ListPrinter([&]() {
         std::vector<int32_t> __result;
         const int32_t __stop_5 = 3;
@@ -80,10 +82,10 @@ void main() {
         }
         return __result;
     }()) << "\n";
-    // 33:     # String comprehension
-    // 34:     words: list[str] = ["hello", "world"]
+    // 34:     # String comprehension
+    // 35:     words: list[str] = ["hello", "world"]
     std::vector<std::string> words = {"hello", "world"};
-    // 35:     upper = [str(len(w)) for w in words]
+    // 36:     upper = [str(len(w)) for w in words]
     std::vector<std::string> upper = [&]() {
         std::vector<std::string> __result;
         auto& __obj_6 = words;
@@ -96,16 +98,18 @@ void main() {
         }
         return __result;
     }();
-    // 36:     print(upper)
+    // 37:     print(upper)
     std::cout << tpy::ListPrinter(upper) << "\n";
-    // 38:     # Comprehension as return value
-    // 39:     print(make_list(4))
+    // 39:     # Comprehension as return value
+    // 40:     print(make_list(4))
     std::cout << tpy::ListPrinter(make_list(4)) << "\n";
-    // 41:     # Three-arg range (fallback to Range begin/end)
-    // 42:     stepped = [x for x in range(0, 10, 3)]
+    // 42:     # Three-arg range (non-literal step to stay on list path)
+    // 43:     step: Int32 = 3
+    int32_t step = 3;
+    // 44:     stepped = [x for x in range(0, 10, step)]
     std::vector<int32_t> stepped = [&]() {
         std::vector<int32_t> __result;
-        auto __obj_7 = tpy::Range<int32_t>(0, 10, 3);
+        auto __obj_7 = tpy::Range<int32_t>(0, 10, step);
         auto __beg_7 = __obj_7.begin();
         auto __end_7 = __obj_7.end();
         for (; __beg_7 != __end_7; ++__beg_7) {
@@ -114,13 +118,13 @@ void main() {
         }
         return __result;
     }();
-    // 43:     print(stepped)
+    // 45:     print(stepped)
     std::cout << tpy::ListPrinter(stepped) << "\n";
 }
 
-// 45: def make_list(n: Int32) -> Own[list[Int32]]:
+// 47: def make_list(n: Int32) -> Own[list[Int32]]:
 std::vector<int32_t> make_list(int32_t n) {
-    // 46:     return [x * 10 for x in range(n)]
+    // 48:     return [x * 10 for x in range(n)]
     return [&]() {
         std::vector<int32_t> __result;
         const int32_t __stop_0 = n;
@@ -137,7 +141,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 48: main()
+    // 50: main()
     main();
 }
 

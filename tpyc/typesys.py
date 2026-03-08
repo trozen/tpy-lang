@@ -1823,7 +1823,7 @@ class ListRepeatType(TpyType):
 class ListLiteralInfo:
     """Tracks usage information for a list literal to determine its resolved type."""
     literal_id: int
-    expr: 'TpyArrayLiteral | TpyListRepeat'  # Forward reference to avoid circular import
+    expr: 'TpyArrayLiteral | TpyListRepeat | TpyListComprehension'  # Forward reference to avoid circular import
     element_type: TpyType
     size: int  # -1 for unknown (variable count repeat)
     variable_name: Optional[str] = None

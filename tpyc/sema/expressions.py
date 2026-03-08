@@ -10,7 +10,7 @@ from typing import Literal, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, CharType,
-    NamedType, PtrType, OwnType, ListType, DictType, SetType, PendingListType, ListRepeatType, TupleType, SpanType,
+    NamedType, PtrType, OwnType, ListType, DictType, SetType, ArrayType, PendingListType, ListRepeatType, TupleType, SpanType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
     FixedIntType, StringType, StrViewType, make_union,
@@ -259,6 +259,20 @@ class ExpressionAnalyzer:
                 inner_hint = inner_hint.wrapped
             if isinstance(inner_hint, ListType):
                 typ = self._analyze_list_comprehension(expr, expected_elem=inner_hint.element_type)
+                if isinstance(typ, PendingListType):
+                    info = self.ctx.list_literals.get(typ.literal_id)
+                    if info:
+                        info.has_explicit_annotation = True
+                        info.explicit_type = inner_hint
+                self.ctx.set_expr_type(expr, typ)
+                return typ
+            if isinstance(inner_hint, ArrayType):
+                typ = self._analyze_list_comprehension(expr, expected_elem=inner_hint.element_type)
+                if isinstance(typ, PendingListType):
+                    info = self.ctx.list_literals.get(typ.literal_id)
+                    if info:
+                        info.has_explicit_annotation = True
+                        info.explicit_type = inner_hint
                 self.ctx.set_expr_type(expr, typ)
                 return typ
 
@@ -1387,7 +1401,77 @@ class ExpressionAnalyzer:
             self._validate_dict_key_type(result_elem_type, expr)
 
         expr.result_elem_type = result_elem_type
+
+        if kind == "list":
+            array_size = self._try_comp_array_size(expr)
+            if array_size is not None and self.ctx.current_function is not None:
+                literal_id = self.ctx.literal_counter
+                self.ctx.literal_counter += 1
+                info = ListLiteralInfo(
+                    literal_id=literal_id,
+                    expr=expr,
+                    element_type=result_elem_type,
+                    size=array_size,
+                    is_global=self.ctx.is_top_level,
+                )
+                self.ctx.list_literals[literal_id] = info
+                self.ctx.pending_resolutions.append(literal_id)
+                return PendingListType(result_elem_type, array_size, literal_id)
+
         return SetType(result_elem_type) if kind == "set" else ListType(result_elem_type)
+
+    def _try_comp_array_size(self, expr: TpyListComprehension) -> int | None:
+        """Return the compile-time known size if this comprehension can be an Array."""
+        gen = expr.generator
+        if gen.conditions:
+            return None
+
+        # range(N) or range(start, stop) with literal args
+        if isinstance(gen.iterable, TpyCall) and gen.iterable.func == "range":
+            return self._range_literal_size(gen.iterable)
+
+        # Array[T, N] source -- size is known from the type
+        iterable_type = unwrap_readonly(self.ctx.get_expr_type(gen.iterable))
+        if isinstance(iterable_type, ArrayType):
+            return iterable_type.size
+
+        return None
+
+    @staticmethod
+    def _try_int_literal(expr: TpyExpr) -> int | None:
+        """Extract an integer literal value, unwrapping TpyCoerce and unary minus."""
+        if isinstance(expr, TpyCoerce):
+            expr = expr.expr
+        if isinstance(expr, TpyIntLiteral):
+            return expr.value
+        if isinstance(expr, TpyUnaryOp) and expr.op == '-' and isinstance(expr.operand, TpyIntLiteral):
+            return -expr.operand.value
+        return None
+
+    def _range_literal_size(self, call: TpyCall) -> int | None:
+        """Extract compile-time size from range() with literal args."""
+        args = call.args
+        if len(args) == 1:
+            n = self._try_int_literal(args[0])
+            if n is not None:
+                return max(n, 0)
+        elif len(args) == 2:
+            s = self._try_int_literal(args[0])
+            e = self._try_int_literal(args[1])
+            if s is not None and e is not None and e >= s:
+                return e - s
+        elif len(args) == 3:
+            s = self._try_int_literal(args[0])
+            e = self._try_int_literal(args[1])
+            d = self._try_int_literal(args[2])
+            if s is not None and e is not None and d is not None and d != 0:
+                if d > 0 and e > s:
+                    return (e - s + d - 1) // d
+                elif d < 0 and s > e:
+                    return (s - e - d - 1) // (-d)
+                else:
+                    return 0
+        return None
 
     def _analyze_dict_comprehension(
         self, expr: TpyDictComprehension,

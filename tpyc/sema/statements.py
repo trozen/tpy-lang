@@ -20,7 +20,7 @@ from ..parse import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert, TpyRaiseStopIteration,
     TpyGlobal,
-    TpyCall, TpyMethodCall, TpyArrayLiteral, TpyDictLiteral, TpyCoerce,
+    TpyCall, TpyMethodCall, TpyArrayLiteral, TpyListComprehension, TpyDictLiteral, TpyCoerce,
     TpySubscript, TpyStrLiteral, TpyName, TpyTupleLiteral,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyUnaryOp,
     TpyFieldAccess, TpyFunction, TupleElemCapture,
@@ -1371,7 +1371,7 @@ class StatementAnalyzer:
                 info.decl_line = stmt.loc.line if stmt.loc else None
 
                 # If explicit annotation is provided, record it
-                if stmt.type and isinstance(stmt.init, TpyArrayLiteral):
+                if stmt.type and isinstance(stmt.init, (TpyArrayLiteral, TpyListComprehension)):
                     info.has_explicit_annotation = True
                     info.explicit_type = stmt.type
 
