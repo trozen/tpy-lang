@@ -10,7 +10,8 @@ Usage:
     tpyc --dump-code <<EOF     # Print generated C++ to stdout
     tpyc --repl                # Start interactive REPL
     tpyc --repl file.py        # Load file then start REPL
-    tpyc --repl --verbose      # REPL with C++ output shown
+    tpyc --repl -v             # REPL with timing
+    tpyc --repl -vv            # REPL with timing + generated C++
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 from .parse import ParseError
@@ -56,7 +58,7 @@ def main() -> int:
     )
     parser.add_argument("input", nargs="?", help="Input TurboPython source file (.py)")
     parser.add_argument("-o", "--output", help="Output directory (default: __tpyc__/ next to source)")
-    parser.add_argument("-v", "--verbose", action="count", default=0, help="Verbose output (-v for info, -vv for commands)")
+    parser.add_argument("-v", "--verbose", action="count", default=0, help="Verbose output (-v commands+timing, -vv +generated C++)")
     parser.add_argument("-b", "--build", action="store_true", help="Compile C++ to binary after generating")
     parser.add_argument("-x", "--exec", action="store_true", help="Build and run the program")
     parser.add_argument("-O", "--release", action="store_true", help="Build with optimizations (default: debug)")
@@ -158,6 +160,7 @@ def main() -> int:
         all_cpp_paths = []
 
         # Create compiler (unified for both stdin and file input)
+        t_compile_start = time.monotonic()
         if reading_from_stdin:
             compiler = Compiler.from_source(source, module_name, default_int=args.default_int,
                                             lib_dirs=lib_dirs)
@@ -165,20 +168,15 @@ def main() -> int:
             compiler = Compiler(input_path, default_int=args.default_int, lib_dirs=lib_dirs)
 
         compiled_modules = compiler.compile()
+        t_compile = time.monotonic() - t_compile_start
 
         for compiled in compiled_modules:
             source_name = "<stdin>" if reading_from_stdin else os.path.relpath(compiled.path)
-            if args.verbose:
-                print(f"Compiling {source_name}...")
-                print(f"  Parsed {len(compiled.ast.records)} records, {len(compiled.ast.functions)} functions")
 
             if compiled.analyzer:
                 for diag in compiled.analyzer.diagnostics:
                     if diag.level == DiagnosticLevel.WARNING:
                         print(diag.format(source_name), file=sys.stderr)
-
-            if args.verbose:
-                print("  Semantic analysis passed")
 
             if args.dump_code:
                 try:
@@ -193,6 +191,19 @@ def main() -> int:
                 print(cpp_code)
                 continue
 
+            # -vv: show generated C++ inline
+            if args.verbose >= 2:
+                try:
+                    hpp_code, cpp_code = compiler.generate_code_to_strings(compiled, options=options)
+                except CodeGenError as e:
+                    if e.filename is None and not compiled.is_entry_point:
+                        e.filename = source_name
+                    raise
+                print(f"// === include/{compiled.name}.hpp ===")
+                print(hpp_code)
+                print(f"// === src/{compiled.name}.cpp ===")
+                print(cpp_code)
+
             try:
                 hpp_path, cpp_path = compiler.generate_code(compiled, output_dir, options=options)
             except CodeGenError as e:
@@ -201,7 +212,7 @@ def main() -> int:
                 raise
             all_cpp_paths.append(cpp_path)
 
-            if args.verbose or not (args.build or args.exec):
+            if not (args.build or args.exec):
                 print(f"Generated: {hpp_path}")
                 print(f"Generated: {cpp_path}")
 
@@ -215,9 +226,6 @@ def main() -> int:
             layout = BuildLayout(output_dir, module_name, build_variant=build_variant)
             binary_path = layout.binary_path()
 
-            if args.verbose:
-                print(f"Building {binary_path}...")
-
             opt_flags = ["-O3", "-DNDEBUG"] if args.release else ["-g", "-O0"]
             cpp_config = CppCompilerConfig.from_env()
             compile_cmds = layout.build_cpp_commands(
@@ -227,8 +235,9 @@ def main() -> int:
                 config=cpp_config,
             )
 
+            t_build_start = time.monotonic()
             for cmd in compile_cmds:
-                if args.verbose >= 2:
+                if args.verbose >= 1:
                     print(f"  $ {' '.join(cmd)}")
 
                 result = subprocess.run(cmd, capture_output=True, text=True)
@@ -236,17 +245,27 @@ def main() -> int:
                     print(f"C++ compilation failed:", file=sys.stderr)
                     print(result.stderr, file=sys.stderr)
                     return 1
+            t_build = time.monotonic() - t_build_start
 
-            if args.verbose or not args.exec:
+            if not args.exec:
                 print(f"Built: {binary_path}")
+
+            if args.verbose >= 1:
+                print(f"  compile: {t_compile*1000:.0f}ms  build: {t_build*1000:.0f}ms")
 
             # Run if requested
             if args.exec:
                 if args.verbose:
-                    print(f"Running {binary_path}...")
                     print("---")
+                    sys.stdout.flush()
 
+                t_run_start = time.monotonic()
                 result = subprocess.run([str(binary_path)])
+                t_run = time.monotonic() - t_run_start
+
+                if args.verbose >= 1:
+                    print(f"  run: {t_run*1000:.0f}ms  total: {(t_compile+t_build+t_run)*1000:.0f}ms")
+
                 return result.returncode
 
         return 0

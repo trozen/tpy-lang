@@ -36,7 +36,7 @@ uv run tpyc examples/hello.py
 # Compile to specific output directory
 uv run tpyc examples/hello.py -o out/
 
-# Verbose mode (-v for info, -vv for compilation commands)
+# Verbose mode (-v for commands+timing, -vv for generated C++)
 uv run tpyc -x examples/hello.py -vv
 
 # Interactive REPL
