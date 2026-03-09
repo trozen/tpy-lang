@@ -42,6 +42,21 @@ if TYPE_CHECKING:
 from tpyc import modules as builtin_modules
 
 
+def _is_simple_lvalue(expr: TpyExpr) -> bool:
+    """Check if expression is a variable or field access (safe to capture by ref).
+
+    Excludes subscripts -- they may yield const refs (e.g. ReadOnlySpan)
+    which can't bind to T&.
+    """
+    if isinstance(expr, TpyCoerce):
+        return _is_simple_lvalue(expr.expr)
+    if isinstance(expr, TpyName):
+        return True
+    if isinstance(expr, TpyFieldAccess):
+        return _is_simple_lvalue(expr.obj)
+    return False
+
+
 class _Unset:
     """Sentinel distinguishing 'not provided' from explicit None."""
     __slots__ = ()
@@ -2242,8 +2257,14 @@ class ExpressionGenerator:
             if i < len(expr.elem_capture):
                 mode = expr.elem_capture[i]
             elif not et.is_value_type() and not isinstance(et, OwnType):
-                # No sema annotation (e.g. call argument) -- derive from type
-                mode = TupleElemCapture.REF
+                # No sema annotation (e.g. tuple in list literal or call arg).
+                # Use REF only for simple lvalues (variables, field access).
+                # Rvalues and subscripts get VALUE to avoid binding issues
+                # (e.g. ReadOnlySpan subscript returns const ref).
+                if _is_simple_lvalue(expr.elements[i]):
+                    mode = TupleElemCapture.REF
+                else:
+                    mode = TupleElemCapture.VALUE
             else:
                 mode = TupleElemCapture.VALUE
             if mode == TupleElemCapture.REF:

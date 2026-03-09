@@ -10,7 +10,7 @@
 
 ## Bugs
 - NativeIterable for-loop `auto&` binding: range-based for with `auto&` fails for iterators that yield rvalues (e.g. `dict.items()` yields tuple copies). Needs `const auto&` or `auto&&` binding for non-value element types when the iterator yields temporaries.
-- Tuple literal with non-value element types: `list[tuple[str, Point]]` generates `std::tuple<std::string, Point&>` instead of `std::tuple<std::string, Point>`, causing C++ compilation failure (cannot bind non-const lvalue reference to rvalue). Affects any tuple literal containing a record or other non-value type.
+- Tuple unpack in for-loop with non-value types: `for name, pt in items` where `items: list[tuple[str, Point]]` generates `Point& pt = std::get<1>(__tup_1)` from a `const auto&` tuple, causing a const-discard error. Needs `const Point&` or non-const tuple binding.
 
 ## Examples
 
