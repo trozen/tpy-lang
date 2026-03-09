@@ -2251,7 +2251,7 @@ class StatementGenerator:
                 seen_inner = True
                 inner_cases.append(case)
 
-        if not none_cases or not inner_cases:
+        if not inner_cases:
             return None
         return none_cases, inner_cases
 
@@ -2266,7 +2266,11 @@ class StatementGenerator:
         null_cond = "__match_subject == nullptr" if uses_ptr else "!__match_subject.has_value()"
 
         # --- None branch ---
-        if len(none_cases) == 1 and none_cases[0].guard is None:
+        has_value_cond = "__match_subject != nullptr" if uses_ptr else "__match_subject.has_value()"
+        if not none_cases:
+            # No None arms -- just guard on has_value, no else
+            out.write(f"{indent}if ({has_value_cond}) {{\n")
+        elif len(none_cases) == 1 and none_cases[0].guard is None:
             # Simple: single unguarded None arm
             case = none_cases[0]
             self.ctx.emit_source_comment(out, case.loc, indent)
@@ -2313,8 +2317,9 @@ class StatementGenerator:
             if any(c.guard is not None for c in none_cases):
                 out.write(f"{inner}}}\n")
 
-        # --- Else branch: dispatch on inner value ---
-        out.write(f"{indent}}} else {{\n")
+        # --- Inner value dispatch ---
+        if none_cases:
+            out.write(f"{indent}}} else {{\n")
         deref = "(*__match_subject)"
         out.write(f"{inner}auto& __match_inner = {deref};\n")
 

@@ -10,7 +10,7 @@
 | 4 | Concrete record subjects (field-value matching), Optional subjects | Done |
 | 4b | Optional codegen: `if/else+switch` for Optional enum/primitive, hoisted null check for Optional record | Done |
 | 5 | Or-patterns (`Dog() \| Cat():`), guard clauses (`if cond`) | Done |
-| 6 | Exhaustiveness warnings (union, enum, Optional) | Not started (duplicate case + unreachable-after-wildcard detection done in Phase 1) |
+| 6 | Exhaustiveness warnings (union, enum, Optional, bool) | Done |
 | 7 | `switch` codegen for unions (`switch (s.index())`) and enums (`switch (e)`); if/elif fallback when guards present | Done |
 | 8 | Optimized string dispatch: for N+ string literal cases (N~4-6), emit O(1) dispatch instead of linear if/elif. Start with length-based partitioning (`switch (s.length())` + `==` per bucket), consider perfect hashing for large case counts. Also applies to generated code like `EnumUtil::try_parse`/`from_name` which are string-to-enum lookups. | Not started |
 

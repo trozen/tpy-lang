@@ -7,6 +7,7 @@ Set UPDATE_EXPECTED=1 to update expected files instead of comparing.
 """
 
 import shutil
+import warnings
 from pathlib import Path
 
 import pytest
@@ -113,6 +114,19 @@ def test_comp(case_dir, main_src, tmp_path):
             f"Error test compiled successfully (expected compilation failure): {main_src}",
             pytrace=False,
         )
+
+    # Warn if a non-error/non-panic test compiles but has no runtime snapshot
+    is_error = case_dir.name.startswith("error_")
+    is_panic = case_dir.name.startswith("panic_")
+    is_warn = case_dir.name.startswith("warn_")
+    if not UPDATE_EXPECTED and not is_error and not is_panic and not is_warn:
+        has_output = (expected_dir / "output.txt").exists()
+        if not has_output:
+            warnings.warn(
+                f"Test '{case_dir.name}' compiles but has no expected/output.txt "
+                f"(run update_snapshots.py --exec -k {case_dir.name})",
+                stacklevel=1,
+            )
 
     # Check/update generated code for local modules (skip library modules like tplib)
     for mod_name, hpp_path, cpp_path, is_local in result.all_modules:

@@ -1,0 +1,1 @@
+main.py:10: warning: non-exhaustive match on 'Color'; missing: Color.Blue (add 'case _:' to suppress)

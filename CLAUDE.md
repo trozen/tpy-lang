@@ -110,6 +110,8 @@ uv run python tests/update_snapshots.py --comp -k hello    # specific case, comp
 
 **Important**: If a change would modify expected output for *existing* tests (not new tests you're adding), consult with the user before running `update_snapshots.py`. Explain what generated code will change and confirm the change is desired.
 
+**Important**: When adding new test cases, always run `update_snapshots.py` without `--comp`/`--exec` flags (or run both separately) so that both compilation snapshots and execution snapshots (`output.txt`) are generated. Running only `--comp` will miss `output.txt`.
+
 ### Test Structure
 
 There are two kinds of tests:

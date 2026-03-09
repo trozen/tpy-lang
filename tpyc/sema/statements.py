@@ -765,6 +765,19 @@ class StatementAnalyzer:
                               for _, sub in pat.keywords)):
                 had_wildcard = True
 
+        # Exhaustiveness check for finite-valued types
+        if not had_wildcard:
+            missing = self._match_missing_cases(
+                effective_type, seen_types, seen_values,
+            )
+            if missing:
+                self.ctx.warning(
+                    f"non-exhaustive match on '{effective_type}'; "
+                    f"missing: {', '.join(missing)} "
+                    f"(add 'case _:' to suppress)",
+                    stmt,
+                )
+
         # Merge flow states across all arms
         self._merge_match_arms(arm_states, before)
 
@@ -828,6 +841,41 @@ class StatementAnalyzer:
             current = self.init.save()
             self.init.restore(before)
             self.init.merge_branches(current, arm_states[i])
+
+    def _match_missing_cases(
+        self, subject_type: TpyType,
+        seen_types: set[str], seen_values: set[object],
+    ) -> list[str]:
+        """Return human-readable names of uncovered cases for finite-valued types."""
+        if isinstance(subject_type, UnionType):
+            # Skip NoneType -- no class-pattern syntax to match it in unions
+            return [
+                str(m) for m in subject_type.members
+                if not isinstance(m, NoneType)
+                and str(m) not in seen_types
+            ]
+
+        if isinstance(subject_type, EnumType):
+            return [
+                f"{subject_type.name}.{name}"
+                for name in subject_type.members
+                if (subject_type.name, name) not in seen_values
+            ]
+
+        if isinstance(subject_type, OptionalType):
+            if None not in seen_values:
+                return ["None"]
+            return []
+
+        if isinstance(subject_type, BoolType):
+            missing: list[str] = []
+            if True not in seen_values:
+                missing.append("True")
+            if False not in seen_values:
+                missing.append("False")
+            return missing
+
+        return []
 
     def _analyze_pattern(
         self, pattern: TpyPattern, subject_type: UnionType,
