@@ -271,8 +271,8 @@ class MethodAnalyzer:
         # Borrow conflict: structural mutation on a container with element-level borrows.
         # Resolves aliases so that alias.append() warns when items has element borrows.
         if isinstance(expr.obj, TpyName):
-            storage = self.ctx.effective_storage(expr.obj.name)
-            if self.ctx.has_element_borrow(storage):
+            storage = self.ctx.borrow_tracker.effective_storage(expr.obj.name)
+            if self.ctx.borrow_tracker.has_element_borrow(storage):
                 is_mutation = False
                 if isinstance(obj_type, (PendingListType, ListType)):
                     is_mutation = expr.method in LIST_ITER_INVALIDATING
@@ -281,7 +281,7 @@ class MethodAnalyzer:
                 elif isinstance(obj_type, SetType):
                     is_mutation = expr.method in SET_MUTATION_METHODS
                 if is_mutation:
-                    if self.ctx.has_iter_borrow(storage):
+                    if self.ctx.borrow_tracker.has_iter_borrow(storage):
                         msg = (f"Mutation of '{storage}' while iterating over it"
                                f" ('{expr.method}' invalidates the iterator)")
                     else:
@@ -325,7 +325,7 @@ class MethodAnalyzer:
                     obj_root = _root_name_of_expr(expr.obj)
                     if obj_root is not None:
                         self.ctx.mark_loop_var_mutated(obj_root)
-                        storage = self.ctx.effective_storage(obj_root)
+                        storage = self.ctx.borrow_tracker.effective_storage(obj_root)
                         self.ctx.mark_str_borrowers_mutated(storage)
                 return result
 

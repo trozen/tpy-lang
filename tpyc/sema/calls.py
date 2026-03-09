@@ -1074,8 +1074,8 @@ class CallAnalyzer:
             # readonly[T] param -- function promises not to mutate
             if isinstance(param.type, ReadonlyType):
                 continue
-            storage = self.ctx.effective_storage(arg.name)
-            if self.ctx.has_element_borrow(storage):
+            storage = self.ctx.borrow_tracker.effective_storage(arg.name)
+            if self.ctx.borrow_tracker.has_element_borrow(storage):
                 self.ctx.warning(
                     f"Passing borrowed container '{storage}' to non-readonly parameter "
                     f"'{param.name}' (function may invalidate references)",

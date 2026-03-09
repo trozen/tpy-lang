@@ -23,7 +23,7 @@
 | 6.5 | Function parameter mutation detection | S-M | Done | [6](#6-intra-function-borrow-checking) |
 | 6b | For-loop const-ref binding | S | Done | [6b](#6b-for-loop-const-ref-binding) |
 | 6c | String view extension (Array, records) | M | Done | [6c](#6c-string-view-extension-to-containers) |
-| -- | Extract BorrowTracker class from SemanticContext | S | Not started | -- |
+| -- | Extract BorrowTracker class from SemanticContext | S | Done | -- |
 | 11 | Integer range tracking (loop patterns) | M | Not started | [11](#11-integer-range-tracking) |
 | 11a | Bounds check elision | S | Not started | [11a](#11a-bounds-check-elision) |
 
