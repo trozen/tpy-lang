@@ -2211,6 +2211,7 @@ class StatementGenerator:
         Returns None if the optimization cannot be applied:
         - None arms don't form a contiguous prefix
         - An or-pattern mixes None and non-None alternatives
+        - A None arm has a guard (guard failure needs fallthrough to later arms)
         """
         none_cases: list[TpyMatchCase] = []
         inner_cases: list[TpyMatchCase] = []
@@ -2236,6 +2237,8 @@ class StatementGenerator:
                 if has_none:
                     if seen_inner:
                         return None
+                    if case.guard is not None:
+                        return None
                     none_cases.append(case)
                 else:
                     seen_inner = True
@@ -2245,6 +2248,9 @@ class StatementGenerator:
             is_none = isinstance(pat, TpyLiteralPattern) and pat.value is None
             if is_none:
                 if seen_inner:
+                    return None
+                # Guarded None arm needs fallthrough to later arms on guard failure
+                if case.guard is not None:
                     return None
                 none_cases.append(case)
             else:
@@ -2397,14 +2403,14 @@ class StatementGenerator:
                 if isinstance(pattern, TpyCapturePattern):
                     cap_name = escape_cpp_name(pattern.name)
                     if pattern.name in self.ctx.declared_vars:
-                        out.write(f"{inner}{cap_name} = __match_subject;\n")
+                        out.write(f"{inner}{cap_name} = {subject_expr};\n")
                     else:
-                        out.write(f"{inner}auto& {cap_name} = __match_subject;\n")
+                        out.write(f"{inner}auto& {cap_name} = {subject_expr};\n")
                 if as_name is not None:
                     if as_raw and as_raw in self.ctx.declared_vars:
-                        out.write(f"{inner}{as_name} = __match_subject;\n")
+                        out.write(f"{inner}{as_name} = {subject_expr};\n")
                     else:
-                        out.write(f"{inner}auto& {as_name} = __match_subject;\n")
+                        out.write(f"{inner}auto& {as_name} = {subject_expr};\n")
                 self.ctx.indent_level += 2
                 for s in case.body:
                     self.gen_stmt(out, s)
@@ -2504,14 +2510,14 @@ class StatementGenerator:
                 if isinstance(pattern, TpyCapturePattern):
                     cap_name = escape_cpp_name(pattern.name)
                     if pattern.name in self.ctx.declared_vars:
-                        out.write(f"{inner}{cap_name} = __match_subject;\n")
+                        out.write(f"{inner}{cap_name} = {deref};\n")
                     else:
-                        out.write(f"{inner}auto& {cap_name} = __match_subject;\n")
+                        out.write(f"{inner}auto& {cap_name} = {deref};\n")
                 if as_name is not None:
                     if as_raw and as_raw in self.ctx.declared_vars:
-                        out.write(f"{inner}{as_name} = __match_subject;\n")
+                        out.write(f"{inner}{as_name} = {deref};\n")
                     else:
-                        out.write(f"{inner}auto& {as_name} = __match_subject;\n")
+                        out.write(f"{inner}auto& {as_name} = {deref};\n")
                 self.ctx.indent_level += 2
                 for s in case.body:
                     self.gen_stmt(out, s)
@@ -2677,36 +2683,37 @@ class StatementGenerator:
                 self.ctx.indent_level -= 1
 
             elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
+                needs_deref = (
+                    isinstance(pattern, TpyCapturePattern) or as_name is not None
+                )
                 if isinstance(pattern, TpyCapturePattern) and guard is not None:
-                    cap_name = escape_cpp_name(pattern.name)
-                    if i > 0:
-                        out.write(f"{indent}}}\n")
-                    if pattern.name in self.ctx.declared_vars:
-                        out.write(f"{indent}{cap_name} = __match_subject;\n")
-                    else:
-                        out.write(f"{indent}auto& {cap_name} = __match_subject;\n")
-                    guard_code = self.expressions.gen_expr(guard)
+                    # Guarded capture: condition on has_value + guard
+                    cond = f"{has_val_cond} && {self.expressions.gen_expr(guard)}"
                     self.ctx.temps.flush(out, indent)
-                    out.write(f"{indent}if ({guard_code}) {{\n")
+                    out.write(f"{indent}{keyword} ({cond}) {{\n")
                 elif guard is not None:
+                    # Guarded wildcard (no capture)
                     guard_code = self.expressions.gen_expr(guard)
                     self.ctx.temps.flush(out, indent)
                     out.write(f"{indent}{keyword} ({guard_code}) {{\n")
+                elif needs_deref:
+                    # Unguarded capture: guard on has_value to avoid UB
+                    out.write(f"{indent}{keyword} ({has_val_cond}) {{\n")
                 elif i == 0:
                     out.write(f"{indent}{{\n")
                 else:
                     out.write(f"{indent}}} else {{\n")
-                if isinstance(pattern, TpyCapturePattern) and guard is None:
+                if isinstance(pattern, TpyCapturePattern):
                     cap_name = escape_cpp_name(pattern.name)
                     if pattern.name in self.ctx.declared_vars:
-                        out.write(f"{inner}{cap_name} = __match_subject;\n")
+                        out.write(f"{inner}{cap_name} = {deref};\n")
                     else:
-                        out.write(f"{inner}auto& {cap_name} = __match_subject;\n")
+                        out.write(f"{inner}auto& {cap_name} = {deref};\n")
                 if as_name is not None:
                     if as_raw and as_raw in self.ctx.declared_vars:
-                        out.write(f"{inner}{as_name} = __match_subject;\n")
+                        out.write(f"{inner}{as_name} = {deref};\n")
                     else:
-                        out.write(f"{inner}auto& {as_name} = __match_subject;\n")
+                        out.write(f"{inner}auto& {as_name} = {deref};\n")
                 self.ctx.indent_level += 1
                 for s in case.body:
                     self.gen_stmt(out, s)

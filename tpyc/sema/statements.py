@@ -1108,13 +1108,14 @@ class StatementAnalyzer:
             return
 
         elif isinstance(pattern, TpyCapturePattern):
-            bindings[pattern.name] = subject_type
+            # Capture matches the non-None value (case None: is a literal pattern)
+            bindings[pattern.name] = subject_type.inner
 
         elif isinstance(pattern, TpyAsPattern):
             self._analyze_pattern_optional(
                 pattern.pattern, subject_type, seen_values, bindings, stmt,
             )
-            bindings[pattern.name] = subject_type
+            bindings[pattern.name] = subject_type.inner
 
         elif isinstance(pattern, TpyLiteralPattern):
             if pattern.value is None:

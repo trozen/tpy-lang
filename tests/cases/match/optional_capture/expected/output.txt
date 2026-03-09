@@ -1,0 +1,4 @@
+none
+42
+empty
+got: hello
