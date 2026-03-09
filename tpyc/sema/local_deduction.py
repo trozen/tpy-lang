@@ -33,9 +33,10 @@ from ..typesys import (
     TupleType,
     STR,
     STRVIEW,
+    UnknownElementType,
 )
 from .diagnostics import SemanticError
-from .numeric_lattice import merge_literal_seed_target, widen_numeric_types
+from .numeric_lattice import merge_literal_seed_target, numeric_info, widen_numeric_types
 
 if TYPE_CHECKING:
     from .compatibility import TypeCompatibility
@@ -218,6 +219,52 @@ class LocalTypeDeduction:
                 if literal_id in self.ctx.list_literals:
                     self.ctx.list_literals[literal_id].is_mutated = True
 
+    def infer_empty_list_element_type(self, obj_expr: TpyExpr, value_type: TpyType) -> None:
+        """Infer element type for an empty list literal from usage (e.g. .append(v)).
+
+        If the list's element type is still UNKNOWN_ELEMENT, set it from value_type.
+        If already set, widen using the numeric lattice (same rules as variable
+        reassignment widening).
+        """
+        if not isinstance(obj_expr, TpyName):
+            return
+        var_name = obj_expr.name
+        literal_id = self.ctx.variable_to_literal.get(var_name)
+        if literal_id is None:
+            return
+        info = self.ctx.list_literals.get(literal_id)
+        if info is None:
+            return
+        self._update_list_element_type(info, value_type)
+        # Propagate up the entire alias chain (zs = ys = xs; zs.append(v))
+        visited: set[int] = {info.literal_id}
+        current = info
+        while current.source_literal_id is not None:
+            if current.source_literal_id in visited:
+                break
+            visited.add(current.source_literal_id)
+            source = self.ctx.list_literals.get(current.source_literal_id)
+            if source is None:
+                break
+            self._update_list_element_type(source, value_type)
+            current = source
+
+    def _update_list_element_type(self, info: ListLiteralInfo, value_type: TpyType) -> None:
+        """Update element type for a ListLiteralInfo, widening if needed."""
+        if isinstance(info.element_type, UnknownElementType):
+            info.element_type = value_type
+        else:
+            widened = widen_numeric_types(info.element_type, value_type)
+            if widened is not None:
+                info.element_type = widened
+            elif info.element_type != value_type:
+                if isinstance(info.element_type, IntLiteralType) and not isinstance(value_type, IntLiteralType):
+                    if numeric_info(value_type) is not None:
+                        info.element_type = value_type
+                elif isinstance(value_type, IntLiteralType) and not isinstance(info.element_type, IntLiteralType):
+                    pass  # keep existing concrete type
+                # else: incompatible types -- let normal type checking catch it
+
     def mark_list_param_context(self, arg_expr: TpyExpr, param_type: TpyType) -> None:
         """Track parameter context for list literal inference."""
         literal_id = None
@@ -309,6 +356,22 @@ class LocalTypeDeduction:
         self.ctx.variable_to_literal[var_name] = new_id
         return PendingListType(init_type.element_type, init_type.size, new_id)
 
+    def _resolve_alias_element_type(self, info: ListLiteralInfo) -> TpyType | None:
+        """Walk alias chain to find an inferred element type from a linked literal."""
+        visited: set[int] = {info.literal_id}
+        current = info
+        while current.source_literal_id is not None:
+            if current.source_literal_id in visited:
+                break
+            visited.add(current.source_literal_id)
+            source = self.ctx.list_literals.get(current.source_literal_id)
+            if source is None:
+                break
+            if not isinstance(source.element_type, UnknownElementType):
+                return source.element_type
+            current = source
+        return None
+
     def _resolve_pending_list_types(self) -> None:
         """Resolve all pending list types after function analysis.
 
@@ -329,8 +392,26 @@ class LocalTypeDeduction:
             info = self.ctx.list_literals[literal_id]
 
             # Resolve element type
-            # Priority: coerced type from param > resolved inner PendingListType > default
+            # Priority: coerced type from param > inferred from usage > resolved inner PendingListType > default
             elem_type = info.element_type
+
+            # Empty list with unknown element type -- check param/return context first
+            if isinstance(elem_type, UnknownElementType):
+                if info.coerced_element_type is not None:
+                    elem_type = info.coerced_element_type
+                else:
+                    # Check source literal for alias chains (ys = xs; ys.append(v))
+                    source_elem = self._resolve_alias_element_type(info)
+                    if source_elem is not None:
+                        elem_type = source_elem
+                    else:
+                        var_desc = f"list '{info.variable_name}'" if info.variable_name else "empty list literal"
+                        raise self.ctx.error(
+                            f"Cannot infer element type for {var_desc}; "
+                            f"add a type annotation (e.g., {info.variable_name or 'x'}: list[T] = []) "
+                            f"or use the list so the type can be inferred",
+                            info.expr,
+                        )
 
             # If element type is a PendingListType, look up its resolved type
             if isinstance(elem_type, PendingListType):
@@ -338,13 +419,13 @@ class LocalTypeDeduction:
                 if inner_info and inner_info.resolved_type:
                     elem_type = inner_info.resolved_type
 
+            # Coerced type from param/return context overrides inferred type
+            if info.coerced_element_type is not None and not isinstance(elem_type, UnknownElementType):
+                elem_type = info.coerced_element_type
+
             if isinstance(elem_type, IntLiteralType):
-                if info.coerced_element_type is not None:
-                    # Use element type from typed parameter (list[T] or Span[T])
-                    elem_type = info.coerced_element_type
-                else:
-                    # Use configured integer default when no stronger context exists.
-                    elem_type = self.ctx.default_int_for_literal(elem_type)
+                # Use configured integer default when no stronger context exists.
+                elem_type = self.ctx.default_int_for_literal(elem_type)
 
             # Determine resolved type
             is_repeat = isinstance(info.expr, TpyListRepeat)
@@ -374,6 +455,10 @@ class LocalTypeDeduction:
 
             # Update expr_types for the literal expression
             self.ctx.set_expr_type(info.expr, resolved)
+
+            # For list() constructor calls, also update call_type for codegen
+            if isinstance(info.expr, TpyCall):
+                info.expr.call_type = resolved
 
             # Update scope binding if this literal was assigned to a variable
             if info.variable_name and self.ctx.current_scope:

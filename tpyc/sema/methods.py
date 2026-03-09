@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, DictType, SetType,
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
-    PtrType, ReadonlyType, unwrap_readonly,
+    PtrType, ReadonlyType, unwrap_readonly, UnknownElementType,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt,
@@ -70,13 +70,17 @@ class MethodAnalyzer:
         """Analyze, ownership-check, and coerce method arguments in place.
 
         If arg_types is None, each arg is analyzed with a type hint from the
-        corresponding param. Otherwise pre-analyzed arg_types are used.
+        corresponding param (using pre-analyzed types from empty list inference
+        when available). Otherwise pre-analyzed arg_types are used.
         """
+        pre = self.ctx.pre_analyzed_method_args.pop(id(expr), None)
         for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, params)):
-            if arg_types is None:
-                at = self.expr.analyze_expr_with_hint(arg, ptype)
-            else:
+            if arg_types is not None:
                 at = arg_types[i]
+            elif pre is not None and i < len(pre):
+                at = pre[i]
+            else:
+                at = self.expr.analyze_expr_with_hint(arg, ptype)
             self.calls.check_own_param(arg, at, pname, ptype)
             expr.args[i] = self.compat.coerce_expr(arg, at, ptype, f"argument '{pname}'",
                                                     coercion_ctx=CoercionContext.ARG)
@@ -267,6 +271,35 @@ class MethodAnalyzer:
         if isinstance(obj_type, (PendingListType, ListType)):
             if expr.method in LIST_MUTATION_METHODS:
                 self.deduction.mark_list_mutated(expr.obj)
+
+            # Infer/widen element type for empty list literals from mutation method args.
+            # Pre-analyze the value arg to determine its type for inference,
+            # then store all pre-analyzed arg types so _check_and_coerce_args
+            # can reuse them (avoiding double-analysis).
+            if isinstance(obj_type, PendingListType) and expr.args:
+                pre_analyzed: list[TpyType] | None = None
+                if expr.method == "append" and len(expr.args) == 1:
+                    arg_type = self.expr.analyze_expr(expr.args[0])
+                    self.deduction.infer_empty_list_element_type(expr.obj, arg_type)
+                    pre_analyzed = [arg_type]
+                elif expr.method == "insert" and len(expr.args) == 2:
+                    idx_type = self.expr.analyze_expr(expr.args[0])
+                    val_type = self.expr.analyze_expr(expr.args[1])
+                    self.deduction.infer_empty_list_element_type(expr.obj, val_type)
+                    pre_analyzed = [idx_type, val_type]
+                # Update obj_type if element type changed (initial inference or widening)
+                if pre_analyzed is not None:
+                    info = self.ctx.list_literals.get(obj_type.literal_id)
+                    if info and not isinstance(info.element_type, UnknownElementType):
+                        if info.element_type != obj_type.element_type:
+                            obj_type = PendingListType(info.element_type, obj_type.size, obj_type.literal_id)
+                            self.ctx.set_expr_type(expr.obj, obj_type)
+                            if isinstance(expr.obj, TpyName):
+                                if self.ctx.current_scope:
+                                    self.ctx.current_scope.define(expr.obj.name, obj_type)
+                                if self.ctx.current_ns:
+                                    self.ctx.current_ns.bind_variable(expr.obj.name, obj_type)
+                    self.ctx.pre_analyzed_method_args[id(expr)] = pre_analyzed
 
         # Borrow conflict: structural mutation on a container with element-level borrows.
         # Resolves aliases so that alias.append() warns when items has element borrows.

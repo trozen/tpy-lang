@@ -1,0 +1,1 @@
+main.py:3: error: Cannot infer element type for list 'xs'; add a type annotation (e.g., xs: list[T] = []) or use the list so the type can be inferred

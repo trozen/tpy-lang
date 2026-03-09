@@ -447,6 +447,12 @@ def make_items() -> Own[list[int]]:
 def make_empty[T]() -> Own[list[T]]:
     return []              # → std::vector<T> (generic return type context)
 
+def build_from_usage() -> None:
+    xs = []                # element type unknown at declaration
+    xs.append(42)          # → list[Int32], inferred from append arg
+    xs.append(100)         # widened if needed (e.g., Int32 + Int64 → Int64)
+    print(xs)
+
 def reader(items: Span[int]) -> int:
     return items[0]
 
@@ -3508,9 +3514,14 @@ class Car(Vehicle, Printable, Measurable):
 x: list[int] = list()        # type from annotation
 x: list[int] = []            # same - empty literal infers from annotation
 
-# Bare list() with no context → error with helpful message
-x = list()                   # error: list() requires type annotation
-x = []                       # error: Empty array literal requires explicit type annotation
+# Empty list with inference from usage (inside functions)
+xs = []                      # element type inferred from subsequent usage
+xs.append(42)                # → list[Int32], inferred from append argument
+ys = list()                  # same with list() constructor
+ys.append(42)                # → list[Int32]
+
+# Bare list()/[] with no usage that reveals element type → error
+x = []                       # error if never appended to or passed to typed param
 
 # List from iterable - type inferred from element type
 x = list([1, 2, 3])          # → list[int], infers element type from literal

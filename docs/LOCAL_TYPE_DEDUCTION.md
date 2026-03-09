@@ -10,7 +10,9 @@
 | 2c | Cross-variable list reassignment (`a = [1,2,3]; b = [4,5]; a = b` -- both should become list). | Done |
 | 3 | Narrowing integration: deduced `Optional[T]` variables work with `if x is not None` narrowing. | Done |
 | 4 | String deduction test coverage: dedicated tests for StrView-vs-str resolution and string alias propagation. | Done |
-| 5 | Empty container inference: `xs = []; xs.append(v)` and `d = {}; d[k] = v` infer element types from subsequent usage. | Not started |
+| 5a | Empty list inference: `xs = []; xs.append(v)` and `xs = list(); xs.append(v)` infer element type from `.append()`/`.insert()` usage, with numeric widening and alias propagation. | Done |
+| 5b | Empty dict inference: `d = {}; d[k] = v` and `d = dict()` infer key/value types from subsequent usage. | Not started |
+| 5c | Empty set inference: `s = set(); s.add(v)` infers element type from subsequent usage. | Not started |
 | 6 | List element-type widening: `.append(Int64)` on `[1,2]` widens element type from Int32 to Int64. | Not started |
 | 7 | Deferred generic instance inference: `x = GenericType()` with unresolved type params, resolved from subsequent method calls via constraint unification. Reuses `match_type_with_inference` from bidirectional inference. See `BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md`. | Not started |
 | 8 | State ownership: move deduction-related fields from SemanticContext into sub-structures owned by LocalTypeDeduction. | Not started |
@@ -20,6 +22,7 @@
 | Extension | Description |
 |-----------|-------------|
 | Per-assignment-segment typing | SSA-style reasoning: each assignment to a variable creates a new "version" with its own type. Enables narrower types per segment (e.g. StrView before reassignment, str after), avoiding unnecessary allocations. Requires liveness/escape analysis. See details at end of document. |
+| Empty list to Array promotion | `xs = []; xs.append(1); xs.append(2)` could resolve to `Array[Int32, 2]` if the final size is statically known (no dynamic mutations like loop appends or pop/remove). Would need to compute max required size from constant append/insert/extend counts. Likely low priority -- in hot paths users would declare `Array` explicitly with a known max size. |
 
 ## Motivation
 

@@ -14,7 +14,7 @@ from ..typesys import (
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
     FixedIntType, StringType, StrViewType, make_union,
-    ResolvedBinop, FunctionInfo, ParamInfo,
+    ResolvedBinop, FunctionInfo, ParamInfo, UnknownElementType, UNKNOWN_ELEMENT,
     INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, is_protocol_type, container_to_str_template,
 )
 from ..parse import (
@@ -22,7 +22,7 @@ from ..parse import (
     TpyFStringValue, TpyFString, FSTRING_CONV_REPR, FSTRING_CONV_STR,
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
-    TpyCall, TpyMethodCall, TpyFieldAccess,
+    TpyCall, TpyMethodCall, TpyFieldAccess, TpyFunction,
     TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression, TpyComprehensionGenerator,
     TpySlice, TpySubscript, TpyCoerce,
@@ -1071,7 +1071,24 @@ class ExpressionAnalyzer:
                 annotation is list[Int32 | None].
         """
         if not expr.elements:
-            raise self.ctx.error("Empty array literal requires explicit type annotation", expr)
+            if not isinstance(self.ctx.current_function, TpyFunction):
+                raise self.ctx.error("Empty array literal requires explicit type annotation", expr)
+            # Empty list with no annotation -- create PendingListType with unknown
+            # element type. The element type will be inferred from subsequent usage
+            # (e.g. .append(v), xs[i] = v, param context, return context).
+
+            literal_id = self.ctx.literal_counter
+            self.ctx.literal_counter += 1
+            info = ListLiteralInfo(
+                literal_id=literal_id,
+                expr=expr,
+                element_type=UNKNOWN_ELEMENT,
+                size=0,
+                is_mutated=True,  # empty list is always list, never Array
+            )
+            self.ctx.list_literals[literal_id] = info
+            self.ctx.pending_resolutions.append(literal_id)
+            return PendingListType(UNKNOWN_ELEMENT, 0, literal_id)
 
         # Analyze all elements first
         elem_types = [self.analyze_expr(e) for e in expr.elements]

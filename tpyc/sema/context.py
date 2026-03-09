@@ -192,6 +192,7 @@ class SemanticContext:
     list_literals: dict[int, ListLiteralInfo] = field(default_factory=dict)
     variable_to_literal: dict[str, int] = field(default_factory=dict)
     pending_resolutions: list[int] = field(default_factory=list)
+    pre_analyzed_method_args: dict[int, list[TpyType]] = field(default_factory=dict)
     var_decl_by_name: dict[str, TpyVarDecl] = field(default_factory=dict)
 
     # --- Resolved types for variable declarations (for test annotations) ---
@@ -432,6 +433,7 @@ class SemanticContext:
         """Reset per-function tracking state between function analyses."""
         self.variable_to_literal.clear()
         self.pending_resolutions.clear()
+        self.pre_analyzed_method_args.clear()
         self.variable_to_str_var.clear()
         self.str_source_borrows.clear()
         self.pending_str_resolutions.clear()

@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingStrType,
     IntLiteralType, FloatType, Float32Type, BoolType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
-    PtrType, is_readonly_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType, ReadonlyType,
+    PtrType, is_readonly_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType, ReadonlyType, UNKNOWN_ELEMENT,
     UnionType, EnumType, VOID, BIGINT, BOOL, STR, is_protocol_type, unwrap_readonly, unwrap_optional_own,
     is_any_str_type, container_to_str_template,
     is_protocol_union, protocol_union_protocols,
@@ -589,6 +589,25 @@ class CallAnalyzer:
                     f"use {expr.func}[{params}]() or provide a type annotation",
                     expr
                 )
+            # list() with no args and no context hint -- create empty list with
+            # unknown element type (same as []) if in function scope.
+            if (expr.func == "list"
+                    and isinstance(self.ctx.current_function, TpyFunction)
+                    and type_def.type_factory):
+                literal_id = self.ctx.literal_counter
+                self.ctx.literal_counter += 1
+                info = ListLiteralInfo(
+                    literal_id=literal_id,
+                    expr=expr,
+                    element_type=UNKNOWN_ELEMENT,
+                    size=0,
+                    is_mutated=True,
+                )
+                self.ctx.list_literals[literal_id] = info
+                self.ctx.pending_resolutions.append(literal_id)
+                result_type = PendingListType(UNKNOWN_ELEMENT, 0, literal_id)
+                expr.call_type = result_type
+                return result_type
             raise self.ctx.error(
                 f"Cannot infer element type for {expr.func}(); "
                 f"use {expr.func}[{params}](), provide a type annotation, or pass an iterable",

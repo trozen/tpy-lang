@@ -1810,6 +1810,25 @@ class DictItemsViewType(NamedType):
 
 
 @dataclass(frozen=True)
+class UnknownElementType(TpyType):
+    """Sentinel for empty container literals whose element type is not yet known.
+
+    Used as the element_type for PendingListType created from empty list
+    literals ([]). The actual element type is inferred from subsequent usage
+    (e.g. .append(v), xs[i] = v) and stored in ListLiteralInfo.element_type.
+    """
+
+    def to_cpp(self) -> str:
+        raise RuntimeError("UnknownElementType should be resolved before codegen")
+
+    def __str__(self) -> str:
+        return "???"
+
+
+UNKNOWN_ELEMENT = UnknownElementType()
+
+
+@dataclass(frozen=True)
 class PendingListType(TpyType):
     """Unresolved list literal type - becomes Array or list based on usage.
 
@@ -1887,7 +1906,7 @@ class GenExprType(TpyType):
 class ListLiteralInfo:
     """Tracks usage information for a list literal to determine its resolved type."""
     literal_id: int
-    expr: 'TpyArrayLiteral | TpyListRepeat | TpyListComprehension'  # Forward reference to avoid circular import
+    expr: 'TpyArrayLiteral | TpyListRepeat | TpyListComprehension | TpyCall'  # Forward reference to avoid circular import
     element_type: TpyType
     size: int  # -1 for unknown (variable count repeat)
     variable_name: Optional[str] = None
