@@ -4,7 +4,7 @@
 # TODO: construct with fixed-extent Span[T, N] (deduce both T and N from the argument)
 from __future__ import annotations
 from typing import MutableSequence, Iterable
-from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, Span, ReadOnlySpanLike, copy, Default, Comparable, Equatable, make_default, span
+from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, Span, ReadOnlySpanLike, SpanIter, copy, Default, Comparable, Equatable, make_default, span
 from tpy.mem import UninitArrayStorage
 
 
@@ -142,6 +142,9 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
 
     def __span__(self) -> Span[T]:
         return self._storage.ptr().span(self._size)
+
+    def __iter__(self) -> SpanIter[T]:
+        return SpanIter(self.__span__())
 
     def extend(self, items: ReadOnlySpanLike[T] | Iterable[T]) -> None:
         if isinstance(items, ReadOnlySpanLike):

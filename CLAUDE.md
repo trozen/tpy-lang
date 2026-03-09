@@ -331,6 +331,7 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `dynamic.hpp` | `Adapter<Base, T>` and `RefAdapter<Base, T>` for `@dynamic` protocols |
 | `iterable_ops.hpp` | Non-range overloads for container operations (`list_extend`, `str_join`, etc.) |
 | `iter_adapt.hpp` | Wraps `__next_opt__()` types into C++ input iterators (begin/end) |
+| `span_iter.hpp` | `tpy::SpanIter<T>` lightweight iterator over contiguous span |
 
 Generated code requires C++23 (for `std::ranges` concepts).
 
@@ -393,6 +394,7 @@ The compiler is a proof-of-concept. Not yet implemented:
 | `Array[T, N]` | `std::array<T, N>` |
 | `Span[T]` | `std::span<T>` |
 | `ReadOnlySpan[T]` | `std::span<const T>` |
+| `SpanIter[T]` | `tpy::SpanIter<T>` |
 | `Ptr[T]` | `T*` |
 | `ReadOnlyPtr[T]` | `const T*` |
 | `Own[T]` | `T` (by value, for returns/params) |

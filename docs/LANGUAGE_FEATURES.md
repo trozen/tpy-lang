@@ -351,6 +351,7 @@ log(f"x={x}")
 - **Working**: `Array[T, N]` - fixed-size array with explicit type annotation
 - **Working**: `Span[T]` - non-owning mutable view into contiguous memory → `std::span<T>`
 - **Working**: `ReadOnlySpan[T]` - non-owning read-only view into contiguous memory → `std::span<const T>`
+- **Working**: `SpanIter[T]` - lightweight iterator over a contiguous span → `tpy::SpanIter<T>`. Constructed from `Span[T]` or `ReadOnlySpan[T]`. Implements `NativeIterable[T]`, `OptIterator[T]`, `Iterable[T]`, `Iterator[T]`. Used as the return type of `__iter__()` on span-backed user types (e.g. `ArrayList`).
 - **Working**: `tuple[T1, T2, ...]` - fixed-length typed tuple -> `std::tuple<T1, T2, ...>`
 - **Working**: `dict[K, V]` - ordered hash map → `tpy::ordered_map<K, V>` (insertion-order preserving)
   - Literals `{k: v, ...}`, subscript `d[k]`/`d[k] = v`, `del d[k]`, `len(d)`, `k in d`, `for k in d`
@@ -2335,14 +2336,16 @@ returning `std::span<const T>` (thin wrapper). This enables correct iteration on
 and `@readonly` references. When `__span__` returns `ReadOnlySpan[T]`, only a single const
 overload is generated.
 
-**Priority**: `__span__` takes precedence over `__iter__` when both are defined. The compiler
-emits a warning if both are present on the same type.
+**Priority**: `__span__` currently takes precedence over `__iter__` when both are defined for
+codegen purposes (direct range-based for).
 
 **Implicit coercion**: A type with `__span__()` coerces to `Span[T]` or `ReadOnlySpan[T]`
 when passed as a function argument. `ReadOnlySpan[T]` return cannot coerce to mutable `Span[T]`.
 
-**CPython compatibility**: `__span__` is not meaningful in CPython. Keep `__iter__` in CPython
-stubs (`lib/cpy/`) for tests that need to run under both runtimes.
+**CPython compatibility**: `__span__` is not meaningful in CPython. Span-backed types should
+define `__iter__(self) -> SpanIter[T]` (returning `SpanIter(self.__span__())`) to provide
+CPython-compatible iteration. `SpanIter[T]` is a builtin type in the `tpy` module that wraps
+a span and implements `Iterable[T]`/`Iterator[T]`/`OptIterator[T]`/`NativeIterable[T]`.
 
 #### Working: `ReadOnlySpanLike[T]` Protocol
 

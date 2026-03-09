@@ -402,6 +402,29 @@ class ReadOnlySpan(metaclass=ReadOnlySpanMeta):
         return new_span
 
 
+class SpanIter:
+    """Iterator over a contiguous span."""
+
+    def __init__(self, span):
+        if isinstance(span, (Span, ReadOnlySpan)):
+            self._data = span._data
+        elif isinstance(span, (list, tuple)):
+            self._data = span
+        else:
+            self._data = list(span)
+        self._index = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._index >= len(self._data):
+            raise StopIteration
+        val = self._data[self._index]
+        self._index += 1
+        return val
+
+
 # ---------------------------------------------------------------------------
 # Decorators and modifiers
 # ---------------------------------------------------------------------------

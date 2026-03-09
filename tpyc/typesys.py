@@ -1523,6 +1523,45 @@ class SpanType(NamedType):
         return SpanType(self.element_type, is_readonly=False)
 
 
+class SpanIterType(NamedType):
+    """Iterator over a contiguous span: SpanIter[T] -> tpy::SpanIter<T>"""
+
+    def __init__(self, element_type: TpyType):
+        NamedType.__init__(self, name="SpanIter", type_args=(element_type,),
+                           _module_qname="tpy.SpanIter")
+
+    @property
+    def element_type(self) -> TpyType:
+        return self.type_args[0]
+
+    def to_cpp(self) -> str:
+        return f"tpy::SpanIter<{self.element_type.to_cpp()}>"
+
+    def __str__(self) -> str:
+        return f"SpanIter[{self.element_type}]"
+
+    def qualified_name(self) -> Optional[str]:
+        return "tpy.SpanIter"
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def is_send(self) -> bool:
+        return False
+
+    def is_sync(self) -> bool:
+        return False
+
+    def get_element_type(self) -> Optional[TpyType]:
+        return self.element_type
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.element_type,)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return SpanIterType(types[0])
+
+
 def is_readonly_span(typ: 'TpyType') -> bool:
     """Check if a type is a read-only span (ReadOnlySpan[T])."""
     return isinstance(typ, SpanType) and typ.is_readonly

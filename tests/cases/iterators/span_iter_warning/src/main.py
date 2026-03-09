@@ -1,5 +1,5 @@
-# Test warning when both __span__ and __iter__ are defined.
-# __span__ takes precedence for iteration.
+# Test that types with both __span__ and __iter__ compile without warning.
+# __span__ currently takes precedence for iteration in codegen.
 from tpy import Int32, Own, Span
 
 class MyIter:
@@ -13,7 +13,7 @@ class MyIter:
             return result
         raise StopIteration
 
-class Dual:  # tpyc: warning(/both __span__ and __iter__/)
+class Dual:  # tpyc: ok
     _data: list[Int32]
     def __init__(self) -> None:
         self._data = [1, 2, 3]

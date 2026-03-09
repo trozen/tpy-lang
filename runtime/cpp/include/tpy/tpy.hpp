@@ -52,6 +52,9 @@
 // Iterator adapter: __next_opt__() -> C++ begin/end (depends on <optional>)
 #include "iter_adapt.hpp"
 
+// SpanIter: lightweight iterator over contiguous span (depends on <span>, <optional>)
+#include "span_iter.hpp"
+
 // Non-range overloads for container ops (depends on iter_adapt, container_ops)
 #include "iterable_ops.hpp"
 

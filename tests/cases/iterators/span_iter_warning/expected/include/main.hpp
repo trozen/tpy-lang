@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const MyIter& obj) {
     return os;
 }
 
-// 16: class Dual:  # tpyc: warning(/both __span__ and __iter__/)
+// 16: class Dual:  # tpyc: ok
 struct Dual {
     // 17:     _data: list[Int32]
     std::vector<int32_t> _data;

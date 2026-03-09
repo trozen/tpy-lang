@@ -9,7 +9,7 @@ from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import (
     INT32, UINT64, BIGINT, FLOAT, FLOAT32, STR, STRING, STRVIEW, CHAR, VOID, BOOL, SELF,
     ALL_FIXED_INTS, FixedIntType,
-    ArrayType, SpanType, ListType, TypeParamRef, PtrType, NamedType, OwnType, OptionalType,
+    ArrayType, SpanType, SpanIterType, ListType, TypeParamRef, PtrType, NamedType, OwnType, OptionalType,
 )
 
 # Shorthand for type parameter T
@@ -336,6 +336,32 @@ def init_module() -> BuiltinModule:
         "__span__": [MethodDef(
             params=[], returns=SpanType(T, is_readonly=True),
             cpp="tpy::as_span({self})", is_readonly=True, is_pure=True,
+        )],
+    })
+
+    # SpanIter[T]: Lightweight iterator over a contiguous span
+    module.type("SpanIter", cpp_type="tpy::SpanIter<{T}>", type_params=["T"],
+                param_kinds=[TypeParamKind.TYPE],
+                type_factory=lambda t: SpanIterType(t),
+                extends=["NativeIterable[T]", "OptIterator[T]", "Iterable[T]", "Iterator[T]"],
+                is_nocopy=True,
+                constructors=[
+                    MethodDef(params=[ParamDef("source", SpanType(T))],
+                              returns=VOID,
+                              cpp="tpy::SpanIter<{T}>(std::span<const {T}>({0}))"),
+                    MethodDef(params=[ParamDef("source", SpanType(T, is_readonly=True))],
+                              returns=VOID,
+                              cpp="tpy::SpanIter<{T}>({0})"),
+                ],
+                methods={
+        "__next_opt__": [MethodDef(
+            params=[], returns=OptionalType(T),
+            cpp="{self}.__next_opt__()",
+        )],
+        "__iter__": [MethodDef(
+            params=[], returns=SELF,
+            cpp="{self}.__iter__()",
+            is_readonly=True,
         )],
     })
 

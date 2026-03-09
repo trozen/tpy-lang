@@ -627,18 +627,6 @@ class TypeRegistrar:
         self.ctx.registry.register_record(info)
         self.ctx.global_ns.bind_record(info)
 
-        # Warn when both __span__ and __iter__ are defined
-        if "__span__" in methods and "__iter__" in methods:
-            # Synthesized __iter__ (from __next__) is in `methods` dict but not
-            # in record.methods. Only warn for user-written __iter__.
-            has_user_iter = any(m.name == "__iter__" for m in record.methods)
-            if has_user_iter:
-                self.ctx.warning_from_loc(
-                    "Type defines both __span__ and __iter__; "
-                    "__span__ takes precedence for iteration",
-                    record.loc,
-                )
-
     def validate_record_inheritance(self, record: TpyRecord) -> None:
         """Validate inheritance relationships for a record.
 

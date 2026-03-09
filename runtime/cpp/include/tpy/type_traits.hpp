@@ -44,6 +44,12 @@ template<> struct is_value_type<std::string> : std::true_type {};
 template<> struct is_value_type<std::string_view> : std::true_type {};
 template<> struct is_value_type<BigInt> : std::true_type {};
 
+// Forward declaration for SpanIter specialization
+template<typename T> struct SpanIter;
+
+// SpanIter is a lightweight view (span + index), passed by value but borrows
+template<typename T> struct is_value_type<SpanIter<T>> : std::true_type {};
+
 // C++ concept for the ValueType marker protocol
 template<typename T>
 concept ValueType = is_value_type<T>::value;
@@ -65,6 +71,9 @@ template<typename T> struct is_send<const T*> : std::false_type {};
 
 // string_view is not Send (borrows from another string)
 template<> struct is_send<std::string_view> : std::false_type {};
+
+// SpanIter borrows from a span -- not safe to transfer or share
+template<typename T> struct is_send<SpanIter<T>> : std::false_type {};
 
 // Containers: Send if elements are Send
 template<typename T, typename A> struct is_send<std::vector<T, A>> : is_send<T> {};
@@ -105,6 +114,9 @@ template<typename T, typename A> struct is_sync<std::vector<T, A>> : std::false_
 template<typename K, typename V> struct is_sync<ordered_map<K, V>> : std::false_type {};
 template<typename T> struct is_sync<ordered_set<T>> : std::false_type {};
 template<typename T, std::size_t N> struct is_sync<std::array<T, N>> : is_sync<T> {};
+
+// SpanIter has mutable index_ state, not safe to share
+template<typename T> struct is_sync<SpanIter<T>> : std::false_type {};
 
 template<typename T>
 concept Sync = is_sync<T>::value;
