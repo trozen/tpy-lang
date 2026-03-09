@@ -308,6 +308,30 @@ class TypeOperations:
             if new_elem != typ.element_type or new_size != typ.size:
                 return ArrayType(new_elem, new_size)
             return typ
+        # NamedType (user records and module-defined generics like
+        # UninitArrayStorage[T, N]) can have mixed TpyType/int type_args.
+        # map_inner_types operates on TpyType -> TpyType, so it can't
+        # substitute int-valued TypeParamRefs.  Same reason ArrayType above
+        # needs direct handling.  Exact type check avoids catching NamedType
+        # subclasses (ListType, DictType, etc.) which don't have int args.
+        if type(typ) is NamedType and typ.type_args:
+            new_args: list[TpyType | int] = []
+            changed = False
+            for arg in typ.type_args:
+                if isinstance(arg, TypeParamRef) and arg.name in subst:
+                    new_args.append(subst[arg.name])
+                    changed = True
+                elif isinstance(arg, TpyType):
+                    new_arg = self.substitute_type_params(arg, subst)
+                    new_args.append(new_arg)
+                    if new_arg is not arg:
+                        changed = True
+                else:
+                    new_args.append(arg)  # already-concrete int value
+            if changed:
+                return NamedType(typ.name, tuple(new_args), typ.is_protocol,
+                                 typ._module_qname, typ.is_dynamic_protocol)
+            return typ
         # Use map_inner_types for types that have inner types
         return typ.map_inner_types(lambda t: self.substitute_type_params(t, subst))
 
