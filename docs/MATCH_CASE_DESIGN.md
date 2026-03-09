@@ -8,7 +8,7 @@
 | 2 | Positional class patterns (`Point(x, y)`) via `__match_args__` | Done |
 | 3 | Literal, singleton (`True`/`False`), and value (`Color.RED`) patterns; enum and primitive subjects | Done |
 | 4 | Concrete record subjects (field-value matching), Optional subjects | Done |
-| 4b | Optional codegen: `if/else+switch` for Optional enum/primitive, hoisted null check for Optional record | Not started |
+| 4b | Optional codegen: `if/else+switch` for Optional enum/primitive, hoisted null check for Optional record | Done |
 | 5 | Or-patterns (`Dog() \| Cat():`), guard clauses (`if cond`) | Done |
 | 6 | Exhaustiveness warnings (union, enum, Optional) | Not started (duplicate case + unreachable-after-wildcard detection done in Phase 1) |
 | 7 | `switch` codegen for unions (`switch (s.index())`) and enums (`switch (e)`); if/elif fallback when guards present | Done |

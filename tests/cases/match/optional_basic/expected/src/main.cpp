@@ -12,14 +12,22 @@ std::string classify(std::optional<int32_t> x) {
     if (!__match_subject.has_value()) {
         // 8:             return "nothing"
         return "nothing";
-    // 9:         case 0:
-    } else if (__match_subject.has_value() && (*__match_subject) == 0) {
-        // 10:             return "zero"
-        return "zero";
-    // 11:         case _:
     } else {
-        // 12:             return "something"
-        return "something";
+        auto& __match_inner = (*__match_subject);
+        switch (__match_inner) {
+        // 9:         case 0:
+        case 0: {
+            // 10:             return "zero"
+            return "zero";
+            break;
+        }
+        // 11:         case _:
+        default: {
+            // 12:             return "something"
+            return "something";
+            break;
+        }
+        }
     }
     // 13:     return ""
     return "";
@@ -33,14 +41,17 @@ std::string describe(std::optional<std::string_view> s) {
     if (!__match_subject.has_value()) {
         // 18:             return "none"
         return "none";
-    // 19:         case "hello":
-    } else if (__match_subject.has_value() && (*__match_subject) == "hello") {
-        // 20:             return "greeting"
-        return "greeting";
-    // 21:         case _:
     } else {
-        // 22:             return "other: " + s
-        return (tpy::str_concat("other: ", (*s)));
+        auto& __match_inner = (*__match_subject);
+        // 19:         case "hello":
+        if (__match_inner == "hello") {
+            // 20:             return "greeting"
+            return "greeting";
+        // 21:         case _:
+        } else {
+            // 22:             return "other: " + s
+            return (tpy::str_concat("other: ", (*s)));
+        }
     }
     // 23:     return ""
     return "";

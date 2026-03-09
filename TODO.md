@@ -10,6 +10,8 @@
 - consider generating `__len__()` as `size()` member function for STL compatibility (`__len__`, `__getitem__`, `__setitem__` are already free functions in `dunder.hpp`)
 
 ## Bugs
+- match/case capture on Optional subject gets `Optional[T]` type: `case v:` after `case None:` should narrow `v` to inner type `T`, but sema assigns `Optional[T]`. Prevents `str(v)` etc. on the captured value. Needs sema to assign `subject_type.inner` for capture bindings in non-None arms.
+- match/case guarded `case None if guard:` + `case _:` fallthrough: when subject is None and guard fails, Python falls through to `case _:` but compiled code exits the null branch without reaching the wildcard arm. Needs goto-based fallthrough similar to guarded union/record strategy.
 - Int type param not substituted in user method return types: `copy() -> ArrayList[T, N]` generates `ArrayList<int32_t, N>` instead of `ArrayList<int32_t, 8>`. The int type param `N` is not resolved to its concrete value in codegen. Workaround: use `tpy.copy()` builtin instead.
 - `isinstance(x, WrongProto)` on `Optional[Protocol]`: sema doesn't validate that the isinstance target protocol matches the declared protocol. E.g. `x: Sized | None` allows `isinstance(x, Printable)` without error, and codegen emits `!std::same_as<nullptr_t>` (null guard) instead of a concept check. Should either error or generate correct concept constraint.
 - NativeIterable for-loop `auto&` binding: range-based for with `auto&` fails for iterators that yield rvalues (e.g. `dict.items()` yields tuple copies). Needs `const auto&` or `auto&&` binding for non-value element types when the iterator yields temporaries.

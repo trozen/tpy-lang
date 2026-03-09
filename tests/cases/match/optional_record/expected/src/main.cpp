@@ -50,16 +50,19 @@ std::string check_point(Point* p) {
     if (__match_subject == nullptr) {
         // 19:             return "none"
         return "none";
-    // 20:         case Point(x=0, y=0):
-    } else if (__match_subject != nullptr && (*__match_subject).x == 0 && (*__match_subject).y == 0) {
-        // 21:             return "origin"
-        return "origin";
-    // 22:         case Point(x=x, y=y):
-    } else if (__match_subject != nullptr) {
-        auto& x = (*__match_subject).x;
-        auto& y = (*__match_subject).y;
-        // 23:             return str(x) + "," + str(y)
-        return (tpy::str_concat((tpy::str_concat(tpy::fixed_to_str<int32_t>(x), ",")), tpy::fixed_to_str<int32_t>(y)));
+    } else {
+        auto& __match_inner = (*__match_subject);
+        // 20:         case Point(x=0, y=0):
+        if (__match_inner.x == 0 && __match_inner.y == 0) {
+            // 21:             return "origin"
+            return "origin";
+        // 22:         case Point(x=x, y=y):
+        } else {
+            auto& x = __match_inner.x;
+            auto& y = __match_inner.y;
+            // 23:             return str(x) + "," + str(y)
+            return (tpy::str_concat((tpy::str_concat(tpy::fixed_to_str<int32_t>(x), ",")), tpy::fixed_to_str<int32_t>(y)));
+        }
     }
     // 24:     return ""
     return "";
@@ -73,14 +76,22 @@ std::string check_color(std::optional<Color> c) {
     if (!__match_subject.has_value()) {
         // 29:             return "none"
         return "none";
-    // 30:         case Color.Red:
-    } else if (__match_subject.has_value() && (*__match_subject) == Color::Red) {
-        // 31:             return "red"
-        return "red";
-    // 32:         case _:
     } else {
-        // 33:             return "other"
-        return "other";
+        auto& __match_inner = (*__match_subject);
+        switch (__match_inner) {
+        // 30:         case Color.Red:
+        case Color::Red: {
+            // 31:             return "red"
+            return "red";
+            break;
+        }
+        // 32:         case _:
+        default: {
+            // 33:             return "other"
+            return "other";
+            break;
+        }
+        }
     }
     // 34:     return ""
     return "";
