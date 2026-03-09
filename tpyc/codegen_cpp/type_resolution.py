@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
-from ..typesys import PendingListType, PendingDictType, PendingSetType, PendingStrType, TpyType
+from ..typesys import PendingStrType, TpyType
+from ..sema.context import PENDING_CONTAINER_TYPES
 from ..parse import TpyVarDecl
+
+# Types that indicate an unresolved intermediate sema state.
+_PENDING_TYPES = (*PENDING_CONTAINER_TYPES, PendingStrType)
 
 
 def resolve_stmt_binding_type(
@@ -14,14 +18,14 @@ def resolve_stmt_binding_type(
     """Resolve variable type via var_types -> global binding.
 
     Keeps lookup logic consistent across codegen paths and skips unresolved
-    PendingListType entries from intermediate sema state.
+    pending types from intermediate sema state.
     """
     var_type = stmt.type
     if var_type is not None or stmt.init is None:
         return var_type
 
     var_type = analyzer.var_types.get(id(stmt))
-    if var_type is None or isinstance(var_type, (PendingListType, PendingDictType, PendingSetType, PendingStrType)):
+    if var_type is None or isinstance(var_type, _PENDING_TYPES):
         if include_global_binding:
             binding = analyzer.global_ns.lookup_local(stmt.name)
             if binding and binding.type is not None:
@@ -41,6 +45,6 @@ def resolve_stmt_type_cascade(
         analyzer,
         include_global_binding=include_global_binding,
     )
-    if var_type is None or isinstance(var_type, (PendingListType, PendingDictType, PendingSetType, PendingStrType)):
+    if var_type is None or isinstance(var_type, _PENDING_TYPES):
         var_type = types.get_resolved_type(stmt.init)
     return var_type

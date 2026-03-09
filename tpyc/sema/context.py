@@ -11,11 +11,16 @@ from enum import Enum
 from ..typesys import (
     TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, StrVarInfo, TypeParamKind, IntLiteralType,
     FixedIntType, INT32, BIGINT, NamedType, ReadonlyType, OwnType, OptionalType,
+    PendingListType, PendingDictType, PendingSetType,
     unwrap_readonly,
 )
 from ..namespace import Namespace
 from ..parse import TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall
 from .diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
+
+# Tuple of all pending container types -- use in isinstance checks so adding
+# a new container type requires updating only this one constant.
+PENDING_CONTAINER_TYPES = (PendingListType, PendingDictType, PendingSetType)
 
 
 class BorrowKind(Enum):
@@ -511,3 +516,40 @@ class SemanticContext:
             info = self.str_vars.get(str_var_id)
             if info is not None:
                 info.source_mutated = True
+
+    # ------------------------------------------------------------------
+    # Unified container literal lookup
+    # ------------------------------------------------------------------
+
+    def get_container_info(self, literal_id: int) -> ListLiteralInfo | DictLiteralInfo | SetLiteralInfo | None:
+        """Look up container info across all container types by literal_id."""
+        return (self.list_literals.get(literal_id)
+                or self.dict_literals.get(literal_id)
+                or self.set_literals.get(literal_id))
+
+    def track_container_variable(
+        self,
+        var_name: str,
+        pending_type: 'PendingListType | PendingDictType | PendingSetType',
+        decl_line: int | None,
+    ) -> None:
+        """Register var-name -> literal_id mapping for any pending container type.
+
+        Also sets variable_name and decl_line on the corresponding LiteralInfo.
+        Single code path for list/dict/set -- adding a new container type means
+        adding one branch here instead of duplicating blocks in statements.py.
+        """
+        literal_id = pending_type.literal_id
+        if isinstance(pending_type, PendingListType):
+            self.variable_to_literal[var_name] = literal_id
+            info = self.list_literals[literal_id]
+        elif isinstance(pending_type, PendingDictType):
+            self.variable_to_dict_literal[var_name] = literal_id
+            info = self.dict_literals[literal_id]
+        elif isinstance(pending_type, PendingSetType):
+            self.variable_to_set_literal[var_name] = literal_id
+            info = self.set_literals[literal_id]
+        else:
+            return
+        info.variable_name = var_name
+        info.decl_line = decl_line

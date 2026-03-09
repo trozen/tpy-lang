@@ -13,7 +13,7 @@
 | 5a | Empty list inference: `xs = []; xs.append(v)` and `xs = list(); xs.append(v)` infer element type from `.append()`/`.insert()` usage, with numeric widening and alias propagation. | Done |
 | 5b | Empty dict inference: `d = {}; d[k] = v` and `d = dict()` infer key/value types from subsequent subscript assignment. | Done |
 | 5c | Empty set inference: `s = set(); s.add(v)` infers element type from subsequent `.add()` calls. | Done |
-| 5d | Unify empty container inference: extract shared PendingContainerType infrastructure for list/dict/set (alias tracking, param context, compatibility, resolution). Currently each container duplicates the inference pipeline; unifying enables alias propagation for dict/set and reduces maintenance surface. | Not started |
+| 5d | Unify empty container inference: extract shared helpers for list/dict/set (PENDING_CONTAINER_TYPES constant, unified container lookup, shared resolution epilogue, merged param context tracking). Single code paths prevent forgetting one container type. | Done |
 | 6 | List element-type widening: `.append(Int64)` on `[1,2]` widens element type from Int32 to Int64. | Not started |
 | 7 | Deferred generic instance inference: `x = GenericType()` with unresolved type params, resolved from subsequent method calls via constraint unification. Reuses `match_type_with_inference` from bidirectional inference. See `BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md`. | Not started |
 | 8 | State ownership: move deduction-related fields from SemanticContext into sub-structures owned by LocalTypeDeduction. | Not started |

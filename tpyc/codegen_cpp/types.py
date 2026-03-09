@@ -16,6 +16,7 @@ from ..typesys import (
     _union_alias_names
 )
 from ..parse import TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyCoerce, TpyCall, TpyMethodCall, TpyIntLiteral
+from ..sema.context import PENDING_CONTAINER_TYPES
 from .context import qualified_cpp_name
 
 if TYPE_CHECKING:
@@ -126,32 +127,9 @@ class TypeResolver:
         typ = self.ctx.analyzer.get_expr_type(expr)
         # Strip ReadonlyType -- C++ doesn't use it
         typ = unwrap_readonly(typ) if typ else typ
-        if isinstance(typ, PendingListType):
-            # Look up the resolved type from the literal info
-            literal_id = typ.literal_id
-            if literal_id in self.ctx.analyzer.list_literals:
-                info = self.ctx.analyzer.list_literals[literal_id]
-                if info.resolved_type:
-                    return info.resolved_type
-            # Fallback: treat as ListType with resolved element type
-            elem_type = typ.element_type
-            if isinstance(elem_type, IntLiteralType):
-                elem_type = self.ctx.analyzer.ctx.default_int_for_literal(elem_type)
-            return ListType(elem_type)
-        if isinstance(typ, PendingDictType):
-            literal_id = typ.literal_id
-            if literal_id in self.ctx.analyzer.ctx.dict_literals:
-                info = self.ctx.analyzer.ctx.dict_literals[literal_id]
-                if info.resolved_type:
-                    return info.resolved_type
-            return DictType(typ.key_type, typ.value_type)
-        if isinstance(typ, PendingSetType):
-            literal_id = typ.literal_id
-            if literal_id in self.ctx.analyzer.ctx.set_literals:
-                info = self.ctx.analyzer.ctx.set_literals[literal_id]
-                if info.resolved_type:
-                    return info.resolved_type
-            return SetType(typ.element_type)
+        resolved = self._resolve_pending_container(typ)
+        if resolved is not None:
+            return resolved
         if isinstance(typ, PendingStrType):
             return self._resolve_pending_str(typ)
         # Resolve IntLiteralType based on context (FixedInt if target, else
@@ -194,34 +172,37 @@ class TypeResolver:
         sv_info = self.ctx.analyzer.ctx.str_vars.get(typ.str_var_id)
         return sv_info.resolved_type if sv_info and sv_info.resolved_type else STR
 
-    def resolve_type(self, typ: TpyType) -> TpyType:
-        """Resolve deferred types (PendingStrType, PendingListType) to concrete C++ types."""
-        if isinstance(typ, PendingStrType):
-            return self._resolve_pending_str(typ)
+    def _resolve_pending_container(self, typ: TpyType) -> TpyType | None:
+        """Resolve a pending container type via unified lookup.
+
+        Returns the resolved type, or None if not a pending container.
+        Falls back to a best-effort concrete type if resolution hasn't run
+        (e.g. list -> ListType with resolved element type).
+        """
+        if not isinstance(typ, PENDING_CONTAINER_TYPES):
+            return None
+        info = self.ctx.analyzer.ctx.get_container_info(typ.literal_id)
+        if info and info.resolved_type:
+            return info.resolved_type
+        # Fallback for unresolved containers
         if isinstance(typ, PendingListType):
-            literal_id = typ.literal_id
-            if literal_id in self.ctx.analyzer.list_literals:
-                info = self.ctx.analyzer.list_literals[literal_id]
-                if info.resolved_type:
-                    return info.resolved_type
             elem_type = typ.element_type
             if isinstance(elem_type, IntLiteralType):
                 elem_type = self.ctx.analyzer.ctx.default_int_for_literal(elem_type)
             return ListType(elem_type)
         if isinstance(typ, PendingDictType):
-            literal_id = typ.literal_id
-            if literal_id in self.ctx.analyzer.ctx.dict_literals:
-                info = self.ctx.analyzer.ctx.dict_literals[literal_id]
-                if info.resolved_type:
-                    return info.resolved_type
             return DictType(typ.key_type, typ.value_type)
         if isinstance(typ, PendingSetType):
-            literal_id = typ.literal_id
-            if literal_id in self.ctx.analyzer.ctx.set_literals:
-                info = self.ctx.analyzer.ctx.set_literals[literal_id]
-                if info.resolved_type:
-                    return info.resolved_type
             return SetType(typ.element_type)
+        return None
+
+    def resolve_type(self, typ: TpyType) -> TpyType:
+        """Resolve deferred types (PendingStrType, PendingListType, etc.) to concrete C++ types."""
+        if isinstance(typ, PendingStrType):
+            return self._resolve_pending_str(typ)
+        resolved = self._resolve_pending_container(typ)
+        if resolved is not None:
+            return resolved
         return typ
 
     def substitute_type_params(self, typ: TpyType, subst: dict[str, TpyType]) -> TpyType:

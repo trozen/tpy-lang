@@ -26,6 +26,7 @@ from ..parse import (
 )
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
+from .context import PENDING_CONTAINER_TYPES
 from .diagnostics import SemanticError
 from .overloads import type_matches_numeric, resolve_overload
 
@@ -1568,9 +1569,7 @@ class CallAnalyzer:
                 expr.args[i] = coerced_arg
 
             # Track parameter context for container/str inference
-            if isinstance(arg_type, PendingListType):
-                self.deduction.mark_list_param_context(arg, ptype)
-            if isinstance(arg_type, (PendingDictType, PendingSetType)):
+            if isinstance(arg_type, PENDING_CONTAINER_TYPES):
                 self.deduction.mark_container_param_context(arg, arg_type, ptype)
             if isinstance(arg_type, PendingStrType):
                 self.deduction.mark_str_param_context(arg, ptype)
@@ -1677,9 +1676,7 @@ class CallAnalyzer:
                 expr.args[i] = coerced_arg
 
             # Track parameter context for container/str inference
-            if isinstance(arg_type, PendingListType):
-                self.deduction.mark_list_param_context(arg, resolved_ptype)
-            if isinstance(arg_type, (PendingDictType, PendingSetType)):
+            if isinstance(arg_type, PENDING_CONTAINER_TYPES):
                 self.deduction.mark_container_param_context(arg, arg_type, resolved_ptype)
             if isinstance(arg_type, PendingStrType):
                 self.deduction.mark_str_param_context(arg, resolved_ptype)
@@ -1912,9 +1909,7 @@ class CallAnalyzer:
                 expr.args[i] = coerced_arg
 
             # Track parameter context for container/str inference
-            if isinstance(arg_type, PendingListType):
-                self.deduction.mark_list_param_context(arg, ptype)
-            if isinstance(arg_type, (PendingDictType, PendingSetType)):
+            if isinstance(arg_type, PENDING_CONTAINER_TYPES):
                 self.deduction.mark_container_param_context(arg, arg_type, ptype)
             if isinstance(arg_type, PendingStrType):
                 self.deduction.mark_str_param_context(arg, ptype)

@@ -27,6 +27,7 @@ from ..parse import (
     TpyMatch,
 )
 from ..namespace import Namespace
+from ..sema.context import PENDING_CONTAINER_TYPES
 
 from .context import INDENT, CodeGenError, escape_cpp_name, qualified_cpp_name, expand_cpp_template
 from .type_resolution import resolve_stmt_binding_type
@@ -513,20 +514,14 @@ class StatementGenerator:
         """Resolve PendingListType/PendingDictType/PendingSetType to their resolved concrete type.
 
         Returns None if the type is not a pending container or has no resolution yet.
+        Uses the unified lookup on SemanticContext so adding a new container type
+        is handled automatically.
         """
-        sema = self.ctx.analyzer.ctx
-        if isinstance(typ, PendingListType):
-            info = sema.list_literals.get(typ.literal_id)
-            if info and info.resolved_type:
-                return info.resolved_type
-        elif isinstance(typ, PendingDictType):
-            info = sema.dict_literals.get(typ.literal_id)
-            if info and info.resolved_type:
-                return info.resolved_type
-        elif isinstance(typ, PendingSetType):
-            info = sema.set_literals.get(typ.literal_id)
-            if info and info.resolved_type:
-                return info.resolved_type
+        if not isinstance(typ, PENDING_CONTAINER_TYPES):
+            return None
+        info = self.ctx.analyzer.ctx.get_container_info(typ.literal_id)
+        if info and info.resolved_type:
+            return info.resolved_type
         return None
 
     def _normalize_decl_type_for_cpp(self, var_type: TpyType) -> TpyType:
@@ -569,7 +564,7 @@ class StatementGenerator:
                 self.ctx.analyzer,
                 include_global_binding=(self.ctx.current_ns is self.ctx.analyzer.global_ns),
             )
-            if resolved_type is None or isinstance(resolved_type, (PendingListType, PendingDictType, PendingSetType, PendingStrType)):
+            if resolved_type is None or isinstance(resolved_type, (*PENDING_CONTAINER_TYPES, PendingStrType)):
                 resolved_type = self.ctx.get_expr_type(stmt.init)
             if resolved_type is None:
                 raise CodeGenError(

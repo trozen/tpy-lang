@@ -43,7 +43,7 @@ if TYPE_CHECKING:
     from .expressions import ExpressionAnalyzer
     from .protocols import ProtocolChecker
 
-from .context import BorrowKind
+from .context import BorrowKind, PENDING_CONTAINER_TYPES
 from tpyc import modules as builtin_modules
 
 
@@ -1106,36 +1106,19 @@ class StatementAnalyzer:
                 init_type = self.expr.analyze_expr_with_hint(stmt.init, type_hint)
 
 
-            # Track list literal to variable mapping for mutation detection.
-            # Only bind when the init is an actual list literal or empty constructor,
+            # Track container literal to variable mapping for mutation/type inference.
+            # Only bind when the init is an actual literal or empty constructor,
             # not a name reference (aliases are handled by register_list_alias).
-            if isinstance(init_type, PendingListType) and not isinstance(stmt.init, TpyName):
-                literal_id = init_type.literal_id
-                self.ctx.variable_to_literal[stmt.name] = literal_id
-                info = self.ctx.list_literals[literal_id]
-                info.variable_name = stmt.name
-                info.decl_line = stmt.loc.line if stmt.loc else None
-
-                # If explicit annotation is provided, record it
-                if stmt.type and isinstance(stmt.init, (TpyArrayLiteral, TpyListComprehension)):
-                    info.has_explicit_annotation = True
-                    info.explicit_type = stmt.type
-
-            # Track dict literal to variable mapping for type inference.
-            if isinstance(init_type, PendingDictType) and not isinstance(stmt.init, TpyName):
-                literal_id = init_type.literal_id
-                self.ctx.variable_to_dict_literal[stmt.name] = literal_id
-                info = self.ctx.dict_literals[literal_id]
-                info.variable_name = stmt.name
-                info.decl_line = stmt.loc.line if stmt.loc else None
-
-            # Track set literal to variable mapping for type inference.
-            if isinstance(init_type, PendingSetType) and not isinstance(stmt.init, TpyName):
-                literal_id = init_type.literal_id
-                self.ctx.variable_to_set_literal[stmt.name] = literal_id
-                info = self.ctx.set_literals[literal_id]
-                info.variable_name = stmt.name
-                info.decl_line = stmt.loc.line if stmt.loc else None
+            if isinstance(init_type, PENDING_CONTAINER_TYPES) and not isinstance(stmt.init, TpyName):
+                self.ctx.track_container_variable(
+                    stmt.name, init_type, stmt.loc.line if stmt.loc else None,
+                )
+                # List-specific: if explicit annotation is provided, record it
+                if isinstance(init_type, PendingListType):
+                    if stmt.type and isinstance(stmt.init, (TpyArrayLiteral, TpyListComprehension)):
+                        info = self.ctx.list_literals[init_type.literal_id]
+                        info.has_explicit_annotation = True
+                        info.explicit_type = stmt.type
 
             if stmt.type:
                 if existing_type is not None:
@@ -1525,12 +1508,9 @@ class StatementAnalyzer:
                     else:
                         self.deduction.link_list_literals(inner_target.literal_id, inner_value.literal_id)
                 # target_type stays PendingListType
-            # PendingDictType reassignment: keep pending
-            elif isinstance(inner_target, PendingDictType):
-                pass  # target_type stays PendingDictType
-            # PendingSetType reassignment: keep pending
-            elif isinstance(inner_target, PendingSetType):
-                pass  # target_type stays PendingSetType
+            # PendingDictType/PendingSetType reassignment: keep pending
+            elif isinstance(inner_target, (PendingDictType, PendingSetType)):
+                pass  # target_type stays pending
             # PendingStrType reassignment: track view-compatibility, keep pending
             elif isinstance(inner_target, PendingStrType):
                 if is_any_str_type(inner_value):
@@ -1560,7 +1540,7 @@ class StatementAnalyzer:
                 self.ctx.current_ns.update_variable_type(stmt.target.name, target_type)
             self.ctx.set_expr_type(stmt.target, target_type)
             self.deduction.record_write(stmt.target.name, stmt.value, inner_value)
-            if not isinstance(inner_target, (PendingStrType, PendingListType, PendingDictType, PendingSetType)):
+            if not isinstance(inner_target, (*PENDING_CONTAINER_TYPES, PendingStrType)):
                 resolved = unwrap_readonly(target_type)
                 var_decl = self.ctx.var_decl_by_name.get(stmt.target.name)
                 if var_decl:
