@@ -1,0 +1,6 @@
+a Point(1, 2)
+b Point(3, 4)
+1 Point(10, 20)
+2 Point(30, 40)
+Point(0, 0) Point(1, 1)
+Point(2, 2) Point(3, 3)

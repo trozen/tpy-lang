@@ -1197,9 +1197,16 @@ class StatementGenerator:
         self.ctx.unpack_counter += 1
         tmp = f"__tup_{self.ctx.unpack_counter}"
         # When value is a named variable and no elements need move semantics,
-        # bind by const ref to avoid copying the tuple
+        # bind by ref to avoid copying the tuple.  Sema guarantees
+        # is_ref[i] implies not is_owned[i], so if any element needs a
+        # move we take the copy path instead.  Within the ref path, use
+        # const only when no element needs a mutable reference (is_ref);
+        # std::get on a const tuple returns const T& which can't bind
+        # to T&.  Existing is_const_ref elements are unaffected -- const T&
+        # binds fine from a non-const tuple.
         if isinstance(stmt.value, TpyName) and not any(stmt.is_owned):
-            out.write(f"{indent}const auto& {tmp} = {value_expr};\n")
+            const_kw = "" if any(stmt.is_ref) else "const "
+            out.write(f"{indent}{const_kw}auto& {tmp} = {value_expr};\n")
         else:
             out.write(f"{indent}auto {tmp} = {value_expr};\n")
 
