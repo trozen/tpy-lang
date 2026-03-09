@@ -9,11 +9,17 @@
 | 2b | Different-size list reassignment, return-type-driven deduction, alias propagation for lists. | Done |
 | 2c | Cross-variable list reassignment (`a = [1,2,3]; b = [4,5]; a = b` -- both should become list). | Done |
 | 3 | Narrowing integration: deduced `Optional[T]` variables work with `if x is not None` narrowing. | Done |
-| 4 | String deduction test coverage: dedicated tests for StrView-vs-str resolution and string alias propagation. | Not started |
+| 4 | String deduction test coverage: dedicated tests for StrView-vs-str resolution and string alias propagation. | Done |
 | 5 | Empty container inference: `xs = []; xs.append(v)` and `d = {}; d[k] = v` infer element types from subsequent usage. | Not started |
 | 6 | List element-type widening: `.append(Int64)` on `[1,2]` widens element type from Int32 to Int64. | Not started |
 | 7 | Deferred generic instance inference: `x = GenericType()` with unresolved type params, resolved from subsequent method calls via constraint unification. Reuses `match_type_with_inference` from bidirectional inference. See `BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md`. | Not started |
 | 8 | State ownership: move deduction-related fields from SemanticContext into sub-structures owned by LocalTypeDeduction. | Not started |
+
+## Future Extensions (post-1.0)
+
+| Extension | Description |
+|-----------|-------------|
+| Per-assignment-segment typing | SSA-style reasoning: each assignment to a variable creates a new "version" with its own type. Enables narrower types per segment (e.g. StrView before reassignment, str after), avoiding unnecessary allocations. Requires liveness/escape analysis. See details at end of document. |
 
 ## Motivation
 
@@ -290,3 +296,34 @@ three separate passes.
 - **Interaction with narrowing:** Deduced `Optional[T]` should work
   with narrowing (`if x is not None`). Deferred to Phase 3 if the
   plumbing is non-trivial.
+
+## Post-1.0: Per-Assignment-Segment Typing
+
+The current model assigns a single type per variable name. This can be
+suboptimal when a variable's usage falls into distinct segments separated
+by reassignment:
+
+```python
+a = "x"         # segment 1: only needs StrView
+b = a            # could be string_view here
+a += " y"        # segment 2: needs str
+# b is never read after a mutates -- the copy was unnecessary
+```
+
+```python
+b = a            # segment 1: could be string_view (cheap)
+b = str(99)      # segment 2: needs str
+# b's first segment didn't need an allocation
+```
+
+With SSA-style reasoning (each assignment creates a new "version" with
+its own type), the compiler could use the narrowest type per segment
+and only widen at the reassignment boundary. This would avoid unnecessary
+allocations/copies in the first segment.
+
+This applies to strings (StrView vs str) and potentially lists (Array vs
+list) in the same way. It requires liveness/escape analysis to prove
+that the narrow-typed segment doesn't escape into the wider one.
+
+Not in scope for pre-1.0 -- the current one-type-per-variable model is
+correct, just conservative.

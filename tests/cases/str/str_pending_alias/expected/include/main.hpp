@@ -12,6 +12,8 @@ void test_alias_stays_view();
 void test_chain_alias_promote();
 void test_reassign_from_owned_pending(bool cond);
 std::string test_reassign_from_owned_pending_return(bool cond);
+void test_source_promotes_alias();
+void test_owned_reassign_no_backprop();
 
 void __tpy_init();
 } // namespace tpy_user::main

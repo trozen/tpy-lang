@@ -79,25 +79,59 @@ std::string test_reassign_from_owned_pending_return(bool cond) {
     return result;
 }
 
+// 38: def test_source_promotes_alias() -> None:
+void test_source_promotes_alias() {
+    // 39:     # Source mutation promotes alias (forward propagation)
+    // 40:     a = "x"  # tpyc: type(str)
+    std::string a = "x";
+    // 41:     b = a  # tpyc: type(str)
+    std::string b = a;
+    // 42:     a += " y"
+    a = tpy::str_concat(a, " y");
+    // 43:     print(a)
+    std::cout << a << "\n";
+    // 44:     print(b)
+    std::cout << b << "\n";
+}
+
+// 46: def test_owned_reassign_no_backprop() -> None:
+void test_owned_reassign_no_backprop() {
+    // 47:     # Reassignment to owned doesn't promote the source
+    // 48:     a = "x"  # tpyc: type(StrView)
+    std::string_view a = "x";
+    // 49:     b = a  # tpyc: type(str)
+    std::string b = std::string(a);
+    // 50:     b = str(99)
+    b = tpy::fixed_to_str<int8_t>(99);
+    // 51:     print(a)
+    std::cout << a << "\n";
+    // 52:     print(b)
+    std::cout << b << "\n";
+}
+
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // 38: test_alias_augassign()
+    // 54: test_alias_augassign()
     test_alias_augassign();
-    // 39: test_alias_stays_view()
+    // 55: test_alias_stays_view()
     test_alias_stays_view();
-    // 40: test_chain_alias_promote()
+    // 56: test_chain_alias_promote()
     test_chain_alias_promote();
-    // 41: test_reassign_from_owned_pending(True)
+    // 57: test_reassign_from_owned_pending(True)
     test_reassign_from_owned_pending(true);
-    // 42: test_reassign_from_owned_pending(False)
+    // 58: test_reassign_from_owned_pending(False)
     test_reassign_from_owned_pending(false);
-    // 43: print(test_reassign_from_owned_pending_return(True))
+    // 59: print(test_reassign_from_owned_pending_return(True))
     std::cout << test_reassign_from_owned_pending_return(true) << "\n";
-    // 44: print(test_reassign_from_owned_pending_return(False))
+    // 60: print(test_reassign_from_owned_pending_return(False))
     std::cout << test_reassign_from_owned_pending_return(false) << "\n";
+    // 61: test_source_promotes_alias()
+    test_source_promotes_alias();
+    // 62: test_owned_reassign_no_backprop()
+    test_owned_reassign_no_backprop();
 }
 
 } // namespace tpy_user::main
