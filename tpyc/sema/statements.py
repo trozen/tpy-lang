@@ -5,6 +5,7 @@ Statement analysis including variable declarations, assignments, and control flo
 """
 
 from __future__ import annotations
+from enum import Enum
 from typing import TYPE_CHECKING
 
 from ..typesys import (
@@ -76,6 +77,13 @@ def _root_name_of_expr(expr: TpyExpr) -> str | None:
     while isinstance(expr, (TpyFieldAccess, TpySubscript)):
         expr = expr.obj
     return expr.name if isinstance(expr, TpyName) else None
+
+
+class OrPatternKind(Enum):
+    UNION = "union"
+    NONUNION = "nonunion"
+    RECORD = "record"
+    OPTIONAL = "optional"
 
 
 class StatementAnalyzer:
@@ -955,7 +963,7 @@ class StatementAnalyzer:
             self._analyze_class_pattern(pattern, subject_type, seen_types, bindings, stmt)
 
         elif isinstance(pattern, TpyOrPattern):
-            self._analyze_or_pattern(pattern, subject_type, seen_types, bindings, stmt, is_union=True)
+            self._analyze_or_pattern(pattern, subject_type, seen_types, bindings, stmt, kind=OrPatternKind.UNION)
 
         else:
             raise self.ctx.error(
@@ -1094,27 +1102,14 @@ class StatementAnalyzer:
 
         elif isinstance(pattern, TpyLiteralPattern):
             self._validate_literal_pattern(pattern, subject_type)
-            key = pattern.value
-            if key in seen_values:
-                raise self.ctx.error(
-                    f"duplicate case for {key!r} in match statement", pattern
-                )
-            seen_values.add(key)
+            self._check_duplicate_literal(pattern, seen_values)
 
         elif isinstance(pattern, TpyValuePattern):
             self._validate_value_pattern(pattern, subject_type)
-            if isinstance(pattern.expr, TpyFieldAccess):
-                obj_name = pattern.expr.obj.name if isinstance(pattern.expr.obj, TpyName) else "?"
-                key = (obj_name, pattern.expr.field)
-                if key in seen_values:
-                    raise self.ctx.error(
-                        f"duplicate case for '{obj_name}.{pattern.expr.field}' "
-                        f"in match statement", pattern
-                    )
-                seen_values.add(key)
+            self._check_duplicate_value(pattern, seen_values)
 
         elif isinstance(pattern, TpyOrPattern):
-            self._analyze_or_pattern(pattern, subject_type, seen_values, bindings, stmt, is_union=False)
+            self._analyze_or_pattern(pattern, subject_type, seen_values, bindings, stmt, kind=OrPatternKind.NONUNION)
 
         else:
             raise self.ctx.error(
@@ -1144,8 +1139,7 @@ class StatementAnalyzer:
 
         elif isinstance(pattern, TpyOrPattern):
             self._analyze_or_pattern(
-                pattern, subject_type, set(), bindings, stmt,
-                is_union=False, is_record=True,
+                pattern, subject_type, set(), bindings, stmt, kind=OrPatternKind.RECORD,
             )
 
         else:
@@ -1174,33 +1168,16 @@ class StatementAnalyzer:
 
         elif isinstance(pattern, TpyLiteralPattern):
             if pattern.value is None:
-                if None in seen_values:
-                    raise self.ctx.error(
-                        "duplicate case for None in match statement", pattern
-                    )
-                seen_values.add(None)
+                self._check_duplicate_literal(pattern, seen_values)
             else:
                 # Literal match on the inner type (e.g. case 42: on Optional[Int32])
                 self._validate_literal_pattern(pattern, subject_type.inner)
-                key = pattern.value
-                if key in seen_values:
-                    raise self.ctx.error(
-                        f"duplicate case for {key!r} in match statement", pattern
-                    )
-                seen_values.add(key)
+                self._check_duplicate_literal(pattern, seen_values)
 
         elif isinstance(pattern, TpyValuePattern):
             # Value pattern on inner type (e.g. case Color.RED: on Optional[Color])
             self._validate_value_pattern(pattern, subject_type.inner)
-            if isinstance(pattern.expr, TpyFieldAccess):
-                obj_name = pattern.expr.obj.name if isinstance(pattern.expr.obj, TpyName) else "?"
-                key = (obj_name, pattern.expr.field)
-                if key in seen_values:
-                    raise self.ctx.error(
-                        f"duplicate case for '{obj_name}.{pattern.expr.field}' "
-                        f"in match statement", pattern
-                    )
-                seen_values.add(key)
+            self._check_duplicate_value(pattern, seen_values)
 
         elif isinstance(pattern, TpyClassPattern):
             # Class pattern on the inner type (e.g. case Point(): on Optional[Point])
@@ -1217,8 +1194,7 @@ class StatementAnalyzer:
 
         elif isinstance(pattern, TpyOrPattern):
             self._analyze_or_pattern(
-                pattern, subject_type, seen_values, bindings, stmt,
-                is_union=False, is_optional=True,
+                pattern, subject_type, seen_values, bindings, stmt, kind=OrPatternKind.OPTIONAL,
             )
 
         else:
@@ -1230,7 +1206,7 @@ class StatementAnalyzer:
     def _analyze_or_pattern(
         self, pattern: TpyOrPattern, subject_type: TpyType,
         seen: set, bindings: dict[str, TpyType], stmt: TpyMatch,
-        is_union: bool, is_record: bool = False, is_optional: bool = False,
+        kind: OrPatternKind,
     ) -> None:
         """Analyze an or-pattern: all alternatives must bind same variables with compatible types."""
         if len(pattern.patterns) < 2:
@@ -1239,11 +1215,11 @@ class StatementAnalyzer:
         first_bindings: dict[str, TpyType] | None = None
         for alt in pattern.patterns:
             alt_bindings: dict[str, TpyType] = {}
-            if is_union:
+            if kind is OrPatternKind.UNION:
                 self._analyze_pattern(alt, subject_type, seen, alt_bindings, stmt)
-            elif is_record:
+            elif kind is OrPatternKind.RECORD:
                 self._analyze_pattern_record(alt, subject_type, alt_bindings, stmt)
-            elif is_optional:
+            elif kind is OrPatternKind.OPTIONAL:
                 self._analyze_pattern_optional(alt, subject_type, seen, alt_bindings, stmt)
             else:
                 self._analyze_pattern_nonunion(alt, subject_type, seen, alt_bindings, stmt)
@@ -1327,6 +1303,32 @@ class StatementAnalyzer:
                 f"value pattern (dotted name) not valid for subject type "
                 f"'{subject_type}'", pattern
             )
+
+    def _check_duplicate_literal(
+        self, pattern: TpyLiteralPattern, seen: set[object],
+    ) -> None:
+        """Check for duplicate literal pattern values."""
+        key = pattern.value
+        if key in seen:
+            label = repr(key)
+            raise self.ctx.error(
+                f"duplicate case for {label} in match statement", pattern
+            )
+        seen.add(key)
+
+    def _check_duplicate_value(
+        self, pattern: TpyValuePattern, seen: set[object],
+    ) -> None:
+        """Check for duplicate value pattern (e.g. Color.RED)."""
+        if isinstance(pattern.expr, TpyFieldAccess):
+            obj_name = pattern.expr.obj.name if isinstance(pattern.expr.obj, TpyName) else "?"
+            key = (obj_name, pattern.expr.field)
+            if key in seen:
+                raise self.ctx.error(
+                    f"duplicate case for '{obj_name}.{pattern.expr.field}' "
+                    f"in match statement", pattern
+                )
+            seen.add(key)
 
     def _analyze_global_stmt(self, stmt: TpyGlobal) -> None:
         """Analyze a `global x, y` statement."""
