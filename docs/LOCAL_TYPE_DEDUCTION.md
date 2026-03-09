@@ -14,7 +14,7 @@
 | 5b | Empty dict inference: `d = {}; d[k] = v` and `d = dict()` infer key/value types from subsequent subscript assignment. | Done |
 | 5c | Empty set inference: `s = set(); s.add(v)` infers element type from subsequent `.add()` calls. | Done |
 | 5d | Unify empty container inference: extract shared helpers for list/dict/set (PENDING_CONTAINER_TYPES constant, unified container lookup, shared resolution epilogue, merged param context tracking). Single code paths prevent forgetting one container type. | Done |
-| 6 | List element-type widening: `.append(Int64)` on `[1,2]` widens element type from Int32 to Int64. | Not started |
+| 6 | List element-type widening: `.append(Int64)` on `[1,2]` widens element type from Int32 to Int64. Already handled by `_widen_inferred_type` in Phase 5a infrastructure; added test coverage. | Done |
 | 7 | Deferred generic instance inference: `x = GenericType()` with unresolved type params, resolved from subsequent method calls via constraint unification. Reuses `match_type_with_inference` from bidirectional inference. See `BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md`. | Not started |
 | 8 | State ownership: move deduction-related fields from SemanticContext into sub-structures owned by LocalTypeDeduction. | Not started |
 
