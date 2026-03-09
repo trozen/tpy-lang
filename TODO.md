@@ -9,7 +9,6 @@
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 
 ## Bugs
-- `isinstance(x, WrongProto)` on `Optional[Protocol]`: sema doesn't validate that the isinstance target protocol matches the declared protocol. E.g. `x: Sized | None` allows `isinstance(x, Printable)` without error, and codegen emits `!std::same_as<nullptr_t>` (null guard) instead of a concept check. Should either error or generate correct concept constraint.
 - NativeIterable for-loop `auto&` binding: range-based for with `auto&` fails for iterators that yield rvalues (e.g. `dict.items()` yields tuple copies). Needs `const auto&` or `auto&&` binding for non-value element types when the iterator yields temporaries.
 - Tuple literal with non-value element types: `list[tuple[str, Point]]` generates `std::tuple<std::string, Point&>` instead of `std::tuple<std::string, Point>`, causing C++ compilation failure (cannot bind non-const lvalue reference to rvalue). Affects any tuple literal containing a record or other non-value type.
 

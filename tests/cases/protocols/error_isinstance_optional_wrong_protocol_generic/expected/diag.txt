@@ -1,0 +1,1 @@
+main.py:13: error: isinstance() checks protocol 'HasLen', but variable is typed as 'Container[Int32] | None'

@@ -821,11 +821,22 @@ class CallAnalyzer:
             )
 
         # Unwrap Optional[Protocol] -> Protocol (isinstance narrows away None)
+        unwrapped_optional = False
         if isinstance(var_type, OptionalType) and is_protocol_type(var_type.inner):
             var_type = var_type.inner
+            unwrapped_optional = True
 
         # Accept both plain protocol params and protocol union params
         if is_protocol_type(var_type):
+            # For Optional[P], isinstance can only narrow away None -- checking
+            # a different protocol is nonsensical (codegen emits a null guard,
+            # not a concept check).
+            if unwrapped_optional and var_type.name != protocol_name:
+                raise self.ctx.error(
+                    f"isinstance() checks protocol '{protocol_name}', "
+                    f"but variable is typed as '{var_type} | None'",
+                    expr
+                )
             type_args = var_type.type_args if isinstance(var_type, NamedType) and var_type.name == protocol_name else None
             protocol_type = NamedType(protocol_name, is_protocol=True, type_args=type_args)
         elif is_protocol_union(var_type):
