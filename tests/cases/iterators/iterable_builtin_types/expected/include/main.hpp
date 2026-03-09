@@ -27,7 +27,8 @@ int32_t sum_items(T_items& items) {
     int32_t total = 0;
     // 8:     for x in items:
     auto& __src_0 = items;
-    auto __obj_0 = tpy::iter_adapt_container(__src_0);
+    auto __iter_0 = tpy::__iter__(__src_0);
+    auto __obj_0 = tpy::iter_adapt(__iter_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -45,7 +46,8 @@ int32_t count_chars(T_items& items) {
     int32_t n = 0;
     // 14:     for c in items:
     auto& __src_0 = items;
-    auto __obj_0 = tpy::iter_adapt_container(__src_0);
+    auto __iter_0 = tpy::__iter__(__src_0);
+    auto __obj_0 = tpy::iter_adapt(__iter_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -63,7 +65,8 @@ std::string sum_strs(T_items& items) {
     std::string result = "";
     // 20:     for s in items:
     auto& __src_0 = items;
-    auto __obj_0 = tpy::iter_adapt_container(__src_0);
+    auto __iter_0 = tpy::__iter__(__src_0);
+    auto __obj_0 = tpy::iter_adapt(__iter_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {

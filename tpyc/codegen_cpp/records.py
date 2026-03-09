@@ -10,7 +10,7 @@ from typing import TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, StrType, BoolType, FloatType, Float32Type, OptionalType, OwnType, ReadonlyType,
     TypeParamRef, TypeParamKind, RecordInfo, TupleType, DictType, SetType,
-    ListType, ArrayType, SpanType, unwrap_readonly, unwrap_optional_own, is_any_str_type,
+    ListType, ArrayType, SpanType, SpanIterType, unwrap_readonly, unwrap_optional_own, is_any_str_type,
     get_covariant_params, FixedIntType, BigIntType,
 )
 from ..parse import (
@@ -315,16 +315,26 @@ class RecordGenerator:
         if has_next and not has_iter:
             out.write(f"\n{INDENT}auto& __iter__() {{ return *this; }}\n")
 
-        # Synthesize begin()/end() for types with __span__() (satisfies C++ input_range concept).
-        # Must appear before user methods so that concept constraints see a consistent
-        # declaration state when evaluated inside method bodies.
-        has_span = any(m.name == "__span__" for m in record.methods)
-        if has_span:
+        # Synthesize begin()/end() for types with __iter__() -> SpanIter[T].
+        # Makes the container satisfy input_range for NativeIterable concept.
+        # Must appear before user methods so that concept constraints see a
+        # consistent declaration state when evaluated inside method bodies.
+        # __iter__() is declared later in the class, but C++ inline member
+        # bodies see all members regardless of textual order.
+        # has_iter reflects user-defined __iter__ only; the synthesized
+        # __iter__() for pure iterators (above) is intentionally excluded.
+        if has_iter:
             has_begin = self._has_method_or_field(record, "begin")
             has_end = self._has_method_or_field(record, "end")
             if not has_begin and not has_end:
-                out.write(f"\n{INDENT}auto begin() const {{ return __span__().begin(); }}\n")
-                out.write(f"{INDENT}auto end() const {{ return __span__().end(); }}\n")
+                record_info = self.ctx.analyzer.registry.get_record(record.name)
+                if record_info and "__iter__" in record_info.methods:
+                    iter_overloads = record_info.methods["__iter__"]
+                    if iter_overloads and isinstance(iter_overloads[0].return_type, SpanIterType):
+                        out.write(f"\n{INDENT}auto begin() {{ return __iter__().begin(); }}\n")
+                        out.write(f"{INDENT}auto end() {{ return __iter__().end(); }}\n")
+                        out.write(f"{INDENT}auto begin() const {{ return __iter__().begin(); }}\n")
+                        out.write(f"{INDENT}auto end() const {{ return __iter__().end(); }}\n")
 
         # Generate methods (excluding __init__ and __del__)
         dynamic_overrides = self.functions._get_dynamic_override_info(record.name)

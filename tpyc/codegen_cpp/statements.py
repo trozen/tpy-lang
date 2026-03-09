@@ -6,7 +6,7 @@ Generates C++ code from TurboPython statements.
 
 from __future__ import annotations
 import io
-from typing import TextIO, TYPE_CHECKING
+from typing import Callable, TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType,
@@ -3315,15 +3315,17 @@ class StatementGenerator:
 
     def _gen_adapted_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
                           iterable_expr: str, elem_type: TpyType,
-                          adapter: str, iter_call_expr: str = "") -> None:
+                          adapter: str, iter_call_expr: str = "",
+                          iter_call_fn: Callable[[str], str] | None = None) -> None:
         """Generate begin/end loop with an iter_adapt wrapper.
 
         Captures the original iterable first (to keep it alive), then wraps
-        it with tpy::iter_adapt or tpy::iter_adapt_container, then delegates
-        to _gen_begin_end_loop.
+        it with tpy::iter_adapt, then delegates to _gen_begin_end_loop.
 
-        When iter_call_expr is set (e.g. ".__iter__()"), calls it on the source
-        to get an iterator first, then wraps the result with the adapter.
+        When iter_call_expr is set (e.g. ".__iter__()"), calls it as a suffix
+        on the source to get an iterator first.
+        When iter_call_fn is set (e.g. lambda src: f"tpy::__iter__({src})"),
+        calls it as a function on the source name.
 
         Produces:
             auto& __src_N = <lvalue_expr>;   // or: auto __src_N = <rvalue_expr>;
@@ -3338,7 +3340,11 @@ class StatementGenerator:
 
         self.ctx.temps.flush(out, indent)
         out.write(f"{indent}{src_binding} {src_name} = {iterable_expr};\n")
-        if iter_call_expr:
+        if iter_call_fn:
+            iter_name = f"__iter_{n}"
+            out.write(f"{indent}auto {iter_name} = {iter_call_fn(src_name)};\n")
+            adapted_expr = f"tpy::{adapter}({iter_name})"
+        elif iter_call_expr:
             # Two-step: call __iter__() on source, then wrap result with adapter
             iter_name = f"__iter_{n}"
             out.write(f"{indent}auto {iter_name} = {src_name}{iter_call_expr};\n")
@@ -3562,7 +3568,7 @@ class StatementGenerator:
         The iterable expression is wrapped with an adapter if needed:
         - Enum: tpy::EnumUtil<E>::members
         - Protocol Iterator[T]: tpy::iter_adapt(expr)
-        - Protocol Iterable[T]: tpy::iter_adapt_container(expr)
+        - Protocol Iterable[T]: tpy::__iter__(expr) + tpy::iter_adapt(iter)
         - Protocol ReadOnlySpanLike[T]: tpy::as_span(expr)
         - range(): counter optimization first, else tpy::Range<T>(args...)
         - OptIterator types: tpy::iter_adapt(expr)
@@ -3597,7 +3603,10 @@ class StatementGenerator:
             if resolved_type.qualified_name() == "typing.Iterator":
                 self._gen_adapted_loop(out, stmt, indent, iterable, elem_type, "iter_adapt")
             else:
-                self._gen_adapted_loop(out, stmt, indent, iterable, elem_type, "iter_adapt_container")
+                # Iterable[T]: call tpy::__iter__() to get iterator, then adapt
+                self._gen_adapted_loop(out, stmt, indent, iterable, elem_type,
+                                       "iter_adapt",
+                                       iter_call_fn=lambda src: f"tpy::__iter__({src})")
             return
 
         # Handle ReadOnlySpanLike[T] protocol-typed iterables (uses tpy::as_span)

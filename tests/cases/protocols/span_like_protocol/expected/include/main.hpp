@@ -24,9 +24,6 @@ struct Buffer {
     // 7:     def __init__(self) -> None:
     Buffer() : _data({1, 2, 3}) {}
 
-    auto begin() const { return __span__().begin(); }
-    auto end() const { return __span__().end(); }
-
     // 10:     def __span__(self) -> Span[Int32]:
     std::span<int32_t> __span__() {
         // 11:         return self._data

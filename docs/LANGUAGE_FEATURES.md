@@ -2129,7 +2129,7 @@ print(sum_all(nums))  # 6
 
 **Key characteristics**:
 - **Marker protocol**: Types declare conformance via `extends`, no methods required
-- **Auto-derivation from `__iter__()`**: Any user type with `__iter__() -> SpanIter[T]` automatically conforms to `NativeIterable[T]`. Types with `__span__()` also get synthesized C++ `begin()`/`end()` methods for concept satisfaction.
+- **Auto-derivation from `__iter__()`**: Any user type with `__iter__() -> SpanIter[T]` automatically conforms to `NativeIterable[T]`. The compiler synthesizes C++ `begin()`/`end()` methods that delegate to `__iter__()` for concept satisfaction.
 - **Built-in conformance**: All built-in container types extend both `NativeIterable[T]` and `Iterable[T]`
 - **Codegen optimization**: The compiler uses NativeIterable extends to select zero-overhead C++ range-based for loops for built-in types
 - **API methods use `Iterable[T]`**: `list.extend()`, `str.join()`, `list()` constructor, `dict()` constructor all accept `Iterable[T]`
@@ -2210,7 +2210,7 @@ while (auto __opt_0 = __iter_0.__next_opt__()) {
 | 4. Structural OptIterator | **Working** | Check `__next_opt__() -> Optional[T]` method for protocol conformance |
 | 5. User-defined iterators | **Working** | `__iter__`/`__next__` compiled to `__next_opt__` under the hood |
 | 6. Iterator[T]/Iterable[T] | **Working** | Built-in protocols from `typing`, for-loop support, `iter()`, `try_next()` builtins |
-| 7. `__span__` protocol | **Working** | `__span__() -> Span[T]` for implicit Span coercion and `begin()`/`end()` synthesis; iteration requires `__iter__()` |
+| 7. `__span__` protocol | **Working** | `__span__() -> Span[T]` for implicit Span coercion; iteration requires `__iter__()` |
 | 7b. `ReadOnlySpanLike[T]` protocol | **Working** | Readonly protocol for types with `__span__()`, for-loop and ReadOnlySpan coercion |
 | 8. Generator expressions | **Working** | `(expr for x in iterable)` → lazy `make_generator` wrapper, satisfies `Iterable[T]` |
 | 9. Generator functions | Open | `yield` → state-machine class implementing OptIterator |

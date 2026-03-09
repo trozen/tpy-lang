@@ -19,8 +19,10 @@ struct Stack {
     // 8:     def __init__(self) -> None:
     Stack() : _data(std::vector<int32_t>{}) {}
 
-    auto begin() const { return __span__().begin(); }
-    auto end() const { return __span__().end(); }
+    auto begin() { return __iter__().begin(); }
+    auto end() { return __iter__().end(); }
+    auto begin() const { return __iter__().begin(); }
+    auto end() const { return __iter__().end(); }
 
     // 11:     def push(self, val: Int32) -> None:
     void push(int32_t val) {

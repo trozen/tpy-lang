@@ -20,7 +20,8 @@ template<tpy::Iterable<std::string> T_items>
 void collect_items(T_items& items) {
     // 6:     for x in items:
     auto& __src_0 = items;
-    auto __obj_0 = tpy::iter_adapt_container(__src_0);
+    auto __iter_0 = tpy::__iter__(__src_0);
+    auto __obj_0 = tpy::iter_adapt(__iter_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -34,7 +35,8 @@ template<tpy::Iterable<int32_t> T_items>
 void collect_ints(T_items& items) {
     // 10:     for x in items:
     auto& __src_0 = items;
-    auto __obj_0 = tpy::iter_adapt_container(__src_0);
+    auto __iter_0 = tpy::__iter__(__src_0);
+    auto __obj_0 = tpy::iter_adapt(__iter_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -48,7 +50,8 @@ template<tpy::Iterable<std::tuple<std::string, int32_t>> T_items>
 void collect_pairs(T_items& items) {
     // 14:     for pair in items:
     auto& __src_0 = items;
-    auto __obj_0 = tpy::iter_adapt_container(__src_0);
+    auto __iter_0 = tpy::__iter__(__src_0);
+    auto __obj_0 = tpy::iter_adapt(__iter_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {

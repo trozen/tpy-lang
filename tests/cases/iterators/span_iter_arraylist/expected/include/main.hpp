@@ -18,7 +18,8 @@ template<tpy::Iterable<int32_t> T_it>
 void consume(T_it& it) {
     // 7:     for x in it:
     auto& __src_0 = it;
-    auto __obj_0 = tpy::iter_adapt_container(__src_0);
+    auto __iter_0 = tpy::__iter__(__src_0);
+    auto __obj_0 = tpy::iter_adapt(__iter_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {

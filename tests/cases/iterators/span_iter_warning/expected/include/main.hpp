@@ -58,9 +58,6 @@ struct Dual {
     // 18:     def __init__(self) -> None:
     Dual() : _data({1, 2, 3}) {}
 
-    auto begin() const { return __span__().begin(); }
-    auto end() const { return __span__().end(); }
-
     // 20:     def __span__(self) -> Span[Int32]:
     std::span<int32_t> __span__() {
         // 21:         return self._data
