@@ -13,7 +13,7 @@ from ..typesys import TpyType, NamedType, UnionType, OwnType, PendingListType, L
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack
 
-from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace, qualified_cpp_name
+from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace, qualified_cpp_name, escape_cpp_string, escape_cpp_char
 from .types import TypeResolver
 from .protocols import ProtocolGenerator
 from .builtins import BuiltinGenerator
@@ -22,6 +22,7 @@ from .statements import StatementGenerator
 from .records import RecordGenerator
 from .functions import FunctionGenerator
 from .type_resolution import resolve_stmt_type_cascade
+from .string_dispatch import find_best_discriminator, STRING_SWITCH_THRESHOLD
 
 if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
@@ -751,8 +752,12 @@ class CodeGenerator:
 
             # try_parse()
             out.write(f"std::optional<{qualified}> EnumUtil<{qualified}>::try_parse(std::string_view __name) {{\n")
-            for member_name, _, _ in enum.members:
-                out.write(f"    if (__name == \"{member_name}\") return {qualified}::{member_name};\n")
+            member_names = [name for name, _, _ in enum.members]
+            if len(member_names) >= STRING_SWITCH_THRESHOLD:
+                self._gen_enum_try_parse_switch(out, qualified, member_names)
+            else:
+                for member_name in member_names:
+                    out.write(f"    if (__name == \"{member_name}\") return {qualified}::{member_name};\n")
             out.write(f"    return std::nullopt;\n")
             out.write(f"}}\n\n")
 
@@ -764,6 +769,46 @@ class CodeGenerator:
             out.write(f"}}\n\n")
 
         out.write("} // namespace tpy\n\n")
+
+    @staticmethod
+    def _gen_enum_try_parse_switch(
+        out: TextIO, qualified: str,
+        member_names: list[str],
+    ) -> None:
+        """Generate switch-based try_parse for enum with many members."""
+        kind, param, _buckets = find_best_discriminator(member_names)
+
+        # Build bucket -> [member_name] mapping
+        buckets: dict[int, list[str]] = {}
+        for name in member_names:
+            key = len(name) if kind == "length" else ord(name[param])
+            buckets.setdefault(key, []).append(name)
+
+        if kind == "length":
+            out.write(f"    switch (__name.size()) {{\n")
+            case_indent = "    "
+            body_indent = "        "
+        else:
+            out.write(f"    if (__name.size() >= {param + 1}) {{\n")
+            out.write(f"        switch (static_cast<unsigned char>(__name[{param}])) {{\n")
+            case_indent = "        "
+            body_indent = "            "
+
+        for disc_value in sorted(buckets.keys()):
+            names = buckets[disc_value]
+            if kind == "char_at":
+                ch = chr(disc_value)
+                out.write(f"{case_indent}case '{escape_cpp_char(ch)}': {{\n")
+            else:
+                out.write(f"{case_indent}case {disc_value}: {{\n")
+            for name in names:
+                out.write(f"{body_indent}if (__name == \"{name}\") return {qualified}::{name};\n")
+            out.write(f"{body_indent}break;\n")
+            out.write(f"{case_indent}}}\n")
+
+        out.write(f"{case_indent}}}\n")
+        if kind == "char_at":
+            out.write(f"    }}\n")
 
     def _module_to_include_path(self, module_name: str) -> str:
         """Convert dotted module name to include path.

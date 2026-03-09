@@ -11,7 +11,7 @@ from typing import TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType,
     ArrayType, ListType, PendingListType, PendingStrType, OwnType, OptionalType,
-    NoneType, NamedType, StrType, StrViewType, STR, TupleType,
+    NoneType, NamedType, StrType, StringType, StrViewType, STR, TupleType,
     INT32, BIGINT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, EnumType,
     local_var_is_movable, resolve_int_literals,
@@ -28,9 +28,12 @@ from ..parse import (
     TpyClassPattern, TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
 )
 from ..namespace import Namespace
-from .context import INDENT, CodeGenError, escape_cpp_name, escape_cpp_string, qualified_cpp_name, expand_cpp_template
+from collections import defaultdict
+
+from .context import INDENT, CodeGenError, escape_cpp_name, escape_cpp_string, escape_cpp_char, qualified_cpp_name, expand_cpp_template
 from .type_resolution import resolve_stmt_binding_type
 from ..prescan import match_is_none
+from .string_dispatch import find_best_discriminator, STRING_SWITCH_THRESHOLD
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -1318,6 +1321,11 @@ class StatementGenerator:
                 )
             else:
                 self._gen_match_if_elif_optional(out, stmt, subject_type, indent)
+        elif isinstance(subject_type, (StrType, StringType, StrViewType)):
+            if self._should_switch_str(stmt):
+                self._gen_match_switch_str(out, stmt, indent)
+            else:
+                self._gen_match_if_elif(out, stmt, indent)
         else:
             self._gen_match_if_elif(out, stmt, indent)
 
@@ -1994,6 +2002,178 @@ class StatementGenerator:
                 raise CodeGenError(f"Unsupported match pattern: {type(pattern).__name__}")
 
         out.write(f"{indent}}}\n")
+
+    def _should_switch_str(self, stmt: TpyMatch) -> bool:
+        """Check if a string match has enough unguarded literal cases for switch dispatch."""
+        count = 0
+        for case in stmt.cases:
+            if case.guard is not None:
+                continue
+            pat = case.pattern
+            if isinstance(pat, TpyAsPattern):
+                pat = pat.pattern
+            if isinstance(pat, TpyLiteralPattern) and isinstance(pat.value, str):
+                count += 1
+            elif isinstance(pat, TpyOrPattern):
+                if all(isinstance(a, TpyLiteralPattern) and isinstance(a.value, str)
+                       for a in pat.patterns):
+                    count += len(pat.patterns)
+        return count >= STRING_SWITCH_THRESHOLD
+
+    def _gen_match_switch_str(self, out: TextIO, stmt: TpyMatch, indent: str) -> None:
+        """Generate optimized switch-based dispatch for string match/case."""
+        inner = INDENT * (self.ctx.indent_level + 1)
+        deep = INDENT * (self.ctx.indent_level + 2)
+
+        self.ctx.match_counter += 1
+        end_label = f"__match_end_{self.ctx.match_counter}"
+
+        # Partition cases into guarded literals, unguarded literals, and trailing
+        guarded: list[TpyMatchCase] = []
+        # Each unguarded entry: (case, list_of_string_values)
+        unguarded: list[tuple[TpyMatchCase, list[str]]] = []
+        trailing: list[TpyMatchCase] = []
+
+        for case in stmt.cases:
+            pat = case.pattern
+            if isinstance(pat, TpyAsPattern):
+                pat = pat.pattern
+            is_str_lit = isinstance(pat, TpyLiteralPattern) and isinstance(pat.value, str)
+            is_str_or = (isinstance(pat, TpyOrPattern) and
+                         all(isinstance(a, TpyLiteralPattern) and isinstance(a.value, str)
+                             for a in pat.patterns))
+            if is_str_lit or is_str_or:
+                if case.guard is not None:
+                    guarded.append(case)
+                else:
+                    strs = [pat.value] if is_str_lit else [a.value for a in pat.patterns]
+                    unguarded.append((case, strs))
+            else:
+                trailing.append(case)
+
+        # Collect all strings and find best discriminator
+        all_strings = []
+        for _, strs in unguarded:
+            all_strings.extend(strs)
+        kind, param, _buckets = find_best_discriminator(all_strings)
+
+        # Build bucket -> [(case, string_value)] mapping, preserving arm order
+        bucket_entries: dict[int, list[tuple[TpyMatchCase, str]]] = defaultdict(list)
+        for case, strs in unguarded:
+            for s in strs:
+                key = len(s) if kind == "length" else ord(s[param])
+                bucket_entries[key].append((case, s))
+
+        # Emit guarded string literal arms first (pre-switch, in original order)
+        for case in guarded:
+            self.ctx.emit_source_comment(out, case.loc, indent)
+            pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
+            if isinstance(pattern, TpyLiteralPattern):
+                cond = self._gen_match_literal_cond(pattern)
+            else:
+                # Or-pattern
+                conds = [self._gen_match_literal_cond(a) for a in pattern.patterns]
+                cond = " || ".join(conds)
+            guard_code = self.expressions.gen_expr(case.guard)
+            self.ctx.temps.flush(out, indent)
+            is_or = isinstance(pattern, TpyOrPattern)
+            cond = f"({cond}) && {guard_code}" if is_or else f"{cond} && {guard_code}"
+            out.write(f"{indent}if ({cond}) {{\n")
+            if as_name is not None:
+                if as_raw and as_raw in self.ctx.declared_vars:
+                    out.write(f"{inner}{as_name} = __match_subject;\n")
+                else:
+                    out.write(f"{inner}auto& {as_name} = __match_subject;\n")
+            self.ctx.indent_level += 1
+            for s in case.body:
+                self.gen_stmt(out, s)
+            self.ctx.indent_level -= 1
+            out.write(f"{inner}goto {end_label};\n")
+            out.write(f"{indent}}}\n")
+
+        # Emit switch on discriminator
+        # For char_at, wrap in an if-guard so short strings skip the switch
+        sw_indent = indent
+        sw_inner = inner
+        sw_deep = deep
+        if kind == "char_at":
+            out.write(f"{indent}if (__match_subject.size() >= {param + 1}) {{\n")
+            sw_indent = inner
+            sw_inner = deep
+            sw_deep = INDENT * (self.ctx.indent_level + 3)
+            out.write(f"{sw_indent}switch (static_cast<unsigned char>(__match_subject[{param}])) {{\n")
+        else:
+            out.write(f"{indent}switch (__match_subject.size()) {{\n")
+
+        for disc_value in sorted(bucket_entries.keys()):
+            entries = bucket_entries[disc_value]
+            if kind == "char_at":
+                ch = chr(disc_value)
+                out.write(f"{sw_indent}case '{escape_cpp_char(ch)}': {{\n")
+            else:
+                out.write(f"{sw_indent}case {disc_value}: {{\n")
+            for case, string_val in entries:
+                self.ctx.emit_source_comment(out, case.loc, sw_inner)
+                pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
+                out.write(f'{sw_inner}if (__match_subject == "{escape_cpp_string(string_val)}") {{\n')
+                if as_name is not None:
+                    if as_raw and as_raw in self.ctx.declared_vars:
+                        out.write(f"{sw_deep}{as_name} = __match_subject;\n")
+                    else:
+                        out.write(f"{sw_deep}auto& {as_name} = __match_subject;\n")
+                self.ctx.indent_level += (3 if kind == "char_at" else 2)
+                for s in case.body:
+                    self.gen_stmt(out, s)
+                self.ctx.indent_level -= (3 if kind == "char_at" else 2)
+                out.write(f"{sw_deep}goto {end_label};\n")
+                out.write(f"{sw_inner}}}\n")
+            out.write(f"{sw_inner}break;\n")
+            out.write(f"{sw_indent}}}\n")
+
+        out.write(f"{sw_indent}}}\n")  # close switch
+        if kind == "char_at":
+            out.write(f"{indent}}}\n")  # close if-guard
+
+        # Emit trailing arms (wildcard, capture, etc.) in a block scope
+        # to prevent goto from crossing variable declarations
+        if trailing:
+            out.write(f"{indent}{{\n")
+            for case in trailing:
+                self.ctx.emit_source_comment(out, case.loc, inner)
+                pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
+                if isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
+                    if isinstance(pattern, TpyCapturePattern):
+                        cap_name = escape_cpp_name(pattern.name)
+                        if pattern.name in self.ctx.declared_vars:
+                            out.write(f"{inner}{cap_name} = __match_subject;\n")
+                        else:
+                            out.write(f"{inner}auto& {cap_name} = __match_subject;\n")
+                    if as_name is not None:
+                        if as_raw and as_raw in self.ctx.declared_vars:
+                            out.write(f"{inner}{as_name} = __match_subject;\n")
+                        else:
+                            out.write(f"{inner}auto& {as_name} = __match_subject;\n")
+                    if case.guard is not None:
+                        guard_code = self.expressions.gen_expr(case.guard)
+                        self.ctx.temps.flush(out, inner)
+                        out.write(f"{inner}if ({guard_code}) {{\n")
+                        self.ctx.indent_level += 2
+                        for s in case.body:
+                            self.gen_stmt(out, s)
+                        self.ctx.indent_level -= 2
+                        out.write(f"{inner}}}\n")
+                    else:
+                        self.ctx.indent_level += 1
+                        for s in case.body:
+                            self.gen_stmt(out, s)
+                        self.ctx.indent_level -= 1
+                else:
+                    raise CodeGenError(
+                        f"Unsupported trailing pattern in string switch: {type(pattern).__name__}"
+                    )
+            out.write(f"{indent}}}\n")
+
+        out.write(f"{indent}{end_label}:;\n")
 
     def _gen_match_if_elif_record(self, out: TextIO, stmt: TpyMatch, indent: str) -> None:
         """Generate match/case as if/elif chain for concrete record subjects (no guards)."""

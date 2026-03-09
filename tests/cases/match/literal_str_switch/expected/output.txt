@@ -1,0 +1,18 @@
+color
+color
+animal
+unknown
+unknown
+verbose help
+help
+quit
+unknown: xyz
+color
+number
+animal
+number
+other
+one
+two
+five
+other
