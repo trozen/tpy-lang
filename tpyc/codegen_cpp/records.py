@@ -315,9 +315,9 @@ class RecordGenerator:
         if has_next and not has_iter:
             out.write(f"\n{INDENT}auto& __iter__() {{ return *this; }}\n")
 
-        # Synthesize begin()/end() for types with __span__() (makes them C++ ranges).
-        # Must appear before user methods so that concept constraints (e.g. input_range)
-        # see a consistent declaration state when evaluated inside method bodies.
+        # Synthesize begin()/end() for types with __span__() (satisfies C++ input_range concept).
+        # Must appear before user methods so that concept constraints see a consistent
+        # declaration state when evaluated inside method bodies.
         has_span = any(m.name == "__span__" for m in record.methods)
         if has_span:
             has_begin = self._has_method_or_field(record, "begin")

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage,
     TypeParamKind, OptionalType, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
-    IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, EnumType, IntEnumType, BoolType, SpanType,
+    IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, EnumType, IntEnumType, BoolType, SpanType, SpanIterType,
     FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL, UINT64,
     register_value_type_record, register_send_record, register_sync_record,
     attach_type_param_bounds,
@@ -812,18 +812,16 @@ class TypeRegistrar:
                 register_value_type_record(record.name)
                 break
 
-        # Auto-derive NativeIterable[T] for types with __span__() -> Span[T]
-        # The codegen generates begin()/end() that delegate to __span__(),
-        # making the C++ type satisfy std::ranges::input_range.
-        if "__span__" in record_info.methods:
-            span_overloads = record_info.methods["__span__"]
-            if span_overloads:
-                ret = span_overloads[0].return_type
-                if isinstance(ret, SpanType):
+        # Auto-derive NativeIterable[T] for types with __iter__() -> SpanIter[T].
+        # SpanIter is a NativeIterable, so the container inherits the protocol.
+        if "__iter__" in record_info.methods:
+            iter_overloads = record_info.methods["__iter__"]
+            if iter_overloads:
+                ret = iter_overloads[0].return_type
+                if isinstance(ret, SpanIterType):
                     elem_type = ret.element_type
                     ni_proto = NamedType("NativeIterable", (elem_type,), is_protocol=True,
                                         _module_qname="tpy.NativeIterable")
-                    # Only add if not already declared
                     if not any(p.name == "NativeIterable" for p in record_info.implemented_protocols):
                         record_info.implemented_protocols.append(ni_proto)
 

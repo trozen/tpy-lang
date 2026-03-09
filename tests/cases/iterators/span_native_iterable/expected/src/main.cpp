@@ -6,7 +6,7 @@ namespace tpy_user::main {
 
 // 11: def main() -> None:
 void main() {
-    // 12:     # ArrayList has __span__() -> auto NativeIterable
+    // 12:     # ArrayList has __iter__() -> SpanIter -> auto NativeIterable
     // 13:     a = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> a = ::tpy_user::tplib::ArrayList<int32_t, 8>();
     // 14:     a.append(1)
