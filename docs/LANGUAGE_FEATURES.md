@@ -4454,7 +4454,14 @@ Range facts enter the system from:
 - `if x > 0:` / `assert x >= 0` -- concrete lower bound
 - `if x < len(arr):` -- symbolic upper bound
 
-Range facts are invalidated on variable reassignment and merged at branch join points. Symbolic bounds referencing a container are invalidated when that container is mutated.
+**Safe unsigned cast elision**: When a signed-to-unsigned cast like `UInt32(x)` is performed and `x` is provably non-negative (and the target is at least as wide as the source), the compiler skips the runtime range check and emits a plain `static_cast`:
+
+```python
+assert offset >= 0
+u = UInt32(offset)  # static_cast (no range check)
+```
+
+Range facts are invalidated on variable reassignment and merged at branch join points. Symbolic bounds referencing a container are invalidated when that container is mutated (including method calls like `.pop()`, `.clear()`).
 
 ## Open Questions
 

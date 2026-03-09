@@ -218,6 +218,11 @@ class SemanticContext:
     # Keyed by (line, divisor_varname). True = non-zero proven.
     div_zero_facts: dict[tuple[int, str], bool] = field(default_factory=dict)
 
+    # --- Cast safety facts (for test annotations) ---
+    # Records whether each int cast skips range checking.
+    # Keyed by (line, target_type_name). True = cast proven safe.
+    cast_safe_facts: dict[tuple[int, str], bool] = field(default_factory=dict)
+
     # --- String local tracking (PendingStrType inference) ---
     str_var_counter: int = 0
     str_vars: dict[int, StrVarInfo] = field(default_factory=dict)

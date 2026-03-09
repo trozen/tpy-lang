@@ -36,7 +36,7 @@
 | 6c+ | String view extension (list, dict) | M | Not started | [6c](#6c-string-view-extension-to-containers) |
 | 11+ | Integer range tracking (general) | L | Not started | [11](#11-integer-range-tracking) |
 | 11+a | Augmented-assignment range shifting (`i += 1` in while-loops) | S-M | Not started | [11](#11-integer-range-tracking) |
-| 11b | Safe unsigned cast after assertion | S | Not started | [11b](#11b-safe-unsigned-cast) |
+| 11b | Safe unsigned cast after assertion | S | Done | [11b](#11b-safe-unsigned-cast) |
 
 ### Phase 4: Thread Safety
 
@@ -683,6 +683,13 @@ ptr = base.offset(UInt64(offset))  # safe: offset proven non-negative
 
 **Implementation**: When a cast to unsigned is requested and the source range has
 `lo >= 0`, skip the sign check. Otherwise, emit a runtime check (current behavior).
+
+**Done.** Implemented in `calls.py:_check_cast_safe()`. When a signed->unsigned
+cast has the source proven non-negative (via range tracking) and the target is at
+least as wide as the source (no narrowing risk), the codegen emits
+`static_cast<T>()` instead of `tpy::int_cast_check<T>()`. The `cast_safe` flag
+on `TpyCall` carries this from sema to codegen. Test annotations:
+`# tpyc: cast_safe(UInt32)` / `# tpyc: cast_checked(UInt32)`.
 
 #### 11c. Condition and Assert-Derived Range Facts
 

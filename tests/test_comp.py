@@ -22,6 +22,7 @@ from conftest import (
     validate_non_null_annotations,
     validate_bounds_annotations,
     validate_div_annotations,
+    validate_cast_annotations,
     parse_annotations,
     check_or_update,
     discover_cases,
@@ -163,3 +164,9 @@ def test_comp(case_dir, main_src, tmp_path):
         div_errors = validate_div_annotations(main_src, result.div_zero_facts)
         if div_errors:
             pytest.fail("\n".join(div_errors), pytrace=False)
+
+    # Validate # tpyc: cast_safe/cast_checked annotations
+    if not UPDATE_EXPECTED and result.cast_safe_facts is not None:
+        cast_errors = validate_cast_annotations(main_src, result.cast_safe_facts)
+        if cast_errors:
+            pytest.fail("\n".join(cast_errors), pytrace=False)

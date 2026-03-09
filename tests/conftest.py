@@ -84,6 +84,8 @@ class CompileResult:
     subscript_bounds_facts: dict[tuple[int, str], bool] | None = None
     # Division non-zero facts (from sema), for # tpyc: div_safe/div_checked validation
     div_zero_facts: dict[tuple[int, str], bool] | None = None
+    # Cast safety facts (from sema), for # tpyc: cast_safe/cast_checked validation
+    cast_safe_facts: dict[tuple[int, str], bool] | None = None
 
 
 def _validate_default_int_name(name: str) -> str:
@@ -183,11 +185,13 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         ptr_deref_facts = ctx.ptr_deref_facts if ctx else None
         subscript_bounds_facts = ctx.subscript_bounds_facts if ctx else None
         div_zero_facts = ctx.div_zero_facts if ctx else None
+        cast_safe_facts = ctx.cast_safe_facts if ctx else None
         return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path,
                              all_modules=all_modules, declared_var_types=declared_var_types,
                              ptr_deref_facts=ptr_deref_facts,
                              subscript_bounds_facts=subscript_bounds_facts,
-                             div_zero_facts=div_zero_facts)
+                             div_zero_facts=div_zero_facts,
+                             cast_safe_facts=cast_safe_facts)
 
     except CompileError as e:
         return CompileResult(success=False, diagnostics=e.format() + "\n")
@@ -653,6 +657,70 @@ def validate_div_annotations(
             errors.append(
                 f"Line {ann.line}: expected '{ann.var_name}' divisor to be div_checked "
                 f"but zero check is skipped (proven non-zero)"
+            )
+
+    return errors
+
+
+@dataclass
+class CastSafeAnnotation:
+    """A cast annotation from source code (# tpyc: cast_safe/cast_checked)."""
+    line: int
+    type_name: str
+    expected_safe: bool  # True for cast_safe, False for cast_checked
+
+
+def parse_cast_annotations(source: str) -> list[CastSafeAnnotation]:
+    """Parse # tpyc: cast_safe and # tpyc: cast_checked annotations."""
+    annotations = []
+    pattern = re.compile(r'#\s*tpyc:\s*(cast_safe|cast_checked)\(\s*(\w+)\s*\)')
+
+    for lineno, line in enumerate(source.splitlines(), start=1):
+        stripped = line.lstrip()
+        if stripped.startswith('#'):
+            continue
+        match = pattern.search(line)
+        if match:
+            kind = match.group(1)
+            type_name = match.group(2)
+            annotations.append(CastSafeAnnotation(
+                line=lineno,
+                type_name=type_name,
+                expected_safe=(kind == "cast_safe"),
+            ))
+
+    return annotations
+
+
+def validate_cast_annotations(
+    src_file: Path,
+    cast_safe_facts: dict[tuple[int, str], bool],
+) -> list[str]:
+    """Validate # tpyc: cast_safe/cast_checked annotations against compiler facts.
+
+    Returns list of validation errors (empty if all pass).
+    """
+    source = src_file.read_text()
+    annotations = parse_cast_annotations(source)
+    errors = []
+
+    for ann in annotations:
+        key = (ann.line, ann.type_name)
+        actual = cast_safe_facts.get(key)
+        if actual is None:
+            errors.append(
+                f"Line {ann.line}: no int cast to '{ann.type_name}' found"
+            )
+            continue
+        if ann.expected_safe and not actual:
+            errors.append(
+                f"Line {ann.line}: expected cast to '{ann.type_name}' to be cast_safe "
+                f"but range check is used"
+            )
+        elif not ann.expected_safe and actual:
+            errors.append(
+                f"Line {ann.line}: expected cast to '{ann.type_name}' to be cast_checked "
+                f"but range check is skipped (proven safe)"
             )
 
     return errors

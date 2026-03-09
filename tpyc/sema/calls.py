@@ -1197,6 +1197,7 @@ class CallAnalyzer:
                             expr,
                         )
                 expr.resolved_function_info = ctor
+                self._check_cast_safe(expr, ctor, arg_types)
                 return ctor.return_type
 
         # Fallback: try protocol-aware overload resolution (e.g. bool(obj) via Truthy)
@@ -1248,6 +1249,40 @@ class CallAnalyzer:
             raise self.ctx.error(f"{type_name}() cannot convert {arg_types[0]}", expr)
         else:
             raise self.ctx.error(f"{type_name}() takes at most 1 argument, got {len(arg_types)}", expr)
+
+    def _check_cast_safe(self, expr: TpyCall, ctor: FunctionInfo, arg_types: list[TpyType]) -> None:
+        """Mark signed->unsigned casts as safe when value is provably non-negative.
+
+        When the source is a signed int with lo >= 0 (from range tracking) and
+        the target unsigned type is wide enough to hold all non-negative values
+        of the source type, skip the runtime range check.
+
+        Only applies when the argument is a simple variable name (TpyName);
+        field accesses and sub-expressions are conservatively left checked.
+        """
+        if len(arg_types) != 1 or not ctor.cpp_template:
+            return
+        if "int_cast_check" not in ctor.cpp_template:
+            return
+        target = ctor.return_type
+        source = arg_types[0]
+        if not isinstance(target, FixedIntType) or not isinstance(source, FixedIntType):
+            return
+        arg = expr.args[0]
+        if not isinstance(arg, TpyName):
+            return
+        # Safe when: signed -> unsigned, target at least as wide, source proven non-negative
+        is_safe = (
+            source.signed and not target.signed
+            and target.bits >= source.bits
+            and (rng := self.ctx.value_ranges.get(arg.name)) is not None
+            and rng.is_non_negative()
+        )
+        if is_safe:
+            safe_template = f"static_cast<{target.to_cpp()}>({{0}})"
+            expr.resolved_function_info = dc_replace(ctor, cpp_template=safe_template)
+        if expr.loc:
+            self.ctx.cast_safe_facts[(expr.loc.line, str(target))] = is_safe
 
     def _validate_explicit_type_args(self, expr: TpyCall, max_type_params: int) -> None:
         """Validate explicit type arguments for a generic call.

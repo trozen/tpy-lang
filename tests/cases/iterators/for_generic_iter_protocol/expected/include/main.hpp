@@ -92,7 +92,7 @@ struct SimpleList {
         int32_t __stop_0 = this->_size;
         for (int32_t i = 0; i < __stop_0; ++i) {
             // 34:             self._storage.drop(UInt32(i))
-            this->_storage.drop(tpy::int_cast_check<uint32_t>(i));
+            this->_storage.drop(static_cast<uint32_t>(i));
         }
     }
 
