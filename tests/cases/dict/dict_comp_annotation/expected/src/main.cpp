@@ -26,7 +26,7 @@ void main() {
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        tpy::BigInt k = *__beg_1;
+        const tpy::BigInt& k = *__beg_1;
         // 9:         print(k, widened[k])
         std::cout << k << " " << tpy::__getitem__(widened, k.to_fixed_check<int32_t>()) << "\n";
     }

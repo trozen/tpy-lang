@@ -23,7 +23,7 @@ void main() {
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        tpy::BigInt v = *__beg_1;
+        const tpy::BigInt& v = *__beg_1;
         // 9:         print(v)
         std::cout << v << "\n";
     }
@@ -32,7 +32,7 @@ void main() {
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
-        std::tuple<std::string, tpy::BigInt> __for_tup_0 = *__beg_2;
+        const std::tuple<std::string, tpy::BigInt>& __for_tup_0 = *__beg_2;
         // 11:     for k, v in d.items():
         const auto& __tup_1 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_1);

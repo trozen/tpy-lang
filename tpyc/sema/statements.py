@@ -587,8 +587,24 @@ class StatementAnalyzer:
                 # Set const-ref binding when the loop var was never mutated.
                 # mutated_loop_vars was cleared for stmt.var before entering the
                 # loop body, so it only reflects mutations from this loop.
-                if (not unwrap_readonly(elem_type).is_value_type()
-                        and stmt.var not in self.ctx.mutated_loop_vars):
+                # Only for non-value types or expensive-to-copy value types
+                # (BigInt, String, tuples with expensive elements). Cheap
+                # primitives (int32_t, bool, double, etc.) are better copied
+                # into a register than referenced through a pointer.
+                # For synthetic tuple-unpack loop vars, skip const binding when
+                # the unpack has elements that need mutable references --
+                # const tuple prevents T& bindings via std::get.
+                unwrapped = unwrap_readonly(elem_type)
+                worth_const_ref = (not unwrapped.is_value_type()
+                                   or unwrapped.is_expensive_copy())
+                needs_mut_unpack = False
+                if stmt.var.startswith("__for_tup_") and stmt.body:
+                    first = stmt.body[0]
+                    if isinstance(first, TpyTupleUnpack) and any(first.is_ref):
+                        needs_mut_unpack = True
+                if (worth_const_ref
+                        and stmt.var not in self.ctx.mutated_loop_vars
+                        and not needs_mut_unpack):
                     stmt.const_loop_var = True
                 body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
                 self.init.restore(before)

@@ -30,7 +30,7 @@ tpy::BigInt sum_span_bigint(std::span<tpy::BigInt> values) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        tpy::BigInt v = *__beg_0;
+        const tpy::BigInt& v = *__beg_0;
         // 14:         total += v
         total = (total) + (v);
     }

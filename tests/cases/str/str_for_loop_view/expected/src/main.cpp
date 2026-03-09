@@ -37,7 +37,7 @@ void main() {
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
-        std::tuple<std::string, tpy::BigInt> __for_tup_0 = *__beg_2;
+        const std::tuple<std::string, tpy::BigInt>& __for_tup_0 = *__beg_2;
         // 14:     # Dict items -> tuple unpack, str key is string_view
         // 15:     for k, v in d.items():
         const auto& __tup_1 = __for_tup_0;

@@ -3310,11 +3310,14 @@ class StatementGenerator:
 
         inner_indent = indent + INDENT
         cpp_var = escape_cpp_name(stmt.var)
-        if elem_type.is_value_type():
+        if stmt.const_loop_var and elem_type.is_value_type():
             cpp_elem = elem_type.to_cpp()
-            out.write(f"{inner_indent}{cpp_elem} {cpp_var} = *{beg_name};\n")
+            out.write(f"{inner_indent}const {cpp_elem}& {cpp_var} = *{beg_name};\n")
         elif stmt.const_loop_var:
             out.write(f"{inner_indent}const auto& {cpp_var} = *{beg_name};\n")
+        elif elem_type.is_value_type():
+            cpp_elem = elem_type.to_cpp()
+            out.write(f"{inner_indent}{cpp_elem} {cpp_var} = *{beg_name};\n")
         else:
             out.write(f"{inner_indent}auto&& {cpp_var} = *{beg_name};\n")
 

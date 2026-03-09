@@ -45,7 +45,7 @@ void main() {
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
-        tpy::BigInt v = *__beg_3;
+        const tpy::BigInt& v = *__beg_3;
         // 14:         print(v)
         std::cout << v << "\n";
     }
