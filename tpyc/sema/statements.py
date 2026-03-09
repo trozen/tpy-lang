@@ -534,18 +534,15 @@ class StatementAnalyzer:
                     line=(stmt.loc.line if stmt.loc else None),
                 )
                 stmt.elem_type = elem_type
+                is_native_iterator = builtin_modules.get_native_iterator_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
+                is_iter_based = builtin_modules.get_iter_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
+                is_protocol_iter = is_protocol_type(resolved_for_iter) and resolved_for_iter.qualified_name() in ("typing.Iterator", "typing.Iterable")
                 before = self.init.save()
                 ns_types_before_foreach = self._save_ns_var_types()
                 with self.scopes.loop_scope() as inner_scope:
                     self.init.apply_loop_entry_facts(before)
                     if isinstance(stmt.iterable, TpyName):
                         self.ctx.borrow_tracker.add_borrow(stmt.iterable.name, "__for_iter", BorrowKind.ITER)
-                    # OptIterator and __iter__-based types produce fresh values each iteration
-                    is_native_iterator = builtin_modules.get_native_iterator_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
-                    is_span_based = builtin_modules.get_span_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
-                    is_iter_based = builtin_modules.get_iter_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
-                    is_protocol_iter = is_protocol_type(resolved_for_iter) and resolved_for_iter.qualified_name() in ("typing.Iterator", "typing.Iterable")
-                    is_protocol_span = is_protocol_type(resolved_for_iter) and resolved_for_iter.qualified_name() == "tpy.ReadOnlySpanLike"
                     if is_native_iterator or is_protocol_iter:
                         iter_depth = inner_scope.depth
                     elif is_iter_based:
@@ -557,12 +554,6 @@ class StatementAnalyzer:
                                 iter_depth = self.scopes.get_expr_scope_depth(stmt.iterable)
                             else:
                                 iter_depth = inner_scope.depth
-                        else:
-                            iter_depth = inner_scope.depth
-                    elif is_span_based or is_protocol_span:
-                        # __span__ returns a view into the container's storage
-                        if self.compat.is_lvalue(stmt.iterable):
-                            iter_depth = self.scopes.get_expr_scope_depth(stmt.iterable)
                         else:
                             iter_depth = inner_scope.depth
                     elif self.compat.is_lvalue(stmt.iterable):

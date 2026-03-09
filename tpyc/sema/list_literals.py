@@ -46,9 +46,6 @@ class IterableHelper:
             return True
         if builtin_modules.get_native_iterator_element_type(typ, registry=self.ctx.registry) is not None:
             return True
-        # Check __span__() method (zero-cost span-based iteration)
-        if builtin_modules.get_span_element_type(typ, registry=self.ctx.registry) is not None:
-            return True
         # Check __iter__() method
         if builtin_modules.get_iter_element_type(typ, registry=self.ctx.registry) is not None:
             return True
@@ -85,11 +82,6 @@ class IterableHelper:
         iter_elem = builtin_modules.get_native_iterator_element_type(iterable_type, registry=self.ctx.registry)
         if iter_elem is not None:
             return iter_elem
-
-        # Check __span__() method (zero-cost span-based iteration)
-        span_elem = builtin_modules.get_span_element_type(iterable_type, registry=self.ctx.registry)
-        if span_elem is not None:
-            return span_elem
 
         # Check __iter__() method (container -> separate iterator)
         iter_elem = builtin_modules.get_iter_element_type(iterable_type, registry=self.ctx.registry)

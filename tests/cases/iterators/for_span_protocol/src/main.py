@@ -1,6 +1,6 @@
-# Test __span__() protocol for zero-cost iteration via range-based for.
-# Covers mutable/readonly returns and @readonly parameter iteration.
-from tpy import Int32, Span, ReadOnlySpan
+# Test SpanIter-based __iter__() iteration for user types.
+# Covers mutable/readonly span access, @readonly parameters, and rvalue containers.
+from tpy import Int32, Span, ReadOnlySpan, SpanIter
 from tpy import readonly
 
 class MutBuffer:
@@ -12,6 +12,9 @@ class MutBuffer:
     def __span__(self) -> Span[Int32]:
         return self._data
 
+    def __iter__(self) -> SpanIter[Int32]:
+        return SpanIter(self.__span__())
+
 class ROBuffer:
     _data: list[Int32]
 
@@ -20,6 +23,9 @@ class ROBuffer:
 
     def __span__(self) -> ReadOnlySpan[Int32]:
         return self._data
+
+    def __iter__(self) -> SpanIter[Int32]:
+        return SpanIter(self.__span__())
 
 def test_mut() -> None:
     buf = MutBuffer()

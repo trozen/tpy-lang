@@ -59,7 +59,7 @@ struct Stack {
         int32_t total = 0;
         // 23:         for x in self:
         auto& __src_0 = (*this);
-        auto __obj_0 = tpy::__iter__(__src_0);
+        auto __obj_0 = __src_0.__iter__();
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
@@ -79,7 +79,7 @@ struct Stack {
         bool first = true;
         // 30:         for x in self:
         auto& __src_0 = (*this);
-        auto __obj_0 = tpy::__iter__(__src_0);
+        auto __obj_0 = __src_0.__iter__();
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {

@@ -49,7 +49,7 @@ void main() {
     s.append(y);
     // 34:     for c in s:
     auto& __src_0 = s;
-    auto __iter_0 = tpy::__iter__(__src_0);
+    auto __iter_0 = __src_0.__iter__();
     auto __obj_0 = tpy::iter_adapt(__iter_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -61,7 +61,7 @@ void main() {
     // 37:     # iterate again
     // 38:     for c in s:
     auto& __src_1 = s;
-    auto __iter_1 = tpy::__iter__(__src_1);
+    auto __iter_1 = __src_1.__iter__();
     auto __obj_1 = tpy::iter_adapt(__iter_1);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();

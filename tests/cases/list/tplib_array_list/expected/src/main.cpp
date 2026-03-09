@@ -94,7 +94,7 @@ void main() {
     c.append(3);
     // 64:     for x in c:
     auto& __src_0 = c;
-    auto __obj_0 = tpy::__iter__(__src_0);
+    auto __obj_0 = __src_0.__iter__();
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -105,7 +105,7 @@ void main() {
     // 66:     # iterate again (fresh iterator each time)
     // 67:     for x in c:
     auto& __src_1 = c;
-    auto __obj_1 = tpy::__iter__(__src_1);
+    auto __obj_1 = __src_1.__iter__();
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {

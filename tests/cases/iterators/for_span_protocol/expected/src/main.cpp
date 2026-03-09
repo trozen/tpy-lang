@@ -4,79 +4,61 @@
 namespace tpy_user::main {
 
 
-// 24: def test_mut() -> None:
+// 30: def test_mut() -> None:
 void test_mut() {
-    // 25:     buf = MutBuffer()
+    // 31:     buf = MutBuffer()
     MutBuffer buf = MutBuffer();
-    // 26:     for x in buf:
+    // 32:     for x in buf:
     auto& __src_0 = buf;
-    auto __obj_0 = __src_0.__span__();
+    auto __obj_0 = __src_0.__iter__();
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 27:         print(x)
+        // 33:         print(x)
         std::cout << x << "\n";
     }
 }
 
-// 29: def test_ro() -> None:
+// 35: def test_ro() -> None:
 void test_ro() {
-    // 30:     buf = ROBuffer()
+    // 36:     buf = ROBuffer()
     ROBuffer buf = ROBuffer();
-    // 31:     for x in buf:
-    auto& __src_0 = buf;
-    auto __obj_0 = __src_0.__span__();
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        int32_t x = *__beg_0;
-        // 32:         print(x)
-        std::cout << x << "\n";
-    }
-}
-
-// 34: def test_iterate_twice() -> None:
-void test_iterate_twice() {
-    // 35:     buf = MutBuffer()
-    MutBuffer buf = MutBuffer();
-    // 36:     total: Int32 = 0
-    int32_t total = 0;
     // 37:     for x in buf:
     auto& __src_0 = buf;
-    auto __obj_0 = __src_0.__span__();
+    auto __obj_0 = __src_0.__iter__();
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 38:         total += x
+        // 38:         print(x)
+        std::cout << x << "\n";
+    }
+}
+
+// 40: def test_iterate_twice() -> None:
+void test_iterate_twice() {
+    // 41:     buf = MutBuffer()
+    MutBuffer buf = MutBuffer();
+    // 42:     total: Int32 = 0
+    int32_t total = 0;
+    // 43:     for x in buf:
+    auto& __src_0 = buf;
+    auto __obj_0 = __src_0.__iter__();
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
+        // 44:         total += x
         total = tpy::add_check<int32_t>(total, x);
     }
-    // 39:     for x in buf:
+    // 45:     for x in buf:
     auto& __src_1 = buf;
-    auto __obj_1 = __src_1.__span__();
+    auto __obj_1 = __src_1.__iter__();
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        // 40:         total += x
-        total = tpy::add_check<int32_t>(total, x);
-    }
-    // 41:     print(total)
-    std::cout << total << "\n";
-}
-
-// 43: def test_readonly_param(buf: readonly[MutBuffer]) -> None:
-void test_readonly_param(const MutBuffer& buf) {
-    // 44:     total: Int32 = 0
-    int32_t total = 0;
-    // 45:     for x in buf:
-    auto& __src_0 = buf;
-    auto __obj_0 = __src_0.__span__();
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        int32_t x = *__beg_0;
         // 46:         total += x
         total = tpy::add_check<int32_t>(total, x);
     }
@@ -84,22 +66,40 @@ void test_readonly_param(const MutBuffer& buf) {
     std::cout << total << "\n";
 }
 
-// 49: def test_rvalue_span() -> None:
-void test_rvalue_span() {
-    // 50:     # Iterate over a temporary -- the container must stay alive for the span
-    // 51:     total: Int32 = 0
+// 49: def test_readonly_param(buf: readonly[MutBuffer]) -> None:
+void test_readonly_param(const MutBuffer& buf) {
+    // 50:     total: Int32 = 0
     int32_t total = 0;
-    // 52:     for x in MutBuffer():
-    auto __src_0 = MutBuffer();
-    auto __obj_0 = __src_0.__span__();
+    // 51:     for x in buf:
+    auto& __src_0 = buf;
+    auto __obj_0 = __src_0.__iter__();
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 53:         total += x
+        // 52:         total += x
         total = tpy::add_check<int32_t>(total, x);
     }
-    // 54:     print(total)
+    // 53:     print(total)
+    std::cout << total << "\n";
+}
+
+// 55: def test_rvalue_span() -> None:
+void test_rvalue_span() {
+    // 56:     # Iterate over a temporary -- the container must stay alive for the span
+    // 57:     total: Int32 = 0
+    int32_t total = 0;
+    // 58:     for x in MutBuffer():
+    auto __src_0 = MutBuffer();
+    auto __obj_0 = __src_0.__iter__();
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
+        // 59:         total += x
+        total = tpy::add_check<int32_t>(total, x);
+    }
+    // 60:     print(total)
     std::cout << total << "\n";
 }
 
@@ -108,17 +108,17 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 56: test_mut()
+    // 62: test_mut()
     test_mut();
-    // 57: test_ro()
+    // 63: test_ro()
     test_ro();
-    // 58: test_iterate_twice()
+    // 64: test_iterate_twice()
     test_iterate_twice();
-    // 59: test_readonly_param(MutBuffer())
+    // 65: test_readonly_param(MutBuffer())
     test_readonly_param(MutBuffer());
-    // 60: test_rvalue_span()
+    // 66: test_rvalue_span()
     test_rvalue_span();
-    // 61: print("done")
+    // 67: print("done")
     std::cout << "done" << "\n";
 }
 

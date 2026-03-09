@@ -10,7 +10,7 @@ void main() {
     Dual d = Dual();
     // 27:     for x in d:
     auto& __src_0 = d;
-    auto __iter_0 = tpy::__iter__(__src_0);
+    auto __iter_0 = __src_0.__iter__();
     auto __obj_0 = tpy::iter_adapt(__iter_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
