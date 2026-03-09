@@ -15,6 +15,8 @@ from ..parse.nodes import TpyStrLiteral, TpySubscript, TpyFieldAccess
 from ..typesys import (
     ArrayType,
     BigIntType,
+    DictLiteralInfo,
+    DictType,
     FixedIntType,
     IntLiteralType,
     ListLiteralInfo,
@@ -23,6 +25,7 @@ from ..typesys import (
     NoneType,
     OptionalType,
     OwnType,
+    PendingDictType,
     PendingListType,
     PendingStrType,
     SpanType,
@@ -249,21 +252,32 @@ class LocalTypeDeduction:
             self._update_list_element_type(source, value_type)
             current = source
 
+    @staticmethod
+    def _widen_inferred_type(current: TpyType, new_type: TpyType) -> Optional[TpyType]:
+        """Widen an inferred container element type with a new observation.
+
+        Returns the updated type, or None if unchanged (same type, or
+        incompatible types that normal type checking will catch).
+        """
+        if isinstance(current, UnknownElementType):
+            return new_type
+        widened = widen_numeric_types(current, new_type)
+        if widened is not None:
+            return widened
+        if current == new_type:
+            return None
+        if isinstance(current, IntLiteralType) and not isinstance(new_type, IntLiteralType):
+            if numeric_info(new_type) is not None:
+                return new_type
+        if isinstance(new_type, IntLiteralType) and not isinstance(current, IntLiteralType):
+            return None  # keep existing concrete type
+        return None  # incompatible -- let normal type checking catch it
+
     def _update_list_element_type(self, info: ListLiteralInfo, value_type: TpyType) -> None:
         """Update element type for a ListLiteralInfo, widening if needed."""
-        if isinstance(info.element_type, UnknownElementType):
-            info.element_type = value_type
-        else:
-            widened = widen_numeric_types(info.element_type, value_type)
-            if widened is not None:
-                info.element_type = widened
-            elif info.element_type != value_type:
-                if isinstance(info.element_type, IntLiteralType) and not isinstance(value_type, IntLiteralType):
-                    if numeric_info(value_type) is not None:
-                        info.element_type = value_type
-                elif isinstance(value_type, IntLiteralType) and not isinstance(info.element_type, IntLiteralType):
-                    pass  # keep existing concrete type
-                # else: incompatible types -- let normal type checking catch it
+        result = self._widen_inferred_type(info.element_type, value_type)
+        if result is not None:
+            info.element_type = result
 
     def mark_list_param_context(self, arg_expr: TpyExpr, param_type: TpyType) -> None:
         """Track parameter context for list literal inference."""
@@ -514,6 +528,74 @@ class LocalTypeDeduction:
                 self.ctx.var_types[id(var_decl)] = resolved
 
     # ------------------------------------------------------------------
+    # Dict literal deduction
+    # ------------------------------------------------------------------
+
+    def infer_dict_key_value_types(self, obj_expr: TpyExpr, key_type: TpyType, value_type: TpyType) -> None:
+        """Infer key/value types for an empty dict literal from subscript assignment (d[k] = v)."""
+        if not isinstance(obj_expr, TpyName):
+            return
+        var_name = obj_expr.name
+        literal_id = self.ctx.variable_to_dict_literal.get(var_name)
+        if literal_id is None:
+            return
+        info = self.ctx.dict_literals.get(literal_id)
+        if info is None:
+            return
+        self._update_dict_type_param(info, "key", key_type)
+        self._update_dict_type_param(info, "value", value_type)
+
+    def _update_dict_type_param(self, info: DictLiteralInfo, which: str, new_type: TpyType) -> None:
+        """Update key or value type for a DictLiteralInfo, widening if needed."""
+        current = info.key_type if which == "key" else info.value_type
+        result = self._widen_inferred_type(current, new_type)
+        if result is not None:
+            if which == "key":
+                info.key_type = result
+            else:
+                info.value_type = result
+
+    def _resolve_pending_dict_types(self) -> None:
+        """Resolve all pending dict types after function analysis."""
+        for literal_id in self.ctx.pending_dict_resolutions:
+            info = self.ctx.dict_literals.get(literal_id)
+            if info is None:
+                continue
+
+            key_type = info.key_type
+            value_type = info.value_type
+
+            if isinstance(key_type, UnknownElementType) or isinstance(value_type, UnknownElementType):
+                var_desc = f"dict '{info.variable_name}'" if info.variable_name else "empty dict literal"
+                raise self.ctx.error(
+                    f"Cannot infer types for {var_desc}; "
+                    f"add a type annotation (e.g., {info.variable_name or 'd'}: dict[K, V] = {{}}) "
+                    f"or use the dict so the types can be inferred",
+                    info.expr,
+                )
+
+            if isinstance(key_type, IntLiteralType):
+                key_type = self.ctx.default_int_for_literal(key_type)
+            if isinstance(value_type, IntLiteralType):
+                value_type = self.ctx.default_int_for_literal(value_type)
+
+            resolved = DictType(key_type, value_type)
+            info.resolved_type = resolved
+
+            self.ctx.set_expr_type(info.expr, resolved)
+
+            if isinstance(info.expr, TpyCall):
+                info.expr.call_type = resolved
+
+            if info.variable_name and self.ctx.current_scope:
+                current_type = self.ctx.current_scope.lookup(info.variable_name)
+                if isinstance(current_type, PendingDictType):
+                    self.ctx.current_scope.define(info.variable_name, resolved)
+
+            if info.variable_name and info.decl_line is not None:
+                self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved
+
+    # ------------------------------------------------------------------
     # String variable deduction (moved from StrVarTracker)
     # ------------------------------------------------------------------
 
@@ -704,8 +786,10 @@ class LocalTypeDeduction:
 
         1. Check unresolved None vars (error if any)
         2. Resolve pending list types (Array vs list)
-        3. Resolve pending str types (StrView vs str)
+        3. Resolve pending dict types
+        4. Resolve pending str types (StrView vs str)
         """
         self._check_unresolved_none_inference()
         self._resolve_pending_list_types()
+        self._resolve_pending_dict_types()
         self._resolve_pending_str_types()

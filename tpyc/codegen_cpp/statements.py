@@ -10,7 +10,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType,
-    ArrayType, ListType, PendingListType, PendingStrType, OwnType, OptionalType,
+    ArrayType, ListType, PendingListType, PendingDictType, PendingStrType, OwnType, OptionalType,
     NoneType, NamedType, StrType, StringType, StrViewType, STR, TupleType,
     INT32, BIGINT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, EnumType,
@@ -505,6 +505,10 @@ class StatementGenerator:
                 info = self.ctx.analyzer.ctx.list_literals.get(target_type.literal_id)
                 if info and info.resolved_type:
                     target_type = info.resolved_type
+            elif isinstance(target_type, PendingDictType):
+                info = self.ctx.analyzer.ctx.dict_literals.get(target_type.literal_id)
+                if info and info.resolved_type:
+                    target_type = info.resolved_type
             elif isinstance(target_type, PendingStrType):
                 info = self.ctx.analyzer.ctx.str_vars.get(target_type.str_var_id)
                 target_type = info.resolved_type if info and info.resolved_type else STR
@@ -521,6 +525,10 @@ class StatementGenerator:
                 elem = var_type.element_type
                 if isinstance(elem, IntLiteralType):
                     var_type = ListType(resolve_lit(elem))
+        elif isinstance(var_type, PendingDictType):
+            info = self.ctx.analyzer.ctx.dict_literals.get(var_type.literal_id)
+            if info and info.resolved_type:
+                var_type = info.resolved_type
         elif isinstance(var_type, PendingStrType):
             info = self.ctx.analyzer.ctx.str_vars.get(var_type.str_var_id)
             var_type = info.resolved_type if info and info.resolved_type else STR
@@ -550,7 +558,7 @@ class StatementGenerator:
                 self.ctx.analyzer,
                 include_global_binding=(self.ctx.current_ns is self.ctx.analyzer.global_ns),
             )
-            if resolved_type is None or isinstance(resolved_type, (PendingListType, PendingStrType)):
+            if resolved_type is None or isinstance(resolved_type, (PendingListType, PendingDictType, PendingStrType)):
                 resolved_type = self.ctx.get_expr_type(stmt.init)
             if resolved_type is None:
                 raise CodeGenError(

@@ -11,7 +11,7 @@
 | 3 | Narrowing integration: deduced `Optional[T]` variables work with `if x is not None` narrowing. | Done |
 | 4 | String deduction test coverage: dedicated tests for StrView-vs-str resolution and string alias propagation. | Done |
 | 5a | Empty list inference: `xs = []; xs.append(v)` and `xs = list(); xs.append(v)` infer element type from `.append()`/`.insert()` usage, with numeric widening and alias propagation. | Done |
-| 5b | Empty dict inference: `d = {}; d[k] = v` and `d = dict()` infer key/value types from subsequent usage. | Not started |
+| 5b | Empty dict inference: `d = {}; d[k] = v` and `d = dict()` infer key/value types from subsequent subscript assignment. | Done |
 | 5c | Empty set inference: `s = set(); s.add(v)` infers element type from subsequent usage. | Not started |
 | 6 | List element-type widening: `.append(Int64)` on `[1,2]` widens element type from Int32 to Int64. | Not started |
 | 7 | Deferred generic instance inference: `x = GenericType()` with unresolved type params, resolved from subsequent method calls via constraint unification. Reuses `match_type_with_inference` from bidirectional inference. See `BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md`. | Not started |

@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, DictType, SetType,
+    TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingDictType, DictType, SetType,
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly, UnknownElementType,
 )
@@ -309,7 +309,7 @@ class MethodAnalyzer:
                 is_mutation = False
                 if isinstance(obj_type, (PendingListType, ListType)):
                     is_mutation = expr.method in LIST_ITER_INVALIDATING
-                elif isinstance(obj_type, DictType):
+                elif isinstance(obj_type, (DictType, PendingDictType)):
                     is_mutation = expr.method in DICT_MUTATION_METHODS
                 elif isinstance(obj_type, SetType):
                     is_mutation = expr.method in SET_MUTATION_METHODS

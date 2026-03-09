@@ -1813,9 +1813,9 @@ class DictItemsViewType(NamedType):
 class UnknownElementType(TpyType):
     """Sentinel for empty container literals whose element type is not yet known.
 
-    Used as the element_type for PendingListType created from empty list
-    literals ([]). The actual element type is inferred from subsequent usage
-    (e.g. .append(v), xs[i] = v) and stored in ListLiteralInfo.element_type.
+    Used as the element/key/value type for PendingListType and PendingDictType
+    created from empty literals ([], {}, list(), dict()). The actual type is
+    inferred from subsequent usage and stored in the corresponding info object.
     """
 
     def to_cpp(self) -> str:
@@ -1920,6 +1920,46 @@ class ListLiteralInfo:
     explicit_type: Optional[TpyType] = None
     coerced_element_type: Optional[TpyType] = None  # Element type from typed param (list[T] or Span[T])
     source_literal_id: Optional[int] = None  # Alias tracking: b = a
+    resolved_type: Optional[TpyType] = None
+
+
+@dataclass(frozen=True)
+class PendingDictType(TpyType):
+    """Unresolved empty dict literal -- key/value types inferred from usage.
+
+    Assigned to empty dict literals ({}) or dict() calls in function-local
+    contexts. After full function analysis, resolved to DictType based on
+    collected usage facts (primarily d[k] = v subscript assignment).
+    """
+    key_type: TpyType
+    value_type: TpyType
+    literal_id: int
+
+    def to_cpp(self) -> str:
+        raise RuntimeError(f"PendingDictType should be resolved before codegen (literal_id={self.literal_id})")
+
+    def get_element_type(self) -> Optional[TpyType]:
+        return self.value_type
+
+    def get_iteration_element_type(self) -> Optional[TpyType]:
+        return self.key_type
+
+    def __str__(self) -> str:
+        return f"PendingDict[{self.key_type}, {self.value_type}]#{self.literal_id}"
+
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.dict"
+
+
+@dataclass
+class DictLiteralInfo:
+    """Tracks usage information for an empty dict literal to determine its resolved type."""
+    literal_id: int
+    expr: 'TpyDictLiteral | TpyCall'
+    key_type: TpyType
+    value_type: TpyType
+    variable_name: Optional[str] = None
+    decl_line: Optional[int] = None
     resolved_type: Optional[TpyType] = None
 
 

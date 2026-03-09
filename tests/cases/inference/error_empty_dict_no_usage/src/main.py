@@ -1,5 +1,6 @@
-# Empty dict literal without type annotation or usage should error
+# Empty dict with no usage that could infer types
 def main() -> None:
     d = {}  # tpyc: error(/Cannot infer types for dict/)
+    print(d)
 
 main()

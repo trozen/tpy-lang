@@ -205,9 +205,9 @@ void __setitem__(std::span<T> x, int32_t i, V&& v) {
 }
 
 // Overload: ordered_map (dict)
-template<typename K, typename V, typename KeyArg>
-void __setitem__(ordered_map<K, V>& m, const KeyArg& key, V value) {
-    m.insert_or_assign(K(key), std::move(value));
+template<typename K, typename V, typename KeyArg, typename ValArg>
+void __setitem__(ordered_map<K, V>& m, const KeyArg& key, ValArg&& value) {
+    m.insert_or_assign(K(key), V(std::forward<ValArg>(value)));
 }
 
 // Default template: user types that define __setitem__() method

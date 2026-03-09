@@ -15,6 +15,7 @@ from ..typesys import (
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
     FixedIntType, StringType, StrViewType, make_union,
     ResolvedBinop, FunctionInfo, ParamInfo, UnknownElementType, UNKNOWN_ELEMENT,
+    PendingDictType, DictLiteralInfo,
     INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, is_protocol_type, container_to_str_template,
 )
 from ..parse import (
@@ -1293,11 +1294,20 @@ class ExpressionAnalyzer:
     ) -> TpyType:
         """Analyze a dict literal {key: value, ...}"""
         if not expr.keys:
-            # Empty dict needs type annotation (handled at assignment site)
-            raise self.ctx.error(
-                "Empty dict literal requires type annotation "
-                "(e.g. d: dict[str, int] = {})", expr,
+            if not isinstance(self.ctx.current_function, TpyFunction):
+                raise self.ctx.error(
+                    "Empty dict literal requires explicit type annotation", expr)
+            literal_id = self.ctx.literal_counter
+            self.ctx.literal_counter += 1
+            info = DictLiteralInfo(
+                literal_id=literal_id,
+                expr=expr,
+                key_type=UNKNOWN_ELEMENT,
+                value_type=UNKNOWN_ELEMENT,
             )
+            self.ctx.dict_literals[literal_id] = info
+            self.ctx.pending_dict_resolutions.append(literal_id)
+            return PendingDictType(UNKNOWN_ELEMENT, UNKNOWN_ELEMENT, literal_id)
 
         if expected_key:
             key_types = [self.analyze_expr_with_hint(k, expected_key) for k in expr.keys]
@@ -1731,6 +1741,14 @@ class ExpressionAnalyzer:
 
         # Dict subscript: d[key] -> V (key can be non-integer)
         actual_obj = unwrap_readonly(obj_type)
+        if isinstance(actual_obj, PendingDictType):
+            if not isinstance(actual_obj.key_type, UnknownElementType):
+                self.compat.check_type_compatible(
+                    index_type, actual_obj.key_type,
+                    f"dict key (expected {actual_obj.key_type})",
+                    loc=expr.loc,
+                )
+            return actual_obj.value_type
         if isinstance(actual_obj, DictType):
             self.compat.check_type_compatible(
                 index_type, actual_obj.key_type,

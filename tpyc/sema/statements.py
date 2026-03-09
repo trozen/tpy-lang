@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, OwnType, ReadonlyType,
     FinalType, FixedIntType, BoolType, StrViewType, StringType,
-    ListType, DictType, ArrayType, SpanType, PendingListType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
-    ListLiteralInfo, StrVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType,
+    ListType, DictType, ArrayType, SpanType, PendingListType, PendingDictType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
+    ListLiteralInfo, DictLiteralInfo, StrVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType, UnknownElementType,
     EnumType, unwrap_readonly, is_any_str_type, TupleType,
     INT32, VOID, BIGINT, STRVIEW, is_protocol_type, is_protocol_union,
 )
@@ -1688,6 +1688,14 @@ class StatementAnalyzer:
                     info.has_explicit_annotation = True
                     info.explicit_type = stmt.type
 
+            # Track dict literal to variable mapping for type inference.
+            if isinstance(init_type, PendingDictType) and not isinstance(stmt.init, TpyName):
+                literal_id = init_type.literal_id
+                self.ctx.variable_to_dict_literal[stmt.name] = literal_id
+                info = self.ctx.dict_literals[literal_id]
+                info.variable_name = stmt.name
+                info.decl_line = stmt.loc.line if stmt.loc else None
+
             if stmt.type:
                 if existing_type is not None:
                     self.deduction.check_conflicting_annotation(
@@ -2073,6 +2081,9 @@ class StatementAnalyzer:
                     else:
                         self.deduction.link_list_literals(inner_target.literal_id, inner_value.literal_id)
                 # target_type stays PendingListType
+            # PendingDictType reassignment: keep pending
+            elif isinstance(inner_target, PendingDictType):
+                pass  # target_type stays PendingDictType
             # PendingStrType reassignment: track view-compatibility, keep pending
             elif isinstance(inner_target, PendingStrType):
                 if is_any_str_type(inner_value):
@@ -2102,7 +2113,7 @@ class StatementAnalyzer:
                 self.ctx.current_ns.update_variable_type(stmt.target.name, target_type)
             self.ctx.set_expr_type(stmt.target, target_type)
             self.deduction.record_write(stmt.target.name, stmt.value, inner_value)
-            if not isinstance(inner_target, (PendingStrType, PendingListType)):
+            if not isinstance(inner_target, (PendingStrType, PendingListType, PendingDictType)):
                 resolved = unwrap_readonly(target_type)
                 var_decl = self.ctx.var_decl_by_name.get(stmt.target.name)
                 if var_decl:
@@ -2128,7 +2139,7 @@ class StatementAnalyzer:
             if isinstance(obj_type, TupleType):
                 raise self.ctx.error("Tuples are immutable; cannot assign to tuple elements", stmt)
             # Dict subscript assignment is always allowed (no read-only dict variant)
-            if not isinstance(unwrap_readonly(obj_type), DictType):
+            if not isinstance(unwrap_readonly(obj_type), (DictType, PendingDictType)):
                 elem_type = obj_type.get_element_type()
                 if elem_type is not None:
                     # Check if type conforms to MutableSequence[elem_type]
@@ -2165,6 +2176,27 @@ class StatementAnalyzer:
                        " (field assignment may invalidate references)")
                 self.ctx.warning(msg, stmt)
             self.ctx.mark_str_borrowers_mutated(storage)
+
+        # PendingDictType subscript assignment: d[k] = v -- infer key/value types
+        if isinstance(stmt.target, TpySubscript):
+            obj_type_for_dict = self.ctx.get_expr_type(stmt.target.obj)
+            if isinstance(obj_type_for_dict, PendingDictType):
+                index_type = self.ctx.get_expr_type(stmt.target.index)
+                self.deduction.infer_dict_key_value_types(
+                    stmt.target.obj, index_type, value_type)
+                # Update obj_type and target_type if types were inferred
+                dict_info = self.ctx.dict_literals.get(obj_type_for_dict.literal_id)
+                if dict_info and not isinstance(dict_info.key_type, UnknownElementType):
+                    new_pending = PendingDictType(dict_info.key_type, dict_info.value_type, obj_type_for_dict.literal_id)
+                    if new_pending.key_type != obj_type_for_dict.key_type or new_pending.value_type != obj_type_for_dict.value_type:
+                        self.ctx.set_expr_type(stmt.target.obj, new_pending)
+                        if isinstance(stmt.target.obj, TpyName):
+                            if self.ctx.current_scope:
+                                self.ctx.current_scope.define(stmt.target.obj.name, new_pending)
+                            if self.ctx.current_ns:
+                                self.ctx.current_ns.bind_variable(stmt.target.obj.name, new_pending)
+                    target_type = dict_info.value_type
+                    self.ctx.set_expr_type(stmt.target, target_type)
 
         stmt.value = self.compat.coerce_expr(stmt.value, value_type, target_type, "assignment",
                                               coercion_ctx=CoercionContext.ASSIGN)
