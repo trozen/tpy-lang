@@ -28,6 +28,14 @@ unsafe_cast[UInt32](p)               # T explicit, U from arg (partial type args
 |-------|-------|--------|
 | **Phase 1** | Return-type inference fallback for assignment + return context (exact/generic matches only) | **Done** |
 | **Phase 2** | Nested call context + partial explicit type args + unsafe_cast cleanup | **Done** |
+| **Phase 3** | Forward-propagation from usage: `x = GenericType()` with unresolved type params, resolved from subsequent method calls (e.g. `x.append(Int32(0))` constrains T=Int32). Lifecycle managed by `LocalTypeDeduction`; unification reuses `match_type_with_inference`. See `LOCAL_TYPE_DEDUCTION.md` Phase 7. | Not started |
+
+## Future Extensions (no known use case yet)
+
+| Extension | Description |
+|-----------|-------------|
+| Coercion-aware return-type matching | Allow numeric widening when matching return type against expected type. Type param inference always produces exact matches today. |
+| Overload filtering by return type | When multiple overloads match arguments, use expected return type as a filter. Overloads are distinguished by argument types today. |
 
 ## Design Principles
 
@@ -159,11 +167,3 @@ Usage patterns:
 - ReadOnlyPtr arg with Ptr context correctly fails (ReadOnlyPtr overload returns
   ReadOnlyPtr, which doesn't match Ptr target)
 
----
-
-## Future Extensions
-
-| Extension | Description |
-|-----------|-------------|
-| Coercion-aware return-type matching | Allow numeric widening when matching return type against expected type. No practical use case found -- type param inference always produces exact matches. |
-| Overload filtering by return type | When multiple overloads match arguments, use expected return type as a filter. No practical use case exists yet -- overloads are distinguished by argument types today. |

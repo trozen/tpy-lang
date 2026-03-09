@@ -7,8 +7,13 @@
 | 1 | Unify infrastructure: replace ListLiteralTracker, StrVarTracker, and deduction parts of ReassignmentInference with single LocalTypeDeduction class. Preserve existing behavior. | Done |
 | 2a | Numeric widening across assignments (int->float, Int32->Int64, unsigned->wider signed). | Done |
 | 2b | Different-size list reassignment, return-type-driven deduction, alias propagation for lists. | Done |
-| 2c | Cross-variable list reassignment (`a = [1,2,3]; b = [4,5]; a = b` -- both should become list). | Not started |
-| 3 | Narrowing integration: deduced `Optional[T]` variables work with `if x is not None` narrowing. | Not started |
+| 2c | Cross-variable list reassignment (`a = [1,2,3]; b = [4,5]; a = b` -- both should become list). | Done |
+| 3 | Narrowing integration: deduced `Optional[T]` variables work with `if x is not None` narrowing. | Done |
+| 4 | String deduction test coverage: dedicated tests for StrView-vs-str resolution and string alias propagation. | Not started |
+| 5 | Empty container inference: `xs = []; xs.append(v)` and `d = {}; d[k] = v` infer element types from subsequent usage. | Not started |
+| 6 | List element-type widening: `.append(Int64)` on `[1,2]` widens element type from Int32 to Int64. | Not started |
+| 7 | Deferred generic instance inference: `x = GenericType()` with unresolved type params, resolved from subsequent method calls via constraint unification. Reuses `match_type_with_inference` from bidirectional inference. See `BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md`. | Not started |
+| 8 | State ownership: move deduction-related fields from SemanticContext into sub-structures owned by LocalTypeDeduction. | Not started |
 
 ## Motivation
 
