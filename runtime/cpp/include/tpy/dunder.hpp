@@ -27,6 +27,7 @@
 #include "format.hpp"
 #include "container_ops.hpp"
 #include "ordered_map.hpp"
+#include "span_iter.hpp"
 
 namespace tpy {
 

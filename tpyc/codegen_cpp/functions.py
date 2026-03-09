@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, NamedType, OwnType, ReadonlyType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
     BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
     Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, is_any_str_type, SpanType,
-    resolve_int_literals,
+    SpanIterType, resolve_int_literals,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import (
@@ -499,9 +499,25 @@ class FunctionGenerator:
                 self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,
                                           record_type_param_bounds=record_type_param_bounds)
                 self.ctx.force_readonly_span = True
-                self._gen_method_overload(out, method, record_name, cpp_name,
-                                          cpp_return_type.as_const(), const=True,
+                try:
+                    self._gen_method_overload(out, method, record_name, cpp_name,
+                                              cpp_return_type.as_const(), const=True,
+                                              record_type_param_bounds=record_type_param_bounds)
+                finally:
+                    self.ctx.force_readonly_span = False
+        elif (method.name == "__iter__" and not is_static
+              and isinstance(cpp_return_type, SpanIterType)):
+            # __iter__() -> SpanIter[T]: dual overload (non-const + const).
+            # Same return type for both (SpanIter wraps std::span<const T>).
+            # The const overload uses force_readonly_span so internal __span__()
+            # calls dispatch to the const overload.
+            self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,
+                                      record_type_param_bounds=record_type_param_bounds)
+            self.ctx.force_readonly_span = True
+            try:
+                self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=True,
                                           record_type_param_bounds=record_type_param_bounds)
+            finally:
                 self.ctx.force_readonly_span = False
         else:
             is_override = override_const is False and not is_static  # base is non-const

@@ -546,14 +546,25 @@ class StatementAnalyzer:
                     is_iter_based = builtin_modules.get_iter_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
                     is_protocol_iter = is_protocol_type(resolved_for_iter) and resolved_for_iter.qualified_name() in ("typing.Iterator", "typing.Iterable")
                     is_protocol_span = is_protocol_type(resolved_for_iter) and resolved_for_iter.qualified_name() == "tpy.ReadOnlySpanLike"
-                    if is_span_based or is_protocol_span:
+                    if is_native_iterator or is_protocol_iter:
+                        iter_depth = inner_scope.depth
+                    elif is_iter_based:
+                        # __iter__() returning NativeIterable (e.g. SpanIter) references
+                        # the container's storage; OptIterator creates fresh values.
+                        iter_info_result = builtin_modules.get_iter_info(inner_iterable_type, registry=self.ctx.registry)
+                        if iter_info_result and iter_info_result.iter_is_native:
+                            if self.compat.is_lvalue(stmt.iterable):
+                                iter_depth = self.scopes.get_expr_scope_depth(stmt.iterable)
+                            else:
+                                iter_depth = inner_scope.depth
+                        else:
+                            iter_depth = inner_scope.depth
+                    elif is_span_based or is_protocol_span:
                         # __span__ returns a view into the container's storage
                         if self.compat.is_lvalue(stmt.iterable):
                             iter_depth = self.scopes.get_expr_scope_depth(stmt.iterable)
                         else:
                             iter_depth = inner_scope.depth
-                    elif is_native_iterator or is_iter_based or is_protocol_iter:
-                        iter_depth = inner_scope.depth
                     elif self.compat.is_lvalue(stmt.iterable):
                         # For-each var references container's storage -- use container's depth.
                         iter_depth = self.scopes.get_expr_scope_depth(stmt.iterable)

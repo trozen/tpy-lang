@@ -2341,10 +2341,12 @@ for x in buf:       # compiles to: for (int32_t x : buf.__span__()) { ... }
 overloads -- a non-const overload returning `std::span<T>` (user's body) and a const overload
 returning `std::span<const T>` (thin wrapper). This enables correct iteration on both mutable
 and `@readonly` references. When `__span__` returns `ReadOnlySpan[T]`, only a single const
-overload is generated.
+overload is generated. The same dual-overload pattern applies to `__iter__()` returning
+`SpanIter[T]` -- both const and non-const overloads are generated automatically.
 
-**Priority**: `__span__` currently takes precedence over `__iter__` when both are defined for
-codegen purposes (direct range-based for).
+**Priority**: `__iter__` takes precedence over `__span__` when both are defined. Span-backed
+types should define `__iter__(self) -> SpanIter[T]` for explicit iteration control and CPython
+compatibility. Types with only `__span__` (no `__iter__`) still iterate via `__span__()`.
 
 **Implicit coercion**: A type with `__span__()` coerces to `Span[T]` or `ReadOnlySpan[T]`
 when passed as a function argument. `ReadOnlySpan[T]` return cannot coerce to mutable `Span[T]`.

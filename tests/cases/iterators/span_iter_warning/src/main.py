@@ -1,5 +1,5 @@
 # Test that types with both __span__ and __iter__ compile without warning.
-# __span__ currently takes precedence for iteration in codegen.
+# __iter__ takes precedence for iteration in codegen.
 from tpy import Int32, Own, Span
 
 class MyIter:

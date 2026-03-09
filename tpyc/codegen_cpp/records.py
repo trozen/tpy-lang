@@ -309,6 +309,20 @@ class RecordGenerator:
         # Generate converting move constructor for covariant generics
         self._gen_covariant_converting_ctor(out, record)
 
+        # Synthesize __iter__() -> self for iterator types (has __next__ but no explicit __iter__)
+        has_next = any(m.name == "__next__" for m in record.methods)
+        has_iter = any(m.name == "__iter__" for m in record.methods)
+        if has_next and not has_iter:
+            out.write(f"\n{INDENT}auto& __iter__() {{ return *this; }}\n")
+
+        # Synthesize begin()/end() for types with __span__() (makes them C++ ranges).
+        # Must appear before user methods so that concept constraints (e.g. input_range)
+        # see a consistent declaration state when evaluated inside method bodies.
+        has_span = any(m.name == "__span__" for m in record.methods)
+        if has_span:
+            out.write(f"\n{INDENT}auto begin() const {{ return __span__().begin(); }}\n")
+            out.write(f"{INDENT}auto end() const {{ return __span__().end(); }}\n")
+
         # Generate methods (excluding __init__ and __del__)
         dynamic_overrides = self.functions._get_dynamic_override_info(record.name)
         for method in record.methods:
@@ -334,18 +348,6 @@ class RecordGenerator:
 
         # Generate __repr__ for @dataclass
         self._gen_repr_method(out, record)
-
-        # Synthesize __iter__() -> self for iterator types (has __next__ but no explicit __iter__)
-        has_next = any(m.name == "__next__" for m in record.methods)
-        has_iter = any(m.name == "__iter__" for m in record.methods)
-        if has_next and not has_iter:
-            out.write(f"\n{INDENT}auto& __iter__() {{ return *this; }}\n")
-
-        # Synthesize begin()/end() for types with __span__() (makes them C++ ranges)
-        has_span = any(m.name == "__span__" for m in record.methods)
-        if has_span:
-            out.write(f"\n{INDENT}auto begin() const {{ return __span__().begin(); }}\n")
-            out.write(f"{INDENT}auto end() const {{ return __span__().end(); }}\n")
 
         out.write("};\n")
         self._gen_record_ostream(out, record)

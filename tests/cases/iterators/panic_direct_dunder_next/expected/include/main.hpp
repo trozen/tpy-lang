@@ -21,6 +21,8 @@ struct Counter {
     Counter() = default;
     explicit Counter(int32_t limit) : current(0), limit(limit) {}
 
+    auto& __iter__() { return *this; }
+
     // 11:     def __next__(self) -> Int32:
     std::optional<int32_t> __next_opt__() {
         // 12:         if self.current < self.limit:
@@ -39,8 +41,6 @@ struct Counter {
     int32_t __next__() {
         tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
     }
-
-    auto& __iter__() { return *this; }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {

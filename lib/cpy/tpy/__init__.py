@@ -405,6 +405,9 @@ class ReadOnlySpan(metaclass=ReadOnlySpanMeta):
 class SpanIter:
     """Iterator over a contiguous span."""
 
+    def __class_getitem__(cls, item):
+        return cls
+
     def __init__(self, span):
         if isinstance(span, (Span, ReadOnlySpan)):
             self._data = span._data

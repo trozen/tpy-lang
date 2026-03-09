@@ -15,7 +15,8 @@ void __tpy_init() {
     // 29: # 1. Container with __iter__ in for-loop
     // 30: for x in NumberRange(0, 5):
     auto __src_0 = NumberRange(0, 5);
-    auto __obj_0 = tpy::iter_adapt_container(__src_0);
+    auto __iter_0 = tpy::__iter__(__src_0);
+    auto __obj_0 = tpy::iter_adapt(__iter_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -29,7 +30,8 @@ void __tpy_init() {
     nums = &__global_slot_1;
     // 35: for x in nums:
     auto& __src_1 = (*nums);
-    auto __obj_1 = tpy::iter_adapt_container(__src_1);
+    auto __iter_1 = tpy::__iter__(__src_1);
+    auto __obj_1 = tpy::iter_adapt(__iter_1);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
@@ -39,7 +41,8 @@ void __tpy_init() {
     }
     // 37: for x in nums:
     auto& __src_2 = (*nums);
-    auto __obj_2 = tpy::iter_adapt_container(__src_2);
+    auto __iter_2 = tpy::__iter__(__src_2);
+    auto __obj_2 = tpy::iter_adapt(__iter_2);
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {

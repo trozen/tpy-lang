@@ -21,6 +21,8 @@ struct MyIter {
     MyIter() = default;
     explicit MyIter(int32_t val) : _val(val) {}
 
+    auto& __iter__() { return *this; }
+
     // 9:     def __next__(self) -> Int32:
     std::optional<int32_t> __next_opt__() {
         // 10:         if self._val > 0:
@@ -39,8 +41,6 @@ struct MyIter {
     int32_t __next__() {
         tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
     }
-
-    auto& __iter__() { return *this; }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyIter& obj) {
@@ -57,6 +57,9 @@ struct Dual {
 
     // 18:     def __init__(self) -> None:
     Dual() : _data({1, 2, 3}) {}
+
+    auto begin() const { return __span__().begin(); }
+    auto end() const { return __span__().end(); }
 
     // 20:     def __span__(self) -> Span[Int32]:
     std::span<int32_t> __span__() {
@@ -75,9 +78,6 @@ struct Dual {
         // 23:         return MyIter(Int32(3))
         return MyIter(3);
     }
-
-    auto begin() const { return __span__().begin(); }
-    auto end() const { return __span__().end(); }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Dual& obj) {

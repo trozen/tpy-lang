@@ -23,6 +23,9 @@ struct Buffer {
     // 6:     def __init__(self) -> None:
     Buffer() : _data({10, 20, 30}) {}
 
+    auto begin() const { return __span__().begin(); }
+    auto end() const { return __span__().end(); }
+
     // 8:     def __span__(self) -> Span[Int32]:
     std::span<int32_t> __span__() {
         // 9:         return self._data
@@ -34,9 +37,6 @@ struct Buffer {
         // 9:         return self._data
         return tpy::as_span(this->_data);
     }
-
-    auto begin() const { return __span__().begin(); }
-    auto end() const { return __span__().end(); }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {

@@ -26,6 +26,8 @@ struct StorageIter {
     StorageIter() = default;
     explicit StorageIter(UninitArrayStorage<T, N>* storage, int32_t size) : _storage(storage), _size(size), _index(0) {}
 
+    auto& __iter__() { return *this; }
+
     // 16:     def __next__(self) -> Own[T]:
     std::optional<T> __next_opt__() {
         // 17:         if self._index < self._size:
@@ -44,8 +46,6 @@ struct StorageIter {
     T __next__() {
         tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
     }
-
-    auto& __iter__() { return *this; }
 };
 
 template<typename T, std::size_t N>

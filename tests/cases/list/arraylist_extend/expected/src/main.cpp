@@ -27,7 +27,7 @@ void main() {
     std::cout << tpy::__len__(a) << "\n";
     // 17:     for x in a:
     auto& __src_0 = a;
-    auto __obj_0 = __src_0.__span__();
+    auto __obj_0 = tpy::__iter__(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {

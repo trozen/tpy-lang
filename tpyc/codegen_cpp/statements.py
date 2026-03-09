@@ -3107,12 +3107,15 @@ class StatementGenerator:
 
     def _gen_adapted_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
                           iterable_expr: str, elem_type: TpyType,
-                          adapter: str) -> None:
+                          adapter: str, iter_call: str = "") -> None:
         """Generate begin/end loop with an iter_adapt wrapper.
 
         Captures the original iterable first (to keep it alive), then wraps
         it with tpy::iter_adapt or tpy::iter_adapt_container, then delegates
         to _gen_begin_end_loop.
+
+        When iter_call is set, calls it on the source to get an iterator first,
+        then wraps the iterator with the adapter (two-step: __iter__ then adapt).
 
         Produces:
             auto& __src_N = <lvalue_expr>;   // or: auto __src_N = <rvalue_expr>;
@@ -3127,7 +3130,13 @@ class StatementGenerator:
 
         self.ctx.temps.flush(out, indent)
         out.write(f"{indent}{src_binding} {src_name} = {iterable_expr};\n")
-        adapted_expr = f"tpy::{adapter}({src_name})"
+        if iter_call:
+            # Two-step: call __iter__() first, then wrap result with adapter
+            iter_name = f"__iter_{n}"
+            out.write(f"{indent}auto {iter_name} = {iter_call}({src_name});\n")
+            adapted_expr = f"tpy::{adapter}({iter_name})"
+        else:
+            adapted_expr = f"tpy::{adapter}({src_name})"
         self._gen_begin_end_loop(out, stmt, indent, adapted_expr, elem_type, is_lvalue=False)
 
     def _gen_captured_call_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
@@ -3343,15 +3352,15 @@ class StatementGenerator:
 
         All iteration uses a single canonical begin/end loop shape.
         The iterable expression is wrapped with an adapter if needed:
-        - Native C++ ranges (list, dict, str, etc.): expr directly
-        - range(): counter optimization first, else tpy::Range<T>(args...)
         - Enum: tpy::EnumUtil<E>::members
-        - __span__()-based types: expr.__span__() or tpy::as_span(expr)
-        - OptIterator types: tpy::iter_adapt(expr)
-        - __iter__()-based types: tpy::iter_adapt_container(expr)
         - Protocol Iterator[T]: tpy::iter_adapt(expr)
         - Protocol Iterable[T]: tpy::iter_adapt_container(expr)
         - Protocol ReadOnlySpanLike[T]: tpy::as_span(expr)
+        - range(): counter optimization first, else tpy::Range<T>(args...)
+        - OptIterator types: tpy::iter_adapt(expr)
+        - __iter__()-based types: tpy::__iter__(expr) or tpy::iter_adapt_container(expr)
+        - __span__()-based types: expr.__span__()
+        - Native C++ ranges (dict, set, str, etc.): expr directly
         """
         # Enum iteration: `for c in Color` -> range over EnumUtil<Color>::members
         if stmt.enum_iterable is not None:
@@ -3361,7 +3370,7 @@ class StatementGenerator:
             self._gen_begin_end_loop(out, stmt, indent, iterable, enum_type)
             return
 
-        from tpyc.modules import get_native_iterator_element_type, get_iter_element_type, get_span_element_type, is_native_iterable
+        from tpyc.modules import get_native_iterator_element_type, get_iter_info, get_span_element_type
         iterable_type = self.types.get_resolved_type(stmt.iterable)
 
         # Resolve sema-stored elem_type (handles PendingStrType -> concrete)
@@ -3410,23 +3419,31 @@ class StatementGenerator:
             self._gen_adapted_loop(out, stmt, indent, iterable, sema_elem or iter_elem, "iter_adapt")
             return
 
+        # Check for __iter__()-based types (preferred over __span__).
+        # get_iteration_element_type() is non-None for builtin containers (list, Array,
+        # Span, etc.) that have native C++ begin/end -- skip those to preserve mutability.
+        iter_info = get_iter_info(iterable_type, registry=self.ctx.analyzer.registry)
+        if iter_info is not None and iterable_type.get_iteration_element_type() is None:
+            iterable = self.expressions.gen_expr_deref(stmt.iterable)
+            elem_type = sema_elem or iter_info.element_type
+            if iter_info.iter_is_native:
+                # NativeIterable iterator (e.g. SpanIter) -- call __iter__() and iterate directly
+                self._gen_captured_call_loop(out, stmt, indent, iterable, elem_type,
+                                             lambda src: f"tpy::__iter__({src})")
+            else:
+                # OptIterator-based iterator -- call __iter__(), then wrap with iter_adapt.
+                # Can't use iter_adapt_container here because the container itself may be
+                # input_range (via __span__/begin/end), which would bypass __iter__().
+                self._gen_adapted_loop(out, stmt, indent, iterable, elem_type,
+                                       "iter_adapt", iter_call="tpy::__iter__")
+            return
+
         # Check for __span__()-based types (iterate via span's begin/end)
         span_elem = get_span_element_type(iterable_type, registry=self.ctx.analyzer.registry)
         if span_elem is not None:
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
             self._gen_captured_call_loop(out, stmt, indent, iterable, sema_elem or span_elem,
                                          lambda src: f"{src}.__span__()")
-            return
-
-        # Check for __iter__()-based types (container -> separate iterator)
-        # Skip if NativeIterable -- those are native C++ ranges with begin/end
-        if is_native_iterable(iterable_type, self.ctx.analyzer.registry):
-            iter_elem = None
-        else:
-            iter_elem = get_iter_element_type(iterable_type, registry=self.ctx.analyzer.registry)
-        if iter_elem is not None:
-            iterable = self.expressions.gen_expr_deref(stmt.iterable)
-            self._gen_adapted_loop(out, stmt, indent, iterable, sema_elem or iter_elem, "iter_adapt_container")
             return
 
         # Native C++ range fallback (list, dict, str, Array, Span, etc.)

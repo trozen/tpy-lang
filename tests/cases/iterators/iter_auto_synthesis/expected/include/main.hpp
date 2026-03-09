@@ -22,6 +22,8 @@ struct SimpleIter {
     SimpleIter() = default;
     explicit SimpleIter(int32_t limit) : current(0), limit(limit) {}
 
+    auto& __iter__() { return *this; }
+
     // 12:     def __next__(self) -> Int32:
     std::optional<int32_t> __next_opt__() {
         // 13:         if self.current < self.limit:
@@ -40,8 +42,6 @@ struct SimpleIter {
     int32_t __next__() {
         tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
     }
-
-    auto& __iter__() { return *this; }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SimpleIter& obj) {
