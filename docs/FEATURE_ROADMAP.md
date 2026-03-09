@@ -51,6 +51,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B13 | Bi-directional type inference | M | Done | [I](#bi-directional-type-inference) |
 | B14 | `Optional[StaticProtocol]` codegen | S | Done | [II](#optionalstaticprotocol-codegen) |
 | B15 | `isinstance` on static protocols (`if constexpr` + narrowing) | M | Done | [II](#isinstance-on-static-protocols) |
+| B16 | `for/else`, `while/else` | S | Not started | [VI](#forelse--whileelse) |
 
 ### Phase C: Error Handling + Effects
 
@@ -81,6 +82,13 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D12 | Set comprehension | S | Done | [VI](#set-comprehension) |
 | D13 | Generator expressions | M | Done | [VI](#generator-expressions) |
 | D14 | Walrus operator (`:=`) | S-M | Not started | [VI](#walrus-operator) |
+| D15 | `Any` type | M | Not started | [I](#any-type) |
+| D16 | Dynamic attributes (`__getattr__`/`__setattr__`) | M-L | Not started | [VII](#dynamic-attributes) |
+| D17 | `*args` (variadic positional arguments) | M | Not started | [VI](#args--kwargs) |
+| D18 | `**kwargs` (variadic keyword arguments) | M-L | Not started | [VI](#args--kwargs) |
+| D19 | Recursive type aliases | M | Not started | [I](#recursive-type-aliases) |
+| D20 | Mutual recursion (cross-type cycles) | M-L | Not started | [I](#mutual-recursion) |
+| D21 | TypedDict | M | Not started | [VII](#typeddict) |
 
 ### Phase E: Advanced Safety
 
@@ -480,6 +488,203 @@ Variadic type params for argument types is a design question.
 **Dependencies**: Closures depend on this. `@noalloc` interaction needs effect system.
 
 **Effort**: L (type system + multiple codegen strategies)
+
+---
+
+### Any Type
+
+```python
+from typing import Any
+
+def process(data: Any) -> None:
+    if isinstance(data, str):
+        print(data.upper())
+    elif isinstance(data, int):
+        print(data + 1)
+```
+
+Type-erased value that can hold any type. Maps to `std::any` in C++. Requires
+`isinstance` to extract the concrete type before use -- direct field access or
+method calls on `Any` are compile errors.
+
+**Why it matters**: Prerequisite for CPython stdlib compatibility. The project goal
+is to run as much CPython code as possible without changes -- many stdlib APIs use
+`Any` in their signatures (`json.loads() -> Any`, `argparse.Namespace` attributes,
+`pickle`, `copy.deepcopy`, etc.). Without `Any`, these APIs cannot be stubbed with
+matching signatures. Also useful as a migration tool when porting Python code that
+lacks type annotations -- type incrementally, with `Any` as the "not yet typed"
+escape hatch.
+
+For performance-sensitive code, users would gradually replace `Any` with concrete
+types, unions, or generics. But the untyped version should compile and run first.
+
+Design questions:
+- **`isinstance` integration**: `isinstance(x, T)` on `Any` maps to `std::any_cast<T*>(&x) != nullptr`,
+  narrowing `x` to `T` in the guarded branch. This reuses existing isinstance/narrowing
+  infrastructure. Note: `std::any_cast` checks exact type only -- no inheritance.
+  A TPy-specific type-erased wrapper with RTTI-based inheritance checks may be needed
+  for full Python isinstance semantics.
+- **Value semantics**: `std::any` copies values internally. Large objects may want
+  `std::any` with move semantics or a `Box`-like indirection.
+- **`@noalloc` interaction**: `std::any` allocates for non-trivial types. Probably
+  banned in `@noalloc` contexts.
+- **Printing**: `print(any_val)` would need runtime dispatch or be an error without
+  narrowing.
+
+**Current state**: Not started.
+
+**Dependencies**: isinstance narrowing (done). Union codegen patterns are related
+but `Any` is open-ended (not a closed variant). Enables dynamic attributes (D16)
+and CPython stdlib stubs.
+
+**Effort**: M (new type kind + std::any codegen + isinstance integration)
+
+---
+
+### Recursive Type Aliases
+
+```python
+type JsonValue = str | float | bool | None | list[JsonValue] | dict[str, JsonValue]
+
+value: JsonValue = json_parse(text)
+if isinstance(value, str):
+    print(value)
+elif isinstance(value, dict):
+    for k, v in value.items():
+        process(v)  # v: JsonValue
+```
+
+Type aliases that reference themselves. The compiler detects the self-reference and
+emits a wrapper struct around the variant instead of a plain `using` alias:
+
+```cpp
+struct JsonValue {
+    std::variant<std::monostate, bool, double, std::string,
+                 std::vector<JsonValue>,
+                 tpy::ordered_map<std::string, JsonValue>> data;
+    JsonValue(bool v) : data(v) {}
+    JsonValue(double v) : data(v) {}
+    // ... constructors for each alternative
+};
+```
+
+This works because `std::vector<JsonValue>` and `ordered_map<..., JsonValue>` only
+need `JsonValue` complete when they allocate (at runtime), not at type definition
+time. The existing `isinstance` narrowing and `match`/`case` work through the
+wrapper's `.data` member.
+
+**Safety constraint**: every recursive path must go through at least one container
+or pointer (`list`, `dict`, `set`, `Box`, `Optional`). Direct recursion
+(`type Bad = int | Bad`) is infinite size and rejected at compile time.
+
+**Why it matters**: Prerequisite for any tree-structured data in TPy libraries --
+JSON values, ASTs, expression trees, HTML/XML DOMs, configuration trees. Also a
+self-hosting prerequisite (the TPy compiler's own AST is recursive unions). Since
+the goal is to implement libraries in pure TPy (not hard-coded in the compiler),
+this is needed for a TPy-native `json` library to define its value type.
+
+Mutual recursion (e.g. `Expr` referencing `BinOp` which contains `Expr` fields)
+is a harder extension requiring forward declarations across types. Can be a
+separate follow-up.
+
+**Current state**: Not started. Type aliases are currently expanded eagerly at
+parse time; recursive aliases would need deferred resolution.
+
+**Dependencies**: Union types (done). Match/case (done for unions).
+
+**Effort**: M (parse detection + named type kind + wrapper struct codegen)
+
+---
+
+### Mutual Recursion
+
+```python
+type Expr = Literal | BinOp | Call | IfExpr
+
+class BinOp:
+    left: Expr
+    op: str
+    right: Expr
+
+class Call:
+    func: Expr
+    args: list[Expr]
+```
+
+Cross-type recursive cycles where a union references classes that contain the union.
+This is the AST pattern -- the most important data structure for compilers, interpreters,
+expression evaluators, and tree-structured domains.
+
+**The C++ size problem**: `Expr` is a `std::variant<..., BinOp, ...>` and `BinOp`
+contains `Expr` fields. The sizes are mutually dependent, and `std::variant` requires
+all alternatives to be complete types. This is fundamentally circular -- pointer
+indirection is required somewhere to break the cycle.
+
+**Approach A -- Explicit `Box[Expr]` (recommended first):**
+
+```python
+from tplib import Box
+
+type Expr = Literal | BinOp | Call
+
+class BinOp:
+    left: Box[Expr]     # heap-allocated to break size cycle
+    op: str
+    right: Box[Expr]
+```
+
+Generated C++:
+```cpp
+struct Expr;  // forward declaration
+
+struct BinOp {
+    Box<Expr> left;     // pointer indirection, Expr can be incomplete
+    std::string op;
+    Box<Expr> right;
+};
+
+struct Expr {
+    std::variant<Literal, BinOp, Call> data;  // BinOp is complete here
+};
+```
+
+User explicitly marks which fields are boxed. No hidden allocations. Matches Rust's
+approach (`Box<Expr>`). `Box[T]` already exists in tplib.
+
+**Approach B -- Implicit auto-boxing (future sugar):**
+
+```python
+class BinOp:
+    left: Expr      # compiler detects cycle, auto-inserts Box
+    op: str
+    right: Expr
+```
+
+Compiler detects the cycle and auto-boxes the recursive fields. Emits a warning:
+"field 'left' auto-boxed due to recursive type cycle". Cleaner syntax but hidden
+allocation. Could be opt-in via a directive (`# tpy: auto-box`).
+
+Approach A is more aligned with TPy's philosophy (explicit, no hidden costs).
+Approach B can layer on top later.
+
+**Implementation requires:**
+- Cycle detection across type definitions in the dependency graph
+- Topological sort of struct definitions with forward declarations
+- C++ forward declarations emitted before the types that reference them
+- `Box[T]` working with incomplete types (already the case -- Box stores a pointer)
+
+**Why it matters**: Self-hosting prerequisite -- the TPy compiler's AST is a set of
+mutually recursive types (824 isinstance calls across 35 files). Also needed for
+any tree-structured library: expression evaluators, HTML/XML parsers, configuration
+languages, protocol buffers. Combined with recursive type aliases (D19), this gives
+TPy full algebraic data type support.
+
+**Current state**: Not started.
+
+**Dependencies**: Recursive type aliases (D19). `Box[T]` (done). Union types (done).
+
+**Effort**: M-L (cycle detection + forward declaration ordering + codegen changes
+for incomplete types)
 
 ---
 
@@ -1371,6 +1576,124 @@ is equivalent to a single-expression closure.
 
 ---
 
+### *args / **kwargs
+
+```python
+def log(fmt: str, *args: Any) -> None:
+    print(fmt.format(*args))
+
+def connect(host: str, **kwargs: Any) -> Connection:
+    port = kwargs.get("port", 8080)
+    timeout = kwargs.get("timeout", 30.0)
+    ...
+
+# The most common stdlib pattern:
+os.path.join("a", "b", "c")        # *args
+dict(name="Alice", age=30)          # **kwargs
+```
+
+Variadic positional (`*args`) and keyword (`**kwargs`) arguments. Fundamental Python
+feature used pervasively in stdlib APIs.
+
+**Why it matters**: Prerequisite for CPython stdlib compatibility. The project goal
+is to run CPython code without changes -- many stdlib APIs depend on these:
+- `os.path.join(*paths)` -- the single most-used `os.path` function
+- `print(*args)` -- already special-cased in TPy, but user-defined variadic functions can't exist
+- `argparse.add_argument(*name_or_flags, **kwargs)` -- central argparse API
+- `dict(**kwargs)`, `str.format(*args)` -- core builtins
+- Nearly every library with configuration-heavy APIs uses `**kwargs`
+
+Without `*args`/`**kwargs`, stdlib stubs must use overloads or list/dict parameters,
+which breaks API compatibility with CPython code.
+
+#### `*args` -- Variadic Positional (D17)
+
+The simpler case. Design options:
+
+1. **Homogeneous `*args: T`** -- all args have the same type. Maps to
+   `std::initializer_list<T>` or a parameter pack constrained to same type:
+   ```python
+   def join(*parts: str) -> str:     # all args are str
+       ...
+   # -> join(std::initializer_list<std::string_view> parts)
+   ```
+   This covers `os.path.join`, `print`, `max`/`min`, and many common patterns.
+
+2. **Heterogeneous `*args`** -- args have different types. Maps to C++ parameter packs:
+   ```python
+   def log(fmt: str, *args) -> None:  # args can be mixed types
+       ...
+   # -> template<typename... Args> void log(string_view fmt, Args&&... args)
+   ```
+   Much harder -- requires variadic templates, forwarding, and the ability to iterate
+   over a parameter pack. C++17 fold expressions help but don't solve all cases.
+
+3. **Fixed overloads** -- for known small arities, generate overloads for 1-8 args.
+   Covers most practical cases without true variadics. Pragmatic but limited.
+
+Recommendation: start with homogeneous `*args: T` (option 1) -- it covers the
+majority of stdlib patterns and maps cleanly to C++. Heterogeneous `*args` can
+follow later with parameter packs.
+
+#### `**kwargs` -- Variadic Keywords (D18)
+
+The harder case. Python `**kwargs` is a `dict[str, Any]` at runtime -- keys are
+strings, values are arbitrary. This is fundamentally dynamic.
+
+Design options:
+
+1. **`dict[str, Any]` passthrough** -- the simple approach. `**kwargs` becomes a
+   `dict[str, Any]` parameter. Callers pack kwargs into a dict, callees unpack with
+   `kwargs.get("key", default)`. Correct but loses type safety and has runtime overhead:
+   ```python
+   def connect(**kwargs: Any) -> Connection:
+       ...
+   # -> connect(tpy::ordered_map<std::string, std::any> kwargs)
+   ```
+
+2. **Typed kwargs via TypedDict** -- Python 3.12 `Unpack[TypedDict]` (PEP 692):
+   ```python
+   class ConnectOptions(TypedDict):
+       port: Int32
+       timeout: float
+
+   def connect(**kwargs: Unpack[ConnectOptions]) -> Connection:
+       ...
+   # -> connect(int32_t port = 8080, double timeout = 30.0)
+   ```
+   This compiles to named parameters with defaults -- zero overhead, fully typed.
+   But only works when the caller knows the kwargs schema at compile time.
+
+3. **Compile-time resolution** (like current kwargs) -- when the caller uses literal
+   keyword names (`connect(port=8080, timeout=5.0)`), resolve to positional args
+   at compile time. This is what TPy already does for regular kwargs. The `**kwargs`
+   definition would just allow the function to accept arbitrary named args, with
+   the compiler matching known names to parameters. Unknown names could go into
+   a dict fallback.
+
+4. **Forwarding only** -- support `**kwargs` in signatures that forward to other
+   functions (`def wrapper(**kwargs): return inner(**kwargs)`) by treating it as
+   a compile-time passthrough. No runtime dict, just template forwarding. Very limited
+   but handles the common "pass through configuration" pattern.
+
+Recommendation: TypedDict approach (option 2) is the cleanest for TPy -- it's fully
+static and matches the direction Python typing is heading. The `dict[str, Any]`
+fallback (option 1) is needed for full CPython compat but depends on `Any` (D15).
+Start with option 2 when the kwargs schema is known, fall back to option 1 when it isn't.
+
+**Current state**: Not started. TPy supports keyword arguments at call sites (resolved
+to positional at compile time) but not `*args`/`**kwargs` in function definitions.
+
+**Dependencies**: `Any` type (D15) for heterogeneous `*args` and untyped `**kwargs`.
+Homogeneous `*args: T` has no dependencies. TypedDict `**kwargs` needs TypedDict
+support (not yet tracked).
+
+**Effort**: D17 (`*args`): M (homogeneous case is straightforward; heterogeneous needs
+variadic templates). D18 (`**kwargs`): M-L (TypedDict approach is clean; `dict[str, Any]`
+fallback depends on `Any` and is heavier)
+
+---
+
 ### del Statement (Explicit Destruction)
 
 ```python
@@ -1500,6 +1823,45 @@ depending on context.
 comprehensions (B9).
 
 **Effort**: S-M
+
+---
+
+### for/else, while/else
+
+```python
+for item in items:
+    if item == target:
+        print("found")
+        break
+else:
+    print("not found")  # runs only if loop completed without break
+```
+
+Python's `for/else` and `while/else` execute the `else` block when the loop
+terminates normally (without `break`). Maps to a flag variable pattern in C++:
+
+```cpp
+bool __broke_0 = false;
+for (auto& item : items) {
+    if (item == target) {
+        std::cout << "found" << "\n";
+        __broke_0 = true;
+        break;
+    }
+}
+if (!__broke_0) {
+    std::cout << "not found" << "\n";
+}
+```
+
+**Why it matters**: Niche Python feature but used for search patterns. Simple to
+implement since it's purely syntactic sugar over a flag variable.
+
+**Current state**: Not started. Listed as "Open" in LANGUAGE_FEATURES.md.
+
+**Dependencies**: None.
+
+**Effort**: S (parser + codegen flag variable injection)
 
 ---
 
@@ -1802,6 +2164,131 @@ Maps to `std::vector<uint8_t>` or similar.
 **Dependencies**: None for basic form. Slicing for advanced usage.
 
 **Effort**: M (type + literals + methods)
+
+---
+
+### Dynamic Attributes
+
+```python
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--name", type=str)
+args = parser.parse_args()
+print(args.name)  # attribute set dynamically at runtime
+```
+
+Support for `__getattr__`/`__setattr__` -- accessing attributes not declared as
+fields at compile time. Needed for CPython stdlib compatibility where libraries
+like `argparse`, `types.SimpleNamespace`, and `json` produce objects with
+dynamically-set attributes.
+
+**Why it matters**: The project goal is to run CPython code without changes.
+`argparse.Namespace` is the canonical example -- `args.name` accesses an attribute
+that was set dynamically by `add_argument("--name")`. Without dynamic attribute
+support, `argparse` and similar stdlib modules cannot be stubbed with compatible
+APIs. Users would need to rewrite code to use TPy-specific alternatives, which
+defeats the compatibility goal.
+
+The compatibility-first approach: make `args.name` work on a `Namespace` object
+(even if slow). Users who care about performance can then gradually migrate to
+typed patterns:
+
+```python
+# Step 1: CPython-compatible, works unchanged (uses dynamic attributes + Any)
+args = parser.parse_args()
+print(args.name)
+
+# Step 2: Typed for performance (user opts in when ready)
+@dataclass
+class Args:
+    name: str
+    count: Int32
+args: Args = parse_args_typed(Args, sys.argv)
+print(args.name)  # static field access, zero overhead
+```
+
+Design options:
+- **`__getattr__`/`__setattr__` dunders**: Generate `std::unordered_map<std::string, std::any>`
+  fallback for attribute access. `__getattr__` is only called when normal lookup fails
+  (matching Python semantics). Heavy, but fully compatible.
+- **Declaration-based**: Require a type stub that declares the expected dynamic
+  attributes, so the compiler knows what's available. Similar to TypedDict but
+  for attributes. More static, but requires stubs for each library.
+
+The `__getattr__` approach is needed for full CPython compat. Declaration-based
+stubs can layer on top for common libraries (argparse, json) to provide better
+type checking and performance when the attribute set is known.
+
+**Current state**: Not started.
+
+**Dependencies**: `Any` type (D15) -- dynamic attributes store/return `Any` values.
+
+**Effort**: M-L (design + sema attribute fallback + codegen)
+
+---
+
+### TypedDict
+
+```python
+from typing import TypedDict
+from tpy import Int32
+
+class UserInfo(TypedDict):
+    name: str
+    age: Int32
+    active: bool
+
+def process(info: UserInfo) -> None:
+    print(info["name"])     # -> str (compile-time resolved)
+    print(info["age"])      # -> Int32
+    # info["unknown"]       # compile error: key not in UserInfo
+    # info[variable]        # compile error: key must be string literal
+
+# Construction
+user: UserInfo = {"name": "Alice", "age": Int32(30), "active": True}
+```
+
+A dict-like type where keys are fixed string literals with per-key value types.
+Requires compiler support because the return type of `d["key"]` depends on which
+string literal is used -- this can't be expressed with regular generics.
+
+**Why it matters**: Two main use cases:
+1. **Typed `**kwargs`** (PEP 692): `def connect(**kwargs: Unpack[ConnectOptions])` where
+   `ConnectOptions` is a TypedDict. This is the clean path for D18 -- kwargs become
+   named parameters, fully typed, zero overhead.
+2. **Structured data interchange**: JSON-like data with known schemas, config dicts,
+   API responses. A TypedDict gives dict syntax with struct safety.
+
+**C++ mapping**: A TypedDict is a struct that pretends to be a dict. Codegen emits
+a plain C++ struct; `d["name"]` compiles to `d.name` (field access). No hash map
+overhead. The dict-like API (`.get()`, `.keys()`, `.items()`, `in`, iteration) can
+be generated as methods on the struct.
+
+```cpp
+struct UserInfo {
+    std::string name;
+    int32_t age;
+    bool active;
+};
+// d["name"] -> d.name (sema resolves string literal to field at compile time)
+```
+
+**`total` parameter**: Python supports `total=False` for optional keys. In TPy this
+maps to `Optional[T]` fields:
+```python
+class Partial(TypedDict, total=False):
+    name: str       # Optional -- may be absent
+    age: Int32      # Optional
+```
+
+**Current state**: Not started.
+
+**Dependencies**: None for basic form. Typed `**kwargs` (D18) is the primary consumer.
+`Unpack` from `typing` needed for PEP 692 integration.
+
+**Effort**: M (sema string-literal-dependent subscript resolution + struct codegen
+with dict-like API generation)
 
 ---
 
