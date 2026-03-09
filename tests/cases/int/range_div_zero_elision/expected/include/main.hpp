@@ -15,6 +15,7 @@ void test_assert_positive();
 void test_no_elision_after_reassign();
 void test_else_of_eq_zero();
 void test_literal_divisor();
+void test_literal_named_divisor();
 
 void __tpy_init();
 } // namespace tpy_user::main

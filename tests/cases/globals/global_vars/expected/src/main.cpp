@@ -175,7 +175,7 @@ void __tpy_init() {
     // 74: print(a * b)
     std::cout << (tpy::mul_check<int32_t>(a, b)) << "\n";
     // 75: print(a // b)
-    std::cout << (tpy::div_check<int32_t>(a, b)) << "\n";
+    std::cout << (tpy::div_floor<int32_t>(a, b)) << "\n";
     // 89: val = 999  # Global that's shadowed by __init__ param
     val = 999;
     // 90: c: Counter = Counter(50)

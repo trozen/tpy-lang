@@ -16,8 +16,8 @@ def test_if_positive() -> None:
         print(y)
 
 def test_no_elision_unchecked() -> None:
-    """No assertion -- cast check remains."""
-    x: Int32 = 5
+    """No assertion -- cast check remains when value is not a literal."""
+    x: Int32 = Int32(5)
     y = UInt32(x)  # tpyc: cast_checked(UInt32)
     print(y)
 

@@ -158,7 +158,7 @@ tpy::BigInt sum_optional(const T_items& items, const T_extra* extra) {
     // 54:     while i < len(items):
     while ((i < tpy::__len__(items))) {
         // 55:         result = result + items[i]
-        result = ((result) + (tpy::__getitem__(items, i.to_fixed_check<int32_t>())));
+        result = ((result) + (items[i.to_fixed_check<int32_t>()]));
         // 56:         i = i + 1
         i = ((i) + (tpy::BigInt(1)));
     }

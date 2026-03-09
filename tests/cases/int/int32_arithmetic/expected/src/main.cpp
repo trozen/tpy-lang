@@ -21,10 +21,10 @@ void test_binary_ops() {
     std::cout << (tpy::mul_check<int32_t>(a, b)) << "\n";
     // 19:     # Division (floor)
     // 20:     print(a // b)  # 2
-    std::cout << (tpy::div_check<int32_t>(a, b)) << "\n";
+    std::cout << (tpy::div_floor<int32_t>(a, b)) << "\n";
     // 22:     # Modulo
     // 23:     print(a % b)  # 6
-    std::cout << (tpy::mod_check<int32_t>(a, b)) << "\n";
+    std::cout << (tpy::mod_floor<int32_t>(a, b)) << "\n";
 }
 
 // 26: def test_unary_neg():
@@ -62,10 +62,10 @@ void test_negative_division() {
     int32_t b = 5;
     // 54:     # Python floor division: -17 // 5 = -4 (not -3)
     // 55:     print(a // b)  # -4
-    std::cout << (tpy::div_check<int32_t>(a, b)) << "\n";
+    std::cout << (tpy::div_floor<int32_t>(a, b)) << "\n";
     // 57:     # Python modulo: -17 % 5 = 3 (not -2)
     // 58:     print(a % b)  # 3
-    std::cout << (tpy::mod_check<int32_t>(a, b)) << "\n";
+    std::cout << (tpy::mod_floor<int32_t>(a, b)) << "\n";
 }
 
 void __tpy_init() {

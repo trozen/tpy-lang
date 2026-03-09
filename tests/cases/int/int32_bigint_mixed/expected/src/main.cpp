@@ -39,9 +39,9 @@ void test_mixed_arithmetic() {
     // 28:     print(a * b)   # 60
     std::cout << (tpy::mul_check<int32_t>(a, b)) << "\n";
     // 29:     print(a // b)  # 6
-    std::cout << (tpy::div_check<int32_t>(a, b)) << "\n";
+    std::cout << (tpy::div_floor<int32_t>(a, b)) << "\n";
     // 30:     print(a % b)   # 2
-    std::cout << (tpy::mod_check<int32_t>(a, b)) << "\n";
+    std::cout << (tpy::mod_floor<int32_t>(a, b)) << "\n";
 }
 
 // 33: def test_large_bigint():

@@ -1833,6 +1833,9 @@ class StatementAnalyzer:
         resolve_value_type = value_type
         if isinstance(target_type, Int32Type) and isinstance(value_type, BigIntType):
             resolve_value_type = target_type
+        # Invalidate range facts for the target (value has changed)
+        if isinstance(stmt.target, TpyName):
+            self.ctx.value_ranges.pop(stmt.target.name, None)
         # Resolve the binary operation for codegen
         operators = OperatorResolver(self.ctx)
         if result := operators.resolve_binop(target_type, stmt.op, resolve_value_type):

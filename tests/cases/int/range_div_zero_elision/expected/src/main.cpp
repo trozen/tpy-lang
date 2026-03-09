@@ -38,7 +38,7 @@ void test_if_not_zero_mod() {
 void test_no_elision_unchecked() {
     // 22:     a: Int32 = 10
     int32_t a = 10;
-    // 23:     b: Int32 = 3
+    // 23:     b: Int32 = Int32(3)
     int32_t b = 3;
     // 24:     x = a // b  # tpyc: div_checked(b)
     int32_t x = (tpy::div_check<int32_t>(a, b));
@@ -126,27 +126,41 @@ void test_literal_divisor() {
     std::cout << y << "\n";
 }
 
+// 72: def test_literal_named_divisor() -> None:
+void test_literal_named_divisor() {
+    // 74:     a: Int32 = 10
+    int32_t a = 10;
+    // 75:     b: Int32 = 3
+    int32_t b = 3;
+    // 76:     x = a // b  # tpyc: div_safe(b)
+    int32_t x = (tpy::div_floor<int32_t>(a, b));
+    // 77:     print(x)
+    std::cout << x << "\n";
+}
+
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // 72: test_if_not_zero_floordiv()
+    // 79: test_if_not_zero_floordiv()
     test_if_not_zero_floordiv();
-    // 73: test_if_not_zero_mod()
+    // 80: test_if_not_zero_mod()
     test_if_not_zero_mod();
-    // 74: test_no_elision_unchecked()
+    // 81: test_no_elision_unchecked()
     test_no_elision_unchecked();
-    // 75: test_assert_not_zero()
+    // 82: test_assert_not_zero()
     test_assert_not_zero();
-    // 76: test_assert_positive()
+    // 83: test_assert_positive()
     test_assert_positive();
-    // 77: test_no_elision_after_reassign()
+    // 84: test_no_elision_after_reassign()
     test_no_elision_after_reassign();
-    // 78: test_else_of_eq_zero()
+    // 85: test_else_of_eq_zero()
     test_else_of_eq_zero();
-    // 79: test_literal_divisor()
+    // 86: test_literal_divisor()
     test_literal_divisor();
+    // 87: test_literal_named_divisor()
+    test_literal_named_divisor();
 }
 
 } // namespace tpy_user::main

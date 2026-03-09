@@ -31,7 +31,7 @@ void test_if_positive() {
 
 // 18: def test_no_elision_unchecked() -> None:
 void test_no_elision_unchecked() {
-    // 20:     x: Int32 = 5
+    // 20:     x: Int32 = Int32(5)
     int32_t x = 5;
     // 21:     y = UInt32(x)  # tpyc: cast_checked(UInt32)
     uint32_t y = tpy::int_cast_check<uint32_t>(x);

@@ -38,7 +38,7 @@ int32_t take_span(std::span<int32_t> s) {
     // 40:     while i < len(s):
     while ((i < tpy::__len__(s))) {
         // 41:         result = result + s[i]
-        result = (tpy::add_check<int32_t>(result, tpy::__getitem__(s, i)));
+        result = (tpy::add_check<int32_t>(result, s[i]));
         // 42:         i = i + 1
         i = (tpy::add_check<int32_t>(i, 1));
     }

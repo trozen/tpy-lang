@@ -32,18 +32,18 @@ void test_arithmetic() {
     // 17:     print(a * b)  # 30
     std::cout << (tpy::mul_check<int32_t>(a, b)) << "\n";
     // 18:     print(a // b)  # 3 (floor division)
-    std::cout << (tpy::div_check<int32_t>(a, b)) << "\n";
+    std::cout << (tpy::div_floor<int32_t>(a, b)) << "\n";
     // 19:     print(a % b)  # 1
-    std::cout << (tpy::mod_check<int32_t>(a, b)) << "\n";
+    std::cout << (tpy::mod_floor<int32_t>(a, b)) << "\n";
     // 21:     # Negative division (Python semantics)
     // 22:     c = -7
     int32_t c = -7;
     // 23:     d = 3
     int32_t d = 3;
     // 24:     print(c // d)  # -3 (not -2!)
-    std::cout << (tpy::div_check<int32_t>(c, d)) << "\n";
+    std::cout << (tpy::div_floor<int32_t>(c, d)) << "\n";
     // 25:     print(c % d)   # 2 (not -1!)
-    std::cout << (tpy::mod_check<int32_t>(c, d)) << "\n";
+    std::cout << (tpy::mod_floor<int32_t>(c, d)) << "\n";
 }
 
 // 28: def test_comparison():

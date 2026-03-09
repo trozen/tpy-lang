@@ -21,7 +21,7 @@ int32_t sum_list(std::vector<int32_t>& nums) {
     // 6:     while i < len(nums):
     while ((i < tpy::__len__(nums))) {
         // 7:         total += nums[i]
-        total = tpy::add_check<int32_t>(total, tpy::__getitem__(nums, i));
+        total = tpy::add_check<int32_t>(total, nums[i]);
         // 8:         i += 1
         i = tpy::add_check<int32_t>(i, 1);
     }

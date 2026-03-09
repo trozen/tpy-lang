@@ -16,7 +16,7 @@ from ..typesys import (
 from ..parse import (
     TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyFieldAccess,
     TpySubscript, TpyNoneLiteral, TpyCall, TpyMethodCall,
-    TpyIntLiteral,
+    TpyIntLiteral, TpyCoerce,
 )
 from .value_range import ValueRange
 from ..prescan import match_is_none
@@ -523,6 +523,11 @@ class NarrowingTracker:
         self.ctx.value_ranges.pop(name, None)
         # Invalidate symbolic bounds referencing this variable's length
         self._invalidate_len_ranges(name)
+        # Set range fact for integer literal assignments (e.g. i = 0, i: Int32 = 0).
+        # Unwrap one level of TpyCoerce (typed annotations wrap the literal in a coerce node).
+        rhs_inner = rhs_expr.expr if isinstance(rhs_expr, TpyCoerce) else rhs_expr
+        if isinstance(rhs_inner, TpyIntLiteral):
+            self.ctx.value_ranges[name] = ValueRange.from_literal(rhs_inner.value)
         # For Optional targets, re-narrow if RHS is provably non-None
         inner_target = unwrap_readonly(target_type)
         if not isinstance(inner_target, OptionalType):

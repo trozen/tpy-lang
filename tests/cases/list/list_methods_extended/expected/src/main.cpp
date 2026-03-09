@@ -12,7 +12,7 @@ void print_list(std::vector<int32_t>& nums) {
     // 7:     while i < len(nums):
     while ((i < tpy::__len__(nums))) {
         // 8:         print(nums[i])
-        std::cout << tpy::__getitem__(nums, i) << "\n";
+        std::cout << nums[i] << "\n";
         // 9:         i += 1
         i = tpy::add_check<int32_t>(i, 1);
     }

@@ -35,8 +35,9 @@
 | 7b | `@pure` enforcement (body verification) | M | Not started | [7](#7-pure-annotation) |
 | 6c+ | String view extension (list, dict) | M | Not started | [6c](#6c-string-view-extension-to-containers) |
 | 11+ | Integer range tracking (general) | L | Not started | [11](#11-integer-range-tracking) |
-| 11+a | Augmented-assignment range shifting (`i += 1` in while-loops) | S-M | Not started | [11](#11-integer-range-tracking) |
+| 11+a | Augmented-assignment range shifting (`i += 1` in while-loops) | S-M | Done | [11](#11-integer-range-tracking) |
 | 11b | Safe unsigned cast after assertion | S | Done | [11b](#11b-safe-unsigned-cast) |
+| 11d | Bounds elision for user types (`__getitem_unchecked__`) | M | Not started | [11d](#11d-bounds-elision-for-user-types-future) |
 
 ### Phase 4: Thread Safety
 
@@ -669,7 +670,11 @@ is especially common in HFT code.
   but keep Python floor-division/modulo semantics and overflow check.
 - Test annotations: `# tpyc: bounds_safe(arr)` / `# tpyc: bounds_checked(arr)` for
   subscripts; `# tpyc: div_safe(b)` / `# tpyc: div_checked(b)` for division/modulo.
-- While-loop `i += 1` pattern deferred to 11+a (needs augmented-assignment range shifting).
+- Literal range tracking: `i: Int32 = 0` sets `ValueRange.from_literal(0)`, enabling
+  while-loop bounds elision. Combined with `while i < len(arr)` condition facts, gives
+  `ValueRange(lo=0, hi_len_of="arr")` which satisfies `bounds_safe`.
+- Augmented assignment (`i += 1`) invalidates range facts for soundness -- prevents
+  stale bounds after the increment within the loop body.
 
 #### 11b. Safe Unsigned Cast
 
@@ -686,10 +691,9 @@ ptr = base.offset(UInt64(offset))  # safe: offset proven non-negative
 
 **Done.** Implemented in `calls.py:_check_cast_safe()`. When a signed->unsigned
 cast has the source proven non-negative (via range tracking) and the target is at
-least as wide as the source (no narrowing risk), the codegen emits
-`static_cast<T>()` instead of `tpy::int_cast_check<T>()`. The `cast_safe` flag
-on `TpyCall` carries this from sema to codegen. Test annotations:
-`# tpyc: cast_safe(UInt32)` / `# tpyc: cast_checked(UInt32)`.
+least as wide as the source (no narrowing risk), sema replaces the `FunctionInfo`
+template with `static_cast<T>()` instead of `tpy::int_cast_check<T>()`. Test
+annotations: `# tpyc: cast_safe(UInt32)` / `# tpyc: cast_checked(UInt32)`.
 
 #### 11c. Condition and Assert-Derived Range Facts
 
@@ -707,6 +711,33 @@ The existing `NarrowingTracker` already handles type narrowing from `isinstance`
 `is None` checks (done). Extending it to carry range facts alongside type facts is
 a natural addition -- same branch merging, same save/restore, same invalidation on
 reassignment.
+
+#### 11d. Bounds Elision for User Types (Future)
+
+Currently bounds elision only applies to built-in containers (`Array`, `list`, `Span`)
+where the compiler knows `0 <= i < len(c)` guarantees safe access. For user-defined
+types with `__getitem__`, the compiler cannot make this assumption -- the method body
+contains its own bounds check that the compiler cannot see through.
+
+**Proposed approach: dual `__getitem__`**
+
+The user provides an explicit unchecked fast path:
+
+```python
+class RingBuffer:
+    def __getitem__(self, i: Int32) -> Int32:
+        return self._data[i]  # checked (default)
+
+    def __getitem_unchecked__(self, i: Int32) -> Int32:
+        return self._data.unsafe_get(i)  # no bounds check
+```
+
+When the compiler proves `0 <= i < len(buf)`, it calls `__getitem_unchecked__` instead
+of `__getitem__`. No magic inlining, no fragile optimizer dependency -- the user
+controls exactly what the fast path does.
+
+If `__getitem_unchecked__` is not defined, the compiler always uses the checked path
+(current behavior, safe default).
 
 ---
 

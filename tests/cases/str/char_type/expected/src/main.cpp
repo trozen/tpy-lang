@@ -157,7 +157,7 @@ int32_t count_vowels(std::string_view text) {
     // 93:     while i < len(text):
     while ((i < tpy::__len__(text))) {
         // 94:         if is_vowel(text[i]):
-        if (is_vowel(tpy::__getitem__(text, i))) {
+        if (is_vowel(text[i])) {
             // 95:             count += 1
             count = tpy::add_check<int32_t>(count, 1);
         }

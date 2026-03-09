@@ -18,9 +18,9 @@ def test_if_not_zero_mod() -> None:
         print(x)
 
 def test_no_elision_unchecked() -> None:
-    """No guard -- division check remains."""
+    """No guard -- division check remains when divisor is not a literal."""
     a: Int32 = 10
-    b: Int32 = 3
+    b: Int32 = Int32(3)
     x = a // b  # tpyc: div_checked(b)
     print(x)
 
@@ -69,6 +69,13 @@ def test_literal_divisor() -> None:
     print(x)
     print(y)
 
+def test_literal_named_divisor() -> None:
+    """Literal-initialized non-zero divisor is automatically proven safe."""
+    a: Int32 = 10
+    b: Int32 = 3
+    x = a // b  # tpyc: div_safe(b)
+    print(x)
+
 test_if_not_zero_floordiv()
 test_if_not_zero_mod()
 test_no_elision_unchecked()
@@ -77,3 +84,4 @@ test_assert_positive()
 test_no_elision_after_reassign()
 test_else_of_eq_zero()
 test_literal_divisor()
+test_literal_named_divisor()

@@ -58,7 +58,7 @@ int32_t outer_if_inner_while_narrowing(std::optional<int32_t> x, std::vector<std
         // 33:         while i < len(items):
         while ((i < tpy::__len__(items))) {
             // 34:             y: Int32 | None = items[i]
-            std::optional<int32_t> y = tpy::__getitem__(items, i);
+            std::optional<int32_t> y = items[i];
             // 35:             if y is not None:
             if ((y.has_value())) {
                 // 36:                 total = total + x + y  # tpyc: ok

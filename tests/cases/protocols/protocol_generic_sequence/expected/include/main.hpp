@@ -31,7 +31,7 @@ int32_t sum_all(const T_items& items) {
     // 11:     while i < len(items):
     while ((i < tpy::__len__(items))) {
         // 12:         total += items[i]
-        total = tpy::add_check<int32_t>(total, tpy::__getitem__(items, i));
+        total = tpy::add_check<int32_t>(total, items[i]);
         // 13:         i += 1
         i = tpy::add_check<int32_t>(i, 1);
     }

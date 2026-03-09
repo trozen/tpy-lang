@@ -4439,6 +4439,12 @@ The compiler tracks provable `[lo, hi]` integer value ranges and a `non_zero` fl
 ```python
 for i in range(len(arr)):
     x = arr[i]  # Direct arr[i] in C++ (no bounds check)
+
+# While-loop pattern also works via literal range tracking:
+i: Int32 = 0
+while i < len(arr):
+    x = arr[i]  # Direct arr[i] (i proven in [0, len(arr)))
+    i += 1      # Invalidates range fact for soundness
 ```
 
 **Division-by-zero check elision**: When `a // b` or `a % b` is executed and `b` is provably non-zero, the compiler skips the zero-check and emits `div_floor`/`mod_floor` instead of `div_check`/`mod_check`:
@@ -4451,9 +4457,10 @@ if b != 0:
 
 Range facts enter the system from:
 - `for i in range(len(arr))` -- `i in [0, len(arr)-1]`
+- Integer literal assignment (`i = 0`, `i: Int32 = 0`) -- exact value range
 - `if b != 0:` / `assert b != 0` -- `non_zero=True`
 - `if x > 0:` / `assert x >= 0` -- concrete lower bound
-- `if x < len(arr):` -- symbolic upper bound
+- `if x < len(arr):` / `while i < len(arr):` -- symbolic upper bound
 
 **Safe unsigned cast elision**: When a signed-to-unsigned cast like `UInt32(x)` is performed and `x` is provably non-negative (and the target is at least as wide as the source), the compiler skips the runtime range check and emits a plain `static_cast`:
 
@@ -4462,7 +4469,7 @@ assert offset >= 0
 u = UInt32(offset)  # static_cast (no range check)
 ```
 
-Range facts are invalidated on variable reassignment and merged at branch join points. Symbolic bounds referencing a container are invalidated when that container is mutated (including method calls like `.pop()`, `.clear()`).
+Range facts are invalidated on variable reassignment (including augmented assignment like `i += 1`) and merged at branch join points. Symbolic bounds referencing a container are invalidated when that container is mutated (including method calls like `.pop()`, `.clear()`).
 
 ## Open Questions
 
