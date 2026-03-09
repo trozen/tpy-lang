@@ -3,13 +3,10 @@
 ## Next
 - Warn on wasteful field reassignment in `__init__`: when a field is initialized unconditionally (member initializer list) and then reassigned inside control flow, warn that this constructs then discards the initial value. Relevant for heavy types like BigInt. Users can avoid this with a `@staticmethod` helper or (once supported) ternary isinstance.
 - Union return copies non-value members: `f() -> A | B` returns `std::variant<A, B>` by value, copying record members. Python returns by reference. `std::variant<A&, B&>` is not valid C++. Params are fine (`&` for non-value unions). See `docs/UNION_TYPES_DESIGN.md` Known Semantic Gaps.
-- Avoid copying expensive value types in for-loops: `for x in items` where `items: list[int]` generates `for (tpy::BigInt x : items)`, copying every element. Would need `const auto&` for read-only expensive value types, but requires proving the container isn't mutated during iteration (escape analysis). Tuple unpack const-ref is done.
-- Zero-copy Iterable[T] for-loop: `for x in items` where `items: Iterable[T]` currently uses the while-loop + `__next_opt__()` path, which copies each element into `std::optional<T>`. For NativeIterable types (dict, list, etc.) passed through `Iterable[T]`, the concrete type is a C++ range. The codegen could emit `if constexpr (std::ranges::input_range<T>) { for (auto& x : items) ... } else { while-loop }` to get zero-copy iteration when the concrete type supports it. Alternatively, a `tpy::as_range()` adapter could unify both paths into a single range-based for, avoiding loop body duplication.
 - flow-sensitive None narrowing: broaden current narrowing coverage where needed (e.g. more complex expression forms)
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 
 ## Bugs
-- NativeIterable for-loop `auto&` binding: range-based for with `auto&` fails for iterators that yield rvalues (e.g. `dict.items()` yields tuple copies). Needs `const auto&` or `auto&&` binding for non-value element types when the iterator yields temporaries.
 
 ## Examples
 

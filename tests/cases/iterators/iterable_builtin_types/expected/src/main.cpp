@@ -162,18 +162,23 @@ void test_iter_builtin() {
     }
 }
 
-// 113: def main() -> None:
+// 120: def main() -> None:
 void main() {
-    // 114:     test_iterable_params()
+    // 121:     test_iterable_params()
     test_iterable_params();
-    // 115:     test_manual_iter()
+    // 122:     test_manual_iter()
     test_manual_iter();
-    // 116:     proto_input: list[Int32] = [10, 20]
+    // 123:     proto_input: list[Int32] = [10, 20]
     std::vector<int32_t> proto_input = {10, 20};
-    // 117:     test_iter_on_protocol(proto_input)
+    // 124:     test_iter_on_protocol(proto_input)
     test_iter_on_protocol(proto_input);
-    // 118:     test_iter_builtin()
+    // 125:     test_iter_builtin()
     test_iter_builtin();
+    // 127:     # Test Iterable[int] with list[int] (range path) and direct BigInt
+    // 128:     bigints: list[int] = [100, 200, 300]
+    std::vector<tpy::BigInt> bigints = {100, 200, 300};
+    // 129:     print(sum_bigints(bigints))
+    std::cout << sum_bigints(bigints) << "\n";
 }
 
 void __tpy_init() {
@@ -181,7 +186,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 120: main()
+    // 131: main()
     main();
 }
 

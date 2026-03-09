@@ -1640,8 +1640,8 @@ class StatementGenerator:
                                 make_call: "Callable[[str], str]") -> None:
         """Capture iterable, apply a method/function call, then begin/end loop.
 
-        Used for __iter__() and tpy::as_span() where the container must stay
-        alive for the iterator/span to remain valid.
+        Used for __iter__(), tpy::as_span(), and tpy::iter_for_loop() where
+        the container must stay alive for the iterator/span to remain valid.
 
         Produces:
             auto& __src_N = <lvalue_expr>;   // or: auto __src_N = <rvalue_expr>;
@@ -1885,10 +1885,11 @@ class StatementGenerator:
             if resolved_type.qualified_name() == "typing.Iterator":
                 self._gen_adapted_loop(out, stmt, indent, iterable, elem_type, "iter_adapt")
             else:
-                # Iterable[T]: call tpy::__iter__() to get iterator, then adapt
-                self._gen_adapted_loop(out, stmt, indent, iterable, elem_type,
-                                       "iter_adapt",
-                                       iter_call_fn=lambda src: f"tpy::__iter__({src})")
+                # Iterable[T]: iter_for_loop dispatches to direct range or adapted
+                # path at C++ template instantiation time, avoiding optional<T>
+                # wrapping when the concrete type is a native C++ range.
+                self._gen_captured_call_loop(out, stmt, indent, iterable, elem_type,
+                                             lambda src: f"tpy::iter_for_loop({src})")
             return
 
         # Handle ReadOnlySpanLike[T] protocol-typed iterables (uses tpy::as_span)

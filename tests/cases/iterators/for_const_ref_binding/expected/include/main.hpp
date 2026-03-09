@@ -25,6 +25,8 @@ void test_pass_to_readonly_func();
 void test_ptr_from_loop_var();
 void test_value_type_loop();
 void test_sequential_loops_same_var();
+void test_bigint_const_ref();
+void test_bigint_mutated();
 
 // 4: class Point:
 struct Point {

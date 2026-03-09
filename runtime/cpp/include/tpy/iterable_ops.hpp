@@ -22,6 +22,50 @@
 
 namespace tpy {
 
+// -- iter_for_loop: zero-copy dispatch for Iterable[T] for-loops -----------
+//
+// For native C++ ranges (list, dict, etc.), iterates directly via begin/end.
+// For non-range Iterables (user types with __iter__()/__next_opt__()), falls
+// back to the iter_adapt path.  This avoids the std::optional<T> wrapping
+// overhead when a concrete range is passed to an Iterable[T] parameter.
+
+template<typename Range>
+struct RangeRef {
+    Range& range;
+    auto begin() { return range.begin(); }
+    auto end() { return range.end(); }
+    auto begin() const { return range.begin(); }
+    auto end() const { return range.end(); }
+};
+
+template<typename Iterable>
+class IterableForLoop {
+    using IterT = decltype(tpy::__iter__(std::declval<Iterable&>()));
+    IterT iter_;
+public:
+    explicit IterableForLoop(Iterable& iterable) : iter_(tpy::__iter__(iterable)) {}
+    IterableForLoop(const IterableForLoop&) = delete;
+    IterableForLoop& operator=(const IterableForLoop&) = delete;
+    // Move-construct is safe before begin() (e.g., return from iter_for_loop).
+    // Move-assign is deleted: after construction, IterAdaptIterator holds &iter_.
+    IterableForLoop(IterableForLoop&&) = default;
+    IterableForLoop& operator=(IterableForLoop&&) = delete;
+    IterAdaptIterator<IterT> begin() { return IterAdaptIterator<IterT>(iter_); }
+    IterAdaptSentinel end() { return {}; }
+};
+
+template<typename T>
+    requires std::ranges::input_range<T>
+RangeRef<T> iter_for_loop(T& range) {
+    return RangeRef<T>{range};
+}
+
+template<typename T>
+    requires (!std::ranges::input_range<T>)
+IterableForLoop<T> iter_for_loop(T& iterable) {
+    return IterableForLoop<T>(iterable);
+}
+
 // Forwarding-ref overloads: accept both lvalue containers (user iterables)
 // and rvalue temporaries (generator expressions).  The requires clause
 // excludes standard ranges so these never compete with the primary overloads

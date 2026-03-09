@@ -110,11 +110,22 @@ def test_iter_builtin() -> None:
     for k in d_it:
         print(k)
 
+def sum_bigints(items: Iterable[int]) -> int:
+    # Iterable[int] (BigInt) -- expensive value type, const ref when unmutated
+    total: int = 0
+    for x in items:
+        total = total + x
+    return total
+
 def main() -> None:
     test_iterable_params()
     test_manual_iter()
     proto_input: list[Int32] = [10, 20]
     test_iter_on_protocol(proto_input)
     test_iter_builtin()
+
+    # Test Iterable[int] with list[int] (range path) and direct BigInt
+    bigints: list[int] = [100, 200, 300]
+    print(sum_bigints(bigints))
 
 main()

@@ -1275,6 +1275,9 @@ class StatementAnalyzer:
             self.ctx.current_scope.define(stmt.name, var_type)
         # Reassignment revives a consumed variable
         self.ctx.consumed_vars.discard(stmt.name)
+        # Reassigning a loop variable prevents const-ref binding
+        if existing_type is not None:
+            self.ctx.mark_loop_var_mutated(stmt.name)
         # Assigning a loop var to a non-value-type local takes &(var) in codegen
         if (stmt.init is not None and isinstance(stmt.init, TpyName)
                 and var_type is not None and not var_type.is_value_type()):

@@ -108,6 +108,25 @@ def test_sequential_loops_same_var() -> None:
         total = total + p.value()
     print(total)
 
+def test_bigint_const_ref() -> None:
+    """Expensive value type (BigInt) unmutated -> const BigInt&."""
+    items: list[int] = [10, 20, 30]
+    total: int = 0
+    for x in items:
+        total = total + x
+    print(total)
+
+def test_bigint_mutated() -> None:
+    """Expensive value type (BigInt) mutated -> BigInt copy."""
+    items: list[int] = [10, 20, 30]
+    total: int = 0
+    for x in items:
+        x = x + 1
+        total = total + x
+    print(total)
+
+test_bigint_const_ref()
+test_bigint_mutated()
 test_read_only_loop()
 test_non_readonly_method_loop()
 test_field_mutate_loop()

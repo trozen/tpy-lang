@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-// 116: items_for_find: list[Point] = [Point(Int32(5), Int32(6))]
+// 135: items_for_find: list[Point] = [Point(Int32(5), Int32(6))]
 std::vector<Point>* items_for_find{};
-// 117: result = find_point(items_for_find, Int32(5))
+// 136: result = find_point(items_for_find, Int32(5))
 Point* result{};
 
 // 20: def mutate_point(p: Point) -> None:
@@ -230,40 +230,84 @@ void test_sequential_loops_same_var() {
     std::cout << total << "\n";
 }
 
+// 111: def test_bigint_const_ref() -> None:
+void test_bigint_const_ref() {
+    // 113:     items: list[int] = [10, 20, 30]
+    std::vector<tpy::BigInt> items = {10, 20, 30};
+    // 114:     total: int = 0
+    tpy::BigInt total = tpy::BigInt(0);
+    // 115:     for x in items:
+    auto& __obj_0 = items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const tpy::BigInt& x = *__beg_0;
+        // 116:         total = total + x
+        total = ((total) + (x));
+    }
+    // 117:     print(total)
+    std::cout << total << "\n";
+}
+
+// 119: def test_bigint_mutated() -> None:
+void test_bigint_mutated() {
+    // 121:     items: list[int] = [10, 20, 30]
+    std::vector<tpy::BigInt> items = {10, 20, 30};
+    // 122:     total: int = 0
+    tpy::BigInt total = tpy::BigInt(0);
+    // 123:     for x in items:
+    auto& __obj_0 = items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        tpy::BigInt x = *__beg_0;
+        // 124:         x = x + 1
+        x = ((x) + (tpy::BigInt(1)));
+        // 125:         total = total + x
+        total = ((total) + (x));
+    }
+    // 126:     print(total)
+    std::cout << total << "\n";
+}
+
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // 111: test_read_only_loop()
+    // 128: test_bigint_const_ref()
+    test_bigint_const_ref();
+    // 129: test_bigint_mutated()
+    test_bigint_mutated();
+    // 130: test_read_only_loop()
     test_read_only_loop();
-    // 112: test_non_readonly_method_loop()
+    // 131: test_non_readonly_method_loop()
     test_non_readonly_method_loop();
-    // 113: test_field_mutate_loop()
+    // 132: test_field_mutate_loop()
     test_field_mutate_loop();
-    // 114: test_nested_field_mutate_loop()
+    // 133: test_nested_field_mutate_loop()
     test_nested_field_mutate_loop();
-    // 115: test_assign_to_local_loop()
+    // 134: test_assign_to_local_loop()
     test_assign_to_local_loop();
-    // 116: items_for_find: list[Point] = [Point(Int32(5), Int32(6))]
+    // 135: items_for_find: list[Point] = [Point(Int32(5), Int32(6))]
     static std::vector<Point> __global_slot_1 = {Point(5, 6)};
     items_for_find = &__global_slot_1;
-    // 117: result = find_point(items_for_find, Int32(5))
+    // 136: result = find_point(items_for_find, Int32(5))
     result = find_point((*items_for_find), 5);
-    // 118: if result is not None:
+    // 137: if result is not None:
     if ((result != nullptr)) {
-        // 119:     print(result.x)
+        // 138:     print(result.x)
         std::cout << result->x << "\n";
     }
-    // 120: test_pass_to_mutating_func()
+    // 139: test_pass_to_mutating_func()
     test_pass_to_mutating_func();
-    // 121: test_pass_to_readonly_func()
+    // 140: test_pass_to_readonly_func()
     test_pass_to_readonly_func();
-    // 122: test_ptr_from_loop_var()
+    // 141: test_ptr_from_loop_var()
     test_ptr_from_loop_var();
-    // 123: test_value_type_loop()
+    // 142: test_value_type_loop()
     test_value_type_loop();
-    // 124: test_sequential_loops_same_var()
+    // 143: test_sequential_loops_same_var()
     test_sequential_loops_same_var();
 }
 
