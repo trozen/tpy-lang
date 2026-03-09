@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage,
     TypeParamKind, OptionalType, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
-    IMPLICIT_READONLY_METHODS, FinalType, EnumType, IntEnumType, BoolType, SpanType,
+    IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, EnumType, IntEnumType, BoolType, SpanType,
     FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL, UINT64,
     register_value_type_record, register_send_record, register_sync_record,
     attach_type_param_bounds,
@@ -465,6 +465,25 @@ class TypeRegistrar:
                 method_return = attach_type_param_bounds(method_return, record.type_param_bounds)
             method.params = method_params
             method.return_type = method_return
+            # Inplace dunders must return self (the record type), not None or Own[T]
+            if method.name in CONST_PARAMS_METHODS:
+                if isinstance(method_return, OwnType):
+                    raise SemanticError(
+                        f"'{method.name}' must return self ('{record.name}'), "
+                        f"not Own[{method_return.wrapped}] -- inplace methods return self, not a new value",
+                        method.loc or record.loc,
+                    )
+                if isinstance(method_return, VoidType):
+                    raise SemanticError(
+                        f"'{method.name}' must return self ('{record.name}'), not None",
+                        method.loc or record.loc,
+                    )
+                if not (isinstance(method_return, NamedType) and method_return.name == record.name):
+                    raise SemanticError(
+                        f"'{method.name}' must return self ('{record.name}'), "
+                        f"got '{method_return}'",
+                        method.loc or record.loc,
+                    )
             methods[method.name] = [FunctionInfo(
                 name=method.name,
                 params=[
@@ -626,6 +645,23 @@ class TypeRegistrar:
         )
         self.ctx.registry.register_record(info)
         self.ctx.global_ns.bind_record(info)
+
+        # Warn when a field or method name shadows an auto-synthesized C++ method
+        SYNTHESIZED_FROM_DUNDER = {
+            "size": "__len__",
+            "begin": "__span__",
+            "end": "__span__",
+        }
+        field_names = {f.name for f in record.fields}
+        method_names = {m.name for m in record.methods}
+        user_names = field_names | method_names
+        for synth_name, dunder in SYNTHESIZED_FROM_DUNDER.items():
+            if synth_name in user_names and dunder in methods:
+                self.ctx.warning_from_loc(
+                    f"'{synth_name}' shadows auto-generated C++ {synth_name}() "
+                    f"from {dunder}; consider renaming",
+                    record.loc,
+                )
 
     def validate_record_inheritance(self, record: TpyRecord) -> None:
         """Validate inheritance relationships for a record.

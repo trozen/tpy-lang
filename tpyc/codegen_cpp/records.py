@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, NamedType, StrType, BoolType, FloatType, Float32Type, OptionalType, OwnType, ReadonlyType,
     TypeParamRef, TypeParamKind, RecordInfo, TupleType, DictType, SetType,
     ListType, ArrayType, SpanType, unwrap_readonly, unwrap_optional_own, is_any_str_type,
-    get_covariant_params,
+    get_covariant_params, FixedIntType, BigIntType,
 )
 from ..parse import (
     TpyRecord, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -320,8 +320,11 @@ class RecordGenerator:
         # see a consistent declaration state when evaluated inside method bodies.
         has_span = any(m.name == "__span__" for m in record.methods)
         if has_span:
-            out.write(f"\n{INDENT}auto begin() const {{ return __span__().begin(); }}\n")
-            out.write(f"{INDENT}auto end() const {{ return __span__().end(); }}\n")
+            has_begin = self._has_method_or_field(record, "begin")
+            has_end = self._has_method_or_field(record, "end")
+            if not has_begin and not has_end:
+                out.write(f"\n{INDENT}auto begin() const {{ return __span__().begin(); }}\n")
+                out.write(f"{INDENT}auto end() const {{ return __span__().end(); }}\n")
 
         # Generate methods (excluding __init__ and __del__)
         dynamic_overrides = self.functions._get_dynamic_override_info(record.name)
@@ -348,6 +351,12 @@ class RecordGenerator:
 
         # Generate __repr__ for @dataclass
         self._gen_repr_method(out, record)
+
+        # Generate size() from __len__ for STL compatibility
+        self._gen_size_method(out, record)
+
+        # Generate unary operators from dunder methods
+        self._gen_unary_operators(out, record)
 
         out.write("};\n")
         self._gen_record_ostream(out, record)
@@ -825,3 +834,55 @@ class RecordGenerator:
                 out.write(f' << {acc}')
 
         out.write(f'\n{indent}   << ")";\n')
+
+    def _has_method_or_field(self, record: TpyRecord, name: str) -> bool:
+        """Check if a record has a method or field with the given name."""
+        return (any(m.name == name for m in record.methods)
+                or any(f.name == name for f in record.fields))
+
+    def _gen_size_method(self, out: TextIO, record: TpyRecord) -> None:
+        """Generate size() from __len__ for STL compatibility.
+
+        Enables user types with __len__ to work with C++ algorithms and
+        container concepts that expect a size() method.
+        """
+        len_method = None
+        for m in record.methods:
+            if m.name == "__len__":
+                len_method = m
+                break
+        if len_method is None:
+            return
+        if self._has_method_or_field(record, "size"):
+            return
+        ret_cpp = len_method.return_type.to_cpp()
+        ret_type = len_method.return_type
+        is_signed = isinstance(ret_type, BigIntType) or (
+            isinstance(ret_type, FixedIntType) and ret_type.signed
+        )
+        if ret_cpp == "size_t":
+            out.write(f"\n{INDENT}size_t size() const {{ return __len__(); }}\n")
+        elif is_signed:
+            out.write(f"\n{INDENT}size_t size() const {{\n")
+            out.write(f"{INDENT}{INDENT}auto len = __len__();\n")
+            out.write(f"{INDENT}{INDENT}if (len < 0) tpy::tpy_panic(\"__len__ returned negative value\");\n")
+            out.write(f"{INDENT}{INDENT}return static_cast<size_t>(len);\n")
+            out.write(f"{INDENT}}}\n")
+        else:
+            out.write(f"\n{INDENT}size_t size() const {{ return static_cast<size_t>(__len__()); }}\n")
+
+    def _gen_unary_operators(self, out: TextIO, record: TpyRecord) -> None:
+        """Generate C++ unary operators from dunder methods."""
+        DUNDER_TO_UNARY_OP = {
+            "__neg__": "-", "__pos__": "+", "__invert__": "~",
+        }
+        for method in record.methods:
+            if method.name not in DUNDER_TO_UNARY_OP:
+                continue
+            if method.params:
+                continue  # Unary operators take no params
+            cpp_op = DUNDER_TO_UNARY_OP[method.name]
+            ret_cpp = method.return_type.to_cpp()
+            out.write(f"\n{INDENT}friend {ret_cpp} operator{cpp_op}(const {escape_cpp_name(record.name)}& operand) {{\n")
+            out.write(f"{INDENT}{INDENT}return operand.{method.name}();\n")
+            out.write(f"{INDENT}}}\n")

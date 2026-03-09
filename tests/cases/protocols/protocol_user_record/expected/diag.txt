@@ -1,0 +1,1 @@
+main.py:4: warning: 'size' shadows auto-generated C++ size() from __len__; consider renaming

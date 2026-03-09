@@ -74,7 +74,8 @@ def _register_fixed_int(module: BuiltinModule, typ: FixedIntType) -> None:
         "__invert__": [MethodDef(params=[], returns=typ, cpp=f"static_cast<{cpp_t}>(~({{self}}))")],
     }
 
-    # Negation only for signed types
+    # Unary plus (identity) for all, negation only for signed types
+    methods["__pos__"] = [MethodDef(params=[], returns=typ, cpp=f"+{{self}}")]
     if typ.signed:
         methods["__neg__"] = [MethodDef(params=[], returns=typ, cpp=f"tpy::neg_check<{cpp_t}>({{self}})")]
 
@@ -150,6 +151,7 @@ def init_module() -> BuiltinModule:
             MethodDef(params=[ParamDef("other", BIGINT)], returns=FLOAT32, cpp="std::pow({self}, static_cast<float>({0}))"),
             MethodDef(params=[ParamDef("other", INT32)], returns=FLOAT32, cpp="std::pow({self}, static_cast<float>({0}))"),
         ],
+        "__pos__": [MethodDef(params=[], returns=FLOAT32, cpp="+({self})")],
         "__neg__": [MethodDef(params=[], returns=FLOAT32, cpp="-({self})")],
         # Reverse operators (for int + Float32 -> Float32, float + Float32 -> float)
         "__radd__": [

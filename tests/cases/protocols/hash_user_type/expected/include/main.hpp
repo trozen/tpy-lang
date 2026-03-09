@@ -40,6 +40,16 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+} // namespace tpy_user::main
+
+template<> struct std::hash<tpy_user::main::Point> {
+    size_t operator()(const tpy_user::main::Point& val) const noexcept {
+        return static_cast<size_t>(val.__hash__());
+    }
+};
+
+namespace tpy_user::main {
+
 // 13: def get_hash(x: Hashable) -> UInt64:
 template<tpy::Hashable T_x>
 uint64_t get_hash(const T_x& x) {

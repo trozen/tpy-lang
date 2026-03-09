@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .parse import Parser, ParseError, TpyModule, TpyImport, RelativeImportKey, SourceLocation
-from .sema import SemanticAnalyzer, SemanticError
+from .sema import SemanticAnalyzer, SemanticError, DiagnosticLevel
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names
 from .codegen_cpp import CodeGenerator, CodeGenOptions
@@ -805,6 +805,16 @@ class Compiler:
             enums=exports.enums,
         )
 
+    def _check_no_errors(self, compiled: CompiledModule) -> None:
+        """Raise if the module has any error-level diagnostics from analysis."""
+        if compiled.analyzer:
+            for d in compiled.analyzer.diagnostics:
+                if d.level == DiagnosticLevel.ERROR:
+                    raise CompileError(
+                        f"Cannot generate code: module has errors",
+                        module_name=compiled.name, path=compiled.path,
+                    )
+
     def generate_code(self, compiled: CompiledModule, output_dir: Path,
                       entry_module_name: str | None = None,
                       options: CodeGenOptions | None = None) -> tuple[Path, Path]:
@@ -819,6 +829,7 @@ class Compiler:
         Returns:
             Tuple of (hpp_path, cpp_path) for the generated files.
         """
+        self._check_no_errors(compiled)
         mod_name = compiled.name
 
         # Determine root directory name from entry module
@@ -858,6 +869,7 @@ class Compiler:
     def generate_code_to_strings(self, compiled: CompiledModule,
                                   options: CodeGenOptions | None = None) -> tuple[str, str]:
         """Generate C++ code and return as strings (no file I/O)."""
+        self._check_no_errors(compiled)
         codegen = CodeGenerator(compiled.analyzer, options)
         actual_user_modules = set(self.modules.keys())
         return codegen.generate(

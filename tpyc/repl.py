@@ -396,11 +396,16 @@ class REPLSession:
                     except (ParseError, SyntaxError, SemanticError):
                         is_str_or_char = False  # Fall back to original if wrapping fails
 
-        # Show warnings if any
-        warning_output = ""
+        # Show diagnostics and check for errors
+        diag_output = ""
+        has_errors = False
         for diag in analyzer.diagnostics:
-            if diag.level == DiagnosticLevel.WARNING:
-                warning_output += f"{diag.format('repl')}\n"
+            if diag.level in (DiagnosticLevel.WARNING, DiagnosticLevel.ERROR):
+                diag_output += f"{diag.format('repl')}\n"
+            if diag.level == DiagnosticLevel.ERROR:
+                has_errors = True
+        if has_errors:
+            return diag_output.rstrip()
 
         # Generate code for all modules
         t_codegen_start = time.monotonic()
@@ -477,7 +482,7 @@ class REPLSession:
                 f"run: {_fmt_ms(result.t_run)}\n"
             )
 
-        return True, source_output + verbose_output + timing_output + warning_output + program_output
+        return True, source_output + verbose_output + timing_output + diag_output + program_output
 
     def cleanup(self) -> None:
         """Remove temp directory and stop backend on exit."""

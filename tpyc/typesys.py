@@ -2239,6 +2239,13 @@ IMPLICIT_READONLY_METHODS = frozenset({
     "__copy__", "__deref__",
 })
 
+# Methods that mutate self but should take const params (params are read-only).
+# Keep in sync with AUGOP_TO_IMETHOD in modules/__init__.py.
+CONST_PARAMS_METHODS = frozenset({
+    "__iadd__", "__isub__", "__imul__", "__itruediv__", "__ifloordiv__", "__imod__",
+    "__iand__", "__ior__", "__ixor__", "__ilshift__", "__irshift__",
+})
+
 
 @dataclass
 class MethodSignature:

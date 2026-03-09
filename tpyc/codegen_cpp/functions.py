@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, NamedType, OwnType, ReadonlyType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
     BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
     Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, is_any_str_type, SpanType,
-    SpanIterType, resolve_int_literals,
+    SpanIterType, resolve_int_literals, CONST_PARAMS_METHODS,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import (
@@ -538,7 +538,12 @@ class FunctionGenerator:
         override: bool = False, record_type_param_bounds: dict[str, TpyType] | None = None,
     ) -> None:
         """Emit a single method overload (const or non-const)."""
-        ret_type = self._resolve_return_type(cpp_return_type, const=const)
+        # Inplace dunders return T& (reference to self) in C++
+        is_inplace_dunder = method.name in CONST_PARAMS_METHODS
+        if is_inplace_dunder:
+            ret_type = f"{escape_cpp_name(record_name)}&"
+        else:
+            ret_type = self._resolve_return_type(cpp_return_type, const=const)
         dfl = method.defaults if method.defaults else None
 
         proto_params = self.protocols.get_all_protocol_params(method.params)
@@ -553,8 +558,10 @@ class FunctionGenerator:
                               for tp in (method.type_params or [])
                               if tp in class_type_params and tp in method.type_param_bounds}
 
+        # Inplace dunders (__iadd__ etc.) mutate self but take const params
+        use_const_params = const or method.name in CONST_PARAMS_METHODS
         if use_protocol_params:
-            if const:
+            if use_const_params:
                 params = self.gen_params_with_protocols(method.params, method.type_params,
                                                         const_params=True,
                                                         defaults=dfl, emit_defaults=True)
@@ -562,7 +569,7 @@ class FunctionGenerator:
                 params = self.gen_params_with_protocols(method.params, method.type_params,
                                                         defaults=dfl, emit_defaults=True)
         else:
-            if const:
+            if use_const_params:
                 params = self.gen_params(method.params, method.type_params, const_params=True,
                                          defaults=dfl, emit_defaults=True)
             else:

@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from tpyc.cli import get_module_name
 from tpyc.codegen_cpp import CodeGenOptions, CodeGenError
 from tpyc.parse import Parser, ParseError
-from tpyc.sema import SemanticAnalyzer, SemanticError, Diagnostic
+from tpyc.sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
 from tpyc.compiler import Compiler, CompileError, BuildLayout, CppCompilerConfig
 
 # Default options for tests: emit source comments for easier debugging
@@ -140,12 +140,18 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         compiler = Compiler(src_file, default_int=default_int, lib_dirs=DEFAULT_LIB_DIRS)
         compiled_modules = compiler.compile()
 
-        # Collect warnings from all analyzers
+        # Collect diagnostics from all analyzers
         all_diags = []
+        has_errors = False
         for mod in compiled_modules:
             for d in mod.analyzer.diagnostics:
                 all_diags.append(d.format(mod.path.name))
+                if d.level == DiagnosticLevel.ERROR:
+                    has_errors = True
         diagnostics = "\n".join(all_diags) + "\n" if all_diags else ""
+
+        if has_errors:
+            return CompileResult(success=False, diagnostics=diagnostics)
 
         # Generate code for all modules and track paths
         entry_module = next(m for m in compiled_modules if m.is_entry_point)

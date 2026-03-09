@@ -676,10 +676,12 @@ BINOP_TO_RMETHOD = {
 AUGOP_TO_IMETHOD = {
     "+": "__iadd__", "-": "__isub__", "*": "__imul__",
     "div": "__itruediv__", "//": "__ifloordiv__", "%": "__imod__",
+    "<<": "__ilshift__", ">>": "__irshift__",
     "|": "__ior__", "&": "__iand__", "^": "__ixor__",
 }
 
 UNARYOP_TO_METHOD = {
+    "+": "__pos__",
     "-": "__neg__",
     "~": "__invert__",
 }

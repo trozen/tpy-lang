@@ -27,6 +27,12 @@ struct MyContainer {
         // 13:         return len(self.data)
         return tpy::__len__(this->data);
     }
+
+    size_t size() const {
+        auto len = __len__();
+        if (len < 0) tpy::tpy_panic("__len__ returned negative value");
+        return static_cast<size_t>(len);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyContainer& obj) {

@@ -1,0 +1,2 @@
+main.py:15: error: Comparison '==' on 'Point': no '__eq__' method defined
+main.py:16: error: Comparison '<' on 'Point': no '__lt__' method defined

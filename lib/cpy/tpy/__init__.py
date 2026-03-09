@@ -133,6 +133,34 @@ class _Ptr(Generic[T]):
         else:
             setattr(self._obj, name, value)
 
+    def __eq__(self, other):
+        if isinstance(other, _Ptr):
+            return self._obj == other._obj
+        return self._obj == other
+
+    def __lt__(self, other):
+        if isinstance(other, _Ptr):
+            return self._obj < other._obj
+        return self._obj < other
+
+    def __le__(self, other):
+        if isinstance(other, _Ptr):
+            return self._obj <= other._obj
+        return self._obj <= other
+
+    def __gt__(self, other):
+        if isinstance(other, _Ptr):
+            return self._obj > other._obj
+        return self._obj > other
+
+    def __ge__(self, other):
+        if isinstance(other, _Ptr):
+            return self._obj >= other._obj
+        return self._obj >= other
+
+    def __hash__(self):
+        return hash(self._obj)
+
     def __deepcopy__(self, memo):
         return _Ptr(self._obj)
 

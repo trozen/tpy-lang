@@ -35,6 +35,34 @@ class _HeapSlot:
     def __setitem__(self, index, value):
         object.__setattr__(self, '_value', value)
 
+    def __eq__(self, other):
+        v = object.__getattribute__(self, '_value')
+        ov = object.__getattribute__(other, '_value') if isinstance(other, _HeapSlot) else other
+        return v == ov
+
+    def __lt__(self, other):
+        v = object.__getattribute__(self, '_value')
+        ov = object.__getattribute__(other, '_value') if isinstance(other, _HeapSlot) else other
+        return v < ov
+
+    def __le__(self, other):
+        v = object.__getattribute__(self, '_value')
+        ov = object.__getattribute__(other, '_value') if isinstance(other, _HeapSlot) else other
+        return v <= ov
+
+    def __gt__(self, other):
+        v = object.__getattribute__(self, '_value')
+        ov = object.__getattribute__(other, '_value') if isinstance(other, _HeapSlot) else other
+        return v > ov
+
+    def __ge__(self, other):
+        v = object.__getattribute__(self, '_value')
+        ov = object.__getattribute__(other, '_value') if isinstance(other, _HeapSlot) else other
+        return v >= ov
+
+    def __hash__(self):
+        return hash(object.__getattribute__(self, '_value'))
+
 
 class _HeapArray:
     """Multi-element heap storage. Delegates attribute access to element 0."""

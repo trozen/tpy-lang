@@ -564,11 +564,11 @@ class CodeGenerator:
                     hpp.write(f"template<> struct tpy::is_value_type<{ns}::{record.name}> : std::true_type {{}};\n")
             hpp.write(f"\nnamespace {ns} {{\n\n")
 
-        # std::hash specializations for records with __hash__ (frozen dataclasses)
+        # std::hash specializations for records with __hash__
+        # (frozen dataclasses with auto-generated __hash__, or user-defined __hash__)
         hashable_records = [
             r for r in module.records
             if (info := self.analyzer.registry.get_record(r.name))
-            and info.is_frozen and info.fields
             and "__hash__" in info.methods
             and not r.type_params
         ]

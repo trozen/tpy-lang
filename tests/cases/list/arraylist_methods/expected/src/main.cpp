@@ -15,9 +15,9 @@ void test_contains() {
     // 10:     a.append(30)
     a.append(30);
     // 11:     print(20 in a)
-    std::cout << tpy::print_bool((std::find(a.begin(), a.end(), 20) != a.end())) << "\n";
+    std::cout << tpy::print_bool((a.__contains__(20))) << "\n";
     // 12:     print(99 in a)
-    std::cout << tpy::print_bool((std::find(a.begin(), a.end(), 99) != a.end())) << "\n";
+    std::cout << tpy::print_bool((a.__contains__(99))) << "\n";
 }
 
 // 14: def test_eq() -> None:

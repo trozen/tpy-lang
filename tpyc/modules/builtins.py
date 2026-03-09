@@ -991,6 +991,7 @@ def init_module() -> BuiltinModule:
             "__or__": ("({self}) | ({0})", BIGINT),
             "__xor__": ("({self}) ^ ({0})", BIGINT),
         }, self_type=BIGINT),
+        "__pos__": [MethodDef(params=[], returns=BIGINT, cpp="+({self})")],
         "__neg__": [MethodDef(params=[], returns=BIGINT, cpp="-({self})")],
         "__invert__": [MethodDef(params=[], returns=BIGINT, cpp="~({self})")],
         "__hash__": [MethodDef(params=[], returns=UINT64, cpp="tpy::__hash__({self})", is_readonly=True, is_pure=True)],
@@ -1045,6 +1046,7 @@ def init_module() -> BuiltinModule:
         ],
 
         # Unary operators
+        "__pos__": [MethodDef(params=[], returns=FLOAT, cpp="+({self})")],
         "__neg__": [MethodDef(params=[], returns=FLOAT, cpp="-({self})")],
 
         # Reverse operators (for int + float -> float)

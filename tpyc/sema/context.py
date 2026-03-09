@@ -320,6 +320,11 @@ class SemanticContext:
         loc = getattr(node, 'loc', None) if node else None
         return SemanticError(message, loc)
 
+    def emit_error(self, message: str, node: TpyExpr | TpyStmt | None = None) -> None:
+        """Record an error diagnostic without raising (allows continued analysis)."""
+        loc = getattr(node, 'loc', None) if node else None
+        self.diagnostics.append(Diagnostic(DiagnosticLevel.ERROR, message, loc))
+
     def warning(self, message: str, node: TpyExpr | TpyStmt | TpyRecord | None = None) -> None:
         """Record a warning diagnostic (doesn't stop compilation)."""
         loc = getattr(node, 'loc', None) if node else None

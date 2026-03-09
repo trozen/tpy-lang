@@ -1,7 +1,7 @@
 # Box[T] -- heap-allocated owning container.
 from __future__ import annotations
 from typing import Self
-from tpy import Own, Ptr, Deref, Covariant, readonly
+from tpy import Own, Ptr, UInt64, Deref, Covariant, Equatable, Comparable, Hashable, readonly
 from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop, unsafe_move_out
 
 class Box[T](Deref[T], Covariant[T]):
@@ -41,4 +41,20 @@ class Box[T](Deref[T], Covariant[T]):
     def __repr__(self) -> str:
         return f"Box({self.get()!r})"
 
-    # TODO: __eq__ -- delegate == to inner value
+    def __eq__[T: Equatable](self, other: Box[T]) -> bool:
+        return self.get() == other.get()
+
+    def __lt__[T: Comparable](self, other: Box[T]) -> bool:
+        return self.get() < other.get()
+
+    def __le__[T: Comparable](self, other: Box[T]) -> bool:
+        return not other.get() < self.get()
+
+    def __gt__[T: Comparable](self, other: Box[T]) -> bool:
+        return other.get() < self.get()
+
+    def __ge__[T: Comparable](self, other: Box[T]) -> bool:
+        return not self.get() < other.get()
+
+    def __hash__[T: Hashable](self) -> UInt64:
+        return hash(self.get())

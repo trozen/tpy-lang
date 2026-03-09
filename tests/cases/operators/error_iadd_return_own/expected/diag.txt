@@ -1,0 +1,1 @@
+main.py:10: error: '__iadd__' must return self ('Vec'), not Own[Vec] -- inplace methods return self, not a new value

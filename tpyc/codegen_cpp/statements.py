@@ -1005,8 +1005,12 @@ class StatementGenerator:
             if self.ctx.is_indirect_name(stmt.target):
                 target = f"(*{target})"
             value = self.expressions.gen_expr_deref(stmt.value)
-            result = self.expressions._gen_binop_from_result(inplace, target, value)
-            return f"{indent}{result};\n"
+            if inplace.method.cpp_template:
+                result = self.expressions._gen_binop_from_result(inplace, target, value)
+                return f"{indent}{result};\n"
+            else:
+                # User-defined in-place method (no cpp_template)
+                return f"{indent}{target}.{inplace.method.name}({value});\n"
 
         target = self.expressions.gen_expr(stmt.target)
         target_type = self.ctx.get_expr_type(stmt.target)

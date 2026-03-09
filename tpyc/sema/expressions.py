@@ -587,15 +587,17 @@ class ExpressionAnalyzer:
 
         # Comparison operators return Bool
         if expr.op in ("==", "!=", "<", ">", "<=", ">="):
+            # Validate that user record types support the comparison
+            self._validate_comparison(expr, left_effective, right_effective)
             return BOOL
 
         # Membership operators (in, not in) return Bool
         if expr.op in ("in", "not in"):
-            # Try __contains__ method from builtin types (O(1) for dict, set, dict_keys)
+            # Try __contains__ method (O(1) for dict, set, dict_keys; user-defined for records)
             right_record = self.ctx.registry.get_record_for_type(right_type)
             if right_record:
                 contains_overloads = right_record.get_method_overloads("__contains__")
-                if contains_overloads and contains_overloads[0].cpp_template:
+                if contains_overloads:
                     method = contains_overloads[0]
                     # Substitute type params for generic containers
                     from .operators import _substitute_type_params
@@ -603,11 +605,16 @@ class ExpressionAnalyzer:
                     param_type = method.params[0].type
                     if type_subst:
                         param_type = _substitute_type_params(param_type, type_subst)
-                    self.compat.check_type_compatible(
-                        left_type, param_type,
-                        f"membership test (expected {param_type})",
-                        loc=expr.loc,
-                    )
+                    # Resolve IntLiteralType for compatibility check
+                    check_left = left_type
+                    if isinstance(check_left, IntLiteralType):
+                        check_left = self.ctx.default_int_for_literal(check_left)
+                    if not isinstance(param_type, TypeParamRef):
+                        self.compat.check_type_compatible(
+                            check_left, param_type,
+                            f"membership test (expected {param_type})",
+                            loc=expr.loc,
+                        )
                     expr.resolved_contains = method
                     return BOOL
             # Right side must be iterable (intrinsically or via NativeIterable protocol)
@@ -840,9 +847,9 @@ class ExpressionAnalyzer:
                 return BOOL
             raise self.ctx.error(f"Invalid operand type for 'not': {operand_type} (expected bool, numeric, or type with __bool__/__len__)", expr)
 
-        # Float types support unary negation
+        # Float types support unary negation and plus
         if isinstance(effective_type, (FloatType, Float32Type)):
-            if expr.op == "-":
+            if expr.op in ("-", "+"):
                 if result := self.operators.resolve_unaryop(effective_type, expr.op):
                     expr.resolved_unaryop = result
                 return effective_type
@@ -859,6 +866,10 @@ class ExpressionAnalyzer:
                     expr.resolved_unaryop = result
                 neg = -effective_type.value if effective_type.value is not None else None
                 return IntLiteralType(neg)
+            if expr.op == "+":
+                if result := self.operators.resolve_unaryop(effective_type, expr.op):
+                    expr.resolved_unaryop = result
+                return effective_type
             if expr.op == "~":
                 # Bitwise not on literal - treat as Int32
                 # Still resolve for codegen
@@ -872,6 +883,49 @@ class ExpressionAnalyzer:
             return result.method.return_type
 
         raise self.ctx.error(f"Invalid operand type for unary '{expr.op}': {operand_type}", expr)
+
+    def _is_user_record_type(self, typ: TpyType) -> bool:
+        """Check if a type is a user-defined record (not a builtin container)."""
+        return isinstance(typ, NamedType) and typ.is_record and typ.is_user_record
+
+    def _validate_comparison(self, expr: TpyBinOp, left_type: TpyType, right_type: TpyType) -> None:
+        """Error when comparing user record types that lack the relevant dunder."""
+        # Only check when at least one side is a user record
+        if not self._is_user_record_type(left_type) and not self._is_user_record_type(right_type):
+            return
+        # Determine which dunder to check
+        COMPARE_OP_TO_DUNDER = {
+            "==": "__eq__", "!=": "__ne__",
+            "<": "__lt__", "<=": "__le__",
+            ">": "__gt__", ">=": "__ge__",
+        }
+        dunder = COMPARE_OP_TO_DUNDER.get(expr.op)
+        if not dunder:
+            return
+        # Check the left side (operator dispatch goes left to right)
+        check_type = left_type if self._is_user_record_type(left_type) else right_type
+        record = self.ctx.registry.get_record_for_type(check_type)
+        if record:
+            # Use lookup that walks the inheritance chain
+            overloads, _ = self.protocols.lookup_record_method_overloads(record, dunder)
+            has_dunder = bool(overloads)
+            # != is valid if __eq__ is defined (C++ generates != from ==)
+            if not has_dunder and dunder == "__ne__":
+                overloads, _ = self.protocols.lookup_record_method_overloads(record, "__eq__")
+                has_dunder = bool(overloads)
+            # For ordering, check if dataclass(order=True)
+            if not has_dunder and dunder in ("__lt__", "__le__", "__gt__", "__ge__"):
+                record_info = self.ctx.registry.get_record(check_type.name)
+                if record_info and record_info.is_ordered:
+                    has_dunder = True
+            if not has_dunder:
+                if dunder == "__ne__":
+                    msg = (f"Comparison '!=' on '{check_type}': "
+                           f"no '__ne__' or '__eq__' method defined")
+                else:
+                    msg = (f"Comparison '{expr.op}' on '{check_type}': "
+                           f"no '{dunder}' method defined")
+                self.ctx.emit_error(msg, expr)
 
     def get_deref_target_type(self, typ: TpyType) -> TpyType | None:
         """If typ has __deref__(), return resolved return type. Else None."""

@@ -3440,9 +3440,13 @@ class Car(Vehicle, Printable, Measurable):
 
 ### Special Methods
 - **Working**: `__init__`
-- **Working**: `__eq__`, `__ne__`, `__lt__`, `__le__`, `__gt__`, `__ge__` → comparison operators
-- **Working**: `__add__`, `__sub__`, `__mul__`, etc. → arithmetic operators
-- **Working**: `__len__` → `__len__()` method (used by `len()`)
+- **Working**: `__eq__`, `__ne__`, `__lt__`, `__le__`, `__gt__`, `__ge__` → C++ `friend` comparison operators. Sema errors if comparing user records without the required dunder. `!=` is auto-synthesized from `__eq__` via C++20 rewriting.
+- **Working**: `__add__`, `__sub__`, `__mul__`, `__truediv__`, `__floordiv__`, `__mod__`, `__and__`, `__or__`, `__xor__`, `__lshift__`, `__rshift__` → C++ `friend` binary operators
+- **Working**: `__neg__`, `__pos__`, `__invert__` → C++ `friend` unary operators (`-x`, `+x`, `~x`)
+- **Working**: `__iadd__`, `__isub__`, `__imul__`, etc. → in-place mutation (`+=`, `-=`, `*=`, etc.). Must return `self` (like Python). Generates C++ `T&` return with `return *this`. Params are `const` (rvalue-safe).
+- **Working**: `__contains__` → `in` / `not in` operator (user-defined membership test)
+- **Working**: `__hash__` → `std::hash<T>` specialization (enables use as dict key, in sets)
+- **Working**: `__len__` → `__len__()` method (used by `len()`). Auto-generates `size_t size() const` for STL compatibility (with negative value panic). Warns if user-defined `size` field/method shadows auto-generated `size()`.
 - **Working**: `__getitem__` → `operator[]` (for `Sequence` conformance)
 - **Working**: `__del__` -- maps to C++ destructor `~ClassName()`. Parent destructors are called automatically after child body (no `super().__del__()` needed). If `super().__del__()` is written (Python style), it must be the last statement and is silently dropped in codegen. A warning is emitted when parent has `__del__` but child omits the call, since C++ always calls parent dtors automatically while Python requires an explicit call. Non-virtual; virtual dispatch is a separate feature. Classes with `__del__` get a hidden `__tpy_owned_` drop flag and custom move constructor/assignment to prevent double-drop after move -- the moved-from object's destructor skips its body.
 - **Working**: `__str__` -> `str(obj)`, `print(obj)`, `f"{obj}"` (via `Stringable` protocol / `tpy::__str__`)

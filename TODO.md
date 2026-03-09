@@ -7,7 +7,6 @@
 - Zero-copy Iterable[T] for-loop: `for x in items` where `items: Iterable[T]` currently uses the while-loop + `__next_opt__()` path, which copies each element into `std::optional<T>`. For NativeIterable types (dict, list, etc.) passed through `Iterable[T]`, the concrete type is a C++ range. The codegen could emit `if constexpr (std::ranges::input_range<T>) { for (auto& x : items) ... } else { while-loop }` to get zero-copy iteration when the concrete type supports it. Alternatively, a `tpy::as_range()` adapter could unify both paths into a single range-based for, avoiding loop body duplication.
 - flow-sensitive None narrowing: broaden current narrowing coverage where needed (e.g. more complex expression forms)
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
-- consider generating `__len__()` as `size()` member function for STL compatibility (`__len__`, `__getitem__`, `__setitem__` are already free functions in `dunder.hpp`)
 
 ## Bugs
 - Int type param not substituted in user method return types: `copy() -> ArrayList[T, N]` generates `ArrayList<int32_t, N>` instead of `ArrayList<int32_t, 8>`. The int type param `N` is not resolved to its concrete value in codegen. Workaround: use `tpy.copy()` builtin instead.
@@ -32,7 +31,6 @@
 
 ## Python features
 - Protocol isinstance in ternary expressions: `x = a.foo() if isinstance(a, P1) else a.bar()` generates a runtime `?:` but both branches must be valid C++ at template instantiation time. Fix: generate an IIFE with `if constexpr` inside, e.g. `[&]() -> T { if constexpr (P1<T_a>) { return a.foo(); } else { return a.bar(); } }()`. This also enables single-line field init in `__init__` (goes into the C++ member initializer list instead of requiring unconditional pre-assignment + reassignment in branches).
-
 - Allow `@runtime_checkable` decorator on protocols (no-op in tpyc, enables CPython compatibility for isinstance checks on user-defined protocols)
 - `del x` (variable unbinding): complex in compiled context -- needs lifetime/scope analysis. Low priority.
 - allow type annotation to use "" (forward decl)
@@ -54,7 +52,6 @@
 - c++ generation profiles: utf8 strings vs char strings
 - static_cast<char> -- should rather use checked cast (policy based)
 - `Own[T]` for argument passing: callee takes ownership (how to pass an object from pointer? require explicit copy?)
-- support more dunder methods: `__eq__`, `__ne__`, `__contains__` (user-defined), etc.
 - extract built-in function defintions to separate files (len, print)
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
 - better class operator<< tests (but missing str formatting/concatenation)
@@ -86,10 +83,8 @@
 - make a doc with TPy vs Python differences
 
 ## Code Review Items (2026-03-04)
-- User records as dict keys: sema now blocks them, but the complete feature needs codegen to emit `std::hash<T>` specialization and `operator==` for records with `__hash__`/`__eq__`.
 
 ## Code Review Items (2026-01-27)
-- Comparisons accept any types: `record == record` passes sema but may fail C++ if no operator==
 - `and`/`or` return `bool` not operand: `1 and 2` returns `1` (bool), Python returns `2`
 
 ## Low Priority

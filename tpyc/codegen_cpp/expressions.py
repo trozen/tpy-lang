@@ -569,8 +569,12 @@ class ExpressionGenerator:
             if self.ctx.is_indirect_name(expr.right):
                 right = f"(*{right})"
             if expr.resolved_contains:
-                # Use registered __contains__ method (dict, set, dict_keys)
-                find_expr = f"({expand_cpp_template(expr.resolved_contains.cpp_template, right, left)})"
+                if expr.resolved_contains.cpp_template:
+                    # Builtin __contains__ with template (dict, set, dict_keys)
+                    find_expr = f"({expand_cpp_template(expr.resolved_contains.cpp_template, right, left)})"
+                else:
+                    # User-defined __contains__ method
+                    find_expr = f"({right}.__contains__({left}))"
             elif is_any_str_type(self.types.get_resolved_type(expr.right)):
                 # String contains: use .find(). Wrap string literals in
                 # std::string_view since C string literals lack .find().

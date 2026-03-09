@@ -62,7 +62,7 @@ _CMPOP_TO_STR: dict[type, str] = {
 }
 
 _UNARYOP_TO_STR: dict[type, str] = {
-    ast.USub: "-", ast.Not: "!", ast.Invert: "~",
+    ast.UAdd: "+", ast.USub: "-", ast.Not: "!", ast.Invert: "~",
 }
 
 

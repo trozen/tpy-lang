@@ -67,6 +67,12 @@ struct PointList {
     Point& operator[](int32_t index) {
         return __getitem__(index);
     }
+
+    size_t size() const {
+        auto len = __len__();
+        if (len < 0) tpy::tpy_panic("__len__ returned negative value");
+        return static_cast<size_t>(len);
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PointList& obj) {

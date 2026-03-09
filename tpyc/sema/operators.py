@@ -50,6 +50,7 @@ DUNDER_CPP_TEMPLATES: dict[str, str] = {
     "__ror__": "({0}) | ({self})",
     "__rxor__": "({0}) ^ ({self})",
     # Unary operators
+    "__pos__": "+({self})",
     "__neg__": "-({self})",
     "__invert__": "~({self})",
     # Conversion methods (used for operator promotion)
@@ -237,6 +238,7 @@ class OperatorResolver:
 
         Returns a ResolvedBinop whose method has a void return type and a cpp
         template that mutates {self} in place (e.g. tpy::set_update({self}, {0})).
+        For user-defined methods, generates {self}.__iadd__({0}) call.
         """
         method_name = builtin_modules.AUGOP_TO_IMETHOD.get(op)
         if not method_name:
@@ -251,10 +253,14 @@ class OperatorResolver:
         value_arg = self._resolve_pending_types(value_type)
 
         overloads = record.get_method_overloads(method_name)
-        # Only match builtin methods with cpp_template; user-defined __iadd__
-        # etc. have no template and should fall through to __add__ resolution
+        # Try builtin methods with cpp_template first
         builtin_overloads = [m for m in overloads if m.cpp_template]
         if method := self._find_matching_overload(builtin_overloads, value_arg, type_subst):
+            return self._make_resolved(method, type_subst, target_effective)
+
+        # Then try user-defined methods (no cpp_template)
+        user_overloads = [m for m in overloads if not m.cpp_template]
+        if method := self._find_matching_overload(user_overloads, value_arg, type_subst):
             return self._make_resolved(method, type_subst, target_effective)
 
         return None

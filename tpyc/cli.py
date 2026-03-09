@@ -177,13 +177,22 @@ def main() -> int:
         compiled_modules = compiler.compile()
         t_compile = time.monotonic() - t_compile_start
 
+        has_errors = False
         for compiled in compiled_modules:
             source_name = "<stdin>" if reading_from_stdin else os.path.relpath(compiled.path)
 
             if compiled.analyzer:
                 for diag in compiled.analyzer.diagnostics:
-                    if diag.level == DiagnosticLevel.WARNING:
+                    if diag.level in (DiagnosticLevel.WARNING, DiagnosticLevel.ERROR):
                         print(diag.format(source_name), file=sys.stderr)
+                    if diag.level == DiagnosticLevel.ERROR:
+                        has_errors = True
+
+        if has_errors:
+            return 1
+
+        for compiled in compiled_modules:
+            source_name = "<stdin>" if reading_from_stdin else os.path.relpath(compiled.path)
 
             if args.dump_code:
                 try:
