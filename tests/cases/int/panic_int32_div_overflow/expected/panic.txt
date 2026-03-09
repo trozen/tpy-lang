@@ -1,1 +1,1 @@
-TurboPython panic: Int32 overflow in division
+TurboPython panic: integer overflow in division

@@ -709,6 +709,9 @@ class ExpressionAnalyzer:
         # Arithmetic/bitwise operators - use registry
         if result := self.operators.resolve_binop(left_effective, expr.op, right_effective):
             expr.resolved_binop = result
+            # Check if divisor is provably non-zero for div/mod elision
+            if expr.op in ("//", "%"):
+                self._check_divisor_non_zero(expr)
             # List concat produces a list -- mark pending literals as mutated
             if isinstance(result.method.return_type, ListType):
                 self._mark_list_concat_operands_mutated(expr, left_effective, right_effective)
@@ -756,6 +759,37 @@ class ExpressionAnalyzer:
             f"Invalid operand types for '{expr.op}': {left_type} and {right_type}",
             expr.loc,
         )
+
+    def _check_subscript_bounds_safe(self, expr: TpySubscript) -> None:
+        """Set bounds_safe when the index is provably in [0, len(obj))."""
+        index = expr.index
+        obj = expr.obj
+        if not isinstance(index, TpyName) or not isinstance(obj, TpyName):
+            return
+        index_range = self.ctx.value_ranges.get(index.name)
+        is_safe = (
+            index_range is not None
+            and index_range.is_non_negative()
+            and index_range.is_bounded_by_len(obj.name)
+        )
+        expr.bounds_safe = is_safe
+        if expr.loc:
+            self.ctx.subscript_bounds_facts[(expr.loc.line, obj.name)] = is_safe
+
+    def _check_divisor_non_zero(self, expr: TpyBinOp) -> None:
+        """Set divisor_non_zero when the divisor is provably != 0."""
+        right = expr.right
+        if isinstance(right, TpyIntLiteral):
+            is_safe = right.value != 0
+            expr.divisor_non_zero = is_safe
+            return
+        if not isinstance(right, TpyName):
+            return
+        divisor_range = self.ctx.value_ranges.get(right.name)
+        is_safe = divisor_range is not None and divisor_range.non_zero
+        expr.divisor_non_zero = is_safe
+        if expr.loc:
+            self.ctx.div_zero_facts[(expr.loc.line, right.name)] = is_safe
 
     def _mark_list_concat_operands_mutated(
         self, expr: TpyBinOp, left_type: TpyType, right_type: TpyType,
@@ -1759,6 +1793,9 @@ class ExpressionAnalyzer:
 
         if not isinstance(index_type, (Int32Type, BigIntType, IntLiteralType)):
             raise self.ctx.error(f"Subscript index must be an integer type, got {index_type}", expr)
+
+        # Check if index is provably in-bounds for bounds check elision
+        self._check_subscript_bounds_safe(expr)
 
         # Unwrap ReadonlyType, remember the flag
         is_readonly_obj = isinstance(obj_type, ReadonlyType)

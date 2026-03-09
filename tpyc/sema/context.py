@@ -208,6 +208,16 @@ class SemanticContext:
     # deref_check. Keyed by (line, varname). True = non-null proven.
     ptr_deref_facts: dict[tuple[int, str], bool] = field(default_factory=dict)
 
+    # --- Subscript bounds facts (for test annotations) ---
+    # Records whether each subscript access skips bounds checking.
+    # Keyed by (line, container_varname). True = bounds-safe proven.
+    subscript_bounds_facts: dict[tuple[int, str], bool] = field(default_factory=dict)
+
+    # --- Division non-zero facts (for test annotations) ---
+    # Records whether each division/modulo skips zero-check.
+    # Keyed by (line, divisor_varname). True = non-zero proven.
+    div_zero_facts: dict[tuple[int, str], bool] = field(default_factory=dict)
+
     # --- String local tracking (PendingStrType inference) ---
     str_var_counter: int = 0
     str_vars: dict[int, StrVarInfo] = field(default_factory=dict)
@@ -300,6 +310,9 @@ class SemanticContext:
 
     # --- Consumed variable tracking (use-after-consume detection) ---
     consumed_vars: set[str] = field(default_factory=set)
+
+    # --- Integer value range tracking (bounds check / div-zero elision) ---
+    value_ranges: dict[str, 'ValueRange'] = field(default_factory=dict)
 
     # --- Borrow tracking ---
     borrow_tracker: BorrowTracker = field(default_factory=BorrowTracker)
@@ -466,6 +479,7 @@ class SemanticContext:
         self.non_null_ptr_vars.clear()
         self.consumed_vars.clear()
         self.borrow_tracker.reset()
+        self.value_ranges.clear()
 
     def mark_loop_var_mutated(self, name: str) -> None:
         """Mark a for-each loop variable as mutated (prevents const-ref binding)."""

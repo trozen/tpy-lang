@@ -41,7 +41,7 @@ void main() {
         [&, __i = int32_t(0), __stop = static_cast<int32_t>(10)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
                 int32_t x = __i++;
-                if (((tpy::mod_check<int32_t>(x, 2)) == 0)) {
+                if (((tpy::mod_floor<int32_t>(x, 2)) == 0)) {
                     return std::optional<int32_t>(x);
                 }
             }

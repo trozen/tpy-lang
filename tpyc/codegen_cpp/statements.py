@@ -938,6 +938,10 @@ class StatementGenerator:
             subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(stmt.target.obj) else obj
             index_expr = self.expressions.gen_index_expr(stmt.target.index, index_type)
 
+            # Bounds-safe: index provably in [0, len(obj)), skip normalize_index
+            if stmt.target.bounds_safe:
+                return f"{indent}{subscript_obj}[{index_expr}] = {value};\n"
+
             # Use registry lookup for __setitem__
             cpp_template = self.builtins.get_type_method_template(obj_type, "__setitem__")
             if cpp_template:

@@ -9,14 +9,16 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, OptionalType, NoneType, VoidType, PtrType, OwnType, NamedType,
-    TypeParamRef,
+    TypeParamRef, FixedIntType, BigIntType, IntLiteralType,
     ReadonlyType, UnionType, unwrap_readonly, make_union, union_none_narrow,
     is_protocol_type,
 )
 from ..parse import (
     TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyFieldAccess,
     TpySubscript, TpyNoneLiteral, TpyCall, TpyMethodCall,
+    TpyIntLiteral,
 )
+from .value_range import ValueRange
 from ..prescan import match_is_none
 from ..namespace import BindingKind
 from .diagnostics import OPTIONAL_VALUE_TRUTHINESS_WARNING
@@ -325,6 +327,150 @@ class NarrowingTracker:
 
         return set(), set()
 
+    # -- Integer range facts from conditions ----------------------------
+
+    def condition_range_facts(
+        self, condition: TpyExpr,
+    ) -> tuple[dict[str, ValueRange], dict[str, ValueRange]]:
+        """Get (true_facts, false_facts) for integer range narrowing.
+
+        Handles comparisons (!=, ==, <, <=, >, >=), including symbolic
+        len() comparisons, and logical composition (and/or/not).
+        """
+        return self._range_facts(condition)
+
+    def _range_facts(
+        self, expr: TpyExpr,
+    ) -> tuple[dict[str, ValueRange], dict[str, ValueRange]]:
+        if isinstance(expr, TpyUnaryOp) and expr.op == "!":
+            true_facts, false_facts = self._range_facts(expr.operand)
+            return false_facts, true_facts
+
+        if isinstance(expr, TpyBinOp):
+            if expr.op == "&&":
+                l_true, l_false = self._range_facts(expr.left)
+                r_true, r_false = self._range_facts(expr.right)
+                merged_true = _intersect_range_dicts(l_true, r_true)
+                merged_false = _merge_range_dicts(l_false, r_false)
+                return merged_true, merged_false
+            if expr.op == "||":
+                l_true, l_false = self._range_facts(expr.left)
+                r_true, r_false = self._range_facts(expr.right)
+                merged_true = _merge_range_dicts(l_true, r_true)
+                merged_false = _intersect_range_dicts(l_false, r_false)
+                return merged_true, merged_false
+
+            return self._comparison_range_facts(expr)
+
+        return {}, {}
+
+    def _is_integer_typed(self, expr: TpyExpr) -> bool:
+        """Check if an expression has an integer type (fixed-width or BigInt)."""
+        typ = self.ctx.get_expr_type(expr)
+        if typ is None:
+            return False
+        return isinstance(typ, (FixedIntType, BigIntType, IntLiteralType))
+
+    def _comparison_range_facts(
+        self, expr: TpyBinOp,
+    ) -> tuple[dict[str, ValueRange], dict[str, ValueRange]]:
+        """Extract range facts from a single comparison (==, !=, <, <=, >, >=)."""
+        op = expr.op
+        if op not in ("==", "!=", "<", "<=", ">", ">="):
+            return {}, {}
+
+        left, right = expr.left, expr.right
+
+        # Normalize: put the variable name on the left side
+        name: str | None = None
+        other: TpyExpr | None = None
+
+        if isinstance(left, TpyName) and self._is_integer_typed(left):
+            name = left.name
+            other = right
+        elif isinstance(right, TpyName) and self._is_integer_typed(right):
+            name = right.name
+            other = left
+            # Flip the operator: x < 5 becomes 5 > x
+            op = {"<": ">", "<=": ">=", ">": "<", ">=": "<=",
+                  "==": "==", "!=": "!="}[op]
+
+        if name is None or other is None:
+            return {}, {}
+
+        # Determine what 'other' is: literal, len() call, or unknown
+        literal_val = self._extract_int_literal(other)
+        len_of = self._extract_len_of(other)
+
+        existing = self.ctx.value_ranges.get(name, ValueRange())
+
+        if op == "!=":
+            if literal_val == 0:
+                return {name: existing.with_non_zero()}, {}
+            return {}, {}
+
+        if op == "==":
+            if literal_val is not None:
+                false_facts: dict[str, ValueRange] = {}
+                if literal_val == 0:
+                    false_facts = {name: existing.with_non_zero()}
+                return {name: ValueRange.from_literal(literal_val)}, false_facts
+            return {}, {}
+
+        if op == ">":
+            if literal_val is not None:
+                nz = literal_val >= 0
+                r = existing.with_lo(literal_val + 1)
+                if nz:
+                    r = r.with_non_zero()
+                return {name: r}, {name: existing.with_hi(literal_val)}
+            return {}, {}
+
+        if op == ">=":
+            if literal_val is not None:
+                nz = literal_val > 0
+                r = existing.with_lo(literal_val)
+                if nz:
+                    r = r.with_non_zero()
+                return {name: r}, {name: existing.with_hi(literal_val - 1)}
+            return {}, {}
+
+        if op == "<":
+            if literal_val is not None:
+                return (
+                    {name: existing.with_hi(literal_val - 1)},
+                    {name: existing.with_lo(literal_val)},
+                )
+            if len_of is not None:
+                return (
+                    {name: existing.with_hi_len_of(len_of)},
+                    {},
+                )
+            return {}, {}
+
+        if op == "<=":
+            if literal_val is not None:
+                return (
+                    {name: existing.with_hi(literal_val)},
+                    {name: existing.with_lo(literal_val + 1)},
+                )
+            return {}, {}
+
+        return {}, {}
+
+    def _extract_int_literal(self, expr: TpyExpr) -> int | None:
+        """Extract a concrete integer value from an expression."""
+        if isinstance(expr, TpyIntLiteral):
+            return expr.value
+        return None
+
+    def _extract_len_of(self, expr: TpyExpr) -> str | None:
+        """Extract container name from len(container) call."""
+        if (isinstance(expr, TpyCall) and expr.func == "len"
+                and len(expr.args) == 1 and isinstance(expr.args[0], TpyName)):
+            return expr.args[0].name
+        return None
+
     # -- Truthiness warnings -------------------------------------------
 
     def _truthy_names(self, expr: TpyExpr) -> set[str]:
@@ -373,6 +519,10 @@ class NarrowingTracker:
         self.ctx.narrowed_types.pop(name, None)
         # Invalidate field narrowing facts rooted at this variable
         self._invalidate_field_facts(name)
+        # Invalidate integer range facts for this variable
+        self.ctx.value_ranges.pop(name, None)
+        # Invalidate symbolic bounds referencing this variable's length
+        self._invalidate_len_ranges(name)
         # For Optional targets, re-narrow if RHS is provably non-None
         inner_target = unwrap_readonly(target_type)
         if not isinstance(inner_target, OptionalType):
@@ -389,6 +539,13 @@ class NarrowingTracker:
         stale = [k for k in self.ctx.narrowed_types if k.startswith(prefix)]
         for k in stale:
             del self.ctx.narrowed_types[k]
+
+    def _invalidate_len_ranges(self, name: str) -> None:
+        """Remove range facts whose symbolic bound references len(name)."""
+        stale = [k for k, v in self.ctx.value_ranges.items()
+                 if v.hi_len_of == name]
+        for k in stale:
+            del self.ctx.value_ranges[k]
 
     def invalidate_field_facts_for_call(self, call: TpyCall) -> None:
         """Invalidate field narrowing facts for name arguments passed by mutable reference.
@@ -407,15 +564,19 @@ class NarrowingTracker:
             if inner.is_value_type():
                 continue
             self._invalidate_field_facts(arg.name)
+            self._invalidate_len_ranges(arg.name)
 
     def invalidate_field_facts_for_method_call(self, call: TpyMethodCall) -> None:
         """Invalidate field narrowing facts after a method call.
 
         The receiver object is passed as mutable self, so any field could be mutated.
+        Also invalidates symbolic len-based range facts for the receiver (the method
+        may change the container's length, e.g. pop/clear/insert).
         Also invalidates for any non-value-type arguments.
         """
         if isinstance(call.obj, TpyName) and not call.is_static_call:
             self._invalidate_field_facts(call.obj.name)
+            self._invalidate_len_ranges(call.obj.name)
         for arg in call.args:
             if not isinstance(arg, TpyName):
                 continue
@@ -426,4 +587,36 @@ class NarrowingTracker:
             if inner.is_value_type():
                 continue
             self._invalidate_field_facts(arg.name)
+
+
+# -- Module-level helpers for range fact dict operations ------------------
+
+def _intersect_range_dicts(
+    a: dict[str, ValueRange], b: dict[str, ValueRange],
+) -> dict[str, ValueRange]:
+    """Combine two range fact dicts (and-composition): tighten overlapping keys."""
+    if not a:
+        return b
+    if not b:
+        return a
+    result = dict(a)
+    for k, v in b.items():
+        if k in result:
+            result[k] = ValueRange.intersect(result[k], v)
+        else:
+            result[k] = v
+    return result
+
+
+def _merge_range_dicts(
+    a: dict[str, ValueRange], b: dict[str, ValueRange],
+) -> dict[str, ValueRange]:
+    """Combine two range fact dicts (or-composition): widen overlapping keys, drop unique."""
+    if not a or not b:
+        return {}
+    result = {}
+    for k, v in a.items():
+        if k in b:
+            result[k] = ValueRange.merge(v, b[k])
+    return result
 

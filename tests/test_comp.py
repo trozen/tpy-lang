@@ -20,6 +20,8 @@ from conftest import (
     validate_annotations,
     validate_type_annotations,
     validate_non_null_annotations,
+    validate_bounds_annotations,
+    validate_div_annotations,
     parse_annotations,
     check_or_update,
     discover_cases,
@@ -149,3 +151,15 @@ def test_comp(case_dir, main_src, tmp_path):
         nn_errors = validate_non_null_annotations(main_src, result.ptr_deref_facts)
         if nn_errors:
             pytest.fail("\n".join(nn_errors), pytrace=False)
+
+    # Validate # tpyc: bounds_safe/bounds_checked annotations
+    if not UPDATE_EXPECTED and result.subscript_bounds_facts is not None:
+        bounds_errors = validate_bounds_annotations(main_src, result.subscript_bounds_facts)
+        if bounds_errors:
+            pytest.fail("\n".join(bounds_errors), pytrace=False)
+
+    # Validate # tpyc: div_safe/div_checked annotations
+    if not UPDATE_EXPECTED and result.div_zero_facts is not None:
+        div_errors = validate_div_annotations(main_src, result.div_zero_facts)
+        if div_errors:
+            pytest.fail("\n".join(div_errors), pytrace=False)

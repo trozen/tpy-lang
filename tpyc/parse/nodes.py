@@ -124,6 +124,7 @@ class TpyBinOp(TpyExpr):
     resolved_contains: 'FunctionInfo | None' = None  # Set by sema for 'in'/'not in' with __contains__
     optional_safe_eq: bool = False  # Set by sema: ==/!= with Optional value-type operand(s)
     int_enum_coercion: 'IntEnumType | None' = None  # Set by sema: IntEnum arithmetic coerced to underlying type
+    divisor_non_zero: bool = False  # Set by sema: divisor provably non-zero, skip div-zero check
 
 
 @dataclass
@@ -302,6 +303,7 @@ class TpySubscript(TpyExpr):
     index: TpyExpr  # TpySlice for slicing, other TpyExpr for single-index
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
     enum_from_name: 'EnumType | None' = None    # Set by sema for Color["Red"] name lookup
+    bounds_safe: bool = False  # Set by sema: index provably in [0, len(obj)), skip bounds check
 
 
 @dataclass

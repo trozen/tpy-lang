@@ -12,7 +12,7 @@ int32_t sum_span(std::span<const int32_t> s) {
     int32_t __stop_0 = tpy::__len__(s);
     for (int32_t i = 0; i < __stop_0; ++i) {
         // 7:         total += s[i]
-        total = tpy::add_check<int32_t>(total, tpy::__getitem__(s, i));
+        total = tpy::add_check<int32_t>(total, s[i]);
     }
     // 8:     return total
     return total;

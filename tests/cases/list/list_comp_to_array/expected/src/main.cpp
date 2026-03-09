@@ -117,7 +117,7 @@ void array_filter_fallback() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            if (((tpy::mod_check<int32_t>(x, 2)) == 0)) {
+            if (((tpy::mod_floor<int32_t>(x, 2)) == 0)) {
                 __result.push_back(x);
             }
         }

@@ -4429,6 +4429,33 @@ Builtin method calls go through overload resolution in sema, which attaches `res
 
 **Limitation**: Subscript (`__getitem__`, `__setitem__`) and binary operator codegen paths currently fall back to registry lookup without `resolved_function_info`. This works because these methods are single-overload today. If multi-overload subscript or binop methods are needed in the future, those codegen paths must be updated to thread `resolved_function_info` through (similar to regular method calls).
 
+### Integer Range Tracking (Working)
+
+The compiler tracks provable `[lo, hi]` integer value ranges and a `non_zero` flag per variable through flow analysis. This enables two optimizations:
+
+**Bounds check elision**: When `arr[i]` is accessed and `i` is provably in `[0, len(arr))`, the compiler skips `normalize_index` (which handles negative indices and bounds checking) and emits direct `operator[]` access:
+
+```python
+for i in range(len(arr)):
+    x = arr[i]  # Direct arr[i] in C++ (no bounds check)
+```
+
+**Division-by-zero check elision**: When `a // b` or `a % b` is executed and `b` is provably non-zero, the compiler skips the zero-check and emits `div_floor`/`mod_floor` instead of `div_check`/`mod_check`:
+
+```python
+if b != 0:
+    x = a // b  # div_floor (no zero check)
+    y = a % b   # mod_floor (no zero check)
+```
+
+Range facts enter the system from:
+- `for i in range(len(arr))` -- `i in [0, len(arr)-1]`
+- `if b != 0:` / `assert b != 0` -- `non_zero=True`
+- `if x > 0:` / `assert x >= 0` -- concrete lower bound
+- `if x < len(arr):` -- symbolic upper bound
+
+Range facts are invalidated on variable reassignment and merged at branch join points. Symbolic bounds referencing a container are invalidated when that container is mutated.
+
 ## Open Questions
 
 1. **Allocation control ergonomics**: `@noalloc` vs `@alloc` vs module-level vs compiler flag?

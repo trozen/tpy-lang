@@ -80,6 +80,10 @@ class CompileResult:
     declared_var_types: dict[tuple[int, str], object] | None = None
     # Ptr dereference facts (from sema), for # tpyc: non_null/nullable validation
     ptr_deref_facts: dict[tuple[int, str], bool] | None = None
+    # Subscript bounds facts (from sema), for # tpyc: bounds_safe/bounds_checked validation
+    subscript_bounds_facts: dict[tuple[int, str], bool] | None = None
+    # Division non-zero facts (from sema), for # tpyc: div_safe/div_checked validation
+    div_zero_facts: dict[tuple[int, str], bool] | None = None
 
 
 def _validate_default_int_name(name: str) -> str:
@@ -174,11 +178,16 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         layout = BuildLayout(output_dir, entry_module.name)
         hpp_path = layout.hpp_path(entry_module.name)
         cpp_path = layout.cpp_path(entry_module.name)
-        declared_var_types = entry_module.analyzer.ctx.declared_var_types if entry_module.analyzer else None
-        ptr_deref_facts = entry_module.analyzer.ctx.ptr_deref_facts if entry_module.analyzer else None
+        ctx = entry_module.analyzer.ctx if entry_module.analyzer else None
+        declared_var_types = ctx.declared_var_types if ctx else None
+        ptr_deref_facts = ctx.ptr_deref_facts if ctx else None
+        subscript_bounds_facts = ctx.subscript_bounds_facts if ctx else None
+        div_zero_facts = ctx.div_zero_facts if ctx else None
         return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path,
                              all_modules=all_modules, declared_var_types=declared_var_types,
-                             ptr_deref_facts=ptr_deref_facts)
+                             ptr_deref_facts=ptr_deref_facts,
+                             subscript_bounds_facts=subscript_bounds_facts,
+                             div_zero_facts=div_zero_facts)
 
     except CompileError as e:
         return CompileResult(success=False, diagnostics=e.format() + "\n")
@@ -516,6 +525,134 @@ def validate_non_null_annotations(
             errors.append(
                 f"Line {ann.line}: expected '{ann.var_name}' to be nullable "
                 f"but deref_check is skipped (proven non-null)"
+            )
+
+    return errors
+
+
+@dataclass
+class BoundsSafeAnnotation:
+    """A bounds annotation from source code (# tpyc: bounds_safe/bounds_checked)."""
+    line: int
+    var_name: str
+    expected_safe: bool  # True for bounds_safe, False for bounds_checked
+
+
+def parse_bounds_annotations(source: str) -> list[BoundsSafeAnnotation]:
+    """Parse # tpyc: bounds_safe and # tpyc: bounds_checked annotations."""
+    annotations = []
+    pattern = re.compile(r'#\s*tpyc:\s*(bounds_safe|bounds_checked)\(\s*(\w+)\s*\)')
+
+    for lineno, line in enumerate(source.splitlines(), start=1):
+        stripped = line.lstrip()
+        if stripped.startswith('#'):
+            continue
+        match = pattern.search(line)
+        if match:
+            kind = match.group(1)
+            var_name = match.group(2)
+            annotations.append(BoundsSafeAnnotation(
+                line=lineno,
+                var_name=var_name,
+                expected_safe=(kind == "bounds_safe"),
+            ))
+
+    return annotations
+
+
+def validate_bounds_annotations(
+    src_file: Path,
+    subscript_bounds_facts: dict[tuple[int, str], bool],
+) -> list[str]:
+    """Validate # tpyc: bounds_safe/bounds_checked annotations against compiler facts.
+
+    Returns list of validation errors (empty if all pass).
+    """
+    source = src_file.read_text()
+    annotations = parse_bounds_annotations(source)
+    errors = []
+
+    for ann in annotations:
+        key = (ann.line, ann.var_name)
+        actual = subscript_bounds_facts.get(key)
+        if actual is None:
+            errors.append(
+                f"Line {ann.line}: no subscript access found for '{ann.var_name}'"
+            )
+            continue
+        if ann.expected_safe and not actual:
+            errors.append(
+                f"Line {ann.line}: expected '{ann.var_name}' subscript to be bounds_safe "
+                f"but bounds check is used"
+            )
+        elif not ann.expected_safe and actual:
+            errors.append(
+                f"Line {ann.line}: expected '{ann.var_name}' subscript to be bounds_checked "
+                f"but bounds check is skipped (proven safe)"
+            )
+
+    return errors
+
+
+@dataclass
+class DivSafeAnnotation:
+    """A division annotation from source code (# tpyc: div_safe/div_checked)."""
+    line: int
+    var_name: str
+    expected_safe: bool  # True for div_safe, False for div_checked
+
+
+def parse_div_annotations(source: str) -> list[DivSafeAnnotation]:
+    """Parse # tpyc: div_safe and # tpyc: div_checked annotations."""
+    annotations = []
+    pattern = re.compile(r'#\s*tpyc:\s*(div_safe|div_checked)\(\s*(\w+)\s*\)')
+
+    for lineno, line in enumerate(source.splitlines(), start=1):
+        stripped = line.lstrip()
+        if stripped.startswith('#'):
+            continue
+        match = pattern.search(line)
+        if match:
+            kind = match.group(1)
+            var_name = match.group(2)
+            annotations.append(DivSafeAnnotation(
+                line=lineno,
+                var_name=var_name,
+                expected_safe=(kind == "div_safe"),
+            ))
+
+    return annotations
+
+
+def validate_div_annotations(
+    src_file: Path,
+    div_zero_facts: dict[tuple[int, str], bool],
+) -> list[str]:
+    """Validate # tpyc: div_safe/div_checked annotations against compiler facts.
+
+    Returns list of validation errors (empty if all pass).
+    """
+    source = src_file.read_text()
+    annotations = parse_div_annotations(source)
+    errors = []
+
+    for ann in annotations:
+        key = (ann.line, ann.var_name)
+        actual = div_zero_facts.get(key)
+        if actual is None:
+            errors.append(
+                f"Line {ann.line}: no division/modulo found for '{ann.var_name}'"
+            )
+            continue
+        if ann.expected_safe and not actual:
+            errors.append(
+                f"Line {ann.line}: expected '{ann.var_name}' divisor to be div_safe "
+                f"but zero check is used"
+            )
+        elif not ann.expected_safe and actual:
+            errors.append(
+                f"Line {ann.line}: expected '{ann.var_name}' divisor to be div_checked "
+                f"but zero check is skipped (proven non-zero)"
             )
 
     return errors

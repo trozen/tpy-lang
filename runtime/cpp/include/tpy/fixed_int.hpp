@@ -90,17 +90,14 @@ T mul_check(T a, T b) {
     return result;
 }
 
+// Python floor division: round toward negative infinity.
+// Divisor must be non-zero (caller's responsibility).
 template<typename T>
-T div_check(T a, T b) {
-    if (b == 0) {
-        tpy_panic("Division by zero");
-    }
+T div_floor(T a, T b) {
     if constexpr (std::is_signed_v<T>) {
-        if (a == std::numeric_limits<T>::min() && b == static_cast<T>(-1)) {
-            std::string msg = std::string(fixed_int_name<T>()) + " overflow in division";
-            tpy_panic(msg.c_str());
+        if (a == std::numeric_limits<T>::min() && b == static_cast<T>(-1)) [[unlikely]] {
+            tpy_panic("integer overflow in division");
         }
-        // Python floor division: round toward negative infinity
         T q = a / b;
         T r = a % b;
         if (r != 0 && ((r < 0) != (b < 0))) {
@@ -108,18 +105,18 @@ T div_check(T a, T b) {
         }
         return q;
     } else {
-        // Unsigned: truncation division (same as floor for non-negative)
         return a / b;
     }
 }
 
+// Python modulo: result has same sign as divisor.
+// Divisor must be non-zero (caller's responsibility).
 template<typename T>
-T mod_check(T a, T b) {
-    if (b == 0) {
-        tpy_panic("Division by zero");
-    }
+T mod_floor(T a, T b) {
     if constexpr (std::is_signed_v<T>) {
-        // Python modulo: result has same sign as divisor
+        if (a == std::numeric_limits<T>::min() && b == static_cast<T>(-1)) [[unlikely]] {
+            return 0;  // Python: INT_MIN % -1 == 0
+        }
         T r = a % b;
         if (r != 0 && ((r < 0) != (b < 0))) {
             r += b;
@@ -128,6 +125,23 @@ T mod_check(T a, T b) {
     } else {
         return a % b;
     }
+}
+
+// Checked variants: also check for division by zero.
+template<typename T>
+T div_check(T a, T b) {
+    if (b == 0) [[unlikely]] {
+        tpy_panic("Division by zero");
+    }
+    return div_floor(a, b);
+}
+
+template<typename T>
+T mod_check(T a, T b) {
+    if (b == 0) [[unlikely]] {
+        tpy_panic("Division by zero");
+    }
+    return mod_floor(a, b);
 }
 
 template<typename T>

@@ -759,6 +759,9 @@ class ExpressionGenerator:
                     right = f"{cpp_type}{right}"
             # Generate binop using helper (handles wrappers and is_reverse)
             result = self._gen_binop_from_result(binop_result, left, right)
+            # Divisor proven non-zero: use unchecked variants
+            if expr.divisor_non_zero:
+                result = result.replace("div_check", "div_floor").replace("mod_check", "mod_floor")
             # Wrap in parens to avoid precedence issues with cout << and other operators
             return f"({result})"
 
@@ -2307,6 +2310,10 @@ class ExpressionGenerator:
                 ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
                 subscript_obj = f"tpy::deref_check({ptr_expr})"
         index_expr = self.gen_index_expr(expr.index, index_type)
+
+        # Bounds-safe: index provably in [0, len(obj)), skip normalize_index
+        if expr.bounds_safe:
+            return f"{subscript_obj}[{index_expr}]"
 
         # Use registry lookup for __getitem__
         cpp_template = self.builtins.get_type_method_template(obj_type, "__getitem__")

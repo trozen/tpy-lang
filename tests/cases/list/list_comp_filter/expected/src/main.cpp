@@ -33,7 +33,7 @@ void main() {
         const int32_t __stop_1 = 10;
         if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
         for (int32_t x = 0; x < __stop_1; ++x) {
-            if (((tpy::mod_check<int32_t>(x, 2)) == 0)) {
+            if (((tpy::mod_floor<int32_t>(x, 2)) == 0)) {
                 __result.push_back((tpy::mul_check<int32_t>(x, x)));
             }
         }
@@ -48,7 +48,7 @@ void main() {
         const int32_t __stop_2 = 20;
         if (__stop_2 > 0) __result.reserve(static_cast<size_t>(__stop_2));
         for (int32_t x = 0; x < __stop_2; ++x) {
-            if (((tpy::mod_check<int32_t>(x, 2)) == 0) && ((tpy::mod_check<int32_t>(x, 3)) == 0)) {
+            if (((tpy::mod_floor<int32_t>(x, 2)) == 0) && ((tpy::mod_floor<int32_t>(x, 3)) == 0)) {
                 __result.push_back(x);
             }
         }

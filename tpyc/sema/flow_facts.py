@@ -14,6 +14,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from .context import BorrowKind
+from .value_range import ValueRange
 
 if TYPE_CHECKING:
     from ..typesys import TpyType
@@ -75,6 +76,35 @@ def _merge_narrowed(
     return frozenset(merged.items())
 
 
+def _merge_value_ranges(
+    then_ranges: frozenset[tuple[str, ValueRange]],
+    else_ranges: frozenset[tuple[str, ValueRange]],
+    then_term: bool,
+    else_term: bool,
+) -> frozenset[tuple[str, ValueRange]]:
+    """Merge value range mappings across branch endpoints.
+
+    When both branches are live, per-variable ranges are merged (widened)
+    using ValueRange.merge. Variables tracked on only one branch are dropped
+    (conservative -- we can only use a fact if it holds on all paths).
+    """
+    if then_term and else_term:
+        then_dict = dict(then_ranges)
+        then_dict.update(else_ranges)
+        return frozenset(then_dict.items())
+    if then_term:
+        return else_ranges
+    if else_term:
+        return then_ranges
+    then_dict = dict(then_ranges)
+    else_dict = dict(else_ranges)
+    merged = {}
+    for k, v in then_dict.items():
+        if k in else_dict:
+            merged[k] = ValueRange.merge(v, else_dict[k])
+    return frozenset(merged.items())
+
+
 def _merge_borrow_triples(
     then_borrows: frozenset[tuple[str, str, BorrowKind]],
     else_borrows: frozenset[tuple[str, str, BorrowKind]],
@@ -129,6 +159,7 @@ class FlowFacts:
     # Borrow map: (storage_name, borrower_name, BorrowKind) triples.
     # "__for_iter" is used as the borrower for implicit for-loop iterator borrows.
     borrows: frozenset[tuple[str, str, BorrowKind]] = frozenset()
+    value_ranges: frozenset[tuple[str, ValueRange]] = frozenset()
 
     @staticmethod
     def merge(then: FlowFacts, else_: FlowFacts) -> FlowFacts:
@@ -163,6 +194,10 @@ class FlowFacts:
             ),
             borrows=_merge_borrow_triples(
                 then.borrows, else_.borrows,
+                then_term, else_term,
+            ),
+            value_ranges=_merge_value_ranges(
+                then.value_ranges, else_.value_ranges,
                 then_term, else_term,
             ),
         )

@@ -410,6 +410,7 @@ class StatementAnalyzer:
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             then_type_facts, else_type_facts = self.narrowing.condition_type_facts(stmt.condition)
             ptr_nn_then, ptr_nn_else = self.narrowing.condition_ptr_null_facts(stmt.condition)
+            range_true, range_false = self.narrowing.condition_range_facts(stmt.condition)
             stmt.then_type_facts = self._filter_union_codegen_facts(then_type_facts)
             stmt.else_type_facts = self._filter_union_codegen_facts(else_type_facts)
             scope_before = set(self.ctx.current_scope.bindings.keys())
@@ -420,6 +421,7 @@ class StatementAnalyzer:
             ns_types_before = self._save_ns_var_types()
             self.ctx.narrowed_types.update(then_type_facts)
             self.ctx.non_null_ptr_vars |= ptr_nn_then
+            self._apply_range_facts(range_true)
             for s in stmt.then_body:
                 self.analyze_stmt(s)
             then_state = self.init.save()
@@ -430,6 +432,7 @@ class StatementAnalyzer:
             self.init.restore(before)
             self.ctx.narrowed_types.update(else_type_facts)
             self.ctx.non_null_ptr_vars |= ptr_nn_else
+            self._apply_range_facts(range_false)
             for s in stmt.else_body:
                 self.analyze_stmt(s)
             else_state = self.init.save()
@@ -474,6 +477,7 @@ class StatementAnalyzer:
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             then_type_facts, _ = self.narrowing.condition_type_facts(stmt.condition)
             ptr_nn, _ = self.narrowing.condition_ptr_null_facts(stmt.condition)
+            range_true, _ = self.narrowing.condition_range_facts(stmt.condition)
             stmt.then_type_facts = self._filter_union_codegen_facts(then_type_facts)
             before = self.init.save()
             # Save namespace types -- loop_scope() restores scope bindings
@@ -487,6 +491,7 @@ class StatementAnalyzer:
                 # Applied separately from apply_loop_entry_facts because
                 # that method only handles type narrowing, not ptr non-null.
                 self.ctx.non_null_ptr_vars |= ptr_nn
+                self._apply_range_facts(range_true)
                 for s in stmt.body:
                     self.analyze_stmt(s)
             # Vars reassigned from unknown inside the body lose non-null provenance
@@ -541,6 +546,8 @@ class StatementAnalyzer:
                 ns_types_before_foreach = self._save_ns_var_types()
                 with self.scopes.loop_scope() as inner_scope:
                     self.init.apply_loop_entry_facts(before)
+                    # Track range facts for loop variable from range() calls
+                    self._track_for_range_facts(stmt)
                     if isinstance(stmt.iterable, TpyName):
                         self.ctx.borrow_tracker.add_borrow(stmt.iterable.name, "__for_iter", BorrowKind.ITER)
                     if is_native_iterator or is_protocol_iter:
@@ -605,9 +612,11 @@ class StatementAnalyzer:
                     raise self.ctx.error("assert message must be a string literal", stmt)
             then_type_facts, _ = self.narrowing.condition_type_facts(stmt.condition)
             ptr_nn, _ = self.narrowing.condition_ptr_null_facts(stmt.condition)
+            range_true, _ = self.narrowing.condition_range_facts(stmt.condition)
             stmt.then_type_facts = self._filter_union_codegen_facts(then_type_facts)
             self.ctx.narrowed_types.update(then_type_facts)
             self.ctx.non_null_ptr_vars |= ptr_nn
+            self._apply_range_facts(range_true)
         elif isinstance(stmt, TpyGlobal):
             self._analyze_global_stmt(stmt)
         elif isinstance(stmt, TpyRaiseStopIteration):
@@ -617,6 +626,45 @@ class StatementAnalyzer:
             self.init.mark_terminated()
         elif isinstance(stmt, TpyMatch):
             self._analyze_match(stmt)
+
+    def _apply_range_facts(self, facts: dict[str, 'ValueRange']) -> None:
+        """Apply integer range facts, intersecting with any existing ranges."""
+        from .value_range import ValueRange
+        for name, new_range in facts.items():
+            existing = self.ctx.value_ranges.get(name)
+            if existing is not None:
+                self.ctx.value_ranges[name] = ValueRange.intersect(existing, new_range)
+            else:
+                self.ctx.value_ranges[name] = new_range
+
+    def _track_for_range_facts(self, stmt: TpyForEach) -> None:
+        """Set range facts for loop variable when iterating over range().
+
+        Detects: range(len(arr)), range(N).
+        """
+        from .value_range import ValueRange
+        iterable = stmt.iterable
+        if not isinstance(iterable, TpyCall) or iterable.func != "range":
+            return
+
+        args = iterable.args
+        if len(args) == 1:
+            arg = args[0]
+            # range(len(arr)) -- symbolic bound
+            if (isinstance(arg, TpyCall) and arg.func == "len"
+                    and len(arg.args) == 1 and isinstance(arg.args[0], TpyName)):
+                self.ctx.value_ranges[stmt.var] = ValueRange.for_range_index(
+                    stop_len_of=arg.args[0].name,
+                )
+                return
+            # range(N) -- literal bound
+            if isinstance(arg, TpyIntLiteral):
+                self.ctx.value_ranges[stmt.var] = ValueRange.for_range_index(
+                    stop_literal=arg.value,
+                )
+                return
+            # range(n) -- unknown bound, but still non-negative
+            self.ctx.value_ranges[stmt.var] = ValueRange.for_range_index()
 
     def _filter_union_codegen_facts(
         self, facts: dict[str, TpyType],

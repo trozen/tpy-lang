@@ -32,7 +32,7 @@ int32_t pass_in_loop() {
     // 18:     while i < 10:
     while ((i < 10)) {
         // 19:         if i % 2 == 0:
-        if (((tpy::mod_check<int32_t>(i, 2)) == 0)) {
+        if (((tpy::mod_floor<int32_t>(i, 2)) == 0)) {
             // 20:             pass
         } else {
             // 22:             total += i

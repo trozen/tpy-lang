@@ -24,8 +24,8 @@
 | 6b | For-loop const-ref binding | S | Done | [6b](#6b-for-loop-const-ref-binding) |
 | 6c | String view extension (Array, records) | M | Done | [6c](#6c-string-view-extension-to-containers) |
 | -- | Extract BorrowTracker class from SemanticContext | S | Done | -- |
-| 11 | Integer range tracking (loop patterns) | M | Not started | [11](#11-integer-range-tracking) |
-| 11a | Bounds check elision | S | Not started | [11a](#11a-bounds-check-elision) |
+| 11 | Integer range tracking (loop patterns) | M | Done | [11](#11-integer-range-tracking) |
+| 11a | Bounds check elision | S | Done | [11a](#11a-bounds-check-elision) |
 
 ### Phase 3: Cross-Function Analysis
 
@@ -35,6 +35,7 @@
 | 7b | `@pure` enforcement (body verification) | M | Not started | [7](#7-pure-annotation) |
 | 6c+ | String view extension (list, dict) | M | Not started | [6c](#6c-string-view-extension-to-containers) |
 | 11+ | Integer range tracking (general) | L | Not started | [11](#11-integer-range-tracking) |
+| 11+a | Augmented-assignment range shifting (`i += 1` in while-loops) | S-M | Not started | [11](#11-integer-range-tracking) |
 | 11b | Safe unsigned cast after assertion | S | Not started | [11b](#11b-safe-unsigned-cast) |
 
 ### Phase 4: Thread Safety
@@ -651,8 +652,24 @@ while i < len(arr):
 These are the two most common patterns in hot loops. The `range(len(arr))` pattern
 is especially common in HFT code.
 
-**Codegen**: When bounds-safe, emit `arr.unchecked_get(i)` (already exists on Array,
-Span, list) or direct `arr[i]` in C++ (bypassing `normalize_index`).
+**Codegen**: When bounds-safe, emit direct `arr[i]` in C++ (bypassing `normalize_index`).
+
+**Implementation notes** (Done):
+- `ValueRange` class in `sema/value_range.py`: frozen dataclass with `[lo, hi]` +
+  `non_zero` flag + symbolic `hi_len_of` (container name for `len(x)-1` bound).
+- `value_ranges: dict[str, ValueRange]` on `SemanticContext`, saved/restored in
+  `FlowFacts` and `InitTracker`.
+- `condition_range_facts()` on `NarrowingTracker` extracts facts from comparisons,
+  `!=`, assert, etc. Applied at if/while/assert branch points.
+- `for i in range(len(arr))` detected in `statements.py`, sets
+  `ValueRange(lo=0, hi_len_of="arr")` for the loop variable.
+- `bounds_safe` flag on `TpySubscript` and `divisor_non_zero` flag on `TpyBinOp`
+  (set by sema, read by codegen).
+- Division elision: `div_floor<T>` / `mod_floor<T>` runtime functions skip zero-check
+  but keep Python floor-division/modulo semantics and overflow check.
+- Test annotations: `# tpyc: bounds_safe(arr)` / `# tpyc: bounds_checked(arr)` for
+  subscripts; `# tpyc: div_safe(b)` / `# tpyc: div_checked(b)` for division/modulo.
+- While-loop `i += 1` pattern deferred to 11+a (needs augmented-assignment range shifting).
 
 #### 11b. Safe Unsigned Cast
 

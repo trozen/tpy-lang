@@ -34,6 +34,7 @@ class InitTracker:
             narrowed_types=frozenset(self.ctx.narrowed_types.items()),
             consumed_vars=frozenset(self.ctx.consumed_vars),
             borrows=self.ctx.borrow_tracker.freeze(),
+            value_ranges=frozenset(self.ctx.value_ranges.items()),
         )
 
     def restore(self, state: FlowFacts) -> None:
@@ -45,6 +46,7 @@ class InitTracker:
         self.ctx.narrowed_types = dict(state.narrowed_types)
         self.ctx.consumed_vars = set(state.consumed_vars)
         self.ctx.borrow_tracker.restore_from_frozen(state.borrows)
+        self.ctx.value_ranges = dict(state.value_ranges)
 
     def mark_assigned(self, name: str) -> None:
         self.ctx.definitely_assigned.add(name)
@@ -92,6 +94,7 @@ class InitTracker:
         self.ctx.narrowed_types = dict(before.narrowed_types)
         self.ctx.consumed_vars = set(before.consumed_vars)
         self.ctx.borrow_tracker.restore_from_frozen(before.borrows)
+        self.ctx.value_ranges = dict(before.value_ranges)
         if condition_type_facts is not None:
             self.ctx.narrowed_types.update(condition_type_facts)
 

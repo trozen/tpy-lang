@@ -40,7 +40,7 @@ void main() {
         [&, __i = int32_t(0), __stop = static_cast<int32_t>(10)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
                 int32_t x = __i++;
-                return std::optional<int32_t>((tpy::mod_check<int32_t>(x, 3)));
+                return std::optional<int32_t>((tpy::mod_floor<int32_t>(x, 3)));
             }
             return std::nullopt;
         }

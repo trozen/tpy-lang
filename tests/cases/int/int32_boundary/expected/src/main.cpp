@@ -23,7 +23,7 @@ void __tpy_init() {
     // 7: print(x - 1)
     std::cout << (tpy::sub_check<int32_t>(x, 1)) << "\n";
     // 8: print(x // 2)
-    std::cout << (tpy::div_check<int32_t>(x, 2)) << "\n";
+    std::cout << (tpy::div_floor<int32_t>(x, 2)) << "\n";
     // 10: # INT32_MIN operations that don't overflow
     // 11: y: Int32 = -2147483648
     y = -2147483648;
@@ -32,7 +32,7 @@ void __tpy_init() {
     // 13: print(y + 1)
     std::cout << (tpy::add_check<int32_t>(y, 1)) << "\n";
     // 14: print(y // 2)
-    std::cout << (tpy::div_check<int32_t>(y, 2)) << "\n";
+    std::cout << (tpy::div_floor<int32_t>(y, 2)) << "\n";
 }
 
 } // namespace tpy_user::main
