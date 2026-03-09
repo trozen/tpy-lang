@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from ..typesys import (
-    TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, StrVarInfo, TypeParamKind, IntLiteralType,
+    TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, StrVarInfo, TypeParamKind, IntLiteralType,
     FixedIntType, INT32, BIGINT, NamedType, ReadonlyType, OwnType, OptionalType,
     unwrap_readonly,
 )
@@ -196,6 +196,9 @@ class SemanticContext:
     dict_literals: dict[int, DictLiteralInfo] = field(default_factory=dict)
     variable_to_dict_literal: dict[str, int] = field(default_factory=dict)
     pending_dict_resolutions: list[int] = field(default_factory=list)
+    set_literals: dict[int, SetLiteralInfo] = field(default_factory=dict)
+    variable_to_set_literal: dict[str, int] = field(default_factory=dict)
+    pending_set_resolutions: list[int] = field(default_factory=list)
     var_decl_by_name: dict[str, TpyVarDecl] = field(default_factory=dict)
 
     # --- Resolved types for variable declarations (for test annotations) ---
@@ -457,6 +460,8 @@ class SemanticContext:
         self.pre_analyzed_method_args.clear()
         self.variable_to_dict_literal.clear()
         self.pending_dict_resolutions.clear()
+        self.variable_to_set_literal.clear()
+        self.pending_set_resolutions.clear()
         self.variable_to_str_var.clear()
         self.str_source_borrows.clear()
         self.pending_str_resolutions.clear()

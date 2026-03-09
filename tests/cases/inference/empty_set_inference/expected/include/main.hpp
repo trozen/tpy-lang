@@ -7,14 +7,14 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void test_literal();
-void test_dict_ctor();
+void test_basic();
+void test_str();
 void test_multiple();
 void test_numeric_widen();
-void test_getitem_after_infer();
-void takes_dict(tpy::ordered_map<std::string, int32_t>& d);
+void takes_set(tpy::ordered_set<int32_t>& s);
 void test_param_context();
 void test_param_only();
+void test_discard_infers();
 
 void __tpy_init();
 } // namespace tpy_user::main

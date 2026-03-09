@@ -1,0 +1,1 @@
+main.py:5: error: Type mismatch in argument 'value': expected IntLiteral(1), got str

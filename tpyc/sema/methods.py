@@ -8,7 +8,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingDictType, DictType, SetType,
+    TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingDictType, PendingSetType,
+    DictType, SetType,
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly, UnknownElementType,
 )
@@ -301,6 +302,22 @@ class MethodAnalyzer:
                                     self.ctx.current_ns.bind_variable(expr.obj.name, obj_type)
                     self.ctx.pre_analyzed_method_args[id(expr)] = pre_analyzed
 
+        # Set element type inference from mutation methods on PendingSetType.
+        if isinstance(obj_type, PendingSetType) and expr.method in ("add", "discard", "remove") and len(expr.args) == 1:
+            arg_type = self.expr.analyze_expr(expr.args[0])
+            self.deduction.infer_set_element_type(expr.obj, arg_type)
+            info = self.ctx.set_literals.get(obj_type.literal_id)
+            if info and not isinstance(info.element_type, UnknownElementType):
+                if info.element_type != obj_type.element_type:
+                    obj_type = PendingSetType(info.element_type, obj_type.literal_id)
+                    self.ctx.set_expr_type(expr.obj, obj_type)
+                    if isinstance(expr.obj, TpyName):
+                        if self.ctx.current_scope:
+                            self.ctx.current_scope.define(expr.obj.name, obj_type)
+                        if self.ctx.current_ns:
+                            self.ctx.current_ns.bind_variable(expr.obj.name, obj_type)
+            self.ctx.pre_analyzed_method_args[id(expr)] = [arg_type]
+
         # Borrow conflict: structural mutation on a container with element-level borrows.
         # Resolves aliases so that alias.append() warns when items has element borrows.
         if isinstance(expr.obj, TpyName):
@@ -311,7 +328,7 @@ class MethodAnalyzer:
                     is_mutation = expr.method in LIST_ITER_INVALIDATING
                 elif isinstance(obj_type, (DictType, PendingDictType)):
                     is_mutation = expr.method in DICT_MUTATION_METHODS
-                elif isinstance(obj_type, SetType):
+                elif isinstance(obj_type, (SetType, PendingSetType)):
                     is_mutation = expr.method in SET_MUTATION_METHODS
                 if is_mutation:
                     if self.ctx.borrow_tracker.has_iter_borrow(storage):

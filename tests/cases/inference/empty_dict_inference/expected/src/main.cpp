@@ -64,21 +64,56 @@ void test_getitem_after_infer() {
     std::cout << v << "\n";
 }
 
+// 34: def takes_dict(d: dict[str, Int32]) -> None:
+void takes_dict(tpy::ordered_map<std::string, int32_t>& d) {
+    // 35:     for k in d:
+    auto& __obj_0 = d;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::string_view k = *__beg_0;
+        // 36:         print(k, d[k])
+        std::cout << k << " " << tpy::__getitem__(d, k) << "\n";
+    }
+}
+
+// 38: def test_param_context() -> None:
+void test_param_context() {
+    // 39:     d = {}  # tpyc: type(dict[str, Int32])
+    tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>();
+    // 40:     d["a"] = 1
+    tpy::__setitem__(d, "a", 1);
+    // 41:     takes_dict(d)
+    takes_dict(d);
+}
+
+// 43: def test_param_only() -> None:
+void test_param_only() {
+    // 44:     d = dict()  # tpyc: type(dict[str, Int32])
+    tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>();
+    // 45:     takes_dict(d)
+    takes_dict(d);
+}
+
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // 34: test_literal()
+    // 47: test_literal()
     test_literal();
-    // 35: test_dict_ctor()
+    // 48: test_dict_ctor()
     test_dict_ctor();
-    // 36: test_multiple()
+    // 49: test_multiple()
     test_multiple();
-    // 37: test_numeric_widen()
+    // 50: test_numeric_widen()
     test_numeric_widen();
-    // 38: test_getitem_after_infer()
+    // 51: test_getitem_after_infer()
     test_getitem_after_infer();
+    // 52: test_param_context()
+    test_param_context();
+    // 53: test_param_only()
+    test_param_only();
 }
 
 } // namespace tpy_user::main

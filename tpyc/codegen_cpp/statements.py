@@ -10,7 +10,7 @@ from typing import Callable, TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType,
-    ArrayType, ListType, PendingListType, PendingDictType, PendingStrType, OwnType, OptionalType,
+    ArrayType, ListType, PendingListType, PendingDictType, PendingSetType, PendingStrType, OwnType, OptionalType,
     NoneType, NamedType, StrType, StringType, StrViewType, STR, TupleType,
     INT32, BIGINT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, EnumType,
@@ -501,34 +501,45 @@ class StatementGenerator:
             if isinstance(target_type, OwnType):
                 target_type = target_type.wrapped
             target_type = resolve_int_literals(target_type, self.ctx.analyzer.ctx.default_int_for_literal)
-            if isinstance(target_type, PendingListType):
-                info = self.ctx.analyzer.ctx.list_literals.get(target_type.literal_id)
-                if info and info.resolved_type:
-                    target_type = info.resolved_type
-            elif isinstance(target_type, PendingDictType):
-                info = self.ctx.analyzer.ctx.dict_literals.get(target_type.literal_id)
-                if info and info.resolved_type:
-                    target_type = info.resolved_type
+            resolved = self._resolve_pending_container(target_type)
+            if resolved is not None:
+                target_type = resolved
             elif isinstance(target_type, PendingStrType):
                 info = self.ctx.analyzer.ctx.str_vars.get(target_type.str_var_id)
                 target_type = info.resolved_type if info and info.resolved_type else STR
         return target_type
 
+    def _resolve_pending_container(self, typ: TpyType) -> TpyType | None:
+        """Resolve PendingListType/PendingDictType/PendingSetType to their resolved concrete type.
+
+        Returns None if the type is not a pending container or has no resolution yet.
+        """
+        sema = self.ctx.analyzer.ctx
+        if isinstance(typ, PendingListType):
+            info = sema.list_literals.get(typ.literal_id)
+            if info and info.resolved_type:
+                return info.resolved_type
+        elif isinstance(typ, PendingDictType):
+            info = sema.dict_literals.get(typ.literal_id)
+            if info and info.resolved_type:
+                return info.resolved_type
+        elif isinstance(typ, PendingSetType):
+            info = sema.set_literals.get(typ.literal_id)
+            if info and info.resolved_type:
+                return info.resolved_type
+        return None
+
     def _normalize_decl_type_for_cpp(self, var_type: TpyType) -> TpyType:
         """Normalize declaration type before C++ emission."""
         resolve_lit = self.ctx.analyzer.ctx.default_int_for_literal
-        if isinstance(var_type, PendingListType):
-            info = self.ctx.analyzer.ctx.list_literals.get(var_type.literal_id)
-            if info and info.resolved_type:
-                var_type = info.resolved_type
-            else:
-                elem = var_type.element_type
-                if isinstance(elem, IntLiteralType):
-                    var_type = ListType(resolve_lit(elem))
-        elif isinstance(var_type, PendingDictType):
-            info = self.ctx.analyzer.ctx.dict_literals.get(var_type.literal_id)
-            if info and info.resolved_type:
-                var_type = info.resolved_type
+        resolved = self._resolve_pending_container(var_type)
+        if resolved is not None:
+            var_type = resolved
+        elif isinstance(var_type, PendingListType):
+            # Fallback for unresolved list: resolve IntLiteralType in element
+            elem = var_type.element_type
+            if isinstance(elem, IntLiteralType):
+                var_type = ListType(resolve_lit(elem))
         elif isinstance(var_type, PendingStrType):
             info = self.ctx.analyzer.ctx.str_vars.get(var_type.str_var_id)
             var_type = info.resolved_type if info and info.resolved_type else STR
@@ -558,7 +569,7 @@ class StatementGenerator:
                 self.ctx.analyzer,
                 include_global_binding=(self.ctx.current_ns is self.ctx.analyzer.global_ns),
             )
-            if resolved_type is None or isinstance(resolved_type, (PendingListType, PendingDictType, PendingStrType)):
+            if resolved_type is None or isinstance(resolved_type, (PendingListType, PendingDictType, PendingSetType, PendingStrType)):
                 resolved_type = self.ctx.get_expr_type(stmt.init)
             if resolved_type is None:
                 raise CodeGenError(

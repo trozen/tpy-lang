@@ -9,7 +9,8 @@ from typing import TYPE_CHECKING, Optional
 
 from ..typesys import (
     TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType, ListRepeatType, DictType, SetType,
-    PendingListType, PendingStrType, SpanType, StrType, StringType, StrViewType,
+    PendingListType, PendingDictType, PendingSetType, PendingStrType, UnknownElementType,
+    SpanType, StrType, StringType, StrViewType,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
     NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
     is_protocol_type, unwrap_readonly, unwrap_optional_own, local_var_is_movable,
@@ -298,6 +299,30 @@ class TypeCompatibility:
                     return None
                 if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
                     return None
+
+        # Allow PendingDictType compatibility during first phase (before resolution)
+        if isinstance(actual, PendingDictType) and isinstance(expected, DictType):
+            key_ok = isinstance(actual.key_type, UnknownElementType) or actual.key_type == expected.key_type
+            val_ok = isinstance(actual.value_type, UnknownElementType) or actual.value_type == expected.value_type
+            if key_ok and val_ok:
+                return None
+            if not isinstance(actual.key_type, UnknownElementType) and not isinstance(actual.value_type, UnknownElementType):
+                try:
+                    self.check_type_compatible(actual.key_type, expected.key_type, context, loc, source_expr)
+                    self.check_type_compatible(actual.value_type, expected.value_type, context, loc, source_expr)
+                    return None
+                except SemanticError:
+                    pass
+
+        # Allow PendingSetType compatibility during first phase (before resolution)
+        if isinstance(actual, PendingSetType) and isinstance(expected, SetType):
+            if isinstance(actual.element_type, UnknownElementType) or actual.element_type == expected.element_type:
+                return None
+            try:
+                self.check_type_compatible(actual.element_type, expected.element_type, context, loc, source_expr)
+                return None
+            except SemanticError:
+                pass
 
         # DictType compatibility: key and value types must be compatible
         if isinstance(actual, DictType) and isinstance(expected, DictType):

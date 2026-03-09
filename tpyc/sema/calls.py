@@ -13,7 +13,7 @@ from ..typesys import (
     IntLiteralType, FloatType, Float32Type, BoolType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType, ReadonlyType,
-    UNKNOWN_ELEMENT, PendingDictType, DictLiteralInfo,
+    UNKNOWN_ELEMENT, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
     UnionType, EnumType, VOID, BIGINT, BOOL, STR, is_protocol_type, unwrap_readonly, unwrap_optional_own,
     is_any_str_type, container_to_str_template,
     is_protocol_union, protocol_union_protocols,
@@ -624,6 +624,22 @@ class CallAnalyzer:
                 self.ctx.dict_literals[literal_id] = info
                 self.ctx.pending_dict_resolutions.append(literal_id)
                 result_type = PendingDictType(UNKNOWN_ELEMENT, UNKNOWN_ELEMENT, literal_id)
+                expr.call_type = result_type
+                return result_type
+            # set() with no args -- create empty set with unknown element type.
+            if (expr.func == "set"
+                    and isinstance(self.ctx.current_function, TpyFunction)
+                    and type_def.type_factory):
+                literal_id = self.ctx.literal_counter
+                self.ctx.literal_counter += 1
+                info = SetLiteralInfo(
+                    literal_id=literal_id,
+                    expr=expr,
+                    element_type=UNKNOWN_ELEMENT,
+                )
+                self.ctx.set_literals[literal_id] = info
+                self.ctx.pending_set_resolutions.append(literal_id)
+                result_type = PendingSetType(UNKNOWN_ELEMENT, literal_id)
                 expr.call_type = result_type
                 return result_type
             raise self.ctx.error(
@@ -1551,9 +1567,11 @@ class CallAnalyzer:
                                                        coercion_ctx=CoercionContext.ARG)
                 expr.args[i] = coerced_arg
 
-            # Track parameter context for list/str inference
+            # Track parameter context for container/str inference
             if isinstance(arg_type, PendingListType):
                 self.deduction.mark_list_param_context(arg, ptype)
+            if isinstance(arg_type, (PendingDictType, PendingSetType)):
+                self.deduction.mark_container_param_context(arg, arg_type, ptype)
             if isinstance(arg_type, PendingStrType):
                 self.deduction.mark_str_param_context(arg, ptype)
 
@@ -1658,9 +1676,11 @@ class CallAnalyzer:
                                                        coercion_ctx=CoercionContext.ARG)
                 expr.args[i] = coerced_arg
 
-            # Track parameter context for list/str inference
+            # Track parameter context for container/str inference
             if isinstance(arg_type, PendingListType):
                 self.deduction.mark_list_param_context(arg, resolved_ptype)
+            if isinstance(arg_type, (PendingDictType, PendingSetType)):
+                self.deduction.mark_container_param_context(arg, arg_type, resolved_ptype)
             if isinstance(arg_type, PendingStrType):
                 self.deduction.mark_str_param_context(arg, resolved_ptype)
 
@@ -1891,9 +1911,11 @@ class CallAnalyzer:
                                                        coercion_ctx=CoercionContext.ARG)
                 expr.args[i] = coerced_arg
 
-            # Track parameter context for list/str inference
+            # Track parameter context for container/str inference
             if isinstance(arg_type, PendingListType):
                 self.deduction.mark_list_param_context(arg, ptype)
+            if isinstance(arg_type, (PendingDictType, PendingSetType)):
+                self.deduction.mark_container_param_context(arg, arg_type, ptype)
             if isinstance(arg_type, PendingStrType):
                 self.deduction.mark_str_param_context(arg, ptype)
 

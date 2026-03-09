@@ -27,7 +27,10 @@ from ..typesys import (
     OwnType,
     PendingDictType,
     PendingListType,
+    PendingSetType,
     PendingStrType,
+    SetLiteralInfo,
+    SetType,
     SpanType,
     StrType,
     StringType,
@@ -300,6 +303,34 @@ class LocalTypeDeduction:
             elif isinstance(param_type, SpanType):
                 info.passed_to_span_param = True
                 info.coerced_element_type = param_type.element_type
+
+    def mark_container_param_context(self, arg_expr: TpyExpr, arg_type: TpyType, param_type: TpyType) -> None:
+        """Track parameter context for dict/set literal inference."""
+        if isinstance(arg_expr, TpyCoerce):
+            arg_expr = arg_expr.expr
+        if not isinstance(arg_expr, TpyName):
+            return
+
+        if isinstance(arg_type, PendingDictType) and isinstance(param_type, DictType):
+            literal_id = self.ctx.variable_to_dict_literal.get(arg_expr.name)
+            if literal_id is not None:
+                info = self.ctx.dict_literals.get(literal_id)
+                if info:
+                    result = self._widen_inferred_type(info.key_type, param_type.key_type)
+                    if result is not None:
+                        info.key_type = result
+                    result = self._widen_inferred_type(info.value_type, param_type.value_type)
+                    if result is not None:
+                        info.value_type = result
+
+        elif isinstance(arg_type, PendingSetType) and isinstance(param_type, SetType):
+            literal_id = self.ctx.variable_to_set_literal.get(arg_expr.name)
+            if literal_id is not None:
+                info = self.ctx.set_literals.get(literal_id)
+                if info:
+                    result = self._widen_inferred_type(info.element_type, param_type.element_type)
+                    if result is not None:
+                        info.element_type = result
 
     def mark_list_different_size(self, literal_id: int) -> None:
         """Mark a pending list literal as needing list (different-size reassignment)."""
@@ -596,6 +627,62 @@ class LocalTypeDeduction:
                 self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved
 
     # ------------------------------------------------------------------
+    # Set literal deduction
+    # ------------------------------------------------------------------
+
+    def infer_set_element_type(self, obj_expr: TpyExpr, value_type: TpyType) -> None:
+        """Infer element type for an empty set from .add() usage."""
+        if not isinstance(obj_expr, TpyName):
+            return
+        var_name = obj_expr.name
+        literal_id = self.ctx.variable_to_set_literal.get(var_name)
+        if literal_id is None:
+            return
+        info = self.ctx.set_literals.get(literal_id)
+        if info is None:
+            return
+        result = self._widen_inferred_type(info.element_type, value_type)
+        if result is not None:
+            info.element_type = result
+
+    def _resolve_pending_set_types(self) -> None:
+        """Resolve all pending set types after function analysis."""
+        for literal_id in self.ctx.pending_set_resolutions:
+            info = self.ctx.set_literals.get(literal_id)
+            if info is None:
+                continue
+
+            elem_type = info.element_type
+
+            if isinstance(elem_type, UnknownElementType):
+                var_desc = f"set '{info.variable_name}'" if info.variable_name else "empty set"
+                raise self.ctx.error(
+                    f"Cannot infer element type for {var_desc}; "
+                    f"add a type annotation (e.g., {info.variable_name or 's'}: set[T] = set()) "
+                    f"or use the set so the type can be inferred",
+                    info.expr,
+                )
+
+            if isinstance(elem_type, IntLiteralType):
+                elem_type = self.ctx.default_int_for_literal(elem_type)
+
+            resolved = SetType(elem_type)
+            info.resolved_type = resolved
+
+            self.ctx.set_expr_type(info.expr, resolved)
+
+            if isinstance(info.expr, TpyCall):
+                info.expr.call_type = resolved
+
+            if info.variable_name and self.ctx.current_scope:
+                current_type = self.ctx.current_scope.lookup(info.variable_name)
+                if isinstance(current_type, PendingSetType):
+                    self.ctx.current_scope.define(info.variable_name, resolved)
+
+            if info.variable_name and info.decl_line is not None:
+                self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved
+
+    # ------------------------------------------------------------------
     # String variable deduction (moved from StrVarTracker)
     # ------------------------------------------------------------------
 
@@ -787,9 +874,11 @@ class LocalTypeDeduction:
         1. Check unresolved None vars (error if any)
         2. Resolve pending list types (Array vs list)
         3. Resolve pending dict types
-        4. Resolve pending str types (StrView vs str)
+        4. Resolve pending set types
+        5. Resolve pending str types (StrView vs str)
         """
         self._check_unresolved_none_inference()
         self._resolve_pending_list_types()
         self._resolve_pending_dict_types()
+        self._resolve_pending_set_types()
         self._resolve_pending_str_types()

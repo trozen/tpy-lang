@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, OwnType, ReadonlyType,
     FinalType, FixedIntType, BoolType, StrViewType, StringType,
-    ListType, DictType, ArrayType, SpanType, PendingListType, PendingDictType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
-    ListLiteralInfo, DictLiteralInfo, StrVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType, UnknownElementType,
+    ListType, DictType, ArrayType, SpanType, PendingListType, PendingDictType, PendingSetType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
+    ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, StrVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType, UnknownElementType,
     EnumType, unwrap_readonly, is_any_str_type, TupleType,
     INT32, VOID, BIGINT, STRVIEW, is_protocol_type, is_protocol_union,
 )
@@ -1760,6 +1760,14 @@ class StatementAnalyzer:
                 info.variable_name = stmt.name
                 info.decl_line = stmt.loc.line if stmt.loc else None
 
+            # Track set literal to variable mapping for type inference.
+            if isinstance(init_type, PendingSetType) and not isinstance(stmt.init, TpyName):
+                literal_id = init_type.literal_id
+                self.ctx.variable_to_set_literal[stmt.name] = literal_id
+                info = self.ctx.set_literals[literal_id]
+                info.variable_name = stmt.name
+                info.decl_line = stmt.loc.line if stmt.loc else None
+
             if stmt.type:
                 if existing_type is not None:
                     self.deduction.check_conflicting_annotation(
@@ -2148,6 +2156,9 @@ class StatementAnalyzer:
             # PendingDictType reassignment: keep pending
             elif isinstance(inner_target, PendingDictType):
                 pass  # target_type stays PendingDictType
+            # PendingSetType reassignment: keep pending
+            elif isinstance(inner_target, PendingSetType):
+                pass  # target_type stays PendingSetType
             # PendingStrType reassignment: track view-compatibility, keep pending
             elif isinstance(inner_target, PendingStrType):
                 if is_any_str_type(inner_value):
@@ -2177,7 +2188,7 @@ class StatementAnalyzer:
                 self.ctx.current_ns.update_variable_type(stmt.target.name, target_type)
             self.ctx.set_expr_type(stmt.target, target_type)
             self.deduction.record_write(stmt.target.name, stmt.value, inner_value)
-            if not isinstance(inner_target, (PendingStrType, PendingListType, PendingDictType)):
+            if not isinstance(inner_target, (PendingStrType, PendingListType, PendingDictType, PendingSetType)):
                 resolved = unwrap_readonly(target_type)
                 var_decl = self.ctx.var_decl_by_name.get(stmt.target.name)
                 if var_decl:

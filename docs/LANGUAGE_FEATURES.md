@@ -372,6 +372,7 @@ log(f"x={x}")
 - **Working**: `set[T]` - ordered hash set -> `tpy::ordered_set<T>` (insertion-order preserving)
   - Literals `{a, b, ...}`, `len(s)`, `x in s`, `for x in s`
   - Constructor: `set(iterable)` from any iterable
+  - Usage-based inference: `s = set(); s.add(v)` infers element type from subsequent `.add()` calls (with numeric widening)
   - Methods: `add(v)`, `discard(v)`, `remove(v)`, `pop()`, `clear()`, `copy()`
   - Algebra: `union(other)`, `intersection(other)`, `difference(other)`, `symmetric_difference(other)`
   - Predicates: `issubset(other)`, `issuperset(other)`, `isdisjoint(other)`

@@ -1964,6 +1964,44 @@ class DictLiteralInfo:
 
 
 @dataclass(frozen=True)
+class PendingSetType(TpyType):
+    """Unresolved empty set -- element type inferred from usage.
+
+    Assigned to set() calls in function-local contexts. After full function
+    analysis, resolved to SetType based on collected usage facts (primarily
+    s.add(v) calls).
+    """
+    element_type: TpyType
+    literal_id: int
+
+    def to_cpp(self) -> str:
+        raise RuntimeError(f"PendingSetType should be resolved before codegen (literal_id={self.literal_id})")
+
+    def get_element_type(self) -> Optional[TpyType]:
+        return self.element_type
+
+    def get_iteration_element_type(self) -> Optional[TpyType]:
+        return self.element_type
+
+    def __str__(self) -> str:
+        return f"PendingSet[{self.element_type}]#{self.literal_id}"
+
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.set"
+
+
+@dataclass
+class SetLiteralInfo:
+    """Tracks usage information for an empty set to determine its resolved type."""
+    literal_id: int
+    expr: 'TpyCall'
+    element_type: TpyType
+    variable_name: Optional[str] = None
+    decl_line: Optional[int] = None
+    resolved_type: Optional[TpyType] = None
+
+
+@dataclass(frozen=True)
 class PendingStrType(TpyType):
     """Unresolved string local -- becomes StrView or str based on usage.
 

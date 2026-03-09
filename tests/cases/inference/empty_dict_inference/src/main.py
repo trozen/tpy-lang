@@ -31,8 +31,23 @@ def test_getitem_after_infer() -> None:
     v: Int32 = d["x"]
     print(v)
 
+def takes_dict(d: dict[str, Int32]) -> None:
+    for k in d:
+        print(k, d[k])
+
+def test_param_context() -> None:
+    d = {}  # tpyc: type(dict[str, Int32])
+    d["a"] = 1
+    takes_dict(d)
+
+def test_param_only() -> None:
+    d = dict()  # tpyc: type(dict[str, Int32])
+    takes_dict(d)
+
 test_literal()
 test_dict_ctor()
 test_multiple()
 test_numeric_widen()
 test_getitem_after_infer()
+test_param_context()
+test_param_only()

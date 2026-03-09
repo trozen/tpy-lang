@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type,
-    PendingListType, PendingDictType, PendingStrType, ListType, DictType, ArrayType, TypeParamRef, NamedType,
+    PendingListType, PendingDictType, PendingSetType, PendingStrType, ListType, DictType, SetType, ArrayType, TypeParamRef, NamedType,
     UnionType, NoneType, VoidType, EnumType, TupleType,
     unwrap_readonly, is_protocol_type, resolve_int_literals,
     INT32, BIGINT, FLOAT, STR,
@@ -145,6 +145,13 @@ class TypeResolver:
                 if info.resolved_type:
                     return info.resolved_type
             return DictType(typ.key_type, typ.value_type)
+        if isinstance(typ, PendingSetType):
+            literal_id = typ.literal_id
+            if literal_id in self.ctx.analyzer.ctx.set_literals:
+                info = self.ctx.analyzer.ctx.set_literals[literal_id]
+                if info.resolved_type:
+                    return info.resolved_type
+            return SetType(typ.element_type)
         if isinstance(typ, PendingStrType):
             return self._resolve_pending_str(typ)
         # Resolve IntLiteralType based on context (FixedInt if target, else
@@ -208,6 +215,13 @@ class TypeResolver:
                 if info.resolved_type:
                     return info.resolved_type
             return DictType(typ.key_type, typ.value_type)
+        if isinstance(typ, PendingSetType):
+            literal_id = typ.literal_id
+            if literal_id in self.ctx.analyzer.ctx.set_literals:
+                info = self.ctx.analyzer.ctx.set_literals[literal_id]
+                if info.resolved_type:
+                    return info.resolved_type
+            return SetType(typ.element_type)
         return typ
 
     def substitute_type_params(self, typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
