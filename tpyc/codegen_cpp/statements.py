@@ -305,6 +305,9 @@ class StatementGenerator:
                 return f"{indent}return {ret_expr};\n"
             return f"{indent}return;\n"
         elif isinstance(stmt, TpyBreak):
+            if self.ctx.loop_else_labels and self.ctx.loop_else_labels[-1]:
+                label = self.ctx.loop_else_labels[-1]
+                return f"{indent}goto {label};\n"
             return f"{indent}break;\n"
         elif isinstance(stmt, TpyContinue):
             return f"{indent}continue;\n"
@@ -1497,6 +1500,13 @@ class StatementGenerator:
 
     def _gen_while(self, out: TextIO, stmt: TpyWhile, indent: str) -> None:
         """Generate a while loop."""
+        has_else = bool(stmt.orelse)
+        label = ""
+        if has_else:
+            label = f"__after_else_{self.ctx.iter_counter}"
+            self.ctx.iter_counter += 1
+        self.ctx.loop_else_labels.append(label)
+
         cond = self.expressions.gen_truthy_expr(stmt.condition)
         self.ctx.temps.flush(out, indent)
         out.write(f"{indent}while ({cond}) {{\n")
@@ -1511,6 +1521,17 @@ class StatementGenerator:
 
         self._restore_narrowed_vars(saved)
         out.write(f"{indent}}}\n")
+        self.ctx.loop_else_labels.pop()
+
+        if has_else:
+            out.write(f"{indent}{{\n")
+            self.ctx.indent_level += 1
+            for s in stmt.orelse:
+                self.gen_stmt(out, s)
+            self.ctx.emit_block_trailing_comments(out, stmt.orelse, self.ctx.indent())
+            self.ctx.indent_level -= 1
+            out.write(f"{indent}}}\n")
+            out.write(f"{indent}{label}:;\n")
 
     def _gen_loop_body(self, out: TextIO, stmt: TpyForEach, indent: str,
                         elem_type: TpyType | None) -> None:
@@ -1852,6 +1873,28 @@ class StatementGenerator:
         - __iter__()-based types: expr.__iter__() or tpy::iter_adapt(expr.__iter__())
         - Native C++ ranges (dict, set, str, etc.): expr directly
         """
+        has_else = bool(stmt.orelse)
+        label = ""
+        if has_else:
+            label = f"__after_else_{self.ctx.iter_counter}"
+            self.ctx.iter_counter += 1
+        self.ctx.loop_else_labels.append(label)
+
+        self._gen_for_each_loop(out, stmt, indent)
+        self.ctx.loop_else_labels.pop()
+
+        if has_else:
+            out.write(f"{indent}{{\n")
+            self.ctx.indent_level += 1
+            for s in stmt.orelse:
+                self.gen_stmt(out, s)
+            self.ctx.emit_block_trailing_comments(out, stmt.orelse, self.ctx.indent())
+            self.ctx.indent_level -= 1
+            out.write(f"{indent}}}\n")
+            out.write(f"{indent}{label}:;\n")
+
+    def _gen_for_each_loop(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
+        """Generate the loop part of a for-each (without else handling)."""
         # Enum iteration: `for c in Color` -> range over EnumUtil<Color>::members
         if stmt.enum_iterable is not None:
             enum_type = stmt.enum_iterable

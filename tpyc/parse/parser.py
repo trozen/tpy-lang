@@ -1761,9 +1761,11 @@ class Parser:
         elif isinstance(node, ast.While):
             cond = self._parse_expr(node.test)
             body = [self._parse_stmt(s) for s in node.body]
-            return TpyWhile(cond, body, loc=loc)
+            orelse = [self._parse_stmt(s) for s in node.orelse]
+            return TpyWhile(cond, body, orelse=orelse, loc=loc)
 
         elif isinstance(node, ast.For):
+            orelse = [self._parse_stmt(s) for s in node.orelse]
             if isinstance(node.target, ast.Tuple):
                 for elt in node.target.elts:
                     if not isinstance(elt, ast.Name):
@@ -1783,13 +1785,13 @@ class Parser:
                     value=TpyName(synth_var, loc=loc),
                     loc=loc,
                 )
-                return TpyForEach(synth_var, iterable, [unpack] + body, loc=loc)
+                return TpyForEach(synth_var, iterable, [unpack] + body, orelse=orelse, loc=loc)
             if not isinstance(node.target, ast.Name):
                 raise ParseError("For loop target must be a simple variable", node)
             var = node.target.id
             body = [self._parse_stmt(s) for s in node.body]
             iterable = self._parse_expr(node.iter)
-            return TpyForEach(var, iterable, body, loc=loc)
+            return TpyForEach(var, iterable, body, orelse=orelse, loc=loc)
 
         elif isinstance(node, ast.Pass):
             return TpyPassStmt(loc=loc)

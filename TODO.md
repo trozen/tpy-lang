@@ -1,6 +1,8 @@
 # TODO
 
 ## Next
+- `else:` source comment in codegen: compound statements (`if/else`, `for/else`, `while/else`) don't emit a `// N: else:` source comment for the `else` keyword since it's not a statement node. Track the `else:` line number in AST nodes and emit the comment.
+- `str` locals assigned from literals: consider emitting `std::string_view` instead of `std::string` when explicitly annotated as `str` but never mutated (deduced locals already get `string_view`)
 - Warn on wasteful field reassignment in `__init__`: when a field is initialized unconditionally (member initializer list) and then reassigned inside control flow, warn that this constructs then discards the initial value. Relevant for heavy types like BigInt. Users can avoid this with a `@staticmethod` helper or (once supported) ternary isinstance.
 - Union return copies non-value members: `f() -> A | B` returns `std::variant<A, B>` by value, copying record members. Python returns by reference. `std::variant<A&, B&>` is not valid C++. Params are fine (`&` for non-value unions). See `docs/UNION_TYPES_DESIGN.md` Known Semantic Gaps.
 - flow-sensitive None narrowing: broaden current narrowing coverage where needed (e.g. more complex expression forms)
@@ -31,7 +33,6 @@
 - properties
 - with statement/context manager
 - yield/generator function
-- for/else, while/else
 - walrus operator :=
 - Protocol isinstance in ternary expressions: `x = a.foo() if isinstance(a, P1) else a.bar()` generates a runtime `?:` but both branches must be valid C++ at template instantiation time. Fix: generate an IIFE with `if constexpr` inside, e.g. `[&]() -> T { if constexpr (P1<T_a>) { return a.foo(); } else { return a.bar(); } }()`. This also enables single-line field init in `__init__` (goes into the C++ member initializer list instead of requiring unconditional pre-assignment + reassignment in branches).
 - Allow `@runtime_checkable` decorator on protocols (no-op in tpyc, enables CPython compatibility for isinstance checks on user-defined protocols)

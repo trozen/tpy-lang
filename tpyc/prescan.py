@@ -144,5 +144,7 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
         elif isinstance(stmt, TpyForEach):
             declared.add(stmt.var)
             _scan_stmts(stmt.body, declared, result)
+            _scan_stmts(stmt.orelse, declared, result)
         elif isinstance(stmt, TpyWhile):
             _scan_stmts(stmt.body, declared, result)
+            _scan_stmts(stmt.orelse, declared, result)

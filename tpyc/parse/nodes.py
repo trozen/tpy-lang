@@ -428,6 +428,7 @@ class TpyWhile(TpyStmt):
     """While loop."""
     condition: TpyExpr
     body: list[TpyStmt]
+    orelse: list[TpyStmt] = field(default_factory=list)
     # Set by sema: isinstance union narrowing facts for codegen
     then_type_facts: dict[str, TpyType] = field(default_factory=dict)
 
@@ -438,6 +439,7 @@ class TpyForEach(TpyStmt):
     var: str
     iterable: TpyExpr
     body: list[TpyStmt]
+    orelse: list[TpyStmt] = field(default_factory=list)
     enum_iterable: 'EnumType | None' = None  # set by sema when iterating over enum type
     elem_type: 'TpyType | None' = None  # set by sema: resolved element type for codegen
     const_loop_var: bool = False  # set by sema: loop var is never mutated, safe for const auto&

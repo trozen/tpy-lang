@@ -51,7 +51,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B13 | Bi-directional type inference | M | Done | [I](#bi-directional-type-inference) |
 | B14 | `Optional[StaticProtocol]` codegen | S | Done | [II](#optionalstaticprotocol-codegen) |
 | B15 | `isinstance` on static protocols (`if constexpr` + narrowing) | M | Done | [II](#isinstance-on-static-protocols) |
-| B16 | `for/else`, `while/else` | S | Not started | [VI](#forelse--whileelse) |
+| B16 | `for/else`, `while/else` | S | Done | [VI](#forelse--whileelse) |
 
 ### Phase C: Error Handling + Effects
 
@@ -1839,26 +1839,30 @@ else:
 ```
 
 Python's `for/else` and `while/else` execute the `else` block when the loop
-terminates normally (without `break`). Maps to a flag variable pattern in C++:
+terminates normally (without `break`). Maps to a goto pattern in C++:
 
 ```cpp
-bool __broke_0 = false;
 for (auto& item : items) {
     if (item == target) {
         std::cout << "found" << "\n";
-        __broke_0 = true;
-        break;
+        goto __after_else_0;
     }
 }
-if (!__broke_0) {
+{
     std::cout << "not found" << "\n";
 }
+__after_else_0:;
 ```
 
 **Why it matters**: Niche Python feature but used for search patterns. Simple to
-implement since it's purely syntactic sugar over a flag variable.
+implement since it's purely syntactic sugar over a goto past the else block.
 
-**Current state**: Not started. Listed as "Open" in LANGUAGE_FEATURES.md.
+**Current state**: Done. Both `for/else` and `while/else` are implemented. Codegen
+emits the else body unconditionally after the loop, followed by a label; `break`
+inside the loop is replaced with `goto __after_else_N` which jumps past the else
+block. No flag variables or conditional branches. Nested loops are handled via a
+label stack (inner loops without else push an empty sentinel so their breaks remain
+plain `break`).
 
 **Dependencies**: None.
 

@@ -2612,7 +2612,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: `break`, `continue`
 - **Working**: Reassigning loop variables inside for-loop body (compiles as assignment, not redeclaration; note: affects iteration unlike Python)
 - **Working**: Const-ref loop variable binding -- when the loop body never mutates the loop variable (no field writes, no non-`@readonly` method calls, no passing to mutable parameters, no address-of), codegen emits `const auto&` instead of `auto&&`. Value types always use typed copies regardless.
-- **Open**: `for/else`, `while/else` → flag variable pattern
+- **Working**: `for/else`, `while/else` -- else block runs when loop completes without `break`; `break` emits `goto` past the else body
 
 ### Other
 - **Working**: `return`, `pass`

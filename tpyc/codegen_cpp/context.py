@@ -273,6 +273,11 @@ class CodeGenContext:
     # --- Match/case label counter (for goto-based guard fallthrough) ---
     match_counter: int = 0
 
+    # --- for/else, while/else label stack ---
+    # When generating a loop with an else clause, the goto label name is
+    # pushed here so TpyBreak codegen can emit `goto label` instead of `break`.
+    loop_else_labels: list[str] = field(default_factory=list)
+
     # --- Cross-module import tracking ---
     user_module_imports: set[str] = field(default_factory=set)
     all_user_modules: set[str] = field(default_factory=set)
@@ -326,6 +331,7 @@ class CodeGenContext:
         self.assign_narrowed_types = {}
         self.iter_counter = 0
         self.unpack_counter = 0
+        self.loop_else_labels = []
 
     def indent(self) -> str:
         """Get current indentation string."""

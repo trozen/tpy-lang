@@ -1,0 +1,22 @@
+found
+not found
+0
+1
+2
+complete
+1
+3
+done
+0
+1
+2
+0
+1
+2
+outer complete
+0
+1
+2
+outer complete
+empty else
+all checked

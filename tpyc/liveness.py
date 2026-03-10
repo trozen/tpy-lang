@@ -311,6 +311,10 @@ def _analyze_while(
     detached_aliases: set[str],
 ) -> None:
     """Analyze while loop with fixpoint iteration."""
+    # Analyze else block first (runs after loop, before subsequent code)
+    if stmt.orelse:
+        _analyze_stmts_backward(stmt.orelse, live, last_uses, source_aliases, detached_aliases)
+
     # Fixpoint: variables used in the loop body are live across iterations.
     # Iterate until the live set stabilizes.
     post_loop_live = live.copy()
@@ -348,6 +352,10 @@ def _analyze_for_each(
     detached_aliases: set[str],
 ) -> None:
     """Analyze for-each loop with fixpoint iteration."""
+    # Analyze else block first (runs after loop, before subsequent code)
+    if stmt.orelse:
+        _analyze_stmts_backward(stmt.orelse, live, last_uses, source_aliases, detached_aliases)
+
     post_loop_live = live.copy()
 
     for _ in range(4):
@@ -403,7 +411,9 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
             live.add(node.name)
 
     elif isinstance(stmt, TpyWhile):
-        # Approximate: collect all reads in body + condition
+        # Approximate: collect all reads in body + condition + orelse
+        if stmt.orelse:
+            _compute_live_only(stmt.orelse, live)
         for node in _collect_reads_expr(stmt.condition):
             live.add(node.name)
         body_live = live.copy()
@@ -411,6 +421,8 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
         live.update(body_live)
 
     elif isinstance(stmt, TpyForEach):
+        if stmt.orelse:
+            _compute_live_only(stmt.orelse, live)
         for node in _collect_reads_expr(stmt.iterable):
             live.add(node.name)
         body_live = live.copy()

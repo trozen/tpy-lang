@@ -792,6 +792,7 @@ class SemanticAnalyzer:
                     walk(stmt.else_body, depth + 1)
                 elif isinstance(stmt, (TpyWhile, TpyForEach)):
                     walk(stmt.body, depth + 1)
+                    walk(stmt.orelse, depth + 1)
 
         walk(method.body, 0)
         if first_error is not None:

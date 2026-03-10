@@ -504,6 +504,8 @@ class StatementAnalyzer:
             # by loop_scope context manager)
             self._restore_ns_var_types(ns_types_before_while)
             self._sync_promoted_var_types()
+            for s in stmt.orelse:
+                self.analyze_stmt(s)
         elif isinstance(stmt, TpyForEach):
             # Check for enum iteration: `for c in Color`
             enum_type = self._resolve_enum_iterable(stmt)
@@ -522,6 +524,8 @@ class StatementAnalyzer:
                 self.ctx.non_null_ptr_vars &= body_end_nn_ptr
                 self._restore_ns_var_types(ns_types_before_foreach)
                 self._sync_promoted_var_types()
+                for s in stmt.orelse:
+                    self.analyze_stmt(s)
             else:
                 iterable_type = self.expr.analyze_expr(stmt.iterable)
                 is_readonly_iterable = isinstance(iterable_type, ReadonlyType)
@@ -613,6 +617,8 @@ class StatementAnalyzer:
                 self.ctx.non_null_ptr_vars &= body_end_nn_ptr
                 self._restore_ns_var_types(ns_types_before_foreach)
                 self._sync_promoted_var_types()
+                for s in stmt.orelse:
+                    self.analyze_stmt(s)
         elif isinstance(stmt, TpyBreak):
             if self.ctx.loop_depth == 0:
                 raise self.ctx.error("'break' outside loop", stmt)
