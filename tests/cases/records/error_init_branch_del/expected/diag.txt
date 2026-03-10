@@ -1,1 +1,1 @@
-main.py:15: error: field 'r' of type 'Resource' assigned inside control flow in __init__; 'Resource' is not safely default-constructible (move-only or has __del__). Use a helper function or @staticmethod to compute the value
+main.py:14: error: field 'r' of type 'Resource' has no default constructor and is not initialized before the constructor body

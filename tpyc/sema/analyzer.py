@@ -18,6 +18,7 @@ from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarD
 from .registration import build_record_self_type
 from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName, TpyCall,
+    TpyMethodCall, TpyExprStmt,
 )
 
 from .diagnostics import Scope, Diagnostic, SemanticError
@@ -66,6 +67,62 @@ def _parse_extends_type_args(
         t = resolve(a, type_params)
         results.append(t if t is not None else TypeParamRef(a))
     return tuple(results)
+
+
+def _is_stmt_super_init_call(stmt: TpyStmt) -> bool:
+    """Check if a statement is a super().__init__() call."""
+    if isinstance(stmt, TpyExprStmt):
+        expr = stmt.expr
+        if isinstance(expr, TpyMethodCall) and expr.method == "__init__":
+            return expr.super_parent_type is not None
+    return False
+
+
+def _expr_contains_self_method_call(expr: TpyExpr) -> bool:
+    """Check if an expression contains a non-static self.method() call.
+
+    Best-effort recursive walk -- covers common expression shapes.
+    """
+    if isinstance(expr, TpyMethodCall):
+        if (isinstance(expr.obj, TpyName)
+                and expr.obj.name == "self"
+                and not expr.is_static_call):
+            return True
+        if _expr_contains_self_method_call(expr.obj):
+            return True
+        return any(_expr_contains_self_method_call(a) for a in expr.args)
+    # Walk sub-expressions generically via common attribute names
+    for attr in ("left", "right", "operand", "obj", "expr",
+                 "condition", "then_expr", "else_expr", "index"):
+        sub = getattr(expr, attr, None)
+        if isinstance(sub, TpyExpr):
+            if _expr_contains_self_method_call(sub):
+                return True
+    args = getattr(expr, "args", None)
+    if isinstance(args, list):
+        return any(_expr_contains_self_method_call(a) for a in args
+                   if isinstance(a, TpyExpr))
+    return False
+
+
+def _type_contains_type_param(typ: TpyType) -> bool:
+    """Return True if the type is or transitively contains a TypeParamRef."""
+    if isinstance(typ, TypeParamRef):
+        return True
+    if isinstance(typ, TupleType):
+        return any(_type_contains_type_param(et) for et in typ.element_types)
+    # Cover container types and Optional/Own/Readonly wrappers via their
+    # element-accessor methods -- use a best-effort attribute walk.
+    for attr in ("pointee", "wrapped", "element", "value_type", "key_type", "inner"):
+        sub = getattr(typ, attr, None)
+        if isinstance(sub, TpyType) and _type_contains_type_param(sub):
+            return True
+    elem = getattr(typ, "get_element_type", None)
+    if callable(elem):
+        et = elem()
+        if isinstance(et, TpyType) and _type_contains_type_param(et):
+            return True
+    return False
 
 
 class SemanticAnalyzer:
@@ -739,62 +796,143 @@ class SemanticAnalyzer:
         self.ctx.record_ctx = RecordContext()
 
     def _check_init_field_assignments(self, method: TpyFunction, record: TpyRecord) -> None:
-        """Check for field assignments inside control flow in __init__.
+        """Enforce the two-section __init__ model.
 
-        Fields assigned inside branches bypass the C++ member initializer list
-        and get default-constructed then reassigned. For nocopy/del types this
-        is UB; for others it is fragile.
+        The init section is the leading prefix of super().__init__() +
+        self.field = expr (own fields only, each at most once). Everything
+        after the first statement that breaks this pattern is the body section.
+
+        At the split point:
+        - Own fields not initialized + no default ctor -> error.
+        - Own fields not initialized + has default ctor -> warning (CPython gap).
+        - self.method() call with uninitialized fields in RHS -> warning.
+
+        In the body section (depth > 0 branches):
+        - @nocopy field assigned -> error (copy assignment deleted).
+        - __del__ field assigned -> error (destructor on default-constructed value).
+        - Other fields: silently allowed (e.g. accumulation in a loop body).
         """
         record_info = self.ctx.registry.get_record(record.name)
         if record_info is None:
             return
+        # Own fields for split-point and missing-field checks
+        own_fields: dict[str, FieldInfo] = {f.name: f for f in record_info.fields}
+        # All fields (incl. inherited) for branch-body safety checks
         all_fields = self._collect_all_fields(record_info)
-        if not all_fields:
+        if not own_fields and not all_fields:
             return
 
+        # --- Find split point ---
+        init_section_fields: set[str] = set()
+        split_idx = len(method.body)
+
+        for i, stmt in enumerate(method.body):
+            if _is_stmt_super_init_call(stmt):
+                continue
+            # Skip docstrings (TpyExprStmt wrapping a string literal)
+            if isinstance(stmt, TpyExprStmt) and isinstance(stmt.expr, TpyStrLiteral):
+                continue
+            if (isinstance(stmt, TpyAssign)
+                    and isinstance(stmt.target, TpyFieldAccess)
+                    and isinstance(stmt.target.obj, TpyName)
+                    and stmt.target.obj.name == "self"
+                    and stmt.target.field in all_fields
+                    and stmt.target.field not in init_section_fields):
+                field_name = stmt.target.field
+                # Warn if RHS calls self.method() while fields are still uninitialized
+                uninit = set(own_fields.keys()) - init_section_fields
+                if uninit and _expr_contains_self_method_call(stmt.value):
+                    self._warning(
+                        f"instance method called in __init__ before all fields are initialized; "
+                        f"the method may access uninitialized fields",
+                        stmt
+                    )
+                init_section_fields.add(field_name)
+                continue
+            # Not a valid init-section statement: this is the split point
+            split_idx = i
+            break
+
+        # Collect all fields assigned unconditionally (depth 0) in the full body.
+        # Fields in this set are OK even if not in init section: they will be
+        # assigned in the constructor body before any branch or method call uses them.
+        depth0_assigned: set[str] = {
+            stmt.target.field
+            for stmt in method.body
+            if (isinstance(stmt, TpyAssign)
+                and isinstance(stmt.target, TpyFieldAccess)
+                and isinstance(stmt.target.obj, TpyName)
+                and stmt.target.obj.name == "self")
+        }
+
+        # --- Check fields at split point ---
         first_error: SemanticError | None = None
 
-        def walk(stmts: list[TpyStmt], depth: int) -> None:
+        if own_fields:
+            split_node = method.body[split_idx] if split_idx < len(method.body) else None
+            for field_name, field_info in own_fields.items():
+                if field_name in init_section_fields:
+                    continue
+                if field_name in depth0_assigned:
+                    # Field is assigned unconditionally in the body (just not in the
+                    # init section), so it will be initialized before first use.
+                    continue
+                if field_info.default_value is not None or field_info.default_expr is not None:
+                    continue
+                field_type = field_info.type
+                # In a generic record, fields whose type involves a type parameter
+                # cannot be checked here -- C++ handles the constraint at instantiation.
+                if record.type_params and _type_contains_type_param(field_type):
+                    continue
+                if self.protocols._is_default_constructible(field_type):
+                    self._warning(
+                        f"field '{field_name}' is not initialized before the constructor body; "
+                        f"it will be default-constructed in C++ "
+                        f"(in CPython, the attribute would not exist)",
+                        split_node
+                    )
+                else:
+                    err = self._error(
+                        f"field '{field_name}' of type '{str(field_type)}' has no default "
+                        f"constructor and is not initialized before the constructor body",
+                        split_node
+                    )
+                    if first_error is None:
+                        first_error = err
+
+        # --- Check branch assignments in body (all fields incl. inherited) ---
+        def walk_body(stmts: list[TpyStmt], depth: int) -> None:
             nonlocal first_error
             for stmt in stmts:
                 if isinstance(stmt, TpyAssign):
                     target = stmt.target
-                    if (
-                        isinstance(target, TpyFieldAccess)
-                        and isinstance(target.obj, TpyName)
-                        and target.obj.name == "self"
-                        and target.field in all_fields
-                        and depth > 0
-                    ):
+                    if (depth > 0
+                            and isinstance(target, TpyFieldAccess)
+                            and isinstance(target.obj, TpyName)
+                            and target.obj.name == "self"
+                            and target.field in all_fields):
                         field_name = target.field
-                        field_info = all_fields[field_name]
-                        field_type = field_info.type
+                        field_type = all_fields[field_name].type
                         if self._type_has_del_or_nocopy(field_type):
                             type_name = str(field_type)
                             err = self._error(
                                 f"field '{field_name}' of type '{type_name}' assigned inside "
-                                f"control flow in __init__; '{type_name}' is not safely "
-                                f"default-constructible (move-only or has __del__). "
-                                f"Use a helper function or @staticmethod to compute the value",
+                                f"control flow in __init__; '{type_name}' is move-only or has "
+                                f"'__del__', so it must be initialized unconditionally before "
+                                f"any branch",
                                 stmt
                             )
                             if first_error is None:
                                 first_error = err
-                        else:
-                            self._warning(
-                                f"field '{field_name}' assigned inside control flow in "
-                                f"__init__; this bypasses the C++ member initializer list. "
-                                f"Consider assigning unconditionally before the branch",
-                                stmt
-                            )
                 elif isinstance(stmt, TpyIf):
-                    walk(stmt.then_body, depth + 1)
-                    walk(stmt.else_body, depth + 1)
+                    walk_body(stmt.then_body, depth + 1)
+                    walk_body(stmt.else_body, depth + 1)
                 elif isinstance(stmt, (TpyWhile, TpyForEach)):
-                    walk(stmt.body, depth + 1)
-                    walk(stmt.orelse, depth + 1)
+                    walk_body(stmt.body, depth + 1)
+                    walk_body(stmt.orelse, depth + 1)
 
-        walk(method.body, 0)
+        walk_body(method.body, 0)
+
         if first_error is not None:
             raise first_error
 

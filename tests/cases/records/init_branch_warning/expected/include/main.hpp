@@ -19,13 +19,13 @@ struct Config {
     // 6:     def __init__(self, flag: bool):
     Config() = default;
     explicit Config(bool flag) {
-        // 7:         if flag:
+        // 7:         if flag:  # tpyc: warning(/is not initialized before the constructor body/)
         if (flag) {
-            // 8:             self.value = 10  # tpyc: warning(/bypasses the C\+\+ member initializer list/)
+            // 8:             self.value = 10  # tpyc: ok
             this->value = 10;
         // 9:         else:
         } else {
-            // 10:             self.value = 20  # tpyc: warning(/bypasses the C\+\+ member initializer list/)
+            // 10:             self.value = 20  # tpyc: ok
             this->value = 20;
         }
     }

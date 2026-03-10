@@ -1,1 +1,1 @@
-main.py:14: error: field 'h' of type 'Handle' assigned inside control flow in __init__; 'Handle' is not safely default-constructible (move-only or has __del__). Use a helper function or @staticmethod to compute the value
+main.py:13: error: field 'h' of type 'Handle' has no default constructor and is not initialized before the constructor body

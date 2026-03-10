@@ -1,2 +1,1 @@
-main.py:15: warning: field 'tag' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch
-main.py:17: warning: field 'tag' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch
+main.py:14: warning: field 'tag' is not initialized before the constructor body; it will be default-constructed in C++ (in CPython, the attribute would not exist)

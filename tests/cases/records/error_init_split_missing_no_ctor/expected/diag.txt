@@ -1,0 +1,1 @@
+main.py:16: error: field 'h' of type 'Handle' has no default constructor and is not initialized before the constructor body

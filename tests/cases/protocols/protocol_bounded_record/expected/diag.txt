@@ -2,7 +2,3 @@ main.py:11: warning: may copy T into field if not a value type; use copy() to ma
 main.py:12: warning: may copy T into field if not a value type; use copy() to make this explicit
 main.py:14: warning: may copy T into field if not a value type; use copy() to make this explicit
 main.py:15: warning: may copy T into field if not a value type; use copy() to make this explicit
-main.py:11: warning: field 'first' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch
-main.py:12: warning: field 'second' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch
-main.py:14: warning: field 'first' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch
-main.py:15: warning: field 'second' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch

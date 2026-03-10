@@ -1,0 +1,1 @@
+main.py:16: error: field 'tok' of type 'Token' assigned inside control flow in __init__; 'Token' is move-only or has '__del__', so it must be initialized unconditionally before any branch

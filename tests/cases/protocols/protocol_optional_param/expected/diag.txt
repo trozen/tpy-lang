@@ -1,5 +1,2 @@
-main.py:11: warning: field 'count' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch
-main.py:13: warning: field 'count' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch
-main.py:38: warning: field 'count' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch
-main.py:46: warning: field 'count' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch
-main.py:48: warning: field 'count' assigned inside control flow in __init__; this bypasses the C++ member initializer list. Consider assigning unconditionally before the branch
+main.py:10: warning: field 'count' is not initialized before the constructor body; it will be default-constructed in C++ (in CPython, the attribute would not exist)
+main.py:45: warning: field 'count' is not initialized before the constructor body; it will be default-constructed in C++ (in CPython, the attribute would not exist)

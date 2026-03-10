@@ -1,4 +1,4 @@
-# Field assigned inside while/for loops in __init__ produces a warning.
+# Field initialized in init section, then accumulated in loop body -- no warning.
 from tpy import Int32
 
 class Accum:
@@ -7,7 +7,7 @@ class Accum:
         self.total = Int32(0)
         i: Int32 = Int32(0)
         while i < n:
-            self.total = self.total + i  # tpyc: warning(/bypasses the C\+\+ member initializer list/)
+            self.total = self.total + i  # tpyc: ok
             i = i + Int32(1)
 
 def main() -> None:

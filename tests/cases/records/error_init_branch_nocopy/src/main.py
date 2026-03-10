@@ -10,10 +10,10 @@ class Handle:
 class Wrapper:
     h: Handle
     def __init__(self, flag: bool):
-        if flag:
-            self.h = Handle(1)  # tpyc: error(/not safely default-constructible/)
+        if flag:  # tpyc: error(/has no default constructor/)
+            self.h = Handle(1)  # not reported (error already raised at split point)
         else:
-            self.h = Handle(2)  # tpyc: ok
+            self.h = Handle(2)  # not reported (error already raised at split point)
 
 def main() -> None:
     w = Wrapper(True)

@@ -1,0 +1,1 @@
+main.py:15: warning: instance method called in __init__ before all fields are initialized; the method may access uninitialized fields

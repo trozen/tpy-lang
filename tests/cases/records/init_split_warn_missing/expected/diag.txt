@@ -1,0 +1,1 @@
+main.py:12: warning: field 'y' is not initialized before the constructor body; it will be default-constructed in C++ (in CPython, the attribute would not exist)

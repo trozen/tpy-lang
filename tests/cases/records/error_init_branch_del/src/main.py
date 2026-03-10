@@ -11,10 +11,10 @@ class Resource:
 class Owner:
     r: Resource
     def __init__(self, flag: bool):
-        if flag:
-            self.r = Resource(1)  # tpyc: error(/not safely default-constructible/)
+        if flag:  # tpyc: error(/has no default constructor/)
+            self.r = Resource(1)  # not reported (error already raised at split point)
         else:
-            self.r = Resource(2)  # tpyc: ok
+            self.r = Resource(2)  # not reported (error already raised at split point)
 
 def main() -> None:
     o = Owner(True)

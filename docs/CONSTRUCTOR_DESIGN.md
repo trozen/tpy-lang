@@ -5,9 +5,8 @@
 | Phase | Scope | Status |
 |-------|-------|--------|
 | **Phase 1** | Auto-declare fields from `__init__` (infer type from parameter assignment, top-level only, no inheritance) | Done |
-| **Phase 2** | Warnings and safety: uninitialized field detection, init-list body-assign warning, conditional `= default` | Todo |
+| **Phase 2** | Warnings and safety: split-point model, uninitialized field detection, branch-assign errors, conditional `= default` | Done |
 | **Phase 3** | `@dataclass` decorator (auto-generate `__init__` from annotations) | Done |
-| **Future** | Improved init-list extraction: ternary rewriting, lambda-in-init-list, cross-branch analysis | Future |
 
 ## Problem Statement
 
@@ -139,20 +138,55 @@ When both an annotation and an `__init__` assignment exist, the annotation type 
 
 Auto-declaration only applies to top-level `self.field = expr` statements in `__init__`. Assignments inside control flow (if/else, for, while) do NOT auto-declare fields -- if the field wasn't declared as an annotation, it's an error. This may be relaxed in the future.
 
-### Decision 2: Initializer List Strategy for Control Flow
+### Decision 2: Two-Section `__init__` Model
 
 **Question**: How should we handle `__init__` bodies with control flow?
 
-**Chosen approach: Warn and keep current behavior. Extend later.**
+**Chosen approach: Enforce a two-section structure with a split point.**
 
-Keep the current split: top-level `self.field = value` assignments go to the C++ initializer list, everything else goes in the constructor body. **Done**: sema now emits an error when a field assigned inside control flow has `@nocopy` or `__del__` (including inherited), and a warning for all other field types.
+`__init__` is divided into two sections at a split point:
 
-Future extensions could include:
-- Ternary rewriting for simple if/else patterns assigning the same field
-- Lambda-in-init-list for complex conditional initialization
-- Analysis to determine which fields can be extracted even with control flow present
+```
+def __init__(self, ...):
+    super().__init__(...)    # optional, must come first
+    self.x = expr            # init section  -> C++ member initializer list
+    self.y = expr            # init section  -> C++ member initializer list
+    # <-- split point
+    if ...:                  # body section
+        ...
+    for ...:                 # body section
+        ...
+```
 
-These are not high priority -- the warning makes the current behavior safe, and most constructors don't have complex control flow.
+**Init section** -- the contiguous leading prefix of:
+- At most one `super().__init__(...)` call (must be first if present)
+- `self.field = expr` assignments, each field at most once
+
+The init section ends at the first statement that does not match the above, OR when the same field is assigned a second time. Every statement in the init section goes to the C++ member initializer list.
+
+**Body section** -- everything from the split point onwards. Field modifications in the body are valid (e.g., accumulating into a field in a loop); they become C++ assignments in the constructor body.
+
+**At the split point**, sema checks that all declared fields are initialized:
+
+| Field state at split point | Severity |
+|---|---|
+| Has class-level default value | silent |
+| Has a default constructor | warning (field will be zero/default-constructed; semantics differ from CPython where the attribute would not exist) |
+| No default constructor | error (C++ compile failure) |
+
+Note: `@nocopy` and `__del__` are orthogonal to default-constructibility. A `@nocopy` type that has a default constructor is just a warning, not an error, for missing initialization.
+
+**Instance method calls** (`self.method(...)`) in the init section before all fields are initialized produce a warning -- the method may access uninitialized fields. `@staticmethod` and free function calls are safe and produce no warning.
+
+**Branch assignments in the body** (field assigned inside `if`/`for`/`while`):
+
+| Field type | Severity |
+|---|---|
+| `@nocopy` | error -- body assignment requires copy/move assignment, which `@nocopy` deletes |
+| Has `__del__` | error -- the default-constructed value's destructor runs on reassignment, causing unintended side effects |
+| Other | silently allowed -- e.g., `self.total = 0` in init section then `self.total += x` in a loop body is the normal accumulation pattern |
+
+Ternary expressions (`self.x = a if cond else b`) already go to the init-list as a single expression and are the preferred way to handle conditional initialization without a body assignment.
 
 ### Decision 3: `= default` Constructor
 
@@ -168,27 +202,35 @@ Check each field type. If any field is non-default-constructible (e.g., `@nocopy
 
 **Question**: Should the compiler warn/error when a field is declared but not initialized in `__init__`?
 
-**Chosen approach: Error for fields without defaults, allow fields with defaults.**
+**Chosen approach: Severity depends on default-constructibility, not on `@nocopy`/`__del__`.**
+
+See the split-point table in Decision 2. The key distinction is whether the field type has a default constructor, not whether it is `@nocopy` or has `__del__` (those properties only matter for branch-body assignments):
 
 ```python
 class Bad:
     x: Int32
-    y: Int32
+    y: Handle  # Handle has no default ctor
 
     def __init__(self, x: Int32):
         self.x = x
-        # Error: field 'y' is not initialized in __init__
+        # error: field 'y' has no default constructor and is not initialized
+
+class Warn:
+    x: Int32
+    y: Int32   # default-constructible (will be 0 in C++, but absent in CPython)
+
+    def __init__(self, x: Int32):
+        self.x = x
+        # warning: field 'y' not initialized; will be default-constructed in C++
 
 class OK:
     x: Int32
-    y: Int32 = 0          # has default -- not required in __init__
+    y: Int32 = 0   # has class-level default
 
     def __init__(self, x: Int32):
         self.x = x
-        # OK: 'y' has a default value
+        # OK: 'y' has a class-level default value
 ```
-
-Value-type fields (Int32, float, bool) could have implicit zero-defaults as a pragmatic choice, but record-type fields without defaults must be initialized.
 
 ### Decision 5: `@dataclass` Decorator (future)
 
@@ -221,10 +263,26 @@ Note: current aggregate behavior (no `__init__` -> struct without constructor) i
 - C++ struct field order follows `__init__` assignment order (fields not assigned in `__init__` appended at the end). This matches the init-list order and avoids `-Wreorder` warnings.
 - Future: extend to `self.f = literal` and `self.f = expr` (requires expression type inference at parse/registration time).
 
-### Phase 2: Warnings and Safety
-- Add a sema pass that checks all declared fields (both annotated and auto-declared) are initialized in `__init__` (or have defaults).
-- Warn when a field is body-assigned (not init-list) and its type is `@nocopy` or non-trivially-constructible.
-- Only emit `= default` constructor when all fields are default-constructible.
+### Phase 2: Warnings and Safety (Done)
+
+**Split-point detection** (`_check_init_field_assignments` in `tpyc/sema/analyzer.py`):
+- Walks `__init__` body to find the split point: the first statement that is not `super().__init__()`, a docstring, or a first-time `self.field = expr` (own or inherited field).
+- At the split point, checks every own field not assigned at depth 0 anywhere in the body:
+  - Not initialized + no default ctor -> error
+  - Not initialized + has default ctor -> warning
+  - Has class-level default -> silent
+  - Type contains a TypeParamRef in a generic record -> skip (C++ handles at instantiation)
+- If `self.method(...)` is called in the init section before all fields are initialized -> warning.
+
+**Branch-body assignment checks**:
+- `@nocopy` field assigned inside `if`/`for`/`while` body -> error (move-only type)
+- `__del__` field assigned inside `if`/`for`/`while` body -> error (destructor on default-constructed value)
+- All other body assignments are silently allowed (e.g., accumulating into a field in a loop).
+
+**`= default` constructor** (`_all_fields_default_constructible` in `tpyc/codegen_cpp/records.py`):
+- Generic records (with `type_params`): always emit `= default` (C++ handles constraint at instantiation).
+- Non-generic records: emit `= default` only if all fields and the parent are C++-default-constructible (recursive check via `_fld_type_cpp_default_constructible`).
+- C++-level constructibility differs from Python-level: a user record with required `__init__` params IS C++-constructible if all its own fields are (because it also emits `= default`).
 
 ### Phase 3: `@dataclass`
 - Implement `@dataclass` decorator that auto-generates `__init__` from class annotations.
@@ -238,8 +296,8 @@ Note: current aggregate behavior (no `__init__` -> struct without constructor) i
 
 2. **`@noalloc` and auto-declare**: In `@noalloc` mode, `self.x = 42` would infer `int` (BigInt) which is heap-allocated. Should auto-declare be restricted in `@noalloc` to only typed params?
 
-3. **Inherited fields in `__init__`**: Currently `self.inherited_field = value` goes to the constructor body (not init list). Should this be an error pointing users to `super().__init__()` instead?
+3. ~~**Inherited fields in `__init__`**~~: Resolved -- `self.inherited_field = value` in `__init__` is accepted as part of the init section (same as own fields), so it goes into the C++ member initializer list. Both `super().__init__(args)` and direct assignment of inherited fields are valid patterns.
 
-4. **Default `= default` alternative**: Instead of skipping `= default` for non-default-constructible types, should we generate a "zero-state" default constructor?
+4. **`= default` for records with required `__init__` params**: Currently, a record like `class Handle: id: Int32; def __init__(self, id: Int32)` gets `Handle() = default;` emitted because `id: Int32` is C++-default-constructible. This violates the Python-level contract (you cannot create a `Handle` without providing `id`) and creates an object with uninitialized `id`. The alternative is `Handle() = delete;` to enforce the contract, but that breaks `Optional[Handle]` and containers. For now this is a known semantic gap -- the sema split-point error ("has no default constructor") enforces the invariant at the Python level even though the C++ `= default` technically exists.
 
 5. ~~**Auto-declare + control flow**~~: Resolved -- auto-declare only from top-level statements. Assignments inside control flow require an explicit annotation, otherwise error.

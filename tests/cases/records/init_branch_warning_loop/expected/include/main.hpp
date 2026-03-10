@@ -23,7 +23,7 @@ struct Accum {
         int32_t i = 0;
         // 9:         while i < n:
         while ((i < n)) {
-            // 10:             self.total = self.total + i  # tpyc: warning(/bypasses the C\+\+ member initializer list/)
+            // 10:             self.total = self.total + i  # tpyc: ok
             this->total = (tpy::add_check<int32_t>(this->total, i));
             // 11:             i = i + Int32(1)
             i = (tpy::add_check<int32_t>(i, 1));

@@ -900,60 +900,22 @@ See [docs/DYNAMIC_PROTOCOL_DESIGN.md](DYNAMIC_PROTOCOL_DESIGN.md) for full progr
 
 ### Constructor Init-List: Warn/Error on Branching Field Assignment
 
-When `__init__` has control flow (if/else, loops), field assignments inside branches
-fall back to C++ body-assignment instead of the member initializer list. The field is
-default-constructed, then assigned in the body:
+**Done.** Implemented as a two-section `__init__` model. See `docs/CONSTRUCTOR_DESIGN.md`
+for the full design.
 
-```cpp
-// Simple __init__ -> initializer list (correct)
-Wrapper(int32_t tag) : tag(tag) {}
+The leading prefix of `super().__init__()` calls and first-time `self.field = expr`
+assignments is the *init section* and maps to the C++ member initializer list. Everything
+after the first non-field statement is the *body section*.
 
-// __init__ with control flow -> body assignment (problematic)
-Wrapper(std::optional<Point> p, int32_t tag) {
-    if (p.has_value()) {
-        this->tag = tag;     // assignment, not construction
-    } else {
-        this->tag = -1;
-    }
-}
-```
+At the split point, fields not yet initialized are checked:
+- No default constructor -> error
+- Default-constructible -> warning (will be zero/default-constructed in C++; absent in CPython)
+- Has class-level default -> silent
 
-This works for trivial types (`int32_t`, `double`, `bool`) but breaks for:
-- **`@nocopy` (move-only) types with `__del__`**: default-construct leaves fields
-  uninitialized, then move-assignment calls the destructor on garbage state (UB).
-- **`const` fields** (future `readonly[T]` on fields): can only be set in init-list.
+Assigning a `@nocopy` or `__del__` field inside control flow in the body is an error.
+All other body-section field assignments are silently allowed (e.g. accumulation in a loop).
 
-**Approach**: Detect field assignments inside control flow in `__init__` during sema
-and report diagnostics:
-- **Error** when the field type would cause C++ compilation failure or UB (e.g.
-  `@nocopy` types with `__del__`, types without default constructors).
-- **Warning** otherwise (trivial types work but the pattern is fragile).
-
-Users can refactor complex initialization into helper functions or `@staticmethod`
-factories:
-
-```python
-class Resource:
-    handle: Handle
-    def __init__(self, fd: Int32, wrap: bool):
-        self.handle = Handle.create(fd, wrap)  # simple top-level assignment
-
-class Handle:
-    @staticmethod
-    def create(fd: Int32, wrap: bool) -> Own[Handle]:
-        if wrap:
-            return Handle(fd)
-        else:
-            return Handle(Int32(-1))
-```
-
-**Current state**: Not started. Simple `self.field = param` at top level uses init-list
-correctly. The problem only manifests when `__init__` has branching and the field type
-is non-trivial.
-
-**Dependencies**: None.
-
-**Effort**: S (AST walk of `__init__` body in sema + diagnostic emission)
+`= default` is now emitted conditionally: only when all fields are C++-default-constructible.
 
 ---
 
