@@ -9,6 +9,9 @@
 
 ## Bugs
 
+## Safety
+- Dangling Span from list slicing: `items[1:3]` returns `Span[T]` (view into the list). If the list is mutated (e.g. `.append()`, `.insert()`) after slicing, the Span may dangle. Existing borrow-checking for container mutation during iteration should cover this -- verify it catches `span = items[1:3]; items.append(x); use(span)` patterns. If not, extend the borrow tracker to track slice-produced Spans as borrows of the source container.
+
 ## Examples
 
 ## Investigate
@@ -27,7 +30,7 @@
 ## Python features
 - Any
 - dynamic attributes
-- list/container slicing
+- list/container slicing (Phase 1: built-in types -> Span[T], Phase 2: user types via slice + @overload B10, Phase 3: step)
 - lambda expression
 - properties
 - with statement/context manager

@@ -45,7 +45,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B7 | Float32 type | S | Done | [I](#float32-type) |
 | B8 | Dataclasses | M | Done | [VII](#dataclasses) |
 | B9 | List comprehensions | M | Done | [VI](#list-comprehensions) |
-| B10 | Union dispatch flattening | M | Not started | [VII](#union-dispatch-flattening) |
+| B10 | `@overload` dispatch flattening | M | Not started | [VII](#overload-dispatch-flattening) |
 | B11 | List slicing | M | Not started | [VII](#list-slicing) |
 | B12 | `Self` type | S | Done | [I](#self-type) |
 | B13 | Bi-directional type inference | M | Done | [I](#bi-directional-type-inference) |
@@ -1984,49 +1984,57 @@ Design document: `docs/DICT_DESIGN.md`.
 
 ---
 
-### Union Dispatch Flattening
+### `@overload` Dispatch Flattening
 
 ```python
+from typing import overload
+
 class ArrayList[T, N: int]:
-    def __init__(self, items: Span[T] | Iterable[T] | None = None) -> None:
-        self._storage = UninitArrayStorage[T, N]()
-        self._size = 0
-        if items is not None:
-            if isinstance(items, Span):
-                for i in range(len(items)):
-                    self.append(items[i])
-            else:
-                for item in items:
-                    self.append(item)
+    @overload
+    def __getitem__(self, index: Int32) -> T: ...
+    @overload
+    def __getitem__(self, s: slice) -> Span[T]: ...
+    def __getitem__(self, index: Int32 | slice) -> T | Span[T]:
+        if isinstance(index, slice):
+            return self._get_span(index.start, index.stop)
+        return self._storage[index]
 ```
 
-Compiler optimization: detect functions/methods with union-typed parameters that dispatch
-via `isinstance`, and split them into separate C++ overloads. The source stays as one
-method (works in CPython as-is), but the compiler emits multiple C++ functions --
-eliminating the isinstance branch at call sites where the concrete type is known.
+When `@overload` stubs are present, the compiler splits the implementation method into
+separate C++ overloads -- one per `@overload` stub. Each overload gets its own parameter
+and return type from the corresponding stub. The implementation body contains the
+isinstance dispatch logic; the compiler extracts each branch into its overload.
 
 ```cpp
-// Flattened by compiler:
-ArrayList(std::span<const T> items) { /* span path */ }
-ArrayList(Iterable auto&& items) { /* iterable path */ }
-ArrayList() { /* no-arg path (items=None) */ }
+// Generated from @overload stubs:
+T& operator[](int32_t index) { return _storage[index]; }
+std::span<T> operator[](tpy::Slice s) { return _get_span(s.start, s.stop); }
 ```
 
-**Why it matters**: This replaces `@overload` (dropped -- its CPython semantics are too
-different from what TPy would need). The union + isinstance pattern is idiomatic Python,
-works unchanged in CPython, and the compiler can optimize it to zero-overhead dispatch.
-Key use cases: constructor variants (`ArrayList` from span vs iterable), methods like
-`pop()` vs `pop(index)` via `index: Int32 | None = None`.
+**Why it matters**: Enables methods that accept different types and return different
+types per variant -- the key pattern for user-defined slicing (`__getitem__` with
+`Int32` vs `slice`), constructor variants, and any method where the return type depends
+on the argument type.
 
-An optional annotation (e.g. `@flatten_dispatch`) could explicitly request this
-optimization for library code where the performance gain matters.
+The approach uses standard Python `@overload` syntax (PEP 484). In CPython, `@overload`
+stubs are type-checker-only annotations (ignored at runtime); the implementation body
+runs and handles all cases via isinstance dispatch. In TPy, the stubs declare per-overload
+signatures and the compiler generates separate C++ functions. Same source works in both
+runtimes.
 
-**Current state**: Not started. The union + isinstance pattern works today (no optimization).
+Only methods with explicit `@overload` stubs are flattened -- no automatic pattern
+detection. This keeps the behavior explicit and avoids subtle errors from auto-deduction
+of per-branch return types.
 
-**Dependencies**: Union types (partial), default parameter values (A6), isinstance
-narrowing (done).
+Key use cases: `__getitem__` with `Int32 | slice` (different return types), constructor
+variants (`ArrayList` from span vs iterable), `pop()` vs `pop(index)`.
 
-**Effort**: M (sema pattern detection + codegen splitting)
+**Current state**: Not started. The union + isinstance pattern works today (no flattening).
+
+**Dependencies**: Union types (done), isinstance narrowing (done). `slice` type needed
+for the `__getitem__` use case.
+
+**Effort**: M (overload stub parsing + codegen splitting + return type resolution)
 
 ---
 
@@ -2040,23 +2048,51 @@ in `if`/`while`/`not`/`and`/`or`, `__len__() != 0` fallback, `Truthy` protocol b
 ### List Slicing
 
 ```python
-items = [1, 2, 3, 4, 5]
-first_three = items[1:3]      # [2, 3]
-last_two = items[-2:]         # [4, 5]
-reversed_items = items[::-1]  # [5, 4, 3, 2, 1]
+items: list[Int32] = [10, 20, 30, 40, 50]
+sub = items[1:3]       # Span[Int32] -> [20, 30] (zero-copy view)
+last = items[-2:]      # Span[Int32] -> [40, 50]
+copy = items[:]        # Span[Int32] -> full view
 ```
 
-**Why it matters**: Fundamental Python operation. Used pervasively in real code. Design
-question: should slicing return a new list (Python semantics) or a view/Span (zero-copy)?
+**Design decision**: Slicing returns `Span[T]` (zero-copy view into the original
+container), not a new list. This matches TPy's performance-first philosophy -- no
+allocation, no element copies. The source's mutability is preserved: mutable list
+gives `Span[T]`, `@readonly` context gives `ReadOnlySpan[T]`.
 
-Likely approach: return a new list by default (Python compat), with a separate
-`Span(items, start, end)` for zero-copy views when needed.
+Python returns a new list from slicing. Users who need an independent copy can
+explicitly construct one: `copy: list[T] = list(items[1:3])`.
+
+**Phase 1 (built-in types)**: `list[T]`, `Array[T, N]`, `Span[T]`,
+`ReadOnlySpan[T]` slicing. Returns `Span[T]` / `ReadOnlySpan[T]`. String slicing
+returns `StrView` (existing). No step support initially.
+
+**Phase 2 (user types)**: Add `slice` built-in type. User types support slicing
+via `__getitem__` with `@overload` dispatch (B10):
+
+```python
+from typing import overload
+
+class ArrayList[T, N: int]:
+    @overload
+    def __getitem__(self, index: Int32) -> T: ...
+    @overload
+    def __getitem__(self, s: slice) -> Span[T]: ...
+    def __getitem__(self, index: Int32 | slice) -> T | Span[T]:
+        if isinstance(index, slice):
+            return self.__span__()[index.start:index.stop]
+        return self._storage[index]
+```
+
+**Phase 3 (step)**: Support `items[::2]`, `items[::-1]`. Step slicing returns a
+new `list[T]` (elements are not contiguous). String step slicing returns `str`
+(owned string).
 
 **Current state**: Not started.
 
-**Dependencies**: None for basic form. Step/negative slicing adds complexity.
+**Dependencies**: None for Phase 1. Phase 2 needs `slice` type + B10 (`@overload`).
+Phase 3 needs step parsing (currently rejected by parser).
 
-**Effort**: M
+**Effort**: S (Phase 1), M (Phase 2, depends on B10), S (Phase 3)
 
 ---
 
