@@ -23,6 +23,9 @@
 
 namespace tpy {
 
+/// Sentinel for omitted slice upper bound.
+inline constexpr int32_t SLICE_END = INT32_MAX;
+
 /**
  * normalize_index - Convert Python-style index to size_t.
  *
@@ -61,8 +64,8 @@ T pop_back(std::vector<T>& v) {
  *
  * Unlike single-index access, slicing does NOT panic on out-of-bounds:
  * indices are clamped to [0, len]. Negative indices are normalized first.
- * Bounds are int32_t; codegen uses INT32_MAX as sentinel for omitted upper
- * bound, so slicing is correct for strings up to ~2GB.
+ * Bounds are int32_t; codegen uses tpy::SLICE_END as sentinel for omitted
+ * upper bound, so slicing is correct for strings up to ~2GB.
  */
 inline std::string_view str_slice(std::string_view s, int32_t start, int32_t stop) {
     auto len = static_cast<std::ptrdiff_t>(s.size());
@@ -74,6 +77,29 @@ inline std::string_view str_slice(std::string_view s, int32_t start, int32_t sto
     j = std::clamp(j, std::ptrdiff_t{0}, len);
     if (i >= j) return {};
     return s.substr(static_cast<std::size_t>(i), static_cast<std::size_t>(j - i));
+}
+
+/**
+ * list_slice - Python-style container slicing: items[start:stop].
+ *
+ * Returns a std::span view into the container. Indices are clamped, never panics.
+ * Const containers or span<const T> yield span<const T>, mutable yield span<T>.
+ * Omitted bounds use tpy::SLICE_END/0 as sentinels. Correct for containers up to ~2B elements.
+ */
+template <typename Container>
+auto list_slice(Container& c, int32_t start, int32_t stop) {
+    using ElemRef = std::remove_pointer_t<decltype(c.data())>;
+    using T = std::remove_const_t<ElemRef>;
+    using SpanT = std::conditional_t<std::is_const_v<ElemRef>, std::span<const T>, std::span<T>>;
+    auto len = static_cast<std::ptrdiff_t>(c.size());
+    std::ptrdiff_t i = start;
+    std::ptrdiff_t j = stop;
+    if (i < 0) i += len;
+    if (j < 0) j += len;
+    i = std::clamp(i, std::ptrdiff_t{0}, len);
+    j = std::clamp(j, std::ptrdiff_t{0}, len);
+    if (i >= j) return SpanT{};
+    return SpanT{c.data() + i, static_cast<std::size_t>(j - i)};
 }
 
 // =============================================

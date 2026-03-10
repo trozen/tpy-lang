@@ -1843,6 +1843,7 @@ class ExpressionAnalyzer:
         raise self.ctx.error(f"Cannot index type {obj_type}", expr)
 
     _SLICEABLE_STR_TYPES = (StrType, StringType, StrViewType, PendingStrType)
+    _SLICEABLE_CONTAINER_TYPES = (ListType, PendingListType, ArrayType, SpanType)
 
     def _analyze_slice(self, expr: TpySubscript, obj_type: TpyType) -> TpyType:
         """Analyze slice expression: obj[start:stop]"""
@@ -1855,12 +1856,22 @@ class ExpressionAnalyzer:
                     raise self.ctx.error(
                         f"Slice {label} must be an integer type, got {bound_type}", bound
                     )
+        is_readonly = isinstance(obj_type, ReadonlyType)
         actual_type = unwrap_readonly(obj_type)
-        # TODO: Optional[str] after narrowing passes this check but codegen
-        # doesn't emit .value() -- same pre-existing issue as single-index subscript.
-        if not isinstance(actual_type, self._SLICEABLE_STR_TYPES):
-            raise self.ctx.error(f"Slicing is not yet supported for {obj_type}", expr)
-        return STRVIEW
+
+        # String slicing -> StrView
+        if isinstance(actual_type, self._SLICEABLE_STR_TYPES):
+            return STRVIEW
+
+        # Container slicing -> Span[T] or ReadOnlySpan[T]
+        if isinstance(actual_type, self._SLICEABLE_CONTAINER_TYPES):
+            elem_type = actual_type.get_element_type()
+            assert elem_type is not None
+            # ReadOnlySpan source or @readonly context -> ReadOnlySpan
+            src_readonly = isinstance(actual_type, SpanType) and actual_type.is_readonly
+            return SpanType(elem_type, is_readonly=(is_readonly or src_readonly))
+
+        raise self.ctx.error(f"Slicing is not supported for {obj_type}", expr)
 
     _FORMATTABLE_TYPES = (
         FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType,

@@ -1,0 +1,1 @@
+main.py:5: error: Slicing is not supported for dict[str, int]

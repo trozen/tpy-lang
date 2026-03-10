@@ -14,11 +14,11 @@ void test_basic() {
     // 7:     print(s[6:11])
     std::cout << tpy::str_slice(s, 6, 11) << "\n";
     // 8:     print(s[6:])
-    std::cout << tpy::str_slice(s, 6, INT32_MAX) << "\n";
+    std::cout << tpy::str_slice(s, 6, tpy::SLICE_END) << "\n";
     // 9:     print(s[:5])
     std::cout << tpy::str_slice(s, 0, 5) << "\n";
     // 10:     print(s[:])
-    std::cout << tpy::str_slice(s, 0, INT32_MAX) << "\n";
+    std::cout << tpy::str_slice(s, 0, tpy::SLICE_END) << "\n";
 }
 
 // 13: def test_negative() -> None:
@@ -26,13 +26,13 @@ void test_negative() {
     // 14:     s: str = "abcdef"
     std::string_view s = "abcdef";
     // 15:     print(s[-3:])
-    std::cout << tpy::str_slice(s, -3, INT32_MAX) << "\n";
+    std::cout << tpy::str_slice(s, -3, tpy::SLICE_END) << "\n";
     // 16:     print(s[:-2])
     std::cout << tpy::str_slice(s, 0, -2) << "\n";
     // 17:     print(s[-4:-1])
     std::cout << tpy::str_slice(s, -4, -1) << "\n";
     // 18:     print(s[-6:])
-    std::cout << tpy::str_slice(s, -6, INT32_MAX) << "\n";
+    std::cout << tpy::str_slice(s, -6, tpy::SLICE_END) << "\n";
 }
 
 // 21: def test_clamping() -> None:
@@ -86,7 +86,7 @@ void test_single_char() {
     // 49:     print(s[0:1])
     std::cout << tpy::str_slice(s, 0, 1) << "\n";
     // 50:     print(s[-1:])
-    std::cout << tpy::str_slice(s, -1, INT32_MAX) << "\n";
+    std::cout << tpy::str_slice(s, -1, tpy::SLICE_END) << "\n";
 }
 
 void __tpy_init() {

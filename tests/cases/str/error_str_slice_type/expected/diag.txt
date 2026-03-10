@@ -1,1 +1,0 @@
-main.py:5: error: Slicing is not yet supported for list[int]

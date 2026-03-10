@@ -2295,7 +2295,7 @@ class ExpressionGenerator:
         # Slice: obj[start:stop]
         if isinstance(expr.index, TpySlice):
             subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
-            return self._gen_slice(subscript_obj, expr.index)
+            return self._gen_slice(subscript_obj, expr.index, expr.obj)
 
         obj_type = self.types.get_resolved_type(expr.obj)
 
@@ -2380,17 +2380,21 @@ class ExpressionGenerator:
         return False
 
 
-    def _gen_slice(self, obj: str, sl: TpySlice) -> str:
-        """Generate string slice: tpy::str_slice(obj, start, stop)."""
-        if sl.lower is not None:
-            start = self._gen_slice_bound(sl.lower)
-        else:
-            start = "0"
-        if sl.upper is not None:
-            stop = self._gen_slice_bound(sl.upper)
-        else:
-            stop = "INT32_MAX"
-        return f"tpy::str_slice({obj}, {start}, {stop})"
+    def _gen_slice(self, obj: str, sl: TpySlice, obj_expr: TpyExpr) -> str:
+        """Generate slice: str_slice for strings, list_slice for containers."""
+        start = self._gen_slice_bound(sl.lower) if sl.lower is not None else "0"
+        stop = self._gen_slice_bound(sl.upper) if sl.upper is not None else "tpy::SLICE_END"
+        obj_type = self.types.get_resolved_type(obj_expr)
+        # get_resolved_type returns the C++ declared type, which stays
+        # Optional even after narrowing. Use sema's analyzed type to
+        # detect the unwrapped inner type for correct dispatch.
+        if isinstance(obj_type, OptionalType):
+            analyzed = self.ctx.get_expr_type(obj_expr)
+            if not isinstance(analyzed, OptionalType):
+                obj_type = obj_type.inner
+        if is_any_str_type(obj_type):
+            return f"tpy::str_slice({obj}, {start}, {stop})"
+        return f"tpy::list_slice({obj}, {start}, {stop})"
 
     def _gen_slice_bound(self, expr: TpyExpr) -> str:
         """Generate a slice bound expression, converting to int32_t if needed."""

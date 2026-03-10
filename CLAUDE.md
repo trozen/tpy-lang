@@ -371,7 +371,7 @@ Note: `@noalloc` is parsed but not yet enforced. See `docs/LANGUAGE_FEATURES.md`
 The compiler is a proof-of-concept. Not yet implemented:
 - Exception handling (`try`/`except`/`raise`)
 - `async`/`await`, `lambda`, `yield`
-- List slicing (`items[1:3]`)
+- Slice step (`items[::2]`, `items[::-1]`)
 
 ## Type Mappings
 
