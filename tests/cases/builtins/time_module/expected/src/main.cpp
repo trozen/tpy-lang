@@ -14,6 +14,7 @@ void main() {
     if ((t > 1704067200)) {
         // 8:         print("ok")
         std::cout << "ok" << "\n";
+    // 9:     else:
     } else {
         // 10:         print("error: timestamp too small")
         std::cout << "error: timestamp too small" << "\n";

@@ -11,6 +11,7 @@ void main() {
     if ((tpy::__len__(tpy::sys_argv) >= 1)) {
         // 6:         print("ok")
         std::cout << "ok" << "\n";
+    // 7:     else:
     } else {
         // 8:         print("error: sys.argv is empty")
         std::cout << "error: sys.argv is empty" << "\n";

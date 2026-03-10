@@ -42,6 +42,7 @@ struct Container {
         if ((p.has_value())) {
             // 15:             self.val = Int32(1)
             this->val = 1;
+        // 16:         else:
         } else {
             // 17:             self.val = Int32(0)
             this->val = 0;

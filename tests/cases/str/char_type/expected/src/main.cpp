@@ -61,6 +61,7 @@ void test_char_comparison() {
     if ((a == b)) {
         // 40:         print("a == b: yes")
         std::cout << "a == b: yes" << "\n";
+    // 41:     else:
     } else {
         // 42:         print("a == b: no")
         std::cout << "a == b: no" << "\n";
@@ -111,6 +112,7 @@ void test_char_in_string() {
     if ((text.find(missing) != std::string::npos)) {
         // 71:         print("z in text: yes")
         std::cout << "z in text: yes" << "\n";
+    // 72:     else:
     } else {
         // 73:         print("z in text: no")
         std::cout << "z in text: no" << "\n";
@@ -179,6 +181,7 @@ void test_char_function_param() {
     if (is_vowel('b')) {
         // 104:         print("b is vowel")
         std::cout << "b is vowel" << "\n";
+    // 105:     else:
     } else {
         // 106:         print("b is not vowel")
         std::cout << "b is not vowel" << "\n";
@@ -192,6 +195,7 @@ void test_char_function_param() {
     if (is_vowel('x')) {
         // 110:         print("x is vowel")
         std::cout << "x is vowel" << "\n";
+    // 111:     else:
     } else {
         // 112:         print("x is not vowel")
         std::cout << "x is not vowel" << "\n";

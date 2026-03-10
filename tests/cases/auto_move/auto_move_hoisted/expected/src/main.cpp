@@ -20,6 +20,7 @@ int32_t test(bool cond) {
         p = &*(__slot_1 = Point());
         // 16:         p.x = 42
         p->x = 42;
+    // 17:     else:
     } else {
         // 18:         p = Point()
         p = &*(__slot_1 = Point());

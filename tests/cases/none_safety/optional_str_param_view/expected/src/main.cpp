@@ -18,6 +18,7 @@ void assign_local(std::optional<std::string_view> s) {
     if ((local.has_value())) {
         // 10:         print(local)
         std::cout << tpy::print_optional_val(local) << "\n";
+    // 11:     else:
     } else {
         // 12:         print("none")
         std::cout << "none" << "\n";

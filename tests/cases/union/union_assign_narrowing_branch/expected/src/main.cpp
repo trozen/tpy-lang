@@ -11,6 +11,7 @@ std::string describe(std::variant<Circle, Rect>& s) {
         auto& __s = std::get<Circle>(s);
         // 18:         return "circle"
         return "circle";
+    // 19:     else:
     } else {
         auto& __s = std::get<Rect>(s);
         // 20:         return "rect"
@@ -29,6 +30,7 @@ void main() {
         auto& __c = std::get<Circle>(c);
         // 26:         print("yes circle")
         std::cout << "yes circle" << "\n";
+    // 27:     else:
     } else {
         auto& __c = std::get<Rect>(c);
         // 28:         print("no")

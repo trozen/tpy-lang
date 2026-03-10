@@ -48,6 +48,7 @@ void check(Signal s) {
     if (true) {
         // 10:         print("truthy")
         std::cout << "truthy" << "\n";
+    // 11:     else:
     } else {
         // 12:         print("falsy")
         std::cout << "falsy" << "\n";

@@ -14,6 +14,7 @@ int32_t value_type_branches(bool cond) {
     if (cond) {
         // 15:         x: Int32 = 10
         x = 10;
+    // 16:     else:
     } else {
         // 17:         x = 20
         x = 20;
@@ -30,6 +31,7 @@ int32_t else_returns(bool cond) {
     if (cond) {
         // 24:         x: Int32 = 42
         x = 42;
+    // 25:     else:
     } else {
         // 26:         return 0
         return 0;
@@ -49,6 +51,7 @@ int32_t multi_var(bool cond) {
         a = 1;
         // 34:         b: Int32 = 2
         b = 2;
+    // 35:     else:
     } else {
         // 36:         a = 3
         a = 3;
@@ -68,6 +71,7 @@ void rvalue_branch(bool cond) {
     if (cond) {
         // 44:         p = Point(1, 2)
         p = &*(__slot_1 = Point(1, 2));
+    // 45:     else:
     } else {
         // 46:         p = Point(3, 4)
         p = &*(__slot_1 = Point(3, 4));
@@ -84,6 +88,7 @@ void reassign_after(bool cond) {
     if (cond) {
         // 53:         x: Int32 = 10
         x = 10;
+    // 54:     else:
     } else {
         // 55:         x = 20
         x = 20;
@@ -105,12 +110,14 @@ int32_t nested_if(bool a, bool b) {
         if (b) {
             // 64:             x: Int32 = 1
             x = 1;
+        // 65:         else:
         } else {
             // 66:             x = 2
             x = 2;
         }
         // 67:         y: Int32 = x + 10
         y = (tpy::add_check<int32_t>(x, 10));
+    // 68:     else:
     } else {
         // 69:         y = 99
         y = 99;
@@ -127,6 +134,7 @@ void param_branch(std::vector<Point>& points, bool cond) {
     if (cond) {
         // 76:         p = points[0]
         p = &(tpy::__getitem__(points, 0));
+    // 77:     else:
     } else {
         // 78:         p = points[1]
         p = &(tpy::__getitem__(points, 1));
@@ -144,6 +152,7 @@ void mixed_init(std::vector<Point>& points, bool cond) {
     if (cond) {
         // 85:         p = points[0]
         p = &(tpy::__getitem__(points, 0));
+    // 86:     else:
     } else {
         // 87:         p = Point(70, 80)
         p = &*(__slot_1 = Point(70, 80));

@@ -19,6 +19,7 @@ void main() {
     if ((elapsed >= 0.05)) {
         // 10:         print("ok")
         std::cout << "ok" << "\n";
+    // 11:     else:
     } else {
         // 12:         print("error: sleep too short")
         std::cout << "error: sleep too short" << "\n";

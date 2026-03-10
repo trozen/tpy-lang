@@ -13,6 +13,7 @@ void greet(std::optional<std::string_view> name) {
         std::cout << tpy::str_upper((*name)) << "\n";
         // 6:         print(name.startswith("A"))
         std::cout << tpy::print_bool(tpy::str_startswith((*name), "A")) << "\n";
+    // 7:     else:
     } else {
         // 8:         print("no name")
         std::cout << "no name" << "\n";

@@ -33,6 +33,7 @@ void main() {
     if ((sum_array(__tmp_3) > 0)) {
         // 31:         print(1)  # 1
         std::cout << 1 << "\n";
+    // 32:     else:
     } else {
         // 33:         print(0)
         std::cout << 0 << "\n";

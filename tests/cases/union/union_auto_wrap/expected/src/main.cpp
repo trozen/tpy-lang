@@ -11,6 +11,7 @@ void process(std::variant<A, B>& v) {
         auto& __v = std::get<A>(v);
         // 14:         print(v.x)
         std::cout << __v.x << "\n";
+    // 15:     else:
     } else {
         auto& __v = std::get<B>(v);
         // 16:         print(v.y)

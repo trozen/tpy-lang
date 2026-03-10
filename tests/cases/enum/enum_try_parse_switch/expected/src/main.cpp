@@ -88,6 +88,7 @@ void try_it(std::string_view name) {
     if ((d.has_value())) {
         // 16:         print(d)
         std::cout << tpy::print_optional_val(d) << "\n";
+    // 17:     else:
     } else {
         // 18:         print("not found")
         std::cout << "not found" << "\n";

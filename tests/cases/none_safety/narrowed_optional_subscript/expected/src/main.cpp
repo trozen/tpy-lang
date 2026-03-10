@@ -14,6 +14,7 @@ void check(std::optional<std::string_view> s) {
         std::cout << tpy::str_slice((*s), 1, 4) << "\n";
         // 18:         print(len(s))
         std::cout << tpy::__len__((*s)) << "\n";
+    // 19:     else:
     } else {
         // 20:         print("none")
         std::cout << "none" << "\n";

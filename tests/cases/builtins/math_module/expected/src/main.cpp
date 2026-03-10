@@ -13,6 +13,7 @@ void main() {
     if (((x > 0.99) && (x < 1.01))) {
         // 7:         print("log(e) ok")
         std::cout << "log(e) ok" << "\n";
+    // 8:     else:
     } else {
         // 9:         print("log(e) error")
         std::cout << "log(e) error" << "\n";
@@ -24,6 +25,7 @@ void main() {
     if (((y > 2.99) && (y < 3.01))) {
         // 14:         print("log(8,2) ok")
         std::cout << "log(8,2) ok" << "\n";
+    // 15:     else:
     } else {
         // 16:         print("log(8,2) error")
         std::cout << "log(8,2) error" << "\n";
@@ -35,6 +37,7 @@ void main() {
     if (((z > 1.99) && (z < 2.01))) {
         // 21:         print("sqrt ok")
         std::cout << "sqrt ok" << "\n";
+    // 22:     else:
     } else {
         // 23:         print("sqrt error")
         std::cout << "sqrt error" << "\n";
@@ -48,6 +51,7 @@ void main() {
     if (((((s > -(0.01)) && (s < 0.01)) && (c > 0.99)) && (c < 1.01))) {
         // 29:         print("sin/cos ok")
         std::cout << "sin/cos ok" << "\n";
+    // 30:     else:
     } else {
         // 31:         print("sin/cos error")
         std::cout << "sin/cos error" << "\n";
@@ -61,6 +65,7 @@ void main() {
     if (((((static_cast<double>(f) > 2.99) && (static_cast<double>(f) < 3.01)) && (static_cast<double>(ce) > 3.99)) && (static_cast<double>(ce) < 4.01))) {
         // 37:         print("floor/ceil ok")
         std::cout << "floor/ceil ok" << "\n";
+    // 38:     else:
     } else {
         // 39:         print("floor/ceil error")
         std::cout << "floor/ceil error" << "\n";

@@ -41,6 +41,7 @@ tpy::BigInt test_negation(std::variant<A, B>& v) {
         auto& __v = std::get<B>(v);
         // 27:         return v.y
         return __v.y;
+    // 28:     else:
     } else {
         auto& __v = std::get<A>(v);
         // 29:         return v.x

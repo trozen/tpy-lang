@@ -35,6 +35,7 @@ struct Counter {
         if ((flag > 0)) {
             // 46:             self.value += 1
             this->value = tpy::add_check<int32_t>(this->value, 1);
+        // 47:         else:
         } else {
             // 48:             pass
         }

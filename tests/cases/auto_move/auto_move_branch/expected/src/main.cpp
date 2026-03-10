@@ -25,6 +25,7 @@ void main() {
         // 20:         # last use on this path
         // 21:         print(consume(p))
         std::cout << consume(std::move(p)) << "\n";
+    // 22:     else:
     } else {
         // 23:         # last use on this path
         // 24:         print(consume(p))

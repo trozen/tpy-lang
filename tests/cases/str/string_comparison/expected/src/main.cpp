@@ -18,6 +18,7 @@ void test_equality() {
     if ((a == b)) {
         // 13:         print("hello == hello: yes")
         std::cout << "hello == hello: yes" << "\n";
+    // 14:     else:
     } else {
         // 15:         print("hello == hello: no")
         std::cout << "hello == hello: no" << "\n";
@@ -27,6 +28,7 @@ void test_equality() {
     if ((a == c)) {
         // 19:         print("hello == world: yes")
         std::cout << "hello == world: yes" << "\n";
+    // 20:     else:
     } else {
         // 21:         print("hello == world: no")
         std::cout << "hello == world: no" << "\n";
@@ -36,6 +38,7 @@ void test_equality() {
     if ((a != c)) {
         // 25:         print("hello != world: yes")
         std::cout << "hello != world: yes" << "\n";
+    // 26:     else:
     } else {
         // 27:         print("hello != world: no")
         std::cout << "hello != world: no" << "\n";
@@ -44,6 +47,7 @@ void test_equality() {
     if ((a != b)) {
         // 30:         print("hello != hello: yes")
         std::cout << "hello != hello: yes" << "\n";
+    // 31:     else:
     } else {
         // 32:         print("hello != hello: no")
         std::cout << "hello != hello: no" << "\n";
@@ -68,6 +72,7 @@ void test_ordering() {
     if ((b < a)) {
         // 45:         print("banana < apple: yes")
         std::cout << "banana < apple: yes" << "\n";
+    // 46:     else:
     } else {
         // 47:         print("banana < apple: no")
         std::cout << "banana < apple: no" << "\n";
@@ -139,6 +144,7 @@ void test_comparison_in_function() {
     if (strings_equal("foo", "bar")) {
         // 89:         print("foo == bar: yes")
         std::cout << "foo == bar: yes" << "\n";
+    // 90:     else:
     } else {
         // 91:         print("foo == bar: no")
         std::cout << "foo == bar: no" << "\n";

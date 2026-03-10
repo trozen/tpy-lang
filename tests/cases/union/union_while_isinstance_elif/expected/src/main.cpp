@@ -19,6 +19,7 @@ void describe(std::variant<Circle, Rect, Triangle>& s) {
             auto& __s = std::get<Rect>(s);
             // 30:             print(s.width)
             std::cout << tpy::print_float(__s.width) << "\n";
+        // 31:         else:
         } else {
             auto& __s = std::get<Triangle>(s);
             // 32:             print(s.base)

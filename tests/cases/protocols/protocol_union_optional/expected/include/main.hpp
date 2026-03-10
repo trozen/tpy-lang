@@ -33,6 +33,7 @@ struct Holder {
             if constexpr (tpy::Sized<T_items>) {
                 // 30:                 self.count = len(items)
                 this->count = tpy::BigInt(tpy::__len__((*items)));
+            // 31:             else:
             } else {
                 // 32:                 self.count = -1
                 this->count = tpy::BigInt(-1);
@@ -80,6 +81,7 @@ tpy::BigInt with_else(const T_items* items) {
             // 18:             return len(items)
             return tpy::BigInt(tpy::__len__((*items)));
         }
+    // 19:     else:
     } else {
         // 20:         return -99
         return tpy::BigInt(-99);

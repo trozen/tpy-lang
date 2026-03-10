@@ -24,6 +24,7 @@ int32_t test(Point& a, bool cond) {
         p = &*(__slot_2 = Point());
         // 19:         p.x = 20
         p->x = 20;
+    // 20:     else:
     } else {
         // 21:         p = a  # lvalue reassignment -> borrowed
         p = &(a);

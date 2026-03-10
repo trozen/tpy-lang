@@ -14,6 +14,7 @@ int32_t classify(int32_t x) {
     } else if ((x == 0)) {
         // 8:         return 0
         return 0;
+    // 9:     else:
     } else {
         // 10:         return 1
         return 1;
@@ -54,6 +55,7 @@ int32_t complex_condition(int32_t a, int32_t b) {
     } else if (((a < 0) || (b < 0))) {
         // 29:         return -1
         return -1;
+    // 30:     else:
     } else {
         // 31:         return 0
         return 0;
@@ -67,11 +69,13 @@ int32_t nested_else_if(int32_t x, int32_t y) {
     if ((x > 0)) {
         // 36:         return 1
         return 1;
+    // 37:     else:
     } else {
         // 38:         if y > 0:
         if ((y > 0)) {
             // 39:             return 2
             return 2;
+        // 40:         else:
         } else {
             // 41:             return 3
             return 3;

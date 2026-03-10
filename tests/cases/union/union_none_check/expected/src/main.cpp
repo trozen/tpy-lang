@@ -16,6 +16,7 @@ std::string describe(std::variant<std::monostate, Dog, int32_t>& v) {
         auto& __v = std::get<int32_t>(v);
         // 13:         return "int"
         return "int";
+    // 14:     else:
     } else {
         auto& __v = std::get<Dog>(v);
         // 15:         return "dog"
@@ -32,11 +33,13 @@ void process(std::variant<std::monostate, Dog, int32_t>& v) {
             auto& __v = std::get<int32_t>(v);
             // 20:             print("got int")
             std::cout << "got int" << "\n";
+        // 21:         else:
         } else {
             auto& __v = std::get<Dog>(v);
             // 22:             print("got dog")
             std::cout << "got dog" << "\n";
         }
+    // 23:     else:
     } else {
         // 24:         print("got none")
         std::cout << "got none" << "\n";

@@ -19,6 +19,7 @@ void test_list_membership() {
     if ((std::find(nums.begin(), nums.end(), 99) != nums.end())) {
         // 13:         print("99 in list: yes")
         std::cout << "99 in list: yes" << "\n";
+    // 14:     else:
     } else {
         // 15:         print("99 in list: no")
         std::cout << "99 in list: no" << "\n";
@@ -33,6 +34,7 @@ void test_list_membership() {
     if ((!(std::find(nums.begin(), nums.end(), 30) != nums.end()))) {
         // 21:         print("30 not in list: yes")
         std::cout << "30 not in list: yes" << "\n";
+    // 22:     else:
     } else {
         // 23:         print("30 not in list: no")
         std::cout << "30 not in list: no" << "\n";
@@ -52,6 +54,7 @@ void test_array_membership() {
     if ((std::find(arr.begin(), arr.end(), 5) != arr.end())) {
         // 32:         print("5 in array: yes")
         std::cout << "5 in array: yes" << "\n";
+    // 33:     else:
     } else {
         // 34:         print("5 in array: no")
         std::cout << "5 in array: no" << "\n";
@@ -82,6 +85,7 @@ void test_span_membership() {
     if (check_span_contains(tpy::as_mut_span(nums), 999)) {
         // 50:         print("999 in span: yes")
         std::cout << "999 in span: yes" << "\n";
+    // 51:     else:
     } else {
         // 52:         print("999 in span: no")
         std::cout << "999 in span: no" << "\n";
@@ -102,6 +106,7 @@ void test_string_membership() {
     if ((text.find("z") != std::string::npos)) {
         // 62:         print("'z' in string: yes")
         std::cout << "'z' in string: yes" << "\n";
+    // 63:     else:
     } else {
         // 64:         print("'z' in string: no")
         std::cout << "'z' in string: no" << "\n";
@@ -116,6 +121,7 @@ void test_string_membership() {
     if ((std::string_view("hello world").find("xyz") != std::string::npos)) {
         // 70:         print("'xyz' in literal: yes")
         std::cout << "'xyz' in literal: yes" << "\n";
+    // 71:     else:
     } else {
         // 72:         print("'xyz' in literal: no")
         std::cout << "'xyz' in literal: no" << "\n";
@@ -130,6 +136,7 @@ void test_string_membership() {
     if ((!(text.find("e") != std::string::npos))) {
         // 78:         print("'e' not in string: yes")
         std::cout << "'e' not in string: yes" << "\n";
+    // 79:     else:
     } else {
         // 80:         print("'e' not in string: no")
         std::cout << "'e' not in string: no" << "\n";

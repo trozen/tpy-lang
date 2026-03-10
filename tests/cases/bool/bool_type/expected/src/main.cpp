@@ -21,6 +21,7 @@ void test_bool() {
     if (a) {
         // 14:         print(1)
         std::cout << 1 << "\n";
+    // 15:     else:
     } else {
         // 16:         print(0)
         std::cout << 0 << "\n";
@@ -29,6 +30,7 @@ void test_bool() {
     if (b) {
         // 19:         print(1)
         std::cout << 1 << "\n";
+    // 20:     else:
     } else {
         // 21:         print(0)
         std::cout << 0 << "\n";

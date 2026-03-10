@@ -15,6 +15,7 @@ int32_t function_with_pass_branch(int32_t x) {
     // 9:     if x > 0:
     if ((x > 0)) {
         // 10:         pass
+    // 11:     else:
     } else {
         // 12:         return -1
         return -1;
@@ -34,6 +35,7 @@ int32_t pass_in_loop() {
         // 19:         if i % 2 == 0:
         if (((tpy::mod_floor<int32_t>(i, 2)) == 0)) {
             // 20:             pass
+        // 21:         else:
         } else {
             // 22:             total += i
             total = tpy::add_check<int32_t>(total, i);
@@ -53,6 +55,7 @@ int32_t pass_in_elif(int32_t x) {
         return -1;
     } else if ((x == 0)) {
         // 30:         pass
+    // 31:     else:
     } else {
         // 32:         return 1
         return 1;

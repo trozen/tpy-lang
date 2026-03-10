@@ -90,6 +90,7 @@ void test_in_condition() {
     if (((0 < x) && (x < 10))) {
         // 46:         print("in range")
         std::cout << "in range" << "\n";
+    // 47:     else:
     } else {
         // 48:         print("out of range")
         std::cout << "out of range" << "\n";

@@ -36,6 +36,7 @@ struct Container {
         if constexpr (!std::same_as<T_items, std::nullptr_t>) {
             // 11:             self.count = len(items)
             this->count = tpy::BigInt(tpy::__len__((*items)));
+        // 12:         else:
         } else {
             // 13:             self.count = 0
             this->count = tpy::BigInt(0);
@@ -105,6 +106,7 @@ struct GenericContainer {
         if constexpr (!std::same_as<T_items, std::nullptr_t>) {
             // 46:             self.count = len(items)
             this->count = tpy::BigInt(tpy::__len__((*items)));
+        // 47:         else:
         } else {
             // 48:             self.count = 0
             this->count = tpy::BigInt(0);

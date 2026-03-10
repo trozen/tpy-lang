@@ -372,6 +372,27 @@ class CodeGenContext:
             source_line = self.source_lines[line_idx].rstrip()
             out.write(f"{indent}// {loc.line}: {source_line}\n")
 
+    def emit_else_comment(self, out: TextIO, orelse: list, indent: str = "") -> None:
+        """Emit the 'else:' source line as a comment.
+
+        Scans backward from the first orelse statement, skipping blank lines
+        and comment lines. Stops on any other non-empty line that is not 'else:'.
+        """
+        if not self.options.emit_source_comments:
+            return
+        if not orelse or not hasattr(orelse[0], 'loc') or orelse[0].loc is None:
+            return
+        first_line = orelse[0].loc.line
+        for line_num in range(first_line - 1, 0, -1):
+            line_idx = line_num - 1
+            if 0 <= line_idx < len(self.source_lines):
+                stripped = self.source_lines[line_idx].strip()
+                if stripped.startswith('else:'):
+                    out.write(f"{indent}// {line_num}: {self.source_lines[line_idx].rstrip()}\n")
+                    return
+                if stripped and not stripped.startswith('#'):
+                    return
+
     def emit_inline_comments(self, out: TextIO, loc: SourceLocation | None, indent: str = "") -> None:
         """Emit Python comment lines immediately preceding a statement.
 

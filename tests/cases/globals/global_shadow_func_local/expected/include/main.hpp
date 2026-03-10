@@ -52,6 +52,7 @@ struct Picker {
         if (cond) {
             // 25:             p = Point(self.val, self.val)
             p = &*(__slot_1 = Point(this->val, this->val));
+        // 26:         else:
         } else {
             // 27:             p = Point(0, 0)
             p = &*(__slot_1 = Point(0, 0));

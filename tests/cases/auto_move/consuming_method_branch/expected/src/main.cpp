@@ -14,6 +14,7 @@ void test_branch(bool flag) {
         tpy::BigInt result = std::move(w).take();
         // 22:         print(result)
         std::cout << result << "\n";
+    // 23:     else:
     } else {
         // 24:         print(w.get())
         std::cout << w.get() << "\n";

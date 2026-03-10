@@ -23,6 +23,7 @@ void main() {
     if ((a.x > 0)) {
         // 20:         p = Ptr(b)
         p = &b;
+    // 21:     else:
     } else {
         // 22:         p = Ptr(a)
         p = &a;

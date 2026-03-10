@@ -20,6 +20,7 @@ void describe(const T_items& items) {
     if constexpr (tpy::Sized<T_items>) {
         // 7:         print("sized:", len(items))
         std::cout << "sized:" << " " << tpy::__len__(items) << "\n";
+    // 8:     else:
     } else {
         // 9:         print("not sized")
         std::cout << "not sized" << "\n";
@@ -32,6 +33,7 @@ void check_not(const T_items& items) {
     if constexpr ((!(tpy::Sized<T_items>))) {
         // 13:         print("not sized")
         std::cout << "not sized" << "\n";
+    // 14:     else:
     } else {
         // 15:         print("sized:", len(items))
         std::cout << "sized:" << " " << tpy::__len__(items) << "\n";

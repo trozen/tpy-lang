@@ -15,6 +15,7 @@ void no_break() {
         // 8:         i += Int32(1)
         i = tpy::add_check<int32_t>(i, 1);
     }
+    // 9:     else:
     {
         // 10:         print("done")
         std::cout << "done" << "\n";
@@ -38,6 +39,7 @@ void with_break() {
         // 18:         i += Int32(1)
         i = tpy::add_check<int32_t>(i, 1);
     }
+    // 19:     else:
     {
         // 20:         print("completed")
         std::cout << "completed" << "\n";
@@ -63,6 +65,7 @@ void nested_inner_else() {
             // 29:             j += Int32(1)
             j = tpy::add_check<int32_t>(j, 1);
         }
+        // 30:         else:
         {
             // 31:             print("inner done")
             std::cout << "inner done" << "\n";
@@ -94,6 +97,7 @@ void nested_outer_else() {
         // 43:         i += Int32(1)
         i = tpy::add_check<int32_t>(i, 1);
     }
+    // 44:     else:
     {
         // 45:         print("outer done")
         std::cout << "outer done" << "\n";
@@ -108,6 +112,7 @@ void false_condition() {
         // 50:         break
         goto __after_else_0;
     }
+    // 51:     else:
     {
         // 52:         print("false else")
         std::cout << "false else" << "\n";
@@ -129,6 +134,7 @@ void var_decl_in_else() {
         // 60:         i += Int32(1)
         i = tpy::add_check<int32_t>(i, 1);
     }
+    // 61:     else:
     {
         // 62:         msg: str = "completed"
         std::string msg = "completed";

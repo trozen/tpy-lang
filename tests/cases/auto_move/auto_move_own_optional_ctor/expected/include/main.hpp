@@ -42,6 +42,7 @@ struct Wrapper {
         if ((p.has_value())) {
             // 15:             self.tag = tag
             this->tag = tag;
+        // 16:         else:
         } else {
             // 17:             self.tag = Int32(-1)
             this->tag = -1;

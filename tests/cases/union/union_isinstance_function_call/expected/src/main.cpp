@@ -27,6 +27,7 @@ void main() {
         auto& __pet = std::get<Dog>((*pet));
         // 21:         greet_dog(pet)
         greet_dog(__pet);
+    // 22:     else:
     } else {
         auto& __pet = std::get<Cat>((*pet));
         // 23:         greet_cat(pet)
@@ -39,6 +40,7 @@ void main() {
         auto& __pet = std::get<Cat>((*pet));
         // 26:         greet_cat(pet)
         greet_cat(__pet);
+    // 27:     else:
     } else {
         auto& __pet = std::get<Dog>((*pet));
         // 28:         greet_dog(pet)

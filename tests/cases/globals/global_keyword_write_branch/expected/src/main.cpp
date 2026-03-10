@@ -13,6 +13,7 @@ void update(const tpy::BigInt& val) {
     if ((val > 0)) {
         // 6:         x = val
         x = val;
+    // 7:     else:
     } else {
         // 8:         x = 0
         x = 0;

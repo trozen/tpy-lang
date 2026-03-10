@@ -68,6 +68,7 @@ int32_t both_return(bool cond) {
         int32_t x = 1;
         // 42:         return x
         return x;
+    // 43:     else:
     } else {
         // 44:         return 0
         return 0;
@@ -83,6 +84,7 @@ void both_branches_assign(bool cond) {
     if (cond) {
         // 50:         x = 1
         x = 1;
+    // 51:     else:
     } else {
         // 52:         x = 2
         x = 2;
@@ -100,6 +102,7 @@ void else_returns(bool cond) {
     if (cond) {
         // 59:         x = 10
         x = 10;
+    // 60:     else:
     } else {
         // 61:         return
         return;

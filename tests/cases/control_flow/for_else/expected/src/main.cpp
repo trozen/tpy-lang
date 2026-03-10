@@ -20,6 +20,7 @@ void search_break(std::vector<int32_t>& items, int32_t target) {
             goto __after_else_0;
         }
     }
+    // 9:     else:
     {
         // 10:         print("not found")
         std::cout << "not found" << "\n";
@@ -34,6 +35,7 @@ void no_break() {
         // 14:         print(i)
         std::cout << i << "\n";
     }
+    // 15:     else:
     {
         // 16:         print("complete")
         std::cout << "complete" << "\n";
@@ -59,6 +61,7 @@ void with_continue() {
         // 23:         print(x)
         std::cout << x << "\n";
     }
+    // 24:     else:
     {
         // 25:         print("done")
         std::cout << "done" << "\n";
@@ -78,6 +81,7 @@ void nested_inner_else() {
                 goto __after_else_1;
             }
         }
+        // 32:         else:
         {
             // 33:             print("inner complete")
             std::cout << "inner complete" << "\n";
@@ -103,6 +107,7 @@ void nested_outer_else() {
         // 42:         print(i)
         std::cout << i << "\n";
     }
+    // 43:     else:
     {
         // 44:         print("outer complete")
         std::cout << "outer complete" << "\n";
@@ -122,6 +127,7 @@ void nested_both_else() {
                 goto __after_else_2;
             }
         }
+        // 52:         else:
         {
             // 53:             print("inner complete")
             std::cout << "inner complete" << "\n";
@@ -130,6 +136,7 @@ void nested_both_else() {
         // 54:         print(i)
         std::cout << i << "\n";
     }
+    // 55:     else:
     {
         // 56:         print("outer complete")
         std::cout << "outer complete" << "\n";
@@ -150,6 +157,7 @@ void empty_iterable() {
         // 62:         break
         goto __after_else_0;
     }
+    // 63:     else:
     {
         // 64:         print("empty else")
         std::cout << "empty else" << "\n";
@@ -173,6 +181,7 @@ void var_decl_in_else() {
             goto __after_else_0;
         }
     }
+    // 72:     else:
     {
         // 73:         msg: str = "all checked"
         std::string msg = "all checked";

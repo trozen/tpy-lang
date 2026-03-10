@@ -10,6 +10,7 @@ void check_truthy(std::optional<std::string_view> s) {
     if (tpy::is_truthy(s)) {
         // 6:         print(s)
         std::cout << tpy::print_optional_val(s) << "\n";
+    // 7:     else:
     } else {
         // 8:         print("falsy")
         std::cout << "falsy" << "\n";
@@ -22,6 +23,7 @@ void check_none(std::optional<std::string_view> s) {
     if ((s.has_value())) {
         // 12:         print(s)
         std::cout << tpy::print_optional_val(s) << "\n";
+    // 13:     else:
     } else {
         // 14:         print("none")
         std::cout << "none" << "\n";

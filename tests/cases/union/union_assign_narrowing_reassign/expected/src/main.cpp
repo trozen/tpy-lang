@@ -11,6 +11,7 @@ void check(std::variant<Circle, Rect>& s) {
         auto& __s = std::get<Circle>(s);
         // 18:         print(s.radius)
         std::cout << tpy::print_float(__s.radius) << "\n";
+    // 19:     else:
     } else {
         auto& __s = std::get<Rect>(s);
         // 20:         print(s.width)

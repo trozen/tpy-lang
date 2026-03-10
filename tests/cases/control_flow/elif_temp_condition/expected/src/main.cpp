@@ -21,6 +21,7 @@ int32_t test(int32_t x) {
         if (has_items(__tmp_2)) {
             // 12:         return 0
             return 0;
+        // 13:     else:
         } else {
             // 14:         return 1
             return 1;

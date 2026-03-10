@@ -13,6 +13,7 @@ std::tuple<int32_t, std::string> make_pair(int32_t i) {
     } else if ((i == 1)) {
         // 8:         return (Int32(20), "twenty")
         return std::tuple<int32_t, std::string>{20, "twenty"};
+    // 9:     else:
     } else {
         // 10:         return (Int32(30), "thirty")
         return std::tuple<int32_t, std::string>{30, "thirty"};

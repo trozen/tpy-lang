@@ -106,6 +106,7 @@ void __tpy_init() {
     if ((std::find((*global_list).begin(), (*global_list).end(), 2) != (*global_list).end())) {
         // 28:     print(1)
         std::cout << 1 << "\n";
+    // 29: else:
     } else {
         // 30:     print(0)
         std::cout << 0 << "\n";
@@ -114,6 +115,7 @@ void __tpy_init() {
     if ((std::find((*global_list).begin(), (*global_list).end(), 5) != (*global_list).end())) {
         // 32:     print(1)
         std::cout << 1 << "\n";
+    // 33: else:
     } else {
         // 34:     print(0)
         std::cout << 0 << "\n";

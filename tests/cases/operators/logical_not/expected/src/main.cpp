@@ -16,6 +16,7 @@ void test_not_with_bool_literals() {
     if ((!(a))) {
         // 12:         print("not True: yes")
         std::cout << "not True: yes" << "\n";
+    // 13:     else:
     } else {
         // 14:         print("not True: no")
         std::cout << "not True: no" << "\n";
@@ -24,6 +25,7 @@ void test_not_with_bool_literals() {
     if ((!(b))) {
         // 17:         print("not False: yes")
         std::cout << "not False: yes" << "\n";
+    // 18:     else:
     } else {
         // 19:         print("not False: no")
         std::cout << "not False: no" << "\n";
@@ -65,6 +67,7 @@ void test_not_in_conditions() {
     if (((!(a)) && b)) {
         // 43:         print("not True and False: yes")
         std::cout << "not True and False: yes" << "\n";
+    // 44:     else:
     } else {
         // 45:         print("not True and False: no")
         std::cout << "not True and False: no" << "\n";
@@ -85,6 +88,7 @@ void test_not_in_conditions() {
     if ((!((a || b)))) {
         // 56:         print("not (True or False): yes")
         std::cout << "not (True or False): yes" << "\n";
+    // 57:     else:
     } else {
         // 58:         print("not (True or False): no")
         std::cout << "not (True or False): no" << "\n";
@@ -104,6 +108,7 @@ void test_double_negation() {
     if ((!((!(false))))) {
         // 68:         print("not not False: yes")
         std::cout << "not not False: yes" << "\n";
+    // 69:     else:
     } else {
         // 70:         print("not not False: no")
         std::cout << "not not False: no" << "\n";
@@ -127,6 +132,7 @@ void test_not_with_function_call() {
     if ((!(is_valid(5)))) {
         // 82:         print("not is_valid(5): yes")
         std::cout << "not is_valid(5): yes" << "\n";
+    // 83:     else:
     } else {
         // 84:         print("not is_valid(5): no")
         std::cout << "not is_valid(5): no" << "\n";

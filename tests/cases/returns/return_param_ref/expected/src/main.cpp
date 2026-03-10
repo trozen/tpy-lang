@@ -61,6 +61,7 @@ Point& both_branches(std::vector<Point>& points, bool flag) {
     if (flag) {
         // 38:         result = points[1]
         result = &(tpy::__getitem__(points, 1));
+    // 39:     else:
     } else {
         // 40:         result = points[2]
         result = &(tpy::__getitem__(points, 2));

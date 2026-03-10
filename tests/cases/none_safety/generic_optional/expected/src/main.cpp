@@ -22,6 +22,7 @@ void main() {
     if ((v != nullptr)) {
         // 26:         print("got:", v)
         std::cout << "got:" << " " << tpy::print_optional(v) << "\n";
+    // 27:     else:
     } else {
         // 28:         print("got: None")
         std::cout << "got: None" << "\n";
@@ -34,6 +35,7 @@ void main() {
     if ((v2 != nullptr)) {
         // 33:         print("after set:", v2)
         std::cout << "after set:" << " " << tpy::print_optional(v2) << "\n";
+    // 34:     else:
     } else {
         // 35:         print("after set: None")
         std::cout << "after set: None" << "\n";

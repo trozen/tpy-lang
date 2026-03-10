@@ -10,6 +10,7 @@ int32_t use_else(std::optional<int32_t> x) {
     if ((!(tpy::is_truthy(x)))) {
         // 6:         return 0
         return 0;
+    // 7:     else:
     } else {
         // 8:         return x + 1  # tpyc: ok
         return (tpy::add_check<int32_t>((*x), 1));

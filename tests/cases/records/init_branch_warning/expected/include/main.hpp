@@ -23,6 +23,7 @@ struct Config {
         if (flag) {
             // 8:             self.value = 10  # tpyc: warning(/bypasses the C\+\+ member initializer list/)
             this->value = 10;
+        // 9:         else:
         } else {
             // 10:             self.value = 20  # tpyc: warning(/bypasses the C\+\+ member initializer list/)
             this->value = 20;

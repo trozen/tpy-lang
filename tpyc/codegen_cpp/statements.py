@@ -1398,6 +1398,7 @@ class StatementGenerator:
         # Final else branch (from the last node in the chain)
         last = chain[-1]
         if last.else_body:
+            self.ctx.emit_else_comment(out, last.else_body, indent)
             out.write(f"{indent}}} else {{\n")
             # Skip else_type_facts extraction when the else body is an elif
             # that will do its own isinstance checks against the original variant.
@@ -1524,6 +1525,7 @@ class StatementGenerator:
         self.ctx.loop_else_labels.pop()
 
         if has_else:
+            self.ctx.emit_else_comment(out, stmt.orelse, indent)
             out.write(f"{indent}{{\n")
             self.ctx.indent_level += 1
             for s in stmt.orelse:
@@ -1884,6 +1886,7 @@ class StatementGenerator:
         self.ctx.loop_else_labels.pop()
 
         if has_else:
+            self.ctx.emit_else_comment(out, stmt.orelse, indent)
             out.write(f"{indent}{{\n")
             self.ctx.indent_level += 1
             for s in stmt.orelse:

@@ -14,6 +14,7 @@ Handle test(bool cond) {
     if (cond) {
         // 14:         return h  # tpyc: ok
         return h;
+    // 15:     else:
     } else {
         // 16:         print(h.fd)
         std::cout << h.fd << "\n";

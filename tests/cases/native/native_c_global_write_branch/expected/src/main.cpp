@@ -11,6 +11,7 @@ void update_same_name(int32_t a, int32_t b) {
     if ((a < b)) {
         // 13:         opentop = a
         opentop = a;
+    // 14:     else:
     } else {
         // 15:         opentop = b
         opentop = b;
@@ -24,6 +25,7 @@ void update_renamed(int32_t a, int32_t b) {
     if ((a < b)) {
         // 20:         counter = a
         g_counter = a;
+    // 21:     else:
     } else {
         // 22:         counter = b
         g_counter = b;

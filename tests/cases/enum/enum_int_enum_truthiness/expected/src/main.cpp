@@ -53,6 +53,7 @@ void main() {
     if ((static_cast<int32_t>(Status::Off) != 0)) {
         // 12:         print("off is truthy")
         std::cout << "off is truthy" << "\n";
+    // 13:     else:
     } else {
         // 14:         print("off is falsy")
         std::cout << "off is falsy" << "\n";
@@ -62,6 +63,7 @@ void main() {
     if ((static_cast<int32_t>(Status::On) != 0)) {
         // 18:         print("on is truthy")
         std::cout << "on is truthy" << "\n";
+    // 19:     else:
     } else {
         // 20:         print("on is falsy")
         std::cout << "on is falsy" << "\n";

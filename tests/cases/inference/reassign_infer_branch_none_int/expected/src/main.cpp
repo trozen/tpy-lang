@@ -11,6 +11,7 @@ void pick(bool cond) {
     if (cond) {
         // 3:         x = None
         x = std::nullopt;
+    // 4:     else:
     } else {
         // 5:         x = 5
         x = 5;
@@ -19,6 +20,7 @@ void pick(bool cond) {
     if ((!x.has_value())) {
         // 8:         print(0)
         std::cout << 0 << "\n";
+    // 9:     else:
     } else {
         // 10:         print(x)
         std::cout << tpy::print_optional_val(x) << "\n";

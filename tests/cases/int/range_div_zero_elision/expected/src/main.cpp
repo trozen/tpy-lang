@@ -104,6 +104,7 @@ void test_else_of_eq_zero() {
     if ((b == 0)) {
         // 59:         print("zero")
         std::cout << "zero" << "\n";
+    // 60:     else:
     } else {
         // 61:         x = a // b  # tpyc: div_safe(b)
         int32_t x = (tpy::div_floor<int32_t>(a, b));

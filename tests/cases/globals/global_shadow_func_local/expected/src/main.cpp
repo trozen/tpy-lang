@@ -16,6 +16,7 @@ void foo(bool cond) {
     if (cond) {
         // 13:         p = Point(1, 2)
         p = &*(__slot_1 = Point(1, 2));
+    // 14:     else:
     } else {
         // 15:         p = Point(3, 4)
         p = &*(__slot_1 = Point(3, 4));

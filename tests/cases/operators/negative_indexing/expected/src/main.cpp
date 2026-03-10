@@ -85,6 +85,7 @@ void test_negative_index_in_expression() {
     if ((tpy::__getitem__(nums, -1) > tpy::__getitem__(nums, -2))) {
         // 63:         print("last > second_last")
         std::cout << "last > second_last" << "\n";
+    // 64:     else:
     } else {
         // 65:         print("last <= second_last")
         std::cout << "last <= second_last" << "\n";

@@ -28,6 +28,7 @@ void log(std::string_view msg, bool verbose) {
     if (verbose) {
         // 15:         print(f"[V] {msg}")
         std::cout << std::format("[V] {}", msg) << "\n";
+    // 16:     else:
     } else {
         // 17:         print(msg)
         std::cout << msg << "\n";

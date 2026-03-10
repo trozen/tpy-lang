@@ -14,6 +14,7 @@ void describe(Point* p) {
         std::cout << p->x << "\n";
         // 22:         print(p.y)
         std::cout << p->y << "\n";
+    // 23:     else:
     } else {
         // 24:         print("empty")
         std::cout << "empty" << "\n";

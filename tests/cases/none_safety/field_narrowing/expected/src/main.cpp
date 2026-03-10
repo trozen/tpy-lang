@@ -12,6 +12,7 @@ void show_port(Config& cfg) {
         tpy::BigInt p = (*cfg.port);
         // 12:         print(p)
         std::cout << p << "\n";
+    // 13:     else:
     } else {
         // 14:         print("no port")
         std::cout << "no port" << "\n";

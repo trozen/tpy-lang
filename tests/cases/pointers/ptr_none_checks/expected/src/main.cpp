@@ -49,6 +49,7 @@ void __tpy_init() {
     if ((p != nullptr)) {
         // 25:     print(p.__deref__())
         std::cout << tpy::deref_check(p) << "\n";
+    // 26: else:
     } else {
         // 27:     print(Int32(0))
         std::cout << 0 << "\n";

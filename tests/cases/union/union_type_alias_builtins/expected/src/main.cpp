@@ -11,6 +11,7 @@ void show_num(const Num& x) {
         const auto& __x = std::get<bool>(x);
         // 10:         print("bool")
         std::cout << "bool" << "\n";
+    // 11:     else:
     } else {
         const auto& __x = std::get<tpy::BigInt>(x);
         // 12:         print("int")

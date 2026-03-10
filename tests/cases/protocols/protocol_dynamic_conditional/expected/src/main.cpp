@@ -14,6 +14,7 @@ void branch_init(bool cond) {
         // 24:         pet: Pet = Dog()
         __slot_1.emplace(Dog());
         pet = &*__slot_1;
+    // 25:     else:
     } else {
         // 26:         pet = Cat()
         __slot_2.emplace(Cat());
@@ -53,6 +54,7 @@ void nested_branches(bool a, bool b) {
             // 39:             pet = Cat()
             __slot_2.emplace(Cat());
             pet = &*__slot_2;
+        // 40:         else:
         } else {
             // 41:             pet = Parrot()
             __slot_3.emplace(Parrot());
@@ -99,6 +101,7 @@ void branch_in_loop(int32_t n) {
             // 57:             pet = Cat()
             __slot_2.emplace(Cat());
             pet = &*__slot_2;
+        // 58:         else:
         } else {
             // 59:             pet = Parrot()
             __slot_3.emplace(Parrot());

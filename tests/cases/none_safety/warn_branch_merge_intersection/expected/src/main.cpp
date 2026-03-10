@@ -10,6 +10,7 @@ int32_t pick(bool flag, std::optional<int32_t> a, std::optional<int32_t> b) {
     if (flag) {
         // 6:         assert a is not None
         if (!((a.has_value()))) tpy::tpy_panic("assertion failed");
+    // 7:     else:
     } else {
         // 8:         assert b is not None
         if (!((b.has_value()))) tpy::tpy_panic("assertion failed");

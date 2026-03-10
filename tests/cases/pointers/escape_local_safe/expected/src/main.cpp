@@ -243,6 +243,7 @@ void if_else_rvalue_rebinds() {
     if ((p->x > 0)) {
         // 114:         p = Point(2, 2)
         p = &*(__slot_2 = Point(2, 2));
+    // 115:     else:
     } else {
         // 116:         p = Point(3, 3)
         p = &*(__slot_2 = Point(3, 3));

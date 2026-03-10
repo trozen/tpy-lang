@@ -36,6 +36,7 @@ int32_t total(T_items& items) {
         }
         // 13:         return result
         return result;
+    // 14:     else:
     } else {
         // 15:         result2: Int32 = 0
         int32_t result2 = 0;

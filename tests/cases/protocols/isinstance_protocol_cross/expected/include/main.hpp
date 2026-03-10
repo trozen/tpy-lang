@@ -18,6 +18,7 @@ void cross_protocol(const T_items& items) {
     if constexpr (tpy::Hashable<T_items>) {
         // 7:         print("hashable sequence of", len(items))
         std::cout << "hashable sequence of" << " " << tpy::__len__(items) << "\n";
+    // 8:     else:
     } else {
         // 9:         print("non-hashable sequence of", len(items))
         std::cout << "non-hashable sequence of" << " " << tpy::__len__(items) << "\n";
