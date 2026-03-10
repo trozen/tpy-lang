@@ -16,6 +16,7 @@ int32_t test(int32_t x) {
     if ((x < 0)) {
         // 10:         return -1
         return -1;
+    // 11:     elif has_items([10, 20]):
     } else {
         std::vector<int32_t> __tmp_2 = {10, 20};
         if (has_items(__tmp_2)) {

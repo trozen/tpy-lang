@@ -11,6 +11,7 @@ std::string describe(std::variant<Bird, Cat, Dog>& a) {
         auto& __a = std::get<Dog>(a);
         // 19:         return "dog: " + a.name
         return (tpy::str_concat("dog: ", __a.name));
+    // 20:     elif isinstance(a, Cat):
     } else if (std::holds_alternative<Cat>(a)) {
         auto& __a = std::get<Cat>(a);
         // 21:         return "cat: " + a.name

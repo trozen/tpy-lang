@@ -14,6 +14,7 @@ Handle test(int32_t n) {
     if ((n == 1)) {
         // 14:         return h     # tpyc: ok
         return h;
+    // 15:     elif n == 2:
     } else if ((n == 2)) {
         // 16:         print(h.fd)
         std::cout << h.fd << "\n";

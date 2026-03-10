@@ -11,6 +11,7 @@ int32_t classify(int32_t x) {
     if ((x < 0)) {
         // 6:         return -1
         return -1;
+    // 7:     elif x == 0:
     } else if ((x == 0)) {
         // 8:         return 0
         return 0;
@@ -52,6 +53,7 @@ int32_t complex_condition(int32_t a, int32_t b) {
     if (((a > 0) && (b > 0))) {
         // 27:         return 1
         return 1;
+    // 28:     elif a < 0 or b < 0:
     } else if (((a < 0) || (b < 0))) {
         // 29:         return -1
         return -1;

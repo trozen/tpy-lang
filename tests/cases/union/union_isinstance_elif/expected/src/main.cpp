@@ -11,6 +11,7 @@ double area(std::variant<Circle, Rect, Triangle>& s) {
         auto& __s = std::get<Circle>(s);
         // 23:         return 3.14159 * s.radius * s.radius
         return ((((3.14159) * (__s.radius))) * (__s.radius));
+    // 24:     elif isinstance(s, Rect):
     } else if (std::holds_alternative<Rect>(s)) {
         auto& __s = std::get<Rect>(s);
         // 25:         return s.width * s.height

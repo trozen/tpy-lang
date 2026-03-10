@@ -15,6 +15,7 @@ void describe(std::variant<Circle, Rect, Triangle>& s) {
             auto& __s = std::get<Circle>(s);
             // 28:             print(s.radius)
             std::cout << tpy::print_float(__s.radius) << "\n";
+        // 29:         elif isinstance(s, Rect):
         } else if (std::holds_alternative<Rect>(s)) {
             auto& __s = std::get<Rect>(s);
             // 30:             print(s.width)

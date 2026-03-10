@@ -59,6 +59,7 @@ tpy::BigInt process(const T_items* items) {
         if constexpr (tpy::Sequence<T_items, tpy::BigInt>) {
             // 8:             return items[0]
             return (*items)[0];
+        // 9:         elif isinstance(items, Sized):
         } else if constexpr (tpy::Sized<T_items>) {
             // 10:             return len(items)
             return tpy::BigInt(tpy::__len__((*items)));
@@ -77,6 +78,7 @@ tpy::BigInt with_else(const T_items* items) {
         if constexpr (tpy::Sequence<T_items, tpy::BigInt>) {
             // 16:             return items[0]
             return (*items)[0];
+        // 17:         elif isinstance(items, Sized):
         } else if constexpr (tpy::Sized<T_items>) {
             // 18:             return len(items)
             return tpy::BigInt(tpy::__len__((*items)));

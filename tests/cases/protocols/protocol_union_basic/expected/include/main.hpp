@@ -23,6 +23,7 @@ void describe(const T_items& items) {
     if constexpr (tpy::Sequence<T_items, tpy::BigInt>) {
         // 7:         print(items[0])
         std::cout << items[0] << "\n";
+    // 8:     elif isinstance(items, Sized):
     } else if constexpr (tpy::Sized<T_items>) {
         // 9:         print(len(items))
         std::cout << tpy::__len__(items) << "\n";
@@ -36,6 +37,7 @@ tpy::BigInt get_value(const T_items& items) {
     if constexpr (tpy::Sequence<T_items, tpy::BigInt>) {
         // 13:         return items[0]
         return items[0];
+    // 14:     elif isinstance(items, Sized):
     } else if constexpr (tpy::Sized<T_items>) {
         // 15:         return len(items)
         return tpy::BigInt(tpy::__len__(items));

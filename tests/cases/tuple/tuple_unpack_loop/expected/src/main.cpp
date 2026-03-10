@@ -10,6 +10,7 @@ std::tuple<int32_t, std::string> make_pair(int32_t i) {
     if ((i == 0)) {
         // 6:         return (Int32(10), "ten")
         return std::tuple<int32_t, std::string>{10, "ten"};
+    // 7:     elif i == 1:
     } else if ((i == 1)) {
         // 8:         return (Int32(20), "twenty")
         return std::tuple<int32_t, std::string>{20, "twenty"};

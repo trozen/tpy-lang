@@ -41,6 +41,7 @@ struct Processor {
         if constexpr (Measurable<T_items>) {
             // 20:             self.count = items.measure()
             this->count = items.measure();
+        // 21:         elif isinstance(items, Walkable):
         } else if constexpr (Walkable<T_items>) {
             // 22:             self.count = items.walk()
             this->count = items.walk();

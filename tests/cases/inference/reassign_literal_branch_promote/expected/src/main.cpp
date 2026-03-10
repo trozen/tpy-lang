@@ -51,12 +51,14 @@ void test_elif_chain() {
     // 24:     if c == '>':
     if ((c == ">")) {
         // 25:         pass
+    // 26:     elif c == '[':
     } else if ((c == "[")) {
         // 27:         if True:
         if (true) {
             // 28:             x = get_big()
             x = get_big();
         }
+    // 29:     elif c == ']':
     } else if ((c == "]")) {
         // 30:         if True:
         if (true) {

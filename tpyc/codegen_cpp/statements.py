@@ -1344,6 +1344,9 @@ class StatementGenerator:
             # so the constexpr check alone is sufficient and avoids a redundant branch.
             constexpr_guards = self._get_nullproto_constexpr_guards(node.condition)
 
+            if i > 0:
+                self.ctx.emit_source_comment(out, node.loc, indent)
+
             if constexpr_guards:
                 # Replace the runtime condition with if constexpr
                 guard_conds = " && ".join(

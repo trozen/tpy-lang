@@ -52,9 +52,11 @@ std::string color_name(Color c) {
     if ((c == Color::Red)) {
         // 11:         return "red"
         return "red";
+    // 12:     elif c == Color.Green:
     } else if ((c == Color::Green)) {
         // 13:         return "green"
         return "green";
+    // 14:     elif c == Color.Blue:
     } else if ((c == Color::Blue)) {
         // 15:         return "blue"
         return "blue";
