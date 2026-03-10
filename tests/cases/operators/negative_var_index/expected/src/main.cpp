@@ -19,7 +19,7 @@ void main() {
     // 11:     print(nums[j])
     std::cout << tpy::__getitem__(nums, j) << "\n";
     // 13:     s: str = "hello"
-    std::string s = "hello";
+    std::string_view s = "hello";
     // 14:     k: Int32 = -3
     int32_t k = -3;
     // 15:     print(s[k])

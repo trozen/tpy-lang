@@ -8,11 +8,11 @@ namespace tpy_user::main {
 // 5: def test_equality() -> None:
 void test_equality() {
     // 7:     a: str = "hello"
-    std::string a = "hello";
+    std::string_view a = "hello";
     // 8:     b: str = "hello"
-    std::string b = "hello";
+    std::string_view b = "hello";
     // 9:     c: str = "world"
-    std::string c = "world";
+    std::string_view c = "world";
     // 11:     # Equal strings
     // 12:     if a == b:
     if ((a == b)) {
@@ -57,11 +57,11 @@ void test_equality() {
 // 34: def test_ordering() -> None:
 void test_ordering() {
     // 36:     a: str = "apple"
-    std::string a = "apple";
+    std::string_view a = "apple";
     // 37:     b: str = "banana"
-    std::string b = "banana";
+    std::string_view b = "banana";
     // 38:     c: str = "apple"
-    std::string c = "apple";
+    std::string_view c = "apple";
     // 40:     # Less than
     // 41:     if a < b:
     if ((a < b)) {
@@ -105,11 +105,11 @@ void test_ordering() {
 // 64: def test_empty_strings() -> None:
 void test_empty_strings() {
     // 66:     empty: str = ""
-    std::string empty = "";
+    std::string_view empty = "";
     // 67:     nonempty: str = "x"
-    std::string nonempty = "x";
+    std::string_view nonempty = "x";
     // 68:     empty2: str = ""
-    std::string empty2 = "";
+    std::string_view empty2 = "";
     // 70:     if empty == empty2:
     if ((empty == empty2)) {
         // 71:         print("empty == empty: yes")
@@ -154,7 +154,7 @@ void test_comparison_in_function() {
 // 93: def test_comparison_with_literals() -> None:
 void test_comparison_with_literals() {
     // 95:     name: str = "Alice"
-    std::string name = "Alice";
+    std::string_view name = "Alice";
     // 97:     if name == "Alice":
     if ((name == "Alice")) {
         // 98:         print("name is Alice")

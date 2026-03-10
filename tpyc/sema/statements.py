@@ -1255,6 +1255,8 @@ class StatementAnalyzer:
                 stmt.name, var_type, stmt.init, init_type,
                 line=(stmt.loc.line if stmt.loc else None),
             )
+            if isinstance(var_type, PendingStrType):
+                stmt.type = var_type
 
         if is_global_declared:
             # Update global scope type; bind in current scope for local reads

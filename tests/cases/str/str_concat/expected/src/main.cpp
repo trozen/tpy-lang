@@ -7,9 +7,9 @@ namespace tpy_user::main {
 // 4: def test_str_concat() -> None:
 void test_str_concat() {
     // 5:     a: str = "hello"
-    std::string a = "hello";
+    std::string_view a = "hello";
     // 6:     b: str = " world"
-    std::string b = " world";
+    std::string_view b = " world";
     // 7:     c: String = a + b
     std::string c = (tpy::str_concat(a, b));
     // 8:     print(c)  # hello world

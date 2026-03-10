@@ -184,7 +184,7 @@ void var_decl_in_else() {
     // 72:     else:
     {
         // 73:         msg: str = "all checked"
-        std::string msg = "all checked";
+        std::string_view msg = "all checked";
         // 74:         print(msg)
         std::cout << msg << "\n";
     }

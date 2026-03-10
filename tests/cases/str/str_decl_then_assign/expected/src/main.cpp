@@ -23,7 +23,7 @@ void main() {
     std::cout << x << "\n";
     // 12:     # View-compatible source -> resolves to std::string_view
     // 13:     y: str
-    std::string y;
+    std::string_view y;
     // 14:     y = "hello"
     y = "hello";
     // 15:     print(y)

@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- `str` locals assigned from literals: consider emitting `std::string_view` instead of `std::string` when explicitly annotated as `str` but never mutated (deduced locals already get `string_view`)
 - Warn on wasteful field reassignment in `__init__`: when a field is initialized unconditionally (member initializer list) and then reassigned inside control flow, warn that this constructs then discards the initial value. Relevant for heavy types like BigInt. Users can avoid this with a `@staticmethod` helper or (once supported) ternary isinstance.
 - Union return copies non-value members: `f() -> A | B` returns `std::variant<A, B>` by value, copying record members. Python returns by reference. `std::variant<A&, B&>` is not valid C++. Params are fine (`&` for non-value unions). See `docs/UNION_TYPES_DESIGN.md` Known Semantic Gaps.
 - flow-sensitive None narrowing: broaden current narrowing coverage where needed (e.g. more complex expression forms)

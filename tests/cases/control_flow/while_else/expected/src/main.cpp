@@ -137,7 +137,7 @@ void var_decl_in_else() {
     // 61:     else:
     {
         // 62:         msg: str = "completed"
-        std::string msg = "completed";
+        std::string_view msg = "completed";
         // 63:         print(msg)
         std::cout << msg << "\n";
     }

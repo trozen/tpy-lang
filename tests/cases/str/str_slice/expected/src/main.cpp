@@ -8,7 +8,7 @@ namespace tpy_user::main {
 // 4: def test_basic() -> None:
 void test_basic() {
     // 5:     s: str = "hello world"
-    std::string s = "hello world";
+    std::string_view s = "hello world";
     // 6:     print(s[0:5])
     std::cout << tpy::str_slice(s, 0, 5) << "\n";
     // 7:     print(s[6:11])
@@ -24,7 +24,7 @@ void test_basic() {
 // 13: def test_negative() -> None:
 void test_negative() {
     // 14:     s: str = "abcdef"
-    std::string s = "abcdef";
+    std::string_view s = "abcdef";
     // 15:     print(s[-3:])
     std::cout << tpy::str_slice(s, -3, INT32_MAX) << "\n";
     // 16:     print(s[:-2])
@@ -38,7 +38,7 @@ void test_negative() {
 // 21: def test_clamping() -> None:
 void test_clamping() {
     // 22:     s: str = "hello"
-    std::string s = "hello";
+    std::string_view s = "hello";
     // 23:     print(s[0:100])
     std::cout << tpy::str_slice(s, 0, 100) << "\n";
     // 24:     print(s[-100:3])
@@ -52,7 +52,7 @@ void test_clamping() {
 // 29: def test_empty() -> None:
 void test_empty() {
     // 30:     s: str = "hello"
-    std::string s = "hello";
+    std::string_view s = "hello";
     // 31:     print(len(s[3:1]))
     std::cout << tpy::__len__(tpy::str_slice(s, 3, 1)) << "\n";
     // 32:     print(len(s[5:5]))
@@ -72,7 +72,7 @@ void test_param(std::string_view s) {
 // 41: def test_local_type() -> None:
 void test_local_type() {
     // 42:     s: str = "abcdef"
-    std::string s = "abcdef";
+    std::string_view s = "abcdef";
     // 43:     r = s[1:3]  # tpyc: type(StrView)
     std::string_view r = tpy::str_slice(s, 1, 3);
     // 44:     print(r)
@@ -82,7 +82,7 @@ void test_local_type() {
 // 47: def test_single_char() -> None:
 void test_single_char() {
     // 48:     s: str = "hello"
-    std::string s = "hello";
+    std::string_view s = "hello";
     // 49:     print(s[0:1])
     std::cout << tpy::str_slice(s, 0, 1) << "\n";
     // 50:     print(s[-1:])

@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // 5: def test_basic() -> None:
 void test_basic() {
     // 6:     name: str = "world"
-    std::string name = "world";
+    std::string_view name = "world";
     // 7:     print(f"hello {name}")
     std::cout << std::format("hello {}", name) << "\n";
     // 8:     print(f"")
@@ -25,7 +25,7 @@ void test_types() {
     // 15:     flag: bool = True
     bool flag = true;
     // 16:     ch: str = "A"
-    std::string ch = "A";
+    std::string_view ch = "A";
     // 17:     print(f"int={x}")
     std::cout << std::format("int={}", (x).to_string()) << "\n";
     // 18:     print(f"float={pi}")
@@ -81,7 +81,7 @@ void test_braces() {
 // 48: def test_multiple() -> None:
 void test_multiple() {
     // 49:     a: str = "hello"
-    std::string a = "hello";
+    std::string_view a = "hello";
     // 50:     b: int = 42
     tpy::BigInt b = tpy::BigInt(42);
     // 51:     c: bool = False

@@ -28,7 +28,7 @@ void test_char_literals() {
 // 17: def test_char_from_string_index() -> None:
 void test_char_from_string_index() {
     // 19:     text: str = "Hello"
-    std::string text = "Hello";
+    std::string_view text = "Hello";
     // 21:     c0: Char = text[0]
     char c0 = tpy::__getitem__(text, 0);
     // 22:     c1: Char = text[1]
@@ -98,7 +98,7 @@ void test_char_comparison() {
 // 61: def test_char_in_string() -> None:
 void test_char_in_string() {
     // 63:     text: str = "hello world"
-    std::string text = "hello world";
+    std::string_view text = "hello world";
     // 64:     target: Char = "o"
     char target = 'o';
     // 65:     missing: Char = "z"
@@ -205,7 +205,7 @@ void test_char_function_param() {
 // 114: def test_char_iteration() -> None:
 void test_char_iteration() {
     // 116:     text: str = "abc"
-    std::string text = "abc";
+    std::string_view text = "abc";
     // 117:     for c in text:
     auto& __obj_0 = text;
     auto __beg_0 = __obj_0.begin();
@@ -262,7 +262,7 @@ void accepts_str(std::string_view s) {
 void test_char_to_str_coercion() {
     // 166:     # Assign single-char literal to str variable
     // 167:     s1: str = "x"
-    std::string s1 = "x";
+    std::string_view s1 = "x";
     // 168:     print(s1)
     std::cout << s1 << "\n";
     // 170:     # Pass single-char literal to str parameter
@@ -270,9 +270,9 @@ void test_char_to_str_coercion() {
     accepts_str("w");
     // 173:     # Multiple single-char str variables
     // 174:     a: str = "a"
-    std::string a = "a";
+    std::string_view a = "a";
     // 175:     b: str = "b"
-    std::string b = "b";
+    std::string_view b = "b";
     // 176:     if a < b:
     if ((a < b)) {
         // 177:         print("a < b")

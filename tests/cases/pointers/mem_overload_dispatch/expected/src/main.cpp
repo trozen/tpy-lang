@@ -27,7 +27,7 @@ void test_list_overload() {
 // 14: def test_str_overload() -> None:
 void test_str_overload() {
     // 15:     s: str = "abc"
-    std::string s = "abc";
+    std::string_view s = "abc";
     // 16:     cp: ReadOnlyPtr[Char] = unsafe_ptr(s)
     const char* cp = s.data();
     // 17:     print(unsafe_load(cp, UInt32(0)))

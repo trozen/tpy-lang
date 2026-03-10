@@ -95,7 +95,7 @@ void test_span_membership() {
 // 54: def test_string_membership() -> None:
 void test_string_membership() {
     // 56:     text: str = "hello world"
-    std::string text = "hello world";
+    std::string_view text = "hello world";
     // 58:     # Single character 'in' string
     // 59:     if "o" in text:
     if ((text.find("o") != std::string::npos)) {

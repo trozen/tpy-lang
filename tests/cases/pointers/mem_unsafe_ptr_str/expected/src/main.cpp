@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // 4: def test_str_ptr() -> None:
 void test_str_ptr() {
     // 5:     s: str = "hello"
-    std::string s = "hello";
+    std::string_view s = "hello";
     // 6:     cp: ReadOnlyPtr[Char] = unsafe_ptr(s)
     const char* cp = s.data();
     // 7:     print(unsafe_load(cp, UInt32(0)))

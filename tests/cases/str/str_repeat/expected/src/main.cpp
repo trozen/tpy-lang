@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // 4: def main() -> None:
 void main() {
     // 5:     s: str = "abc"
-    std::string s = "abc";
+    std::string_view s = "abc";
     // 6:     n: Int32 = 3
     int32_t n = 3;
     // 8:     # Basic repetition

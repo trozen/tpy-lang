@@ -79,7 +79,7 @@ void test_manual_iter() {
     std::cout << total << "\n";
     // 72:     # str.__iter__()
     // 73:     chars: str = "hi"
-    std::string chars = "hi";
+    std::string_view chars = "hi";
     // 74:     char_it = chars.__iter__()
     auto char_it = tpy::__iter__(chars);
     // 75:     for c in char_it:
