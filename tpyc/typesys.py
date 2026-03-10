@@ -2002,6 +2002,46 @@ class SetLiteralInfo:
 
 
 @dataclass(frozen=True)
+class PendingGenericInstanceType(TpyType):
+    """Unresolved generic record instance -- type params inferred from usage.
+
+    Created when a generic record is constructed without explicit type args
+    and without enough context to infer them. Resolved eagerly once all
+    type params are constrained by subsequent method calls.
+    """
+    record_name: str
+    instance_id: int
+
+    def to_cpp(self) -> str:
+        raise RuntimeError(
+            f"PendingGenericInstanceType should be resolved before codegen "
+            f"(record={self.record_name}, instance_id={self.instance_id})"
+        )
+
+    def __str__(self) -> str:
+        return f"{self.record_name}[?]"
+
+    def qualified_name(self) -> Optional[str]:
+        return None
+
+    def is_value_type(self) -> bool:
+        return False
+
+
+@dataclass
+class PendingGenericInstanceInfo:
+    """Tracks a deferred generic instance for type parameter inference."""
+    instance_id: int
+    variable_name: str
+    record_info: 'RecordInfo'
+    record_name: str
+    type_params: list[str]
+    inferred: dict[str, 'TpyType']
+    expr: 'TpyCall'
+    decl_line: Optional[int] = None
+
+
+@dataclass(frozen=True)
 class PendingStrType(TpyType):
     """Unresolved string local -- becomes StrView or str based on usage.
 

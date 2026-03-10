@@ -14,7 +14,7 @@ from ..typesys import (
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
     NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
     is_protocol_type, unwrap_readonly, unwrap_optional_own, local_var_is_movable,
-    is_any_str_type, get_covariant_params,
+    is_any_str_type, get_covariant_params, PendingGenericInstanceType,
 )
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
@@ -62,6 +62,14 @@ class TypeCompatibility:
         """
         if actual == expected:
             return None
+
+        # Pending generic instance: can't be used where a concrete type is expected
+        if isinstance(actual, PendingGenericInstanceType):
+            raise SemanticError(
+                f"Type mismatch in {context}: '{actual.record_name}' has unresolved type "
+                f"arguments; call a constraining method first or add explicit type arguments",
+                loc,
+            )
 
         # readonly[T] -> readonly[T]: unwrap and check inner types
         # T -> readonly[T]: always OK (adding const is safe)

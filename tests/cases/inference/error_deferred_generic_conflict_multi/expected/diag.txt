@@ -1,0 +1,1 @@
+main.py:21: error: Conflicting type inference for 'T' in 'Pair': previously inferred as 'Int32', but 'set_a' argument 'val' implies 'Int64'

@@ -13,6 +13,7 @@ from ..typesys import (
     ListType, DictType, ArrayType, SpanType, PendingListType, PendingDictType, PendingSetType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
     ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, StrVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType, UnknownElementType,
     EnumType, unwrap_readonly, is_any_str_type, TupleType,
+    PendingGenericInstanceType,
     INT32, VOID, BIGINT, STRVIEW, is_protocol_type, is_protocol_union,
 )
 from ..parse import (
@@ -1126,6 +1127,14 @@ class StatementAnalyzer:
                         info.has_explicit_annotation = True
                         info.explicit_type = stmt.type
 
+            # Track pending generic instance to variable mapping
+            if isinstance(init_type, PendingGenericInstanceType):
+                self.ctx.variable_to_generic_instance[stmt.name] = init_type.instance_id
+                info = self.ctx.pending_generic_instances.get(init_type.instance_id)
+                if info is not None:
+                    info.variable_name = stmt.name
+                    info.decl_line = stmt.loc.line if stmt.loc else None
+
             if stmt.type:
                 if existing_type is not None:
                     self.deduction.check_conflicting_annotation(
@@ -1161,6 +1170,13 @@ class StatementAnalyzer:
                 # coercion -- this is a binding, not passing by reference.
                 inner_existing = unwrap_readonly(existing_type)
                 inner_init = unwrap_readonly(init_type)
+                # PendingGenericInstanceType: reject reassignment while pending
+                if isinstance(inner_existing, PendingGenericInstanceType):
+                    raise self.ctx.error(
+                        f"Cannot reassign '{stmt.name}' while its generic type is still "
+                        f"being inferred; add explicit type arguments to the constructor",
+                        stmt,
+                    )
                 # PendingListType reassignment: different sizes force list
                 if isinstance(inner_existing, PendingListType):
                     if isinstance(inner_init, PendingListType):

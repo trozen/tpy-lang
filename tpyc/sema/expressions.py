@@ -17,6 +17,7 @@ from ..typesys import (
     ResolvedBinop, FunctionInfo, ParamInfo, UnknownElementType, UNKNOWN_ELEMENT,
     PendingDictType, DictLiteralInfo,
     INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, is_protocol_type, container_to_str_template,
+    PendingGenericInstanceType,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -1035,6 +1036,15 @@ class ExpressionAnalyzer:
             self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
             expr.needs_optional_runtime_check = True
             actual_type = actual_type.inner
+
+        # Pending generic instance: field access is not allowed until resolved
+        if isinstance(actual_type, PendingGenericInstanceType):
+            raise self.ctx.error(
+                f"Cannot access field '{expr.field}' on '{actual_type.record_name}' "
+                f"until its type arguments are resolved; call a constraining method first "
+                f"or add explicit type arguments to the constructor",
+                expr,
+            )
 
         # Enum instance property access: c.name -> str, c.value -> underlying type
         if isinstance(actual_type, EnumType):

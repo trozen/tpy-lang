@@ -2767,6 +2767,27 @@ import tpy.unsafe as m
 q = m.unsafe_cast[UInt32](p)
 ```
 
+**Deferred generic instance inference**: when a generic type is constructed without
+explicit type arguments and without enough context to infer them, the compiler
+defers inference and resolves type parameters from subsequent method calls:
+
+```python
+class Container[T]:
+    val: T
+    def __init__(self) -> None: ...
+    def set(self, val: T) -> None: ...
+    def get(self) -> T: ...
+
+c = Container()      # T unknown -- defer
+c.set(Int32(10))     # T = Int32, eagerly resolved
+x = c.get()          # normal: x is Int32
+```
+
+The pending type is eagerly resolved the moment all type parameters are
+constrained. While pending, field access and passing to typed parameters
+are rejected with clear diagnostics. Works for all generic records (user-defined
+and library types). See `docs/LOCAL_TYPE_DEDUCTION.md` Phase 7a.
+
 **Not yet supported**: inference from field assignment targets (`self.field = expr`)
 or subscript targets (`items[i] = expr`). See
 `docs/BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md` for the full design.

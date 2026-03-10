@@ -15,8 +15,11 @@
 | 5c | Empty set inference: `s = set(); s.add(v)` infers element type from subsequent `.add()` calls. | Done |
 | 5d | Unify empty container inference: extract shared helpers for list/dict/set (PENDING_CONTAINER_TYPES constant, unified container lookup, shared resolution epilogue, merged param context tracking). Single code paths prevent forgetting one container type. | Done |
 | 6 | List element-type widening: `.append(Int64)` on `[1,2]` widens element type from Int32 to Int64. Already handled by `_widen_inferred_type` in Phase 5a infrastructure; added test coverage. | Done |
-| 7 | Deferred generic instance inference: `x = GenericType()` with unresolved type params, resolved from subsequent method calls via constraint unification. Reuses `match_type_with_inference` from bidirectional inference. See `BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md`. | Not started |
-| 8 | State ownership: move deduction-related fields from SemanticContext into sub-structures owned by LocalTypeDeduction. | Not started |
+| 7a.1 | Deferred generic instance inference (MVP): `x = GenericType()` with unresolved type params, resolved from subsequent method calls via constraint unification. Eager resolution once all params known. Reuses `match_type_with_inference` from bidirectional inference. See `BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md`. | Done |
+| 7a.2 | Expected-type constraint sources: resolve pending generic from function parameter type (`f(x)` where param is `Container[Int32]`) and return type (`return x` where function returns `Container[Int32]`). Same eager resolution as 7a.1. | Not started |
+| 7b | `_` wildcard for partial type args in all generic calls (functions, constructors, methods). `ArrayList[_, 1024]()`, `f[_, Int32](x)`, etc. Remaining constructor params deferred via 7a. | Not started |
+| 7c | Extended constraint sources: field access as constraint, cascading pending types (`x = s.items` where both pending). | Not started |
+| ~~8~~ | ~~State ownership: move deduction-related fields from SemanticContext into sub-structures owned by LocalTypeDeduction.~~ Dropped -- fields are genuinely shared state across analysis modules (expressions, statements, calls, methods) and codegen. Moving them would add indirection without reducing coupling. | Dropped |
 
 ## Future Extensions (post-1.0)
 
@@ -300,6 +303,203 @@ three separate passes.
 - **Interaction with narrowing:** Deduced `Optional[T]` should work
   with narrowing (`if x is not None`). Deferred to Phase 3 if the
   plumbing is non-trivial.
+
+## Phase 7: Deferred Generic Instance Inference
+
+### Overview
+
+When a generic type is constructed without explicit type arguments and without
+enough context to infer type params (no annotation, no constructor args that
+constrain T), the compiler defers inference and resolves type params from
+subsequent method calls on the variable.
+
+```python
+class Stack[T]:
+    def __init__(self):
+        self.items: list[T] = []
+    def push(self, item: T) -> None:
+        self.items.append(item)
+    def pop(self) -> T:
+        return self.items.pop()
+
+s = Stack()        # T unknown -- defer
+s.push(42)         # match T against Int32 -> T = Int32, all resolved -> eager resolve
+x = s.pop()        # s is now Stack[Int32], normal resolution -> x: Int32
+```
+
+This applies to all generic records (user-defined and library types like
+`Box[T]`), not just built-in containers.
+
+### Phase 7a: MVP -- Eager Resolution from Method Calls
+
+#### Representation
+
+New type in `typesys.py`:
+
+```
+PendingGenericInstanceType:
+    record_name: str
+    instance_id: int
+```
+
+New tracking info (in context or typesys):
+
+```
+PendingGenericInstanceInfo:
+    instance_id: int
+    variable_name: str
+    record_info: RecordInfo
+    type_params: list[str]          # ["T"]
+    inferred: dict[str, TpyType]    # grows: {} -> {"T": Int32}
+    expr: TpyCall                   # for diagnostics
+    decl_line: int | None
+```
+
+New context state in `SemanticContext`:
+
+```
+pending_generic_instances: dict[int, PendingGenericInstanceInfo]
+variable_to_generic_instance: dict[str, int]   # var_name -> instance_id
+```
+
+#### Creation: `_analyze_record_constructor` in `calls.py`
+
+When a generic record constructor has no explicit type args, no args that
+constrain type params, and no contextual hint -- instead of erroring, check
+if the constructor can be called with the given args (possibly zero). If yes,
+create a `PendingGenericInstanceInfo`, register in context, return
+`PendingGenericInstanceType`.
+
+The variable gets the pending type in scope, which gates what operations
+are allowed until resolution.
+
+#### Constraint accumulation: method calls in `methods.py`
+
+In `analyze_method_call`, when the receiver type is `PendingGenericInstanceType`:
+
+1. Look up the method on `record_info.methods` (raw, unsubstituted signatures)
+2. Analyze all arguments to get concrete `arg_types`
+3. For each `(param_type, arg_type)` pair, call `match_type_with_inference`
+   to accumulate constraints into `info.inferred`
+4. **IntLiteralType resolution**: before binding, resolve `IntLiteralType` via
+   `default_int_for_literal` -- literal types are meaningless as type args
+5. Check for conflicts (same param bound to incompatible types -> error)
+6. After accumulating, check if all type params are resolved:
+   - **All resolved -> eager resolution** (see below)
+   - **Void-returning method with unresolved params** -> OK, continue
+   - **Method returning an unresolved TypeParamRef** -> error: "Cannot
+     determine return type of '{method}'; add type annotation to constrain
+     type parameter {T}"
+
+#### Eager resolution
+
+When all type params become known after a constraining method call:
+
+1. Build `NamedType(record_name, tuple(inferred[tp] for tp in type_params))`
+2. Validate type param bounds (protocol conformance)
+3. Update scope binding, `expr_types`, `declared_var_types`, `var_types`
+4. Remove from `pending_generic_instances`
+5. Continue analyzing the current method call with the now-concrete receiver
+   (substituted method signature, proper return type)
+
+After eager resolution, all subsequent usage of the variable is normal --
+no special handling needed.
+
+#### Safety net in `resolve_all()`
+
+After existing container/string resolutions, check `pending_generic_instances`
+for any unresolved entries. Error: "Cannot infer type arguments for '{name}';
+add explicit type args (e.g., {name}[T]()) or use the variable so types can
+be inferred".
+
+#### Restrictions during pending state
+
+| Operation | Allowed? | Why |
+|-----------|----------|-----|
+| Method call with constraining args, void return | Yes | Primary inference path |
+| Method call, no type-param-dependent args, void return | Yes | No-op for inference (e.g. `s.clear()`) |
+| Method call returning unresolved TypeParamRef | Error | Can't determine expression type |
+| Field access | Error | Field type depends on unresolved params |
+| Pass to function parameter | Error | Requires concrete type |
+| Reassignment | Error | Semantics unclear for pending type |
+| Comparison / operators | Error | Requires concrete type |
+
+#### Scenarios
+
+| Code | Result |
+|------|--------|
+| `s = Stack(); s.push(42)` | `s: Stack[Int32]` (eager after push) |
+| `s = Stack(); s.push(42); x = s.pop()` | `s: Stack[Int32]`, `x: Int32` |
+| `s = Stack(); s.push(42); s.push(Int64(0))` | Error: conflicting constraints for T (Int32 vs Int64) |
+| `s = Stack(); x = s.pop()` | Error: cannot determine return type, T unresolved |
+| `s = Stack(); print(s)` | Error: pending type cannot be passed as parameter |
+| `s = Stack()` (no constraining calls) | Error in resolve_all(): cannot infer T |
+
+### Phase 7a.2: Expected-Type Constraint Sources
+
+Resolve pending generic instances from known expected types at function
+parameter and return sites. Same eager resolution mechanism as 7a.1,
+different integration points.
+
+```python
+def consume(c: Container[Int32]) -> None: ...
+def make() -> Container[Int32]:
+    c = Container()
+    return c        # return type constrains T = Int32
+
+c = Container()
+consume(c)          # parameter type constrains T = Int32
+```
+
+Both use `match_type_with_inference(record_pattern, expected_type, inferred)`
+to extract type params from the expected type. Integration points:
+
+- **Parameter passing**: in `calls.py` or `compatibility.py`, when coercing
+  an arg with `PendingGenericInstanceType` against a `NamedType` param
+  of the same record. Accumulate constraints, eagerly resolve if complete.
+- **Return type**: in `statements.py` return analysis, when the return
+  expression has `PendingGenericInstanceType` and the function's return
+  type is a matching `NamedType`.
+
+### Phase 7b: `_` Wildcard for Partial Type Args
+
+Syntax: `_` as a wildcard placeholder in any type arg position, for all
+generic calls (functions, constructors, methods).
+
+Currently, partial type args for functions work as a positional prefix only:
+`f[A]()` provides the first param, rest inferred. The `_` placeholder
+generalizes this to allow gaps in any position.
+
+```python
+# Constructors -- remaining params deferred (reuses 7a)
+l = ArrayList[_, 1024]()    # N = 1024, T deferred
+l.append(Int32(42))         # T = Int32 -> ArrayList[Int32, 1024]
+
+# Functions -- _ in any position
+def transform[T, U](x: U) -> T: ...
+transform[_, Int32](42)     # T inferred from context, U = Int32
+
+# Methods
+obj.convert[_, Float]()     # first param inferred, second explicit
+```
+
+Implementation:
+- Parser support for `_` as a type arg placeholder (parsed as `None` in
+  the type_args tuple)
+- `infer_type_params_for_function` and `infer_type_params_for_record`
+  already accept `explicit_type_args` and pre-populate the `inferred`
+  dict; skip `None` entries instead of binding them
+- For constructors, remaining unresolved params after argument-based
+  inference enter the Phase 7a deferred resolution path
+
+### Phase 7c: Extended Constraint Sources
+
+Future extensions beyond method calls and expected-type contexts:
+
+- **Field access as constraint**: `x.value` where field type is `T` and
+  the result is assigned to a typed variable
+- **Cascading pending types**: `x = s.items` where both `s` and `x` are
+  pending -- requires dependency tracking between pending instances
 
 ## Post-1.0: Per-Assignment-Segment Typing
 

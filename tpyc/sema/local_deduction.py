@@ -847,6 +847,22 @@ class LocalTypeDeduction:
             f"add a type annotation (e.g., {name}: T | None = None)"
         )
 
+    def _check_unresolved_pending_generics(self) -> None:
+        """Reject pending generic instances that were never fully resolved."""
+        if not self.ctx.pending_generic_instances:
+            return
+        # Report the first unresolved instance.
+        info = next(iter(self.ctx.pending_generic_instances.values()))
+        unresolved = [tp for tp in info.type_params if tp not in info.inferred]
+        raise self.ctx.error(
+            f"Cannot infer type argument{'s' if len(unresolved) != 1 else ''} "
+            f"{', '.join(unresolved)} for '{info.variable_name}'; "
+            f"add explicit type args (e.g., {info.record_name}"
+            f"[{', '.join(info.type_params)}]()) "
+            f"or call a method that constrains the type parameters",
+            info.expr,
+        )
+
     def resolve_all(self) -> None:
         """Resolve all pending local type deductions after function body analysis.
 
@@ -854,8 +870,10 @@ class LocalTypeDeduction:
         2. Resolve pending list types (Array vs list)
         3. Resolve pending dict and set types
         4. Resolve pending str types (StrView vs str)
+        5. Check unresolved pending generic instances (error if any)
         """
         self._check_unresolved_none_inference()
         self._resolve_pending_list_types()
         self._resolve_pending_dict_and_set_types()
         self._resolve_pending_str_types()
+        self._check_unresolved_pending_generics()

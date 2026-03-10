@@ -1,0 +1,1 @@
+main.py:10: error: Cannot infer type argument T for 'c'; add explicit type args (e.g., Container[T]()) or call a method that constrains the type parameters

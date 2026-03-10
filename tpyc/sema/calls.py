@@ -18,6 +18,7 @@ from ..typesys import (
     is_any_str_type, container_to_str_template,
     is_protocol_union, protocol_union_protocols,
     StrViewType, STRVIEW,
+    PendingGenericInstanceType, PendingGenericInstanceInfo,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
@@ -1863,7 +1864,9 @@ class CallAnalyzer:
                             for arg in expr.args:
                                 self.expr.analyze_expr(arg)
                             return inferred_type
-            # Inference failed - require explicit type args
+            # Inference failed -- try deferred resolution (Phase 7a)
+            if self._can_defer_generic_inference(record, expr):
+                return self._create_pending_generic_instance(record, expr)
             raise self.ctx.error(
                 f"Cannot infer type arguments for '{record.name}'. "
                 f"Please specify explicitly: {record.name}[{', '.join(record.type_params)}](...)",
@@ -1891,6 +1894,63 @@ class CallAnalyzer:
         result_type = NamedType(expr.func)
         self._set_record_constructor_info(expr, record, result_type)
         return result_type
+
+    def _can_defer_generic_inference(self, record: RecordInfo, expr: TpyCall) -> bool:
+        """Check whether a generic constructor can use deferred type inference."""
+        # Only in function bodies (resolve_all runs there)
+        if not isinstance(self.ctx.current_function, TpyFunction):
+            return False
+        # Not inside a class body (field types must be concrete)
+        if self.ctx.record_ctx.record is not None:
+            return False
+        # Check constructor arity (args must be valid count, ignoring type constraints)
+        if record.has_init:
+            min_args = _init_params_min_args(record.init_params)
+            max_args = len(record.init_params)
+            if len(expr.args) < min_args or len(expr.args) > max_args:
+                return False
+        elif expr.args:
+            return False
+        return True
+
+    def _create_pending_generic_instance(
+        self, record: RecordInfo, expr: TpyCall,
+    ) -> PendingGenericInstanceType:
+        """Create a deferred generic instance for later resolution from method calls."""
+        # Analyze constructor args (we need their types even though we can't
+        # type-check against params yet -- T is unknown)
+        if record.has_init:
+            for arg in expr.args:
+                self.expr.analyze_expr(arg)
+
+        instance_id = self.ctx.pending_generic_counter
+        self.ctx.pending_generic_counter += 1
+
+        # Seed inferred dict from constructor args if has_init
+        inferred: dict[str, TpyType] = {}
+        if record.has_init and expr.args:
+            arg_types = [self.ctx.get_expr_type(arg) for arg in expr.args]
+            # Try partial inference from available args
+            partial = self.type_ops.infer_type_params_for_record(
+                record, arg_types, expected_type=None,
+            )
+            if partial:
+                for k, v in partial.items():
+                    if isinstance(v, IntLiteralType):
+                        v = self.ctx.default_int_for_literal(v)
+                    inferred[k] = v
+
+        info = PendingGenericInstanceInfo(
+            instance_id=instance_id,
+            variable_name=expr.func,
+            record_info=record,
+            record_name=expr.func,
+            type_params=list(record.type_params),
+            inferred=inferred,
+            expr=expr,
+        )
+        self.ctx.pending_generic_instances[instance_id] = info
+        return PendingGenericInstanceType(record_name=expr.func, instance_id=instance_id)
 
     def _analyze_legacy_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
         """Analyze a legacy function call (fallback path)."""

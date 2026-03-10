@@ -12,6 +12,7 @@ from ..typesys import (
     TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, StrVarInfo, TypeParamKind, IntLiteralType,
     FixedIntType, INT32, BIGINT, NamedType, ReadonlyType, OwnType, OptionalType,
     PendingListType, PendingDictType, PendingSetType,
+    PendingGenericInstanceType, PendingGenericInstanceInfo,
     unwrap_readonly,
 )
 from ..namespace import Namespace
@@ -230,6 +231,11 @@ class SemanticContext:
     # Records whether each int cast skips range checking.
     # Keyed by (line, target_type_name). True = cast proven safe.
     cast_safe_facts: dict[tuple[int, str], bool] = field(default_factory=dict)
+
+    # --- Pending generic instance tracking (Phase 7a) ---
+    pending_generic_counter: int = 0
+    pending_generic_instances: dict[int, PendingGenericInstanceInfo] = field(default_factory=dict)
+    variable_to_generic_instance: dict[str, int] = field(default_factory=dict)
 
     # --- String local tracking (PendingStrType inference) ---
     str_var_counter: int = 0
@@ -467,6 +473,8 @@ class SemanticContext:
         self.pending_dict_resolutions.clear()
         self.variable_to_set_literal.clear()
         self.pending_set_resolutions.clear()
+        self.pending_generic_instances.clear()
+        self.variable_to_generic_instance.clear()
         self.variable_to_str_var.clear()
         self.str_source_borrows.clear()
         self.pending_str_resolutions.clear()

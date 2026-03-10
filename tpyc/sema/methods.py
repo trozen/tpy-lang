@@ -12,6 +12,7 @@ from ..typesys import (
     DictType, SetType,
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly, UnknownElementType,
+    PendingGenericInstanceType, IntLiteralType,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt,
@@ -34,8 +35,71 @@ if TYPE_CHECKING:
     from .local_deduction import LocalTypeDeduction
     from .expressions import ExpressionAnalyzer
     from .calls import CallAnalyzer
+    from ..typesys import PendingGenericInstanceInfo
 
 from tpyc.modules.builtins import LIST_MUTATION_METHODS, LIST_ITER_INVALIDATING, DICT_MUTATION_METHODS, SET_MUTATION_METHODS
+
+
+def _contains_type_param_ref_type(typ: TpyType, param_names: set[str]) -> bool:
+    """Check if a type contains any TypeParamRef matching the given param names."""
+    if isinstance(typ, TypeParamRef):
+        return typ.name in param_names
+    if isinstance(typ, NamedType) and typ.type_args:
+        return any(
+            _contains_type_param_ref_type(a, param_names)
+            for a in typ.type_args if isinstance(a, TpyType)
+        )
+    # Check common wrapper types
+    for attr in ('element_type', 'pointee', 'inner', 'wrapped'):
+        inner = getattr(typ, attr, None)
+        if inner is not None and isinstance(inner, TpyType):
+            if _contains_type_param_ref_type(inner, param_names):
+                return True
+    # TupleType
+    if hasattr(typ, 'element_types'):
+        return any(_contains_type_param_ref_type(e, param_names) for e in typ.element_types)
+    # DictType
+    if hasattr(typ, 'key_type') and hasattr(typ, 'value_type'):
+        return (_contains_type_param_ref_type(typ.key_type, param_names)
+                or _contains_type_param_ref_type(typ.value_type, param_names))
+    # UnionType
+    if hasattr(typ, 'members'):
+        return any(_contains_type_param_ref_type(m, param_names) for m in typ.members)
+    return False
+
+
+def _unresolved_params_in_type(typ: TpyType, inferred: dict[str, TpyType], param_names: set[str]) -> list[str]:
+    """Return list of type param names that appear in typ but are not yet in inferred."""
+    result: list[str] = []
+    _collect_unresolved(typ, inferred, param_names, result)
+    return result
+
+
+def _collect_unresolved(
+    typ: TpyType, inferred: dict[str, TpyType], param_names: set[str], out: list[str],
+) -> None:
+    if isinstance(typ, TypeParamRef):
+        if typ.name in param_names and typ.name not in inferred and typ.name not in out:
+            out.append(typ.name)
+        return
+    if isinstance(typ, NamedType) and typ.type_args:
+        for a in typ.type_args:
+            if isinstance(a, TpyType):
+                _collect_unresolved(a, inferred, param_names, out)
+        return
+    for attr in ('element_type', 'pointee', 'inner', 'wrapped'):
+        inner = getattr(typ, attr, None)
+        if inner is not None and isinstance(inner, TpyType):
+            _collect_unresolved(inner, inferred, param_names, out)
+    if hasattr(typ, 'element_types'):
+        for e in typ.element_types:
+            _collect_unresolved(e, inferred, param_names, out)
+    if hasattr(typ, 'key_type') and hasattr(typ, 'value_type'):
+        _collect_unresolved(typ.key_type, inferred, param_names, out)
+        _collect_unresolved(typ.value_type, inferred, param_names, out)
+    if hasattr(typ, 'members'):
+        for m in typ.members:
+            _collect_unresolved(m, inferred, param_names, out)
 
 
 class MethodAnalyzer:
@@ -253,6 +317,10 @@ class MethodAnalyzer:
                     return result
 
         obj_type = self.expr.analyze_expr(expr.obj)
+
+        # Pending generic instance: accumulate constraints from method calls
+        if isinstance(obj_type, PendingGenericInstanceType):
+            return self._analyze_pending_generic_method_call(expr, obj_type)
 
         # Unwrap ReadonlyType, remembering the flag for enforcement
         is_readonly_receiver = isinstance(obj_type, ReadonlyType)
@@ -637,6 +705,159 @@ class MethodAnalyzer:
         if binding and binding.kind == BindingKind.MODULE:
             return binding.import_source[0] if binding.import_source else name
         return None
+
+    # ------------------------------------------------------------------
+    # Pending generic instance method calls (Phase 7a)
+    # ------------------------------------------------------------------
+
+    def _analyze_pending_generic_method_call(
+        self, expr: TpyMethodCall, obj_type: PendingGenericInstanceType,
+    ) -> TpyType:
+        """Handle method call on a variable with unresolved generic type params.
+
+        Accumulates type parameter constraints from method arguments.
+        Eagerly resolves the generic instance once all type params are known.
+        """
+        info = self.ctx.pending_generic_instances.get(obj_type.instance_id)
+        if info is None:
+            raise self.ctx.error(
+                f"Internal error: pending generic instance {obj_type.instance_id} not found", expr)
+
+        record = info.record_info
+        overloads = record.get_method_overloads(expr.method)
+        if not overloads:
+            raise self.ctx.error(
+                f"'{record.name}' has no method '{expr.method}'", expr)
+
+        # For MVP: use first overload (user records have single overloads per name)
+        method = overloads[0]
+
+        # Resolve kwargs
+        if expr.kwargs:
+            expr.args = resolve_kwargs(
+                expr.args, expr.kwargs, method.params, expr.method,
+                lambda msg: self.ctx.error(msg, expr),
+                call_loc=expr.loc,
+            )
+            expr.kwargs = {}
+
+        # Check arity
+        if len(expr.args) < method.min_args or len(expr.args) > method.max_args:
+            raise self.ctx.error(
+                arity_error_msg(expr.method, method.min_args, method.max_args, len(expr.args)),
+                expr)
+
+        # Analyze arguments and accumulate constraints
+        arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+        for (pname, ptype), arg_type in zip(method.params, arg_types):
+            if not _contains_type_param_ref_type(ptype, set(info.type_params)):
+                continue
+            # Resolve IntLiteralType before binding
+            resolved_arg = arg_type
+            if isinstance(resolved_arg, IntLiteralType):
+                resolved_arg = self.ctx.default_int_for_literal(resolved_arg)
+            if not self.type_ops.match_type_with_inference(ptype, resolved_arg, info.inferred):
+                # Check if this is a conflict with an existing binding
+                for tp in info.type_params:
+                    if tp in info.inferred:
+                        existing = info.inferred[tp]
+                        # Try matching just this param to see if it conflicts
+                        test: dict[str, TpyType] = {}
+                        self.type_ops.match_type_with_inference(ptype, resolved_arg, test)
+                        if tp in test and test[tp] != existing:
+                            raise self.ctx.error(
+                                f"Conflicting type inference for '{tp}' in '{record.name}': "
+                                f"previously inferred as '{existing}', "
+                                f"but '{expr.method}' argument '{pname}' implies '{test[tp]}'",
+                                expr,
+                            )
+
+        # Resolve IntLiteralType in any newly inferred params
+        for k, v in list(info.inferred.items()):
+            if isinstance(v, IntLiteralType):
+                info.inferred[k] = self.ctx.default_int_for_literal(v)
+
+        # Check if all type params are now resolved
+        all_resolved = all(tp in info.inferred for tp in info.type_params)
+
+        if all_resolved:
+            resolved_type = self._eagerly_resolve_pending_generic(info)
+            # Re-dispatch: analyze the method call on the now-concrete type
+            self.ctx.set_expr_type(expr.obj, resolved_type)
+            if isinstance(expr.obj, TpyName) and self.ctx.current_scope:
+                self.ctx.current_scope.define(expr.obj.name, resolved_type)
+            result = self._try_resolve_method(expr, resolved_type)
+            if result is None:
+                raise self.ctx.error(
+                    f"'{resolved_type}' has no method '{expr.method}'", expr)
+            return result
+
+        # Not fully resolved yet -- check return type
+        return_type = method.return_type
+        if _contains_type_param_ref_type(return_type, set(info.type_params)):
+            # Check if we can substitute what we have so far
+            unresolved_in_return = _unresolved_params_in_type(return_type, info.inferred, set(info.type_params))
+            if unresolved_in_return:
+                raise self.ctx.error(
+                    f"Cannot determine return type of '{expr.method}' on '{record.name}': "
+                    f"type parameter{'s' if len(unresolved_in_return) > 1 else ''} "
+                    f"{', '.join(unresolved_in_return)} not yet resolved; "
+                    f"call a constraining method first or add explicit type arguments",
+                    expr,
+                )
+            # All params in return type are resolved, substitute
+            return_type = self.type_ops.substitute_type_params(return_type, info.inferred)
+
+        # Set minimal function info for void methods
+        expr.resolved_function_info = FunctionInfo(
+            name=expr.method,
+            params=method.params,
+            return_type=return_type,
+        )
+        return return_type
+
+    def _eagerly_resolve_pending_generic(self, info: 'PendingGenericInstanceInfo') -> NamedType:
+        """Resolve a pending generic instance to a concrete NamedType."""
+        type_args = tuple(info.inferred[tp] for tp in info.type_params)
+        resolved_type = NamedType(info.record_name, type_args)
+
+        # Validate type param bounds
+        for param_name, type_arg in zip(info.type_params, type_args):
+            if param_name in info.record_info.type_param_bounds:
+                bound = info.record_info.type_param_bounds[param_name]
+                if not self.protocols.type_conforms_to_protocol(type_arg, bound):
+                    raise self.ctx.error(
+                        f"Inferred type '{type_arg}' does not satisfy bound '{bound}' "
+                        f"for type parameter '{param_name}' of '{info.record_name}'",
+                        info.expr,
+                    )
+
+        # Update constructor expression
+        info.expr.call_type = resolved_type
+        self.ctx.set_expr_type(info.expr, resolved_type)
+
+        # Update scope and var_types (only when bound to a local variable,
+        # not for inline expressions like Container().set(...) which would
+        # corrupt the class binding in scope)
+        if info.decl_line is not None:
+            if self.ctx.current_scope:
+                self.ctx.current_scope.define(info.variable_name, resolved_type)
+            if self.ctx.current_ns:
+                self.ctx.current_ns.bind_variable(info.variable_name, resolved_type)
+            var_decl = self.ctx.var_decl_by_name.get(info.variable_name)
+            if var_decl:
+                self.ctx.var_types[id(var_decl)] = resolved_type
+            self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved_type
+
+        # Set constructor info now that we have concrete types
+        type_subst = info.inferred
+        self.calls._set_record_constructor_info(info.expr, info.record_info, resolved_type, type_subst)
+
+        # Clean up tracking
+        del self.ctx.pending_generic_instances[info.instance_id]
+        self.ctx.variable_to_generic_instance.pop(info.variable_name, None)
+
+        return resolved_type
 
     def _analyze_instance_method(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:
         """Analyze instance method call on any type (builtin or user record)."""
