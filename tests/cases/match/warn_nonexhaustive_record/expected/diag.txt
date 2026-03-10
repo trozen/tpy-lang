@@ -1,0 +1,2 @@
+main.py:10: warning: non-exhaustive match on 'Point'; no unconditional catch-all arm (add 'case _:' to suppress)
+main.py:16: warning: non-exhaustive match on 'Point'; no unconditional catch-all arm (add 'case _:' to suppress)

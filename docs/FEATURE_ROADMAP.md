@@ -38,7 +38,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 |---|---------|--------|--------|---------|
 | B1 | Box[T] heap ownership | S-M | Done | [II](#boxt----heap-ownership) |
 | B2 | Union types / ADTs | L | Done | [I](#union-types--algebraic-data-types) |
-| B3 | Match/case | M-L | Not started | [VI](#matchcase-with-pattern-matching) |
+| B3 | Match/case | M-L | Done | [VI](#matchcase-with-pattern-matching) |
 | B4 | Dynamic dispatch -- @dynamic protocols | L | Done | [II](#dynamic-dispatch-dynp) |
 | B5 | Per-method type parameter bounds | S-M | Done | [I](#type-parameter-bounds----per-method) |
 | B6 | `# tpy:` directives | S-M | Not started | [I](#tpy-directives) |
@@ -1459,13 +1459,14 @@ Maps to `switch` on `variant.index()` (not `std::visit` -- avoids indirect dispa
 overhead). Class patterns narrow the subject variable for the block body.
 
 **Why it matters**: The natural consumer of union types and enums. Exhaustiveness checking
-is a compile-time guarantee Python doesn't have. Start with literal + type patterns (v1),
-structural patterns later.
+is a compile-time guarantee Python doesn't have.
 
-**Current state**: Not started.
+**Current state**: Done. Supports union, enum, primitive, record, and Optional subjects.
+Switch-based codegen for unions/enums/int/bool, if/elif for records/str/float. Or-patterns,
+guard clauses, as-patterns, positional and keyword field bindings. Exhaustiveness warnings
+for all supported subject types.
 
-**Dependencies**: Enums (simplest case). Union types (class patterns). Narrowing system
-(pattern match narrows types in case bodies).
+**Dependencies**: Enums (done). Union types (done). Narrowing system (done).
 
 **Effort**: M-L (parser + sema narrowing + codegen)
 

@@ -177,12 +177,19 @@ class MatchAnalyzer:
                 effective_type, seen_types, seen_values,
             )
             if missing:
-                self.ctx.warning(
-                    f"non-exhaustive match on '{effective_type}'; "
-                    f"missing: {', '.join(missing)} "
-                    f"(add 'case _:' to suppress)",
-                    stmt,
-                )
+                if missing == [None]:
+                    msg = (
+                        f"non-exhaustive match on '{effective_type}'; "
+                        f"no unconditional catch-all arm "
+                        f"(add 'case _:' to suppress)"
+                    )
+                else:
+                    msg = (
+                        f"non-exhaustive match on '{effective_type}'; "
+                        f"missing: {', '.join(missing)} "
+                        f"(add 'case _:' to suppress)"
+                    )
+                self.ctx.warning(msg, stmt)
 
         # Merge flow states across all arms
         self._merge_match_arms(arm_states, before)
@@ -280,6 +287,9 @@ class MatchAnalyzer:
             if False not in seen_values:
                 missing.append("False")
             return missing
+
+        if isinstance(subject_type, NamedType) and subject_type.is_user_record:
+            return [None]  # type: ignore[list-item]  # sentinel: no enumerable missing cases
 
         return []
 
