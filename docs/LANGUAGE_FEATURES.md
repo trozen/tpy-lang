@@ -3113,6 +3113,8 @@ struct Dog : Animal {
 - Use `super().__init__(args)` to call the parent constructor
 - Method override works by simply defining a method with the same name
 - Inherited fields and methods are accessible via `self.field` and `self.method()`
+- Use `@override` (from `typing`) to explicitly annotate overrides -- errors on typos,
+  warns when the override is non-polymorphic (see `@override` below)
 
 #### Implicit Upcasting
 
@@ -3366,6 +3368,93 @@ def main() -> Int32:
 - Generic parent without type args rejected (`class Child(Parent)` where `Parent[T]` is generic)
 - No `super()` calls - child must initialize parent fields directly
 - Cannot inherit from builtins with forwarded type parameters (`class Child[T](list[T])`)
+
+#### `@override` Decorator
+
+**Working**: The `@override` decorator from `typing` (PEP 698) marks methods that intentionally override a parent
+class or protocol method. The compiler verifies that the annotated method actually overrides something, turning
+typos and stale overrides into hard errors.
+
+```python
+from tpy import Int32
+from typing import override
+
+class Animal:
+    name: str
+    def __init__(self, name: str) -> None:
+        self.name = name
+    def speak(self) -> str:
+        return "..."
+
+class Dog(Animal):
+    def __init__(self, name: str) -> None:
+        super().__init__(name)
+
+    @override
+    def speak(self) -> str:  # OK: overrides Animal.speak
+        return "Woof!"
+
+    @override
+    def speek(self) -> str:  # ERROR: 'Dog.speek' is marked @override but does not override any parent class or protocol method
+        return "Typo!"
+```
+
+**Three dispatch contexts:**
+
+| Context | `@override` effect |
+|---------|-------------------|
+| Regular class inheritance | Validates override exists; emits non-polymorphic dispatch warning |
+| Static `Protocol` | Validates method is in the protocol; no warning (structural conformance) |
+| `@dynamic` protocol | Validates method is in the protocol; no warning (virtual dispatch) |
+
+**Non-polymorphic dispatch warning:**
+
+TPy class inheritance uses C++ static (non-virtual) dispatch. A parent-typed reference always calls the parent
+method, regardless of the runtime type. `@override` triggers a warning to make this visible:
+
+```python
+class Dog(Animal):
+    @override
+    def speak(self) -> str:       # WARNING: override is non-polymorphic; Animal-typed references
+        return "Woof!"            #          will call Animal.speak, not Dog.speak
+                                  #          Use a @dynamic protocol for runtime dispatch.
+```
+
+No warning is emitted when the class already implements a `@dynamic` protocol that covers the same method
+(runtime dispatch is already in play via the vtable).
+
+**Protocol overrides (no warning):**
+
+```python
+from typing import Protocol, override
+from tpy import dynamic
+
+class Speakable(Protocol):
+    def speak(self) -> str: ...
+
+@dynamic
+class DynamicSpeakable(Protocol):
+    def speak(self) -> str: ...
+
+class Cat(Speakable, DynamicSpeakable):
+    @override
+    def speak(self) -> str:  # OK: satisfies both protocols, no non-polymorphic warning
+        return "Meow!"
+```
+
+**Duplicate method error:**
+
+Defining the same method name twice in one class is always a compile error:
+
+```python
+class Bad:
+    def foo(self) -> None: ...
+    def foo(self) -> None: ...  # ERROR: Method 'foo' defined twice in class 'Bad'
+```
+
+**Restrictions:**
+- `@override` cannot be combined with `@staticmethod`
+- `@override` does not take arguments
 
 ### Explicit Protocol Implementation
 

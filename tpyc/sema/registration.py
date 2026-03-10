@@ -218,6 +218,17 @@ class TypeRegistrar:
         # For generic records, skip validation of TypeParamRef types
         is_generic = bool(record.type_params)
 
+        # Check for duplicate method definitions (second definition silently wins in Python,
+        # but it is always a bug and can interfere with @override checks)
+        seen_method_names: set[str] = set()
+        for method in record.methods:
+            if method.name in seen_method_names:
+                raise SemanticError(
+                    f"Method '{method.name}' defined twice in class '{record.name}'",
+                    method.loc or record.loc,
+                )
+            seen_method_names.add(method.name)
+
         # Validate field types
         for fld in record.fields:
             # Check INT type params before general validation (to provide field location)
@@ -766,9 +777,18 @@ class TypeRegistrar:
                     record.loc
                 )
 
+        # Coordinate method hiding and @override checks.
+        # @override methods are handled by _check_override_annotations (which emits a more
+        # targeted non-polymorphic warning) and are skipped by _check_method_hiding.
+        override_method_names = {m.name for m in record.methods if m.is_override}
+
         # Check for method hiding (child defines method with same name as parent)
         if record_info.parent:
-            self._check_method_hiding(record, record_info)
+            self._check_method_hiding(record, record_info, override_method_names)
+
+        # Validate @override annotations (error if no match; warn if non-polymorphic)
+        if override_method_names:
+            self._check_override_annotations(record, record_info)
 
         # Validate protocol implementations
         for protocol in record_info.implemented_protocols:
@@ -900,12 +920,15 @@ class TypeRegistrar:
             current = parent_info.parent.name if parent_info.parent else None
         return False
 
-    def _check_method_hiding(self, record: TpyRecord, record_info: RecordInfo) -> None:
+    def _check_method_hiding(self, record: TpyRecord, record_info: RecordInfo,
+                              skip_names: set[str] | None = None) -> None:
         """Warn when child class defines method with same name as parent.
 
         In Python, methods use dynamic dispatch (virtual by default).
         In C++, methods use static dispatch (non-virtual by default).
         This causes different behavior when a parent method calls self.method().
+
+        skip_names: method names to skip (e.g. @override methods handled separately).
         """
         if not record_info.parent:
             return
@@ -927,6 +950,8 @@ class TypeRegistrar:
                 continue  # constructor/destructor hiding is expected
             if method_name in skip_dc:
                 continue
+            if skip_names and method_name in skip_names:
+                continue  # @override methods are checked (with better messages) separately
 
             # Check if any ancestor has this method
             ancestor_with_method = self._find_ancestor_with_method(parent_info, method_name)
@@ -937,6 +962,49 @@ class TypeRegistrar:
                     f"(child method called). In C++, static dispatch is used (parent method called). "
                     f"This may cause different behavior between TurboPython and CPython.",
                     record
+                )
+
+    def _check_override_annotations(self, record: TpyRecord, record_info: RecordInfo) -> None:
+        """Validate @override-annotated methods.
+
+        Errors if the method does not exist in any parent class or implemented protocol.
+        Warns if the override is non-polymorphic (parent class, not @dynamic protocol).
+        """
+        override_methods = {m.name: m for m in record.methods if m.is_override}
+
+        parent_info = self.ctx.registry.get_record_for_type(record_info.parent) if record_info.parent else None
+
+        for method_name, method in override_methods.items():
+            found_in_parent = self._find_ancestor_with_method(parent_info, method_name) if parent_info else None
+
+            # Check each explicitly implemented protocol for the method
+            found_in_protocol: str | None = None
+            found_in_dynamic_protocol = False
+            for proto_type in record_info.implemented_protocols:
+                all_proto_methods = self._collect_all_protocol_methods(proto_type.name)
+                if any(m.name == method_name for m in all_proto_methods):
+                    found_in_protocol = proto_type.name
+                    found_in_dynamic_protocol = getattr(proto_type, 'is_dynamic_protocol', False)
+                    break
+
+            if not found_in_parent and not found_in_protocol:
+                raise SemanticError(
+                    f"Method '{record.name}.{method_name}' is marked @override "
+                    f"but does not override any parent class or protocol method",
+                    method.loc or record.loc,
+                )
+
+            # Non-polymorphic warning: only for parent class overrides (not protocol implementations).
+            # Constructors/destructors are skipped -- they are never polymorphically dispatched.
+            if found_in_parent and method_name not in ("__init__", "__del__"):
+                already_dynamic = found_in_dynamic_protocol
+                suffix = "" if already_dynamic else " Use a @dynamic protocol for runtime dispatch."
+                self.ctx.warning_from_loc(
+                    f"Method '{record.name}.{method_name}' overrides '{found_in_parent}.{method_name}' "
+                    f"but the override is non-polymorphic. '{found_in_parent}'-typed references "
+                    f"will call '{found_in_parent}.{method_name}', not '{record.name}.{method_name}'."
+                    f"{suffix}",
+                    method.loc or record.loc,
                 )
 
     def _find_ancestor_with_method(self, record_info: RecordInfo, method_name: str) -> str | None:

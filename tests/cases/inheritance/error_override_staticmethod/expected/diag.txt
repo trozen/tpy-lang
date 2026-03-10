@@ -1,0 +1,1 @@
+main.py:14: error: @override cannot be combined with @staticmethod on method 'helper'

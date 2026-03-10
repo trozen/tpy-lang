@@ -75,7 +75,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D5 | Lambda | M | Not started | [VI](#lambda) |
 | D6 | Properties (@property) | M | Not started | [VII](#properties) |
 | D7 | String literal types (Literal[...]) | M | Not started | [III](#string-literal-types) |
-| D8 | `@override` decorator | S | Not started | [VII](#override-decorator) |
+| D8 | `@override` decorator | S | Done | [VII](#override-decorator) |
 | D9 | set type | L | Done | [VII](#set-type) |
 | D10 | bytes type | M | Not started | [VII](#bytes-type) |
 | D11 | Dict comprehension | S-M | Done | [VI](#dict-comprehension) |
@@ -2151,11 +2151,21 @@ Error if the method doesn't actually override anything (typo protection).
 **Why it matters**: Catches method name typos at compile time. C++ codegen already emits
 `override` automatically for detected overrides -- this adds explicit user intent.
 
-**Current state**: Not started.
+**Current state**: Done. `from typing import override` resolves. Sema validates `@override`
+methods against the full parent class chain and all explicitly implemented protocols.
+Error if no match (typo protection). For parent class overrides (non-virtual), a warning
+is emitted explaining that `Parent`-typed references use static dispatch and suggesting
+`@dynamic` protocols for runtime dispatch (the suffix is omitted when the class already
+implements a `@dynamic` protocol for the same method). `@override` suppresses the
+existing implicit method-hiding warning for that method, replacing it with the more
+targeted non-polymorphic warning. `@override __init__`/`__del__` skips the
+non-polymorphic warning (constructors are never polymorphically dispatched) but still
+errors if the parent has no matching method. `@override` + `@staticmethod` is a parse
+error. Duplicate method definitions in the same class are now also a sema error.
 
 **Dependencies**: None.
 
-**Effort**: S (decorator parsing + sema check)
+**Effort**: S (done)
 
 ---
 

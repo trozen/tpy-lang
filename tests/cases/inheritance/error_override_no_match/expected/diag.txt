@@ -1,0 +1,1 @@
+main.py:17: error: Method 'Square.erea' is marked @override but does not override any parent class or protocol method

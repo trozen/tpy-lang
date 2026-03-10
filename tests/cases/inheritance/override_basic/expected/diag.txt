@@ -1,0 +1,2 @@
+main.py:21: warning: Method 'Square.area' overrides 'Shape.area' but the override is non-polymorphic. 'Shape'-typed references will call 'Shape.area', not 'Square.area'. Use a @dynamic protocol for runtime dispatch.
+main.py:25: warning: Method 'Square.describe' overrides 'Shape.describe' but the override is non-polymorphic. 'Shape'-typed references will call 'Shape.describe', not 'Square.describe'. Use a @dynamic protocol for runtime dispatch.

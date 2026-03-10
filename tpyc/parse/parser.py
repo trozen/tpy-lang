@@ -1150,11 +1150,12 @@ class Parser:
 
     def _parse_method(self, node: ast.FunctionDef, class_name: str, type_param_scope: dict[str, TypeParamKind] | None = None) -> TpyFunction:
         """Parse a method definition."""
-        # Check decorators (@staticmethod, @readonly, @native("cpp_name"))
+        # Check decorators (@staticmethod, @readonly, @native("cpp_name"), @override)
         is_staticmethod = False
         is_readonly = False
         readonly_opt_out = False
         is_pure = False
+        is_override = False
         method_linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
         for dec in node.decorator_list:
@@ -1165,6 +1166,10 @@ class Parser:
                 if arg is not None:
                     raise ParseError("@pure does not take arguments", dec)
                 is_pure = True
+            elif qname == "typing.override":
+                if arg is not None:
+                    raise ParseError("@override does not take arguments", dec)
+                is_override = True
             elif qname == "tpy.readonly":
                 is_readonly, readonly_opt_out = self._parse_readonly_arg(arg, dec)
             elif qname in self._METHOD_LINKAGE_MAP:
@@ -1177,6 +1182,8 @@ class Parser:
             else:
                 dec_name = self._decorator_local_name(dec) or "?"
                 raise ParseError(f"Unknown decorator '{dec_name}' on method '{node.name}'", dec)
+        if is_override and is_staticmethod:
+            raise ParseError(f"@override cannot be combined with @staticmethod on method '{node.name}'", node)
 
         # Extract method-level type parameters (e.g. def foo[T](self, x: T) -> T:)
         method_type_params: list[str] = []
@@ -1263,6 +1270,7 @@ class Parser:
             is_readonly=is_readonly,
             readonly_opt_out=readonly_opt_out,
             is_pure=is_pure,
+            is_override=is_override,
             is_stub=is_stub,
             linkage=method_linkage,
             native_name=native_name,
