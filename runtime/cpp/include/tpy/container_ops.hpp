@@ -87,7 +87,7 @@ inline std::string_view str_slice(std::string_view s, int32_t start, int32_t sto
  * Omitted bounds use tpy::SLICE_END/0 as sentinels. Correct for containers up to ~2B elements.
  */
 template <typename Container>
-auto list_slice(Container& c, int32_t start, int32_t stop) {
+auto list_slice(Container&& c, int32_t start, int32_t stop) {
     using ElemRef = std::remove_pointer_t<decltype(c.data())>;
     using T = std::remove_const_t<ElemRef>;
     using SpanT = std::conditional_t<std::is_const_v<ElemRef>, std::span<const T>, std::span<T>>;

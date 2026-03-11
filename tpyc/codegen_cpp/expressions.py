@@ -2327,6 +2327,8 @@ class ExpressionGenerator:
         # Slice: obj[start:stop]
         if isinstance(expr.index, TpySlice):
             subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(expr.obj) else obj
+            if expr.user_slice_getitem:
+                return self._gen_user_slice(subscript_obj, expr.index)
             return self._gen_slice(subscript_obj, expr.index, expr.obj)
 
         obj_type = self.types.get_resolved_type(expr.obj)
@@ -2435,6 +2437,18 @@ class ExpressionGenerator:
         if self.types.is_runtime_bigint(expr, index_type):
             code = f"{code}.to_fixed_check<int32_t>()"
         return code
+
+    def _gen_user_slice(self, obj: str, sl: TpySlice) -> str:
+        """Generate user-type slice via direct __getitem__ call."""
+        start = self._gen_optional_slice_bound(sl.lower)
+        stop = self._gen_optional_slice_bound(sl.upper)
+        return f"{obj}.__getitem__(tpy::Slice{{{start}, {stop}}})"
+
+    def _gen_optional_slice_bound(self, expr: TpyExpr | None) -> str:
+        """Generate an optional slice bound for tpy::Slice construction."""
+        if expr is None:
+            return "std::nullopt"
+        return self._gen_slice_bound(expr)
 
     def _gen_binop_from_result(self, binop_result: ResolvedBinop,
                                left: str, right: str) -> str:

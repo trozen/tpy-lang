@@ -54,9 +54,12 @@ class BuiltinGenerator:
         if record_info:
             overloads = record_info.get_method_overloads(method_name)
             if len(overloads) > 1:
+                # __getitem__ multi-overloads use operator[] (generated per stub)
+                if method_name == "__getitem__":
+                    return None
                 raise RuntimeError(
-                    f"get_type_method_template called for multi-overload method '{method_name}' "
-                    f"on {tpy_type}; use resolved_function_info instead"
+                    f"get_type_method_template called for multi-overload method "
+                    f"'{method_name}' on {tpy_type}; use resolved_function_info instead"
                 )
             if overloads and overloads[0].cpp_template:
                 return overloads[0].cpp_template

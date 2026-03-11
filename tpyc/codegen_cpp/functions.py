@@ -623,19 +623,7 @@ class FunctionGenerator:
         if dynamic_overrides and method.name in dynamic_overrides:
             override_const = dynamic_overrides[method.name]
 
-        if is_const and not is_static:
-            # Readonly method: const overload always.
-            # Dual overload (+ non-const) only when the return could be a
-            # reference -- value-type returns are copies so const alone suffices.
-            is_override = override_const is True  # base is const -> const overload overrides
-            self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type,
-                                      const=True, override=is_override,
-                                      record_type_param_bounds=record_type_param_bounds)
-            needs_dual = not cpp_return_type.is_value_type() or isinstance(cpp_return_type, TypeParamRef)
-            if needs_dual:
-                self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,
-                                          record_type_param_bounds=record_type_param_bounds)
-        elif (method.name == "__span__" and not is_static
+        if (method.name == "__span__" and not is_static
               and isinstance(cpp_return_type, SpanType) and not method.readonly_opt_out):
             if cpp_return_type.is_readonly:
                 # __span__() -> ReadOnlySpan[T]: single const overload.
@@ -669,6 +657,18 @@ class FunctionGenerator:
                                           record_type_param_bounds=record_type_param_bounds)
             finally:
                 self.ctx.force_readonly_span = False
+        elif is_const and not is_static:
+            # Readonly method: const overload always.
+            # Dual overload (+ non-const) only when the return could be a
+            # reference -- value-type returns are copies so const alone suffices.
+            is_override = override_const is True  # base is const -> const overload overrides
+            self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type,
+                                      const=True, override=is_override,
+                                      record_type_param_bounds=record_type_param_bounds)
+            needs_dual = not cpp_return_type.is_value_type() or isinstance(cpp_return_type, TypeParamRef)
+            if needs_dual:
+                self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,
+                                          record_type_param_bounds=record_type_param_bounds)
         else:
             is_override = override_const is False and not is_static  # base is non-const
             self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,

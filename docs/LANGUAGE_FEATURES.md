@@ -2345,6 +2345,10 @@ for x in buf:       # compiles to: for (int32_t x : buf.__span__()) { ... }
     print(x)
 ```
 
+**Implicitly readonly**: `__span__` is in `IMPLICIT_READONLY_METHODS`, so it can be called from
+readonly contexts (e.g., inside `__getitem__` which is also implicitly readonly). This enables
+patterns like `self.__span__()[start:stop]` inside overloaded `__getitem__(slice)`.
+
 **Dual overloads**: When `__span__` returns mutable `Span[T]`, the compiler generates two C++
 overloads -- a non-const overload returning `std::span<T>` (user's body) and a const overload
 returning `std::span<const T>` (thin wrapper). This enables correct iteration on both mutable
@@ -3634,7 +3638,8 @@ class Car(Vehicle, Printable, Measurable):
   - `round[T](x)` is generic: return type defaults to `default_int`, can be inferred from context
   - `divmod(a, b)` returns `tuple[T, T]` with Python floor-division semantics
 - **Working**: String slicing: `s[1:3]`, `s[:3]`, `s[1:]`, `s[:-1]` -- returns `StrView`, Python clamping semantics, no step yet
-- **Working**: Container slicing: `items[1:3]`, `items[:3]`, `items[2:]`, `items[:]`, `items[-2:]` -- returns `Span[T]` (zero-copy view), supports `list[T]`, `Array[T,N]`, `Span[T]`, `ReadOnlySpan[T]`. No step yet. User-type slicing planned via `@overload` dispatch (B10)
+- **Working**: Container slicing: `items[1:3]`, `items[:3]`, `items[2:]`, `items[:]`, `items[-2:]` -- returns `Span[T]` (zero-copy view), supports `list[T]`, `Array[T,N]`, `Span[T]`, `ReadOnlySpan[T]`. No step yet
+- **Working**: User-type slicing via `@overload __getitem__(self, index: slice)`. The `slice` builtin type has `start`/`stop` attributes of type `Optional[Int32]`. Maps to `tpy::Slice` in C++
 - **Working**: `isinstance(x, T)` → compile-time type narrowing for union types (`std::holds_alternative<T>` + `std::get<T>`)
 - **Working**: `isinstance(x, Protocol)` → compile-time protocol check on protocol-typed template params (`if constexpr (Concept<T_x>)`)
 - **Open**: `type()` → compile-time type info
@@ -4328,6 +4333,7 @@ Generated C++ emits `extern` declarations before the module namespace. Reference
 - **Open**: Lambda → anonymous struct with `operator()` or inline
 - **Working**: String slice `s[start:end]` -> `std::string_view` (clamping, negative indices)
 - **Working**: Container slice `items[start:end]` -> `std::span<T>` (zero-copy view, clamping, negative indices). Supports list, Array, Span, ReadOnlySpan. Step not yet supported
+- **Working**: User-type slice `obj[start:end]` via `@overload __getitem__(self, index: slice)` with `tpy::Slice` dispatch
 
 ---
 
@@ -4570,7 +4576,7 @@ Key difference from Python Pydantic:
 
 Builtin method calls go through overload resolution in sema, which attaches `resolved_function_info` to the AST node. Codegen then uses this resolved info.
 
-**Limitation**: Subscript (`__getitem__`, `__setitem__`) and binary operator codegen paths currently fall back to registry lookup without `resolved_function_info`. This works because these methods are single-overload today. If multi-overload subscript or binop methods are needed in the future, those codegen paths must be updated to thread `resolved_function_info` through (similar to regular method calls).
+**Note**: `__getitem__` supports multi-overload dispatch (e.g., `Int32` index + `slice` overloads) via per-stub `operator[]` generation. `__setitem__` and binary operator codegen paths still fall back to registry lookup without `resolved_function_info`, which works because these methods are single-overload today.
 
 ### Integer Range Tracking (Working)
 

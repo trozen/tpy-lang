@@ -328,7 +328,9 @@ class Span(metaclass=SpanMeta):
     def unchecked_get(self, index: int):
         return self._data[index]
 
-    def __getitem__(self, index: int):
+    def __getitem__(self, index):
+        if isinstance(index, slice):
+            return Span(self._data[index])
         i = index
         if i < 0:
             i += len(self._data)
@@ -402,7 +404,9 @@ class ReadOnlySpan(metaclass=ReadOnlySpanMeta):
     def unchecked_get(self, index: int):
         return self._data[index]
 
-    def __getitem__(self, index: int):
+    def __getitem__(self, index):
+        if isinstance(index, slice):
+            return ReadOnlySpan(self._data[index])
         i = index
         if i < 0:
             i += len(self._data)

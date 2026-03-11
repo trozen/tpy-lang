@@ -28,10 +28,13 @@
 ## Hard Problems
 (see FEATURE_ROADMAP.md for tracked hard problems)
 
+## Readonly return type propagation
+- `__getitem__(slice)` on ArrayList currently returns `ReadOnlySpan[T]` because `__getitem__` is implicitly readonly and sema analyzes the body in readonly context. It should return `Span[T]` when called on a mutable reference, `ReadOnlySpan[T]` on a readonly reference. Requires sema to understand that `Span[T]` return in a readonly method means "const yields ReadOnlySpan, non-const yields Span" and codegen to generate dual overloads with different return types (similar to how `__span__` already works at the C++ level).
+
 ## Python features
 - Any
 - dynamic attributes
-- list/container slicing (Phase 2: user types via slice + @overload B10, Phase 3: step)
+- list/container slicing (Phase 3: step)
 - lambda expression
 - properties
 - with statement/context manager
@@ -91,6 +94,9 @@
 
 ## Code Review Items (2026-01-27)
 - `and`/`or` return `bool` not operand: `1 and 2` returns `1` (bool), Python returns `2`
+
+## Refactoring
+- `slice` type resolution: `slice` is special-cased in `_resolve_primitive_type` (parser.py) alongside `int`/`float`/`bool`/`str` because the fallback path in `_resolve_registered_type` uses `name[0].isupper()` to optimistically create NamedType for unresolved names. Lowercase builtin types like `slice` don't pass this heuristic, even though `is_known_type("slice")` returns True (the builtins module registers it). The deeper issue is that `_resolve_registered_type` returns `NamedType("slice")` instead of `SliceType`, causing type identity mismatches in union isinstance checks. Builtin types should resolve through the same path as user types instead of needing parser special cases.
 
 ## Low Priority
 - `= default` semantic gap: records with required `__init__` params currently emit `ClassName() = default;` if their C++ fields are all trivially constructible, bypassing the Python-level construction contract. Should emit `= delete` (or nothing) instead -- `std::optional<T>` and containers don't require default-constructibility, so the impact is limited to direct `T t;` / `T arr[N]` patterns which tpyc doesn't generate anyway. Fix: check `init_params` required count in `_fld_type_cpp_default_constructible` (same as `_is_default_constructible`). See `docs/CONSTRUCTOR_DESIGN.md` open question 4.

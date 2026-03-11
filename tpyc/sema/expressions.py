@@ -16,8 +16,8 @@ from ..typesys import (
     FixedIntType, StringType, StrViewType, make_union,
     ResolvedBinop, FunctionInfo, ParamInfo, UnknownElementType, UNKNOWN_ELEMENT,
     PendingDictType, DictLiteralInfo,
-    INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, is_protocol_type, container_to_str_template,
-    PendingGenericInstanceType,
+    INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, SLICE, is_protocol_type, container_to_str_template,
+    PendingGenericInstanceType, SliceType,
 )
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -969,6 +969,11 @@ class ExpressionAnalyzer:
 
     def _try_find_field(self, typ: TpyType, expr: TpyFieldAccess) -> TpyType | None:
         """Try to find a field on typ. Returns field type or None."""
+        if isinstance(typ, SliceType):
+            if expr.field in ("start", "stop"):
+                return OptionalType(INT32)
+            return None
+
         if isinstance(typ, NamedType) and typ.is_record:
             record = self.ctx.registry.get_record_for_type(typ)
             if not record:
@@ -1881,7 +1886,30 @@ class ExpressionAnalyzer:
             src_readonly = isinstance(actual_type, SpanType) and actual_type.is_readonly
             return SpanType(elem_type, is_readonly=(is_readonly or src_readonly))
 
+        # User records with __getitem__(slice) overload
+        if isinstance(actual_type, NamedType) and actual_type.is_record:
+            ret = self._find_slice_getitem_return(actual_type)
+            if ret is not None:
+                expr.user_slice_getitem = True
+                return ret
+
         raise self.ctx.error(f"Slicing is not supported for {obj_type}", expr)
+
+    def _find_slice_getitem_return(self, record_type: NamedType) -> TpyType | None:
+        """Find __getitem__(slice) overload on a record and return its return type."""
+        record = self.ctx.registry.get_record_for_type(record_type)
+        if record is None:
+            return None
+        getitem_overloads = record.methods.get("__getitem__", [])
+        for func_info in getitem_overloads:
+            params = func_info.params
+            if len(params) == 1 and isinstance(params[0].type, SliceType):
+                ret = func_info.return_type
+                type_subst = self.type_ops.build_type_substitution(record_type)
+                if type_subst:
+                    ret = self.type_ops.substitute_type_params(ret, type_subst)
+                return ret
+        return None
 
     _FORMATTABLE_TYPES = (
         FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType,

@@ -3,7 +3,7 @@
 #
 # TODO: construct with fixed-extent Span[T, N] (deduce both T and N from the argument)
 from __future__ import annotations
-from typing import MutableSequence, Iterable
+from typing import MutableSequence, Iterable, overload
 from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, Span, ReadOnlySpanLike, SpanIter, copy, Default, Comparable, Equatable, make_default, span
 from tpy.mem import UninitArrayStorage
 
@@ -108,10 +108,23 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
     def __len__(self) -> Int32:
         return self._size
 
-    def __getitem__(self, index: Int32) -> T:
-        ui = UInt32.trunc(index)
-        assert ui < self._size
-        return self._storage.load(ui)
+    @overload
+    def __getitem__(self, index: Int32) -> T: ...
+
+    @overload
+    def __getitem__(self, index: slice) -> ReadOnlySpan[T]: ...
+
+    def __getitem__(self, index: Int32 | slice) -> T | ReadOnlySpan[T]:
+        if isinstance(index, slice):
+            s_start = index.start
+            s_stop = index.stop
+            start: Int32 = s_start if s_start is not None else Int32(0)
+            stop: Int32 = s_stop if s_stop is not None else Int32(self._size)
+            return self.__span__()[start:stop]
+        else:
+            ui = UInt32.trunc(index)
+            assert ui < self._size
+            return self._storage.load(ui)
 
     def __setitem__(self, index: Int32, value: Own[T]) -> None:
         ui = UInt32.trunc(index)

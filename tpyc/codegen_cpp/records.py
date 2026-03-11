@@ -743,35 +743,47 @@ class RecordGenerator:
         For readonly __getitem__: dual overloads (const + non-const) matching
         the method itself. Writes go through tpy::__setitem__.
         For non-readonly __getitem__: non-const only (method mutates self).
+        For @overload __getitem__: generate operator[] for each stub.
         """
-        getitem = None
+        # Find the __getitem__ implementation (not stubs)
+        getitem_impl = None
         for method in record.methods:
-            if method.name == "__getitem__":
-                getitem = method
+            if method.name == "__getitem__" and not method.is_overload_stub:
+                getitem_impl = method
                 break
 
-        if getitem is None:
+        if getitem_impl is None:
             return
 
-        if not getitem.params:
+        # Check if this __getitem__ has @overload stubs
+        overload_stubs = self.ctx.analyzer.overload_groups.get(id(getitem_impl))
+        if overload_stubs:
+            for stub in overload_stubs:
+                self._gen_single_subscript_operator(out, stub)
+        else:
+            self._gen_single_subscript_operator(out, getitem_impl)
+
+    def _gen_single_subscript_operator(self, out: TextIO, method: 'TpyFunction') -> None:
+        """Generate a single operator[] overload delegating to __getitem__."""
+        if not method.params:
             return
-        index_param_name, index_type = getitem.params[0]
+        index_param_name, index_type = method.params[0]
         index_cpp = index_type.to_cpp()
 
-        if getitem.is_readonly:
-            ret_const = getitem.return_type.to_cpp_return_const()
+        if method.is_readonly:
+            ret_const = method.return_type.to_cpp_return_const()
             out.write(f"\n{INDENT}{ret_const} operator[]({index_cpp} {index_param_name}) const {{\n")
             out.write(f"{INDENT}{INDENT}return __getitem__({index_param_name});\n")
             out.write(f"{INDENT}}}\n")
             # Non-const overload only when return could be a reference
-            needs_dual = not getitem.return_type.is_value_type() or isinstance(getitem.return_type, TypeParamRef)
+            needs_dual = not method.return_type.is_value_type() or isinstance(method.return_type, TypeParamRef)
             if needs_dual:
-                ret_mut = getitem.return_type.to_cpp_return()
+                ret_mut = method.return_type.to_cpp_return()
                 out.write(f"\n{INDENT}{ret_mut} operator[]({index_cpp} {index_param_name}) {{\n")
                 out.write(f"{INDENT}{INDENT}return __getitem__({index_param_name});\n")
                 out.write(f"{INDENT}}}\n")
         else:
-            ret_mut = getitem.return_type.to_cpp_return()
+            ret_mut = method.return_type.to_cpp_return()
             out.write(f"\n{INDENT}{ret_mut} operator[]({index_cpp} {index_param_name}) {{\n")
             out.write(f"{INDENT}{INDENT}return __getitem__({index_param_name});\n")
             out.write(f"{INDENT}}}\n")

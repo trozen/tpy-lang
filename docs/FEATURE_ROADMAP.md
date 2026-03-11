@@ -46,7 +46,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B8 | Dataclasses | M | Done | [VII](#dataclasses) |
 | B9 | List comprehensions | M | Done | [VI](#list-comprehensions) |
 | B10 | `@overload` dispatch flattening | M | Done | [VII](#overload-dispatch-flattening) |
-| B11 | List slicing | M | Phase 1 done | [VII](#list-slicing) |
+| B11 | List slicing | M | Phase 1+2 done | [VII](#list-slicing) |
 | B12 | `Self` type | S | Done | [I](#self-type) |
 | B13 | Bi-directional type inference | M | Done | [I](#bi-directional-type-inference) |
 | B14 | `Optional[StaticProtocol]` codegen | S | Done | [II](#optionalstaticprotocol-codegen) |
@@ -1955,8 +1955,8 @@ class ArrayList[T, N: int]:
     @overload
     def __getitem__(self, index: Int32) -> T: ...
     @overload
-    def __getitem__(self, s: slice) -> Span[T]: ...
-    def __getitem__(self, index: Int32 | slice) -> T | Span[T]:
+    def __getitem__(self, s: slice) -> ReadOnlySpan[T]: ...
+    def __getitem__(self, index: Int32 | slice) -> T | ReadOnlySpan[T]:
         if isinstance(index, slice):
             return self._get_span(index.start, index.stop)
         return self._storage[index]
@@ -2041,8 +2041,8 @@ class ArrayList[T, N: int]:
     @overload
     def __getitem__(self, index: Int32) -> T: ...
     @overload
-    def __getitem__(self, s: slice) -> Span[T]: ...
-    def __getitem__(self, index: Int32 | slice) -> T | Span[T]:
+    def __getitem__(self, s: slice) -> ReadOnlySpan[T]: ...
+    def __getitem__(self, index: Int32 | slice) -> T | ReadOnlySpan[T]:
         if isinstance(index, slice):
             return self.__span__()[index.start:index.stop]
         return self._storage[index]
@@ -2052,17 +2052,23 @@ class ArrayList[T, N: int]:
 new `list[T]` (elements are not contiguous). String step slicing returns `str`
 (owned string).
 
-**Current state**: Phase 1 done. Built-in container slicing (`list[T]`, `Array[T,N]`,
-`Span[T]`, `ReadOnlySpan[T]`) returns `Span[T]` / `ReadOnlySpan[T]`. String slicing
-returns `StrView` (existing). Indices clamped (Python semantics), negative indices
-supported. `@readonly` context and `ReadOnlySpan` source propagate to `ReadOnlySpan`
-result. Phase 2 (user types via `@overload` + `slice` type) and Phase 3 (step) not
+**Current state**: Phase 1 and Phase 2 done. Built-in container slicing (`list[T]`,
+`Array[T,N]`, `Span[T]`, `ReadOnlySpan[T]`) returns `Span[T]` / `ReadOnlySpan[T]`.
+String slicing returns `StrView` (existing). Indices clamped (Python semantics),
+negative indices supported. `@readonly` context and `ReadOnlySpan` source propagate
+to `ReadOnlySpan` result.
+
+Phase 2 adds the `slice` built-in type. User records with `@overload __getitem__`
+can accept both `Int32` (index) and `slice` (range) parameters. The `slice` type
+has `start` and `stop` attributes of type `Optional[Int32]` (matching CPython).
+Syntax `obj[x:y]` on a user type with `__getitem__(slice)` overload constructs a
+`tpy::Slice` C++ struct and calls `__getitem__` directly. Phase 3 (step) not
 started.
 
-**Dependencies**: None for Phase 1 (done). Phase 2 needs `slice` type + B10 (`@overload`).
-Phase 3 needs step parsing (currently rejected by parser).
+**Dependencies**: None for Phase 1 (done). Phase 2 needs `slice` type + B10
+(`@overload`) (done). Phase 3 needs step parsing (currently rejected by parser).
 
-**Effort**: S (Phase 1, done), M (Phase 2, depends on B10), S (Phase 3)
+**Effort**: S (Phase 1, done), M (Phase 2, done), S (Phase 3)
 
 ---
 

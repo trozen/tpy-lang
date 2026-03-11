@@ -43,6 +43,9 @@
 // Builtin function helpers (depends on core, fixed_int, bigint)
 #include "builtins.hpp"
 
+// Slice type for user-defined __getitem__ overloads (no dependencies)
+#include "slice.hpp"
+
 // Container operations (depends on core, type_traits)
 #include "container_ops.hpp"
 

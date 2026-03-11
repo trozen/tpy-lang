@@ -304,6 +304,7 @@ class TpySubscript(TpyExpr):
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
     enum_from_name: 'EnumType | None' = None    # Set by sema for Color["Red"] name lookup
     bounds_safe: bool = False  # Set by sema: index provably in [0, len(obj)), skip bounds check
+    user_slice_getitem: bool = False  # Set by sema: slice dispatches to user __getitem__(slice)
 
 
 @dataclass

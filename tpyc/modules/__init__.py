@@ -464,7 +464,7 @@ def _resolve_concrete_type_name(name: str) -> "TpyType | None":
     Used for resolving extends declarations like extends=["NativeIterable[Char]"].
     """
     from tpyc.typesys import (
-        CHAR, BOOL, STR, VOID, BIGINT, FLOAT, FLOAT32,
+        CHAR, BOOL, STR, VOID, BIGINT, FLOAT, FLOAT32, SLICE,
         INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64,
     )
 
@@ -477,6 +477,7 @@ def _resolve_concrete_type_name(name: str) -> "TpyType | None":
         "str": STR,
         "int": BIGINT,
         "float": FLOAT,
+        "slice": SLICE,
         "None": VOID,
     }
     return type_map.get(name)

@@ -7,7 +7,7 @@ Defines functions like chr, print, len, etc.
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import (
-    INT32, UINT64, BIGINT, FLOAT, FLOAT32, CHAR, STR, STRING, STRVIEW, VOID, BOOL, RANGE, RangeType, ListType,
+    INT32, UINT64, BIGINT, FLOAT, FLOAT32, CHAR, STR, STRING, STRVIEW, VOID, BOOL, RANGE, SLICE, RangeType, ListType,
     DictType, DictKeysViewType, DictValuesViewType, DictItemsViewType, SetType,
     NamedType, TypeParamRef, OwnType, OptionalType, TupleType, SpanType, ALL_FIXED_INTS, FixedIntType,
 )
@@ -1114,6 +1114,9 @@ def init_module() -> BuiltinModule:
 
     # None: Void type (used for function returns)
     module.register_type(VOID, cpp_type="void", methods={})
+
+    # slice: built-in type for subscript ranges (start/stop are Optional[Int32])
+    module.register_type(SLICE, cpp_type="tpy::Slice", methods={})
 
     # Range: lazy iterator returned by range()
     RANGE_BIGINT = RangeType(BIGINT)

@@ -1,0 +1,1 @@
+main.py:15: error: Slicing is not supported for MyList

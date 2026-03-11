@@ -591,6 +591,23 @@ class RangeType(TpyType):
 
 
 @dataclass(frozen=True)
+class SliceType(TpyType):
+    """Slice type: slice(start, stop) for subscript ranges."""
+
+    def to_cpp(self) -> str:
+        return "tpy::Slice"
+
+    def __str__(self) -> str:
+        return "slice"
+
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.slice"
+
+    def is_value_type(self) -> bool:
+        return True
+
+
+@dataclass(frozen=True)
 class IntLiteralType(TpyType):
     """Unresolved integer literal - can coerce to Int32 or BigInt.
 
@@ -2108,6 +2125,7 @@ FLOAT32 = Float32Type()
 BIGINT = BigIntType()
 NONE = NoneType()
 RANGE = RangeType(INT32)
+SLICE = SliceType()
 
 # Backward-compat range limits (use type.min_value / type.max_value instead)
 INT32_MIN = INT32.min_value
@@ -2384,7 +2402,7 @@ IMPLICIT_READONLY_METHODS = frozenset({
     "__and__", "__or__", "__xor__", "__lshift__", "__rshift__",
     "__radd__", "__rsub__", "__rmul__", "__rtruediv__", "__rfloordiv__", "__rmod__", "__rpow__",
     "__neg__", "__pos__", "__invert__",
-    "__copy__", "__deref__",
+    "__copy__", "__deref__", "__span__",
 })
 
 # Methods that mutate self but should take const params (params are read-only).

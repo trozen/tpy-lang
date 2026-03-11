@@ -12,7 +12,7 @@ from typing import NoReturn, Optional
 from ..typesys import (
     TpyType, NamedType, PtrType, OwnType, ReadonlyType, FinalType, SelfType,
     TypeParamRef, OptionalType, VoidType, make_union, EnumType, TupleType,
-    INT32, VOID, STR, STRING, STRVIEW, CHAR, BOOL, FLOAT, FLOAT32, BIGINT, SELF, FieldInfo, RecordInfo, TypeRegistry,
+    INT32, VOID, STR, STRING, STRVIEW, CHAR, BOOL, FLOAT, FLOAT32, BIGINT, SELF, SLICE, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo, TypeParamKind,
     INT8, INT16, INT64, UINT8, UINT16, UINT32, UINT64, ALL_FIXED_INTS,
 )
@@ -231,6 +231,7 @@ class Parser:
             elif original == "float": return FLOAT
             elif original == "bool": return BOOL
             elif original == "str": return STR
+            elif original == "slice": return SLICE
             elif original == "None": return VOID
             elif original == "tuple":
                 raise ParseError("tuple requires type arguments: tuple[T1, T2, ...]", node)
