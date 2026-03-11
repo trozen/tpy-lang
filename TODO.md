@@ -8,7 +8,7 @@
 ## Bugs
 
 ## Safety
-- Dangling Span from list slicing: `items[1:3]` returns `Span[T]` (view into the list). If the list is mutated (e.g. `.append()`, `.insert()`) after slicing, the Span may dangle. Existing borrow-checking for container mutation during iteration should cover this -- verify it catches `span = items[1:3]; items.append(x); use(span)` patterns. If not, extend the borrow tracker to track slice-produced Spans as borrows of the source container.
+- View type borrow tracking for user types: currently only built-in view types (Span, Ptr) are tracked as borrows. Likely needed when designing tpy stdlib types. See escape analysis design doc (Future Extensions) for field-level vs class-level annotation tradeoffs.
 
 ## Examples
 

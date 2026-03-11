@@ -22,7 +22,7 @@ from ..parse import (
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert, TpyRaiseStopIteration,
     TpyGlobal,
     TpyCall, TpyMethodCall, TpyArrayLiteral, TpyListComprehension, TpyDictLiteral, TpyCoerce,
-    TpySubscript, TpyStrLiteral, TpyName, TpyTupleLiteral,
+    TpySubscript, TpySlice, TpyStrLiteral, TpyName, TpyTupleLiteral,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyUnaryOp,
     TpyFieldAccess, TpyFunction, TupleElemCapture,
     TpyMatch,
@@ -1320,6 +1320,14 @@ class StatementAnalyzer:
                     root = _borrow_storage_root(init_inner.args[0])
                     if root is not None:
                         self.ctx.borrow_tracker.add_borrow(root, stmt.name, BorrowKind.PTR)
+            elif isinstance(var_type, SpanType):
+                # Span from slicing borrows the source container
+                # (StrView excluded: str is immutable, no mutations to warn about)
+                init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
+                if isinstance(init_inner, TpySubscript) and isinstance(init_inner.index, TpySlice):
+                    root = _borrow_storage_root(init_inner)
+                    if root is not None:
+                        self.ctx.borrow_tracker.add_borrow(root, stmt.name, BorrowKind.ELEMENT)
         if stmt.init:
             self.init.mark_assigned(stmt.name)
         self.narrowing.update_after_write(stmt.name, var_type, init_type if stmt.init else None, stmt.init)

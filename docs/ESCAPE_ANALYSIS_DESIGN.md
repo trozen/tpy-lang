@@ -31,6 +31,7 @@
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
+| 6.6 | Span/StrView slice borrow tracking | S | Done | [6](#6-intra-function-borrow-checking) |
 | 8a | Parameter mutation inference | M | Done | [8](#8-cross-function-borrow-inference) |
 | 8b | Return-value borrow contracts | L | Not started | [8](#8-cross-function-borrow-inference) |
 | 7b | `@pure` enforcement -- or drop `@pure` (see [note](#7-pure-annotation)) | M | Deferred | [7](#7-pure-annotation) |
@@ -55,6 +56,7 @@ Integer range tracking (11) can proceed in parallel with borrow checking (6).
 | Feature | Notes | Section |
 |---------|-------|---------|
 | Borrow metadata export | Not needed while compiler has source; design keeps contracts serializable for future use | [9](#9-borrow-metadata-export) |
+| View type borrow tracking | Generalize hardcoded Span/Ptr/StrView borrow tracking to user types. Two approaches: (1) field-level annotation marking which field borrows from the outside -- lets the compiler trace borrow flow through constructors; (2) class-level marker protocol (`View`) -- simpler but less precise. Field-level is more useful (closer to Rust's lifetime-on-field) without requiring full lifetime machinery. Prior art: C++ `[[gsl::Pointer]]`, Rust lifetimes. Will likely come up when designing tpy standard library types. | -- |
 
 ### Already Done
 
@@ -342,6 +344,13 @@ field assignment (`obj.field = val`), augmented assignment on borrowed storage.
 
 **Step 6.5: Function parameter mutation detection.** Detect passing borrowed storage
 to non-`@readonly` / non-`@pure` function parameters.
+
+**Step 6.6: Span/StrView slice borrow tracking.** Slicing a container (`items[1:3]`)
+produces a `Span[T]` or `StrView` -- value types that are semantically borrows of
+the source. These are now registered as `BorrowKind.ELEMENT` on the source container,
+so mutations (append, subscript write, del) trigger warnings. Currently hardcoded for
+built-in view types; user-defined view types would need a `@view` marker or similar
+mechanism to opt in.
 
 **Step 6b/6c: Codegen benefits.** When the borrow checker proves no mutation of a
 container during a borrow scope, codegen can use `const auto&` (for-loops),
@@ -961,3 +970,4 @@ New test areas needed:
 - **`@pure` annotation**: marking functions pure, borrow checker trusting them
 - **Integer ranges**: bounds check elision in for/while patterns
 - **Send/Sync**: auto-derivation, type rejection at channel/sharing boundaries
+
