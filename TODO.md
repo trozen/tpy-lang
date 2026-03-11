@@ -1,8 +1,6 @@
 # TODO
 
 ## Next
-- `else:` source comment in codegen: compound statements (`if/else`, `for/else`, `while/else`) don't emit a `// N: else:` source comment for the `else` keyword since it's not a statement node. Track the `else:` line number in AST nodes and emit the comment.
-- `str` locals assigned from literals: consider emitting `std::string_view` instead of `std::string` when explicitly annotated as `str` but never mutated (deduced locals already get `string_view`)
 - Union return copies non-value members: `f() -> A | B` returns `std::variant<A, B>` by value, copying record members. Python returns by reference. `std::variant<A&, B&>` is not valid C++. Params are fine (`&` for non-value unions). See `docs/UNION_TYPES_DESIGN.md` Known Semantic Gaps.
 - flow-sensitive None narrowing: broaden current narrowing coverage where needed (e.g. more complex expression forms)
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
@@ -18,6 +16,9 @@
 - Readonly type unification: consider replacing `ReadOnlySpan[T]`/`ReadOnlyPtr[T]`/`ReadOnlySpanLike[T]` with parameterized `Span[readonly[T]]`/`Ptr[readonly[T]]`/`SpanLike[readonly[T]]`. Would simplify the type system (fewer distinct types), make readonly composable, and align naming. Design questions: how does `readonly[T]` interact with generic type params, protocol conformance, and coercion rules? Does `Span[readonly[T]]` mean the span itself is const or the elements are? (Rust distinguishes `&[T]` vs `&mut [T]` at the reference level, not the element level.)
 - investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust
 - zig language: what it is, how is it different from C, what useful patterns can we learn
+- Distinct types (newtypes): `class Meters(Distinct[float]): pass` -- zero-cost wrapper that creates a nominally distinct type. Prevents mixing incompatible values of the same underlying type (units, IDs, currencies). C++ codegen: thin struct wrapper or strong typedef. Inspired by Nim's `distinct` keyword.
+- `@constexpr` decorator: mark pure functions as compile-time evaluable, emit C++ `constexpr`. Useful for lookup tables, constants, config. Low implementation cost -- lean on C++ compiler. `TABLE: Final[Int32] = factorial(10)` computed at compile time.
+- Inline iterators: `@inline` on generator functions to unroll the loop body at the call site instead of creating a state machine. Zero overhead, important for hot paths. Generalizes what `range()` already does implicitly to user-defined iterators. Inspired by Nim's inline vs closure iterator distinction.
 
 ## Builtins
 - type(); (in future `T = type(x); z = T()`)
@@ -30,7 +31,7 @@
 ## Python features
 - Any
 - dynamic attributes
-- list/container slicing (Phase 1: built-in types -> Span[T], Phase 2: user types via slice + @overload B10, Phase 3: step)
+- list/container slicing (Phase 2: user types via slice + @overload B10, Phase 3: step)
 - lambda expression
 - properties
 - with statement/context manager
@@ -87,8 +88,6 @@
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str
 - Docstrings: silently skipped in codegen (harmless, but no introspection support)
 - make a doc with TPy vs Python differences
-
-## Code Review Items (2026-03-04)
 
 ## Code Review Items (2026-01-27)
 - `and`/`or` return `bool` not operand: `1 and 2` returns `1` (bool), Python returns `2`
