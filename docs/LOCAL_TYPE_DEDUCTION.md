@@ -17,7 +17,7 @@
 | 6 | List element-type widening: `.append(Int64)` on `[1,2]` widens element type from Int32 to Int64. Already handled by `_widen_inferred_type` in Phase 5a infrastructure; added test coverage. | Done |
 | 7a.1 | Deferred generic instance inference (MVP): `x = GenericType()` with unresolved type params, resolved from subsequent method calls via constraint unification. Eager resolution once all params known. Reuses `match_type_with_inference` from bidirectional inference. See `BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md`. | Done |
 | 7a.2 | Expected-type constraint sources: resolve pending generic from function parameter type (`f(x)` where param is `Container[Int32]`) and return type (`return x` where function returns `Container[Int32]`). Same eager resolution as 7a.1. | Done |
-| 7b | `_` wildcard for partial type args in all generic calls (functions, constructors, methods). `ArrayList[_, 1024]()`, `f[_, Int32](x)`, etc. Remaining constructor params deferred via 7a. | Not started |
+| 7b | `_` wildcard for partial type args in all generic calls (functions, constructors, methods). `ArrayList[_, 1024]()`, `f[_, Int32](x)`, etc. Remaining constructor params deferred via 7a. | Done |
 | 7c | Extended constraint sources: field access as constraint, cascading pending types (`x = s.items` where both pending). | Not started |
 | ~~8~~ | ~~State ownership: move deduction-related fields from SemanticContext into sub-structures owned by LocalTypeDeduction.~~ Dropped -- fields are genuinely shared state across analysis modules (expressions, statements, calls, methods) and codegen. Moving them would add indirection without reducing coupling. | Dropped |
 
@@ -487,33 +487,37 @@ but multi-member unions fall through to the "unresolved" error.
 ### Phase 7b: `_` Wildcard for Partial Type Args
 
 Syntax: `_` as a wildcard placeholder in any type arg position, for all
-generic calls (functions, constructors, methods).
-
-Currently, partial type args for functions work as a positional prefix only:
-`f[A]()` provides the first param, rest inferred. The `_` placeholder
-generalizes this to allow gaps in any position.
+generic calls (functions, constructors, methods). `f[_]()` is equivalent
+to `f()` (full inference).
 
 ```python
-# Constructors -- remaining params deferred (reuses 7a)
-l = ArrayList[_, 1024]()    # N = 1024, T deferred
-l.append(Int32(42))         # T = Int32 -> ArrayList[Int32, 1024]
-
 # Functions -- _ in any position
-def transform[T, U](x: U) -> T: ...
-transform[_, Int32](42)     # T inferred from context, U = Int32
+pair_func[_, Int64](Int32(5), Int64(20))  # T inferred from arg, U = Int64
+triple[Int32, _, Int64](a, b, c)          # B inferred from arg
 
-# Methods
-obj.convert[_, Float]()     # first param inferred, second explicit
+# Constructors -- remaining params deferred (reuses 7a)
+b = Box[_](Int32(42))                     # T = Int32 from arg
+p = Pair[_, Int64](Int32(10), Int64(20))  # T = Int32, U = Int64
+
+# Methods -- wildcards on method-level type params
+m.transform[_, Int64](x, Int64(100))      # U inferred, V = Int64
 ```
 
 Implementation:
-- Parser support for `_` as a type arg placeholder (parsed as `None` in
-  the type_args tuple)
+- Parser (`_parse_type_args_from_subscript`): detects `_` (ast.Name with
+  id `_`) and emits `None` in the type_args tuple
 - `infer_type_params_for_function` and `infer_type_params_for_record`
-  already accept `explicit_type_args` and pre-populate the `inferred`
-  dict; skip `None` entries instead of binding them
-- For constructors, remaining unresolved params after argument-based
-  inference enter the Phase 7a deferred resolution path
+  accept `explicit_type_args` and pre-populate the `inferred` dict;
+  `None` entries are skipped (wildcard positions)
+- Function calls (`calls.py`): wildcards route through inference with
+  `explicit_type_args` instead of the full-explicit path
+- Constructor calls (`calls.py`): wildcards validated for count, then
+  passed to `infer_type_params_for_record`; remaining unresolved params
+  enter the Phase 7a deferred resolution path
+- Method calls (`methods.py`): wildcards route to inference with
+  `explicit_type_args` on the partial function
+- `_validate_explicit_type_args` skips `None` entries in protocol/type
+  validation
 
 ### Phase 7c: Extended Constraint Sources
 

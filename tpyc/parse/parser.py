@@ -1643,8 +1643,12 @@ class Parser:
         slices = _extract_subscript_slices(node)
 
         # Parse each type argument - raise error if any fails
-        type_args = []
+        type_args: list[TpyType | None] = []
         for s in slices:
+            # _ wildcard: infer this type argument
+            if isinstance(s, ast.Name) and s.id == '_':
+                type_args.append(None)
+                continue
             # Integer constants are not valid type arguments
             if isinstance(s, ast.Constant) and isinstance(s.value, int):
                 raise ParseError(f"Integer '{s.value}' is not a valid type argument", s)

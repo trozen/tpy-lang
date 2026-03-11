@@ -1010,13 +1010,27 @@ class MethodAnalyzer:
             partial_func = self.type_ops.substitute_method_type_params(partial_func, class_subst)
 
         # Infer new params from arguments or explicit type args
+        has_wildcards = expr.type_args and None in expr.type_args
         if expr.type_args:
             if len(expr.type_args) != len(new_params):
                 raise self.ctx.error(
                     f"Method '{method_info.name}' expects {len(new_params)} type argument(s), "
                     f"got {len(expr.type_args)}",
                     expr)
-            method_subst = dict(zip(new_params, expr.type_args))
+            if not has_wildcards:
+                method_subst = dict(zip(new_params, expr.type_args))
+            else:
+                arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+                method_subst = self.type_ops.infer_type_params_for_function(
+                    partial_func, arg_types, self.protocols.type_conforms_to_protocol,
+                    expected_return_type=self.ctx.expr_type_hint,
+                    explicit_type_args=expr.type_args,
+                )
+                if method_subst is None:
+                    raise self.ctx.error(
+                        f"Cannot infer type arguments for method '{method_info.name}'. "
+                        f"Specify explicitly: .{method_info.name}[{', '.join(new_params)}](...)",
+                        expr)
         else:
             arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
             method_subst = self.type_ops.infer_type_params_for_function(
@@ -1041,7 +1055,7 @@ class MethodAnalyzer:
             )
 
         # Prefer StrView for string literal args (skip fully-explicit)
-        if not expr.type_args:
+        if not expr.type_args or has_wildcards:
             prefer_strview_for_literals(method_subst, partial_func, expr.args,
                                        self.protocols.type_conforms_to_protocol)
 

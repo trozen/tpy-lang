@@ -1,0 +1,1 @@
+main.py:8: error: Function 'pair_func' expects 2 type argument(s), got 3

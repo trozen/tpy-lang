@@ -2767,6 +2767,17 @@ import tpy.unsafe as m
 q = m.unsafe_cast[UInt32](p)
 ```
 
+**`_` wildcard type arguments**: use `_` as a placeholder in any type argument
+position to let the compiler infer that parameter. Works in functions,
+constructors, and methods. `f[_]()` is equivalent to `f()` (full inference).
+
+```python
+pair_func[_, Int64](Int32(5), Int64(20))  # T inferred from arg
+triple[Int32, _, Int64](a, b, c)          # B inferred from arg
+Box[_](Int32(42))                         # T = Int32 from constructor arg
+m.transform[_, Int64](x, Int64(100))      # method-level wildcard
+```
+
 **Deferred generic instance inference**: when a generic type is constructed without
 explicit type arguments and without enough context to infer them, the compiler
 defers inference and resolves type parameters from subsequent method calls:
@@ -4301,7 +4312,7 @@ Generated C++ emits `extern` declarations before the module namespace. Reference
 
 - **Working**: Local variables (inferred and annotated)
 - **Working**: Global variables (typed)
-- **Working**: Contextual type inference from assignment/return/nested-call context for generic functions, record constructors, and module-type constructors; partial explicit type args
+- **Working**: Contextual type inference from assignment/return/nested-call context for generic functions, record constructors, and module-type constructors; partial explicit type args; `_` wildcard type arguments
 - **Working**: `global` keyword for explicit global mutation from functions
 - **Open**: `:=` walrus → if useful pattern emerges
 

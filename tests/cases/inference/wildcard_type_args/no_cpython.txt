@@ -1,0 +1,1 @@
+_ wildcard is a TPy-specific feature not supported in CPython

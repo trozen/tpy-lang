@@ -718,7 +718,7 @@ class TypeOperations:
         arg_types: list[TpyType],
         type_conforms_to_protocol: callable,
         expected_return_type: TpyType | None = None,
-        explicit_type_args: tuple[TpyType, ...] | None = None,
+        explicit_type_args: 'tuple[TpyType | None, ...] | None' = None,
     ) -> dict[str, TpyType] | None:
         """Infer type parameters from function arguments.
 
@@ -734,7 +734,8 @@ class TypeOperations:
             if len(explicit_type_args) > len(func.type_params):
                 return None
             for tp, arg in zip(func.type_params, explicit_type_args):
-                inferred[tp] = arg
+                if arg is not None:  # None = _ wildcard, skip
+                    inferred[tp] = arg
         for (pname, ptype), arg_type in zip(func.params, arg_types):
             if not self.match_type_with_inference(ptype, arg_type, inferred):
                 return None
@@ -788,17 +789,25 @@ class TypeOperations:
         record: RecordInfo,
         arg_types: list[TpyType],
         expected_type: TpyType | None = None,
+        explicit_type_args: tuple['TpyType | None', ...] | None = None,
     ) -> dict[str, TpyType] | None:
         """Infer type parameters from constructor arguments for user-defined generic record.
 
         Returns dict of inferred type params (e.g., {"T": Int32}) on success, None on failure.
         If expected_type is provided, unresolved params are matched against the record type pattern.
+        If explicit_type_args is provided, pre-populates inferred with those (positional, None = skip).
         """
         min_args = sum(1 for _, _, default in record.init_params if default is None)
         if len(arg_types) < min_args or len(arg_types) > len(record.init_params):
             return None
 
         inferred: dict[str, TpyType] = {}
+        if explicit_type_args:
+            if len(explicit_type_args) > len(record.type_params):
+                return None
+            for tp, arg in zip(record.type_params, explicit_type_args):
+                if arg is not None:
+                    inferred[tp] = arg
         for (pname, ptype, _), arg_type in zip(record.init_params, arg_types):
             if not self.match_type_with_inference(ptype, arg_type, inferred):
                 return None

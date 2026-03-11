@@ -1392,6 +1392,8 @@ class CallAnalyzer:
                 expr
             )
         for type_arg in expr.type_args:
+            if type_arg is None:  # _ wildcard
+                continue
             if is_protocol_type(type_arg):
                 raise self.ctx.error(
                     f"Protocol type '{type_arg.name}' cannot be used as a type argument. "
@@ -1693,7 +1695,7 @@ class CallAnalyzer:
         if expr.type_args:
             self._validate_explicit_type_args(expr, len(func.type_params))
 
-            if len(expr.type_args) == len(func.type_params):
+            if len(expr.type_args) == len(func.type_params) and None not in expr.type_args:
                 # Full explicit -- existing path
                 type_subst = dict(zip(func.type_params, expr.type_args))
             else:
@@ -1730,7 +1732,7 @@ class CallAnalyzer:
                 )
 
         # Prefer StrView for string literal args (skip fully-explicit)
-        n_explicit = len(expr.type_args) if expr.type_args else 0
+        n_explicit = sum(1 for a in expr.type_args if a is not None) if expr.type_args else 0
         if n_explicit < len(func.type_params):
             prefer_strview_for_literals(type_subst, func, expr.args,
                                         self.protocols.type_conforms_to_protocol,
@@ -1870,10 +1872,38 @@ class CallAnalyzer:
             return expr.call_type
         # Generic record without explicit type args - try type inference
         if record.is_generic():
+            # Validate _ wildcard type args if present
+            wildcard_type_args: tuple[TpyType | None, ...] | None = None
+            if expr.type_args and None in expr.type_args:
+                if len(expr.type_args) != len(record.type_params):
+                    raise self.ctx.error(
+                        f"Record '{record.name}' expects {len(record.type_params)} type arguments, "
+                        f"got {len(expr.type_args)}",
+                        expr
+                    )
+                # Validate non-wildcard entries
+                in_generic = bool(
+                    (isinstance(self.ctx.current_function, TpyFunction) and self.ctx.current_function.type_params)
+                    or self.ctx.record_ctx.type_params
+                )
+                for type_arg in expr.type_args:
+                    if type_arg is not None:
+                        if is_protocol_type(type_arg):
+                            raise self.ctx.error(
+                                f"Protocol type '{type_arg.name}' cannot be used as a type argument",
+                                expr)
+                        if isinstance(type_arg, NamedType) and type_arg.is_record and not type_arg.type_args:
+                            if self.ctx.registry.get_record_for_type(type_arg) is None:
+                                raise self.ctx.error(f"Unknown type: {type_arg.name}", expr)
+                        self.type_ops.validate_type(
+                            type_arg, allow_type_param_ref=in_generic,
+                            loc=expr.loc, allow_forward_ref=False)
+                wildcard_type_args = expr.type_args
             if record.has_init:
                 arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
                 inferred = self.type_ops.infer_type_params_for_record(
                     record, arg_types, expected_type=self.ctx.expr_type_hint,
+                    explicit_type_args=wildcard_type_args,
                 )
                 if inferred:
                     # Resolve pending types for codegen.
@@ -1913,33 +1943,38 @@ class CallAnalyzer:
                     return inferred_type
             else:
                 # No __init__ -- try contextual inference only
-                if self.ctx.expr_type_hint is not None:
+                if self.ctx.expr_type_hint is not None or wildcard_type_args is not None:
                     inferred: dict[str, TpyType] = {}
+                    if wildcard_type_args:
+                        for tp, arg in zip(record.type_params, wildcard_type_args):
+                            if arg is not None:
+                                inferred[tp] = arg
                     exp = self.ctx.expr_type_hint
-                    if isinstance(exp, OwnType):
-                        exp = exp.wrapped
-                    record_pattern = NamedType(record.name, tuple(
-                        TypeParamRef(tp) for tp in record.type_params
-                    ))
-                    if self.type_ops.match_type_with_inference(record_pattern, exp, inferred):
-                        if all(tp in inferred for tp in record.type_params):
-                            # Validate type parameter bounds
-                            for param_name, type_arg in inferred.items():
-                                if param_name in record.type_param_bounds:
-                                    bound = record.type_param_bounds[param_name]
-                                    if not self.protocols.type_conforms_to_protocol(type_arg, bound):
-                                        raise self.ctx.error(
-                                            f"Inferred type '{type_arg}' does not satisfy bound '{bound}' "
-                                            f"for type parameter '{param_name}' of '{record.name}'",
-                                            expr
-                                        )
-                            type_args = tuple(inferred[p] for p in record.type_params)
-                            inferred_type = NamedType(expr.func, type_args)
-                            expr.call_type = inferred_type
-                            self._set_record_constructor_info(expr, record, inferred_type, inferred)
-                            for arg in expr.args:
-                                self.expr.analyze_expr(arg)
-                            return inferred_type
+                    if exp is not None:
+                        if isinstance(exp, OwnType):
+                            exp = exp.wrapped
+                        record_pattern = NamedType(record.name, tuple(
+                            TypeParamRef(tp) for tp in record.type_params
+                        ))
+                        self.type_ops.match_type_with_inference(record_pattern, exp, inferred)
+                    if all(tp in inferred for tp in record.type_params):
+                        # Validate type parameter bounds
+                        for param_name, type_arg in inferred.items():
+                            if param_name in record.type_param_bounds:
+                                bound = record.type_param_bounds[param_name]
+                                if not self.protocols.type_conforms_to_protocol(type_arg, bound):
+                                    raise self.ctx.error(
+                                        f"Inferred type '{type_arg}' does not satisfy bound '{bound}' "
+                                        f"for type parameter '{param_name}' of '{record.name}'",
+                                        expr
+                                    )
+                        type_args = tuple(inferred[p] for p in record.type_params)
+                        inferred_type = NamedType(expr.func, type_args)
+                        expr.call_type = inferred_type
+                        self._set_record_constructor_info(expr, record, inferred_type, inferred)
+                        for arg in expr.args:
+                            self.expr.analyze_expr(arg)
+                        return inferred_type
             # Inference failed -- try deferred resolution (Phase 7a)
             if self._can_defer_generic_inference(record, expr):
                 return self._create_pending_generic_instance(record, expr)
@@ -2002,8 +2037,13 @@ class CallAnalyzer:
         instance_id = self.ctx.pending_generic_counter
         self.ctx.pending_generic_counter += 1
 
-        # Seed inferred dict from constructor args if has_init
+        # Seed inferred dict from explicit _ wildcard type args
         inferred: dict[str, TpyType] = {}
+        if expr.type_args and None in expr.type_args:
+            for tp, arg in zip(record.type_params, expr.type_args):
+                if arg is not None:
+                    inferred[tp] = arg
+        # Seed from constructor args if has_init
         if record.has_init and expr.args:
             arg_types = [self.ctx.get_expr_type(arg) for arg in expr.args]
             # Try partial inference from available args
