@@ -14,12 +14,12 @@ void test_tuple() {
     std::cout << b << "\n";
 }
 
-// 10: def test_list_stays_owned() -> None:
-void test_list_stays_owned() {
+// 10: def test_list_view() -> None:
+void test_list_view() {
     // 11:     items: list[str] = ["alpha", "beta"]
     std::vector<std::string> items = {"alpha", "beta"};
-    // 12:     s = items[0]  # tpyc: type(str)
-    std::string s = tpy::__getitem__(items, 0);
+    // 12:     s = items[0]  # tpyc: type(StrView)
+    std::string_view s = tpy::__getitem__(items, 0);
     // 13:     print(s)
     std::cout << s << "\n";
 }
@@ -43,8 +43,8 @@ void __tpy_init() {
 
     // 21: test_tuple()
     test_tuple();
-    // 22: test_list_stays_owned()
-    test_list_stays_owned();
+    // 22: test_list_view()
+    test_list_view();
     // 23: test_nested_tuple()
     test_nested_tuple();
 }

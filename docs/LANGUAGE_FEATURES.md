@@ -267,7 +267,7 @@ This ensures fixed-width variables stay in the checked arithmetic domain. If the
 
 #### String Type Semantics (Working)
 
-`str` is context-dependent, matching Python's actual semantics where parameters are borrowed and returns/fields are owned. Locals are inferred: `std::string_view` when safe (literal, param, Array element, or record field source), `std::string` when ownership is needed:
+`str` is context-dependent, matching Python's actual semantics where parameters are borrowed and returns/fields are owned. Locals are inferred: `std::string_view` when safe (literal, param, Array element, record field, `list[str]` element, or `dict[K, str]` value source), `std::string` when ownership is needed:
 
 ```python
 def greet(name: str) -> str:   # param=string_view, return=std::string
@@ -282,12 +282,20 @@ u = str(42)                    # local = std::string (owned source)
 v = "start"
 v += " end"                    # local = std::string (augmented assignment)
 
-# Array/record sources are view-safe unless the source is mutated:
+# Array/record/list/dict sources are view-safe unless the source is mutated:
 arr: Array[str, 3] = ["a", "b", "c"]
 x = arr[0]                     # local = std::string_view (stable storage)
 p = Config("test")
 y = p.name                     # local = std::string_view (stable storage)
 p.name = "new"                 # source mutated -> y falls back to std::string
+
+names: list[str] = ["alice", "bob"]
+a = names[Int32(0)]            # local = std::string_view
+names.append("carol")          # source mutated -> a falls back to std::string
+
+d: dict[str, str] = {"key": "val"}
+b = d["key"]                   # local = std::string_view
+d["key"] = "new"               # source mutated -> b falls back to std::string
 ```
 
 For explicit control, use `String` or `StrView` from the `tpy` module:

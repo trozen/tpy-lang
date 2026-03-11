@@ -7,9 +7,10 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void test_tuple();
-void test_list_view();
-void test_nested_tuple();
+void test_dict_value_view();
+void test_dict_mutation_fallback();
+void test_dict_value_update_fallback();
+void test_dict_int_key_view();
 
 void __tpy_init();
 } // namespace tpy_user::main

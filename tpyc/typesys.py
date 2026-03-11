@@ -151,6 +151,13 @@ class TpyType:
         """Return True if copying this value type involves heap allocation."""
         return False
 
+    def subscript_borrows(self) -> bool:
+        """Return True if a subscript result can borrow from this container's element
+        storage (i.e. the result is a view into the container, not an owned copy).
+        Source-mutation tracking at the call site ensures the borrow stays valid.
+        User-defined types can opt in once borrow-source annotation (6.7) is implemented."""
+        return False
+
     def is_send(self) -> bool:
         """Return True if this type is safe to transfer across threads.
 
@@ -1462,6 +1469,9 @@ class ArrayType(NamedType):
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
 
+    def subscript_borrows(self) -> bool:
+        return True
+
     def needs_explicit_element_target(self) -> bool:
         return True
 
@@ -1611,6 +1621,9 @@ class ListType(NamedType):
         # Mutable container -- not safe to share references across threads
         return False
 
+    def subscript_borrows(self) -> bool:
+        return True
+
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
 
@@ -1651,6 +1664,9 @@ class DictType(NamedType):
     def is_sync(self) -> bool:
         # Mutable container -- not safe to share references across threads
         return False
+
+    def subscript_borrows(self) -> bool:
+        return True
 
     def get_element_type(self) -> Optional[TpyType]:
         # Subscript result type: d[k] -> V

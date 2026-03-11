@@ -35,7 +35,7 @@
 | 8a | Parameter mutation inference | M | Done | [8](#8-cross-function-borrow-inference) |
 | 8b | Return-value borrow contracts | L | Not started | [8](#8-cross-function-borrow-inference) |
 | 7b | `@pure` enforcement -- or drop `@pure` (see [note](#7-pure-annotation)) | M | Deferred | [7](#7-pure-annotation) |
-| 6c+ | String view extension (list, dict) | M | Not started | [6c](#6c-string-view-extension-to-containers) |
+| 6c+ | String view extension (list, dict) | M | Done | [6c](#6c-string-view-extension-to-containers) |
 | 11+ | Integer range tracking (general) | L | Not started | [11](#11-integer-range-tracking) |
 | 11+a | Augmented-assignment range shifting (`i += 1` in while-loops) | S-M | Done | [11](#11-integer-range-tracking) |
 | 11b | Safe unsigned cast after assertion | S | Done | [11b](#11b-safe-unsigned-cast) |
@@ -463,7 +463,7 @@ last use of `x`, the string can be a `string_view` instead of a copy.
 Incremental rollout:
 - **Phase A (Done)**: `Array[T, N]` subscript -- no reallocation risk, only element mutation
 - **Phase B (Done)**: Record field access -- no reallocation risk
-- **Phase C**: `list[T]` / `dict[K, V]` -- reallocation risk from growth operations (see 6c+)
+- **Phase C (Done)**: `list[T]` / `dict[K, V]` -- source-mutation tracking falls back to `std::string` if the source is mutated after the borrow (see 6c+)
 
 **Implementation**: Since `PendingStrType.is_value_type()` returns True, the main borrow
 system does not track string variables. A separate `str_source_borrows` dict on

@@ -1,5 +1,5 @@
-# String subscript access on lvalue tuple infers string_view;
-# list subscript stays owned (reallocation can invalidate views)
+# String subscript access on lvalue containers infers string_view;
+# source-mutation tracking falls back to std::string if source is mutated.
 from tpy import Int32
 
 def test_tuple() -> None:
@@ -7,9 +7,9 @@ def test_tuple() -> None:
     b = t[1]  # tpyc: type(StrView)
     print(b)
 
-def test_list_stays_owned() -> None:
+def test_list_view() -> None:
     items: list[str] = ["alpha", "beta"]
-    s = items[0]  # tpyc: type(str)
+    s = items[0]  # tpyc: type(StrView)
     print(s)
 
 def test_nested_tuple() -> None:
@@ -19,5 +19,5 @@ def test_nested_tuple() -> None:
     print(a)
 
 test_tuple()
-test_list_stays_owned()
+test_list_view()
 test_nested_tuple()

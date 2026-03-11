@@ -710,17 +710,16 @@ class LocalTypeDeduction:
             if isinstance(init_type, StrViewType):
                 return True
 
-        # Subscript on lvalue tuple or Array -- element storage is stable.
-        # Tuple elements are immutable; Array elements may be overwritten,
-        # but source-mutation tracking (source_mutated flag on StrVarInfo)
-        # will fall back to std::string if the source is mutated.
+        # Subscript on lvalue container -- source-mutation tracking
+        # (source_mutated flag on StrVarInfo) falls back to std::string if
+        # the source is mutated, so view is safe while source is live.
+        # Only single-level access (container[i] where container is a name)
+        # to ensure _borrow_storage_root can track the source.
         if isinstance(init_expr, TpySubscript) and self.compat.is_lvalue(init_expr):
             obj_type = self.ctx.get_expr_type(init_expr.obj)
             if isinstance(obj_type, TupleType):
                 return True
-            # Array subscript: only single-level (arr[i] where arr is a name)
-            # to ensure _borrow_storage_root can track the source.
-            if isinstance(obj_type, ArrayType) and isinstance(init_expr.obj, TpyName):
+            if obj_type.subscript_borrows() and isinstance(init_expr.obj, TpyName):
                 return True
 
         # Field access on lvalue record -- field storage is stable unless
