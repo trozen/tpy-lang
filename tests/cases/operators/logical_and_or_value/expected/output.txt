@@ -1,0 +1,39 @@
+42
+1
+0
+2
+default
+alice
+
+world
+3.14
+1.5
+0.0
+2.5
+100
+3
+3
+99
+7
+5
+mixed condition ok
+both truthy
+at least one truthy
+5
+0
+99
+77
+1
+3
+99
+77
+5
+0
+42
+2
+default
+3.14
+1
+0
+1
+0

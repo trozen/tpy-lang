@@ -11,7 +11,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NamedType, SelfType,
-    BigIntType, IntLiteralType, TypeParamRef, is_protocol_type, unwrap_readonly,
+    BigIntType, BoolType, IntLiteralType, TypeParamRef, is_protocol_type, unwrap_readonly,
 )
 from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -620,6 +620,13 @@ class CodeGenContext:
         # be fixed when non-const __getitem__ overloads are added.
         if isinstance(expr, TpySubscript):
             return False
+        # Logical and/or with operand-return semantics: rvalue temps are
+        # materialized into named variables by _gen_logical_value, so the
+        # ternary is only an rvalue when both operands are rvalues.
+        if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
+            result_type = self.analyzer.get_expr_type(expr)
+            if not isinstance(result_type, BoolType):
+                return self.is_rvalue_source(expr.left) and self.is_rvalue_source(expr.right)
         # Constructor calls, literals, ops are rvalues
         if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
                              TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat,

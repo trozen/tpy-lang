@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type,
+    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType,
     PendingListType, PendingDictType, PendingSetType, PendingStrType, ListType, DictType, SetType, ArrayType, TypeParamRef, NamedType,
     UnionType, NoneType, VoidType, EnumType, TupleType,
     unwrap_readonly, is_protocol_type, resolve_int_literals,
@@ -56,9 +56,21 @@ class TypeResolver:
 
         # For binary operations, compute type using resolved operand types
         if isinstance(expr, TpyBinOp):
-            # Comparisons always produce bool -- skip arithmetic type logic
+            # Comparisons: skip arithmetic type logic, use sema type directly.
             if expr.op in ("==", "!=", "<", ">", "<=", ">="):
                 typ = self.ctx.analyzer.get_expr_type(expr)
+                return unwrap_readonly(typ) if typ else typ
+            # Logical and/or: for operand-return semantics, resolve via
+            # operand types so codegen-level deductions (e.g. string_view)
+            # propagate correctly. Bool-result falls through to sema type.
+            if expr.op in ("&&", "||"):
+                typ = self.ctx.analyzer.get_expr_type(expr)
+                if isinstance(typ, BoolType):
+                    return unwrap_readonly(typ) if typ else typ
+                left_resolved = self.get_resolved_type(expr.left)
+                right_resolved = self.get_resolved_type(expr.right)
+                if left_resolved == right_resolved:
+                    return left_resolved
                 return unwrap_readonly(typ) if typ else typ
 
             # First pass without context to detect Int32 operands

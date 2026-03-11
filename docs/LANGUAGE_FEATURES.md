@@ -2602,6 +2602,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 
 ### Logical
 - **Working**: `and`, `or`, `not`
+- **Working**: `and`/`or` return operand value (Python semantics) when both operands have the same type. Mixed-type operands return `bool`. In condition context (`if`, `while`), always uses efficient C++ `&&`/`||`.
 
 ### Bitwise
 - **Working**: `&`, `|`, `^`, `~`, `<<`, `>>`

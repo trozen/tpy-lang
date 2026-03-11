@@ -529,25 +529,100 @@ class ExpressionGenerator:
 
         expr_type = self.types.get_resolved_type(expr)
         rendered = self.gen_expr(expr)
-        # IntEnum truthiness: value 0 is falsy (like int)
-        # Base Enum: always truthy (CPython behavior)
-        if isinstance(expr_type, IntEnumType):
-            cpp_underlying = expr_type.underlying_type.to_cpp()
-            return f"(static_cast<{cpp_underlying}>({rendered}) != 0)"
-        if isinstance(expr_type, EnumType):
-            return "true"
-        if isinstance(expr_type, OptionalType) and not expr_type.uses_pointer_repr():
-            return f"tpy::is_truthy({rendered})"
-        # Types with __bool__() or __len__() fallback (user-defined and builtin containers)
-        record = self.ctx.analyzer.registry.get_record_for_type(expr_type)
-        if record:
-            if self.ctx.is_indirect_name(expr):
+        if self.ctx.is_indirect_name(expr):
+            record = self.ctx.analyzer.registry.get_record_for_type(expr_type)
+            if record and (record.get_method_overloads("__bool__")
+                           or record.get_method_overloads("__len__")):
                 rendered = f"(*{rendered})"
+        return self._truthy_for_rendered(rendered, expr_type)
+
+    def _truthy_for_rendered(self, rendered: str, var_type: TpyType) -> str:
+        """Generate truthiness test for an already-rendered, already-dereferenced
+        C++ expression. For pointer-locals, dereference before calling."""
+        if isinstance(var_type, IntEnumType):
+            cpp_underlying = var_type.underlying_type.to_cpp()
+            return f"(static_cast<{cpp_underlying}>({rendered}) != 0)"
+        if isinstance(var_type, EnumType):
+            return "true"
+        if isinstance(var_type, OptionalType) and not var_type.uses_pointer_repr():
+            return f"tpy::is_truthy({rendered})"
+        if is_any_str_type(var_type):
+            return f"(!{rendered}.empty())"
+        record = self.ctx.analyzer.registry.get_record_for_type(var_type)
+        if record:
             if record.get_method_overloads("__bool__"):
                 return f"tpy::__bool__({rendered})"
             if record.get_method_overloads("__len__"):
                 return f"(tpy::__len__({rendered}) != 0)"
+            # User records without __bool__/__len__ are always truthy (Python default).
+            # Builtin types (int, float, etc.) have implicit C++ bool conversion.
+            if isinstance(var_type, NamedType) and var_type.is_user_record:
+                return "true"
+        # Implicit bool conversion (int, float, ptr, etc.)
         return rendered
+
+    def _gen_logical_value(self, expr: TpyBinOp, result_type: TpyType) -> str:
+        """Generate and/or with Python operand semantics (returns operand, not bool).
+
+        For variable operands (TpyName), uses the variable directly in both the
+        truthiness test and the ternary branch -- no temp needed.
+
+        For complex expressions (function calls, constructors), materializes
+        into an auto&& temp so both ternary branches are lvalue names. This
+        ensures the ternary is an lvalue and can bind to a reference, matching
+        Python's reference semantics for non-value types.
+        """
+        lhs_type = self.types.get_resolved_type(expr.left)
+        use_lhs_temp = not isinstance(expr.left, TpyName)
+
+        if use_lhs_temp:
+            left = self.gen_expr_deref(expr.left)
+            lhs_ref = self.ctx.temps.create_typed("auto&&", left)
+        else:
+            lhs_ref = self.gen_expr_deref(expr.left)
+
+        truthy = self._truthy_for_rendered(lhs_ref, lhs_type)
+        # Propagate isinstance narrowing to RHS
+        inline_facts = self._collect_inline_isinstance_facts(
+            expr.left, true_branch=(expr.op == "&&"))
+        saved = {}
+        for var_name, inline_expr in inline_facts.items():
+            saved[var_name] = self.ctx.narrowed_vars.get(var_name)
+            self.ctx.narrowed_vars[var_name] = inline_expr
+        right = self.gen_expr_deref(expr.right)
+        for var_name, prev in saved.items():
+            if prev is not None:
+                self.ctx.narrowed_vars[var_name] = prev
+            else:
+                self.ctx.narrowed_vars.pop(var_name, None)
+
+        # Materialize RHS rvalues into temps so both ternary branches are
+        # lvalues, avoiding dangling references for non-value types.
+        use_rhs_temp = not isinstance(expr.right, TpyName)
+        if use_rhs_temp:
+            rhs_ref = self.ctx.temps.create_typed("auto&&", right)
+        else:
+            rhs_ref = right
+
+        lhs_branch = lhs_ref
+        rhs_branch = rhs_ref
+        # Only add explicit conversion when the two operands have different
+        # C++ types from each other (e.g. one is string_view, other is string).
+        # When they match, the ternary naturally produces their type and the
+        # normal var decl handles any further conversion.
+        lhs_cpp = self.types.type_to_cpp(lhs_type)
+        rhs_type = self.types.get_resolved_type(expr.right)
+        rhs_cpp = self.types.type_to_cpp(rhs_type)
+        if lhs_cpp != rhs_cpp:
+            cpp_result = self.types.type_to_cpp(result_type)
+            if cpp_result != lhs_cpp:
+                lhs_branch = f"{cpp_result}({lhs_branch})"
+            if cpp_result != rhs_cpp:
+                rhs_branch = f"{cpp_result}({rhs_branch})"
+        if expr.op == "||":
+            return f"({truthy} ? {lhs_branch} : {rhs_branch})"
+        else:
+            return f"({truthy} ? {rhs_branch} : {lhs_branch})"
 
     def _gen_binop(self, expr: TpyBinOp, target_type: TpyType | None) -> str:
         """Generate binary operation code."""
@@ -678,8 +753,15 @@ class ExpressionGenerator:
             right = self.gen_expr(expr.right)
             return f"({left} {cpp_op} {right})"
 
-        # Logical operators - generate C++ directly.
+        # Logical operators
         if expr.op in ("&&", "||"):
+            result_type = self.types.get_resolved_type(expr)
+            if not isinstance(result_type, BoolType):
+                # Value-context: Python operand semantics via temp + ternary.
+                # `x or y` -> truthy(x) ? x : y
+                # `x and y` -> truthy(x) ? y : x
+                return self._gen_logical_value(expr, result_type)
+            # Bool result: emit C++ &&/|| directly.
             left = self.gen_expr_deref(expr.left)
             # Propagate isinstance narrowing to RHS of && (like short-circuit eval).
             # For &&, LHS true-facts apply; for ||, LHS false-facts apply.

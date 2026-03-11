@@ -22,12 +22,12 @@ void check_list(std::vector<tpy::BigInt>& items, std::vector<tpy::BigInt>& empty
 // 9: def check_str(s: str, e: str) -> None:
 void check_str(std::string_view s, std::string_view e) {
     // 10:     if s:
-    if ((tpy::__len__(s) != 0)) {
+    if ((!s.empty())) {
         // 11:         print("str truthy")
         std::cout << "str truthy" << "\n";
     }
     // 12:     if not e:
-    if ((!((tpy::__len__(e) != 0)))) {
+    if ((!((!e.empty())))) {
         // 13:         print("str falsy")
         std::cout << "str falsy" << "\n";
     }

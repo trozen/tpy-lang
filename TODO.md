@@ -6,6 +6,8 @@
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 
 ## Bugs
+- `and`/`or` string_view deduction: `x = a or b` where both operands are deduced as `string_view` still declares `x` as `std::string` (with an explicit conversion). The PendingStrType deduction system doesn't propagate through `and`/`or` expressions. The ternary correctly produces `string_view`, but the var decl resolves via sema type (`str` -> `std::string`).
+- Ternary with `str` operands: `x = a if cond else b` where both are `str` fails with "Incompatible types in ternary expression: 'str' and 'str'". Two `PendingStrType` instances with different `str_var_id` don't compare equal. Same root cause as the and/or PendingStrType fix -- normalize to `STR` before comparison in `_analyze_if_expr`.
 
 ## Safety
 - View type borrow tracking for user types: currently only built-in view types (Span, Ptr) are tracked as borrows. Likely needed when designing tpy stdlib types. See escape analysis design doc (Future Extensions) for field-level vs class-level annotation tradeoffs.
@@ -50,6 +52,9 @@
 ## Documentation
 - language restriction documentation
 
+## Refactor
+- Unify rvalue materialization: two overlapping mechanisms exist for extending rvalue lifetimes -- the slot system (`std::optional<T>` slots in `_gen_pointer_local_init`, tied to var decl infrastructure) and TempState (`auto&&` temps, expression-level). Both solve the same problem at different abstraction levels. Consider exposing a lower-level "materialize this rvalue" API that both var decls and expression-level temps (e.g. `and`/`or` ternaries) can share.
+
 ## Random items
 - AddressSanitizer test mode: add `--asan` flag to compile exec tests with `-fsanitize=address` to detect memory leaks, double-free, and use-after-free. Important before serious usage of `__copy__` + `__del__` patterns (e.g. CopyableBox[T]).
 - Large value-type copy warning: estimate record sizes from fields and warn when Own[T] passes a large type by value (e.g. >128 bytes). For inline data there's no cheap move -- the bits are the object. Suggest Own[Box[T]] for cheap ownership transfer (moves a pointer) or Ptr[T]/ReadOnlyPtr[T] for borrowing. Stricter threshold in @noalloc contexts.
@@ -93,7 +98,6 @@
 - make a doc with TPy vs Python differences
 
 ## Code Review Items (2026-01-27)
-- `and`/`or` return `bool` not operand: `1 and 2` returns `1` (bool), Python returns `2`
 
 ## Refactoring
 - `slice` type resolution: `slice` is special-cased in `_resolve_primitive_type` (parser.py) alongside `int`/`float`/`bool`/`str` because the fallback path in `_resolve_registered_type` uses `name[0].isupper()` to optimistically create NamedType for unresolved names. Lowercase builtin types like `slice` don't pass this heuristic, even though `is_known_type("slice")` returns True (the builtins module registers it). The deeper issue is that `_resolve_registered_type` returns `NamedType("slice")` instead of `SliceType`, causing type identity mismatches in union isinstance checks. Builtin types should resolve through the same path as user types instead of needing parser special cases.

@@ -387,6 +387,38 @@ class ExpressionAnalyzer:
             raise self.ctx.error(
                 f"variable '{expr.name}' may not be assigned at this point", expr)
 
+    def _logical_op_result_type(self, left: TpyType, right: TpyType) -> TpyType:
+        """Determine result type for and/or operators.
+
+        Python semantics: `x and y` returns an operand, not bool.
+        Same non-bool type -> return that type (enables value-context usage).
+        Different types or bool operands -> return bool.
+        """
+        # Bool operands: C++ &&/|| already correct
+        if isinstance(left, BoolType) or isinstance(right, BoolType):
+            return BOOL
+        # Resolve int literals to match concrete int type on the other side
+        if isinstance(left, IntLiteralType):
+            if isinstance(right, (FixedIntType, BigIntType)):
+                left = right
+            elif isinstance(right, IntLiteralType):
+                return self.ctx.default_int_type
+            else:
+                return BOOL
+        elif isinstance(right, IntLiteralType):
+            if isinstance(left, (FixedIntType, BigIntType)):
+                right = left
+            else:
+                return BOOL
+        # Normalize PendingStrType to StrType for comparison
+        if isinstance(left, PendingStrType):
+            left = STR
+        if isinstance(right, PendingStrType):
+            right = STR
+        if left == right:
+            return left
+        return BOOL
+
     def _analyze_binop(self, expr: TpyBinOp) -> TpyType:
         """Analyze a binary operation."""
         left_type = self.analyze_expr(expr.left)
@@ -642,9 +674,10 @@ class ExpressionAnalyzer:
                 return BOOL
             raise self.ctx.error(f"Cannot use '{expr.op}' with non-iterable type {right_type}", expr)
 
-        # Logical operators return Bool
+        # Logical operators: Python semantics returns an operand, not bool.
+        # Same non-bool type -> return that type; otherwise -> bool.
         if expr.op in ("&&", "||"):
-            return BOOL
+            return self._logical_op_result_type(left_type, right_type)
 
         # IntEnum arithmetic: coerce to underlying type, delegate to standard binop
         if expr.op in ("+", "-", "*", "//", "%"):
