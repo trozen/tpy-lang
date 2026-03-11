@@ -2269,6 +2269,13 @@ class ParamInfo:
 
 
 @dataclass
+class MutationCallEdge:
+    """Records parameter flow through a function call (for mutation propagation)."""
+    callee_fi: 'FunctionInfo'
+    param_map: dict[int, int]  # callee_param_idx -> caller_param_idx
+
+
+@dataclass
 class FunctionInfo:
     """Information about a function.
 
@@ -2301,6 +2308,10 @@ class FunctionInfo:
     is_builtin_function: bool = False  # True for global builtins (len, chr, etc.)
     special_handling: bool = False  # True if sema/codegen handle specially
     qualified_name: str = ""  # Full dotted path, e.g. "builtins.print", "tpy.copy", "__main__.foo"
+    mutated_params: Optional[frozenset[int]] = None  # Param indices proven mutated; None = unknown (conservative)
+    # Phase 1 local facts (set during sema, consumed by Phase 2 propagation)
+    direct_mutated_params: Optional[frozenset[int]] = None
+    call_edges: Optional[list['MutationCallEdge']] = None
 
     @property
     def is_native_import(self) -> bool:

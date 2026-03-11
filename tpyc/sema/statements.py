@@ -1504,11 +1504,18 @@ class StatementAnalyzer:
         root = _root_name_of_expr(stmt.target)
         if root is not None:
             self.ctx.mark_loop_var_mutated(root)
+            # Through-reference writes (field/subscript) mutate the param's object;
+            # plain name reassignment just rebinds the local.
+            if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
+                self.ctx.mark_param_mutated(root)
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
             declared_target_type = self.narrowing.declared_type_for_expr(stmt.target)
             if declared_target_type is not None:
                 target_type = declared_target_type
         if isinstance(stmt.target, TpyName):
+            # Track param rebinding (subsequent mutations target the new local, not the arg)
+            if stmt.target.name in self.ctx.current_param_names:
+                self.ctx.current_rebound_params.add(stmt.target.name)
             # Block reassignment of Final globals at module level
             if self.ctx.is_top_level and stmt.target.name in self.ctx.final_globals:
                 raise self.ctx.error(
@@ -1707,10 +1714,11 @@ class StatementAnalyzer:
             # Analyze obj and index separately to avoid triggering __getitem__
             # validation (del doesn't read the element, only deletes it).
             self.expr.analyze_expr(subscript.obj)
-            # Track mutation of for-each loop variables
+            # Track mutation of for-each loop variables and parameters
             del_root = _root_name_of_expr(subscript.obj)
             if del_root is not None:
                 self.ctx.mark_loop_var_mutated(del_root)
+                self.ctx.mark_param_mutated(del_root)
             # Borrow conflict: del on a container with element-level borrows
             if isinstance(subscript.obj, TpyName):
                 storage = self.ctx.borrow_tracker.effective_storage(subscript.obj.name)
@@ -1761,10 +1769,11 @@ class StatementAnalyzer:
         from .operators import OperatorResolver
         target_type = self.expr.analyze_expr(stmt.target)
         value_type = self.expr.analyze_expr_with_hint(stmt.value, target_type)
-        # Track mutation of for-each loop variables
+        # Track mutation of for-each loop variables and parameters
         aug_root = _root_name_of_expr(stmt.target)
         if aug_root is not None:
             self.ctx.mark_loop_var_mutated(aug_root)
+            self.ctx.mark_param_mutated(aug_root)
         self._enforce_readonly_assignment_target(stmt.target)
         # Borrow conflict: augmented assignment may mutate borrowed storage
         if isinstance(stmt.target, TpySubscript) and isinstance(stmt.target.obj, TpyName):

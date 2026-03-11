@@ -283,6 +283,12 @@ class SemanticContext:
     super_del_call: TpyMethodCall | None = None
     loop_vars: set[str] = field(default_factory=set)
     mutated_loop_vars: set[str] = field(default_factory=set)
+    # Parameter mutation inference (8a)
+    current_param_names: set[str] = field(default_factory=set)
+    current_param_name_to_idx: dict[str, int] = field(default_factory=dict)
+    current_mutated_param_names: set[str] = field(default_factory=set)
+    current_rebound_params: set[str] = field(default_factory=set)
+    current_call_edges: list = field(default_factory=list)  # list[MutationCallEdge]
 
     # --- Scope escape tracking ---
     var_scope_depth: dict[str, int] = field(default_factory=dict)
@@ -503,11 +509,21 @@ class SemanticContext:
         self.consumed_vars.clear()
         self.borrow_tracker.reset()
         self.value_ranges.clear()
+        self.current_param_names.clear()
+        self.current_param_name_to_idx.clear()
+        self.current_mutated_param_names.clear()
+        self.current_rebound_params.clear()
+        self.current_call_edges.clear()
 
     def mark_loop_var_mutated(self, name: str) -> None:
         """Mark a for-each loop variable as mutated (prevents const-ref binding)."""
         if name in self.loop_vars:
             self.mutated_loop_vars.add(name)
+
+    def mark_param_mutated(self, name: str) -> None:
+        """Mark a function parameter as directly mutated (Phase 1 of mutation inference)."""
+        if name in self.current_param_names and name not in self.current_rebound_params:
+            self.current_mutated_param_names.add(name)
 
     def mark_str_borrowers_mutated(self, storage: str) -> None:
         """Mark PendingStrType borrowers of storage as source-mutated.

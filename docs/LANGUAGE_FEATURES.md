@@ -2622,7 +2622,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: `for x in iter_param` (for-each over `Iterator[T]` and `Iterable[T]` protocol-typed parameters)
 - **Working**: `break`, `continue`
 - **Working**: Reassigning loop variables inside for-loop body (compiles as assignment, not redeclaration; note: affects iteration unlike Python)
-- **Working**: Const-ref loop variable binding -- when the loop body never mutates the loop variable (no field writes, no non-`@readonly` method calls, no passing to mutable parameters, no address-of), codegen emits `const auto&` instead of `auto&&`. Value types always use typed copies regardless.
+- **Working**: Const-ref loop variable binding -- when the loop body never mutates the loop variable (no field writes, no non-`@readonly` method calls, no passing to mutable parameters, no address-of), codegen emits `const auto&` instead of `auto&&`. Value types always use typed copies regardless. Parameter mutation inference (see [Implementation Notes](#parameter-mutation-inference-partial)) refines "passing to mutable parameters": if the callee is known not to mutate a specific parameter, passing the loop variable there does not force mutable binding.
 - **Working**: `for/else`, `while/else` -- else block runs when loop completes without `break`; `break` emits `goto` past the else body
 
 ### Other
@@ -4601,6 +4601,32 @@ u = UInt32(offset)  # static_cast (no range check)
 ```
 
 Range facts are invalidated on variable reassignment (including augmented assignment like `i += 1`) and merged at branch join points. Symbolic bounds referencing a container are invalidated when that container is mutated (including method calls like `.pop()`, `.clear()`).
+
+### Parameter Mutation Inference (Working)
+
+The compiler automatically infers which parameters each function mutates, eliminating false-positive borrow warnings when a non-mutating function is called with a borrowed container.
+
+**Two-phase approach**: Phase 1 (during sema) collects *local* mutation facts per function -- which params are directly mutated by field writes, subscript writes, method calls, augmented assignments, and deletes -- plus call edges recording parameter flow through function calls. Phase 2 (post-sema) builds an intra-module call graph, topologically sorts it, and propagates mutation facts transitively. Cycles are handled with monotone fixpoint iteration (mutation sets only grow). Forward calls and transitive chains are fully resolved.
+
+```python
+def sum_items(items: list[Int32]) -> Int32:
+    total: Int32 = 0
+    for x in items:
+        total += x
+    return total  # mutated_params = {} (items not mutated)
+
+def add_item(items: list[Int32], val: Int32) -> None:
+    items.append(val)  # mutated_params = {0} (items mutated via append)
+
+data: list[Int32] = [1, 2, 3]
+v = data[0]
+sum_items(data)   # No warning: sum_items proven non-mutating for param 0
+add_item(data, 4) # Warning: add_item mutates param 0, borrow of 'data' active
+```
+
+**Consumers**: Borrow conflict warnings (`_check_borrow_arg_conflicts`) and const-ref loop variable binding (`_check_loop_var_arg_mutation`) both use per-parameter mutation facts. If a callee is known not to mutate a specific parameter, passing a borrowed or loop-iterated container to that parameter is safe.
+
+**Current limitation**: Only direct (non-transitive) mutations are detected. A function that mutates a parameter only via calling another mutating function (e.g., `def wrapper(items): add_item(items, x)`) is not yet recognized as mutating. Phase 2 (call-graph propagation) will fix this. Imported functions from other modules will use resolved facts from dependency-order compilation; cross-module cycles get conservative treatment.
 
 ## Open Questions
 

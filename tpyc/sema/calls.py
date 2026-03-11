@@ -17,7 +17,7 @@ from ..typesys import (
     UnionType, EnumType, VOID, BIGINT, BOOL, STR, is_protocol_type, unwrap_readonly, unwrap_optional_own,
     is_any_str_type, container_to_str_template,
     is_protocol_union, protocol_union_protocols,
-    StrViewType, STRVIEW,
+    StrViewType, STRVIEW, MutationCallEdge,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
 )
 from ..parse import (
@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from .compatibility import TypeCompatibility
     from .local_deduction import LocalTypeDeduction
     from .expressions import ExpressionAnalyzer
+    from ..parse.nodes import SourceLocation
 
 from tpyc import modules as builtin_modules
 from tpyc.modules import MethodDef
@@ -286,10 +287,25 @@ class CallAnalyzer:
         self.deduction = deduction
         # Set via set_cross_deps() to break circular dependency
         self.expr: ExpressionAnalyzer | None = None
+        # Pending borrow checks deferred until Phase 2 resolves mutated_params
+        self.pending_borrow_checks: list[tuple[FunctionInfo, int, str, SourceLocation | None]] = []
 
     def set_cross_deps(self, expr: ExpressionAnalyzer) -> None:
         """Wire circular dependencies (must be called before analyze_call)."""
         self.expr = expr
+
+    def resolve_pending_borrow_checks(self) -> None:
+        """Emit or suppress deferred borrow warnings after Phase 2 propagation."""
+        for fi, param_idx, storage, loc in self.pending_borrow_checks:
+            if fi.mutated_params is not None and param_idx not in fi.mutated_params:
+                continue
+            param_name = fi.params[param_idx].name if param_idx < len(fi.params) else "?"
+            self.ctx.warning_from_loc(
+                f"Passing borrowed container '{storage}' to non-readonly parameter "
+                f"'{param_name}' (function may invalidate references)",
+                loc,
+            )
+        self.pending_borrow_checks.clear()
 
     def _resolve_call_kwargs(self, expr: TpyCall, func: FunctionInfo) -> None:
         """Resolve keyword arguments on a TpyCall into positional form."""
@@ -341,6 +357,7 @@ class CallAnalyzer:
             )
             self._check_borrow_arg_conflicts(expr)
             self._check_loop_var_arg_mutation(expr)
+            self._record_mutation_call_edges(expr)
             return
 
         # Implicit default constructor (no user __init__)
@@ -1127,6 +1144,11 @@ class CallAnalyzer:
         reference could structurally mutate it, invalidating element borrows.
         Resolves aliases so that passing an alias of a borrowed container warns.
         Also marks str_source_borrows as mutated for string view fallback.
+
+        During sema, mutated_params holds direct facts only (Phase 1). If the
+        param is directly mutated, we emit immediately. If not directly mutated
+        but the callee has call edges (transitive mutation possible), we defer
+        the check until Phase 2 resolves the final facts.
         """
         fi = expr.resolved_function_info
         if fi is None or fi.is_pure or fi.is_readonly:
@@ -1141,7 +1163,25 @@ class CallAnalyzer:
             if isinstance(param.type, ReadonlyType):
                 continue
             storage = self.ctx.borrow_tracker.effective_storage(arg.name)
-            if self.ctx.borrow_tracker.has_element_borrow(storage):
+            needs_check = self.ctx.borrow_tracker.has_element_borrow(storage)
+            if fi.mutated_params is not None and i not in fi.mutated_params:
+                # Direct facts say "not mutated". If callee has call edges
+                # and Phase 2 hasn't finalized yet, transitive propagation
+                # might still add this param -- defer.
+                if needs_check and fi.call_edges and fi.direct_mutated_params is not None:
+                    loc = getattr(expr, 'loc', None)
+                    self.pending_borrow_checks.append((fi, i, storage, loc))
+                if fi.call_edges:
+                    self.ctx.mark_str_borrowers_mutated(storage)
+                continue
+            if fi.mutated_params is None and fi.direct_mutated_params is None:
+                # Callee not yet analyzed (forward call) -- defer to Phase 2
+                if needs_check:
+                    loc = getattr(expr, 'loc', None)
+                    self.pending_borrow_checks.append((fi, i, storage, loc))
+                self.ctx.mark_str_borrowers_mutated(storage)
+                continue
+            if needs_check:
                 self.ctx.warning(
                     f"Passing borrowed container '{storage}' to non-readonly parameter "
                     f"'{param.name}' (function may invalidate references)",
@@ -1161,10 +1201,44 @@ class CallAnalyzer:
             arg = expr.args[i]
             if isinstance(param.type, ReadonlyType):
                 continue
+            # If callee is known not to mutate this param, skip
+            if fi.mutated_params is not None and i not in fi.mutated_params:
+                continue
             if not unwrap_readonly(param.type).is_value_type():
                 arg_root = _root_name_of_expr(arg)
                 if arg_root is not None:
                     self.ctx.mark_loop_var_mutated(arg_root)
+
+    def _record_mutation_call_edges(self, expr: TpyCall | TpyMethodCall) -> None:
+        """Record parameter flow through calls for Phase 2 mutation propagation."""
+        fi = expr.resolved_function_info
+        if fi is None or fi.is_readonly or fi.is_pure:
+            return
+        from .statements import _root_name_of_expr
+        name_to_idx = self.ctx.current_param_name_to_idx
+        rebound = self.ctx.current_rebound_params
+        if not name_to_idx:
+            return
+        param_map: dict[int, int] = {}
+        for i, callee_param in enumerate(fi.params):
+            if i >= len(expr.args):
+                break
+            if isinstance(callee_param.type, ReadonlyType):
+                continue
+            if unwrap_readonly(callee_param.type).is_value_type():
+                continue
+            arg = expr.args[i]
+            arg_root = _root_name_of_expr(arg)
+            if arg_root is None:
+                continue
+            # Resolve alias chains to find the original param
+            resolved = self.ctx.borrow_tracker.effective_storage(arg_root)
+            if resolved in name_to_idx and resolved not in rebound:
+                param_map[i] = name_to_idx[resolved]
+        if param_map:
+            self.ctx.current_call_edges.append(
+                MutationCallEdge(callee_fi=fi, param_map=param_map)
+            )
 
     def _validate_ptr_constructor(self, expr: TpyCall) -> None:
         """Validate pointer constructor arguments (type match, no void args).
@@ -1596,6 +1670,7 @@ class CallAnalyzer:
 
         self._check_borrow_arg_conflicts(expr)
         self._check_loop_var_arg_mutation(expr)
+        self._record_mutation_call_edges(expr)
         return func.return_type
 
     def _analyze_generic_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
@@ -1725,6 +1800,7 @@ class CallAnalyzer:
 
         self._check_borrow_arg_conflicts(expr)
         self._check_loop_var_arg_mutation(expr)
+        self._record_mutation_call_edges(expr)
         return resolved_return
 
     def _validate_generic_defaults(self, expr: TpyCall, func: FunctionInfo,
@@ -1995,4 +2071,5 @@ class CallAnalyzer:
 
         self._check_borrow_arg_conflicts(expr)
         self._check_loop_var_arg_mutation(expr)
+        self._record_mutation_call_edges(expr)
         return func.return_type

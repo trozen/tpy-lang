@@ -217,6 +217,7 @@ class MethodAnalyzer:
         if self.calls is not None:
             self.calls._check_borrow_arg_conflicts(expr)
             self.calls._check_loop_var_arg_mutation(expr)
+            self.calls._record_mutation_call_edges(expr)
         return resolved.return_type
 
     @staticmethod
@@ -443,6 +444,7 @@ class MethodAnalyzer:
                     obj_root = _root_name_of_expr(expr.obj)
                     if obj_root is not None:
                         self.ctx.mark_loop_var_mutated(obj_root)
+                        self.ctx.mark_param_mutated(obj_root)
                         storage = self.ctx.borrow_tracker.effective_storage(obj_root)
                         self.ctx.mark_str_borrowers_mutated(storage)
                 return result

@@ -38,6 +38,7 @@ from .statements import StatementAnalyzer
 
 from ..prescan import ScanResult, scan_reassigned_vars
 from ..liveness import analyze_last_uses
+from .mutation_propagation import propagate_mutation_facts
 from tpyc import modules as builtin_modules
 from ..typesys import TypeParamRef, TupleType
 
@@ -463,6 +464,25 @@ class SemanticAnalyzer:
             if not func.is_overload_stub:
                 self._analyze_function(func)
 
+        # Phase 2: propagate mutation facts through intra-module call graph,
+        # then emit/suppress deferred borrow warnings with resolved facts
+        self._propagate_mutation_facts()
+        self.calls.resolve_pending_borrow_checks()
+
+    def _propagate_mutation_facts(self) -> None:
+        """Collect all module-local FunctionInfos and run call-graph propagation."""
+        all_fis: list = []
+        for overloads in self.ctx.registry.functions.values():
+            for fi in overloads:
+                if fi.direct_mutated_params is not None:
+                    all_fis.append(fi)
+        for rec in self.ctx.registry.records.values():
+            for overloads in rec.methods.values():
+                for fi in overloads:
+                    if fi.direct_mutated_params is not None:
+                        all_fis.append(fi)
+        propagate_mutation_facts(all_fis)
+
     def _is_type_nocopy(self, typ: TpyType) -> bool:
         """Delegate to canonical is_type_nocopy on context."""
         return self.ctx.is_type_nocopy(typ)
@@ -560,6 +580,8 @@ class SemanticAnalyzer:
 
         # Pre-scan for reassigned variables (shared with codegen)
         param_names = {pname for pname, _ in func.params}
+        self.ctx.current_param_names = param_names
+        self.ctx.current_param_name_to_idx = {pname: i for i, (pname, _) in enumerate(func.params)}
         scan = scan_reassigned_vars(func.body, pre_declared=param_names)
         # Last-use analysis for auto-move (shared with codegen)
         self.ctx.all_last_uses |= analyze_last_uses(func.body, scan.alias_sources)
@@ -571,6 +593,21 @@ class SemanticAnalyzer:
         for stmt in func.body:
             self.stmts.analyze_stmt(stmt)
         self.deduction.resolve_all()
+
+        # Store Phase 1 local mutation facts (resolved by Phase 2 propagation)
+        func_overloads = self.ctx.registry.get_function(func.name)
+        func_info = func_overloads[-1] if func_overloads else None
+        if func_info is not None and func_info.direct_mutated_params is None:
+            param_list = [pname for pname, _ in func.params]
+            direct = frozenset(
+                i for i, pname in enumerate(param_list)
+                if pname in self.ctx.current_mutated_param_names
+            )
+            func_info.direct_mutated_params = direct
+            func_info.call_edges = list(self.ctx.current_call_edges)
+            # Set mutated_params to direct facts as initial estimate;
+            # Phase 2 propagation will replace with the complete transitive set.
+            func_info.mutated_params = direct
 
         self.function_scan_results[id(func)] = scan
         if self.ctx.hoisted_vars:
@@ -927,6 +964,8 @@ class SemanticAnalyzer:
 
             # Pre-scan for reassigned variables (shared with codegen)
             param_names = {pname for pname, _ in method.params}
+            self.ctx.current_param_names = param_names
+            self.ctx.current_param_name_to_idx = {pname: i for i, (pname, _) in enumerate(method.params)}
             scan = scan_reassigned_vars(method.body, pre_declared=param_names)
             # Last-use analysis for auto-move (shared with codegen)
             self.ctx.all_last_uses |= analyze_last_uses(method.body, scan.alias_sources)
@@ -978,6 +1017,20 @@ class SemanticAnalyzer:
                         )
 
             self.deduction.resolve_all()
+
+            # Store Phase 1 local mutation facts on method FunctionInfo
+            record_info = self.ctx.registry.get_record(record.name)
+            if record_info is not None:
+                method_fi = record_info.get_method(method.name)
+                if method_fi is not None and method_fi.direct_mutated_params is None:
+                    param_list = [pname for pname, _ in method.params]
+                    direct = frozenset(
+                        i for i, pname in enumerate(param_list)
+                        if pname in self.ctx.current_mutated_param_names
+                    )
+                    method_fi.direct_mutated_params = direct
+                    method_fi.call_edges = list(self.ctx.current_call_edges)
+                    method_fi.mutated_params = direct
 
             self.function_scan_results[id(method)] = scan
             if self.ctx.hoisted_vars:

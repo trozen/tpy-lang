@@ -31,8 +31,9 @@
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
-| 8 | Cross-function borrow inference | L-XL | Not started | [8](#8-cross-function-borrow-inference) |
-| 7b | `@pure` enforcement (body verification) | M | Not started | [7](#7-pure-annotation) |
+| 8a | Parameter mutation inference | M | Done | [8](#8-cross-function-borrow-inference) |
+| 8b | Return-value borrow contracts | L | Not started | [8](#8-cross-function-borrow-inference) |
+| 7b | `@pure` enforcement -- or drop `@pure` (see [note](#7-pure-annotation)) | M | Deferred | [7](#7-pure-annotation) |
 | 6c+ | String view extension (list, dict) | M | Not started | [6c](#6c-string-view-extension-to-containers) |
 | 11+ | Integer range tracking (general) | L | Not started | [11](#11-integer-range-tracking) |
 | 11+a | Augmented-assignment range shifting (`i += 1` in while-loops) | S-M | Done | [11](#11-integer-range-tracking) |
@@ -489,6 +490,14 @@ These can be marked `@pure` in their module definitions.
 before enforcement was added). Phase 2 adds verification: the function body is checked
 for mutation of non-local state, I/O calls, and calls to non-`@pure` functions.
 
+**Open question**: `@pure` may be unnecessary. The borrow checker currently uses it
+identically to `@readonly` (the only check site is `_check_borrow_arg_conflicts`).
+The stronger guarantee (no non-local mutation) matters for cross-function aliasing,
+but step 8 (cross-function inference) can infer this automatically since the compiler
+always has source. An unenforced `@pure` is a liability (allows bugs); enforcing it
+is complex for little gain if inference can replace it. **Decision**: either implement
+7b enforcement or drop `@pure` entirely in favor of automatic inference from step 8.
+
 **Interaction with effects**: `@pure` = `@readonly` + no I/O + no mutation of non-local
 state. `@noalloc` is orthogonal -- `@pure @noalloc` gives the strongest guarantee
 (pure + no heap allocation, suitable for hot paths). See `FEATURE_ROADMAP.md`
@@ -496,7 +505,132 @@ Section IV for the general effect system.
 
 ### 8. Cross-Function Borrow Inference
 
-**Effort**: L-XL
+This section is split into two sub-steps:
+
+#### 8a. Parameter Mutation Inference
+
+**Effort**: M &nbsp; **Status**: Phase 1 (direct mutations) working; Phase 2 (graph propagation) planned.
+
+**Problem**: When a function is called while a borrow is active, the borrow checker
+needs to know whether the callee mutates the borrowed argument. Without this
+information, it must warn conservatively -- producing false positives on safe code:
+
+```python
+def sum_items(items: list[Int32]) -> Int32:
+    total: Int32 = 0
+    for x in items:
+        total += x
+    return total
+
+def caller() -> None:
+    data: list[Int32] = [1, 2, 3]
+    for x in data:
+        print(sum_items(data))  # false positive: sum_items doesn't mutate data
+```
+
+**Key insight**: Mutation detection within a function body is already solved by the
+`readonly[T]` enforcement infrastructure. The compiler already detects field writes,
+subscript writes, non-readonly method calls, augmented assignments, and deletes on
+any expression. We just need to **collect** which of those targets are parameters
+and **propagate** the facts across function boundaries.
+
+**Implementation: two-phase per-module approach**
+
+Phase 1 runs during sema; Phase 2 runs once after the module's sema completes.
+
+**Phase 1 -- Local fact collection (during sema)**
+
+During body analysis, collect two kinds of facts per function (no transitive
+propagation):
+
+1. **Direct mutations** (`direct_mutated_params: set[int]`): Parameter indices
+   directly mutated in the function body. Mutation is detected at the same sites
+   the `readonly[T]` enforcement already checks:
+   - Field writes: `param.field = ...` (root is param)
+   - Subscript writes: `param[i] = ...` (root is param)
+   - Non-readonly method calls: `param.append(...)` (already resolved during sema)
+   - Augmented assignments: `param.field += ...` (root is param)
+   - Deletes: `del param[i]` (root is param)
+   - Plain name rebinding (`param = x`) is NOT mutation -- it just rebinds the local.
+
+2. **Call edges** (`call_edges: list[CallEdge]`): For each call to a user function
+   or method, record which caller parameter flows into which callee parameter:
+   ```python
+   @dataclass
+   class CallEdge:
+       callee_fi: FunctionInfo
+       param_map: dict[int, int]   # callee_param_idx -> caller_param_idx
+   ```
+   Only non-value-type arguments rooted in a parameter name are recorded (value
+   types are copies and can't propagate mutation).
+
+After each function body is analyzed, store `direct_mutated_params` and
+`call_edges` on the function's metadata. No `mutated_params` is resolved yet.
+
+**Phase 2 -- Call graph propagation (post-sema, per module)**
+
+After all functions in the module are analyzed:
+
+1. **Build call graph**: Nodes are functions/methods in the module. Edges come from
+   the collected `call_edges`. Imported callees are leaf nodes with already-resolved
+   `mutated_params` (from dependency-order compilation).
+
+2. **Topological sort** (ignoring back edges): Process callees before callers where
+   possible.
+
+3. **Propagate**: For each function in topological order, compute:
+   ```
+   mutated_params = direct_mutated_params
+     U { param_map[j] | for each call_edge where callee.mutated_params includes j }
+   ```
+   Imported callees with resolved `mutated_params` are ground truth. Callees with
+   `mutated_params = None` (unresolved, e.g. from cross-module cycles) trigger
+   conservative treatment -- assume all non-value-type params are mutated.
+
+4. **Cycles (back edges)**: The `mutated_params` lattice is monotone (sets grow by
+   union, never shrink), so fixed-point iteration is guaranteed to converge. Iterate
+   until no new params are added to any set in the cycle. As a safety bound, stop
+   after `max(total_params_in_cycle, 3)` iterations and conservatively mark remaining
+   cycle participants.
+
+5. **Store results**: Set `fi.mutated_params` on each function's `FunctionInfo`.
+
+**Edge cases to handle**:
+
+- **Alias chains**: `alias = param; foo(alias)` -- when recording call edges, resolve
+  argument roots through the borrow tracker's alias chain (`effective_storage`) to
+  trace back to the original parameter name.
+- **Param rebinding**: `param = new_value; param.append(...)` -- once a parameter
+  name is rebound, subsequent mutations through that name target the new local value,
+  not the caller's argument. Track rebound param names and exclude them from
+  `direct_mutated_params` after the rebinding point.
+- **Field sub-objects**: `foo(param.field)` where `foo` mutates its argument -- this
+  mutates a sub-object of `param`, not `param`'s structure (no element invalidation).
+  Currently treated conservatively (marks `param` as mutated). Future refinement could
+  distinguish structural mutation (append, subscript write) from sub-object mutation.
+
+**Consumers** (checked after Phase 2):
+
+- `_check_borrow_arg_conflicts`: If `fi.mutated_params` is resolved and the specific
+  parameter is not in the set, the call is safe -- no borrow warning.
+- `_check_loop_var_arg_mutation`: Same check -- if the callee is known not to mutate
+  the parameter, passing a loop-iterated container there doesn't force mutable binding.
+
+**Why per-module, not global**: A global call graph across all modules would handle
+cross-module cycles more precisely, but it forces a synchronization barrier (all
+modules must finish sema before any can proceed to warnings). This prevents parallel
+compilation. Per-module propagation lets each module complete independently, only
+blocking on its direct imports. Cross-module cycles are rare and are a code smell --
+conservative treatment is acceptable.
+
+**No new user-facing syntax**: Fully automatic, invisible to the programmer. No
+`@pure`, `@readonly`, `Mut[T]`, or lifetime annotations needed on user functions.
+Builtins and `@native` functions declare mutation facts in their module definitions
+(existing `is_readonly` mechanism).
+
+#### 8b. Return-Value Borrow Contracts
+
+**Effort**: L
 
 When a function returns a reference derived from a parameter, the compiler needs to
 know this at the call site to maintain the borrow chain:
@@ -522,7 +656,7 @@ get_first: return borrows param[0]
 At the call site, the compiler translates this: `first = get_first(data)` means
 `first` borrows `data`.
 
-**Inference rules** (Rust-like elision, but inferred from bodies):
+**Inference rules** (inferred from bodies, no user annotations):
 
 1. If the return is a parameter or derived from a parameter (field access, subscript,
    Ptr construction) -> return borrows that parameter.
@@ -548,16 +682,16 @@ directly. However, the design should not preclude exporting borrow metadata late
 
 ```
 function get_first(items: list[Point]) -> Point
-  borrows: return <- param[0]
-  pure: false
-  readonly_params: []
-  mutates_params: []
+  mutated_params: {}
+  return_borrows_from: {0}       # return borrows param[0]
+
+function add_item(items: list[Int32], val: Int32) -> None
+  mutated_params: {0}            # mutates param 'items'
+  return_borrows_from: {}
 ```
 
-- **`borrows`**: Which parameters are borrowed by the return value.
-- **`pure`**: Whether the function is `@pure`.
-- **`readonly_params`**: Parameters that are only read (not mutated).
-- **`mutates_params`**: Parameters that may be mutated.
+- **`mutated_params`**: Indices of parameters that may be mutated.
+- **`return_borrows_from`**: Which parameter indices the return value borrows from.
 
 **Design constraint**: The internal representation of borrow contracts (however they're
 stored during compilation) should be serializable. As long as the inferred contracts

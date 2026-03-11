@@ -1,0 +1,3 @@
+helpers.py:20: warning: copies Point into owned storage; use copy() to make this explicit
+main.py:21: warning: Passing borrowed container 'items' to non-readonly parameter 'items' (function may invalidate references)
+main.py:30: warning: Passing borrowed container 'items' to non-readonly parameter 'items' (function may invalidate references)
