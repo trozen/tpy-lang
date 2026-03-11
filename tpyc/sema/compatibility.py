@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from .context import SemanticContext
     from .type_ops import TypeOperations
     from .protocols import ProtocolChecker
+    from .methods import MethodAnalyzer
 
 
 class TypeCompatibility:
@@ -36,14 +37,19 @@ class TypeCompatibility:
 
     def __init__(self, ctx: SemanticContext):
         self.ctx = ctx
-        # Set via set_deps() to break circular dependencies
+        # Set via set_deps() / set_methods() to break circular dependencies
         self.type_ops: TypeOperations | None = None
         self.protocols: ProtocolChecker | None = None
+        self.methods: MethodAnalyzer | None = None
 
     def set_deps(self, type_ops: TypeOperations, protocols: ProtocolChecker) -> None:
         """Wire deferred dependencies (must be called before use)."""
         self.type_ops = type_ops
         self.protocols = protocols
+
+    def set_methods(self, methods: MethodAnalyzer) -> None:
+        """Wire methods dependency (created after compat, wired later)."""
+        self.methods = methods
 
     def check_type_compatible(
         self, actual: TpyType, expected: TpyType, context: str,
@@ -63,8 +69,17 @@ class TypeCompatibility:
         if actual == expected:
             return None
 
-        # Pending generic instance: can't be used where a concrete type is expected
+        # Pending generic instance: try to resolve from the expected type
         if isinstance(actual, PendingGenericInstanceType):
+            if self.methods is not None:
+                resolved = self.methods.try_resolve_pending_from_expected_type(
+                    actual, expected, loc)
+                if resolved is not None:
+                    if source_expr is not None:
+                        self.ctx.set_expr_type(source_expr, resolved)
+                    return self.check_type_compatible(
+                        resolved, expected, context, loc, source_expr,
+                        is_return, coercion_ctx)
             raise SemanticError(
                 f"Type mismatch in {context}: '{actual.record_name}' has unresolved type "
                 f"arguments; call a constraining method first or add explicit type arguments",

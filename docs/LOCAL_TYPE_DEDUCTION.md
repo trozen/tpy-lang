@@ -16,7 +16,7 @@
 | 5d | Unify empty container inference: extract shared helpers for list/dict/set (PENDING_CONTAINER_TYPES constant, unified container lookup, shared resolution epilogue, merged param context tracking). Single code paths prevent forgetting one container type. | Done |
 | 6 | List element-type widening: `.append(Int64)` on `[1,2]` widens element type from Int32 to Int64. Already handled by `_widen_inferred_type` in Phase 5a infrastructure; added test coverage. | Done |
 | 7a.1 | Deferred generic instance inference (MVP): `x = GenericType()` with unresolved type params, resolved from subsequent method calls via constraint unification. Eager resolution once all params known. Reuses `match_type_with_inference` from bidirectional inference. See `BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md`. | Done |
-| 7a.2 | Expected-type constraint sources: resolve pending generic from function parameter type (`f(x)` where param is `Container[Int32]`) and return type (`return x` where function returns `Container[Int32]`). Same eager resolution as 7a.1. | Not started |
+| 7a.2 | Expected-type constraint sources: resolve pending generic from function parameter type (`f(x)` where param is `Container[Int32]`) and return type (`return x` where function returns `Container[Int32]`). Same eager resolution as 7a.1. | Done |
 | 7b | `_` wildcard for partial type args in all generic calls (functions, constructors, methods). `ArrayList[_, 1024]()`, `f[_, Int32](x)`, etc. Remaining constructor params deferred via 7a. | Not started |
 | 7c | Extended constraint sources: field access as constraint, cascading pending types (`x = s.items` where both pending). | Not started |
 | ~~8~~ | ~~State ownership: move deduction-related fields from SemanticContext into sub-structures owned by LocalTypeDeduction.~~ Dropped -- fields are genuinely shared state across analysis modules (expressions, statements, calls, methods) and codegen. Moving them would add indirection without reducing coupling. | Dropped |
@@ -27,6 +27,7 @@
 |-----------|-------------|
 | Per-assignment-segment typing | SSA-style reasoning: each assignment to a variable creates a new "version" with its own type. Enables narrower types per segment (e.g. StrView before reassignment, str after), avoiding unnecessary allocations. Requires liveness/escape analysis. See details at end of document. |
 | Empty list to Array promotion | `xs = []; xs.append(1); xs.append(2)` could resolve to `Array[Int32, 2]` if the final size is statically known (no dynamic mutations like loop appends or pop/remove). Would need to compute max required size from constant append/insert/extend counts. Likely low priority -- in hot paths users would declare `Array` explicitly with a known max size. |
+| Union expected-type resolution | `f(x)` where param is `Container[Int32] | str` -- try each union member as a candidate for resolving pending generic instances. Currently only plain `NamedType` and `Optional[NamedType]` are tried. |
 
 ## Motivation
 
@@ -420,7 +421,9 @@ be inferred".
 | Method call, no type-param-dependent args, void return | Yes | No-op for inference (e.g. `s.clear()`) |
 | Method call returning unresolved TypeParamRef | Error | Can't determine expression type |
 | Field access | Error | Field type depends on unresolved params |
-| Pass to function parameter | Error | Requires concrete type |
+| Pass to function with matching param type | Yes | Resolves from expected type (7a.2) |
+| Pass to function with unrelated param type | Error | Can't extract type constraints |
+| Return where function return type matches | Yes | Resolves from expected type (7a.2) |
 | Reassignment | Error | Semantics unclear for pending type |
 | Comparison / operators | Error | Requires concrete type |
 
@@ -432,6 +435,8 @@ be inferred".
 | `s = Stack(); s.push(42); x = s.pop()` | `s: Stack[Int32]`, `x: Int32` |
 | `s = Stack(); s.push(42); s.push(Int64(0))` | Error: conflicting constraints for T (Int32 vs Int64) |
 | `s = Stack(); x = s.pop()` | Error: cannot determine return type, T unresolved |
+| `s = Stack(); consume_stack(s)` where `consume_stack(s: Stack[Int32])` | `s: Stack[Int32]` (resolved from param type) |
+| `s = Stack(); return s` where return type is `Stack[Int32]` | `s: Stack[Int32]` (resolved from return type) |
 | `s = Stack(); print(s)` | Error: pending type cannot be passed as parameter |
 | `s = Stack()` (no constraining calls) | Error in resolve_all(): cannot infer T |
 
@@ -452,14 +457,32 @@ consume(c)          # parameter type constrains T = Int32
 ```
 
 Both use `match_type_with_inference(record_pattern, expected_type, inferred)`
-to extract type params from the expected type. Integration points:
+to extract type params from the expected type.
 
-- **Parameter passing**: in `calls.py` or `compatibility.py`, when coercing
-  an arg with `PendingGenericInstanceType` against a `NamedType` param
-  of the same record. Accumulate constraints, eagerly resolve if complete.
-- **Return type**: in `statements.py` return analysis, when the return
-  expression has `PendingGenericInstanceType` and the function's return
-  type is a matching `NamedType`.
+#### Integration point: `check_type_compatible` in `compatibility.py`
+
+Single integration point for both param passing and return types. When
+`check_type_compatible` encounters `PendingGenericInstanceType` as the
+actual type, it calls `methods.try_resolve_pending_from_expected_type()`
+before erroring. This method:
+
+1. Unwraps `Own`/`Optional`/`readonly` from the expected type
+2. Checks if the inner type is a matching `NamedType` for the same record
+3. Builds a pattern type with `TypeParamRef`s for unresolved params
+4. Calls `match_type_with_inference` to extract constraints
+5. If all params resolved, calls `_eagerly_resolve_pending_generic`
+6. Updates the source expression's type in the expr cache
+
+After resolution, `check_type_compatible` recurses with the concrete type,
+which handles any remaining compatibility logic (e.g., `T -> Optional[T]`
+wrapping for Optional return types).
+
+The `methods` reference is wired to `TypeCompatibility` via `set_methods()`
+after construction (same pattern as `type_ops`/`protocols`).
+
+**Limitation**: Union expected types (e.g., `Container[Int32] | str`) are not
+tried as constraint sources. `T | None` works (normalized to `Optional[T]`),
+but multi-member unions fall through to the "unresolved" error.
 
 ### Phase 7b: `_` Wildcard for Partial Type Args
 

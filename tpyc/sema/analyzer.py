@@ -176,6 +176,7 @@ class SemanticAnalyzer:
         self.calls.set_cross_deps(self.expr)
         self.methods.set_cross_deps(self.expr, self.calls)
         self.stmts.set_cross_deps(self.expr)
+        self.compat.set_methods(self.methods)
 
         # Per-function/method pre-scan results (shared with codegen)
         self.function_scan_results: dict[int, ScanResult] = {}

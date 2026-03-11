@@ -1,0 +1,1 @@
+main.py:18: error: Conflicting type for 'T' in 'Pair': previously inferred as 'Int32', but expected type requires 'Int64'

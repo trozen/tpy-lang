@@ -816,6 +816,68 @@ class MethodAnalyzer:
         )
         return return_type
 
+    def try_resolve_pending_from_expected_type(
+        self, pending: PendingGenericInstanceType, expected: TpyType,
+        loc: 'SourceLocation | None' = None,
+    ) -> NamedType | None:
+        """Try to resolve a pending generic instance from an expected type.
+
+        Used when a pending-type variable is passed to a typed parameter or
+        returned where the function return type is known. Returns the resolved
+        concrete type, or None if the expected type doesn't match.
+        """
+        info = self.ctx.pending_generic_instances.get(pending.instance_id)
+        if info is None:
+            return None
+
+        # Unwrap Own/Optional/Readonly to find the inner NamedType
+        target = expected
+        if isinstance(target, OwnType):
+            target = target.wrapped
+        if isinstance(target, OptionalType):
+            target = target.inner
+        target = unwrap_readonly(target)
+
+        if not isinstance(target, NamedType) or target.name != info.record_name:
+            return None
+        if not target.type_args or len(target.type_args) != len(info.type_params):
+            return None
+
+        # Build pattern with TypeParamRefs for unresolved params
+        pattern_args = []
+        for tp in info.type_params:
+            if tp in info.inferred:
+                pattern_args.append(info.inferred[tp])
+            else:
+                pattern_args.append(TypeParamRef(tp))
+        pattern = NamedType(info.record_name, tuple(pattern_args))
+
+        # Match to extract constraints
+        if not self.type_ops.match_type_with_inference(pattern, target, info.inferred):
+            # Check if a previously-inferred param conflicts with the expected type
+            for tp, expected_arg in zip(info.type_params, target.type_args):
+                if tp in info.inferred and isinstance(expected_arg, TpyType):
+                    if info.inferred[tp] != expected_arg:
+                        from .diagnostics import SemanticError
+                        raise SemanticError(
+                            f"Conflicting type for '{tp}' in '{info.record_name}': "
+                            f"previously inferred as '{info.inferred[tp]}', "
+                            f"but expected type requires '{expected_arg}'",
+                            loc,
+                        )
+            return None
+
+        # Resolve IntLiteralType in any newly inferred params
+        for k, v in list(info.inferred.items()):
+            if isinstance(v, IntLiteralType):
+                info.inferred[k] = self.ctx.default_int_for_literal(v)
+
+        # Check if all type params are now resolved
+        if not all(tp in info.inferred for tp in info.type_params):
+            return None
+
+        return self._eagerly_resolve_pending_generic(info)
+
     def _eagerly_resolve_pending_generic(self, info: 'PendingGenericInstanceInfo') -> NamedType:
         """Resolve a pending generic instance to a concrete NamedType."""
         type_args = tuple(info.inferred[tp] for tp in info.type_params)

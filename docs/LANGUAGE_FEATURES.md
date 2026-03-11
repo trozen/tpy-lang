@@ -2783,10 +2783,20 @@ c.set(Int32(10))     # T = Int32, eagerly resolved
 x = c.get()          # normal: x is Int32
 ```
 
+Type parameters can also be resolved from expected-type context -- passing to
+a function with a typed parameter or returning where the function's return type
+is known:
+
+```python
+def consume(c: Container[Int32]) -> None: ...
+c = Container()      # T unknown -- defer
+consume(c)           # T = Int32, resolved from parameter type
+```
+
 The pending type is eagerly resolved the moment all type parameters are
-constrained. While pending, field access and passing to typed parameters
-are rejected with clear diagnostics. Works for all generic records (user-defined
-and library types). See `docs/LOCAL_TYPE_DEDUCTION.md` Phase 7a.
+constrained. While pending, field access is rejected with clear diagnostics.
+Works for all generic records (user-defined and library types).
+See `docs/LOCAL_TYPE_DEDUCTION.md` Phase 7a.
 
 **Not yet supported**: inference from field assignment targets (`self.field = expr`)
 or subscript targets (`items[i] = expr`). See
