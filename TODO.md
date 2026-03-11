@@ -10,6 +10,8 @@
 
 ## Safety
 - View type borrow tracking for user types: currently only built-in view types (Span, Ptr) are tracked as borrows. Likely needed when designing tpy stdlib types. See escape analysis design doc (Future Extensions) for field-level vs class-level annotation tradeoffs.
+- `own()` builtin: explicit `T -> Own[T]` conversion (analogous to `span()` -> `Span[T]`); near-term bridge until `__iter__(self: Own[Self])` auto-dispatch is implemented. See `docs/CONSUMING_ITERATION_DESIGN.md`.
+- Consuming iteration: `__iter__(self: Own[Self]) -> Iterator[Own[T]]` overload for zero-copy element moves; `OwnIter[T]` runtime type for list drain; user-defined drain iterators (e.g. `ArrayListDrainIter`) as view types with borrow tracking. See `docs/CONSUMING_ITERATION_DESIGN.md`.
 
 ## Examples
 
@@ -36,6 +38,7 @@
 - Any
 - dynamic attributes
 - list/container slicing (Phase 3: step)
+- list slice assignment: `a[1:3] = [10, 20]` -- done. RHS must be `list[T]`; span RHS is a future extension.
 - lambda expression
 - properties
 - with statement/context manager

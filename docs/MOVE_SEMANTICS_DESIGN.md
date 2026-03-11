@@ -10,6 +10,7 @@
 | **Phase 4** | `@nocopy` types (deleted copy, consumption tracking, move-only) | Done |
 | **Phase 5** | Alias-aware liveness (borrow safety, detach-on-reassign) | Done |
 | **Phase 6** | `Box[T]` as library type (`unique_ptr` wrapper, `Deref[T]`) | Planned |
+| **Phase 7** | Consuming iteration (`__iter__(self: Own[Self])`, `OwnIter[T]`) | Planned -- see `docs/CONSUMING_ITERATION_DESIGN.md` |
 
 ## Motivation
 

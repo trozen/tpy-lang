@@ -14,6 +14,9 @@
 | Iterator consumption semantics | **Done** | `auto&` for lvalues, `auto` for rvalues |
 | `__next__()` panic stub | **Done** | Direct calls compile but panic at runtime |
 | `Iterable[T]` protocol | **Todo** | Needs return-type conformance in protocol system |
+| Consuming iteration (`__iter__(self: Own[Self])`) | **Planned** | See `docs/CONSUMING_ITERATION_DESIGN.md` |
+| `OwnIter[T]` runtime type | **Planned** | Drain iterator for `list[T]`, owns moved `std::vector<T>` |
+| `Iterator[Own[T]]` coercion to `Iterator[T]` | **Planned** | Strip `Own` on each element |
 | C++ `begin()`/`end()` on iterators | **Todo** | Make generated types usable with `std::ranges` |
 | `next()` builtin | **Todo** | `next(it)` and `next(it, default)` |
 | `iter()` builtin | **Todo** | `iter(obj)` calls `__iter__()`, two-arg `iter(callable, sentinel)` |
