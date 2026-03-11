@@ -2408,7 +2408,7 @@ class TypeRegistry:
     def __init__(self):
         self.records: dict[str, RecordInfo] = {}
         self.builtin_records: dict[str, RecordInfo] = {}  # By qualified name (e.g., "builtins.list")
-        self.functions: dict[str, FunctionInfo] = {}  # User-defined functions
+        self.functions: dict[str, list[FunctionInfo]] = {}  # User-defined functions (single or @overload group)
         self.builtin_function_overloads: dict[str, list[FunctionInfo]] = {}  # Builtin function overloads
         self.protocols: dict[str, ProtocolInfo] = {}
         self.modules: dict[str, ModuleInfo] = {}  # module_name -> ModuleInfo
@@ -2432,14 +2432,16 @@ class TypeRegistry:
         self.builtin_records[qname] = info
 
     def register_function(self, info: FunctionInfo, name: str | None = None) -> None:
-        """Register a function.
+        """Register a single function (wraps in a list)."""
+        self.functions[name or info.name] = [info]
 
-        Args:
-            info: The function info to register.
-            name: Optional name to register under (defaults to info.name).
-                  Used for imported functions that may have a local alias.
-        """
-        self.functions[name or info.name] = info
+    def register_function_group(self, name: str, infos: list[FunctionInfo]) -> None:
+        """Register a function group (single or @overload)."""
+        self.functions[name] = infos
+
+    def get_function(self, name: str) -> list[FunctionInfo] | None:
+        """Get function(s) by name, or None if not found."""
+        return self.functions.get(name)
 
     def register_builtin_function_overloads(self, name: str, overloads: list[FunctionInfo]) -> None:
         """Register builtin function overloads by name."""
@@ -2538,9 +2540,6 @@ class TypeRegistry:
         if qname:
             return self.builtin_records.get(qname)
         return None
-
-    def get_function(self, name: str) -> Optional[FunctionInfo]:
-        return self.functions.get(name)
 
     def get_protocol(self, name: str) -> Optional[ProtocolInfo]:
         return self.protocols.get(name)

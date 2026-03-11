@@ -531,7 +531,7 @@ class MethodAnalyzer:
                             type_args=expr.type_args,
                             type_args_parse_error=expr.type_args_parse_error,
                             loc=expr.loc)
-        result = self.calls._analyze_user_function_call(temp_call, virtual_func)
+        result = self.calls._analyze_user_function_call(temp_call, [virtual_func])
         expr.args = temp_call.args
         expr.kwargs = temp_call.kwargs
         expr.resolved_function_info = temp_call.resolved_function_info
@@ -574,14 +574,13 @@ class MethodAnalyzer:
                 expr.inferred_type_args = temp_call.inferred_type_args
                 return result
             else:
-                func_info = overloads[0]
                 expr.user_module_call = module_name
                 temp_call = TpyCall(func=expr.method, args=expr.args,
                                     kwargs=expr.kwargs,
                                     type_args=expr.type_args,
                                     type_args_parse_error=expr.type_args_parse_error,
                                     loc=expr.loc)
-                result = self.calls._analyze_user_function_call(temp_call, func_info)
+                result = self.calls._analyze_user_function_call(temp_call, overloads)
                 expr.args = temp_call.args
                 expr.kwargs = temp_call.kwargs
                 expr.resolved_function_info = temp_call.resolved_function_info

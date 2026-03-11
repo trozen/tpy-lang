@@ -35,7 +35,7 @@ TPY_TYPES = {
 PYTHON_BUILTINS = frozenset({"int", "float", "bool", "str", "None", "tuple"})
 
 # Names from typing that require explicit import
-TYPING_NAMES = frozenset({"Optional", "Protocol", "Self", "Sized", "Sequence", "MutableSequence", "Iterator", "Iterable", "Final", "override"})
+TYPING_NAMES = frozenset({"Optional", "Protocol", "Self", "Sized", "Sequence", "MutableSequence", "Iterator", "Iterable", "Final", "override", "overload"})
 
 # All tpy type names (union of TPY_TYPES + decorators/modifiers)
 TPY_TYPE_NAMES = TPY_TYPES | {"Char", "readonly", "noalloc", "nocopy", "dynamic", "pure"}

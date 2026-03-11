@@ -39,7 +39,7 @@ class NameBinding:
     kind: BindingKind
     name: str
     type: Optional[TpyType] = None           # For VARIABLE/BUILTIN
-    func_info: Optional[FunctionInfo] = None  # For FUNCTION
+    func_infos: Optional[list[FunctionInfo]] = None  # For FUNCTION (single or @overload group)
     record_info: Optional[RecordInfo] = None  # For RECORD
     enum_type: Optional[EnumType] = None      # For ENUM
     import_source: Optional[tuple[str, str]] = None  # For IMPORTED_NAME: (module, original_name)
@@ -70,8 +70,8 @@ class Namespace:
         self.bind(NameBinding(kind=BindingKind.VARIABLE, name=name, type=typ))
 
     def bind_function(self, info: FunctionInfo) -> None:
-        """Convenience method to bind a user-defined function."""
-        self.bind(NameBinding(kind=BindingKind.FUNCTION, name=info.name, func_info=info))
+        """Convenience method to bind a single user-defined function."""
+        self.bind(NameBinding(kind=BindingKind.FUNCTION, name=info.name, func_infos=[info]))
 
     def bind_record(self, info: RecordInfo) -> None:
         """Convenience method to bind a user-defined record."""

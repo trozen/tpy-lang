@@ -1,0 +1,2 @@
+Dog name: Rex
+Cat lives: 9

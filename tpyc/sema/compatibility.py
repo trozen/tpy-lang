@@ -722,10 +722,13 @@ class TypeCompatibility:
             if expr.func in self.ctx.registry.records:
                 return True
 
-            # Function returning Own[T] creates a temporary (by-value return)
-            func = self.ctx.registry.get_function(expr.func)
-            if func and isinstance(func.return_type, OwnType):
-                return True
+            # Function returning Own[T] creates a temporary (by-value return).
+            # Only check user-defined functions (builtins don't appear in
+            # registry.functions).
+            if self.ctx.registry.get_function(expr.func) is not None:
+                fi = expr.resolved_function_info
+                if fi and isinstance(fi.return_type, OwnType):
+                    return True
 
             # Regular function call - assume it returns something safe
             # (the callee is responsible for not returning dangling refs)

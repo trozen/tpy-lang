@@ -45,7 +45,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B7 | Float32 type | S | Done | [I](#float32-type) |
 | B8 | Dataclasses | M | Done | [VII](#dataclasses) |
 | B9 | List comprehensions | M | Done | [VI](#list-comprehensions) |
-| B10 | `@overload` dispatch flattening | M | Not started | [VII](#overload-dispatch-flattening) |
+| B10 | `@overload` dispatch flattening | M | Done | [VII](#overload-dispatch-flattening) |
 | B11 | List slicing | M | Phase 1 done | [VII](#list-slicing) |
 | B12 | `Self` type | S | Done | [I](#self-type) |
 | B13 | Bi-directional type inference | M | Done | [I](#bi-directional-type-inference) |
@@ -1991,12 +1991,15 @@ of per-branch return types.
 Key use cases: `__getitem__` with `Int32 | slice` (different return types), constructor
 variants (`ArrayList` from span vs iterable), `pop()` vs `pop(index)`.
 
-**Current state**: Not started. The union + isinstance pattern works today (no flattening).
+**Current state**: Done. Works for free functions and methods. Dead branch elimination
+handles isinstance if/elif/else chains and match/case on union subjects. Exhaustiveness
+checking ensures stubs cover all union variants. Call-site overload resolution picks the
+most specific stub.
 
 **Dependencies**: Union types (done), isinstance narrowing (done). `slice` type needed
-for the `__getitem__` use case.
+for the `__getitem__` use case (orthogonal).
 
-**Effort**: M (overload stub parsing + codegen splitting + return type resolution)
+**Effort**: M (done)
 
 ---
 

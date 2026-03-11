@@ -616,9 +616,9 @@ class CodeGenerator:
         for local_name in sorted(self.ctx.user_imported_functions):
             if local_name in self.ctx.reexported_functions:
                 continue
-            func_info = self.ctx.analyzer.registry.get_function(local_name)
-            if func_info and (func_info.is_native_c or func_info.is_extern_c):
-                self.functions.gen_extern_c_redecl(hpp, func_info)
+            func_infos = self.ctx.analyzer.registry.get_function(local_name)
+            if func_infos and (func_infos[0].is_native_c or func_infos[0].is_extern_c):
+                self.functions.gen_extern_c_redecl(hpp, func_infos[0])
                 emitted_func_decl = True
         if emitted_func_decl:
             hpp.write("\n")
@@ -629,9 +629,9 @@ class CodeGenerator:
                 # For C-linkage functions, emit an extern "C" re-declaration.
                 # Using/alias re-exports don't work because the C++ name may
                 # differ from the Python name (e.g., @native_c("SDL_GetTicks") def get_ticks).
-                func_info = self.ctx.analyzer.registry.get_function(local_name)
-                if func_info and (func_info.is_native_c or func_info.is_extern_c):
-                    self.functions.gen_extern_c_redecl(hpp, func_info)
+                func_infos = self.ctx.analyzer.registry.get_function(local_name)
+                if func_infos and (func_infos[0].is_native_c or func_infos[0].is_extern_c):
+                    self.functions.gen_extern_c_redecl(hpp, func_infos[0])
                     continue
                 qualified = qualified_cpp_name(source_module, original_name)
                 if local_name == original_name:

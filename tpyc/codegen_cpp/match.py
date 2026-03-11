@@ -49,6 +49,15 @@ class MatchGenerator:
         assert stmt.subject_type is not None
         subject_type = unwrap_readonly(stmt.subject_type)
 
+        # @overload dead branch elimination for match on union subject
+        if (isinstance(subject_type, UnionType)
+                and isinstance(stmt.subject, TpyName)
+                and self.ctx.overload_param_types):
+            concrete = self.ctx.overload_param_types.get(stmt.subject.name)
+            if concrete is not None:
+                self._gen_match_overload_specialized(out, stmt, concrete, indent)
+                return
+
         # Pre-declare variables first declared inside match arms
         self.stmts._emit_branch_decls(out, stmt, indent)
 
@@ -91,6 +100,59 @@ class MatchGenerator:
                 self._gen_match_if_elif(out, stmt, indent)
         else:
             self._gen_match_if_elif(out, stmt, indent)
+
+    def _gen_match_overload_specialized(
+        self, out: TextIO, stmt: TpyMatch, concrete_type: 'TpyType', indent: str,
+    ) -> None:
+        """Emit only the matching arm for a match on a concrete overload param.
+
+        The subject variable has a concrete (non-variant) type in this overload,
+        so we find the arm whose class pattern matches and emit its body directly.
+        """
+        assert isinstance(stmt.subject, TpyName)
+        subject_name = stmt.subject.name
+
+        def emit_field_bindings(pattern: TpyClassPattern) -> None:
+            for field_name, sub_pattern in pattern.keywords:
+                if isinstance(sub_pattern, TpyCapturePattern):
+                    escaped = escape_cpp_name(sub_pattern.name)
+                    out.write(f"{indent}auto& {escaped} = {subject_name}.{escape_cpp_name(field_name)};\n")
+
+        for case in stmt.cases:
+            pattern, as_name, as_raw_name = self._unwrap_as_pattern(case.pattern)
+
+            if isinstance(pattern, TpyClassPattern) and pattern.resolved_type is not None:
+                if pattern.resolved_type == concrete_type:
+                    emit_field_bindings(pattern)
+                    if as_name:
+                        out.write(f"{indent}auto& {escape_cpp_name(as_name)} = {subject_name};\n")
+                    for s in case.body:
+                        self.stmts.gen_stmt(out, s)
+                    return
+
+            elif isinstance(pattern, TpyOrPattern):
+                for alt in pattern.patterns:
+                    if isinstance(alt, TpyClassPattern) and alt.resolved_type == concrete_type:
+                        emit_field_bindings(alt)
+                        if as_name:
+                            out.write(f"{indent}auto& {escape_cpp_name(as_name)} = {subject_name};\n")
+                        for s in case.body:
+                            self.stmts.gen_stmt(out, s)
+                        return
+
+            elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
+                if isinstance(pattern, TpyCapturePattern):
+                    out.write(f"{indent}auto& {escape_cpp_name(pattern.name)} = {subject_name};\n")
+                if as_name:
+                    out.write(f"{indent}auto& {escape_cpp_name(as_name)} = {subject_name};\n")
+                for s in case.body:
+                    self.stmts.gen_stmt(out, s)
+                return
+
+        raise AssertionError(
+            f"No match arm found for concrete type {concrete_type} "
+            f"in @overload specialization"
+        )
 
     def _gen_match_switch_union(
         self, out: TextIO, stmt: TpyMatch, subject_type: UnionType, indent: str,

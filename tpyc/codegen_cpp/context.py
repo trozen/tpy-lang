@@ -264,6 +264,12 @@ class CodeGenContext:
     # Assignment narrowing: var -> narrowed concrete type (for inline std::get at access points)
     assign_narrowed_types: dict[str, 'TpyType'] = field(default_factory=dict)
 
+    # --- @overload specialization ---
+    # When generating code for a specific @overload stub, maps parameter names
+    # to their concrete (non-union) types. Used for dead branch elimination:
+    # isinstance checks on specialized params resolve statically.
+    overload_param_types: dict[str, 'TpyType'] = field(default_factory=dict)
+
     # --- Iterator loop counter ---
     iter_counter: int = 0
 
@@ -329,6 +335,9 @@ class CodeGenContext:
         self.in_method = False
         self.narrowed_vars = {}
         self.assign_narrowed_types = {}
+        # Note: overload_param_types is NOT reset here -- it's managed by
+        # _gen_overload_specialized_function/method which set it before gen_body
+        # and clear it in a finally block.
         self.iter_counter = 0
         self.unpack_counter = 0
         self.loop_else_labels = []
@@ -628,8 +637,9 @@ class CodeGenContext:
             if expr.call_type is not None:
                 return True
             # Functions returning Own[T] or Optional[T] -> rvalue (pointer value)
-            if func_info := self.analyzer.registry.get_function(expr.func):
-                if isinstance(func_info.return_type, (OwnType, OptionalType)):
+            if self.analyzer.registry.get_function(expr.func) is not None:
+                fi = expr.resolved_function_info
+                if fi and isinstance(fi.return_type, (OwnType, OptionalType)):
                     return True
                 return False
             # Builtin functions -> rvalue
@@ -691,8 +701,9 @@ class CodeGenContext:
             if self.analyzer.registry.get_record(expr.func):
                 return True
             # User-defined functions returning non-void
-            if func_info := self.analyzer.registry.get_function(expr.func):
-                return func_info.return_type != VOID
+            if self.analyzer.registry.get_function(expr.func) is not None:
+                fi = expr.resolved_function_info
+                return fi is not None and fi.return_type != VOID
             # Builtin functions (len, chr, ord, etc.) - always return values
             if self.analyzer.registry.get_builtin_function_overloads(expr.func):
                 return True

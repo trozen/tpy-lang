@@ -853,7 +853,8 @@ class Parser:
                         f"Methods on @{linkage.value} classes must have '...' body (stub declaration)", node)
             else:
                 # Non-native class: stubs and @native decorators are not allowed
-                if method.is_stub:
+                # (@overload stubs are exempt -- they declare overload signatures)
+                if method.is_stub and not method.is_overload_stub:
                     raise ParseError(
                         f"Method '{method.name}' cannot have '...' body on a regular class "
                         f"(only allowed on @native/@native_c classes)", node)
@@ -1156,6 +1157,7 @@ class Parser:
         readonly_opt_out = False
         is_pure = False
         is_override = False
+        is_overload_stub = False
         method_linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
         for dec in node.decorator_list:
@@ -1170,6 +1172,10 @@ class Parser:
                 if arg is not None:
                     raise ParseError("@override does not take arguments", dec)
                 is_override = True
+            elif qname == "typing.overload":
+                if arg is not None:
+                    raise ParseError("@overload does not take arguments", dec)
+                is_overload_stub = True
             elif qname == "tpy.readonly":
                 is_readonly, readonly_opt_out = self._parse_readonly_arg(arg, dec)
             elif qname in self._METHOD_LINKAGE_MAP:
@@ -1253,8 +1259,13 @@ class Parser:
             return_type = self._parse_type_annotation(node.returns, type_param_scope)
 
         is_stub_body = self._is_stub_body(node.body)
-        is_stub = is_stub_body
-        if is_stub:
+        is_overload_stub_body = is_stub_body or self._is_pass_body(node.body)
+        is_stub = is_stub_body and not is_overload_stub
+        if is_overload_stub:
+            if not is_overload_stub_body:
+                raise ParseError(f"@overload method '{node.name}' must have `...` or `pass` body", node)
+            body = []
+        elif is_stub:
             body = []
         else:
             body = [self._parse_stmt(stmt) for stmt in node.body]
@@ -1271,7 +1282,8 @@ class Parser:
             readonly_opt_out=readonly_opt_out,
             is_pure=is_pure,
             is_override=is_override,
-            is_stub=is_stub,
+            is_overload_stub=is_overload_stub,
+            is_stub=is_overload_stub_body if is_overload_stub else is_stub,
             linkage=method_linkage,
             native_name=native_name,
             type_params=method_type_params,
@@ -1292,6 +1304,7 @@ class Parser:
         is_readonly = False
         readonly_opt_out = False
         is_pure = False
+        is_overload_stub = False
         linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
         for dec in node.decorator_list:
@@ -1306,6 +1319,10 @@ class Parser:
                 is_pure = True
             elif qname == "tpy.readonly":
                 is_readonly, readonly_opt_out = self._parse_readonly_arg(arg, dec)
+            elif qname == "typing.overload":
+                if arg is not None:
+                    raise ParseError("@overload does not take arguments", dec)
+                is_overload_stub = True
             elif qname in self._FUNCTION_LINKAGE_MAP:
                 new_linkage = self._FUNCTION_LINKAGE_MAP[qname]
                 if linkage != FunctionLinkage.DEFAULT:
@@ -1360,10 +1377,15 @@ class Parser:
 
         # Validate body vs linkage
         is_stub_body = self._is_stub_body(node.body)
+        is_overload_stub_body = is_stub_body or self._is_pass_body(node.body)
         is_stub = False
 
-        if linkage in (FunctionLinkage.NATIVE, FunctionLinkage.NATIVE_C):
-            if not is_stub_body:
+        if is_overload_stub:
+            if not is_overload_stub_body:
+                raise ParseError(f"@overload function '{node.name}' must have `...` or `pass` body", node)
+            body = []
+        elif linkage in (FunctionLinkage.NATIVE, FunctionLinkage.NATIVE_C):
+            if not (self._is_stub_body(node.body)):
                 raise ParseError(
                     f"@{linkage.value} function '{node.name}' must have `...` body (it declares an external symbol)",
                     node)
@@ -1390,9 +1412,10 @@ class Parser:
             is_readonly=is_readonly,
             readonly_opt_out=readonly_opt_out,
             is_pure=is_pure,
+            is_overload_stub=is_overload_stub,
             linkage=linkage,
             native_name=native_name,
-            is_stub=is_stub,
+            is_stub=is_overload_stub_body if is_overload_stub else is_stub,
             type_params=type_params,
             type_param_bounds=type_param_bounds,
             defaults=defaults,
@@ -1410,6 +1433,11 @@ class Parser:
             if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Constant) and stmt.value.value is ...:
                 return True
         return False
+
+    @staticmethod
+    def _is_pass_body(body: list[ast.stmt]) -> bool:
+        """Check if a function body is only `pass`."""
+        return len(body) == 1 and isinstance(body[0], ast.Pass)
 
     def _parse_type_annotation(self, node: ast.expr, type_param_scope: dict[str, TypeParamKind] | None = None) -> TpyType:
         """Parse a type annotation.

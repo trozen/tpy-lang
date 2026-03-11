@@ -1,0 +1,3 @@
+Treated dog: Rex
+Treated cat with 7 lives
+2

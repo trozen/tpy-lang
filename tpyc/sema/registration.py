@@ -19,6 +19,7 @@ from ..parse import (
     TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
     TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn, TpyMethodCall, TpyCall, TpyExprStmt,
 )
+from ..namespace import NameBinding, BindingKind
 from .diagnostics import SemanticError
 from .operators import DUNDER_CPP_TEMPLATES
 
@@ -219,9 +220,13 @@ class TypeRegistrar:
         is_generic = bool(record.type_params)
 
         # Check for duplicate method definitions (second definition silently wins in Python,
-        # but it is always a bug and can interfere with @override checks)
+        # but it is always a bug and can interfere with @override checks).
+        # @overload stubs are exempt -- multiple stubs + one implementation share the same name.
         seen_method_names: set[str] = set()
+        overload_names: set[str] = {m.name for m in record.methods if m.is_overload_stub}
         for method in record.methods:
+            if method.name in overload_names:
+                continue
             if method.name in seen_method_names:
                 raise SemanticError(
                     f"Method '{method.name}' defined twice in class '{record.name}'",
@@ -495,7 +500,7 @@ class TypeRegistrar:
                         f"got '{method_return}'",
                         method.loc or record.loc,
                     )
-            methods[method.name] = [FunctionInfo(
+            func_info = FunctionInfo(
                 name=method.name,
                 params=[
                     ParamInfo(n, t, default_expr=method_defaults[i] if i < len(method_defaults) else None)
@@ -512,7 +517,17 @@ class TypeRegistrar:
                 cpp_template=DUNDER_CPP_TEMPLATES.get(method.name),
                 type_params=list(method.type_params),
                 type_param_bounds=method_type_param_bounds,
-            )]
+            )
+            if method.is_overload_stub:
+                # Accumulate overload stubs for this method name
+                methods.setdefault(method.name, []).append(func_info)
+            elif method.name in methods:
+                # Implementation following stubs: stubs are the callable
+                # overloads. Don't add the implementation to the method list --
+                # callers resolve against stubs only.
+                pass
+            else:
+                methods[method.name] = [func_info]
 
         # __next__() -> T implies __next_opt__() -> Optional[T] for protocol conformance
         if "__next__" in methods and "__next_opt__" not in methods:
@@ -1279,6 +1294,61 @@ class TypeRegistrar:
 
         self.ctx.registry.register_function(info)
         self.ctx.global_ns.bind_function(info)
+
+    def register_overload_group(self, stubs: list[TpyFunction]) -> None:
+        """Register a group of @overload stubs as a single overloaded function binding.
+
+        Each stub is resolved and validated. All stubs are bound together so
+        call-site resolution can pick the best match.
+        """
+        infos: list[FunctionInfo] = []
+        for func in stubs:
+            is_generic = bool(func.type_params)
+            resolved_params = []
+            for pname, ptype in func.params:
+                resolved_ptype = self.type_ops.resolve_type(ptype)
+                try:
+                    self.type_ops.validate_type(resolved_ptype, allow_type_param_ref=is_generic)
+                except SemanticError as e:
+                    raise self.ctx.error(str(e), func)
+                resolved_params.append((pname, resolved_ptype))
+
+            resolved_return = self.type_ops.resolve_type(func.return_type)
+            try:
+                self.type_ops.validate_type(resolved_return, allow_type_param_ref=is_generic)
+            except SemanticError as e:
+                raise self.ctx.error(str(e), func)
+
+            type_param_bounds = self._resolve_type_param_bounds(
+                func.type_param_bounds, func.loc)
+
+            func_defaults = func.defaults if func.defaults else []
+            info = FunctionInfo(
+                name=func.name,
+                params=[
+                    ParamInfo(n, t, default_expr=func_defaults[i] if i < len(func_defaults) else None)
+                    for i, (n, t) in enumerate(resolved_params)
+                ],
+                return_type=resolved_return,
+                is_noalloc=func.is_noalloc,
+                is_readonly=func.is_readonly or func.is_pure,
+                is_pure=func.is_pure,
+                type_params=func.type_params,
+                type_param_bounds=type_param_bounds,
+                qualified_name=f"{self.ctx.module_name}.{func.name}",
+            )
+            # Propagate resolved types back to AST (matches register_record behavior)
+            func.params = list(resolved_params)
+            func.return_type = resolved_return
+            infos.append(info)
+
+        if infos:
+            self.ctx.registry.register_function_group(infos[0].name, infos)
+            self.ctx.global_ns.bind(NameBinding(
+                kind=BindingKind.FUNCTION,
+                name=infos[0].name,
+                func_infos=infos,
+            ))
 
     def register_globals(self, stmts: list[TpyStmt]) -> None:
         """Register top-level variable declarations in global scope.

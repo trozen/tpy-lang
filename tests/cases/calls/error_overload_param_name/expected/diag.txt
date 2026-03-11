@@ -1,0 +1,1 @@
+main.py:15: error: @overload stub parameter 'a' does not match implementation parameter 'animal'

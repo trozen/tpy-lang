@@ -193,7 +193,7 @@ class ModuleExports:
     """Exports from a compiled module.
 
     Contains all items that can be imported from this module:
-    - functions: dict of function name -> FunctionInfo
+    - functions: dict of function name -> list of FunctionInfo (overloads)
     - records: dict of record name -> RecordInfo
     - protocols: dict of protocol name -> ProtocolInfo
     - variables: dict of variable name -> TpyType
@@ -201,7 +201,7 @@ class ModuleExports:
     - reexported_records: dict of local name -> (source_module, original_name) for re-exports
     - reexported_variables: dict of local name -> (source_module, original_name) for re-exports
     """
-    functions: dict[str, FunctionInfo] = field(default_factory=dict)
+    functions: dict[str, list[FunctionInfo]] = field(default_factory=dict)
     records: dict[str, RecordInfo] = field(default_factory=dict)
     protocols: dict[str, ProtocolInfo] = field(default_factory=dict)
     enums: dict[str, 'EnumType'] = field(default_factory=dict)
@@ -679,9 +679,11 @@ class Compiler:
 
         # Export all user-defined functions
         for func in compiled.ast.functions:
-            func_info = analyzer.registry.get_function(func.name)
-            if func_info:
-                exports.functions[func.name] = func_info
+            if func.is_overload_stub:
+                continue
+            func_infos = analyzer.registry.get_function(func.name)
+            if func_infos:
+                exports.functions[func.name] = func_infos
 
         # For __init__.py, also re-export imported functions from user modules
         if compiled.is_package_init:
@@ -692,7 +694,7 @@ class Compiler:
                     if module_info and original_name in module_info.functions:
                         func_infos = module_info.functions[original_name]
                         if func_infos:
-                            exports.functions[local_name] = func_infos[0]
+                            exports.functions[local_name] = func_infos
                             # Track re-export source for codegen
                             exports.reexported_functions[local_name] = (source_module, original_name)
 
@@ -779,8 +781,7 @@ class Compiler:
         """
         from .typesys import ModuleInfo, ModuleVarInfo
 
-        # Wrap single functions in lists for uniform overload handling
-        functions = {k: [v] for k, v in exports.functions.items()}
+        functions = dict(exports.functions)
 
         # Create ModuleVarInfo with generated cpp_expr
         # For re-exported variables, use the source module's namespace

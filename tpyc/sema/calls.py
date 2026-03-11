@@ -411,7 +411,7 @@ class CallAnalyzer:
         # (see codegen_cpp/expressions.py gen_call).
         ns_binding = self.ctx.current_ns.lookup(expr.func) if self.ctx.current_ns else None
         has_user_fn = (ns_binding is not None and ns_binding.kind == BindingKind.FUNCTION
-                       and ns_binding.func_info is not None and not ns_binding.func_info.is_builtin_function)
+                       and ns_binding.func_infos is not None and not ns_binding.func_infos[0].is_builtin_function)
         if not has_user_fn:
             if overloads := self.ctx.registry.get_builtin_function_overloads(expr.func):
                 if not overloads[0].special_handling:
@@ -429,7 +429,7 @@ class CallAnalyzer:
                 if binding.kind == BindingKind.VARIABLE:
                     raise self.ctx.error(f"'{expr.func}' is not callable", expr)
                 elif binding.kind == BindingKind.FUNCTION:
-                    return self._analyze_user_function_call(expr, binding.func_info)
+                    return self._analyze_user_function_call(expr, binding.func_infos)
                 elif binding.kind == BindingKind.RECORD:
                     return self._analyze_record_constructor(expr, binding.record_info)
                 elif binding.kind == BindingKind.IMPORTED_NAME:
@@ -468,8 +468,8 @@ class CallAnalyzer:
                     if func_name in ("enumerate", "zip"):
                         raise SemanticError(f"{func_name}() is not yet implemented", expr.loc)
                     # Check for user module function (registered via _register_user_module_import)
-                    if func_info := self.ctx.registry.get_function(expr.func):
-                        return self._analyze_user_function_call(expr, func_info)
+                    if func_infos := self.ctx.registry.get_function(expr.func):
+                        return self._analyze_user_function_call(expr, func_infos)
                     # Check for user module record (registered via _register_user_module_import)
                     if record_info := self.ctx.registry.get_record(expr.func):
                         return self._analyze_record_constructor(expr, record_info)
@@ -525,9 +525,9 @@ class CallAnalyzer:
             return NamedType(expr.func)
 
         # Fallback: Check if it's a function call
-        func = self.ctx.registry.get_function(expr.func)
-        if func:
-            return self._analyze_legacy_function_call(expr, func)
+        func_infos = self.ctx.registry.get_function(expr.func)
+        if func_infos:
+            return self._analyze_legacy_function_call(expr, func_infos[0])
 
         # Generic type constructor without context for type inference
         # Only proceed if we found an imported generic type in namespace
@@ -1523,8 +1523,27 @@ class CallAnalyzer:
 
         raise self.ctx.error(f"No matching overload for {expr.func}({arg_type_strs})", expr)
 
-    def _analyze_user_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
-        """Analyze a call to a user-defined function."""
+    def _analyze_user_function_call(
+        self, expr: TpyCall, func_infos: list[FunctionInfo],
+    ) -> TpyType:
+        """Analyze a call to a user-defined function (single or @overload group)."""
+        if len(func_infos) > 1:
+            # @overload group: resolve to the best stub
+            arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+            matched = resolve_overload(
+                func_infos, arg_types,
+                protocol_checker=self.protocols.type_conforms_to_protocol,
+                subclass_checker=self.ctx.registry.is_subclass_of,
+            )
+            if matched is not None:
+                return self._analyze_single_function_call(expr, matched)
+            arg_type_strs = ", ".join(str(t) for t in arg_types)
+            raise self.ctx.error(
+                f"No matching @overload for {expr.func}({arg_type_strs})", expr)
+        return self._analyze_single_function_call(expr, func_infos[0])
+
+    def _analyze_single_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
+        """Analyze a call to a single user-defined function."""
         # Handle generic functions
         if func.is_generic():
             return self._analyze_generic_function_call(expr, func)

@@ -2504,6 +2504,17 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Type aliases can be imported cross-module: `from shapes import Shape`
   - **Not yet supported**: `isinstance(x, (A, B))` tuple form, `isinstance(x, Protocol)` on concrete-typed variables
   - **Working**: `match`/`case` pattern matching on union subjects (see Control Flow > Other)
+  - **Working**: `@overload` dispatch flattening -- Python-standard `@overload` stubs generate separate C++ overloads from a single implementation function. Stubs declare the per-type signatures; the implementation body's isinstance/match checks are resolved at compile time via dead branch elimination. Each overload compiles to a clean, specialized function with no runtime dispatch overhead.
+    - Works for free functions and methods, including cross-module imports
+    - Stubs require `...` (Ellipsis) or `pass` body
+    - Stub parameter names must match implementation parameter names
+    - Stub parameter types must be subsets of the implementation's union members
+    - Exhaustiveness check: stubs must cover all union variants per parameter (missing variants are a sema error)
+    - `isinstance(x, T)` checks in if/elif/else are statically resolved to `true`/`false` per overload
+    - `match`/`case` on union subjects selects only the matching arm per overload
+    - Call-site overload resolution picks the most specific stub (exact match preferred, coercions as fallback)
+    - `from typing import overload` import required
+    - CPython compatible: stubs are no-ops in CPython, implementation runs with isinstance checks
 - **Working**: `T | None` for non-value types (records, lists, arrays) → nullable pointer (`T*`)
   - Locals, parameters, returns: `T*` (nullable pointer)
   - `x is None` / `x is not None` for null checks

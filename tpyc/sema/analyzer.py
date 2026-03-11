@@ -13,7 +13,7 @@ from ..typesys import (
     INT32, ReadonlyType, unwrap_readonly, OwnType, OptionalType, RecordInfo, FieldInfo,
     EnumType,
 )
-from ..namespace import Namespace
+from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call
 from .registration import build_record_self_type
 from ..parse.nodes import (
@@ -194,6 +194,10 @@ class SemanticAnalyzer:
 
         # Branch-declared vars that need pre-declaration before if-statements
         self.if_branch_decls: dict[int, dict[str, TpyType]] = {}
+
+        # @overload dispatch groups: implementation func id -> list of stub TpyFunctions
+        # Used by codegen to emit per-overload specialized C++ functions.
+        self.overload_groups: dict[int, list[TpyFunction]] = {}
 
         # Convenience aliases for public API
         self.registry = self.ctx.registry
@@ -427,9 +431,8 @@ class SemanticAnalyzer:
             self._validate_type_alias_members(name, typ, loc)
             self.ctx.registry.register_type_alias(name, typ)
 
-        # Second pass: register all functions
-        for func in module.functions:
-            self.registrar.register_function(func)
+        # Second pass: register all functions (with @overload grouping)
+        self._register_functions_with_overloads(module.functions)
 
         # Inject synthetic __name__: Final[str] before registration so it flows
         # through the same path as user-defined Finals (single source of truth)
@@ -454,9 +457,10 @@ class SemanticAnalyzer:
         for record in module.records:
             self._analyze_record_methods(record)
 
-        # Sixth pass: analyze function bodies
+        # Sixth pass: analyze function bodies (skip @overload stubs)
         for func in module.functions:
-            self._analyze_function(func)
+            if not func.is_overload_stub:
+                self._analyze_function(func)
 
     def _is_type_nocopy(self, typ: TpyType) -> bool:
         """Delegate to canonical is_type_nocopy on context."""
@@ -580,6 +584,193 @@ class SemanticAnalyzer:
         self.ctx.current_scope = None
         self.ctx.current_ns = None
 
+    def _collect_method_overload_groups(self, record: TpyRecord) -> None:
+        """Identify and validate @overload groups among a record's methods.
+
+        For each group, stores the mapping from implementation -> stubs
+        in self.overload_groups. Also validates exhaustiveness.
+        """
+        pending_stubs: dict[str, list[TpyFunction]] = {}
+        for method in record.methods:
+            if method.is_overload_stub:
+                pending_stubs.setdefault(method.name, []).append(method)
+                continue
+            stubs = pending_stubs.pop(method.name, None)
+            if stubs:
+                self._validate_method_overload_group(method, stubs, record.name)
+                self.overload_groups[id(method)] = stubs
+        for name, stubs in pending_stubs.items():
+            raise SemanticError(
+                f"@overload stubs for '{record.name}.{name}' have no implementation method",
+                stubs[0].loc or record.loc,
+            )
+
+    def _validate_method_overload_group(
+        self, impl: TpyFunction, stubs: list[TpyFunction], record_name: str,
+    ) -> None:
+        """Validate exhaustiveness of method overload stubs."""
+        for stub in stubs:
+            if len(stub.params) != len(impl.params):
+                raise SemanticError(
+                    f"@overload stub for '{record_name}.{impl.name}' has "
+                    f"{len(stub.params)} parameter(s), but the implementation "
+                    f"has {len(impl.params)}",
+                    stub.loc,
+                )
+            for (impl_pname, _), (stub_pname, _) in zip(impl.params, stub.params):
+                if impl_pname != stub_pname:
+                    raise SemanticError(
+                        f"@overload stub parameter '{stub_pname}' does not match "
+                        f"implementation parameter '{impl_pname}'",
+                        stub.loc,
+                    )
+        for param_idx, (pname, ptype) in enumerate(impl.params):
+            resolved = self.type_ops.resolve_type(ptype)
+            if not isinstance(resolved, UnionType):
+                for stub in stubs:
+                    stub_ptype = self.type_ops.resolve_type(stub.params[param_idx][1])
+                    if stub_ptype != resolved:
+                        raise SemanticError(
+                            f"@overload stub type '{stub_ptype}' for parameter '{pname}' "
+                            f"does not match implementation type '{resolved}'",
+                            stub.loc,
+                        )
+                continue
+            covered: set[TpyType] = set()
+            for stub in stubs:
+                stub_ptype = self.type_ops.resolve_type(stub.params[param_idx][1])
+                if isinstance(stub_ptype, UnionType):
+                    stub_members = set(stub_ptype.members)
+                else:
+                    stub_members = {stub_ptype}
+                extra = [m for m in stub_members if m not in resolved.members]
+                if extra:
+                    extra_names = ", ".join(str(m) for m in extra)
+                    raise SemanticError(
+                        f"@overload stub type for parameter '{pname}' includes "
+                        f"{extra_names} which is not in the implementation's "
+                        f"union type '{resolved}'",
+                        stub.loc,
+                    )
+                covered.update(stub_members)
+            missing = [m for m in resolved.members if m not in covered]
+            if missing:
+                missing_names = ", ".join(str(m) for m in missing)
+                raise SemanticError(
+                    f"@overload stubs for '{record_name}.{impl.name}' don't cover all "
+                    f"variants of parameter '{pname}': missing {missing_names}",
+                    impl.loc,
+                )
+
+    def _register_functions_with_overloads(self, functions: list[TpyFunction]) -> None:
+        """Register functions, grouping @overload stubs with their implementations.
+
+        @overload stubs precede their implementation function (same name).
+        Stubs are registered as callable overloads; the implementation is
+        registered for body analysis only (not directly callable).
+        """
+        pending_stubs: dict[str, list[TpyFunction]] = {}
+
+        for func in functions:
+            if func.is_overload_stub:
+                pending_stubs.setdefault(func.name, []).append(func)
+                continue
+
+            # Non-stub function: check if there are pending stubs for this name
+            stubs = pending_stubs.pop(func.name, None)
+            if stubs:
+                self._register_overload_group(func, stubs)
+            else:
+                self.registrar.register_function(func)
+
+        # Error if stubs are left without an implementation
+        for name, stubs in pending_stubs.items():
+            loc = stubs[0].loc
+            raise SemanticError(
+                f"@overload stubs for '{name}' have no implementation function",
+                loc,
+            )
+
+    def _register_overload_group(
+        self, impl: TpyFunction, stubs: list[TpyFunction],
+    ) -> None:
+        """Validate and register an @overload group.
+
+        - Validates stub parameter types cover all union variants in the implementation
+        - Registers each stub as a callable FunctionInfo overload
+        - Stores the group mapping for codegen
+        """
+        # Validate that each stub has the same number of params as the implementation
+        for stub in stubs:
+            if len(stub.params) != len(impl.params):
+                raise SemanticError(
+                    f"@overload stub for '{impl.name}' has {len(stub.params)} parameter(s), "
+                    f"but the implementation has {len(impl.params)}",
+                    stub.loc,
+                )
+            for (impl_pname, _), (stub_pname, _) in zip(impl.params, stub.params):
+                if impl_pname != stub_pname:
+                    raise SemanticError(
+                        f"@overload stub parameter '{stub_pname}' does not match "
+                        f"implementation parameter '{impl_pname}'",
+                        stub.loc,
+                    )
+
+        # Check exhaustiveness and subset validity:
+        # For each union-typed impl param, stubs must cover all members
+        # and stub types must be subsets of the union.
+        for param_idx, (pname, ptype) in enumerate(impl.params):
+            resolved = self.type_ops.resolve_type(ptype)
+            if not isinstance(resolved, UnionType):
+                # Non-union impl param: stub must match exactly
+                for stub in stubs:
+                    stub_ptype = self.type_ops.resolve_type(stub.params[param_idx][1])
+                    if stub_ptype != resolved:
+                        raise SemanticError(
+                            f"@overload stub type '{stub_ptype}' for parameter '{pname}' "
+                            f"does not match implementation type '{resolved}'",
+                            stub.loc,
+                        )
+                continue
+            # Collect concrete types from stubs at this position
+            covered: set[TpyType] = set()
+            for stub in stubs:
+                stub_ptype = self.type_ops.resolve_type(stub.params[param_idx][1])
+                if isinstance(stub_ptype, UnionType):
+                    stub_members = set(stub_ptype.members)
+                else:
+                    stub_members = {stub_ptype}
+                # Validate stub types are subsets of impl union
+                extra = [m for m in stub_members if m not in resolved.members]
+                if extra:
+                    extra_names = ", ".join(str(m) for m in extra)
+                    raise SemanticError(
+                        f"@overload stub type for parameter '{pname}' includes "
+                        f"{extra_names} which is not in the implementation's "
+                        f"union type '{resolved}'",
+                        stub.loc,
+                    )
+                covered.update(stub_members)
+            # Check all union members are covered
+            missing = [m for m in resolved.members if m not in covered]
+            if missing:
+                missing_names = ", ".join(str(m) for m in missing)
+                raise SemanticError(
+                    f"@overload stubs for '{impl.name}' don't cover all variants "
+                    f"of parameter '{pname}': missing {missing_names}",
+                    impl.loc,
+                )
+
+        # Register each stub as a callable overload via a single binding
+        self.registrar.register_overload_group(stubs)
+
+        # The implementation is NOT registered in the namespace/registry --
+        # callers resolve against stubs only. The body is still analyzed
+        # via _analyze_function (which works on the TpyFunction directly).
+
+        # Store the group mapping for codegen
+        self.overload_groups[id(impl)] = stubs
+
     def _validate_type_alias_members(
         self, alias_name: str, typ: TpyType, loc: 'SourceLocation | None'
     ) -> None:
@@ -688,9 +879,16 @@ class SemanticAnalyzer:
                 next_method
             )
 
+        # Collect method overload groups for this record
+        self._collect_method_overload_groups(record)
+
         for method in record.methods:
+            # Skip @overload stubs -- their implementation is analyzed instead
+            if method.is_overload_stub:
+                continue
+
             self.ctx.reset_function_tracking()
-    
+
             self.ctx.current_function = method
             # Resolve return type (sets is_protocol for cross-module imports)
             method.return_type = self.type_ops.resolve_type(method.return_type)
@@ -1027,13 +1225,16 @@ class SemanticAnalyzer:
             # Builtin module (no user file shadowing it), skip to let builtin handling work
             return
 
-        # Check for function (now always list of overloads)
+        # Check for function (list of overloads in ModuleInfo)
         if module_info.functions and original_name in module_info.functions:
-            overloads = module_info.functions[original_name]
-            # For user modules, single overload - take first
-            func_info = overloads[0]
-            # Register with local name for lookup
-            self.ctx.registry.register_function(func_info, local_name)
+            func_infos = module_info.functions[original_name]
+            self.ctx.registry.register_function_group(local_name, func_infos)
+            if len(func_infos) > 1:
+                self.ctx.global_ns.bind(NameBinding(
+                    kind=BindingKind.FUNCTION,
+                    name=local_name,
+                    func_infos=func_infos,
+                ))
             self.ctx.user_imported_functions[local_name] = (module_name, original_name)
             return
 

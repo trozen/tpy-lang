@@ -1172,6 +1172,10 @@ class StatementGenerator:
             # no std::get extraction needed (the variable is already a T& ref).
             if is_protocol_type(narrowed_type):
                 continue
+            # In @overload context, the param is already the concrete type --
+            # no std::get extraction needed.
+            if var_name in self.ctx.overload_param_types:
+                continue
             cpp_type = self.types.type_to_cpp(narrowed_type)
             var_ref = var_name
             if var_name in self.ctx.narrowed_vars:
@@ -1329,6 +1333,13 @@ class StatementGenerator:
             else:
                 break
 
+        # --- @overload dead branch elimination ---
+        # When generating specialized overload code, isinstance checks on
+        # parameters with known concrete types can be resolved statically.
+        if self.ctx.overload_param_types:
+            if self._gen_if_overload_specialized(out, chain, indent):
+                return
+
         # Pre-declare variables first declared inside branches (all levels).
         # Inner elif branch_decls are typically subsets of the outer's and
         # get skipped by the declared_vars check, but we emit them all for
@@ -1425,6 +1436,48 @@ class StatementGenerator:
 
         out.write(f"{indent}}}\n")
 
+    def _gen_if_overload_specialized(
+        self, out: TextIO, chain: list[TpyIf], indent: str,
+    ) -> bool:
+        """Try to generate an if/elif/else chain with dead branch elimination.
+
+        Returns True if the chain was fully handled (at least one branch
+        resolved statically). Returns False if no static resolution was
+        possible (caller falls through to normal codegen).
+        """
+        # Check if any branch has a statically resolvable condition
+        resolutions = [self._resolve_isinstance_statically(node.condition) for node in chain]
+        if all(r is None for r in resolutions):
+            return False  # nothing to specialize
+
+        # Find the first always-true branch; emit it directly, skip the rest
+        for i, (node, resolved) in enumerate(zip(chain, resolutions)):
+            if resolved is True:
+                # This branch is always taken -- emit its body directly
+                # (no conditional, no extractions needed since param is concrete)
+                for s in node.then_body:
+                    self.gen_stmt(out, s)
+                return True
+            elif resolved is False:
+                # This branch is dead, skip it
+                continue
+            else:
+                # Dynamic condition -- emit normally from here.
+                remaining_chain = chain[i:]
+                # Emit the remaining chain normally using a sub-if
+                remaining_if = remaining_chain[0]
+                for node in remaining_chain:
+                    self._emit_branch_decls(out, node, indent)
+                self._gen_if(out, remaining_if, indent)
+                return True
+
+        # All branches resolved to False -- emit the else body of the last branch
+        last = chain[-1]
+        if last.else_body:
+            for s in last.else_body:
+                self.gen_stmt(out, s)
+        return True
+
     @staticmethod
     def _is_elif(outer: TpyIf, inner: TpyIf) -> bool:
         """True when inner is an elif of outer (not a nested else: if).
@@ -1436,6 +1489,35 @@ class StatementGenerator:
         if outer.loc is None or inner.loc is None:
             return False
         return inner.loc.column == outer.loc.column
+
+    def _resolve_isinstance_statically(self, condition: TpyExpr) -> bool | None:
+        """Check if an isinstance condition can be resolved statically in @overload context.
+
+        Returns True if always-true, False if always-false, None if dynamic.
+        Only applies when generating specialized overload code with known param types.
+        """
+        if not self.ctx.overload_param_types:
+            return None
+
+        # Direct isinstance: isinstance(x, T)
+        if isinstance(condition, TpyCall) and condition.isinstance_var is not None:
+            var_name = condition.isinstance_var
+            check_type = condition.isinstance_type
+            concrete = self.ctx.overload_param_types.get(var_name)
+            if concrete is not None and check_type is not None:
+                if concrete == check_type:
+                    return True
+                if isinstance(check_type, UnionType) and concrete in check_type.members:
+                    return True
+                return False
+
+        # Negated isinstance: not isinstance(x, T)
+        if isinstance(condition, TpyUnaryOp) and condition.op == "not":
+            inner = self._resolve_isinstance_statically(condition.operand)
+            if inner is not None:
+                return not inner
+
+        return None
 
     def _has_concrete_isinstance_facts(self, type_facts: dict[str, TpyType]) -> bool:
         """Check if type_facts contain any concrete types that would emit extractions."""

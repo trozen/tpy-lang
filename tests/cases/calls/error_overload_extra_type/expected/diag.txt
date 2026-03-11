@@ -1,0 +1,1 @@
+main.py:23: error: @overload stub type for parameter 'animal' includes Bird which is not in the implementation's union type 'Cat | Dog'

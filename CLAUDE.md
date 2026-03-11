@@ -135,7 +135,7 @@ tests/
 │   ├── assert/               # assert statements, narrowing integration
 │   ├── bool/                 # bool type and conversion
 │   ├── builtins/             # Built-in functions, stdlib modules
-│   ├── calls/                # Function calls, argument passing
+│   ├── calls/                # Function calls, argument passing, @overload dispatch
 │   ├── control_flow/         # if/else, for loops, break/continue
 │   ├── defaults/             # Default argument values
 │   ├── dict/                 # Dict type, subscript, methods

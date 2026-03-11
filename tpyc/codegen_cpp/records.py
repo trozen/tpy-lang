@@ -341,8 +341,21 @@ class RecordGenerator:
         for method in record.methods:
             if method.name in ("__init__", "__del__"):
                 continue
-            self.functions.gen_method_def(out, method, record.name, dynamic_overrides,
-                                            record_type_param_bounds=record.type_param_bounds or None)
+            # Skip @overload stubs -- the implementation emits all overloads
+            if method.is_overload_stub:
+                continue
+            # Check if this is an @overload implementation
+            overload_stubs = self.ctx.analyzer.overload_groups.get(id(method))
+            if overload_stubs:
+                for stub in overload_stubs:
+                    self.functions._gen_overload_specialized_method(
+                        out, method, stub, record.name,
+                        record_type_param_bounds=record.type_param_bounds or None,
+                        dynamic_overrides=dynamic_overrides,
+                    )
+            else:
+                self.functions.gen_method_def(out, method, record.name, dynamic_overrides,
+                                                record_type_param_bounds=record.type_param_bounds or None)
 
         # Generate const operator[] for subscript read syntax (obj[i])
         self._gen_subscript_operators(out, record)

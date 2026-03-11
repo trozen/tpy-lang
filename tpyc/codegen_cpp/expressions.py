@@ -655,6 +655,15 @@ class ExpressionGenerator:
             elif isinstance(right_type, UnionType) and isinstance(expr.left, TpyNoneLiteral):
                 union_expr = expr.right
             if union_expr is not None:
+                # In @overload context, the param is concrete (not a variant)
+                if (isinstance(union_expr, TpyName)
+                        and union_expr.name in self.ctx.overload_param_types):
+                    concrete = self.ctx.overload_param_types[union_expr.name]
+                    is_none = isinstance(concrete, NoneType)
+                    if expr.op == "is":
+                        return "true" if is_none else "false"
+                    else:
+                        return "false" if is_none else "true"
                 val = self.gen_expr(union_expr)
                 if self.ctx.is_indirect_name(union_expr):
                     val = f"(*{val})"
@@ -997,6 +1006,9 @@ class ExpressionGenerator:
         for var_name, narrowed_type in facts.items():
             if isinstance(narrowed_type, (UnionType, NoneType)):
                 continue
+            # In @overload context, param is already concrete -- no extraction needed
+            if var_name in self.ctx.overload_param_types:
+                continue
             cpp_type = self.types.type_to_cpp(narrowed_type)
             var_ref = var_name
             if var_name in self.ctx.narrowed_vars:
@@ -1073,6 +1085,15 @@ class ExpressionGenerator:
             return self.protocols._concept_constraint(expr.isinstance_var, expr.isinstance_type)
         # isinstance(x, T) -> std::holds_alternative<CppT>(x)
         if expr.isinstance_var is not None and expr.isinstance_type is not None:
+            # In @overload context, param type is concrete -- resolve statically
+            concrete = self.ctx.overload_param_types.get(expr.isinstance_var)
+            if concrete is not None:
+                check_type = expr.isinstance_type
+                if concrete == check_type:
+                    return "true"
+                if isinstance(check_type, UnionType) and concrete in check_type.members:
+                    return "true"
+                return "false"
             cpp_type = self.types.type_to_cpp(expr.isinstance_type)
             var_name = expr.isinstance_var
             if var_name in self.ctx.narrowed_vars:
@@ -1142,8 +1163,16 @@ class ExpressionGenerator:
                     if record_info.constructors and not record_info.type_params:
                         return self.builtins.gen_builtin_constructor(expr, record_info)
         # Check if this is a function call that needs argument conversion
-        func_info = self.ctx.analyzer.registry.get_function(expr.func)
-        if func_info:
+        func_infos = self.ctx.analyzer.registry.get_function(expr.func)
+        if func_infos:
+            # For overload groups, use the sema-resolved stub (not [0] which
+            # is arbitrary). For single functions, [0] is the only entry.
+            # Note: don't use resolved_function_info for generic functions
+            # because it has substituted types (breaks is_generic() detection).
+            if len(func_infos) > 1 and expr.resolved_function_info:
+                func_info = expr.resolved_function_info
+            else:
+                func_info = func_infos[0]
             # Build type substitution for generic functions
             type_subst = {}
             if func_info.is_generic() and expr.inferred_type_args:
@@ -1615,6 +1644,9 @@ class ExpressionGenerator:
         Returns (possibly wrapped code, was_narrowed).
         """
         if isinstance(expr_obj, TpyName) and expr_obj.name in self.ctx.assign_narrowed_types:
+            # In @overload context, param is already concrete -- skip std::get
+            if expr_obj.name in self.ctx.overload_param_types:
+                return obj_code, False
             narrowed_type = self.ctx.assign_narrowed_types[expr_obj.name]
             cpp_type = self.types.type_to_cpp(narrowed_type)
             if self.ctx.is_indirect_name(expr_obj):
