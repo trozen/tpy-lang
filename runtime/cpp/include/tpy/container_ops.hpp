@@ -102,6 +102,35 @@ auto list_slice(Container&& c, int32_t start, int32_t stop) {
     return SpanT{c.data() + i, static_cast<std::size_t>(j - i)};
 }
 
+/**
+ * list_set_slice - Python-style slice assignment: items[start:stop] = values.
+ * Replaces elements [start, stop) with values. Can resize the vector.
+ * Indices are clamped (Python semantics).
+ */
+template<typename T, typename Range>
+    requires std::ranges::input_range<const Range>
+void list_set_slice(std::vector<T>& vec, int32_t start, int32_t stop, const Range& values) {
+    auto len = static_cast<std::ptrdiff_t>(vec.size());
+    std::ptrdiff_t i = start, j = stop;
+    if (i < 0) i += len;
+    if (j < 0) j += len;
+    i = std::clamp(i, std::ptrdiff_t{0}, len);
+    j = std::clamp(j, std::ptrdiff_t{0}, len);
+    // Clamp reversed range to empty insertion (matches Python: a[5:2] = [...] inserts at 5)
+    if (j < i) j = i;
+    // Guard against self-aliasing (e.g. a[1:3] = a): erase invalidates iterators into vec
+    if constexpr (std::is_same_v<std::decay_t<Range>, std::vector<T>>) {
+        if (&values == &vec) {
+            std::vector<T> copy = values;
+            vec.erase(vec.begin() + i, vec.begin() + j);
+            vec.insert(vec.begin() + i, copy.begin(), copy.end());
+            return;
+        }
+    }
+    vec.erase(vec.begin() + i, vec.begin() + j);
+    vec.insert(vec.begin() + i, values.begin(), values.end());
+}
+
 // =============================================
 // std::vector list methods
 // =============================================

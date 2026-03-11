@@ -1,0 +1,1 @@
+main.py:5: error: Cannot mutate readonly reference

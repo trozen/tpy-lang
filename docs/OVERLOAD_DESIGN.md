@@ -12,15 +12,16 @@
 | - | Cross-module overload import | Done |
 | - | Method overloads | Done |
 | - | Generic function/method overloads | Done |
+| - | `slice` type integration (`__getitem__` with `Int32 \| slice`) | Done |
 
 ## Future Extensions
 
 | Feature | Notes |
 |---------|-------|
 | Partial union stubs | Stub takes `Dog \| Cat` when impl has `Dog \| Cat \| Bird`. Needs `resolve_overload` to match concrete arg against union stub params via member containment. |
-| Non-union overloads | Overloads distinguished by coercion-compatible types (e.g., `Int32` vs `float`). Needs a different dispatch mechanism since isinstance doesn't apply. |
+| Non-union overloads | Overloads distinguished by coercion-compatible types (e.g., `Int32` vs `float`). Needs a different dispatch mechanism since isinstance doesn't apply. Start with union-only -- it's the natural pattern. |
 | Overload on arity | Different parameter counts per stub. Maps to C++ overloads with different parameter counts. |
-| `slice` type integration | `__getitem__` overloads with `Int32 \| slice` -- canonical use case for user-defined slicing. |
+| Dead branch elimination generalization | Extend dead-branch elimination beyond overload dispatch -- e.g. when isinstance/match has only a single possible type, eliminate the check entirely even without `@overload`. |
 | Move return type validation to sema | Currently done in codegen (post dead branch elimination). Moving to sema would surface errors in IDE diagnostics and avoid reimplementing compatibility rules. |
 
 ---

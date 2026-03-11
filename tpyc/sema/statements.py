@@ -1503,8 +1503,62 @@ class StatementAnalyzer:
                 )
                 stmt.is_const_ref.append(eligible)
 
+    def _analyze_slice_assign(self, stmt: TpyAssign) -> None:
+        """Analyze a slice assignment: a[x:y] = rhs."""
+        assert isinstance(stmt.target, TpySubscript)
+        sl = stmt.target.index
+        assert isinstance(sl, TpySlice)
+
+        obj_type = self.expr.analyze_expr(stmt.target.obj)
+        inner_type = unwrap_readonly(obj_type)
+        if not isinstance(inner_type, ListType):
+            raise self.ctx.error(
+                f"Slice assignment not supported for type '{obj_type}'", stmt)
+
+        self._enforce_readonly_assignment_target(stmt.target)
+
+        # Analyze slice bounds and validate they are integer types
+        if sl.lower is not None:
+            lower_type = self.expr.analyze_expr(sl.lower)
+            if not isinstance(lower_type, (FixedIntType, BigIntType, IntLiteralType)):
+                raise self.ctx.error(
+                    f"Slice bound must be an integer, got '{lower_type}'", sl.lower)
+        if sl.upper is not None:
+            upper_type = self.expr.analyze_expr(sl.upper)
+            if not isinstance(upper_type, (FixedIntType, BigIntType, IntLiteralType)):
+                raise self.ctx.error(
+                    f"Slice bound must be an integer, got '{upper_type}'", sl.upper)
+
+        # RHS must be a list[T]
+        rhs_target = ListType(inner_type.element_type)
+        self.ctx.set_expr_type(stmt.target, rhs_target)
+
+        value_type = self.expr.analyze_expr_with_hint(stmt.value, rhs_target)
+        # Own[list[T]] as the coercion target triggers the standard copy warning when
+        # the RHS is a named variable used after this assignment (not at last use).
+        own_rhs_target = OwnType(rhs_target)
+        stmt.value = self.compat.coerce_expr(stmt.value, value_type, own_rhs_target, "slice assignment",
+                                             coercion_ctx=CoercionContext.ASSIGN)
+
+        # Mutation tracking
+        root = _root_name_of_expr(stmt.target)
+        if root is not None:
+            self.ctx.mark_loop_var_mutated(root)
+            self.ctx.mark_param_mutated(root)
+        if isinstance(stmt.target.obj, TpyName):
+            storage = self.ctx.borrow_tracker.effective_storage(stmt.target.obj.name)
+            if self.ctx.borrow_tracker.has_borrow_of_kinds(storage, (BorrowKind.ELEMENT, BorrowKind.PTR, BorrowKind.ITER)):
+                self.ctx.warning(
+                    f"Mutation of '{storage}' while borrowed"
+                    " (slice assignment may invalidate references)", stmt)
+            self.ctx.mark_str_borrowers_mutated(storage)
+
     def _analyze_assign(self, stmt: TpyAssign) -> None:
         """Analyze an assignment."""
+        # Slice assignment: a[x:y] = rhs -- handled separately
+        if isinstance(stmt.target, TpySubscript) and isinstance(stmt.target.index, TpySlice):
+            self._analyze_slice_assign(stmt)
+            return
         target_type = self.expr.analyze_expr(stmt.target)
         value_type = self.expr.analyze_expr_with_hint(stmt.value, target_type)
         self._enforce_readonly_assignment_target(stmt.target)

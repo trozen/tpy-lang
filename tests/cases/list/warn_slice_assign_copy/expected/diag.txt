@@ -1,0 +1,1 @@
+main.py:12: warning: copies list[Node] into owned storage; use copy() to make this explicit

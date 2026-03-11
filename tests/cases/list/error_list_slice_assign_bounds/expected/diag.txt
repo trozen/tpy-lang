@@ -1,0 +1,1 @@
+main.py:6: error: Slice bound must be an integer, got 'float'
