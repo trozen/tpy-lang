@@ -15,7 +15,7 @@ from ..typesys import (
     INT32, BIGINT, FLOAT, STR,
     _union_alias_names
 )
-from ..parse import TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyCoerce, TpyCall, TpyMethodCall, TpyIntLiteral
+from ..parse import TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyCoerce, TpyCall, TpyMethodCall, TpyIntLiteral, TpyIfExpr
 from ..sema.context import PENDING_CONTAINER_TYPES
 from .context import qualified_cpp_name
 
@@ -53,6 +53,16 @@ class TypeResolver:
             return unwrap_readonly(self.ctx.var_types[expr.name])
         if isinstance(expr, TpyCoerce):
             return expr.expected_type
+
+        # Ternary: if both branches resolve to the same codegen type, use it
+        # so deductions like string_view propagate through (e.g. a if c else b).
+        if isinstance(expr, TpyIfExpr):
+            typ = self.ctx.analyzer.get_expr_type(expr)
+            then_resolved = self.get_resolved_type(expr.then_expr)
+            else_resolved = self.get_resolved_type(expr.else_expr)
+            if then_resolved == else_resolved:
+                return then_resolved
+            return unwrap_readonly(typ) if typ else typ
 
         # For binary operations, compute type using resolved operand types
         if isinstance(expr, TpyBinOp):

@@ -6,8 +6,7 @@
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 
 ## Bugs
-- `and`/`or` string_view deduction: `x = a or b` where both operands are deduced as `string_view` still declares `x` as `std::string` (with an explicit conversion). The PendingStrType deduction system doesn't propagate through `and`/`or` expressions. The ternary correctly produces `string_view`, but the var decl resolves via sema type (`str` -> `std::string`).
-- Ternary with `str` operands: `x = a if cond else b` where both are `str` fails with "Incompatible types in ternary expression: 'str' and 'str'". Two `PendingStrType` instances with different `str_var_id` don't compare equal. Same root cause as the and/or PendingStrType fix -- normalize to `STR` before comparison in `_analyze_if_expr`.
+- `string_view` deduction doesn't propagate through `and`/`or` or ternary: `x = a or b` and `x = a if c else b` where both operands are `string_view` still declare `x` as `std::string`. Root cause: sema normalizes `PendingStrType` to `STR` for the result type of both forms, so the `PendingStrType` deduction system never sees the variable. Fix requires either propagating `PendingStrType` through these expressions in sema, or making `_resolve_cpp_type` fall back to the codegen-resolved type when sema says `StrType` but the init expression resolves to `StrViewType`.
 
 ## Safety
 - View type borrow tracking for user types: currently only built-in view types (Span, Ptr) are tracked as borrows. Likely needed when designing tpy stdlib types. See escape analysis design doc (Future Extensions) for field-level vs class-level annotation tradeoffs.

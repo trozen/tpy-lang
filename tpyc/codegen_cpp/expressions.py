@@ -9,7 +9,7 @@ import io
 from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, CharType,
+    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, StrViewType, CharType,
     NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, DictType, SetType,
     DictKeysViewType, DictValuesViewType, DictItemsViewType,
     PendingListType, ListRepeatType,
@@ -2709,6 +2709,16 @@ class ExpressionGenerator:
                 self.ctx.narrowed_vars.pop(var_name, None)
 
         # C++ ternary requires both branches to have the same type.
+        # string_view -> string: explicit conversion required since C++ won't
+        # implicitly construct std::string from a string_view ternary result.
+        if isinstance(result_type, StrType):
+            then_resolved = self.types.get_resolved_type(expr.then_expr)
+            else_resolved = self.types.get_resolved_type(expr.else_expr)
+            if isinstance(then_resolved, StrViewType):
+                then_code = f"std::string({then_code})"
+            if isinstance(else_resolved, StrViewType):
+                else_code = f"std::string({else_code})"
+
         if isinstance(result_type, OptionalType):
             if is_ptr_optional:
                 # Pointer-repr Optional (T*): produce T* for each branch.

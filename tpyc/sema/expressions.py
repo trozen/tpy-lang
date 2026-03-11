@@ -1349,6 +1349,12 @@ class ExpressionAnalyzer:
                 return t
             e = self.ctx.default_int_for_literal(e, expr.else_expr)
 
+        # Normalize PendingStrType to StrType for comparison
+        if isinstance(t, PendingStrType):
+            t = STR
+        if isinstance(e, PendingStrType):
+            e = STR
+
         if t == e:
             return t
 
