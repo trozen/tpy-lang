@@ -18,8 +18,6 @@
 | 7a.1 | Deferred generic instance inference (MVP): `x = GenericType()` with unresolved type params, resolved from subsequent method calls via constraint unification. Eager resolution once all params known. Reuses `match_type_with_inference` from bidirectional inference. See `BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md`. | Done |
 | 7a.2 | Expected-type constraint sources: resolve pending generic from function parameter type (`f(x)` where param is `Container[Int32]`) and return type (`return x` where function returns `Container[Int32]`). Same eager resolution as 7a.1. | Done |
 | 7b | `_` wildcard for partial type args in all generic calls (functions, constructors, methods). `ArrayList[_, 1024]()`, `f[_, Int32](x)`, etc. Remaining constructor params deferred via 7a. | Done |
-| 7c | Extended constraint sources: field access as constraint, cascading pending types (`x = s.items` where both pending). | Not started |
-| ~~8~~ | ~~State ownership: move deduction-related fields from SemanticContext into sub-structures owned by LocalTypeDeduction.~~ Dropped -- fields are genuinely shared state across analysis modules (expressions, statements, calls, methods) and codegen. Moving them would add indirection without reducing coupling. | Dropped |
 
 ## Future Extensions (post-1.0)
 
@@ -28,6 +26,7 @@
 | Per-assignment-segment typing | SSA-style reasoning: each assignment to a variable creates a new "version" with its own type. Enables narrower types per segment (e.g. StrView before reassignment, str after), avoiding unnecessary allocations. Requires liveness/escape analysis. See details at end of document. |
 | Empty list to Array promotion | `xs = []; xs.append(1); xs.append(2)` could resolve to `Array[Int32, 2]` if the final size is statically known (no dynamic mutations like loop appends or pop/remove). Would need to compute max required size from constant append/insert/extend counts. Likely low priority -- in hot paths users would declare `Array` explicitly with a known max size. |
 | Union expected-type resolution | `f(x)` where param is `Container[Int32] | str` -- try each union member as a candidate for resolving pending generic instances. Currently only plain `NamedType` and `Optional[NamedType]` are tried. |
+| Extended constraint sources | Field access as constraint (`v: Int32 = c.val` resolves T), cascading pending types (`x = s.items` where both pending). Niche -- existing sources (method calls, parameter passing, return types) cover practical cases. |
 
 ## Motivation
 
@@ -518,15 +517,6 @@ Implementation:
   `explicit_type_args` on the partial function
 - `_validate_explicit_type_args` skips `None` entries in protocol/type
   validation
-
-### Phase 7c: Extended Constraint Sources
-
-Future extensions beyond method calls and expected-type contexts:
-
-- **Field access as constraint**: `x.value` where field type is `T` and
-  the result is assigned to a typed variable
-- **Cascading pending types**: `x = s.items` where both `s` and `x` are
-  pending -- requires dependency tracking between pending instances
 
 ## Post-1.0: Per-Assignment-Segment Typing
 

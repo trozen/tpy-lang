@@ -31,7 +31,7 @@ unsafe_cast[UInt32](p)               # T explicit, U from arg (partial type args
 | **Phase 3a.1** | Forward-propagation from usage (MVP): `x = GenericType()` with unresolved type params, eagerly resolved from subsequent method calls (e.g. `x.push(Int32(0))` constrains T=Int32). Lifecycle managed by `LocalTypeDeduction`; unification reuses `match_type_with_inference`. See `LOCAL_TYPE_DEDUCTION.md` Phase 7a.1. | **Done** |
 | **Phase 3a.2** | Expected-type constraint sources: parameter passing (`f(x)` where `f` expects `Container[Int32]`) and return-type context (`return x` where function returns `Container[Int32]`). See `LOCAL_TYPE_DEDUCTION.md` Phase 7a.2. | **Done** |
 | **Phase 3b** | `_` wildcard for partial type args in all generic calls (functions, constructors, methods). See `LOCAL_TYPE_DEDUCTION.md` Phase 7b. | **Done** |
-| **Phase 3c** | Field access and cascading pending types. See `LOCAL_TYPE_DEDUCTION.md` Phase 7c. | Not started |
+| ~~Phase 3c~~ | ~~Field access and cascading pending types.~~ Moved to Future Extensions in `LOCAL_TYPE_DEDUCTION.md`. | -- |
 
 ## Future Extensions (no known use case yet)
 
