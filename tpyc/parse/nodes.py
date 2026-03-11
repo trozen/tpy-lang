@@ -401,6 +401,8 @@ class TpyExprStmt(TpyStmt):
 class TpyReturn(TpyStmt):
     """Return statement."""
     value: Optional[TpyExpr]
+    # Set by sema: the analyzed type of the return expression (before coercion)
+    value_type: Optional['TpyType'] = None
 
 
 @dataclass

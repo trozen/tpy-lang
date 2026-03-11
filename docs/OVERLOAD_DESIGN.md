@@ -1,5 +1,30 @@
 # @overload Dispatch Flattening (B10)
 
+## Roadmap
+
+| Phase | Feature | Status |
+|-------|---------|--------|
+| 1 | Parser: recognize `@overload`, validate stub body | Done |
+| 2 | Sema: stub grouping, exhaustiveness validation | Done |
+| 3 | Sema: call resolution against stubs | Done |
+| 4 | Codegen: per-stub specialization, dead branch elimination | Done |
+| 5 | Codegen: return type validation per overload | Done |
+| - | Cross-module overload import | Done |
+| - | Method overloads | Done |
+| - | Generic function/method overloads | Done |
+
+## Future Extensions
+
+| Feature | Notes |
+|---------|-------|
+| Partial union stubs | Stub takes `Dog \| Cat` when impl has `Dog \| Cat \| Bird`. Needs `resolve_overload` to match concrete arg against union stub params via member containment. |
+| Non-union overloads | Overloads distinguished by coercion-compatible types (e.g., `Int32` vs `float`). Needs a different dispatch mechanism since isinstance doesn't apply. |
+| Overload on arity | Different parameter counts per stub. Maps to C++ overloads with different parameter counts. |
+| `slice` type integration | `__getitem__` overloads with `Int32 \| slice` -- canonical use case for user-defined slicing. |
+| Move return type validation to sema | Currently done in codegen (post dead branch elimination). Moving to sema would surface errors in IDE diagnostics and avoid reimplementing compatibility rules. |
+
+---
+
 ## Overview
 
 Support Python's `@overload` decorator (PEP 484) to generate separate C++ overloads
@@ -62,7 +87,7 @@ Works for:
 - Static methods
 - Generic functions/methods (type params preserved per overload)
 
-Initial scope is union-typed parameters only. Non-union overloads (e.g., `Int32` vs
+Current scope is union-typed parameters only. Non-union overloads (e.g., `Int32` vs
 `float` via coercion) are a future extension.
 
 ## Syntax and Semantics
@@ -111,13 +136,32 @@ Rules:
 - Only parameters where the implementation type is a union are checked
 - Each stub parameter must be a concrete (non-union) type or match the implementation
   type exactly. Partial union stubs (e.g., `Dog | Cat` when impl has `Dog | Cat | Bird`)
-  are a future extension (see below).
+  are a future extension (see table above).
 - Stub types must be subsets of the implementation's union members
 - Stub parameter names must match implementation parameter names
 - Parameters identical across all stubs and implementation are not checked
 - Coverage is checked per-parameter independently (no cross-product requirement)
 - Return types are NOT checked for exhaustiveness -- each overload's live return
   paths are validated against its declared return type during codegen
+
+### Return type validation
+
+Each overload stub can declare a different return type. During codegen, after dead
+branch elimination prunes unreachable branches, every surviving `return` statement
+is checked against the stub's declared return type using sema's full compatibility
+rules (coercions, Optional wrapping, inheritance, etc.).
+
+```python
+@overload
+def get_value(animal: Dog) -> str: ...
+@overload
+def get_value(animal: Cat) -> int: ...
+def get_value(animal: Dog | Cat) -> str | int:
+    if isinstance(animal, Dog):
+        return 42  # error: returning 'int' but this overload declares '-> str'
+    else:
+        return animal.lives
+```
 
 ### Multiple union parameters
 
@@ -147,130 +191,13 @@ result = describe(d)  # resolves to stub 1: describe(Dog) -> str
 # result type: str (not str | Int32)
 ```
 
-## Implementation Plan
-
-### Phase 1: Parser + Module
-
-**`modules/typing.py`**:
-- Export `overload` as a known decorator name
-
-**`parse/nodes.py`**:
-- Add `is_overload_stub: bool = False` to `TpyFunction`
-
-**`parse/parser.py`**:
-- Recognize `@overload` decorator (from `typing` import)
-- Set `is_overload_stub = True` on the function
-- Validate stub body is `...` or `pass` (error otherwise)
-
-### Phase 2: Sema -- Stub Collection and Validation
-
-**`sema/registration.py`** (method registration) and **`sema/analyzer.py`** (free functions):
-
-Stub grouping:
-- When registering functions/methods, group consecutive `@overload` stubs with the
-  same name, followed by the implementation
-- Error if stubs exist without an implementation
-- Error if implementation has `@overload`
-- Error if stubs are not contiguous (other functions between stubs of the same name)
-
-Validation:
-- For each union-typed parameter in the implementation, check that stub types cover
-  all union members
-- Store the overload group: list of (stub `TpyFunction`, param type mapping) + the
-  implementation `TpyFunction`
-
-Registration:
-- Register one `FunctionInfo` per stub (with stub's param types and return type)
-  in `RecordInfo.methods[name]` or the global function registry
-- The implementation is NOT registered as a callable -- only stubs are visible
-  to callers
-- Store a back-reference from each stub to the implementation `TpyFunction` and the
-  parameter specialization map (which union param maps to which concrete type)
-
-**`sema/analyzer.py`**:
-- Analyze the implementation body normally (union-typed params, union return type)
-- Skip analysis of stub bodies (they contain only `...`)
-
-### Phase 3: Sema -- Call Resolution
-
-**`sema/calls.py`** and **`sema/methods.py`**:
-- User function/method calls with overload stubs use `resolve_overload()` against
-  stub `FunctionInfo` entries
-- Return type comes from the matched stub
-- Error messages on no-match list available stubs
-
-This mostly works already -- `RecordInfo.methods` is `dict[str, list[FunctionInfo]]`
-and the overload resolution engine handles multiple entries.
-
-### Phase 4: Codegen -- Overload Specialization
-
-This is the core new work.
-
-**`codegen_cpp/functions.py`**:
-
-For each overload group:
-- Iterate stubs (not the implementation)
-- For each stub, call `gen_method_def()` / `gen_function_def()` with:
-  - The stub's parameter types and return type for the C++ signature
-  - The implementation's `TpyFunction` body for code generation
-  - An **overload specialization context**: `dict[str, TpyType]` mapping parameter
-    names to their concrete types in this overload
-
-For methods, each stub generates its own const/non-const overload pair where
-applicable (composing with the existing dual-overload pattern).
-
-**`codegen_cpp/statements.py`** -- Dead branch elimination:
-
-When an overload specialization context is active:
-
-1. **isinstance checks**: `if isinstance(x, T)` where `x` is specialized to type `U`:
-   - `U == T` or `U` is a subtype of `T`: always true -> emit only then-branch
-   - `U` and `T` are disjoint: always false -> skip then-branch, emit else
-   - For elif chains: evaluate each condition, emit the first always-true branch,
-     skip always-false branches
-
-2. **match/case**: `match x` where `x` is specialized:
-   - Only emit the arm whose pattern matches the concrete type
-   - Wildcard/else arms are emitted if no earlier arm matches
-
-3. **Nested dispatch**: If the body has nested isinstance checks (on other variables
-   that depend on the specialized param), those are handled normally (they may still
-   be dynamic)
-
-**`codegen_cpp/expressions.py`** -- Variable references:
-
-When referencing a specialized parameter:
-- Emit the parameter name directly (it's already the concrete type)
-- No `std::get<T>()` extraction needed
-- No `std::holds_alternative<T>()` checks
-
-**`codegen_cpp/types.py`** -- Return type:
-
-The return type for each overload comes from the stub, not the implementation.
-If the stub says `-> str`, the C++ return type is `std::string`, even though the
-implementation returns `str | Int32`.
-
-### Phase 5: Validation of specialized bodies
-
-After dead branch elimination for each overload, verify that:
-- All live return paths produce a type compatible with the stub's return type
-- If a live path returns a type not compatible with the stub, emit an error:
-  ```
-  error: overload 'describe(Dog) -> str' has a return path producing Int32
-  ```
-
-This catches mismatches between the `@overload` declaration and the implementation
-logic.
-
-## Codegen Detail: Dead Branch Elimination
+## Codegen: Dead Branch Elimination
 
 The key mechanism is a **specialization map** threaded through codegen:
 
 ```python
-@dataclass
-class OverloadContext:
-    """Active when generating code for a specific @overload stub."""
-    param_types: dict[str, TpyType]  # param_name -> concrete type
+# codegen_cpp/context.py
+overload_param_types: dict[str, TpyType]  # param_name -> concrete type
 ```
 
 ### isinstance resolution
@@ -414,16 +341,32 @@ std::string process(const Cat& x) {
 }
 ```
 
-## Future Extensions
+### Different return types per overload
 
-- **Partial union stubs**: A stub could take a partial union (e.g., `Dog | Cat` when
-  impl has `Dog | Cat | Bird`), contributing all its members to coverage. Would
-  require extending `resolve_overload` to match a concrete arg against union stub
-  params via member containment.
-- **Non-union overloads**: Overloads distinguished by coercion-compatible types
-  (e.g., `Int32` vs `float`, not members of a union). Would need a different
-  dispatch mechanism since isinstance doesn't apply.
-- **Overload on arity**: Different number of parameters per stub (Python supports
-  this with `@overload`). Would map to C++ overloads with different parameter counts.
-- **`slice` type integration**: Once a `slice` type exists, `__getitem__` overloads
-  with `Int32 | slice` become the canonical use case for user-defined slicing.
+```python
+@overload
+def get_value(animal: Dog) -> str: ...
+@overload
+def get_value(animal: Cat) -> int: ...
+def get_value(animal: Dog | Cat) -> str | int:
+    if isinstance(animal, Dog):
+        return animal.name
+    else:
+        return animal.lives
+```
+
+```cpp
+std::string get_value(Dog& animal) {
+    return animal.name;
+}
+tpy::BigInt get_value(Cat& animal) {
+    return animal.lives;
+}
+```
+
+The caller sees the stub's return type, not the union:
+
+```python
+dog_val = get_value(d)  # type: str (not str | int)
+cat_val = get_value(c)  # type: int (not str | int)
+```

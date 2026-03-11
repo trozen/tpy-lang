@@ -382,6 +382,7 @@ class StatementAnalyzer:
             if stmt.value:
                 expected = self.ctx.current_function.return_type if self.ctx.current_function else VOID
                 ret_type = self.expr.analyze_expr_with_hint(stmt.value, expected)
+                stmt.value_type = ret_type
                 stmt.value = self.compat.coerce_expr(stmt.value, ret_type, expected, "return value",
                                                       coercion_ctx=CoercionContext.RETURN, is_return=True)
                 # Track return-type context for pending list deduction

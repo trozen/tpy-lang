@@ -28,6 +28,7 @@ from ..parse import (
 )
 from ..namespace import Namespace
 from ..sema.context import PENDING_CONTAINER_TYPES
+from ..sema.diagnostics import SemanticError
 
 from .context import INDENT, CodeGenError, escape_cpp_name, qualified_cpp_name, expand_cpp_template
 from .type_resolution import resolve_stmt_binding_type
@@ -237,70 +238,77 @@ class StatementGenerator:
         elif isinstance(stmt, TpyReturn):
             if stmt.value:
                 ret_type = self.ctx.current_return_type
+                ret_value = stmt.value
+                # In @overload specialization: validate return type and strip
+                # wrong-target coercions. Sema coerced against the impl's union
+                # return type, which may have picked the wrong union member.
+                if self.ctx.overload_param_types and stmt.value_type is not None:
+                    self._check_overload_return_type(stmt, ret_type)
+                    ret_value = self._strip_wrong_overload_coerce(ret_value, ret_type)
                 if isinstance(ret_type, OptionalType):
                     if not ret_type.uses_pointer_repr():
                         # Value-type Optional: return std::nullopt or plain value
-                        if isinstance(stmt.value, TpyNoneLiteral):
+                        if isinstance(ret_value, TpyNoneLiteral):
                             return f"{indent}return std::nullopt;\n"
-                        ret_expr = self.expressions.gen_expr_deref(stmt.value, ret_type)
+                        ret_expr = self.expressions.gen_expr_deref(ret_value, ret_type)
                         return f"{indent}return {ret_expr};\n"
                     # Non-value Optional: return pointer (not dereferenced)
-                    if isinstance(stmt.value, TpyNoneLiteral):
+                    if isinstance(ret_value, TpyNoneLiteral):
                         return f"{indent}return nullptr;\n"
-                    ret_expr = self.expressions.gen_expr(stmt.value, ret_type)
-                    if self.ctx.is_indirect_name(stmt.value):
+                    ret_expr = self.expressions.gen_expr(ret_value, ret_type)
+                    if self.ctx.is_indirect_name(ret_value):
                         # Already a pointer -- return as-is
                         return f"{indent}return {ret_expr};\n"
-                    if isinstance(stmt.value, TpyIfExpr):
+                    if isinstance(ret_value, TpyIfExpr):
                         # Ternary already produces T* via _ptr_optional_branch
                         return f"{indent}return {ret_expr};\n"
                     # Field access with non-value Optional produces std::optional<T>, convert to T*
-                    if isinstance(stmt.value, TpyFieldAccess):
-                        val_type = self.ctx.get_expr_type(stmt.value)
+                    if isinstance(ret_value, TpyFieldAccess):
+                        val_type = self.ctx.get_expr_type(ret_value)
                         if isinstance(val_type, OptionalType) and val_type.uses_pointer_repr():
                             return f"{indent}return tpy::optional_to_ptr({ret_expr});\n"
                     # Take address of lvalue
                     return f"{indent}return &({ret_expr});\n"
                 ret_expr = self.expressions.gen_expr(
-                    stmt.value, ret_type)
+                    ret_value, ret_type)
                 # Dereference pointer-locals/pointer-globals on return (T* -> T&)
-                if self.ctx.is_indirect_name(stmt.value):
+                if self.ctx.is_indirect_name(ret_value):
                     ret_expr = f"(*{ret_expr})"
-                    ret_expr = self.expressions._maybe_move(stmt.value, ret_expr)
+                    ret_expr = self.expressions._maybe_move(ret_value, ret_expr)
                 # Unwrap value-optional expressions when return type is non-Optional.
                 # The sema narrows the type inside `if x is not None:` branches,
                 # but the C++ variable/field is still std::optional<T>.
                 elif (
                     not isinstance(ret_type, OptionalType)
-                    and self._is_value_optional_expr(stmt.value)
+                    and self._is_value_optional_expr(ret_value)
                 ):
-                    analyzed_type = self.ctx.get_expr_type(stmt.value)
+                    analyzed_type = self.ctx.get_expr_type(ret_value)
                     if isinstance(analyzed_type, OptionalType):
                         ret_expr = f"tpy::deref_optional_check({ret_expr})"
                     else:
                         ret_expr = f"(*{ret_expr})"
                         # Narrowed Optional[str] param: (*s) yields string_view
                         if (isinstance(ret_type, StrType)
-                                and self._is_optional_str_param(stmt.value)):
+                                and self._is_optional_str_param(ret_value)):
                             ret_expr = f"std::string({ret_expr})"
                 # StrView local returned as str needs explicit conversion.
                 # Also wrap str-typed params (which are string_view in C++).
                 elif isinstance(ret_type, StrType):
-                    expr_type = self.types.get_resolved_type(stmt.value)
+                    expr_type = self.types.get_resolved_type(ret_value)
                     if isinstance(expr_type, StrViewType):
                         ret_expr = f"std::string({ret_expr})"
                     elif (isinstance(expr_type, StrType)
-                          and isinstance(stmt.value, TpyName)
-                          and stmt.value.name in self.ctx.current_func_params):
+                          and isinstance(ret_value, TpyName)
+                          and ret_value.name in self.ctx.current_func_params):
                         ret_expr = f"std::string({ret_expr})"
                     elif (isinstance(expr_type, StrType)
-                          and self._expr_uses_optional_str_param(stmt.value)):
+                          and self._expr_uses_optional_str_param(ret_value)):
                         ret_expr = f"std::string({ret_expr})"
                 # Consuming method: move self fields on return (this->field is lvalue)
                 if (self.ctx.in_consuming_method
-                        and isinstance(stmt.value, TpyFieldAccess)
-                        and isinstance(stmt.value.obj, TpyName)
-                        and stmt.value.obj.name == "self"):
+                        and isinstance(ret_value, TpyFieldAccess)
+                        and isinstance(ret_value.obj, TpyName)
+                        and ret_value.obj.name == "self"):
                     ret_expr = f"std::move({ret_expr})"
                 return f"{indent}return {ret_expr};\n"
             return f"{indent}return;\n"
@@ -1435,6 +1443,55 @@ class StatementGenerator:
             self._restore_narrowed_vars(else_saved)
 
         out.write(f"{indent}}}\n")
+
+    def _check_overload_return_type(self, stmt: TpyReturn, stub_ret: TpyType) -> None:
+        """Validate that a return expression's type is compatible with the stub's return type.
+
+        Called during @overload specialization codegen. Dead branch elimination
+        has already pruned unreachable branches, so every return we see must
+        be compatible with the stub's declared return type.
+
+        Delegates to sema's check_type_compatible to reuse all compatibility
+        rules (Optional wrapping, inheritance, protocols, coercions, etc.).
+        """
+        value_type = stmt.value_type
+        assert value_type is not None
+        # Resolve pending types to concrete types
+        if isinstance(value_type, IntLiteralType):
+            value_type = BIGINT
+        elif isinstance(value_type, PendingStrType):
+            value_type = STR
+        try:
+            self.ctx.analyzer.compat.check_type_compatible(
+                value_type, stub_ret, "return value",
+                loc=stmt.loc, is_return=True,
+            )
+        except SemanticError:
+            raise CodeGenError(
+                f"@overload return type mismatch: returning '{value_type}' "
+                f"but this overload declares '-> {stub_ret}'",
+                loc=stmt.loc,
+            )
+
+    def _strip_wrong_overload_coerce(self, expr: TpyExpr, stub_ret: TpyType) -> TpyExpr:
+        """Strip a TpyCoerce if it targets the wrong type for this overload stub.
+
+        Sema coerces returns against the impl's union return type, which picks
+        the first matching member. When generating a specialized stub, that
+        coercion may target a different union member than the stub's return
+        type. Stripping it lets codegen produce the raw expression, and C++
+        implicit conversions handle the rest (e.g., int32_t -> BigInt).
+        """
+        if not isinstance(expr, TpyCoerce):
+            return expr
+        if expr.expected_type == stub_ret:
+            return expr
+        # The coercion targets a type compatible with the stub -- keep it
+        # (e.g., coercion to inner type of Optional stub)
+        if isinstance(stub_ret, OptionalType) and expr.expected_type == stub_ret.inner:
+            return expr
+        # Wrong target: unwrap to the raw expression
+        return expr.expr
 
     def _gen_if_overload_specialized(
         self, out: TextIO, chain: list[TpyIf], indent: str,
