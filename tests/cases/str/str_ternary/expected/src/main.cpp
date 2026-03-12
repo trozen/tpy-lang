@@ -11,16 +11,16 @@ void main() {
     std::string_view a = "hello";
     // 4:     b: str = "world"
     std::string_view b = "world";
-    // 6:     x = a if True else b
-    std::string x = std::string(((true) ? (a) : (b)));
+    // 6:     x = a if True else b  # tpyc: type(StrView)
+    std::string_view x = ((true) ? (a) : (b));
     // 7:     print(x)
     std::cout << x << "\n";
-    // 9:     y = a if False else b
-    std::string y = std::string(((false) ? (a) : (b)));
+    // 9:     y = a if False else b  # tpyc: type(StrView)
+    std::string_view y = ((false) ? (a) : (b));
     // 10:     print(y)
     std::cout << y << "\n";
-    // 12:     z = "literal_a" if True else "literal_b"
-    std::string z = ((true) ? ("literal_a") : ("literal_b"));
+    // 12:     z = "literal_a" if True else "literal_b"  # tpyc: type(StrView)
+    std::string_view z = ((true) ? ("literal_a") : ("literal_b"));
     // 13:     print(z)
     std::cout << z << "\n";
 }

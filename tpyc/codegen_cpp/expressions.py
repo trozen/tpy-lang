@@ -577,7 +577,12 @@ class ExpressionGenerator:
 
         if use_lhs_temp:
             left = self.gen_expr_deref(expr.left)
-            lhs_ref = self.ctx.temps.create_typed("auto&&", left)
+            # String literals are const char[N] -- auto&& keeps that type and
+            # .empty() would fail. Use std::string_view to get a proper str type.
+            lhs_cpp = "std::string_view" if (
+                is_any_str_type(lhs_type) and isinstance(expr.left, TpyStrLiteral)
+            ) else "auto&&"
+            lhs_ref = self.ctx.temps.create_typed(lhs_cpp, left)
         else:
             lhs_ref = self.gen_expr_deref(expr.left)
 
@@ -600,7 +605,11 @@ class ExpressionGenerator:
         # lvalues, avoiding dangling references for non-value types.
         use_rhs_temp = not isinstance(expr.right, TpyName)
         if use_rhs_temp:
-            rhs_ref = self.ctx.temps.create_typed("auto&&", right)
+            rhs_type = self.types.get_resolved_type(expr.right)
+            rhs_cpp = "std::string_view" if (
+                is_any_str_type(rhs_type) and isinstance(expr.right, TpyStrLiteral)
+            ) else "auto&&"
+            rhs_ref = self.ctx.temps.create_typed(rhs_cpp, right)
         else:
             rhs_ref = right
 
@@ -610,14 +619,14 @@ class ExpressionGenerator:
         # C++ types from each other (e.g. one is string_view, other is string).
         # When they match, the ternary naturally produces their type and the
         # normal var decl handles any further conversion.
-        lhs_cpp = self.types.type_to_cpp(lhs_type)
-        rhs_type = self.types.get_resolved_type(expr.right)
-        rhs_cpp = self.types.type_to_cpp(rhs_type)
-        if lhs_cpp != rhs_cpp:
+        lhs_cpp_cmp = self.types.type_to_cpp(lhs_type)
+        rhs_type_cmp = self.types.get_resolved_type(expr.right)
+        rhs_cpp_cmp = self.types.type_to_cpp(rhs_type_cmp)
+        if lhs_cpp_cmp != rhs_cpp_cmp:
             cpp_result = self.types.type_to_cpp(result_type)
-            if cpp_result != lhs_cpp:
+            if cpp_result != lhs_cpp_cmp:
                 lhs_branch = f"{cpp_result}({lhs_branch})"
-            if cpp_result != rhs_cpp:
+            if cpp_result != rhs_cpp_cmp:
                 rhs_branch = f"{cpp_result}({rhs_branch})"
         if expr.op == "||":
             return f"({truthy} ? {lhs_branch} : {rhs_branch})"

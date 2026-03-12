@@ -2113,7 +2113,7 @@ class StrVarInfo:
     used_in_augassign: bool = False
     passed_to_string_param: bool = False
     reassigned_from_owned: bool = False
-    source_str_var_id: Optional[int] = None  # if initialized from another PendingStrType local
+    source_str_var_ids: list[int] = field(default_factory=list)  # PendingStrType locals this view borrows from
     source_storage: Optional[str] = None  # variable whose storage this view borrows from
     source_mutated: bool = False  # source storage was mutated; view would dangle
     resolved_type: Optional[TpyType] = None

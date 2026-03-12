@@ -50,14 +50,14 @@ void test_or_str() {
     std::string_view empty = "";
     // 28:     fallback: str = "default"
     std::string_view fallback = "default";
-    // 29:     x = empty or fallback  # tpyc: type(str)
-    std::string x = std::string(((!empty.empty()) ? empty : fallback));
+    // 29:     x = empty or fallback  # tpyc: type(StrView)
+    std::string_view x = ((!empty.empty()) ? empty : fallback);
     // 30:     print(x)
     std::cout << x << "\n";
     // 32:     name: str = "alice"
     std::string_view name = "alice";
-    // 33:     y = name or fallback  # tpyc: type(str)
-    std::string y = std::string(((!name.empty()) ? name : fallback));
+    // 33:     y = name or fallback  # tpyc: type(StrView)
+    std::string_view y = ((!name.empty()) ? name : fallback);
     // 34:     print(y)
     std::cout << y << "\n";
 }
@@ -68,14 +68,14 @@ void test_and_str() {
     std::string_view empty = "";
     // 38:     fallback: str = "world"
     std::string_view fallback = "world";
-    // 39:     x = empty and fallback  # tpyc: type(str)
-    std::string x = std::string(((!empty.empty()) ? fallback : empty));
+    // 39:     x = empty and fallback  # tpyc: type(StrView)
+    std::string_view x = ((!empty.empty()) ? fallback : empty);
     // 40:     print(x)
     std::cout << x << "\n";
     // 42:     name: str = "hello"
     std::string_view name = "hello";
-    // 43:     y = name and fallback  # tpyc: type(str)
-    std::string y = std::string(((!name.empty()) ? fallback : name));
+    // 43:     y = name and fallback  # tpyc: type(StrView)
+    std::string_view y = ((!name.empty()) ? fallback : name);
     // 44:     print(y)
     std::cout << y << "\n";
 }

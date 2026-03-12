@@ -410,7 +410,14 @@ class ExpressionAnalyzer:
                 right = left
             else:
                 return BOOL
-        # Normalize PendingStrType to StrType for comparison
+        # Normalize PendingStrType to StrType for comparison; preserve the pending
+        # type when both sides are pending so string_view deduction can chain the
+        # result variable back to the operands' resolution.
+        # Return left's PendingStrType (arbitrary choice) -- the caller's
+        # _collect_pending_str_source_ids walks the full expression tree and
+        # registers both operands in source_str_var_ids.
+        if isinstance(left, PendingStrType) and isinstance(right, PendingStrType):
+            return left
         if isinstance(left, PendingStrType):
             left = STR
         if isinstance(right, PendingStrType):
@@ -1349,7 +1356,15 @@ class ExpressionAnalyzer:
                 return t
             e = self.ctx.default_int_for_literal(e, expr.else_expr)
 
-        # Normalize PendingStrType to StrType for comparison
+        # Normalize PendingStrType to StrType for comparison; preserve the pending
+        # type when both sides are pending so string_view deduction can chain the
+        # result variable back to the operands' resolution.
+        if isinstance(t, PendingStrType) and isinstance(e, PendingStrType):
+            # Return then-branch's PendingStrType so _infer_new_local_type takes
+            # the elif-PendingStrType path, which uses _collect_pending_str_source_ids
+            # to register BOTH branches in source_str_var_ids.  Arbitrary choice
+            # of t vs e -- the actual multi-source tracking happens in the caller.
+            return t
         if isinstance(t, PendingStrType):
             t = STR
         if isinstance(e, PendingStrType):

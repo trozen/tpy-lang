@@ -26,21 +26,21 @@ def test_and_int() -> None:
 def test_or_str() -> None:
     empty: str = ""
     fallback: str = "default"
-    x = empty or fallback  # tpyc: type(str)
+    x = empty or fallback  # tpyc: type(StrView)
     print(x)
 
     name: str = "alice"
-    y = name or fallback  # tpyc: type(str)
+    y = name or fallback  # tpyc: type(StrView)
     print(y)
 
 def test_and_str() -> None:
     empty: str = ""
     fallback: str = "world"
-    x = empty and fallback  # tpyc: type(str)
+    x = empty and fallback  # tpyc: type(StrView)
     print(x)
 
     name: str = "hello"
-    y = name and fallback  # tpyc: type(str)
+    y = name and fallback  # tpyc: type(StrView)
     print(y)
 
 def test_or_float() -> None:

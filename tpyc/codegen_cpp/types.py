@@ -62,7 +62,12 @@ class TypeResolver:
             else_resolved = self.get_resolved_type(expr.else_expr)
             if then_resolved == else_resolved:
                 return then_resolved
-            return unwrap_readonly(typ) if typ else typ
+            # Branches differ -- resolve PendingStrType so the string_view->string
+            # wrapping check in statement codegen sees a concrete type.
+            ret = unwrap_readonly(typ) if typ else typ
+            if isinstance(ret, PendingStrType):
+                ret = self._resolve_pending_str(ret)
+            return ret
 
         # For binary operations, compute type using resolved operand types
         if isinstance(expr, TpyBinOp):
@@ -81,7 +86,13 @@ class TypeResolver:
                 right_resolved = self.get_resolved_type(expr.right)
                 if left_resolved == right_resolved:
                     return left_resolved
-                return unwrap_readonly(typ) if typ else typ
+                # Operands differ (e.g. one is string_view, other is string).
+                # Resolve PendingStrType so callers like the string_view->string
+                # wrapping check in statement codegen see a concrete type.
+                ret = unwrap_readonly(typ) if typ else typ
+                if isinstance(ret, PendingStrType):
+                    ret = self._resolve_pending_str(ret)
+                return ret
 
             # First pass without context to detect Int32 operands
             left_raw = self.get_resolved_type(expr.left)

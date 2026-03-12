@@ -32,9 +32,9 @@ std::string greet(bool formal) {
 // 17: def describe(x: Int32) -> str:
 std::string describe(int32_t x) {
     // 18:     label: str = "positive" if x > 0 else "non-positive"
-    std::string label = (((x > 0)) ? ("positive") : ("non-positive"));
+    std::string_view label = (((x > 0)) ? ("positive") : ("non-positive"));
     // 19:     return label
-    return label;
+    return std::string(label);
 }
 
 // 21: def main() -> None:

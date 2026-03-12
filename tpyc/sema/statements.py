@@ -25,7 +25,7 @@ from ..parse import (
     TpySubscript, TpySlice, TpyStrLiteral, TpyName, TpyTupleLiteral,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyUnaryOp,
     TpyFieldAccess, TpyFunction, TupleElemCapture,
-    TpyMatch,
+    TpyMatch, TpyBinOp, TpyIfExpr,
 )
 from ..coercions import CoercionContext
 from ..namespace import BindingKind
@@ -77,6 +77,30 @@ def _root_name_of_expr(expr: TpyExpr) -> str | None:
     while isinstance(expr, (TpyFieldAccess, TpySubscript)):
         expr = expr.obj
     return expr.name if isinstance(expr, TpyName) else None
+
+
+def _collect_pending_str_source_ids(ctx: 'SemanticContext', expr: TpyExpr) -> list[int]:
+    """Collect all leaf PendingStrType source IDs from an expression tree.
+
+    Walks through and/or (TpyBinOp &&/||) and ternary (TpyIfExpr) nodes to
+    find every TpyName leaf whose current sema type is PendingStrType.
+
+    Used when assigning `x = a or b` or `x = a if c else b` to register ALL
+    possible runtime sources of x in source_str_var_ids so that if any source
+    later promotes to std::string, x is also promoted (preventing dangling views).
+    """
+    if isinstance(expr, TpyCoerce):
+        expr = expr.expr
+    if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
+        return (_collect_pending_str_source_ids(ctx, expr.left)
+                + _collect_pending_str_source_ids(ctx, expr.right))
+    if isinstance(expr, TpyIfExpr):
+        return (_collect_pending_str_source_ids(ctx, expr.then_expr)
+                + _collect_pending_str_source_ids(ctx, expr.else_expr))
+    t = ctx.get_expr_type(expr)
+    if isinstance(t, PendingStrType):
+        return [t.str_var_id]
+    return []
 
 
 class StatementAnalyzer:
@@ -819,9 +843,17 @@ class StatementAnalyzer:
         elif isinstance(var_type, PendingStrType):
             str_var_id = self.ctx.str_var_counter
             self.ctx.str_var_counter += 1
+            # Collect ALL leaf PendingStrType sources from the init expression.
+            # For `x = a or b` both a and b are sources; if either resolves to
+            # std::string, x must too (otherwise x would be a string_view into
+            # a potentially-reallocated buffer).
+            if init_expr is not None:
+                source_ids = _collect_pending_str_source_ids(self.ctx, init_expr)
+            else:
+                source_ids = [var_type.str_var_id]
             sv_info = StrVarInfo(str_var_id=str_var_id, variable_name=name,
                                 decl_line=line,
-                                source_str_var_id=var_type.str_var_id)
+                                source_str_var_ids=source_ids)
             self.ctx.str_vars[str_var_id] = sv_info
             self.ctx.variable_to_str_var[name] = str_var_id
             self.ctx.pending_str_resolutions.append(str_var_id)

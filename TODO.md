@@ -6,7 +6,7 @@
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 
 ## Bugs
-- `string_view` deduction doesn't propagate through `and`/`or` or ternary: `x = a or b` and `x = a if c else b` where both operands are `string_view` still declare `x` as `std::string`. Root cause: sema normalizes `PendingStrType` to `STR` for the result type of both forms, so the `PendingStrType` deduction system never sees the variable. Fix requires either propagating `PendingStrType` through these expressions in sema, or making `_resolve_cpp_type` fall back to the codegen-resolved type when sema says `StrType` but the init expression resolves to `StrViewType`.
+- `list`/`dict`/`set` `and`/`or`/ternary generates wrong type: `x = a or b` where both operands are list-typed (or dict/set) generates `bool x = (a || b)` instead of the correct container value. Root cause: `_logical_op_result_type` in `sema/expressions.py` falls through to `BOOL` when two `PendingListType` IDs differ (not the same literal). Fix requires the same approach used for strings: propagate `PendingListType`/`PendingDictType`/`PendingSetType` through `or`/`and`/ternary in sema and extend multi-source tracking (similar to `source_str_var_ids` in `StrVarInfo`) in the list/dict/set literal resolution pass. Same gap applies to ternary (`a if c else b` where both branches are lists).
 
 ## Safety
 - View type borrow tracking for user types: currently only built-in view types (Span, Ptr) are tracked as borrows. Likely needed when designing tpy stdlib types. See escape analysis design doc (Future Extensions) for field-level vs class-level annotation tradeoffs.
@@ -55,6 +55,7 @@
 - language restriction documentation
 
 ## Refactor
+- Inline `and`/`or` chains for side-effect-free operands: `a or b or c` currently emits an intermediate temp (`auto&& __tmp = (a ? a : b); result = (__tmp ? __tmp : c)`) to avoid double-evaluation. When all operands are provably side-effect-free (variables, literals), the temp is unnecessary and the chain can be emitted as a single nested ternary (`!a.empty() ? a : !b.empty() ? b : c`), which is more readable.
 - Unify rvalue materialization: two overlapping mechanisms exist for extending rvalue lifetimes -- the slot system (`std::optional<T>` slots in `_gen_pointer_local_init`, tied to var decl infrastructure) and TempState (`auto&&` temps, expression-level). Both solve the same problem at different abstraction levels. Consider exposing a lower-level "materialize this rvalue" API that both var decls and expression-level temps (e.g. `and`/`or` ternaries) can share.
 
 ## Random items

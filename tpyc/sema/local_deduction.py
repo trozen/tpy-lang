@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from ..coercions import CoercionContext
 from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce, TpyFunction, TpyListRepeat
-from ..parse.nodes import TpyStrLiteral, TpySubscript, TpyFieldAccess
+from ..parse.nodes import TpyStrLiteral, TpySubscript, TpyFieldAccess, TpyBinOp, TpyIfExpr
 from ..typesys import (
     ArrayType,
     BigIntType,
@@ -730,6 +730,28 @@ class LocalTypeDeduction:
             if isinstance(init_expr.obj, TpyName):
                 return True
 
+        # and/or (StrType operands, e.g. two str parameters): view-safe if both
+        # operands are view-safe. PendingStrType operands are excluded here
+        # because that case goes through _logical_op_result_type returning a
+        # chained PendingStrType, so _infer_new_local_type takes the
+        # elif-PendingStrType branch and never calls is_view_compatible_source.
+        if isinstance(init_expr, TpyBinOp) and init_expr.op in ("&&", "||"):
+            left_type = self.ctx.get_expr_type(init_expr.left)
+            right_type = self.ctx.get_expr_type(init_expr.right)
+            if isinstance(left_type, PendingStrType) or isinstance(right_type, PendingStrType):
+                return False
+            return (self.is_view_compatible_source(init_expr.left, left_type)
+                    and self.is_view_compatible_source(init_expr.right, right_type))
+
+        # Ternary: same logic as and/or above.
+        if isinstance(init_expr, TpyIfExpr):
+            then_type = self.ctx.get_expr_type(init_expr.then_expr)
+            else_type = self.ctx.get_expr_type(init_expr.else_expr)
+            if isinstance(then_type, PendingStrType) or isinstance(else_type, PendingStrType):
+                return False
+            return (self.is_view_compatible_source(init_expr.then_expr, then_type)
+                    and self.is_view_compatible_source(init_expr.else_expr, else_type))
+
         return False
 
     def mark_str_augassign(self, var_name: str) -> None:
@@ -763,7 +785,7 @@ class LocalTypeDeduction:
             return
         str_var_id = self.ctx.variable_to_str_var.get(var_name)
         if str_var_id is not None and str_var_id in self.ctx.str_vars:
-            self.ctx.str_vars[str_var_id].source_str_var_id = source_type.str_var_id
+            self.ctx.str_vars[str_var_id].source_str_var_ids = [source_type.str_var_id]
 
     def _resolve_pending_str_types(self) -> None:
         """Resolve all pending str types after function analysis.
@@ -792,7 +814,9 @@ class LocalTypeDeduction:
 
             info.resolved_type = STR if needs_owned else STRVIEW
 
-        # Second pass: promote aliases whose source resolved to STR
+        # Second pass: promote aliases whose source resolved to STR.
+        # An or/ternary result may have multiple sources; if ANY resolves to
+        # STR, the result must too (it might point to that buffer at runtime).
         changed = True
         while changed:
             changed = False
@@ -800,11 +824,12 @@ class LocalTypeDeduction:
                 info = self.ctx.str_vars.get(str_var_id)
                 if info is None or info.resolved_type != STRVIEW:
                     continue
-                if info.source_str_var_id is not None:
-                    source = self.ctx.str_vars.get(info.source_str_var_id)
+                for src_id in info.source_str_var_ids:
+                    source = self.ctx.str_vars.get(src_id)
                     if source and source.resolved_type == STR:
                         info.resolved_type = STR
                         changed = True
+                        break
 
         # Update scope bindings and var_types
         for str_var_id in self.ctx.pending_str_resolutions:

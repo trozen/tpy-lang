@@ -362,7 +362,7 @@ class TypeCompatibility:
 
         # Allow PendingStrType compatibility during first phase (before resolution)
         if isinstance(actual, PendingStrType):
-            if isinstance(expected, (StrType, StringType, StrViewType)):
+            if isinstance(expected, (StrType, StringType, StrViewType, PendingStrType)):
                 return None
         if isinstance(expected, PendingStrType):
             if isinstance(actual, (StrType, StringType, StrViewType)):
