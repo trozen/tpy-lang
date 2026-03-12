@@ -561,6 +561,31 @@ class ExpressionGenerator:
         # Implicit bool conversion (int, float, ptr, etc.)
         return rendered
 
+    def _is_str_view_at_runtime(self, expr: TpyExpr) -> bool:
+        """True if this expression produces std::string_view at C++ runtime.
+
+        Cases that produce string_view despite having StrType as their sema type:
+        - str params: C++ signature uses string_view (via to_cpp_param)
+        - str literals: materialized as std::string_view temps in _gen_logical_value;
+          treated as string_view here so recursive chain detection works correctly.
+          Callers in _gen_if_expr must guard separately: literals are const char*
+          there and need no explicit wrapping (C++ handles string?const-char* natively).
+        - StrViewType locals: explicitly typed as string_view
+        Nested and/or/ternary chains are handled recursively.
+        """
+        if isinstance(expr, TpyName):
+            return (isinstance(self.ctx.current_func_params.get(expr.name), StrType)
+                    or isinstance(self.types.get_resolved_type(expr), StrViewType))
+        if isinstance(expr, TpyStrLiteral):
+            return True
+        if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
+            return (self._is_str_view_at_runtime(expr.left)
+                    and self._is_str_view_at_runtime(expr.right))
+        if isinstance(expr, TpyIfExpr):
+            return (self._is_str_view_at_runtime(expr.then_expr)
+                    and self._is_str_view_at_runtime(expr.else_expr))
+        return isinstance(self.types.get_resolved_type(expr), StrViewType)
+
     def _gen_logical_value(self, expr: TpyBinOp, result_type: TpyType) -> str:
         """Generate and/or with Python operand semantics (returns operand, not bool).
 
@@ -619,9 +644,16 @@ class ExpressionGenerator:
         # C++ types from each other (e.g. one is string_view, other is string).
         # When they match, the ternary naturally produces their type and the
         # normal var decl handles any further conversion.
-        lhs_cpp_cmp = self.types.type_to_cpp(lhs_type)
+        # Determine effective C++ type of each arm for mismatch detection.
+        # Str params and str literals both produce string_view in this context
+        # (_is_str_view_at_runtime returns True for both).
+        lhs_cpp_cmp = ("std::string_view" if is_any_str_type(lhs_type)
+                       and self._is_str_view_at_runtime(expr.left)
+                       else self.types.type_to_cpp(lhs_type))
         rhs_type_cmp = self.types.get_resolved_type(expr.right)
-        rhs_cpp_cmp = self.types.type_to_cpp(rhs_type_cmp)
+        rhs_cpp_cmp = ("std::string_view" if is_any_str_type(rhs_type_cmp)
+                       and self._is_str_view_at_runtime(expr.right)
+                       else self.types.type_to_cpp(rhs_type_cmp))
         if lhs_cpp_cmp != rhs_cpp_cmp:
             cpp_result = self.types.type_to_cpp(result_type)
             if cpp_result != lhs_cpp_cmp:
@@ -2718,15 +2750,20 @@ class ExpressionGenerator:
                 self.ctx.narrowed_vars.pop(var_name, None)
 
         # C++ ternary requires both branches to have the same type.
-        # string_view -> string: explicit conversion required since C++ won't
-        # implicitly construct std::string from a string_view ternary result.
-        if isinstance(result_type, StrType):
-            then_resolved = self.types.get_resolved_type(expr.then_expr)
-            else_resolved = self.types.get_resolved_type(expr.else_expr)
-            if isinstance(then_resolved, StrViewType):
-                then_code = f"std::string({then_code})"
-            if isinstance(else_resolved, StrViewType):
-                else_code = f"std::string({else_code})"
+        # When arms have mismatched C++ types (one string_view, one std::string),
+        # explicitly convert the string_view arm so the ternary deduces std::string.
+        # Skip when the target is StrViewType -- wrapping would create a dangling
+        # string_view pointing to a temporary std::string.
+        if isinstance(result_type, StrType) and not isinstance(target_type, StrViewType):
+            then_is_view = self._is_str_view_at_runtime(expr.then_expr)
+            else_is_view = self._is_str_view_at_runtime(expr.else_expr)
+            if then_is_view != else_is_view:
+                # String literals are const char* in ternary context, not string_view.
+                # C++ resolves string ? const-char* natively, no explicit wrap needed.
+                if then_is_view and not isinstance(expr.then_expr, TpyStrLiteral):
+                    then_code = f"std::string({then_code})"
+                if else_is_view and not isinstance(expr.else_expr, TpyStrLiteral):
+                    else_code = f"std::string({else_code})"
 
         if isinstance(result_type, OptionalType):
             if is_ptr_optional:

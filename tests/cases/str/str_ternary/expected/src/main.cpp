@@ -4,25 +4,58 @@
 namespace tpy_user::main {
 
 
-// # Test ternary expression with str operands (PendingStrType comparison fix).
-// 2: def main() -> None:
-void main() {
-    // 3:     a: str = "hello"
-    std::string_view a = "hello";
-    // 4:     b: str = "world"
-    std::string_view b = "world";
-    // 6:     x = a if True else b  # tpyc: type(StrView)
+// # Test and/or/ternary expressions with str operands infer string_view.
+// 2: def test_ternary(a: str, b: str) -> None:
+void test_ternary(std::string_view a, std::string_view b) {
+    // 3:     x = a if True else b  # tpyc: type(StrView)
     std::string_view x = ((true) ? (a) : (b));
-    // 7:     print(x)
+    // 4:     print(x)
     std::cout << x << "\n";
-    // 9:     y = a if False else b  # tpyc: type(StrView)
+    // 6:     y = a if False else b  # tpyc: type(StrView)
     std::string_view y = ((false) ? (a) : (b));
-    // 10:     print(y)
+    // 7:     print(y)
     std::cout << y << "\n";
-    // 12:     z = "literal_a" if True else "literal_b"  # tpyc: type(StrView)
+    // 9:     z = "literal_a" if True else "literal_b"  # tpyc: type(StrView)
     std::string_view z = ((true) ? ("literal_a") : ("literal_b"));
-    // 13:     print(z)
+    // 10:     print(z)
     std::cout << z << "\n";
+    // 12:     # One operand owned: falls back to std::string
+    // 13:     w = a if True else str(42)  # tpyc: type(str)
+    std::string w = ((true) ? (std::string(a)) : (tpy::fixed_to_str<int8_t>(42)));
+    // 14:     print(w)
+    std::cout << w << "\n";
+}
+
+// 16: def test_or(a: str, b: str) -> None:
+void test_or(std::string_view a, std::string_view b) {
+    // 17:     x = a or b  # tpyc: type(StrView)
+    std::string_view x = ((!a.empty()) ? a : b);
+    // 18:     print(x)
+    std::cout << x << "\n";
+    // 20:     y = a or "default"  # tpyc: type(StrView)
+    std::string_view __tmp_1 = "default";
+    std::string_view y = ((!a.empty()) ? a : __tmp_1);
+    // 21:     print(y)
+    std::cout << y << "\n";
+    // 23:     # One operand owned: falls back to std::string
+    // 24:     z = a or str(42)  # tpyc: type(str)
+    auto&& __tmp_2 = tpy::fixed_to_str<int8_t>(42);
+    std::string z = ((!a.empty()) ? std::string(a) : __tmp_2);
+    // 25:     print(z)
+    std::cout << z << "\n";
+}
+
+// 27: def test_and(a: str, b: str) -> None:
+void test_and(std::string_view a, std::string_view b) {
+    // 28:     x = a and b  # tpyc: type(StrView)
+    std::string_view x = ((!a.empty()) ? b : a);
+    // 29:     print(x)
+    std::cout << x << "\n";
+    // 31:     y = "prefix" and b  # tpyc: type(StrView)
+    std::string_view __tmp_3 = "prefix";
+    std::string_view y = ((!__tmp_3.empty()) ? b : __tmp_3);
+    // 32:     print(y)
+    std::cout << y << "\n";
 }
 
 void __tpy_init() {
@@ -30,8 +63,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 15: main()
-    main();
+    // 34: test_ternary("hello", "world")
+    test_ternary("hello", "world");
+    // 35: test_or("hello", "world")
+    test_or("hello", "world");
+    // 36: test_and("hello", "world")
+    test_and("hello", "world");
 }
 
 } // namespace tpy_user::main

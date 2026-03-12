@@ -7,7 +7,9 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void main();
+void test_ternary(std::string_view a, std::string_view b);
+void test_or(std::string_view a, std::string_view b);
+void test_and(std::string_view a, std::string_view b);
 
 void __tpy_init();
 } // namespace tpy_user::main
