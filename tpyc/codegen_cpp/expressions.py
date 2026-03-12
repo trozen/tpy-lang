@@ -602,6 +602,11 @@ class ExpressionGenerator:
 
         if use_lhs_temp:
             left = self.gen_expr_deref(expr.left)
+            # Bare braced-init-lists can't be used with auto&& or as ternary
+            # branches -- C++ can't deduce the container type from {1,2} alone.
+            # Prefix with the explicit type, same as the list-concat handling.
+            if isinstance(lhs_type, ListType) and isinstance(expr.left, TpyArrayLiteral):
+                left = f"{self.types.type_to_cpp(lhs_type)}{left}"
             # String literals are const char[N] -- auto&& keeps that type and
             # .empty() would fail. Use std::string_view to get a proper str type.
             lhs_cpp = "std::string_view" if (
@@ -631,6 +636,8 @@ class ExpressionGenerator:
         use_rhs_temp = not isinstance(expr.right, TpyName)
         if use_rhs_temp:
             rhs_type = self.types.get_resolved_type(expr.right)
+            if isinstance(rhs_type, ListType) and isinstance(expr.right, TpyArrayLiteral):
+                right = f"{self.types.type_to_cpp(rhs_type)}{right}"
             rhs_cpp = "std::string_view" if (
                 is_any_str_type(rhs_type) and isinstance(expr.right, TpyStrLiteral)
             ) else "auto&&"
@@ -2748,6 +2755,15 @@ class ExpressionGenerator:
                 self.ctx.narrowed_vars[var_name] = prev
             else:
                 self.ctx.narrowed_vars.pop(var_name, None)
+
+        # C++ can't deduce template params from bare initializer lists,
+        # so array literal branches need explicit std::vector<T>{...} prefix.
+        if isinstance(result_type, ListType):
+            cpp_type = self.types.type_to_cpp(result_type)
+            if isinstance(expr.then_expr, TpyArrayLiteral):
+                then_code = f"{cpp_type}{then_code}"
+            if isinstance(expr.else_expr, TpyArrayLiteral):
+                else_code = f"{cpp_type}{else_code}"
 
         # C++ ternary requires both branches to have the same type.
         # When arms have mismatched C++ types (one string_view, one std::string),

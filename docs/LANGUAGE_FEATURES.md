@@ -2611,7 +2611,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 
 ### Logical
 - **Working**: `and`, `or`, `not`
-- **Working**: `and`/`or` return operand value (Python semantics) when both operands have the same type. Mixed-type operands return `bool`. In condition context (`if`, `while`), always uses efficient C++ `&&`/`||`.
+- **Working**: `and`/`or` return operand value (Python semantics) when both operands have the same type, including `list[T]`, `dict[K,V]`, and `set[T]`. Mixed-type operands return `bool`. In condition context (`if`, `while`), always uses efficient C++ `&&`/`||`.
 
 ### Bitwise
 - **Working**: `&`, `|`, `^`, `~`, `<<`, `>>`
@@ -2626,7 +2626,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 
 ### Conditionals
 - **Working**: `if`, `elif`, `else`
-- **Working**: Ternary `x if cond else y` -- same-type branches, numeric widening, `T`+`None` to `Optional[T]`, Optional narrowing (`is not None` / truthy)
+- **Working**: Ternary `x if cond else y` -- same-type branches (including `list[T]`, `dict[K,V]`, `set[T]`), numeric widening, `T`+`None` to `Optional[T]`, Optional narrowing (`is not None` / truthy). Note: container branches produce a value copy (not a reference binding like CPython).
 
 ### Loops
 - **Working**: `while`

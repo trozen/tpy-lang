@@ -15,7 +15,8 @@ from ..typesys import (
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
     FixedIntType, StringType, StrViewType, make_union,
     ResolvedBinop, FunctionInfo, ParamInfo, UnknownElementType, UNKNOWN_ELEMENT,
-    PendingDictType, DictLiteralInfo,
+    PendingDictType, PendingSetType, DictLiteralInfo,
+    resolve_int_literals,
     INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, SLICE, is_protocol_type, container_to_str_template,
     PendingGenericInstanceType, SliceType,
 )
@@ -36,6 +37,7 @@ from .diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .narrowing import NarrowingTracker
 from .numeric_lattice import widen_numeric_types
 from .list_literals import IterableHelper
+from .local_deduction import collect_pending_source_types
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -387,6 +389,23 @@ class ExpressionAnalyzer:
             raise self.ctx.error(
                 f"variable '{expr.name}' may not be assigned at this point", expr)
 
+    def _normalize_pending_container(self, t: TpyType) -> TpyType:
+        """Normalize a pending container type to a concrete type with resolved IntLiteralType elements.
+
+        Used in or/and/ternary type comparison: two PendingListType literals with the same
+        element type but different IDs (or different IntLiteralType values) are compatible.
+        """
+        if isinstance(t, PendingListType):
+            return resolve_int_literals(ListType(t.element_type), self.ctx.default_int_for_literal)
+        if isinstance(t, PendingDictType):
+            k = self.ctx.default_int_for_literal(t.key_type) if isinstance(t.key_type, IntLiteralType) else t.key_type
+            v = self.ctx.default_int_for_literal(t.value_type) if isinstance(t.value_type, IntLiteralType) else t.value_type
+            return DictType(k, v)
+        if isinstance(t, PendingSetType):
+            elem = self.ctx.default_int_for_literal(t.element_type) if isinstance(t.element_type, IntLiteralType) else t.element_type
+            return SetType(elem)
+        return t
+
     def _logical_op_result_type(self, left: TpyType, right: TpyType) -> TpyType:
         """Determine result type for and/or operators.
 
@@ -413,15 +432,20 @@ class ExpressionAnalyzer:
         # Normalize PendingStrType to StrType for comparison; preserve the pending
         # type when both sides are pending so string_view deduction can chain the
         # result variable back to the operands' resolution.
-        # Return left's PendingStrType (arbitrary choice) -- the caller's
-        # _collect_pending_str_source_ids walks the full expression tree and
-        # registers both operands in source_str_var_ids.
+        # Return left's PendingStrType (arbitrary choice) -- the caller uses
+        # collect_pending_source_types to register BOTH branches in source_str_var_ids.
         if isinstance(left, PendingStrType) and isinstance(right, PendingStrType):
             return left
         if isinstance(left, PendingStrType):
             left = STR
         if isinstance(right, PendingStrType):
             right = STR
+        # Normalize pending container types to concrete types for equality comparison.
+        # Two PendingListType literals with the same element type (but different IDs
+        # or different IntLiteralType values like 1 vs 3) are compatible.
+        # Caller marks source literals via collect_pending_source_types.
+        left = self._normalize_pending_container(left)
+        right = self._normalize_pending_container(right)
         if left == right:
             return left
         return BOOL
@@ -684,7 +708,16 @@ class ExpressionAnalyzer:
         # Logical operators: Python semantics returns an operand, not bool.
         # Same non-bool type -> return that type; otherwise -> bool.
         if expr.op in ("&&", "||"):
-            return self._logical_op_result_type(left_type, right_type)
+            result = self._logical_op_result_type(left_type, right_type)
+            if isinstance(result, ListType):
+                # Both ternary branches must share a C++ type; force sources to
+                # ListType so they don't independently become incompatible Arrays.
+                for t in collect_pending_source_types(self.ctx, expr):
+                    if isinstance(t, PendingListType):
+                        info = self.ctx.list_literals.get(t.literal_id)
+                        if info is not None:
+                            info.needs_list_type = True
+            return result
 
         # IntEnum arithmetic: coerce to underlying type, delegate to standard binop
         if expr.op in ("+", "-", "*", "//", "%"):
@@ -1320,6 +1353,15 @@ class ExpressionAnalyzer:
         common = self._ternary_common_type(expr, then_type, else_type,
                                            widen_numeric_types)
 
+        if isinstance(common, ListType):
+            # Both ternary branches must share a C++ type; force sources to
+            # ListType so they don't independently become incompatible Arrays.
+            for t in collect_pending_source_types(self.ctx, expr):
+                if isinstance(t, PendingListType):
+                    info = self.ctx.list_literals.get(t.literal_id)
+                    if info is not None:
+                        info.needs_list_type = True
+
         # Coerce branches to the common type so C++ ternary has
         # matching branch types (e.g. None -> std::optional<T>).
         if then_type != common:
@@ -1361,7 +1403,7 @@ class ExpressionAnalyzer:
         # result variable back to the operands' resolution.
         if isinstance(t, PendingStrType) and isinstance(e, PendingStrType):
             # Return then-branch's PendingStrType so _infer_new_local_type takes
-            # the elif-PendingStrType path, which uses _collect_pending_str_source_ids
+            # the elif-PendingStrType path, which uses collect_pending_source_types
             # to register BOTH branches in source_str_var_ids.  Arbitrary choice
             # of t vs e -- the actual multi-source tracking happens in the caller.
             return t
@@ -1369,6 +1411,10 @@ class ExpressionAnalyzer:
             t = STR
         if isinstance(e, PendingStrType):
             e = STR
+        # Normalize pending container types to concrete types for equality comparison,
+        # resolving IntLiteralType elements so [1,2] and [3,4] both normalize to list[int].
+        t = self._normalize_pending_container(t)
+        e = self._normalize_pending_container(e)
 
         if t == e:
             return t

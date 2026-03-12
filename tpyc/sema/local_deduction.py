@@ -50,6 +50,32 @@ if TYPE_CHECKING:
     from .context import SemanticContext
 
 
+def collect_pending_source_types(ctx: 'SemanticContext', expr: 'TpyExpr') -> 'list[TpyType]':
+    """Collect all leaf pending-type nodes from a logical/ternary expression tree.
+
+    Walks and/or (TpyBinOp &&/||) and ternary (TpyIfExpr) subtrees, returning
+    every leaf whose sema type is PendingStrType, PendingListType, PendingDictType,
+    or PendingSetType.  Callers filter by type for their specific purpose.
+
+    Returns type objects (PendingStrType / PendingListType / etc.), not IDs.
+    Callers filter the returned list by type for their specific purpose:
+    - String tracking (statements.py): filter PendingStrType, read .str_var_id
+    - List type forcing (expressions.py): filter PendingListType, set .needs_list_type
+    """
+    if isinstance(expr, TpyCoerce):
+        expr = expr.expr
+    if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
+        return (collect_pending_source_types(ctx, expr.left)
+                + collect_pending_source_types(ctx, expr.right))
+    if isinstance(expr, TpyIfExpr):
+        return (collect_pending_source_types(ctx, expr.then_expr)
+                + collect_pending_source_types(ctx, expr.else_expr))
+    t = ctx.get_expr_type(expr)
+    if isinstance(t, (PendingStrType, PendingListType, PendingDictType, PendingSetType)):
+        return [t]
+    return []
+
+
 class LocalTypeDeduction:
     """Unified tracker for local variable type deduction.
 
@@ -496,6 +522,9 @@ class LocalTypeDeduction:
             if info.has_explicit_annotation and info.explicit_type:
                 resolved = info.explicit_type
             elif info.is_mutated:
+                resolved = ListType(elem_type)
+            elif info.needs_list_type:
+                # Both ternary branches must have the same C++ type; Array sizes may differ.
                 resolved = ListType(elem_type)
             elif info.passed_to_list_param:
                 resolved = ListType(elem_type)

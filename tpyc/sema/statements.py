@@ -45,6 +45,7 @@ if TYPE_CHECKING:
     from .protocols import ProtocolChecker
 
 from .context import BorrowKind, PENDING_CONTAINER_TYPES
+from .local_deduction import collect_pending_source_types
 from tpyc import modules as builtin_modules
 
 
@@ -77,30 +78,6 @@ def _root_name_of_expr(expr: TpyExpr) -> str | None:
     while isinstance(expr, (TpyFieldAccess, TpySubscript)):
         expr = expr.obj
     return expr.name if isinstance(expr, TpyName) else None
-
-
-def _collect_pending_str_source_ids(ctx: 'SemanticContext', expr: TpyExpr) -> list[int]:
-    """Collect all leaf PendingStrType source IDs from an expression tree.
-
-    Walks through and/or (TpyBinOp &&/||) and ternary (TpyIfExpr) nodes to
-    find every TpyName leaf whose current sema type is PendingStrType.
-
-    Used when assigning `x = a or b` or `x = a if c else b` to register ALL
-    possible runtime sources of x in source_str_var_ids so that if any source
-    later promotes to std::string, x is also promoted (preventing dangling views).
-    """
-    if isinstance(expr, TpyCoerce):
-        expr = expr.expr
-    if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
-        return (_collect_pending_str_source_ids(ctx, expr.left)
-                + _collect_pending_str_source_ids(ctx, expr.right))
-    if isinstance(expr, TpyIfExpr):
-        return (_collect_pending_str_source_ids(ctx, expr.then_expr)
-                + _collect_pending_str_source_ids(ctx, expr.else_expr))
-    t = ctx.get_expr_type(expr)
-    if isinstance(t, PendingStrType):
-        return [t.str_var_id]
-    return []
 
 
 class StatementAnalyzer:
@@ -848,7 +825,8 @@ class StatementAnalyzer:
             # std::string, x must too (otherwise x would be a string_view into
             # a potentially-reallocated buffer).
             if init_expr is not None:
-                source_ids = _collect_pending_str_source_ids(self.ctx, init_expr)
+                source_ids = [t.str_var_id for t in collect_pending_source_types(self.ctx, init_expr)
+                              if isinstance(t, PendingStrType)]
             else:
                 source_ids = [var_type.str_var_id]
             sv_info = StrVarInfo(str_var_id=str_var_id, variable_name=name,
