@@ -6,7 +6,6 @@
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 
 ## Bugs
-- `list`/`dict`/`set` `and`/`or`/ternary generates wrong type: `x = a or b` where both operands are list-typed (or dict/set) generates `bool x = (a || b)` instead of the correct container value. Root cause: `_logical_op_result_type` in `sema/expressions.py` falls through to `BOOL` when two `PendingListType` IDs differ (not the same literal). Fix requires the same approach used for strings: propagate `PendingListType`/`PendingDictType`/`PendingSetType` through `or`/`and`/ternary in sema and extend multi-source tracking (similar to `source_str_var_ids` in `StrVarInfo`) in the list/dict/set literal resolution pass. Same gap applies to ternary (`a if c else b` where both branches are lists).
 
 ## Safety
 - `Span[str]` subscript view: `SpanType.subscript_borrows()` is intentionally not overridden because `v = s[0]` registers `s` as the str-borrow source, but mutations to the backing container (`arr[0] = "x"` where `s = Span[str](arr)`) call `mark_str_borrowers_mutated("arr")` -- missing `s`. Fix requires `mark_str_borrowers_mutated` to chase the borrow tracker's alias chain so backing-container mutations also invalidate views borrowed through spans.
@@ -118,6 +117,7 @@
 - Functions don't currently support INT type params (only TYPE)
 - `readonly[T]` field mutation: sema enforces readonly on assignment targets, but codegen may not emit `const` for `readonly[str]` fields. Verify codegen emits `const` qualifier.
 - Union isinstance narrowing in ternary: `x if isinstance(x, str) else ...` where `x: str | int` would need `std::get<T>()` extraction, which requires statement-level codegen (variable declaration for the extracted value).
+- Ternary value copy for containers: `x = a if cond else b` where `a`/`b` are `list`/`dict`/`set` produces a C++ value copy, not a reference binding like CPython. `or`/`and` correctly bind by reference; ternary does not because `is_rvalue_source` in `codegen_cpp/context.py` has no `TpyIfExpr` handling and defaults to `True`.
 
 ## ShedSkin examples
 - score4
