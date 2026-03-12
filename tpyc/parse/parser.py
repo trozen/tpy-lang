@@ -1228,6 +1228,12 @@ class Parser:
                 else:
                     raise ParseError(f"Only simple type parameters supported, got {type(tp).__name__}", node)
 
+        if readonly_alt and method_type_params:
+            raise ParseError(
+                f"@readonly_alt on methods with method-level type parameters is not yet supported ('{node.name}')",
+                readonly_alt_dec
+            )
+
         # Merge class-level and method-level type param scopes
         if method_type_params:
             merged_scope = dict(type_param_scope) if type_param_scope else {}

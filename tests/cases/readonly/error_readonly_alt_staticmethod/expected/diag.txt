@@ -1,0 +1,1 @@
+main.py:5: error: @readonly_alt cannot be combined with @staticmethod on method 'make'

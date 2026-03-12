@@ -1114,7 +1114,7 @@ def strip_alt(t: 'TpyType') -> 'TpyType':
 def apply_alt(t: 'TpyType') -> 'TpyType':
     """Replace ReadonlyAltType(X) -> readonly[X] recursively (const overload return type)."""
     if isinstance(t, ReadonlyAltType):
-        return ReadonlyType(t.wrapped)
+        return ReadonlyType(apply_alt(t.wrapped))
     inner = t.inner_types()
     if not inner:
         return t

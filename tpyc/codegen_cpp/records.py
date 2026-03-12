@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from .functions import FunctionGenerator
     from .protocols import ProtocolGenerator
 
+
 class RecordGenerator:
     """Generates C++ structs from TurboPython records."""
 
