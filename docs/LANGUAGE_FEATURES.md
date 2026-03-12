@@ -696,7 +696,7 @@ Types that implement `__deref__() -> T` conform to the `Deref[T]` protocol and s
 `Ptr[T]` and `ReadOnlyPtr[T]` conform to `Deref[T]`. User-defined types can also implement `__deref__`:
 
 ```python
-from tpy import Int32, copy
+from tpy import Int32, copy, readonly_propagate
 
 class Point:
     x: Int32
@@ -711,13 +711,14 @@ class Ref:
     _target: Point
     def __init__(self, target: Point) -> None:
         self._target = copy(target)
+    @readonly_propagate
     def __deref__(self) -> Point:
         return self._target
 
 def main() -> None:
     r: Ref = Ref(Point(10, 20))
-    print(r.x)     # auto-deref: r.__deref__().x → 10
-    print(r.sum())  # auto-deref: r.__deref__().sum() → 30
+    print(r.x)     # auto-deref: r.__deref__().x -> 10
+    print(r.sum())  # auto-deref: r.__deref__().sum() -> 30
 ```
 
 Multi-hop chains are supported — if `Box.__deref__() -> Ref` and `Ref.__deref__() -> Point`, then `box.x` resolves through both (max depth: 8). Auto-deref also works through `Optional` receivers (`Ref | None`).
@@ -2358,12 +2359,28 @@ for x in buf:       # compiles to: for (int32_t x : buf.__span__()) { ... }
 readonly contexts (e.g., inside `__getitem__` which is also implicitly readonly). This enables
 patterns like `self.__span__()[start:stop]` inside overloaded `__getitem__(slice)`.
 
-**Dual overloads**: When `__span__` returns mutable `Span[T]`, the compiler generates two C++
-overloads -- a non-const overload returning `std::span<T>` (user's body) and a const overload
-returning `std::span<const T>` (thin wrapper). This enables correct iteration on both mutable
-and `@readonly` references. When `__span__` returns `ReadOnlySpan[T]`, only a single const
-overload is generated. The same dual-overload pattern applies to `__iter__()` returning
-`SpanIter[T]` -- both const and non-const overloads are generated automatically.
+**Dual overloads**: When `__span__` is decorated with `@readonly_propagate`, the compiler
+generates two C++ overloads -- a non-const overload (mutable body) and a const overload
+(const body). The const return type is specified via explicit `readonly_propagate[T]`
+annotation on the element type: `Span[readonly_propagate[T]]` produces `std::span<T>` for
+the mutable overload and `std::span<const T>` for the const overload. This applies uniformly
+to all reference types (`Span`, `Ptr`, `SpanIter`, user-defined generics) -- no special cases.
+When `__span__` returns `ReadOnlySpan[T]`, only a single const overload is generated (no
+`@readonly_propagate` needed). The same pattern applies to `__iter__()`.
+
+**Required decorator**: `@readonly_propagate` must be applied explicitly to methods that need
+dual C++ overloads. The canonical span-backed type pattern:
+```python
+from tpy import Span, SpanIter, readonly_propagate
+
+class MyType:
+    @readonly_propagate
+    def __span__(self) -> Span[readonly_propagate[T]]: ...
+
+    @readonly_propagate
+    def __iter__(self) -> SpanIter[readonly_propagate[T]]:
+        return SpanIter(self.__span__())
+```
 
 **Requirement**: User types must define `__iter__()` to be iterable in `for` loops. Types with
 only `__span__()` and no `__iter__()` are not iterable. Span-backed types should define

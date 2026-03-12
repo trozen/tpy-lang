@@ -4,26 +4,26 @@
 namespace tpy_user::main {
 
 
-// 32: def main() -> None:
+// 33: def main() -> None:
 void main() {
-    // 33:     # Test 1: Constructor call (rvalue)
-    // 34:     show(IntBox(42))
+    // 34:     # Test 1: Constructor call (rvalue)
+    // 35:     show(IntBox(42))
     auto __tmp_1 = IntBox(42);
     show(__tmp_1);
-    // 44:     # Test 4: Record subscript (rvalue - __getitem__ returns by value)
-    // 45:     container = BoxContainer()
+    // 45:     # Test 4: Record subscript (rvalue - __getitem__ returns by value)
+    // 46:     container = BoxContainer()
     BoxContainer container = BoxContainer();
-    // 46:     show(container[1])  # Should create temp for subscript result
+    // 47:     show(container[1])  # Should create temp for subscript result
     auto __tmp_2 = container[1];
     show(__tmp_2);
-    // 48:     # Test 5: Multiple temps in one call sequence
-    // 49:     show(IntBox(100))
+    // 49:     # Test 5: Multiple temps in one call sequence
+    // 50:     show(IntBox(100))
     auto __tmp_3 = IntBox(100);
     show(__tmp_3);
-    // 50:     show(container[0])
+    // 51:     show(container[0])
     auto __tmp_4 = container[0];
     show(__tmp_4);
-    // 51:     show(container[2])
+    // 52:     show(container[2])
     auto __tmp_5 = container[2];
     show(__tmp_5);
 }
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 53: main()
+    // 54: main()
     main();
 }
 

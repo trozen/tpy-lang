@@ -259,9 +259,10 @@ class MethodAnalyzer:
 
         return SuperType(record_info.parent, ctx.record_ctx.record.name)
 
-    def _try_resolve_method(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:
+    def _try_resolve_method(self, expr: TpyMethodCall, obj_type: TpyType,
+                            is_readonly_receiver: bool = False) -> TpyType | None:
         """Try to resolve method on obj_type. Returns return type or None."""
-        result = self._analyze_instance_method(expr, obj_type)
+        result = self._analyze_instance_method(expr, obj_type, is_readonly_receiver)
         if result is not None:
             return result
         result = self._analyze_protocol_or_bound_method(expr, obj_type)
@@ -413,7 +414,7 @@ class MethodAnalyzer:
         current_type = obj_type
         deref_depth = 0
         while deref_depth <= 8:
-            result = self._try_resolve_method(expr, current_type)
+            result = self._try_resolve_method(expr, current_type, is_readonly_receiver)
             if result is not None:
                 expr.deref_depth = deref_depth
                 if (deref_depth > 0
@@ -923,7 +924,8 @@ class MethodAnalyzer:
 
         return resolved_type
 
-    def _analyze_instance_method(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:
+    def _analyze_instance_method(self, expr: TpyMethodCall, obj_type: TpyType,
+                                  is_readonly_receiver: bool = False) -> TpyType | None:
         """Analyze instance method call on any type (builtin or user record)."""
         record_info = self.ctx.registry.get_record_for_type(obj_type)
         if not record_info:
@@ -942,6 +944,17 @@ class MethodAnalyzer:
             type_subst = inherited_subst
         else:
             type_subst = instance_subst
+
+        # Tie-breaking for readonly_propagate clones (mutable + const overload pair):
+        # readonly receiver prefers the readonly overload, mutable receiver prefers mutable.
+        if is_readonly_receiver:
+            ro = [m for m in overloads if m.is_readonly]
+            if ro:
+                overloads = ro
+        else:
+            mut = [m for m in overloads if not m.is_readonly]
+            if mut:
+                overloads = mut
 
         # Check if the method has its own type parameters (generic method).
         # Generic methods don't support multiple overloads; user-defined methods

@@ -1988,28 +1988,37 @@ class ExpressionAnalyzer:
 
         # User records with __getitem__(slice) overload
         if isinstance(actual_type, NamedType) and actual_type.is_record:
-            ret = self._find_slice_getitem_return(actual_type)
+            ret = self._find_slice_getitem_return(actual_type, is_readonly=is_readonly)
             if ret is not None:
                 expr.user_slice_getitem = True
                 return ret
 
         raise self.ctx.error(f"Slicing is not supported for {obj_type}", expr)
 
-    def _find_slice_getitem_return(self, record_type: NamedType) -> TpyType | None:
-        """Find __getitem__(slice) overload on a record and return its return type."""
+    def _find_slice_getitem_return(self, record_type: NamedType, *, is_readonly: bool = False) -> TpyType | None:
+        """Find __getitem__(slice) overload on a record and return its return type.
+
+        Prefers the const overload when is_readonly=True (readonly receiver),
+        and the mutable overload otherwise. Falls back to the first slice overload
+        if no const/mutable-specific one exists.
+        """
         record = self.ctx.registry.get_record_for_type(record_type)
         if record is None:
             return None
         getitem_overloads = record.methods.get("__getitem__", [])
-        for func_info in getitem_overloads:
-            params = func_info.params
-            if len(params) == 1 and isinstance(params[0].type, SliceType):
-                ret = func_info.return_type
-                type_subst = self.type_ops.build_type_substitution(record_type)
-                if type_subst:
-                    ret = self.type_ops.substitute_type_params(ret, type_subst)
-                return ret
-        return None
+        slice_overloads = [
+            fi for fi in getitem_overloads
+            if len(fi.params) == 1 and isinstance(fi.params[0].type, SliceType)
+        ]
+        if not slice_overloads:
+            return None
+        preferred = [fi for fi in slice_overloads if fi.is_readonly == is_readonly]
+        func_info = preferred[0] if preferred else slice_overloads[0]
+        ret = func_info.return_type
+        type_subst = self.type_ops.build_type_substitution(record_type)
+        if type_subst:
+            ret = self.type_ops.substitute_type_params(ret, type_subst)
+        return ret
 
     _FORMATTABLE_TYPES = (
         FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType,

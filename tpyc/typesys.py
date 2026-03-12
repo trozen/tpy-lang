@@ -893,18 +893,35 @@ class SuperType(TpyType):
         return f"super[{self.parent_type}]"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class PtrType(TpyType):
-    """Pointer type: Ptr[T] -> T*, ReadOnlyPtr[T] -> const T*
+    """Pointer type: Ptr[T] -> T*, Ptr[readonly[T]] -> const T*
 
-    When is_readonly=True, represents a read-only pointer (ReadOnlyPtr[T]).
+    Const-ness is encoded in the pointee: Ptr[readonly[T]] stores
+    ReadonlyType(T) as the pointee, giving const T* in C++.
+    ReadOnlyPtr[T] is an alias for Ptr[readonly[T]].
     """
     pointee: TpyType
-    is_readonly: bool = False
+
+    def __init__(self, pointee: TpyType, is_readonly: bool = False):
+        # Normalize: is_readonly=True wraps pointee in ReadonlyType.
+        # Also accepts ReadonlyType(T) directly as pointee.
+        if is_readonly and not isinstance(pointee, ReadonlyType):
+            pointee = ReadonlyType(pointee)
+        object.__setattr__(self, 'pointee', pointee)
+
+    @property
+    def is_readonly(self) -> bool:
+        return isinstance(self.pointee, ReadonlyType)
+
+    @property
+    def inner_pointee(self) -> TpyType:
+        """Unwrapped pointee type (strips ReadonlyType if present)."""
+        return unwrap_readonly(self.pointee)
 
     def to_cpp(self) -> str:
         if self.is_readonly:
-            return f"const {self.pointee.to_cpp()}*"
+            return f"const {self.inner_pointee.to_cpp()}*"
         return f"{self.pointee.to_cpp()}*"
 
     def qualified_name(self) -> Optional[str]:
@@ -915,7 +932,7 @@ class PtrType(TpyType):
 
     def __str__(self) -> str:
         if self.is_readonly:
-            return f"ReadOnlyPtr[{self.pointee}]"
+            return f"ReadOnlyPtr[{self.inner_pointee}]"
         return f"Ptr[{self.pointee}]"
 
     def is_value_type(self) -> bool:
@@ -926,7 +943,7 @@ class PtrType(TpyType):
 
     def is_sync(self) -> bool:
         if self.is_readonly:
-            return self.pointee.is_sync()
+            return self.inner_pointee.is_sync()
         return False
 
     def to_cpp_return(self) -> str:
@@ -936,19 +953,19 @@ class PtrType(TpyType):
         return (self.pointee,)
 
     def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return PtrType(types[0], is_readonly=self.is_readonly)
+        return PtrType(types[0])
 
     def as_const(self) -> 'PtrType':
         """Return a const version of this pointer."""
         if self.is_readonly:
             return self
-        return PtrType(self.pointee, is_readonly=True)
+        return PtrType(ReadonlyType(self.pointee))
 
     def as_mutable(self) -> 'PtrType':
         """Return a mutable version of this pointer."""
         if not self.is_readonly:
             return self
-        return PtrType(self.pointee, is_readonly=False)
+        return PtrType(self.inner_pointee)
 
 
 def is_readonly_ptr(typ: 'TpyType') -> bool:
@@ -1050,6 +1067,69 @@ def unwrap_readonly(typ: 'TpyType') -> 'TpyType':
     if isinstance(typ, ReadonlyType):
         return typ.wrapped
     return typ
+
+
+@dataclass(frozen=True)
+class ReadonlyPropagateType(TpyType):
+    """Return-type annotation for @readonly_propagate methods.
+
+    readonly_propagate[T] in a return type means:
+    - mutable overload: strip to T        (via strip_propagate)
+    - const overload:   replace with readonly[T] (via apply_propagate)
+
+    Only valid in return type annotations of @readonly_propagate methods.
+    Stripped by registration before reaching sema body analysis or codegen.
+    """
+    wrapped: TpyType
+
+    def to_cpp(self) -> str:
+        raise RuntimeError("ReadonlyPropagateType must be stripped before codegen")
+
+    def is_value_type(self) -> bool:
+        return self.wrapped.is_value_type()
+
+    def __str__(self) -> str:
+        return f"readonly_propagate[{self.wrapped}]"
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.wrapped,)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return ReadonlyPropagateType(types[0])
+
+
+def strip_propagate(t: 'TpyType') -> 'TpyType':
+    """Replace ReadonlyPropagateType(X) -> X recursively (mutable overload return type)."""
+    if isinstance(t, ReadonlyPropagateType):
+        return strip_propagate(t.wrapped)
+    inner = t.inner_types()
+    if not inner:
+        return t
+    new_inner = tuple(strip_propagate(i) for i in inner)
+    if all(n is o for n, o in zip(new_inner, inner)):
+        return t
+    return t.with_inner_types(new_inner)
+
+
+def apply_propagate(t: 'TpyType') -> 'TpyType':
+    """Replace ReadonlyPropagateType(X) -> readonly[X] recursively (const overload return type)."""
+    if isinstance(t, ReadonlyPropagateType):
+        return ReadonlyType(t.wrapped)
+    inner = t.inner_types()
+    if not inner:
+        return t
+    new_inner = tuple(apply_propagate(i) for i in inner)
+    if all(n is o for n, o in zip(new_inner, inner)):
+        return t
+    return t.with_inner_types(new_inner)
+
+
+def has_readonly_propagate(t: 'TpyType') -> bool:
+    """Return True if t contains any ReadonlyPropagateType node."""
+    if isinstance(t, ReadonlyPropagateType):
+        return True
+    return any(has_readonly_propagate(i) for i in t.inner_types())
+
 
 
 @dataclass(frozen=True)
@@ -1483,30 +1563,45 @@ class ArrayType(NamedType):
 
 
 class SpanType(NamedType):
-    """Non-owning view: Span[T] -> std::span<T>, ReadOnlySpan[T] -> std::span<const T>
+    """Non-owning view: Span[T] -> std::span<T>, Span[readonly[T]] -> std::span<const T>
 
-    When is_readonly=True, represents a read-only span (ReadOnlySpan[T]).
+    Const-ness is encoded in the element type: Span[readonly[T]] stores
+    ReadonlyType(T) as the element, giving std::span<const T> in C++.
+    ReadOnlySpan[T] is an alias for Span[readonly[T]].
     """
 
     def __init__(self, element_type: TpyType, is_readonly: bool = False):
-        name = "ReadOnlySpan" if is_readonly else "Span"
-        qname = "tpy.ReadOnlySpan" if is_readonly else "tpy.Span"
+        # Normalize: is_readonly=True wraps element in ReadonlyType.
+        # Also accepts ReadonlyType(T) directly as element_type.
+        if is_readonly and not isinstance(element_type, ReadonlyType):
+            element_type = ReadonlyType(element_type)
+        is_ro = isinstance(element_type, ReadonlyType)
+        name = "ReadOnlySpan" if is_ro else "Span"
+        qname = "tpy.ReadOnlySpan" if is_ro else "tpy.Span"
         NamedType.__init__(self, name=name, type_args=(element_type,),
                            _module_qname=qname)
-        object.__setattr__(self, 'is_readonly', is_readonly)
 
     @property
     def element_type(self) -> TpyType:
         return self.type_args[0]
 
+    @property
+    def is_readonly(self) -> bool:
+        return isinstance(self.element_type, ReadonlyType)
+
+    @property
+    def inner_element_type(self) -> TpyType:
+        """Unwrapped element type (strips ReadonlyType if present)."""
+        return unwrap_readonly(self.element_type)
+
     def to_cpp(self) -> str:
         if self.is_readonly:
-            return f"std::span<const {self.element_type.to_cpp()}>"
+            return f"std::span<const {self.inner_element_type.to_cpp()}>"
         return f"std::span<{self.element_type.to_cpp()}>"
 
     def __str__(self) -> str:
         if self.is_readonly:
-            return f"ReadOnlySpan[{self.element_type}]"
+            return f"ReadOnlySpan[{self.inner_element_type}]"
         return f"Span[{self.element_type}]"
 
     def qualified_name(self) -> Optional[str]:
@@ -1522,11 +1617,12 @@ class SpanType(NamedType):
 
     def is_sync(self) -> bool:
         if self.is_readonly:
-            return self.element_type.is_sync()
+            return self.inner_element_type.is_sync()
         return False
 
     def get_element_type(self) -> Optional[TpyType]:
-        return self.element_type
+        # Return unwrapped element type for iteration/subscript type inference.
+        return self.inner_element_type
 
     def needs_explicit_element_target(self) -> bool:
         return True
@@ -1535,23 +1631,31 @@ class SpanType(NamedType):
         return (self.element_type,)
 
     def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return SpanType(types[0], is_readonly=self.is_readonly)
+        # readonly preserved if types[0] is ReadonlyType(...)
+        return SpanType(types[0])
 
     def as_const(self) -> 'SpanType':
         """Return a const (ReadOnlySpan) version of this span."""
         if self.is_readonly:
             return self
-        return SpanType(self.element_type, is_readonly=True)
+        return SpanType(ReadonlyType(self.element_type))
 
     def as_mutable(self) -> 'SpanType':
         """Return a mutable (Span) version of this span."""
         if not self.is_readonly:
             return self
-        return SpanType(self.element_type, is_readonly=False)
+        return SpanType(self.inner_element_type)
 
 
 class SpanIterType(NamedType):
-    """Iterator over a contiguous span: SpanIter[T] -> tpy::SpanIter<T>"""
+    """Iterator over a contiguous span.
+
+    SpanIter[T] -> tpy::SpanIter<T> (mutable elements T&)
+    SpanIter[readonly[T]] -> tpy::SpanIter<const T> (const elements)
+
+    Const-ness follows the same pattern as SpanType: ReadonlyType in the
+    element encodes the const variant. SpanIter<T> holds span<T> internally.
+    """
 
     def __init__(self, element_type: TpyType):
         NamedType.__init__(self, name="SpanIter", type_args=(element_type,),
@@ -1561,7 +1665,18 @@ class SpanIterType(NamedType):
     def element_type(self) -> TpyType:
         return self.type_args[0]
 
+    @property
+    def is_readonly(self) -> bool:
+        return isinstance(self.element_type, ReadonlyType)
+
+    @property
+    def inner_element_type(self) -> TpyType:
+        """Unwrapped element type (strips ReadonlyType if present)."""
+        return unwrap_readonly(self.element_type)
+
     def to_cpp(self) -> str:
+        if self.is_readonly:
+            return f"tpy::SpanIter<const {self.inner_element_type.to_cpp()}>"
         return f"tpy::SpanIter<{self.element_type.to_cpp()}>"
 
     def __str__(self) -> str:
@@ -1580,7 +1695,7 @@ class SpanIterType(NamedType):
         return False
 
     def get_element_type(self) -> Optional[TpyType]:
-        return self.element_type
+        return self.inner_element_type
 
     def inner_types(self) -> tuple['TpyType', ...]:
         return (self.element_type,)

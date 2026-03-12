@@ -1,7 +1,7 @@
 # Box[T] -- heap-allocated owning container.
 from __future__ import annotations
 from typing import Self
-from tpy import Own, Ptr, UInt64, Deref, Covariant, Equatable, Comparable, Hashable, readonly
+from tpy import Own, Ptr, UInt64, Deref, Covariant, Equatable, Comparable, Hashable, readonly, readonly_propagate
 from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop, unsafe_move_out
 
 class Box[T](Deref[T], Covariant[T]):
@@ -18,8 +18,8 @@ class Box[T](Deref[T], Covariant[T]):
     def __deref__(self) -> T:
         return self.get()
 
-    @readonly
-    def get(self) -> T:
+    @readonly_propagate
+    def get(self) -> readonly_propagate[T]:
         return self._ptr
 
     def set(self, value: Own[T]) -> None:

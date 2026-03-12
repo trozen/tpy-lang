@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 
-// 20: def main() -> None:
+// 21: def main() -> None:
 void main() {
-    // 21:     # span() on user type through protocol param
-    // 22:     buf = Buffer()
+    // 22:     # span() on user type through protocol param
+    // 23:     buf = Buffer()
     Buffer buf = Buffer();
-    // 23:     print(span_len(buf))
+    // 24:     print(span_len(buf))
     std::cout << span_len(buf) << "\n";
-    // 24:     print(span_sum(buf))
+    // 25:     print(span_sum(buf))
     std::cout << span_sum(buf) << "\n";
-    // 26:     # span() on builtin types
-    // 27:     items: list[Int32] = [1, 2, 3, 4]
+    // 27:     # span() on builtin types
+    // 28:     items: list[Int32] = [1, 2, 3, 4]
     std::vector<int32_t> items = {1, 2, 3, 4};
-    // 28:     print(len(span(items)))
+    // 29:     print(len(span(items)))
     std::cout << tpy::__len__(tpy::as_span(items)) << "\n";
-    // 30:     arr: Array[Int32, 3] = [5, 6, 7]
+    // 31:     arr: Array[Int32, 3] = [5, 6, 7]
     std::array<int32_t, 3> arr = {5, 6, 7};
-    // 31:     print(len(span(arr)))
+    // 32:     print(len(span(arr)))
     std::cout << tpy::__len__(tpy::as_span(arr)) << "\n";
 }
 
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 33: main()
+    // 34: main()
     main();
 }
 

@@ -12,7 +12,7 @@ from ..typesys import (
     UnionType,
     BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
     Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, is_any_str_type, SpanType,
-    SpanIterType, resolve_int_literals, CONST_PARAMS_METHODS,
+    resolve_int_literals, CONST_PARAMS_METHODS,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import (
@@ -547,7 +547,11 @@ class FunctionGenerator:
             if isinstance(impl_ptype, UnionType) and not isinstance(stub_ptype, UnionType):
                 overload_types[stub_pname] = stub_ptype
 
-        # Create a synthetic TpyFunction with stub's types but impl's body
+        # Create a synthetic TpyFunction with stub's types but impl's body.
+        # Method const-ness (is_readonly) comes from the stub, since the stub's
+        # decorators (@readonly, @readonly_propagate) define the overload's const contract.
+        # With parser cloning, @readonly_propagate stubs are already split into separate
+        # mutable/const clones before codegen runs.
         synth = TpyFunction(
             name=stub.name,
             params=list(stub.params),
@@ -555,8 +559,8 @@ class FunctionGenerator:
             body=impl.body,
             is_method=impl.is_method,
             is_staticmethod=impl.is_staticmethod,
-            is_readonly=impl.is_readonly,
-            readonly_opt_out=impl.readonly_opt_out,
+            is_readonly=stub.is_readonly,
+            readonly_opt_out=stub.readonly_opt_out,
             is_pure=impl.is_pure,
             is_consuming=impl.is_consuming,
             type_params=list(impl.type_params),
@@ -623,52 +627,13 @@ class FunctionGenerator:
         if dynamic_overrides and method.name in dynamic_overrides:
             override_const = dynamic_overrides[method.name]
 
-        if (method.name == "__span__" and not is_static
-              and isinstance(cpp_return_type, SpanType) and not method.readonly_opt_out):
-            if cpp_return_type.is_readonly:
-                # __span__() -> ReadOnlySpan[T]: single const overload.
-                self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=True,
-                                          record_type_param_bounds=record_type_param_bounds)
-            else:
-                # __span__() -> Span[T]: dual overload (non-const + const).
-                # Non-const returns Span[T] (user body), const returns ReadOnlySpan[T].
-                # The const overload re-generates the body with force_readonly_span
-                # so that coercions (e.g. list -> span) pick as_span instead of as_mut_span.
-                self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,
-                                          record_type_param_bounds=record_type_param_bounds)
-                self.ctx.force_readonly_span = True
-                try:
-                    self._gen_method_overload(out, method, record_name, cpp_name,
-                                              cpp_return_type.as_const(), const=True,
-                                              record_type_param_bounds=record_type_param_bounds)
-                finally:
-                    self.ctx.force_readonly_span = False
-        elif (method.name == "__iter__" and not is_static
-              and isinstance(cpp_return_type, SpanIterType)):
-            # __iter__() -> SpanIter[T]: dual overload (non-const + const).
-            # Same return type for both (SpanIter wraps std::span<const T>).
-            # The const overload uses force_readonly_span so internal __span__()
-            # calls dispatch to the const overload.
-            self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,
-                                      record_type_param_bounds=record_type_param_bounds)
-            self.ctx.force_readonly_span = True
-            try:
-                self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=True,
-                                          record_type_param_bounds=record_type_param_bounds)
-            finally:
-                self.ctx.force_readonly_span = False
-        elif is_const and not is_static:
-            # Readonly method: const overload always.
-            # Dual overload (+ non-const) only when the return could be a
-            # reference -- value-type returns are copies so const alone suffices.
-            is_override = override_const is True  # base is const -> const overload overrides
+        if is_const and not is_static:
+            # @readonly: single const overload. C++ allows calling const methods
+            # on non-const objects, so no non-const duplicate needed.
+            is_override = override_const is True
             self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type,
                                       const=True, override=is_override,
                                       record_type_param_bounds=record_type_param_bounds)
-            needs_dual = not cpp_return_type.is_value_type() or isinstance(cpp_return_type, TypeParamRef)
-            if needs_dual:
-                self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,
-                                          record_type_param_bounds=record_type_param_bounds)
         else:
             is_override = override_const is False and not is_static  # base is non-const
             self._gen_method_overload(out, method, record_name, cpp_name, cpp_return_type, const=False,

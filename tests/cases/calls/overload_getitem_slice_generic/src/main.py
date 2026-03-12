@@ -1,7 +1,7 @@
 # Generic record with @overload __getitem__ for both index and slice.
 # Tests type parameter substitution in slice return type.
 from typing import overload
-from tpy import Int32, ReadOnlySpan
+from tpy import Int32, ReadOnlySpan, readonly_propagate
 
 class Container[T]:
     _data: list[T]
@@ -13,6 +13,7 @@ class Container[T]:
         self._data.append(item)
 
     @overload
+    @readonly_propagate
     def __getitem__(self, index: Int32) -> T: ...  # tpyc: ok
 
     @overload

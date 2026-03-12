@@ -1,6 +1,6 @@
-# Test that __iter__() -> SpanIter[T] generates dual overloads (const + non-const),
-# allowing iteration from both mutable and const contexts (e.g. __repr__).
-from tpy import Int32, Span, SpanIter, readonly
+# Test that __iter__() -> SpanIter[T] with @readonly_propagate allows iteration from
+# both mutable and const contexts. Mutable __iter__ yields SpanIter<T>, const yields SpanIter<const T>.
+from tpy import Int32, Span, SpanIter, readonly, readonly_propagate
 
 class Stack:
     _data: list[Int32]
@@ -11,10 +11,12 @@ class Stack:
     def push(self, val: Int32) -> None:
         self._data.append(val)
 
-    def __span__(self) -> Span[Int32]:
+    @readonly_propagate
+    def __span__(self) -> Span[readonly_propagate[Int32]]:
         return self._data
 
-    def __iter__(self) -> SpanIter[Int32]:
+    @readonly_propagate
+    def __iter__(self) -> SpanIter[readonly_propagate[Int32]]:
         return SpanIter(self.__span__())
 
     @readonly

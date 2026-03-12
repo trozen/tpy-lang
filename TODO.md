@@ -18,6 +18,7 @@
 - **[LOW]** Nested `dict[K, dict[...]]` printing fails: `DictPrinter` has no `operator<<` for `ordered_map` as a value type, so printing a dict whose values are themselves dicts fails at C++ build time. Fix: add recursive printing support in `dict_ops.hpp`/`printing.hpp`.
 
 ### Safety (latent UB, no diagnostic emitted)
+- **[HIGH]** Generic method returning `T` copies instead of binding a reference: `p = box.get()` where `get(self) -> T` generates `Point p = box.get()` (copy) instead of `Point& p = box.get()` (reference). For non-value types `val_or_ref_t<T>` = `T&`, so the method returns a reference but the caller discards it by copying. `p.mutate()` silently fails to affect the original -- wrong Python semantics. Same class of problem as the subscript case below; fix requires both generating `T&` variable declarations for non-value returns and extending borrow tracking to cover them.
 - **[HIGH]** Iterator invalidation via container subscript: `p = items[0]` generates `T& p = tpy::__getitem__(items, 0)` -- a reference into the vector's storage. Any subsequent mutation of `items` that causes reallocation (e.g. `items.append(...)`) silently invalidates `p`, causing UB with no warning. This is the same class of problem as `Span` borrow tracking -- `__getitem__` on a container is an implicit borrow of the container and should be treated as one. Fix falls under extending borrow tracking (see Safety section above) to cover container subscript references, not just explicit `Span`/`Ptr` view types.
 
 ### Quality / optimization (correct output, but suboptimal codegen)
@@ -61,9 +62,6 @@
 
 ## Hard Problems
 (see FEATURE_ROADMAP.md for tracked hard problems)
-
-## Readonly return type propagation
-- `__getitem__(slice)` on ArrayList currently returns `ReadOnlySpan[T]` because `__getitem__` is implicitly readonly and sema analyzes the body in readonly context. It should return `Span[T]` when called on a mutable reference, `ReadOnlySpan[T]` on a readonly reference. Requires sema to understand that `Span[T]` return in a readonly method means "const yields ReadOnlySpan, non-const yields Span" and codegen to generate dual overloads with different return types (similar to how `__span__` already works at the C++ level).
 
 ## Python features
 - Any

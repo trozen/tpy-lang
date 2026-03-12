@@ -581,9 +581,10 @@ def extract_type_params(tpy_type: "TpyType") -> dict[str, "TpyType"]:
     if isinstance(tpy_type, (DictType, DictKeysViewType, DictValuesViewType, DictItemsViewType)):
         return {"K": tpy_type.key_type, "V": tpy_type.value_type}
     # Pointer types store their type param as pointee (not via get_element_type,
-    # since pointers are not containers)
+    # since pointers are not containers). Use inner_pointee so that ReadOnlyPtr[T]
+    # returns {"T": T_element} not {"T": readonly[T_element]}.
     if isinstance(tpy_type, PtrType):
-        return {"T": tpy_type.pointee}
+        return {"T": tpy_type.inner_pointee}
     if (elem_type := tpy_type.get_element_type()) is not None:
         return {"T": elem_type}
     return {}
@@ -945,7 +946,9 @@ def _find_span_method_return_type(
         if isinstance(ret, TypeParamRef) and ret.name in type_subst:
             ret = type_subst[ret.name]
         if isinstance(ret, SpanType):
-            elem = ret.element_type
+            # Use inner_element_type (unwrapped) for TypeParamRef resolution,
+            # then reconstruct with the original is_readonly.
+            elem = ret.inner_element_type
             if isinstance(elem, TypeParamRef) and elem.name in type_subst:
                 elem = type_subst[elem.name]
             return SpanType(elem, is_readonly=ret.is_readonly)

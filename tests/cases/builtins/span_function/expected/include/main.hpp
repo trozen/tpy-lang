@@ -23,15 +23,17 @@ struct Buffer {
     // 6:     def __init__(self) -> None:
     Buffer() : _data({10, 20, 30}) {}
 
-    // 8:     def __span__(self) -> Span[Int32]:
+    //     @readonly_propagate
+    // 9:     def __span__(self) -> Span[readonly_propagate[Int32]]:
     std::span<int32_t> __span__() {
-        // 9:         return self._data
+        // 10:         return self._data
         return tpy::as_mut_span(this->_data);
     }
 
-    // 8:     def __span__(self) -> Span[Int32]:
+    //     @readonly_propagate
+    // 9:     def __span__(self) -> Span[readonly_propagate[Int32]]:
     std::span<const int32_t> __span__() const {
-        // 9:         return self._data
+        // 10:         return self._data
         return tpy::as_span(this->_data);
     }
 };
@@ -43,27 +45,27 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
     return os;
 }
 
-// 11: def span_len(x: ReadOnlySpanLike[Int32]) -> Int32:
+// 12: def span_len(x: ReadOnlySpanLike[Int32]) -> Int32:
 template<tpy::ReadOnlySpanLike<int32_t> T_x>
 int32_t span_len(const T_x& x) {
-    // 12:     return len(span(x))
+    // 13:     return len(span(x))
     return tpy::__len__(tpy::as_span(x));
 }
-// 14: def span_sum(x: ReadOnlySpanLike[Int32]) -> Int32:
+// 15: def span_sum(x: ReadOnlySpanLike[Int32]) -> Int32:
 template<tpy::ReadOnlySpanLike<int32_t> T_x>
 int32_t span_sum(const T_x& x) {
-    // 15:     total: Int32 = 0
+    // 16:     total: Int32 = 0
     int32_t total = 0;
-    // 16:     for v in span(x):
+    // 17:     for v in span(x):
     auto __obj_0 = tpy::as_span(x);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        // 17:         total += v
+        // 18:         total += v
         total = tpy::add_check<int32_t>(total, v);
     }
-    // 18:     return total
+    // 19:     return total
     return total;
 }
 

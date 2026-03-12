@@ -28,13 +28,6 @@ struct Container {
     }
 
     //     @readonly
-    // 12:     def items(self) -> list[Int32]:
-    std::vector<int32_t>& items() {
-        // 13:         return self._items
-        return this->_items;
-    }
-
-    //     @readonly
     // 16:     def count(self) -> Int32:
     int32_t count() const {
         // 17:         return Int32(len(self._items))

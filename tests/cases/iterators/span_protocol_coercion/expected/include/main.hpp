@@ -43,15 +43,17 @@ struct MutBuffer {
     // 17:     def __init__(self) -> None:
     MutBuffer() : _data({10, 20, 30}) {}
 
-    // 20:     def __span__(self) -> Span[Int32]:
+    //     @readonly_propagate
+    // 21:     def __span__(self) -> Span[readonly_propagate[Int32]]:
     std::span<int32_t> __span__() {
-        // 21:         return self._data
+        // 22:         return self._data
         return tpy::as_mut_span(this->_data);
     }
 
-    // 20:     def __span__(self) -> Span[Int32]:
+    //     @readonly_propagate
+    // 21:     def __span__(self) -> Span[readonly_propagate[Int32]]:
     std::span<const int32_t> __span__() const {
-        // 21:         return self._data
+        // 22:         return self._data
         return tpy::as_span(this->_data);
     }
 };

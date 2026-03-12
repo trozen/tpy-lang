@@ -27,34 +27,36 @@ struct Container {
     }
 
     //     @overload
-    // 16:     def __getitem__(self, index: Int32) -> T: ...  # tpyc: ok
-    tpy::val_or_cref_t<T> __getitem__(int32_t index) const {
-        // 22:         if isinstance(index, slice):
-        // 29:             return self._data[index]
-        return tpy::__getitem__(this->_data, index);
-    }
-
-    //     @overload
-    // 16:     def __getitem__(self, index: Int32) -> T: ...  # tpyc: ok
+    //     @readonly_propagate
+    // 17:     def __getitem__(self, index: Int32) -> T: ...  # tpyc: ok
     tpy::val_or_ref_t<T> __getitem__(int32_t index) {
-        // 22:         if isinstance(index, slice):
-        // 29:             return self._data[index]
+        // 23:         if isinstance(index, slice):
+        // 30:             return self._data[index]
         return tpy::__getitem__(this->_data, index);
     }
 
     //     @overload
-    // 19:     def __getitem__(self, index: slice) -> ReadOnlySpan[T]: ...  # tpyc: ok
+    //     @readonly_propagate
+    // 17:     def __getitem__(self, index: Int32) -> T: ...  # tpyc: ok
+    tpy::val_or_cref_t<T> __getitem__(int32_t index) const {
+        // 23:         if isinstance(index, slice):
+        // 30:             return self._data[index]
+        return tpy::__getitem__(this->_data, index);
+    }
+
+    //     @overload
+    // 20:     def __getitem__(self, index: slice) -> ReadOnlySpan[T]: ...  # tpyc: ok
     std::span<const T> __getitem__(tpy::Slice index) const {
-        // 22:         if isinstance(index, slice):
-        // 23:             s_start = index.start
+        // 23:         if isinstance(index, slice):
+        // 24:             s_start = index.start
         std::optional<int32_t> s_start = index.start;
-        // 24:             s_stop = index.stop
+        // 25:             s_stop = index.stop
         std::optional<int32_t> s_stop = index.stop;
-        // 25:             start: Int32 = s_start if s_start is not None else Int32(0)
+        // 26:             start: Int32 = s_start if s_start is not None else Int32(0)
         int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
-        // 26:             stop: Int32 = s_stop if s_stop is not None else Int32(len(self._data))
+        // 27:             stop: Int32 = s_stop if s_stop is not None else Int32(len(self._data))
         int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (tpy::__len__(this->_data)));
-        // 27:             return self._data[start:stop]
+        // 28:             return self._data[start:stop]
         return tpy::list_slice(this->_data, start, stop);
     }
 

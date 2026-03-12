@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import Int32, readonly_propagate
 
 class Point:
     x: Int32
@@ -17,6 +17,7 @@ class PointList:
     def __len__(self) -> Int32:
         return len(self.data)
 
+    @readonly_propagate
     def __getitem__(self, index: Int32) -> Point:
         return self.data[index]
 

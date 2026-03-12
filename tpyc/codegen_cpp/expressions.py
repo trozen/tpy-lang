@@ -13,7 +13,7 @@ from ..typesys import (
     NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, DictType, SetType,
     DictKeysViewType, DictValuesViewType, DictItemsViewType,
     PendingListType, ListRepeatType,
-    SpanType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
+    SpanType, SpanIterType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     EnumType, IntEnumType, TupleType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, container_to_str_template,
     ResolvedBinop, get_covariant_params,
@@ -2610,7 +2610,7 @@ class ExpressionGenerator:
                 if self.ctx.is_indirect_name(expr):
                     gen_inner = f"(*{gen_inner})"
                 return f"{gen_inner}.__span__()"
-        helper = "tpy::as_span" if (span_type.is_readonly or self.ctx.force_readonly_span) else "tpy::as_mut_span"
+        helper = "tpy::as_span" if span_type.is_readonly else "tpy::as_mut_span"
         if isinstance(expr, TpyArrayLiteral):
             expected_array_type = ArrayType(span_type.element_type, len(expr.elements))
             array_expr = f"{expected_array_type.to_cpp()}{gen_inner}"

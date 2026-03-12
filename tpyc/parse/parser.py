@@ -7,10 +7,13 @@ Validates that only allowed constructs are used.
 
 from __future__ import annotations
 import ast
+import copy
+import dataclasses
 from typing import NoReturn, Optional
 
 from ..typesys import (
-    TpyType, NamedType, PtrType, OwnType, ReadonlyType, FinalType, SelfType,
+    TpyType, NamedType, PtrType, OwnType, ReadonlyType, ReadonlyPropagateType, FinalType, SelfType,
+    strip_propagate, apply_propagate,
     TypeParamRef, OptionalType, VoidType, make_union, EnumType, TupleType,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BOOL, FLOAT, FLOAT32, BIGINT, SELF, SLICE, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo, TypeParamKind,
@@ -819,7 +822,11 @@ class Parser:
                 default_val = self._get_default_value(item.value)
                 fields.append(FieldInfo(field_name, field_type, default_val, loc=self._loc(item)))
             elif isinstance(item, ast.FunctionDef):
-                methods.append(self._parse_method(item, node.name, type_param_scope))
+                parsed = self._parse_method(item, node.name, type_param_scope)
+                if parsed.readonly_propagate:
+                    methods.extend(self._clone_readonly_propagate(parsed))
+                else:
+                    methods.append(parsed)
             elif isinstance(item, ast.Pass):
                 pass
             elif isinstance(item, ast.Expr) and isinstance(item.value, ast.Constant) and item.value.value is ...:
@@ -1159,6 +1166,8 @@ class Parser:
         is_pure = False
         is_override = False
         is_overload_stub = False
+        readonly_propagate = False
+        readonly_propagate_dec = None
         method_linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
         for dec in node.decorator_list:
@@ -1179,6 +1188,11 @@ class Parser:
                 is_overload_stub = True
             elif qname == "tpy.readonly":
                 is_readonly, readonly_opt_out = self._parse_readonly_arg(arg, dec)
+            elif qname == "tpy.readonly_propagate":
+                if arg is not None:
+                    raise ParseError("@readonly_propagate does not take arguments", dec)
+                readonly_propagate = True
+                readonly_propagate_dec = dec
             elif qname in self._METHOD_LINKAGE_MAP:
                 method_linkage = self._METHOD_LINKAGE_MAP[qname]
                 if isinstance(arg, str):
@@ -1191,6 +1205,13 @@ class Parser:
                 raise ParseError(f"Unknown decorator '{dec_name}' on method '{node.name}'", dec)
         if is_override and is_staticmethod:
             raise ParseError(f"@override cannot be combined with @staticmethod on method '{node.name}'", node)
+        if readonly_propagate:
+            if is_readonly:
+                raise ParseError(f"@readonly_propagate cannot be combined with @readonly on method '{node.name}'", readonly_propagate_dec)
+            if is_staticmethod:
+                raise ParseError(f"@readonly_propagate cannot be combined with @staticmethod on method '{node.name}'", readonly_propagate_dec)
+            if node.name in ("__init__", "__del__"):
+                raise ParseError(f"@readonly_propagate is not valid on '{node.name}'", readonly_propagate_dec)
 
         # Extract method-level type parameters (e.g. def foo[T](self, x: T) -> T:)
         method_type_params: list[str] = []
@@ -1271,7 +1292,7 @@ class Parser:
         else:
             body = [self._parse_stmt(stmt) for stmt in node.body]
 
-        return TpyFunction(
+        method = TpyFunction(
             name=node.name,
             params=params,
             return_type=return_type,
@@ -1282,6 +1303,7 @@ class Parser:
             is_readonly=is_readonly,
             readonly_opt_out=readonly_opt_out,
             is_pure=is_pure,
+            readonly_propagate=readonly_propagate,
             is_override=is_override,
             is_overload_stub=is_overload_stub,
             is_stub=is_overload_stub_body if is_overload_stub else is_stub,
@@ -1292,6 +1314,38 @@ class Parser:
             defaults=defaults,
             loc=self._loc(node)
         )
+        return method
+
+    def _clone_readonly_propagate(self, method: TpyFunction) -> list[TpyFunction]:
+        """Expand a @readonly_propagate method into two ordinary overloads.
+
+        Returns [mutable_overload, const_overload].
+        - Mutable: is_readonly=False, readonly_propagate=False, return_type=strip_propagate(original)
+        - Const:   is_readonly=True,  readonly_propagate=False, return_type=apply_propagate(original)
+
+        readonly_propagate[T] nodes in the return type annotation specify where readonly is applied
+        in the const overload. Parts of the type without readonly_propagate[T] are unchanged.
+        For value types (copied on return) this is fine. For reference types (Span, Ptr, etc.)
+        the element type must be wrapped: Span[readonly_propagate[T]], Ptr[readonly_propagate[T]].
+        """
+        mutable_return = strip_propagate(method.return_type)
+        const_return = apply_propagate(method.return_type)
+        mutable = dataclasses.replace(
+            method,
+            return_type=mutable_return,
+            is_readonly=False,
+            readonly_propagate=False,
+            is_propagate_mutable_clone=True,
+        )
+        const = dataclasses.replace(
+            method,
+            return_type=const_return,
+            body=copy.deepcopy(method.body),
+            is_readonly=True,
+            readonly_propagate=False,
+            defaults=copy.deepcopy(method.defaults),
+        )
+        return [mutable, const]
 
     _FUNCTION_LINKAGE_MAP: dict[str, FunctionLinkage] = {
         "tpy.extern.native": FunctionLinkage.NATIVE,
@@ -1320,6 +1374,8 @@ class Parser:
                 is_pure = True
             elif qname == "tpy.readonly":
                 is_readonly, readonly_opt_out = self._parse_readonly_arg(arg, dec)
+            elif qname == "tpy.readonly_propagate":
+                raise ParseError("@readonly_propagate is only valid on methods, not free functions", dec)
             elif qname == "typing.overload":
                 if arg is not None:
                     raise ParseError("@overload does not take arguments", dec)
@@ -1502,6 +1558,9 @@ class Parser:
                     elif original == "readonly":
                         inner = self._parse_type_annotation(node.slice, type_param_scope)
                         return ReadonlyType(inner)
+                    elif original == "readonly_propagate":
+                        inner = self._parse_type_annotation(node.slice, type_param_scope)
+                        return ReadonlyPropagateType(inner)
                 elif module == "builtins":
                     if original == "tuple":
                         return self._parse_tuple_type(node, type_param_scope)

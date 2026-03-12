@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 
-// 23: def main() -> None:
+// 24: def main() -> None:
 void main() {
-    // 24:     p1: Point = Point(10, 20)
+    // 25:     p1: Point = Point(10, 20)
     Point p1 = Point(10, 20);
-    // 25:     p2: Point = Point(30, 40)
+    // 26:     p2: Point = Point(30, 40)
     Point p2 = Point(30, 40);
-    // 26:     pts: list[Point] = [p1, p2]
+    // 27:     pts: list[Point] = [p1, p2]
     std::vector<Point> pts = {p1, p2};
-    // 28:     plist: PointList = PointList(pts)
+    // 29:     plist: PointList = PointList(pts)
     PointList plist = PointList(pts);
-    // 30:     # Access via __getitem__ (returns const Point& in C++)
-    // 31:     print(plist[0].x)   # 10
+    // 31:     # Access via __getitem__ (returns const Point& in C++)
+    // 32:     print(plist[0].x)   # 10
     std::cout << plist[0].x << "\n";
-    // 32:     print(plist[1].y)   # 40
+    // 33:     print(plist[1].y)   # 40
     std::cout << plist[1].y << "\n";
-    // 34:     # Access via operator[] (also returns const Point&)
-    // 35:     print(plist[-1].x)  # 30
+    // 35:     # Access via operator[] (also returns const Point&)
+    // 36:     print(plist[-1].x)  # 30
     std::cout << plist[-1].x << "\n";
 }
 
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 37: main()
+    // 38: main()
     main();
 }
 

@@ -350,10 +350,7 @@ def init_module() -> BuiltinModule:
                 constructors=[
                     MethodDef(params=[ParamDef("source", SpanType(T))],
                               returns=VOID,
-                              cpp="tpy::SpanIter<{T}>(std::span<const {T}>({0}))"),
-                    MethodDef(params=[ParamDef("source", SpanType(T, is_readonly=True))],
-                              returns=VOID,
-                              cpp="tpy::SpanIter<{T}>({0})"),
+                              cpp="{cpp}({0})"),
                 ],
                 methods={
         "__next_opt__": [MethodDef(

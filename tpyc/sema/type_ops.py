@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, TypeParamRef, NamedType, PtrType, is_readonly_ptr, OwnType, ReadonlyType,
+    TpyType, TypeParamRef, NamedType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, ReadonlyPropagateType,
     ArrayType, SpanType, ListType, PendingListType, GenExprType, SelfType, OptionalType, UnionType,
     TupleType,
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
@@ -110,6 +110,10 @@ class TypeOperations:
             resolved_wrapped = self.resolve_type(typ.wrapped)
             if resolved_wrapped is not typ.wrapped:
                 return ReadonlyType(resolved_wrapped)
+        elif isinstance(typ, ReadonlyPropagateType):
+            resolved_wrapped = self.resolve_type(typ.wrapped)
+            if resolved_wrapped is not typ.wrapped:
+                return ReadonlyPropagateType(resolved_wrapped)
         elif isinstance(typ, UnionType):
             resolved_members = tuple(self.resolve_type(m) for m in typ.members)
             if any(new is not old for new, old in zip(resolved_members, typ.members)):
@@ -202,6 +206,8 @@ class TypeOperations:
             for member in typ.members:
                 self.validate_type(member, allow_type_param_ref, loc)
         elif isinstance(typ, ReadonlyType):
+            self.validate_type(typ.wrapped, allow_type_param_ref, loc)
+        elif isinstance(typ, ReadonlyPropagateType):
             self.validate_type(typ.wrapped, allow_type_param_ref, loc)
         elif isinstance(typ, PtrType):
             self.validate_type(typ.pointee, allow_type_param_ref, loc)
@@ -498,6 +504,17 @@ class TypeOperations:
         if isinstance(param_type, ArrayType):
             return self._match_array_with_inference(param_type, arg_type, inferred)
 
+        # SpanType: recurse on element types directly so that readonly propagates into T.
+        # Span[T] accepts both Span[X] (T=X) and ReadOnlySpan[X] (T=readonly[X]).
+        # This must come before the NamedType check because SpanType is a NamedType subclass,
+        # and _match_record_with_inference would reject "Span" vs "ReadOnlySpan" by name.
+        if isinstance(param_type, SpanType):
+            if isinstance(arg_type, SpanType):
+                return self.match_type_with_inference(
+                    param_type.element_type, arg_type.element_type, inferred
+                )
+            return False
+
         # NamedType (record) with type args (e.g., Box[T] nested)
         if isinstance(param_type, NamedType) and param_type.is_record and param_type.type_args:
             return self._match_record_with_inference(param_type, arg_type, inferred)
@@ -521,9 +538,12 @@ class TypeOperations:
                 param_type.inner, inner_arg, inferred
             )
 
-        # Own[T] wrapper -- unwrap and match T against arg (any type can be owned)
+        # Own[T] wrapper -- unwrap and match T against arg (any type can be owned).
+        # Also strip readonly: readonly[T] passed to Own[T] is an implicit copy.
         if isinstance(param_type, OwnType):
             inner_arg = arg_type.wrapped if isinstance(arg_type, OwnType) else arg_type
+            if isinstance(inner_arg, ReadonlyType):
+                inner_arg = inner_arg.wrapped
             return self.match_type_with_inference(
                 param_type.wrapped, inner_arg, inferred
             )

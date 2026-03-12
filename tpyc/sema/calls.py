@@ -186,10 +186,10 @@ def _method_def_to_function_info(m: MethodDef) -> FunctionInfo:
 
 
 def _has_type_param_ref(t: TpyType) -> bool:
-    """Check if a type contains an unresolved TypeParamRef (e.g. Span[T])."""
+    """Check if a type contains an unresolved TypeParamRef (e.g. Span[T], ReadOnlySpan[T])."""
     if isinstance(t, TypeParamRef):
         return True
-    return any(isinstance(a, TypeParamRef) for a in t.inner_types())
+    return any(_has_type_param_ref(a) for a in t.inner_types())
 
 
 def _has_type_param_ref_in_params(func: "FunctionInfo") -> bool:
@@ -1246,7 +1246,7 @@ class CallAnalyzer:
         Lvalue checking is handled generically by _validate_lvalue_params.
         """
         assert isinstance(expr.call_type, PtrType)
-        pointee = expr.call_type.pointee
+        pointee = expr.call_type.inner_pointee
         kind = "read-only pointer" if expr.call_type.is_readonly else "pointer"
 
         if len(expr.args) != 1:

@@ -44,15 +44,17 @@ struct Box {
     Box() = default;
     explicit Box(const T& value) : _value(value) {}
 
-    // 14:     def __deref__(self) -> T:
-    tpy::val_or_cref_t<T> __deref__() const {
-        // 15:         return self._value
+    //     @readonly_propagate
+    // 15:     def __deref__(self) -> T:
+    tpy::val_or_ref_t<T> __deref__() {
+        // 16:         return self._value
         return this->_value;
     }
 
-    // 14:     def __deref__(self) -> T:
-    tpy::val_or_ref_t<T> __deref__() {
-        // 15:         return self._value
+    //     @readonly_propagate
+    // 15:     def __deref__(self) -> T:
+    tpy::val_or_cref_t<T> __deref__() const {
+        // 16:         return self._value
         return this->_value;
     }
 

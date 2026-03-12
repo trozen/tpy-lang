@@ -19,7 +19,7 @@ void main() {
     }
     // 10:     # Slice with both bounds
     // 11:     sp = a[1:4]
-    std::span<const int32_t> sp = a.__getitem__(tpy::Slice{1, 4});
+    std::span<int32_t> sp = a.__getitem__(tpy::Slice{1, 4});
     // 12:     for x in sp:
     auto& __obj_1 = sp;
     auto __beg_1 = __obj_1.begin();
@@ -31,7 +31,7 @@ void main() {
     }
     // 15:     # Slice with omitted start
     // 16:     sp2 = a[:2]
-    std::span<const int32_t> sp2 = a.__getitem__(tpy::Slice{std::nullopt, 2});
+    std::span<int32_t> sp2 = a.__getitem__(tpy::Slice{std::nullopt, 2});
     // 17:     for x in sp2:
     auto& __obj_2 = sp2;
     auto __beg_2 = __obj_2.begin();
@@ -43,7 +43,7 @@ void main() {
     }
     // 20:     # Slice with omitted stop
     // 21:     sp3 = a[3:]
-    std::span<const int32_t> sp3 = a.__getitem__(tpy::Slice{3, std::nullopt});
+    std::span<int32_t> sp3 = a.__getitem__(tpy::Slice{3, std::nullopt});
     // 22:     for x in sp3:
     auto& __obj_3 = sp3;
     auto __beg_3 = __obj_3.begin();
@@ -55,7 +55,7 @@ void main() {
     }
     // 25:     # Full slice
     // 26:     sp4 = a[:]
-    std::span<const int32_t> sp4 = a.__getitem__(tpy::Slice{std::nullopt, std::nullopt});
+    std::span<int32_t> sp4 = a.__getitem__(tpy::Slice{std::nullopt, std::nullopt});
     // 27:     for x in sp4:
     auto& __obj_4 = sp4;
     auto __beg_4 = __obj_4.begin();
@@ -67,7 +67,7 @@ void main() {
     }
     // 30:     # Negative indices
     // 31:     sp5 = a[-2:]
-    std::span<const int32_t> sp5 = a.__getitem__(tpy::Slice{-2, std::nullopt});
+    std::span<int32_t> sp5 = a.__getitem__(tpy::Slice{-2, std::nullopt});
     // 32:     for x in sp5:
     auto& __obj_5 = sp5;
     auto __beg_5 = __obj_5.begin();
@@ -78,7 +78,7 @@ void main() {
         std::cout << x << "\n";
     }
     // 35:     sp6 = a[:-1]
-    std::span<const int32_t> sp6 = a.__getitem__(tpy::Slice{std::nullopt, -1});
+    std::span<int32_t> sp6 = a.__getitem__(tpy::Slice{std::nullopt, -1});
     // 36:     for x in sp6:
     auto& __obj_6 = sp6;
     auto __beg_6 = __obj_6.begin();
@@ -90,7 +90,7 @@ void main() {
     }
     // 39:     # Empty result (start >= stop)
     // 40:     sp7 = a[3:1]
-    std::span<const int32_t> sp7 = a.__getitem__(tpy::Slice{3, 1});
+    std::span<int32_t> sp7 = a.__getitem__(tpy::Slice{3, 1});
     // 41:     print(len(sp7))
     std::cout << tpy::__len__(sp7) << "\n";
     // 43:     # Index access still works

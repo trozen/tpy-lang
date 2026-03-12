@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import re
 
 from ..typesys import (
-    TpyType, NamedType, TypeParamRef, SelfType, OwnType,
+    TpyType, NamedType, TypeParamRef, SelfType, OwnType, ReadonlyType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, is_protocol_type,
     FixedIntType, BigIntType, FloatType, Float32Type, BoolType, StrType, StringType, StrViewType, CharType,
     ListType, ListRepeatType, GenExprType, DictType, SetType, ArrayType, TupleType, SpanType, OptionalType, IntLiteralType, PendingListType, BIGINT,
@@ -429,7 +429,13 @@ class ProtocolChecker:
         """
         if actual == expected:
             return True
-        unwrapped = actual.wrapped if isinstance(actual, OwnType) else actual
+        # Unwrap ownership/const wrappers: Own[T] and readonly[T] both satisfy protocol -> T.
+        # Const return types (readonly[T]) arise from the const clone of @readonly_propagate
+        # methods; the caller can read or copy the result, satisfying the protocol contract.
+        if isinstance(actual, (OwnType, ReadonlyType)):
+            unwrapped = actual.wrapped
+        else:
+            unwrapped = actual
         if unwrapped != actual and unwrapped == expected:
             return True
         if is_protocol_safe_coercion(actual, expected):

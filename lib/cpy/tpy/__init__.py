@@ -208,14 +208,14 @@ class _PtrMeta(type):
 class Ptr(metaclass=_PtrMeta):
     """Ptr[T] type - creates mutable pointer."""
 
-    def __new__(cls, obj):
+    def __new__(cls, obj=None):
         return _Ptr(obj)
 
 
 class ReadOnlyPtr(metaclass=_PtrMeta):
     """ReadOnlyPtr[T] type - creates read-only pointer."""
 
-    def __new__(cls, obj):
+    def __new__(cls, obj=None):
         return _ConstPtr(obj)
 
 
@@ -501,6 +501,20 @@ class readonly:
 def pure(func):
     """No-op in CPython. The compiler tracks purity metadata at compile time."""
     return func
+
+
+class readonly_propagate:
+    """Decorator and type modifier for @readonly_propagate methods.
+
+    Supports @readonly_propagate decorator and readonly_propagate[T] subscript syntax.
+    In CPython, both forms are no-ops: the decorator returns the function unchanged
+    and the subscript returns the type argument unchanged.
+    """
+    def __class_getitem__(cls, item):
+        return item
+
+    def __new__(cls, func):
+        return func
 
 
 # ---------------------------------------------------------------------------

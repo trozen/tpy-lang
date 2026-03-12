@@ -1,0 +1,1 @@
+main.py:27: warning: Method 'Child.items' overrides 'Base.items' but the override is non-polymorphic. 'Base'-typed references will call 'Base.items', not 'Child.items'. Use a @dynamic protocol for runtime dispatch.

@@ -53,15 +53,17 @@ struct BoxContainer {
     // 24:     def __init__(self) -> None:
     BoxContainer() : items({IntBox(10), IntBox(20), IntBox(30)}) {}
 
-    // 26:     def __getitem__(self, i: Int32) -> IntBox:
-    const IntBox& __getitem__(int32_t i) const {
-        // 27:         return self.items[i]
+    //     @readonly_propagate
+    // 27:     def __getitem__(self, i: Int32) -> IntBox:
+    IntBox& __getitem__(int32_t i) {
+        // 28:         return self.items[i]
         return tpy::__getitem__(this->items, i);
     }
 
-    // 26:     def __getitem__(self, i: Int32) -> IntBox:
-    IntBox& __getitem__(int32_t i) {
-        // 27:         return self.items[i]
+    //     @readonly_propagate
+    // 27:     def __getitem__(self, i: Int32) -> IntBox:
+    const IntBox& __getitem__(int32_t i) const {
+        // 28:         return self.items[i]
         return tpy::__getitem__(this->items, i);
     }
 
@@ -81,10 +83,10 @@ inline std::ostream& operator<<(std::ostream& os, const BoxContainer& obj) {
     return os;
 }
 
-// 29: def show(h: HasValue) -> None:
+// 30: def show(h: HasValue) -> None:
 template<HasValue T_h>
 void show(T_h& h) {
-    // 30:     print(h.get())
+    // 31:     print(h.get())
     std::cout << h.get() << "\n";
 }
 

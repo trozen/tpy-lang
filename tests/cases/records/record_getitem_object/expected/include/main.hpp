@@ -48,15 +48,17 @@ struct PointList {
         return tpy::__len__(this->data);
     }
 
-    // 20:     def __getitem__(self, index: Int32) -> Point:
-    const Point& __getitem__(int32_t index) const {
-        // 21:         return self.data[index]
+    //     @readonly_propagate
+    // 21:     def __getitem__(self, index: Int32) -> Point:
+    Point& __getitem__(int32_t index) {
+        // 22:         return self.data[index]
         return tpy::__getitem__(this->data, index);
     }
 
-    // 20:     def __getitem__(self, index: Int32) -> Point:
-    Point& __getitem__(int32_t index) {
-        // 21:         return self.data[index]
+    //     @readonly_propagate
+    // 21:     def __getitem__(self, index: Int32) -> Point:
+    const Point& __getitem__(int32_t index) const {
+        // 22:         return self.data[index]
         return tpy::__getitem__(this->data, index);
     }
 

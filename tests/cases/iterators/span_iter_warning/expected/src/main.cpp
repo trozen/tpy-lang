@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 25: def main() -> None:
+// 26: def main() -> None:
 void main() {
-    // 26:     d = Dual()
+    // 27:     d = Dual()
     Dual d = Dual();
-    // 27:     for x in d:
+    // 28:     for x in d:
     auto& __src_0 = d;
     auto __iter_0 = __src_0.__iter__();
     auto __obj_0 = tpy::iter_adapt(__iter_0);
@@ -16,7 +16,7 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 28:         print(x)
+        // 29:         print(x)
         std::cout << x << "\n";
     }
 }
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 30: main()
+    // 31: main()
     main();
 }
 

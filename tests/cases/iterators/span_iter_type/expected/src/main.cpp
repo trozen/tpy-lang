@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // 11: def sum_readonly(rs: ReadOnlySpan[Int32]) -> Int32:
 int32_t sum_readonly(std::span<const int32_t> rs) {
     // 12:     it = SpanIter(rs)
-    tpy::SpanIter<int32_t> it = tpy::SpanIter<int32_t>(rs);
+    tpy::SpanIter<const int32_t> it = tpy::SpanIter<const int32_t>(rs);
     // 13:     return sum_iterable(it)
     return sum_iterable(it);
 }
@@ -20,7 +20,7 @@ void main() {
     std::span<int32_t> s = tpy::as_mut_span(arr);
     // 19:     # Iterate SpanIter from mutable Span
     // 20:     it = SpanIter(s)
-    tpy::SpanIter<int32_t> it = tpy::SpanIter<int32_t>(std::span<const int32_t>(s));
+    tpy::SpanIter<int32_t> it = tpy::SpanIter<int32_t>(s);
     // 21:     for x in it:
     auto& __src_0 = it;
     auto __obj_0 = tpy::iter_adapt(__src_0);
@@ -36,7 +36,7 @@ void main() {
     std::cout << sum_readonly(s) << "\n";
     // 27:     # Pass SpanIter as Iterable[T]
     // 28:     it2 = SpanIter(s)
-    tpy::SpanIter<int32_t> it2 = tpy::SpanIter<int32_t>(std::span<const int32_t>(s));
+    tpy::SpanIter<int32_t> it2 = tpy::SpanIter<int32_t>(s);
     // 29:     print(sum_iterable(it2))
     std::cout << sum_iterable(it2) << "\n";
 }

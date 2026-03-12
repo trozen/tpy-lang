@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 19: def main() -> None:
+// 20: def main() -> None:
 void main() {
-    // 20:     # Narrowed Optional — flow analysis proves non-None
-    // 21:     r: Ref | None = Ref(Point(10, 20))
+    // 21:     # Narrowed Optional — flow analysis proves non-None
+    // 22:     r: Ref | None = Ref(Point(10, 20))
     Ref __slot_1 = Ref(Point(10, 20));
     Ref* r = &__slot_1;
-    // 22:     print(r.x)
+    // 23:     print(r.x)
     std::cout << r->__deref__().x << "\n";
-    // 23:     print(r.sum())
+    // 24:     print(r.sum())
     std::cout << r->__deref__().sum() << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 25: main()
+    // 26: main()
     main();
 }
 

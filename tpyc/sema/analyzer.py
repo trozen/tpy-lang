@@ -926,18 +926,15 @@ class SemanticAnalyzer:
                 continue
 
             self.ctx.reset_function_tracking()
-
             self.ctx.current_function = method
             # Resolve return type (sets is_protocol for cross-module imports)
             method.return_type = self.type_ops.resolve_type(method.return_type)
             self.ctx.current_scope = Scope(parent=self.ctx.global_scope)
 
-            # Add self/params to scope and namespace. @readonly wraps non-value types.
             local_ns = Namespace(parent=self.ctx.global_ns)
             if not method.is_staticmethod:
                 self_named = build_record_self_type(record)
-                self_type = self._normalize_param_type(
-                    self_named, method.is_readonly)
+                self_type = self._normalize_param_type(self_named, method.is_readonly)
                 self.ctx.current_scope.define("self", self_type)
                 self.ctx.var_scope_depth["self"] = self.ctx.current_scope.depth
                 self.ctx.definitely_assigned.add("self")

@@ -4,18 +4,18 @@
 namespace tpy_user::main {
 
 
-// 26: def main() -> None:
+// 28: def main() -> None:
 void main() {
-    // 27:     pt: Point = Point(10, 20)
+    // 29:     pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    // 28:     b: Box = Box(Ref(pt))
+    // 30:     b: Box = Box(Ref(pt))
     Box b = Box(Ref(pt));
-    // 29:     # Multi-hop deref chain: Box -> Ref -> Point
-    // 30:     print(b.x)
+    // 31:     # Multi-hop deref chain: Box -> Ref -> Point
+    // 32:     print(b.x)
     std::cout << b.__deref__().__deref__().x << "\n";
-    // 31:     print(b.y)
+    // 33:     print(b.y)
     std::cout << b.__deref__().__deref__().y << "\n";
-    // 32:     print(b.sum())
+    // 34:     print(b.sum())
     std::cout << b.__deref__().__deref__().sum() << "\n";
 }
 
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 34: main()
+    // 36: main()
     main();
 }
 

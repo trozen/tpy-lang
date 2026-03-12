@@ -5,6 +5,7 @@ Generates C++ structs from TurboPython records.
 """
 
 from __future__ import annotations
+from collections import defaultdict
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
@@ -28,7 +29,6 @@ if TYPE_CHECKING:
     from .expressions import ExpressionGenerator
     from .functions import FunctionGenerator
     from .protocols import ProtocolGenerator
-
 
 class RecordGenerator:
     """Generates C++ structs from TurboPython records."""
@@ -338,6 +338,10 @@ class RecordGenerator:
 
         # Generate methods (excluding __init__ and __del__)
         dynamic_overrides = self.functions._get_dynamic_override_info(record.name)
+        # Track names already dispatched via @overload so that the const clone of a
+        # @readonly_propagate @overload implementation is not emitted as a plain method.
+        # (The mutable clone emits specialized methods for all stubs including const ones.)
+        overload_dispatched: set[str] = set()
         for method in record.methods:
             if method.name in ("__init__", "__del__"):
                 continue
@@ -347,12 +351,16 @@ class RecordGenerator:
             # Check if this is an @overload implementation
             overload_stubs = self.ctx.analyzer.overload_groups.get(id(method))
             if overload_stubs:
+                overload_dispatched.add(method.name)
                 for stub in overload_stubs:
                     self.functions._gen_overload_specialized_method(
                         out, method, stub, record.name,
                         record_type_param_bounds=record.type_param_bounds or None,
                         dynamic_overrides=dynamic_overrides,
                     )
+            elif method.name in overload_dispatched:
+                # Const clone of a @readonly_propagate @overload impl -- already emitted above.
+                pass
             else:
                 self.functions.gen_method_def(out, method, record.name, dynamic_overrides,
                                                 record_type_param_bounds=record.type_param_bounds or None)
@@ -744,49 +752,105 @@ class RecordGenerator:
         the method itself. Writes go through tpy::__setitem__.
         For non-readonly __getitem__: non-const only (method mutates self).
         For @overload __getitem__: generate operator[] for each stub.
+        For @readonly_propagate __getitem__ clone pairs: const first, then mutable,
+        one per clone (no duplicate).
         """
-        # Find the __getitem__ implementation (not stubs)
-        getitem_impl = None
-        for method in record.methods:
-            if method.name == "__getitem__" and not method.is_overload_stub:
-                getitem_impl = method
-                break
+        # Gather all non-stub __getitem__ implementations.
+        # @readonly_propagate cloning produces two: one mutable, one const.
+        getitem_impls = [
+            m for m in record.methods
+            if m.name == "__getitem__" and not m.is_overload_stub
+        ]
 
-        if getitem_impl is None:
+        if not getitem_impls:
             return
 
-        # Check if this __getitem__ has @overload stubs
-        overload_stubs = self.ctx.analyzer.overload_groups.get(id(getitem_impl))
+        # Check if this __getitem__ has @overload stubs (use first impl for lookup)
+        overload_stubs = self.ctx.analyzer.overload_groups.get(id(getitem_impls[0]))
         if overload_stubs:
-            for stub in overload_stubs:
-                self._gen_single_subscript_operator(out, stub)
+            self._gen_overload_subscript_operators(out, overload_stubs)
+        elif len(getitem_impls) == 2:
+            # readonly_propagate clone pair: generate const first, then mutable.
+            # The const clone generates only the const operator (not the dual non-const),
+            # and the mutable clone generates only the mutable operator.
+            const_impl = next((m for m in getitem_impls if m.is_readonly), None)
+            mutable_impl = next((m for m in getitem_impls if not m.is_readonly), None)
+            if const_impl and mutable_impl:
+                self._gen_const_subscript_operator(out, const_impl)
+                self._gen_mutable_subscript_operator(out, mutable_impl)
+            else:
+                self._gen_single_subscript_operator(out, getitem_impls[0])
         else:
-            self._gen_single_subscript_operator(out, getitem_impl)
+            self._gen_single_subscript_operator(out, getitem_impls[0])
+
+    def _gen_overload_subscript_operators(self, out: TextIO, stubs: list) -> None:
+        """Generate operator[] for @overload __getitem__, handling readonly_propagate clone pairs.
+
+        Stubs may include mutable+const clone pairs (from @overload @readonly_propagate).
+        For each unique parameter type: if both mutable and const clones exist, generate
+        const first then mutable; otherwise delegate to _gen_single_subscript_operator.
+        """
+        # Group stubs by their first parameter type to detect clone pairs.
+        # Use param type string as key since TpyType equality works correctly.
+        by_param: dict[str, list] = defaultdict(list)
+        for stub in stubs:
+            if stub.params:
+                key = str(stub.params[0][1])
+                by_param[key].append(stub)
+            else:
+                self._gen_single_subscript_operator(out, stub)
+
+        for param_type_str, group in by_param.items():
+            if len(group) == 2:
+                const_stub = next((m for m in group if m.is_readonly), None)
+                mutable_stub = next((m for m in group if not m.is_readonly), None)
+                if const_stub and mutable_stub:
+                    # Clone pair: const operator first, then mutable
+                    self._gen_const_subscript_operator(out, const_stub)
+                    # Mutable only if return could be a reference
+                    needs_dual = (not mutable_stub.return_type.is_value_type()
+                                  or isinstance(mutable_stub.return_type, TypeParamRef))
+                    if needs_dual:
+                        self._gen_mutable_subscript_operator(out, mutable_stub)
+                    continue
+            # Single stub (no clone pair): use standard logic
+            for stub in group:
+                self._gen_single_subscript_operator(out, stub)
 
     def _gen_single_subscript_operator(self, out: TextIO, method: 'TpyFunction') -> None:
         """Generate a single operator[] overload delegating to __getitem__."""
         if not method.params:
             return
-        index_param_name, index_type = method.params[0]
-        index_cpp = index_type.to_cpp()
-
         if method.is_readonly:
-            ret_const = method.return_type.to_cpp_return_const()
-            out.write(f"\n{INDENT}{ret_const} operator[]({index_cpp} {index_param_name}) const {{\n")
-            out.write(f"{INDENT}{INDENT}return __getitem__({index_param_name});\n")
-            out.write(f"{INDENT}}}\n")
+            self._gen_const_subscript_operator(out, method)
             # Non-const overload only when return could be a reference
             needs_dual = not method.return_type.is_value_type() or isinstance(method.return_type, TypeParamRef)
             if needs_dual:
-                ret_mut = method.return_type.to_cpp_return()
-                out.write(f"\n{INDENT}{ret_mut} operator[]({index_cpp} {index_param_name}) {{\n")
-                out.write(f"{INDENT}{INDENT}return __getitem__({index_param_name});\n")
-                out.write(f"{INDENT}}}\n")
+                self._gen_mutable_subscript_operator(out, method)
         else:
-            ret_mut = method.return_type.to_cpp_return()
-            out.write(f"\n{INDENT}{ret_mut} operator[]({index_cpp} {index_param_name}) {{\n")
-            out.write(f"{INDENT}{INDENT}return __getitem__({index_param_name});\n")
-            out.write(f"{INDENT}}}\n")
+            self._gen_mutable_subscript_operator(out, method)
+
+    def _gen_const_subscript_operator(self, out: TextIO, method: 'TpyFunction') -> None:
+        """Generate a const operator[] overload (read-only subscript)."""
+        if not method.params:
+            return
+        index_param_name, index_type = method.params[0]
+        index_cpp = index_type.to_cpp()
+        ret_const = method.return_type.to_cpp_return_const()
+        out.write(f"\n{INDENT}{ret_const} operator[]({index_cpp} {index_param_name}) const {{\n")
+        out.write(f"{INDENT}{INDENT}return __getitem__({index_param_name});\n")
+        out.write(f"{INDENT}}}\n")
+
+    def _gen_mutable_subscript_operator(self, out: TextIO, method: 'TpyFunction') -> None:
+        """Generate a mutable (non-const) operator[] overload."""
+        if not method.params:
+            return
+        index_param_name, index_type = method.params[0]
+        index_cpp = index_type.to_cpp()
+        ret_mut = method.return_type.to_cpp_return()
+        out.write(f"\n{INDENT}{ret_mut} operator[]({index_cpp} {index_param_name}) {{\n")
+        out.write(f"{INDENT}{INDENT}return __getitem__({index_param_name});\n")
+        out.write(f"{INDENT}}}\n")
 
     def _gen_binary_operators(self, out: TextIO, record: TpyRecord) -> None:
         """Generate C++ operators from dunder methods (arithmetic and comparison).

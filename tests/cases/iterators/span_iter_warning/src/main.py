@@ -1,6 +1,6 @@
 # Test that types with both __span__ and __iter__ compile without warning.
 # __iter__ takes precedence for iteration in codegen.
-from tpy import Int32, Own, Span
+from tpy import Int32, Own, Span, readonly_propagate
 
 class MyIter:
     _val: Int32
@@ -17,7 +17,8 @@ class Dual:  # tpyc: ok
     _data: list[Int32]
     def __init__(self) -> None:
         self._data = [1, 2, 3]
-    def __span__(self) -> Span[Int32]:
+    @readonly_propagate
+    def __span__(self) -> Span[readonly_propagate[Int32]]:
         return self._data
     def __iter__(self) -> Own[MyIter]:
         return MyIter(Int32(3))

@@ -1,7 +1,7 @@
 # Test SpanIter-based __iter__() iteration for user types.
 # Covers mutable/readonly span access, @readonly parameters, and rvalue containers.
 from tpy import Int32, Span, ReadOnlySpan, SpanIter
-from tpy import readonly
+from tpy import readonly, readonly_propagate
 
 class MutBuffer:
     _data: list[Int32]
@@ -9,10 +9,12 @@ class MutBuffer:
     def __init__(self) -> None:
         self._data = [10, 20, 30]
 
-    def __span__(self) -> Span[Int32]:
+    @readonly_propagate
+    def __span__(self) -> Span[readonly_propagate[Int32]]:
         return self._data
 
-    def __iter__(self) -> SpanIter[Int32]:
+    @readonly_propagate
+    def __iter__(self) -> SpanIter[readonly_propagate[Int32]]:
         return SpanIter(self.__span__())
 
 class ROBuffer:
@@ -24,7 +26,8 @@ class ROBuffer:
     def __span__(self) -> ReadOnlySpan[Int32]:
         return self._data
 
-    def __iter__(self) -> SpanIter[Int32]:
+    @readonly
+    def __iter__(self) -> SpanIter[readonly[Int32]]:
         return SpanIter(self.__span__())
 
 def test_mut() -> None:

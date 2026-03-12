@@ -110,6 +110,11 @@ class BuiltinGenerator:
     ) -> str:
         """Apply a cpp template with argument and type parameter substitution."""
         result = template
+        # Substitute {cpp} with the result type's to_cpp() -- for constructors that need
+        # the fully-qualified type name (e.g. SpanIter<const T> vs SpanIter<T>).
+        # Must run before {0}/{T} substitutions so that to_cpp() output is not re-interpreted
+        # as a positional or type-param placeholder (C++ type names won't contain {0} etc. in practice).
+        result = result.replace("{cpp}", result_type.to_cpp())
         # Substitute positional arguments {0}, {1}, etc.
         for i, arg in enumerate(args):
             result = result.replace(f"{{{i}}}", arg)

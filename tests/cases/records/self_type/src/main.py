@@ -1,6 +1,6 @@
 # Self type in record methods: builder pattern, method chaining, generic classes, Optional[Self]
 from typing import Self, Optional
-from tpy import Int32, readonly
+from tpy import Int32, readonly, readonly_propagate
 
 class Builder:
     name: str
@@ -21,7 +21,7 @@ class Builder:
     def with_offset(self, other: Self) -> Int32:
         return self.value + other.value
 
-    @readonly
+    @readonly_propagate
     def find_match(self, target: Int32) -> Optional[Self]:
         if self.value == target:
             return self

@@ -1,4 +1,4 @@
-from tpy import Int32
+from tpy import Int32, readonly_propagate
 
 class Point:
     x: Int32
@@ -14,6 +14,7 @@ class Ref:
     def __init__(self, target: Point) -> None:
         self._target = target
 
+    @readonly_propagate
     def __deref__(self) -> Point:
         return self._target
 

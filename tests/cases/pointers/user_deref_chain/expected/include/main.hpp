@@ -49,15 +49,17 @@ struct Ref {
     Ref() = default;
     explicit Ref(const Point& target) : _target(target) {}
 
-    // 16:     def __deref__(self) -> Point:
-    const Point& __deref__() const {
-        // 17:         return self._target
+    //     @readonly_propagate
+    // 17:     def __deref__(self) -> Point:
+    Point& __deref__() {
+        // 18:         return self._target
         return this->_target;
     }
 
-    // 16:     def __deref__(self) -> Point:
-    Point& __deref__() {
-        // 17:         return self._target
+    //     @readonly_propagate
+    // 17:     def __deref__(self) -> Point:
+    const Point& __deref__() const {
+        // 18:         return self._target
         return this->_target;
     }
 
@@ -73,24 +75,26 @@ inline std::ostream& operator<<(std::ostream& os, const Ref& obj) {
     return os;
 }
 
-// 19: class Box:
+// 20: class Box:
 struct Box {
-    // 20:     _inner: Ref
+    // 21:     _inner: Ref
     Ref _inner;
 
-    // 21:     def __init__(self, inner: Ref) -> None:
+    // 22:     def __init__(self, inner: Ref) -> None:
     Box() = default;
     explicit Box(const Ref& inner) : _inner(inner) {}
 
-    // 23:     def __deref__(self) -> Ref:
-    const Ref& __deref__() const {
-        // 24:         return self._inner
+    //     @readonly_propagate
+    // 25:     def __deref__(self) -> Ref:
+    Ref& __deref__() {
+        // 26:         return self._inner
         return this->_inner;
     }
 
-    // 23:     def __deref__(self) -> Ref:
-    Ref& __deref__() {
-        // 24:         return self._inner
+    //     @readonly_propagate
+    // 25:     def __deref__(self) -> Ref:
+    const Ref& __deref__() const {
+        // 26:         return self._inner
         return this->_inner;
     }
 

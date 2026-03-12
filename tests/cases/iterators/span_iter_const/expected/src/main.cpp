@@ -4,32 +4,32 @@
 namespace tpy_user::main {
 
 
-// 38: def main() -> None:
+// 40: def main() -> None:
 void main() {
-    // 39:     s = Stack()
+    // 41:     s = Stack()
     Stack s = Stack();
-    // 40:     s.push(10)
+    // 42:     s.push(10)
     s.push(10);
-    // 41:     s.push(20)
+    // 43:     s.push(20)
     s.push(20);
-    // 42:     s.push(30)
+    // 44:     s.push(30)
     s.push(30);
-    // 44:     # Non-const iteration
-    // 45:     for x in s:
+    // 46:     # Non-const iteration
+    // 47:     for x in s:
     auto& __src_0 = s;
     auto __obj_0 = __src_0.__iter__();
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 46:         print(x)
+        // 48:         print(x)
         std::cout << x << "\n";
     }
-    // 48:     # Const iteration via __repr__
-    // 49:     print(repr(s))
+    // 50:     # Const iteration via __repr__
+    // 51:     print(repr(s))
     std::cout << std::string(tpy::__repr__(s)) << "\n";
-    // 51:     # Const iteration via readonly method
-    // 52:     print(s.sum())
+    // 53:     # Const iteration via readonly method
+    // 54:     print(s.sum())
     std::cout << s.sum() << "\n";
 }
 
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 54: main()
+    // 56: main()
     main();
 }
 

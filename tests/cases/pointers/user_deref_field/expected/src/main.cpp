@@ -4,16 +4,16 @@
 namespace tpy_user::main {
 
 
-// 17: def main() -> None:
+// 18: def main() -> None:
 void main() {
-    // 18:     pt: Point = Point(10, 20)
+    // 19:     pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    // 19:     r: Ref = Ref(pt)
+    // 20:     r: Ref = Ref(pt)
     Ref r = Ref(pt);
-    // 20:     # Field access through user-defined __deref__
-    // 21:     print(r.x)
+    // 21:     # Field access through user-defined __deref__
+    // 22:     print(r.x)
     std::cout << r.__deref__().x << "\n";
-    // 22:     print(r.y)
+    // 23:     print(r.y)
     std::cout << r.__deref__().y << "\n";
 }
 
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 24: main()
+    // 25: main()
     main();
 }
 

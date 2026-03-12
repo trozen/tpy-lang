@@ -6,6 +6,7 @@
 |-------|-------|--------|
 | **Phase 1** | `@readonly` decorator (function/method level), implicit readonly dunders, parameter-rooted mutation enforcement, local alias tracking, C++ const generation | Done |
 | **Phase 2** | `readonly[T]` type modifier, type-embedded enforcement, expression propagation, control-flow merging, dual const/non-const overloads | Done |
+| **Phase 3** | `@readonly_propagate` decorator: dual C++ overloads (non-const + const) for user-defined methods; const return type specified via explicit `readonly_propagate[T]` annotation on element types | Done |
 | **Future** | `@readonly` desugaring, protocol-level readonly contracts, automatic inference from method body, escape analysis for sound narrowing | Planned |
 
 ## Problem Statement
@@ -329,13 +330,103 @@ Allowed:
    enforcement only. Return-type constness comes from C++ method const
    qualification, not from an explicit `readonly[T]` return annotation.
 
+7. **Sema/codegen mismatch for dual overloads** -- sema analyzes each method
+   body once, but codegen may generate two C++ overloads (const + non-const)
+   from the same body. When a readonly method's body calls other methods whose
+   return types differ by constness (e.g. `self.__span__()` returning
+   `Span[T]` vs `ReadOnlySpan[T]`), sema can only see one variant's types.
+   This causes false type mismatches when the declared return type matches one
+   variant but not the other. `@readonly_propagate` (Phase 3) addresses this.
+
+## Phase 3 Implementation: `@readonly_propagate`
+
+### Approach: parser-level cloning
+
+`@readonly_propagate` is implemented by expanding each decorated method into
+two ordinary methods at parse time (`_clone_readonly_propagate` in `parser.py`):
+
+- **Mutable clone**: `is_readonly=False`, `is_propagate_mutable_clone=True`,
+  return type = `strip_propagate(original_return_type)`
+- **Const clone**: `is_readonly=True`, deep-copied body,
+  return type = `apply_propagate(original_return_type)`
+
+`strip_propagate` removes `readonly_propagate[T]` annotation nodes.
+`apply_propagate` replaces them with `readonly[T]`. Both recurse structurally.
+
+After cloning, both clones have `readonly_propagate=False` and are treated as
+ordinary methods by all subsequent compiler passes (sema, codegen).
+
+### Explicit return type annotations
+
+The const variant's return type is controlled entirely by explicit
+`readonly_propagate[T]` annotations inside the return type:
+
+```
+Span[readonly_propagate[T]]  ->  mutable: Span[T],  const: Span[readonly[T]]
+Ptr[readonly_propagate[T]]   ->  mutable: Ptr[T],   const: Ptr[readonly[T]]
+readonly_propagate[T]        ->  mutable: T,         const: readonly[T]
+```
+
+Parts of the return type without `readonly_propagate[T]` are unchanged in
+both clones. Value types (copied on return) need no annotation.
+
+### Interaction with `IMPLICIT_READONLY_METHODS`
+
+Methods in `IMPLICIT_READONLY_METHODS` (`__getitem__`, `__span__`, `__deref__`,
+`__iter__`, `__len__`, `__eq__`, arithmetic operators, etc.) are treated as
+`@readonly` (single const overload) by default. Dual overloads require an
+explicit `@readonly_propagate` decorator.
+
+When `@readonly_propagate` is applied to a method in `IMPLICIT_READONLY_METHODS`,
+the compiler generates dual overloads. Without it, only a single const overload
+is generated (which is correct for value-returning methods like `__len__` and
+`__eq__`, but not for reference-returning methods like `__getitem__ -> T`).
+
+The general rule: apply `@readonly_propagate` whenever the method returns a
+reference type and you want the const overload to return a const variant. Mark
+the parts of the return type that should become const with `readonly_propagate[T]`:
+`Span[readonly_propagate[T]]`, `Ptr[readonly_propagate[T]]`, `readonly_propagate[T]`
+for a bare type parameter. Value types (copied on return) need no annotation.
+
+### Interaction with `@overload`
+
+`@propagate_readonly` applies per-overload. When a method has multiple
+`@overload` stubs, only overloads whose return type benefits from propagation
+need dual treatment. Example:
+
+```python
+class ArrayList[T, N: int]:
+    @overload
+    @readonly_propagate
+    def __getitem__(self, index: Int32) -> T: ...                       # T is value-copied; no annotation needed
+    @overload
+    @readonly_propagate
+    def __getitem__(self, index: slice) -> Span[readonly_propagate[T]]: ... # Span element becomes const
+```
+
+Both overloads get dual analysis. The shared implementation body is analyzed
+in both contexts (mutable and const).
+
+### Transitive calls
+
+Works naturally. Inside the readonly variant of `__getitem__`, `self` is
+readonly, so `self.__span__()` resolves to `__span__`'s readonly variant
+(returning `ReadOnlySpan[T]`). The types flow correctly through each variant
+independently.
+
+### Restrictions
+
+- `@propagate_readonly` on `__init__`, `@staticmethod`, or `@classmethod` is
+  an error (no `self` to propagate through)
+- `@propagate_readonly` + `@readonly` on the same method is an error (they
+  are different concepts)
+- `@pure` remains separate (single const overload, no propagation)
+
 ## Future Roadmap
 
 1. **`@readonly` desugaring** -- rewrite as wrapping all param types with
    `readonly[T]` (and optionally return type)
-2. **Conservative branch merging** -- properly handle readonly status across
-   control-flow joins
-3. **Protocol-level readonly contracts** -- `Sized.__len__`,
+2. **Protocol-level readonly contracts** -- `Sized.__len__`,
    `Sequence.__getitem__` etc. marked readonly in protocol definition;
    conformance checking ensures implementations are readonly
 4. **Automatic inference** -- deduce readonly from method body when provable

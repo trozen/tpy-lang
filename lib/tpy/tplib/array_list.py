@@ -4,7 +4,7 @@
 # TODO: construct with fixed-extent Span[T, N] (deduce both T and N from the argument)
 from __future__ import annotations
 from typing import MutableSequence, Iterable, overload
-from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, Span, ReadOnlySpanLike, SpanIter, copy, Default, Comparable, Equatable, make_default, span
+from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, Span, ReadOnlySpanLike, SpanIter, copy, Default, Comparable, Equatable, make_default, span, readonly, readonly_propagate
 from tpy.mem import UninitArrayStorage
 
 
@@ -109,12 +109,15 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
         return self._size
 
     @overload
-    def __getitem__(self, index: Int32) -> T: ...
+    @readonly_propagate
+    def __getitem__(self, index: Int32) -> readonly_propagate[T]: ...
 
     @overload
-    def __getitem__(self, index: slice) -> ReadOnlySpan[T]: ...
+    @readonly_propagate
+    def __getitem__(self, index: slice) -> Span[readonly_propagate[T]]: ...
 
-    def __getitem__(self, index: Int32 | slice) -> T | ReadOnlySpan[T]:
+    @readonly_propagate
+    def __getitem__(self, index: Int32 | slice) -> readonly_propagate[T] | Span[readonly_propagate[T]]:
         if isinstance(index, slice):
             s_start = index.start
             s_stop = index.stop
@@ -153,10 +156,12 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
                 return False
         return True
 
-    def __span__(self) -> Span[T]:
+    @readonly_propagate
+    def __span__(self) -> Span[readonly_propagate[T]]:
         return self._storage.ptr().span(self._size)
 
-    def __iter__(self) -> SpanIter[T]:
+    @readonly_propagate
+    def __iter__(self) -> SpanIter[readonly_propagate[T]]:
         return SpanIter(self.__span__())
 
     def extend(self, items: ReadOnlySpanLike[T] | Iterable[T]) -> None:

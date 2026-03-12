@@ -30,75 +30,79 @@ struct Stack {
         this->_data.push_back(val);
     }
 
-    // 14:     def __span__(self) -> Span[Int32]:
+    //     @readonly_propagate
+    // 15:     def __span__(self) -> Span[readonly_propagate[Int32]]:
     std::span<int32_t> __span__() {
-        // 15:         return self._data
+        // 16:         return self._data
         return tpy::as_mut_span(this->_data);
     }
 
-    // 14:     def __span__(self) -> Span[Int32]:
+    //     @readonly_propagate
+    // 15:     def __span__(self) -> Span[readonly_propagate[Int32]]:
     std::span<const int32_t> __span__() const {
-        // 15:         return self._data
+        // 16:         return self._data
         return tpy::as_span(this->_data);
     }
 
-    // 17:     def __iter__(self) -> SpanIter[Int32]:
+    //     @readonly_propagate
+    // 19:     def __iter__(self) -> SpanIter[readonly_propagate[Int32]]:
     tpy::SpanIter<int32_t> __iter__() {
-        // 18:         return SpanIter(self.__span__())
-        return tpy::SpanIter<int32_t>(std::span<const int32_t>(__span__()));
+        // 20:         return SpanIter(self.__span__())
+        return tpy::SpanIter<int32_t>(__span__());
     }
 
-    // 17:     def __iter__(self) -> SpanIter[Int32]:
-    tpy::SpanIter<int32_t> __iter__() const {
-        // 18:         return SpanIter(self.__span__())
-        return tpy::SpanIter<int32_t>(std::span<const int32_t>(__span__()));
+    //     @readonly_propagate
+    // 19:     def __iter__(self) -> SpanIter[readonly_propagate[Int32]]:
+    tpy::SpanIter<const int32_t> __iter__() const {
+        // 20:         return SpanIter(self.__span__())
+        return tpy::SpanIter<const int32_t>(__span__());
     }
 
     //     @readonly
-    // 21:     def sum(self) -> Int32:
+    // 23:     def sum(self) -> Int32:
     int32_t sum() const {
-        // 22:         total: Int32 = 0
+        // 24:         total: Int32 = 0
         int32_t total = 0;
-        // 23:         for x in self:
+        // 25:         for x in self:
         auto& __src_0 = (*this);
         auto __obj_0 = __src_0.__iter__();
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            // 24:             total += x
+            // 26:             total += x
             total = tpy::add_check<int32_t>(total, x);
         }
-        // 25:         return total
+        // 27:         return total
         return total;
     }
 
-    // 27:     def __repr__(self) -> str:
+    // 29:     def __repr__(self) -> str:
     std::string __repr__() const {
-        // 28:         s = "Stack("
+        // 30:         s = "Stack("
         std::string s = "Stack(";
-        // 29:         first = True
+        // 31:         first = True
         bool first = true;
-        // 30:         for x in self:
+        // 32:         for x in self:
         auto& __src_0 = (*this);
         auto __obj_0 = __src_0.__iter__();
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            // 31:             if not first:
+            // 33:             if not first:
             if ((!(first))) {
-                // 32:                 s += ", "
+                // 34:                 s += ", "
                 s = tpy::str_concat(s, ", ");
             }
-            // 33:             first = False
+            // 35:             first = False
             first = false;
-            // 34:             s += str(x)
+            // 36:             s += str(x)
             s = tpy::str_concat(s, tpy::fixed_to_str<int32_t>(x));
         }
-        // 35:         s += ")"
+        // 37:         s += ")"
         s = tpy::str_concat(s, ")");
-        // 36:         return s
+        // 38:         return s
         return s;
     }
 };

@@ -4,32 +4,32 @@
 namespace tpy_user::main {
 
 
-// 19: def accept_ro(s: ReadOnlySpan[Int32]) -> Int32:
+// 20: def accept_ro(s: ReadOnlySpan[Int32]) -> Int32:
 int32_t accept_ro(std::span<const int32_t> s) {
-    // 20:     total: Int32 = 0
+    // 21:     total: Int32 = 0
     int32_t total = 0;
-    // 21:     for x in s:
+    // 22:     for x in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 22:         total += x
+        // 23:         total += x
         total = tpy::add_check<int32_t>(total, x);
     }
-    // 23:     return total
+    // 24:     return total
     return total;
 }
 
-// 29: def main() -> None:
+// 30: def main() -> None:
 void main() {
-    // 30:     print(sum_span(Buffer()))
+    // 31:     print(sum_span(Buffer()))
     auto __tmp_1 = Buffer();
     std::cout << sum_span(__tmp_1) << "\n";
-    // 31:     print(test_pass_to_ro_span(Buffer()))
+    // 32:     print(test_pass_to_ro_span(Buffer()))
     auto __tmp_2 = Buffer();
     std::cout << test_pass_to_ro_span(__tmp_2) << "\n";
-    // 32:     print("done")
+    // 33:     print("done")
     std::cout << "done" << "\n";
 }
 
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 34: main()
+    // 35: main()
     main();
 }
 

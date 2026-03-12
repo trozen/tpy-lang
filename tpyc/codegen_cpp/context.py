@@ -225,7 +225,6 @@ class CodeGenContext:
     in_method: bool = False
     in_consuming_method: bool = False
     current_return_type: TpyType | None = None
-    force_readonly_span: bool = False
     current_func_params: dict[str, TpyType] = field(default_factory=dict)
     current_type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
 
