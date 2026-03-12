@@ -1166,6 +1166,13 @@ class StatementGenerator:
             return False
         if isinstance(self.types.get_resolved_type(expr), StrViewType):
             return True
+        # Note: TpyCoerce is not explicitly handled here. If a coercion wrapping
+        # a string_view source (e.g. narrowed Optional[str] param) ever appears
+        # as a var init with StrType target, the coerce target type resolves to
+        # StrType (not StrViewType), and _is_str_view_at_runtime returns False,
+        # so no std::string() wrap would be emitted. That path is currently not
+        # reachable in practice (Optional[str] coercions go through the
+        # _is_optional_str_param / _expr_uses_optional_str_param guards instead).
         return self.expressions._is_str_view_at_runtime(expr)
 
     def _expr_uses_optional_str_param(self, expr: TpyExpr) -> bool:

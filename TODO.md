@@ -9,9 +9,6 @@
 
 ## Fuzzy Testing Findings (2026-03-12)
 
-### Silent divergences (TPy compiles and runs, output differs from CPython)
-- **[HIGH]** Ternary generates copy instead of reference for mutable types (`list`/`dict`/`set`/records): `or`/`and` was fixed (uses references). Ternary remains a known gap -- see Known Limitations.
-
 ### Compilation errors (valid Python that fails to build)
 - **[MED]** `list += [literal]` fails C++ build: `b += [4, 5]` generates `tpy::list_extend(b, {4, 5})` where the brace-init list cannot deduce the element type (e.g. `BigInt`). Fix: emit a typed vector literal (`std::vector<BigInt>{4, 5}`) instead of a raw brace-init list.
 - **[LOW]** Nested `dict[K, dict[...]]` printing fails: `DictPrinter` has no `operator<<` for `ordered_map` as a value type, so printing a dict whose values are themselves dicts fails at C++ build time. Fix: add recursive printing support in `dict_ops.hpp`/`printing.hpp`.
@@ -142,7 +139,6 @@
 - Functions don't currently support INT type params (only TYPE)
 - `readonly[T]` field mutation: sema enforces readonly on assignment targets, but codegen may not emit `const` for `readonly[str]` fields. Verify codegen emits `const` qualifier.
 - Union isinstance narrowing in ternary: `x if isinstance(x, str) else ...` where `x: str | int` would need `std::get<T>()` extraction, which requires statement-level codegen (variable declaration for the extracted value).
-- Ternary value copy for containers: `x = a if cond else b` where `a`/`b` are `list`/`dict`/`set` produces a C++ value copy, not a reference binding like CPython. `or`/`and` correctly bind by reference; ternary does not because `is_rvalue_source` in `codegen_cpp/context.py` has no `TpyIfExpr` handling and defaults to `True`. (see also: Fuzzy Testing Findings)
 
 ## ShedSkin examples
 - score4

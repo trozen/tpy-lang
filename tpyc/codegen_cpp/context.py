@@ -17,7 +17,8 @@ from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat, TpyListComprehension,
     TpyGeneratorExpression,
-    TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall, TpySubscript, TpyCall, TpyName, TpyFieldAccess
+    TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall, TpySubscript, TpyCall, TpyName, TpyFieldAccess,
+    TpyIfExpr,
 )
 from ..namespace import Namespace, BindingKind
 
@@ -675,9 +676,18 @@ class CodeGenContext:
         # be fixed when non-const __getitem__ overloads are added.
         if isinstance(expr, TpySubscript):
             return False
+        # Ternary: lvalue iff both arms are lvalues (C++ ternary with two lvalue
+        # arms is itself an lvalue). Uses OR semantics: rvalue if either arm is
+        # rvalue, since _gen_if_expr emits arms inline with no temp materialization
+        # (unlike _gen_logical_value which materializes rvalue arms into auto&& temps).
+        if isinstance(expr, TpyIfExpr):
+            result_type = self.analyzer.get_expr_type(expr)
+            if result_type and not result_type.is_value_type():
+                return (self.is_rvalue_source(expr.then_expr)
+                        or self.is_rvalue_source(expr.else_expr))
         # Logical and/or with operand-return semantics: rvalue temps are
         # materialized into named variables by _gen_logical_value, so the
-        # ternary is only an rvalue when both operands are rvalues.
+        # result is only an rvalue when both operands are rvalues.
         if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
             result_type = self.analyzer.get_expr_type(expr)
             if not isinstance(result_type, BoolType):

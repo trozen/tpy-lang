@@ -10,8 +10,6 @@ def test_and(a: list[Int32], b: list[Int32]) -> None:
     print(x)
 
 def test_ternary(a: list[Int32], b: list[Int32], cond: bool) -> None:
-    # NOTE: In CPython, x is a reference to a or b; here x is a value copy.
-    # The test only checks print output, so CPython output still matches.
     x = a if cond else b  # tpyc: type(list[Int32])
     print(x)
 
@@ -68,6 +66,13 @@ def test_or_chain_alias(a: list[Int32], b: list[Int32], c: list[Int32]) -> None:
     b.append(Int32(99))
     print(x)  # must include 99
 
+def test_ternary_alias(a: list[Int32], b: list[Int32], cond: bool) -> None:
+    # x binds to a or b by reference; mutation through x must be visible in original.
+    x = a if cond else b
+    x.append(Int32(99))
+    print(a)
+    print(b)
+
 test_or([Int32(1), Int32(2)], [Int32(3), Int32(4)])
 test_and([Int32(1), Int32(2)], [Int32(3), Int32(4)])
 test_ternary([Int32(1), Int32(2)], [Int32(3), Int32(4)], True)
@@ -81,3 +86,5 @@ test_or_alias_first([Int32(1)], [Int32(2)])
 test_or_alias_second([], [Int32(2)])
 test_and_alias([Int32(1)], [Int32(2)])
 test_or_chain_alias([], [Int32(2)], [Int32(3)])
+test_ternary_alias([Int32(1)], [Int32(2)], True)
+test_ternary_alias([Int32(1)], [Int32(2)], False)

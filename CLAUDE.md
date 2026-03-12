@@ -219,6 +219,9 @@ For `tpyc/` compiler modules:
 - Use type annotations
 - **ASCII only** in source code and comments -- no Unicode arrows (`→`), em dashes (`—`), or other non-ASCII characters. Use `->` and `--` instead.
 
+For test snippets (`tests/cases/*/src/main.py`):
+- Prefer plain literals (`1`, `"hello"`, `{1, 2}`) over explicit constructors (`Int32(1)`, `{"a": Int32(1)}`) and variable type annotations (`x: list[Int32] = ...`) when the compiler can infer the type from context. Only use explicit constructors or annotations when the test is specifically exercising constructor syntax, type annotations, or a case where inference would be ambiguous.
+
 ## Architecture
 
 The compiler follows a 4-stage pipeline:

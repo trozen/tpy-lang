@@ -3,3 +3,7 @@
 {1, 2}
 {1, 2}
 {1, 2}
+True
+False
+False
+True

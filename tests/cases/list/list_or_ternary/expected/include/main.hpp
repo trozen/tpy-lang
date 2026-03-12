@@ -20,6 +20,7 @@ void test_or_alias_first(std::vector<int32_t>& a, std::vector<int32_t>& b);
 void test_or_alias_second(std::vector<int32_t>& a, std::vector<int32_t>& b);
 void test_and_alias(std::vector<int32_t>& a, std::vector<int32_t>& b);
 void test_or_chain_alias(std::vector<int32_t>& a, std::vector<int32_t>& b, std::vector<int32_t>& c);
+void test_ternary_alias(std::vector<int32_t>& a, std::vector<int32_t>& b, bool cond);
 
 void __tpy_init();
 } // namespace tpy_user::main
