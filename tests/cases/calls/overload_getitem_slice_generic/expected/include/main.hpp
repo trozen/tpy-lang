@@ -27,7 +27,7 @@ struct Container {
     }
 
     //     @overload
-    //     @readonly_propagate
+    //     @readonly_alt
     // 17:     def __getitem__(self, index: Int32) -> T: ...  # tpyc: ok
     tpy::val_or_ref_t<T> __getitem__(int32_t index) {
         // 23:         if isinstance(index, slice):
@@ -36,7 +36,7 @@ struct Container {
     }
 
     //     @overload
-    //     @readonly_propagate
+    //     @readonly_alt
     // 17:     def __getitem__(self, index: Int32) -> T: ...  # tpyc: ok
     tpy::val_or_cref_t<T> __getitem__(int32_t index) const {
         // 23:         if isinstance(index, slice):

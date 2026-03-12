@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, TypeParamRef, NamedType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, ReadonlyPropagateType,
+    TpyType, TypeParamRef, NamedType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, ReadonlyAltType,
     ArrayType, SpanType, ListType, PendingListType, GenExprType, SelfType, OptionalType, UnionType,
     TupleType,
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
@@ -110,10 +110,10 @@ class TypeOperations:
             resolved_wrapped = self.resolve_type(typ.wrapped)
             if resolved_wrapped is not typ.wrapped:
                 return ReadonlyType(resolved_wrapped)
-        elif isinstance(typ, ReadonlyPropagateType):
+        elif isinstance(typ, ReadonlyAltType):
             resolved_wrapped = self.resolve_type(typ.wrapped)
             if resolved_wrapped is not typ.wrapped:
-                return ReadonlyPropagateType(resolved_wrapped)
+                return ReadonlyAltType(resolved_wrapped)
         elif isinstance(typ, UnionType):
             resolved_members = tuple(self.resolve_type(m) for m in typ.members)
             if any(new is not old for new, old in zip(resolved_members, typ.members)):
@@ -207,7 +207,7 @@ class TypeOperations:
                 self.validate_type(member, allow_type_param_ref, loc)
         elif isinstance(typ, ReadonlyType):
             self.validate_type(typ.wrapped, allow_type_param_ref, loc)
-        elif isinstance(typ, ReadonlyPropagateType):
+        elif isinstance(typ, ReadonlyAltType):
             self.validate_type(typ.wrapped, allow_type_param_ref, loc)
         elif isinstance(typ, PtrType):
             self.validate_type(typ.pointee, allow_type_param_ref, loc)

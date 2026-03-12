@@ -503,10 +503,10 @@ def pure(func):
     return func
 
 
-class readonly_propagate:
-    """Decorator and type modifier for @readonly_propagate methods.
+class readonly_alt:
+    """Decorator and type modifier for @readonly_alt methods.
 
-    Supports @readonly_propagate decorator and readonly_propagate[T] subscript syntax.
+    Supports @readonly_alt decorator and readonly_alt[T] subscript syntax.
     In CPython, both forms are no-ops: the decorator returns the function unchanged
     and the subscript returns the type argument unchanged.
     """

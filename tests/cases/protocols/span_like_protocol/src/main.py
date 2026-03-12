@@ -1,5 +1,5 @@
 # Test ReadOnlySpanLike[T] protocol: parameter typing, for-loop iteration, coercion.
-from tpy import Int32, Span, ReadOnlySpan, ReadOnlySpanLike, readonly_propagate
+from tpy import Int32, Span, ReadOnlySpan, ReadOnlySpanLike, readonly_alt
 
 class Buffer:
     _data: list[Int32]
@@ -7,8 +7,8 @@ class Buffer:
     def __init__(self) -> None:
         self._data = [1, 2, 3]
 
-    @readonly_propagate
-    def __span__(self) -> Span[readonly_propagate[Int32]]:
+    @readonly_alt
+    def __span__(self) -> Span[readonly_alt[Int32]]:
         return self._data
 
 def sum_span(c: ReadOnlySpanLike[Int32]) -> Int32:

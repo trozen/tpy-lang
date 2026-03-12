@@ -945,7 +945,7 @@ class MethodAnalyzer:
         else:
             type_subst = instance_subst
 
-        # Tie-breaking for readonly_propagate clones (mutable + const overload pair):
+        # Tie-breaking for readonly_alt clones (mutable + const overload pair):
         # readonly receiver prefers the readonly overload, mutable receiver prefers mutable.
         if is_readonly_receiver:
             ro = [m for m in overloads if m.is_readonly]

@@ -110,7 +110,7 @@ class TypeCompatibility:
                 if not allow:
                     raise SemanticError(
                         f"Cannot return readonly[{actual.wrapped}] as mutable {expected}; "
-                        f"use ReadOnlySpan or annotate return type with readonly_propagate[T]"
+                        f"use ReadOnlySpan or annotate return type with readonly_alt[T]"
                         if is_return else
                         f"Cannot pass readonly[{actual.wrapped}] as mutable {expected} in {context}",
                         loc,

@@ -430,7 +430,7 @@ class ProtocolChecker:
         if actual == expected:
             return True
         # Unwrap ownership/const wrappers: Own[T] and readonly[T] both satisfy protocol -> T.
-        # Const return types (readonly[T]) arise from the const clone of @readonly_propagate
+        # Const return types (readonly[T]) arise from the const clone of @readonly_alt
         # methods; the caller can read or copy the result, satisfying the protocol contract.
         if isinstance(actual, (OwnType, ReadonlyType)):
             unwrapped = actual.wrapped

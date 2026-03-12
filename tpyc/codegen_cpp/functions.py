@@ -549,8 +549,8 @@ class FunctionGenerator:
 
         # Create a synthetic TpyFunction with stub's types but impl's body.
         # Method const-ness (is_readonly) comes from the stub, since the stub's
-        # decorators (@readonly, @readonly_propagate) define the overload's const contract.
-        # With parser cloning, @readonly_propagate stubs are already split into separate
+        # decorators (@readonly, @readonly_alt) define the overload's const contract.
+        # With parser cloning, @readonly_alt stubs are already split into separate
         # mutable/const clones before codegen runs.
         synth = TpyFunction(
             name=stub.name,

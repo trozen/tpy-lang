@@ -42,14 +42,14 @@ struct Ref {
     Ref() = default;
     explicit Ref(const Point& target) : _target(target) {}
 
-    //     @readonly_propagate
+    //     @readonly_alt
     // 15:     def __deref__(self) -> Point:
     Point& __deref__() {
         // 16:         return self._target
         return this->_target;
     }
 
-    //     @readonly_propagate
+    //     @readonly_alt
     // 15:     def __deref__(self) -> Point:
     const Point& __deref__() const {
         // 16:         return self._target

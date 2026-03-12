@@ -1,5 +1,5 @@
 # Test that iterating over a type with __span__ but no __iter__ is an error.
-from tpy import Int32, Span, readonly_propagate
+from tpy import Int32, Span, readonly_alt
 
 class Buffer:
     _data: list[Int32]
@@ -7,8 +7,8 @@ class Buffer:
     def __init__(self) -> None:
         self._data = [1, 2, 3]
 
-    @readonly_propagate
-    def __span__(self) -> Span[readonly_propagate[Int32]]:
+    @readonly_alt
+    def __span__(self) -> Span[readonly_alt[Int32]]:
         return self._data
 
 def main() -> None:

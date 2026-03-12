@@ -1,12 +1,12 @@
 # Test tpy.span(): get ReadOnlySpan from ReadOnlySpanLike types.
-from tpy import Int32, Span, ReadOnlySpan, ReadOnlySpanLike, Array, span, readonly_propagate
+from tpy import Int32, Span, ReadOnlySpan, ReadOnlySpanLike, Array, span, readonly_alt
 
 class Buffer:
     _data: list[Int32]
     def __init__(self) -> None:
         self._data = [10, 20, 30]
-    @readonly_propagate
-    def __span__(self) -> Span[readonly_propagate[Int32]]:
+    @readonly_alt
+    def __span__(self) -> Span[readonly_alt[Int32]]:
         return self._data
 
 def span_len(x: ReadOnlySpanLike[Int32]) -> Int32:

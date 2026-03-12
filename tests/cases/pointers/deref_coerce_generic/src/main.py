@@ -1,4 +1,4 @@
-from tpy import Int32, copy, readonly_propagate
+from tpy import Int32, copy, readonly_alt
 
 class Point:
     x: Int32
@@ -11,7 +11,7 @@ class Box[T]:
     _value: T
     def __init__(self, value: T) -> None:
         self._value = copy(value)
-    @readonly_propagate
+    @readonly_alt
     def __deref__(self) -> T:
         return self._value
 

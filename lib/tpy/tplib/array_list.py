@@ -4,7 +4,7 @@
 # TODO: construct with fixed-extent Span[T, N] (deduce both T and N from the argument)
 from __future__ import annotations
 from typing import MutableSequence, Iterable, overload
-from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, Span, ReadOnlySpanLike, SpanIter, copy, Default, Comparable, Equatable, make_default, span, readonly, readonly_propagate
+from tpy import Int32, UInt32, Own, Ptr, ReadOnlySpan, Span, ReadOnlySpanLike, SpanIter, copy, Default, Comparable, Equatable, make_default, span, readonly, readonly_alt
 from tpy.mem import UninitArrayStorage
 
 
@@ -109,15 +109,15 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
         return self._size
 
     @overload
-    @readonly_propagate
-    def __getitem__(self, index: Int32) -> readonly_propagate[T]: ...
+    @readonly_alt
+    def __getitem__(self, index: Int32) -> readonly_alt[T]: ...
 
     @overload
-    @readonly_propagate
-    def __getitem__(self, index: slice) -> Span[readonly_propagate[T]]: ...
+    @readonly_alt
+    def __getitem__(self, index: slice) -> Span[readonly_alt[T]]: ...
 
-    @readonly_propagate
-    def __getitem__(self, index: Int32 | slice) -> readonly_propagate[T] | Span[readonly_propagate[T]]:
+    @readonly_alt
+    def __getitem__(self, index: Int32 | slice) -> readonly_alt[T] | Span[readonly_alt[T]]:
         if isinstance(index, slice):
             s_start = index.start
             s_stop = index.stop
@@ -156,12 +156,12 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
                 return False
         return True
 
-    @readonly_propagate
-    def __span__(self) -> Span[readonly_propagate[T]]:
+    @readonly_alt
+    def __span__(self) -> Span[readonly_alt[T]]:
         return self._storage.ptr().span(self._size)
 
-    @readonly_propagate
-    def __iter__(self) -> SpanIter[readonly_propagate[T]]:
+    @readonly_alt
+    def __iter__(self) -> SpanIter[readonly_alt[T]]:
         return SpanIter(self.__span__())
 
     def extend(self, items: ReadOnlySpanLike[T] | Iterable[T]) -> None:

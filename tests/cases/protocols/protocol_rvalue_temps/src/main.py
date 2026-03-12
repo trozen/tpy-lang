@@ -5,7 +5,7 @@ The compiler generates temp variables for these cases.
 """
 from __future__ import annotations
 from typing import Protocol
-from tpy import Int32, readonly_propagate
+from tpy import Int32, readonly_alt
 
 # Protocol that accepts various types
 class HasValue(Protocol):
@@ -23,7 +23,7 @@ class BoxContainer:
     items: list[IntBox]
     def __init__(self) -> None:
         self.items = [IntBox(10), IntBox(20), IntBox(30)]
-    @readonly_propagate
+    @readonly_alt
     def __getitem__(self, i: Int32) -> IntBox:
         return self.items[i]
 

@@ -14,7 +14,7 @@ from ..typesys import (
     FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL, UINT64,
     register_value_type_record, register_send_record, register_sync_record,
     attach_type_param_bounds,
-    has_readonly_propagate,
+    has_readonly_alt,
 )
 from ..parse import (
     TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
@@ -223,9 +223,9 @@ class TypeRegistrar:
         # Check for duplicate method definitions (second definition silently wins in Python,
         # but it is always a bug and can interfere with @override checks).
         # @overload stubs are exempt -- multiple stubs + one implementation share the same name.
-        # Parser-cloned @readonly_propagate pairs are exempt -- the mutable clone is marked
-        # is_propagate_mutable_clone=True so only those pairs bypass the duplicate check.
-        propagate_clone_names: set[str] = {m.name for m in record.methods if m.is_propagate_mutable_clone}
+        # Parser-cloned @readonly_alt pairs are exempt -- the mutable clone is marked
+        # is_alt_mutable_clone=True so only those pairs bypass the duplicate check.
+        propagate_clone_names: set[str] = {m.name for m in record.methods if m.is_alt_mutable_clone}
         overload_names: set[str] = {m.name for m in record.methods if m.is_overload_stub}
         seen_method_names: set[str] = set()
         for method in record.methods:
@@ -422,10 +422,10 @@ class TypeRegistrar:
         # Build the Self type for this record (used to substitute SelfType in methods)
         record_self_type = build_record_self_type(record)
 
-        # Pre-compute ids of mutable clones from @readonly_propagate (flagged by the parser).
+        # Pre-compute ids of mutable clones from @readonly_alt (flagged by the parser).
         # Used below to prevent implicit_readonly from clobbering is_readonly=False on these
         # methods, which would break mutable-vs-const overload tie-breaking.
-        mutable_clone_ids: set[int] = {id(m) for m in record.methods if m.is_propagate_mutable_clone}
+        mutable_clone_ids: set[int] = {id(m) for m in record.methods if m.is_alt_mutable_clone}
 
         # Register all methods
         methods = {}
@@ -456,11 +456,11 @@ class TypeRegistrar:
             method_return = self.type_ops.substitute_self(method.return_type, record_self_type)
 
             for pname, ptype in method_params:
-                if has_readonly_propagate(ptype):
+                if has_readonly_alt(ptype):
                     raise SemanticError(
-                        f"'readonly_propagate[T]' is not allowed in parameter types "
+                        f"'readonly_alt[T]' is not allowed in parameter types "
                         f"(parameter '{pname}' of '{record.name}.{method.name}'). "
-                        f"Only return types of @readonly_propagate methods may use it.",
+                        f"Only return types of @readonly_alt methods may use it.",
                         method.loc or record.loc,
                     )
                 if not self.type_ops.is_type_param_ref(ptype):
@@ -477,7 +477,7 @@ class TypeRegistrar:
                         f"Only @dynamic protocols can be used as return types",
                         method.loc or record.loc,
                     )
-            # For the mutable clone of a readonly_propagate pair, skip implicit_readonly so
+            # For the mutable clone of a readonly_alt pair, skip implicit_readonly so
             # that the mutable clone keeps is_readonly=False. This allows tie-breaking in
             # method resolution to correctly distinguish the two clones based on receiver
             # const-ness. Without this, implicitly-readonly methods like __span__ would have
@@ -504,14 +504,14 @@ class TypeRegistrar:
                     for n, t in method_params
                 ]
                 method_return = attach_type_param_bounds(method_return, record.type_param_bounds)
-            # Validate that readonly_propagate[T] in return type is only on @readonly_propagate methods.
-            # With parser cloning, clones always have readonly_propagate=False and their return types
-            # already have ReadonlyPropagateType resolved. If a user writes readonly_propagate[T]
+            # Validate that readonly_alt[T] in return type is only on @readonly_alt methods.
+            # With parser cloning, clones always have readonly_alt=False and their return types
+            # already have ReadonlyAltType resolved. If a user writes readonly_alt[T]
             # without the decorator, it's an error.
-            if has_readonly_propagate(method_return):
+            if has_readonly_alt(method_return):
                 raise SemanticError(
-                    f"'readonly_propagate[T]' in return type is only allowed on "
-                    f"@readonly_propagate methods ('{record.name}.{method.name}')",
+                    f"'readonly_alt[T]' in return type is only allowed on "
+                    f"@readonly_alt methods ('{record.name}.{method.name}')",
                     method.loc or record.loc,
                 )
             method.params = method_params
@@ -559,7 +559,7 @@ class TypeRegistrar:
             elif (method.name in methods
                   and method.name not in overload_names
                   and any(m.is_readonly != func_info.is_readonly for m in methods[method.name])):
-                # readonly_propagate clone: add the complementary readonly/mutable overload
+                # readonly_alt clone: add the complementary readonly/mutable overload
                 methods[method.name].append(func_info)
             elif method.name in methods:
                 # Implementation following stubs: stubs are the callable

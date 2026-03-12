@@ -53,14 +53,14 @@ struct BoxContainer {
     // 24:     def __init__(self) -> None:
     BoxContainer() : items({IntBox(10), IntBox(20), IntBox(30)}) {}
 
-    //     @readonly_propagate
+    //     @readonly_alt
     // 27:     def __getitem__(self, i: Int32) -> IntBox:
     IntBox& __getitem__(int32_t i) {
         // 28:         return self.items[i]
         return tpy::__getitem__(this->items, i);
     }
 
-    //     @readonly_propagate
+    //     @readonly_alt
     // 27:     def __getitem__(self, i: Int32) -> IntBox:
     const IntBox& __getitem__(int32_t i) const {
         // 28:         return self.items[i]
