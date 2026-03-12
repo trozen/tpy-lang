@@ -7,6 +7,37 @@
 
 ## Bugs
 
+## Fuzzy Testing Findings (2026-03-12)
+
+### Silent divergences (TPy compiles and runs, output differs from CPython)
+- **[HIGH]** Ternary generates copy instead of reference for mutable types (`list`/`dict`/`set`/records): `or`/`and` was fixed (uses references). Ternary remains a known gap -- see Known Limitations.
+
+### Compilation errors (valid Python that fails to build)
+- **[HIGH]** `StrView` -> `str` coercion missing in variable initializer: when a local is deduced as `std::string` (e.g. because it is later mutated with `+=`) but its initializing expression has type `StrView` (str param, ternary of params, `a or b` of params), no `std::string(...)` conversion is emitted and the C++ build fails. Same gap affects `return expr` when return type is `str` and expr is `StrView`. Fix: in codegen, wrap `StrView` expressions in `std::string(...)` when the target slot is `std::string`.
+- **[MED]** `list += [literal]` fails C++ build: `b += [4, 5]` generates `tpy::list_extend(b, {4, 5})` where the brace-init list cannot deduce the element type (e.g. `BigInt`). Fix: emit a typed vector literal (`std::vector<BigInt>{4, 5}`) instead of a raw brace-init list.
+- **[LOW]** Nested `dict[K, dict[...]]` printing fails: `DictPrinter` has no `operator<<` for `ordered_map` as a value type, so printing a dict whose values are themselves dicts fails at C++ build time. Fix: add recursive printing support in `dict_ops.hpp`/`printing.hpp`.
+
+### Safety (latent UB, no diagnostic emitted)
+- **[HIGH]** Iterator invalidation via container subscript: `p = items[0]` generates `T& p = tpy::__getitem__(items, 0)` -- a reference into the vector's storage. Any subsequent mutation of `items` that causes reallocation (e.g. `items.append(...)`) silently invalidates `p`, causing UB with no warning. This is the same class of problem as `Span` borrow tracking -- `__getitem__` on a container is an implicit borrow of the container and should be treated as one. Fix falls under extending borrow tracking (see Safety section above) to cover container subscript references, not just explicit `Span`/`Ptr` view types.
+
+### Quality / optimization (correct output, but suboptimal codegen)
+- **[LOW]** None-seeded variable assigned in all branches stays `Optional[T]`: when `x = None` is followed by assignment in both the `if` and `else` branches (so every path guarantees a value), `x` is still typed `std::optional<T>` after the if/else block. Post-dominance analysis could demote it to `T` and skip the optional wrapper. Not a correctness issue -- output is identical -- but adds unnecessary runtime cost and less readable C++.
+
+## C++ Codegen Review Findings (2026-03-12)
+
+### Bugs (generated code does not compile or is incorrect)
+- **[HIGH]** Branched pointer-local slot scoping: when a pointer-local variable (e.g. `Own[Point]`) is first assigned inside one branch of an `if/else` and rebound in the sibling branch, the codegen emits the slot variables (`__slot_1`, `__slot_2`, and the pointer `p`) inside the first branch's scope, making them invisible to the `else` branch. The generated C++ does not compile. The pointer-local mechanism should not trigger at all in this pattern -- both branches immediately return, so each can simply declare and return its own named local (two independent NRVO opportunities).
+
+### Systematic suboptimalities
+- **[HIGH]** Container/record parameters always emitted as `T&` (mutable ref) regardless of whether the function mutates them: `list`, `dict`, `set`, and record params should be `const T&` when the function only reads them. `str` already gets this right (`std::string_view`). Fix: mutation analysis in codegen param-type selection (likely `codegen_cpp/functions.py` or `types.py`) -- check whether sema recorded any write to the parameter before deciding `T&` vs `const T&`.
+- **[MED]** User-defined methods not auto-inferred as `const`: methods that never write to `self` are not emitted as `const` member functions. Requires explicit `@readonly` decorator. This means `const T&` method calls fail at C++ level, and the optimizer has less information. Fix: infer `const` automatically when sema finds no assignments to `self` fields or mutating method calls on `self` in the method body; `@readonly` could become optional/redundant for pure readers.
+- **[MED]** `str +=` doesn't reuse the buffer: `x += y` (and `x = x + y`) on strings is lowered to `x = tpy::str_concat(x, y)` which allocates a fresh `std::string` each time, discarding `x`'s existing buffer. In a loop this is O(n^2) allocations. Fix: detect the `x = x + y` pattern (and `x += y`) on `str`/`String` and emit `x += std::string_view(y)` instead, using `std::string::operator+=` for in-place buffer reuse.
+
+### Missed optimizations
+- **[MED]** `return (*x)` on `Optional[non-trivial T]` copies instead of moves: liveness/auto-move analysis tracks `TpyName` last-uses but does not extend through optional-dereference expressions. When `x: Optional[str]` or `Optional[Record]` is returned at its last use, `return (*x)` copies the inner value. Should emit `return std::move(*x)`.
+- **[LOW]** String concat chain produces N-1 intermediate allocations: `a + b + c + d` emits left-associative nested `str_concat` calls, each allocating a temporary `std::string`. A codegen optimization detecting a chain of `+` on string-view operands could emit a single `reserve` + N `append` calls.
+- **[LOW]** Method returning a `str` field copies the string: a getter like `def get_name(self) -> str: return self.name` emits `return this->name` which copies the `std::string` field. The string-view deduction system handles `str` parameters but not field reads in return position. Should return `std::string_view` pointing into the field for read-only getters.
+
 ## Safety
 - `Span[str]` subscript view: `SpanType.subscript_borrows()` is intentionally not overridden because `v = s[0]` registers `s` as the str-borrow source, but mutations to the backing container (`arr[0] = "x"` where `s = Span[str](arr)`) call `mark_str_borrowers_mutated("arr")` -- missing `s`. Fix requires `mark_str_borrowers_mutated` to chase the borrow tracker's alias chain so backing-container mutations also invalidate views borrowed through spans.
 - View type borrow tracking for user types: currently only built-in view types (Span, Ptr) are tracked as borrows. Likely needed when designing tpy stdlib types. See escape analysis design doc (Future Extensions) for field-level vs class-level annotation tradeoffs.
@@ -117,7 +148,7 @@
 - Functions don't currently support INT type params (only TYPE)
 - `readonly[T]` field mutation: sema enforces readonly on assignment targets, but codegen may not emit `const` for `readonly[str]` fields. Verify codegen emits `const` qualifier.
 - Union isinstance narrowing in ternary: `x if isinstance(x, str) else ...` where `x: str | int` would need `std::get<T>()` extraction, which requires statement-level codegen (variable declaration for the extracted value).
-- Ternary value copy for containers: `x = a if cond else b` where `a`/`b` are `list`/`dict`/`set` produces a C++ value copy, not a reference binding like CPython. `or`/`and` correctly bind by reference; ternary does not because `is_rvalue_source` in `codegen_cpp/context.py` has no `TpyIfExpr` handling and defaults to `True`.
+- Ternary value copy for containers: `x = a if cond else b` where `a`/`b` are `list`/`dict`/`set` produces a C++ value copy, not a reference binding like CPython. `or`/`and` correctly bind by reference; ternary does not because `is_rvalue_source` in `codegen_cpp/context.py` has no `TpyIfExpr` handling and defaults to `True`. (see also: Fuzzy Testing Findings)
 
 ## ShedSkin examples
 - score4
