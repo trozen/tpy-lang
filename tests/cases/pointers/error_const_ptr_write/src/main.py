@@ -1,4 +1,4 @@
-from tpy import Int32, ReadOnlyPtr
+from tpy import Int32, Ptr, readonly
 
 class Point:
     x: Int32
@@ -10,5 +10,5 @@ class Point:
 
 def try_write_const() -> None:
     pt: Point = Point(10, 20)
-    cp: ReadOnlyPtr[Point] = pt
+    cp: Ptr[readonly[Point]] = pt
     cp.x = 100  # tpyc: error(/Cannot assign through read-only pointer/)

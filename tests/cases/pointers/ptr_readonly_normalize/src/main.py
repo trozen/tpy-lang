@@ -1,4 +1,4 @@
-# Ptr[readonly[T]] normalizes to ReadOnlyPtr[T] at parse time.
+# Ptr[readonly[T]] is a read-only pointer.
 # Verifies the pointer is read-only: deref works, writes are rejected.
 from tpy import Int32, Ptr, readonly
 

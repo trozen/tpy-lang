@@ -1,5 +1,5 @@
 # Attempting to write through a Ptr[T] field in a @readonly context should fail
-# because the Ptr becomes ReadOnlyPtr (read-only pointer) via readonly propagation.
+# because the Ptr becomes Ptr[readonly[T]] (read-only pointer) via readonly propagation.
 from tpy import Int32, Ptr, readonly
 
 class Data:

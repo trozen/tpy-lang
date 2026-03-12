@@ -40,7 +40,7 @@ void from_span() {
 void from_readonly_span() {
     // 22:     a: Array[Int32, 3] = [7, 8, 9]
     std::array<int32_t, 3> a = {7, 8, 9};
-    // 23:     ro: ReadOnlySpan[Int32] = a
+    // 23:     ro: Span[readonly[Int32]] = a
     std::span<const int32_t> ro = tpy::as_span(a);
     // 24:     s = ro.__span__()
     std::span<const int32_t> s = tpy::as_span(ro);

@@ -8,7 +8,7 @@ namespace tpy_user::main {
 void main() {
     // 5:     lst: list[Int32] = [10, 20, 30]
     std::vector<int32_t> lst = {10, 20, 30};
-    // 6:     ros: ReadOnlySpan[Int32] = ReadOnlySpan[Int32](lst)
+    // 6:     ros: Span[readonly[Int32]] = Span[readonly[Int32]](lst)
     std::span<const int32_t> ros = std::span<const int32_t>(lst);
     // 7:     print(len(ros))
     std::cout << tpy::__len__(ros) << "\n";
@@ -26,7 +26,7 @@ void main() {
     std::cout << tpy::__getitem__(arr, 0) << "\n";
     // 16:     lst2: list[Int32] = [5, 6]
     std::vector<int32_t> lst2 = {5, 6};
-    // 17:     ros2: ReadOnlySpan[Int32] = ReadOnlySpan[Int32](lst2)
+    // 17:     ros2: Span[readonly[Int32]] = Span[readonly[Int32]](lst2)
     std::span<const int32_t> ros2 = std::span<const int32_t>(lst2);
     // 18:     print(len(ros2))
     std::cout << tpy::__len__(ros2) << "\n";

@@ -6,7 +6,7 @@ Ensures coercions work correctly when the source is:
 - Field access
 - Nested expressions
 """
-from tpy import Int32, Ptr, ReadOnlyPtr
+from tpy import Int32, Ptr, readonly
 
 class Counter:
     value: int
@@ -89,7 +89,7 @@ def test_bigint_expr_to_int32() -> None:
 def modify_via_ptr(p: Ptr[Point]) -> None:
     p.x = p.x + 100
 
-def read_via_const_ptr(p: ReadOnlyPtr[Point]) -> Int32:
+def read_via_const_ptr(p: Ptr[readonly[Point]]) -> Int32:
     return p.x + p.y
 
 
@@ -102,7 +102,7 @@ def test_field_access_to_ptr() -> None:
     modify_via_ptr(cont.pt)
     print(cont.pt.x)  # 105
 
-    # Field access -> ReadOnlyPtr in function call
+    # Field access -> Ptr[readonly[...]] in function call
     print(read_via_const_ptr(cont.pt))  # 115
 
 
@@ -115,7 +115,7 @@ def test_nested_field_to_ptr() -> None:
     modify_via_ptr(outer.inner.pt)
     print(outer.inner.pt.x)  # 107
 
-    # Nested field access -> ReadOnlyPtr
+    # Nested field access -> Ptr[readonly[...]]
     print(read_via_const_ptr(outer.inner.pt))  # 115
 
 

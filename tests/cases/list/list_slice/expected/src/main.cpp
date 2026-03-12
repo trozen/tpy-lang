@@ -89,15 +89,15 @@ void test_span(std::span<int32_t> s) {
 // @readonly
 // 53: def test_readonly_list(items: list[Int32]) -> None:
 void test_readonly_list(const std::vector<int32_t>& items) {
-    // 54:     sub = items[0:2]  # tpyc: type(ReadOnlySpan[Int32])
+    // 54:     sub = items[0:2]  # tpyc: type(Span[readonly[Int32]])
     std::span<const int32_t> sub = tpy::list_slice(items, 0, 2);
     // 55:     print(sub)
     std::cout << tpy::ListPrinter(sub) << "\n";
 }
 
-// 58: def test_readonly_span_param(s: ReadOnlySpan[Int32]) -> None:
+// 58: def test_readonly_span_param(s: Span[readonly[Int32]]) -> None:
 void test_readonly_span_param(std::span<const int32_t> s) {
-    // 59:     sub = s[0:2]  # tpyc: type(ReadOnlySpan[Int32])
+    // 59:     sub = s[0:2]  # tpyc: type(Span[readonly[Int32]])
     std::span<const int32_t> sub = tpy::list_slice(s, 0, 2);
     // 60:     print(sub)
     std::cout << tpy::ListPrinter(sub) << "\n";

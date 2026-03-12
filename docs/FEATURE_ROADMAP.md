@@ -30,7 +30,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | A10a | Reference elements in tuples | M | Done | [I](#reference-elements-in-tuples) |
 | A10b | Lazy list repeat (`[val]*N`) | S | Done | [I](#lazy-list-repeat-valn) |
 | A11 | dict type | L | Done | [VII](#dict-type) |
-| A12 | Mutable `Span[T]` + `ReadOnlySpan[T]` + `__span__` protocol | M | Done | [I](#mutable-span--readonlyspan--__span__-protocol) |
+| A12 | Mutable `Span[T]` + `Span[readonly[T]]` + `__span__` protocol | M | Done | [I](#mutable-span--spanreadonlyt--__span__-protocol) |
 
 ### Phase B: Polymorphism Foundation
 
@@ -297,20 +297,20 @@ could use a pending representation that resolves during sema/codegen based on co
 
 ---
 
-### Mutable Span + ReadOnlySpan + `__span__` Protocol
+### Mutable Span + `Span[readonly[T]]` + `__span__` Protocol
 
 Three related changes that make Span consistent with the rest of the language and enable
 zero-cost user-defined iteration for contiguous containers.
 
-#### Part 1: Mutable `Span[T]` + `ReadOnlySpan[T]`
+#### Part 1: Mutable `Span[T]` + `Span[readonly[T]]`
 
 Make `Span[T]` mutable by default, matching the language convention (everything is mutable
-by default). Add `ReadOnlySpan[T]` for explicit const views.
+by default). Use `Span[readonly[T]]` for explicit const views.
 
 | TPy | C++ | Consistent with |
 |-----|-----|-----------------|
 | `Span[T]` | `std::span<T>` | `Ptr[T]` -> `T*` |
-| `ReadOnlySpan[T]` | `std::span<const T>` | `ReadOnlyPtr[T]` -> `const T*` |
+| `Span[readonly[T]]` | `std::span<const T>` | `Ptr[readonly[T]]` -> `const T*` |
 
 Existing coercions (`list[T]` -> `Span[T]`, `Array[T,N]` -> `Span[T]`) continue to work.
 Functions that don't need to mutate elements use `@readonly` on the function, as with any
@@ -338,11 +338,11 @@ The user writes a single `__span__` method. The compiler detects it and uses it 
   for (auto& x : __span) { ... }
   ```
 - **Implicit coercion**: passing a type with `__span__` where `Span[T]` or
-  `ReadOnlySpan[T]` is expected calls `__span__()`. `ReadOnlySpan` return cannot
-  coerce to mutable `Span`.
+  `Span[readonly[T]]` is expected calls `__span__()`. A `Span[readonly[T]]` return cannot
+  coerce to mutable `Span[T]`.
 - **Dual overloads**: When `__span__` returns mutable `Span[T]`, the compiler generates
   two C++ overloads -- non-const (user body, returns `span<T>`) and const (thin wrapper,
-  returns `span<const T>`). When returning `ReadOnlySpan[T]`, only a const overload is
+  returns `span<const T>`). When returning `Span[readonly[T]]`, only a const overload is
   generated. This follows the `__getitem__` dual-overload pattern.
 
 **CPython compatibility**: `__span__` is not meaningful in CPython. The `ReadOnlySpanLike[T]`
@@ -351,9 +351,9 @@ User types inheriting `ReadOnlySpanLike` get iteration for free in both runtimes
 
 **`ReadOnlySpanLike[T]` protocol**: Readonly protocol for types with `__span__()`. Enables
 generic functions accepting any span-producing type
-(`def sum_all(c: ReadOnlySpanLike[Int32])`). Builtins (list, Array, Span, ReadOnlySpan) conform via `extends`. User types conform structurally -- `__span__() -> Span[T]`
+(`def sum_all(c: ReadOnlySpanLike[Int32])`). Builtins (list, Array, Span, Span[readonly[T]]) conform via `extends`. User types conform structurally -- `__span__() -> Span[T]`
 satisfies the readonly protocol via covariant return. `ReadOnlySpanLike[T]` values coerce to
-`ReadOnlySpan[T]` and support for-loop iteration.
+`Span[readonly[T]]` and support for-loop iteration.
 
 **Why it matters**: Previously user-defined types could only iterate via `__iter__`/`__next__`,
 which allocates an iterator object and generates a while-loop with `__next_opt__()` calls.
@@ -361,7 +361,7 @@ Builtin types use `NativeIterable[T]` for zero-cost C++ range-based for, but thi
 was not user-extensible. `__span__` bridges the gap for any contiguous container with no
 overhead. `ArrayList[T, N]` now uses `__span__` instead of `__iter__`/`ArrayListIter`.
 
-**Current state**: Part 1 done. Part 2 done. ReadOnlySpanLike[T] protocol done.
+**Current state**: Part 1 done. Part 2 done. `ReadOnlySpanLike[T]` protocol done.
 
 **Dependencies**: Part 2 needs Part 1 (done).
 
@@ -1244,7 +1244,7 @@ sentinel instead:
 
 | Field type | Post-move null state | Usable as sentinel? |
 |---|---|---|
-| `Ptr[T]`, `ReadOnlyPtr[T]` | Need explicit `other.p = nullptr` | Yes, with codegen |
+| `Ptr[T]`, `Ptr[readonly[T]]` | Need explicit `other.p = nullptr` | Yes, with codegen |
 | `T \| None` (maps to `T*`) | Need explicit null | Yes, with codegen |
 | `UninitHeapStorage[T]` | Nulls on move (heap pointer) | Yes, naturally |
 | `std::unique_ptr<T>` | Guaranteed null after move | Yes, naturally |
@@ -1955,8 +1955,8 @@ class ArrayList[T, N: int]:
     @overload
     def __getitem__(self, index: Int32) -> T: ...
     @overload
-    def __getitem__(self, s: slice) -> ReadOnlySpan[T]: ...
-    def __getitem__(self, index: Int32 | slice) -> T | ReadOnlySpan[T]:
+    def __getitem__(self, s: slice) -> Span[readonly[T]]: ...
+    def __getitem__(self, index: Int32 | slice) -> T | Span[readonly[T]]:
         if isinstance(index, slice):
             return self._get_span(index.start, index.stop)
         return self._storage[index]
@@ -2022,13 +2022,13 @@ copy = items[:]        # Span[Int32] -> full view
 **Design decision**: Slicing returns `Span[T]` (zero-copy view into the original
 container), not a new list. This matches TPy's performance-first philosophy -- no
 allocation, no element copies. The source's mutability is preserved: mutable list
-gives `Span[T]`, `@readonly` context gives `ReadOnlySpan[T]`.
+gives `Span[T]`, `@readonly` context gives `Span[readonly[T]]`.
 
 Python returns a new list from slicing. Users who need an independent copy can
 explicitly construct one: `copy: list[T] = list(items[1:3])`.
 
 **Phase 1 (built-in types)**: `list[T]`, `Array[T, N]`, `Span[T]`,
-`ReadOnlySpan[T]` slicing. Returns `Span[T]` / `ReadOnlySpan[T]`. String slicing
+`Span[readonly[T]]` slicing. Returns `Span[T]` / `Span[readonly[T]]`. String slicing
 returns `StrView` (existing). No step support initially.
 
 **Phase 2 (user types)**: Add `slice` built-in type. User types support slicing
@@ -2041,8 +2041,8 @@ class ArrayList[T, N: int]:
     @overload
     def __getitem__(self, index: Int32) -> T: ...
     @overload
-    def __getitem__(self, s: slice) -> ReadOnlySpan[T]: ...
-    def __getitem__(self, index: Int32 | slice) -> T | ReadOnlySpan[T]:
+    def __getitem__(self, s: slice) -> Span[readonly[T]]: ...
+    def __getitem__(self, index: Int32 | slice) -> T | Span[readonly[T]]:
         if isinstance(index, slice):
             return self.__span__()[index.start:index.stop]
         return self._storage[index]
@@ -2053,10 +2053,10 @@ new `list[T]` (elements are not contiguous). String step slicing returns `str`
 (owned string).
 
 **Current state**: Phase 1 and Phase 2 done. Built-in container slicing (`list[T]`,
-`Array[T,N]`, `Span[T]`, `ReadOnlySpan[T]`) returns `Span[T]` / `ReadOnlySpan[T]`.
+`Array[T,N]`, `Span[T]`, `Span[readonly[T]]`) returns `Span[T]` / `Span[readonly[T]]`.
 String slicing returns `StrView` (existing). Indices clamped (Python semantics),
-negative indices supported. `@readonly` context and `ReadOnlySpan` source propagate
-to `ReadOnlySpan` result.
+negative indices supported. `@readonly` context and `Span[readonly[T]]` source propagate
+to `Span[readonly[T]]` result.
 
 Phase 2 adds the `slice` built-in type. User records with `@overload __getitem__`
 can accept both `Int32` (index) and `slice` (range) parameters. The `slice` type

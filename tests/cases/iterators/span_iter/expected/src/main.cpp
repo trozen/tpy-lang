@@ -23,8 +23,8 @@ void main() {
         // 16:         print(x)
         std::cout << x << "\n";
     }
-    // 18:     # iter() on ReadOnlySpan
-    // 19:     ro: ReadOnlySpan[Int32] = a
+    // 18:     # iter() on Span[readonly[T]]
+    // 19:     ro: Span[readonly[Int32]] = a
     std::span<const int32_t> ro = tpy::as_span(a);
     // 20:     it2 = iter(ro)
     auto it2 = tpy::__iter__(ro);

@@ -136,11 +136,19 @@ class OperatorResolver:
             ]
             new_return = _substitute_type_params(method.return_type, type_subst)
             method = dc_replace(method, params=new_params, return_type=new_return)
-            # Rebuild receiver_type from subst to resolve IntLiteralType elements
-            params_map = builtin_modules.extract_type_params(receiver_type)
-            if params_map and receiver_type.inner_types():
-                new_inner = tuple(type_subst.get(name, orig)
-                                  for name, orig in params_map.items())
+            # Rebuild receiver_type from subst to resolve IntLiteralType elements.
+            # Use inner_types() as the source of truth for the reconstruction -- it
+            # defines exactly how many (and which) inner types the type has. params_map
+            # may have more entries (e.g. Tspan for PtrType), but with_inner_types only
+            # accepts len(inner_types()) values.
+            inner = receiver_type.inner_types()
+            if inner:
+                params_map = builtin_modules.extract_type_params(receiver_type)
+                param_names = list(params_map.keys())
+                new_inner = tuple(
+                    type_subst.get(param_names[i], inner[i]) if i < len(param_names) else inner[i]
+                    for i in range(len(inner))
+                )
                 receiver_type = receiver_type.with_inner_types(new_inner)
         return ResolvedBinop(
             method=method,

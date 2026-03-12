@@ -48,7 +48,7 @@ template<typename T> struct Box;
 ```
 
 **Include this when:** a dependency's types appear only as pointer/reference
-types (`Ptr[T]`, `ReadOnlyPtr[T]`, function parameters passed by reference).
+types (`Ptr[T]`, `Ptr[readonly[T]]`, function parameters passed by reference).
 
 ### `module.hpp` -- Main Header
 
@@ -194,7 +194,7 @@ include level needed **separately** for A's header and A's source file.
 
 | Usage in A's header | Minimum level |
 |----------------------|---------------|
-| B's type as `Ptr[X]`, `ReadOnlyPtr[X]` | `_fwd.hpp` |
+| B's type as `Ptr[X]`, `Ptr[readonly[X]]` | `_fwd.hpp` |
 | B's type as function parameter (passed by ref) | `_fwd.hpp` |
 | B's non-template type as record field | `.hpp` |
 | B's non-template type as function return (by value) | `.hpp` |

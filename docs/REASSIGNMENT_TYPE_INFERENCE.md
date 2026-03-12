@@ -115,7 +115,7 @@ Parser/typing normalization goal:
 ### Not Participating in v1 Inference Merge
 
 These coercions are intentionally excluded from merge decisions:
-- Record/pointer coercions (`T` <-> `Ptr[T]`, `ReadOnlyPtr[T]`)
+- Record/pointer coercions (`T` <-> `Ptr[T]`, `Ptr[readonly[T]]`)
 - View coercions (`list/Array` -> `Span`)
 - Other coercions requiring lvalue/mutability/lifetime constraints
 

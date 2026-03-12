@@ -1134,7 +1134,7 @@ class ExpressionAnalyzer:
                 f"Enum value of type '{actual_type.name}' has no attribute '{expr.field}'. "
                 f"Use '{actual_type.name}.{expr.field}' to access enum members", expr)
 
-        # Deref chain loop -- resolves through Ptr, ReadOnlyPtr, and any Deref[T] type
+        # Deref chain loop -- resolves through Ptr (mutable and readonly) and any Deref[T] type
         current_type = actual_type
         deref_depth = 0
         while deref_depth <= 8:
@@ -1152,7 +1152,7 @@ class ExpressionAnalyzer:
                         ] = expr.ptr_non_null
                 # Propagate readonly: accessing a non-value field through a
                 # readonly reference yields a readonly result.
-                # Ptr[T] fields become ReadOnlyPtr[T], Span[T] -> ReadOnlySpan[T].
+                # Ptr[T] fields become Ptr[readonly[T]], Span[T] -> Span[readonly[T]].
                 if is_readonly_obj:
                     if isinstance(result, PtrType) and not result.is_readonly:
                         result = result.as_const()
@@ -1978,11 +1978,11 @@ class ExpressionAnalyzer:
         if isinstance(actual_type, self._SLICEABLE_STR_TYPES):
             return STRVIEW
 
-        # Container slicing -> Span[T] or ReadOnlySpan[T]
+        # Container slicing -> Span[T] or Span[readonly[T]]
         if isinstance(actual_type, self._SLICEABLE_CONTAINER_TYPES):
             elem_type = actual_type.get_element_type()
             assert elem_type is not None
-            # ReadOnlySpan source or @readonly context -> ReadOnlySpan
+            # Span[readonly[T]] source or @readonly context -> Span[readonly[T]]
             src_readonly = isinstance(actual_type, SpanType) and actual_type.is_readonly
             return SpanType(elem_type, is_readonly=(is_readonly or src_readonly))
 

@@ -8,8 +8,8 @@
 | 2 | Sema — generalize auto-deref (field access, method calls) | Done |
 | 3 | Codegen — emit deref calls for user types | Done |
 | 4 | Deref coercion (replace hardcoded `ptr_to_record`) | Done |
-| 5 | ReadOnlyPtr `__deref__`, mutability enforcement | Partial |
-| 6 | Null-safety for Ptr/ReadOnlyPtr auto-deref | Done |
+| 5 | `Ptr[readonly[T]]` `__deref__`, mutability enforcement | Partial |
+| 6 | Null-safety for Ptr/Ptr[readonly[T]] auto-deref | Done |
 | 7 | Generate `operator*` for types with `__deref__` | Done |
 | 8 | Provenance-based null-check elision | Done |
 
@@ -88,13 +88,13 @@ Replaced hardcoded pointer checks with generic deref chain resolution.
 
 **Method calls** (`sema/methods.py`): `analyze_method_call` uses the same deref chain pattern via `_try_resolve_method()`.
 
-**Type resolution** (`get_deref_target_type`): Looks up `__deref__` on any type via the registry, handles both builtin types (Ptr, ReadOnlyPtr — via `extract_type_params`) and user-defined generic records (via `build_type_substitution`).
+**Type resolution** (`get_deref_target_type`): Looks up `__deref__` on any type via the registry, handles both builtin types (Ptr, Ptr[readonly[T]] -- via `extract_type_params`) and user-defined generic records (via `build_type_substitution`).
 
 ### Stage 3: Codegen — emit deref calls — Done
 
 Two strategies based on type:
 
-- **Ptr[T] / ReadOnlyPtr[T]:** Keep generating `ptr->field` via existing `is_indirect_name` / `is_pointer()` checks.
+- **Ptr[T] / Ptr[readonly[T]]:** Keep generating `ptr->field` via existing `is_indirect_name` / `is_pointer()` checks.
 - **User Deref types:** Generate `obj.__deref__().field` / `obj.__deref__().method()`. For depth 2+: `obj.__deref__().__deref__().field`.
 
 Codegen also handles the interaction with Optional receivers:
@@ -107,16 +107,16 @@ Replaced the hardcoded `ptr_to_record` coercion with a generic deref fallback in
 
 - `Ptr[T]` → `T`: codegen emits `tpy::deref_check(expr)` (null-checked)
 - User Deref types → `T`: codegen emits `expr.__deref__()`
-- `ReadOnlyPtr[T]` → `T`: excluded for now — C++ generates record params as `T&` (mutable ref) but `deref_check(const T*)` returns `const T&`, causing const-correctness errors. Requires parameter codegen changes (`const T&` for read-only params).
+- `Ptr[readonly[T]]` → `T`: excluded for now -- C++ generates record params as `T&` (mutable ref) but `deref_check(const T*)` returns `const T&`, causing const-correctness errors. Requires parameter codegen changes (`const T&` for read-only params).
 
-### Stage 5: ReadOnlyPtr, mutability — Partial
+### Stage 5: `Ptr[readonly[T]]`, mutability -- Partial
 
-- ReadOnlyPtr[T] has `__deref__` and extends `Deref[T]` — **done**
-- ReadOnlyPtr auto-deref works for field access and const method calls — **done**
-- `__deref_mut__` for mutable deref distinction — **future**
-- Transitive constness enforcement (e.g. `ReadOnlyPtr[list[T]]` blocking `.append()`) — **future**, requires a full const-propagation system
+- `Ptr[readonly[T]]` has `__deref__` and extends `Deref[T]` -- **done**
+- `Ptr[readonly[T]]` auto-deref works for field access and const method calls -- **done**
+- `__deref_mut__` for mutable deref distinction -- **future**
+- Transitive constness enforcement (e.g. `Ptr[readonly[list[T]]]` blocking `.append()`) -- **future**, requires a full const-propagation system
 
-### Stage 6: Null-safety for Ptr/ReadOnlyPtr auto-deref — Done
+### Stage 6: Null-safety for Ptr / Ptr[readonly[T]] auto-deref -- Done
 
 Replaced unchecked `ptr->field` / `ptr->method()` with `tpy::deref_check(ptr).field` / `tpy::deref_check(ptr).method()` in codegen for `PtrType` (both mutable and const). Every auto-deref through a pointer is now null-checked via the existing `tpy::deref_check()` runtime function, which panics with "null pointer dereference" on null. This matches the behavior of explicit `.__deref__()` calls.
 
@@ -124,7 +124,7 @@ The C++ optimizer can elide redundant null checks on the same pointer in release
 
 ### Stage 7: Generate `operator*` for types with `__deref__` — Done
 
-User-defined records with `__deref__()` now get `operator*()` generated in the C++ struct, enabling `*box` syntax for C++ interop. Uses `auto` return type with `decltype(__deref__())` to handle generic type parameters correctly. `Ptr[T]`/`ReadOnlyPtr[T]` are excluded since they map to raw `T*`/`const T*` which already support `*ptr` natively.
+User-defined records with `__deref__()` now get `operator*()` generated in the C++ struct, enabling `*box` syntax for C++ interop. Uses `auto` return type with `decltype(__deref__())` to handle generic type parameters correctly. `Ptr[T]`/`Ptr[readonly[T]]` are excluded since they map to raw `T*`/`const T*` which already support `*ptr` natively.
 
 **Known limitation**: `operator*()` is non-const only, since `__deref__()` is generated as non-const. A const overload requires const method generation for `__deref__`, which depends on the broader const method system (Stage 5).
 
@@ -132,7 +132,7 @@ User-defined records with `__deref__()` now get `operator*()` generated in the C
 
 Added flow-tracked `non_null_ptr_vars` set to sema context (alongside existing `param_provenance_vars` and `narrowed_types`). The set tracks pointer variables with known non-null provenance through the same save/restore/merge infrastructure used by definite assignment and Optional narrowing.
 
-**Tracking**: When a variable is assigned from `Ptr(x)` or `ReadOnlyPtr(x)` (constructor with an argument), it's marked non-null. Assignment from another known non-null variable propagates the fact. Reassignment to unknown source (function return, null constructor, etc.) clears it. Branch merges use intersection (conservative).
+**Tracking**: When a variable is assigned from `Ptr(x)` or `Ptr[readonly[T]](x)` (constructor with an argument), it's marked non-null. Assignment from another known non-null variable propagates the fact. Reassignment to unknown source (function return, null constructor, etc.) clears it. Branch merges use intersection (conservative).
 
 **AST flag**: `ptr_non_null: bool` on `TpyFieldAccess` and `TpyMethodCall`, set by sema when the receiver is a `TpyName` in `non_null_ptr_vars` and the receiver type is `PtrType`.
 
@@ -154,7 +154,7 @@ module.protocol("Deref",
 )
 ```
 
-Both `Ptr[T]` and `ReadOnlyPtr[T]` declare `extends=["Deref[T]"]`. User-defined types conform structurally by implementing `__deref__() -> T`.
+Both `Ptr[T]` and `Ptr[readonly[T]]` declare `extends=["Deref[T]"]`. User-defined types conform structurally by implementing `__deref__() -> T`.
 
 ## Notes
 

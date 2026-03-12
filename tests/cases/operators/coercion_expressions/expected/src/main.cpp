@@ -64,7 +64,7 @@ void modify_via_ptr(Point* p) {
     tpy::deref_check(p).x = (tpy::add_check<int32_t>(tpy::deref_check(p).x, 100));
 }
 
-// 92: def read_via_const_ptr(p: ReadOnlyPtr[Point]) -> Int32:
+// 92: def read_via_const_ptr(p: Ptr[readonly[Point]]) -> Int32:
 int32_t read_via_const_ptr(const Point* p) {
     // 93:     return p.x + p.y
     return (tpy::add_check<int32_t>(tpy::deref_check(p).x, tpy::deref_check(p).y));
@@ -81,7 +81,7 @@ void test_field_access_to_ptr() {
     modify_via_ptr(&cont.pt);
     // 103:     print(cont.pt.x)  # 105
     std::cout << cont.pt.x << "\n";
-    // 105:     # Field access -> ReadOnlyPtr in function call
+    // 105:     # Field access -> Ptr[readonly[...]] in function call
     // 106:     print(read_via_const_ptr(cont.pt))  # 115
     std::cout << read_via_const_ptr(&cont.pt) << "\n";
 }
@@ -97,7 +97,7 @@ void test_nested_field_to_ptr() {
     modify_via_ptr(&outer.inner.pt);
     // 116:     print(outer.inner.pt.x)  # 107
     std::cout << outer.inner.pt.x << "\n";
-    // 118:     # Nested field access -> ReadOnlyPtr
+    // 118:     # Nested field access -> Ptr[readonly[...]]
     // 119:     print(read_via_const_ptr(outer.inner.pt))  # 115
     std::cout << read_via_const_ptr(&outer.inner.pt) << "\n";
 }

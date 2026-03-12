@@ -10,7 +10,7 @@ void modify_point(Point* p) {
     tpy::deref_check(p).x = 999;
 }
 
-// 14: def read_point(p: ReadOnlyPtr[Point]) -> Int32:
+// 14: def read_point(p: Ptr[readonly[Point]]) -> Int32:
 int32_t read_point(const Point* p) {
     // 15:     return p.x
     return tpy::deref_check(p).x;
@@ -25,12 +25,12 @@ void test_coercion() {
     modify_point(&pt);
     // 22:     print(pt.x)  # Should print 999
     std::cout << pt.x << "\n";
-    // 24:     # Record -> ReadOnlyPtr coercion in function call
+    // 24:     # Record -> Ptr[readonly[...]] coercion in function call
     // 25:     result: Int32 = read_point(pt)
     int32_t result = read_point(&pt);
     // 26:     print(result)  # Should print 999
     std::cout << result << "\n";
-    // 28:     # Explicit Ptr -> ReadOnlyPtr also works
+    // 28:     # Explicit Ptr -> Ptr[readonly[...]] also works
     // 29:     ptr: Ptr[Point] = pt
     Point* ptr = &pt;
     // 30:     result2: Int32 = read_point(ptr)

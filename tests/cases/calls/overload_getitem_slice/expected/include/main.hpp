@@ -28,7 +28,7 @@ struct MyList {
     }
 
     //     @overload
-    // 16:     def __getitem__(self, index: slice) -> ReadOnlySpan[Int32]: ...  # tpyc: ok
+    // 16:     def __getitem__(self, index: slice) -> Span[readonly[Int32]]: ...  # tpyc: ok
     std::span<const int32_t> __getitem__(tpy::Slice index) const {
         // 19:         if isinstance(index, slice):
         // 20:             s_start = index.start

@@ -6,7 +6,7 @@ namespace tpy_user::main {
 
 // 23: def read_holder(h: readonly[NodeHolder]) -> None:
 void read_holder(const NodeHolder& h) {
-    // 24:     p = h.get_node()  # tpyc: type(ReadOnlyPtr[Node])
+    // 24:     p = h.get_node()  # tpyc: type(Ptr[readonly[Node]])
     const Node* p = h.get_node();
     // 25:     print(p.value)
     std::cout << tpy::deref_check(p).value << "\n";

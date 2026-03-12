@@ -14,6 +14,8 @@ from tpyc.typesys import (
 
 # Shorthand for type parameter T
 T = TypeParamRef("T")
+# Full element/pointee type (preserves readonly) for span() / __span__() return types
+Tspan = TypeParamRef("Tspan")
 
 NAME = "tpy"
 
@@ -249,10 +251,10 @@ def init_module() -> BuiltinModule:
                 constructors=[
                     MethodDef(params=[ParamDef("ptr", PtrType(T)), ParamDef("length", INT32)],
                               returns=VOID,
-                              cpp="std::span<{T}>({0}, static_cast<size_t>({1}))"),
+                              cpp="{cpp}({0}, static_cast<size_t>({1}))"),
                     MethodDef(params=[ParamDef("source", SpanType(T))],
                               returns=VOID,
-                              cpp="std::span<{T}>({0})"),
+                              cpp="{cpp}({0})"),
                 ],
                 methods={
         "__iter__": [MethodDef(
@@ -297,50 +299,6 @@ def init_module() -> BuiltinModule:
         )],
     })
 
-    # ReadOnlySpan[T]: Non-owning read-only view
-    module.type("ReadOnlySpan", cpp_type="std::span<const {T}>", type_params=["T"],
-                param_kinds=[TypeParamKind.TYPE],
-                type_factory=lambda t: SpanType(t, is_readonly=True),
-                extends=["NativeIterable[T]", "ReadOnlySpanLike[T]", "Iterable[T]"],
-                constructors=[
-                    MethodDef(params=[ParamDef("ptr", PtrType(T, is_readonly=True)), ParamDef("length", INT32)],
-                              returns=VOID,
-                              cpp="std::span<const {T}>({0}, static_cast<size_t>({1}))"),
-                    MethodDef(params=[ParamDef("source", SpanType(T, is_readonly=True))],
-                              returns=VOID,
-                              cpp="std::span<const {T}>({0})"),
-                ],
-                methods={
-        "__iter__": [MethodDef(
-            params=[],
-            returns=NamedType("Iterator", (T,), is_protocol=True),
-            cpp="tpy::__iter__({self})",
-            is_readonly=True, is_pure=True,
-        )],
-        "__len__": [MethodDef(
-            params=[],
-            returns=INT32,
-            cpp="static_cast<int32_t>({self}.size())",
-            is_readonly=True, is_pure=True,
-        )],
-        "unchecked_get": [MethodDef(
-            params=[ParamDef("index", INT32)],
-            returns=T,
-            cpp="{self}[{0}]",
-            is_readonly=True, is_pure=True,
-        )],
-        "__getitem__": [MethodDef(
-            params=[ParamDef("index", INT32)],
-            returns=T,
-            cpp="tpy::__getitem__({self}, {0})",
-            is_readonly=True, is_pure=True,
-        )],
-        "__span__": [MethodDef(
-            params=[], returns=SpanType(T, is_readonly=True),
-            cpp="tpy::as_span({self})", is_readonly=True, is_pure=True,
-        )],
-    })
-
     # SpanIter[T]: Lightweight iterator over a contiguous span
     module.type("SpanIter", cpp_type="tpy::SpanIter<{T}>", type_params=["T"],
                 param_kinds=[TypeParamKind.TYPE],
@@ -375,30 +333,14 @@ def init_module() -> BuiltinModule:
                 ],
                 methods={
                     "__deref__": [MethodDef(params=[], returns=T, cpp="tpy::deref_check({self})")],
-                    "span": [MethodDef(params=[ParamDef("length", INT32)], returns=SpanType(T),
-                                       cpp="std::span({self}, static_cast<size_t>({0}))",
-                                       is_readonly=True, is_pure=True)],
-                })
-
-    # ReadOnlyPtr[T]: Read-only pointer
-    module.type("ReadOnlyPtr", cpp_type="const {T}*", type_params=["T"],
-                param_kinds=[TypeParamKind.TYPE],
-                type_factory=lambda t: PtrType(t, is_readonly=True),
-                extends=["Deref[T]"],
-                constructors=[
-                    MethodDef(params=[], returns=VOID, cpp="nullptr"),
-                    MethodDef(params=[ParamDef("x", T, requires_lvalue=True)], returns=T, cpp="&{0}"),
-                ],
-                methods={
-                    "__deref__": [MethodDef(params=[], returns=T, cpp="tpy::deref_check({self})")],
-                    "span": [MethodDef(params=[ParamDef("length", INT32)], returns=SpanType(T, is_readonly=True),
+                    "span": [MethodDef(params=[ParamDef("length", INT32)], returns=SpanType(Tspan),
                                        cpp="std::span({self}, static_cast<size_t>({0}))",
                                        is_readonly=True, is_pure=True)],
                 })
 
     # Deref[T] protocol: types that can be dereferenced to yield T
     # Structural protocol -- any type with __deref__() -> T conforms automatically.
-    # Ptr[T] and ReadOnlyPtr[T] explicitly extend this for clarity.
+    # Ptr[T] explicitly extends this for clarity.
     module.protocol("Deref",
         type_params=["T"],
         methods={
@@ -463,9 +405,9 @@ def init_module() -> BuiltinModule:
     )
 
     # ReadOnlySpanLike[T] protocol -- types exposing contiguous storage via __span__()
-    # Returns ReadOnlySpan[T]. User types typically implement __span__() -> Span[T] (mutable),
+    # Returns Span[readonly[T]]. User types typically implement __span__() -> Span[T] (mutable),
     # and the compiler generates a const overload automatically; the covariant return
-    # (Span -> ReadOnlySpan, marked protocol_safe) satisfies this protocol.
+    # (Span[T] -> Span[readonly[T]], marked protocol_safe) satisfies this protocol.
     module.protocol("ReadOnlySpanLike",
         type_params=["T"],
         methods={

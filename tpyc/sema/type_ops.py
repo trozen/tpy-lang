@@ -505,9 +505,9 @@ class TypeOperations:
             return self._match_array_with_inference(param_type, arg_type, inferred)
 
         # SpanType: recurse on element types directly so that readonly propagates into T.
-        # Span[T] accepts both Span[X] (T=X) and ReadOnlySpan[X] (T=readonly[X]).
+        # Span[T] accepts both Span[X] (T=X) and Span[readonly[X]] (T=readonly[X]).
         # This must come before the NamedType check because SpanType is a NamedType subclass,
-        # and _match_record_with_inference would reject "Span" vs "ReadOnlySpan" by name.
+        # and _match_record_with_inference would reject by name if it treated spans differently.
         if isinstance(param_type, SpanType):
             if isinstance(arg_type, SpanType):
                 return self.match_type_with_inference(
@@ -519,11 +519,11 @@ class TypeOperations:
         if isinstance(param_type, NamedType) and param_type.is_record and param_type.type_args:
             return self._match_record_with_inference(param_type, arg_type, inferred)
 
-        # Pointer types (Ptr[T], ReadOnlyPtr[T])
+        # Pointer types (Ptr[T], Ptr[readonly[T]])
         if isinstance(param_type, PtrType):
             if isinstance(arg_type, PtrType):
                 # Mutable Ptr param only matches mutable Ptr arg;
-                # ReadOnlyPtr param matches both ReadOnlyPtr and Ptr args
+                # readonly Ptr param matches both readonly and mutable Ptr args
                 if not param_type.is_readonly and arg_type.is_readonly:
                     return False
                 return self.match_type_with_inference(
@@ -854,10 +854,32 @@ class TypeOperations:
 
         Returns dict of inferred type params (e.g., {"T": Int32}) on success, None on failure.
         Supports protocol params like "NativeIterable[T]" which infer T from element type.
+
+        Unlike match_type_with_inference, Ptr[TypeParam] params accept Ptr[readonly[X]] args,
+        inferring T = readonly[X]. This lets Span(readonly_ptr, n) produce Span[readonly[T]]
+        without needing an explicit type annotation. Function inference keeps the strict check
+        to preserve helpful errors (e.g. "unsafe_store() requires a mutable pointer").
         """
         inferred: dict[str, TpyType] = {}
         for param, arg_type in zip(params, arg_types):
-            if not self.match_type_with_inference(param.type, arg_type, inferred):
+            pt = param.type
+            # For Ptr[TypeParam] constructor params, allow T = readonly[X] inference
+            # from Ptr[readonly[X]] arguments. This is safe here (constructor context)
+            # because the resulting type (e.g. Span[readonly[T]]) captures readonly-ness.
+            if (isinstance(pt, PtrType)
+                    and isinstance(pt.pointee, TypeParamRef)
+                    and isinstance(arg_type, PtrType)
+                    and arg_type.is_readonly
+                    and not pt.is_readonly):
+                name = pt.pointee.name
+                pointee = arg_type.pointee  # ReadonlyType(X)
+                if name in inferred:
+                    if not self.types_match_for_inference(inferred[name], pointee):
+                        return None
+                else:
+                    inferred[name] = pointee
+                continue
+            if not self.match_type_with_inference(pt, arg_type, inferred):
                 return None
         return inferred
 
@@ -943,7 +965,7 @@ class TypeOperations:
     def get_deref_coercion_target(self, typ: TpyType) -> TpyType | None:
         """Get the deref target for coercion purposes.
 
-        Like get_deref_target_type() but excludes ReadOnlyPtr -- record params
+        Like get_deref_target_type() but excludes Ptr[readonly[T]] -- record params
         are T& (mutable ref) but deref_check(const T*) returns const T&.
         """
         if is_readonly_ptr(typ):

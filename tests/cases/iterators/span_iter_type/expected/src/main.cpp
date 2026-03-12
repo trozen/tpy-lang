@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 
-// 11: def sum_readonly(rs: ReadOnlySpan[Int32]) -> Int32:
+// 11: def sum_readonly(rs: Span[readonly[Int32]]) -> Int32:
 int32_t sum_readonly(std::span<const int32_t> rs) {
     // 12:     it = SpanIter(rs)
     tpy::SpanIter<const int32_t> it = tpy::SpanIter<const int32_t>(rs);
@@ -31,7 +31,7 @@ void main() {
         // 22:         print(x)
         std::cout << x << "\n";
     }
-    // 24:     # SpanIter from ReadOnlySpan (via function param)
+    // 24:     # SpanIter from Span[readonly[T]] (via function param)
     // 25:     print(sum_readonly(s))
     std::cout << sum_readonly(s) << "\n";
     // 27:     # Pass SpanIter as Iterable[T]

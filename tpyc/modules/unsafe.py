@@ -20,7 +20,7 @@ def init_module() -> BuiltinModule:
 
     # unsafe_ptr: get a raw pointer from a container or string
     module.function("unsafe_ptr", type_params=["T"], overloads=[
-        # str -> ReadOnlyPtr[Char] (non-generic; str is string_view, need .data())
+        # str -> Ptr[readonly[Char]] (non-generic; str is string_view, need .data())
         MethodDef(
             params=[ParamDef("s", STR)],
             returns=PtrType(CHAR, is_readonly=True),
@@ -89,7 +89,7 @@ def init_module() -> BuiltinModule:
         ),
     ])
 
-    # unsafe_const_cast: remove const from a pointer (ReadOnlyPtr[T] -> Ptr[T])
+    # unsafe_const_cast: remove const from a pointer (Ptr[readonly[T]] -> Ptr[T])
     module.function("unsafe_const_cast", type_params=["T"], overloads=[
         MethodDef(
             params=[ParamDef("p", PtrType(T, is_readonly=True))],
@@ -140,7 +140,7 @@ def init_module() -> BuiltinModule:
             returns=PtrType(T),
             cpp="reinterpret_cast<{T}*>({0})",
         ),
-        # ReadOnlyPtr[U] -> ReadOnlyPtr[T]
+        # Ptr[readonly[U]] -> Ptr[readonly[T]]
         MethodDef(
             params=[ParamDef("p", PtrType(U, is_readonly=True))],
             returns=PtrType(T, is_readonly=True),

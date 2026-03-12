@@ -581,10 +581,11 @@ def extract_type_params(tpy_type: "TpyType") -> dict[str, "TpyType"]:
     if isinstance(tpy_type, (DictType, DictKeysViewType, DictValuesViewType, DictItemsViewType)):
         return {"K": tpy_type.key_type, "V": tpy_type.value_type}
     # Pointer types store their type param as pointee (not via get_element_type,
-    # since pointers are not containers). Use inner_pointee so that ReadOnlyPtr[T]
+    # since pointers are not containers). Use inner_pointee so that Ptr[readonly[T]]
     # returns {"T": T_element} not {"T": readonly[T_element]}.
+    # Tspan = full pointee (preserves readonly) for Ptr.span() return type.
     if isinstance(tpy_type, PtrType):
-        return {"T": tpy_type.inner_pointee}
+        return {"T": tpy_type.inner_pointee, "Tspan": tpy_type.pointee}
     if (elem_type := tpy_type.get_element_type()) is not None:
         return {"T": elem_type}
     return {}
@@ -911,7 +912,7 @@ def _find_iter_method_info(
 
 
 def get_span_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
-    """If type has __span__() -> Span[T] or ReadOnlySpan[T], return element type T."""
+    """If type has __span__() -> Span[T] or Span[readonly[T]], return element type T."""
     span_type = get_span_return_type(tpy_type, registry)
     if span_type is not None:
         return span_type.element_type
@@ -919,7 +920,7 @@ def get_span_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "Tpy
 
 
 def get_span_return_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "SpanType | None":
-    """If type has __span__() -> Span[T] or ReadOnlySpan[T], return the full SpanType."""
+    """If type has __span__() -> Span[T] or Span[readonly[T]], return the full SpanType."""
     from tpyc.typesys import NamedType, SpanType, TypeParamRef
 
     if not (isinstance(tpy_type, NamedType) and tpy_type.is_user_record):
@@ -936,7 +937,7 @@ def get_span_return_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "Span
 def _find_span_method_return_type(
     record: "RecordInfo", type_subst: "dict[str, TpyType]", registry: "TypeRegistry",
 ) -> "SpanType | None":
-    """Check if record has __span__() returning Span[T]/ReadOnlySpan[T], and return the SpanType."""
+    """Check if record has __span__() returning Span[T]/Span[readonly[T]], and return the SpanType."""
     from tpyc.typesys import NamedType, SpanType, TypeParamRef
 
     for method in record.get_method_overloads("__span__"):

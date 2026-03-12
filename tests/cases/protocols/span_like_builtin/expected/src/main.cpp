@@ -34,7 +34,7 @@ void test_span() {
 void test_ro_span() {
     // 25:     data: list[Int32] = [4, 5, 6]
     std::vector<int32_t> data = {4, 5, 6};
-    // 26:     s: ReadOnlySpan[Int32] = data
+    // 26:     s: Span[readonly[Int32]] = data
     std::span<const int32_t> s = tpy::as_span(data);
     // 27:     print(sum_span(s))
     std::cout << sum_span(s) << "\n";

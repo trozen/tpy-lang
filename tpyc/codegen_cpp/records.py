@@ -882,7 +882,7 @@ class RecordGenerator:
         """Generate operator*() for types with __deref__().
 
         Enables C++ interop: *box instead of box.__deref__().
-        Only for user-defined types -- Ptr[T]/ReadOnlyPtr[T] map to raw T*
+        Only for user-defined types -- Ptr[T] and Ptr[readonly[T]] map to raw T*
         which already support *ptr natively.
         """
         deref_method = None

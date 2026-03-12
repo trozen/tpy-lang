@@ -6,8 +6,8 @@ namespace tpy_user::main {
 
 // 20: def read_buf(b: readonly[Buffer]) -> None:
 void read_buf(const Buffer& b) {
-    // 21:     # Calling @readonly_alt method on readonly receiver -> ReadOnlySpan
-    // 22:     s = b.as_span()  # tpyc: type(ReadOnlySpan[Int32])
+    // 21:     # Calling @readonly_alt method on readonly receiver -> Span[readonly[T]]
+    // 22:     s = b.as_span()  # tpyc: type(Span[readonly[Int32]])
     std::span<const int32_t> s = b.as_span();
     // 23:     print(s[Int32(0)])
     std::cout << tpy::__getitem__(s, 0) << "\n";

@@ -189,7 +189,7 @@ Native functions can use any type that has a direct C++ mapping:
 | `bool` | `bool` |
 | `None` (return) | `void` |
 
-Planned: `str`, `Ptr[T]`, `ReadOnlyPtr[T]`, opaque handle types.
+Planned: `str`, `Ptr[T]`, `Ptr[readonly[T]]`, opaque handle types.
 
 ---
 
@@ -348,7 +348,7 @@ Works with native functions using these types:
 
 ```python
 @native_c("SDL_RenderFillRect")
-def fill_rect(renderer: Ptr[Renderer], rect: ReadOnlyPtr[Rect]) -> Int32: ...
+def fill_rect(renderer: Ptr[Renderer], rect: Ptr[readonly[Rect]]) -> Int32: ...
 # → int32_t SDL_RenderFillRect(Renderer* renderer, const SDL_Rect* rect);
 ```
 
@@ -539,7 +539,7 @@ Automatic conversion between TPy types and C types at the FFI boundary:
 - `str` ← `const char*` (wrap returned C string — ownership question)
 - `list[T]` → `T*, size_t` (two-parameter expansion)
 - `Span[T]` → `T*, size_t` (mutable)
-- `ReadOnlySpan[T]` → `const T*, size_t`
+- `Span[readonly[T]]` → `const T*, size_t`
 - `bytes` → `uint8_t*, size_t` (future, when `bytes` type exists)
 
 The compiler could automatically split a `list[Int32]` parameter into pointer + length when calling a C function that expects them:
@@ -564,10 +564,10 @@ from tpy import Int32, CCallback
 
 @native_c
 def qsort(base: Ptr[None], count: Int32, size: Int32,
-           cmp: CCallback[[ReadOnlyPtr[None], ReadOnlyPtr[None]], Int32]) -> None: ...
+           cmp: CCallback[[Ptr[readonly[None]], Ptr[readonly[None]]], Int32]) -> None: ...
 
-def my_compare(a: ReadOnlyPtr[None], b: ReadOnlyPtr[None]) -> Int32:
-    return deref(cast(a, ReadOnlyPtr[Int32])) - deref(cast(b, ReadOnlyPtr[Int32]))
+def my_compare(a: Ptr[readonly[None]], b: Ptr[readonly[None]]) -> Int32:
+    return deref(cast(a, Ptr[readonly[Int32]])) - deref(cast(b, Ptr[readonly[Int32]]))
 
 qsort(data, n, Int32(4), my_compare)
 ```

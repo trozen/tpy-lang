@@ -39,10 +39,10 @@ inline std::ostream& operator<<(std::ostream& os, const PtrHolder<T>& obj) {
 // 12: class ReadOnlyPtrHolder[T]:
 template<typename T>
 struct ReadOnlyPtrHolder {
-    // 13:     ptr: ReadOnlyPtr[T]
+    // 13:     ptr: Ptr[readonly[T]]
     const T* ptr;
 
-    // 15:     def __init__(self, ptr: ReadOnlyPtr[T]) -> None:
+    // 15:     def __init__(self, ptr: Ptr[readonly[T]]) -> None:
     ReadOnlyPtrHolder() = default;
     explicit ReadOnlyPtrHolder(const T* ptr) : ptr(ptr) {}
 };

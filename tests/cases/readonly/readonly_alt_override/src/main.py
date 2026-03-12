@@ -1,6 +1,6 @@
 # @override + @readonly_alt: child overrides a @readonly_alt parent method.
 # Both mutable and const clones must be generated and wired correctly in the child.
-from tpy import Int32, Span, ReadOnlySpan, readonly, readonly_alt
+from tpy import Int32, Span, readonly, readonly_alt
 from typing import override
 
 
@@ -29,12 +29,12 @@ class Child(Base):
 
 
 def read_base(b: readonly[Base]) -> None:
-    s = b.items()  # tpyc: type(ReadOnlySpan[Int32])
+    s = b.items()  # tpyc: type(Span[readonly[Int32]])
     print(s[Int32(0)])
 
 
 def read_child(c: readonly[Child]) -> None:
-    s = c.items()  # tpyc: type(ReadOnlySpan[Int32])
+    s = c.items()  # tpyc: type(Span[readonly[Int32]])
     print(s[Int32(0)])
     print(s[Int32(1)])
 

@@ -269,7 +269,7 @@ The borrow rule is a **unifying principle** that replaces several ad-hoc analyse
 
 **Status**: Done.
 
-When a `Ptr[T]` or `ReadOnlyPtr[T]` variable is guarded by an `is not None` check,
+When a `Ptr[T]` or `Ptr[readonly[T]]` variable is guarded by an `is not None` check,
 the compiler adds it to `non_null_ptr_vars`, skipping `deref_check()` inside the
 guarded scope. Works at three narrowing sites:
 
@@ -726,7 +726,7 @@ Types are automatically classified based on their fields:
   Records are Send if all fields are Send. `Ptr[T]` is not Send (raw pointer).
   `Box[T]` is Send if `T` is Send.
 - **Sync**: Safe to share references across threads. Immutable types are Sync.
-  `ReadOnlyPtr[T]` is Sync if `T` is Sync. Mutable containers (`list`, `dict`)
+  `Ptr[readonly[T]]` is Sync if `T` is Sync. Mutable containers (`list`, `dict`)
   are not Sync.
 
 **Why this relates to borrows**: The borrow system ensures that within a single

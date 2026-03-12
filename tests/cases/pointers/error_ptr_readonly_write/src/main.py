@@ -1,4 +1,4 @@
-# Ptr[readonly[T]] normalizes to ReadOnlyPtr[T], so writes through it are rejected.
+# Ptr[readonly[T]] is a read-only pointer, so writes through it are rejected.
 from tpy import Int32, Ptr, readonly
 
 class Data:

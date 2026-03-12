@@ -1,1 +1,1 @@
-main.py:10: error: Type mismatch in argument 's': expected Span[Int32], got ReadOnlySpan[Int32]
+main.py:10: error: Type mismatch in argument 's': expected Span[Int32], got Span[readonly[Int32]]

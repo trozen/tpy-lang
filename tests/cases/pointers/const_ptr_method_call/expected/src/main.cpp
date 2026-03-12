@@ -8,9 +8,9 @@ namespace tpy_user::main {
 void main() {
     // 11:     c: Counter = Counter(42)
     Counter c = Counter(42);
-    // 12:     cp: ReadOnlyPtr[Counter] = ReadOnlyPtr(c)
+    // 12:     cp: Ptr[readonly[Counter]] = Ptr(c)
     const Counter* cp = &c;
-    // 13:     # Const-safe dunder method call through ReadOnlyPtr auto-deref
+    // 13:     # Const-safe dunder method call through Ptr[readonly[...]] auto-deref
     // 14:     print(cp.__len__())
     std::cout << cp->__len__() << "\n";
 }

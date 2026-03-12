@@ -8,7 +8,7 @@ namespace tpy_user::main {
 void read_container(const Container<int32_t>& c) {
     // 38:     x = c[Int32(0)]    # tpyc: type(Int32)
     int32_t x = c[0];
-    // 39:     s = c[Int32(0):Int32(2)]  # tpyc: type(ReadOnlySpan[Int32])
+    // 39:     s = c[Int32(0):Int32(2)]  # tpyc: type(Span[readonly[Int32]])
     std::span<const int32_t> s = c.__getitem__(tpy::Slice{0, 2});
     // 40:     print(x)
     std::cout << x << "\n";

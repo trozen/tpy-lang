@@ -26,7 +26,7 @@ TPY_TYPES = {
     "Float32", "Float64",  # Explicit-width float types
     "Char",  # Character type
     "Span", "Array",  # Container types
-    "Ptr", "ReadOnlyPtr", "Own",  # Pointer types
+    "Ptr", "ReadOnlyPtr", "Own",  # Pointer types (ReadOnlyPtr is a deprecated alias for Ptr[readonly[T]])
     "Hashable", "Comparable", "Deref", "Default",  # Protocols (user-facing)
     "Truthy", "Stringable", "Representable",  # Protocols (less common)
 }

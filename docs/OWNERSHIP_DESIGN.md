@@ -225,7 +225,7 @@ Detecting this reliably is non-trivial — any function call could potentially m
 
 ## Explicit Pointers: `Ptr[T]`
 
-For high-performance code that needs explicit pointer control, `Ptr[T]` and `ReadOnlyPtr[T]` remain available. Basic safety checks are enforced:
+For high-performance code that needs explicit pointer control, `Ptr[T]` and `Ptr[readonly[T]]` remain available. Basic safety checks are enforced:
 
 - Cannot return `Ptr` to a local variable
 - Cannot take `Ptr` of a loop-local that escapes the iteration

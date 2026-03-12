@@ -1,4 +1,4 @@
-# Mutation through @readonly ref's Span field is rejected (becomes ReadOnlySpan).
+# Mutation through @readonly ref's Span field is rejected (becomes Span[readonly[T]]).
 from tpy import Int32, Span, Array, readonly
 
 class Box:

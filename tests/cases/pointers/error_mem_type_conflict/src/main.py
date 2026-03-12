@@ -1,4 +1,4 @@
-from tpy import Ptr, ReadOnlyPtr, UInt8, UInt32, Char
+from tpy import Ptr, UInt8, UInt32, Char
 from tpy.unsafe import unsafe_ptr, unsafe_copy_n
 
 def test(s: str) -> None:

@@ -1,7 +1,7 @@
 # User-type slicing via @overload __getitem__(slice).
 # Tests slice type in unions, isinstance dispatch, and operator[] codegen.
 from typing import overload
-from tpy import Int32, ReadOnlySpan
+from tpy import Int32, Span, readonly
 
 class MyList:
     _data: list[Int32]
@@ -13,9 +13,9 @@ class MyList:
     def __getitem__(self, index: Int32) -> Int32: ...  # tpyc: ok
 
     @overload
-    def __getitem__(self, index: slice) -> ReadOnlySpan[Int32]: ...  # tpyc: ok
+    def __getitem__(self, index: slice) -> Span[readonly[Int32]]: ...  # tpyc: ok
 
-    def __getitem__(self, index: Int32 | slice) -> Int32 | ReadOnlySpan[Int32]:
+    def __getitem__(self, index: Int32 | slice) -> Int32 | Span[readonly[Int32]]:
         if isinstance(index, slice):
             s_start = index.start
             s_stop = index.stop

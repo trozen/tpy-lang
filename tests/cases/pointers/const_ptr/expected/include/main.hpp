@@ -14,7 +14,7 @@ void modify_via_ptr(Point* p, int32_t new_x);
 void test_ptr_to_const_ptr();
 void test_const_ptr_preserves_value();
 
-// # Test ReadOnlyPtr[T] type for read-only pointers
+// # Test Ptr[readonly[T]] type for read-only pointers
 // 5: class Point:
 struct Point {
     // 6:     x: Int32

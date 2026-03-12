@@ -1,8 +1,8 @@
-# Test that ReadOnlySpan[T] rejects element assignment.
-from tpy import Int32, ReadOnlySpan
+# Test that Span[readonly[T]] rejects element assignment.
+from tpy import Int32, Span, readonly
 
-def modify(s: ReadOnlySpan[Int32]) -> None:
-    s[0] = 42  # tpyc: error(/Cannot assign to elements of ReadOnlySpan/)
+def modify(s: Span[readonly[Int32]]) -> None:
+    s[0] = 42  # tpyc: error(/Cannot assign to elements of Span\[readonly/)
 
 def main() -> Int32:
     return 0

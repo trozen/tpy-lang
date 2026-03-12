@@ -497,7 +497,7 @@ everything.
 | Bitwise ops | Same syntax | Working |
 | Structs | Records/classes | Working |
 | Fixed-size arrays | `Array[T, N]` | Working |
-| Pointers | `Ptr[T]`, `ReadOnlyPtr[T]` | Working |
+| Pointers | `Ptr[T]`, `Ptr[readonly[T]]` | Working |
 | Global variables | Module-level vars | Working |
 | `for`/`while` loops | Same | Working |
 | `if`/`else` | Same | Working |

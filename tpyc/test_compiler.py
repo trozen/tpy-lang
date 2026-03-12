@@ -115,7 +115,7 @@ class TestSendSync:
 
     def test_readonly_ptr_sync_if_pointee_sync(self):
         assert PtrType(INT32, is_readonly=True).is_sync()
-        # ReadOnlyPtr to a mutable list: list is not Sync
+        # Ptr[readonly[list[T]]]: list is not Sync
         assert not PtrType(ListType(INT32), is_readonly=True).is_sync()
 
     # -- Span: not Send; Sync only if readonly --

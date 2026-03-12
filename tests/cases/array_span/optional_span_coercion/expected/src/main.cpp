@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 
-// 4: def has_values(values: ReadOnlySpan[Int32] | None) -> bool:
+// 4: def has_values(values: Span[readonly[Int32]] | None) -> bool:
 bool has_values(std::optional<std::span<const int32_t>> values) {
     // 5:     return values is not None
     return (values.has_value());

@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 
-// 20: def accept_ro(s: ReadOnlySpan[Int32]) -> Int32:
+// 20: def accept_ro(s: Span[readonly[Int32]]) -> Int32:
 int32_t accept_ro(std::span<const int32_t> s) {
     // 21:     total: Int32 = 0
     int32_t total = 0;

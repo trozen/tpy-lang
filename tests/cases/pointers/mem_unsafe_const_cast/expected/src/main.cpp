@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 // 4: s: str = "hello"
 std::string s;
-// 5: cp: ReadOnlyPtr[Char] = unsafe_ptr(s)
+// 5: cp: Ptr[readonly[Char]] = unsafe_ptr(s)
 const char* cp{};
 // 6: p: Ptr[Char] = unsafe_const_cast(cp)
 char* p{};
@@ -18,7 +18,7 @@ void __tpy_init() {
     // 2: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store, unsafe_const_cast
     // 4: s: str = "hello"
     s = "hello";
-    // 5: cp: ReadOnlyPtr[Char] = unsafe_ptr(s)
+    // 5: cp: Ptr[readonly[Char]] = unsafe_ptr(s)
     cp = s.data();
     // 6: p: Ptr[Char] = unsafe_const_cast(cp)
     p = const_cast<char*>(cp);

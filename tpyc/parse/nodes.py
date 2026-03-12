@@ -191,7 +191,7 @@ class TpyMethodCall(TpyExpr):
     resolved_function_info: FunctionInfo | None = None  # Set by sema for resolved method overloads
     inferred_type_args: tuple[TpyType, ...] | None = None  # Set by sema for generic builtin module calls
     deref_depth: int = 0  # Set by sema: number of __deref__ steps applied before method resolution
-    ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr/ReadOnlyPtr
+    ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr (or Ptr[readonly[T]])
 
 
 @dataclass
@@ -201,7 +201,7 @@ class TpyFieldAccess(TpyExpr):
     field: str
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
     deref_depth: int = 0  # Set by sema: number of __deref__ steps applied before field lookup
-    ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr/ReadOnlyPtr
+    ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr (or Ptr[readonly[T]])
 
 
 @dataclass

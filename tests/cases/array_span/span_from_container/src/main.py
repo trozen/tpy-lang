@@ -1,9 +1,9 @@
-# Tests explicit Span/ReadOnlySpan construction from containers
-from tpy import Int32, Array, ReadOnlySpan, Span
+# Tests explicit Span/Span[readonly[T]] construction from containers
+from tpy import Int32, Array, Span, readonly
 
 def main() -> None:
     lst: list[Int32] = [10, 20, 30]
-    ros: ReadOnlySpan[Int32] = ReadOnlySpan[Int32](lst)
+    ros: Span[readonly[Int32]] = Span[readonly[Int32]](lst)
     print(len(ros))
     print(ros[0])
 
@@ -14,7 +14,7 @@ def main() -> None:
     print(arr[0])
 
     lst2: list[Int32] = [5, 6]
-    ros2: ReadOnlySpan[Int32] = ReadOnlySpan[Int32](lst2)
+    ros2: Span[readonly[Int32]] = Span[readonly[Int32]](lst2)
     print(len(ros2))
     print(ros2[0])
 

@@ -45,7 +45,7 @@ from tpyc import modules as builtin_modules
 def _is_simple_lvalue(expr: TpyExpr) -> bool:
     """Check if expression is a variable or field access (safe to capture by ref).
 
-    Excludes subscripts -- they may yield const refs (e.g. ReadOnlySpan)
+    Excludes subscripts -- they may yield const refs (e.g. Span[readonly[T]])
     which can't bind to T&.
     """
     if isinstance(expr, TpyCoerce):
@@ -1386,7 +1386,7 @@ class ExpressionGenerator:
             return f"{func_cpp_name}({', '.join(gen_args)})"
         # Generic type instantiation (e.g., Container[T, N]())
         if expr.call_type is not None:
-            # Pointer null constructors: Ptr[T]() / ReadOnlyPtr[T]() -> typed nullptr
+            # Pointer null constructors: Ptr[T]() / Ptr[readonly[T]]() -> typed nullptr
             if isinstance(expr.call_type, PtrType) and not expr.args:
                 cpp_type = self.types.type_to_cpp(expr.call_type)
                 return f"static_cast<{cpp_type}>(nullptr)"
@@ -2422,7 +2422,7 @@ class ExpressionGenerator:
                 # No sema annotation (e.g. tuple in list literal or call arg).
                 # Use REF only for simple lvalues (variables, field access).
                 # Rvalues and subscripts get VALUE to avoid binding issues
-                # (e.g. ReadOnlySpan subscript returns const ref).
+                # (e.g. Span[readonly[T]] subscript returns const ref).
                 if _is_simple_lvalue(expr.elements[i]):
                     mode = TupleElemCapture.REF
                 else:
@@ -2597,7 +2597,7 @@ class ExpressionGenerator:
 
     def _gen_span_coercion(self, expr: TpyExpr, span_type: SpanType, gen_inner: str) -> str:
         """Generate std::span conversion for supported container types."""
-        # Span -> ReadOnlySpan: C++ implicit conversion, no helper needed
+        # Span[T] -> Span[readonly[T]]: C++ implicit conversion, no helper needed
         actual_type = self.ctx.get_expr_type(expr)
         if isinstance(actual_type, SpanType):
             return gen_inner

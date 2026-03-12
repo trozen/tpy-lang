@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 
-// 6: def sum_span(s: ReadOnlySpan[Int32]) -> Int32:
+// 6: def sum_span(s: Span[readonly[Int32]]) -> Int32:
 int32_t sum_span(std::span<const int32_t> s) {
     // 7:     total: Int32 = 0
     int32_t total = 0;

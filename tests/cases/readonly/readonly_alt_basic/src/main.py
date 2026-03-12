@@ -1,6 +1,6 @@
 # @readonly_alt: method returns Span/Ptr/reference, adapts based on receiver constness.
 # Tests explicit annotation on custom methods.
-from tpy import Int32, Span, ReadOnlySpan, Ptr, ReadOnlyPtr, readonly, readonly_alt
+from tpy import Int32, Span, Ptr, readonly, readonly_alt
 
 class Buffer:
     _data: list[Int32]
@@ -18,8 +18,8 @@ class Buffer:
 
 
 def read_buf(b: readonly[Buffer]) -> None:
-    # Calling @readonly_alt method on readonly receiver -> ReadOnlySpan
-    s = b.as_span()  # tpyc: type(ReadOnlySpan[Int32])
+    # Calling @readonly_alt method on readonly receiver -> Span[readonly[T]]
+    s = b.as_span()  # tpyc: type(Span[readonly[Int32]])
     print(s[Int32(0)])
     print(s[Int32(1)])
 

@@ -45,7 +45,7 @@ struct Container {
     }
 
     //     @overload
-    // 20:     def __getitem__(self, index: slice) -> ReadOnlySpan[T]: ...  # tpyc: ok
+    // 20:     def __getitem__(self, index: slice) -> Span[readonly[T]]: ...  # tpyc: ok
     std::span<const T> __getitem__(tpy::Slice index) const {
         // 23:         if isinstance(index, slice):
         // 24:             s_start = index.start

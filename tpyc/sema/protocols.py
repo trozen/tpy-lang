@@ -386,7 +386,7 @@ class ProtocolChecker:
                 # Check readonly requirement.
                 # Allow non-readonly methods when the return type has a protocol-safe
                 # coercion to the expected return (e.g. __span__() -> Span[T] satisfies
-                # a readonly protocol expecting ReadOnlySpan[T], since the compiler
+                # a readonly protocol expecting Span[readonly[T]], since the compiler
                 # auto-generates a const overload).
                 if require_readonly and not resolved.is_readonly:
                     if not is_protocol_safe_coercion(resolved.return_type, expected_return):

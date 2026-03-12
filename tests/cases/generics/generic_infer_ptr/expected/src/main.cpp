@@ -8,15 +8,15 @@ Point* pt{};
 // # Create explicitly-typed pointer variables
 // 29: ptr: Ptr[Point] = pt
 Point* ptr{};
-// 30: cptr: ReadOnlyPtr[Point] = pt
+// 30: cptr: Ptr[readonly[Point]] = pt
 const Point* cptr{};
 // # Inference from Ptr[Point] -> PtrHolder[Point]
 // 33: holder = PtrHolder(ptr)
 PtrHolder<Point>* holder{};
-// # Inference from ReadOnlyPtr[Point] -> ReadOnlyPtrHolder[Point]
+// # Inference from Ptr[readonly[Point]] -> ReadOnlyPtrHolder[Point]
 // 38: const_holder = ReadOnlyPtrHolder(cptr)
 ReadOnlyPtrHolder<Point>* const_holder{};
-// # Inference from Ptr[Point] -> ReadOnlyPtrHolder[Point] (Ptr coerces to ReadOnlyPtr)
+// # Inference from Ptr[Point] -> ReadOnlyPtrHolder[Point] (Ptr coerces to Ptr[readonly[...]])
 // 42: const_holder2 = ReadOnlyPtrHolder(ptr)
 ReadOnlyPtrHolder<Point>* const_holder2{};
 
@@ -35,7 +35,7 @@ void __tpy_init() {
     // 28: # Create explicitly-typed pointer variables
     // 29: ptr: Ptr[Point] = pt
     ptr = &(*pt);
-    // 30: cptr: ReadOnlyPtr[Point] = pt
+    // 30: cptr: Ptr[readonly[Point]] = pt
     cptr = &(*pt);
     // 32: # Inference from Ptr[Point] -> PtrHolder[Point]
     // 33: holder = PtrHolder(ptr)
@@ -45,13 +45,13 @@ void __tpy_init() {
     tpy::deref_check(holder->ptr).x = 100;
     // 35: print(pt.x)
     std::cout << pt->x << "\n";
-    // 37: # Inference from ReadOnlyPtr[Point] -> ReadOnlyPtrHolder[Point]
+    // 37: # Inference from Ptr[readonly[Point]] -> ReadOnlyPtrHolder[Point]
     // 38: const_holder = ReadOnlyPtrHolder(cptr)
     static ReadOnlyPtrHolder<Point> __global_slot_3 = ReadOnlyPtrHolder<Point>(cptr);
     const_holder = &__global_slot_3;
     // 39: print(const_holder.ptr.y)
     std::cout << tpy::deref_check(const_holder->ptr).y << "\n";
-    // 41: # Inference from Ptr[Point] -> ReadOnlyPtrHolder[Point] (Ptr coerces to ReadOnlyPtr)
+    // 41: # Inference from Ptr[Point] -> ReadOnlyPtrHolder[Point] (Ptr coerces to Ptr[readonly[...]])
     // 42: const_holder2 = ReadOnlyPtrHolder(ptr)
     static ReadOnlyPtrHolder<Point> __global_slot_4 = ReadOnlyPtrHolder<Point>(ptr);
     const_holder2 = &__global_slot_4;

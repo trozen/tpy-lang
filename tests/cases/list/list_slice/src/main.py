@@ -1,5 +1,5 @@
 # List slicing: basic, negative indices, clamping, empty, Array, type inference.
-from tpy import Int32, Array, Span, ReadOnlySpan, readonly
+from tpy import Int32, Array, Span, readonly
 
 
 def test_basic() -> None:
@@ -51,12 +51,12 @@ def test_span(s: Span[Int32]) -> None:
 
 @readonly
 def test_readonly_list(items: list[Int32]) -> None:
-    sub = items[0:2]  # tpyc: type(ReadOnlySpan[Int32])
+    sub = items[0:2]  # tpyc: type(Span[readonly[Int32]])
     print(sub)
 
 
-def test_readonly_span_param(s: ReadOnlySpan[Int32]) -> None:
-    sub = s[0:2]  # tpyc: type(ReadOnlySpan[Int32])
+def test_readonly_span_param(s: Span[readonly[Int32]]) -> None:
+    sub = s[0:2]  # tpyc: type(Span[readonly[Int32]])
     print(sub)
 
 

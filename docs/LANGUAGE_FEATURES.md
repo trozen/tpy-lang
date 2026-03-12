@@ -24,7 +24,7 @@ Status legend:
 **Thread safety**: Unlike CPython (which relies on the GIL), TurboPython targets multi-threaded, high-performance environments. The compiler should produce thread-safe code by default where possible without sacrificing performance, and give the user explicit control where trade-offs exist. Compiler analyses (e.g. narrowing, aliasing) must be sound in the presence of concurrent access.
 
 **Pluggable backends**: The mapping from TurboPython to C++ should be configurable. Different projects have different needs:
-- `Span[T]` → `std::span<T>`, `ReadOnlySpan[T]` → `std::span<const T>`, or custom span types
+- `Span[T]` → `std::span<T>`, `Span[readonly[T]]` → `std::span<const T>`, or custom span types
 - `print()` → `std::cout` (default) or a logging framework
 - `str` → `std::string` or a custom string class
 
@@ -95,7 +95,7 @@ The mapping from TurboPython types/functions to C++ should be configurable via b
 ```python
 # tpy.backend.default - ships with tpyc
 Span[T]     → std::span<T>
-ReadOnlySpan[T] → std::span<const T>
+Span[readonly[T]] → std::span<const T>
 str         → std::string
 print(...)  → std::cout << ...
 list[T]     → std::vector<T>
@@ -362,12 +362,12 @@ log(f"x={x}")
 ### Containers
 - **Working**: `list[T]` - dynamic list → `std::vector<T>` (with context-dependent inference)
 - **Working**: `list[T] + list[T]` concatenation → new list, `list[T] += list[T]` extend in-place, `del lst[i]` element removal
-- **Working**: `lst[x:y]` read slicing → `ReadOnlySpan[T]` (clamped, no-panic). `lst[x:y] = rhs` slice assignment → replaces, resizes, deletes, or inserts (Python semantics). Bounds must be integers; step not supported yet. RHS must be `list[T]`.
+- **Working**: `lst[x:y]` read slicing → `Span[readonly[T]]` (clamped, no-panic). `lst[x:y] = rhs` slice assignment → replaces, resizes, deletes, or inserts (Python semantics). Bounds must be integers; step not supported yet. RHS must be `list[T]`.
 - **Working**: Array literals `[1, 2, 3]` → `std::array<T, N>` or `std::vector<T>` (context-dependent)
 - **Working**: `Array[T, N]` - fixed-size array with explicit type annotation
 - **Working**: `Span[T]` - non-owning mutable view into contiguous memory → `std::span<T>`
-- **Working**: `ReadOnlySpan[T]` - non-owning read-only view into contiguous memory → `std::span<const T>`
-- **Working**: `SpanIter[T]` - lightweight iterator over a contiguous span → `tpy::SpanIter<T>`. Constructed from `Span[T]` or `ReadOnlySpan[T]`. Implements `NativeIterable[T]`, `OptIterator[T]`, `Iterable[T]`, `Iterator[T]`. Used as the return type of `__iter__()` on span-backed user types (e.g. `ArrayList`).
+- **Working**: `Span[readonly[T]]` - non-owning read-only view into contiguous memory → `std::span<const T>`
+- **Working**: `SpanIter[T]` - lightweight iterator over a contiguous span → `tpy::SpanIter<T>`. Constructed from `Span[T]` or `Span[readonly[T]]`. Implements `NativeIterable[T]`, `OptIterator[T]`, `Iterable[T]`, `Iterator[T]`. Used as the return type of `__iter__()` on span-backed user types (e.g. `ArrayList`).
 - **Working**: `tuple[T1, T2, ...]` - fixed-length typed tuple -> `std::tuple<T1, T2, ...>`
 - **Working**: `dict[K, V]` - ordered hash map → `tpy::ordered_map<K, V>` (insertion-order preserving)
   - Literals `{k: v, ...}`, subscript `d[k]`/`d[k] = v`, `del d[k]`, `len(d)`, `k in d`, `for k in d`
@@ -481,46 +481,46 @@ empty: list[Int32 | None] = []
 
 Note: Passing literals (`[]`, `[1,2,3]`) or constructors (`list()`) directly to functions expecting mutable reference parameters works - the compiler generates temporary variables automatically.
 
-`Span[T]` is a non-owning mutable view into contiguous memory. `ReadOnlySpan[T]` is the read-only variant. This follows the same pattern as `Ptr[T]`/`ReadOnlyPtr[T]`:
+`Span[T]` is a non-owning mutable view into contiguous memory. `Span[readonly[T]]` is the read-only variant. This follows the same pattern as `Ptr[T]`/`Ptr[readonly[T]]`:
 
 ```python
-from tpy import Int32, Span, ReadOnlySpan, Array
+from tpy import Int32, Span, Array
 
 # Mutable span -- can read and write elements
 def zero_first(values: Span[Int32]) -> None:
     values[0] = 0
 
 # Read-only span -- can only read elements
-def sum_values(values: ReadOnlySpan[Int32]) -> Int32:
+def sum_values(values: Span[readonly[Int32]]) -> Int32:
     total: Int32 = 0
     for v in values:
         total += v
     return total
 
-# Any contiguous container coerces to Span or ReadOnlySpan:
+# Any contiguous container coerces to Span or Span[readonly[T]]:
 arr: Array[Int32, 3] = [10, 20, 30]
 zero_first(arr)                     # Array -> Span[Int32]
-print(sum_values(arr))              # Array -> ReadOnlySpan[Int32]
-print(sum_values([1, 2, 3, 4, 5])) # array literal -> ReadOnlySpan[Int32]
+print(sum_values(arr))              # Array -> Span[readonly[Int32]]
+print(sum_values([1, 2, 3, 4, 5])) # array literal -> Span[readonly[Int32]]
 
-# Span[T] auto-coerces to ReadOnlySpan[T] (like Ptr -> ReadOnlyPtr):
+# Span[T] auto-coerces to Span[readonly[T]] (like Ptr -> Ptr[readonly[T]]):
 s: Span[Int32] = arr
-print(sum_values(s))                # Span -> ReadOnlySpan
+print(sum_values(s))                # Span -> Span[readonly[T]]
 
-# Through @readonly refs, Span[T] becomes ReadOnlySpan[T] automatically
+# Through @readonly refs, Span[T] becomes Span[readonly[T]] automatically
 ```
 
 Key features:
-- `Span[T]` maps to `std::span<T>` (mutable), `ReadOnlySpan[T]` maps to `std::span<const T>`
+- `Span[T]` maps to `std::span<T>` (mutable), `Span[readonly[T]]` maps to `std::span<const T>`
 - Requires C++23 (`-std=c++23`)
 - Standard Python `len()` and `[]` indexing work for both (with bounds checking and negative index support)
 - `unchecked_get(index)` for raw unchecked access (no bounds check, no negative index normalization)
 - `sort()` for in-place stable sort via `std::stable_sort` (matches Python's stable sort guarantee)
 - Zero-allocation passing of fixed-size arrays to functions that work with any size
-- Constructors: `Span(Ptr[T], Int32)` and `ReadOnlySpan(ReadOnlyPtr[T], Int32)` for low-level span creation
-- Explicit construction from containers: `Span[T](arr)`, `ReadOnlySpan[T](lst)` for any `ReadOnlySpanLike[T]` source (list, Array)
-- Containers coerce to `Optional[Span[T]]` / `Optional[ReadOnlySpan[T]]` at call sites
-- `Ptr[T].span(length)` returns `Span[T]`, `ReadOnlyPtr[T].span(length)` returns `ReadOnlySpan[T]`
+- Constructors: `Span(Ptr[T], Int32)` and `Span(Ptr[readonly[T]], Int32)` for low-level span creation
+- Explicit construction from containers: `Span[T](arr)`, `Span[readonly[T]](lst)` for any `ReadOnlySpanLike[T]` source (list, Array)
+- Containers coerce to `Optional[Span[T]]` / `Optional[Span[readonly[T]]]` at call sites
+- `Ptr[T].span(length)` returns `Span[T]`, `Ptr[readonly[T]].span(length)` returns `Span[readonly[T]]`
 
 #### Tuples (Working)
 
@@ -614,7 +614,7 @@ Restrictions:
 
 ### Pointers/References
 - **Working**: `Ptr[T]` -> `T*`
-- **Working**: `ReadOnlyPtr[T]` -> `const T*` (also available as `Ptr[readonly[T]]`)
+- **Working**: `Ptr[readonly[T]]` -> `const T*`
 - **Working**: `Own[T]` -> `T` (ownership transfer for return values)
 - **Working**: `tpy.unsafe` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_ptr_add`, `unsafe_ptr_diff`, `unsafe_cast`, `unsafe_const_cast`, `unsafe_str_view`, `unsafe_alloc`, `unsafe_alloc_n`, `unsafe_free`, `unsafe_init`, `unsafe_drop`, `unsafe_move_out`)
 - **Working**: `tpy.mem` -- uninitialized storage primitives (`UninitArrayStorage[T, N]`, `UninitHeapStorage[T]`)
@@ -628,23 +628,23 @@ Implicit conversions between records and pointers with safety checks:
 | From | To | Constraints | Generated C++ |
 |------|-----|-------------|---------------|
 | `T` (record) | `Ptr[T]` | Mutable lvalue, not in return | `&expr` |
-| `T` (record) | `ReadOnlyPtr[T]` | Lvalue, not in return | `&expr` |
+| `T` (record) | `Ptr[readonly[T]]` | Lvalue, not in return | `&expr` |
 | `Ptr[T]` | `T` | Null-checked at runtime | `tpy::deref_check(expr)` |
 | `Deref[T]` type | `T` | Via `__deref__()` | `expr.__deref__()` |
-| `Ptr[T]` | `ReadOnlyPtr[T]` | - | (implicit) |
+| `Ptr[T]` | `Ptr[readonly[T]]` | - | (implicit) |
 
 **Safety rules:**
 - Taking address requires an lvalue (variable, field, or subscript) - temporaries rejected
 - Return statements cannot convert local records to pointers (dangling pointer prevention)
-- `ReadOnlySpan`/str elements cannot convert to `Ptr[T]` (read-only source)
+- `Span[readonly[T]]`/str elements cannot convert to `Ptr[T]` (read-only source)
 - `Ptr[T]` → `T` includes runtime null check that panics if null
 
 #### Pointer Constructors (Working)
 
-Explicit constructors for `Ptr[T]` and `ReadOnlyPtr[T]`, as an alternative to implicit coercions:
+Explicit constructors for `Ptr[T]` and `Ptr[readonly[T]]`, as an alternative to implicit coercions:
 
 ```python
-from tpy import Ptr, ReadOnlyPtr, Int32
+from tpy import Ptr, Int32
 
 def test() -> None:
     # Null pointers
@@ -657,21 +657,21 @@ def test() -> None:
 
     # Address-of with type inference
     py: Ptr[Int32] = Ptr(x)           # → &x (infers Ptr[Int32])
-    cp: ReadOnlyPtr[Int32] = ReadOnlyPtr(x) # → &x (infers ReadOnlyPtr[Int32])
+    cp: Ptr[readonly[Int32]] = Ptr(x) # → &x (infers Ptr[readonly[Int32]])
 ```
 
-**`Ptr[readonly[T]]` normalization:** `Ptr[readonly[T]]` is equivalent to `ReadOnlyPtr[T]` and normalizes to it at parse time. Both syntaxes produce the same type:
+**`Ptr[readonly[T]]`** is the canonical form for read-only pointers. Both spellings are equivalent; `Ptr[readonly[T]]` is the canonical form:
 
 ```python
 from tpy import Ptr, readonly, Int32
 
 x: Int32 = Int32(42)
-p: Ptr[readonly[Int32]] = Ptr(x)   # same as ReadOnlyPtr[Int32]
+p: Ptr[readonly[Int32]] = Ptr(x)
 ```
 
 **Safety rules:**
 - Argument must be an lvalue (`Ptr(Point(1,2))` rejected — temporary)
-- `Ptr` requires a mutable lvalue; `ReadOnlyPtr` accepts any lvalue
+- `Ptr[T]` requires a mutable lvalue; `Ptr[readonly[T]]` accepts any lvalue
 - `Ptr[None](arg)` rejected — void pointer with argument makes no sense
 - Dangling detection works through pointer constructors and intermediate variables:
 
@@ -693,7 +693,7 @@ def ok(x: Int32) -> Ptr[Int32]:
 
 Types that implement `__deref__() -> T` conform to the `Deref[T]` protocol and support **auto-deref**: the compiler automatically resolves field access and method calls through `__deref__` chains.
 
-`Ptr[T]` and `ReadOnlyPtr[T]` conform to `Deref[T]`. User-defined types can also implement `__deref__`:
+`Ptr[T]` and `Ptr[readonly[T]]` conform to `Deref[T]`. User-defined types can also implement `__deref__`:
 
 ```python
 from tpy import Int32, copy, readonly_alt
@@ -727,11 +727,11 @@ Multi-hop chains are supported — if `Box.__deref__() -> Ref` and `Ref.__deref_
 
 **Pointer None semantics:**
 
-- `None` can be assigned to `Ptr[T]` and `ReadOnlyPtr[T]` (represents `nullptr`)
-- `p is None` / `p is not None` work for `Ptr[T]` and `ReadOnlyPtr[T]`
+- `None` can be assigned to `Ptr[T]` and `Ptr[readonly[T]]` (represents `nullptr`)
+- `p is None` / `p is not None` work for `Ptr[T]` and `Ptr[readonly[T]]`
 - `p == None` / `p != None` are rejected; use identity checks (`is` / `is not`)
 
-**Null-safety:** Auto-deref through `Ptr[T]`/`ReadOnlyPtr[T]` is null-checked at runtime via `tpy::deref_check()`. A null pointer access panics with "null pointer dereference" instead of causing undefined behavior. Pointers with known non-null provenance skip the null check and use direct `->` access. Non-null provenance is established by:
+**Null-safety:** Auto-deref through `Ptr[T]`/`Ptr[readonly[T]]` is null-checked at runtime via `tpy::deref_check()`. A null pointer access panics with "null pointer dereference" instead of causing undefined behavior. Pointers with known non-null provenance skip the null check and use direct `->` access. Non-null provenance is established by:
 
 - Constructor: `p = Ptr(x)` (pointer to a local variable)
 - Condition narrowing: `if p is not None:` / `if p is None: return` / `assert p is not None` / `while p is not None:`
@@ -746,7 +746,7 @@ Narrowing supports negation and `and`/`or` composition. Branch merging uses inte
 Low-level pointer arithmetic for C interop and performance-critical code. These bypass bounds checking. The API uses free functions from `tpy.unsafe` (not method calls on pointers):
 
 ```python
-from tpy import Ptr, ReadOnlyPtr, Int32, UInt32, Array
+from tpy import Ptr, Int32, UInt32, Array
 from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
 
 # Get raw pointer to array data
@@ -757,8 +757,8 @@ p: Ptr[Int32] = unsafe_ptr(arr)
 val: Int32 = unsafe_load(p, UInt32(2))       # -> 30
 unsafe_store(p, UInt32(0), Int32(99))        # arr[0] = 99
 
-# ReadOnlyPtr has unsafe_load only (no store)
-cp: ReadOnlyPtr[Char] = unsafe_ptr("hello")
+# Ptr[readonly[T]] has unsafe_load only (no store)
+cp: Ptr[readonly[Char]] = unsafe_ptr("hello")
 ```
 
 Generated C++: `unsafe_ptr(x)` -> `x.data()`, `unsafe_load(p, i)` -> `p[i]`, `unsafe_store(p, i, v)` -> `p[i] = v`.
@@ -1154,7 +1154,7 @@ Rules:
 The `tpy.unsafe` module provides low-level pointer operations that bypass the compiler's safety checks. These functions require an explicit import -- `from tpy import *` does NOT include them. This forces a deliberate opt-in for unsafe code.
 
 ```python
-from tpy import Ptr, ReadOnlyPtr, Int32, UInt32, Array
+from tpy import Ptr, Int32, UInt32, Array
 from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
 ```
 
@@ -1173,7 +1173,7 @@ lst: list[Int32] = [Int32(10), Int32(20)]
 q: Ptr[Int32] = unsafe_ptr(lst)          # list[T] -> Ptr[T]
 
 s: str = "hello"
-cp: ReadOnlyPtr[Char] = unsafe_ptr(s)       # str -> ReadOnlyPtr[Char]
+cp: Ptr[readonly[Char]] = unsafe_ptr(s)     # str -> Ptr[readonly[Char]]
 ```
 
 The element type `T` is inferred from the argument. All three variants generate `.data()` in C++.
@@ -1182,7 +1182,7 @@ The element type `T` is inferred from the argument. All three variants generate 
 
 ```python
 val: Int32 = unsafe_load(p, UInt32(0))   # Ptr[T], UInt32 -> T
-val2: Int32 = unsafe_load(cp, UInt32(1)) # ReadOnlyPtr[T], UInt32 -> T
+val2: Int32 = unsafe_load(cp, UInt32(1)) # Ptr[readonly[T]], UInt32 -> T
 ```
 
 Generates `p[offset]` in C++.
@@ -1193,7 +1193,7 @@ Generates `p[offset]` in C++.
 unsafe_store(p, UInt32(0), Int32(99))    # Ptr[T], UInt32, Own[T] -> None
 ```
 
-Generates `p[offset] = value` in C++. Only `Ptr[T]` is accepted (not `ReadOnlyPtr[T]`).
+Generates `p[offset] = value` in C++. Only `Ptr[T]` is accepted (not `Ptr[readonly[T]]`).
 
 **`unsafe_copy_n`** -- copy N elements from a source pointer to a destination pointer:
 
@@ -1202,10 +1202,10 @@ from tpy.unsafe import unsafe_copy_n
 
 src: Array[Int32, 3] = [Int32(10), Int32(20), Int32(30)]
 dst: Array[Int32, 3] = [Int32(0), Int32(0), Int32(0)]
-unsafe_copy_n(unsafe_ptr(dst), unsafe_ptr(src), UInt32(3))  # Ptr[T], Ptr[T]|ReadOnlyPtr[T], UInt32 -> None
+unsafe_copy_n(unsafe_ptr(dst), unsafe_ptr(src), UInt32(3))  # Ptr[T], Ptr[T]|Ptr[readonly[T]], UInt32 -> None
 ```
 
-Generates `std::copy_n(src, count, dest)` in C++. The source can be either `Ptr[T]` or `ReadOnlyPtr[T]`.
+Generates `std::copy_n(src, count, dest)` in C++. The source can be either `Ptr[T]` or `Ptr[readonly[T]]`.
 
 **`unsafe_ptr_add`** -- advance a pointer by a signed element offset:
 
@@ -1216,7 +1216,7 @@ p: Ptr[Int32] = unsafe_ptr(arr)
 q: Ptr[Int32] = unsafe_ptr_add(p, Int64(3))   # Ptr[T], Int64 -> Ptr[T]
 ```
 
-Generates `(p + 3)` in C++. The offset is in elements (not bytes). Negative offsets move the pointer backward. Works with both `Ptr[T]` and `ReadOnlyPtr[T]`.
+Generates `(p + 3)` in C++. The offset is in elements (not bytes). Negative offsets move the pointer backward. Works with both `Ptr[T]` and `Ptr[readonly[T]]`.
 
 **`unsafe_ptr_diff`** -- compute the element distance between two pointers:
 
@@ -1226,15 +1226,15 @@ from tpy.unsafe import unsafe_ptr_diff
 d: Int64 = unsafe_ptr_diff(p2, p1)   # Ptr[T], Ptr[T] -> Int64
 ```
 
-Generates `static_cast<int64_t>(p2 - p1)` in C++. Returns the number of elements between the two pointers (negative if `p2` precedes `p1`). Both pointers must point into the same allocation. Works with both `Ptr[T]` and `ReadOnlyPtr[T]`.
+Generates `static_cast<int64_t>(p2 - p1)` in C++. Returns the number of elements between the two pointers (negative if `p2` precedes `p1`). Both pointers must point into the same allocation. Works with both `Ptr[T]` and `Ptr[readonly[T]]`.
 
 **`unsafe_const_cast`** -- remove const from a pointer:
 
 ```python
 from tpy.unsafe import unsafe_const_cast
 
-cp: ReadOnlyPtr[Int32] = ...
-p: Ptr[Int32] = unsafe_const_cast(cp)    # ReadOnlyPtr[T] -> Ptr[T]
+cp: Ptr[readonly[Int32]] = ...
+p: Ptr[Int32] = unsafe_const_cast(cp)    # Ptr[readonly[T]] -> Ptr[T]
 ```
 
 Generates `const_cast<T*>(p)` in C++.
@@ -1250,7 +1250,7 @@ q: Ptr[UInt32] = unsafe_cast(p)          # target inferred from annotation
 print(unsafe_load(unsafe_cast[UInt32](p), UInt32(0)))  # works inline too
 ```
 
-Generates `reinterpret_cast<T*>(p)` in C++. `unsafe_cast` is a standard two-type-param generic (`T` = target pointee, `U` = source pointee). The target type can be specified via explicit type argument (`unsafe_cast[UInt32](p)`, partial -- `U` inferred from arg) or inferred from context (`q: Ptr[UInt32] = unsafe_cast(p)` -- both `T` and `U` inferred). The pointer kind (`Ptr`/`ReadOnlyPtr`) is preserved: `Ptr[U]` returns `Ptr[T]`, `ReadOnlyPtr[U]` returns `ReadOnlyPtr[T]`. Casting `ReadOnlyPtr` to `Ptr` is rejected -- use `unsafe_const_cast` first.
+Generates `reinterpret_cast<T*>(p)` in C++. `unsafe_cast` is a standard two-type-param generic (`T` = target pointee, `U` = source pointee). The target type can be specified via explicit type argument (`unsafe_cast[UInt32](p)`, partial -- `U` inferred from arg) or inferred from context (`q: Ptr[UInt32] = unsafe_cast(p)` -- both `T` and `U` inferred). The pointer kind (`Ptr`/`Ptr[readonly[...]]`) is preserved: `Ptr[U]` returns `Ptr[T]`, `Ptr[readonly[U]]` returns `Ptr[readonly[T]]`. Casting `Ptr[readonly[T]]` to `Ptr[T]` is rejected -- use `unsafe_const_cast` first.
 
 **`unsafe_str_view`** -- create a `StrView` from a char pointer and length:
 
@@ -2331,11 +2331,11 @@ val = try_next(it)  # Int32 | None
 
 **Auto-synthesis of `__iter__`**: Types that define `__next__` (or `__next_opt__`) but not `__iter__` automatically get `__iter__` synthesized, returning `self`. This matches Python's convention where iterators are their own iterables.
 
-**Built-in `Iterable[T]` conformance**: All standard container and string types conform to `Iterable[T]`: `list[T]`, `Array[T, N]`, `Span[T]`, `ReadOnlySpan[T]`, `Range[T]`, `str`, `String`, `StrView` (as `Iterable[Char]`), `dict[K,V]` (as `Iterable[K]`), `dict_keys`, `dict_values`, `dict_items`. This enables passing any builtin container to generic functions accepting `Iterable[T]`, calling `__iter__()` explicitly, and using the `iter()` builtin. Direct `for` loops over these types still use fast range-based C++ iteration (`NativeIterable`) as an optimization.
+**Built-in `Iterable[T]` conformance**: All standard container and string types conform to `Iterable[T]`: `list[T]`, `Array[T, N]`, `Span[T]`, `Span[readonly[T]]`, `Range[T]`, `str`, `String`, `StrView` (as `Iterable[Char]`), `dict[K,V]` (as `Iterable[K]`), `dict_keys`, `dict_values`, `dict_items`. This enables passing any builtin container to generic functions accepting `Iterable[T]`, calling `__iter__()` explicitly, and using the `iter()` builtin. Direct `for` loops over these types still use fast range-based C++ iteration (`NativeIterable`) as an optimization.
 
 #### Working: `__span__` Protocol (Zero-Cost User-Defined Iteration)
 
-Types that define `__span__(self) -> Span[T]` or `__span__(self) -> ReadOnlySpan[T]` get zero-cost
+Types that define `__span__(self) -> Span[T]` or `__span__(self) -> Span[readonly[T]]` get zero-cost
 C++ range-based for iteration, avoiding iterator object allocation:
 
 ```python
@@ -2365,7 +2365,7 @@ generates two C++ overloads -- a non-const overload (mutable body) and a const o
 annotation on the element type: `Span[readonly_alt[T]]` produces `std::span<T>` for
 the mutable overload and `std::span<const T>` for the const overload. This applies uniformly
 to all reference types (`Span`, `Ptr`, `SpanIter`, user-defined generics) -- no special cases.
-When `__span__` returns `ReadOnlySpan[T]`, only a single const overload is generated (no
+When `__span__` returns `Span[readonly[T]]`, only a single const overload is generated (no
 `@readonly_alt` needed). The same pattern applies to `__iter__()`.
 
 **Required decorator**: `@readonly_alt` must be applied explicitly to methods that need
@@ -2387,8 +2387,8 @@ only `__span__()` and no `__iter__()` are not iterable. Span-backed types should
 `__iter__(self) -> SpanIter[T]` wrapping `self.__span__()` for both iteration and CPython
 compatibility.
 
-**Implicit coercion**: A type with `__span__()` coerces to `Span[T]` or `ReadOnlySpan[T]`
-when passed as a function argument. `ReadOnlySpan[T]` return cannot coerce to mutable `Span[T]`.
+**Implicit coercion**: A type with `__span__()` coerces to `Span[T]` or `Span[readonly[T]]`
+when passed as a function argument. `Span[readonly[T]]` return cannot coerce to mutable `Span[T]`.
 
 **CPython compatibility**: `__span__` is not meaningful in CPython. Span-backed types should
 define `__iter__(self) -> SpanIter[T]` (returning `SpanIter(self.__span__())`) to provide
@@ -2416,18 +2416,18 @@ def sum_all(c: ReadOnlySpanLike[Int32]) -> Int32:
         total += x
     return total
 
-# Works with user types, list, Array, Span, ReadOnlySpan
+# Works with user types, list, Array, Span, Span[readonly[T]]
 print(sum_all(Buffer()))           # 6
 data: list[Int32] = [10, 20, 30]
 print(sum_all(data))               # 60
 ```
 
-**Conformance**: Any type with `__span__() -> Span[T]` or `__span__() -> ReadOnlySpan[T]`
-structurally conforms. Builtins (list, Array, Span, ReadOnlySpan) also conform
+**Conformance**: Any type with `__span__() -> Span[T]` or `__span__() -> Span[readonly[T]]`
+structurally conforms. Builtins (list, Array, Span, Span[readonly[T]]) also conform
 via explicit `extends` declarations. User types implementing `__span__() -> Span[T]` satisfy
 the readonly protocol via covariant return (the compiler auto-generates a const overload).
 
-**Coercion**: `ReadOnlySpanLike[T]` values coerce to `ReadOnlySpan[T]` (not mutable `Span[T]`).
+**Coercion**: `ReadOnlySpanLike[T]` values coerce to `Span[readonly[T]]` (not mutable `Span[T]`).
 
 **CPython mixin**: In CPython stubs, `ReadOnlySpanLike` is a base class that auto-generates
 `__iter__` from `__span__()`. User types inheriting it get iteration for free in CPython.
@@ -2449,7 +2449,7 @@ def sum_generic[T: Iterable[Int32]](items: T) -> Int32:
 
 #### Working: Span coercion via `ReadOnlySpanLike[T]`
 
-Types extending `ReadOnlySpanLike[T]` (which provides `__span__() -> ReadOnlySpan[T]`) can be implicitly coerced to `Span[T]`. This unifies span coercion with the `ReadOnlySpanLike` protocol -- no separate marker protocol is needed.
+Types extending `ReadOnlySpanLike[T]` (which provides `__span__() -> Span[readonly[T]]`) can be implicitly coerced to `Span[T]`. This unifies span coercion with the `ReadOnlySpanLike` protocol -- no separate marker protocol is needed.
 
 ```python
 from tpy import Int32, Span, Array
@@ -2700,7 +2700,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   - Readonly methods returning references get both const and non-const C++ overloads; value returns get const only
   - Protocol method readonly: `@readonly` on protocol methods enforces that implementations are also readonly; conformance fails at sema time if a record's method is not readonly when the protocol requires it
   - Protocol concept generation: user-defined protocols where all methods are readonly generate `const T&` in C++ concepts
-  - Deep readonly for pointers: accessing a `Ptr[T]` field through a readonly receiver yields `ReadOnlyPtr[T]`, preventing mutation through pointer fields
+  - Deep readonly for pointers: accessing a `Ptr[T]` field through a readonly receiver yields `Ptr[readonly[T]]`, preventing mutation through pointer fields
   - Limitation: container-mediated aliases not tracked (e.g., `[param]` into list then iterate)
 - **Working**: `readonly[T]` type modifier (per-parameter constness)
   - `readonly[T]` on a parameter means "immutable reference to T", maps to `const T&` in C++
@@ -3040,8 +3040,8 @@ Pair<std::string, int32_t> pair{"hello", 100};
 - Contextual inference from assignment annotation, return type, reassignment, or nested call context fills unresolved params
 - If inference fails, explicit type arguments are required
 - When mixing int literals with `Int32`, inference upgrades to `Int32`: `Same(1, x: Int32)` → `Same[Int32]`
-- Supports inference through wrapper types: `Ptr[T]`, `ReadOnlyPtr[T]`, `Own[T]`, `list[T]`
-- `Ptr[T]` arguments match `ReadOnlyPtr[T]` parameters (follows coercion rules)
+- Supports inference through wrapper types: `Ptr[T]`, `Ptr[readonly[T]]`, `Own[T]`, `list[T]`
+- `Ptr[T]` arguments match `Ptr[readonly[T]]` parameters (follows coercion rules)
 
 **Generic Static Methods**:
 
@@ -3227,16 +3227,16 @@ greet(d)             # param passing (child -> parent)
 **Pointer coercion** also works -- a child can be used where a pointer to parent is expected:
 
 ```python
-from tpy import Ptr, ReadOnlyPtr
+from tpy import Ptr
 
-def read_animal(p: ReadOnlyPtr[Animal]) -> None:
+def read_animal(p: Ptr[readonly[Animal]]) -> None:
     print(p.name)
 
 d = Dog("Rex", "Lab")
-read_animal(d)                    # Dog -> ReadOnlyPtr[Animal]
+read_animal(d)                    # Dog -> Ptr[readonly[Animal]]
 dp: Ptr[Dog] = Ptr(d)
 ap: Ptr[Animal] = dp             # Ptr[Dog] -> Ptr[Animal]
-cap: ReadOnlyPtr[Animal] = dp       # Ptr[Dog] -> ReadOnlyPtr[Animal]
+cap: Ptr[readonly[Animal]] = dp  # Ptr[Dog] -> Ptr[readonly[Animal]]
 ```
 
 Generic parent upcasting is supported with type argument matching:
@@ -3665,7 +3665,7 @@ class Car(Vehicle, Printable, Measurable):
   - `round[T](x)` is generic: return type defaults to `default_int`, can be inferred from context
   - `divmod(a, b)` returns `tuple[T, T]` with Python floor-division semantics
 - **Working**: String slicing: `s[1:3]`, `s[:3]`, `s[1:]`, `s[:-1]` -- returns `StrView`, Python clamping semantics, no step yet
-- **Working**: Container slicing: `items[1:3]`, `items[:3]`, `items[2:]`, `items[:]`, `items[-2:]` -- returns `Span[T]` (zero-copy view), supports `list[T]`, `Array[T,N]`, `Span[T]`, `ReadOnlySpan[T]`. No step yet
+- **Working**: Container slicing: `items[1:3]`, `items[:3]`, `items[2:]`, `items[:]`, `items[-2:]` -- returns `Span[T]` (zero-copy view), supports `list[T]`, `Array[T,N]`, `Span[T]`, `Span[readonly[T]]`. No step yet
 - **Working**: User-type slicing via `@overload __getitem__(self, index: slice)`. The `slice` builtin type has `start`/`stop` attributes of type `Optional[Int32]`. Maps to `tpy::Slice` in C++
 - **Working**: `isinstance(x, T)` → compile-time type narrowing for union types (`std::holds_alternative<T>` + `std::get<T>`)
 - **Working**: `isinstance(x, Protocol)` → compile-time protocol check on protocol-typed template params (`if constexpr (Concept<T_x>)`)
@@ -4359,7 +4359,7 @@ Generated C++ emits `extern` declarations before the module namespace. Reference
 - **Working**: Set comprehensions `{expr for x in iterable if cond}` -> IIFE with loop + `insert`. Supports tuple unpacking, annotation propagation, all iteration strategies
 - **Open**: Lambda → anonymous struct with `operator()` or inline
 - **Working**: String slice `s[start:end]` -> `std::string_view` (clamping, negative indices)
-- **Working**: Container slice `items[start:end]` -> `std::span<T>` (zero-copy view, clamping, negative indices). Supports list, Array, Span, ReadOnlySpan. Step not yet supported
+- **Working**: Container slice `items[start:end]` -> `std::span<T>` (zero-copy view, clamping, negative indices). Supports list, Array, Span, Span[readonly[T]]. Step not yet supported
 - **Working**: User-type slice `obj[start:end]` via `@overload __getitem__(self, index: slice)` with `tpy::Slice` dispatch
 
 ---
@@ -4396,11 +4396,11 @@ Send/Sync rules for built-in types:
 |------|------|------|-------|
 | Value types (Int32, bool, float, str, ...) | Yes | Yes | Copied, no aliasing |
 | `Ptr[T]` | No | No | Raw pointer, no ownership guarantee |
-| `ReadOnlyPtr[T]` | No | Yes (if T Sync) | Read-only shared access |
+| `Ptr[readonly[T]]` | No | Yes (if T Sync) | Read-only shared access |
 | `list[T]` | Yes (if T Send) | No | Mutable container |
 | `dict[K, V]` | Yes (if K,V Send) | No | Mutable container |
 | `Array[T, N]` | Yes (if T Send) | Yes (if T Sync) | Fixed-size |
-| `Span[T]` / `ReadOnlySpan[T]` | No | ReadOnly: Yes (if T Sync) | Non-owning view |
+| `Span[T]` / `Span[readonly[T]]` | No | ReadOnly: Yes (if T Sync) | Non-owning view |
 | `StrView` | No | Yes | Non-owning read-only view |
 | `readonly[T]` | Same as T | Yes (if T Send or Sync) | Immutable wrapper |
 | `tuple[T1, T2, ...]` | Yes (if all Ti Send) | Yes (if all Ti Sync) | Composite |

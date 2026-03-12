@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 
-// 4: def sum_span(s: ReadOnlySpan[Int32]) -> Int32:
+// 4: def sum_span(s: Span[readonly[Int32]]) -> Int32:
 int32_t sum_span(std::span<const int32_t> s) {
     // 5:     total: Int32 = 0
     int32_t total = 0;
@@ -22,7 +22,7 @@ int32_t sum_span(std::span<const int32_t> s) {
 void main() {
     // 11:     arr = Array[Int32, 3]([10, 20, 30])
     std::array<int32_t, 3> arr = std::array<int32_t, 3>({10, 20, 30});
-    // 12:     # Array coerces to Span, then Span coerces to ReadOnlySpan
+    // 12:     # Array coerces to Span, then Span coerces to Span[readonly[...]]
     // 13:     result = sum_span(arr)
     int32_t result = sum_span(tpy::as_span(arr));
     // 14:     print(result)

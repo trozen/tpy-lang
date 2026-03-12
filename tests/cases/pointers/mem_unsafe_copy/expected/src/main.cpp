@@ -28,7 +28,7 @@ void test_copy_from_constptr() {
     std::array<int32_t, 3> dst = {0, 0, 0};
     // 15:     sp: Ptr[Int32] = unsafe_ptr(src)
     int32_t* sp = src.data();
-    // 16:     cp: ReadOnlyPtr[Int32] = sp
+    // 16:     cp: Ptr[readonly[Int32]] = sp
     const int32_t* cp = sp;
     // 17:     unsafe_copy_n(unsafe_ptr(dst), cp, UInt32(2))
     std::copy_n(cp, 2, dst.data());

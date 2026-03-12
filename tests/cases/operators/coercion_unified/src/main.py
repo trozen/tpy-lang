@@ -6,7 +6,7 @@ Each coercion is tested in multiple contexts:
 - Return statement
 - Function argument
 """
-from tpy import Int32, Ptr, ReadOnlyPtr, Span, Array
+from tpy import Int32, Ptr, Span, Array, readonly
 from tplib import ArrayList
 
 # --- Records for pointer coercion tests ---
@@ -28,7 +28,7 @@ def take_int32(n: Int32) -> Int32:
 def take_ptr(p: Ptr[Point]) -> None:
     p.x = p.x + 1
 
-def take_const_ptr(p: ReadOnlyPtr[Point]) -> Int32:
+def take_const_ptr(p: Ptr[readonly[Point]]) -> Int32:
     return p.x + p.y
 
 def take_point(p: Point) -> Int32:
@@ -94,15 +94,15 @@ def test_record_to_ptr() -> None:
     print(pt3.x)  # 51 (modified by take_ptr)
 
 
-# --- Record -> ReadOnlyPtr coercion ---
+# --- Record -> Ptr[readonly[...]] coercion ---
 
 def test_record_to_const_ptr() -> None:
-    print("Record -> ReadOnlyPtr coercions:")
+    print("Record -> Ptr[readonly[...]] coercions:")
 
     pt: Point = Point(5, 15)
 
     # Variable declaration
-    cptr: ReadOnlyPtr[Point] = pt
+    cptr: Ptr[readonly[Point]] = pt
     print(cptr.x)  # 5
 
     # Assignment
@@ -148,20 +148,20 @@ def test_ptr_to_record() -> None:
     print(take_point(ptr4))  # 27
 
 
-# --- Ptr -> ReadOnlyPtr coercion ---
+# --- Ptr -> Ptr[readonly[...]] coercion ---
 
-def take_const_ptr_val(p: ReadOnlyPtr[Point]) -> Int32:
+def take_const_ptr_val(p: Ptr[readonly[Point]]) -> Int32:
     return p.x
 
 
 def test_ptr_to_const_ptr() -> None:
-    print("Ptr -> ReadOnlyPtr coercions:")
+    print("Ptr -> Ptr[readonly[...]] coercions:")
 
     pt: Point = Point(3, 4)
     ptr: Ptr[Point] = pt
 
     # Variable declaration
-    cptr: ReadOnlyPtr[Point] = ptr
+    cptr: Ptr[readonly[Point]] = ptr
     print(cptr.x)  # 3
 
     # Assignment
@@ -223,7 +223,7 @@ def test_subscript_to_ptr() -> None:
     take_ptr(arr[0])
     print(arr[0].x)  # 2 (was 1, incremented by take_ptr)
 
-    # arr[1] passed to ReadOnlyPtr param
+    # arr[1] passed to Ptr[readonly[...]] param
     print(take_const_ptr(arr[1]))  # 7
 
 

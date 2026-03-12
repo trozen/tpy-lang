@@ -1,5 +1,5 @@
-# Test tpy.deref(): dereference Ptr, ReadOnlyPtr, user types, and Deref protocol params.
-from tpy import Int32, Ptr, ReadOnlyPtr, Deref, deref
+# Test tpy.deref(): dereference Ptr, Ptr[readonly[...]], user types, and Deref protocol params.
+from tpy import Int32, Ptr, Deref, deref, readonly
 
 class Box:
     _val: Int32
@@ -17,14 +17,14 @@ def main() -> None:
     print(deref(p))
 
     y: Int32 = 77
-    rp: ReadOnlyPtr[Int32] = ReadOnlyPtr(y)
+    rp: Ptr[readonly[Int32]] = Ptr(y)
     print(deref(rp))
 
     z: Int32 = 99
     print(deref_protocol(Ptr(z)))
 
     w: Int32 = 55
-    print(deref_protocol(ReadOnlyPtr(w)))
+    print(deref_protocol(Ptr(w)))
 
     # User-defined Deref type
     b = Box(33)

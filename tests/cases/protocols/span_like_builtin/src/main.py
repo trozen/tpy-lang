@@ -1,5 +1,5 @@
 # Test that builtin types and user types (ArrayList) conform to ReadOnlySpanLike[T].
-from tpy import Int32, Array, Span, ReadOnlySpan, ReadOnlySpanLike
+from tpy import Int32, Array, Span, ReadOnlySpanLike, readonly
 from tplib import ArrayList
 
 def sum_span(c: ReadOnlySpanLike[Int32]) -> Int32:
@@ -23,7 +23,7 @@ def test_span() -> None:
 
 def test_ro_span() -> None:
     data: list[Int32] = [4, 5, 6]
-    s: ReadOnlySpan[Int32] = data
+    s: Span[readonly[Int32]] = data
     print(sum_span(s))
 
 def test_arraylist() -> None:

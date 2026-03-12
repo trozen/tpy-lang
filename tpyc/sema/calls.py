@@ -186,7 +186,7 @@ def _method_def_to_function_info(m: MethodDef) -> FunctionInfo:
 
 
 def _has_type_param_ref(t: TpyType) -> bool:
-    """Check if a type contains an unresolved TypeParamRef (e.g. Span[T], ReadOnlySpan[T])."""
+    """Check if a type contains an unresolved TypeParamRef (e.g. Span[T], Span[readonly[T]])."""
     if isinstance(t, TypeParamRef):
         return True
     return any(_has_type_param_ref(a) for a in t.inner_types())
@@ -1458,7 +1458,7 @@ class CallAnalyzer:
                     prefer_strview_for_literals(type_subst, overload, expr.args,
                                                protocol_checker, n_explicit)
                 resolved = self.type_ops.substitute_method_type_params(overload, type_subst)
-                # Catch ReadOnlyPtr-to-Ptr const-drop for unsafe_cast before
+                # Catch Ptr[readonly[T]]-to-Ptr const-drop for unsafe_cast before
                 # the generic "type mismatch" at the assignment level.
                 if (overload.qualified_name == "tpy.unsafe.unsafe_cast"
                         and is_readonly_ptr(resolved.return_type)
@@ -1536,7 +1536,7 @@ class CallAnalyzer:
                     expr
                 )
 
-        # Check for ReadOnlyPtr passed at a position where all overloads expect Ptr
+        # Check for Ptr[readonly[T]] passed at a position where all overloads expect Ptr
         for i, arg_t in enumerate(arg_types):
             if is_readonly_ptr(arg_t):
                 all_need_ptr_at_i = all(

@@ -21,10 +21,10 @@ void main() {
     std::cout << tpy::__getitem__(s, 1) << "\n";
     // 13:     print(s[2])    # 30
     std::cout << tpy::__getitem__(s, 2) << "\n";
-    // 15:     # Read-only span from ReadOnlyPtr.span()
-    // 16:     rp = ReadOnlyPtr(arr[0])
+    // 15:     # Read-only span from Ptr[readonly[...]].span()
+    // 16:     rp: Ptr[readonly[Int32]] = Ptr(arr[0])
     const int32_t* rp = &tpy::__getitem__(arr, 0);
-    // 17:     rs: ReadOnlySpan[Int32] = rp.span(3)
+    // 17:     rs: Span[readonly[Int32]] = rp.span(3)
     std::span<const int32_t> rs = std::span(rp, static_cast<size_t>(3));
     // 18:     print(rs[0])   # 42
     std::cout << tpy::__getitem__(rs, 0) << "\n";

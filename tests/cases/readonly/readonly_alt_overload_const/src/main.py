@@ -2,7 +2,7 @@
 # Verifies that the implementation is not appended to the overload list
 # when stubs already have mixed is_readonly (mutable + const clones).
 from typing import overload
-from tpy import Int32, Span, ReadOnlySpan, readonly, readonly_alt
+from tpy import Int32, Span, readonly, readonly_alt
 
 
 class Container[T]:
@@ -36,7 +36,7 @@ class Container[T]:
 
 def read_container(c: readonly[Container[Int32]]) -> None:
     x = c[Int32(0)]    # tpyc: type(Int32)
-    s = c[Int32(0):Int32(2)]  # tpyc: type(ReadOnlySpan[Int32])
+    s = c[Int32(0):Int32(2)]  # tpyc: type(Span[readonly[Int32]])
     print(x)
     print(s[Int32(0)])
     print(s[Int32(1)])

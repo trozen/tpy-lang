@@ -1,4 +1,4 @@
-# @readonly propagation turns Span field into ReadOnlySpan for reading.
+# @readonly propagation turns Span field into Span[readonly[T]] for reading.
 from tpy import Int32, Span, Array, readonly
 
 class Box:

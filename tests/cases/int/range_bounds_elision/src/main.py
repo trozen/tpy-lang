@@ -1,5 +1,5 @@
 # Tests bounds check elision for subscript access when index is provably in-bounds.
-from tpy import Array, Int32, Span, ReadOnlySpan
+from tpy import Array, Int32, Span
 
 def test_for_range_len_array() -> None:
     """for i in range(len(arr)): arr[i] -- index provably in [0, len-1]."""

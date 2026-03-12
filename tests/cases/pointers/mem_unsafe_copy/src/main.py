@@ -1,4 +1,4 @@
-from tpy import Ptr, ReadOnlyPtr, Int32, UInt32, Array
+from tpy import Ptr, Int32, UInt32, Array, readonly
 from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_copy_n
 
 def test_copy_mutable() -> None:
@@ -13,7 +13,7 @@ def test_copy_from_constptr() -> None:
     src: Array[Int32, 3] = [Int32(40), Int32(50), Int32(60)]
     dst: Array[Int32, 3] = [Int32(0), Int32(0), Int32(0)]
     sp: Ptr[Int32] = unsafe_ptr(src)
-    cp: ReadOnlyPtr[Int32] = sp
+    cp: Ptr[readonly[Int32]] = sp
     unsafe_copy_n(unsafe_ptr(dst), cp, UInt32(2))
     print(unsafe_load(unsafe_ptr(dst), UInt32(0)))
     print(unsafe_load(unsafe_ptr(dst), UInt32(1)))

@@ -1551,7 +1551,7 @@ class Parser:
                 if module == "tpy":
                     if original == "Ptr":
                         inner = self._parse_type_annotation(node.slice, type_param_scope)
-                        # Ptr[readonly[T]] normalizes to ReadOnlyPtr[T]
+                        # Ptr[readonly[T]] -> is_readonly=True
                         if isinstance(inner, ReadonlyType):
                             return PtrType(inner.wrapped, is_readonly=True)
                         return PtrType(inner)

@@ -1387,7 +1387,7 @@ class StatementAnalyzer:
             self.init.mark_provenance(stmt.name, self.compat.is_param_derived_expr(stmt.init))
         # Track non-null pointer provenance for null-check elision
         if stmt.init and isinstance(var_type, PtrType):
-            # Unwrap coercion (e.g. Ptr[T] -> ReadOnlyPtr[T]) to find the source expression
+            # Unwrap coercion (e.g. Ptr[T] -> Ptr[readonly[T]]) to find the source expression
             init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
             is_non_null = (isinstance(init_inner, TpyCall)
                            and init_inner.call_type is not None
@@ -1673,6 +1673,9 @@ class StatementAnalyzer:
             if not isinstance(unwrap_readonly(obj_type), (DictType, PendingDictType)):
                 elem_type = obj_type.get_element_type()
                 if elem_type is not None:
+                    # Span[readonly[T]] always rejects element assignment
+                    if isinstance(obj_type, SpanType) and obj_type.is_readonly:
+                        raise self.ctx.error(f"Cannot assign to elements of {obj_type} (read-only)", stmt)
                     # Check if type conforms to MutableSequence[elem_type]
                     mutable_seq = NamedType("MutableSequence", (elem_type,), is_protocol=True)
                     if not self.protocols.type_conforms_to_protocol(obj_type, mutable_seq):
@@ -1765,7 +1768,7 @@ class StatementAnalyzer:
             self.init.mark_provenance(stmt.target.name, self.compat.is_param_derived_expr(stmt.value))
         # Track non-null pointer provenance for null-check elision
         if isinstance(stmt.target, TpyName) and isinstance(target_type, PtrType):
-            # Unwrap coercion (e.g. Ptr[T] -> ReadOnlyPtr[T]) to find the source expression
+            # Unwrap coercion (e.g. Ptr[T] -> Ptr[readonly[T]]) to find the source expression
             val_inner = stmt.value.expr if isinstance(stmt.value, TpyCoerce) else stmt.value
             is_non_null = (isinstance(val_inner, TpyCall)
                            and val_inner.call_type is not None

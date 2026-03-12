@@ -396,7 +396,7 @@ No runtime vtables or dynamic dispatch—everything resolves to direct method ca
    - Regular (non-dunder) method calls on protocol-typed values
 6. **Phase 6**: Compiler trait protocols ✅ **COMPLETE**
    - `ReadOnlySpanLike[T]` handles `Span[T]` coercion -- types extending this protocol
-     can be implicitly coerced to `Span[T]` and `ReadOnlySpan[T]`
+     can be implicitly coerced to `Span[T]` and `Span[readonly[T]]`
    - `MutableSequence[T]` - types that support `__len__`, `__getitem__`, and `__setitem__`
      - Used by sema to validate subscript assignment (Span, str don't conform → read-only)
      - C++20 concept `tpy::MutableSequence<ElemT>`

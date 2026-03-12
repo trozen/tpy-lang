@@ -289,7 +289,7 @@ Key types must conform to the `Hashable` protocol (have `__hash__` method return
 | `list[T]` | Mutable, not hashable in Python |
 | `dict[K, V]` | Mutable, not hashable in Python |
 | `Optional[T]` | No natural hash for None+T combination |
-| `Ptr[T]` / `ReadOnlyPtr[T]` | Pointer identity is fragile |
+| `Ptr[T]` / `Ptr[readonly[T]]` | Pointer identity is fragile |
 
 ### 8. Tests
 

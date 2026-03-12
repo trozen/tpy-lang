@@ -1,5 +1,5 @@
 # Test __span__() method callable on builtin types and user types (ArrayList)
-from tpy import Int32, Array, Span, ReadOnlySpan
+from tpy import Int32, Array, Span, readonly
 from tplib import ArrayList
 
 def from_list() -> None:
@@ -20,7 +20,7 @@ def from_span() -> None:
 
 def from_readonly_span() -> None:
     a: Array[Int32, 3] = [7, 8, 9]
-    ro: ReadOnlySpan[Int32] = a
+    ro: Span[readonly[Int32]] = a
     s = ro.__span__()
     print(len(s), s[0], s[1], s[2])
 

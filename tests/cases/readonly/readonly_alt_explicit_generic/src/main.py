@@ -1,6 +1,6 @@
 # Explicit readonly_alt[T] annotation on generic class method.
 # The const overload becomes span<const T> while mutable stays span<T>.
-from tpy import Int32, Span, ReadOnlySpan, readonly, readonly_alt
+from tpy import Int32, Span, readonly, readonly_alt
 
 class Vec[T]:
     _data: list[T]
@@ -17,7 +17,7 @@ class Vec[T]:
 
 
 def read_vec(v: readonly[Vec[Int32]]) -> None:
-    s = v.data()  # tpyc: type(ReadOnlySpan[Int32])
+    s = v.data()  # tpyc: type(Span[readonly[Int32]])
     print(s[Int32(0)])
     print(s[Int32(1)])
 

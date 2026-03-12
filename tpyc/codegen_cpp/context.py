@@ -643,7 +643,7 @@ class CodeGenContext:
         """Return expression yielding raw pointer value for pointer names.
 
         Most pointer-globals are wrapped and need one dereference (`*name`) to get
-        `T*`, but globals whose declared type is already pointer-like (Ptr/ReadOnlyPtr
+        `T*`, but globals whose declared type is already pointer-like (Ptr, Ptr[readonly[T]],
         or Optional non-value) are already `T*` and must be returned as-is.
         """
         if not self._is_pointer_global(expr):

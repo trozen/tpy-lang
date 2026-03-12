@@ -1,4 +1,4 @@
-from tpy import ReadOnlyPtr, Int32
+from tpy import Ptr, Int32, readonly
 
 class Counter:
     value: Int32
@@ -8,7 +8,7 @@ class Counter:
         return self.value
 
 def main() -> None:
-    p: ReadOnlyPtr[Counter] = ReadOnlyPtr[Counter]()
+    p: Ptr[readonly[Counter]] = Ptr[readonly[Counter]]()
     print(p.__len__())
 
 main()

@@ -1,5 +1,5 @@
 # Ptr non-null narrowing: skip deref_check after `is not None` guard
-from tpy import Ptr, ReadOnlyPtr, Int32
+from tpy import Ptr, Int32, readonly
 
 class Point:
     x: Int32
@@ -44,8 +44,8 @@ def test_while_reassign(p: Ptr[Point]) -> None:
         break
     # After loop: p was reassigned from unknown, non-null not guaranteed
 
-# ReadOnlyPtr: same narrowing applies
-def test_readonly_ptr(p: ReadOnlyPtr[Point]) -> Int32:
+# Ptr[readonly[...]]: same narrowing applies
+def test_readonly_ptr(p: Ptr[readonly[Point]]) -> Int32:
     if p is not None:
         return p.x  # tpyc: non_null(p)
     return Int32(0)
@@ -59,7 +59,7 @@ def test_merge_no_guarantee(p: Ptr[Point]) -> Int32:
 def main() -> None:
     pt = Point(Int32(10), Int32(20))
     p: Ptr[Point] = Ptr(pt)
-    cp: ReadOnlyPtr[Point] = ReadOnlyPtr(pt)
+    cp: Ptr[readonly[Point]] = Ptr(pt)
     print(test_if_not_none(p))
     print(test_is_none_early_return(p))
     print(test_assert(p))

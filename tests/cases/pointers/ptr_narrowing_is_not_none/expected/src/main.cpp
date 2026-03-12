@@ -69,8 +69,8 @@ void test_while_reassign(Point* p) {
     }
 }
 
-// # ReadOnlyPtr: same narrowing applies
-// 48: def test_readonly_ptr(p: ReadOnlyPtr[Point]) -> Int32:
+// # Ptr[readonly[...]]: same narrowing applies
+// 48: def test_readonly_ptr(p: Ptr[readonly[Point]]) -> Int32:
 int32_t test_readonly_ptr(const Point* p) {
     // 49:     if p is not None:
     if ((p != nullptr)) {
@@ -98,7 +98,7 @@ void main() {
     Point pt = Point(10, 20);
     // 61:     p: Ptr[Point] = Ptr(pt)
     Point* p = &pt;
-    // 62:     cp: ReadOnlyPtr[Point] = ReadOnlyPtr(pt)
+    // 62:     cp: Ptr[readonly[Point]] = Ptr(pt)
     const Point* cp = &pt;
     // 63:     print(test_if_not_none(p))
     std::cout << test_if_not_none(p) << "\n";

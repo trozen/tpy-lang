@@ -212,13 +212,6 @@ class Ptr(metaclass=_PtrMeta):
         return _Ptr(obj)
 
 
-class ReadOnlyPtr(metaclass=_PtrMeta):
-    """ReadOnlyPtr[T] type - creates read-only pointer."""
-
-    def __new__(cls, obj=None):
-        return _ConstPtr(obj)
-
-
 class _OwnMeta(type):
     """Metaclass to support Own[T] syntax."""
 
@@ -377,63 +370,6 @@ def _make_span(data):
     return Span(data)
 
 
-class ReadOnlySpanMeta(type):
-    """Metaclass to support ReadOnlySpan[T] syntax."""
-
-    def __getitem__(cls, elem_type):
-        class BoundReadOnlySpan(ReadOnlySpan):
-            _elem_type = elem_type
-
-        return BoundReadOnlySpan
-
-
-class ReadOnlySpan(metaclass=ReadOnlySpanMeta):
-    """Non-owning read-only view: ReadOnlySpan[T] -> std::span<const T>"""
-
-    _elem_type = None
-
-    def __init__(self, data):
-        if isinstance(data, (list, Array, Span)):
-            if hasattr(data, '_data'):
-                self._data = data._data
-            else:
-                self._data = data
-        else:
-            self._data = list(data)
-
-    def unchecked_get(self, index: int):
-        return self._data[index]
-
-    def __getitem__(self, index):
-        if isinstance(index, slice):
-            return ReadOnlySpan(self._data[index])
-        i = index
-        if i < 0:
-            i += len(self._data)
-        if i < 0 or i >= len(self._data):
-            raise RuntimeError(f"span index out of bounds")
-        return self._data[i]
-
-    def size(self) -> Int32:
-        return Int32(len(self._data))
-
-    def __len__(self) -> int:
-        return len(self._data)
-
-    def __iter__(self):
-        return iter(self._data)
-
-    def __copy__(self):
-        new_span = object.__new__(type(self))
-        new_span._data = self._data
-        return new_span
-
-    def __deepcopy__(self, memo):
-        new_span = object.__new__(type(self))
-        new_span._data = self._data
-        return new_span
-
-
 class SpanIter:
     """Iterator over a contiguous span."""
 
@@ -441,7 +377,7 @@ class SpanIter:
         return cls
 
     def __init__(self, span):
-        if isinstance(span, (Span, ReadOnlySpan)):
+        if isinstance(span, Span):
             self._data = span._data
         elif isinstance(span, (list, tuple)):
             self._data = span

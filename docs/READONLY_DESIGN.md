@@ -334,7 +334,7 @@ Allowed:
    body once, but codegen may generate two C++ overloads (const + non-const)
    from the same body. When a readonly method's body calls other methods whose
    return types differ by constness (e.g. `self.__span__()` returning
-   `Span[T]` vs `ReadOnlySpan[T]`), sema can only see one variant's types.
+   `Span[T]` vs `Span[readonly[T]]`), sema can only see one variant's types.
    This causes false type mismatches when the declared return type matches one
    variant but not the other. `@readonly_alt` (Phase 3) addresses this.
 
@@ -411,7 +411,7 @@ in both contexts (mutable and const).
 
 Works naturally. Inside the readonly variant of `__getitem__`, `self` is
 readonly, so `self.__span__()` resolves to `__span__`'s readonly variant
-(returning `ReadOnlySpan[T]`). The types flow correctly through each variant
+(returning `Span[readonly[T]]`). The types flow correctly through each variant
 independently.
 
 ### Restrictions

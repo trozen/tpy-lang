@@ -1,4 +1,4 @@
-from tpy import ReadOnlyPtr, Int32
+from tpy import Ptr, Int32, readonly
 
 class Counter:
     x: Int32
@@ -9,8 +9,8 @@ class Counter:
 
 def main() -> None:
     c: Counter = Counter(42)
-    cp: ReadOnlyPtr[Counter] = ReadOnlyPtr(c)
-    # Const-safe dunder method call through ReadOnlyPtr auto-deref
+    cp: Ptr[readonly[Counter]] = Ptr(c)
+    # Const-safe dunder method call through Ptr[readonly[...]] auto-deref
     print(cp.__len__())
 
 main()

@@ -6,7 +6,7 @@ namespace tpy_user::main {
 
 // 10: def main() -> None:
 void main() {
-    // 11:     p: ReadOnlyPtr[Point] = ReadOnlyPtr[Point]()
+    // 11:     p: Ptr[readonly[Point]] = Ptr[readonly[Point]]()
     const Point* p = static_cast<const Point*>(nullptr);
     // 12:     print(p.x)
     std::cout << tpy::deref_check(p).x << "\n";

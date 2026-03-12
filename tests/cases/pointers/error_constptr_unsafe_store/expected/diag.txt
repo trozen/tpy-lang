@@ -1,1 +1,1 @@
-main.py:7: error: unsafe_store() requires a mutable pointer, got ReadOnlyPtr[Int32]
+main.py:7: error: unsafe_store() requires a mutable pointer, got Ptr[readonly[Int32]]

@@ -1,4 +1,4 @@
-from tpy import Ptr, ReadOnlyPtr, Int32
+from tpy import Ptr, Int32
 
 class Point:
     x: Int32

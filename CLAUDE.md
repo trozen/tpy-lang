@@ -156,7 +156,7 @@ tests/
 │   ├── none_safety/          # Optional types, narrowing
 │   ├── operators/            # Operators, coercion, assignment, subscript
 │   ├── auto_move/            # Auto-move at last use, forwarding refs
-│   ├── pointers/             # Ptr, ReadOnlyPtr, Own, dangling references
+│   ├── pointers/             # Ptr, Ptr[readonly[T]], Own, dangling references
 │   ├── protocols/            # Protocol definition and implementation
 │   ├── readonly/             # @readonly decorator, readonly[T] type modifier
 │   ├── records/              # Class/record methods, dunder, staticmethod
@@ -236,7 +236,7 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 |--------|---------|
 | `cli.py` | CLI entry point, argument parsing, error handling |
 | `parse/` | Parser package: `parser.py` (AST builder using Python's `ast`), `nodes.py` (TurboPython AST node definitions), `imports.py` (import resolution helpers) |
-| `typesys.py` | Type definitions (Int32, BigInt, Float, bool, Void, Str, Char, Record, Ptr, ReadOnlyPtr, Own, Optional, List, Array, Span, Tuple) and TypeRegistry |
+| `typesys.py` | Type definitions (Int32, BigInt, Float, bool, Void, Str, Char, Record, Ptr, Own, Optional, List, Array, Span, Tuple) and TypeRegistry |
 | `sema/` | Multi-pass semantic analysis (see below) |
 | `codegen_cpp/` | C++ code generation (see below) |
 | `compiler.py` | Multi-module orchestration: discovery, dependency resolution, compilation order |
@@ -398,10 +398,10 @@ The compiler is a proof-of-concept. Not yet implemented:
 | `list[T]` | `std::vector<T>` |
 | `Array[T, N]` | `std::array<T, N>` |
 | `Span[T]` | `std::span<T>` |
-| `ReadOnlySpan[T]` | `std::span<const T>` |
+| `Span[readonly[T]]` | `std::span<const T>` |
 | `SpanIter[T]` | `tpy::SpanIter<T>` |
 | `Ptr[T]` | `T*` |
-| `ReadOnlyPtr[T]` | `const T*` |
+| `Ptr[readonly[T]]` | `const T*` |
 | `Own[T]` | `T` (by value, for returns/params) |
 
 ## Supported Language Features

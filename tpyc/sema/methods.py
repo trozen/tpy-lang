@@ -409,7 +409,7 @@ class MethodAnalyzer:
                                f" ('{expr.method}' may invalidate references)")
                     self.ctx.warning(msg, expr)
 
-        # Deref chain -- resolves through Ptr, ReadOnlyPtr, and any Deref[T] type
+        # Deref chain -- resolves through Ptr (mutable and readonly) and any Deref[T] type
         original_type = obj_type
         current_type = obj_type
         deref_depth = 0

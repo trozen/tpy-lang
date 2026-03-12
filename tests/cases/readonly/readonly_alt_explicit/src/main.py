@@ -1,6 +1,6 @@
 # Explicit readonly_alt[T] return type annotation:
 # compiler generates dual overloads using annotated const return type.
-from tpy import Int32, Span, ReadOnlySpan, readonly, readonly_alt
+from tpy import Int32, Span, readonly, readonly_alt
 
 class Buffer:
     _data: list[Int32]
@@ -14,7 +14,7 @@ class Buffer:
 
 
 def read_buf(b: readonly[Buffer]) -> None:
-    s = b.as_span()  # tpyc: type(ReadOnlySpan[Int32])
+    s = b.as_span()  # tpyc: type(Span[readonly[Int32]])
     print(s[Int32(0)])
     print(s[Int32(1)])
 

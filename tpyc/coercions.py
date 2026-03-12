@@ -48,7 +48,7 @@ def _spanlike_to_span_match(actual: TpyType, expected: TpyType) -> bool:
     """Check if actual type (extending ReadOnlySpanLike[T]) can coerce to Span[T]/ReadOnlySpan[T]."""
     if not isinstance(expected, SpanType):
         return False
-    # ReadOnlySpan and readonly[container] cannot coerce to mutable Span (const violation)
+    # Span[readonly[T]] and readonly[container] cannot coerce to mutable Span (const violation)
     if isinstance(actual, SpanType) and actual.is_readonly and not expected.is_readonly:
         return False
     if isinstance(actual, ReadonlyType) and not expected.is_readonly:

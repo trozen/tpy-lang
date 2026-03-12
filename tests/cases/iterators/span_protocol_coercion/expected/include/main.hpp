@@ -21,7 +21,7 @@ struct ROBuffer {
     // 8:     def __init__(self) -> None:
     ROBuffer() : _data({1, 2, 3}) {}
 
-    // 11:     def __span__(self) -> ReadOnlySpan[Int32]:
+    // 11:     def __span__(self) -> Span[readonly[Int32]]:
     std::span<const int32_t> __span__() const {
         // 12:         return self._data
         return tpy::as_span(this->_data);

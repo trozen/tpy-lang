@@ -1,7 +1,7 @@
-# Tests that containers coerce to Optional[Span[T]] at call sites
-from tpy import Int32, ReadOnlySpan
+# Tests that containers coerce to Optional[Span[readonly[T]]] at call sites
+from tpy import Int32, Span, readonly
 
-def has_values(values: ReadOnlySpan[Int32] | None) -> bool:
+def has_values(values: Span[readonly[Int32]] | None) -> bool:
     return values is not None
 
 def main() -> None:

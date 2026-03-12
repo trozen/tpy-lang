@@ -6,7 +6,7 @@ namespace tpy_user::main {
 
 // 19: def read_vec(v: readonly[Vec[Int32]]) -> None:
 void read_vec(const Vec<int32_t>& v) {
-    // 20:     s = v.data()  # tpyc: type(ReadOnlySpan[Int32])
+    // 20:     s = v.data()  # tpyc: type(Span[readonly[Int32]])
     std::span<const int32_t> s = v.data();
     // 21:     print(s[Int32(0)])
     std::cout << tpy::__getitem__(s, 0) << "\n";

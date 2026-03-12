@@ -1,6 +1,6 @@
-# @readonly_alt with Ptr[T] return: const overload returns ReadOnlyPtr[T].
+# @readonly_alt with Ptr[T] return: const overload returns Ptr[readonly[T]].
 # Uses explicit readonly_alt[T] annotation on the element type.
-from tpy import Int32, Ptr, ReadOnlyPtr, readonly, readonly_alt
+from tpy import Int32, Ptr, readonly, readonly_alt
 
 class Node:
     value: Int32
@@ -21,7 +21,7 @@ class NodeHolder:
 
 
 def read_holder(h: readonly[NodeHolder]) -> None:
-    p = h.get_node()  # tpyc: type(ReadOnlyPtr[Node])
+    p = h.get_node()  # tpyc: type(Ptr[readonly[Node]])
     print(p.value)
 
 

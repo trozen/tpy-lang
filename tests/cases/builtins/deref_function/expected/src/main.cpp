@@ -14,7 +14,7 @@ void main() {
     std::cout << tpy::deref_check(p) << "\n";
     // 19:     y: Int32 = 77
     int32_t y = 77;
-    // 20:     rp: ReadOnlyPtr[Int32] = ReadOnlyPtr(y)
+    // 20:     rp: Ptr[readonly[Int32]] = Ptr(y)
     const int32_t* rp = &y;
     // 21:     print(deref(rp))
     std::cout << tpy::deref_check(rp) << "\n";
@@ -25,7 +25,7 @@ void main() {
     std::cout << deref_protocol(__tmp_1) << "\n";
     // 26:     w: Int32 = 55
     int32_t w = 55;
-    // 27:     print(deref_protocol(ReadOnlyPtr(w)))
+    // 27:     print(deref_protocol(Ptr(w)))
     auto __tmp_2 = &w;
     std::cout << deref_protocol(__tmp_2) << "\n";
     // 29:     # User-defined Deref type

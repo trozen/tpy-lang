@@ -29,8 +29,8 @@ void test_iterable_params() {
     std::span<int32_t> sp = std::span<int32_t>(&tpy::__getitem__(arr, 0), static_cast<size_t>(3));
     // 41:     print(sum_items(sp))
     std::cout << sum_items(sp) << "\n";
-    // 43:     # ReadOnlySpan (via Array.__span__())
-    // 44:     rosp: ReadOnlySpan[Int32] = arr.__span__()
+    // 43:     # Span[readonly[T]] (via Array.__span__())
+    // 44:     rosp: Span[readonly[Int32]] = arr.__span__()
     std::span<const int32_t> rosp = tpy::as_span(arr);
     // 45:     print(sum_items(rosp))
     std::cout << sum_items(rosp) << "\n";

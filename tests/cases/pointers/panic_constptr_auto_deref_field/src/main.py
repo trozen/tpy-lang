@@ -1,4 +1,4 @@
-from tpy import ReadOnlyPtr, Int32
+from tpy import Ptr, Int32, readonly
 
 class Point:
     x: Int32
@@ -8,7 +8,7 @@ class Point:
         self.y = y
 
 def main() -> None:
-    p: ReadOnlyPtr[Point] = ReadOnlyPtr[Point]()
+    p: Ptr[readonly[Point]] = Ptr[readonly[Point]]()
     print(p.x)
 
 main()

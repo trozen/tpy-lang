@@ -7,7 +7,7 @@ namespace tpy_user::main {
 int32_t* p{};
 // 8: x: Int32 = Int32(7)
 int32_t x{};
-// 16: cp: ReadOnlyPtr[Int32] = None  # tpyc: ok
+// 16: cp: Ptr[readonly[Int32]] = None  # tpyc: ok
 const int32_t* cp{};
 
 void __tpy_init() {
@@ -31,11 +31,11 @@ void __tpy_init() {
     p = nullptr;
     // 14: print(p is None)
     std::cout << tpy::print_bool((p == nullptr)) << "\n";
-    // 16: cp: ReadOnlyPtr[Int32] = None  # tpyc: ok
+    // 16: cp: Ptr[readonly[Int32]] = None  # tpyc: ok
     cp = nullptr;
     // 17: print(cp is None)
     std::cout << tpy::print_bool((cp == nullptr)) << "\n";
-    // 18: cp = ReadOnlyPtr(x)
+    // 18: cp = Ptr(x)
     cp = &x;
     // 19: print(cp is None)
     std::cout << tpy::print_bool((cp == nullptr)) << "\n";

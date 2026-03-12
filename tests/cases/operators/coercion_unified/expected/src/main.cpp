@@ -17,7 +17,7 @@ void take_ptr(Point* p) {
     tpy::deref_check(p).x = (tpy::add_check<int32_t>(tpy::deref_check(p).x, 1));
 }
 
-// 31: def take_const_ptr(p: ReadOnlyPtr[Point]) -> Int32:
+// 31: def take_const_ptr(p: Ptr[readonly[Point]]) -> Int32:
 int32_t take_const_ptr(const Point* p) {
     // 32:     return p.x + p.y
     return (tpy::add_check<int32_t>(tpy::deref_check(p).x, tpy::deref_check(p).y));
@@ -113,15 +113,15 @@ void test_record_to_ptr() {
     std::cout << pt3.x << "\n";
 }
 
-// # --- Record -> ReadOnlyPtr coercion ---
+// # --- Record -> Ptr[readonly[...]] coercion ---
 // 99: def test_record_to_const_ptr() -> None:
 void test_record_to_const_ptr() {
-    // 100:     print("Record -> ReadOnlyPtr coercions:")
-    std::cout << "Record -> ReadOnlyPtr coercions:" << "\n";
+    // 100:     print("Record -> Ptr[readonly[...]] coercions:")
+    std::cout << "Record -> Ptr[readonly[...]] coercions:" << "\n";
     // 102:     pt: Point = Point(5, 15)
     Point pt = Point(5, 15);
     // 104:     # Variable declaration
-    // 105:     cptr: ReadOnlyPtr[Point] = pt
+    // 105:     cptr: Ptr[readonly[Point]] = pt
     const Point* cptr = &pt;
     // 106:     print(cptr.x)  # 5
     std::cout << tpy::deref_check(cptr).x << "\n";
@@ -184,8 +184,8 @@ void test_ptr_to_record() {
     std::cout << take_point(tpy::deref_check(ptr4)) << "\n";
 }
 
-// # --- Ptr -> ReadOnlyPtr coercion ---
-// 153: def take_const_ptr_val(p: ReadOnlyPtr[Point]) -> Int32:
+// # --- Ptr -> Ptr[readonly[...]] coercion ---
+// 153: def take_const_ptr_val(p: Ptr[readonly[Point]]) -> Int32:
 int32_t take_const_ptr_val(const Point* p) {
     // 154:     return p.x
     return tpy::deref_check(p).x;
@@ -193,14 +193,14 @@ int32_t take_const_ptr_val(const Point* p) {
 
 // 157: def test_ptr_to_const_ptr() -> None:
 void test_ptr_to_const_ptr() {
-    // 158:     print("Ptr -> ReadOnlyPtr coercions:")
-    std::cout << "Ptr -> ReadOnlyPtr coercions:" << "\n";
+    // 158:     print("Ptr -> Ptr[readonly[...]] coercions:")
+    std::cout << "Ptr -> Ptr[readonly[...]] coercions:" << "\n";
     // 160:     pt: Point = Point(3, 4)
     Point pt = Point(3, 4);
     // 161:     ptr: Ptr[Point] = pt
     Point* ptr = &pt;
     // 163:     # Variable declaration
-    // 164:     cptr: ReadOnlyPtr[Point] = ptr
+    // 164:     cptr: Ptr[readonly[Point]] = ptr
     const Point* cptr = ptr;
     // 165:     print(cptr.x)  # 3
     std::cout << tpy::deref_check(cptr).x << "\n";
@@ -276,7 +276,7 @@ void test_subscript_to_ptr() {
     take_ptr(&tpy::__getitem__(arr, 0));
     // 224:     print(arr[0].x)  # 2 (was 1, incremented by take_ptr)
     std::cout << tpy::__getitem__(arr, 0).x << "\n";
-    // 226:     # arr[1] passed to ReadOnlyPtr param
+    // 226:     # arr[1] passed to Ptr[readonly[...]] param
     // 227:     print(take_const_ptr(arr[1]))  # 7
     std::cout << take_const_ptr(&tpy::__getitem__(arr, 1)) << "\n";
 }

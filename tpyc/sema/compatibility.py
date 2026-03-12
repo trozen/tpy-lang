@@ -110,7 +110,7 @@ class TypeCompatibility:
                 if not allow:
                     raise SemanticError(
                         f"Cannot return readonly[{actual.wrapped}] as mutable {expected}; "
-                        f"use ReadOnlySpan or annotate return type with readonly_alt[T]"
+                        f"use Span[readonly[T]] or annotate return type with readonly_alt[T]"
                         if is_return else
                         f"Cannot pass readonly[{actual.wrapped}] as mutable {expected} in {context}",
                         loc,
@@ -119,7 +119,7 @@ class TypeCompatibility:
                 actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx
             )
 
-        # None -> Optional[T] / Ptr[T] / ReadOnlyPtr[T]: always compatible
+        # None -> Optional[T] / Ptr[T] / Ptr[readonly[T]]: always compatible
         if isinstance(actual, NoneType) and isinstance(expected, (OptionalType, PtrType)):
             return None
 
@@ -172,12 +172,12 @@ class TypeCompatibility:
             if self.ctx.registry.is_subclass_of(actual, expected):
                 return None
 
-        # Inheritance: Ptr[Child] -> Ptr[Parent] / ReadOnlyPtr[Parent]
-        # ReadOnlyPtr[Child] -> ReadOnlyPtr[Parent]
+        # Inheritance: Ptr[Child] -> Ptr[Parent] / Ptr[readonly[Parent]]
+        # Ptr[readonly[Child]] -> Ptr[readonly[Parent]]
         if isinstance(actual, PtrType) and isinstance(actual.inner_pointee, NamedType):
             if isinstance(expected, PtrType) and isinstance(expected.inner_pointee, NamedType):
-                # Mutable Ptr can coerce to both Ptr and ReadOnlyPtr parent;
-                # ReadOnlyPtr can only coerce to ReadOnlyPtr parent
+                # Mutable Ptr can coerce to both Ptr and Ptr[readonly[...]] parent;
+                # Ptr[readonly[...]] can only coerce to Ptr[readonly[...]] parent
                 if not actual.is_readonly or expected.is_readonly:
                     if self.ctx.registry.is_subclass_of(actual.inner_pointee, expected.inner_pointee):
                         return None
@@ -377,7 +377,7 @@ class TypeCompatibility:
         ctx = coercion_ctx or context
         coercion = resolve_coercion(actual, expected, ctx)
         if coercion is None:
-            # Inheritance: Child -> Ptr[Parent] / ReadOnlyPtr[Parent] (address-of with upcast)
+            # Inheritance: Child -> Ptr[Parent] / Ptr[readonly[Parent]] (address-of with upcast)
             if isinstance(actual, NamedType) and actual.is_user_record:
                 if isinstance(expected, PtrType) and not expected.is_readonly and isinstance(expected.inner_pointee, NamedType):
                     if self.ctx.registry.is_subclass_of(actual, expected.inner_pointee):
@@ -386,19 +386,19 @@ class TypeCompatibility:
                     if self.ctx.registry.is_subclass_of(actual, expected.inner_pointee):
                         coercion = UPCAST_TO_CONST_PTR
         if coercion is None:
-            # __span__() method coercion: user type with __span__() -> Span[T] coerces to Span/ReadOnlySpan
+            # __span__() method coercion: user type with __span__() -> Span[T] coerces to Span/Span[readonly[T]]
             if isinstance(actual, NamedType) and actual.is_user_record and isinstance(expected, SpanType):
                 from tpyc.modules import get_span_return_type
                 span_ret = get_span_return_type(actual, registry=self.ctx.registry)
                 if span_ret is not None and span_ret.inner_element_type == expected.inner_element_type:
-                    # ReadOnlySpan cannot coerce to mutable Span
+                    # Span[readonly[T]] cannot coerce to mutable Span
                     if not span_ret.is_readonly or expected.is_readonly:
                         if ctx == CoercionContext.ARG:
                             coercion = SPAN_METHOD_TO_SPAN_ARG
                         else:
                             coercion = SPAN_METHOD_TO_SPAN
         if coercion is None:
-            # ReadOnlySpanLike[T] protocol -> ReadOnlySpan[T] coercion via __span__()
+            # ReadOnlySpanLike[T] protocol -> Span[readonly[T]] coercion via __span__()
             if (is_protocol_type(actual) and actual.qualified_name() == "tpy.ReadOnlySpanLike"
                     and actual.type_args and isinstance(expected, SpanType)
                     and expected.is_readonly and actual.type_args[0] == expected.inner_element_type):
@@ -411,7 +411,7 @@ class TypeCompatibility:
             if self.type_ops:
                 deref_target = self.type_ops.get_deref_coercion_target(actual)
                 if deref_target is None and is_readonly_ptr(actual):
-                    # ReadOnlyPtr[T] -> T via deref is safe for returns and
+                    # Ptr[readonly[T]] -> T via deref is safe for returns and
                     # assignments (the value is copied); reject only in ARG
                     # context where the callee may need a mutable reference.
                     if ctx != CoercionContext.ARG:
@@ -713,11 +713,11 @@ class TypeCompatibility:
         # Field access on a mutable lvalue is also mutable
         if isinstance(expr, TpyFieldAccess):
             return self.is_mutable_lvalue(expr.obj)
-        # Subscript: check if the base is a read-only type (ReadOnlySpan, str)
+        # Subscript: check if the base is a read-only type (Span[readonly[T]], str)
         if isinstance(expr, TpySubscript):
             obj_type = self.ctx.get_expr_type(expr.obj)
             if isinstance(obj_type, SpanType) and obj_type.is_readonly:
-                return False  # ReadOnlySpan elements are read-only
+                return False  # Span[readonly[T]] elements are read-only
             if is_any_str_type(obj_type):
                 return False
             return self.is_mutable_lvalue(expr.obj)

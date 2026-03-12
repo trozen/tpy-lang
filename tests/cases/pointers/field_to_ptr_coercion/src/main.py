@@ -1,4 +1,4 @@
-from tpy import Int32, Ptr, ReadOnlyPtr, Array
+from tpy import Int32, Ptr, Array, readonly
 
 class Inner:
     x: Int32
@@ -13,7 +13,7 @@ class Outer:
 def modify_inner(p: Ptr[Inner]) -> None:
     p.x = 999
 
-def read_inner(p: ReadOnlyPtr[Inner]) -> Int32:
+def read_inner(p: Ptr[readonly[Inner]]) -> Int32:
     return p.x
 
 def test_field_to_ptr() -> None:
@@ -24,7 +24,7 @@ def test_field_to_ptr() -> None:
 
 def test_field_to_const_ptr() -> None:
     outer: Outer = Outer(100)
-    # obj.field -> ReadOnlyPtr coercion
+    # obj.field -> Ptr[readonly[...]] coercion
     result: Int32 = read_inner(outer.inner)
     print(result)
 

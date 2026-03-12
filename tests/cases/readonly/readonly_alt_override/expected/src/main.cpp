@@ -6,7 +6,7 @@ namespace tpy_user::main {
 
 // 31: def read_base(b: readonly[Base]) -> None:
 void read_base(const Base& b) {
-    // 32:     s = b.items()  # tpyc: type(ReadOnlySpan[Int32])
+    // 32:     s = b.items()  # tpyc: type(Span[readonly[Int32]])
     std::span<const int32_t> s = b.items();
     // 33:     print(s[Int32(0)])
     std::cout << tpy::__getitem__(s, 0) << "\n";
@@ -14,7 +14,7 @@ void read_base(const Base& b) {
 
 // 36: def read_child(c: readonly[Child]) -> None:
 void read_child(const Child& c) {
-    // 37:     s = c.items()  # tpyc: type(ReadOnlySpan[Int32])
+    // 37:     s = c.items()  # tpyc: type(Span[readonly[Int32]])
     std::span<const int32_t> s = c.items();
     // 38:     print(s[Int32(0)])
     std::cout << tpy::__getitem__(s, 0) << "\n";

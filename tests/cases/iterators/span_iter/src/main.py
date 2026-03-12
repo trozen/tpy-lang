@@ -1,6 +1,6 @@
-# Test iter() on Span/ReadOnlySpan: manual iteration, Iterator[T] param, print.
+# Test iter() on Span/Span[readonly[T]]: manual iteration, Iterator[T] param, print.
 from typing import Iterator
-from tpy import Int32, Array, Span, ReadOnlySpan
+from tpy import Int32, Array, Span, readonly
 
 def consume(it: Iterator[Int32]) -> None:
     for x in it:
@@ -15,8 +15,8 @@ def main() -> None:
     for x in it:
         print(x)
 
-    # iter() on ReadOnlySpan
-    ro: ReadOnlySpan[Int32] = a
+    # iter() on Span[readonly[T]]
+    ro: Span[readonly[Int32]] = a
     it2 = iter(ro)
     for x in it2:
         print(x)

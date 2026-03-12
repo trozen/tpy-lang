@@ -4,7 +4,7 @@ TurboPython Type System
 Defines the core types available in TurboPython:
 - Int32: 32-bit integer (maps to int32_t)
 - Ptr[T]: Mutable pointer (maps to T*)
-- ReadOnlyPtr[T]: Read-only pointer (maps to const T*)
+- Ptr[readonly[T]]: Read-only pointer (maps to const T*)
 - Array[T, N], Span[T], list[T], dict[K, V]: Container types
 - User-defined records (classes)
 - NamedType: User-defined records/protocols and module-defined generics
@@ -899,7 +899,7 @@ class PtrType(TpyType):
 
     Const-ness is encoded in the pointee: Ptr[readonly[T]] stores
     ReadonlyType(T) as the pointee, giving const T* in C++.
-    ReadOnlyPtr[T] is an alias for Ptr[readonly[T]].
+    Ptr[readonly[T]] stores ReadonlyType(T) as the pointee.
     """
     pointee: TpyType
 
@@ -925,14 +925,14 @@ class PtrType(TpyType):
         return f"{self.pointee.to_cpp()}*"
 
     def qualified_name(self) -> Optional[str]:
-        return "tpy.ReadOnlyPtr" if self.is_readonly else "tpy.Ptr"
+        return "tpy.Ptr"
 
     def is_pointer(self) -> bool:
         return True
 
     def __str__(self) -> str:
         if self.is_readonly:
-            return f"ReadOnlyPtr[{self.inner_pointee}]"
+            return f"Ptr[readonly[{self.inner_pointee}]]"
         return f"Ptr[{self.pointee}]"
 
     def is_value_type(self) -> bool:
@@ -969,7 +969,7 @@ class PtrType(TpyType):
 
 
 def is_readonly_ptr(typ: 'TpyType') -> bool:
-    """Check if a type is a read-only pointer (ReadOnlyPtr[T])."""
+    """Check if a type is a read-only pointer (Ptr[readonly[T]])."""
     return isinstance(typ, PtrType) and typ.is_readonly
 
 
@@ -1567,7 +1567,6 @@ class SpanType(NamedType):
 
     Const-ness is encoded in the element type: Span[readonly[T]] stores
     ReadonlyType(T) as the element, giving std::span<const T> in C++.
-    ReadOnlySpan[T] is an alias for Span[readonly[T]].
     """
 
     def __init__(self, element_type: TpyType, is_readonly: bool = False):
@@ -1575,11 +1574,8 @@ class SpanType(NamedType):
         # Also accepts ReadonlyType(T) directly as element_type.
         if is_readonly and not isinstance(element_type, ReadonlyType):
             element_type = ReadonlyType(element_type)
-        is_ro = isinstance(element_type, ReadonlyType)
-        name = "ReadOnlySpan" if is_ro else "Span"
-        qname = "tpy.ReadOnlySpan" if is_ro else "tpy.Span"
-        NamedType.__init__(self, name=name, type_args=(element_type,),
-                           _module_qname=qname)
+        NamedType.__init__(self, name="Span", type_args=(element_type,),
+                           _module_qname="tpy.Span")
 
     @property
     def element_type(self) -> TpyType:
@@ -1601,11 +1597,11 @@ class SpanType(NamedType):
 
     def __str__(self) -> str:
         if self.is_readonly:
-            return f"ReadOnlySpan[{self.inner_element_type}]"
+            return f"Span[readonly[{self.inner_element_type}]]"
         return f"Span[{self.element_type}]"
 
     def qualified_name(self) -> Optional[str]:
-        return "tpy.ReadOnlySpan" if self.is_readonly else "tpy.Span"
+        return "tpy.Span"
 
     def is_value_type(self) -> bool:
         # Spans are lightweight views (ptr + size), passed/returned by value
@@ -1635,7 +1631,7 @@ class SpanType(NamedType):
         return SpanType(types[0])
 
     def as_const(self) -> 'SpanType':
-        """Return a const (ReadOnlySpan) version of this span."""
+        """Return a const (Span[readonly[T]]) version of this span."""
         if self.is_readonly:
             return self
         return SpanType(ReadonlyType(self.element_type))
@@ -1705,7 +1701,7 @@ class SpanIterType(NamedType):
 
 
 def is_readonly_span(typ: 'TpyType') -> bool:
-    """Check if a type is a read-only span (ReadOnlySpan[T])."""
+    """Check if a type is a read-only span (Span[readonly[T]])."""
     return isinstance(typ, SpanType) and typ.is_readonly
 
 
