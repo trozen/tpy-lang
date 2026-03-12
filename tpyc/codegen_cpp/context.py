@@ -206,6 +206,28 @@ class CodeGenOptions:
 
 
 @dataclass
+class LocalScopeSnap:
+    """Snapshot of the C++ local-variable declaration state inside a function body.
+
+    Covers every field that tracks which locals exist and what C++ representation
+    they use (pointer-local, const-indirect, movable, rebind slot). Used to restore
+    scope between if/else branches so that declarations inside one branch don't
+    bleed into sibling branches.
+
+    If a new "what locals exist" field is added to CodeGenContext, add it here too.
+    """
+    declared_vars: set[str]
+    var_types: dict[str, TpyType]
+    local_scope_names: set[str]
+    pointer_locals: set[str]
+    const_indirect_locals: set[str]
+    movable_locals: set[str]
+    rebind_slots: dict[str, str]
+    plain_rebind_slots: set[str]
+    assign_narrowed_types: dict[str, 'TpyType']
+
+
+@dataclass
 class CodeGenContext:
     """Shared state for C++ code generation."""
 
@@ -344,6 +366,40 @@ class CodeGenContext:
     def indent(self) -> str:
         """Get current indentation string."""
         return INDENT * self.indent_level
+
+    def snapshot_local_scope(self) -> LocalScopeSnap:
+        """Snapshot the local-variable declaration state (see LocalScopeSnap)."""
+        return LocalScopeSnap(
+            declared_vars=self.declared_vars.copy(),
+            var_types=dict(self.var_types),
+            local_scope_names=self.local_scope_names.copy(),
+            pointer_locals=self.pointer_locals.copy(),
+            const_indirect_locals=self.const_indirect_locals.copy(),
+            movable_locals=self.movable_locals.copy(),
+            rebind_slots=dict(self.rebind_slots),
+            plain_rebind_slots=self.plain_rebind_slots.copy(),
+            assign_narrowed_types=dict(self.assign_narrowed_types),
+        )
+
+    def restore_local_scope(self, snap: LocalScopeSnap) -> None:
+        """Restore local-variable declaration state from a snapshot."""
+        self.declared_vars = snap.declared_vars.copy()
+        self.var_types = dict(snap.var_types)
+        self.local_scope_names = snap.local_scope_names.copy()
+        self.pointer_locals = snap.pointer_locals.copy()
+        self.const_indirect_locals = snap.const_indirect_locals.copy()
+        self.movable_locals = snap.movable_locals.copy()
+        self.rebind_slots = dict(snap.rebind_slots)
+        self.plain_rebind_slots = snap.plain_rebind_slots.copy()
+        self.assign_narrowed_types = dict(snap.assign_narrowed_types)
+
+    def restore_narrowed_vars(self, saved: dict[str, str | None]) -> None:
+        """Restore narrowed_vars after a branch block."""
+        for var_name, prev in saved.items():
+            if prev is not None:
+                self.narrowed_vars[var_name] = prev
+            else:
+                self.narrowed_vars.pop(var_name, None)
 
     def any_ancestor_has_del(self, record_name: str) -> bool:
         """Check if any ancestor of the named record has __del__."""

@@ -13,7 +13,6 @@
 - **[HIGH]** Ternary generates copy instead of reference for mutable types (`list`/`dict`/`set`/records): `or`/`and` was fixed (uses references). Ternary remains a known gap -- see Known Limitations.
 
 ### Compilation errors (valid Python that fails to build)
-- **[HIGH]** `StrView` -> `str` coercion missing in variable initializer: when a local is deduced as `std::string` (e.g. because it is later mutated with `+=`) but its initializing expression has type `StrView` (str param, ternary of params, `a or b` of params), no `std::string(...)` conversion is emitted and the C++ build fails. Same gap affects `return expr` when return type is `str` and expr is `StrView`. Fix: in codegen, wrap `StrView` expressions in `std::string(...)` when the target slot is `std::string`.
 - **[MED]** `list += [literal]` fails C++ build: `b += [4, 5]` generates `tpy::list_extend(b, {4, 5})` where the brace-init list cannot deduce the element type (e.g. `BigInt`). Fix: emit a typed vector literal (`std::vector<BigInt>{4, 5}`) instead of a raw brace-init list.
 - **[LOW]** Nested `dict[K, dict[...]]` printing fails: `DictPrinter` has no `operator<<` for `ordered_map` as a value type, so printing a dict whose values are themselves dicts fails at C++ build time. Fix: add recursive printing support in `dict_ops.hpp`/`printing.hpp`.
 
@@ -25,9 +24,6 @@
 - **[LOW]** None-seeded variable assigned in all branches stays `Optional[T]`: when `x = None` is followed by assignment in both the `if` and `else` branches (so every path guarantees a value), `x` is still typed `std::optional<T>` after the if/else block. Post-dominance analysis could demote it to `T` and skip the optional wrapper. Not a correctness issue -- output is identical -- but adds unnecessary runtime cost and less readable C++.
 
 ## C++ Codegen Review Findings (2026-03-12)
-
-### Bugs (generated code does not compile or is incorrect)
-- **[HIGH]** Branched pointer-local slot scoping: when a pointer-local variable (e.g. `Own[Point]`) is first assigned inside one branch of an `if/else` and rebound in the sibling branch, the codegen emits the slot variables (`__slot_1`, `__slot_2`, and the pointer `p`) inside the first branch's scope, making them invisible to the `else` branch. The generated C++ does not compile. The pointer-local mechanism should not trigger at all in this pattern -- both branches immediately return, so each can simply declare and return its own named local (two independent NRVO opportunities).
 
 ### Systematic suboptimalities
 - **[HIGH]** Container/record parameters always emitted as `T&` (mutable ref) regardless of whether the function mutates them: `list`, `dict`, `set`, and record params should be `const T&` when the function only reads them. `str` already gets this right (`std::string_view`). Fix: mutation analysis in codegen param-type selection (likely `codegen_cpp/functions.py` or `types.py`) -- check whether sema recorded any write to the parameter before deciding `T&` vs `const T&`.

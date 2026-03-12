@@ -26,7 +26,7 @@ int32_t clamp(int32_t x, int32_t lo, int32_t hi) {
 // 14: def greet(formal: bool) -> str:
 std::string greet(bool formal) {
     // 15:     return "Good day" if formal else "Hey"
-    return ((formal) ? ("Good day") : ("Hey"));
+    return std::string(((formal) ? ("Good day") : ("Hey")));
 }
 
 // 17: def describe(x: Int32) -> str:

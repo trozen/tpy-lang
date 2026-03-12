@@ -292,17 +292,11 @@ class StatementGenerator:
                                 and self._is_optional_str_param(ret_value)):
                             ret_expr = f"std::string({ret_expr})"
                 # StrView local returned as str needs explicit conversion.
-                # Also wrap str-typed params (which are string_view in C++).
+                # Also wrap str-typed params, ternary/or of params/views
+                # (all produce string_view in C++ despite StrType in sema).
                 elif isinstance(ret_type, StrType):
-                    expr_type = self.types.get_resolved_type(ret_value)
-                    if isinstance(expr_type, StrViewType):
-                        ret_expr = f"std::string({ret_expr})"
-                    elif (isinstance(expr_type, StrType)
-                          and isinstance(ret_value, TpyName)
-                          and ret_value.name in self.ctx.current_func_params):
-                        ret_expr = f"std::string({ret_expr})"
-                    elif (isinstance(expr_type, StrType)
-                          and self._expr_uses_optional_str_param(ret_value)):
+                    if (self._is_str_view_source(ret_value)
+                            or self._expr_uses_optional_str_param(ret_value)):
                         ret_expr = f"std::string({ret_expr})"
                 # Consuming method: move self fields on return (this->field is lvalue)
                 if (self.ctx.in_consuming_method
@@ -949,10 +943,9 @@ class StatementGenerator:
                     init_expr = f"tpy::deref_optional_check({init_expr})"
                 else:
                     init_expr = f"(*{init_expr})"
-            # string_view -> string init requires explicit conversion in C++
+            # string_view -> string init requires explicit conversion in C++.
             elif isinstance(target_type, StrType):
-                init_resolved = self.types.get_resolved_type(stmt.init)
-                if isinstance(init_resolved, StrViewType):
+                if self._is_str_view_source(stmt.init):
                     init_expr = f"std::string({init_expr})"
             return f"{indent}{cpp_type} {cpp_name} = {init_expr};\n"
         else:
@@ -1157,6 +1150,24 @@ class StatementGenerator:
         return (isinstance(declared, OptionalType)
                 and isinstance(declared.inner, StrType))
 
+    def _is_str_view_source(self, expr: TpyExpr) -> bool:
+        """Check if expr produces std::string_view at C++ runtime and needs explicit std::string().
+
+        Bare string literals generate const char* and can implicitly construct std::string,
+        so they don't need an explicit wrapper and return False.
+
+        For all other expressions, two checks are combined:
+        1. If sema/local_deduction annotated the expression as StrViewType (e.g. an or-chain
+           where a promoted local forced the annotation), trust that annotation.
+        2. Otherwise delegate to expressions._is_str_view_at_runtime, which uses AND
+           semantics and handles str params (StrType in sema but string_view in C++).
+        """
+        if isinstance(expr, TpyStrLiteral):
+            return False
+        if isinstance(self.types.get_resolved_type(expr), StrViewType):
+            return True
+        return self.expressions._is_str_view_at_runtime(expr)
+
     def _expr_uses_optional_str_param(self, expr: TpyExpr) -> bool:
         """Check if expr (e.g. ternary) dereferences an Optional[str] param."""
         if self._is_optional_str_param(expr):
@@ -1225,13 +1236,6 @@ class StatementGenerator:
             self.ctx.narrowed_vars[var_name] = local_name
         return saved
 
-    def _restore_narrowed_vars(self, saved: dict[str, str | None]) -> None:
-        """Restore narrowed_vars after a branch block."""
-        for var_name, prev in saved.items():
-            if prev is not None:
-                self.ctx.narrowed_vars[var_name] = prev
-            else:
-                self.ctx.narrowed_vars.pop(var_name, None)
 
     def _gen_tuple_unpack(self, out: TextIO, stmt: TpyTupleUnpack, indent: str) -> None:
         """Generate tuple unpacking: auto __tup_N = expr; T a = std::get<0>(...); ..."""
@@ -1341,7 +1345,7 @@ class StatementGenerator:
             out.write(f'{indent}if (!({bool_cond})) tpy::tpy_panic("assertion failed");\n')
         # Emit std::get<T> extractions for isinstance-narrowed union variables.
         # Unlike if-branch narrowing, assert narrowing persists for the rest of scope,
-        # so we do NOT call _restore_narrowed_vars.
+        # so we do NOT call ctx.restore_narrowed_vars.
         self._emit_isinstance_extractions(out, stmt.then_type_facts, indent_extra=0)
 
 
@@ -1377,6 +1381,11 @@ class StatementGenerator:
         # correctness.
         for node in chain:
             self._emit_branch_decls(out, node, indent)
+
+        # Snapshot after branch-decl hoisting so each branch starts with only
+        # pre-hoisted vars visible (pointer-local slots created inside one branch
+        # must not bleed into sibling branches).
+        br_snap = self.ctx.snapshot_local_scope()
 
         # Emit if / else if / else chain
         for i, node in enumerate(chain):
@@ -1438,7 +1447,8 @@ class StatementGenerator:
             self.ctx.emit_block_trailing_comments(out, node.then_body, self.ctx.indent())
             self.ctx.indent_level -= 1
 
-            self._restore_narrowed_vars(then_saved)
+            self.ctx.restore_narrowed_vars(then_saved)
+            self.ctx.restore_local_scope(br_snap)
 
         # Final else branch (from the last node in the chain)
         last = chain[-1]
@@ -1463,7 +1473,8 @@ class StatementGenerator:
             self.ctx.emit_block_trailing_comments(out, last.else_body, self.ctx.indent())
             self.ctx.indent_level -= 1
 
-            self._restore_narrowed_vars(else_saved)
+            self.ctx.restore_narrowed_vars(else_saved)
+            self.ctx.restore_local_scope(br_snap)
 
         out.write(f"{indent}}}\n")
 
@@ -1685,7 +1696,7 @@ class StatementGenerator:
         self.ctx.emit_block_trailing_comments(out, stmt.body, self.ctx.indent())
         self.ctx.indent_level -= 1
 
-        self._restore_narrowed_vars(saved)
+        self.ctx.restore_narrowed_vars(saved)
         out.write(f"{indent}}}\n")
         self.ctx.loop_else_labels.pop()
 

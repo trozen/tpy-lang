@@ -187,7 +187,7 @@ class MatchGenerator:
                 for s in case.body:
                     self.stmts.gen_stmt(out, s)
                 self.ctx.indent_level -= 1
-                self.stmts._restore_narrowed_vars(saved_narrow)
+                self.stmts.ctx.restore_narrowed_vars(saved_narrow)
                 out.write(f"{inner}break;\n")
                 out.write(f"{indent}}}\n")
 
@@ -237,7 +237,7 @@ class MatchGenerator:
                         for s in case.body:
                             self.stmts.gen_stmt(out, s)
                         self.ctx.indent_level -= 1
-                        self.stmts._restore_narrowed_vars(saved)
+                        self.stmts.ctx.restore_narrowed_vars(saved)
                         out.write(f"{inner}break;\n")
                         out.write(f"{indent}}}\n")
 
@@ -585,7 +585,7 @@ class MatchGenerator:
                 self.stmts.gen_stmt(out, s)
             out.write(f"{INDENT * self.ctx.indent_level}goto {end_label};\n")
             self.ctx.indent_level -= 2
-            self.stmts._restore_narrowed_vars(saved_narrow)
+            self.stmts.ctx.restore_narrowed_vars(saved_narrow)
             out.write(f"{inner}}}\n")
         else:
             saved_narrow = self._apply_narrowing(type_facts, case_var)
@@ -594,7 +594,7 @@ class MatchGenerator:
                 self.stmts.gen_stmt(out, s)
             out.write(f"{INDENT * self.ctx.indent_level}goto {end_label};\n")
             self.ctx.indent_level -= 1
-            self.stmts._restore_narrowed_vars(saved_narrow)
+            self.stmts.ctx.restore_narrowed_vars(saved_narrow)
 
         out.write(f"{indent}}}\n")
 
