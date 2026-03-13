@@ -395,11 +395,8 @@ class StatementGenerator:
         # (TypeParamRef returns are handled separately via val_or_cref_t in _gen_local_var_decl.)
         if isinstance(init, TpyMethodCall):
             fi = init.resolved_function_info
-            if fi is not None and fi.cpp_template is None and fi.is_readonly:
-                rt = fi.return_type
-                if (rt is not None and not rt.is_value_type()
-                        and not isinstance(rt, (TypeParamRef, OwnType, OptionalType))):
-                    return True
+            if fi is not None and fi.is_readonly and self.ctx._call_returns_cpp_ref(fi, init.obj):
+                return True
         return False
 
     def _is_dynamic_protocol_type(self, target_type: TpyType | None) -> bool:

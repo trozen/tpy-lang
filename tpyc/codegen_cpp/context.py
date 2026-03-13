@@ -11,7 +11,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NamedType, SelfType,
-    BigIntType, BoolType, IntLiteralType, TypeParamRef, is_protocol_type, unwrap_readonly,
+    BigIntType, BoolType, IntLiteralType, TypeParamRef, FunctionInfo, is_protocol_type, unwrap_readonly,
 )
 from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -655,6 +655,32 @@ class CodeGenContext:
             return rendered
         return f"(*{rendered})"
 
+    def _call_returns_cpp_ref(self, fi: FunctionInfo | None, obj: TpyExpr | None = None) -> bool:
+        """True if this function/method call returns a C++ lvalue reference (T&).
+
+        User-defined functions/methods with non-value, non-generic, non-owning
+        return types emit T& in C++ (via to_cpp_return()). Everything else --
+        builtins (cpp_template), native imports, @native record methods,
+        TypeParamRef (val_or_ref_t<T>), Own[T], Optional[T] -- uses value semantics.
+        """
+        if fi is None or fi.cpp_template is not None or fi.is_native_import:
+            return False
+        if obj is not None:
+            # Methods on @native records have unknown C++ return convention.
+            # Instance calls: obj type is the record. Static calls: obj is the
+            # class name with no instance type set, so fall back to name lookup.
+            obj_type = unwrap_readonly(self.analyzer.get_expr_type(obj))
+            obj_rec_name = (obj_type.name if isinstance(obj_type, NamedType)
+                            else (obj.name if isinstance(obj, TpyName) else None))
+            if obj_rec_name is not None:
+                rec = self.analyzer.registry.get_record(obj_rec_name)
+                if rec is not None and rec.is_native:
+                    return False
+        rt = fi.return_type
+        return (rt is not None
+                and not rt.is_value_type()
+                and not isinstance(rt, (TypeParamRef, OwnType, OptionalType)))
+
     def is_rvalue_source(self, expr: TpyExpr) -> bool:
         """Check if an expression produces an rvalue (needs a stack slot).
 
@@ -697,31 +723,8 @@ class CodeGenContext:
                              TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat,
                              TpyListComprehension, TpyBinOp, TpyUnaryOp)):
             return True
-        # Method calls: user-defined methods with concrete non-value return types emit T& in C++
-        # (to_cpp_return() -> T& for non-value), so the call is an lvalue for those types.
-        # Builtins, value-type returns, Own[T], Optional[T], and TypeParamRef (val_or_ref_t<T>
-        # can't be mapped to a simple T& variable -- handled separately in _gen_local_var_decl)
-        # remain rvalues.
         if isinstance(expr, TpyMethodCall):
-            fi = expr.resolved_function_info
-            if fi is None or fi.cpp_template is not None or fi.is_native_import:
-                return True  # builtin, native import, or unknown -> rvalue
-            # Methods on @native records have unknown C++ return convention -> rvalue.
-            # For instance calls the obj type is the record; for static calls the obj
-            # is the class name (no instance type set), so fall back to name lookup.
-            obj_type = unwrap_readonly(self.analyzer.get_expr_type(expr.obj))
-            obj_rec_name = (obj_type.name if isinstance(obj_type, NamedType)
-                            else (expr.obj.name if isinstance(expr.obj, TpyName) else None))
-            if obj_rec_name is not None:
-                rec = self.analyzer.registry.get_record(obj_rec_name)
-                if rec is not None and rec.is_native:
-                    return True
-            rt = fi.return_type
-            if rt is None or rt.is_value_type():
-                return True  # value-type return -> rvalue
-            if isinstance(rt, (TypeParamRef, OwnType, OptionalType)):
-                return True  # generic T (handled by val_or_ref_t), Own, Optional -> rvalue
-            return False  # concrete non-value -> lvalue (method emits T&)
+            return not self._call_returns_cpp_ref(expr.resolved_function_info, expr.obj)
         # Coercions: depends on inner expr
         if isinstance(expr, TpyCoerce):
             return self.is_rvalue_source(expr.expr)
@@ -733,12 +736,8 @@ class CodeGenContext:
             # Generic type constructors -> rvalue
             if expr.call_type is not None:
                 return True
-            # Functions returning Own[T] or Optional[T] -> rvalue (pointer value)
             if self.analyzer.registry.get_function(expr.func) is not None:
-                fi = expr.resolved_function_info
-                if fi and isinstance(fi.return_type, (OwnType, OptionalType)):
-                    return True
-                return False
+                return not self._call_returns_cpp_ref(expr.resolved_function_info)
             # Builtin functions -> rvalue
             if self.analyzer.registry.get_builtin_function_overloads(expr.func):
                 return True
@@ -759,8 +758,6 @@ class CodeGenContext:
         Lvalues (don't need temps): variable names, field access
         Rvalues (need temps): literals, binary/unary ops, calls, coercions, subscripts on records
         """
-        from ..typesys import VOID
-
         # Scalar literals: 1, 3.14, "x", True, None
         if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral, TpyNoneLiteral)):
             return True
@@ -779,51 +776,16 @@ class CodeGenContext:
         # Binary and unary ops always produce temporaries
         if isinstance(expr, (TpyBinOp, TpyUnaryOp)):
             return True
-        # Method calls: same logic as is_rvalue_source -- concrete non-value user method
-        # calls return T& (lvalue), so they are not temporaries and can be passed
-        # directly as ref arguments without creating a temp slot.
         if isinstance(expr, TpyMethodCall):
-            fi = expr.resolved_function_info
-            if fi is None or fi.cpp_template is not None or fi.is_native_import:
-                return True
-            obj_type = unwrap_readonly(self.analyzer.get_expr_type(expr.obj))
-            obj_rec_name = (obj_type.name if isinstance(obj_type, NamedType)
-                            else (expr.obj.name if isinstance(expr.obj, TpyName) else None))
-            if obj_rec_name is not None:
-                rec = self.analyzer.registry.get_record(obj_rec_name)
-                if rec is not None and rec.is_native:
-                    return True
-            rt = fi.return_type
-            if rt is None or rt.is_value_type():
-                return True
-            if isinstance(rt, (TypeParamRef, OwnType, OptionalType)):
-                return True
-            return False  # concrete non-value -> lvalue (not a temporary)
+            return self.is_rvalue_source(expr)
         # Subscript on user records returns by value (rvalue)
         # std::vector/array operator[] returns lvalue ref, but user __getitem__ returns by value
         if isinstance(expr, TpySubscript):
-            from .types import TypeResolver
             container_type = unwrap_readonly(self.analyzer.get_expr_type(expr.obj)) if self.analyzer.get_expr_type(expr.obj) is not None else None
             if isinstance(container_type, NamedType) and container_type.is_user_record:
                 return True
-        # Function calls
         if isinstance(expr, TpyCall):
-            # Generic type constructors (list(), Container[T,N](), etc.)
-            if expr.call_type is not None:
-                return True
-            # Record constructor calls (e.g., Point(1, 2))
-            if self.analyzer.registry.get_record(expr.func):
-                return True
-            # User-defined functions returning non-void
-            if self.analyzer.registry.get_function(expr.func) is not None:
-                fi = expr.resolved_function_info
-                return fi is not None and fi.return_type != VOID
-            # Builtin functions (len, chr, ord, etc.) - always return values
-            if self.analyzer.registry.get_builtin_function_overloads(expr.func):
-                return True
-            # Imported module functions (math.sqrt, etc.)
-            if expr.func in self.analyzer.imported_names:
-                return True
+            return self.is_rvalue_source(expr)
         return False
 
     def unwrap_copy(self, expr: TpyExpr) -> TpyExpr:
