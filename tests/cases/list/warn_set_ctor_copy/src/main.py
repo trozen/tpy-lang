@@ -1,4 +1,5 @@
 # set() copies elements the same as list(); same warning rules apply
+from __future__ import annotations
 from tpy import Int32, copy, Own
 
 class Node:

@@ -16,24 +16,24 @@ void test_set_ctor_copy_no_warn();
 void test_set_ctor_last_use_no_warn();
 void test_set_ctor_rvalue_no_warn();
 
-// 4: class Node:
+// 5: class Node:
 struct Node {
-    // 5:     val: Int32
+    // 6:     val: Int32
     int32_t val;
 
-    // 6:     def __init__(self, val: Int32) -> None:
+    // 7:     def __init__(self, val: Int32) -> None:
     Node() = default;
     explicit Node(int32_t val) : val(val) {}
 
-    // 8:     def __hash__(self) -> Int32:
+    // 9:     def __hash__(self) -> Int32:
     int32_t __hash__() const {
-        // 9:         return self.val
+        // 10:         return self.val
         return this->val;
     }
 
-    // 10:     def __eq__(self, other: Node) -> bool:
+    // 11:     def __eq__(self, other: Node) -> bool:
     bool __eq__(const Node& other) const {
-        // 11:         return self.val == other.val
+        // 12:         return self.val == other.val
         return (this->val == other.val);
     }
 

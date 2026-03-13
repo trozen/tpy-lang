@@ -4,59 +4,59 @@
 namespace tpy_user::main {
 
 
-// 13: def make_nodes() -> Own[list[Node]]:
+// 14: def make_nodes() -> Own[list[Node]]:
 std::vector<Node> make_nodes() {
-    // 14:     return [Node(Int32(1))]
+    // 15:     return [Node(Int32(1))]
     return {Node(1)};
 }
 
-// 16: def test_set_ctor_ref_type_warns() -> None:
+// 17: def test_set_ctor_ref_type_warns() -> None:
 void test_set_ctor_ref_type_warns() {
-    // 18:     b: list[Node] = [Node(Int32(1))]
+    // 19:     b: list[Node] = [Node(Int32(1))]
     std::vector<Node> b = {Node(1)};
-    // 19:     a = set(b)  # tpyc: warning(/copies Node elements/)
+    // 20:     a = set(b)  # tpyc: warning(/copies Node elements/)
     tpy::ordered_set<Node> a = tpy::set_from_range<Node>(b);
-    // 20:     print(len(b))
+    // 21:     print(len(b))
     std::cout << tpy::__len__(b) << "\n";
 }
 
-// 22: def test_set_ctor_value_type_no_warn() -> None:
+// 23: def test_set_ctor_value_type_no_warn() -> None:
 void test_set_ctor_value_type_no_warn() {
-    // 24:     b: list[Int32] = [Int32(1), Int32(2)]
+    // 25:     b: list[Int32] = [Int32(1), Int32(2)]
     std::vector<int32_t> b = {1, 2};
-    // 25:     a = set(b)  # tpyc: ok
+    // 26:     a = set(b)  # tpyc: ok
     tpy::ordered_set<int32_t> a = tpy::set_from_range<int32_t>(b);
-    // 26:     print(len(a))
+    // 27:     print(len(a))
     std::cout << tpy::__len__(a) << "\n";
 }
 
-// 28: def test_set_ctor_copy_no_warn() -> None:
+// 29: def test_set_ctor_copy_no_warn() -> None:
 void test_set_ctor_copy_no_warn() {
-    // 30:     b: list[Node] = [Node(Int32(1))]
+    // 31:     b: list[Node] = [Node(Int32(1))]
     std::vector<Node> b = {Node(1)};
-    // 31:     a = set(copy(b))  # tpyc: ok
+    // 32:     a = set(copy(b))  # tpyc: ok
     tpy::ordered_set<Node> a = tpy::set_from_range<Node>(b);
-    // 32:     print(len(b))
+    // 33:     print(len(b))
     std::cout << tpy::__len__(b) << "\n";
 }
 
-// 34: def test_set_ctor_last_use_no_warn() -> None:
+// 35: def test_set_ctor_last_use_no_warn() -> None:
 void test_set_ctor_last_use_no_warn() {
-    // 36:     b: list[Node] = [Node(Int32(1))]
+    // 37:     b: list[Node] = [Node(Int32(1))]
     std::vector<Node> b = {Node(1)};
-    // 37:     a = set(b)  # tpyc: ok -- b's last use
+    // 38:     a = set(b)  # tpyc: ok -- b's last use
     tpy::ordered_set<Node> a = tpy::set_from_range<Node>(b);
-    // 38:     print(len(a))
+    // 39:     print(len(a))
     std::cout << tpy::__len__(a) << "\n";
 }
 
-// 40: def test_set_ctor_rvalue_no_warn() -> None:
+// 41: def test_set_ctor_rvalue_no_warn() -> None:
 void test_set_ctor_rvalue_no_warn() {
-    // 42:     a = set(make_nodes())  # tpyc: ok
+    // 43:     a = set(make_nodes())  # tpyc: ok
     tpy::ordered_set<Node> a = tpy::set_from_range<Node>(make_nodes());
-    // 43:     b = set([Node(Int32(2))])  # tpyc: ok
+    // 44:     b = set([Node(Int32(2))])  # tpyc: ok
     tpy::ordered_set<Node> b = tpy::ordered_set<Node>({Node(2)});
-    // 44:     print(len(a))
+    // 45:     print(len(a))
     std::cout << tpy::__len__(a) << "\n";
 }
 
@@ -65,15 +65,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 46: test_set_ctor_ref_type_warns()
+    // 47: test_set_ctor_ref_type_warns()
     test_set_ctor_ref_type_warns();
-    // 47: test_set_ctor_value_type_no_warn()
+    // 48: test_set_ctor_value_type_no_warn()
     test_set_ctor_value_type_no_warn();
-    // 48: test_set_ctor_copy_no_warn()
+    // 49: test_set_ctor_copy_no_warn()
     test_set_ctor_copy_no_warn();
-    // 49: test_set_ctor_last_use_no_warn()
+    // 50: test_set_ctor_last_use_no_warn()
     test_set_ctor_last_use_no_warn();
-    // 50: test_set_ctor_rvalue_no_warn()
+    // 51: test_set_ctor_rvalue_no_warn()
     test_set_ctor_rvalue_no_warn();
 }
 
