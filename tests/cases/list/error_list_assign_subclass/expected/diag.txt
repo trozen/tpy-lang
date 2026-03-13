@@ -1,0 +1,1 @@
+main.py:22: error: List literal element 1 has type Child, incompatible with annotated element type Base

@@ -6,7 +6,6 @@
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 
 ## Bugs
-- **[LOW]** `PendingListType` subclass coercion: `[Child()]` assigned to `list[Base]` is incorrectly accepted because the `PendingListType` block in `compatibility.py` uses recursive `check_type_compatible` for element types, which finds the `Child -> Base` subclass path. Should use `_container_elem_matches` (exact + numeric coercions only) like the `DictType`/`SetType` blocks. The same applies to `list[Child]` passed to a function taking `list[Base]` via `PendingListType`. (ListType itself already rejects this correctly -- only PendingListType is affected.)
 - **[LOW]** `FloatLiteralType -> FloatType` compatibility fast path missing: `b: float = 5.0` goes through the full coercion lookup in `compatibility.py` and inserts a `TpyCoerce` node with identity semantics (no codegen effect). Add a fast path analogous to `IntLiteralType -> BigInt` at line 334 of `sema/compatibility.py` to skip the coercion node.
 
 ## Fuzzy Testing Findings (2026-03-12)

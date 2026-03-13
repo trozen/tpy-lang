@@ -330,6 +330,14 @@ class TypeCompatibility:
                         f"copies {value_type} into owned storage; use copy() to make this explicit",
                         source_expr
                     )
+            # Subclass coercion excluded: Child -> Own[Base] stores Child by value as
+            # Base, silently slicing the object. Same invariance as container elements.
+            # Only applies when record names differ (different types, not parametric covariance).
+            if (isinstance(actual, NamedType) and actual.is_user_record
+                    and isinstance(expected.wrapped, NamedType) and expected.wrapped.is_user_record
+                    and actual.name != expected.wrapped.name):
+                raise SemanticError(
+                    f"Type mismatch in {context}: expected {expected.wrapped}, got {actual}", loc)
             return self.check_type_compatible(actual, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx)
 
         # Allow Own[T] -> T coercion (receiving an owned value)
@@ -398,15 +406,27 @@ class TypeCompatibility:
                     return None
                 if isinstance(actual.element_type, IntLiteralType) and isinstance(expected.element_type, (Int32Type, BigIntType)):
                     return None
-                # Element type widening (e.g. Int32 -> Int32|None, Int32 -> Int64)
-                try:
-                    self.check_type_compatible(
-                        actual.element_type, expected.element_type,
-                        context, loc, source_expr, is_return, coercion_ctx
-                    )
-                    return None
-                except SemanticError:
-                    pass
+                # Element type widening (e.g. Int32 -> Int32|None, Int32 -> Int64).
+                # Subclass coercion excluded: storing Child in list[Base] silently
+                # slices objects (same invariance as dict/set).
+                both_records = (
+                    isinstance(actual.element_type, NamedType) and actual.element_type.is_user_record
+                    and isinstance(expected.element_type, NamedType) and expected.element_type.is_user_record
+                )
+                if both_records:
+                    # Explicit error: avoid leaking PendingList internal repr in the generic message.
+                    raise SemanticError(
+                        f"Type mismatch in {context}: expected {expected.element_type}, got {actual.element_type}", loc)
+                else:
+                    # Element type widening (e.g. Int32 -> Int32|None, Int32 -> Int64)
+                    try:
+                        self.check_type_compatible(
+                            actual.element_type, expected.element_type,
+                            context, loc, source_expr, is_return, coercion_ctx
+                        )
+                        return None
+                    except SemanticError:
+                        pass
             # Compatible with Array[T, N] if element types and sizes match
             if isinstance(expected, ArrayType):
                 if self.type_ops and self.type_ops.pending_list_matches_array(actual, expected):

@@ -1225,6 +1225,14 @@ class ExpressionAnalyzer:
             for i, elem_type in enumerate(elem_types, 1):
                 if elem_type == expected_elem:
                     continue
+                # Subclass coercion excluded: storing Child in list[Base] silently
+                # slices objects (same invariance as dict/set).
+                if (isinstance(elem_type, NamedType) and elem_type.is_user_record
+                        and isinstance(expected_elem, NamedType) and expected_elem.is_user_record):
+                    raise self.ctx.error(
+                        f"List literal element {i} has type {elem_type}, "
+                        f"incompatible with annotated element type {expected_elem}", expr
+                    )
                 try:
                     self.compat.check_type_compatible(
                         elem_type, expected_elem,
@@ -1700,6 +1708,14 @@ class ExpressionAnalyzer:
             result_elem_type = expected_elem if isinstance(expected_elem, (FloatType, Float32Type)) else FLOAT
 
         if expected_elem is not None and result_elem_type != expected_elem:
+            # Subclass coercion excluded: storing Child in list/set[Base] silently
+            # slices objects (same invariance as container literals).
+            if (isinstance(result_elem_type, NamedType) and result_elem_type.is_user_record
+                    and isinstance(expected_elem, NamedType) and expected_elem.is_user_record):
+                raise self.ctx.error(
+                    f"{kind.capitalize()} comprehension element has type {result_elem_type}, "
+                    f"incompatible with annotated element type {expected_elem}", expr
+                )
             expr.element_expr = self.compat.coerce_expr(
                 expr.element_expr, result_elem_type, expected_elem,
                 f"{kind} comprehension element", coercion_ctx=CoercionContext.INIT)

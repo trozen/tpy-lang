@@ -418,7 +418,7 @@ log(f"x={x}")
 ```
 
 ### Containers
-- **Working**: `list[T]` - dynamic list → `std::vector<T>` (with context-dependent inference)
+- **Working**: `list[T]` - dynamic list → `std::vector<T>` (with context-dependent inference; type parameter is invariant: `list[Child]` is not compatible with `list[Base]`)
 - **Working**: `list[T] + list[T]` concatenation → new list, `list[T] += list[T]` extend in-place, `del lst[i]` element removal
 - **Working**: `lst[x:y]` read slicing → `Span[readonly[T]]` (clamped, no-panic). `lst[x:y] = rhs` slice assignment → replaces, resizes, deletes, or inserts (Python semantics). Bounds must be integers; step not supported yet. RHS must be `list[T]`.
 - **Working**: Array literals `[1, 2, 3]` → `std::array<T, N>` or `std::vector<T>` (context-dependent)
