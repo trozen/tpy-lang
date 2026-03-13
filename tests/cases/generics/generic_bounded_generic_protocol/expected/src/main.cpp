@@ -13,7 +13,7 @@ void main() {
     Holder<IntBox> h = Holder<IntBox>(box);
     // 32:     # Call get() on the concrete type after retrieval
     // 33:     result = h.get_item()
-    IntBox result = h.get_item();
+    IntBox& result = h.get_item();
     // 34:     print(result.get())
     std::cout << result.get() << "\n";
 }

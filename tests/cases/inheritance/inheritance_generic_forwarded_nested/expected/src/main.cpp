@@ -22,8 +22,7 @@ void __tpy_init() {
     static Child<std::string> __global_slot_2 = Child<std::string>((*items), 42);
     c = &__global_slot_2;
     // 26: val: list[str] = c.get_value()
-    static std::vector<std::string> __global_slot_3 = c->get_value();
-    val = &__global_slot_3;
+    val = &(c->get_value());
     // 27: print(val[0])
     std::cout << tpy::__getitem__((*val), 0) << "\n";
     // 28: print(val[1])

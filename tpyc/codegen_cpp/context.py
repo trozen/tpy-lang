@@ -695,8 +695,33 @@ class CodeGenContext:
         # Constructor calls, literals, ops are rvalues
         if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
                              TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat,
-                             TpyListComprehension, TpyBinOp, TpyUnaryOp, TpyMethodCall)):
+                             TpyListComprehension, TpyBinOp, TpyUnaryOp)):
             return True
+        # Method calls: user-defined methods with concrete non-value return types emit T& in C++
+        # (to_cpp_return() -> T& for non-value), so the call is an lvalue for those types.
+        # Builtins, value-type returns, Own[T], Optional[T], and TypeParamRef (val_or_ref_t<T>
+        # can't be mapped to a simple T& variable -- handled separately in _gen_local_var_decl)
+        # remain rvalues.
+        if isinstance(expr, TpyMethodCall):
+            fi = expr.resolved_function_info
+            if fi is None or fi.cpp_template is not None or fi.is_native_import:
+                return True  # builtin, native import, or unknown -> rvalue
+            # Methods on @native records have unknown C++ return convention -> rvalue.
+            # For instance calls the obj type is the record; for static calls the obj
+            # is the class name (no instance type set), so fall back to name lookup.
+            obj_type = unwrap_readonly(self.analyzer.get_expr_type(expr.obj))
+            obj_rec_name = (obj_type.name if isinstance(obj_type, NamedType)
+                            else (expr.obj.name if isinstance(expr.obj, TpyName) else None))
+            if obj_rec_name is not None:
+                rec = self.analyzer.registry.get_record(obj_rec_name)
+                if rec is not None and rec.is_native:
+                    return True
+            rt = fi.return_type
+            if rt is None or rt.is_value_type():
+                return True  # value-type return -> rvalue
+            if isinstance(rt, (TypeParamRef, OwnType, OptionalType)):
+                return True  # generic T (handled by val_or_ref_t), Own, Optional -> rvalue
+            return False  # concrete non-value -> lvalue (method emits T&)
         # Coercions: depends on inner expr
         if isinstance(expr, TpyCoerce):
             return self.is_rvalue_source(expr.expr)
@@ -754,9 +779,26 @@ class CodeGenContext:
         # Binary and unary ops always produce temporaries
         if isinstance(expr, (TpyBinOp, TpyUnaryOp)):
             return True
-        # Method calls produce temporaries (unless void, but void can't be passed anyway)
+        # Method calls: same logic as is_rvalue_source -- concrete non-value user method
+        # calls return T& (lvalue), so they are not temporaries and can be passed
+        # directly as ref arguments without creating a temp slot.
         if isinstance(expr, TpyMethodCall):
-            return True
+            fi = expr.resolved_function_info
+            if fi is None or fi.cpp_template is not None or fi.is_native_import:
+                return True
+            obj_type = unwrap_readonly(self.analyzer.get_expr_type(expr.obj))
+            obj_rec_name = (obj_type.name if isinstance(obj_type, NamedType)
+                            else (expr.obj.name if isinstance(expr.obj, TpyName) else None))
+            if obj_rec_name is not None:
+                rec = self.analyzer.registry.get_record(obj_rec_name)
+                if rec is not None and rec.is_native:
+                    return True
+            rt = fi.return_type
+            if rt is None or rt.is_value_type():
+                return True
+            if isinstance(rt, (TypeParamRef, OwnType, OptionalType)):
+                return True
+            return False  # concrete non-value -> lvalue (not a temporary)
         # Subscript on user records returns by value (rvalue)
         # std::vector/array operator[] returns lvalue ref, but user __getitem__ returns by value
         if isinstance(expr, TpySubscript):

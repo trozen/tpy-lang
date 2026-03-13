@@ -11,7 +11,7 @@ void main() {
     // 30:     w = Wrapper[IntListHolder](h)
     Wrapper<IntListHolder> w = Wrapper<IntListHolder>(h);
     // 31:     result = w.get_holder()
-    IntListHolder result = w.get_holder();
+    IntListHolder& result = w.get_holder();
     // 32:     print(len(result.items()))
     std::cout << tpy::__len__(result.items()) << "\n";
 }

@@ -154,6 +154,7 @@ def mutate_point(p: Point) -> None:
     p.x = 99    # Point& p in C++ (field write detected)
 ```
 
+
 ---
 
 ## Types
@@ -629,7 +630,7 @@ Restrictions:
 - **Working**: `tpy.unsafe` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_ptr_add`, `unsafe_ptr_diff`, `unsafe_cast`, `unsafe_const_cast`, `unsafe_str_view`, `unsafe_alloc`, `unsafe_alloc_n`, `unsafe_free`, `unsafe_init`, `unsafe_drop`, `unsafe_move_out`)
 - **Working**: `tpy.mem` -- uninitialized storage primitives (`UninitArrayStorage[T, N]`, `UninitHeapStorage[T]`)
 - **Planned**: `Ref[T]` -> `T&` (explicit reference)
-- **Planned**: `ConstRef[T]` -> `const T&`
+- **Planned**: `ConstRef[T]` -> `const T&` (explicit annotation; automatic const qualification via mutation inference already covers most cases -- see Parameter Passing Convention)
 
 #### Pointer Coercions (Working)
 

@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // 19: def read_items(c: readonly[Container]) -> None:
 void read_items(const Container& c) {
     // 20:     items = c.items()
-    std::vector<int32_t> items = c.items();
+    const std::vector<int32_t>& items = c.items();
     // 21:     print(len(items))
     std::cout << tpy::__len__(items) << "\n";
     // 22:     print(items[0])

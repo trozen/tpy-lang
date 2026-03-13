@@ -13,7 +13,7 @@ void main() {
     std::cout << c.get_value() << "\n";
     // 31:     # Get the inner box
     // 32:     box: Box[Int32] = c.get_inner()
-    Box<int32_t> box = c.get_inner();
+    Box<int32_t>& box = c.get_inner();
     // 33:     print(box.get())
     std::cout << box.get() << "\n";
     // 35:     # Local variable with type parameter (tests the second fix)

@@ -391,6 +391,15 @@ class StatementGenerator:
             if (isinstance(sema_var_type, OptionalType)
                     and isinstance(sema_var_type.inner, ReadonlyType)):
                 return True
+        # Readonly method call returns const T& -> variable needs const indirection.
+        # (TypeParamRef returns are handled separately via val_or_cref_t in _gen_local_var_decl.)
+        if isinstance(init, TpyMethodCall):
+            fi = init.resolved_function_info
+            if fi is not None and fi.cpp_template is None and fi.is_readonly:
+                rt = fi.return_type
+                if (rt is not None and not rt.is_value_type()
+                        and not isinstance(rt, (TypeParamRef, OwnType, OptionalType))):
+                    return True
         return False
 
     def _is_dynamic_protocol_type(self, target_type: TpyType | None) -> bool:
@@ -886,6 +895,24 @@ class StatementGenerator:
             assert stmt.init, f"@dynamic protocol local '{stmt.name}' requires initializer"
             self.ctx.pointer_locals.add(stmt.name)
             return self._gen_dynamic_protocol_init(stmt.name, target_type, stmt.init, indent)
+
+        # TypeParamRef variable initialized from a user method call: use tpy::val_or_ref_t<T>
+        # (or tpy::val_or_cref_t<T> for readonly methods). This expands to T for value types
+        # and T& (or const T&) for non-value types, matching the C++ return type semantics.
+        # Only for non-reassigned, non-hoisted vars -- rebinding a val_or_ref_t alias is
+        # not possible in C++ (references can't be rebound), so reassigned vars fall through
+        # to the rvalue/value-copy path instead.
+        if (isinstance(target_type, TypeParamRef) and not target_type.is_value_type()
+                and stmt.init is not None
+                and isinstance(stmt.init, TpyMethodCall)
+                and stmt.name not in self.ctx.reassigned_vars
+                and stmt.name not in self.ctx.hoisted_vars
+                and stmt.name not in self.ctx.move_through_vars):
+            fi = stmt.init.resolved_function_info
+            if fi is not None and fi.cpp_template is None and isinstance(fi.return_type, TypeParamRef):
+                init_expr = self.expressions.gen_expr(stmt.init, target_type)
+                trait = "tpy::val_or_cref_t" if fi.is_readonly else "tpy::val_or_ref_t"
+                return f"{indent}{trait}<{cpp_type}> {cpp_name} = {init_expr};\n"
 
         # Indirection for non-value types in function/method scope
         if self._needs_indirection(target_type, stmt.name, stmt.init):

@@ -10,7 +10,7 @@ void main() {
     // 29:     h = Holder[MyNumber](MyNumber(10))
     Holder<MyNumber> h = Holder<MyNumber>(MyNumber(10));
     // 30:     num = h.get_item()
-    MyNumber num = h.get_item();
+    MyNumber& num = h.get_item();
     // 31:     print(num.add(5))  # Should print 15
     std::cout << num.add(5) << "\n";
 }
