@@ -9,12 +9,17 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void test_span_append_warns();
-void test_span_subscript_write_ok();
-void test_span_del_warns();
-void test_span_no_mutation_no_warn();
-void test_no_span_no_warn();
-void test_value_type_span_warns();
+Point& get_first(std::vector<Point>& items);
+std::vector<Point>& get_list(std::vector<Point>& items);
+void test_reassign_then_mutate_warns();
+void test_reassign_no_mutation_ok();
+void test_reassign_overwrite_clears_borrow();
+void test_for_call_iterable_warns();
+void test_for_call_iterable_readonly_ok();
+Point& get_first_wrapper(std::vector<Point>& items);
+void test_transitive_return_warns();
+void test_transitive_return_no_mutation_ok();
+void main();
 
 // 5: class Point:
 struct Point {
@@ -23,7 +28,7 @@ struct Point {
     // 7:     y: Int32
     int32_t y;
 
-    // 8:     def __init__(self, x: Int32, y: Int32) -> None:
+    // 9:     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

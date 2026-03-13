@@ -685,6 +685,18 @@ class SemanticAnalyzer:
             # Set mutated_params to direct facts as initial estimate;
             # Phase 2 propagation will replace with the complete transitive set.
             func_info.mutated_params = direct
+            # Structural mutation facts (append/insert/clear/del/etc.)
+            direct_struct = frozenset(
+                i for i, pname in enumerate(param_list)
+                if pname in self.ctx.current_struct_mutated_param_names
+            )
+            func_info.direct_structural_mutated_params = direct_struct
+            func_info.structural_mutated_params = direct_struct
+            # 8b: Return borrow facts -- which params does the return value borrow from?
+            func_info.return_borrows_from = frozenset(
+                i for i, pname in enumerate(param_list)
+                if pname in self.ctx.current_returned_param_names
+            )
 
         self.function_scan_results[id(func)] = scan
         if self.ctx.hoisted_vars:
@@ -1111,6 +1123,21 @@ class SemanticAnalyzer:
                     method_fi.direct_self_mutated = self.ctx.current_self_mutated
                     method_fi.call_edges = list(self.ctx.current_call_edges)
                     method_fi.mutated_params = direct
+                    # Structural mutation facts (append/insert/clear/del/etc.)
+                    direct_struct = frozenset(
+                        i for i, pname in enumerate(param_list)
+                        if pname in self.ctx.current_struct_mutated_param_names
+                    )
+                    method_fi.direct_structural_mutated_params = direct_struct
+                    method_fi.structural_mutated_params = direct_struct
+                    # 8b: Return borrow facts
+                    returned = frozenset(
+                        i for i, pname in enumerate(param_list)
+                        if pname in self.ctx.current_returned_param_names
+                    )
+                    if "self" in self.ctx.current_returned_param_names:
+                        returned = returned | frozenset([-1])
+                    method_fi.return_borrows_from = returned
 
             self.function_scan_results[id(method)] = scan
             if self.ctx.hoisted_vars:

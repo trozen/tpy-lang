@@ -32,7 +32,7 @@ void test_alias_subscript_assign() {
     Point& v = tpy::__getitem__(items, 0);
     // 26:     alias = items
     std::vector<Point>& alias = items;
-    // 27:     alias[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: warning(/Mutation of 'items'.*subscript/)
+    // 27:     alias[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: ok
     tpy::__setitem__(alias, 0, Point(9, 9));
     // 28:     print(items[Int32(0)].x)
     std::cout << tpy::__getitem__(items, 0).x << "\n";

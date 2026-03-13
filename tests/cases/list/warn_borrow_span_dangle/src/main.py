@@ -16,11 +16,11 @@ def test_span_append_warns() -> None:
     items.append(Point(Int32(9), Int32(9)))  # tpyc: warning(/Mutation of 'items'/)
     print(len(items))
 
-def test_span_subscript_write_warns() -> None:
-    """Span borrows the list; subscript write may invalidate."""
+def test_span_subscript_write_ok() -> None:
+    """Span borrows the list; subscript write is in-place (no reallocation, no dangling)."""
     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
     span = items[Int32(0):Int32(2)]
-    items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: warning(/Mutation of 'items'/)
+    items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: ok
     print(items[Int32(0)].x)
 
 def test_span_del_warns() -> None:
@@ -51,7 +51,7 @@ def test_value_type_span_warns() -> None:
     print(len(items))
 
 test_span_append_warns()
-test_span_subscript_write_warns()
+test_span_subscript_write_ok()
 test_span_del_warns()
 test_span_no_mutation_no_warn()
 test_no_span_no_warn()

@@ -85,11 +85,13 @@ def propagate_mutation_facts(functions: list[FunctionInfo]) -> None:
 
 
 def _resolve_single(fi: FunctionInfo) -> None:
-    """Compute mutated_params and self_mutated for a function whose callees are resolved."""
+    """Compute mutated_params, structural_mutated_params, and self_mutated for a function whose callees are resolved."""
     result: set[int] = set(fi.direct_mutated_params or frozenset())
+    struct_result: set[int] = set(fi.direct_structural_mutated_params or frozenset())
     self_mutated = bool(fi.direct_self_mutated)
     for edge in (fi.call_edges or []):
         callee_mp = edge.callee_fi.mutated_params
+        callee_smp = edge.callee_fi.structural_mutated_params
         if callee_mp is None:
             # Unknown callee -- conservative: mark all flowing params as mutated
             for _callee_idx, caller_idx in edge.param_map.items():
@@ -104,7 +106,17 @@ def _resolve_single(fi: FunctionInfo) -> None:
             # as self.method(), the caller also mutates self.
             if edge.receiver_is_self and edge.callee_fi.self_mutated:
                 self_mutated = True
+        # Structural mutation propagation: more specific than mutated_params.
+        if callee_smp is not None:
+            for callee_idx, caller_idx in edge.param_map.items():
+                if callee_idx in callee_smp:
+                    struct_result.add(caller_idx)
+        elif callee_mp is None:
+            # Unknown callee: conservative -- treat all flowing params as structurally mutated
+            for _callee_idx, caller_idx in edge.param_map.items():
+                struct_result.add(caller_idx)
     fi.mutated_params = frozenset(result)
+    fi.structural_mutated_params = frozenset(struct_result)
     fi.self_mutated = self_mutated
 
 
@@ -113,10 +125,12 @@ def _resolve_cycle(cycle_fis: list[FunctionInfo]) -> None:
 
     Both mutated_params and self_mutated lattices are monotone (only grow),
     so convergence is guaranteed. We bound iterations as a safety measure.
+    structural_mutated_params is propagated in parallel.
     """
     # Initialize with direct mutations
     for fi in cycle_fis:
         fi.mutated_params = frozenset(fi.direct_mutated_params or frozenset())
+        fi.structural_mutated_params = frozenset(fi.direct_structural_mutated_params or frozenset())
         fi.self_mutated = bool(fi.direct_self_mutated)
 
     # Safety bound: each iteration must add at least one param/self-mutation somewhere.
@@ -126,11 +140,14 @@ def _resolve_cycle(cycle_fis: list[FunctionInfo]) -> None:
         changed = False
         for fi in cycle_fis:
             old_mp = fi.mutated_params
+            old_smp = fi.structural_mutated_params
             old_sm = fi.self_mutated
             result: set[int] = set(fi.direct_mutated_params or frozenset())
+            struct_result: set[int] = set(fi.direct_structural_mutated_params or frozenset())
             self_mutated = bool(fi.direct_self_mutated)
             for edge in (fi.call_edges or []):
                 callee_mp = edge.callee_fi.mutated_params
+                callee_smp = edge.callee_fi.structural_mutated_params
                 if callee_mp is None:
                     for _callee_idx, caller_idx in edge.param_map.items():
                         result.add(caller_idx)
@@ -142,9 +159,18 @@ def _resolve_cycle(cycle_fis: list[FunctionInfo]) -> None:
                             result.add(caller_idx)
                     if edge.receiver_is_self and edge.callee_fi.self_mutated:
                         self_mutated = True
+                if callee_smp is not None:
+                    for callee_idx, caller_idx in edge.param_map.items():
+                        if callee_idx in callee_smp:
+                            struct_result.add(caller_idx)
+                elif callee_mp is None:
+                    for _callee_idx, caller_idx in edge.param_map.items():
+                        struct_result.add(caller_idx)
             new_mp = frozenset(result)
-            if new_mp != old_mp or self_mutated != old_sm:
+            new_smp = frozenset(struct_result)
+            if new_mp != old_mp or new_smp != old_smp or self_mutated != old_sm:
                 fi.mutated_params = new_mp
+                fi.structural_mutated_params = new_smp
                 fi.self_mutated = self_mutated
                 changed = True
         if not changed:
@@ -154,13 +180,16 @@ def _resolve_cycle(cycle_fis: list[FunctionInfo]) -> None:
         # unresolved edges
         for fi in cycle_fis:
             result = set(fi.mutated_params or frozenset())
+            struct_result = set(fi.structural_mutated_params or frozenset())
             for edge in (fi.call_edges or []):
                 if edge.callee_fi.mutated_params is None:
                     for _callee_idx, caller_idx in edge.param_map.items():
                         result.add(caller_idx)
+                        struct_result.add(caller_idx)
                     if edge.receiver_is_self:
                         fi.self_mutated = True
             fi.mutated_params = frozenset(result)
+            fi.structural_mutated_params = frozenset(struct_result)
 
 
 def infer_method_const(all_fis: list[FunctionInfo]) -> None:

@@ -26,7 +26,8 @@ def add_point(items: list[Point], p: Point) -> None:
     items.append(p)
 
 def replace_first(items: list[Point], p: Point) -> None:
-    """Mutates via subscript write -- mutated_params = {0}."""
+    """Mutates via subscript write -- mutated_params = {0}, structural_mutated_params = {}.
+    Subscript write does not reallocate, so element pointers do not dangle."""
     items[Int32(0)] = p
 
 def remove_first(items: list[Point]) -> None:
@@ -66,11 +67,12 @@ def test_mutating_append_warns() -> None:
     add_point(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
     print(len(items))
 
-def test_mutating_subscript_write_warns() -> None:
-    """Passing borrowed container to function that writes via subscript: warns."""
+def test_mutating_subscript_write_no_warn() -> None:
+    """Passing borrowed container to function that writes via subscript: no warning.
+    Subscript write doesn't reallocate, so element borrows remain valid."""
     items: list[Point] = [Point(Int32(1), Int32(2))]
     v = items[Int32(0)]
-    replace_first(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
+    replace_first(items, Point(Int32(9), Int32(9)))  # tpyc: ok
     print(items[Int32(0)].x)
 
 def test_mutating_del_warns() -> None:
@@ -197,7 +199,7 @@ def test_multi_hop_mutation_warns() -> None:
 test_non_mutating_no_warn()
 test_non_mutating_subscript_read()
 test_mutating_append_warns()
-test_mutating_subscript_write_warns()
+test_mutating_subscript_write_no_warn()
 test_mutating_del_warns()
 test_second_param_not_mutated()
 test_no_borrow_no_warn()

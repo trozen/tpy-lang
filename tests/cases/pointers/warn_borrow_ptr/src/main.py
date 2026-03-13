@@ -23,10 +23,10 @@ def test_ptr_borrow_append() -> None:
     print(len(items))
 
 def test_ptr_borrow_subscript_assign() -> None:
-    """Ptr into list element + subscript assign = warn."""
+    """Ptr into list element + subscript assign = ok (in-place, no reallocation, no dangling)."""
     items: list[Point] = [Point(Int32(1), Int32(2))]
     ptr = Ptr(items[Int32(0)])
-    items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: warning(/Mutation of 'items'.*subscript/)
+    items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: ok
     print(items[Int32(0)].x)
 
 def test_ptr_reassign_clears() -> None:

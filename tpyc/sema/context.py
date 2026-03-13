@@ -328,6 +328,11 @@ class SemanticContext:
     current_rebound_params: set[str] = field(default_factory=set)
     current_call_edges: list = field(default_factory=list)  # list[MutationCallEdge]
     current_self_mutated: bool = False  # True if self is directly mutated in current method
+    # Structural mutation inference: param names whose containers are structurally mutated
+    # (append/insert/clear/del/etc.) -- excludes element-ref taking and field writes.
+    current_struct_mutated_param_names: set[str] = field(default_factory=set)
+    # Return borrow inference (8b): param names whose storage the return value borrows from
+    current_returned_param_names: set[str] = field(default_factory=set)
 
     # --- Scope escape tracking ---
     var_scope_depth: dict[str, int] = field(default_factory=dict)
@@ -555,6 +560,8 @@ class SemanticContext:
         self.current_rebound_params.clear()
         self.current_call_edges.clear()
         self.current_self_mutated = False
+        self.current_struct_mutated_param_names.clear()
+        self.current_returned_param_names.clear()
 
     def mark_loop_var_mutated(self, name: str) -> None:
         """Mark a for-each loop variable as mutated (prevents const-ref binding)."""
@@ -576,6 +583,39 @@ class SemanticContext:
         iterable = self.loop_var_iterable.get(name)
         if iterable is not None:
             self.mark_param_mutated(iterable)
+
+    def mark_param_structurally_mutated(self, name: str) -> None:
+        """Mark a parameter as structurally mutated (append/insert/clear/del/etc.).
+
+        Structural mutations invalidate element references -- this is separate from
+        mark_param_mutated which also fires for element-ref taking (a = items[0]).
+        Traces loop variables back to their source iterables transitively.
+        """
+        if name == "self":
+            # Self structural mutation is covered by self_mutated; no separate field needed.
+            return
+        if name in self.current_param_names and name not in self.current_rebound_params:
+            self.current_struct_mutated_param_names.add(name)
+        iterable = self.loop_var_iterable.get(name)
+        if iterable is not None:
+            self.mark_param_structurally_mutated(iterable)
+
+    def mark_param_returned(self, name: str) -> None:
+        """Mark a parameter as contributing to the return value (8b).
+
+        Called when returning a reference derived from param storage, so we
+        can record return_borrows_from on FunctionInfo. Mirrors mark_param_mutated
+        but writes to current_returned_param_names instead.
+        Traces loop variables back to their source iterables transitively.
+        """
+        if name == "self":
+            self.current_returned_param_names.add("self")
+            return
+        if name in self.current_param_names and name not in self.current_rebound_params:
+            self.current_returned_param_names.add(name)
+        iterable = self.loop_var_iterable.get(name)
+        if iterable is not None:
+            self.mark_param_returned(iterable)
 
     def mark_str_borrowers_mutated(self, storage: str) -> None:
         """Mark PendingStrType borrowers of storage as source-mutated.

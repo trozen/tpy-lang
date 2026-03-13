@@ -16,13 +16,13 @@ void test_span_append_warns() {
     std::cout << tpy::__len__(items) << "\n";
 }
 
-// 19: def test_span_subscript_write_warns() -> None:
-void test_span_subscript_write_warns() {
+// 19: def test_span_subscript_write_ok() -> None:
+void test_span_subscript_write_ok() {
     // 21:     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     // 22:     span = items[Int32(0):Int32(2)]
     std::span<Point> span = tpy::list_slice(items, 0, 2);
-    // 23:     items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: warning(/Mutation of 'items'/)
+    // 23:     items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: ok
     tpy::__setitem__(items, 0, Point(9, 9));
     // 24:     print(items[Int32(0)].x)
     std::cout << tpy::__getitem__(items, 0).x << "\n";
@@ -81,8 +81,8 @@ void __tpy_init() {
 
     // 53: test_span_append_warns()
     test_span_append_warns();
-    // 54: test_span_subscript_write_warns()
-    test_span_subscript_write_warns();
+    // 54: test_span_subscript_write_ok()
+    test_span_subscript_write_ok();
     // 55: test_span_del_warns()
     test_span_del_warns();
     // 56: test_span_no_mutation_no_warn()

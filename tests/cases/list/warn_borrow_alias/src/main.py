@@ -20,11 +20,11 @@ def test_alias_append() -> None:
     print(len(items))
 
 def test_alias_subscript_assign() -> None:
-    """Subscript assign through alias = warn."""
+    """Subscript assign through alias = ok (in-place, no reallocation, no dangling)."""
     items: list[Point] = [Point(Int32(1), Int32(2))]
     v = items[Int32(0)]
     alias = items
-    alias[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: warning(/Mutation of 'items'.*subscript/)
+    alias[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: ok
     print(items[Int32(0)].x)
 
 def test_alias_del() -> None:

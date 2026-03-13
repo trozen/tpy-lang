@@ -19,7 +19,7 @@ void mutate_point(Point& p, int32_t val);
 void test_non_mutating_no_warn();
 void test_non_mutating_subscript_read();
 void test_mutating_append_warns();
-void test_mutating_subscript_write_warns();
+void test_mutating_subscript_write_no_warn();
 void test_mutating_del_warns();
 void test_second_param_not_mutated();
 void test_no_borrow_no_warn();

@@ -16,10 +16,10 @@ def test_element_borrow_append() -> None:
     print(len(items))
 
 def test_element_borrow_subscript_assign() -> None:
-    """Element borrow + subscript assign = warn (overwrites referenced element)."""
+    """Element borrow + subscript assign = ok (in-place write, no reallocation, no dangling)."""
     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
     v = items[Int32(0)]
-    items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: warning(/Mutation of 'items'.*subscript/)
+    items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: ok
     print(items[Int32(0)].x)
 
 def test_alias_no_warn() -> None:
@@ -52,6 +52,13 @@ def test_reassign_borrower_clears() -> None:
     items.append(Point(Int32(5), Int32(6)))  # tpyc: ok
     print(v.x)
 
+def test_element_borrow_del() -> None:
+    """Element borrow + del = warn (del removes an element, may shift references)."""
+    items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    v = items[Int32(0)]
+    del items[Int32(0)]  # tpyc: warning(/'del' may invalidate references/)
+    print(len(items))
+
 def test_field_borrow_write() -> None:
     """Field write on an object with alias borrow (not field borrow) = ok."""
     p = Point(Int32(1), Int32(2))
@@ -65,4 +72,5 @@ test_alias_no_warn()
 test_value_type_no_borrow()
 test_reassign_clears_borrows()
 test_reassign_borrower_clears()
+test_element_borrow_del()
 test_field_borrow_write()

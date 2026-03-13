@@ -4747,6 +4747,48 @@ add_item(data, 4) # Warning: add_item mutates param 0, borrow of 'data' active
 
 **Cross-module**: Imported functions use resolved facts from dependency-order compilation. Cross-module cycles get conservative treatment (all flowing params assumed mutated).
 
+**Structural vs. non-structural mutations**: `mutated_params` tracks all mutations (including element-ref taking via subscript read, which requires `T&`). A separate `structural_mutated_params` tracks only mutations that *invalidate element references* -- `append`, `insert`, `extend`, `clear`, `pop`, slice assignment, `del item`, and augmented assignment on a container name. Subscript writes (`items[i] = x`) and subscript reads (`a = items[i]`) are *not* structural. Borrow conflict checks use `structural_mutated_params` when available, so `items[0] = x` does not falsely warn when an element borrow of `items` is active.
+
+### Return-Value Borrow Contracts (Working)
+
+When a function returns a reference into a container parameter, the compiler records which parameters the return value borrows storage from. This allows call-site borrow tracking to register the returned reference as an *element borrow* of the source container, enabling the same conflict detection as a direct subscript borrow.
+
+**`return_borrows_from`**: Each `FunctionInfo` carries an optional `frozenset[int]` where `-1` means `self` and `0+` means the positional parameter at that index. A non-`None` value means the return value borrows storage from those parameters (i.e. invalidated if the source container is structurally mutated).
+
+**Inference rules** (Phase 1, during sema):
+
+1. **Direct subscript return** -- `return items[i]` where `items` is a list/dict/set parameter: marks `items` as returned. This covers `return self.field[i]` with `self` mapped to index `-1`.
+
+2. **Own/rvalue return** -- `return Own[T](...)` or other value types: no borrow (value-type returns never alias the source).
+
+3. **Transitive call return** -- `return inner(items)` where `inner.return_borrows_from = {k}` and argument `k` maps to a local parameter: the outer function inherits the borrow contract for that parameter. This enables wrapper functions to propagate contracts without special-casing:
+
+```python
+def get_first(items: list[Point]) -> Point:
+    return items[0]  # return_borrows_from = {0}
+
+def get_first_wrapper(items: list[Point]) -> Point:
+    return get_first(items)  # transitive: return_borrows_from = {0}
+```
+
+**Call-site borrow registration**: Wherever a call result is assigned or iterated, the compiler checks `return_borrows_from` and registers an `ELEMENT` borrow from each source container to the receiving variable or loop iterator:
+
+- *First assignment* (`x = get_first(items)`): registers `items -> x` as ELEMENT borrow.
+- *Reassignment* (`x = get_first(items)` where `x` was previously bound): registers the new borrow, replacing the old one. The borrow tracker releases the prior binding on reassignment.
+- *For-loop iterable* (`for p in get_list(items)`): registers `items -> __for_iter` as ITER borrow, same as iterating a container directly.
+
+**Conflict detection**: Once an ELEMENT borrow is active, any structural mutation of the source container (append, insert, del, etc.) triggers a warning -- because structural mutations may reallocate storage and invalidate the borrowed reference. Non-structural mutations (subscript write `items[i] = x`) do not warn, as they cannot invalidate an existing element reference.
+
+```python
+def get_first(items: list[Point]) -> Point:
+    return items[0]
+
+items = [Point(1, 2), Point(3, 4)]
+x = get_first(items)
+items.append(Point(5, 6))  # warning: Mutation of 'items' while borrowed
+items[0] = Point(9, 9)     # ok: subscript write is not structural
+```
+
 ## Open Questions
 
 1. **Allocation control ergonomics**: `@noalloc` vs `@alloc` vs module-level vs compiler flag?

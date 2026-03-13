@@ -15,7 +15,6 @@
 - **[LOW]** Nested `dict[K, dict[...]]` printing fails: `DictPrinter` has no `operator<<` for `ordered_map` as a value type, so printing a dict whose values are themselves dicts fails at C++ build time. Fix: add recursive printing support in `dict_ops.hpp`/`printing.hpp`.
 
 ### Safety (latent UB, no diagnostic emitted)
-- **[HIGH]** Iterator invalidation via container subscript: `p = items[0]` generates `T& p = tpy::__getitem__(items, 0)` -- a reference into the vector's storage. Any subsequent mutation of `items` that causes reallocation (e.g. `items.append(...)`) silently invalidates `p`, causing UB with no warning. This is the same class of problem as `Span` borrow tracking -- `__getitem__` on a container is an implicit borrow of the container and should be treated as one. Fix falls under extending borrow tracking (see Safety section above) to cover container subscript references, not just explicit `Span`/`Ptr` view types.
 
 ### Quality / optimization (correct output, but suboptimal codegen)
 - **[LOW]** None-seeded variable assigned in all branches stays `Optional[T]`: when `x = None` is followed by assignment in both the `if` and `else` branches (so every path guarantees a value), `x` is still typed `std::optional<T>` after the if/else block. Post-dominance analysis could demote it to `T` and skip the optional wrapper. Not a correctness issue -- output is identical -- but adds unnecessary runtime cost and less readable C++.

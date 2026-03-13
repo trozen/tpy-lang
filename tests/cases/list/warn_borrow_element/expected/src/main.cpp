@@ -22,7 +22,7 @@ void test_element_borrow_subscript_assign() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     // 21:     v = items[Int32(0)]
     Point& v = tpy::__getitem__(items, 0);
-    // 22:     items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: warning(/Mutation of 'items'.*subscript/)
+    // 22:     items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: ok
     tpy::__setitem__(items, 0, Point(9, 9));
     // 23:     print(items[Int32(0)].x)
     std::cout << tpy::__getitem__(items, 0).x << "\n";
@@ -83,15 +83,27 @@ void test_reassign_borrower_clears() {
     std::cout << v->x << "\n";
 }
 
-// 55: def test_field_borrow_write() -> None:
+// 55: def test_element_borrow_del() -> None:
+void test_element_borrow_del() {
+    // 57:     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    std::vector<Point> items = {Point(1, 2), Point(3, 4)};
+    // 58:     v = items[Int32(0)]
+    Point& v = tpy::__getitem__(items, 0);
+    // 59:     del items[Int32(0)]  # tpyc: warning(/'del' may invalidate references/)
+    tpy::__delitem__(items, 0);
+    // 60:     print(len(items))
+    std::cout << tpy::__len__(items) << "\n";
+}
+
+// 62: def test_field_borrow_write() -> None:
 void test_field_borrow_write() {
-    // 57:     p = Point(Int32(1), Int32(2))
+    // 64:     p = Point(Int32(1), Int32(2))
     Point p = Point(1, 2);
-    // 58:     ref = p
+    // 65:     ref = p
     Point& ref = p;
-    // 59:     p.x = Int32(10)  # tpyc: ok (alias borrow, not field borrow)
+    // 66:     p.x = Int32(10)  # tpyc: ok (alias borrow, not field borrow)
     p.x = 10;
-    // 60:     print(ref.x)
+    // 67:     print(ref.x)
     std::cout << ref.x << "\n";
 }
 
@@ -100,19 +112,21 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 62: test_element_borrow_append()
+    // 69: test_element_borrow_append()
     test_element_borrow_append();
-    // 63: test_element_borrow_subscript_assign()
+    // 70: test_element_borrow_subscript_assign()
     test_element_borrow_subscript_assign();
-    // 64: test_alias_no_warn()
+    // 71: test_alias_no_warn()
     test_alias_no_warn();
-    // 65: test_value_type_no_borrow()
+    // 72: test_value_type_no_borrow()
     test_value_type_no_borrow();
-    // 66: test_reassign_clears_borrows()
+    // 73: test_reassign_clears_borrows()
     test_reassign_clears_borrows();
-    // 67: test_reassign_borrower_clears()
+    // 74: test_reassign_borrower_clears()
     test_reassign_borrower_clears();
-    // 68: test_field_borrow_write()
+    // 75: test_element_borrow_del()
+    test_element_borrow_del();
+    // 76: test_field_borrow_write()
     test_field_borrow_write();
 }
 

@@ -34,7 +34,7 @@ void test_ptr_borrow_subscript_assign() {
     std::vector<Point> items = {Point(1, 2)};
     // 28:     ptr = Ptr(items[Int32(0)])
     Point* ptr = &tpy::__getitem__(items, 0);
-    // 29:     items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: warning(/Mutation of 'items'.*subscript/)
+    // 29:     items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: ok
     tpy::__setitem__(items, 0, Point(9, 9));
     // 30:     print(items[Int32(0)].x)
     std::cout << tpy::__getitem__(items, 0).x << "\n";

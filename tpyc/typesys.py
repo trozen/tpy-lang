@@ -2489,8 +2489,17 @@ class FunctionInfo:
     special_handling: bool = False  # True if sema/codegen handle specially
     qualified_name: str = ""  # Full dotted path, e.g. "builtins.print", "tpy.copy", "__main__.foo"
     mutated_params: Optional[frozenset[int]] = None  # Param indices proven mutated; None = unknown (conservative)
+    structural_mutated_params: Optional[frozenset[int]] = None
+    # Like mutated_params, but only structural mutations (append/insert/clear/del/etc.) that
+    # invalidate element references. Excludes element-ref taking (a=items[0]) and field writes.
+    # None = not yet analyzed; frozenset() = no structural mutation.
+    return_borrows_from: Optional[frozenset[int]] = None
+    # Param indices whose storage the return value borrows from (8b).
+    # -1 = self (methods only); 0, 1, ... = regular params.
+    # None = not yet analyzed; frozenset() = no borrow (value/local return).
     # Phase 1 local facts (set during sema, consumed by Phase 2 propagation)
     direct_mutated_params: Optional[frozenset[int]] = None
+    direct_structural_mutated_params: Optional[frozenset[int]] = None
     call_edges: Optional[list['MutationCallEdge']] = None
     # Self-mutation inference (Phase 1 + Phase 2, methods only)
     # None = not yet analyzed; True/False = Phase 1 direct fact; finalized by Phase 2.

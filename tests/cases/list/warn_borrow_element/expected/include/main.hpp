@@ -15,6 +15,7 @@ void test_alias_no_warn();
 void test_value_type_no_borrow();
 void test_reassign_clears_borrows();
 void test_reassign_borrower_clears();
+void test_element_borrow_del();
 void test_field_borrow_write();
 
 // 4: class Point:

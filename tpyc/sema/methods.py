@@ -457,6 +457,18 @@ class MethodAnalyzer:
                         )
                         if not is_direct_self_call:
                             self.ctx.mark_param_mutated(obj_root)
+                            # Structural mutation: only invalidating methods that can
+                            # reallocate storage (append/insert/clear/etc.), not
+                            # element reads or field writes.
+                            is_struct_mutation = False
+                            if isinstance(obj_type, (PendingListType, ListType)):
+                                is_struct_mutation = expr.method in LIST_ITER_INVALIDATING
+                            elif isinstance(obj_type, (DictType, PendingDictType)):
+                                is_struct_mutation = expr.method in DICT_MUTATION_METHODS
+                            elif isinstance(obj_type, (SetType, PendingSetType)):
+                                is_struct_mutation = expr.method in SET_MUTATION_METHODS
+                            if is_struct_mutation:
+                                self.ctx.mark_param_structurally_mutated(obj_root)
                         storage = self.ctx.borrow_tracker.effective_storage(obj_root)
                         self.ctx.mark_str_borrowers_mutated(storage)
                     else:

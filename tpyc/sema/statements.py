@@ -50,6 +50,38 @@ from .local_deduction import collect_pending_source_types
 from tpyc import modules as builtin_modules
 
 
+def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyExpr) -> None:
+    """Register borrow from function call return value (8b).
+
+    When a function has return_borrows_from facts, the result variable
+    borrows from the indicated argument(s). None means unanalyzed -- skip.
+    """
+    if isinstance(expr, TpyCall):
+        fi = expr.resolved_function_info
+        args = expr.args
+        obj = None
+    elif isinstance(expr, TpyMethodCall):
+        fi = expr.resolved_function_info
+        args = expr.args
+        obj = expr.obj
+    else:
+        return
+    if fi is None or fi.return_borrows_from is None:
+        return
+    for idx in fi.return_borrows_from:
+        if idx == -1 and obj is not None:
+            root = _borrow_storage_root(obj)
+            if root is not None:
+                # ELEMENT: structural_mutated_params now separates structural mutations
+                # from element-ref taking, so ELEMENT borrows here no longer cause
+                # false positives in _check_borrow_arg_conflicts.
+                ctx.borrow_tracker.add_borrow(root, borrower, BorrowKind.ELEMENT)
+        elif idx >= 0 and idx < len(args):
+            root = _borrow_storage_root(args[idx])
+            if root is not None:
+                ctx.borrow_tracker.add_borrow(root, borrower, BorrowKind.ELEMENT)
+
+
 def _borrow_storage_root(expr: TpyExpr) -> str | None:
     """Extract the root variable name whose storage is borrowed by this expression.
 
@@ -433,6 +465,26 @@ class StatementAnalyzer:
                 if expected is not None and not expected.is_value_type():
                     for ret_root in addr_taken_roots(stmt.value):
                         self.ctx.mark_param_mutated(ret_root)
+                        self.ctx.mark_param_returned(ret_root)  # 8b: track which param storage the return borrows
+                    # 8b rule 3: transitive return -- if returning the result of a call
+                    # whose return_borrows_from is known, propagate the borrow contract.
+                    # e.g. `return inner(items)` where inner borrows param 0 -> mark items.
+                    ret_inner = stmt.value.expr if isinstance(stmt.value, TpyCoerce) else stmt.value
+                    if isinstance(ret_inner, (TpyCall, TpyMethodCall)):
+                        fi_ret = ret_inner.resolved_function_info
+                        if fi_ret is not None and fi_ret.return_borrows_from:
+                            ret_args = ret_inner.args
+                            ret_obj = getattr(ret_inner, 'obj', None)
+                            for idx in fi_ret.return_borrows_from:
+                                if idx == -1 and ret_obj is not None:
+                                    src = _borrow_storage_root(ret_obj)
+                                elif idx >= 0 and idx < len(ret_args):
+                                    src = _borrow_storage_root(ret_args[idx])
+                                else:
+                                    src = None
+                                if src is not None:
+                                    self.ctx.mark_param_mutated(src)
+                                    self.ctx.mark_param_returned(src)
             self.init.mark_terminated()
         elif isinstance(stmt, TpyIf):
             self.expr.analyze_expr(stmt.condition)
@@ -590,6 +642,24 @@ class StatementAnalyzer:
                         inner = unwrap_readonly(iterable_type)
                         if (isinstance(inner, (TypeParamRef,)) or is_protocol_type(inner)):
                             self.ctx.mark_param_mutated(stmt.iterable.name)
+                    elif isinstance(stmt.iterable, (TpyCall, TpyMethodCall)):
+                        # 8b: iterable is a call whose return borrows from source arg(s).
+                        # Register ITER borrow directly on those source containers so that
+                        # structural mutations during the loop generate conflict warnings.
+                        fi_iter = stmt.iterable.resolved_function_info
+                        if fi_iter is not None and fi_iter.return_borrows_from:
+                            call_args = stmt.iterable.args
+                            call_obj = getattr(stmt.iterable, 'obj', None)
+                            for idx in fi_iter.return_borrows_from:
+                                if idx == -1 and call_obj is not None:
+                                    src = _borrow_storage_root(call_obj)
+                                elif idx >= 0 and idx < len(call_args):
+                                    src = _borrow_storage_root(call_args[idx])
+                                else:
+                                    src = None
+                                if src is not None:
+                                    self.ctx.borrow_tracker.add_borrow(src, "__for_iter", BorrowKind.ITER)
+                                    self.ctx.loop_var_iterable[stmt.var] = src
                     if is_native_iterator or is_protocol_iter:
                         iter_depth = inner_scope.depth
                     elif is_iter_based:
@@ -1340,7 +1410,9 @@ class StatementAnalyzer:
         self.ctx.mark_str_borrowers_mutated(stmt.name)
         self.ctx.borrow_tracker.remove_borrower(stmt.name)
         self.ctx.borrow_tracker.remove_storage_borrows(stmt.name)
-        # Create borrow when the target aliases another variable's storage
+        # Create borrow when the target aliases another variable's storage.
+        # Skipped for reassigned vars (they use T* pointer-locals in codegen;
+        # general alias tracking would require pointer-alias analysis).
         if (stmt.init is not None
                 and stmt.name not in self.ctx.current_reassigned_vars
                 and var_type is not None):
@@ -1382,6 +1454,14 @@ class StatementAnalyzer:
                     root = _borrow_storage_root(init_inner)
                     if root is not None:
                         self.ctx.borrow_tracker.add_borrow(root, stmt.name, BorrowKind.ELEMENT)
+        # 8b: Register call result borrow for ALL assignments (including reassignments).
+        # Unlike general alias tracking, borrow contracts use precise return_borrows_from
+        # facts and don't need pointer-alias analysis -- safe to apply to reassigned vars.
+        if (stmt.init is not None
+                and var_type is not None
+                and not var_type.is_value_type()):
+            init_unwrapped = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
+            _register_call_result_borrow(self.ctx, stmt.name, init_unwrapped)
         # Reassigned non-value locals generate T* local = &(source) in C++.
         # Mark source param as mutated so it stays T& (not const T&), regardless
         # of whether the borrow-tracking block above ran.
@@ -1608,6 +1688,8 @@ class StatementAnalyzer:
         if root is not None:
             self.ctx.mark_loop_var_mutated(root)
             self.ctx.mark_param_mutated(root)
+            # Slice assignment replaces a subrange -- structural mutation.
+            self.ctx.mark_param_structurally_mutated(root)
         if isinstance(stmt.target.obj, TpyName):
             storage = self.ctx.borrow_tracker.effective_storage(stmt.target.obj.name)
             if self.ctx.borrow_tracker.has_borrow_of_kinds(storage, (BorrowKind.ELEMENT, BorrowKind.PTR, BorrowKind.ITER)):
@@ -1748,18 +1830,13 @@ class StatementAnalyzer:
                 if is_readonly_ptr(obj_type):
                     raise self.ctx.error("Cannot assign through read-only pointer", stmt)
 
-        # Borrow conflict: subscript/field write on borrowed storage.
-        # Resolves aliases so alias[i] = val warns when the underlying storage
-        # has element borrows.
-        # Subscript assignment (items[i] = val) is in-place element replacement --
-        # safe for iterators, but overwrites the element that element/ptr borrows
-        # reference. Field assignment (obj.field = val) invalidates field borrows.
+        # Borrow conflict: field write on borrowed storage.
+        # Resolves aliases so alias.field = val warns when the underlying storage
+        # has field/element/ptr borrows.
+        # Subscript assignment (items[i] = val) is in-place and does NOT reallocate,
+        # so existing element/ptr borrows remain valid (no dangling). No warning needed.
         if isinstance(stmt.target, TpySubscript) and isinstance(stmt.target.obj, TpyName):
             storage = self.ctx.borrow_tracker.effective_storage(stmt.target.obj.name)
-            if self.ctx.borrow_tracker.has_borrow_of_kinds(storage, (BorrowKind.ELEMENT, BorrowKind.PTR)):
-                msg = (f"Mutation of '{storage}' while borrowed"
-                       " (subscript assignment may invalidate references)")
-                self.ctx.warning(msg, stmt)
             self.ctx.mark_str_borrowers_mutated(storage)
         elif isinstance(stmt.target, TpyFieldAccess) and isinstance(stmt.target.obj, TpyName):
             storage = self.ctx.borrow_tracker.effective_storage(stmt.target.obj.name)
@@ -1852,6 +1929,8 @@ class StatementAnalyzer:
             if del_root is not None:
                 self.ctx.mark_loop_var_mutated(del_root)
                 self.ctx.mark_param_mutated(del_root)
+                # del item removes an element from the container -- structural mutation.
+                self.ctx.mark_param_structurally_mutated(del_root)
             # Borrow conflict: del on a container with element-level borrows
             if isinstance(subscript.obj, TpyName):
                 storage = self.ctx.borrow_tracker.effective_storage(subscript.obj.name)
@@ -1951,18 +2030,16 @@ class StatementAnalyzer:
         if aug_root is not None:
             self.ctx.mark_loop_var_mutated(aug_root)
             self.ctx.mark_param_mutated(aug_root)
+            # items += other_list extends the container in-place (structural mutation).
+            # items[i] += x and obj.field += x are in-place element/field writes -- not structural.
+            if isinstance(stmt.target, TpyName):
+                self.ctx.mark_param_structurally_mutated(aug_root)
         self._enforce_readonly_assignment_target(stmt.target)
-        # Borrow conflict: augmented assignment may mutate borrowed storage
+        # Borrow conflict: augmented assignment may mutate borrowed storage.
+        # Subscript aug-assign (items[i] += x) modifies element in-place -- same as
+        # subscript assign, no reallocation, element/ptr borrows remain valid.
         if isinstance(stmt.target, TpySubscript) and isinstance(stmt.target.obj, TpyName):
             storage = self.ctx.borrow_tracker.effective_storage(stmt.target.obj.name)
-            # Subscript aug-assign (items[i] += x) modifies element in-place;
-            # safe for iterators but invalidates element/ptr borrows.
-            if self.ctx.borrow_tracker.has_borrow_of_kinds(storage, (BorrowKind.ELEMENT, BorrowKind.PTR)):
-                self.ctx.warning(
-                    f"Mutation of '{storage}' while borrowed"
-                    " (subscript assignment may invalidate references)",
-                    stmt,
-                )
             self.ctx.mark_str_borrowers_mutated(storage)
         elif isinstance(stmt.target, TpyFieldAccess) and isinstance(stmt.target.obj, TpyName):
             storage = self.ctx.borrow_tracker.effective_storage(stmt.target.obj.name)

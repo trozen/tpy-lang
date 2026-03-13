@@ -1,0 +1,3 @@
+main.py:29: warning: Mutation of 'items' while borrowed ('append' may invalidate references)
+main.py:58: warning: Mutation of 'items' while iterating over it ('append' invalidates the iterator)
+main.py:83: warning: Mutation of 'items' while borrowed ('append' may invalidate references)

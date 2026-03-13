@@ -37,7 +37,7 @@
 | 8a.3 | Track tuple ref packing (`return (x, param)` where tuple slot is `T&`) in Phase 1 -- same goal as 8a.2 | S | Done | [8](#8-cross-function-borrow-inference) |
 | 8a.4 | `const T&` for protocol-typed params: thread `mutated_params` through `gen_params_with_protocols` | S | Done | [8](#8-cross-function-borrow-inference) |
 | 8a.5 | Precise element-ref mutation: defer marking source container until borrower is actually written (currently conservative -- any element ref marks container as mutated) | M | Not started | [8](#8-cross-function-borrow-inference) |
-| 8b | Return-value borrow contracts | L | Not started | [8](#8-cross-function-borrow-inference) |
+| 8b | Return-value borrow contracts | L | Done | [8](#8-cross-function-borrow-inference) |
 | 7b | `@pure` enforcement -- or drop `@pure` (see [note](#7-pure-annotation)) | M | Deferred | [7](#7-pure-annotation) |
 | 6c+ | String view extension (list, dict) | M | Done | [6c](#6c-string-view-extension-to-containers) |
 | 11+ | Integer range tracking (general) | L | Not started | [11](#11-integer-range-tracking) |
@@ -61,6 +61,9 @@ Integer range tracking (11) can proceed in parallel with borrow checking (6).
 |---------|-------|---------|
 | Borrow metadata export | Not needed while compiler has source; design keeps contracts serializable for future use | [9](#9-borrow-metadata-export) |
 | View type borrow tracking | Generalize hardcoded Span/Ptr/StrView borrow tracking to user types. Two approaches: (1) field-level annotation marking which field borrows from the outside -- lets the compiler trace borrow flow through constructors; (2) class-level marker protocol (`View`) -- simpler but less precise. Field-level is more useful (closer to Rust's lifetime-on-field) without requiring full lifetime machinery. Prior art: C++ `[[gsl::Pointer]]`, Rust lifetimes. Will likely come up when designing tpy standard library types. | -- |
+| 8b-A: `return_borrows_from` Phase 2 propagation | Rule 3 (transitive return inference) silently skips forward-defined callees. Fix: record `ReturnCallEdge`s in Phase 1 and propagate `return_borrows_from` in Phase 2 alongside `mutated_params`. Fixes cross-module correctness and exported metadata. | [Future Extensions](#future-extensions) |
+| 8b-B: Deferred call-site borrow registration | Same-module callers miss the borrow registration when the wrapper's contract is a forward ref. Requires a second Phase 1 pass or pending-registration records replayed post-Phase 2. High complexity for a narrow pattern. Depends on 8b-A. | [Future Extensions](#future-extensions) |
+| `@may_reallocate` / declarative borrow contracts | Currently the compiler hardcodes which built-in methods are structural (append, insert, del, ...) vs in-place (subscript write). Moving built-in types to `.py` files requires a declarative annotation -- `@may_reallocate` on methods that can invalidate element references, `@return_borrows_from` on methods that return element refs. Unannotated mutating methods default to conservative (structural). For user types, both annotations are inferred transitively (same Phase 1/2 propagation as `mutated_params`) -- no explicit annotation needed on well-structured wrappers. Requires field-level borrow flow tracking (View type item) for the transitive case. Prior art: C++ iterator invalidation rules (prose only, unenforced); Rust makes all `&mut self` methods invalidate borrows (simpler but more restrictive). | [Future Extensions](#future-extensions) |
 
 ### Already Done
 
@@ -343,8 +346,9 @@ is a lvalue alias (from prescan's `alias_sources`). Creates borrow
 non-value types.
 
 **Step 6.4: Conflict detection at all mutation points.** Extend conflict checks
-beyond method calls and `del` (6a) to: subscript assignment (`items[i] = val`),
-field assignment (`obj.field = val`), augmented assignment on borrowed storage.
+beyond method calls and `del` (6a) to: field assignment (`obj.field = val`) and
+augmented assignment on borrowed storage. Subscript assignment (`items[i] = val`)
+is in-place and does not reallocate, so it does not conflict with element borrows.
 
 **Step 6.5: Function parameter mutation detection.** Detect passing borrowed storage
 to non-`@readonly` / non-`@pure` function parameters.
@@ -352,7 +356,8 @@ to non-`@readonly` / non-`@pure` function parameters.
 **Step 6.6: Span/StrView slice borrow tracking.** Slicing a container (`items[1:3]`)
 produces a `Span[T]` or `StrView` -- value types that are semantically borrows of
 the source. These are now registered as `BorrowKind.ELEMENT` on the source container,
-so mutations (append, subscript write, del) trigger warnings. Currently hardcoded for
+so structural mutations (append, del, etc.) trigger warnings. Subscript write is
+in-place and does not reallocate, so it does not conflict. Currently hardcoded for
 built-in view types; user-defined view types would need a `@view` marker or similar
 mechanism to opt in.
 
@@ -395,8 +400,9 @@ within that borrow scope.
 **Q: What about nested borrows?**
 
 `v = items[0]; v.field` borrows `items`, then accesses through the borrow. Nested
-borrows are tracked transitively: `v` borrows `items`, and mutation of `items`
-(including `items[0] = ...`) conflicts with `v`'s borrow.
+borrows are tracked transitively: `v` borrows `items`, and structural mutation of
+`items` (append, del, etc.) conflicts with `v`'s borrow. Subscript write
+(`items[0] = ...`) is in-place and does not conflict.
 
 #### 6a. Container Mutation During Iteration
 
@@ -636,7 +642,7 @@ After all functions in the module are analyzed:
 - **Field sub-objects**: `foo(param.field)` where `foo` mutates its argument -- this
   mutates a sub-object of `param`, not `param`'s structure (no element invalidation).
   Currently treated conservatively (marks `param` as mutated). Future refinement could
-  distinguish structural mutation (append, subscript write) from sub-object mutation.
+  distinguish structural mutation (append, del) from sub-object mutation.
 
 **Consumers** (checked after Phase 2):
 
@@ -662,6 +668,7 @@ Builtins and `@native` functions declare mutation facts in their module definiti
 #### 8b. Return-Value Borrow Contracts
 
 **Effort**: L
+**Status**: Done.
 
 When a function returns a reference derived from a parameter, the compiler needs to
 know this at the call site to maintain the borrow chain:
@@ -699,6 +706,29 @@ At the call site, the compiler translates this: `first = get_first(data)` means
 **When bodies aren't available** (precompiled libraries, builtins): borrow contracts
 must be declared explicitly or loaded from metadata. See
 [Section 9](#9-borrow-metadata-export).
+
+**Implementation (done)**:
+
+- `FunctionInfo.return_borrows_from: Optional[frozenset[int]]` -- param indices
+  whose storage the return value borrows from. `-1` = self (methods). `None` = not
+  yet analyzed (stubs, forward declarations).
+- Inference: set during body analysis in `sema/analyzer.py` alongside
+  `mutated_params`. `return` statements call `ctx.mark_param_returned(root)` for
+  each root in `addr_taken_roots(return_expr)` (rules 1/4). Rule 3 (transitive):
+  when returning the result of a call whose `return_borrows_from` is known, the
+  source args are also marked via `mark_param_returned`.
+- Call-site registration: in `TpyVarDecl` handler in `sema/statements.py` for both
+  first declarations and reassignments, and in the for-each handler when the iterable
+  is a call. When `fi.return_borrows_from` is non-empty, the result is registered as
+  a `BorrowKind.ELEMENT` borrower of the source arg. Enables `effective_storage`
+  chain resolution and conflict detection for structural mutations.
+- `FunctionInfo.structural_mutated_params: Optional[frozenset[int]]` -- separates
+  structural mutations (append/insert/clear/del/etc.) from element-ref taking
+  (`a = items[0]`). Phase 1 collects `direct_structural_mutated_params`, Phase 2
+  (`mutation_propagation.py`) propagates transitively. The borrow conflict checker
+  (`_check_borrow_arg_conflicts` in `calls.py`) uses `structural_mutated_params`
+  when available, falling back to `mutated_params` for external functions. This
+  allows 8b borrows to use `BorrowKind.ELEMENT` without false positives.
 
 ### 9. Borrow Metadata Export
 
@@ -992,4 +1022,121 @@ New test areas needed:
 - **`@pure` annotation**: marking functions pure, borrow checker trusting them
 - **Integer ranges**: bounds check elision in for/while patterns
 - **Send/Sync**: auto-derivation, type rejection at channel/sharing boundaries
+
+---
+
+## Future Extensions
+
+### Return Borrow Contract Propagation for Forward References
+
+Currently `return_borrows_from` is inferred during Phase 1 (body analysis). Two gaps
+remain when the inner callee is a forward reference (defined after the outer function):
+
+**Extension A -- Phase 2 contract propagation** (`return_borrows_from` via call graph):
+When `get_first_wrapper` returns `get_first(items)` and `get_first` is defined after it,
+Phase 1 sees `get_first.return_borrows_from = None` and leaves `get_first_wrapper`'s
+contract empty. Phase 2 could propagate this after resolving all local contracts:
+
+- Add `ReturnCallEdge(callee_fi, param_map)` recorded in Phase 1 when Rule 3 fires but
+  the callee's contract is not yet known.
+- Add a `return_borrows_from` propagation loop to `mutation_propagation.py`, parallel
+  to the existing `mutated_params` / `structural_mutated_params` loops.
+- After propagation, `get_first_wrapper.return_borrows_from = {0}` is correct for
+  cross-module callers and exported metadata (Section 9).
+
+Benefit: cross-module correctness and accurate metadata. Same-module call-site warnings
+are unaffected (see Extension B).
+
+**Extension B -- Deferred call-site borrow registration**:
+Even with Extension A, a same-module caller that processes `x = forward_wrapper(items)`
+during Phase 1 does not register the borrow -- the contract isn't known yet, and the
+borrow tracker is discarded after Phase 1. The subsequent `items.append(...)` in the
+same function then goes unchecked.
+
+Fixing this requires either:
+- A second Phase 1 analysis pass after Phase 2 resolves contracts (expensive), OR
+- Storing pending borrow-registration records (analogous to `pending_borrow_checks` for
+  mutation conflicts) that can be replayed after Phase 2 -- but this requires preserving
+  enough per-call-site state to retroactively add borrows and re-run the conflict check.
+
+Both approaches add significant complexity. Extension B is only needed for the narrow
+pattern where a caller both uses a forward-wrapper's result AND structurally mutates the
+source in the same function body. In practice, forward wrappers are library/utility code
+and their callers are defined later, so Extension A alone provides correctness for the
+common case.
+
+### Declarative Borrow Contracts (`@may_reallocate`, `@return_borrows_from`)
+
+Currently the compiler hardcodes which built-in container methods are *structural*
+(can invalidate element references by reallocating or shifting storage) vs *in-place*
+(write to an existing slot, no reallocation). This knowledge lives in name-based
+lookup tables (`LIST_ITER_INVALIDATING`, etc.) inside `sema/methods.py`.
+
+Moving built-in types to `.py` source files (Option B in the builtin migration
+discussion) requires replacing these tables with declarative annotations:
+
+```python
+class list[T]:
+    @may_reallocate  # invalidates all element refs -- conflicts with active borrows
+    def append(self, item: T) -> None: ...
+
+    @may_reallocate
+    def insert(self, index: Int32, item: T) -> None: ...
+
+    @may_reallocate
+    def __delitem__(self, index: Int32) -> None: ...
+
+    # no annotation = in-place, no reallocation, element borrows survive
+    def __setitem__(self, index: Int32, value: T) -> None: ...
+
+    @return_borrows_from(-1)  # return value borrows from self
+    def __getitem__(self, index: Int32) -> T: ...
+```
+
+**Default for unannotated mutating methods**: conservative (treated as structural) --
+annotate the safe cases explicitly, not the dangerous ones.
+
+**Prior art**:
+- **C++**: iterator invalidation rules are standard-prose only, entirely unenforced at
+  compile time. No general annotation mechanism.
+- **Rust**: does not distinguish -- any `&mut self` method invalidates all borrows.
+  Simpler but more restrictive; the pattern `v = &items[0]; items[0] = x` is illegal.
+- **No mainstream language** has a general user-facing annotation for structural vs
+  in-place mutation. This is a gap TPy could fill usefully.
+
+**Inference for user types**: `@may_reallocate` and `@return_borrows_from` on built-in
+methods act as ground truth. User methods are inferred transitively using the same
+Phase 1/2 propagation as `mutated_params` -- no explicit annotation needed on
+well-structured wrappers:
+
+```python
+class Container:
+    _items: list[Point]
+
+    def add(self, p: Point) -> None:
+        self._items.append(p)  # append is @may_reallocate
+                               # -> inferred: add is @may_reallocate on self
+
+    def first(self) -> Point:
+        return self._items[0]  # __getitem__ has @return_borrows_from(-1)
+                               # -> inferred: first has @return_borrows_from(-1)
+```
+
+**Dependency**: inferring that `add` is `@may_reallocate` on `self` (not just on
+`_items`) requires the compiler to know that borrows of `self[0]` ultimately borrow
+from `self._items`. This is the field-level borrow flow problem -- the same one
+addressed by the View type borrow tracking item above. For a flat single-field wrapper
+the inference is straightforward; for complex layouts (multiple backing fields,
+conditional storage) it needs the full field-level annotation system.
+
+Dependency chain:
+```
+@may_reallocate inference for user types
+    -> field-level borrow flow tracking (View type borrow tracking)
+    -> @return_borrows_from on __getitem__ (already designed, 8b)
+```
+
+**Enables**: user-defined containers (e.g. `tplib` types) to participate in borrow
+checking with the same precision as built-ins, without compiler special-casing.
+Prerequisite for the builtin-to-`.py` migration (Option B).
 
