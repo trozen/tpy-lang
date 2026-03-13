@@ -1,4 +1,4 @@
-from tpy import Int32, readonly_alt
+from tpy import Int32, auto_readonly
 
 class Point:
     x: Int32
@@ -14,7 +14,7 @@ class Ref:
     def __init__(self, target: Point) -> None:
         self._target = target
 
-    @readonly_alt
+    @auto_readonly
     def __deref__(self) -> Point:
         return self._target
 

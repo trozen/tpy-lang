@@ -1070,65 +1070,65 @@ def unwrap_readonly(typ: 'TpyType') -> 'TpyType':
 
 
 @dataclass(frozen=True)
-class ReadonlyAltType(TpyType):
-    """Return-type annotation for @readonly_alt methods.
+class AutoReadonlyType(TpyType):
+    """Return-type annotation for @auto_readonly methods.
 
-    readonly_alt[T] in a return type means:
-    - mutable overload: strip to T        (via strip_alt)
-    - const overload:   replace with readonly[T] (via apply_alt)
+    auto_readonly[T] in a return type means:
+    - mutable overload: strip to T        (via strip_auto_readonly)
+    - const overload:   replace with readonly[T] (via apply_auto_readonly)
 
-    Only valid in return type annotations of @readonly_alt methods.
+    Only valid in return type annotations of @auto_readonly methods.
     Stripped by registration before reaching sema body analysis or codegen.
     """
     wrapped: TpyType
 
     def to_cpp(self) -> str:
-        raise RuntimeError("ReadonlyAltType must be stripped before codegen")
+        raise RuntimeError("AutoReadonlyType must be stripped before codegen")
 
     def is_value_type(self) -> bool:
         return self.wrapped.is_value_type()
 
     def __str__(self) -> str:
-        return f"readonly_alt[{self.wrapped}]"
+        return f"auto_readonly[{self.wrapped}]"
 
     def inner_types(self) -> tuple['TpyType', ...]:
         return (self.wrapped,)
 
     def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
-        return ReadonlyAltType(types[0])
+        return AutoReadonlyType(types[0])
 
 
-def strip_alt(t: 'TpyType') -> 'TpyType':
-    """Replace ReadonlyAltType(X) -> X recursively (mutable overload return type)."""
-    if isinstance(t, ReadonlyAltType):
-        return strip_alt(t.wrapped)
+def strip_auto_readonly(t: 'TpyType') -> 'TpyType':
+    """Replace AutoReadonlyType(X) -> X recursively (mutable overload return type)."""
+    if isinstance(t, AutoReadonlyType):
+        return strip_auto_readonly(t.wrapped)
     inner = t.inner_types()
     if not inner:
         return t
-    new_inner = tuple(strip_alt(i) for i in inner)
+    new_inner = tuple(strip_auto_readonly(i) for i in inner)
     if all(n is o for n, o in zip(new_inner, inner)):
         return t
     return t.with_inner_types(new_inner)
 
 
-def apply_alt(t: 'TpyType') -> 'TpyType':
-    """Replace ReadonlyAltType(X) -> readonly[X] recursively (const overload return type)."""
-    if isinstance(t, ReadonlyAltType):
-        return ReadonlyType(apply_alt(t.wrapped))
+def apply_auto_readonly(t: 'TpyType') -> 'TpyType':
+    """Replace AutoReadonlyType(X) -> readonly[X] recursively (const overload return type)."""
+    if isinstance(t, AutoReadonlyType):
+        return ReadonlyType(apply_auto_readonly(t.wrapped))
     inner = t.inner_types()
     if not inner:
         return t
-    new_inner = tuple(apply_alt(i) for i in inner)
+    new_inner = tuple(apply_auto_readonly(i) for i in inner)
     if all(n is o for n, o in zip(new_inner, inner)):
         return t
     return t.with_inner_types(new_inner)
 
 
-def has_readonly_alt(t: 'TpyType') -> bool:
-    """Return True if t contains any ReadonlyAltType node."""
-    if isinstance(t, ReadonlyAltType):
+def has_auto_readonly(t: 'TpyType') -> bool:
+    """Return True if t contains any AutoReadonlyType node."""
+    if isinstance(t, AutoReadonlyType):
         return True
-    return any(has_readonly_alt(i) for i in t.inner_types())
+    return any(has_auto_readonly(i) for i in t.inner_types())
 
 
 

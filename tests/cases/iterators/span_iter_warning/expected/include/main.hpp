@@ -58,15 +58,15 @@ struct Dual {
     // 18:     def __init__(self) -> None:
     Dual() : _data({1, 2, 3}) {}
 
-    //     @readonly_alt
-    // 21:     def __span__(self) -> Span[readonly_alt[Int32]]:
+    //     @auto_readonly
+    // 21:     def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<int32_t> __span__() {
         // 22:         return self._data
         return tpy::as_mut_span(this->_data);
     }
 
-    //     @readonly_alt
-    // 21:     def __span__(self) -> Span[readonly_alt[Int32]]:
+    //     @auto_readonly
+    // 21:     def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> __span__() const {
         // 22:         return self._data
         return tpy::as_span(this->_data);

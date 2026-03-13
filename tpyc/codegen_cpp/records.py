@@ -340,7 +340,7 @@ class RecordGenerator:
         # Generate methods (excluding __init__ and __del__)
         dynamic_overrides = self.functions._get_dynamic_override_info(record.name)
         # Track names already dispatched via @overload so that the const clone of a
-        # @readonly_alt @overload implementation is not emitted as a plain method.
+        # @auto_readonly @overload implementation is not emitted as a plain method.
         # (The mutable clone emits specialized methods for all stubs including const ones.)
         overload_dispatched: set[str] = set()
         for method in record.methods:
@@ -360,7 +360,7 @@ class RecordGenerator:
                         dynamic_overrides=dynamic_overrides,
                     )
             elif method.name in overload_dispatched:
-                # Const clone of a @readonly_alt @overload impl -- already emitted above.
+                # Const clone of a @auto_readonly @overload impl -- already emitted above.
                 pass
             else:
                 self.functions.gen_method_def(out, method, record.name, dynamic_overrides,
@@ -753,11 +753,11 @@ class RecordGenerator:
         the method itself. Writes go through tpy::__setitem__.
         For non-readonly __getitem__: non-const only (method mutates self).
         For @overload __getitem__: generate operator[] for each stub.
-        For @readonly_alt __getitem__ clone pairs: const first, then mutable,
+        For @auto_readonly __getitem__ clone pairs: const first, then mutable,
         one per clone (no duplicate).
         """
         # Gather all non-stub __getitem__ implementations.
-        # @readonly_alt cloning produces two: one mutable, one const.
+        # @auto_readonly cloning produces two: one mutable, one const.
         getitem_impls = [
             m for m in record.methods
             if m.name == "__getitem__" and not m.is_overload_stub
@@ -771,7 +771,7 @@ class RecordGenerator:
         if overload_stubs:
             self._gen_overload_subscript_operators(out, overload_stubs)
         elif len(getitem_impls) == 2:
-            # readonly_alt clone pair: generate const first, then mutable.
+            # auto_readonly clone pair: generate const first, then mutable.
             # The const clone generates only the const operator (not the dual non-const),
             # and the mutable clone generates only the mutable operator.
             const_impl = next((m for m in getitem_impls if m.is_readonly), None)
@@ -785,9 +785,9 @@ class RecordGenerator:
             self._gen_single_subscript_operator(out, getitem_impls[0])
 
     def _gen_overload_subscript_operators(self, out: TextIO, stubs: list) -> None:
-        """Generate operator[] for @overload __getitem__, handling readonly_alt clone pairs.
+        """Generate operator[] for @overload __getitem__, handling auto_readonly clone pairs.
 
-        Stubs may include mutable+const clone pairs (from @overload @readonly_alt).
+        Stubs may include mutable+const clone pairs (from @overload @auto_readonly).
         For each unique parameter type: if both mutable and const clones exist, generate
         const first then mutable; otherwise delegate to _gen_single_subscript_operator.
         """

@@ -1,4 +1,4 @@
-from tpy import Int32, copy, readonly_alt
+from tpy import Int32, copy, auto_readonly
 
 class Point:
     x: Int32
@@ -11,7 +11,7 @@ class Box[T]:
     _value: T
     def __init__(self, value: T) -> None:
         self._value = copy(value)
-    @readonly_alt
+    @auto_readonly
     def __deref__(self) -> T:
         return self._value
 

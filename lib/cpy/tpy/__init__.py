@@ -439,10 +439,10 @@ def pure(func):
     return func
 
 
-class readonly_alt:
-    """Decorator and type modifier for @readonly_alt methods.
+class auto_readonly:
+    """Decorator and type modifier for @auto_readonly methods.
 
-    Supports @readonly_alt decorator and readonly_alt[T] subscript syntax.
+    Supports @auto_readonly decorator and auto_readonly[T] subscript syntax.
     In CPython, both forms are no-ops: the decorator returns the function unchanged
     and the subscript returns the type argument unchanged.
     """

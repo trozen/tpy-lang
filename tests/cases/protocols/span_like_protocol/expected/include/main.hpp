@@ -24,15 +24,15 @@ struct Buffer {
     // 7:     def __init__(self) -> None:
     Buffer() : _data({1, 2, 3}) {}
 
-    //     @readonly_alt
-    // 11:     def __span__(self) -> Span[readonly_alt[Int32]]:
+    //     @auto_readonly
+    // 11:     def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<int32_t> __span__() {
         // 12:         return self._data
         return tpy::as_mut_span(this->_data);
     }
 
-    //     @readonly_alt
-    // 11:     def __span__(self) -> Span[readonly_alt[Int32]]:
+    //     @auto_readonly
+    // 11:     def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> __span__() const {
         // 12:         return self._data
         return tpy::as_span(this->_data);

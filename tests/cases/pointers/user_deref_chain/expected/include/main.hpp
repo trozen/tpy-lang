@@ -49,14 +49,14 @@ struct Ref {
     Ref() = default;
     explicit Ref(const Point& target) : _target(target) {}
 
-    //     @readonly_alt
+    //     @auto_readonly
     // 17:     def __deref__(self) -> Point:
     Point& __deref__() {
         // 18:         return self._target
         return this->_target;
     }
 
-    //     @readonly_alt
+    //     @auto_readonly
     // 17:     def __deref__(self) -> Point:
     const Point& __deref__() const {
         // 18:         return self._target
@@ -84,14 +84,14 @@ struct Box {
     Box() = default;
     explicit Box(const Ref& inner) : _inner(inner) {}
 
-    //     @readonly_alt
+    //     @auto_readonly
     // 25:     def __deref__(self) -> Ref:
     Ref& __deref__() {
         // 26:         return self._inner
         return this->_inner;
     }
 
-    //     @readonly_alt
+    //     @auto_readonly
     // 25:     def __deref__(self) -> Ref:
     const Ref& __deref__() const {
         // 26:         return self._inner

@@ -12,8 +12,8 @@ import dataclasses
 from typing import NoReturn, Optional
 
 from ..typesys import (
-    TpyType, NamedType, PtrType, OwnType, ReadonlyType, ReadonlyAltType, FinalType, SelfType,
-    strip_alt, apply_alt,
+    TpyType, NamedType, PtrType, OwnType, ReadonlyType, AutoReadonlyType, FinalType, SelfType,
+    strip_auto_readonly, apply_auto_readonly,
     TypeParamRef, OptionalType, VoidType, make_union, EnumType, TupleType,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BOOL, FLOAT, FLOAT32, BIGINT, SELF, SLICE, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo, TypeParamKind,
@@ -823,8 +823,8 @@ class Parser:
                 fields.append(FieldInfo(field_name, field_type, default_val, loc=self._loc(item)))
             elif isinstance(item, ast.FunctionDef):
                 parsed = self._parse_method(item, node.name, type_param_scope)
-                if parsed.readonly_alt:
-                    methods.extend(self._clone_readonly_alt(parsed))
+                if parsed.auto_readonly:
+                    methods.extend(self._clone_auto_readonly(parsed))
                 else:
                     methods.append(parsed)
             elif isinstance(item, ast.Pass):
@@ -1166,8 +1166,8 @@ class Parser:
         is_pure = False
         is_override = False
         is_overload_stub = False
-        readonly_alt = False
-        readonly_alt_dec = None
+        auto_readonly = False
+        auto_readonly_dec = None
         method_linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
         for dec in node.decorator_list:
@@ -1188,11 +1188,11 @@ class Parser:
                 is_overload_stub = True
             elif qname == "tpy.readonly":
                 is_readonly, readonly_opt_out = self._parse_readonly_arg(arg, dec)
-            elif qname == "tpy.readonly_alt":
+            elif qname == "tpy.auto_readonly":
                 if arg is not None:
-                    raise ParseError("@readonly_alt does not take arguments", dec)
-                readonly_alt = True
-                readonly_alt_dec = dec
+                    raise ParseError("@auto_readonly does not take arguments", dec)
+                auto_readonly = True
+                auto_readonly_dec = dec
             elif qname in self._METHOD_LINKAGE_MAP:
                 method_linkage = self._METHOD_LINKAGE_MAP[qname]
                 if isinstance(arg, str):
@@ -1205,13 +1205,13 @@ class Parser:
                 raise ParseError(f"Unknown decorator '{dec_name}' on method '{node.name}'", dec)
         if is_override and is_staticmethod:
             raise ParseError(f"@override cannot be combined with @staticmethod on method '{node.name}'", node)
-        if readonly_alt:
+        if auto_readonly:
             if is_readonly:
-                raise ParseError(f"@readonly_alt cannot be combined with @readonly on method '{node.name}'", readonly_alt_dec)
+                raise ParseError(f"@auto_readonly cannot be combined with @readonly on method '{node.name}'", auto_readonly_dec)
             if is_staticmethod:
-                raise ParseError(f"@readonly_alt cannot be combined with @staticmethod on method '{node.name}'", readonly_alt_dec)
+                raise ParseError(f"@auto_readonly cannot be combined with @staticmethod on method '{node.name}'", auto_readonly_dec)
             if node.name in ("__init__", "__del__"):
-                raise ParseError(f"@readonly_alt is not valid on '{node.name}'", readonly_alt_dec)
+                raise ParseError(f"@auto_readonly is not valid on '{node.name}'", auto_readonly_dec)
 
         # Extract method-level type parameters (e.g. def foo[T](self, x: T) -> T:)
         method_type_params: list[str] = []
@@ -1228,10 +1228,10 @@ class Parser:
                 else:
                     raise ParseError(f"Only simple type parameters supported, got {type(tp).__name__}", node)
 
-        if readonly_alt and method_type_params:
+        if auto_readonly and method_type_params:
             raise ParseError(
-                f"@readonly_alt on methods with method-level type parameters is not yet supported ('{node.name}')",
-                readonly_alt_dec
+                f"@auto_readonly on methods with method-level type parameters is not yet supported ('{node.name}')",
+                auto_readonly_dec
             )
 
         # Merge class-level and method-level type param scopes
@@ -1309,7 +1309,7 @@ class Parser:
             is_readonly=is_readonly,
             readonly_opt_out=readonly_opt_out,
             is_pure=is_pure,
-            readonly_alt=readonly_alt,
+            auto_readonly=auto_readonly,
             is_override=is_override,
             is_overload_stub=is_overload_stub,
             is_stub=is_overload_stub_body if is_overload_stub else is_stub,
@@ -1322,33 +1322,33 @@ class Parser:
         )
         return method
 
-    def _clone_readonly_alt(self, method: TpyFunction) -> list[TpyFunction]:
-        """Expand a @readonly_alt method into two ordinary overloads.
+    def _clone_auto_readonly(self, method: TpyFunction) -> list[TpyFunction]:
+        """Expand a @auto_readonly method into two ordinary overloads.
 
         Returns [mutable_overload, const_overload].
-        - Mutable: is_readonly=False, readonly_alt=False, return_type=strip_alt(original)
-        - Const:   is_readonly=True,  readonly_alt=False, return_type=apply_alt(original)
+        - Mutable: is_readonly=False, auto_readonly=False, return_type=strip_auto_readonly(original)
+        - Const:   is_readonly=True,  auto_readonly=False, return_type=apply_auto_readonly(original)
 
-        readonly_alt[T] nodes in the return type annotation specify where readonly is applied
-        in the const overload. Parts of the type without readonly_alt[T] are unchanged.
+        auto_readonly[T] nodes in the return type annotation specify where readonly is applied
+        in the const overload. Parts of the type without auto_readonly[T] are unchanged.
         For value types (copied on return) this is fine. For reference types (Span, Ptr, etc.)
-        the element type must be wrapped: Span[readonly_alt[T]], Ptr[readonly_alt[T]].
+        the element type must be wrapped: Span[auto_readonly[T]], Ptr[auto_readonly[T]].
         """
-        mutable_return = strip_alt(method.return_type)
-        const_return = apply_alt(method.return_type)
+        mutable_return = strip_auto_readonly(method.return_type)
+        const_return = apply_auto_readonly(method.return_type)
         mutable = dataclasses.replace(
             method,
             return_type=mutable_return,
             is_readonly=False,
-            readonly_alt=False,
-            is_alt_mutable_clone=True,
+            auto_readonly=False,
+            is_auto_readonly_mutable_clone=True,
         )
         const = dataclasses.replace(
             method,
             return_type=const_return,
             body=copy.deepcopy(method.body),
             is_readonly=True,
-            readonly_alt=False,
+            auto_readonly=False,
             defaults=copy.deepcopy(method.defaults),
         )
         return [mutable, const]
@@ -1380,8 +1380,8 @@ class Parser:
                 is_pure = True
             elif qname == "tpy.readonly":
                 is_readonly, readonly_opt_out = self._parse_readonly_arg(arg, dec)
-            elif qname == "tpy.readonly_alt":
-                raise ParseError("@readonly_alt is only valid on methods, not free functions", dec)
+            elif qname == "tpy.auto_readonly":
+                raise ParseError("@auto_readonly is only valid on methods, not free functions", dec)
             elif qname == "typing.overload":
                 if arg is not None:
                     raise ParseError("@overload does not take arguments", dec)
@@ -1564,9 +1564,9 @@ class Parser:
                     elif original == "readonly":
                         inner = self._parse_type_annotation(node.slice, type_param_scope)
                         return ReadonlyType(inner)
-                    elif original == "readonly_alt":
+                    elif original == "auto_readonly":
                         inner = self._parse_type_annotation(node.slice, type_param_scope)
-                        return ReadonlyAltType(inner)
+                        return AutoReadonlyType(inner)
                 elif module == "builtins":
                     if original == "tuple":
                         return self._parse_tuple_type(node, type_param_scope)

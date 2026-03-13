@@ -44,14 +44,14 @@ struct Box {
     Box() = default;
     explicit Box(const T& value) : _value(value) {}
 
-    //     @readonly_alt
+    //     @auto_readonly
     // 15:     def __deref__(self) -> T:
     tpy::val_or_ref_t<T> __deref__() {
         // 16:         return self._value
         return this->_value;
     }
 
-    //     @readonly_alt
+    //     @auto_readonly
     // 15:     def __deref__(self) -> T:
     tpy::val_or_cref_t<T> __deref__() const {
         // 16:         return self._value

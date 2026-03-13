@@ -30,29 +30,29 @@ struct Stack {
         this->_data.push_back(val);
     }
 
-    //     @readonly_alt
-    // 15:     def __span__(self) -> Span[readonly_alt[Int32]]:
+    //     @auto_readonly
+    // 15:     def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<int32_t> __span__() {
         // 16:         return self._data
         return tpy::as_mut_span(this->_data);
     }
 
-    //     @readonly_alt
-    // 15:     def __span__(self) -> Span[readonly_alt[Int32]]:
+    //     @auto_readonly
+    // 15:     def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> __span__() const {
         // 16:         return self._data
         return tpy::as_span(this->_data);
     }
 
-    //     @readonly_alt
-    // 19:     def __iter__(self) -> SpanIter[readonly_alt[Int32]]:
+    //     @auto_readonly
+    // 19:     def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
     tpy::SpanIter<int32_t> __iter__() {
         // 20:         return SpanIter(self.__span__())
         return tpy::SpanIter<int32_t>(__span__());
     }
 
-    //     @readonly_alt
-    // 19:     def __iter__(self) -> SpanIter[readonly_alt[Int32]]:
+    //     @auto_readonly
+    // 19:     def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
     tpy::SpanIter<const int32_t> __iter__() const {
         // 20:         return SpanIter(self.__span__())
         return tpy::SpanIter<const int32_t>(__span__());

@@ -1,1 +1,0 @@
-main.py:7: error: @readonly_alt is not valid on '__init__'

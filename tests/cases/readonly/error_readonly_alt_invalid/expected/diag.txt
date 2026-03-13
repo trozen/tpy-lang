@@ -1,1 +1,0 @@
-main.py:6: error: @readonly_alt cannot be combined with @readonly on method 'm1'

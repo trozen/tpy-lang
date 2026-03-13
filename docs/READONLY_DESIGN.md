@@ -6,7 +6,7 @@
 |-------|-------|--------|
 | **Phase 1** | `@readonly` decorator (function/method level), implicit readonly dunders, parameter-rooted mutation enforcement, local alias tracking, C++ const generation | Done |
 | **Phase 2** | `readonly[T]` type modifier, type-embedded enforcement, expression propagation, control-flow merging, dual const/non-const overloads | Done |
-| **Phase 3** | `@readonly_alt` decorator: dual C++ overloads (non-const + const) for user-defined methods; const return type specified via explicit `readonly_alt[T]` annotation on element types | Done |
+| **Phase 3** | `@auto_readonly` decorator: dual C++ overloads (non-const + const) for user-defined methods; const return type specified via explicit `auto_readonly[T]` annotation on element types | Done |
 | **Future** | `@readonly` desugaring, protocol-level readonly contracts, automatic inference from method body, escape analysis for sound narrowing | Planned |
 
 ## Problem Statement
@@ -336,38 +336,38 @@ Allowed:
    return types differ by constness (e.g. `self.__span__()` returning
    `Span[T]` vs `Span[readonly[T]]`), sema can only see one variant's types.
    This causes false type mismatches when the declared return type matches one
-   variant but not the other. `@readonly_alt` (Phase 3) addresses this.
+   variant but not the other. `@auto_readonly` (Phase 3) addresses this.
 
-## Phase 3 Implementation: `@readonly_alt`
+## Phase 3 Implementation: `@auto_readonly`
 
 ### Approach: parser-level cloning
 
-`@readonly_alt` is implemented by expanding each decorated method into
-two ordinary methods at parse time (`_clone_readonly_alt` in `parser.py`):
+`@auto_readonly` is implemented by expanding each decorated method into
+two ordinary methods at parse time (`_clone_auto_readonly` in `parser.py`):
 
-- **Mutable clone**: `is_readonly=False`, `is_propagate_mutable_clone=True`,
-  return type = `strip_propagate(original_return_type)`
+- **Mutable clone**: `is_readonly=False`, `is_alt_mutable_clone=True`,
+  return type = `strip_alt(original_return_type)`
 - **Const clone**: `is_readonly=True`, deep-copied body,
-  return type = `apply_propagate(original_return_type)`
+  return type = `apply_alt(original_return_type)`
 
-`strip_propagate` removes `readonly_alt[T]` annotation nodes.
-`apply_propagate` replaces them with `readonly[T]`. Both recurse structurally.
+`strip_alt` removes `auto_readonly[T]` annotation nodes.
+`apply_alt` replaces them with `readonly[T]`. Both recurse structurally.
 
-After cloning, both clones have `readonly_alt=False` and are treated as
+After cloning, both clones have `auto_readonly=False` and are treated as
 ordinary methods by all subsequent compiler passes (sema, codegen).
 
 ### Explicit return type annotations
 
 The const variant's return type is controlled entirely by explicit
-`readonly_alt[T]` annotations inside the return type:
+`auto_readonly[T]` annotations inside the return type:
 
 ```
-Span[readonly_alt[T]]  ->  mutable: Span[T],  const: Span[readonly[T]]
-Ptr[readonly_alt[T]]   ->  mutable: Ptr[T],   const: Ptr[readonly[T]]
-readonly_alt[T]        ->  mutable: T,         const: readonly[T]
+Span[auto_readonly[T]]  ->  mutable: Span[T],  const: Span[readonly[T]]
+Ptr[auto_readonly[T]]   ->  mutable: Ptr[T],   const: Ptr[readonly[T]]
+auto_readonly[T]        ->  mutable: T,         const: readonly[T]
 ```
 
-Parts of the return type without `readonly_alt[T]` are unchanged in
+Parts of the return type without `auto_readonly[T]` are unchanged in
 both clones. Value types (copied on return) need no annotation.
 
 ### Interaction with `IMPLICIT_READONLY_METHODS`
@@ -375,33 +375,33 @@ both clones. Value types (copied on return) need no annotation.
 Methods in `IMPLICIT_READONLY_METHODS` (`__getitem__`, `__span__`, `__deref__`,
 `__iter__`, `__len__`, `__eq__`, arithmetic operators, etc.) are treated as
 `@readonly` (single const overload) by default. Dual overloads require an
-explicit `@readonly_alt` decorator.
+explicit `@auto_readonly` decorator.
 
-When `@readonly_alt` is applied to a method in `IMPLICIT_READONLY_METHODS`,
+When `@auto_readonly` is applied to a method in `IMPLICIT_READONLY_METHODS`,
 the compiler generates dual overloads. Without it, only a single const overload
 is generated (which is correct for value-returning methods like `__len__` and
 `__eq__`, but not for reference-returning methods like `__getitem__ -> T`).
 
-The general rule: apply `@readonly_alt` whenever the method returns a
+The general rule: apply `@auto_readonly` whenever the method returns a
 reference type and you want the const overload to return a const variant. Mark
-the parts of the return type that should become const with `readonly_alt[T]`:
-`Span[readonly_alt[T]]`, `Ptr[readonly_alt[T]]`, `readonly_alt[T]`
+the parts of the return type that should become const with `auto_readonly[T]`:
+`Span[auto_readonly[T]]`, `Ptr[auto_readonly[T]]`, `auto_readonly[T]`
 for a bare type parameter. Value types (copied on return) need no annotation.
 
 ### Interaction with `@overload`
 
-`@propagate_readonly` applies per-overload. When a method has multiple
+`@auto_readonly` applies per-overload. When a method has multiple
 `@overload` stubs, only overloads whose return type benefits from propagation
 need dual treatment. Example:
 
 ```python
 class ArrayList[T, N: int]:
     @overload
-    @readonly_alt
+    @auto_readonly
     def __getitem__(self, index: Int32) -> T: ...                       # T is value-copied; no annotation needed
     @overload
-    @readonly_alt
-    def __getitem__(self, index: slice) -> Span[readonly_alt[T]]: ... # Span element becomes const
+    @auto_readonly
+    def __getitem__(self, index: slice) -> Span[auto_readonly[T]]: ... # Span element becomes const
 ```
 
 Both overloads get dual analysis. The shared implementation body is analyzed
@@ -416,9 +416,9 @@ independently.
 
 ### Restrictions
 
-- `@propagate_readonly` on `__init__`, `@staticmethod`, or `@classmethod` is
+- `@auto_readonly` on `__init__`, `@staticmethod`, or `@classmethod` is
   an error (no `self` to propagate through)
-- `@propagate_readonly` + `@readonly` on the same method is an error (they
+- `@auto_readonly` + `@readonly` on the same method is an error (they
   are different concepts)
 - `@pure` remains separate (single const overload, no propagation)
 

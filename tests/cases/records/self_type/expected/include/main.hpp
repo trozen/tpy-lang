@@ -46,7 +46,7 @@ struct Builder {
         return (tpy::add_check<int32_t>(this->value, other.value));
     }
 
-    //     @readonly_alt
+    //     @auto_readonly
     // 25:     def find_match(self, target: Int32) -> Optional[Self]:
     Builder* find_match(int32_t target) {
         // 26:         if self.value == target:
@@ -58,7 +58,7 @@ struct Builder {
         return nullptr;
     }
 
-    //     @readonly_alt
+    //     @auto_readonly
     // 25:     def find_match(self, target: Int32) -> Optional[Self]:
     const Builder* find_match(int32_t target) const {
         // 26:         if self.value == target:

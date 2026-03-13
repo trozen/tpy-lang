@@ -696,7 +696,7 @@ Types that implement `__deref__() -> T` conform to the `Deref[T]` protocol and s
 `Ptr[T]` and `Ptr[readonly[T]]` conform to `Deref[T]`. User-defined types can also implement `__deref__`:
 
 ```python
-from tpy import Int32, copy, readonly_alt
+from tpy import Int32, copy, auto_readonly
 
 class Point:
     x: Int32
@@ -711,7 +711,7 @@ class Ref:
     _target: Point
     def __init__(self, target: Point) -> None:
         self._target = copy(target)
-    @readonly_alt
+    @auto_readonly
     def __deref__(self) -> Point:
         return self._target
 
@@ -2359,26 +2359,26 @@ for x in buf:       # compiles to: for (int32_t x : buf.__span__()) { ... }
 readonly contexts (e.g., inside `__getitem__` which is also implicitly readonly). This enables
 patterns like `self.__span__()[start:stop]` inside overloaded `__getitem__(slice)`.
 
-**Dual overloads**: When `__span__` is decorated with `@readonly_alt`, the compiler
+**Dual overloads**: When `__span__` is decorated with `@auto_readonly`, the compiler
 generates two C++ overloads -- a non-const overload (mutable body) and a const overload
-(const body). The const return type is specified via explicit `readonly_alt[T]`
-annotation on the element type: `Span[readonly_alt[T]]` produces `std::span<T>` for
+(const body). The const return type is specified via explicit `auto_readonly[T]`
+annotation on the element type: `Span[auto_readonly[T]]` produces `std::span<T>` for
 the mutable overload and `std::span<const T>` for the const overload. This applies uniformly
 to all reference types (`Span`, `Ptr`, `SpanIter`, user-defined generics) -- no special cases.
 When `__span__` returns `Span[readonly[T]]`, only a single const overload is generated (no
-`@readonly_alt` needed). The same pattern applies to `__iter__()`.
+`@auto_readonly` needed). The same pattern applies to `__iter__()`.
 
-**Required decorator**: `@readonly_alt` must be applied explicitly to methods that need
+**Required decorator**: `@auto_readonly` must be applied explicitly to methods that need
 dual C++ overloads. The canonical span-backed type pattern:
 ```python
-from tpy import Span, SpanIter, readonly_alt
+from tpy import Span, SpanIter, auto_readonly
 
 class MyType:
-    @readonly_alt
-    def __span__(self) -> Span[readonly_alt[T]]: ...
+    @auto_readonly
+    def __span__(self) -> Span[auto_readonly[T]]: ...
 
-    @readonly_alt
-    def __iter__(self) -> SpanIter[readonly_alt[T]]:
+    @auto_readonly
+    def __iter__(self) -> SpanIter[auto_readonly[T]]:
         return SpanIter(self.__span__())
 ```
 

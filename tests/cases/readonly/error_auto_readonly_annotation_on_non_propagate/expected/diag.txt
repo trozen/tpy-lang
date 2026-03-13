@@ -1,0 +1,1 @@
+main.py:10: error: 'auto_readonly[T]' in return type is only allowed on @auto_readonly methods ('Buffer.as_span')

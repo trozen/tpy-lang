@@ -645,12 +645,12 @@ class TpyFunction:
     is_method: bool = False
     is_staticmethod: bool = False
     is_consuming: bool = False
-    # Transient: True only during parsing for @readonly_alt methods.
-    # After _clone_readonly_alt runs, both clones have readonly_alt=False.
-    readonly_alt: bool = False
-    # Set on the mutable clone produced by _clone_readonly_alt.
+    # Transient: True only during parsing for @auto_readonly methods.
+    # After _clone_auto_readonly runs, both clones have auto_readonly=False.
+    auto_readonly: bool = False
+    # Set on the mutable clone produced by _clone_auto_readonly.
     # Used instead of params-list identity to detect mutable+const clone pairs.
-    is_alt_mutable_clone: bool = False
+    is_auto_readonly_mutable_clone: bool = False
     linkage: FunctionLinkage = FunctionLinkage.DEFAULT
     native_name: str | None = None
     is_stub: bool = False

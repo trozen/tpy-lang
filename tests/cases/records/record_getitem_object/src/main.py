@@ -1,4 +1,4 @@
-from tpy import Int32, readonly_alt
+from tpy import Int32, auto_readonly
 
 class Point:
     x: Int32
@@ -17,7 +17,7 @@ class PointList:
     def __len__(self) -> Int32:
         return len(self.data)
 
-    @readonly_alt
+    @auto_readonly
     def __getitem__(self, index: Int32) -> Point:
         return self.data[index]
 

@@ -1,6 +1,6 @@
 # Test implicit coercion from type with __span__() to Span parameters.
 # Covers both mutable and readonly __span__ returns.
-from tpy import Int32, Span, readonly, readonly_alt
+from tpy import Int32, Span, readonly, auto_readonly
 
 class ROBuffer:
     _data: list[Int32]
@@ -17,8 +17,8 @@ class MutBuffer:
     def __init__(self) -> None:
         self._data = [10, 20, 30]
 
-    @readonly_alt
-    def __span__(self) -> Span[readonly_alt[Int32]]:
+    @auto_readonly
+    def __span__(self) -> Span[auto_readonly[Int32]]:
         return self._data
 
 def sum_ro(items: Span[readonly[Int32]]) -> Int32:
