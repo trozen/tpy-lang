@@ -900,15 +900,15 @@ class StatementGenerator:
             self.ctx.pointer_locals.add(stmt.name)
             return self._gen_dynamic_protocol_init(stmt.name, target_type, stmt.init, indent)
 
-        # TypeParamRef variable initialized from a user method call: use tpy::val_or_ref_t<T>
-        # (or tpy::val_or_cref_t<T> for readonly methods). This expands to T for value types
-        # and T& (or const T&) for non-value types, matching the C++ return type semantics.
-        # Only for non-reassigned, non-hoisted vars -- rebinding a val_or_ref_t alias is
-        # not possible in C++ (references can't be rebound), so reassigned vars fall through
-        # to the rvalue/value-copy path instead.
+        # TypeParamRef variable initialized from a user method or free function call: use
+        # tpy::val_or_ref_t<T> (or tpy::val_or_cref_t<T> for readonly methods). This expands
+        # to T for value types and T& (or const T&) for non-value types, matching the C++
+        # return type semantics. Only for non-reassigned, non-hoisted vars -- rebinding a
+        # val_or_ref_t alias is not possible in C++ (references can't be rebound), so
+        # reassigned vars fall through to the rvalue/value-copy path instead.
         if (isinstance(target_type, TypeParamRef) and not target_type.is_value_type()
                 and stmt.init is not None
-                and isinstance(stmt.init, TpyMethodCall)
+                and isinstance(stmt.init, (TpyMethodCall, TpyCall))
                 and stmt.name not in self.ctx.reassigned_vars
                 and stmt.name not in self.ctx.hoisted_vars
                 and stmt.name not in self.ctx.move_through_vars):
