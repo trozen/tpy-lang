@@ -57,22 +57,26 @@ def scan_reassigned_vars(stmts: list[TpyStmt],
 def _expr_to_narrowing_key(expr: TpyExpr) -> str | None:
     """Convert an expression to a narrowing key string.
 
-    Returns a simple name for TpyName, or a dotted path for single-level
-    TpyFieldAccess (e.g. "obj.field"). Returns None for unsupported expressions.
+    Returns a simple name for TpyName, or a dotted path for multi-level
+    TpyFieldAccess (e.g. "obj.field", "obj.inner.field").
+    Returns None for unsupported expressions.
     """
     if isinstance(expr, TpyName):
         return expr.name
-    if isinstance(expr, TpyFieldAccess) and isinstance(expr.obj, TpyName):
-        return f"{expr.obj.name}.{expr.field}"
+    if isinstance(expr, TpyFieldAccess):
+        obj_key = _expr_to_narrowing_key(expr.obj)
+        if obj_key is not None:
+            return f"{obj_key}.{expr.field}"
     return None
 
 
 def match_is_none(expr: TpyExpr) -> tuple[str, bool] | None:
     """Match `v is None`, `v is not None`, `None is v`, `None is not v`.
 
-    Also matches single-level field access: `obj.field is None` etc.
+    Also matches dotted field access at any depth: `obj.field is None`,
+    `obj.a.b is None`, etc.
     Returns (key, is_not_none) or None if the pattern doesn't match.
-    The key is a simple name or a dotted path ("obj.field").
+    The key is a simple name or a dotted path ("obj.field", "obj.a.b").
     """
     if not isinstance(expr, TpyBinOp) or expr.op not in ("is", "is not"):
         return None

@@ -1,0 +1,1 @@
+main.py:17: error: Type mismatch in variable 'x': expected int, got int | None

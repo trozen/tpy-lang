@@ -19,7 +19,7 @@ from ..parse import (
     TpyIntLiteral, TpyCoerce,
 )
 from .value_range import ValueRange
-from ..prescan import match_is_none
+from ..prescan import match_is_none, _expr_to_narrowing_key
 from ..namespace import BindingKind
 from .diagnostics import OPTIONAL_VALUE_TRUTHINESS_WARNING
 
@@ -60,15 +60,14 @@ class NarrowingTracker:
         return self.ctx.current_scope.lookup(name)
 
     def _resolve_field_path_type(self, key: str) -> TpyType | None:
-        """Resolve the declared type for a dotted field path like 'obj.field'."""
-        parts = key.split(".", 1)
-        if len(parts) != 2:
+        """Resolve the declared type for a dotted field path like 'obj.field' or 'obj.a.b'."""
+        parts = key.split(".")
+        if len(parts) < 2:
             return None
-        obj_name, field_name = parts
-        obj_type = self.declared_type_for_name(obj_name)
-        if obj_type is None:
-            return None
-        return self.declared_type_for_expr(TpyFieldAccess(TpyName(obj_name), field_name))
+        expr: TpyExpr = TpyName(parts[0])
+        for field in parts[1:]:
+            expr = TpyFieldAccess(expr, field)
+        return self.declared_type_for_expr(expr)
 
     def effective_union_type(self, name: str) -> TpyType | None:
         """Get effective type for isinstance/narrowing, falling through assignment narrowing.
@@ -197,6 +196,15 @@ class NarrowingTracker:
             return ReadonlyType(typ.wrapped.inner)
         return typ.inner
 
+    def _effective_type_for_key(self, key: str) -> TpyType | None:
+        """Get the effective type for a narrowing key (name or dotted path)."""
+        effective = self.ctx.narrowed_types.get(key)
+        if effective is not None:
+            return effective
+        if "." in key:
+            return self._resolve_field_path_type(key)
+        return self.declared_type_for_name(key)
+
     # -- Type narrowing (isinstance, is None, truthiness) ---------------
 
     def _isinstance_facts(
@@ -228,12 +236,7 @@ class NarrowingTracker:
         match = match_is_none(expr)
         if match is not None:
             key, is_not_none = match
-            effective = self.ctx.narrowed_types.get(key)
-            if effective is None:
-                if "." in key:
-                    effective = self._resolve_field_path_type(key)
-                else:
-                    effective = self.declared_type_for_name(key)
+            effective = self._effective_type_for_key(key)
             if isinstance(effective, UnionType) and effective.has_none_member():
                 non_none_type, none_type = union_none_narrow(effective)
                 if is_not_none:
@@ -247,14 +250,14 @@ class NarrowingTracker:
                 else:
                     return {}, {key: inner_type}
 
-        # Truthiness on Optional: `if x:` narrows to inner type in true branch
-        if isinstance(expr, TpyName):
-            effective = self.ctx.narrowed_types.get(expr.name)
-            if effective is None:
-                effective = self.declared_type_for_name(expr.name)
-            if self._is_optional_type(effective):
-                inner_type = self._optional_inner_type(effective)
-                return {expr.name: inner_type}, {}
+        # Truthiness on Optional: `if x:` / `if obj.field:` narrows in true branch
+        if isinstance(expr, (TpyName, TpyFieldAccess)):
+            key = _expr_to_narrowing_key(expr)
+            if key is not None:
+                effective = self._effective_type_for_key(key)
+                if self._is_optional_type(effective):
+                    inner_type = self._optional_inner_type(effective)
+                    return {key: inner_type}, {}
 
         if isinstance(expr, TpyUnaryOp) and expr.op == "!":
             true_facts, false_facts = self._isinstance_facts(expr.operand)
@@ -474,11 +477,18 @@ class NarrowingTracker:
     # -- Truthiness warnings -------------------------------------------
 
     def _truthy_names(self, expr: TpyExpr) -> set[str]:
-        """Collect Optional variable names used in truthiness contexts."""
+        """Collect Optional variable/field keys used in truthiness contexts."""
         if isinstance(expr, TpyName):
             declared = self.declared_type_for_name(expr.name)
             if self._is_optional_type(declared):
                 return {expr.name}
+            return set()
+        if isinstance(expr, TpyFieldAccess):
+            key = _expr_to_narrowing_key(expr)
+            if key is not None:
+                declared = self._resolve_field_path_type(key)
+                if self._is_optional_type(declared):
+                    return {key}
             return set()
         if isinstance(expr, TpyUnaryOp) and expr.op == "!":
             return self._truthy_names(expr.operand)
@@ -488,13 +498,16 @@ class NarrowingTracker:
 
     def condition_truthy_value_optional_names(self, condition: TpyExpr) -> set[str]:
         """Get value-optionals used via truthiness in a condition."""
-        names = self._truthy_names(condition)
+        keys = self._truthy_names(condition)
         result: set[str] = set()
-        for name in names:
-            declared = self.declared_type_for_name(name)
+        for key in keys:
+            if "." in key:
+                declared = self._resolve_field_path_type(key)
+            else:
+                declared = self.declared_type_for_name(key)
             inner = unwrap_readonly(declared) if declared else None
             if isinstance(inner, OptionalType) and inner.inner.is_value_type():
-                result.add(name)
+                result.add(key)
         return result
 
     def warn_truthy_value_optionals(self, condition: TpyExpr) -> None:
@@ -541,6 +554,23 @@ class NarrowingTracker:
     def _invalidate_field_facts(self, name: str) -> None:
         """Remove all field narrowing facts rooted at the given variable name."""
         prefix = name + "."
+        stale = [k for k in self.ctx.narrowed_types if k.startswith(prefix)]
+        for k in stale:
+            del self.ctx.narrowed_types[k]
+
+    def invalidate_for_field_write(self, target: TpyExpr) -> None:
+        """Invalidate narrowing facts for sub-paths when a field is written.
+
+        When `obj.inner = ...` is written, clears narrowing facts for deeper
+        paths like `obj.inner.value` (the new object may have different field
+        values). Does NOT clear the fact for the written field itself -- that
+        is managed by the enclosing `is not None` guard (the write doesn't
+        change whether the field was proven non-None by a condition check).
+        """
+        key = _expr_to_narrowing_key(target)
+        if key is None or "." not in key:
+            return
+        prefix = key + "."
         stale = [k for k in self.ctx.narrowed_types if k.startswith(prefix)]
         for k in stale:
             del self.ctx.narrowed_types[k]

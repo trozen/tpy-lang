@@ -1,0 +1,2 @@
+main.py:12: warning: copies Inner into field; use copy() to make this explicit
+main.py:20: warning: Truthiness check on optional value may also exclude falsy non-None values; use 'is not None' for None-only checks. (variable 'o.inner.value')

@@ -2643,6 +2643,8 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Guarded paths (`if x is not None`) and `assert x is not None` narrow `x` to `T`
   - Returning narrowed optional values: `if x is not None: return x` correctly unwraps to `T`
   - Field narrowing: `if obj.field is not None:` narrows `obj.field` to `T` in the guarded scope
+  - Nested field narrowing: `if obj.inner.field is not None:` narrows through multi-level field access
+  - Field truthiness narrowing: `if obj.field:` narrows optional fields (with value-truthiness warning for value types)
   - Field narrowing facts are invalidated when the root object is passed by mutable reference to a function call
   - Functions returning `T | None` return `T*` in C++
 - **Working**: `Optional[T]` from `typing` is equivalent to `T | None` at parse time

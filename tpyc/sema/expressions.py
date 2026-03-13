@@ -33,6 +33,7 @@ from ..parse import (
 )
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
+from ..prescan import _expr_to_narrowing_key
 from .diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .narrowing import NarrowingTracker
 from .numeric_lattice import widen_numeric_types
@@ -1164,8 +1165,8 @@ class ExpressionAnalyzer:
                     elif not result.is_value_type():
                         result = ReadonlyType(unwrap_readonly(result))
                 # Apply field path narrowing (e.g. after `if obj.field is not None:`)
-                if isinstance(expr.obj, TpyName):
-                    field_key = f"{expr.obj.name}.{expr.field}"
+                field_key = _expr_to_narrowing_key(expr)
+                if field_key is not None:
                     narrowed = self.ctx.narrowed_types.get(field_key)
                     if narrowed is not None:
                         result = narrowed
