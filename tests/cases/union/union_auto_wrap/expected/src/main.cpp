@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 12: def process(v: A | B) -> None:
-void process(std::variant<A, B>& v) {
+void process(const std::variant<A, B>& v) {
     // 13:     if isinstance(v, A):
     if (std::holds_alternative<A>(v)) {
         auto& __v = std::get<A>(v);

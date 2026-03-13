@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 9: def check(v: Int32 | Cat | None) -> str:
-std::string check(std::variant<std::monostate, Cat, int32_t>& v) {
+std::string check(const std::variant<std::monostate, Cat, int32_t>& v) {
     // 10:     if None is v:
     if ((std::holds_alternative<std::monostate>(v))) {
         // 11:         return "none"
@@ -22,7 +22,7 @@ std::string check(std::variant<std::monostate, Cat, int32_t>& v) {
 }
 
 // 16: def check_not(v: Int32 | Cat | None) -> str:
-std::string check_not(std::variant<std::monostate, Cat, int32_t>& v) {
+std::string check_not(const std::variant<std::monostate, Cat, int32_t>& v) {
     // 17:     if None is not v:
     if ((!std::holds_alternative<std::monostate>(v))) {
         // 18:         if isinstance(v, Int32):

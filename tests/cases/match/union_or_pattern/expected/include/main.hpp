@@ -11,8 +11,8 @@ struct Bird;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string describe(std::variant<Bird, Cat, Dog>& a);
-std::string with_default(std::variant<Bird, Cat, Dog>& a);
+std::string describe(const std::variant<Bird, Cat, Dog>& a);
+std::string with_default(const std::variant<Bird, Cat, Dog>& a);
 void main();
 
 // @dataclass

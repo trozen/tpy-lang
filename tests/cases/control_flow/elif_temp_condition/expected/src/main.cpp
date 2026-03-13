@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 5: def has_items(items: list[Int32]) -> bool:
-bool has_items(std::vector<int32_t>& items) {
+bool has_items(const std::vector<int32_t>& items) {
     // 6:     return len(items) > 0
     return (tpy::__len__(items) > 0);
 }

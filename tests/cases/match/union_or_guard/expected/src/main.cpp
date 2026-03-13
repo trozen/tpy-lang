@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 16: def describe(a: Dog | Cat | Bird, verbose: bool) -> str:
-std::string describe(std::variant<Bird, Cat, Dog>& a, bool verbose) {
+std::string describe(const std::variant<Bird, Cat, Dog>& a, bool verbose) {
     // 17:     match a:
     auto& __match_subject = a;
     // 18:         case Dog() | Cat() if verbose:
@@ -33,7 +33,7 @@ __match_end_1:;
 }
 
 // 26: def find(a: Dog | Cat | Bird) -> str:
-std::string find(std::variant<Bird, Cat, Dog>& a) {
+std::string find(const std::variant<Bird, Cat, Dog>& a) {
     // 27:     match a:
     auto& __match_subject = a;
     // 28:         case Dog(name=n) | Cat(name=n) if n == "Rex":

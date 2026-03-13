@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 12: def test_and_rhs(v: A | B) -> int:
-tpy::BigInt test_and_rhs(std::variant<A, B>& v) {
+tpy::BigInt test_and_rhs(const std::variant<A, B>& v) {
     // 13:     if isinstance(v, A) and v.x > 0:
     if ((std::holds_alternative<A>(v) && (std::get<A>(v).x > 0))) {
         auto& __v = std::get<A>(v);
@@ -17,7 +17,7 @@ tpy::BigInt test_and_rhs(std::variant<A, B>& v) {
 }
 
 // 17: def test_and_true(v: A | B) -> int:
-tpy::BigInt test_and_true(std::variant<A, B>& v) {
+tpy::BigInt test_and_true(const std::variant<A, B>& v) {
     // 18:     if isinstance(v, A) and True:
     if ((std::holds_alternative<A>(v) && true)) {
         auto& __v = std::get<A>(v);
@@ -29,13 +29,13 @@ tpy::BigInt test_and_true(std::variant<A, B>& v) {
 }
 
 // 22: def test_or_rhs(v: A | B) -> bool:
-bool test_or_rhs(std::variant<A, B>& v) {
+bool test_or_rhs(const std::variant<A, B>& v) {
     // 23:     return isinstance(v, A) or v.y > 0
     return (std::holds_alternative<A>(v) || (std::get<B>(v).y > 0));
 }
 
 // 25: def test_negation(v: A | B) -> int:
-tpy::BigInt test_negation(std::variant<A, B>& v) {
+tpy::BigInt test_negation(const std::variant<A, B>& v) {
     // 26:     if not isinstance(v, A):
     if ((!(std::holds_alternative<A>(v)))) {
         auto& __v = std::get<B>(v);
@@ -50,7 +50,7 @@ tpy::BigInt test_negation(std::variant<A, B>& v) {
 }
 
 // 31: def test_multi_var(a: A | B, b: A | B) -> int:
-tpy::BigInt test_multi_var(std::variant<A, B>& a, std::variant<A, B>& b) {
+tpy::BigInt test_multi_var(const std::variant<A, B>& a, const std::variant<A, B>& b) {
     // 32:     if isinstance(a, A) and isinstance(b, B):
     if ((std::holds_alternative<A>(a) && std::holds_alternative<B>(b))) {
         auto& __a = std::get<A>(a);

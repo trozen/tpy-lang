@@ -33,6 +33,10 @@
 |---|---------|--------|--------|---------|
 | 6.6 | Span/StrView slice borrow tracking | S | Done | [6](#6-intra-function-borrow-checking) |
 | 8a | Parameter mutation inference | M | Done | [8](#8-cross-function-borrow-inference) |
+| 8a.2 | Track address-taking (`Ptr(param)`) in Phase 1 -- enables `const T&` for record params | S | Done | [8](#8-cross-function-borrow-inference) |
+| 8a.3 | Track tuple ref packing (`return (x, param)` where tuple slot is `T&`) in Phase 1 -- same goal as 8a.2 | S | Done | [8](#8-cross-function-borrow-inference) |
+| 8a.4 | `const T&` for protocol-typed params: thread `mutated_params` through `gen_params_with_protocols` | S | Not started | [8](#8-cross-function-borrow-inference) |
+| 8a.5 | Precise element-ref mutation: defer marking source container until borrower is actually written (currently conservative -- any element ref marks container as mutated) | M | Not started | [8](#8-cross-function-borrow-inference) |
 | 8b | Return-value borrow contracts | L | Not started | [8](#8-cross-function-borrow-inference) |
 | 7b | `@pure` enforcement -- or drop `@pure` (see [note](#7-pure-annotation)) | M | Deferred | [7](#7-pure-annotation) |
 | 6c+ | String view extension (list, dict) | M | Done | [6c](#6c-string-view-extension-to-containers) |
@@ -561,6 +565,18 @@ propagation):
    - Augmented assignments: `param.field += ...` (root is param)
    - Deletes: `del param[i]` (root is param)
    - Plain name rebinding (`param = x`) is NOT mutation -- it just rebinds the local.
+
+   **Additional patterns that require mutable ref (all now tracked)**:
+   - **Address-taking**: `Ptr(param)` and `Ptr(param.field)` / `Ptr(items[i])` require
+     `T&` because `&param` yields `T*`, not `const T*`. (8a.2 -- Done)
+   - **Tuple ref packing**: `return (x, param)` where the tuple slot type is `T&`
+     (e.g. `tuple[int, Point]` with a reference element) requires `T&` at the
+     source. (8a.3 -- Done)
+   - **`T -> Optional[T]` coercion** for pointer-repr optionals: codegen takes `&(param)`,
+     so `param` must be `T&`.
+   - **Mutable Span coercion**: `Array -> Span[T]` calls `as_mut_span()` requiring
+     non-const source.
+   All are tracked in Phase 1 via `addr_taken_roots()` (see `context.py`).
 
 2. **Call edges** (`call_edges: list[CallEdge]`): For each call to a user function
    or method, record which caller parameter flows into which callee parameter:

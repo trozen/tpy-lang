@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 18: def print_point(p: Point) -> None:
-void print_point(Point& p) {
+void print_point(const Point& p) {
     // 19:     print(p.x, p.y)
     std::cout << p.x << " " << p.y << "\n";
 }

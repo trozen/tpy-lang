@@ -9,8 +9,8 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void opaque(Box& b);
-int32_t use_after_call(Box& b);
+void opaque(const Box& b);
+int32_t use_after_call(const Box& b);
 
 // 4: class Box:
 struct Box {

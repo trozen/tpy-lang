@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 24: def describe(s: Circle | Rect | Triangle) -> None:
-void describe(std::variant<Circle, Rect, Triangle>& s) {
+void describe(const std::variant<Circle, Rect, Triangle>& s) {
     // 25:     i: Int32 = 0
     int32_t i = 0;
     // 26:     while i < 2:

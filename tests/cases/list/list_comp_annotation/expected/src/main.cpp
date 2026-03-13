@@ -24,7 +24,7 @@ std::vector<tpy::BigInt> make_bigints() {
 }
 
 // 8: def accept_wide(items: list[Int64]) -> None:
-void accept_wide(std::vector<int64_t>& items) {
+void accept_wide(const std::vector<int64_t>& items) {
     // 9:     print(items)
     std::cout << tpy::ListPrinter(items) << "\n";
 }

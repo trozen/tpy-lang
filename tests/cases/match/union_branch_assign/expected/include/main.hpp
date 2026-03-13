@@ -10,7 +10,7 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t describe(std::variant<Cat, Dog>& a);
+int32_t describe(const std::variant<Cat, Dog>& a);
 void main();
 
 // 4: class Dog:

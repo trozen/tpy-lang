@@ -21,7 +21,7 @@ void takes_list_int32(std::vector<int32_t>& x) {
 }
 
 // 11: def takes_array(x: Array[Int32, 3]) -> None:
-void takes_array(std::array<int32_t, 3>& x) {
+void takes_array(const std::array<int32_t, 3>& x) {
     // 12:     print(x[0])
     std::cout << tpy::__getitem__(x, 0) << "\n";
 }

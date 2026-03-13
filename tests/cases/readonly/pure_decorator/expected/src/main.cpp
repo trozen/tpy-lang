@@ -13,7 +13,7 @@ int32_t add_values(int32_t a, int32_t b) {
 
 // @pure
 // 31: def compute(p: Point) -> Int32:
-int32_t compute(Point& p) {
+int32_t compute(const Point& p) {
     // 32:     return p.magnitude_sq() + add_values(p.x, p.y)
     return (tpy::add_check<int32_t>(p.magnitude_sq(), add_values(p.x, p.y)));
 }

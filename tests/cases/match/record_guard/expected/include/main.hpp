@@ -9,8 +9,8 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string guarded(Point& p);
-std::string or_pattern(Point& p);
+std::string guarded(const Point& p);
+std::string or_pattern(const Point& p);
 void main();
 
 // @dataclass

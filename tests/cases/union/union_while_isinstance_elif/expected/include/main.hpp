@@ -11,7 +11,7 @@ struct Triangle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void describe(std::variant<Circle, Rect, Triangle>& s);
+void describe(const std::variant<Circle, Rect, Triangle>& s);
 void main();
 
 // 4: class Circle:

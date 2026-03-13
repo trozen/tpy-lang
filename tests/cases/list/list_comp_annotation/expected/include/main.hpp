@@ -8,7 +8,7 @@ namespace tpy_user::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 std::vector<tpy::BigInt> make_bigints();
-void accept_wide(std::vector<int64_t>& items);
+void accept_wide(const std::vector<int64_t>& items);
 void main();
 
 void __tpy_init();

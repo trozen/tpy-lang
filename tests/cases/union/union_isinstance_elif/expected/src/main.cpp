@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 21: def area(s: Circle | Rect | Triangle) -> float:
-double area(std::variant<Circle, Rect, Triangle>& s) {
+double area(const std::variant<Circle, Rect, Triangle>& s) {
     // 22:     if isinstance(s, Circle):
     if (std::holds_alternative<Circle>(s)) {
         auto& __s = std::get<Circle>(s);

@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 14: def get_positive_radius(s: Circle | Rect) -> Int32:
-int32_t get_positive_radius(std::variant<Circle, Rect>& s) {
+int32_t get_positive_radius(const std::variant<Circle, Rect>& s) {
     // 15:     assert isinstance(s, Circle) and s.radius > Int32(0)
     if (!((std::holds_alternative<Circle>(s) && (std::get<Circle>(s).radius > 0)))) tpy::tpy_panic("assertion failed");
     auto& __s = std::get<Circle>(s);

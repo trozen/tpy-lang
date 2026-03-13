@@ -6,7 +6,7 @@ namespace tpy_user::main {
 
 // # Test truthiness for built-in container types (list, str) in if/not/and/or
 // 3: def check_list(items: list[int], empty: list[int]) -> None:
-void check_list(std::vector<tpy::BigInt>& items, std::vector<tpy::BigInt>& empty) {
+void check_list(const std::vector<tpy::BigInt>& items, const std::vector<tpy::BigInt>& empty) {
     // 4:     if items:
     if ((tpy::__len__(items) != 0)) {
         // 5:         print("list truthy")
@@ -34,7 +34,7 @@ void check_str(std::string_view s, std::string_view e) {
 }
 
 // 15: def check_and_or(items: list[int], empty: list[int]) -> None:
-void check_and_or(std::vector<tpy::BigInt>& items, std::vector<tpy::BigInt>& empty) {
+void check_and_or(const std::vector<tpy::BigInt>& items, const std::vector<tpy::BigInt>& empty) {
     // 16:     if items and not empty:
     if (((tpy::__len__(items) != 0) && (!((tpy::__len__(empty) != 0))))) {
         // 17:         print("and/or works")

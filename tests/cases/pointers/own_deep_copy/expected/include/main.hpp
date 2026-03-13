@@ -10,7 +10,7 @@ struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::vector<Point> take_items(Container& c);
+std::vector<Point> take_items(const Container& c);
 void main();
 
 // 9: class Point:

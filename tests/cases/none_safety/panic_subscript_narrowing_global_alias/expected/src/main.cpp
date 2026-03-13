@@ -24,7 +24,7 @@ void mut() {
 }
 
 // 16: def f(items: list[Int32 | None]) -> None:
-void f(std::vector<std::optional<int32_t>>& items) {
+void f(const std::vector<std::optional<int32_t>>& items) {
     // 17:     if items[0] is not None:
     if ((tpy::__getitem__(items, 0).has_value())) {
         // 18:         mut()

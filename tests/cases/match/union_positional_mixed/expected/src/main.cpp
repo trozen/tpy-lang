@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 14: def describe(s: Point | Label) -> None:
-void describe(std::variant<Label, Point>& s) {
+void describe(const std::variant<Label, Point>& s) {
     // 15:     match s:
     auto& __match_subject = s;
     switch (__match_subject.index()) {

@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 13: def sum_array(arr: Array[Int32, 3]) -> Int32:
-int32_t sum_array(std::array<int32_t, 3>& arr) {
+int32_t sum_array(const std::array<int32_t, 3>& arr) {
     // 14:     return arr[0] + arr[1] + arr[2]
     return (tpy::add_check<int32_t>((tpy::add_check<int32_t>(tpy::__getitem__(arr, 0), tpy::__getitem__(arr, 1))), tpy::__getitem__(arr, 2)));
 }

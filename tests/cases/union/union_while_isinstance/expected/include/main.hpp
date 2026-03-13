@@ -10,7 +10,7 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void drain_circles(std::variant<Circle, Rect>& s);
+void drain_circles(const std::variant<Circle, Rect>& s);
 void main();
 
 // 4: class Circle:

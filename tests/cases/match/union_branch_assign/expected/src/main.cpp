@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 14: def describe(a: Dog | Cat) -> Int32:
-int32_t describe(std::variant<Cat, Dog>& a) {
+int32_t describe(const std::variant<Cat, Dog>& a) {
     // 15:     match a:
     int32_t result;
     auto& __match_subject = a;

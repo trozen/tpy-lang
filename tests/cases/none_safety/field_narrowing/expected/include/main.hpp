@@ -9,7 +9,7 @@ struct Config;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void show_port(Config& cfg);
+void show_port(const Config& cfg);
 void main();
 
 // 4: class Config:

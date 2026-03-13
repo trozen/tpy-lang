@@ -6,7 +6,7 @@ namespace tpy_user::main {
 
 // # --- Leaf functions with known mutation behavior ---
 // 13: def sum_points(items: list[Point]) -> Int32:
-int32_t sum_points(std::vector<Point>& items) {
+int32_t sum_points(const std::vector<Point>& items) {
     // 15:     total: Int32 = 0
     int32_t total = 0;
     // 16:     for p in items:
@@ -23,19 +23,19 @@ int32_t sum_points(std::vector<Point>& items) {
 }
 
 // 20: def first_x(items: list[Point]) -> Int32:
-int32_t first_x(std::vector<Point>& items) {
+int32_t first_x(const std::vector<Point>& items) {
     // 22:     return items[Int32(0)].x
     return tpy::__getitem__(items, 0).x;
 }
 
 // 24: def add_point(items: list[Point], p: Point) -> None:
-void add_point(std::vector<Point>& items, Point& p) {
+void add_point(std::vector<Point>& items, const Point& p) {
     // 26:     items.append(p)
     items.push_back(p);
 }
 
 // 28: def replace_first(items: list[Point], p: Point) -> None:
-void replace_first(std::vector<Point>& items, Point& p) {
+void replace_first(std::vector<Point>& items, const Point& p) {
     // 30:     items[Int32(0)] = p
     tpy::__setitem__(items, 0, p);
 }
@@ -47,7 +47,7 @@ void remove_first(std::vector<Point>& items) {
 }
 
 // 36: def read_point(p: Point) -> Int32:
-int32_t read_point(Point& p) {
+int32_t read_point(const Point& p) {
     // 38:     return p.x
     return p.x;
 }
@@ -188,13 +188,13 @@ void test_loop_var_mutating_callee() {
 
 // # --- Test: transitive mutation (Phase 2 graph propagation) ---
 // 119: def add_point_wrapper(items: list[Point], p: Point) -> None:
-void add_point_wrapper(std::vector<Point>& items, Point& p) {
+void add_point_wrapper(std::vector<Point>& items, const Point& p) {
     // 121:     add_point(items, p)
     add_point(items, p);
 }
 
 // 123: def read_wrapper(items: list[Point]) -> Int32:
-int32_t read_wrapper(std::vector<Point>& items) {
+int32_t read_wrapper(const std::vector<Point>& items) {
     // 125:     return sum_points(items)
     return sum_points(items);
 }
@@ -256,14 +256,14 @@ void test_forward_read_no_warn() {
 }
 
 // 161: def forward_reader(items: list[Point]) -> Int32:
-int32_t forward_reader(std::vector<Point>& items) {
+int32_t forward_reader(const std::vector<Point>& items) {
     // 163:     return sum_points(items)
     return sum_points(items);
 }
 
 // # --- Test: mutual recursion (cycle fixpoint) ---
 // 167: def cycle_a(items: list[Point], p: Point) -> None:
-void cycle_a(std::vector<Point>& items, Point& p) {
+void cycle_a(std::vector<Point>& items, const Point& p) {
     // 169:     if len(items) < Int32(5):
     if ((tpy::__len__(items) < 5)) {
         // 170:         items.append(p)
@@ -274,7 +274,7 @@ void cycle_a(std::vector<Point>& items, Point& p) {
 }
 
 // 173: def cycle_b(items: list[Point], p: Point) -> None:
-void cycle_b(std::vector<Point>& items, Point& p) {
+void cycle_b(std::vector<Point>& items, const Point& p) {
     // 175:     cycle_a(items, p)
     cycle_a(items, p);
 }
@@ -294,7 +294,7 @@ void test_cycle_mutation_warns() {
 
 // # --- Test: multi-hop transitive chain (A -> B -> C) ---
 // 186: def deep_wrapper(items: list[Point], p: Point) -> None:
-void deep_wrapper(std::vector<Point>& items, Point& p) {
+void deep_wrapper(std::vector<Point>& items, const Point& p) {
     // 188:     add_point_wrapper(items, p)
     add_point_wrapper(items, p);
 }

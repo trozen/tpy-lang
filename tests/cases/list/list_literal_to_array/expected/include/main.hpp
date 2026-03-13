@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t sum_array(std::array<int32_t, 3>& arr);
+int32_t sum_array(const std::array<int32_t, 3>& arr);
 void main();
 
 void __tpy_init();

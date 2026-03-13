@@ -10,7 +10,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-Holder make_holder(Point& p);
+Holder make_holder(const Point& p);
 void test_init_from_temp();
 void test_rebind_from_temp();
 void test_rebind_in_block();

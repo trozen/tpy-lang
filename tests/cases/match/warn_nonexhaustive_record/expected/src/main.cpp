@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 9: def describe_guarded(p: Point) -> str:
-std::string describe_guarded(Point& p) {
+std::string describe_guarded(const Point& p) {
     // 10:     match p:  # tpyc: warning(/non-exhaustive match.*case _:/)
     auto& __match_subject = p;
     // 11:         case Point(x=x) if x > 0:
@@ -23,7 +23,7 @@ std::string describe_guarded(Point& p) {
 }
 
 // 15: def describe_literal(p: Point) -> str:
-std::string describe_literal(Point& p) {
+std::string describe_literal(const Point& p) {
     // 16:     match p:  # tpyc: warning(/non-exhaustive match.*case _:/)
     auto& __match_subject = p;
     // 17:         case Point(x=0):
@@ -36,7 +36,7 @@ std::string describe_literal(Point& p) {
 }
 
 // 21: def describe_exhaustive(p: Point) -> str:
-std::string describe_exhaustive(Point& p) {
+std::string describe_exhaustive(const Point& p) {
     // 22:     match p:  # tpyc: ok
     auto& __match_subject = p;
     // 23:         case Point(x=x, y=y):

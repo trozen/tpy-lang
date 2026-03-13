@@ -11,7 +11,7 @@ void test_basic();
 void test_str();
 void test_multiple();
 void test_numeric_widen();
-void takes_set(tpy::ordered_set<int32_t>& s);
+void takes_set(const tpy::ordered_set<int32_t>& s);
 void test_param_context();
 void test_param_only();
 void test_discard_infers();

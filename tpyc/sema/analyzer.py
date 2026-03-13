@@ -474,12 +474,14 @@ class SemanticAnalyzer:
         all_fis: list = []
         for overloads in self.ctx.registry.functions.values():
             for fi in overloads:
-                if fi.direct_mutated_params is not None:
+                # call_edges is None for imported functions (cleared by their own Phase 2).
+                # Only process functions from the current module (call_edges set during Phase 1).
+                if fi.direct_mutated_params is not None and fi.call_edges is not None:
                     all_fis.append(fi)
         for rec in self.ctx.registry.records.values():
             for overloads in rec.methods.values():
                 for fi in overloads:
-                    if fi.direct_mutated_params is not None:
+                    if fi.direct_mutated_params is not None and fi.call_edges is not None:
                         all_fis.append(fi)
         propagate_mutation_facts(all_fis)
 

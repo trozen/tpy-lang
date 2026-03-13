@@ -24,7 +24,7 @@ int32_t take_const_ptr(const Point* p) {
 }
 
 // 34: def take_point(p: Point) -> Int32:
-int32_t take_point(Point& p) {
+int32_t take_point(const Point& p) {
     // 35:     return p.x + p.y
     return (tpy::add_check<int32_t>(p.x, p.y));
 }

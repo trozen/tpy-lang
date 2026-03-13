@@ -10,7 +10,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 std::vector<std::optional<int32_t>> make_list();
 void mut();
-void f(std::vector<std::optional<int32_t>>& items);
+void f(const std::vector<std::optional<int32_t>>& items);
 
 void __tpy_init();
 } // namespace tpy_user::main

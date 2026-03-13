@@ -73,7 +73,7 @@ std::vector<tpy::BigInt> test_return_context() {
 }
 
 // 37: def takes_list(items: list[int]) -> None:
-void takes_list(std::vector<tpy::BigInt>& items) {
+void takes_list(const std::vector<tpy::BigInt>& items) {
     // 38:     for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();

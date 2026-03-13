@@ -57,7 +57,7 @@ void test_numeric_widen() {
 }
 
 // 30: def takes_set(s: set[Int32]) -> None:
-void takes_set(tpy::ordered_set<int32_t>& s) {
+void takes_set(const tpy::ordered_set<int32_t>& s) {
     // 31:     for x in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();

@@ -51,7 +51,7 @@ struct Line {
     explicit Line(const Point& s) : start(s), end(std::nullopt) {}
 
     // 20:     def set_end(self, e: Point) -> None:
-    void set_end(Point& e) {
+    void set_end(const Point& e) {
         // 21:         self.end = copy(e)
         this->end = e;
     }

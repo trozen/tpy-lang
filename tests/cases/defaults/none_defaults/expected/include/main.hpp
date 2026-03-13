@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::optional<int32_t> find(std::vector<int32_t>& items, int32_t target, std::optional<int32_t> default_ = std::nullopt);
+std::optional<int32_t> find(const std::vector<int32_t>& items, int32_t target, std::optional<int32_t> default_ = std::nullopt);
 void main();
 
 void __tpy_init();

@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 9: def show_port(cfg: Config) -> None:
-void show_port(Config& cfg) {
+void show_port(const Config& cfg) {
     // 10:     if cfg.port is not None:
     if ((cfg.port.has_value())) {
         // 11:         p: int = cfg.port

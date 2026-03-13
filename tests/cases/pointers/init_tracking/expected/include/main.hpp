@@ -10,7 +10,7 @@ struct Point;
 inline constexpr std::string_view __name__ = "__main__";
 
 void direct_assign();
-void param_use(Point& p);
+void param_use(const Point& p);
 void value_init();
 void assign_before_if(bool cond);
 void then_returns(bool cond);

@@ -11,7 +11,7 @@ void describe(int32_t x) {
 }
 
 // 14: def describe(p: Point) -> None:
-void describe(Point& p) {
+void describe(const Point& p) {
     // 15:     print("point:", p.x, p.y)
     std::cout << "point:" << " " << p.x << " " << p.y << "\n";
 }

@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 10: def describe(p: Point) -> str:
-std::string describe(Point& p) {
+std::string describe(const Point& p) {
     // 11:     match p:
     auto& __match_subject = p;
     // 12:         case Point(x=0, y=0):
@@ -34,7 +34,7 @@ std::string describe(Point& p) {
 }
 
 // 22: def check_quadrant(p: Point) -> str:
-std::string check_quadrant(Point& p) {
+std::string check_quadrant(const Point& p) {
     // 23:     match p:
     auto& __match_subject = p;
     // 24:         case Point(x=0, y=0):
@@ -51,7 +51,7 @@ std::string check_quadrant(Point& p) {
 }
 
 // 30: def positional(p: Point) -> str:
-std::string positional(Point& p) {
+std::string positional(const Point& p) {
     // 31:     match p:
     auto& __match_subject = p;
     // 32:         case Point(0, 0):
@@ -72,7 +72,7 @@ std::string positional(Point& p) {
 }
 
 // 40: def with_capture(p: Point) -> str:
-std::string with_capture(Point& p) {
+std::string with_capture(const Point& p) {
     // 41:     match p:
     auto& __match_subject = p;
     // 42:         case Point() as q:

@@ -9,8 +9,8 @@ inline constexpr std::string_view __name__ = "__main__";
 
 int32_t simple_while(std::optional<int32_t> x, int32_t n);
 int32_t multiple_optionals(std::optional<int32_t> a, std::optional<int32_t> b, int32_t n);
-int32_t outer_if_inner_while_narrowing(std::optional<int32_t> x, std::vector<std::optional<int32_t>>& items);
-int32_t for_loop_variant(std::optional<int32_t> x, std::vector<int32_t>& items);
+int32_t outer_if_inner_while_narrowing(std::optional<int32_t> x, const std::vector<std::optional<int32_t>>& items);
+int32_t for_loop_variant(std::optional<int32_t> x, const std::vector<int32_t>& items);
 void main();
 
 void __tpy_init();

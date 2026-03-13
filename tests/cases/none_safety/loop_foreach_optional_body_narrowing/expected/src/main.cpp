@@ -7,7 +7,7 @@ namespace tpy_user::main {
 std::vector<std::optional<int32_t>>* vals{};
 
 // 4: def sum_non_none(items: list[Int32 | None]) -> Int32:
-int32_t sum_non_none(std::vector<std::optional<int32_t>>& items) {
+int32_t sum_non_none(const std::vector<std::optional<int32_t>>& items) {
     // 5:     total: Int32 = 0
     int32_t total = 0;
     // 6:     for item in items:

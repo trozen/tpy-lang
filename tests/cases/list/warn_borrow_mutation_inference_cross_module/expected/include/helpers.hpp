@@ -9,10 +9,10 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "helpers";
 
-int32_t sum_points(std::vector<Point>& items);
-void add_point(std::vector<Point>& items, Point& p);
-void add_point_wrapper(std::vector<Point>& items, Point& p);
-int32_t read_wrapper(std::vector<Point>& items);
+int32_t sum_points(const std::vector<Point>& items);
+void add_point(std::vector<Point>& items, const Point& p);
+void add_point_wrapper(std::vector<Point>& items, const Point& p);
+int32_t read_wrapper(const std::vector<Point>& items);
 
 // 4: class Point:
 struct Point {

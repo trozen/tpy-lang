@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 10: def guarded(p: Point) -> str:
-std::string guarded(Point& p) {
+std::string guarded(const Point& p) {
     // 11:     match p:
     auto& __match_subject = p;
     // 12:         case Point(x=0, y=0):
@@ -34,7 +34,7 @@ std::string guarded(Point& p) {
 }
 
 // 20: def or_pattern(p: Point) -> str:
-std::string or_pattern(Point& p) {
+std::string or_pattern(const Point& p) {
     // 21:     match p:
     auto& __match_subject = p;
     // 22:         case Point(x=0, y=0) | Point(x=1, y=1):

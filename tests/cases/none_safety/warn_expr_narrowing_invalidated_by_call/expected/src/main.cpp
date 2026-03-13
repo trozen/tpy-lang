@@ -5,13 +5,13 @@ namespace tpy_user::main {
 
 
 // 11: def opaque(b: Box) -> None:
-void opaque(Box& b) {
+void opaque(const Box& b) {
     // 12:     print(0)
     std::cout << 0 << "\n";
 }
 
 // 15: def use_after_call(b: Box) -> Int32:
-int32_t use_after_call(Box& b) {
+int32_t use_after_call(const Box& b) {
     // 16:     if b.value is not None:
     if ((b.value.has_value())) {
         // 17:         opaque(b)

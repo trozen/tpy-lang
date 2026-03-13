@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 22: def describe(p: Pet) -> str:
-std::string describe(Pet& p) {
+std::string describe(const Pet& p) {
     // 23:     if isinstance(p, Dog):
     if (std::holds_alternative<Dog>(p)) {
         auto& __p = std::get<Dog>(p);

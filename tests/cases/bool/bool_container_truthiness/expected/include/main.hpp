@@ -7,9 +7,9 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void check_list(std::vector<tpy::BigInt>& items, std::vector<tpy::BigInt>& empty);
+void check_list(const std::vector<tpy::BigInt>& items, const std::vector<tpy::BigInt>& empty);
 void check_str(std::string_view s, std::string_view e);
-void check_and_or(std::vector<tpy::BigInt>& items, std::vector<tpy::BigInt>& empty);
+void check_and_or(const std::vector<tpy::BigInt>& items, const std::vector<tpy::BigInt>& empty);
 void main();
 
 void __tpy_init();

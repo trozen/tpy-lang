@@ -9,8 +9,8 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void print_point(Point& p);
-int32_t get_sum(Point& p);
+void print_point(const Point& p);
+int32_t get_sum(const Point& p);
 void modify_point(Point& p);
 Point& deref_and_return(Point* ptr);
 void test_ptr_to_value();

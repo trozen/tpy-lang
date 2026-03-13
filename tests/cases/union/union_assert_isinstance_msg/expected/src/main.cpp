@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 14: def get_radius(s: Circle | Rect) -> Int32:
-int32_t get_radius(std::variant<Circle, Rect>& s) {
+int32_t get_radius(const std::variant<Circle, Rect>& s) {
     // 15:     assert isinstance(s, Circle), "expected a Circle"
     if (!(std::holds_alternative<Circle>(s))) tpy::tpy_panic("expected a Circle");
     auto& __s = std::get<Circle>(s);

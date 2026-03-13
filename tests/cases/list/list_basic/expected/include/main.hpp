@@ -10,7 +10,7 @@ extern std::vector<int32_t>* data;
 extern std::vector<int32_t>* chars;
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t sum_list(std::vector<int32_t>& nums);
+int32_t sum_list(const std::vector<int32_t>& nums);
 
 void __tpy_init();
 } // namespace tpy_user::main

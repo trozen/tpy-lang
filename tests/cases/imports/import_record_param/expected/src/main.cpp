@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 6: def get_radius(c: Circle) -> Int32:
-int32_t get_radius(::tpy_user::shapes::Circle& c) {
+int32_t get_radius(const ::tpy_user::shapes::Circle& c) {
     // 7:     return c.radius
     return c.radius;
 }

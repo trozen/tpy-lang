@@ -13,7 +13,7 @@ void f() {
 }
 
 // 21: def g(a: C) -> None:
-void g(C& a) {
+void g(const C& a) {
     // 22:     print(a.x)
     std::cout << tpy::print_float(a.x) << "\n";
 }

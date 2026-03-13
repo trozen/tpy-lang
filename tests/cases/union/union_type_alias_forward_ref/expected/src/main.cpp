@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 20: def describe(s: Shape) -> str:
-std::string describe(Shape& s) {
+std::string describe(const Shape& s) {
     // 21:     if isinstance(s, Circle):
     if (std::holds_alternative<Circle>(s)) {
         auto& __s = std::get<Circle>(s);

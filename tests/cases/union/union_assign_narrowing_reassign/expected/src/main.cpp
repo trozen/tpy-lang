@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 16: def check(s: Circle | Rect) -> None:
-void check(std::variant<Circle, Rect>& s) {
+void check(const std::variant<Circle, Rect>& s) {
     // 17:     if isinstance(s, Circle):
     if (std::holds_alternative<Circle>(s)) {
         auto& __s = std::get<Circle>(s);

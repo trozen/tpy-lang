@@ -15,7 +15,7 @@ void direct_assign() {
 
 // # Param usage — OK
 // 16: def param_use(p: Point) -> None:
-void param_use(Point& p) {
+void param_use(const Point& p) {
     // 17:     print(p.x, p.y)  # tpyc: ok
     std::cout << p.x << " " << p.y << "\n";
 }

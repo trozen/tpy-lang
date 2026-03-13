@@ -65,7 +65,7 @@ void test_getitem_after_infer() {
 }
 
 // 34: def takes_dict(d: dict[str, Int32]) -> None:
-void takes_dict(tpy::ordered_map<std::string, int32_t>& d) {
+void takes_dict(const tpy::ordered_map<std::string, int32_t>& d) {
     // 35:     for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();

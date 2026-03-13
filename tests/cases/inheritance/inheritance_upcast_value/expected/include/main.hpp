@@ -11,7 +11,7 @@ struct Puppy;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void greet(Animal& a);
+void greet(const Animal& a);
 void main();
 
 // # Implicit value upcast: assign child to parent-typed variable, pass child as parent param

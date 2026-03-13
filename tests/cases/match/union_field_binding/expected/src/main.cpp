@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 14: def describe(s: Circle | Rect) -> None:
-void describe(std::variant<Circle, Rect>& s) {
+void describe(const std::variant<Circle, Rect>& s) {
     // 15:     match s:
     auto& __match_subject = s;
     switch (__match_subject.index()) {

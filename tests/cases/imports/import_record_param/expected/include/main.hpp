@@ -8,7 +8,7 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t get_radius(::tpy_user::shapes::Circle& c);
+int32_t get_radius(const ::tpy_user::shapes::Circle& c);
 void main();
 
 void __tpy_init();

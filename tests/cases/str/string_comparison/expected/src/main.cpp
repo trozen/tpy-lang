@@ -173,7 +173,7 @@ void test_comparison_with_literals() {
 }
 
 // 106: def find_string(items: list[str], target: str) -> Int32:
-int32_t find_string(std::vector<std::string>& items, std::string_view target) {
+int32_t find_string(const std::vector<std::string>& items, std::string_view target) {
     // 108:     i: Int32 = 0
     int32_t i = 0;
     // 109:     while i < len(items):

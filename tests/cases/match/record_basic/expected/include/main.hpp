@@ -9,10 +9,10 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string describe(Point& p);
-std::string check_quadrant(Point& p);
-std::string positional(Point& p);
-std::string with_capture(Point& p);
+std::string describe(const Point& p);
+std::string check_quadrant(const Point& p);
+std::string positional(const Point& p);
+std::string with_capture(const Point& p);
 void main();
 
 // @dataclass

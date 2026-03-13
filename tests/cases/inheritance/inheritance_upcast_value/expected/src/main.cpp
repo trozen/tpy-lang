@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 19: def greet(a: Animal) -> None:
-void greet(Animal& a) {
+void greet(const Animal& a) {
     // 20:     print(a.name)
     std::cout << a.name << "\n";
 }

@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 10: def inspect(h: Handle) -> Int32:
-int32_t inspect(Handle& h) {
+int32_t inspect(const Handle& h) {
     // 11:     return h.fd
     return h.fd;
 }

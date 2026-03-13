@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-bool has_items(std::vector<int32_t>& items);
+bool has_items(const std::vector<int32_t>& items);
 int32_t test(int32_t x);
 void main();
 

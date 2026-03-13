@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 13: def read_container(c: Container[Int32]) -> None:
-void read_container(Container<int32_t>& c) {
+void read_container(const Container<int32_t>& c) {
     // 14:     print(c.value)
     std::cout << c.value << "\n";
 }

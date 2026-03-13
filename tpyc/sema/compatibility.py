@@ -23,6 +23,7 @@ from ..parse import (
     TpyIfExpr, TpyTupleLiteral, SourceLocation
 )
 from ..coercions import resolve_coercion, Coercion, CoercionContext, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN
+from .context import addr_taken_roots
 from .diagnostics import SemanticError
 
 if TYPE_CHECKING:
@@ -50,6 +51,11 @@ class TypeCompatibility:
     def set_methods(self, methods: MethodAnalyzer) -> None:
         """Wire methods dependency (created after compat, wired later)."""
         self.methods = methods
+
+    def _mark_addr_taken(self, expr: TpyExpr) -> None:
+        """Mark all param roots of expr as mutated because their address is taken."""
+        for r in addr_taken_roots(expr):
+            self.ctx.mark_param_mutated(r)
 
     def check_type_compatible(
         self, actual: TpyType, expected: TpyType, context: str,
@@ -152,6 +158,14 @@ class TypeCompatibility:
                 actual_inner = OptionalType(actual_inner.inner.wrapped)
                 if actual_inner == expected:
                     return None
+            # For pointer-repr Optional[T], codegen takes &(source) when source is a
+            # non-value record (not already Optional/Ptr). Mark source params as needing
+            # T& so &(param) stays valid (not const T&).
+            if (expected.uses_pointer_repr()
+                    and source_expr is not None
+                    and not actual_inner.is_value_type()
+                    and not isinstance(actual_inner, (OptionalType, PtrType, NoneType))):
+                self._mark_addr_taken(source_expr)
             return self.check_type_compatible(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx)
 
         # Optional[T] -> Optional[T] already handled by == check above
@@ -442,6 +456,11 @@ class TypeCompatibility:
                     f"use a read-only pointer for read-only access, or assign to a variable first",
                     loc
                 )
+            # Address-taking coercion (record -> Ptr[Record]) requires T& binding.
+            # Track so that codegen can't safely emit const T& for this param.
+            if isinstance(source_expr, TpyName):
+                root = self.ctx.borrow_tracker.effective_storage(source_expr.name)
+                self.ctx.mark_param_mutated(root)
         elif coercion.requires_lvalue:
             if source_expr is None or not self.is_lvalue(source_expr):
                 raise SemanticError(
@@ -449,6 +468,11 @@ class TypeCompatibility:
                     f"assign to a variable first",
                     loc
                 )
+            # Mutable Span from a lvalue container (e.g. Array -> Span[T]) requires
+            # non-const source; codegen calls as_mut_span(). Mark source param as T&.
+            if (isinstance(expected, SpanType) and not expected.is_readonly
+                    and source_expr is not None):
+                self._mark_addr_taken(source_expr)
 
         if coercion.forbid_return_local and is_return:
             if source_expr is not None and self.is_dangling_return(source_expr):

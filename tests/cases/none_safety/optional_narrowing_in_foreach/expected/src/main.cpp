@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 4: def sum_items(items: list[Int32], bonus: Int32 | None) -> Int32:
-int32_t sum_items(std::vector<int32_t>& items, std::optional<int32_t> bonus) {
+int32_t sum_items(const std::vector<int32_t>& items, std::optional<int32_t> bonus) {
     // 5:     total: Int32 = 0
     int32_t total = 0;
     // 6:     if bonus is not None:
@@ -37,7 +37,7 @@ int32_t sum_items(std::vector<int32_t>& items, std::optional<int32_t> bonus) {
 }
 
 // 18: def assert_then_loop(x: Int32 | None, items: list[Int32]) -> Int32:
-int32_t assert_then_loop(std::optional<int32_t> x, std::vector<int32_t>& items) {
+int32_t assert_then_loop(std::optional<int32_t> x, const std::vector<int32_t>& items) {
     // 19:     assert x is not None
     if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
     // 20:     total: Int32 = 0

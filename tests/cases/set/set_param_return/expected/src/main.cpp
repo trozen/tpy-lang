@@ -17,7 +17,7 @@ void add_to_set(tpy::ordered_set<int32_t>& s, int32_t val) {
 }
 
 // 10: def get_size(s: set[Int32]) -> Int32:
-int32_t get_size(tpy::ordered_set<int32_t>& s) {
+int32_t get_size(const tpy::ordered_set<int32_t>& s) {
     // 11:     return len(s)
     return tpy::__len__(s);
 }

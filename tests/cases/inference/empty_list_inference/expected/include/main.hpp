@@ -14,7 +14,7 @@ void test_insert();
 void test_multiple_append();
 void test_numeric_widen();
 std::vector<tpy::BigInt> test_return_context();
-void takes_list(std::vector<tpy::BigInt>& items);
+void takes_list(const std::vector<tpy::BigInt>& items);
 void test_param_context();
 void test_param_overrides_inferred();
 void test_alias_inference();

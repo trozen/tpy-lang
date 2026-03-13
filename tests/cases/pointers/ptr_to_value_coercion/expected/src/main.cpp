@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 11: def print_point(p: Point) -> None:
-void print_point(Point& p) {
+void print_point(const Point& p) {
     // 12:     print(p.x)
     std::cout << p.x << "\n";
     // 13:     print(p.y)
@@ -13,7 +13,7 @@ void print_point(Point& p) {
 }
 
 // 15: def get_sum(p: Point) -> Int32:
-int32_t get_sum(Point& p) {
+int32_t get_sum(const Point& p) {
     // 16:     return p.x + p.y
     return (tpy::add_check<int32_t>(p.x, p.y));
 }

@@ -19,7 +19,7 @@ int32_t read_list(const std::vector<Point>& items) {
 
 // @pure
 // 19: def count_list(items: list[Point]) -> Int32:
-int32_t count_list(std::vector<Point>& items) {
+int32_t count_list(const std::vector<Point>& items) {
     // 20:     return Int32(len(items))
     return tpy::__len__(items);
 }

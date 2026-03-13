@@ -30,6 +30,7 @@ from ..parse import (
 from ..coercions import CoercionContext
 from ..namespace import BindingKind
 from ..parse.nodes import VarLinkage
+from .context import addr_taken_roots
 from .diagnostics import SemanticError
 from .match import MatchAnalyzer
 from .narrowing import NarrowingTracker
@@ -67,6 +68,7 @@ def _borrow_storage_root(expr: TpyExpr) -> str | None:
     if isinstance(expr, TpyFieldAccess) and isinstance(expr.obj, TpyName):
         return expr.obj.name
     return None
+
 
 
 def _root_name_of_expr(expr: TpyExpr) -> str | None:
@@ -250,6 +252,10 @@ class StatementAnalyzer:
                     literal.elem_capture.append(CR)
                 else:
                     literal.elem_capture.append(R)
+                    # Returning a non-value element by reference takes its address.
+                    # Mark source params as needing T& (not const T&).
+                    for tup_root in addr_taken_roots(elem):
+                        self.ctx.mark_param_mutated(tup_root)
                 continue
 
             # Local context: is_const_ref_source handles ReadonlyType
@@ -406,9 +412,13 @@ class StatementAnalyzer:
                         stmt.value, expected, is_return=True)
                 # Check for dangling reference (returning local/temporary as reference)
                 self.compat.check_dangling_reference(stmt.value, expected, stmt.loc)
-                # Returning a loop variable by reference takes its address
+                # Returning a non-value type by reference takes the source's address.
+                # Mark both loop vars and params so they keep T& (not const T&/const T*).
                 if isinstance(stmt.value, TpyName):
                     self.ctx.mark_loop_var_mutated(stmt.value.name)
+                if expected is not None and not expected.is_value_type():
+                    for ret_root in addr_taken_roots(stmt.value):
+                        self.ctx.mark_param_mutated(ret_root)
             self.init.mark_terminated()
         elif isinstance(stmt, TpyIf):
             self.expr.analyze_expr(stmt.condition)
@@ -559,6 +569,7 @@ class StatementAnalyzer:
                     self._track_for_range_facts(stmt)
                     if isinstance(stmt.iterable, TpyName):
                         self.ctx.borrow_tracker.add_borrow(stmt.iterable.name, "__for_iter", BorrowKind.ITER)
+                        self.ctx.loop_var_iterable[stmt.var] = stmt.iterable.name
                     if is_native_iterator or is_protocol_iter:
                         iter_depth = inner_scope.depth
                     elif is_iter_based:
@@ -1320,6 +1331,14 @@ class StatementAnalyzer:
                     else:
                         kind = BorrowKind.ALIAS
                     self.ctx.borrow_tracker.add_borrow(root, stmt.name, kind)
+                    # Alias/element/field borrows generate T* y = &(root) in C++.
+                    # If root is a parameter, it must remain T& (not const T&).
+                    self.ctx.mark_param_mutated(root)
+                else:
+                    # or/and/ternary: generates T& x = (cond ? a : b) in C++.
+                    # All referenced params must stay T& (not const T&).
+                    for alias_root in addr_taken_roots(stmt.init):
+                        self.ctx.mark_param_mutated(alias_root)
             elif isinstance(var_type, PtrType):
                 # Ptr(x) borrows x's storage even though Ptr is a value type
                 init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
@@ -1338,6 +1357,15 @@ class StatementAnalyzer:
                     root = _borrow_storage_root(init_inner)
                     if root is not None:
                         self.ctx.borrow_tracker.add_borrow(root, stmt.name, BorrowKind.ELEMENT)
+        # Reassigned non-value locals generate T* local = &(source) in C++.
+        # Mark source param as mutated so it stays T& (not const T&), regardless
+        # of whether the borrow-tracking block above ran.
+        if (stmt.init is not None
+                and stmt.name in self.ctx.current_reassigned_vars
+                and var_type is not None
+                and not var_type.is_value_type()):
+            for alias_root in addr_taken_roots(stmt.init):
+                self.ctx.mark_param_mutated(alias_root)
         if stmt.init:
             self.init.mark_assigned(stmt.name)
         self.narrowing.update_after_write(stmt.name, var_type, init_type if stmt.init else None, stmt.init)
@@ -1640,6 +1668,11 @@ class StatementAnalyzer:
             self.ctx.mark_str_borrowers_mutated(stmt.target.name)
             self.ctx.borrow_tracker.remove_borrower(stmt.target.name)
             self.ctx.borrow_tracker.remove_storage_borrows(stmt.target.name)
+            # Rebinding a non-value pointer-local generates local = &(source) in C++,
+            # requiring source param to be T& (not const T&).
+            if not inner_target.is_value_type() and self.compat.is_lvalue(stmt.value):
+                for rebind_root in addr_taken_roots(stmt.value):
+                    self.ctx.mark_param_mutated(rebind_root)
             if self.ctx.current_ns:
                 self.ctx.current_ns.update_variable_type(stmt.target.name, target_type)
             self.ctx.set_expr_type(stmt.target, target_type)

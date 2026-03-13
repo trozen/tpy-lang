@@ -8,7 +8,7 @@ namespace tpy_user::main {
 extern std::vector<std::optional<int32_t>>* vals;
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t sum_non_none(std::vector<std::optional<int32_t>>& items);
+int32_t sum_non_none(const std::vector<std::optional<int32_t>>& items);
 
 void __tpy_init();
 } // namespace tpy_user::main

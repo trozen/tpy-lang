@@ -43,7 +43,7 @@ struct Rect {
 
 
     // 11:     def set_corner(self, p: Point) -> None:
-    void set_corner(Point& p) {
+    void set_corner(const Point& p) {
         // 12:         self.corner = p           # tpyc: warning(/copies Point into field/)
         this->corner = p;
         // 13:         self.corner = copy(p)     # tpyc: ok
@@ -75,7 +75,7 @@ struct Container {
 
 
     // 22:     def set_items(self, data: list[Int32]) -> None:
-    void set_items(std::vector<int32_t>& data) {
+    void set_items(const std::vector<int32_t>& data) {
         // 23:         self.items = data         # tpyc: warning(/copies list\[Int32\] into field/)
         this->items = data;
         // 24:         self.items = copy(data)   # tpyc: ok

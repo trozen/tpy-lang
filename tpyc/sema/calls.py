@@ -27,7 +27,7 @@ from ..parse import (
 )
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
-from .context import PENDING_CONTAINER_TYPES
+from .context import PENDING_CONTAINER_TYPES, addr_taken_roots
 from .diagnostics import SemanticError
 from .overloads import type_matches_numeric, resolve_overload
 
@@ -1132,6 +1132,11 @@ class CallAnalyzer:
                 if not self.compat.is_mutable_lvalue(expr.args[i]):
                     raise self.ctx.error(
                         f"argument '{param.name}' must be a mutable lvalue", expr)
+                # Address-taking (Ptr(param), Ptr(items[i]), &param coercions) requires T&.
+                # Use effective_storage to chase through pointer-alias rebinds.
+                for name in addr_taken_roots(expr.args[i]):
+                    root = self.ctx.borrow_tracker.effective_storage(name)
+                    self.ctx.mark_param_mutated(root)
             elif param.requires_lvalue:
                 if not self.compat.is_lvalue(expr.args[i]):
                     raise self.ctx.error(

@@ -10,7 +10,7 @@ inline constexpr std::string_view __name__ = "helpers";
 template<typename T>
 tpy::val_or_ref_t<T> first(std::vector<T>& items);
 template<typename T>
-int32_t length(std::vector<T>& items);
+int32_t length(const std::vector<T>& items);
 
 // 4: def first[T](items: list[T]) -> T:
 template<typename T>
@@ -20,7 +20,7 @@ tpy::val_or_ref_t<T> first(std::vector<T>& items) {
 }
 // 7: def length[T](items: list[T]) -> Int32:
 template<typename T>
-int32_t length(std::vector<T>& items) {
+int32_t length(const std::vector<T>& items) {
     // 8:     return len(items)
     return tpy::__len__(items);
 }

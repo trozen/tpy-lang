@@ -5,13 +5,13 @@ namespace tpy_user::main {
 
 
 // 12: def greet_dog(d: Dog) -> None:
-void greet_dog(Dog& d) {
+void greet_dog(const Dog& d) {
     // 13:     print("Woof!", d.name)
     std::cout << "Woof!" << " " << d.name << "\n";
 }
 
 // 15: def greet_cat(c: Cat) -> None:
-void greet_cat(Cat& c) {
+void greet_cat(const Cat& c) {
     // 16:     print("Meow!", c.name)
     std::cout << "Meow!" << " " << c.name << "\n";
 }

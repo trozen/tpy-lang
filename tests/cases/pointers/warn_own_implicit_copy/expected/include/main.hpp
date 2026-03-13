@@ -10,7 +10,7 @@ struct Point;
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t take_point(Point p);
-void use_point(Point& p);
+void use_point(const Point& p);
 void main();
 
 // 4: class Point:

@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t sum_items(std::vector<int32_t>& items, std::optional<int32_t> bonus);
-int32_t assert_then_loop(std::optional<int32_t> x, std::vector<int32_t>& items);
+int32_t sum_items(const std::vector<int32_t>& items, std::optional<int32_t> bonus);
+int32_t assert_then_loop(std::optional<int32_t> x, const std::vector<int32_t>& items);
 
 void __tpy_init();
 } // namespace tpy_user::main

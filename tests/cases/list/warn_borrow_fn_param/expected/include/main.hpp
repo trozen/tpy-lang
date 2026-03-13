@@ -11,7 +11,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void mutate_list(std::vector<Point>& items);
 int32_t read_list(const std::vector<Point>& items);
-int32_t count_list(std::vector<Point>& items);
+int32_t count_list(const std::vector<Point>& items);
 int32_t safe_read(const std::vector<Point>& items);
 void test_pass_borrowed_to_mutating_func();
 void test_pass_borrowed_to_readonly_func();

@@ -13,7 +13,7 @@ tpy::ordered_map<std::string, int32_t> make_dict() {
 }
 
 // 8: def sum_values(d: dict[str, Int32]) -> Int32:
-int32_t sum_values(tpy::ordered_map<std::string, int32_t>& d) {
+int32_t sum_values(const tpy::ordered_map<std::string, int32_t>& d) {
     // 9:     total = 0
     int32_t total = 0;
     // 10:     for k in d:

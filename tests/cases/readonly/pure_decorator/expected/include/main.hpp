@@ -10,7 +10,7 @@ struct Point;
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t add_values(int32_t a, int32_t b);
-int32_t compute(Point& p);
+int32_t compute(const Point& p);
 void use_readonly(const Point& p);
 void main();
 

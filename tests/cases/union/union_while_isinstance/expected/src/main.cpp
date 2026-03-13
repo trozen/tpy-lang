@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 18: def drain_circles(s: Circle | Rect) -> None:
-void drain_circles(std::variant<Circle, Rect>& s) {
+void drain_circles(const std::variant<Circle, Rect>& s) {
     // 19:     count: Int32 = 0
     int32_t count = 0;
     // 20:     while isinstance(s, Circle):

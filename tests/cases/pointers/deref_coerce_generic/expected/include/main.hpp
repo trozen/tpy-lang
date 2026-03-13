@@ -10,7 +10,7 @@ template<typename T> struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void print_point(Point& p);
+void print_point(const Point& p);
 void test();
 
 // 3: class Point:

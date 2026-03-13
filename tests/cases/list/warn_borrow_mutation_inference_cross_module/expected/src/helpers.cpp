@@ -5,7 +5,7 @@ namespace tpy_user::helpers {
 
 
 // 11: def sum_points(items: list[Point]) -> Int32:
-int32_t sum_points(std::vector<Point>& items) {
+int32_t sum_points(const std::vector<Point>& items) {
     // 13:     total: Int32 = 0
     int32_t total = 0;
     // 14:     for p in items:
@@ -22,19 +22,19 @@ int32_t sum_points(std::vector<Point>& items) {
 }
 
 // 18: def add_point(items: list[Point], p: Point) -> None:
-void add_point(std::vector<Point>& items, Point& p) {
+void add_point(std::vector<Point>& items, const Point& p) {
     // 20:     items.append(p)
     items.push_back(p);
 }
 
 // 22: def add_point_wrapper(items: list[Point], p: Point) -> None:
-void add_point_wrapper(std::vector<Point>& items, Point& p) {
+void add_point_wrapper(std::vector<Point>& items, const Point& p) {
     // 24:     add_point(items, p)
     add_point(items, p);
 }
 
 // 26: def read_wrapper(items: list[Point]) -> Int32:
-int32_t read_wrapper(std::vector<Point>& items) {
+int32_t read_wrapper(const std::vector<Point>& items) {
     // 28:     return sum_points(items)
     return sum_points(items);
 }

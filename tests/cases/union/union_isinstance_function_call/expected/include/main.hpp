@@ -10,8 +10,8 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void greet_dog(Dog& d);
-void greet_cat(Cat& c);
+void greet_dog(const Dog& d);
+void greet_cat(const Cat& c);
 void main();
 
 // # Pass narrowed union var to function expecting the member type

@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 5: def find(items: list[Int32], target: Int32, default: Optional[Int32] = None) -> Optional[Int32]:
-std::optional<int32_t> find(std::vector<int32_t>& items, int32_t target, std::optional<int32_t> default_) {
+std::optional<int32_t> find(const std::vector<int32_t>& items, int32_t target, std::optional<int32_t> default_) {
     // 6:     for item in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();

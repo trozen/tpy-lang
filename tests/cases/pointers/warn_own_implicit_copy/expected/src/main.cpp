@@ -11,7 +11,7 @@ int32_t take_point(Point p) {
 }
 
 // 13: def use_point(p: Point) -> None:
-void use_point(Point& p) {
+void use_point(const Point& p) {
     // 14:     print(p.x)
     std::cout << p.x << "\n";
 }

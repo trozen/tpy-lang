@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 12: def describe(a: Dog | Cat) -> str:
-std::string describe(std::variant<Cat, Dog>& a) {
+std::string describe(const std::variant<Cat, Dog>& a) {
     // 13:     match a:
     auto& __match_subject = a;
     switch (__match_subject.index()) {

@@ -16,12 +16,37 @@ from ..typesys import (
     unwrap_readonly,
 )
 from ..namespace import Namespace
-from ..parse import TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall
+from ..parse import (
+    TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall,
+    TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp, TpyIfExpr,
+)
 from .diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
 
 # Tuple of all pending container types -- use in isinstance checks so adding
 # a new container type requires updating only this one constant.
 PENDING_CONTAINER_TYPES = (PendingListType, PendingDictType, PendingSetType)
+
+
+def addr_taken_roots(expr: TpyExpr) -> list[str]:
+    """Return all variable names whose storage is potentially aliased by expr.
+
+    Used to mark params as mutated when their address is taken (directly or
+    implicitly). Handles or/and (TpyBinOp ||/&&) and ternary (TpyIfExpr),
+    returning all possible roots across branches.
+    """
+    if isinstance(expr, TpyCoerce):
+        return addr_taken_roots(expr.expr)
+    if isinstance(expr, TpyName):
+        return [expr.name]
+    if isinstance(expr, TpySubscript) and isinstance(expr.obj, TpyName):
+        return [expr.obj.name]
+    if isinstance(expr, TpyFieldAccess) and isinstance(expr.obj, TpyName):
+        return [expr.obj.name]
+    if isinstance(expr, TpyBinOp) and expr.op in ("||", "&&"):
+        return addr_taken_roots(expr.left) + addr_taken_roots(expr.right)
+    if isinstance(expr, TpyIfExpr):
+        return addr_taken_roots(expr.then_expr) + addr_taken_roots(expr.else_expr)
+    return []
 
 
 class BorrowKind(Enum):
@@ -131,6 +156,18 @@ class BorrowTracker:
                 return current
             visited.add(found)
             current = found
+
+    def borrow_source(self, name: str) -> str | None:
+        """Return the direct borrow source of name (any borrow kind), or None.
+
+        Unlike effective_storage (ALIAS-only), this finds the container for
+        ITER/ELEMENT/FIELD/PTR borrows too -- used to trace loop-var addresses
+        back to the source container.
+        """
+        for storage, borrowers in self.borrows.items():
+            if name in borrowers:
+                return storage
+        return None
 
     def freeze(self) -> frozenset[tuple[str, str, BorrowKind]]:
         """Snapshot borrow state as immutable triples for flow analysis."""
@@ -283,6 +320,7 @@ class SemanticContext:
     super_del_call: TpyMethodCall | None = None
     loop_vars: set[str] = field(default_factory=set)
     mutated_loop_vars: set[str] = field(default_factory=set)
+    loop_var_iterable: dict[str, str] = field(default_factory=dict)  # var_name -> iterable_name
     # Parameter mutation inference (8a)
     current_param_names: set[str] = field(default_factory=set)
     current_param_name_to_idx: dict[str, int] = field(default_factory=dict)
@@ -488,6 +526,7 @@ class SemanticContext:
         self.super_del_call = None
         self.loop_vars.clear()
         self.mutated_loop_vars.clear()
+        self.loop_var_iterable.clear()
         self.var_scope_depth.clear()
         self.hoisted_vars.clear()
         self.rvalue_vars.clear()
@@ -521,9 +560,17 @@ class SemanticContext:
             self.mutated_loop_vars.add(name)
 
     def mark_param_mutated(self, name: str) -> None:
-        """Mark a function parameter as directly mutated (Phase 1 of mutation inference)."""
+        """Mark a function parameter as directly mutated (Phase 1 of mutation inference).
+
+        Also traces loop variables back to their source iterables: mutating a loop
+        var's field or calling a mutating method on it requires the source container
+        to be T& (not const T&). Handles nested loops transitively.
+        """
         if name in self.current_param_names and name not in self.current_rebound_params:
             self.current_mutated_param_names.add(name)
+        iterable = self.loop_var_iterable.get(name)
+        if iterable is not None:
+            self.mark_param_mutated(iterable)
 
     def mark_str_borrowers_mutated(self, storage: str) -> None:
         """Mark PendingStrType borrowers of storage as source-mutated.

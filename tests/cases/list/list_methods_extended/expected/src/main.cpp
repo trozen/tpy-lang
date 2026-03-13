@@ -6,7 +6,7 @@ namespace tpy_user::main {
 
 // # Test extended list methods: pop(index), index(), count(), reverse(), copy(), __setitem__
 // 5: def print_list(nums: list[Int32]) -> None:
-void print_list(std::vector<int32_t>& nums) {
+void print_list(const std::vector<int32_t>& nums) {
     // 6:     i: Int32 = 0
     int32_t i = 0;
     // 7:     while i < len(nums):

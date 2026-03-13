@@ -12,7 +12,7 @@ struct C;
 inline constexpr std::string_view __name__ = "__main__";
 
 void f();
-void g(C& a);
+void g(const C& a);
 void main();
 
 // # Assignment narrowing in one function must not leak into another

@@ -9,8 +9,8 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string check(std::variant<std::monostate, Cat, int32_t>& v);
-std::string check_not(std::variant<std::monostate, Cat, int32_t>& v);
+std::string check(const std::variant<std::monostate, Cat, int32_t>& v);
+std::string check_not(const std::variant<std::monostate, Cat, int32_t>& v);
 void main();
 
 // 4: class Cat:

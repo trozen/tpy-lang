@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 4: def search_break(items: list[Int32], target: Int32) -> None:
-void search_break(std::vector<int32_t>& items, int32_t target) {
+void search_break(const std::vector<int32_t>& items, int32_t target) {
     // 5:     for item in items:
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();

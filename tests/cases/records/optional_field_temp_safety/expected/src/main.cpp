@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 19: def make_holder(p: Point) -> Own[Holder]:
-Holder make_holder(Point& p) {
+Holder make_holder(const Point& p) {
     // 20:     h = Holder()
     Holder h = Holder();
     // 21:     h.value = copy(p)

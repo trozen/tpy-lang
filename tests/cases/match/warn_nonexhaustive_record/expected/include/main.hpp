@@ -9,9 +9,9 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string describe_guarded(Point& p);
-std::string describe_literal(Point& p);
-std::string describe_exhaustive(Point& p);
+std::string describe_guarded(const Point& p);
+std::string describe_literal(const Point& p);
+std::string describe_exhaustive(const Point& p);
 void main();
 
 // # warning: non-exhaustive match on record (guarded and literal-field arms only)

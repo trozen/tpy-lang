@@ -10,7 +10,7 @@ struct Label;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void describe(std::variant<Label, Point>& s);
+void describe(const std::variant<Label, Point>& s);
 void main();
 
 // @dataclass

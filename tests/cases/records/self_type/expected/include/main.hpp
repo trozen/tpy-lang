@@ -41,7 +41,7 @@ struct Builder {
     }
 
     // 21:     def with_offset(self, other: Self) -> Int32:
-    int32_t with_offset(Builder& other) {
+    int32_t with_offset(const Builder& other) {
         // 22:         return self.value + other.value
         return (tpy::add_check<int32_t>(this->value, other.value));
     }

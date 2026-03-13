@@ -7,7 +7,7 @@ namespace tpy_user::main {
 std::array<int32_t, 3>* arr_global{};
 
 // 17: def use_array(arr: Array[Int32, 3]) -> None:
-void use_array(std::array<int32_t, 3>& arr) {
+void use_array(const std::array<int32_t, 3>& arr) {
     // 19:     print(arr[0])
     std::cout << tpy::__getitem__(arr, 0) << "\n";
     // 20:     print(arr[1])

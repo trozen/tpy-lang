@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void search_break(std::vector<int32_t>& items, int32_t target);
+void search_break(const std::vector<int32_t>& items, int32_t target);
 void no_break();
 void with_continue();
 void nested_inner_else();

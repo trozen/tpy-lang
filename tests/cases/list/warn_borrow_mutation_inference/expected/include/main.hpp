@@ -9,12 +9,12 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t sum_points(std::vector<Point>& items);
-int32_t first_x(std::vector<Point>& items);
-void add_point(std::vector<Point>& items, Point& p);
-void replace_first(std::vector<Point>& items, Point& p);
+int32_t sum_points(const std::vector<Point>& items);
+int32_t first_x(const std::vector<Point>& items);
+void add_point(std::vector<Point>& items, const Point& p);
+void replace_first(std::vector<Point>& items, const Point& p);
 void remove_first(std::vector<Point>& items);
-int32_t read_point(Point& p);
+int32_t read_point(const Point& p);
 void mutate_point(Point& p, int32_t val);
 void test_non_mutating_no_warn();
 void test_non_mutating_subscript_read();
@@ -25,18 +25,18 @@ void test_second_param_not_mutated();
 void test_no_borrow_no_warn();
 void test_loop_var_non_mutating_callee();
 void test_loop_var_mutating_callee();
-void add_point_wrapper(std::vector<Point>& items, Point& p);
-int32_t read_wrapper(std::vector<Point>& items);
+void add_point_wrapper(std::vector<Point>& items, const Point& p);
+int32_t read_wrapper(const std::vector<Point>& items);
 void test_transitive_mutation_warns();
 void test_transitive_read_no_warn();
 void test_forward_mutation_warns();
 void forward_mutator(std::vector<Point>& items);
 void test_forward_read_no_warn();
-int32_t forward_reader(std::vector<Point>& items);
-void cycle_a(std::vector<Point>& items, Point& p);
-void cycle_b(std::vector<Point>& items, Point& p);
+int32_t forward_reader(const std::vector<Point>& items);
+void cycle_a(std::vector<Point>& items, const Point& p);
+void cycle_b(std::vector<Point>& items, const Point& p);
 void test_cycle_mutation_warns();
-void deep_wrapper(std::vector<Point>& items, Point& p);
+void deep_wrapper(std::vector<Point>& items, const Point& p);
 void test_multi_hop_mutation_warns();
 
 // 4: class Point:

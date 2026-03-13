@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 9: def describe(v: Int32 | Dog | None) -> str:
-std::string describe(std::variant<std::monostate, Dog, int32_t>& v) {
+std::string describe(const std::variant<std::monostate, Dog, int32_t>& v) {
     // 10:     if v is None:
     if ((std::holds_alternative<std::monostate>(v))) {
         // 11:         return "nothing"
@@ -25,7 +25,7 @@ std::string describe(std::variant<std::monostate, Dog, int32_t>& v) {
 }
 
 // 17: def process(v: Int32 | Dog | None) -> None:
-void process(std::variant<std::monostate, Dog, int32_t>& v) {
+void process(const std::variant<std::monostate, Dog, int32_t>& v) {
     // 18:     if v is not None:
     if ((!std::holds_alternative<std::monostate>(v))) {
         // 19:         if isinstance(v, Int32):

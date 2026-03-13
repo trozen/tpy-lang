@@ -10,7 +10,7 @@ struct Point;
 inline constexpr std::string_view __name__ = "__main__";
 
 void describe(int32_t x);
-void describe(Point& p);
+void describe(const Point& p);
 void test();
 
 // 3: class Point:

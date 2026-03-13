@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 18: def update(h: Holder, p: Point) -> None:
-void update(Holder& h, Point& p) {
+void update(Holder& h, const Point& p) {
     // 19:     h.data = (copy(p), Int32(99))
     h.data = std::tuple<Point, int32_t>{p, 99};
 }

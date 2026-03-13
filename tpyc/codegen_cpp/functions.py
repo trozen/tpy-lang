@@ -117,6 +117,7 @@ class FunctionGenerator:
                    func_type_params: list[str] | None = None,
                    *, const_params: bool = False,
                    reassigned_params: set[str] | None = None,
+                   mutated_params: frozenset[int] | None = None,
                    defaults: list | None = None,
                    emit_defaults: bool = False) -> str:
         """Generate function parameter list.
@@ -133,6 +134,10 @@ class FunctionGenerator:
         Types normally passed as const ref (BigInt, str) get a renamed C++
         param (__param_X) so the body can shadow it with a mutable local copy.
 
+        mutated_params: frozenset of param indices with confirmed mutations.
+        When provided, non-mutated params that are not reassigned get const T&
+        instead of T& (read-only binding). None = conservative (T& for all).
+
         defaults: list of TpyExpr | None aligned with params.
         emit_defaults: if True, append ' = <value>' for params with defaults.
         """
@@ -148,6 +153,20 @@ class FunctionGenerator:
                 # Rename param so the body can declare a mutable local with the original name
                 part = ptype.to_cpp_param(f"__param_{cpp_pname}")
             elif const_params:
+                part = ptype.to_cpp_const_param(cpp_pname)
+            elif (mutated_params is not None and i not in mutated_params
+                    and ptype.is_ref_param()
+                    and not isinstance(ptype, TypeParamRef)
+                    and not (reassigned_params and pname in reassigned_params)):
+                # Param is provably not mutated and not rebound -- safe to bind as const T&.
+                # Only applies when is_ref_param() is True (T& -> const T&).
+                # TypeParamRef excluded: its to_cpp_param() uses tpy::param_val_or_ref_t<T>
+                # (trait-based), not T& directly; to_cpp_const_param() gives const T& which
+                # differs in ABI for value-type instantiations.
+                # Guard on reassigned_params: rebinding (param = x) would generate p = x
+                # in C++, which is copy-assignment through the reference on a const ref --
+                # a compile error. Only skip this guard for types that copy on reassign
+                # (BigInt, str), which are already handled by param_needs_copy_for_reassign.
                 part = ptype.to_cpp_const_param(cpp_pname)
             else:
                 part = ptype.to_cpp_param(cpp_pname)
@@ -253,6 +272,26 @@ class FunctionGenerator:
         result = scan.reassigned & param_names
         return result if result else None
 
+    def _get_func_mutated_params(self, func: TpyFunction) -> frozenset[int] | None:
+        """Return finalized mutated_params for a free function, or None if unavailable."""
+        if func.is_stub or func.is_overload_stub:
+            return None
+        overloads = self.ctx.analyzer.registry.get_function(func.name)
+        if overloads:
+            return overloads[-1].mutated_params
+        return None
+
+    def _get_method_mutated_params(self, method: TpyFunction, record_name: str) -> frozenset[int] | None:
+        """Return finalized mutated_params for a record method, or None if unavailable."""
+        if method.is_stub or method.is_overload_stub:
+            return None
+        record_info = self.ctx.analyzer.registry.get_record(record_name)
+        if record_info:
+            overloads = record_info.get_method_overloads(method.name)
+            if overloads:
+                return overloads[-1].mutated_params
+        return None
+
     def _has_dynamic_protocol_params(self, params: list[tuple[str, TpyType]]) -> bool:
         """Check if any params are @dynamic protocol types (need Base& codegen)."""
         for _, ptype in params:
@@ -305,6 +344,7 @@ class FunctionGenerator:
         has_dynamic = self._has_dynamic_protocol_params(func.params)
         is_generic = bool(func.type_params)
         rp = self._get_reassigned_params(func)
+        mp = self._get_func_mutated_params(func)
         has_proto_params = bool(proto_params)
 
         dfl = func.defaults if func.defaults else None
@@ -317,7 +357,7 @@ class FunctionGenerator:
                                                      defaults=dfl, emit_defaults=True)
                       if has_proto_params or has_dynamic
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp,
-                                           defaults=dfl, emit_defaults=True))
+                                           mutated_params=mp, defaults=dfl, emit_defaults=True))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params});\n")
         else:
             ret_type = self._resolve_return_type(func.return_type)
@@ -325,7 +365,7 @@ class FunctionGenerator:
                                                      defaults=dfl, emit_defaults=True)
                       if has_dynamic
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp,
-                                           defaults=dfl, emit_defaults=True))
+                                           mutated_params=mp, defaults=dfl, emit_defaults=True))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params});\n")
 
     def gen_function_decl(self, out: TextIO, func: TpyFunction) -> bool:
@@ -366,6 +406,7 @@ class FunctionGenerator:
         has_dynamic = self._has_dynamic_protocol_params(func.params)
         is_generic = bool(func.type_params)
         rp = self._get_reassigned_params(func)
+        mp = self._get_func_mutated_params(func)
         has_proto_params = bool(proto_params)
 
         if is_generic or has_proto_params:
@@ -378,7 +419,8 @@ class FunctionGenerator:
                 ret_type = self._resolve_return_type(func.return_type)
                 params = (self.gen_params_with_protocols(func.params, func.type_params)
                           if has_proto_params or has_dynamic
-                          else self.gen_params(func.params, func.type_params, reassigned_params=rp))
+                          else self.gen_params(func.params, func.type_params,
+                                               reassigned_params=rp, mutated_params=mp))
                 out.write(f"{ret_type} {escape_cpp_name(func.name)}({params});\n")
             else:
                 self.gen_function_def(out, func)
@@ -389,7 +431,8 @@ class FunctionGenerator:
             return False
         ret_type = self._resolve_return_type(func.return_type)
         params = (self.gen_params_with_protocols(func.params) if has_dynamic
-                  else self.gen_params(func.params, func.type_params, reassigned_params=rp))
+                  else self.gen_params(func.params, func.type_params,
+                                       reassigned_params=rp, mutated_params=mp))
         out.write(f"{ret_type} {escape_cpp_name(func.name)}({params});\n")
         return True
 
@@ -448,6 +491,7 @@ class FunctionGenerator:
         has_dynamic = self._has_dynamic_protocol_params(func.params)
         is_generic = bool(func.type_params)
         rp = self._get_reassigned_params(func)
+        mp = self._get_func_mutated_params(func)
         has_proto_params = bool(proto_params)
 
         if is_generic or has_proto_params:
@@ -460,12 +504,14 @@ class FunctionGenerator:
             ret_type = self._resolve_return_type(func.return_type)
             params = (self.gen_params_with_protocols(func.params, func.type_params)
                       if has_proto_params or has_dynamic
-                      else self.gen_params(func.params, func.type_params, reassigned_params=rp))
+                      else self.gen_params(func.params, func.type_params,
+                                           reassigned_params=rp, mutated_params=mp))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params}) {{\n")
         else:
             ret_type = self._resolve_return_type(func.return_type)
             params = (self.gen_params_with_protocols(func.params) if has_dynamic
-                      else self.gen_params(func.params, func.type_params, reassigned_params=rp))
+                      else self.gen_params(func.params, func.type_params,
+                                           reassigned_params=rp, mutated_params=mp))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params}) {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
@@ -675,6 +721,8 @@ class FunctionGenerator:
 
         # Inplace dunders (__iadd__ etc.) mutate self but take const params
         use_const_params = const or method.name in CONST_PARAMS_METHODS
+        rp = self._get_reassigned_params(method)
+        mp = self._get_method_mutated_params(method, record_name)
         if use_protocol_params:
             if use_const_params:
                 params = self.gen_params_with_protocols(method.params, method.type_params,
@@ -689,6 +737,7 @@ class FunctionGenerator:
                                          defaults=dfl, emit_defaults=True)
             else:
                 params = self.gen_params(method.params, method.type_params,
+                                         reassigned_params=rp, mutated_params=mp,
                                          defaults=dfl, emit_defaults=True)
         const_suffix = " const" if const else ""
         rvalue_suffix = " &&" if method.is_consuming else ""

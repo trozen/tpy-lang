@@ -10,7 +10,7 @@ template<typename T, std::size_t N> struct Buffer;
 extern std::array<int32_t, 3>* arr_global;
 inline constexpr std::string_view __name__ = "__main__";
 
-void use_array(std::array<int32_t, 3>& arr);
+void use_array(const std::array<int32_t, 3>& arr);
 std::array<int32_t, 3>& get_global_array();
 void main();
 
@@ -32,7 +32,7 @@ struct Buffer {
     }
 
     // 13:     def set_data(self, arr: Array[T, N]) -> None:
-    void set_data(std::array<T, N>& arr) {
+    void set_data(const std::array<T, N>& arr) {
         // 14:         self.data = arr
         this->data = arr;
     }

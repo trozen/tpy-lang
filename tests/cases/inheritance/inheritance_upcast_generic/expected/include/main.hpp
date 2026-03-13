@@ -10,7 +10,7 @@ struct IntContainer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void read_container(Container<int32_t>& c);
+void read_container(const Container<int32_t>& c);
 void main();
 
 // 4: class Container[T]:

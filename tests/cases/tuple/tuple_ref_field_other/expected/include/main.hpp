@@ -10,7 +10,7 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void update(Holder& h, Point& p);
+void update(Holder& h, const Point& p);
 void main();
 
 // 4: class Point:

@@ -144,6 +144,16 @@ def process(data: MyClass) -> None:  # data is passed by reference
     data.value = 42  # modifies original
 ```
 
+**Const reference optimization**: Record and container parameters that are never mutated (no field writes, no mutating method calls, no address-taking via `Ptr(param)`, no `Optional[T]` coercion, no mutable `Span` coercion) are automatically passed as `const T&` instead of `T&`. This applies transitively via call-graph propagation: if a wrapper only passes a parameter to a non-mutating callee, the wrapper parameter also becomes `const T&`.
+
+```python
+def read_point(p: Point) -> Int32:
+    return p.x  # const Point& p in C++
+
+def mutate_point(p: Point) -> None:
+    p.x = 99    # Point& p in C++ (field write detected)
+```
+
 ---
 
 ## Types

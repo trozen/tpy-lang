@@ -10,7 +10,7 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t get_radius(std::variant<Circle, Rect>& s);
+int32_t get_radius(const std::variant<Circle, Rect>& s);
 void main();
 
 // 4: class Circle:

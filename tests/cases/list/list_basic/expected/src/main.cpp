@@ -13,7 +13,7 @@ std::vector<int32_t>* data{};
 std::vector<int32_t>* chars{};
 
 // 3: def sum_list(nums: list[Int32]) -> Int32:
-int32_t sum_list(std::vector<int32_t>& nums) {
+int32_t sum_list(const std::vector<int32_t>& nums) {
     // 4:     total: Int32 = 0
     int32_t total = 0;
     // 5:     i: Int32 = 0

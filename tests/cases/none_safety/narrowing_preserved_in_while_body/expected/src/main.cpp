@@ -48,7 +48,7 @@ int32_t multiple_optionals(std::optional<int32_t> a, std::optional<int32_t> b, i
 }
 
 // 27: def outer_if_inner_while_narrowing(
-int32_t outer_if_inner_while_narrowing(std::optional<int32_t> x, std::vector<std::optional<int32_t>>& items) {
+int32_t outer_if_inner_while_narrowing(std::optional<int32_t> x, const std::vector<std::optional<int32_t>>& items) {
     // 30:     total: Int32 = 0
     int32_t total = 0;
     // 31:     if x is not None:
@@ -73,7 +73,7 @@ int32_t outer_if_inner_while_narrowing(std::optional<int32_t> x, std::vector<std
 }
 
 // 41: def for_loop_variant(x: Int32 | None, items: list[Int32]) -> Int32:
-int32_t for_loop_variant(std::optional<int32_t> x, std::vector<int32_t>& items) {
+int32_t for_loop_variant(std::optional<int32_t> x, const std::vector<int32_t>& items) {
     // 42:     total: Int32 = 0
     int32_t total = 0;
     // 43:     if x is not None:
