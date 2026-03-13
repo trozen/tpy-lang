@@ -1,0 +1,2 @@
+main.py:36: warning: Truthiness check on optional value may also exclude falsy non-None values; use 'is not None' for None-only checks. (variable 'cfg.port')
+main.py:38: warning: Truthiness check on optional value may also exclude falsy non-None values; use 'is not None' for None-only checks. (variable 'cfg.name')

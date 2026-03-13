@@ -1,0 +1,10 @@
+8080
+test
+True
+3.14
+no port
+no name
+no flag
+no ratio
+42
+hello

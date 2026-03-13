@@ -80,7 +80,8 @@ class ExpressionGenerator:
         self.builtins = builtins
         self.protocols = protocols
         # Wire up builtins to use our gen_expr methods
-        self.builtins.set_expr_generator(self.gen_expr, self.gen_expr_deref, self.gen_call_arg)
+        self.builtins.set_expr_generator(self.gen_expr, self.gen_expr_deref, self.gen_call_arg,
+                                         self._get_cpp_declared_type)
 
     def _nullptr_for_optional(self, ptype: TpyType) -> str:
         """Generate the right nullptr expression for an Optional pointer-repr param.

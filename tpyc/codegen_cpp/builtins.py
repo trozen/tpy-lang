@@ -35,12 +35,15 @@ class BuiltinGenerator:
         self._gen_expr = None
         self._gen_expr_deref = None
         self._gen_call_arg = None
+        self._get_cpp_declared_type = None
 
-    def set_expr_generator(self, gen_expr, gen_expr_deref, gen_call_arg):
+    def set_expr_generator(self, gen_expr, gen_expr_deref, gen_call_arg,
+                           get_cpp_declared_type):
         """Set expression generator functions (to break circular dependency)."""
         self._gen_expr = gen_expr
         self._gen_expr_deref = gen_expr_deref
         self._gen_call_arg = gen_call_arg
+        self._get_cpp_declared_type = get_cpp_declared_type
 
     def get_type_method_template(self, tpy_type: TpyType, method_name: str) -> str | None:
         """Look up a method's cpp_template from the registry.
@@ -226,6 +229,15 @@ class BuiltinGenerator:
             arg_type = unwrap_readonly(self.types.get_resolved_type(arg))
             if isinstance(arg_type, OwnType):
                 arg_type = arg_type.wrapped
+
+            # When sema narrowed an optional field to its inner type,
+            # the C++ field is still std::optional<T> -- use the declared
+            # type for print formatting decisions.
+            if (not isinstance(arg_type, OptionalType)
+                    and isinstance(arg, TpyFieldAccess)):
+                declared = self._get_cpp_declared_type(arg)
+                if isinstance(declared, OptionalType):
+                    arg_type = declared
 
             if isinstance(arg, TpyNoneLiteral):
                 parts.append('"None"')
