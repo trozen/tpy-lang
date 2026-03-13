@@ -1,6 +1,7 @@
 # TODO
 
 ## Next
+- move builtins and builtin modules to .py files
 - Union return copies non-value members: `f() -> A | B` returns `std::variant<A, B>` by value, copying record members. Python returns by reference. `std::variant<A&, B&>` is not valid C++. Params are fine (`&` for non-value unions). See `docs/UNION_TYPES_DESIGN.md` Known Semantic Gaps.
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 
@@ -10,7 +11,6 @@
 ## Fuzzy Testing Findings (2026-03-12)
 
 ### Compilation errors (valid Python that fails to build)
-- **[MED]** `list += [literal]` fails C++ build: `b += [4, 5]` generates `tpy::list_extend(b, {4, 5})` where the brace-init list cannot deduce the element type (e.g. `BigInt`). Fix: emit a typed vector literal (`std::vector<BigInt>{4, 5}`) instead of a raw brace-init list.
 - **[LOW]** Nested `dict[K, dict[...]]` printing fails: `DictPrinter` has no `operator<<` for `ordered_map` as a value type, so printing a dict whose values are themselves dicts fails at C++ build time. Fix: add recursive printing support in `dict_ops.hpp`/`printing.hpp`.
 
 ### Quality / optimization (correct output, but suboptimal codegen)
@@ -113,8 +113,6 @@
 - Char → str coercion: only literals work (`c: Char = "x"`), variables can't convert to str
 - Docstrings: silently skipped in codegen (harmless, but no introspection support)
 - make a doc with TPy vs Python differences
-
-## Code Review Items (2026-01-27)
 
 ## Refactoring
 - `slice` type resolution: `slice` is special-cased in `_resolve_primitive_type` (parser.py) alongside `int`/`float`/`bool`/`str` because the fallback path in `_resolve_registered_type` uses `name[0].isupper()` to optimistically create NamedType for unresolved names. Lowercase builtin types like `slice` don't pass this heuristic, even though `is_known_type("slice")` returns True (the builtins module registers it). The deeper issue is that `_resolve_registered_type` returns `NamedType("slice")` instead of `SliceType`, causing type identity mismatches in union isinstance checks. Builtin types should resolve through the same path as user types instead of needing parser special cases.
