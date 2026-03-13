@@ -841,7 +841,7 @@ class Rect:
         self.corner = Point(1, 2) # OK: rvalue, no existing owner
 ```
 
-Container storage methods (`append`, `insert`, `__setitem__`, `extend`, `+=`) use `Own[T]` parameters to trigger the same warning:
+Container storage methods (`append`, `insert`, `__setitem__`, `extend`, `+=`) and constructors (`list()`, `set()`) use `Own[T]` parameters to trigger the same warning:
 
 ```python
 items: list[Point] = []
@@ -855,6 +855,10 @@ more: list[Point] = [Point()]
 items.extend(more)        # WARNING: copies Point elements
 items += more             # WARNING: copies Point elements
 items.extend(copy(more))  # OK: explicit copy
+items2 = list(more)       # WARNING: copies Point elements
+items2 = list(copy(more)) # OK: explicit copy
+pts: set[Point] = set(more)       # WARNING: copies Point elements
+pts = set(copy(more))             # OK: explicit copy
 ```
 
 No warning is emitted for:

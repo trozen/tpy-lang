@@ -581,6 +581,7 @@ class CallAnalyzer:
                                 if ctor.cpp:
                                     expr.resolved_function_info = _method_def_to_function_info(ctor)
                                 self._validate_lvalue_params(expr)
+                                self._check_ctor_arg_compatibility(expr, ctor, arg_types, inferred_params)
                                 return result_type
                             # T not inferred from args; try assignment target hint
                             if type_def.type_factory and self.ctx.expr_type_hint is not None:
@@ -593,6 +594,7 @@ class CallAnalyzer:
                                     if ctor.cpp:
                                         expr.resolved_function_info = _method_def_to_function_info(ctor)
                                     self._validate_lvalue_params(expr)
+                                    self._check_ctor_arg_compatibility(expr, ctor, arg_types, inferred_params)
                                     return hint
 
                 # Show specific error when a non-literal type with element info
@@ -1118,6 +1120,20 @@ class CallAnalyzer:
             raise self.ctx.error(
                 f"{expr.func}() cannot be constructed from {arg_types[0]}",
                 expr
+            )
+
+    def _check_ctor_arg_compatibility(
+        self,
+        expr: TpyCall,
+        ctor: MethodDef,
+        arg_types: list[TpyType],
+        inferred: dict[str, TpyType],
+    ) -> None:
+        """Check copy/ownership warnings for constructor args (e.g., Own[T] in Iterable[Own[T]])."""
+        for param, arg_type, arg_expr in zip(ctor.params, arg_types, expr.args):
+            param_type = self.type_ops.substitute_type_params(param.type, inferred)
+            self.compat.check_type_compatible(
+                arg_type, param_type, f"{expr.func}() argument", source_expr=arg_expr,
             )
 
     def _validate_lvalue_params(self, expr: TpyCall) -> None:

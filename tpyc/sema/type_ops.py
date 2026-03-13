@@ -25,17 +25,13 @@ if TYPE_CHECKING:
 
 
 def _contains_type_param_ref(types: tuple[TpyType, ...]) -> bool:
-    """Check if any type in the tuple contains a TypeParamRef (directly or nested).
-
-    Handles TypeParamRef at top level and inside TupleType (e.g., tuple[K, V]).
-    Extend if other compound types are used in protocol type_args.
-    """
+    """Check if any type in the tuple contains a TypeParamRef (directly or nested)."""
     for t in types:
         if isinstance(t, TypeParamRef):
             return True
-        if isinstance(t, TupleType):
-            if _contains_type_param_ref(t.element_types):
-                return True
+        inner = t.inner_types()
+        if inner and _contains_type_param_ref(inner):
+            return True
     return False
 
 

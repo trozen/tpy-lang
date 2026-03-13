@@ -410,7 +410,7 @@ def init_module() -> BuiltinModule:
         ),
         # list(iterable) - create list from any iterable, inferring element type
         MethodDef(
-            params=[ParamDef("x", NamedType("Iterable", (T,), is_protocol=True))],
+            params=[ParamDef("x", NamedType("Iterable", (OwnType(T),), is_protocol=True))],
             returns=T,  # Placeholder - sema infers actual list[T] from argument
             cpp="tpy::from_range<std::vector<{T}>>({0})",
             is_readonly=True, is_pure=True,
@@ -780,7 +780,7 @@ def init_module() -> BuiltinModule:
         ),
         # set(iterable) from any iterable
         MethodDef(
-            params=[ParamDef("x", NamedType("Iterable", (T,), is_protocol=True))],
+            params=[ParamDef("x", NamedType("Iterable", (OwnType(T),), is_protocol=True))],
             returns=T,
             cpp="tpy::set_from_range<{T}>({0})",
             is_readonly=True, is_pure=True,
