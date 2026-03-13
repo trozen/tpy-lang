@@ -11,26 +11,26 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Buffer[T, N: int]:
+// 6: class Buffer[T, N: int]:
 template<typename T, std::size_t N>
 struct Buffer {
-    // 5:     data: Array[T, N]
+    // 7:     data: Array[T, N]
     std::array<T, N> data;
 
-    // 7:     def __init__(self) -> None:
+    // 9:     def __init__(self) -> None:
     Buffer() {
-        // 8:         pass
+        // 10:         pass
     }
 
-    // 10:     def set(self, idx: Int32, val: T) -> None:
+    // 12:     def set(self, idx: Int32, val: T) -> None:
     void set(int32_t idx, tpy::param_val_or_ref_t<T> val) {
-        // 11:         self.data[idx] = val
+        // 13:         self.data[idx] = val
         tpy::__setitem__(this->data, idx, val);
     }
 
-    // 13:     def get(self, idx: Int32) -> T:
-    tpy::val_or_cref_t<T> get(int32_t idx) const {
-        // 14:         return self.data[idx]
+    // 15:     def get(self, idx: Int32) -> T:
+    tpy::val_or_ref_t<T> get(int32_t idx) {
+        // 16:         return self.data[idx]
         return tpy::__getitem__(this->data, idx);
     }
 };

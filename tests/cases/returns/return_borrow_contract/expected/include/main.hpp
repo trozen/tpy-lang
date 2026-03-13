@@ -52,7 +52,7 @@ struct Container {
     }
 
     // 40:     def first(self) -> Point:
-    const Point& first() const {
+    Point& first() {
         // 41:         return self._items[0]  # tpyc: ok (borrows from self)
         return tpy::__getitem__(this->_items, 0);
     }

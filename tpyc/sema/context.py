@@ -38,10 +38,10 @@ def addr_taken_roots(expr: TpyExpr) -> list[str]:
         return addr_taken_roots(expr.expr)
     if isinstance(expr, TpyName):
         return [expr.name]
-    if isinstance(expr, TpySubscript) and isinstance(expr.obj, TpyName):
-        return [expr.obj.name]
-    if isinstance(expr, TpyFieldAccess) and isinstance(expr.obj, TpyName):
-        return [expr.obj.name]
+    if isinstance(expr, TpySubscript):
+        return addr_taken_roots(expr.obj)
+    if isinstance(expr, TpyFieldAccess):
+        return addr_taken_roots(expr.obj)
     if isinstance(expr, TpyBinOp) and expr.op in ("||", "&&"):
         return addr_taken_roots(expr.left) + addr_taken_roots(expr.right)
     if isinstance(expr, TpyIfExpr):

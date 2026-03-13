@@ -816,6 +816,22 @@ class TypeCompatibility:
         # Pointer constructors derive provenance from their argument (address-taking)
         if isinstance(expr, TpyCall) and expr.call_type is not None and expr.call_type.is_pointer() and expr.args:
             return self.is_param_derived_expr(expr.args[0])
+        # Function/method calls with return_borrows_from: result is param-derived if
+        # the borrowed-from argument(s) are themselves param-derived.
+        # None = unanalyzed (skip); frozenset() = returns new value (loop body never
+        # runs, falls through to return False below -- correct).
+        if isinstance(expr, (TpyCall, TpyMethodCall)):
+            fi = expr.resolved_function_info
+            if fi is not None and fi.return_borrows_from is not None:
+                args = expr.args
+                obj = expr.obj if isinstance(expr, TpyMethodCall) else None
+                for idx in fi.return_borrows_from:
+                    if idx == -1 and obj is not None:
+                        if self.is_param_derived_expr(obj):
+                            return True
+                    elif 0 <= idx < len(args):
+                        if self.is_param_derived_expr(args[idx]):
+                            return True
         # Constructors, function calls, literals -- local storage
         return False
 

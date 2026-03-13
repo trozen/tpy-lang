@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 
-// 17: def main() -> None:
+// 19: def main() -> None:
 void main() {
-    // 18:     b: Buffer[Int32, 3] = Buffer[Int32, 3]()
+    // 20:     b: Buffer[Int32, 3] = Buffer[Int32, 3]()
     Buffer<int32_t, 3> b = Buffer<int32_t, 3>();
-    // 20:     # Set values
-    // 21:     b.set(Int32(0), Int32(10))
+    // 22:     # Set values
+    // 23:     b.set(Int32(0), Int32(10))
     b.set(0, 10);
-    // 22:     b.set(Int32(1), Int32(20))
+    // 24:     b.set(Int32(1), Int32(20))
     b.set(1, 20);
-    // 23:     b.set(Int32(2), Int32(30))
+    // 25:     b.set(Int32(2), Int32(30))
     b.set(2, 30);
-    // 25:     # Get values
-    // 26:     print(b.get(Int32(0)))
+    // 27:     # Get values
+    // 28:     print(b.get(Int32(0)))
     std::cout << b.get(0) << "\n";
-    // 27:     print(b.get(Int32(1)))
+    // 29:     print(b.get(Int32(1)))
     std::cout << b.get(1) << "\n";
-    // 28:     print(b.get(Int32(2)))
+    // 30:     print(b.get(Int32(2)))
     std::cout << b.get(2) << "\n";
 }
 
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 31: main()
+    // 33: main()
     main();
 }
 

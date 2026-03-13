@@ -52,7 +52,7 @@ void main() {
     // 62:     c.add(Point(7, 8))
     c.add(Point(7, 8));
     // 63:     first = c.first()
-    const Point& first = c.first();
+    Point& first = c.first();
     // 64:     print(first.x)
     std::cout << first.x << "\n";
 }

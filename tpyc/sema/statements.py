@@ -85,9 +85,11 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
 def _borrow_storage_root(expr: TpyExpr) -> str | None:
     """Extract the root variable name whose storage is borrowed by this expression.
 
-    Only handles one level of indirection (items[i], obj.field).
+    Deliberately single-level: only handles items[i] and obj.field directly.
     Nested access like matrix[i][j] or chain.field.subfield returns None
-    (conservative -- no borrow tracked).
+    (conservative -- no borrow registered). Single-level is sufficient for
+    borrow_tracker registration; use addr_taken_roots when you only need the
+    root variable name without registering a named borrow entry.
 
     Returns None for rvalues (calls, literals, etc.) that own fresh storage.
     """
@@ -483,7 +485,10 @@ class StatementAnalyzer:
                                 else:
                                     src = None
                                 if src is not None:
-                                    self.ctx.mark_param_mutated(src)
+                                    # A @readonly callee returns const ref -- the source
+                                    # param is not mutated through the return value.
+                                    if not fi_ret.is_readonly:
+                                        self.ctx.mark_param_mutated(src)
                                     self.ctx.mark_param_returned(src)
             self.init.mark_terminated()
         elif isinstance(stmt, TpyIf):
@@ -1438,8 +1443,10 @@ class StatementAnalyzer:
                             or self.ctx.borrow_tracker.is_deferred_borrow(root)):
                         self.ctx.mark_param_mutated(root)
                 else:
-                    # or/and/ternary: generates T& x = (cond ? a : b) in C++.
-                    # All referenced params must stay T& (not const T&).
+                    # _borrow_storage_root returned None: init is not a simple name/
+                    # subscript/field (e.g. or/and/ternary, or a deep chain like
+                    # outer.inner[i]). Use addr_taken_roots to find all root params
+                    # and mark them T& (not const T&) since we're aliasing into them.
                     for alias_root in addr_taken_roots(stmt.init):
                         self.ctx.mark_param_mutated(alias_root)
             elif isinstance(var_type, PtrType):

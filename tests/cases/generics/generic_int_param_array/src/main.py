@@ -1,3 +1,5 @@
+# Generic class with an Array[T, N] field. Buffer.get() returns T from self.data[idx]
+# (a mutable element reference), so it must not be inferred const: val_or_ref_t<T>, no const.
 from tpy import Int32, Array
 
 

@@ -942,6 +942,11 @@ class TypeOperations:
             type_param_bounds=substituted_bounds if substituted_bounds else method.type_param_bounds,
             cpp_template=method.cpp_template,  # Preserve cpp_template for codegen
             qualified_name=method.qualified_name,
+            # Preserve analysis-derived facts -- indices are positional (unaffected by
+            # type substitution) and needed by call-site borrow/mutation checks.
+            return_borrows_from=method.return_borrows_from,
+            mutated_params=method.mutated_params,
+            structural_mutated_params=method.structural_mutated_params,
         )
 
     def get_deref_target_type(self, typ: TpyType) -> TpyType | None:
