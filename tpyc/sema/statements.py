@@ -2050,6 +2050,25 @@ class StatementAnalyzer:
                     stmt,
                 )
             self.ctx.mark_str_borrowers_mutated(storage)
+        # Borrow conflict: aug-assign on a name target that has element borrows.
+        # Any structural aug-assign (list +=, set |=, user-defined __iadd__ that
+        # reallocates) is a mutation -- check the borrow state, not the container type.
+        elif isinstance(stmt.target, TpyName):
+            storage = self.ctx.borrow_tracker.effective_storage(stmt.target.name)
+            if self.ctx.borrow_tracker.has_element_borrow(storage):
+                if self.ctx.borrow_tracker.has_iter_borrow(storage):
+                    self.ctx.warning(
+                        f"Mutation of '{storage}' while iterating over it"
+                        f" ('{stmt.op}=' invalidates the iterator)",
+                        stmt,
+                    )
+                else:
+                    self.ctx.warning(
+                        f"Mutation of '{storage}' while borrowed"
+                        f" ('{stmt.op}=' may invalidate references)",
+                        stmt,
+                    )
+            self.ctx.mark_str_borrowers_mutated(storage)
         if (
             isinstance(stmt.target, TpyName)
             and isinstance(target_type, BigIntType)
