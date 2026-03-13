@@ -29,6 +29,17 @@ from .diagnostics import SemanticError
 from .overloads import type_matches_numeric
 
 
+def _container_elem_matches(actual_elem: TpyType, expected_elem: TpyType) -> bool:
+    """Strict element type check for container assignment.
+
+    Allows Own[T] stripping and numeric literal coercions only.
+    Subclass coercion is excluded: C++ containers are non-converting templates
+    (invariant T) -- set[Child] cannot be used where set[Base] is expected.
+    """
+    check = expected_elem.wrapped if isinstance(expected_elem, OwnType) else expected_elem
+    return actual_elem == check or type_matches_numeric(actual_elem, check)
+
+
 def _contains_ref_type(t: TpyType) -> bool:
     """True if t or any nested type is or may be a reference type.
 
@@ -431,47 +442,43 @@ class TypeCompatibility:
 
         # Allow PendingDictType compatibility during first phase (before resolution)
         if isinstance(actual, PendingDictType) and isinstance(expected, DictType):
-            key_ok = isinstance(actual.key_type, UnknownElementType) or actual.key_type == expected.key_type
-            check_val = expected.value_type.wrapped if isinstance(expected.value_type, OwnType) else expected.value_type
-            # Allow numeric literal coercions (e.g. IntLiteral -> Int32) but not subclass coercion,
-            # consistent with the DictType block below.
-            val_ok = (isinstance(actual.value_type, UnknownElementType)
-                      or actual.value_type == check_val
-                      or type_matches_numeric(actual.value_type, check_val))
+            key_ok = isinstance(actual.key_type, UnknownElementType) or _container_elem_matches(actual.key_type, expected.key_type)
+            val_ok = isinstance(actual.value_type, UnknownElementType) or _container_elem_matches(actual.value_type, expected.value_type)
             if key_ok and val_ok:
                 return None
 
         # Allow PendingSetType compatibility during first phase (before resolution)
         if isinstance(actual, PendingSetType) and isinstance(expected, SetType):
-            if isinstance(actual.element_type, UnknownElementType) or actual.element_type == expected.element_type:
+            if isinstance(actual.element_type, UnknownElementType) or _container_elem_matches(actual.element_type, expected.element_type):
                 return None
-            try:
-                self.check_type_compatible(actual.element_type, expected.element_type, context, loc, source_expr)
-                return None
-            except SemanticError:
-                pass
 
         # DictType compatibility: key and value types must match exactly.
-        # Strip Own[V] from expected value type -- Own warnings already emitted above.
+        # Own[V] stripping is handled by _container_elem_matches.
         # Subclass coercion is intentionally excluded: dict values are stored by value,
-        # and tpy::dict_update/tpy::dict_ctor are non-converting templates (require identical V).
+        # and tpy::dict_update/tpy::dict_ctor are non-converting templates (invariant V).
         if isinstance(actual, DictType) and isinstance(expected, DictType):
-            check_val = expected.value_type.wrapped if isinstance(expected.value_type, OwnType) else expected.value_type
-            if actual.key_type == expected.key_type and actual.value_type == check_val:
+            key_ok = _container_elem_matches(actual.key_type, expected.key_type)
+            val_ok = _container_elem_matches(actual.value_type, expected.value_type)
+            if key_ok and val_ok:
                 return None
             # Raise a specific error pointing at the mismatching element type.
-            # Use check_val (Own stripped) to avoid leaking implementation details.
-            if actual.key_type != expected.key_type:
+            # Strip Own[V] from the message to avoid leaking implementation details.
+            check_val = expected.value_type.wrapped if isinstance(expected.value_type, OwnType) else expected.value_type
+            if not key_ok:
                 raise SemanticError(
                     f"Type mismatch in {context}: expected {expected.key_type}, got {actual.key_type}", loc)
             raise SemanticError(
                 f"Type mismatch in {context}: expected {check_val}, got {actual.value_type}", loc)
 
-        # SetType compatibility: element types must be compatible
+        # SetType compatibility: element types must match exactly.
+        # Subclass coercion is intentionally excluded: tpy::ordered_set<T> is a
+        # non-converting template (invariant T).
         if isinstance(actual, SetType) and isinstance(expected, SetType):
-            elem_err = self.check_type_compatible(actual.element_type, expected.element_type, context, loc, source_expr)
-            if elem_err is None:
+            if _container_elem_matches(actual.element_type, expected.element_type):
                 return None
+            check_elem = expected.element_type.wrapped if isinstance(expected.element_type, OwnType) else expected.element_type
+            raise SemanticError(
+                f"Type mismatch in {context}: expected {check_elem}, got {actual.element_type}", loc)
 
         # Allow PendingStrType compatibility during first phase (before resolution)
         if isinstance(actual, PendingStrType):

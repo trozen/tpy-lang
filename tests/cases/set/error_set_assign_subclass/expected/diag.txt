@@ -1,0 +1,1 @@
+main.py:17: error: Type mismatch in variable 's': expected Base, got Child

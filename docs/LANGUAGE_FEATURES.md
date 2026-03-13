@@ -435,6 +435,7 @@ log(f"x={x}")
   - Views: `d.keys()`, `d.values()`, `d.items()` return zero-allocation views with `for`-loop, `len()`, `in`
   - `Iterable[T]` conformance: `dict[K,V]` and views conform to `Iterable` (`d` is `Iterable[K]`, `d.keys()` is `Iterable[K]`, `d.values()` is `Iterable[V]`, `d.items()` is `Iterable[tuple[K, V]]`) and can be passed to generic functions accepting `Iterable[T]`
   - Keys: `str`, `int`, fixed-width ints, `float`, `bool`, `Char`
+  - **Type parameters are invariant**: `dict[K, Child]` is not compatible with `dict[K, Base]` even when `Child` inherits from `Base`. C++ `ordered_map<V>` is a non-converting template — passing `Child` where `Base` is expected would fail at C++ build time or silently slice objects.
   - Return by value requires `Own[dict[K, V]]`
 - **Working**: `set[T]` - ordered hash set -> `tpy::ordered_set<T>` (insertion-order preserving)
   - Literals `{a, b, ...}`, `len(s)`, `x in s`, `for x in s`
@@ -448,6 +449,7 @@ log(f"x={x}")
   - Comparison: `<=` (subset), `<` (strict subset), `>=` (superset), `>` (strict superset)
   - Augmented: `|=`, `&=`, `-=`, `^=`
   - Elements must be hashable (same constraint as dict keys)
+  - **Type parameter is invariant**: `set[Child]` is not compatible with `set[Base]` even when `Child` inherits from `Base`. C++ `ordered_set<T>` is a non-converting template.
   - Return by value requires `Own[set[T]]`
 - **Open**: Bounded variants: `BoundedList[T, N]`, `BoundedDict[K, V, N]`
 
