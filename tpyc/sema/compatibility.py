@@ -26,6 +26,7 @@ from ..parse import (
 from ..coercions import resolve_coercion, Coercion, CoercionContext, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN
 from .context import addr_taken_roots
 from .diagnostics import SemanticError
+from .overloads import type_matches_numeric
 
 
 def _contains_ref_type(t: TpyType) -> bool:
@@ -432,16 +433,13 @@ class TypeCompatibility:
         if isinstance(actual, PendingDictType) and isinstance(expected, DictType):
             key_ok = isinstance(actual.key_type, UnknownElementType) or actual.key_type == expected.key_type
             check_val = expected.value_type.wrapped if isinstance(expected.value_type, OwnType) else expected.value_type
-            val_ok = isinstance(actual.value_type, UnknownElementType) or actual.value_type == check_val
+            # Allow numeric literal coercions (e.g. IntLiteral -> Int32) but not subclass coercion,
+            # consistent with the DictType block below.
+            val_ok = (isinstance(actual.value_type, UnknownElementType)
+                      or actual.value_type == check_val
+                      or type_matches_numeric(actual.value_type, check_val))
             if key_ok and val_ok:
                 return None
-            if not isinstance(actual.key_type, UnknownElementType) and not isinstance(actual.value_type, UnknownElementType):
-                try:
-                    self.check_type_compatible(actual.key_type, expected.key_type, context, loc, source_expr)
-                    self.check_type_compatible(actual.value_type, expected.value_type, context, loc, source_expr)
-                    return None
-                except SemanticError:
-                    pass
 
         # Allow PendingSetType compatibility during first phase (before resolution)
         if isinstance(actual, PendingSetType) and isinstance(expected, SetType):
@@ -453,14 +451,21 @@ class TypeCompatibility:
             except SemanticError:
                 pass
 
-        # DictType compatibility: key and value types must be compatible.
+        # DictType compatibility: key and value types must match exactly.
         # Strip Own[V] from expected value type -- Own warnings already emitted above.
+        # Subclass coercion is intentionally excluded: dict values are stored by value,
+        # and tpy::dict_update/tpy::dict_ctor are non-converting templates (require identical V).
         if isinstance(actual, DictType) and isinstance(expected, DictType):
             check_val = expected.value_type.wrapped if isinstance(expected.value_type, OwnType) else expected.value_type
-            key_err = self.check_type_compatible(actual.key_type, expected.key_type, context, loc, source_expr)
-            val_err = self.check_type_compatible(actual.value_type, check_val, context, loc, source_expr)
-            if key_err is None and val_err is None:
+            if actual.key_type == expected.key_type and actual.value_type == check_val:
                 return None
+            # Raise a specific error pointing at the mismatching element type.
+            # Use check_val (Own stripped) to avoid leaking implementation details.
+            if actual.key_type != expected.key_type:
+                raise SemanticError(
+                    f"Type mismatch in {context}: expected {expected.key_type}, got {actual.key_type}", loc)
+            raise SemanticError(
+                f"Type mismatch in {context}: expected {check_val}, got {actual.value_type}", loc)
 
         # SetType compatibility: element types must be compatible
         if isinstance(actual, SetType) and isinstance(expected, SetType):
