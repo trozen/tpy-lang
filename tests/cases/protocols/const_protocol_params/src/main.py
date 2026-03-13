@@ -1,0 +1,83 @@
+# 8a.4: const T& / const Base& for non-mutated protocol-typed params.
+# A protocol param is non-mutated when all called methods are @readonly
+# (or the param isn't used at all). The generated C++ uses const T_x& / const Base&.
+from tpy import Int32, dynamic, readonly
+from typing import Protocol
+
+
+class Measurable(Protocol):
+    @readonly
+    def measure(self) -> Int32: ...
+
+
+class Resizable(Protocol):
+    @readonly
+    def measure(self) -> Int32: ...
+    def resize(self, v: Int32) -> None: ...
+
+
+# Non-mutated static protocol param -> const T_p&
+def get_measure(p: Measurable) -> Int32:
+    return p.measure()
+
+
+# Mutated static protocol param -> T_p& (resize modifies p)
+def double_resize(p: Resizable) -> Int32:
+    p.resize(p.measure() * 2)
+    return p.measure()
+
+
+# Two params: src is non-mutated (const T&), dst is mutated (T&)
+def copy_measure(src: Resizable, dst: Resizable) -> None:
+    dst.resize(src.measure())
+
+
+@dynamic
+class Shape(Protocol):
+    @readonly
+    def area(self) -> Int32: ...
+
+
+class Rect:
+    _w: Int32
+    _h: Int32
+
+    def __init__(self, w: Int32, h: Int32) -> None:
+        self._w = w
+        self._h = h
+
+    @readonly
+    def area(self) -> Int32:
+        return self._w * self._h
+
+
+# @dynamic protocol: non-mutated param -> const Base&
+def print_area(s: Shape) -> None:
+    print(s.area())
+
+
+class Box:
+    _side: Int32
+
+    def __init__(self, side: Int32) -> None:
+        self._side = side
+
+    @readonly
+    def measure(self) -> Int32:
+        return self._side
+
+    def resize(self, v: Int32) -> None:
+        self._side = v
+
+
+def main() -> None:
+    b = Box(10)
+    print(get_measure(b))
+    print(double_resize(b))
+    print(get_measure(b))
+    copy_measure(Box(5), b)
+    print(b.measure())
+    print_area(Rect(3, 4))
+
+
+main()

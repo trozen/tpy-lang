@@ -10,8 +10,8 @@ struct Square;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-double area(Circle& shape);
-double area(Square& shape);
+double area(const Circle& shape);
+double area(const Square& shape);
 void main();
 
 // 4: class Circle:

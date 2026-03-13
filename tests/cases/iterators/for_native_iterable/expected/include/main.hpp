@@ -16,7 +16,7 @@ int32_t process_and_sum(T_items& items);
 template<tpy::NativeIterable<int32_t> T_outer, tpy::NativeIterable<int32_t> T_inner>
 int32_t nested_iteration(T_outer& outer, T_inner& inner);
 template<tpy::NativeIterable<int32_t> T_items>
-bool contains_value(T_items& items, int32_t target);
+bool contains_value(const T_items& items, int32_t target);
 void main();
 
 // 3: def sum_iter(items: NativeIterable[Int32]) -> Int32:
@@ -85,7 +85,7 @@ int32_t nested_iteration(T_outer& outer, T_inner& inner) {
 }
 // 26: def contains_value(items: NativeIterable[Int32], target: Int32) -> bool:
 template<tpy::NativeIterable<int32_t> T_items>
-bool contains_value(T_items& items, int32_t target) {
+bool contains_value(const T_items& items, int32_t target) {
     // 27:     # Test "in" operator with NativeIterable-typed param
     // 28:     return target in items
     return (std::find(items.begin(), items.end(), target) != items.end());

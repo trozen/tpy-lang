@@ -10,8 +10,8 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "animals";
 
-std::string describe(Dog& animal);
-std::string describe(Cat& animal);
+std::string describe(const Dog& animal);
+std::string describe(const Cat& animal);
 
 // 4: class Dog:
 struct Dog {

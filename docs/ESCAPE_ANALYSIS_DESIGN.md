@@ -35,7 +35,7 @@
 | 8a | Parameter mutation inference | M | Done | [8](#8-cross-function-borrow-inference) |
 | 8a.2 | Track address-taking (`Ptr(param)`) in Phase 1 -- enables `const T&` for record params | S | Done | [8](#8-cross-function-borrow-inference) |
 | 8a.3 | Track tuple ref packing (`return (x, param)` where tuple slot is `T&`) in Phase 1 -- same goal as 8a.2 | S | Done | [8](#8-cross-function-borrow-inference) |
-| 8a.4 | `const T&` for protocol-typed params: thread `mutated_params` through `gen_params_with_protocols` | S | Not started | [8](#8-cross-function-borrow-inference) |
+| 8a.4 | `const T&` for protocol-typed params: thread `mutated_params` through `gen_params_with_protocols` | S | Done | [8](#8-cross-function-borrow-inference) |
 | 8a.5 | Precise element-ref mutation: defer marking source container until borrower is actually written (currently conservative -- any element ref marks container as mutated) | M | Not started | [8](#8-cross-function-borrow-inference) |
 | 8b | Return-value borrow contracts | L | Not started | [8](#8-cross-function-borrow-inference) |
 | 7b | `@pure` enforcement -- or drop `@pure` (see [note](#7-pure-annotation)) | M | Deferred | [7](#7-pure-annotation) |
@@ -577,6 +577,10 @@ propagation):
    - **Mutable Span coercion**: `Array -> Span[T]` calls `as_mut_span()` requiring
      non-const source.
    All are tracked in Phase 1 via `addr_taken_roots()` (see `context.py`).
+   - **For-loop iteration over protocol/TypeParamRef params**: `tpy::iter_adapt(T& iter)`
+     requires `T&`, so any param iterated with `for x in param` where `param` has a
+     protocol or TypeParamRef type is marked mutated. (8a.4 -- Done, part of for-loop
+     mutation tracking in `sema/statements.py`)
 
 2. **Call edges** (`call_edges: list[CallEdge]`): For each call to a user function
    or method, record which caller parameter flows into which callee parameter:
@@ -640,6 +644,8 @@ After all functions in the module are analyzed:
   parameter is not in the set, the call is safe -- no borrow warning.
 - `_check_loop_var_arg_mutation`: Same check -- if the callee is known not to mutate
   the parameter, passing a loop-iterated container there doesn't force mutable binding.
+- `gen_params_with_protocols` (8a.4 -- Done): Protocol-typed (static and `@dynamic`) and
+  TypeParamRef params not in `mutated_params` emit `const T_x&` / `const Base&`.
 
 **Why per-module, not global**: A global call graph across all modules would handle
 cross-module cycles more precisely, but it forces a synchronization barrier (all

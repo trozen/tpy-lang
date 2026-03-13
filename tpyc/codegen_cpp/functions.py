@@ -193,6 +193,7 @@ class FunctionGenerator:
     def gen_params_with_protocols(self, params: list[tuple[str, TpyType]],
                                    func_type_params: list[str] | None = None,
                                    *, const_params: bool = False,
+                                   mutated_params: frozenset[int] | None = None,
                                    defaults: list | None = None,
                                    emit_defaults: bool = False) -> str:
         """Generate function parameter list, using template types for protocol params.
@@ -202,6 +203,9 @@ class FunctionGenerator:
         Nullable protocol params emit const T_paramname* (pointer repr).
         const_params: emit const T_x& for static protocols, const Base& for @dynamic,
         and to_cpp_const_param for non-protocol params.
+        mutated_params: frozenset of param indices with confirmed mutations (same
+        semantics as gen_params). When provided, non-mutated protocol params use
+        const T_x& / const Base& instead of T_x& / Base&.
         """
         result = []
         for i, (pname, ptype) in enumerate(params):
@@ -215,7 +219,9 @@ class FunctionGenerator:
                 info = self._find_protocol_param_info(pname, ptype)
                 if info and info.has_none:
                     part = f"const T_{pname}* {cpp_pname}"
-                elif const_params or isinstance(ptype, ReadonlyType) or self._all_protocols_readonly(info):
+                elif (const_params or isinstance(ptype, ReadonlyType)
+                        or self._all_protocols_readonly(info)
+                        or (mutated_params is not None and i not in mutated_params)):
                     part = f"const T_{pname}& {cpp_pname}"
                 else:
                     part = f"T_{pname}& {cpp_pname}"
@@ -227,7 +233,8 @@ class FunctionGenerator:
                         and (pi := self.ctx.analyzer.registry.get_protocol(resolved.name))
                         and pi.is_dynamic):
                     base_type = self.protocols.get_dynamic_base_name(resolved.name)
-                    if isinstance(ptype, ReadonlyType):
+                    if (isinstance(ptype, ReadonlyType)
+                            or (mutated_params is not None and i not in mutated_params)):
                         part = f"const {base_type}& {cpp_pname}"
                     else:
                         part = f"{base_type}& {cpp_pname}"
@@ -274,7 +281,10 @@ class FunctionGenerator:
 
     def _get_func_mutated_params(self, func: TpyFunction) -> frozenset[int] | None:
         """Return finalized mutated_params for a free function, or None if unavailable."""
-        if func.is_stub or func.is_overload_stub:
+        # Declaration-only stubs (native, extern_c) have no body -- no mutation analysis.
+        # @overload stubs share a name with their implementation; overloads[-1] is the
+        # implementation's FI, which has the analyzed mutated_params.
+        if func.is_stub and not func.is_overload_stub:
             return None
         overloads = self.ctx.analyzer.registry.get_function(func.name)
         if overloads:
@@ -354,6 +364,7 @@ class FunctionGenerator:
             ))
             ret_type = self._resolve_return_type(func.return_type)
             params = (self.gen_params_with_protocols(func.params, func.type_params,
+                                                     mutated_params=mp,
                                                      defaults=dfl, emit_defaults=True)
                       if has_proto_params or has_dynamic
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp,
@@ -362,6 +373,7 @@ class FunctionGenerator:
         else:
             ret_type = self._resolve_return_type(func.return_type)
             params = (self.gen_params_with_protocols(func.params,
+                                                     mutated_params=mp,
                                                      defaults=dfl, emit_defaults=True)
                       if has_dynamic
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp,
@@ -417,7 +429,8 @@ class FunctionGenerator:
                     func.type_params, proto_params, func.type_param_bounds,
                 ))
                 ret_type = self._resolve_return_type(func.return_type)
-                params = (self.gen_params_with_protocols(func.params, func.type_params)
+                params = (self.gen_params_with_protocols(func.params, func.type_params,
+                                                         mutated_params=mp)
                           if has_proto_params or has_dynamic
                           else self.gen_params(func.params, func.type_params,
                                                reassigned_params=rp, mutated_params=mp))
@@ -430,7 +443,7 @@ class FunctionGenerator:
         if not func.is_stub:
             return False
         ret_type = self._resolve_return_type(func.return_type)
-        params = (self.gen_params_with_protocols(func.params) if has_dynamic
+        params = (self.gen_params_with_protocols(func.params, mutated_params=mp) if has_dynamic
                   else self.gen_params(func.params, func.type_params,
                                        reassigned_params=rp, mutated_params=mp))
         out.write(f"{ret_type} {escape_cpp_name(func.name)}({params});\n")
@@ -502,14 +515,15 @@ class FunctionGenerator:
                 emit_defaults=False,
             ))
             ret_type = self._resolve_return_type(func.return_type)
-            params = (self.gen_params_with_protocols(func.params, func.type_params)
+            params = (self.gen_params_with_protocols(func.params, func.type_params,
+                                                     mutated_params=mp)
                       if has_proto_params or has_dynamic
                       else self.gen_params(func.params, func.type_params,
                                            reassigned_params=rp, mutated_params=mp))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params}) {{\n")
         else:
             ret_type = self._resolve_return_type(func.return_type)
-            params = (self.gen_params_with_protocols(func.params) if has_dynamic
+            params = (self.gen_params_with_protocols(func.params, mutated_params=mp) if has_dynamic
                       else self.gen_params(func.params, func.type_params,
                                            reassigned_params=rp, mutated_params=mp))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params}) {{\n")
@@ -542,6 +556,7 @@ class FunctionGenerator:
 
         is_generic = bool(impl.type_params)
         rp = self._get_reassigned_params(impl)
+        mp = self._get_func_mutated_params(impl)
         proto_params = self.protocols.get_all_protocol_params(stub.params)
         has_dynamic = self._has_dynamic_protocol_params(stub.params)
         has_proto_params = bool(proto_params)
@@ -552,14 +567,17 @@ class FunctionGenerator:
                 emit_defaults=False,
             ))
             ret_type = self._resolve_return_type(stub.return_type)
-            params = (self.gen_params_with_protocols(stub.params, impl.type_params)
+            params = (self.gen_params_with_protocols(stub.params, impl.type_params,
+                                                     mutated_params=mp)
                       if has_proto_params or has_dynamic
-                      else self.gen_params(stub.params, impl.type_params, reassigned_params=rp))
+                      else self.gen_params(stub.params, impl.type_params,
+                                           reassigned_params=rp, mutated_params=mp))
             out.write(f"{ret_type} {escape_cpp_name(stub.name)}({params}) {{\n")
         else:
             ret_type = self._resolve_return_type(stub.return_type)
-            params = (self.gen_params_with_protocols(stub.params) if has_dynamic
-                      else self.gen_params(stub.params, impl.type_params, reassigned_params=rp))
+            params = (self.gen_params_with_protocols(stub.params, mutated_params=mp) if has_dynamic
+                      else self.gen_params(stub.params, impl.type_params,
+                                           reassigned_params=rp, mutated_params=mp))
             out.write(f"{ret_type} {escape_cpp_name(stub.name)}({params}) {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
@@ -730,6 +748,7 @@ class FunctionGenerator:
                                                         defaults=dfl, emit_defaults=True)
             else:
                 params = self.gen_params_with_protocols(method.params, method.type_params,
+                                                        mutated_params=mp,
                                                         defaults=dfl, emit_defaults=True)
         else:
             if use_const_params:

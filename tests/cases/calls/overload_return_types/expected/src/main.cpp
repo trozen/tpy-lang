@@ -8,7 +8,7 @@ namespace tpy_user::main {
 
 // @overload
 // 15: def get_value(animal: Dog) -> str: ...  # tpyc: ok
-std::string get_value(Dog& animal) {
+std::string get_value(const Dog& animal) {
     // 21:     if isinstance(animal, Dog):
     // 22:         return animal.name
     return animal.name;
@@ -16,7 +16,7 @@ std::string get_value(Dog& animal) {
 
 // @overload
 // 18: def get_value(animal: Cat) -> int: ...  # tpyc: ok
-tpy::BigInt get_value(Cat& animal) {
+tpy::BigInt get_value(const Cat& animal) {
     // 21:     if isinstance(animal, Dog):
     // 24:         return animal.lives
     return animal.lives;

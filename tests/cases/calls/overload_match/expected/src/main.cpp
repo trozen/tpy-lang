@@ -8,7 +8,7 @@ namespace tpy_user::main {
 
 // @overload
 // 15: def area(shape: Circle) -> float: ...
-double area(Circle& shape) {
+double area(const Circle& shape) {
     // 21:     match shape:
     auto& r = shape.radius;
     // 23:             return 3.14 * r * r
@@ -17,7 +17,7 @@ double area(Circle& shape) {
 
 // @overload
 // 18: def area(shape: Square) -> float: ...
-double area(Square& shape) {
+double area(const Square& shape) {
     // 21:     match shape:
     auto& s = shape.side;
     // 25:             return s * s

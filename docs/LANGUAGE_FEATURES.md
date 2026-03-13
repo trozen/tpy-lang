@@ -144,7 +144,7 @@ def process(data: MyClass) -> None:  # data is passed by reference
     data.value = 42  # modifies original
 ```
 
-**Const reference optimization**: Record and container parameters that are never mutated (no field writes, no mutating method calls, no address-taking via `Ptr(param)`, no `Optional[T]` coercion, no mutable `Span` coercion) are automatically passed as `const T&` instead of `T&`. This applies transitively via call-graph propagation: if a wrapper only passes a parameter to a non-mutating callee, the wrapper parameter also becomes `const T&`.
+**Const reference optimization**: Record and container parameters that are never mutated (no field writes, no mutating method calls, no address-taking via `Ptr(param)`, no `Optional[T]` coercion, no mutable `Span` coercion) are automatically passed as `const T&` instead of `T&`. This applies transitively via call-graph propagation: if a wrapper only passes a parameter to a non-mutating callee, the wrapper parameter also becomes `const T&`. Protocol-typed parameters (both static template types and `@dynamic` base classes) receive the same optimization: a non-mutated protocol param emits `const T_x&` / `const Base&` instead of `T_x&` / `Base&`. For protocol params, a call to a non-`@readonly` protocol method counts as mutation of the receiver.
 
 ```python
 def read_point(p: Point) -> Int32:
@@ -1828,7 +1828,7 @@ def double_it(d: Duplicable) -> None:
 double_it(Value(21))  # OK: temporaries work via auto-generated temp vars
 ```
 
-**Note on temporaries**: When passing a constructor expression (like `Value(21)`) to a protocol-typed parameter, the compiler generates a temporary variable. This is necessary because protocol parameters may use mutable references (`T&`) in C++, which cannot bind directly to temporaries.
+**Note on temporaries**: When passing a constructor expression (like `Value(21)`) to a protocol-typed parameter, the compiler generates a temporary variable. This is necessary because protocol parameters use references (`T&` or `const T&`) in C++, which cannot bind directly to temporaries (for the mutable case) or to rvalue temporaries with non-trivial lifetimes.
 
 #### Working: Generic Protocol `Sequence[T]`
 

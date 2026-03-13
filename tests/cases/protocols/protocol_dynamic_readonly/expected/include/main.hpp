@@ -41,7 +41,7 @@ struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void greet(Pet& pet);
+void greet(const Pet& pet);
 void main();
 
 // 10: class Dog(Pet):

@@ -570,6 +570,12 @@ class StatementAnalyzer:
                     if isinstance(stmt.iterable, TpyName):
                         self.ctx.borrow_tracker.add_borrow(stmt.iterable.name, "__for_iter", BorrowKind.ITER)
                         self.ctx.loop_var_iterable[stmt.var] = stmt.iterable.name
+                        # Protocol-typed and TypeParamRef params used as for-loop iterables
+                        # require mutable access: tpy::iter_adapt(T& iter) takes T&, not const T&.
+                        # Mark them mutated so the generated param gets T& not const T&.
+                        inner = unwrap_readonly(iterable_type)
+                        if (isinstance(inner, (TypeParamRef,)) or is_protocol_type(inner)):
+                            self.ctx.mark_param_mutated(stmt.iterable.name)
                     if is_native_iterator or is_protocol_iter:
                         iter_depth = inner_scope.depth
                     elif is_iter_based:
