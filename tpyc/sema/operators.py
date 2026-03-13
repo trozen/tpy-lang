@@ -6,7 +6,7 @@ Binary and unary operator resolution using the type registry.
 
 from __future__ import annotations
 from dataclasses import replace as dc_replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from ..typesys import (
     TpyType, IntLiteralType, TypeParamRef,
@@ -18,6 +18,7 @@ from tpyc import modules as builtin_modules
 
 if TYPE_CHECKING:
     from .context import SemanticContext
+    ProtocolChecker = Callable[[TpyType, TpyType], bool]
 
 
 # C++ templates for user-defined dunder methods (used for unified operator resolution)
@@ -112,6 +113,7 @@ class OperatorResolver:
     def _find_matching_overload(
         self, overloads: list[FunctionInfo], arg_type: TpyType,
         type_subst: dict[str, TpyType],
+        protocol_checker: ProtocolChecker | None = None,
     ) -> FunctionInfo | None:
         """Find an overload matching arg_type, substituting type params first."""
         for method in overloads:
@@ -119,7 +121,8 @@ class OperatorResolver:
                 _, param_type = method.params[0]
                 if type_subst:
                     param_type = _substitute_type_params(param_type, type_subst)
-                if type_matches_strict(arg_type, param_type) or type_matches_numeric(arg_type, param_type):
+                if (type_matches_strict(arg_type, param_type, protocol_checker)
+                        or type_matches_numeric(arg_type, param_type)):
                     return method
         return None
 
@@ -241,7 +244,10 @@ class OperatorResolver:
 
         return None
 
-    def resolve_aug_inplace(self, target_type: TpyType, op: str, value_type: TpyType) -> ResolvedBinop | None:
+    def resolve_aug_inplace(
+        self, target_type: TpyType, op: str, value_type: TpyType,
+        protocol_checker: ProtocolChecker | None = None,
+    ) -> ResolvedBinop | None:
         """Resolve in-place augmented assignment operator (e.g. __iadd__, __ior__).
 
         Returns a ResolvedBinop whose method has a void return type and a cpp
@@ -263,12 +269,12 @@ class OperatorResolver:
         overloads = record.get_method_overloads(method_name)
         # Try builtin methods with cpp_template first
         builtin_overloads = [m for m in overloads if m.cpp_template]
-        if method := self._find_matching_overload(builtin_overloads, value_arg, type_subst):
+        if method := self._find_matching_overload(builtin_overloads, value_arg, type_subst, protocol_checker):
             return self._make_resolved(method, type_subst, target_effective)
 
         # Then try user-defined methods (no cpp_template)
         user_overloads = [m for m in overloads if not m.cpp_template]
-        if method := self._find_matching_overload(user_overloads, value_arg, type_subst):
+        if method := self._find_matching_overload(user_overloads, value_arg, type_subst, protocol_checker):
             return self._make_resolved(method, type_subst, target_effective)
 
         return None

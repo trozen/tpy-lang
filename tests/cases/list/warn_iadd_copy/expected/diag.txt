@@ -1,0 +1,3 @@
+main.py:16: warning: copies Node elements; use copy() to make this explicit
+main.py:58: warning: copies Node elements; use copy() to make this explicit
+main.py:63: warning: may copy T elements if not a value type; use copy() to make this explicit

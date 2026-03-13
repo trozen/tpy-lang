@@ -346,7 +346,7 @@ def init_module() -> BuiltinModule:
             type_param_bounds={"T": NamedType("Equatable", is_protocol=True)},
         )],
         "extend": [MethodDef(
-            params=[ParamDef("other", NamedType("Iterable", (T,), is_protocol=True))],
+            params=[ParamDef("other", NamedType("Iterable", (OwnType(T),), is_protocol=True))],
             returns=VOID,
             cpp="tpy::list_extend({self}, {0})",
         )],
@@ -391,7 +391,7 @@ def init_module() -> BuiltinModule:
             is_readonly=True, is_pure=True,
         )],
         "__iadd__": [MethodDef(
-            params=[ParamDef("other", ListType(T))],
+            params=[ParamDef("other", NamedType("Iterable", (OwnType(T),), is_protocol=True))],
             returns=VOID,
             cpp="tpy::list_extend({self}, {0})",
         )],

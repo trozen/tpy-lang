@@ -841,7 +841,7 @@ class Rect:
         self.corner = Point(1, 2) # OK: rvalue, no existing owner
 ```
 
-Container storage methods (`append`, `insert`, `__setitem__`) use `Own[T]` parameters to trigger the same warning:
+Container storage methods (`append`, `insert`, `__setitem__`, `extend`, `+=`) use `Own[T]` parameters to trigger the same warning:
 
 ```python
 items: list[Point] = []
@@ -851,6 +851,10 @@ items.append(copy(p))     # OK: explicit copy
 items.append(Point())     # OK: rvalue, no existing owner
 items[0] = p              # WARNING: copies Point into container
 items.insert(0, p)        # WARNING: copies Point into owned storage
+more: list[Point] = [Point()]
+items.extend(more)        # WARNING: copies Point elements
+items += more             # WARNING: copies Point elements
+items.extend(copy(more))  # OK: explicit copy
 ```
 
 No warning is emitted for:
@@ -2153,7 +2157,7 @@ print(sum_all(nums))  # 6
 - **Auto-derivation from `__iter__()`**: Any user type with `__iter__() -> SpanIter[T]` automatically conforms to `NativeIterable[T]`. The compiler synthesizes C++ `begin()`/`end()` methods that delegate to `__iter__()` for concept satisfaction.
 - **Built-in conformance**: All built-in container types extend both `NativeIterable[T]` and `Iterable[T]`
 - **Codegen optimization**: The compiler uses NativeIterable extends to select zero-overhead C++ range-based for loops for built-in types
-- **API methods use `Iterable[T]`**: `list.extend()`, `str.join()`, `list()` constructor, `dict()` constructor all accept `Iterable[T]`
+- **API methods use `Iterable[T]`**: `str.join()`, `list()` constructor, `dict()` constructor accept `Iterable[T]`; `list.extend()` and `list +=` accept `Iterable[Own[T]]` (triggers copy warnings for reference-type elements)
 
 See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design rationale.
 

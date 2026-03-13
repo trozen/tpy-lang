@@ -1933,8 +1933,16 @@ class StatementAnalyzer:
                 )
             # Try in-place method first (e.g. __iadd__, __ior__), then binary operator
             operators = OperatorResolver(self.ctx)
-            if result := operators.resolve_aug_inplace(target_type, stmt.op, value_type):
+            protocol_checker = self.protocols.type_conforms_to_protocol if self.protocols else None
+            if result := operators.resolve_aug_inplace(
+                target_type, stmt.op, value_type, protocol_checker=protocol_checker,
+            ):
                 stmt.resolved_inplace = result
+                if result.method.params:
+                    _, param_type = result.method.params[0]
+                    self.compat.check_type_compatible(
+                        value_type, param_type, f"'{stmt.op}=' operand", source_expr=stmt.value,
+                    )
                 return
             if result := operators.resolve_binop(target_type, stmt.op, value_type):
                 stmt.resolved_binop = result

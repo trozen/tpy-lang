@@ -6,13 +6,14 @@ operators, calls, methods, and module infrastructure.
 """
 
 from __future__ import annotations
+from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING, Callable
 
 from ..typesys import (
     TpyType, IntLiteralType, Int32Type, FixedIntType, BigIntType, BIGINT,
     TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
     PendingStrType, StrType, StringType, StrViewType,
-    NamedType, PtrType,
+    NamedType, PtrType, OwnType,
 )
 from ..coercions import resolve_coercion, CoercionContext
 
@@ -40,7 +41,17 @@ def type_matches_strict(
     if isinstance(arg_inner, PendingStrType) and isinstance(param_type, StrType):
         return True
     if protocol_checker and is_protocol_type(param_type):
-        return protocol_checker(arg_inner, param_type)
+        # Unwrap Own[T] from arg -- copy()-wrapped return values should still match
+        # plain protocol params (Own is a caller-side ownership marker, not a new type).
+        check_arg = arg_inner.wrapped if isinstance(arg_inner, OwnType) else arg_inner
+        # Strip Own[T] wrappers from protocol type args so that e.g.
+        # list[Node] matches Iterable[Own[Node]] for protocol conformance.
+        check_param = param_type
+        if (isinstance(param_type, NamedType) and param_type.type_args
+                and any(isinstance(a, OwnType) for a in param_type.type_args)):
+            stripped = tuple(a.wrapped if isinstance(a, OwnType) else a for a in param_type.type_args)
+            check_param = dc_replace(param_type, type_args=stripped)
+        return protocol_checker(check_arg, check_param)
     return False
 
 

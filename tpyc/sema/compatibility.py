@@ -5,6 +5,7 @@ Type compatibility checking, coercions, and lvalue analysis.
 """
 
 from __future__ import annotations
+from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING, Optional
 
 from ..typesys import (
@@ -170,6 +171,49 @@ class TypeCompatibility:
 
         # Optional[T] -> Optional[T] already handled by == check above
         # Optional[T] -> T: error (cannot implicitly unwrap)
+
+        # Protocol[Own[T], ...] coercion: Own[T] in a type arg signals copy semantics.
+        # Strip Own wrappers for conformance, then warn when elements are silently
+        # copied (non-value type, lvalue source, not acknowledged with copy()).
+        if (is_protocol_type(expected) and isinstance(expected, NamedType)
+                and expected.type_args
+                and any(isinstance(a, OwnType) for a in expected.type_args)):
+            stripped_args = tuple(a.wrapped if isinstance(a, OwnType) else a for a in expected.type_args)
+            plain_proto = dc_replace(expected, type_args=stripped_args)
+            # Own[T] actual means caller acknowledged ownership transfer -- no warning.
+            actual_inner = actual.wrapped if isinstance(actual, OwnType) else actual
+            if self.protocols and self.protocols.type_conforms_to_protocol(actual_inner, plain_proto):
+                if (source_expr is not None
+                        and not isinstance(actual, OwnType)
+                        and self.is_lvalue(source_expr)
+                        and not self.is_copy_call(source_expr)):
+                    is_auto_moved = (isinstance(source_expr, TpyName)
+                                     and id(source_expr) in self.ctx.all_last_uses
+                                     and self._is_movable_var(source_expr.name))
+                    if not is_auto_moved:
+                        for arg in expected.type_args:
+                            if not isinstance(arg, OwnType):
+                                continue
+                            elem_type = arg.wrapped
+                            if elem_type.is_value_type() or self._is_value_type_param(elem_type):
+                                continue
+                            if isinstance(elem_type, TypeParamRef):
+                                self.ctx.warning(
+                                    f"may copy {elem_type} elements if not a value type; "
+                                    f"use copy() to make this explicit",
+                                    source_expr,
+                                )
+                            else:
+                                self.ctx.warning(
+                                    f"copies {elem_type} elements; "
+                                    f"use copy() to make this explicit",
+                                    source_expr,
+                                )
+                return None
+            raise SemanticError(
+                f"Type {actual_inner} does not conform to protocol {plain_proto} in {context}",
+                source_expr.loc if source_expr is not None else loc
+            )
 
         # Protocol matching (structural subtyping)
         if is_protocol_type(expected):
