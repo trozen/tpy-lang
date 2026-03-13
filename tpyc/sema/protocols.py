@@ -13,7 +13,7 @@ from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, OwnType, ReadonlyType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, is_protocol_type,
     FixedIntType, BigIntType, FloatType, Float32Type, BoolType, StrType, StringType, StrViewType, CharType,
-    ListType, ListRepeatType, GenExprType, DictType, SetType, ArrayType, TupleType, SpanType, OptionalType, IntLiteralType, PendingListType, BIGINT,
+    ListType, ListRepeatType, GenExprType, DictType, SetType, ArrayType, TupleType, SpanType, OptionalType, IntLiteralType, FloatLiteralType, PendingListType, BIGINT, FLOAT,
     EnumType, IntEnumType,
     impl_proto_matches_name, get_protocol_qname,
 )
@@ -78,6 +78,9 @@ class ProtocolChecker:
         # IntLiteralType: check if default int type conforms
         if isinstance(actual, IntLiteralType):
             return self.type_conforms_to_protocol(BIGINT, protocol)
+        # FloatLiteralType: check if float64 conforms
+        if isinstance(actual, FloatLiteralType):
+            return self.type_conforms_to_protocol(FLOAT, protocol)
 
         # PendingListType: delegate to list[T] (resolves to list or Array, both conform)
         if isinstance(actual, PendingListType):

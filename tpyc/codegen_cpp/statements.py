@@ -9,10 +9,10 @@ import io
 from typing import Callable, TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, BoolType,
+    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, FloatLiteralType, BoolType,
     ArrayType, ListType, PendingListType, PendingDictType, PendingSetType, PendingStrType, OwnType, OptionalType,
     NoneType, NamedType, StrType, StrViewType, STR, TupleType,
-    INT32, BIGINT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
+    INT32, BIGINT, FLOAT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType,
     local_var_is_movable, resolve_int_literals,
 )
@@ -513,6 +513,8 @@ class StatementGenerator:
             if isinstance(target_type, OwnType):
                 target_type = target_type.wrapped
             target_type = resolve_int_literals(target_type, self.ctx.analyzer.ctx.default_int_for_literal)
+            if isinstance(target_type, FloatLiteralType):
+                target_type = FLOAT
             resolved = self._resolve_pending_container(target_type)
             if resolved is not None:
                 target_type = resolved
@@ -551,6 +553,9 @@ class StatementGenerator:
             var_type = info.resolved_type if info and info.resolved_type else STR
         # Resolve IntLiteralType in all composite types (tuples, arrays, lists)
         var_type = resolve_int_literals(var_type, resolve_lit)
+        # Resolve FloatLiteralType to float64 (same as sema: float literals default to double)
+        if isinstance(var_type, FloatLiteralType):
+            var_type = FLOAT
         # Optional non-value types use inner type (pointer-local adds T*)
         if isinstance(var_type, OptionalType) and var_type.uses_pointer_repr():
             var_type = var_type.inner

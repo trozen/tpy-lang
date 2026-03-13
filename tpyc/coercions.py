@@ -8,6 +8,7 @@ from typing import Callable, Optional
 
 from .typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type,
+    FloatLiteralType,
     NamedType, PtrType, is_readonly_ptr, CharType, StrType, StringType, StrViewType,
     SpanType, is_readonly_span, PendingListType, TypeParamRef, TypeParamKind, ReadonlyType,
 )
@@ -172,6 +173,20 @@ COERCIONS: list[Coercion] = [
         from_type=BigIntType,
         to_type=FloatType,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
+    ),
+
+    # Float literal coercions (adapts to context)
+    Coercion(
+        name="float_literal_to_float",
+        from_type=FloatLiteralType,
+        to_type=FloatType,
+        codegen=lambda e, _a, _b, _c: e,
+    ),
+    Coercion(
+        name="float_literal_to_float32",
+        from_type=FloatLiteralType,
+        to_type=Float32Type,
+        codegen=lambda e, _a, _b, _c: e,  # identity: gen_expr provides 'f' suffix
     ),
 
     # Float32 coercions (widening to Float32)

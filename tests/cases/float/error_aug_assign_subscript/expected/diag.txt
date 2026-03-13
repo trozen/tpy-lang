@@ -1,1 +1,1 @@
-main.py:6: error: Augmented assignment '*=' to 'items[...]' (Int32) produces float; use explicit conversion
+main.py:6: error: Type mismatch in '*=' to 'items[...]': expected Int32, got float

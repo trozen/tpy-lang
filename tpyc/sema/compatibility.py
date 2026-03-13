@@ -9,9 +9,9 @@ from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING, Optional
 
 from ..typesys import (
-    TpyType, IntLiteralType, BigIntType, Int32Type, ArrayType, ListType, ListRepeatType, DictType, SetType,
+    TpyType, IntLiteralType, FloatLiteralType, BigIntType, Int32Type, ArrayType, ListType, ListRepeatType, DictType, SetType,
     PendingListType, PendingDictType, PendingSetType, PendingStrType, UnknownElementType,
-    SpanType, StrType, StringType, StrViewType,
+    SpanType, StrType, StringType, StrViewType, FloatType, Float32Type,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
     NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
     is_protocol_type, unwrap_readonly, unwrap_optional_own, local_var_is_movable,
@@ -333,6 +333,11 @@ class TypeCompatibility:
         # IntLiteral can coerce to BigInt or stay unresolved
         if isinstance(actual, IntLiteralType):
             if isinstance(expected, (BigIntType, IntLiteralType)):
+                return None
+
+        # FloatLiteral can coerce to float/Float32 or stay unresolved
+        if isinstance(actual, FloatLiteralType):
+            if isinstance(expected, (FloatType, Float32Type, FloatLiteralType)):
                 return None
 
         # Allow Array element type coercion if sizes match

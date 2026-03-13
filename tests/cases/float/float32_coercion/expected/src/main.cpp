@@ -13,20 +13,20 @@ double accepts_float(double x) {
 // 7: def accepts_f32(x: Float32) -> Float32:
 float accepts_f32(float x) {
     // 8:     return x + Float32(1.0)
-    return ((x) + (static_cast<float>(1.0)));
+    return ((x) + (1.0f));
 }
 
 // 10: def returns_f32() -> Float32:
 float returns_f32() {
     // 11:     return Float32(3.0)
-    return static_cast<float>(3.0);
+    return 3.0f;
 }
 
 // 13: def test_widening_assignment() -> None:
 void test_widening_assignment() {
     // 14:     # Float32 -> float (implicit widening)
     // 15:     a: Float32 = Float32(2.5)
-    float a = static_cast<float>(2.5);
+    float a = 2.5f;
     // 16:     b: float = a  # tpyc: ok
     double b = static_cast<double>(a);
     // 17:     print(b)
@@ -48,7 +48,7 @@ void test_narrowing_assignment() {
 void test_param_coercion() {
     // 26:     # Pass Float32 where float expected (widening)
     // 27:     v: Float32 = Float32(4.0)
-    float v = static_cast<float>(4.0);
+    float v = 4.0f;
     // 28:     r = accepts_float(v)  # tpyc: type(float)
     double r = accepts_float(static_cast<double>(v));
     // 29:     print(r)
@@ -74,9 +74,9 @@ void test_return_coercion() {
 // 41: def test_mixed_type_inference() -> None:
 void test_mixed_type_inference() {
     // 42:     a: Float32 = Float32(1.0)
-    float a = static_cast<float>(1.0);
+    float a = 1.0f;
     // 43:     b: Float32 = Float32(2.0)
-    float b = static_cast<float>(2.0);
+    float b = 2.0f;
     // 44:     c = a + b  # tpyc: type(Float32)
     float c = ((a) + (b));
     // 45:     print(c)
@@ -114,9 +114,9 @@ void test_int_to_float32_coercion() {
 void test_chained_coercion() {
     // 66:     # Float32 -> float -> used in float arithmetic
     // 67:     a: Float32 = Float32(1.5)
-    float a = static_cast<float>(1.5);
-    // 68:     b: float = a * 2.0  # Float32 * float -> float
-    double b = (static_cast<double>(a) * (2.0));
+    float a = 1.5f;
+    // 68:     b: float = a * 2.0  # Float32 * float_literal -> Float32 (literal adapts), widened to float
+    double b = static_cast<double>(((a) * (2.0f)));
     // 69:     c: float = b + 1.0
     double c = ((b) + (1.0));
     // 70:     print(c)

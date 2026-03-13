@@ -65,7 +65,7 @@ def test_int_to_float32_coercion() -> None:
 def test_chained_coercion() -> None:
     # Float32 -> float -> used in float arithmetic
     a: Float32 = Float32(1.5)
-    b: float = a * 2.0  # Float32 * float -> float
+    b: float = a * 2.0  # Float32 * float_literal -> Float32 (literal adapts), widened to float
     c: float = b + 1.0
     print(c)
 

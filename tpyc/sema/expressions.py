@@ -9,7 +9,7 @@ from contextlib import ExitStack
 from typing import Literal, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, CharType,
+    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, BoolType, StrType, CharType,
     NamedType, PtrType, OwnType, ListType, DictType, SetType, ArrayType, PendingListType, ListRepeatType, GenExprType, TupleType, SpanType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
@@ -88,7 +88,7 @@ class ExpressionAnalyzer:
         if isinstance(expr, TpyIntLiteral):
             typ = IntLiteralType(expr.value)
         elif isinstance(expr, TpyFloatLiteral):
-            typ = FLOAT
+            typ = FloatLiteralType(expr.value)
         elif isinstance(expr, TpyStrLiteral):
             # String literals are always str type (including single-char)
             # Char type is only used when explicitly annotated or from string indexing
@@ -399,10 +399,13 @@ class ExpressionAnalyzer:
             return resolve_int_literals(ListType(t.element_type), self.ctx.default_int_for_literal)
         if isinstance(t, PendingDictType):
             k = self.ctx.default_int_for_literal(t.key_type) if isinstance(t.key_type, IntLiteralType) else t.key_type
+            k = FLOAT if isinstance(k, FloatLiteralType) else k
             v = self.ctx.default_int_for_literal(t.value_type) if isinstance(t.value_type, IntLiteralType) else t.value_type
+            v = FLOAT if isinstance(v, FloatLiteralType) else v
             return DictType(k, v)
         if isinstance(t, PendingSetType):
             elem = self.ctx.default_int_for_literal(t.element_type) if isinstance(t.element_type, IntLiteralType) else t.element_type
+            elem = FLOAT if isinstance(elem, FloatLiteralType) else elem
             return SetType(elem)
         return t
 
@@ -534,7 +537,7 @@ class ExpressionAnalyzer:
 
         # Helper to check if type is any numeric type
         def is_numeric_type(t: TpyType) -> bool:
-            return isinstance(t, (Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type))
+            return isinstance(t, (Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType))
 
         # Identity operators (is / is not) -- only valid with None or enums
         if expr.op in ("is", "is not"):
@@ -948,7 +951,7 @@ class ExpressionAnalyzer:
 
         # Logical not: validate operand type (Bool, numeric, Optional, or types with __bool__/__len__)
         if expr.op == "!":
-            if isinstance(effective_type, (BoolType, Int32Type, BigIntType, FloatType, Float32Type, IntLiteralType, OptionalType, EnumType)):
+            if isinstance(effective_type, (BoolType, Int32Type, BigIntType, FloatType, Float32Type, IntLiteralType, FloatLiteralType, OptionalType, EnumType)):
                 return BOOL
             record = self.ctx.registry.get_record_for_type(effective_type)
             if record and (record.get_method_overloads("__bool__")
@@ -957,7 +960,7 @@ class ExpressionAnalyzer:
             raise self.ctx.error(f"Invalid operand type for 'not': {operand_type} (expected bool, numeric, or type with __bool__/__len__)", expr)
 
         # Float types support unary negation and plus
-        if isinstance(effective_type, (FloatType, Float32Type)):
+        if isinstance(effective_type, (FloatType, Float32Type, FloatLiteralType)):
             if expr.op in ("-", "+"):
                 if result := self.operators.resolve_unaryop(effective_type, expr.op):
                     expr.resolved_unaryop = result
@@ -1249,6 +1252,15 @@ class ExpressionAnalyzer:
                     # First was literal, but later element is concrete - update first_type
                     first_type = elem_type
                     continue
+                # FloatLiteralType elements are compatible with each other
+                if isinstance(first_type, FloatLiteralType) and isinstance(elem_type, FloatLiteralType):
+                    continue
+                # FloatLiteral coerces to concrete float types
+                if isinstance(elem_type, FloatLiteralType) and isinstance(first_type, (FloatType, Float32Type)):
+                    continue
+                if isinstance(first_type, FloatLiteralType) and isinstance(elem_type, (FloatType, Float32Type)):
+                    first_type = elem_type
+                    continue
                 # Nested lists with IntLiteralType elements are compatible
                 if (isinstance(first_type, ListType) and isinstance(elem_type, ListType) and
                     isinstance(first_type.element_type, IntLiteralType) and
@@ -1398,6 +1410,18 @@ class ExpressionAnalyzer:
                 return t
             e = self.ctx.default_int_for_literal(e, expr.else_expr)
 
+        # FloatLiteral resolution: adapts to the concrete float type in context
+        if isinstance(t, FloatLiteralType) and isinstance(e, FloatLiteralType):
+            return FLOAT
+        if isinstance(t, FloatLiteralType):
+            if isinstance(e, (FloatType, Float32Type)):
+                return e
+            t = FLOAT
+        if isinstance(e, FloatLiteralType):
+            if isinstance(t, (FloatType, Float32Type)):
+                return t
+            e = FLOAT
+
         # Normalize PendingStrType to StrType for comparison; preserve the pending
         # type when both sides are pending so string_view deduction can chain the
         # result variable back to the operands' resolution.
@@ -1477,6 +1501,13 @@ class ExpressionAnalyzer:
             if isinstance(key_type, IntLiteralType) and isinstance(kt, (Int32Type, BigIntType)):
                 key_type = kt
                 continue
+            if isinstance(key_type, FloatLiteralType) and isinstance(kt, FloatLiteralType):
+                continue
+            if isinstance(kt, FloatLiteralType) and isinstance(key_type, (FloatType, Float32Type)):
+                continue
+            if isinstance(key_type, FloatLiteralType) and isinstance(kt, (FloatType, Float32Type)):
+                key_type = kt
+                continue
             if kt != key_type:
                 raise self.ctx.error(
                     f"Dict has mixed key types: key {i} is {kt}, "
@@ -1493,17 +1524,28 @@ class ExpressionAnalyzer:
             if isinstance(value_type, IntLiteralType) and isinstance(vt, (Int32Type, BigIntType)):
                 value_type = vt
                 continue
+            if isinstance(value_type, FloatLiteralType) and isinstance(vt, FloatLiteralType):
+                continue
+            if isinstance(vt, FloatLiteralType) and isinstance(value_type, (FloatType, Float32Type)):
+                continue
+            if isinstance(value_type, FloatLiteralType) and isinstance(vt, (FloatType, Float32Type)):
+                value_type = vt
+                continue
             if vt != value_type:
                 raise self.ctx.error(
                     f"Dict has mixed value types: value {i} is {vt}, "
                     f"but earlier values are {value_type}", expr,
                 )
 
-        # Use annotation types when literal elements are IntLiteralType
+        # Use annotation types when literal elements are IntLiteralType or FloatLiteralType
         if isinstance(key_type, IntLiteralType):
             key_type = expected_key if expected_key else self.ctx.default_int_for_literal(key_type)
         if isinstance(value_type, IntLiteralType):
             value_type = expected_value if expected_value else self.ctx.default_int_for_literal(value_type)
+        if isinstance(key_type, FloatLiteralType):
+            key_type = expected_key if isinstance(expected_key, (FloatType, Float32Type)) else FLOAT
+        if isinstance(value_type, FloatLiteralType):
+            value_type = expected_value if isinstance(expected_value, (FloatType, Float32Type)) else FLOAT
 
         self._validate_dict_key_type(key_type, expr)
         return DictType(key_type, value_type)
@@ -1534,6 +1576,13 @@ class ExpressionAnalyzer:
             if isinstance(elem_type, IntLiteralType) and isinstance(et, (Int32Type, BigIntType)):
                 elem_type = et
                 continue
+            if isinstance(elem_type, FloatLiteralType) and isinstance(et, FloatLiteralType):
+                continue
+            if isinstance(et, FloatLiteralType) and isinstance(elem_type, (FloatType, Float32Type)):
+                continue
+            if isinstance(elem_type, FloatLiteralType) and isinstance(et, (FloatType, Float32Type)):
+                elem_type = et
+                continue
             if et != elem_type:
                 raise self.ctx.error(
                     f"Set has mixed element types: element {i} is {et}, "
@@ -1542,6 +1591,8 @@ class ExpressionAnalyzer:
 
         if isinstance(elem_type, IntLiteralType):
             elem_type = expected_elem if expected_elem else self.ctx.default_int_for_literal(elem_type)
+        if isinstance(elem_type, FloatLiteralType):
+            elem_type = expected_elem if isinstance(expected_elem, (FloatType, Float32Type)) else FLOAT
 
         self._validate_dict_key_type(elem_type, expr)
         return SetType(elem_type)
@@ -1566,6 +1617,13 @@ class ExpressionAnalyzer:
             if isinstance(elem_type, IntLiteralType) and isinstance(first_type, (Int32Type, BigIntType)):
                 continue
             if isinstance(first_type, IntLiteralType) and isinstance(elem_type, (Int32Type, BigIntType)):
+                first_type = elem_type
+                continue
+            if isinstance(first_type, FloatLiteralType) and isinstance(elem_type, FloatLiteralType):
+                continue
+            if isinstance(elem_type, FloatLiteralType) and isinstance(first_type, (FloatType, Float32Type)):
+                continue
+            if isinstance(first_type, FloatLiteralType) and isinstance(elem_type, (FloatType, Float32Type)):
                 first_type = elem_type
                 continue
             if first_type != elem_type:
@@ -1617,6 +1675,8 @@ class ExpressionAnalyzer:
 
         if isinstance(result_elem_type, IntLiteralType):
             result_elem_type = self.ctx.default_int_type
+        if isinstance(result_elem_type, FloatLiteralType):
+            result_elem_type = FLOAT
 
         expr.result_elem_type = result_elem_type
         return GenExprType(result_elem_type)
@@ -1636,6 +1696,8 @@ class ExpressionAnalyzer:
 
         if isinstance(result_elem_type, IntLiteralType):
             result_elem_type = expected_elem if expected_elem is not None else self.ctx.default_int_type
+        if isinstance(result_elem_type, FloatLiteralType):
+            result_elem_type = expected_elem if isinstance(expected_elem, (FloatType, Float32Type)) else FLOAT
 
         if expected_elem is not None and result_elem_type != expected_elem:
             expr.element_expr = self.compat.coerce_expr(
@@ -1737,6 +1799,10 @@ class ExpressionAnalyzer:
             key_type = expected_key if expected_key is not None else self.ctx.default_int_type
         if isinstance(value_type, IntLiteralType):
             value_type = expected_value if expected_value is not None else self.ctx.default_int_type
+        if isinstance(key_type, FloatLiteralType):
+            key_type = expected_key if isinstance(expected_key, (FloatType, Float32Type)) else FLOAT
+        if isinstance(value_type, FloatLiteralType):
+            value_type = expected_value if isinstance(expected_value, (FloatType, Float32Type)) else FLOAT
 
         if expected_key is not None and key_type != expected_key:
             expr.key_expr = self.compat.coerce_expr(
@@ -2021,7 +2087,7 @@ class ExpressionAnalyzer:
         return ret
 
     _FORMATTABLE_TYPES = (
-        FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType,
+        FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, BoolType,
         StrType, StringType, StrViewType, PendingStrType, CharType, EnumType,
     )
 

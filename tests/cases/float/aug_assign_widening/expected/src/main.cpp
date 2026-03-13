@@ -4,49 +4,58 @@
 namespace tpy_user::main {
 
 
-// # int/BigInt variable widens to float when used with aug-assign and a float operand
-// # (equivalent to x = x * 1.3 in Python, which widens x to float)
-// 4: def bigint_widen() -> float:
+// 6: def bigint_widen() -> float:
 double bigint_widen() {
-    // 5:     x = 14         # tpyc: type(float)   -- widens to float because x *= 1.3 follows
+    // 7:     x = 14         # tpyc: type(float)   -- widens to float because x *= 1.3 follows
     double x = 14;
-    // 6:     x *= 1.3
+    // 8:     x *= 1.3
     x = static_cast<double>(x) * (1.3);
-    // 7:     return x
+    // 9:     return x
     return static_cast<double>(x);
 }
 
-// 9: def int32_literal_widen() -> float:
+// 11: def int32_literal_widen() -> float:
 double int32_literal_widen() {
-    // 10:     y = 10         # tpyc: type(float)   -- widens to float because y += 0.5 follows
+    // 12:     y = 10         # tpyc: type(float)   -- widens to float because y += 0.5 follows
     double y = 10;
-    // 11:     y += 0.5
+    // 13:     y += 0.5
     y = static_cast<double>(y) + (0.5);
-    // 12:     return y
+    // 14:     return y
     return static_cast<double>(y);
 }
 
-// 14: def chain_widen() -> float:
+// 16: def chain_widen() -> float:
 double chain_widen() {
-    // 15:     z = 5          # tpyc: type(float)   -- widens to float because z += 0.5 follows
+    // 17:     z = 5          # tpyc: type(float)   -- widens to float because z += 0.5 follows
     double z = 5;
-    // 16:     z += 0.5
+    // 18:     z += 0.5
     z = static_cast<double>(z) + (0.5);
-    // 17:     z *= 2.0
+    // 19:     z *= 2.0
     z = static_cast<double>(z) * (2.0);
-    // 18:     return z
+    // 20:     return z
     return static_cast<double>(z);
 }
 
-// 20: def use_after_widen() -> float:
+// 22: def use_after_widen() -> float:
 double use_after_widen() {
-    // 21:     # Subsequent use of x must see the widened float type, not the original int
-    // 22:     x = 14
+    // 23:     # Subsequent use of x must see the widened float type, not the original int
+    // 24:     x = 14
     double x = 14;
-    // 23:     x *= 1.3
+    // 25:     x *= 1.3
     x = static_cast<double>(x) * (1.3);
-    // 24:     return x + 1.0   # should be 19.2, not 19.0
+    // 26:     return x + 1.0   # should be 19.2, not 19.0
     return (static_cast<double>(x) + (1.0));
+}
+
+// 28: def float32_stays() -> Float32:
+float float32_stays() {
+    // 29:     # Float32 variable stays Float32 when multiplied by a float literal (2.0 adapts to context)
+    // 30:     x = Float32(1.5)   # tpyc: type(Float32) -- stays Float32 because 2.0 is a literal that adapts
+    float x = 1.5f;
+    // 31:     x *= 2.0
+    x = (x) * (2.0f);
+    // 32:     return x
+    return x;
 }
 
 void __tpy_init() {
@@ -54,14 +63,16 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 26: print(bigint_widen())
+    // 34: print(bigint_widen())
     std::cout << tpy::print_float(bigint_widen()) << "\n";
-    // 27: print(int32_literal_widen())
+    // 35: print(int32_literal_widen())
     std::cout << tpy::print_float(int32_literal_widen()) << "\n";
-    // 28: print(chain_widen())
+    // 36: print(chain_widen())
     std::cout << tpy::print_float(chain_widen()) << "\n";
-    // 29: print(use_after_widen())
+    // 37: print(use_after_widen())
     std::cout << tpy::print_float(use_after_widen()) << "\n";
+    // 38: print(float32_stays())
+    std::cout << tpy::print_float(static_cast<double>(float32_stays())) << "\n";
 }
 
 } // namespace tpy_user::main

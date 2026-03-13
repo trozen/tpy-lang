@@ -9,9 +9,9 @@ from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING, Callable
 
 from ..typesys import (
-    TpyType, IntLiteralType, TypeParamRef,
+    TpyType, IntLiteralType, FloatLiteralType, TypeParamRef,
     ResolvedBinop, ResolvedUnaryop, FunctionInfo, TypeParamKind,
-    INT32, PendingListType, ListType,
+    INT32, FLOAT, PendingListType, ListType,
 )
 from .overloads import type_matches_numeric, type_matches_strict
 from tpyc import modules as builtin_modules
@@ -84,9 +84,11 @@ class OperatorResolver:
         return tpy_type
 
     def get_effective_type_for_binop(self, tpy_type: TpyType) -> TpyType:
-        """Fully resolve type for registry lookup (also resolves IntLiteralType)."""
+        """Fully resolve type for registry lookup (also resolves IntLiteralType/FloatLiteralType)."""
         if isinstance(tpy_type, IntLiteralType):
             return self.ctx.default_int_for_literal(tpy_type)
+        if isinstance(tpy_type, FloatLiteralType):
+            return FLOAT
         return self._resolve_pending_types(tpy_type)
 
     def _build_type_subst(

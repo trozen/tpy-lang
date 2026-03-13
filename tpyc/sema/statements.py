@@ -8,13 +8,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, OwnType, ReadonlyType,
+    TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, OwnType, ReadonlyType,
     FinalType, FixedIntType, BoolType, StrViewType, StringType,
     ListType, DictType, ArrayType, SpanType, PendingListType, PendingDictType, PendingSetType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
     ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, StrVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType, UnknownElementType,
     EnumType, unwrap_readonly, is_any_str_type, TupleType,
     PendingGenericInstanceType,
-    INT32, VOID, BIGINT, STRVIEW, is_protocol_type, is_protocol_union,
+    INT32, VOID, BIGINT, FLOAT, STRVIEW, is_protocol_type, is_protocol_union,
 )
 from ..parse import (
     TpyExpr,
@@ -821,6 +821,9 @@ class StatementAnalyzer:
         """
         if self.ctx.is_top_level:
             return var_type
+        # Float literals resolve to float64 as new local variables
+        if isinstance(var_type, FloatLiteralType):
+            return FLOAT
 
         if isinstance(var_type, StrType):
             str_var_id = self.ctx.str_var_counter
@@ -1270,10 +1273,12 @@ class StatementAnalyzer:
                             if key[1] == stmt.name:
                                 self.ctx.declared_var_types[key] = resolved
             else:
-                # New variable: resolve IntLiteralType.
+                # New variable: resolve IntLiteralType/FloatLiteralType.
                 if isinstance(init_type, IntLiteralType):
                     var_type = self.ctx.default_int_for_literal(init_type, warn_node=stmt.init)
                     self.ctx.literal_default_vars.add(stmt.name)
+                elif isinstance(init_type, FloatLiteralType):
+                    var_type = FLOAT  # float literals always default to float64
                 # Unwrap OwnType - Own[T] indicates ownership transfer, not variable type
                 elif isinstance(init_type, OwnType):
                     var_type = init_type.wrapped
@@ -1886,6 +1891,50 @@ class StatementAnalyzer:
             # Analyze the index expression only after confirming __delitem__ exists
             self.expr.analyze_expr(subscript.index)
 
+    def _apply_aug_assign_writeback(
+        self,
+        target: TpyExpr,
+        target_type: TpyType,
+        result_type: TpyType,
+        op: str,
+        stmt: TpyAugAssign,
+    ) -> None:
+        """Check and apply the write-back step of an augmented assignment.
+
+        After the binop is resolved with result_type, verifies result_type is
+        compatible with the target and updates variable caches when widening applies.
+        Uses the same type rules as regular assignment (resolve_reassignment_target_type
+        + check_type_compatible), so annotated variables and non-wideneable pairs
+        produce a standard type mismatch error.
+        """
+        if result_type == target_type:
+            return
+        if isinstance(target, TpyName):
+            name = target.name
+            effective_type = self.deduction.resolve_reassignment_target_type(
+                name, target_type, result_type,
+            )
+            # check_type_compatible errors when effective_type refused widening
+            # (e.g. annotated variable, or mixed-sign fixed-int pair).
+            self.compat.check_type_compatible(
+                result_type, effective_type, f"'{op}=' to '{name}'", loc=stmt.loc,
+            )
+            if effective_type != target_type:
+                if self.ctx.current_scope:
+                    self.ctx.current_scope.define(name, effective_type)
+                var_decl = self.ctx.var_decl_by_name.get(name)
+                if var_decl:
+                    self.ctx.var_types[id(var_decl)] = effective_type
+                for key in self.ctx.declared_var_types:
+                    if key[1] == name:
+                        self.ctx.declared_var_types[key] = effective_type
+        else:
+            # Subscript/field target: element type is fixed, cannot widen.
+            self.compat.check_type_compatible(
+                result_type, target_type,
+                f"'{op}=' to {_format_aug_target(target)}", loc=stmt.loc,
+            )
+
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""
         # Block augmented assignment of Final globals at module level
@@ -1971,7 +2020,7 @@ class StatementAnalyzer:
                 f"Operator '{stmt.op}=' is not supported for {target_type}",
                 stmt,
             )
-        if is_numeric_target and not isinstance(value_type, (Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type)):
+        if is_numeric_target and not isinstance(value_type, (Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType)):
             raise self.ctx.error(
                 f"Augmented assignment value must be a numeric type, got {value_type}",
                 stmt,
@@ -1994,35 +2043,9 @@ class StatementAnalyzer:
         if result := operators.resolve_binop(target_type, stmt.op, resolve_value_type):
             stmt.resolved_binop = result
             if is_numeric_target:
-                result_type = result.method.return_type
-                if result_type != target_type:
-                    if isinstance(stmt.target, TpyName):
-                        name = stmt.target.name
-                        if name not in self.ctx.authoritative_types:
-                            # Unannotated variable: widen to the result type (e.g. x = 14; x *= 1.3 -> float)
-                            widened = self.deduction.resolve_reassignment_target_type(
-                                name, target_type, result_type,
-                            )
-                            if widened != target_type:
-                                if self.ctx.current_scope:
-                                    self.ctx.current_scope.define(name, widened)
-                                var_decl = self.ctx.var_decl_by_name.get(name)
-                                if var_decl:
-                                    self.ctx.var_types[id(var_decl)] = widened
-                                for key in self.ctx.declared_var_types:
-                                    if key[1] == name:
-                                        self.ctx.declared_var_types[key] = widened
-                            return
-                        # Explicit annotation: same error as y = y * 1.5 with mismatched type
-                        raise self.ctx.error(
-                            f"Augmented assignment '{stmt.op}=' to '{name}' ({target_type}) "
-                            f"produces {result_type}; annotate '{name}' as {result_type} "
-                            f"or use explicit conversion",
-                            stmt,
-                        )
-                    # Subscript/field target: element type is fixed, cannot widen
-                    raise self.ctx.error(
-                        f"Augmented assignment '{stmt.op}=' to {_format_aug_target(stmt.target)} ({target_type}) "
-                        f"produces {result_type}; use explicit conversion",
-                        stmt,
-                    )
+                self._apply_aug_assign_writeback(stmt.target, target_type, result.method.return_type, stmt.op, stmt)
+        elif is_numeric_target:
+            raise self.ctx.error(
+                f"Operator '{stmt.op}=' is not supported between {target_type} and {value_type}",
+                stmt,
+            )

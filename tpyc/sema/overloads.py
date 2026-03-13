@@ -10,7 +10,8 @@ from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING, Callable
 
 from ..typesys import (
-    TpyType, IntLiteralType, Int32Type, FixedIntType, BigIntType, BIGINT,
+    TpyType, IntLiteralType, FloatLiteralType, Int32Type, FixedIntType, BigIntType, BIGINT,
+    FloatType, Float32Type,
     TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
     PendingStrType, StrType, StringType, StrViewType,
     NamedType, PtrType, OwnType,
@@ -76,6 +77,9 @@ def type_matches_numeric(
                 return True  # Unknown value -- can't range-check, allow match
             return param_type.min_value <= arg_type.value <= param_type.max_value
         if isinstance(param_type, (BigIntType, IntLiteralType)):
+            return True
+    if isinstance(arg_type, FloatLiteralType):
+        if isinstance(param_type, (FloatType, Float32Type, FloatLiteralType)):
             return True
     if isinstance(arg_type, TypeParamRef) and arg_type.kind == TypeParamKind.INT:
         if isinstance(param_type, (Int32Type, BigIntType)):

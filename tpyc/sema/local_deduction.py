@@ -18,6 +18,8 @@ from ..typesys import (
     DictLiteralInfo,
     DictType,
     FixedIntType,
+    FloatLiteralType,
+    FloatType,
     IntLiteralType,
     ListLiteralInfo,
     ListRepeatType,
@@ -39,6 +41,7 @@ from ..typesys import (
     TupleType,
     STR,
     STRVIEW,
+    FLOAT,
     UnknownElementType,
 )
 from .context import PENDING_CONTAINER_TYPES
@@ -152,6 +155,10 @@ class LocalTypeDeduction:
         """Resolve target type for an unannotated reassignment write."""
         if name in self.ctx.authoritative_types:
             return self.ctx.authoritative_types[name]
+
+        # Resolve float literals to float64 before any widening logic
+        if isinstance(init_type, FloatLiteralType):
+            init_type = FLOAT
 
         # None-seeded inference: None + T => Optional[T]
         if isinstance(existing_type, NoneType):
@@ -289,6 +296,11 @@ class LocalTypeDeduction:
         Returns the updated type, or None if unchanged (same type, or
         incompatible types that normal type checking will catch).
         """
+        # Resolve float literals to float64 before comparisons
+        if isinstance(current, FloatLiteralType):
+            current = FLOAT
+        if isinstance(new_type, FloatLiteralType):
+            new_type = FLOAT
         if isinstance(current, UnknownElementType):
             return new_type
         widened = widen_numeric_types(current, new_type)

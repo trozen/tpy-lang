@@ -269,6 +269,28 @@ x = 14       # inferred as int (BigInt)
 x *= 1.3     # x widens to float; result is 18.2
 ```
 
+**Cross-width FixedInt aug-assign is an error** -- assigning a wider integer type with `+=`/`*=` etc. where the result would silently truncate is rejected:
+```python
+i = Int16(2)
+i += Int64(3)   # error: '+=' is not supported between Int16 and Int64
+```
+Use an explicit cast if narrowing is intended: `i += Int16(Int64(3))`.
+
+#### Float Literal Adaptation (Working)
+
+Bare float literals (`2.0`, `1.5`) carry an unresolved `FloatLiteralType` that adapts to context, analogous to how integer literals adapt to `Int32`/`BigInt`. The default when no context forces a specific type is `float` (64-bit):
+
+```python
+x = Float32(1.5)
+x *= 2.0            # stays Float32 -- literal adapts to Float32 context
+x *= Float64(2.0)   # widens to float -- explicit Float64 forces widening
+
+y = 2.0             # float (default)
+z: Float32 = 2.0    # Float32 -- annotation forces adaptation
+```
+
+This means `Float32` arithmetic stays in single precision without requiring explicit `Float32(...)` wrappers on every literal.
+
 ### Strings
 - **Working**: `str` type -- context-dependent: `std::string` by default, `std::string_view` for parameters
 - **Working**: `String` (`tpy.String`) -- explicit owned `std::string` (parameters use `const std::string&`)

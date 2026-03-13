@@ -648,6 +648,32 @@ class IntLiteralType(TpyType):
 
 
 @dataclass(frozen=True)
+class FloatLiteralType(TpyType):
+    """Unresolved float literal - adapts to Float32 or float64 based on context.
+
+    Like IntLiteralType, this represents a float literal (2.0, 1.5) before context
+    determines whether it's float64 or Float32. Default is float64.
+
+    - Float32 * FloatLiteral -> Float32 (literal adapts to context)
+    - float * FloatLiteral -> float
+    - FloatLiteral * FloatLiteral -> float (default)
+    """
+    value: float | None = None
+
+    def to_cpp(self) -> str:
+        # Should be resolved before codegen; fallback to literal value
+        if self.value is None:
+            return "0.0"
+        return repr(self.value)
+
+    def __str__(self) -> str:
+        return "float"
+
+    def is_value_type(self) -> bool:
+        return True
+
+
+@dataclass(frozen=True)
 class TypeParamRef(TpyType):
     """Unresolved type parameter reference (e.g., T in class Stack[T]).
 
@@ -1436,22 +1462,25 @@ def resolve_int_literals(
     typ: TpyType,
     resolver: 'TpyType | Callable[[TpyType], TpyType]',
 ) -> TpyType:
-    """Recursively resolve IntLiteralType inside composite types.
+    """Recursively resolve IntLiteralType (and FloatLiteralType) inside composite types.
 
     resolver can be a fixed type or a callable (e.g. default_int_for_literal)
     that maps IntLiteralType -> concrete int type.
+    FloatLiteralType always resolves to FloatType (float64).
     Handles TupleType, ArrayType, ListType at arbitrary nesting depth.
     """
     def _resolve(t: TpyType) -> TpyType:
         if isinstance(t, IntLiteralType):
             return resolver(t) if callable(resolver) else resolver
+        if isinstance(t, FloatLiteralType):
+            return FloatType()
         if isinstance(t, TupleType):
             return t.map_inner_types(_resolve)
-        if isinstance(t, ArrayType) and isinstance(t.element_type, IntLiteralType):
-            elem = resolver(t.element_type) if callable(resolver) else resolver
+        if isinstance(t, ArrayType) and isinstance(t.element_type, (IntLiteralType, FloatLiteralType)):
+            elem = _resolve(t.element_type)
             return ArrayType(elem, t.size)
-        if isinstance(t, ListType) and isinstance(t.element_type, IntLiteralType):
-            elem = resolver(t.element_type) if callable(resolver) else resolver
+        if isinstance(t, ListType) and isinstance(t.element_type, (IntLiteralType, FloatLiteralType)):
+            elem = _resolve(t.element_type)
             return ListType(elem)
         return t
     return _resolve(typ)
@@ -2253,6 +2282,7 @@ CHAR = CharType()
 BOOL = BoolType()
 FLOAT = FloatType()
 FLOAT32 = Float32Type()
+
 BIGINT = BigIntType()
 NONE = NoneType()
 RANGE = RangeType(INT32)

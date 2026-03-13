@@ -8,11 +8,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType,
+    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, BoolType,
     PendingListType, PendingDictType, PendingSetType, PendingStrType, ListType, DictType, SetType, ArrayType, TypeParamRef, NamedType,
     UnionType, NoneType, VoidType, EnumType, TupleType,
     unwrap_readonly, is_protocol_type, resolve_int_literals,
-    INT32, BIGINT, FLOAT, STR,
+    INT32, BIGINT, FLOAT, FLOAT32, STR,
     _union_alias_names
 )
 from ..parse import TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyCoerce, TpyCall, TpyMethodCall, TpyIntLiteral, TpyIfExpr
@@ -171,6 +171,11 @@ class TypeResolver:
             if isinstance(target_type, FixedIntType):
                 return target_type
             return self.ctx.analyzer.ctx.default_int_for_literal(typ)
+        # Resolve FloatLiteralType based on context (Float32 if target, else float64).
+        if isinstance(typ, FloatLiteralType):
+            if isinstance(target_type, Float32Type):
+                return FLOAT32
+            return FLOAT
         # Resolve IntLiteralType in container element types
         if isinstance(typ, ListType) and isinstance(typ.element_type, IntLiteralType):
             elem = self.ctx.analyzer.ctx.default_int_for_literal(typ.element_type)

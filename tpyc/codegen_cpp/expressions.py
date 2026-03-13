@@ -381,7 +381,7 @@ class ExpressionGenerator:
             coerce_target = expr.expected_type
             if isinstance(coerce_target, OptionalType) and isinstance(coerce_target.inner, SpanType):
                 coerce_target = coerce_target.inner
-            if expr.coercion.name == "int_literal_to_fixed_int" or isinstance(coerce_target, SpanType):
+            if expr.coercion.name in ("int_literal_to_fixed_int", "float_literal_to_float32") or isinstance(coerce_target, SpanType):
                 inner_target = coerce_target
             else:
                 inner_target = expr.actual_type

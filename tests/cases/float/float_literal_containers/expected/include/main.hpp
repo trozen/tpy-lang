@@ -7,11 +7,12 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-double bigint_widen();
-double int32_literal_widen();
-double chain_widen();
-double use_after_widen();
-float float32_stays();
+void test_list_inferred();
+void test_list_annotated_float32();
+void test_dict_inferred();
+void test_set_inferred();
+void test_ternary_float_literal();
+void test_annotated_float64();
 
 void __tpy_init();
 } // namespace tpy_user::main
