@@ -1871,14 +1871,21 @@ class ExpressionGenerator:
         elem_target = None
         if target_type and target_type.needs_explicit_element_target():
             elem_target = target_type.get_element_type()
-        # For list literals with Optional/Union element types, pass element target
-        # so None generates std::nullopt instead of nullptr
+        # For list literals with Optional/Union/Tuple element types, pass element target
+        # so None generates std::nullopt, and tuple literals get expected types propagated.
         if elem_target is None and target_type:
             et = target_type.get_element_type()
-            if isinstance(et, (OptionalType, UnionType)):
+            if isinstance(et, (OptionalType, UnionType, TupleType, StrType)):
                 elem_target = et
-        elements = ", ".join(self.gen_expr_deref(e, elem_target) for e in expr.elements)
-        literal = f"{{{elements}}}"
+        elements = []
+        for e in expr.elements:
+            # Use elem_target for generation (preserves old int-literal behavior, and for
+            # tuple elements passes the full slot type into _gen_tuple_literal so STR hints
+            # reach nested str slots).
+            code = self.gen_expr_deref(e, elem_target)
+            resolved = self.types.get_resolved_type(e, elem_target)
+            elements.append(self._wrap_for_owned_slot(code, resolved, elem_target))
+        literal = f"{{{', '.join(elements)}}}"
         # std::array of std::array needs an extra brace level
         if isinstance(elem_target, ArrayType):
             return f"{{{literal}}}"
@@ -1899,8 +1906,10 @@ class ExpressionGenerator:
 
         pairs = []
         for k, v in zip(expr.keys, expr.values):
-            k_cpp = self.gen_expr_deref(k, dict_type.key_type)
-            v_cpp = self.gen_expr_deref(v, dict_type.value_type)
+            k_resolved = self.types.get_resolved_type(k, dict_type.key_type)
+            k_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(k, dict_type.key_type), k_resolved, dict_type.key_type)
+            v_resolved = self.types.get_resolved_type(v, dict_type.value_type)
+            v_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(v, dict_type.value_type), v_resolved, dict_type.value_type)
             pairs.append(f"{{{k_cpp}, {v_cpp}}}")
         return f"tpy::ordered_map<{cpp_key}, {cpp_val}>({{{', '.join(pairs)}}})"
 
@@ -1913,7 +1922,10 @@ class ExpressionGenerator:
         if not expr.elements:
             return f"tpy::ordered_set<{cpp_elem}>()"
 
-        elems = [self.gen_expr_deref(e, set_type.element_type) for e in expr.elements]
+        elems = []
+        for e in expr.elements:
+            e_resolved = self.types.get_resolved_type(e, set_type.element_type)
+            elems.append(self._wrap_for_owned_slot(self.gen_expr_deref(e, set_type.element_type), e_resolved, set_type.element_type))
         return f"tpy::ordered_set<{cpp_elem}>({{{', '.join(elems)}}})"
 
     def _gen_list_repeat(self, expr: TpyListRepeat, target_type: TpyType | None) -> str:
@@ -1948,7 +1960,11 @@ class ExpressionGenerator:
                 result_type = ListType(elem_type)
 
         # Use repeat_range for all list repeats (handles negative counts internally)
-        elements = ", ".join(self.gen_expr_deref(e, elem_type) for e in expr.elements)
+        repeat_elems = []
+        for e in expr.elements:
+            e_resolved = self.types.get_resolved_type(e, elem_type)
+            repeat_elems.append(self._wrap_for_owned_slot(self.gen_expr_deref(e, elem_type or e_resolved), e_resolved, elem_type))
+        elements = ", ".join(repeat_elems)
         cpp_elem_type = elem_type.to_cpp() if elem_type else "auto"
         range_expr = f"tpy::repeat_range<{cpp_elem_type}>({count}, {{{elements}}})"
 
@@ -1968,7 +1984,8 @@ class ExpressionGenerator:
         if isinstance(target_type, ArrayType):
             return self._gen_array_comprehension(expr, elem_type, cpp_elem, target_type.size)
 
-        insert_code = self.gen_expr_deref(expr.element_expr, elem_type)
+        elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
+        insert_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
         return self._gen_comprehension_iife(
             expr.generator, f"std::vector<{cpp_elem}>",
             f"__result.push_back({insert_code})", skip_reserve=False)
@@ -1978,7 +1995,8 @@ class ExpressionGenerator:
                                   size: int) -> str:
         """Generate comprehension as IIFE producing std::array with indexed assignment."""
         gen = expr.generator
-        insert_code = self.gen_expr_deref(expr.element_expr, elem_type)
+        elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
+        insert_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
 
         stmt_ind = INDENT * self.ctx.indent_level
         ind1 = stmt_ind + INDENT
@@ -2049,8 +2067,10 @@ class ExpressionGenerator:
         value_type = self._resolve_int_literal(expr.result_value_type)
         cpp_key = self.types.type_to_cpp(key_type)
         cpp_val = self.types.type_to_cpp(value_type)
-        key_code = self.gen_expr_deref(expr.key_expr, key_type)
-        value_code = self.gen_expr_deref(expr.value_expr, value_type)
+        key_resolved = self.types.get_resolved_type(expr.key_expr, key_type)
+        key_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.key_expr, key_type), key_resolved, key_type)
+        value_resolved = self.types.get_resolved_type(expr.value_expr, value_type)
+        value_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.value_expr, value_type), value_resolved, value_type)
         return self._gen_comprehension_iife(
             expr.generator, f"tpy::ordered_map<{cpp_key}, {cpp_val}>",
             f"__result.insert_or_assign({key_code}, {value_code})", skip_reserve=True)
@@ -2058,7 +2078,8 @@ class ExpressionGenerator:
     def _gen_set_comprehension(self, expr: TpySetComprehension) -> str:
         elem_type = self._resolve_int_literal(expr.result_elem_type)
         cpp_elem = self.types.type_to_cpp(elem_type)
-        insert_code = self.gen_expr_deref(expr.element_expr, elem_type)
+        elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
+        insert_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
         return self._gen_comprehension_iife(
             expr.generator, f"tpy::ordered_set<{cpp_elem}>",
             f"__result.insert({insert_code})", skip_reserve=True)
@@ -2384,6 +2405,20 @@ class ExpressionGenerator:
                                 DictKeysViewType, DictValuesViewType,
                                 DictItemsViewType))
 
+    def _wrap_for_owned_slot(self, code: str, resolved: TpyType, slot_type: TpyType | None) -> str:
+        """Wrap a str-view expression with std::string() when placed in an owned-str slot.
+
+        Container elements (list, dict, set, tuple str slots) must be owned std::string.
+        A string_view variable that ends up in such a slot is copied at the call site
+        rather than promoting the variable's type to std::string for its whole lifetime.
+        """
+        if isinstance(resolved, StrViewType):
+            if isinstance(slot_type, StrType):
+                return f"std::string({code})"
+            if isinstance(slot_type, OptionalType) and isinstance(slot_type.inner, StrType):
+                return f"std::string({code})"
+        return code
+
     def _gen_tuple_literal(self, expr: TpyTupleLiteral, target_type: TpyType | None) -> str:
         """Generate tuple literal code."""
         target_tuple = target_type if isinstance(target_type, TupleType) else None
@@ -2392,8 +2427,12 @@ class ExpressionGenerator:
         for i, elem in enumerate(expr.elements):
             elem_target = target_tuple.element_types[i] if target_tuple and i < len(target_tuple.element_types) else None
             resolved = self.types.get_resolved_type(elem, elem_target)
-            resolved_elem_types.append(resolved)
-            elem_strs.append(self.gen_expr_deref(elem, resolved))
+            elem_str = self._wrap_for_owned_slot(self.gen_expr_deref(elem, elem_target), resolved, elem_target)
+            # Use elem_target for the tuple type when a target was given: the code was
+            # generated with that target in mind, so the C++ expression's type is elem_target.
+            effective_type = elem_target if elem_target is not None else resolved
+            resolved_elem_types.append(effective_type)
+            elem_strs.append(elem_str)
         has_ref_elements = any(
             (i < len(expr.elem_capture) and expr.elem_capture[i] != TupleElemCapture.VALUE)
             or isinstance(resolved_elem_types[i], TypeParamRef)

@@ -24,7 +24,7 @@ void main() {
     }
     // 20:     # Expensive value type + non-value: BigInt becomes const T&, Point becomes T&
     // 21:     pairs: list[tuple[int, Point]] = [(1, Point(10, 20)), (2, Point(30, 40))]
-    std::vector<std::tuple<tpy::BigInt, Point>> pairs = {std::tuple<int32_t, Point>{1, Point(10, 20)}, std::tuple<int32_t, Point>{2, Point(30, 40)}};
+    std::vector<std::tuple<tpy::BigInt, Point>> pairs = {std::tuple<tpy::BigInt, Point>{tpy::BigInt(1), Point(10, 20)}, std::tuple<tpy::BigInt, Point>{tpy::BigInt(2), Point(30, 40)}};
     // 22:     for n, pt in pairs:
     auto& __obj_1 = pairs;
     auto __beg_1 = __obj_1.begin();

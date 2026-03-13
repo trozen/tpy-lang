@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // 5: def get_pair() -> tuple[int, int]:
 std::tuple<tpy::BigInt, tpy::BigInt> get_pair() {
     // 6:     return (42, 100)
-    return std::tuple<int32_t, int32_t>{42, 100};
+    return std::tuple<tpy::BigInt, tpy::BigInt>{tpy::BigInt(42), tpy::BigInt(100)};
 }
 
 // 8: def get_string_pair() -> tuple[String, String]:
@@ -59,7 +59,7 @@ void test_reassign_no_const_ref() {
 // 31: def test_lvalue_const_ref() -> None:
 void test_lvalue_const_ref() {
     // 33:     t: tuple[int, int] = (10, 20)
-    std::tuple<tpy::BigInt, tpy::BigInt> t = std::tuple<int32_t, int32_t>{10, 20};
+    std::tuple<tpy::BigInt, tpy::BigInt> t = std::tuple<tpy::BigInt, tpy::BigInt>{tpy::BigInt(10), tpy::BigInt(20)};
     // 34:     a, b = t
     const auto& __tup_1 = t;
     const tpy::BigInt& a = std::get<0>(__tup_1);
@@ -73,13 +73,13 @@ void test_lvalue_const_ref() {
 // 38: def test_lvalue_reassigned_source() -> None:
 void test_lvalue_reassigned_source() {
     // 40:     t: tuple[int, int] = (10, 20)
-    std::tuple<tpy::BigInt, tpy::BigInt> t = std::tuple<int32_t, int32_t>{10, 20};
+    std::tuple<tpy::BigInt, tpy::BigInt> t = std::tuple<tpy::BigInt, tpy::BigInt>{tpy::BigInt(10), tpy::BigInt(20)};
     // 41:     a, b = t
     const auto& __tup_1 = t;
     tpy::BigInt a = std::get<0>(__tup_1);
     tpy::BigInt b = std::get<1>(__tup_1);
     // 42:     t = (30, 40)
-    t = std::tuple<int32_t, int32_t>{30, 40};
+    t = std::tuple<tpy::BigInt, tpy::BigInt>{tpy::BigInt(30), tpy::BigInt(40)};
     // 43:     print(a)
     std::cout << a << "\n";
     // 44:     print(b)

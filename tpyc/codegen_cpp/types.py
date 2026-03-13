@@ -165,10 +165,10 @@ class TypeResolver:
             return resolved
         if isinstance(typ, PendingStrType):
             return self._resolve_pending_str(typ)
-        # Resolve IntLiteralType based on context (FixedInt if target, else
+        # Resolve IntLiteralType based on context (FixedInt/BigInt if target, else
         # configured default int type).
         if isinstance(typ, IntLiteralType):
-            if isinstance(target_type, FixedIntType):
+            if isinstance(target_type, (FixedIntType, BigIntType)):
                 return target_type
             return self.ctx.analyzer.ctx.default_int_for_literal(typ)
         # Resolve FloatLiteralType based on context (Float32 if target, else float64).
@@ -191,10 +191,13 @@ class TypeResolver:
                     tt_elem = None
                     if isinstance(target_type, TupleType) and i < len(target_type.element_types):
                         tt_elem = target_type.element_types[i]
-                    if isinstance(tt_elem, FixedIntType):
+                    if isinstance(tt_elem, (FixedIntType, BigIntType)):
                         resolved_elems.append(tt_elem)
                     else:
                         resolved_elems.append(resolve_lit(et))
+                    changed = True
+                elif isinstance(et, PendingStrType):
+                    resolved_elems.append(self._resolve_pending_str(et))
                     changed = True
                 else:
                     resolved = resolve_int_literals(et, resolve_lit)

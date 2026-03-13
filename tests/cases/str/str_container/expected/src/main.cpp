@@ -9,7 +9,7 @@ namespace tpy_user::main {
 void main() {
     // 3:     # Tuple
     // 4:     t: tuple[int, str] = (1, "hello")
-    std::tuple<tpy::BigInt, std::string> t = std::tuple<int32_t, std::string>{1, "hello"};
+    std::tuple<tpy::BigInt, std::string> t = std::tuple<tpy::BigInt, std::string>{tpy::BigInt(1), "hello"};
     // 5:     print(str(t))
     std::cout << tpy::tuple_to_str(t) << "\n";
     // 6:     print(repr(t))
@@ -22,7 +22,7 @@ void main() {
     std::cout << std::format("{}", tpy::tuple_to_str(t)) << "\n";
     // 11:     # Single-element tuple
     // 12:     t1: tuple[int] = (42,)
-    std::tuple<tpy::BigInt> t1 = std::tuple<int32_t>{42};
+    std::tuple<tpy::BigInt> t1 = std::tuple<tpy::BigInt>{tpy::BigInt(42)};
     // 13:     print(str(t1))
     std::cout << tpy::tuple_to_str(t1) << "\n";
     // 15:     # List
@@ -45,7 +45,7 @@ void main() {
     std::cout << std::format("{}", tpy::dict_to_str(d)) << "\n";
     // 27:     # Nested containers
     // 28:     nested: list[tuple[int, str]] = [(1, "a"), (2, "b")]
-    std::vector<std::tuple<tpy::BigInt, std::string>> nested = {std::tuple<int32_t, std::string>{1, "a"}, std::tuple<int32_t, std::string>{2, "b"}};
+    std::vector<std::tuple<tpy::BigInt, std::string>> nested = {std::tuple<tpy::BigInt, std::string>{tpy::BigInt(1), "a"}, std::tuple<tpy::BigInt, std::string>{tpy::BigInt(2), "b"}};
     // 29:     print(str(nested))
     std::cout << tpy::list_to_str(nested) << "\n";
     // 31:     # Container in f-string with other parts

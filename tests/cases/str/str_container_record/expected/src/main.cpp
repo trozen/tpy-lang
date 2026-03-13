@@ -13,7 +13,7 @@ void main() {
     // 12:     print(f"{pts}")
     std::cout << std::format("{}", tpy::list_to_str(pts)) << "\n";
     // 14:     t: tuple[Point, int] = (Point(5, 6), 7)
-    auto t = std::tuple<Point, int32_t>{Point(tpy::BigInt(5), tpy::BigInt(6)), 7};
+    auto t = std::tuple<Point, tpy::BigInt>{Point(tpy::BigInt(5), tpy::BigInt(6)), tpy::BigInt(7)};
     // 15:     print(str(t))
     std::cout << tpy::tuple_to_str(t) << "\n";
     // 17:     d: dict[str, Point] = {"origin": Point(0, 0)}

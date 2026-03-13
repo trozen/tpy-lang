@@ -1555,6 +1555,11 @@ class ExpressionAnalyzer:
             key_type = expected_key if isinstance(expected_key, (FloatType, Float32Type)) else FLOAT
         if isinstance(value_type, FloatLiteralType):
             value_type = expected_value if isinstance(expected_value, (FloatType, Float32Type)) else FLOAT
+        # Container elements must be owned -- DictType must record StrType, not PendingStrType.
+        if isinstance(key_type, PendingStrType):
+            key_type = STR
+        if isinstance(value_type, PendingStrType):
+            value_type = STR
 
         self._validate_dict_key_type(key_type, expr)
         return DictType(key_type, value_type)
@@ -1602,6 +1607,9 @@ class ExpressionAnalyzer:
             elem_type = expected_elem if expected_elem else self.ctx.default_int_for_literal(elem_type)
         if isinstance(elem_type, FloatLiteralType):
             elem_type = expected_elem if isinstance(expected_elem, (FloatType, Float32Type)) else FLOAT
+        # Container elements must be owned -- SetType must record StrType, not PendingStrType.
+        if isinstance(elem_type, PendingStrType):
+            elem_type = STR
 
         self._validate_dict_key_type(elem_type, expr)
         return SetType(elem_type)

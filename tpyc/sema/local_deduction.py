@@ -528,6 +528,9 @@ class LocalTypeDeduction:
             if isinstance(elem_type, IntLiteralType):
                 # Use configured integer default when no stronger context exists.
                 elem_type = self.ctx.default_int_for_literal(elem_type)
+            if isinstance(elem_type, PendingStrType):
+                # Container elements are owned -- string_view can't be stored in a list.
+                elem_type = STR
 
             # Determine resolved type
             is_repeat = isinstance(info.expr, TpyListRepeat)
@@ -658,6 +661,10 @@ class LocalTypeDeduction:
                 key_type = self.ctx.default_int_for_literal(key_type)
             if isinstance(value_type, IntLiteralType):
                 value_type = self.ctx.default_int_for_literal(value_type)
+            if isinstance(key_type, PendingStrType):
+                key_type = STR
+            if isinstance(value_type, PendingStrType):
+                value_type = STR
 
             self._apply_container_resolution(info, DictType(key_type, value_type))
 
@@ -680,6 +687,8 @@ class LocalTypeDeduction:
 
             if isinstance(elem_type, IntLiteralType):
                 elem_type = self.ctx.default_int_for_literal(elem_type)
+            if isinstance(elem_type, PendingStrType):
+                elem_type = STR
 
             self._apply_container_resolution(info, SetType(elem_type))
 
