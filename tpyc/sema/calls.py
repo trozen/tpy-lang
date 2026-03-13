@@ -1275,8 +1275,11 @@ class CallAnalyzer:
             arg_root = _root_name_of_expr(arg)
             if arg_root is None:
                 continue
-            # Resolve alias chains to find the original param
-            resolved = self.ctx.borrow_tracker.effective_storage(arg_root)
+            # Resolve alias and element borrow chains to find the original param.
+            # 8a.5: effective_storage_through_borrows also follows element/field/ptr
+            # borrows so that mutating a call arg that element-borrows from a param
+            # correctly traces back to the source param.
+            resolved = self.ctx.borrow_tracker.effective_storage_through_borrows(arg_root)
             if resolved in name_to_idx and resolved not in rebound:
                 param_map[i] = name_to_idx[resolved]
         if param_map or receiver_is_self:

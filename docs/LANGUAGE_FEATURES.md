@@ -146,6 +146,20 @@ def process(data: MyClass) -> None:  # data is passed by reference
 
 **Const reference optimization**: Record and container parameters that are never mutated (no field writes, no mutating method calls, no address-taking via `Ptr(param)`, no `Optional[T]` coercion, no mutable `Span` coercion) are automatically passed as `const T&` instead of `T&`. This applies transitively via call-graph propagation: if a wrapper only passes a parameter to a non-mutating callee, the wrapper parameter also becomes `const T&`. Protocol-typed parameters (both static template types and `@dynamic` base classes) receive the same optimization: a non-mutated protocol param emits `const T_x&` / `const Base&` instead of `T_x&` / `Base&`. For protocol params, a call to a non-`@readonly` protocol method counts as mutation of the receiver.
 
+**Element-ref deferral**: taking an element reference (`v = items[i]`) does not immediately mark `items` as mutated. The source container is only marked when the borrowed element is actually written through (field write, subscript write, or pass to mutating callee). This allows read-only element-ref patterns to preserve `const T&` for the container param:
+
+```python
+def read_elem(items: list[Point]) -> Int32:
+    v = items[0]    # deferred -- items not yet marked
+    return v.x      # read only -- items stays const T&
+    # C++: int32_t read_elem(const std::vector<Point>& items)
+
+def write_elem(items: list[Point], val: Int32) -> None:
+    v = items[0]    # deferred
+    v.x = val       # write through -- items now T&
+    # C++: void write_elem(std::vector<Point>& items, int32_t val)
+```
+
 ```python
 def read_point(p: Point) -> Int32:
     return p.x  # const Point& p in C++

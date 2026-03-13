@@ -270,6 +270,35 @@ class FunctionGenerator:
             return return_type.to_cpp_return_const()
         return return_type.to_cpp_return()
 
+    def _build_const_ref_params(
+        self,
+        params: list[tuple[str, 'TpyType']],
+        mutated_params: 'frozenset[int] | None',
+        reassigned_params: 'set[str] | None' = None,
+        use_const_params: bool = False,
+    ) -> set[str]:
+        """Return the set of param names that will be emitted as const T& in C++.
+
+        Mirrors the constness logic in gen_params() so that statement codegen
+        can emit explicit const T& / T& for element-borrow locals instead of auto&.
+        """
+        from ..typesys import TypeParamRef
+        result: set[str] = set()
+        if use_const_params:
+            for pname, ptype in params:
+                if ptype.is_ref_param() and not isinstance(ptype, TypeParamRef):
+                    result.add(pname)
+            return result
+        if mutated_params is None:
+            return result
+        for i, (pname, ptype) in enumerate(params):
+            if (i not in mutated_params
+                    and ptype.is_ref_param()
+                    and not isinstance(ptype, TypeParamRef)
+                    and not (reassigned_params and pname in reassigned_params)):
+                result.add(pname)
+        return result
+
     def _get_reassigned_params(self, func: TpyFunction) -> set[str] | None:
         """Get the set of param names reassigned in the function body, or None."""
         scan = self.ctx.analyzer.function_scan_results.get(id(func))
@@ -532,7 +561,8 @@ class FunctionGenerator:
         for pname, ptype in func.params:
             local_ns.bind_variable(pname, ptype)
         self.statements.gen_body(out, func.body, func.params, func.return_type,
-                                 func, local_ns)
+                                 func, local_ns,
+                                 const_ref_params=self._build_const_ref_params(func.params, mp, rp))
 
         out.write("}\n")
 
@@ -588,7 +618,8 @@ class FunctionGenerator:
         self.ctx.overload_param_types = overload_types
         try:
             self.statements.gen_body(out, impl.body, stub.params, stub.return_type,
-                                     impl, local_ns)
+                                     impl, local_ns,
+                                     const_ref_params=self._build_const_ref_params(stub.params, mp, rp))
         finally:
             self.ctx.overload_param_types = {}
 
@@ -806,7 +837,9 @@ class FunctionGenerator:
         self.ctx.in_consuming_method = method.is_consuming
         self.statements.gen_body(out, method.body, method.params, method.return_type,
                                  method, local_ns, indent_level=2, is_method=True,
-                                 record_type_param_bounds=record_type_param_bounds)
+                                 record_type_param_bounds=record_type_param_bounds,
+                                 const_ref_params=self._build_const_ref_params(
+                                     method.params, mp, rp, use_const_params))
         self.ctx.in_consuming_method = prev_consuming
 
         out.write(f"{INDENT}}}\n")

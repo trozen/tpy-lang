@@ -250,6 +250,7 @@ class CodeGenContext:
     current_return_type: TpyType | None = None
     current_func_params: dict[str, TpyType] = field(default_factory=dict)
     current_type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
+    const_ref_params: set[str] = field(default_factory=set)
 
     # --- Temporary variable management ---
     temps: TempState = field(default_factory=TempState)

@@ -157,6 +157,29 @@ class BorrowTracker:
             visited.add(found)
             current = found
 
+    def borrow_kind_of(self, name: str) -> 'BorrowKind | None':
+        """Return the kind of borrow that 'name' holds, or None if not a borrower."""
+        for storage, borrowers in self.borrows.items():
+            if name in borrowers:
+                return self.borrow_kinds.get((storage, name))
+        return None
+
+    def is_deferred_borrow(self, name: str) -> bool:
+        """Return True if name ultimately traces back to a deferred ELEMENT borrow.
+
+        A variable is deferred if it is an ELEMENT borrow, or an ALIAS/FIELD borrow
+        of a deferred variable (transitively). PTR/ITER borrows are not deferred.
+        Termination is guaranteed because borrow chains are acyclic.
+        """
+        kind = self.borrow_kind_of(name)
+        if kind == BorrowKind.ELEMENT:
+            return True
+        if kind in (BorrowKind.ALIAS, BorrowKind.FIELD):
+            source = self.borrow_source(name)
+            if source is not None:
+                return self.is_deferred_borrow(source)
+        return False
+
     def borrow_source(self, name: str) -> str | None:
         """Return the direct borrow source of name (any borrow kind), or None.
 
@@ -168,6 +191,27 @@ class BorrowTracker:
             if name in borrowers:
                 return storage
         return None
+
+    def effective_storage_through_borrows(self, name: str) -> str:
+        """Follow ALL borrow chains (ALIAS + ELEMENT + FIELD + PTR) to ultimate storage.
+
+        Unlike effective_storage (ALIAS-only), this traverses the full chain
+        so a write through an element ref can be traced back to its source param.
+        For example: w ALIAS-borrows v, v ELEMENT-borrows items -> returns items.
+        Cycle-safe via visited set.
+        """
+        visited: set[str] = {name}
+        current = name
+        while True:
+            found = None
+            for storage, borrowers in self.borrows.items():
+                if current in borrowers:
+                    found = storage
+                    break
+            if found is None or found in visited:
+                return current
+            visited.add(found)
+            current = found
 
     def freeze(self) -> frozenset[tuple[str, str, BorrowKind]]:
         """Snapshot borrow state as immutable triples for flow analysis."""
@@ -573,7 +617,10 @@ class SemanticContext:
 
         For 'self': sets current_self_mutated (method self-mutation tracking).
         For regular params: adds to current_mutated_param_names.
-        Also traces loop variables back to their source iterables transitively.
+        Also traces loop variables back to their source iterables, and traces
+        element/field/ptr borrows back to their source storage (8a.5: deferred
+        marking for element refs -- when v = items[i] and v.field is written,
+        the write propagates back to items).
         """
         if name == "self":
             self.current_self_mutated = True
@@ -583,6 +630,14 @@ class SemanticContext:
         iterable = self.loop_var_iterable.get(name)
         if iterable is not None:
             self.mark_param_mutated(iterable)
+        # 8a.5: trace through element/field/ptr borrows to source param.
+        # When v = items[i] (deferred) and v is later written through,
+        # mark the ultimate storage root (e.g. items) as mutated.
+        # The recursive call terminates because effective_storage_through_borrows
+        # on the ultimate root returns itself (no upstream borrow points to it).
+        ultimate = self.borrow_tracker.effective_storage_through_borrows(name)
+        if ultimate != name:
+            self.mark_param_mutated(ultimate)
 
     def mark_param_structurally_mutated(self, name: str) -> None:
         """Mark a parameter as structurally mutated (append/insert/clear/del/etc.).

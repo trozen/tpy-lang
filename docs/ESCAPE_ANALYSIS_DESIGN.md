@@ -36,7 +36,7 @@
 | 8a.2 | Track address-taking (`Ptr(param)`) in Phase 1 -- enables `const T&` for record params | S | Done | [8](#8-cross-function-borrow-inference) |
 | 8a.3 | Track tuple ref packing (`return (x, param)` where tuple slot is `T&`) in Phase 1 -- same goal as 8a.2 | S | Done | [8](#8-cross-function-borrow-inference) |
 | 8a.4 | `const T&` for protocol-typed params: thread `mutated_params` through `gen_params_with_protocols` | S | Done | [8](#8-cross-function-borrow-inference) |
-| 8a.5 | Precise element-ref mutation: defer marking source container until borrower is actually written (currently conservative -- any element ref marks container as mutated) | M | Not started | [8](#8-cross-function-borrow-inference) |
+| 8a.5 | Precise element-ref mutation: defer marking source container until borrower is actually written (currently conservative -- any element ref marks container as mutated) | M | Done | [8](#8-cross-function-borrow-inference) |
 | 8b | Return-value borrow contracts | L | Done | [8](#8-cross-function-borrow-inference) |
 | 7b | `@pure` enforcement -- or drop `@pure` (see [note](#7-pure-annotation)) | M | Deferred | [7](#7-pure-annotation) |
 | 6c+ | String view extension (list, dict) | M | Done | [6c](#6c-string-view-extension-to-containers) |
@@ -664,6 +664,29 @@ conservative treatment is acceptable.
 `@pure`, `@readonly`, `Mut[T]`, or lifetime annotations needed on user functions.
 Builtins and `@native` functions declare mutation facts in their module definitions
 (existing `is_readonly` mechanism).
+
+**8a.5 -- Precise element-ref mutation (Done)**:
+
+Previously, `v = items[i]` immediately marked `items` as mutated (conservative:
+`std::vector<T>& items`), even when `v` was never written through.
+
+With 8a.5:
+- `v = items[i]` records the ELEMENT borrow in the tracker but defers
+  `mark_param_mutated`. The source container is not immediately marked.
+- When `v` is written through (field write `v.field = x`, subscript write `v[i] = x`,
+  or passed to a mutating callee), `mark_param_mutated(v)` traces back through the
+  borrow chain via `effective_storage_through_borrows(v)` to find `items` and marks it.
+- Call-edge recording (`_record_mutation_call_edges`) also uses
+  `effective_storage_through_borrows` so that `mutating_callee(v)` where
+  `v = items[i]` records a Phase 2 call edge mapping back to `items`.
+- Codegen for element borrow locals emits explicit `const T& v` or `T& v` based on
+  whether the source container is in `const_ref_params` (set by `FunctionGenerator`
+  before each body gen from the function's `mutated_params`). Const propagates
+  transitively: if `v` is `const T&`, an alias `w = v` also gets `const T&`.
+- Any ALIAS/FIELD borrow chain rooted at an ELEMENT borrow is also deferred
+  (`w = v`, `x = w`, ... where `v = items[i]`): `BorrowTracker.is_deferred_borrow`
+  follows the chain recursively so arbitrarily deep read-only alias chains preserve
+  `const T&` for the source container.
 
 #### 8b. Return-Value Borrow Contracts
 

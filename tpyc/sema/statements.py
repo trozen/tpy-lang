@@ -1428,9 +1428,15 @@ class StatementAnalyzer:
                     else:
                         kind = BorrowKind.ALIAS
                     self.ctx.borrow_tracker.add_borrow(root, stmt.name, kind)
-                    # Alias/element/field borrows generate T* y = &(root) in C++.
-                    # If root is a parameter, it must remain T& (not const T&).
-                    self.ctx.mark_param_mutated(root)
+                    # 8a.5: defer marking the source as mutated until the borrower is
+                    # actually written through. Deferral applies to:
+                    # - ELEMENT borrows (v = items[i])
+                    # - ALIAS/FIELD borrows whose root traces back to an ELEMENT borrow
+                    #   (w = v, x = w where v = items[i]) -- checked transitively.
+                    # PTR/ITER borrows and chains not rooted at an ELEMENT mark immediately.
+                    if not (kind == BorrowKind.ELEMENT
+                            or self.ctx.borrow_tracker.is_deferred_borrow(root)):
+                        self.ctx.mark_param_mutated(root)
                 else:
                     # or/and/ternary: generates T& x = (cond ? a : b) in C++.
                     # All referenced params must stay T& (not const T&).

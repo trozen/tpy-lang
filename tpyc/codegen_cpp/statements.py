@@ -100,13 +100,15 @@ class StatementGenerator:
                  params: list[tuple[str, TpyType]], return_type: TpyType,
                  func: TpyFunction, local_ns: Namespace,
                  indent_level: int = 1, is_method: bool = False,
-                 record_type_param_bounds: dict[str, TpyType] | None = None) -> None:
+                 record_type_param_bounds: dict[str, TpyType] | None = None,
+                 const_ref_params: set[str] | None = None) -> None:
         """Generate the body of a function or method.
 
         Handles scope setup, body buffering, hoist-decl prepending, and cleanup.
         Shared by gen_function_def() and _gen_method().
         """
         self.ctx.reset_scope()
+        self.ctx.const_ref_params = const_ref_params if const_ref_params is not None else set()
         self.ctx.declared_vars = {pname for pname, _ in params}
         self.ctx.var_types = {pname: ptype for pname, ptype in params}
         self.ctx.local_scope_names = {pname for pname, _ in params}
@@ -943,6 +945,31 @@ class StatementGenerator:
             else:
                 # T& reference -- alias without rebinding
                 init_expr = self.expressions.gen_expr_deref(stmt.init, target_type)
+                init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
+                # 8a.5: for element borrow locals, determine const from the source.
+                # Check whether the container param (or a const-ref local) is const T&
+                # so the element borrow gets the matching explicit type.
+                if (not is_const
+                        and isinstance(init_inner, TpySubscript)
+                        and not isinstance(init_inner.index, TpySlice)):
+                    src_obj = init_inner.obj
+                    src_is_const = (
+                        isinstance(src_obj, TpyName)
+                        and (src_obj.name in self.ctx.const_ref_params
+                             or src_obj.name in self.ctx.const_indirect_locals)
+                    )
+                    if src_is_const:
+                        # Propagate: downstream element borrows of this local are also const.
+                        self.ctx.const_indirect_locals.add(stmt.name)
+                        return f"{indent}const {cpp_type}& {cpp_name} = {init_expr};\n"
+                # Alias/field borrow of a const ref: propagate const so the alias
+                # also binds as const T& (required when source is const T&).
+                if not is_const and isinstance(init_inner, TpyName):
+                    src = init_inner.name
+                    if (src in self.ctx.const_ref_params
+                            or src in self.ctx.const_indirect_locals):
+                        self.ctx.const_indirect_locals.add(stmt.name)
+                        return f"{indent}const {cpp_type}& {cpp_name} = {init_expr};\n"
                 return f"{indent}{const_pfx}{cpp_type}& {cpp_name} = {init_expr};\n"
 
         # Tier 1 non-value-type locals are eligible for auto-move at last use
