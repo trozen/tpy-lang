@@ -1109,6 +1109,12 @@ class StatementGenerator:
             if self.ctx.is_indirect_name(stmt.target):
                 target = f"(*{target})"
             value = self.expressions.gen_expr_deref(stmt.value)
+            # C++ can't deduce template params from bare initializer lists when
+            # the function uses a two-parameter template (e.g. list_extend(T&, Container)).
+            # Prefix with explicit vector type so the range overload resolves cleanly.
+            receiver_type = self.ctx.get_expr_type(stmt.target)
+            if isinstance(stmt.value, TpyArrayLiteral) and isinstance(receiver_type, ListType):
+                value = f"{self.types.type_to_cpp(receiver_type)}{value}"
             if inplace.method.cpp_template:
                 result = self.expressions._gen_binop_from_result(inplace, target, value)
                 return f"{indent}{result};\n"

@@ -75,7 +75,7 @@ void test_alias_aug_assign() {
     // 50:     alias = items
     std::vector<Point>& alias = items;
     // 51:     alias += [Point(Int32(5), Int32(6))]  # tpyc: warning(/Mutation of 'items'.*'\+='/)
-    tpy::list_extend(alias, {Point(5, 6)});
+    tpy::list_extend(alias, std::vector<Point>{Point(5, 6)});
     // 52:     print(len(items))
     std::cout << tpy::__len__(items) << "\n";
 }

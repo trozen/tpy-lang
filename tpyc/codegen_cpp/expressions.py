@@ -906,7 +906,7 @@ class ExpressionGenerator:
             # C++ can't deduce template params from bare initializer lists,
             # so array literal operands need explicit std::vector<T>{...} prefix
             if isinstance(receiver_type, ListType):
-                cpp_type = receiver_type.to_cpp()
+                cpp_type = self.types.type_to_cpp(receiver_type)
                 if isinstance(expr.left, TpyArrayLiteral):
                     left = f"{cpp_type}{left}"
                 if isinstance(expr.right, TpyArrayLiteral):

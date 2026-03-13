@@ -52,7 +52,7 @@ void test_no_borrow_no_warn() {
     // 41:     data: list[Point] = [Point(1, 2), Point(3, 4)]
     std::vector<Point> data = {Point(1, 2), Point(3, 4)};
     // 42:     data += [Point(5, 6)]          # tpyc: ok
-    tpy::list_extend(data, {Point(5, 6)});
+    tpy::list_extend(data, std::vector<Point>{Point(5, 6)});
     // 43:     print(len(data))               # 3
     std::cout << tpy::__len__(data) << "\n";
 }

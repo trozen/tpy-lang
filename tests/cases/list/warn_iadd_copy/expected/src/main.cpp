@@ -65,7 +65,7 @@ void test_iadd_rvalue_no_warn() {
     // 43:     a += make_nodes()  # tpyc: ok -- rvalue, not a live lvalue
     tpy::list_extend(a, make_nodes());
     // 44:     a += [Node(Int32(2))]  # tpyc: ok -- inline literal
-    tpy::list_extend(a, {Node(2)});
+    tpy::list_extend(a, std::vector<Node>{Node(2)});
     // 45:     print(len(a))
     std::cout << tpy::__len__(a) << "\n";
 }
