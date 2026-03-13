@@ -39,6 +39,26 @@ class Box:
         return len(self.items)
 
 
+# self.field.method() -- calling a non-readonly method on a field IS self-mutation.
+# The receiver is self.items (a field access), not self directly, so mutation is
+# recorded immediately rather than going through the call-edge propagation path.
+class SortableBox:
+    items: list[Int32]
+
+    def __init__(self) -> None:
+        self.items = []
+
+    def fill(self, a: Int32, b: Int32) -> None:   # mutates self.items -- must NOT be const
+        self.items.append(a)
+        self.items.append(b)
+
+    def sort_items(self) -> None:                  # self.field.method() -- must NOT be const
+        self.items.sort()
+
+    def get_first(self) -> Int32:                  # only reads -- inferred const
+        return self.items[0]
+
+
 # @dynamic protocol with a non-dynamic parent: the concrete class that implements
 # DynValued must keep value() non-const so it matches the C++ pure virtual signature.
 # Without the recursive ancestor walk in _dynamic_proto_requires_nonconst, value()
@@ -75,6 +95,11 @@ def main() -> None:
     b.push(1)
     b.push_default()
     print(b.size())
+
+    sb = SortableBox()
+    sb.fill(3, 1)
+    sb.sort_items()
+    print(sb.get_first())
 
     show(Valued(7))
 

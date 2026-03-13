@@ -9,14 +9,14 @@ namespace tpy_user::main {
 // # DynValued must keep value() non-const so it matches the C++ pure virtual signature.
 // # Without the recursive ancestor walk in _dynamic_proto_requires_nonconst, value()
 // # would be incorrectly inferred as const, making Valued abstract.
-// 46: class HasValue(Protocol):
+// 66: class HasValue(Protocol):
 template<typename T>
 concept HasValue = requires(T& t) {
     { t.value() } -> std::convertible_to<int32_t>;
 };
 
 // @dynamic
-// 50: class DynValued(HasValue, Protocol):
+// 70: class DynValued(HasValue, Protocol):
 template<typename T>
 concept __DynValued_Concept__ = requires(T& t) {
     { t.value() } -> std::convertible_to<int32_t>;
@@ -48,6 +48,7 @@ namespace tpy_user::main {
 
 struct Counter;
 struct Box;
+struct SortableBox;
 struct Valued;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -131,18 +132,57 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// 53: class Valued(DynValued):
+// # self.field.method() -- calling a non-readonly method on a field IS self-mutation.
+// # The receiver is self.items (a field access), not self directly, so mutation is
+// # recorded immediately rather than going through the call-edge propagation path.
+// 45: class SortableBox:
+struct SortableBox {
+    // 46:     items: list[Int32]
+    std::vector<int32_t> items;
+
+    // 48:     def __init__(self) -> None:
+    SortableBox() : items(std::vector<int32_t>{}) {}
+
+    // 51:     def fill(self, a: Int32, b: Int32) -> None:   # mutates self.items -- must NOT be const
+    void fill(int32_t a, int32_t b) {
+        // 52:         self.items.append(a)
+        this->items.push_back(a);
+        // 53:         self.items.append(b)
+        this->items.push_back(b);
+    }
+
+    // 55:     def sort_items(self) -> None:                  # self.field.method() -- must NOT be const
+    void sort_items() {
+        // 56:         self.items.sort()
+        std::stable_sort(this->items.begin(), this->items.end());
+    }
+
+    // 58:     def get_first(self) -> Int32:                  # only reads -- inferred const
+    int32_t get_first() const {
+        // 59:         return self.items[0]
+        return tpy::__getitem__(this->items, 0);
+    }
+};
+
+inline std::ostream& operator<<(std::ostream& os, const SortableBox& obj) {
+    os << "SortableBox("
+       << "items=" << tpy::ListPrinter(obj.items)
+       << ")";
+    return os;
+}
+
+// 73: class Valued(DynValued):
 struct Valued : DynValued {
-    // 54:     _n: Int32
+    // 74:     _n: Int32
     int32_t _n;
 
-    // 56:     def __init__(self, n: Int32) -> None:
+    // 76:     def __init__(self, n: Int32) -> None:
     Valued() = default;
     explicit Valued(int32_t n) : _n(n) {}
 
-    // 59:     def value(self) -> Int32:           # must NOT be const (pure virtual override)
+    // 79:     def value(self) -> Int32:           # must NOT be const (pure virtual override)
     int32_t value() override {
-        // 60:         return self._n
+        // 80:         return self._n
         return this->_n;
     }
 };

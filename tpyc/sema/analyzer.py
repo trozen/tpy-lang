@@ -501,10 +501,10 @@ class SemanticAnalyzer:
             for method in record.methods:
                 if method.is_readonly:
                     continue  # already readonly, no need to sync
-                # Overload stubs have no body -- Phase 1 facts live on the
-                # implementation's FI, not on stubs. get_method() returns
-                # overloads[0] which may be a different stub; skip stubs here
-                # to avoid syncing based on a mismatched FI.
+                # Phase 1 facts for @overload methods land on overloads[0]'s FI
+                # (see comment at get_method() call below). Syncing stub nodes
+                # would re-read via get_method() and hit the same FI repeatedly --
+                # skip them and let the non-stub TpyFunction node do the sync.
                 if method.is_overload_stub:
                     continue
                 # @auto_readonly mutable clones are paired with a const clone --
@@ -1092,7 +1092,12 @@ class SemanticAnalyzer:
 
             self.deduction.resolve_all()
 
-            # Store Phase 1 local mutation facts on method FunctionInfo
+            # Store Phase 1 local mutation facts on method FunctionInfo.
+            # For @overload methods, get_method() returns overloads[0] (the first
+            # stub). The implementation's FI is not separately registered, so all
+            # Phase 1 facts are stored on stub[0] and Phase 2 / const inference
+            # work through it. This is consistent with _sync_inferred_const, which
+            # also reads back via get_method() and skips is_overload_stub nodes.
             record_info = self.ctx.registry.get_record(record.name)
             if record_info is not None:
                 method_fi = record_info.get_method(method.name)
