@@ -281,6 +281,35 @@ class OperatorResolver:
 
         return None
 
+    def get_aug_inplace_param_type(
+        self, target_type: TpyType, op: str,
+    ) -> TpyType | None:
+        """Return the expected param type for an in-place operator, or None if not defined.
+
+        Used to produce precise type mismatch errors when resolve_aug_inplace fails:
+        the caller can pass the returned type to check_type_compatible to get a
+        specific "expected X, got Y" error instead of a generic "not supported" error.
+        """
+        method_name = builtin_modules.AUGOP_TO_IMETHOD.get(op)
+        if not method_name:
+            return None
+
+        target_effective = self.get_effective_type_for_binop(target_type)
+        record = self.ctx.registry.get_record_for_type(target_effective)
+        if not record:
+            return None
+
+        overloads = record.get_method_overloads(method_name)
+        candidates = [m for m in overloads if m.params]
+        if not candidates:
+            return None
+
+        type_subst = self._build_type_subst(target_effective, target_effective)
+        _, param_type = candidates[0].params[0]
+        if type_subst:
+            param_type = _substitute_type_params(param_type, type_subst)
+        return param_type
+
     def resolve_unaryop(self, operand_type: TpyType, op: str) -> ResolvedUnaryop | None:
         """Resolve unary operator using registry."""
         method_name = builtin_modules.UNARYOP_TO_METHOD.get(op)

@@ -199,17 +199,24 @@ class TypeCompatibility:
         # Optional[T] -> Optional[T] already handled by == check above
         # Optional[T] -> T: error (cannot implicitly unwrap)
 
-        # Protocol[Own[T], ...] coercion: Own[T] in a type arg signals copy semantics.
-        # Strip Own wrappers for conformance, then warn when elements are silently
-        # copied (non-value type, lvalue source, not acknowledged with copy()).
-        if (is_protocol_type(expected) and isinstance(expected, NamedType)
-                and expected.type_args
-                and any(isinstance(a, OwnType) for a in expected.type_args)):
-            stripped_args = tuple(a.wrapped if isinstance(a, OwnType) else a for a in expected.type_args)
-            plain_proto = dc_replace(expected, type_args=stripped_args)
+        # NamedType with Own[T] in type args signals copy semantics -- applies to both
+        # protocols (Iterable[Own[T]]) and concrete containers (dict[K, Own[V]]).
+        # Strip Own for conformance/equality check; warn when elements are implicitly copied.
+        if (isinstance(expected, NamedType)
+                and expected.inner_types()
+                and any(isinstance(a, OwnType) for a in expected.inner_types())):
+            stripped_inner = tuple(a.wrapped if isinstance(a, OwnType) else a for a in expected.inner_types())
+            stripped_expected = expected.with_inner_types(stripped_inner)
             # Own[T] actual means caller acknowledged ownership transfer -- no warning.
             actual_inner = actual.wrapped if isinstance(actual, OwnType) else actual
-            if self.protocols and self.protocols.type_conforms_to_protocol(actual_inner, plain_proto):
+            if is_protocol_type(expected):
+                structurally_ok = bool(
+                    self.protocols and self.protocols.type_conforms_to_protocol(actual_inner, stripped_expected)
+                )
+            else:
+                # Concrete type: exact match after Own stripping
+                structurally_ok = (actual_inner == stripped_expected)
+            if structurally_ok:
                 if (source_expr is not None
                         and not isinstance(actual, OwnType)
                         and self.is_lvalue(source_expr)
@@ -218,10 +225,10 @@ class TypeCompatibility:
                                      and id(source_expr) in self.ctx.all_last_uses
                                      and self._is_movable_var(source_expr.name))
                     if not is_auto_moved:
-                        for arg in expected.type_args:
-                            if not isinstance(arg, OwnType):
+                        for inner_t in expected.inner_types():
+                            if not isinstance(inner_t, OwnType):
                                 continue
-                            elem_type = arg.wrapped
+                            elem_type = inner_t.wrapped
                             if not _contains_ref_type(elem_type):
                                 continue
                             if _is_definitely_ref_type(elem_type):
@@ -237,10 +244,12 @@ class TypeCompatibility:
                                     source_expr,
                                 )
                 return None
-            raise SemanticError(
-                f"Type {actual_inner} does not conform to protocol {plain_proto} in {context}",
-                source_expr.loc if source_expr is not None else loc
-            )
+            if is_protocol_type(expected):
+                raise SemanticError(
+                    f"Type {actual_inner} does not conform to protocol {stripped_expected} in {context}",
+                    source_expr.loc if source_expr is not None else loc
+                )
+            # Concrete type mismatch: fall through to generic error handling
 
         # Protocol matching (structural subtyping)
         if is_protocol_type(expected):
@@ -422,7 +431,8 @@ class TypeCompatibility:
         # Allow PendingDictType compatibility during first phase (before resolution)
         if isinstance(actual, PendingDictType) and isinstance(expected, DictType):
             key_ok = isinstance(actual.key_type, UnknownElementType) or actual.key_type == expected.key_type
-            val_ok = isinstance(actual.value_type, UnknownElementType) or actual.value_type == expected.value_type
+            check_val = expected.value_type.wrapped if isinstance(expected.value_type, OwnType) else expected.value_type
+            val_ok = isinstance(actual.value_type, UnknownElementType) or actual.value_type == check_val
             if key_ok and val_ok:
                 return None
             if not isinstance(actual.key_type, UnknownElementType) and not isinstance(actual.value_type, UnknownElementType):
@@ -443,10 +453,12 @@ class TypeCompatibility:
             except SemanticError:
                 pass
 
-        # DictType compatibility: key and value types must be compatible
+        # DictType compatibility: key and value types must be compatible.
+        # Strip Own[V] from expected value type -- Own warnings already emitted above.
         if isinstance(actual, DictType) and isinstance(expected, DictType):
+            check_val = expected.value_type.wrapped if isinstance(expected.value_type, OwnType) else expected.value_type
             key_err = self.check_type_compatible(actual.key_type, expected.key_type, context, loc, source_expr)
-            val_err = self.check_type_compatible(actual.value_type, expected.value_type, context, loc, source_expr)
+            val_err = self.check_type_compatible(actual.value_type, check_val, context, loc, source_expr)
             if key_err is None and val_err is None:
                 return None
 

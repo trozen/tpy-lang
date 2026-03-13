@@ -492,7 +492,12 @@ def init_module() -> BuiltinModule:
             cpp="{self}.clear()",
         )],
         "update": [MethodDef(
-            params=[ParamDef("other", DictType(K, V))],
+            params=[ParamDef("other", DictType(K, OwnType(V)))],
+            returns=VOID,
+            cpp="tpy::dict_update({self}, {0})",
+        )],
+        "__ior__": [MethodDef(
+            params=[ParamDef("other", DictType(K, OwnType(V)))],
             returns=VOID,
             cpp="tpy::dict_update({self}, {0})",
         )],

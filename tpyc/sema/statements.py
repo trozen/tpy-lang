@@ -2090,6 +2090,13 @@ class StatementAnalyzer:
                         value_type, param_type, f"'{stmt.op}=' operand", source_expr=stmt.value,
                     )
                 return
+            # Method exists but arg type mismatches -- produce a specific type error.
+            expected_param = operators.get_aug_inplace_param_type(target_type, stmt.op)
+            if expected_param is not None:
+                self.compat.check_type_compatible(
+                    value_type, expected_param, f"'{stmt.op}=' operand",
+                    loc=stmt.loc, source_expr=stmt.value,
+                )
             if result := operators.resolve_binop(target_type, stmt.op, value_type):
                 stmt.resolved_binop = result
                 return

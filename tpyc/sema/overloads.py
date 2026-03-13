@@ -53,6 +53,14 @@ def type_matches_strict(
             stripped = tuple(a.wrapped if isinstance(a, OwnType) else a for a in param_type.type_args)
             check_param = dc_replace(param_type, type_args=stripped)
         return protocol_checker(check_arg, check_param)
+    # Non-protocol NamedType with Own[T] in type args: strip Own for overload matching.
+    # Applies to any concrete container (e.g. dict[K, Own[V]]) not just DictType.
+    # Copy warnings are emitted later by check_type_compatible.
+    if (isinstance(param_type, NamedType) and not is_protocol_type(param_type)
+            and any(isinstance(a, OwnType) for a in param_type.inner_types())):
+        stripped_inner = tuple(a.wrapped if isinstance(a, OwnType) else a for a in param_type.inner_types())
+        stripped_param = param_type.with_inner_types(stripped_inner)
+        return arg_inner == stripped_param
     return False
 
 
@@ -134,6 +142,13 @@ def type_matches_with_coercion(
                 if not (arg_inner.is_readonly and not param_type.is_readonly):
                     if subclass_checker(arg_inner.pointee, param_type.pointee):
                         return True
+    # Non-protocol NamedType with Own[T] in type args: strip Own for overload matching.
+    # Symmetric with the same block in type_matches_strict.
+    if (isinstance(param_type, NamedType) and not is_protocol_type(param_type)
+            and any(isinstance(a, OwnType) for a in param_type.inner_types())):
+        stripped_inner = tuple(a.wrapped if isinstance(a, OwnType) else a for a in param_type.inner_types())
+        stripped_param = param_type.with_inner_types(stripped_inner)
+        return arg_inner == stripped_param
     return False
 
 

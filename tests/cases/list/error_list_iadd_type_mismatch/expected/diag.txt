@@ -1,1 +1,1 @@
-main.py:7: error: Operator '+=' is not supported for list[Int32]
+main.py:7: error: Type list[str] does not conform to protocol Iterable[Int32] in '+=' operand
