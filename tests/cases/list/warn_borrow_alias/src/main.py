@@ -43,6 +43,14 @@ def test_alias_pass_to_func() -> None:
     mutate_list(alias)  # tpyc: warning(/Passing borrowed container 'items'/)
     print(len(items))
 
+def test_alias_aug_assign() -> None:
+    """Aug-assign through alias of borrowed container = warn with root storage name."""
+    items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    v = items[Int32(0)]
+    alias = items
+    alias += [Point(Int32(5), Int32(6))]  # tpyc: warning(/Mutation of 'items'.*'\+='/)
+    print(len(items))
+
 def test_alias_no_element_borrow() -> None:
     """Alias without element borrows = no warn."""
     items: list[Point] = [Point(Int32(1), Int32(2))]
@@ -61,5 +69,6 @@ test_alias_append()
 test_alias_subscript_assign()
 test_alias_del()
 test_alias_pass_to_func()
+test_alias_aug_assign()
 test_alias_no_element_borrow()
 test_direct_still_works()

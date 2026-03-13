@@ -1,4 +1,5 @@
 main.py:19: warning: Mutation of 'items' while borrowed ('append' may invalidate references)
 main.py:35: warning: Mutation of 'items' while borrowed ('del' may invalidate references)
 main.py:43: warning: Passing borrowed container 'items' to non-readonly parameter 'items' (function may invalidate references)
-main.py:57: warning: Mutation of 'items' while borrowed ('append' may invalidate references)
+main.py:51: warning: Mutation of 'items' while borrowed ('+=' may invalidate references)
+main.py:65: warning: Mutation of 'items' while borrowed ('append' may invalidate references)

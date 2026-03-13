@@ -66,27 +66,41 @@ void test_alias_pass_to_func() {
     std::cout << tpy::__len__(items) << "\n";
 }
 
-// 46: def test_alias_no_element_borrow() -> None:
-void test_alias_no_element_borrow() {
-    // 48:     items: list[Point] = [Point(Int32(1), Int32(2))]
-    std::vector<Point> items = {Point(1, 2)};
-    // 49:     alias = items
+// 46: def test_alias_aug_assign() -> None:
+void test_alias_aug_assign() {
+    // 48:     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    std::vector<Point> items = {Point(1, 2), Point(3, 4)};
+    // 49:     v = items[Int32(0)]
+    Point& v = tpy::__getitem__(items, 0);
+    // 50:     alias = items
     std::vector<Point>& alias = items;
-    // 50:     alias.append(Point(Int32(3), Int32(4)))  # tpyc: ok
-    alias.push_back(Point(3, 4));
-    // 51:     print(len(items))
+    // 51:     alias += [Point(Int32(5), Int32(6))]  # tpyc: warning(/Mutation of 'items'.*'\+='/)
+    tpy::list_extend(alias, {Point(5, 6)});
+    // 52:     print(len(items))
     std::cout << tpy::__len__(items) << "\n";
 }
 
-// 53: def test_direct_still_works() -> None:
-void test_direct_still_works() {
-    // 55:     items: list[Point] = [Point(Int32(1), Int32(2))]
+// 54: def test_alias_no_element_borrow() -> None:
+void test_alias_no_element_borrow() {
+    // 56:     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    // 56:     v = items[Int32(0)]
+    // 57:     alias = items
+    std::vector<Point>& alias = items;
+    // 58:     alias.append(Point(Int32(3), Int32(4)))  # tpyc: ok
+    alias.push_back(Point(3, 4));
+    // 59:     print(len(items))
+    std::cout << tpy::__len__(items) << "\n";
+}
+
+// 61: def test_direct_still_works() -> None:
+void test_direct_still_works() {
+    // 63:     items: list[Point] = [Point(Int32(1), Int32(2))]
+    std::vector<Point> items = {Point(1, 2)};
+    // 64:     v = items[Int32(0)]
     Point& v = tpy::__getitem__(items, 0);
-    // 57:     items.append(Point(Int32(5), Int32(6)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
+    // 65:     items.append(Point(Int32(5), Int32(6)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     items.push_back(Point(5, 6));
-    // 58:     print(len(items))
+    // 66:     print(len(items))
     std::cout << tpy::__len__(items) << "\n";
 }
 
@@ -95,17 +109,19 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 60: test_alias_append()
+    // 68: test_alias_append()
     test_alias_append();
-    // 61: test_alias_subscript_assign()
+    // 69: test_alias_subscript_assign()
     test_alias_subscript_assign();
-    // 62: test_alias_del()
+    // 70: test_alias_del()
     test_alias_del();
-    // 63: test_alias_pass_to_func()
+    // 71: test_alias_pass_to_func()
     test_alias_pass_to_func();
-    // 64: test_alias_no_element_borrow()
+    // 72: test_alias_aug_assign()
+    test_alias_aug_assign();
+    // 73: test_alias_no_element_borrow()
     test_alias_no_element_borrow();
-    // 65: test_direct_still_works()
+    // 74: test_direct_still_works()
     test_direct_still_works();
 }
 

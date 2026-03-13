@@ -1,0 +1,2 @@
+main.py:26: warning: Mutation of 'data' while borrowed ('+=' may invalidate references)
+main.py:34: warning: Mutation of 'data' while iterating over it ('+=' invalidates the iterator)

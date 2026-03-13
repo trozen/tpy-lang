@@ -9,23 +9,22 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void mutate_list(std::vector<Point>& items);
-void test_alias_append();
-void test_alias_subscript_assign();
-void test_alias_del();
-void test_alias_pass_to_func();
-void test_alias_aug_assign();
-void test_alias_no_element_borrow();
-void test_direct_still_works();
+Point& get_first(std::vector<Point>& items);
+std::vector<Point>& get_list(std::vector<Point>& items);
+void test_aug_assign_warns();
+void test_iter_aug_assign_warns();
+void test_no_borrow_no_warn();
+void test_borrow_cleared_no_warn();
+void main();
 
-// 4: class Point:
+// 5: class Point:
 struct Point {
-    // 5:     x: Int32
+    // 6:     x: Int32
     int32_t x;
-    // 6:     y: Int32
+    // 7:     y: Int32
     int32_t y;
 
-    // 7:     def __init__(self, x: Int32, y: Int32) -> None:
+    // 9:     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
