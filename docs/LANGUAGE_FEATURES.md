@@ -842,7 +842,7 @@ class Rect:
         self.corner = Point(1, 2) # OK: rvalue, no existing owner
 ```
 
-Container storage methods (`append`, `insert`, `__setitem__`, `extend`, `+=`) and constructors (`list()`, `set()`) use `Own[T]` parameters to trigger the same warning:
+Container storage methods (`append`, `insert`, `__setitem__`, `extend`, `+=`) and constructors (`list()`, `set()`, `dict()`) use `Own[T]` parameters to trigger the same warning:
 
 ```python
 items: list[Point] = []
@@ -860,6 +860,23 @@ items2 = list(more)       # WARNING: copies Point elements
 items2 = list(copy(more)) # OK: explicit copy
 pts: set[Point] = set(more)       # WARNING: copies Point elements
 pts = set(copy(more))             # OK: explicit copy
+pairs: list[tuple[str, Point]] = [("a", Point())]
+d = dict(pairs)                   # WARNING: copies tuple[str, Point] elements
+d = dict(copy(pairs))             # OK: explicit copy
+```
+
+The check is recursive -- reference types nested inside tuples or other containers are detected:
+
+```python
+nested: list[tuple[str, tuple[str, Point]]] = []
+d = dict(nested)   # WARNING: copies tuple[str, tuple[str, Point]] elements
+```
+
+For generic type parameters, a "may copy" warning is emitted since the type is unknown at definition time:
+
+```python
+def build_dict[K, V](pairs: list[tuple[K, V]]) -> None:
+    d = dict(pairs)  # WARNING: may copy tuple[K, V] elements if not a value type
 ```
 
 No warning is emitted for:

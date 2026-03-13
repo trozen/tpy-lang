@@ -530,7 +530,7 @@ def init_module() -> BuiltinModule:
         ),
         # dict(iterable) - create dict from iterable of tuple[K, V]
         MethodDef(
-            params=[ParamDef("x", NamedType("Iterable", (TupleType((K, V)),), is_protocol=True))],
+            params=[ParamDef("x", NamedType("Iterable", (OwnType(TupleType((K, V))),), is_protocol=True))],
             returns=V,  # Placeholder - sema infers actual dict[K,V] from argument
             cpp="tpy::dict_from_pairs<{K}, {V}>({0})",
             is_readonly=True, is_pure=True,

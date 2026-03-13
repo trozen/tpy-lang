@@ -1,0 +1,6 @@
+main.py:15: warning: copies tuple[str, Node] elements; use copy() to make this explicit
+main.py:43: warning: may copy tuple[K, V] elements if not a value type; use copy() to make this explicit
+main.py:49: warning: copies tuple[str, tuple[str, Node]] elements; use copy() to make this explicit
+main.py:55: warning: copies tuple[str, list[Node]] elements; use copy() to make this explicit
+main.py:66: warning: may copy tuple[str, V] elements if not a value type; use copy() to make this explicit
+main.py:71: warning: may copy tuple[K, tuple[str, V]] elements if not a value type; use copy() to make this explicit

@@ -27,6 +27,33 @@ from ..coercions import resolve_coercion, Coercion, CoercionContext, UPCAST_TO_P
 from .context import addr_taken_roots
 from .diagnostics import SemanticError
 
+
+def _contains_ref_type(t: TpyType) -> bool:
+    """True if t or any nested type is or may be a reference type.
+
+    Recurses into inner_types() so that structural types like TupleType
+    (whose is_value_type() is hardcoded True) are checked element by element.
+    TypeParamRef with no ValueType bound is treated as potentially a reference type.
+    """
+    if not t.is_value_type():
+        return True
+    # is_value_type() True -- recurse into inner types to catch e.g. tuple[str, Node]
+    return any(_contains_ref_type(inner) for inner in t.inner_types())
+
+
+def _is_definitely_ref_type(t: TpyType) -> bool:
+    """True if t definitely contains a reference type (no unresolved TypeParamRefs).
+
+    Returns False when the ref-ness depends on a TypeParamRef, in which case
+    the caller should use a "may copy" warning instead of "copies".
+    """
+    if isinstance(t, TypeParamRef):
+        return False  # unknown until instantiated
+    if not t.is_value_type():
+        return True
+    return any(_is_definitely_ref_type(inner) for inner in t.inner_types())
+
+
 if TYPE_CHECKING:
     from .context import SemanticContext
     from .type_ops import TypeOperations
@@ -195,17 +222,17 @@ class TypeCompatibility:
                             if not isinstance(arg, OwnType):
                                 continue
                             elem_type = arg.wrapped
-                            if elem_type.is_value_type() or self._is_value_type_param(elem_type):
+                            if not _contains_ref_type(elem_type):
                                 continue
-                            if isinstance(elem_type, TypeParamRef):
+                            if _is_definitely_ref_type(elem_type):
                                 self.ctx.warning(
-                                    f"may copy {elem_type} elements if not a value type; "
+                                    f"copies {elem_type} elements; "
                                     f"use copy() to make this explicit",
                                     source_expr,
                                 )
                             else:
                                 self.ctx.warning(
-                                    f"copies {elem_type} elements; "
+                                    f"may copy {elem_type} elements if not a value type; "
                                     f"use copy() to make this explicit",
                                     source_expr,
                                 )
