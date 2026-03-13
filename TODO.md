@@ -6,6 +6,7 @@
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 
 ## Bugs
+- **[MED]** Aug-assign silent truncation when widening refused: `x = UInt32(5); x *= Int64(2)` -- `widen_numeric_types` refuses mixed-sign widening, so `x` stays `UInt32` in scope but the binop result is a wider type. Codegen assigns the result back through a narrowing cast with no diagnostic. Fix: when `resolve_reassignment_target_type` returns the original type unchanged (widening refused), raise a type error rather than silently accepting. See `_analyze_aug_assign` in `sema/statements.py`, the `return` after the widening block.
 
 ## Fuzzy Testing Findings (2026-03-12)
 

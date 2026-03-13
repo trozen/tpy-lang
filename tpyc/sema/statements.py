@@ -71,6 +71,20 @@ def _borrow_storage_root(expr: TpyExpr) -> str | None:
 
 
 
+def _format_aug_target(target: TpyExpr) -> str:
+    """Format an aug-assign target as a short label for error messages.
+
+    e.g. items[0] -> 'items[...]', obj.x -> 'obj.x', otherwise 'target'.
+    """
+    if isinstance(target, TpyFieldAccess):
+        obj = target.obj.name if isinstance(target.obj, TpyName) else "..."
+        return f"'{obj}.{target.field}'"
+    if isinstance(target, TpySubscript):
+        obj = target.obj.name if isinstance(target.obj, TpyName) else "..."
+        return f"'{obj}[...]'"
+    return "target"
+
+
 def _root_name_of_expr(expr: TpyExpr) -> str | None:
     """Extract the root TpyName from a chain of field/subscript accesses.
 
@@ -1979,3 +1993,36 @@ class StatementAnalyzer:
         operators = OperatorResolver(self.ctx)
         if result := operators.resolve_binop(target_type, stmt.op, resolve_value_type):
             stmt.resolved_binop = result
+            if is_numeric_target:
+                result_type = result.method.return_type
+                if result_type != target_type:
+                    if isinstance(stmt.target, TpyName):
+                        name = stmt.target.name
+                        if name not in self.ctx.authoritative_types:
+                            # Unannotated variable: widen to the result type (e.g. x = 14; x *= 1.3 -> float)
+                            widened = self.deduction.resolve_reassignment_target_type(
+                                name, target_type, result_type,
+                            )
+                            if widened != target_type:
+                                if self.ctx.current_scope:
+                                    self.ctx.current_scope.define(name, widened)
+                                var_decl = self.ctx.var_decl_by_name.get(name)
+                                if var_decl:
+                                    self.ctx.var_types[id(var_decl)] = widened
+                                for key in self.ctx.declared_var_types:
+                                    if key[1] == name:
+                                        self.ctx.declared_var_types[key] = widened
+                            return
+                        # Explicit annotation: same error as y = y * 1.5 with mismatched type
+                        raise self.ctx.error(
+                            f"Augmented assignment '{stmt.op}=' to '{name}' ({target_type}) "
+                            f"produces {result_type}; annotate '{name}' as {result_type} "
+                            f"or use explicit conversion",
+                            stmt,
+                        )
+                    # Subscript/field target: element type is fixed, cannot widen
+                    raise self.ctx.error(
+                        f"Augmented assignment '{stmt.op}=' to {_format_aug_target(stmt.target)} ({target_type}) "
+                        f"produces {result_type}; use explicit conversion",
+                        stmt,
+                    )

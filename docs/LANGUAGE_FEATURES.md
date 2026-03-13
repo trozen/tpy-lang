@@ -248,15 +248,26 @@ print(UInt8.trunc(2**100 + 42))  # 42 (low 8 bits)
 | `int / int` | `float` | True division always returns float (panics on zero divisor) |
 | `Int32 / Int32` | `float` | Fixed-width true division: operands cast to double (panics on zero divisor) |
 
-For augmented assignment (`+=`, `-=`, `*=`, `/=`, etc.), the target type is preserved - the right-hand side is converted to match:
+For augmented assignment (`+=`, `-=`, `*=`, `/=`, etc.), behavior depends on whether the variable has an explicit type annotation:
+
+**Explicitly annotated variables** -- the annotation is preserved; the right-hand side is converted to match. If the operation would produce a wider type, it is a compile error (same as a regular assignment mismatch):
 ```python
 total: Int32 = 0
 big_value: int = 10  # int (BigInt)
 total += big_value  # big_value converted to Int32, then Int32 addition
 total *= big_value  # same: converts to Int32 first
+
+y: Int32 = 10
+y *= 1.5            # error: '*=' produces float but 'y' is annotated as Int32
 ```
 
 This ensures fixed-width variables stay in the checked arithmetic domain. If the BigInt value is too large for the target type, the conversion panics at runtime.
+
+**Unannotated (inferred) variables** -- if the operation produces a wider type, the variable widens to match (same as Python semantics):
+```python
+x = 14       # inferred as int (BigInt)
+x *= 1.3     # x widens to float; result is 18.2
+```
 
 ### Strings
 - **Working**: `str` type -- context-dependent: `std::string` by default, `std::string_view` for parameters

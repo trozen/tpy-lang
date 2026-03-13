@@ -1,0 +1,1 @@
+main.py:7: error: Augmented assignment '*=' to 'y' (Int32) produces float; annotate 'y' as float or use explicit conversion
