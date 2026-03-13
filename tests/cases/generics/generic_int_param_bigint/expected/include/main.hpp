@@ -17,7 +17,7 @@ struct Container {
 
 
     // 5:     def get_size_as_bigint(self) -> int:
-    tpy::BigInt get_size_as_bigint() {
+    tpy::BigInt get_size_as_bigint() const {
         // 6:         return N  # N coerces to BigInt
         return tpy::BigInt(static_cast<int64_t>(N));
     }

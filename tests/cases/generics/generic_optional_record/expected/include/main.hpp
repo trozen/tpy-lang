@@ -25,7 +25,7 @@ struct Point {
     explicit Point(const tpy::BigInt& x, const tpy::BigInt& y) : x(x), y(y) {}
 
     // 12:     def sum(self) -> int:
-    tpy::BigInt sum() {
+    tpy::BigInt sum() const {
         // 13:         return self.x + self.y
         return ((this->x) + (this->y));
     }

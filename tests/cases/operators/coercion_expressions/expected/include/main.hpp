@@ -31,13 +31,13 @@ struct Counter {
     explicit Counter(const tpy::BigInt& v) : value(v) {}
 
     // 17:     def get(self) -> int:
-    tpy::BigInt get() {
+    tpy::BigInt get() const {
         // 18:         return self.value
         return this->value;
     }
 
     // 20:     def add(self, x: int) -> int:
-    tpy::BigInt add(const tpy::BigInt& x) {
+    tpy::BigInt add(const tpy::BigInt& x) const {
         // 21:         return self.value + x
         return ((this->value) + (x));
     }

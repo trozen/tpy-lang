@@ -27,7 +27,7 @@ struct Container {
     }
 
     // 14:     def is_sorted[T: Comparable](self) -> bool:
-    bool is_sorted()
+    bool is_sorted() const
       requires tpy::Comparable<T> {
         // 15:         i: Int32 = Int32(1)
         int32_t i = 1;

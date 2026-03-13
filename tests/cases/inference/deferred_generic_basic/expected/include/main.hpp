@@ -37,7 +37,7 @@ struct Container {
     }
 
     // 18:     def get_count(self) -> Int32:
-    int32_t get_count() {
+    int32_t get_count() const {
         // 19:         return self.count
         return this->count;
     }

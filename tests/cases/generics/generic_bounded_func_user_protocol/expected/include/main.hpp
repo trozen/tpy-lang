@@ -31,7 +31,7 @@ struct Point {
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
     // 17:     def to_string(self) -> str:
-    std::string to_string() {
+    std::string to_string() const {
         // 18:         return "Point"
         return "Point";
     }

@@ -24,13 +24,13 @@ struct Animal {
     explicit Animal(std::string_view name, int32_t age) : name(name), age(age) {}
 
     // 11:     def speak(self) -> str:
-    std::string speak() {
+    std::string speak() const {
         // 12:         return "..."
         return "...";
     }
 
     // 14:     def describe(self) -> str:
-    std::string describe() {
+    std::string describe() const {
         // 15:         return self.name
         return this->name;
     }
@@ -55,7 +55,7 @@ struct Dog : Animal {
     explicit Dog(std::string_view name, int32_t age, std::string_view breed) : Animal(name, age), breed(breed) {}
 
     // 25:     def speak(self) -> str:
-    std::string speak() {
+    std::string speak() const {
         // 26:         return "Woof!"
         return "Woof!";
     }

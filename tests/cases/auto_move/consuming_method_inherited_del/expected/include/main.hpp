@@ -51,7 +51,7 @@ struct Base {
     }
 
     // 21:     def get(self) -> Int32:
-    int32_t get() {
+    int32_t get() const {
         // 22:         return self._ptr
         return tpy::deref_check(this->_ptr);
     }

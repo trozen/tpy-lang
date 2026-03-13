@@ -21,7 +21,7 @@ struct Numbers {
     explicit Numbers(const std::vector<int32_t>& items) : data(items) {}
 
     // 9:     def sum(self) -> Int32:
-    int32_t sum() {
+    int32_t sum() const {
         // 10:         total: Int32 = 0
         int32_t total = 0;
         // 11:         i: Int32 = 0

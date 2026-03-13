@@ -67,7 +67,7 @@ struct MyRange {
     explicit MyRange(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
     // 28:     def __iter__(self) -> Own[RangeIter]:
-    RangeIter __iter__() {
+    RangeIter __iter__() const {
         // 29:         return RangeIter(self.start, self.limit)
         return RangeIter(this->start, this->limit);
     }
@@ -93,7 +93,7 @@ struct Summer {
     explicit Summer(const T& items) : items(items) {}
 
     // 37:     def total(self) -> Int32:
-    int32_t total() {
+    int32_t total() const {
         // 38:         result: Int32 = 0
         int32_t result = 0;
         // 39:         for x in self.items:

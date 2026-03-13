@@ -30,7 +30,7 @@ struct Person {
     explicit Person(std::string_view n) : name(n) {}
 
     // 17:     def greet(self) -> str:
-    std::string greet() {
+    std::string greet() const {
         // 18:         return self.name
         return this->name;
     }

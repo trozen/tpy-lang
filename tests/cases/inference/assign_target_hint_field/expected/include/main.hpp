@@ -103,7 +103,7 @@ struct WithHeapStorage {
     }
 
     // 34:     def get(self) -> T:
-    tpy::val_or_ref_t<T> get() {
+    tpy::val_or_cref_t<T> get() const {
         // 35:         return self._storage.load0()
         return this->_storage.load0();
     }

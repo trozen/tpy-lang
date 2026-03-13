@@ -118,7 +118,7 @@ struct Announcer {
     explicit Announcer(std::string_view prefix) : prefix(prefix) {}
 
     // 36:     def announce(self, s: Speaker) -> None:
-    void announce(Speaker& s) {
+    void announce(Speaker& s) const {
         // 37:         print(self.prefix + s.speak())
         std::cout << (tpy::str_concat(this->prefix, s.speak())) << "\n";
     }

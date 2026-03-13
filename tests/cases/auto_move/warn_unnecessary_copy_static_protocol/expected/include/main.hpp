@@ -45,7 +45,7 @@ struct MyHolder {
 
 
     // 13:     def store(self, p: Own[Point]) -> None:
-    void store(Point p) {
+    void store(Point p) const {
         // 14:         print(p.x)
         std::cout << p.x << "\n";
     }

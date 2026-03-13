@@ -60,7 +60,7 @@ struct Printer {
 
 
     // 20:     def get_str(self, item: T) -> str:
-    std::string get_str(tpy::param_val_or_ref_t<T> item) {
+    std::string get_str(const T& item) const {
         // 21:         # Call protocol method on bounded type parameter inside generic class method
         // 22:         return item.to_str()
         return item.to_str();
@@ -85,7 +85,7 @@ struct MyValue {
     explicit MyValue(int32_t v) : val(v) {}
 
     // 31:     def to_str(self) -> str:
-    std::string to_str() {
+    std::string to_str() const {
         // 32:         return "value"
         return "value";
     }
@@ -123,7 +123,7 @@ struct Point {
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
     // 78:     def to_str(self) -> str:
-    std::string to_str() {
+    std::string to_str() const {
         // 79:         return "Point"
         return "Point";
     }
@@ -151,13 +151,13 @@ struct Widget {
     explicit Widget(std::string_view name, int32_t val) : name(name), val(val) {}
 
     // 90:     def get_name(self) -> str:
-    std::string get_name() {
+    std::string get_name() const {
         // 91:         return self.name
         return this->name;
     }
 
     // 93:     def get_value(self) -> Int32:
-    int32_t get_value() {
+    int32_t get_value() const {
         // 94:         return self.val
         return this->val;
     }
@@ -183,7 +183,7 @@ struct Box {
     explicit Box(int32_t v) : value(v) {}
 
     // 103:     def clone(self) -> Own[Box]:
-    Box clone() {
+    Box clone() const {
         // 104:         return Box(self.value)
         return Box(this->value);
     }

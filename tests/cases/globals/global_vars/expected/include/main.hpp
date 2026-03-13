@@ -64,7 +64,7 @@ struct Counter {
     explicit Counter(int32_t val) : val(val) {}
 
     // 85:     def add(self, a: Int32) -> Int32:
-    int32_t add(int32_t a) {
+    int32_t add(int32_t a) const {
         // 86:         # 'a' param shadows global 'a' above - should NOT deref
         // 87:         return self.val + a
         return (tpy::add_check<int32_t>(this->val, a));

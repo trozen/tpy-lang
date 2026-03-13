@@ -73,7 +73,7 @@ struct Dual {
     }
 
     // 23:     def __iter__(self) -> Own[MyIter]:
-    MyIter __iter__() {
+    MyIter __iter__() const {
         // 24:         return MyIter(Int32(3))
         return MyIter(3);
     }

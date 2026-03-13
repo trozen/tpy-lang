@@ -68,7 +68,7 @@ struct Counter {
     explicit Counter(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
     // 28:     def __iter__(self) -> Own[CounterIter]:
-    CounterIter __iter__() {
+    CounterIter __iter__() const {
         // 29:         return CounterIter(self.start, self.limit)
         return CounterIter(this->start, this->limit);
     }

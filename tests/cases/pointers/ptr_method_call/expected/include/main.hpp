@@ -23,13 +23,13 @@ struct Point {
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
     // 9:     def sum(self) -> Int32:
-    int32_t sum() {
+    int32_t sum() const {
         // 10:         return self.x + self.y
         return (tpy::add_check<int32_t>(this->x, this->y));
     }
 
     // 11:     def describe(self) -> str:
-    std::string describe() {
+    std::string describe() const {
         // 12:         return "Point"
         return "Point";
     }

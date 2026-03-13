@@ -9,7 +9,10 @@ mutation facts transitively through it.
 from __future__ import annotations
 from typing import Optional
 
-from ..typesys import FunctionInfo
+from ..typesys import FunctionInfo, CONST_PARAMS_METHODS
+
+# Methods that must never be inferred const regardless of body analysis.
+_NEVER_INFER_CONST = frozenset({"__init__", "__del__"}) | CONST_PARAMS_METHODS
 
 
 def propagate_mutation_facts(functions: list[FunctionInfo]) -> None:
@@ -82,58 +85,72 @@ def propagate_mutation_facts(functions: list[FunctionInfo]) -> None:
 
 
 def _resolve_single(fi: FunctionInfo) -> None:
-    """Compute mutated_params for a function whose callees are already resolved."""
+    """Compute mutated_params and self_mutated for a function whose callees are resolved."""
     result: set[int] = set(fi.direct_mutated_params or frozenset())
+    self_mutated = bool(fi.direct_self_mutated)
     for edge in (fi.call_edges or []):
         callee_mp = edge.callee_fi.mutated_params
         if callee_mp is None:
-            # Unknown callee (cross-module cycle or unanalyzed) -- conservative:
-            # mark all caller params that flow into this callee as mutated
+            # Unknown callee -- conservative: mark all flowing params as mutated
             for _callee_idx, caller_idx in edge.param_map.items():
                 result.add(caller_idx)
+            if edge.receiver_is_self:
+                self_mutated = True
         else:
             for callee_idx, caller_idx in edge.param_map.items():
                 if callee_idx in callee_mp:
                     result.add(caller_idx)
+            # Propagate self-mutation: if callee mutates its self and is called
+            # as self.method(), the caller also mutates self.
+            if edge.receiver_is_self and edge.callee_fi.self_mutated:
+                self_mutated = True
     fi.mutated_params = frozenset(result)
+    fi.self_mutated = self_mutated
 
 
 def _resolve_cycle(cycle_fis: list[FunctionInfo]) -> None:
     """Resolve mutation facts for functions in cycles via fixed-point iteration.
 
-    The mutated_params lattice is monotone (sets only grow), so convergence
-    is guaranteed. We bound iterations as a safety measure.
+    Both mutated_params and self_mutated lattices are monotone (only grow),
+    so convergence is guaranteed. We bound iterations as a safety measure.
     """
     # Initialize with direct mutations
     for fi in cycle_fis:
         fi.mutated_params = frozenset(fi.direct_mutated_params or frozenset())
+        fi.self_mutated = bool(fi.direct_self_mutated)
 
-    # Safety bound: each iteration must add at least one param somewhere,
-    # so total params is an upper bound on iterations.
-    max_iters = sum(len(fi.params) for fi in cycle_fis) + 1
+    # Safety bound: each iteration must add at least one param/self-mutation somewhere.
+    max_iters = sum(len(fi.params) + 1 for fi in cycle_fis) + 1
 
     for _ in range(max_iters):
         changed = False
         for fi in cycle_fis:
-            old = fi.mutated_params
+            old_mp = fi.mutated_params
+            old_sm = fi.self_mutated
             result: set[int] = set(fi.direct_mutated_params or frozenset())
+            self_mutated = bool(fi.direct_self_mutated)
             for edge in (fi.call_edges or []):
                 callee_mp = edge.callee_fi.mutated_params
                 if callee_mp is None:
                     for _callee_idx, caller_idx in edge.param_map.items():
                         result.add(caller_idx)
+                    if edge.receiver_is_self:
+                        self_mutated = True
                 else:
                     for callee_idx, caller_idx in edge.param_map.items():
                         if callee_idx in callee_mp:
                             result.add(caller_idx)
-            new = frozenset(result)
-            if new != old:
-                fi.mutated_params = new
+                    if edge.receiver_is_self and edge.callee_fi.self_mutated:
+                        self_mutated = True
+            new_mp = frozenset(result)
+            if new_mp != old_mp or self_mutated != old_sm:
+                fi.mutated_params = new_mp
+                fi.self_mutated = self_mutated
                 changed = True
         if not changed:
             break
     else:
-        # Did not converge -- conservatively mark all params flowing through
+        # Did not converge -- conservatively mark all params/self flowing through
         # unresolved edges
         for fi in cycle_fis:
             result = set(fi.mutated_params or frozenset())
@@ -141,4 +158,35 @@ def _resolve_cycle(cycle_fis: list[FunctionInfo]) -> None:
                 if edge.callee_fi.mutated_params is None:
                     for _callee_idx, caller_idx in edge.param_map.items():
                         result.add(caller_idx)
+                    if edge.receiver_is_self:
+                        fi.self_mutated = True
             fi.mutated_params = frozenset(result)
+
+
+def infer_method_const(all_fis: list[FunctionInfo]) -> None:
+    """Back-propagate const inference: set is_readonly=True for methods proven non-self-mutating.
+
+    A method is eligible for const inference when:
+    - It is a method (is_method=True) but not a staticmethod.
+    - It is not already readonly (explicit @readonly or built-in).
+    - It is not in _NEVER_INFER_CONST (constructors, in-place operators).
+    - It is not a consuming method (Own[Self] receiver).
+    - Phase 1 + Phase 2 determined self_mutated=False.
+
+    Setting is_readonly=True reuses all existing checks: codegen emits `const`,
+    readonly-receiver enforcement passes, protocol conformance passes unchanged.
+    """
+    for fi in all_fis:
+        if not fi.is_method or fi.is_staticmethod:
+            continue
+        if fi.is_readonly:
+            continue
+        if fi.is_consuming:
+            continue
+        if fi.name in _NEVER_INFER_CONST:
+            continue
+        if fi.direct_self_mutated is None:
+            # Phase 1 facts not collected (should not happen for local methods)
+            continue
+        if not fi.self_mutated:
+            fi.is_readonly = True

@@ -66,7 +66,7 @@ struct Cat {
 
 
     // 14:     def name(self) -> str:
-    std::string name() {
+    std::string name() const {
         // 15:         return "Whiskers"
         return "Whiskers";
     }

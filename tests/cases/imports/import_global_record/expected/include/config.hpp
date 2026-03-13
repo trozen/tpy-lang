@@ -22,7 +22,7 @@ struct Settings {
     explicit Settings(int32_t width, int32_t height) : width(width), height(height) {}
 
     // 13:     def area(self) -> Int32:
-    int32_t area() {
+    int32_t area() const {
         // 14:         return self.width * self.height
         return (tpy::mul_check<int32_t>(this->width, this->height));
     }

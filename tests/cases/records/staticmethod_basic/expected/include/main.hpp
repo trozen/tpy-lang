@@ -34,7 +34,7 @@ struct Counter {
     }
 
     // 18:     def get(self) -> Int32:
-    int32_t get() {
+    int32_t get() const {
         // 19:         return self.value
         return this->value;
     }

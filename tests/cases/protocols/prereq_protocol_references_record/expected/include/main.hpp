@@ -43,7 +43,7 @@ struct Message {
     explicit Message(std::string_view text) : text(text) {}
 
     // 22:     def to_result(self) -> Own[Result]:
-    Result to_result() {
+    Result to_result() const {
         // 23:         return Result(Int32(42))
         return Result(42);
     }
@@ -104,7 +104,7 @@ struct DefaultWrapperMaker {
 
 
     // 41:     def make(self, text: str) -> Own[Wrapper[Message]]:
-    Wrapper<Message> make(std::string_view text) {
+    Wrapper<Message> make(std::string_view text) const {
         // 42:         return Wrapper(Message(text))
         return Wrapper<Message>(Message(text));
     }

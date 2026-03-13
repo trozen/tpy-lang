@@ -31,7 +31,7 @@ struct Entity {
     explicit Entity(std::string_view name, int32_t id) : name(name), id(id) {}
 
     // 13:     def get_name(self) -> str:
-    std::string get_name() {
+    std::string get_name() const {
         // 14:         return self.name
         return this->name;
     }

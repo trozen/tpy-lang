@@ -23,7 +23,6 @@
 ## C++ Codegen Review Findings (2026-03-12)
 
 ### Systematic suboptimalities
-- **[MED]** User-defined methods not auto-inferred as `const`: methods that never write to `self` are not emitted as `const` member functions. Requires explicit `@readonly` decorator. This means `const T&` method calls fail at C++ level, and the optimizer has less information. Fix: infer `const` automatically when sema finds no assignments to `self` fields or mutating method calls on `self` in the method body; `@readonly` could become optional/redundant for pure readers.
 - **[MED]** `str +=` doesn't reuse the buffer: `x += y` (and `x = x + y`) on strings is lowered to `x = tpy::str_concat(x, y)` which allocates a fresh `std::string` each time, discarding `x`'s existing buffer. In a loop this is O(n^2) allocations. Fix: detect the `x = x + y` pattern (and `x += y`) on `str`/`String` and emit `x += std::string_view(y)` instead, using `std::string::operator+=` for in-place buffer reuse.
 
 ### Missed optimizations

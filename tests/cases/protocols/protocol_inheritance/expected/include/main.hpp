@@ -35,7 +35,7 @@ struct Message {
     explicit Message(std::string_view text) : text(text) {}
 
     // 19:     def to_str(self) -> str:
-    std::string to_str() {
+    std::string to_str() const {
         // 20:         return self.text
         return this->text;
     }

@@ -39,7 +39,7 @@ struct Cat {
 
 
     // 11:     def speak(self) -> str:
-    std::string speak() {
+    std::string speak() const {
         // 12:         return "Meow"
         return "Meow";
     }

@@ -16,13 +16,13 @@ struct Animal {
 
 
     // 2:     def speak(self) -> None:
-    void speak() {
+    void speak() const {
         // 3:         print("...")
         std::cout << "..." << "\n";
     }
 
     // 5:     def make_noise(self) -> None:
-    void make_noise() {
+    void make_noise() const {
         // 6:         self.speak()
         speak();
     }
@@ -39,7 +39,7 @@ struct Dog : Animal {
 
 
     // 9:     def speak(self) -> None:
-    void speak() {
+    void speak() const {
         // 10:         print("Woof!")
         std::cout << "Woof!" << "\n";
     }

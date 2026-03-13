@@ -26,7 +26,7 @@ struct Point {
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
     // 12:     def mag(self) -> Int32:
-    int32_t mag() {
+    int32_t mag() const {
         // 13:         return self.x + self.y
         return (tpy::add_check<int32_t>(this->x, this->y));
     }

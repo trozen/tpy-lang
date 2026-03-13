@@ -23,7 +23,7 @@ struct Wrapper {
 
     // 10:     def is_less[U: Comparable](self, a: U, b: U) -> bool:
     template<tpy::Comparable U>
-    bool is_less(tpy::param_val_or_ref_t<U> a, tpy::param_val_or_ref_t<U> b) {
+    bool is_less(const U& a, const U& b) const {
         // 11:         return a < b
         return (a < b);
     }

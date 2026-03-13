@@ -30,7 +30,7 @@ struct Wrapper {
     explicit Wrapper(int32_t v) : val(v) {}
 
     // 17:     def get_val(self) -> Int32:
-    int32_t get_val() {
+    int32_t get_val() const {
         // 18:         return self.val
         return this->val;
     }

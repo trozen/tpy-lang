@@ -45,7 +45,7 @@ struct Storage {
     }
 
     // 16:     def get(self) -> Int32:
-    int32_t get() {
+    int32_t get() const {
         // 17:         return self.buf.load0()
         return this->buf.load0();
     }

@@ -24,7 +24,7 @@ struct Config {
     explicit Config(std::string_view name) : name(name), max_retries(std::nullopt) {}
 
     // 12:     def get_retries(self) -> Int32 | None:
-    std::optional<int32_t> get_retries() {
+    std::optional<int32_t> get_retries() const {
         // 13:         return self.max_retries
         return this->max_retries;
     }

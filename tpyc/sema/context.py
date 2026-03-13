@@ -327,6 +327,7 @@ class SemanticContext:
     current_mutated_param_names: set[str] = field(default_factory=set)
     current_rebound_params: set[str] = field(default_factory=set)
     current_call_edges: list = field(default_factory=list)  # list[MutationCallEdge]
+    current_self_mutated: bool = False  # True if self is directly mutated in current method
 
     # --- Scope escape tracking ---
     var_scope_depth: dict[str, int] = field(default_factory=dict)
@@ -553,6 +554,7 @@ class SemanticContext:
         self.current_mutated_param_names.clear()
         self.current_rebound_params.clear()
         self.current_call_edges.clear()
+        self.current_self_mutated = False
 
     def mark_loop_var_mutated(self, name: str) -> None:
         """Mark a for-each loop variable as mutated (prevents const-ref binding)."""
@@ -562,10 +564,13 @@ class SemanticContext:
     def mark_param_mutated(self, name: str) -> None:
         """Mark a function parameter as directly mutated (Phase 1 of mutation inference).
 
-        Also traces loop variables back to their source iterables: mutating a loop
-        var's field or calling a mutating method on it requires the source container
-        to be T& (not const T&). Handles nested loops transitively.
+        For 'self': sets current_self_mutated (method self-mutation tracking).
+        For regular params: adds to current_mutated_param_names.
+        Also traces loop variables back to their source iterables transitively.
         """
+        if name == "self":
+            self.current_self_mutated = True
+            return
         if name in self.current_param_names and name not in self.current_rebound_params:
             self.current_mutated_param_names.add(name)
         iterable = self.loop_var_iterable.get(name)

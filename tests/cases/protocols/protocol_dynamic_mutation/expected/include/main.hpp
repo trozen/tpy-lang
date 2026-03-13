@@ -93,7 +93,7 @@ struct Tally {
     }
 
     // 30:     def value(self) -> Int32:
-    int32_t value() {
+    int32_t value() const {
         // 31:         return self.count
         return this->count;
     }

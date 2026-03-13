@@ -442,12 +442,34 @@ class MethodAnalyzer:
                 info = expr.resolved_function_info
                 if info is not None and not info.is_readonly:
                     from .statements import _root_name_of_expr
+                    from ..parse.nodes import TpyName as _TpyName, TpyMethodCall as _TpyMethodCall
                     obj_root = _root_name_of_expr(expr.obj)
                     if obj_root is not None:
                         self.ctx.mark_loop_var_mutated(obj_root)
-                        self.ctx.mark_param_mutated(obj_root)
+                        # For direct self.method() calls (expr.obj is exactly
+                        # TpyName("self")), use call edges with receiver_is_self=True
+                        # so Phase 2 can resolve transitively. For indirect cases
+                        # like self.field.method(), mark self-mutation directly --
+                        # mutating a field IS self-mutation and there is no callee
+                        # self-mutation to propagate.
+                        is_direct_self_call = (
+                            isinstance(expr.obj, _TpyName) and expr.obj.name == "self"
+                        )
+                        if not is_direct_self_call:
+                            self.ctx.mark_param_mutated(obj_root)
                         storage = self.ctx.borrow_tracker.effective_storage(obj_root)
                         self.ctx.mark_str_borrowers_mutated(storage)
+                    else:
+                        # Check for chained method calls rooted at self:
+                        # self.get_span().sort() -- sort() is non-readonly and
+                        # the span is a mutable view of self's storage.
+                        # Treat as self-mutation conservatively.
+                        chain = expr.obj
+                        while isinstance(chain, _TpyMethodCall):
+                            chain = chain.obj
+                        chain_root = _root_name_of_expr(chain)
+                        if chain_root == "self":
+                            self.ctx.mark_param_mutated("self")
                 return result
 
             deref_target = self.expr.get_deref_target_type(current_type)

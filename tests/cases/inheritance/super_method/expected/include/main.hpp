@@ -21,13 +21,13 @@ struct Animal {
     explicit Animal(std::string_view name) : name(name) {}
 
     // 9:     def speak(self) -> str:
-    std::string speak() {
+    std::string speak() const {
         // 10:         return "Animal says: ..."
         return "Animal says: ...";
     }
 
     // 12:     def describe(self) -> str:
-    std::string describe() {
+    std::string describe() const {
         // 13:         return self.name
         return this->name;
     }
@@ -50,13 +50,13 @@ struct Dog : Animal {
     explicit Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
 
     // 23:     def speak(self) -> str:
-    std::string speak() {
+    std::string speak() const {
         // 24:         return "Woof!"
         return "Woof!";
     }
 
     // 26:     def full_speak(self) -> str:
-    std::string full_speak() {
+    std::string full_speak() const {
         // 27:         # Call overridden parent method via super()
         // 28:         parent_speak = super().speak()
         std::string parent_speak = Animal::speak();

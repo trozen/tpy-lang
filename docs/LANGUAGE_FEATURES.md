@@ -2715,6 +2715,12 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   - Protocol method readonly: `@readonly` on protocol methods enforces that implementations are also readonly; conformance fails at sema time if a record's method is not readonly when the protocol requires it
   - Protocol concept generation: user-defined protocols where all methods are readonly generate `const T&` in C++ concepts
   - Deep readonly for pointers: accessing a `Ptr[T]` field through a readonly receiver yields `Ptr[readonly[T]]`, preventing mutation through pointer fields
+- **Working**: Const method auto-inference -- methods that never mutate `self` are automatically emitted as `const` C++ member functions without requiring an explicit `@readonly` annotation
+  - Phase 1 tracks whether each method directly writes to `self` (field writes, subscript writes, non-readonly method calls on `self` or `self.field`)
+  - Phase 2 propagates `self_mutated` through the call graph: if `increment_twice()` calls `self.increment()` and `increment()` mutates self, `increment_twice()` is also considered self-mutating
+  - Post-pass (`infer_method_const`) marks all non-self-mutating methods as `is_readonly`, and the codegen sync pass copies the flag to AST nodes
+  - Exceptions: `__init__`, `__del__`, in-place operators, consuming methods (`Own[Self]` receiver), and methods that override non-const C++ virtuals from `@dynamic` protocols are never inferred const
+  - `@readonly(False)` opts out of const inference for a specific method
   - Limitation: container-mediated aliases not tracked (e.g., `[param]` into list then iterate)
 - **Working**: `readonly[T]` type modifier (per-parameter constness)
   - `readonly[T]` on a parameter means "immutable reference to T", maps to `const T&` in C++
@@ -4682,9 +4688,9 @@ sum_items(data)   # No warning: sum_items proven non-mutating for param 0
 add_item(data, 4) # Warning: add_item mutates param 0, borrow of 'data' active
 ```
 
-**Consumers**: Borrow conflict warnings (`_check_borrow_arg_conflicts`) and const-ref loop variable binding (`_check_loop_var_arg_mutation`) both use per-parameter mutation facts. If a callee is known not to mutate a specific parameter, passing a borrowed or loop-iterated container to that parameter is safe.
+**Consumers**: Borrow conflict warnings (`_check_borrow_arg_conflicts`) and const-ref loop variable binding (`_check_loop_var_arg_mutation`) both use per-parameter mutation facts. If a callee is known not to mutate a specific parameter, passing a borrowed or loop-iterated container to that parameter is safe. Phase 2 also tracks `self_mutated` per method, which drives const method auto-inference (see above).
 
-**Current limitation**: Only direct (non-transitive) mutations are detected. A function that mutates a parameter only via calling another mutating function (e.g., `def wrapper(items): add_item(items, x)`) is not yet recognized as mutating. Phase 2 (call-graph propagation) will fix this. Imported functions from other modules will use resolved facts from dependency-order compilation; cross-module cycles get conservative treatment.
+**Cross-module**: Imported functions use resolved facts from dependency-order compilation. Cross-module cycles get conservative treatment (all flowing params assumed mutated).
 
 ## Open Questions
 

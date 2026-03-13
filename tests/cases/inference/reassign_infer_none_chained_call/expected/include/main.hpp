@@ -35,7 +35,7 @@ struct Factory {
 
 
     // 12:     def create(self) -> Own[Product]:
-    Product create() {
+    Product create() const {
         // 13:         return Product(Int32(9))
         return Product(9);
     }

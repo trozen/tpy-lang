@@ -47,7 +47,7 @@ struct DefaultFactory {
 
 
     // 16:     def create_point(self, x: Int32, y: Int32) -> Own[Point]:
-    Point create_point(int32_t x, int32_t y) {
+    Point create_point(int32_t x, int32_t y) const {
         // 17:         return Point(x, y)
         return Point(x, y);
     }

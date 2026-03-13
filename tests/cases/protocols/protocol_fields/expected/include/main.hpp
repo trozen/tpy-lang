@@ -104,7 +104,7 @@ struct Box {
     explicit Box(int32_t c) : count(c) {}
 
     // 54:     def is_empty(self) -> bool:
-    bool is_empty() {
+    bool is_empty() const {
         // 55:         return self.count == 0
         return (this->count == 0);
     }
@@ -147,7 +147,7 @@ struct Wrapper {
     explicit Wrapper(const T& val) : inner(val) {}
 
     // 73:     def get_inner_value(self) -> Int32:
-    int32_t get_inner_value() {
+    int32_t get_inner_value() const {
         // 74:         return self.inner.value
         return this->inner.value;
     }

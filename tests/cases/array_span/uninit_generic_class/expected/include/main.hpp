@@ -30,7 +30,7 @@ struct Holder {
     Holder& operator=(Holder&&) = default;
 
     // 12:     def get(self) -> T:
-    tpy::val_or_ref_t<T> get() {
+    tpy::val_or_cref_t<T> get() const {
         // 13:         return self._storage.load0()
         return this->_storage.load0();
     }

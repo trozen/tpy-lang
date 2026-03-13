@@ -8,17 +8,17 @@
 # TODO: string methods (find, startswith, endswith, strip, etc.)
 # TODO: c_str() for C interop (null-terminated)
 from __future__ import annotations
-from tpy import Int32, UInt32, Own, Ptr, Char, StrView, copy
+from tpy import Int32, UInt32, Own, Ptr, Char, StrView, copy, readonly
 from tpy.unsafe import unsafe_load, unsafe_str_view
 from tpy.mem import UninitArrayStorage
 
 
 class FixStrIter:
-    _data: Ptr[Char]
+    _data: Ptr[readonly[Char]]
     _size: Int32
     _index: Int32
 
-    def __init__(self, data: Ptr[Char], size: Int32) -> None:
+    def __init__(self, data: Ptr[readonly[Char]], size: Int32) -> None:
         self._data = data
         self._size = size
         self._index = 0

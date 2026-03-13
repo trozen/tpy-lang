@@ -22,7 +22,7 @@ struct Converter {
 
     // 6:     def identity[U](self, val: U) -> U:
     template<typename U>
-    tpy::val_or_ref_t<U> identity(tpy::param_val_or_ref_t<U> val) {
+    tpy::val_or_cref_t<U> identity(const U& val) const {
         // 7:         return val
         return val;
     }

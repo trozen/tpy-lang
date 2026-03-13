@@ -36,7 +36,7 @@ struct Pair {
     }
 
     // 17:     def with_default[T: Default](self) -> T:
-    tpy::val_or_ref_t<T> with_default()
+    tpy::val_or_cref_t<T> with_default() const
       requires std::default_initializable<T> {
         // 18:         return make_default()
         return T{};

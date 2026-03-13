@@ -25,7 +25,7 @@ struct Point {
     explicit Point(int32_t x, int32_t y) : x(x), y(y), z(magnitude()) {}
 
     // 9:     def magnitude(self) -> Int32:
-    int32_t magnitude() {
+    int32_t magnitude() const {
         // 10:         return self.x  # simplified
         return this->x;
     }

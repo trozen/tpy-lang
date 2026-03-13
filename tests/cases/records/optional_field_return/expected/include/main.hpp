@@ -48,7 +48,7 @@ struct Box {
     }
 
     // 21:     def has_item(self) -> bool:
-    bool has_item() {
+    bool has_item() const {
         // 22:         return self.item is not None
         return (this->item.has_value());
     }

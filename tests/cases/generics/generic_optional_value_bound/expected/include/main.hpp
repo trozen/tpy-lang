@@ -24,7 +24,7 @@ struct Box {
     explicit Box(const T& value) : _value(value), _has(true) {}
 
     // 10:     def get(self) -> T | None:
-    std::optional<T> get() {
+    std::optional<T> get() const {
         // 11:         if self._has:
         if (this->_has) {
             // 12:             return self._value

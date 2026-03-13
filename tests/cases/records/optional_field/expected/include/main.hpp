@@ -57,7 +57,7 @@ struct Line {
     }
 
     // 23:     def has_end(self) -> bool:
-    bool has_end() {
+    bool has_end() const {
         // 24:         return self.end is not None
         return (this->end.has_value());
     }

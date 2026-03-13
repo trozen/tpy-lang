@@ -43,7 +43,7 @@ struct Vehicle {
     explicit Vehicle(std::string_view brand, int32_t year) : brand(brand), year(year) {}
 
     // 13:     def get_brand(self) -> str:
-    std::string get_brand() {
+    std::string get_brand() const {
         // 14:         return self.brand
         return this->brand;
     }
@@ -82,13 +82,13 @@ struct Car : Vehicle {
     }
 
     // 47:     def weight(self) -> Int32:
-    int32_t weight() {
+    int32_t weight() const {
         // 48:         return self.car_weight
         return this->car_weight;
     }
 
     // 50:     def describe(self) -> str:
-    std::string describe() {
+    std::string describe() const {
         // 51:         return "A car"
         return "A car";
     }

@@ -35,7 +35,7 @@ struct IntBox {
     explicit IntBox(int32_t v) : value(v) {}
 
     // 21:     def get(self) -> Int32:
-    int32_t get() {
+    int32_t get() const {
         // 22:         return self.value
         return this->value;
     }
@@ -64,7 +64,7 @@ struct StrBox {
     explicit StrBox(std::string_view v) : value(v) {}
 
     // 34:     def get(self) -> str:
-    std::string get() {
+    std::string get() const {
         // 35:         return self.value
         return this->value;
     }

@@ -29,7 +29,7 @@ struct Helper {
     }
 
     // 14:     def get(self) -> Int32:
-    int32_t get() {
+    int32_t get() const {
         // 15:         return self.value
         return this->value;
     }

@@ -52,7 +52,7 @@ struct Widget {
     explicit Widget(int32_t val) : val(val) {}
 
     // 19:     def compare_to(self) -> Int32:
-    int32_t compare_to() {
+    int32_t compare_to() const {
         // 20:         return self.val
         return this->val;
     }

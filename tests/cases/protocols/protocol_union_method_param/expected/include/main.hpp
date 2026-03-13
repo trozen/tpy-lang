@@ -61,7 +61,7 @@ struct Ruler {
 
 
     // 26:     def measure(self) -> int:
-    tpy::BigInt measure() {
+    tpy::BigInt measure() const {
         // 27:         return 5
         return tpy::BigInt(5);
     }
@@ -78,7 +78,7 @@ struct Walker {
 
 
     // 30:     def walk(self) -> int:
-    tpy::BigInt walk() {
+    tpy::BigInt walk() const {
         // 31:         return 99
         return tpy::BigInt(99);
     }

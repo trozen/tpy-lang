@@ -46,7 +46,7 @@ struct LabeledContainer : Container<int32_t> {
     explicit LabeledContainer(std::string_view label, int32_t value) : Container<int32_t>(value), label(label) {}
 
     // 20:     def describe(self) -> str:
-    std::string describe() {
+    std::string describe() const {
         // 21:         return self.label
         return this->label;
     }

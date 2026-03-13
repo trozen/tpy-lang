@@ -26,7 +26,7 @@ struct Counter {
     }
 
     // 12:     def display(self, prefix: str = "count") -> None:
-    void display(std::string_view prefix = "count") {
+    void display(std::string_view prefix = "count") const {
         // 13:         print(f"{prefix}: {self.count}")
         std::cout << std::format("{}: {}", prefix, this->count) << "\n";
     }

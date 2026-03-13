@@ -23,7 +23,7 @@ struct Message {
     explicit Message(std::string_view text) : text(text) {}
 
     // 15:     def to_str(self) -> str:
-    std::string to_str() {
+    std::string to_str() const {
         // 16:         return self.text
         return this->text;
     }
@@ -85,7 +85,7 @@ struct DefaultFactory {
 
 
     // 34:     def make(self, text: str) -> Own[Container[Message]]:
-    Container<Message> make(std::string_view text) {
+    Container<Message> make(std::string_view text) const {
         // 35:         return Container(Message(text))
         return Container<Message>(Message(text));
     }

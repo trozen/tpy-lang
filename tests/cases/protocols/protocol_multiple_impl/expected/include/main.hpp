@@ -48,13 +48,13 @@ struct Box {
     }
 
     // 32:     def describe(self) -> str:
-    std::string describe() {
+    std::string describe() const {
         // 33:         return "A rectangular box"
         return "A rectangular box";
     }
 
     // 35:     def size(self) -> Int32:
-    int32_t size() {
+    int32_t size() const {
         // 36:         return self.width * self.height
         return (tpy::mul_check<int32_t>(this->width, this->height));
     }

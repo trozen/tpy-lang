@@ -23,7 +23,7 @@ struct Box {
 
     // 10:     def transform[U](self, other: U) -> U:
     template<typename U>
-    tpy::val_or_ref_t<U> transform(tpy::param_val_or_ref_t<U> other) {
+    tpy::val_or_cref_t<U> transform(const U& other) const {
         // 11:         return other
         return other;
     }

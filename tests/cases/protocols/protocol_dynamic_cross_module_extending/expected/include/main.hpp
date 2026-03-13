@@ -77,13 +77,13 @@ struct Parrot {
 
 
     // 18:     def speak(self) -> str:
-    std::string speak() {
+    std::string speak() const {
         // 19:         return "Squawk"
         return "Squawk";
     }
 
     // 20:     def name(self) -> str:
-    std::string name() {
+    std::string name() const {
         // 21:         return "Polly"
         return "Polly";
     }

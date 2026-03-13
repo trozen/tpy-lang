@@ -17,13 +17,13 @@ struct Shape {
 
 
     // 7:     def area(self) -> Int32:
-    int32_t area() {
+    int32_t area() const {
         // 8:         return Int32(0)
         return 0;
     }
 
     // 10:     def describe(self) -> str:
-    std::string describe() {
+    std::string describe() const {
         // 11:         return "shape"
         return "shape";
     }
@@ -46,14 +46,14 @@ struct Square : Shape {
 
     //     @override
     // 21:     def area(self) -> Int32:  # tpyc: warning(/non-polymorphic/)
-    int32_t area() {
+    int32_t area() const {
         // 22:         return self.side * self.side
         return (tpy::mul_check<int32_t>(this->side, this->side));
     }
 
     //     @override
     // 25:     def describe(self) -> str:  # tpyc: warning(/non-polymorphic/)
-    std::string describe() {
+    std::string describe() const {
         // 26:         return "square"
         return "square";
     }

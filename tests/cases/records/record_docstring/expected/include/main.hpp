@@ -24,7 +24,7 @@ struct Point {
     }
 
     // 14:     def magnitude_sq(self) -> Int32:
-    int32_t magnitude_sq() {
+    int32_t magnitude_sq() const {
         // 16:         return self.x * self.x + self.y * self.y
         return (tpy::add_check<int32_t>((tpy::mul_check<int32_t>(this->x, this->x)), (tpy::mul_check<int32_t>(this->y, this->y))));
     }

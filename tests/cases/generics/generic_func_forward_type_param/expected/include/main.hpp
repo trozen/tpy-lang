@@ -45,7 +45,7 @@ struct Container {
 
 
     // 36:     def forward_val(self) -> T:
-    tpy::val_or_ref_t<T> forward_val() {
+    tpy::val_or_cref_t<T> forward_val() const {
         // 37:         return identity[T](self.val)  # tpyc: ok
         return identity<T>(this->val);
     }

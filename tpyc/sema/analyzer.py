@@ -38,7 +38,7 @@ from .statements import StatementAnalyzer
 
 from ..prescan import ScanResult, scan_reassigned_vars
 from ..liveness import analyze_last_uses
-from .mutation_propagation import propagate_mutation_facts
+from .mutation_propagation import propagate_mutation_facts, infer_method_const
 from tpyc import modules as builtin_modules
 from ..typesys import TypeParamRef, TupleType
 
@@ -467,6 +467,7 @@ class SemanticAnalyzer:
         # Phase 2: propagate mutation facts through intra-module call graph,
         # then emit/suppress deferred borrow warnings with resolved facts
         self._propagate_mutation_facts()
+        self._sync_inferred_const(module)
         self.calls.resolve_pending_borrow_checks()
 
     def _propagate_mutation_facts(self) -> None:
@@ -484,6 +485,80 @@ class SemanticAnalyzer:
                     if fi.direct_mutated_params is not None and fi.call_edges is not None:
                         all_fis.append(fi)
         propagate_mutation_facts(all_fis)
+        infer_method_const(all_fis)
+
+    def _sync_inferred_const(self, module: TpyModule) -> None:
+        """Copy inferred is_readonly=True from FunctionInfo back to TpyFunction nodes.
+
+        infer_method_const() sets FunctionInfo.is_readonly on the registry objects,
+        but codegen reads method.is_readonly from the TpyFunction AST nodes.
+        This pass syncs the two representations.
+        """
+        for record in module.records:
+            record_info = self.ctx.registry.get_record(record.name)
+            if record_info is None:
+                continue
+            for method in record.methods:
+                if method.is_readonly:
+                    continue  # already readonly, no need to sync
+                # Overload stubs have no body -- Phase 1 facts live on the
+                # implementation's FI, not on stubs. get_method() returns
+                # overloads[0] which may be a different stub; skip stubs here
+                # to avoid syncing based on a mismatched FI.
+                if method.is_overload_stub:
+                    continue
+                # @auto_readonly mutable clones are paired with a const clone --
+                # keep them mutable so the pair generates both overloads correctly.
+                if method.is_auto_readonly_mutable_clone:
+                    continue
+                # @readonly(False) is an explicit opt-out -- respect it.
+                if method.readonly_opt_out:
+                    continue
+                fi = record_info.get_method(method.name)
+                if fi is None or not fi.is_readonly:
+                    continue
+                # For @dynamic protocol overrides, the const-ness of the concrete
+                # method must match the virtual base declaration. If the protocol
+                # declares the method as non-const, don't infer const here --
+                # it would produce a different C++ signature and break the override.
+                if self._dynamic_proto_requires_nonconst(record_info, method.name):
+                    continue
+                method.is_readonly = True
+
+    def _dynamic_proto_requires_nonconst(self, record_info: RecordInfo, method_name: str) -> bool:
+        """Return True if method_name must remain non-const due to a @dynamic protocol override.
+
+        A @dynamic protocol generates C++ pure virtual methods that concrete implementations
+        must override with matching (non-const) signatures. The method may be declared in a
+        non-dynamic ancestor, but still ends up in the dynamic vtable.
+        """
+        visited: set[str] = set()
+        for proto_type in record_info.implemented_protocols:
+            proto_info = self.ctx.registry.get_protocol(proto_type.name)
+            # Only @dynamic protocols generate C++ virtual bases
+            if proto_info is None or not proto_info.is_dynamic:
+                continue
+            # Search this dynamic protocol and ALL its ancestors for method_name,
+            # regardless of whether ancestors are themselves dynamic.
+            if self._proto_hierarchy_has_nonconst(proto_type.name, method_name, visited):
+                return True
+        return False
+
+    def _proto_hierarchy_has_nonconst(self, proto_name: str, method_name: str, visited: set[str]) -> bool:
+        """Search method_name in this protocol and all ancestors (ignoring dynamic flag)."""
+        if proto_name in visited:
+            return False
+        visited.add(proto_name)
+        proto_info = self.ctx.registry.get_protocol(proto_name)
+        if proto_info is None:
+            return False
+        for sig in proto_info.methods:
+            if sig.name == method_name and not sig.is_readonly:
+                return True
+        for parent_name in proto_info.parent_protocols:
+            if self._proto_hierarchy_has_nonconst(parent_name, method_name, visited):
+                return True
+        return False
 
     def _is_type_nocopy(self, typ: TpyType) -> bool:
         """Delegate to canonical is_type_nocopy on context."""
@@ -1028,6 +1103,7 @@ class SemanticAnalyzer:
                         if pname in self.ctx.current_mutated_param_names
                     )
                     method_fi.direct_mutated_params = direct
+                    method_fi.direct_self_mutated = self.ctx.current_self_mutated
                     method_fi.call_edges = list(self.ctx.current_call_edges)
                     method_fi.mutated_params = direct
 

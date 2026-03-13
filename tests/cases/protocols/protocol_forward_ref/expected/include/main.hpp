@@ -44,7 +44,7 @@ struct Person {
     }
 
     // 29:     def describe(self) -> str:
-    std::string describe() {
+    std::string describe() const {
         // 30:         return "A person"
         return "A person";
     }

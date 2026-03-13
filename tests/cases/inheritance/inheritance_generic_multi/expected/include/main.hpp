@@ -90,7 +90,7 @@ struct Leaf : Middle<T> {
     }
 
     // 44:     def get_extra(self) -> str:
-    std::string get_extra() {
+    std::string get_extra() const {
         // 45:         return self.extra
         return this->extra;
     }

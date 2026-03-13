@@ -23,7 +23,7 @@ struct Processor {
 
     // 10:     def wrap[U](self, x: U) -> U:
     template<typename U>
-    tpy::val_or_ref_t<U> wrap(tpy::param_val_or_ref_t<U> x) {
+    tpy::val_or_cref_t<U> wrap(const U& x) const {
         // 11:         return x
         return x;
     }

@@ -23,7 +23,7 @@ struct Rect {
     explicit Rect(int32_t width, int32_t height) : width(width), height(height) {}
 
     // 10:     def area(self) -> Int32:
-    int32_t area() {
+    int32_t area() const {
         // 11:         return self.width * self.height
         return (tpy::mul_check<int32_t>(this->width, this->height));
     }

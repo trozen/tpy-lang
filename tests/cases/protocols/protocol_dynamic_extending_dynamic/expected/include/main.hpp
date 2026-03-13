@@ -103,13 +103,13 @@ struct Parrot {
 
 
     // 21:     def make_noise(self) -> str:
-    std::string make_noise() {
+    std::string make_noise() const {
         // 22:         return "Squawk"
         return "Squawk";
     }
 
     // 23:     def name(self) -> str:
-    std::string name() {
+    std::string name() const {
         // 24:         return "Polly"
         return "Polly";
     }

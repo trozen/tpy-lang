@@ -21,7 +21,7 @@ struct Box {
     explicit Box(int32_t value) : value(value) {}
 
     // 10:     def get(self) -> Int32:
-    int32_t get() {
+    int32_t get() const {
         // 11:         return self.value
         return this->value;
     }

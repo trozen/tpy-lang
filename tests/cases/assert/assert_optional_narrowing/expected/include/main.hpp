@@ -23,7 +23,7 @@ struct Point {
     explicit Point(int32_t x) : x(x) {}
 
     // 10:     def mag(self) -> Int32:
-    int32_t mag() {
+    int32_t mag() const {
         // 11:         return self.x
         return this->x;
     }

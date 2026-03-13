@@ -38,7 +38,7 @@ struct DefaultFooMaker {
 
 
     // 17:     def make(self) -> Own[Foo]:
-    Foo make() {
+    Foo make() const {
         // 18:         return Foo(Int32(42))
         return Foo(42);
     }

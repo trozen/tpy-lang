@@ -1222,8 +1222,18 @@ class CallAnalyzer:
         from .statements import _root_name_of_expr
         name_to_idx = self.ctx.current_param_name_to_idx
         rebound = self.ctx.current_rebound_params
-        if not name_to_idx:
+
+        # Detect self.method() receiver so Phase 2 can propagate self-mutation.
+        receiver_is_self = (
+            isinstance(expr, TpyMethodCall)
+            and isinstance(expr.obj, TpyName)
+            and expr.obj.name == "self"
+        )
+
+        # Nothing to record if no params flow through and no self-call
+        if not name_to_idx and not receiver_is_self:
             return
+
         param_map: dict[int, int] = {}
         for i, callee_param in enumerate(fi.params):
             if i >= len(expr.args):
@@ -1240,9 +1250,10 @@ class CallAnalyzer:
             resolved = self.ctx.borrow_tracker.effective_storage(arg_root)
             if resolved in name_to_idx and resolved not in rebound:
                 param_map[i] = name_to_idx[resolved]
-        if param_map:
+        if param_map or receiver_is_self:
             self.ctx.current_call_edges.append(
-                MutationCallEdge(callee_fi=fi, param_map=param_map)
+                MutationCallEdge(callee_fi=fi, param_map=param_map,
+                                 receiver_is_self=receiver_is_self)
             )
 
     def _validate_ptr_constructor(self, expr: TpyCall) -> None:

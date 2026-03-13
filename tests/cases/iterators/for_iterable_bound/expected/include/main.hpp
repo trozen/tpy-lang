@@ -68,7 +68,7 @@ struct MyRange {
     explicit MyRange(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
     // 28:     def __iter__(self) -> Own[RangeIter]:
-    RangeIter __iter__() {
+    RangeIter __iter__() const {
         // 29:         return RangeIter(self.start, self.limit)
         return RangeIter(this->start, this->limit);
     }

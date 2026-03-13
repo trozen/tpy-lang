@@ -36,7 +36,7 @@ struct Outer {
     explicit Outer(Inner inner) : inner(std::move(inner)) {}
 
     // 15:     def get_value(self) -> Int32:
-    int32_t get_value() {
+    int32_t get_value() const {
         // 16:         return self.inner.value
         return this->inner.value;
     }

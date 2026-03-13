@@ -25,7 +25,7 @@ struct Box {
     explicit Box(const T& value) : value(value) {}
 
     // 11:     def get(self) -> T:
-    tpy::val_or_ref_t<T> get() {
+    tpy::val_or_cref_t<T> get() const {
         // 12:         return self.value
         return this->value;
     }
@@ -66,7 +66,7 @@ struct Ring {
     }
 
     // 30:     def get(self, i: Int32) -> T:
-    tpy::val_or_ref_t<T> get(int32_t i) {
+    tpy::val_or_cref_t<T> get(int32_t i) const {
         // 31:         return self.data[i]
         return tpy::__getitem__(this->data, i);
     }

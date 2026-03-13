@@ -24,7 +24,7 @@ struct Wrapper {
     explicit Wrapper(std::optional<std::string_view> text) : text(text ? std::make_optional(std::string(*text)) : std::nullopt) {}
 
     // 10:     def first_char(self) -> None:
-    void first_char() {
+    void first_char() const {
         // 11:         if self.text is not None:
         if ((this->text.has_value())) {
             // 12:             print(self.text[0])

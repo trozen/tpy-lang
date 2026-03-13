@@ -52,7 +52,7 @@ struct Child : Container<std::vector<T>> {
     }
 
     // 20:     def get_extra(self) -> Int32:
-    int32_t get_extra() {
+    int32_t get_extra() const {
         // 21:         return self.extra
         return this->extra;
     }

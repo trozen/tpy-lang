@@ -28,7 +28,7 @@ struct Box {
 
     //     @override
     // 17:     def measure(self) -> Int32:  # tpyc: ok
-    int32_t measure() {
+    int32_t measure() const {
         // 18:         return self.volume
         return this->volume;
     }

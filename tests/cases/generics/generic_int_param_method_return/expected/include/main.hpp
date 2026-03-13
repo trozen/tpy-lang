@@ -22,13 +22,13 @@ struct Grid {
     explicit Grid(const T& value) : _value(value) {}
 
     // 12:     def copy(self) -> Own[Grid[T, N]]:
-    Grid<T, N> copy() {
+    Grid<T, N> copy() const {
         // 13:         return Grid[T, N](self._value)
         return Grid<T, N>(this->_value);
     }
 
     // 15:     def with_value(self, value: T) -> Own[Grid[T, N]]:
-    Grid<T, N> with_value(tpy::param_val_or_ref_t<T> value) {
+    Grid<T, N> with_value(const T& value) const {
         // 16:         return Grid[T, N](value)
         return Grid<T, N>(value);
     }

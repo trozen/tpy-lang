@@ -20,7 +20,7 @@ struct Sink {
 
 
     // 12:     def put(self, p: Ptr[None]) -> Int32:
-    int32_t put(void* p) {
+    int32_t put(void* p) const {
         // 13:         return Int32(20)
         return 20;
     }

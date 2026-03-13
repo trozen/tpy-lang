@@ -113,7 +113,7 @@ struct Mapper {
 
     // 40:     def transform[U, V](self, u: U, v: V) -> V:
     template<typename U, typename V>
-    tpy::val_or_ref_t<V> transform(tpy::param_val_or_ref_t<U> u, tpy::param_val_or_ref_t<V> v) {
+    tpy::val_or_cref_t<V> transform(const U& u, const V& v) const {
         // 41:         return v
         return v;
     }

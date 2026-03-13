@@ -21,7 +21,7 @@ struct Counter {
     explicit Counter(int32_t value) : value(value) {}
 
     // 7:     def get_value(self) -> Int32:
-    int32_t get_value() {
+    int32_t get_value() const {
         // 8:         return self.value
         return this->value;
     }

@@ -25,7 +25,7 @@ struct Counter {
     explicit Counter(int32_t v) : value(v) {}
 
     // 41:     def do_nothing(self) -> None:
-    void do_nothing() {
+    void do_nothing() const {
         // 42:         pass
     }
 

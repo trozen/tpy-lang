@@ -324,6 +324,9 @@ class VoidType(TpyType):
     def to_cpp_return(self) -> str:
         return "void"
 
+    def to_cpp_return_const(self) -> str:
+        return "void"
+
 
 @dataclass(frozen=True)
 class StrType(TpyType):
@@ -2419,6 +2422,7 @@ class MutationCallEdge:
     """Records parameter flow through a function call (for mutation propagation)."""
     callee_fi: 'FunctionInfo'
     param_map: dict[int, int]  # callee_param_idx -> caller_param_idx
+    receiver_is_self: bool = False  # True when callee is called as self.method()
 
 
 @dataclass
@@ -2458,6 +2462,10 @@ class FunctionInfo:
     # Phase 1 local facts (set during sema, consumed by Phase 2 propagation)
     direct_mutated_params: Optional[frozenset[int]] = None
     call_edges: Optional[list['MutationCallEdge']] = None
+    # Self-mutation inference (Phase 1 + Phase 2, methods only)
+    # None = not yet analyzed; True/False = Phase 1 direct fact; finalized by Phase 2.
+    direct_self_mutated: Optional[bool] = None
+    self_mutated: bool = True  # conservative default until Phase 2 resolves
 
     @property
     def is_native_import(self) -> bool:

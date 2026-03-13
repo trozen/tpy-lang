@@ -65,7 +65,7 @@ struct DefaultPairFactory {
 
 
     // 22:     def make_pair(self, a: Int32, b: Int32) -> Own[SortedPair[Int32]]:
-    SortedPair<int32_t> make_pair(int32_t a, int32_t b) {
+    SortedPair<int32_t> make_pair(int32_t a, int32_t b) const {
         // 23:         return SortedPair[Int32](a, b)
         return SortedPair<int32_t>(a, b);
     }

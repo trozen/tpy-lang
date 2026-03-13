@@ -37,13 +37,13 @@ struct Impl {
     explicit Impl(int32_t value) : value(value) {}
 
     // 15:     def call(self, extra: Int32 = Int32(0)) -> Int32:
-    int32_t call(int32_t extra = 0) {
+    int32_t call(int32_t extra = 0) const {
         // 16:         return self.value + extra
         return (tpy::add_check<int32_t>(this->value, extra));
     }
 
     // 17:     def process(self, x: Int32, scale: Int32 = Int32(1)) -> Int32:
-    int32_t process(int32_t x, int32_t scale = 1) {
+    int32_t process(int32_t x, int32_t scale = 1) const {
         // 18:         return x * scale + self.value
         return (tpy::add_check<int32_t>((tpy::mul_check<int32_t>(x, scale)), this->value));
     }

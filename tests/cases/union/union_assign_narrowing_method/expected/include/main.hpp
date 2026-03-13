@@ -23,7 +23,7 @@ struct Circle {
     explicit Circle(double radius) : radius(radius) {}
 
     // 8:     def area(self) -> float:
-    double area() {
+    double area() const {
         // 9:         return 3.14 * self.radius * self.radius
         return ((((3.14) * (this->radius))) * (this->radius));
     }
@@ -48,7 +48,7 @@ struct Rect {
     explicit Rect(double width, double height) : width(width), height(height) {}
 
     // 19:     def area(self) -> float:
-    double area() {
+    double area() const {
         // 20:         return self.width * self.height
         return ((this->width) * (this->height));
     }

@@ -24,13 +24,13 @@ struct Shape {
     explicit Shape(std::string_view name) : name(name) {}
 
     // 9:     def area(self) -> Int32:
-    int32_t area() {
+    int32_t area() const {
         // 10:         return 0
         return 0;
     }
 
     // 12:     def describe(self) -> str:
-    std::string describe() {
+    std::string describe() const {
         // 13:         return self.name
         return this->name;
     }
@@ -56,7 +56,7 @@ struct Square : Shape {
     }
 
     // 23:     def area(self) -> Int32:
-    int32_t area() {
+    int32_t area() const {
         // 24:         return self.side * self.side
         return (tpy::mul_check<int32_t>(this->side, this->side));
     }
@@ -84,7 +84,7 @@ struct Rectangle : Shape {
     }
 
     // 36:     def area(self) -> Int32:
-    int32_t area() {
+    int32_t area() const {
         // 37:         return self.width * self.height
         return (tpy::mul_check<int32_t>(this->width, this->height));
     }
