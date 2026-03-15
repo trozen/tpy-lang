@@ -63,7 +63,8 @@ int32_t sum_list(const std::vector<int32_t>& items) {
 // 42: def append_item(items: list[Int32], v: Int32) -> None:
 void append_item(std::vector<int32_t>& items, int32_t v) {
     // 43:     items.append(v)
-    items.push_back(v);
+    auto __tmp_1 = v;
+    items.push_back(std::move(__tmp_1));
 }
 
 // # Phase 2 propagation: wrapper passes items to mutating callee -> items must stay T&

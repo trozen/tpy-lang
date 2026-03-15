@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // 17: def take_items(c: Container) -> Own[list[Point]]:
 std::vector<Point> take_items(const Container& c) {
     // 18:     return copy(c.items)
-    return c.items;
+    return std::vector<Point>(c.items);
 }
 
 // 21: def main() -> None:

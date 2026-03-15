@@ -270,10 +270,13 @@ class ExpressionGenerator:
 
     def _maybe_move(self, expr: TpyExpr, gen_code: str) -> str:
         """Wrap in std::move() or std::forward() if expr is a last-use of a movable local."""
-        if (isinstance(expr, TpyName)
-                and expr.name in self.ctx.movable_locals
-                and id(expr) in self.ctx.analyzer.ctx.all_last_uses):
-            tp_name = self.ctx.forwarding_params.get(expr.name)
+        inner = expr
+        while isinstance(inner, TpyCoerce):
+            inner = inner.expr
+        if (isinstance(inner, TpyName)
+                and inner.name in self.ctx.movable_locals
+                and id(inner) in self.ctx.analyzer.ctx.all_last_uses):
+            tp_name = self.ctx.forwarding_params.get(inner.name)
             if tp_name is not None:
                 return f"std::forward<{tp_name}>({gen_code})"
             return f"std::move({gen_code})"
@@ -330,7 +333,7 @@ class ExpressionGenerator:
 
     def gen_call_arg(self, arg: TpyExpr, ptype: TpyType | None,
                      target_type: TpyType | None | _Unset = _UNSET) -> str:
-        """Generate a call argument with deref and auto-move for Own[T] params.
+        """Generate a call argument with auto-move at last use for Own[T] params.
 
         target_type overrides ptype as the hint passed to gen_expr_deref.
         Pass None explicitly to suppress the target hint (e.g. record method
@@ -338,8 +341,27 @@ class ExpressionGenerator:
         not literal coercion).
         """
         gen_arg = self.gen_expr_deref(arg, ptype if target_type is _UNSET else target_type)
-        if ptype is not None and unwrap_optional_own(unwrap_readonly(ptype)) is not None:
-            gen_arg = self._maybe_move(arg, gen_arg)
+        if ptype is not None:
+            own = unwrap_optional_own(unwrap_readonly(ptype))
+            if own is not None:
+                moved = self._maybe_move(arg, gen_arg)
+                if moved is gen_arg and _is_simple_lvalue(arg):
+                    # For TpyCoerce: real conversions produce rvalue expressions that
+                    # bind to T&& directly. Identity coercions (same C++ type) leave
+                    # the expression as an lvalue and still need a copy-temp.
+                    needs_copy = True
+                    if isinstance(arg, TpyCoerce):
+                        inner = arg.expr
+                        while isinstance(inner, TpyCoerce):
+                            inner = inner.expr
+                        if isinstance(inner, TpyName) and not self.ctx.is_indirect_name(inner):
+                            if gen_arg != escape_cpp_name(inner.name):
+                                needs_copy = False  # real conversion -> rvalue
+                    if needs_copy:
+                        tmp = self.ctx.temps.create_typed("auto", gen_arg)
+                        gen_arg = f"std::move({tmp})"
+                else:
+                    gen_arg = moved
         return gen_arg
 
     def gen_expr(self, expr: TpyExpr, target_type: TpyType = None) -> str:
@@ -1276,14 +1298,18 @@ class ExpressionGenerator:
                            self.ctx.analyzer.registry.get_record(expr.func) is not None)
             if not is_shadowed:
                 module_name, func_name = self.ctx.analyzer.imported_names[expr.func]
-                # copy(x) from tpy - dereference pointer-locals to get the value
+                # copy(x) from tpy - produce an explicit copy (rvalue) of x
                 if module_name == "tpy" and func_name == "copy":
                     arg = expr.args[0]
                     arg_type = self.ctx.get_expr_type(arg)
                     # Optional non-value: keep native representation (T* or std::optional<T>)
                     if isinstance(arg_type, OptionalType) and arg_type.uses_pointer_repr():
                         return self.gen_expr(arg)
-                    return self.gen_expr_deref(arg)
+                    arg_expr = self.gen_expr_deref(arg)
+                    # Record constructors are prvalues — no copy needed
+                    if isinstance(arg, TpyCall) and self.ctx.analyzer.registry.get_record(arg.func):
+                        return arg_expr
+                    return f"{arg_type.to_cpp()}({arg_expr})"
                 # Check for module function
                 module_info = self.ctx.analyzer.registry.get_module(module_name)
                 if module_info and func_name in module_info.functions:
@@ -1499,7 +1525,12 @@ class ExpressionGenerator:
 
     def _gen_method_call(self, expr: TpyMethodCall) -> str:
         """Generate method call code."""
-        if expr.resolved_function_info:
+        # Skip upfront arg generation for cpp_template methods: those are handled by
+        # gen_method_from_function_info which regenerates args itself.
+        # Building gen_args here AND there would create duplicate TempState entries.
+        _temps_before = len(self.ctx.temps._pending)
+        _counter_before = self.ctx.temps._counter
+        if expr.resolved_function_info and not expr.resolved_function_info.cpp_template:
             params = expr.resolved_function_info.params
             gen_args = []
             for i, arg in enumerate(expr.args):
@@ -1530,6 +1561,7 @@ class ExpressionGenerator:
             args = ", ".join(gen_args)
         else:
             args = ", ".join(self.gen_expr_deref(a) for a in expr.args)
+        _temps_after_first_pass = len(self.ctx.temps._pending)
 
         # Handle user module function calls: module.func() -> ::tpy_user::module::func()
         if expr.user_module_call is not None:
@@ -1557,13 +1589,18 @@ class ExpressionGenerator:
                 cpp_type = enum_type.to_cpp()
                 arg = self.gen_expr(expr.args[1])
                 return f"tpy::EnumUtil<{cpp_type}>::try_parse({arg})"
-            # copy() from tpy -- deref the argument to get the value
+            # copy() from tpy -- produce an explicit copy (rvalue) of the argument
             if module_name == "tpy" and expr.method == "copy":
                 arg = expr.args[0]
                 arg_type = self.ctx.get_expr_type(arg)
                 if isinstance(arg_type, OptionalType) and arg_type.uses_pointer_repr():
                     return self.gen_expr(arg)
-                return self.gen_expr_deref(arg)
+                arg_expr = self.gen_expr_deref(arg)
+                # Record constructors are prvalues — no copy wrapping needed
+                call_func = getattr(arg, 'func', None)
+                if call_func and self.ctx.analyzer.registry.get_record(call_func):
+                    return arg_expr
+                return f"{arg_type.to_cpp()}({arg_expr})"
             # Special-handling functions with cpp_template resolved by sema
             fi = expr.resolved_function_info
             if fi and fi.special_handling and fi.cpp_template:
@@ -1698,6 +1735,9 @@ class ExpressionGenerator:
             if record_info:
                 method_info = record_info.get_method(expr.method)
                 if method_info:
+                    # Discard first-pass temps — we're regenerating args below
+                    del self.ctx.temps._pending[_temps_before:_temps_after_first_pass]
+                    self.ctx.temps._counter = _counter_before
                     # Build type substitution: {"T": Int32} for Box[Int32]
                     # Also include method-level type args (e.g. U -> Int32 for transform[U])
                     # so TypeParamRef params resolve to concrete types for temp decisions.

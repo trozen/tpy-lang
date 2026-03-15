@@ -35,7 +35,7 @@ void test_set_ctor_copy_no_warn() {
     // 31:     b: list[Node] = [Node(Int32(1))]
     std::vector<Node> b = {Node(1)};
     // 32:     a = set(copy(b))  # tpyc: ok
-    tpy::ordered_set<Node> a = tpy::set_from_range<Node>(b);
+    tpy::ordered_set<Node> a = tpy::set_from_range<Node>(std::vector<Node>(b));
     // 33:     print(len(b))
     std::cout << tpy::__len__(b) << "\n";
 }

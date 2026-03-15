@@ -76,7 +76,7 @@ void main() {
     std::cout << a[1] << "\n";
     // 53:     # -- copy --
     // 54:     b = copy(a)
-    ::tpy_user::tplib::ArrayList<int32_t, 8> b = a;
+    ::tpy_user::tplib::ArrayList<int32_t, 8> b = ::tpy_user::tplib::ArrayList<int32_t, 8>(a);
     // 55:     b[0] = 100
     tpy::__setitem__(b, 0, 100);
     // 56:     print(a[0])                 # 7 (original unchanged)

@@ -50,7 +50,7 @@ struct Container {
 
     // 19:     def __init__(self, value: Own[T]) -> None:
     Container() = default;
-    explicit Container(T value) : _value(std::move(value)), _has(true) {}
+    explicit Container(T&& value) : _value(std::move(value)), _has(true) {}
 
     // 23:     def get(self) -> T | None:
     T* get() {

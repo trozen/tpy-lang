@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 13: def consume(h: Own[Handle]) -> None:
-void consume(Handle h) {
+void consume(Handle&& h) {
     // 14:     print("use", h.id)
     std::cout << "use" << " " << h.id << "\n";
 }

@@ -16,19 +16,21 @@ void main() {
     std::vector<Point> items = std::vector<Point>{};
     // 14:     # lvalue into container method — warns (implicit copy)
     // 15:     items.append(p)           # tpyc: warning(/copies Point into owned storage/)
-    items.push_back(p);
+    auto __tmp_1 = p;
+    items.push_back(std::move(__tmp_1));
     // 16:     items.insert(0, p)        # tpyc: warning(/copies Point into owned storage/)
-    tpy::list_insert(items, 0, p);
+    auto __tmp_2 = p;
+    tpy::list_insert(items, 0, std::move(__tmp_2));
     // 18:     # lvalue into subscript assignment — warns
     // 19:     items[0] = p              # tpyc: warning(/copies Point into container/)
     tpy::__setitem__(items, 0, p);
     // 21:     # copy() silences the warning
     // 22:     items.append(copy(p))     # tpyc: ok
-    items.push_back(p);
+    items.push_back(Point(p));
     // 23:     items[0] = copy(p)        # tpyc: ok
-    tpy::__setitem__(items, 0, p);
+    tpy::__setitem__(items, 0, Point(p));
     // 24:     items.insert(0, copy(p))  # tpyc: warning(/unnecessary copy/)
-    tpy::list_insert(items, 0, p);
+    tpy::list_insert(items, 0, Point(p));
     // 26:     # rvalue — no warning needed
     // 27:     items.append(Point())     # tpyc: ok
     items.push_back(Point());
@@ -40,7 +42,8 @@ void main() {
     // 32:     x: Int32 = 42
     int32_t x = 42;
     // 33:     nums.append(x)            # tpyc: ok
-    nums.push_back(x);
+    auto __tmp_3 = x;
+    nums.push_back(std::move(__tmp_3));
     // 34:     nums[0] = x               # tpyc: ok
     tpy::__setitem__(nums, 0, x);
     // 36:     print(len(items))

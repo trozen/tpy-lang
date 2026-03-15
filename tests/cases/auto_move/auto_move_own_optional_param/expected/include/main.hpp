@@ -9,7 +9,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t consume_own(Point p);
+int32_t consume_own(Point&& p);
 int32_t forward_optional(std::optional<Point> p);
 void main();
 

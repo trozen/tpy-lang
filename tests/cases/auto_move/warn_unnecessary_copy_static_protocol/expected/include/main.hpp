@@ -45,7 +45,7 @@ struct MyHolder {
 
 
     // 13:     def store(self, p: Own[Point]) -> None:
-    void store(Point p) const {
+    void store(Point&& p) const {
         // 14:         print(p.x)
         std::cout << p.x << "\n";
     }
@@ -63,7 +63,7 @@ struct Factory {
 
     //     @staticmethod
     // 18:     def consume(p: Own[Point]) -> Int32:
-    static int32_t consume(Point p) {
+    static int32_t consume(Point&& p) {
         // 19:         return p.x
         return p.x;
     }

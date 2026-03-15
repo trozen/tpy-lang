@@ -8,32 +8,32 @@ namespace tpy_user::main {
 void main() {
     // 18:     # Non-generic record constructor: hint from __init__ param flows to inner call
     // 19:     h = Holder(wrap(Int32(42)))
-    int32_t __tmp_1 = 42;
-    Holder h = Holder(wrap<int32_t>(__tmp_1));
+    int32_t __tmp_2 = 42;
+    Holder h = Holder(wrap<int32_t>(__tmp_2));
     // 20:     print(h.box.val)
     std::cout << h.box.val << "\n";
     // 22:     # Same with bare literal: hint chain infers Int32, coerces literal
     // 23:     h2 = Holder(wrap(99))
-    int32_t __tmp_2 = 99;
-    Holder h2 = Holder(wrap<int32_t>(__tmp_2));
+    int32_t __tmp_3 = 99;
+    Holder h2 = Holder(wrap<int32_t>(__tmp_3));
     // 24:     print(h2.box.val)
     std::cout << h2.box.val << "\n";
     // 26:     # Generic record with explicit type args: hint flows to inner call
     // 27:     outer = Box[Box[Int32]](wrap(Int32(10)))
-    int32_t __tmp_3 = 10;
-    Box<Box<int32_t>> outer = Box<Box<int32_t>>(wrap<int32_t>(__tmp_3));
+    int32_t __tmp_4 = 10;
+    Box<Box<int32_t>> outer = Box<Box<int32_t>>(wrap<int32_t>(__tmp_4));
     // 28:     print(outer.val.val)
     std::cout << outer.val.val << "\n";
     // 30:     # Same with bare literal
     // 31:     outer2 = Box[Box[Int32]](wrap(20))
-    int32_t __tmp_4 = 20;
-    Box<Box<int32_t>> outer2 = Box<Box<int32_t>>(wrap<int32_t>(__tmp_4));
+    int32_t __tmp_5 = 20;
+    Box<Box<int32_t>> outer2 = Box<Box<int32_t>>(wrap<int32_t>(__tmp_5));
     // 32:     print(outer2.val.val)
     std::cout << outer2.val.val << "\n";
     // 34:     # Annotation-driven: no explicit type args on Box(), inferred from LHS
     // 35:     outer3: Box[Box[Int32]] = Box(wrap(30))
-    int32_t __tmp_5 = 30;
-    Box<Box<int32_t>> outer3 = Box<Box<int32_t>>(wrap<int32_t>(__tmp_5));
+    int32_t __tmp_6 = 30;
+    Box<Box<int32_t>> outer3 = Box<Box<int32_t>>(wrap<int32_t>(__tmp_6));
     // 36:     print(outer3.val.val)
     std::cout << outer3.val.val << "\n";
     // 37:     print("done")

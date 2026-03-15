@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 9: def consume(x: Own[Box]) -> Int32:
-int32_t consume(Box x) {
+int32_t consume(Box&& x) {
     // 10:     return x.value
     return x.value;
 }

@@ -81,7 +81,7 @@ void main() {
     std::cout << std::format("val={}", tpy::__str__(s)) << "\n";
     // 47:     # -- copy --
     // 48:     t = copy(s)
-    ::tpy_user::tplib::FixStr<16> t = s;
+    ::tpy_user::tplib::FixStr<16> t = ::tpy_user::tplib::FixStr<16>(s);
     // 49:     b: Char = "b"
     char b = 'b';
     // 50:     t[0] = b

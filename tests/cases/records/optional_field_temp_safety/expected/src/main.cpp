@@ -9,9 +9,9 @@ Holder make_holder(const Point& p) {
     // 20:     h = Holder()
     Holder h = Holder();
     // 21:     h.value = copy(p)
-    h.value = p;
+    h.value = Point(p);
     // 22:     return copy(h)  # tpyc: warning(/unnecessary copy/)
-    return h;
+    return Holder(h);
 }
 
 // 25: def test_init_from_temp() -> None:

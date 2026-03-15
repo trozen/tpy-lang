@@ -11,7 +11,7 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t consume(Outer o);
+int32_t consume(Outer&& o);
 void main();
 
 // @nocopy
@@ -44,7 +44,7 @@ struct Wrapper {
 
     // 16:     def __init__(self, res: Own[Resource]):
     Wrapper() = default;
-    explicit Wrapper(Resource res) : res(std::move(res)) {}
+    explicit Wrapper(Resource&& res) : res(std::move(res)) {}
     // non-copyable (field 'res')
     Wrapper(const Wrapper&) = delete;
     Wrapper& operator=(const Wrapper&) = delete;
@@ -66,7 +66,7 @@ struct Outer {
 
     // 23:     def __init__(self, w: Own[Wrapper]):
     Outer() = default;
-    explicit Outer(Wrapper w) : w(std::move(w)) {}
+    explicit Outer(Wrapper&& w) : w(std::move(w)) {}
     // non-copyable (field 'w')
     Outer(const Outer&) = delete;
     Outer& operator=(const Outer&) = delete;

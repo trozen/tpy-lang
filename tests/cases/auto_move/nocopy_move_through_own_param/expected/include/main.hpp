@@ -9,7 +9,7 @@ struct Handle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-Handle forward_via_alias(Handle h);
+Handle forward_via_alias(Handle&& h);
 void main();
 
 // @nocopy

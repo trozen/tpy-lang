@@ -12,7 +12,7 @@ void test_static() {
     p.x = 10;
     // 24:     # copy() at last use -- should warn unnecessary
     // 25:     result: Int32 = Factory.consume(copy(p))  # tpyc: warning(/unnecessary copy/)
-    int32_t result = Factory::consume(p);
+    int32_t result = Factory::consume(Point(p));
     // 26:     print(result)
     std::cout << result << "\n";
 }
@@ -27,7 +27,7 @@ void test_protocol() {
     p.x = 20;
     // 32:     # copy() at last use -- should warn unnecessary
     // 33:     h.store(copy(p))  # tpyc: warning(/unnecessary copy/)
-    h.store(p);
+    h.store(Point(p));
 }
 
 // 35: def main() -> None:

@@ -10,7 +10,7 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void consume(Child c);
+void consume(Child&& c);
 void main();
 
 // 6: class Base:

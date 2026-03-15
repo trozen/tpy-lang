@@ -107,7 +107,7 @@ struct Tagged {
 
     // 31:     def __init__(self, val: Own[T], tag: N) -> None:
     Tagged() = default;
-    explicit Tagged(T val, const N& tag) : _ptr(static_cast<T*>(::operator new(sizeof(T), std::align_val_t(alignof(T))))), _tag(tag), _owned(true) {
+    explicit Tagged(T&& val, const N& tag) : _ptr(static_cast<T*>(::operator new(sizeof(T), std::align_val_t(alignof(T))))), _tag(tag), _owned(true) {
         // 33:         unsafe_init(self._ptr, val)
         ::new(static_cast<void*>(this->_ptr)) T(std::move(val));
     }

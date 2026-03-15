@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 9: def consume(h: Own[Handle]) -> Int32:
-int32_t consume(Handle h) {
+int32_t consume(Handle&& h) {
     // 10:     return h.value
     return h.value;
 }

@@ -10,7 +10,7 @@ struct Handle;
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t inspect(const Handle& h);
-int32_t close(Handle h);
+int32_t close(Handle&& h);
 void main();
 
 // @nocopy

@@ -34,7 +34,7 @@ struct Box {
 
     // 12:     def __init__(self, item: Own[T]):
     Box() = default;
-    explicit Box(T item) : item(std::move(item)) {}
+    explicit Box(T&& item) : item(std::move(item)) {}
 };
 
 template<typename T>

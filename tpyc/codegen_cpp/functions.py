@@ -122,10 +122,10 @@ class FunctionGenerator:
                    emit_defaults: bool = False) -> str:
         """Generate function parameter list.
 
-        Own[T] uses T&& (forwarding ref) only when T is a function-level type
-        param (deduced at the call site). For class-level type params (methods,
-        constructors), T is already bound at instantiation so T&& would be an
-        rvalue ref -- fall through to T by value instead.
+        Own[T] params are emitted as T&& (rvalue ref) for concrete T, or
+        std::type_identity_t<T>&& for template T (prevents forwarding-ref
+        deduction). Callers always pass std::move() at last use; non-last-use
+        copies are inserted by gen_call_arg with a warning.
 
         const_params: use to_cpp_const_param (const T& for generics). Needed
         for constructors and const method overloads that must accept temporaries.
@@ -145,10 +145,7 @@ class FunctionGenerator:
         for i, (pname, ptype) in enumerate(params):
             cpp_pname = escape_cpp_name(pname)
             own = unwrap_readonly(ptype)
-            if (isinstance(own, OwnType) and isinstance(own.wrapped, TypeParamRef)
-                    and func_type_params and own.wrapped.name in func_type_params):
-                part = f"{own.wrapped.name}&& {cpp_pname}"
-            elif (reassigned_params and pname in reassigned_params
+            if (reassigned_params and pname in reassigned_params
                     and ptype.param_needs_copy_for_reassign()):
                 # Rename param so the body can declare a mutable local with the original name
                 part = ptype.to_cpp_param(f"__param_{cpp_pname}")
@@ -170,6 +167,14 @@ class FunctionGenerator:
                 part = ptype.to_cpp_const_param(cpp_pname)
             else:
                 part = ptype.to_cpp_param(cpp_pname)
+            # Own[T] where T is a class-level type param: std::type_identity_t is
+            # redundant (T is already bound, T&& is a plain rvalue ref, not forwarding).
+            # Only function-level type params need the deduction guard.
+            if (isinstance(ptype, OwnType) and isinstance(ptype.wrapped, TypeParamRef)
+                    and func_type_params is not None
+                    and ptype.wrapped.name not in func_type_params):
+                tp_cpp = ptype.wrapped.to_cpp()
+                part = part.replace(f"std::type_identity_t<{tp_cpp}>&&", f"{tp_cpp}&&")
             if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
                 part += f" = {self.default_to_cpp(defaults[i], ptype)}"
             parts.append(part)
@@ -211,10 +216,7 @@ class FunctionGenerator:
         for i, (pname, ptype) in enumerate(params):
             cpp_pname = escape_cpp_name(pname)
             unwrapped = unwrap_readonly(ptype)
-            if (isinstance(unwrapped, OwnType) and isinstance(unwrapped.wrapped, TypeParamRef)
-                    and func_type_params and unwrapped.wrapped.name in func_type_params):
-                part = f"{unwrapped.wrapped.name}&& {cpp_pname}"
-            elif self.protocols.is_static_protocol_param(ptype):
+            if self.protocols.is_static_protocol_param(ptype):
                 # Unified static protocol handling (single, optional, or union)
                 info = self._find_protocol_param_info(pname, ptype)
                 if info and info.has_none:

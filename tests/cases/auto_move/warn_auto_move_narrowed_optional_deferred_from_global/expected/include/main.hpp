@@ -10,7 +10,7 @@ struct Point;
 extern Point* g;
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t consume(Point p);
+int32_t consume(Point&& p);
 int32_t test();
 
 // 5: class Point:

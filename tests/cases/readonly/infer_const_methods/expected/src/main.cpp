@@ -39,8 +39,8 @@ void main() {
     // 102:     print(sb.get_first())
     std::cout << sb.get_first() << "\n";
     // 104:     show(Valued(7))
-    Valued __tmp_1{Valued(7)};
-    show(__tmp_1);
+    Valued __tmp_4{Valued(7)};
+    show(__tmp_4);
 }
 
 void __tpy_init() {

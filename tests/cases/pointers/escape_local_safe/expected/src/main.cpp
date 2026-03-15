@@ -16,7 +16,7 @@ void loop_escape_copy_ok() {
         // 14:         p: Point = Point(i, i)
         Point p = Point(i, i);
         // 15:         saved = copy(p)  # tpyc: ok
-        saved = &*(__slot_2 = p);
+        saved = &*(__slot_2 = Point(p));
     }
     // 16:     print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
@@ -191,7 +191,7 @@ void lvalue_init_rvalue_rebind() {
         // 90:         if p.x > best.x:
         if ((p.x > best->x)) {
             // 91:             best = copy(p)  # tpyc: ok
-            best = &*(__slot_1 = p);
+            best = &*(__slot_1 = Point(p));
         }
     }
     // 92:     print(best.x, best.y)

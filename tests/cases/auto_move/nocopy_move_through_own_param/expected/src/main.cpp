@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 13: def forward_via_alias(h: Own[Handle]) -> Own[Handle]:
-Handle forward_via_alias(Handle h) {
+Handle forward_via_alias(Handle&& h) {
     // 14:     alias = h
     Handle alias = std::move(h);
     // 15:     return alias

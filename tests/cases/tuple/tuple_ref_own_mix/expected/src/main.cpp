@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // 13: def split(p: Point) -> tuple[Point, Own[Point]]:
 std::tuple<Point&, Point> split(Point& p) {
     // 14:     return (p, copy(p))
-    return std::tuple<Point&, Point>{p, p};
+    return std::tuple<Point&, Point>{p, Point(p)};
 }
 
 // 16: def main() -> None:

@@ -48,7 +48,8 @@ struct Container {
     // 37:     def add(self, p: Point) -> None:
     void add(const Point& p) {
         // 38:         self._items.append(p)
-        this->_items.push_back(p);
+        auto __tmp_1 = p;
+        this->_items.push_back(std::move(__tmp_1));
     }
 
     // 40:     def first(self) -> Point:

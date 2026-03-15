@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 9: def consume_own(b: Own[Box]) -> Int32:
-int32_t consume_own(Box b) {
+int32_t consume_own(Box&& b) {
     // 10:     return b.value
     return b.value;
 }
@@ -29,7 +29,7 @@ void main() {
     b.value = 42;
     // 22:     # Warning: copy is unnecessary because b is at its last use
     // 23:     print(consume_optional(copy(b)))  # tpyc: warning(/unnecessary copy/)
-    std::cout << consume_optional(b) << "\n";
+    std::cout << consume_optional(Box(b)) << "\n";
 }
 
 void __tpy_init() {

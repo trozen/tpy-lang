@@ -11,7 +11,7 @@ int32_t inspect(const Handle& h) {
 }
 
 // 14: def close(h: Own[Handle]) -> Int32:
-int32_t close(Handle h) {
+int32_t close(Handle&& h) {
     // 15:     return h.fd
     return h.fd;
 }

@@ -10,7 +10,7 @@ template<typename T> struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t consume(Holder<Handle> h);
+int32_t consume(Holder<Handle>&& h);
 void main();
 
 // @nocopy
@@ -44,7 +44,7 @@ struct Holder {
 
     // 16:     def __init__(self, item: Own[T]):
     Holder() = default;
-    explicit Holder(T item) : item(std::move(item)) {}
+    explicit Holder(T&& item) : item(std::move(item)) {}
 };
 
 template<typename T>

@@ -95,7 +95,8 @@ struct Stack {
     // 57:     def push(self, item: T) -> Self:
     Stack<T>& push(tpy::param_val_or_ref_t<T> item) {
         // 58:         self.items.append(item)
-        this->items.push_back(item);
+        auto __tmp_1 = item;
+        this->items.push_back(std::move(__tmp_1));
         // 59:         return self
         return (*this);
     }

@@ -9,7 +9,7 @@ struct Tracker;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void consume(Tracker t);
+void consume(Tracker&& t);
 void main();
 
 // 5: class Tracker:

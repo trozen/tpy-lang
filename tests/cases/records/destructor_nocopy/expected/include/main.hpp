@@ -9,7 +9,7 @@ struct Handle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void consume(Handle h);
+void consume(Handle&& h);
 void main();
 
 // @nocopy

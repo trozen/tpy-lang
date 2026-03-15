@@ -97,7 +97,7 @@ struct SimpleList {
     }
 
     // 36:     def add(self, value: Own[T]) -> None:
-    void add(T value) {
+    void add(T&& value) {
         // 37:         self._storage.init(UInt32(self._size), value)
         this->_storage.init(tpy::int_cast_check<uint32_t>(this->_size), std::move(value));
         // 38:         self._size += 1

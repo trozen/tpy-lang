@@ -19,11 +19,11 @@ struct Container {
 
     // 7:     def __init__(self, value: Own[T]):
     Container() = default;
-    explicit Container(T value) : value(std::move(value)) {}
+    explicit Container(T&& value) : value(std::move(value)) {}
 
     //     @staticmethod
     // 11:     def create(v: Own[T]) -> Own[Container[T]]:
-    static Container<T> create(T v) {
+    static Container<T> create(T&& v) {
         // 12:         return Container(v)
         return Container<T>(std::move(v));
     }

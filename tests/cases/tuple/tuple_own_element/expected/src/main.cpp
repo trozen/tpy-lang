@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // 13: def make_pair(p: Point) -> tuple[Int32, Own[Point]]:
 std::tuple<int32_t, Point> make_pair(const Point& p) {
     // 14:     return (Int32(42), copy(p))
-    return std::tuple<int32_t, Point>{42, p};
+    return std::tuple<int32_t, Point>{42, Point(p)};
 }
 
 // 16: def main() -> None:

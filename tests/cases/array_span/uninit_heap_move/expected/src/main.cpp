@@ -21,7 +21,7 @@ UninitHeapStorage<int32_t> make_storage() {
 
 // # Move via Own parameter (auto-move at last use)
 // 19: def consume(s: Own[UninitHeapStorage[Int32]]) -> Int32:
-int32_t consume(UninitHeapStorage<int32_t> s) {
+int32_t consume(UninitHeapStorage<int32_t>&& s) {
     // 20:     val: Int32 = s.load(0)
     int32_t val = s.load(0);
     // 21:     s.drop(0)

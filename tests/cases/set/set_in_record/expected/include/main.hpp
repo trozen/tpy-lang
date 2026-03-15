@@ -20,7 +20,7 @@ struct TaggedItem {
     tpy::ordered_set<std::string> tags;
 
     TaggedItem() = default;
-    explicit TaggedItem(std::string_view name, tpy::ordered_set<std::string> tags) : name(name), tags(std::move(tags)) {}
+    explicit TaggedItem(std::string_view name, tpy::ordered_set<std::string>&& tags) : name(name), tags(std::move(tags)) {}
 
     bool __eq__(const TaggedItem& other) const {
         return ((this->name == other.name) && (this->tags == other.tags));

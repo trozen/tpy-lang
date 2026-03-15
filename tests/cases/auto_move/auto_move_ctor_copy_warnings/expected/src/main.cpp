@@ -5,13 +5,13 @@ namespace tpy_user::main {
 
 
 // 61: def test_nested_field_move(o: Outer, inner: Own[Inner]) -> None:
-void test_nested_field_move(Outer& o, Inner inner) {
+void test_nested_field_move(Outer& o, Inner&& inner) {
     // 62:     o.inner = inner  # tpyc: ok (nested field assign, last use -- auto-moved)
     o.inner = std::move(inner);
 }
 
 // 65: def test_nested_field_copy(o: Outer, inner: Own[Inner]) -> None:
-void test_nested_field_copy(Outer& o, Inner inner) {
+void test_nested_field_copy(Outer& o, Inner&& inner) {
     // 66:     o.inner = inner  # tpyc: warning(/copies.*field/)
     o.inner = inner;
     // 67:     print(inner.value)
@@ -19,13 +19,13 @@ void test_nested_field_copy(Outer& o, Inner inner) {
 }
 
 // 70: def test_subscript_move(xs: list[Inner], inner: Own[Inner]) -> None:
-void test_subscript_move(std::vector<Inner>& xs, Inner inner) {
+void test_subscript_move(std::vector<Inner>& xs, Inner&& inner) {
     // 71:     xs[0] = inner  # tpyc: ok (subscript assign, last use -- auto-moved)
     tpy::__setitem__(xs, 0, std::move(inner));
 }
 
 // 74: def test_subscript_copy(xs: list[Inner], inner: Own[Inner]) -> None:
-void test_subscript_copy(std::vector<Inner>& xs, Inner inner) {
+void test_subscript_copy(std::vector<Inner>& xs, Inner&& inner) {
     // 75:     xs[0] = inner  # tpyc: warning(/copies.*container/)
     tpy::__setitem__(xs, 0, inner);
     // 76:     print(inner.value)

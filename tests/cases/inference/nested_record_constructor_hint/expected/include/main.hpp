@@ -22,7 +22,7 @@ struct Box {
 
     // 6:     def __init__(self, val: Own[T]) -> None:
     Box() = default;
-    explicit Box(T val) : val(std::move(val)) {}
+    explicit Box(T&& val) : val(std::move(val)) {}
 };
 
 template<typename T>
@@ -40,7 +40,7 @@ struct Holder {
 
     // 11:     def __init__(self, box: Own[Box[Int32]]) -> None:
     Holder() = default;
-    explicit Holder(Box<int32_t> box) : box(std::move(box)) {}
+    explicit Holder(Box<int32_t>&& box) : box(std::move(box)) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
@@ -54,7 +54,8 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 template<typename T>
 Box<T> wrap(tpy::param_val_or_ref_t<T> v) {
     // 15:     return Box[T](v)
-    return Box<T>(v);
+    auto __tmp_1 = v;
+    return Box<T>(std::move(__tmp_1));
 }
 
 void __tpy_init();

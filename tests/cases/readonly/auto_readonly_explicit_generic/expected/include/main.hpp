@@ -24,7 +24,8 @@ struct Vec {
     // 11:     def push(self, v: T) -> None:
     void push(tpy::param_val_or_ref_t<T> v) {
         // 12:         self._data.append(v)
-        this->_data.push_back(v);
+        auto __tmp_1 = v;
+        this->_data.push_back(std::move(__tmp_1));
     }
 
     //     @auto_readonly

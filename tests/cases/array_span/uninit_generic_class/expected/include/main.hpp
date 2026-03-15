@@ -21,7 +21,8 @@ struct Holder {
     Holder() = default;
     explicit Holder(const T& value) : _storage(1) {
         // 10:         self._storage.init0(value)
-        this->_storage.init0(value);
+        auto __tmp_1 = value;
+        this->_storage.init0(std::move(__tmp_1));
     }
     // non-copyable (field '_storage')
     Holder(const Holder&) = delete;
@@ -40,7 +41,8 @@ struct Holder {
         // 16:         self._storage.drop0()
         this->_storage.drop0();
         // 17:         self._storage.init0(value)
-        this->_storage.init0(value);
+        auto __tmp_2 = value;
+        this->_storage.init0(std::move(__tmp_2));
     }
 
     // 19:     def take(self) -> Own[T]:

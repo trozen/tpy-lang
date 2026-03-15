@@ -9,8 +9,8 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t consume(Point p);
-int32_t forward(Point p);
+int32_t consume(Point&& p);
+int32_t forward(Point&& p);
 void main();
 
 // 6: class Point:

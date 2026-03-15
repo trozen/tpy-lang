@@ -9,7 +9,7 @@ void main() {
     // 17:     a = Counter(5)
     Counter a = Counter(5);
     // 18:     b = copy(a)
-    Counter b = a;
+    Counter b = Counter(a);
     // 19:     print(a.count)
     std::cout << a.count << "\n";
     // 20:     print(b.count)

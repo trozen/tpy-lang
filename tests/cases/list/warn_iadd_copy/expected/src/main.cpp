@@ -41,7 +41,7 @@ void test_iadd_copy_no_warn() {
     // 29:     b: list[Node] = [Node(Int32(1))]
     std::vector<Node> b = {Node(1)};
     // 30:     a += copy(b)  # tpyc: ok
-    tpy::list_extend(a, b);
+    tpy::list_extend(a, std::vector<Node>(b));
     // 31:     print(len(b))
     std::cout << tpy::__len__(b) << "\n";
 }

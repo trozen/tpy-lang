@@ -53,7 +53,7 @@ struct Line {
     // 20:     def set_end(self, e: Point) -> None:
     void set_end(const Point& e) {
         // 21:         self.end = copy(e)
-        this->end = e;
+        this->end = Point(e);
     }
 
     // 23:     def has_end(self) -> bool:

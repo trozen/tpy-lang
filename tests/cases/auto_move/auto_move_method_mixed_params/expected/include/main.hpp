@@ -35,7 +35,7 @@ struct Holder {
 
 
     // 12:     def set_with_tag(self, inner: Own[Inner], tag: Int32) -> None:
-    void set_with_tag(Inner inner, int32_t tag) {
+    void set_with_tag(Inner&& inner, int32_t tag) {
         // 13:         self.inner = inner
         this->inner = std::move(inner);
         // 14:         self.inner.value = self.inner.value + tag
@@ -58,10 +58,10 @@ struct GenericHolder {
 
     // 20:     def __init__(self, item: Own[T]):
     GenericHolder() = default;
-    explicit GenericHolder(T item) : item(std::move(item)) {}
+    explicit GenericHolder(T&& item) : item(std::move(item)) {}
 
     // 23:     def replace_with_flag(self, item: Own[T], flag: Int32) -> Int32:
-    int32_t replace_with_flag(T item, int32_t flag) {
+    int32_t replace_with_flag(T&& item, int32_t flag) {
         // 24:         self.item = item
         this->item = std::move(item);
         // 25:         return flag

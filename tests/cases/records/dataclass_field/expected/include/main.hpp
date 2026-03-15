@@ -60,7 +60,7 @@ struct Config {
     tpy::ordered_map<std::string, int32_t> lookup = {};
 
     Config() = default;
-    explicit Config(std::string_view name, int32_t value = 42, std::vector<std::string> tags = {}, tpy::ordered_map<std::string, int32_t> lookup = {}) : name(name), value(value), tags(std::move(tags)), lookup(std::move(lookup)) {}
+    explicit Config(std::string_view name, int32_t value = 42, std::vector<std::string>&& tags = {}, tpy::ordered_map<std::string, int32_t>&& lookup = {}) : name(name), value(value), tags(std::move(tags)), lookup(std::move(lookup)) {}
 
     bool __eq__(const Config& other) const {
         return ((((this->name == other.name) && (this->value == other.value)) && (this->tags == other.tags)) && (this->lookup == other.lookup));
@@ -100,7 +100,7 @@ struct Canvas {
     Point origin = Point();
 
     Canvas() = default;
-    explicit Canvas(std::string_view name, Point origin = Point()) : name(name), origin(std::move(origin)) {}
+    explicit Canvas(std::string_view name, Point&& origin = Point()) : name(name), origin(std::move(origin)) {}
 
     bool __eq__(const Canvas& other) const {
         return ((this->name == other.name) && (this->origin == other.origin));

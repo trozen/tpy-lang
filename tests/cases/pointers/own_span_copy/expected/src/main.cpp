@@ -18,7 +18,7 @@ void main() {
     std::span<int32_t> span = get_span(nums);
     // 10:     # copy() on a Span should work (creates a view)
     // 11:     span_copy: Span[Int32] = copy(span)
-    std::span<int32_t> span_copy = span;
+    std::span<int32_t> span_copy = std::span<int32_t>(span);
     // 13:     # Both spans can access the same data
     // 14:     print(span[0])
     std::cout << tpy::__getitem__(span, 0) << "\n";

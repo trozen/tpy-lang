@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 9: def consume(p: Own[Point]) -> Int32:
-int32_t consume(Point p) {
+int32_t consume(Point&& p) {
     // 10:     return p.x
     return p.x;
 }
@@ -20,7 +20,8 @@ int32_t test(Point& a) {
     // 16:     p = a  # rebind to param alias -> lvalue reassignment
     p = &(a);
     // 17:     return consume(p)  # tpyc: warning(/copies.*into owned storage/)
-    return consume((*p));
+    auto __tmp_1 = (*p);
+    return consume(std::move(__tmp_1));
 }
 
 void __tpy_init() {

@@ -5,13 +5,13 @@ namespace tpy_user::main {
 
 
 // 10: def copy(b: Own[Box]) -> Own[Box]:
-Box copy(Box b) {
+Box copy(Box&& b) {
     // 11:     return b
     return b;
 }
 
 // 14: def consume(b: Own[Box]) -> Int32:
-int32_t consume(Box b) {
+int32_t consume(Box&& b) {
     // 15:     return b.value
     return b.value;
 }

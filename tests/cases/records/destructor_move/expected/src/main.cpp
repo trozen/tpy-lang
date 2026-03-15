@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 12: def consume(t: Own[Tracker]) -> None:
-void consume(Tracker t) {
+void consume(Tracker&& t) {
     // 13:     print("consumed", t.name)
     std::cout << "consumed" << " " << t.name << "\n";
 }

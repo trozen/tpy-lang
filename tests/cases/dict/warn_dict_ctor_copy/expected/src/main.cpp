@@ -35,7 +35,7 @@ void test_dict_ctor_copy_no_warn() {
     // 26:     pairs: list[tuple[str, Node]] = [("a", Node(Int32(1)))]
     std::vector<std::tuple<std::string, Node>> pairs = {std::tuple<std::string, Node>{"a", Node(1)}};
     // 27:     d = dict(copy(pairs))  # tpyc: ok
-    tpy::ordered_map<std::string, Node> d = tpy::dict_from_pairs<std::string, Node>(pairs);
+    tpy::ordered_map<std::string, Node> d = tpy::dict_from_pairs<std::string, Node>(std::vector<std::tuple<std::string, Node>>(pairs));
     // 28:     print(len(pairs))
     std::cout << tpy::__len__(pairs) << "\n";
 }

@@ -24,7 +24,7 @@ struct Box {
     // 10:     def take(self) -> Own[T]:
     T take() const {
         // 11:         return copy(self.value)
-        return this->value;
+        return T(this->value);
     }
 };
 

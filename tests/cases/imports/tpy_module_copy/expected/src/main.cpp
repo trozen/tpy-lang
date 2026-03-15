@@ -16,7 +16,7 @@ void __tpy_init() {
     // 3: s: str = "hello"
     s = "hello";
     // 4: u = t.copy(s)
-    u = s;
+    u = std::string(s);
     // 5: print(u)
     std::cout << u << "\n";
 }

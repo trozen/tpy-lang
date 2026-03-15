@@ -16,7 +16,7 @@ from ..typesys import (
 )
 from ..parse import (
     TpyRecord, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
-    TpyMethodCall, TpyFieldAccess, TpyName, is_super_del_call,
+    TpyMethodCall, TpyFieldAccess, TpyName, TpyCoerce, is_super_del_call,
 )
 from ..namespace import Namespace
 
@@ -624,13 +624,17 @@ class RecordGenerator:
                             # Only add to member init list if it's this class's own field
                             if field_name in own_field_names:
                                 fld_type = field_types[field_name]
-                                value = self.expressions.gen_expr(stmt.value, fld_type)
+                                # Unwrap copy() in member init -- init list copies implicitly
+                                source = self.ctx.unwrap_copy(stmt.value)
+                                value = self.expressions.gen_expr(source, fld_type)
                                 # Auto-move Own[T] params at last use in member init list.
-                                # Ctor params are by value (T, not T&&) so always use std::move.
-                                if (isinstance(stmt.value, TpyName)
-                                        and id(stmt.value) in self.ctx.analyzer.ctx.all_last_uses):
+                                inner = source
+                                while isinstance(inner, TpyCoerce):
+                                    inner = inner.expr
+                                if (isinstance(inner, TpyName)
+                                        and id(inner) in self.ctx.analyzer.ctx.all_last_uses):
                                     for pname, ptype in init_method.params:
-                                        if pname == stmt.value.name and isinstance(unwrap_readonly(ptype), OwnType):
+                                        if pname == inner.name and isinstance(unwrap_readonly(ptype), OwnType):
                                             value = f"std::move({value})"
                                             break
                                 # T* sources need conversion to std::optional<T>; field access (std::optional<T>) doesn't

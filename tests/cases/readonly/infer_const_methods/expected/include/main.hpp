@@ -109,7 +109,8 @@ struct Box {
     // 32:     def push(self, x: Int32) -> None:  # mutates self -- must NOT be const
     void push(int32_t x) {
         // 33:         self.items.append(x)
-        this->items.push_back(x);
+        auto __tmp_1 = x;
+        this->items.push_back(std::move(__tmp_1));
     }
 
     // 35:     def push_default(self) -> None:    # calls self.push() -- must NOT be const
@@ -146,9 +147,11 @@ struct SortableBox {
     // 51:     def fill(self, a: Int32, b: Int32) -> None:   # mutates self.items -- must NOT be const
     void fill(int32_t a, int32_t b) {
         // 52:         self.items.append(a)
-        this->items.push_back(a);
+        auto __tmp_2 = a;
+        this->items.push_back(std::move(__tmp_2));
         // 53:         self.items.append(b)
-        this->items.push_back(b);
+        auto __tmp_3 = b;
+        this->items.push_back(std::move(__tmp_3));
     }
 
     // 55:     def sort_items(self) -> None:                  # self.field.method() -- must NOT be const

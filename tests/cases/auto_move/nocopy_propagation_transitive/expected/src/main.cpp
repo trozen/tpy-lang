@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 27: def consume(o: Own[Outer]) -> Int32:
-int32_t consume(Outer o) {
+int32_t consume(Outer&& o) {
     // 28:     return o.w.res.id
     return o.w.res.id;
 }

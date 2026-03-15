@@ -20,7 +20,7 @@ struct Wrapper {
 
     // 9:     def __init__(self, val: Own[T]):
     Wrapper() = default;
-    explicit Wrapper(T val) : _storage(1) {
+    explicit Wrapper(T&& val) : _storage(1) {
         // 12:         self._storage.init0(val)
         this->_storage.init0(std::move(val));
     }

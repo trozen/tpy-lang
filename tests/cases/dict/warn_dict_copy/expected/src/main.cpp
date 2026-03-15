@@ -45,7 +45,7 @@ void test_no_warn_update_explicit_copy() {
     // 35:     b: dict[str, Node] = {"a": Node(Int32(1))}
     tpy::ordered_map<std::string, Node> b = tpy::ordered_map<std::string, Node>({{"a", Node(1)}});
     // 36:     a.update(copy(b))  # tpyc: ok
-    tpy::dict_update(a, b);
+    tpy::dict_update(a, tpy::ordered_map<std::string, Node>(b));
     // 37:     print(len(b))
     std::cout << tpy::__len__(b) << "\n";
 }

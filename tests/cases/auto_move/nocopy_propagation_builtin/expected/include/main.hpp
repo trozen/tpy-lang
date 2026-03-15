@@ -9,7 +9,7 @@ struct Storage;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t consume(Storage s);
+int32_t consume(Storage&& s);
 void main();
 
 // 6: class Storage:

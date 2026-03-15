@@ -15,7 +15,8 @@ void test_add() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         // 7:         s.add(x)  # tpyc: warning(/Mutation of 's'.*'add'/)
-        s.insert(x);
+        auto __tmp_1 = x;
+        s.insert(std::move(__tmp_1));
     }
 }
 

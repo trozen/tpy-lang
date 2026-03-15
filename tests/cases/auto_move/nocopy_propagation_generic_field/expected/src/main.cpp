@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 20: def consume(h: Own[Handles]) -> None:
-void consume(Handles h) {
+void consume(Handles&& h) {
     // 21:     pass
 }
 

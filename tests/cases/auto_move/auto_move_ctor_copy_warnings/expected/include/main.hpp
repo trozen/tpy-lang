@@ -15,10 +15,10 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void test_nested_field_move(Outer& o, Inner inner);
-void test_nested_field_copy(Outer& o, Inner inner);
-void test_subscript_move(std::vector<Inner>& xs, Inner inner);
-void test_subscript_copy(std::vector<Inner>& xs, Inner inner);
+void test_nested_field_move(Outer& o, Inner&& inner);
+void test_nested_field_copy(Outer& o, Inner&& inner);
+void test_subscript_move(std::vector<Inner>& xs, Inner&& inner);
+void test_subscript_copy(std::vector<Inner>& xs, Inner&& inner);
 void main();
 
 // 6: class Inner:
@@ -42,10 +42,10 @@ struct Holder {
 
     // 13:     def __init__(self, inner: Own[Inner]):
     Holder() = default;
-    explicit Holder(Inner inner) : inner(std::move(inner)) {}
+    explicit Holder(Inner&& inner) : inner(std::move(inner)) {}
 
     // 16:     def set_inner(self, inner: Own[Inner]) -> None:
-    void set_inner(Inner inner) {
+    void set_inner(Inner&& inner) {
         // 17:         self.inner = inner  # tpyc: ok (field assign, last use -- auto-moved)
         this->inner = std::move(inner);
     }
@@ -65,7 +65,7 @@ struct NotLastUse {
 
     // 23:     def __init__(self, inner: Own[Inner]):
     NotLastUse() = default;
-    explicit NotLastUse(Inner inner) : inner(inner) {
+    explicit NotLastUse(Inner&& inner) : inner(inner) {
         // 25:         print(inner.value)
         std::cout << inner.value << "\n";
     }
@@ -86,10 +86,10 @@ struct GenericHolder {
 
     // 31:     def __init__(self, item: Own[T]):
     GenericHolder() = default;
-    explicit GenericHolder(T item) : item(std::move(item)) {}
+    explicit GenericHolder(T&& item) : item(std::move(item)) {}
 
     // 34:     def set_item(self, item: Own[T]) -> None:
-    void set_item(T item) {
+    void set_item(T&& item) {
         // 35:         self.item = item  # tpyc: ok (generic method, last use -- std::move)
         this->item = std::move(item);
     }
@@ -111,7 +111,7 @@ struct GenericNotLastUse {
 
     // 41:     def __init__(self, item: Own[T]):
     GenericNotLastUse() = default;
-    explicit GenericNotLastUse(T item) : item(item) {
+    explicit GenericNotLastUse(T&& item) : item(item) {
         // 43:         print(item)
         std::cout << tpy::ValuePrinter(item) << "\n";
     }
@@ -132,13 +132,13 @@ struct OptHolder {
 
 
     // 49:     def set(self, inner: Own[Inner]) -> None:
-    void set(Inner inner) {
+    void set(Inner&& inner) {
         // 50:         self.inner = inner  # tpyc: ok (optional field assign, last use -- auto-moved)
         this->inner = std::move(inner);
     }
 
     // 52:     def set_not_last(self, inner: Own[Inner]) -> None:
-    void set_not_last(Inner inner) {
+    void set_not_last(Inner&& inner) {
         // 53:         self.inner = inner  # tpyc: warning(/copies.*field/)
         this->inner = inner;
         // 54:         print(inner.value)

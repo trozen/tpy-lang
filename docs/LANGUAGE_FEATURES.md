@@ -871,7 +871,8 @@ Point create_point() {  // Returns by value, no &
 ```
 
 Key points:
-- `Own[T]` → `T` in C++ (by value, no reference)
+- `Own[T]` parameters use `T&&` in C++ for non-value types (zero-cost ownership transfer), or `T` by value for value types (int, bool, float, etc. where copy = move)
+- Generic `Own[T]` where T is a type parameter uses `std::type_identity_t<T>&&` to prevent forwarding-reference deduction
 - Relies on C++ move semantics and RVO/NRVO for efficiency
 - Returning an lvalue (variable, field access) requires `copy()` to make the intent explicit
 - Returning an rvalue (constructor, function call) is OK without `copy()`
@@ -1119,16 +1120,18 @@ def forward(p: Own[Point]) -> Int32:
     return consume(p)  # auto-move of Own param
 ```
 
-**Generic forwarding refs**: When a generic **free function** takes `Own[T]` where `T` is a function-level type parameter, the compiler generates C++ forwarding references (`T&&`) with `std::forward<T>()` for perfect forwarding -- zero-copy pass-through for rvalue arguments:
+**Generic Own[T] parameters**: When `Own[T]` wraps a type parameter `T`, the compiler generates `std::type_identity_t<T>&&` in C++ -- this prevents forwarding-reference deduction while still using rvalue reference semantics for zero-cost ownership transfer:
 
 ```python
-def wrapper[T](x: Own[T]) -> None:
-    sink(x)  # std::forward<T>(x) at last use
+class Container[T]:
+    items: list[T]
+    def push(self, item: Own[T]) -> None:
+        self.items.append(item)
 ```
 
-Generated C++: `template<typename T> void wrapper(T&& x) { sink<T>(std::forward<T>(x)); }`
+Generated C++: `void push(std::type_identity_t<T>&& item) { this->items.push_back(std::move(item)); }`
 
-For **class methods**, `Own[T]` where `T` is a class-level type parameter generates `T` by value with `std::move()` instead -- because `T&&` in a class template is an rvalue reference (T is already bound at instantiation), not a forwarding reference.
+At call sites, the compiler inserts `std::move()` at last use. For non-last-use, a copy is made (with a sema warning) and moved into the parameter.
 
 #### @nocopy Types (Working)
 

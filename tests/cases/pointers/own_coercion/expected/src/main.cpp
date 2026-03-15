@@ -9,7 +9,7 @@ int32_t return_owned_int32() {
     // 8:     big: int = 42
     tpy::BigInt big = tpy::BigInt(42);
     // 9:     return copy(big)  # BigInt -> Own[Int32] requires .to_int32() coercion
-    return (big).to_fixed_check<int32_t>();
+    return (tpy::BigInt(big)).to_fixed_check<int32_t>();
 }
 
 // 11: def take_owned_int32(x: Own[Int32]) -> Int32:

@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 19: def consume(c: Own[Child]) -> None:
-void consume(Child c) {
+void consume(Child&& c) {
     // 20:     print("consumed", c.name, c.tag)
     std::cout << "consumed" << " " << c.name << " " << c.tag << "\n";
 }

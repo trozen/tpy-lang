@@ -42,8 +42,7 @@ void main() {
     }
     // 37:     c.set(Int32(99))
     int32_t __tmp_2 = 99;
-    int32_t __tmp_3 = 99;
-    c.set(&(__tmp_3));
+    c.set(&(__tmp_2));
     // 38:     v3 = c.get()
     int32_t* v3 = c.get();
     // 39:     if v3 is not None:

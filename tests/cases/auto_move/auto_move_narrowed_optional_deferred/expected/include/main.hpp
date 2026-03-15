@@ -9,7 +9,7 @@ struct Handle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t consume(Handle h);
+int32_t consume(Handle&& h);
 int32_t test();
 void main();
 

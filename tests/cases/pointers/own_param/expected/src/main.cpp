@@ -13,11 +13,11 @@ Point make_point(int32_t x, int32_t y) {
     // 12:     p.y = y
     p.y = y;
     // 13:     return copy(p)  # tpyc: warning(/unnecessary copy/)
-    return p;
+    return Point(p);
 }
 
 // 16: def take_point(p: Own[Point]) -> Int32:
-int32_t take_point(Point p) {
+int32_t take_point(Point&& p) {
     // 17:     # Field access on Own[T] should work - unwraps to the underlying type
     // 18:     return p.x + p.y
     return (tpy::add_check<int32_t>(p.x, p.y));

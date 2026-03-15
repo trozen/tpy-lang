@@ -29,7 +29,7 @@ void test_copy_independence() {
     // 20:     x: Point = Point(10, 20)
     Point x = Point(10, 20);
     // 21:     y: Point = copy(x)
-    Point y = x;
+    Point y = Point(x);
     // 22:     y.x = 999
     y.x = 999;
     // 23:     print(x.x)  # 10 — independent
@@ -130,11 +130,11 @@ void test_build_with_copy() {
     // 71:     p.x = 10
     p.x = 10;
     // 72:     results.append(copy(p))
-    results.push_back(p);
+    results.push_back(Point(p));
     // 73:     p.x = 20
     p.x = 20;
     // 74:     results.append(copy(p))  # tpyc: warning(/unnecessary copy/)
-    results.push_back(p);
+    results.push_back(Point(p));
     // 75:     print(results[0].x)  # 10 — independent copy
     std::cout << tpy::__getitem__(results, 0).x << "\n";
     // 76:     print(results[1].x)  # 20 — independent copy

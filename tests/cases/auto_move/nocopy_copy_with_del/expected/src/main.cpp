@@ -9,7 +9,7 @@ void main() {
     // 21:     r1 = Resource(1)
     Resource r1 = Resource(1);
     // 22:     r2 = copy(r1)
-    Resource r2 = r1;
+    Resource r2 = Resource(r1);
     // 23:     print("r1 =", r1.id)
     std::cout << "r1 =" << " " << r1.id << "\n";
     // 24:     print("r2 =", r2.id)

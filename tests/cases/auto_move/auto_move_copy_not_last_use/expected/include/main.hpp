@@ -9,7 +9,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t consume(Box b);
+int32_t consume(Box&& b);
 void main();
 
 // 5: class Box:

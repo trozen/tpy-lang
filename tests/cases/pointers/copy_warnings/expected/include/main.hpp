@@ -47,7 +47,7 @@ struct Rect {
         // 12:         self.corner = p           # tpyc: warning(/copies Point into field/)
         this->corner = p;
         // 13:         self.corner = copy(p)     # tpyc: ok
-        this->corner = p;
+        this->corner = Point(p);
         // 14:         self.corner = Point()     # tpyc: ok
         this->corner = Point();
     }
@@ -79,7 +79,7 @@ struct Container {
         // 23:         self.items = data         # tpyc: warning(/copies list\[Int32\] into field/)
         this->items = data;
         // 24:         self.items = copy(data)   # tpyc: ok
-        this->items = data;
+        this->items = std::vector<int32_t>(data);
         // 25:         self.items = [1, 2, 3]    # tpyc: ok
         this->items = {1, 2, 3};
     }
@@ -104,7 +104,7 @@ struct Holder {
         // 31:         self.value = v            # tpyc: warning(/may copy T into field/)
         this->value = v;
         // 32:         self.value = copy(v)      # tpyc: ok
-        this->value = v;
+        this->value = T(v);
     }
 };
 

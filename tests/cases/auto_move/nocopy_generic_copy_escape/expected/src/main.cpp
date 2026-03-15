@@ -9,7 +9,7 @@ void main() {
     // 25:     v = TaggedValue[Handle](42)
     TaggedValue<Handle> v = TaggedValue<Handle>(42);
     // 26:     v2 = copy(v)  # tpyc: ok
-    TaggedValue<Handle> v2 = v;
+    TaggedValue<Handle> v2 = TaggedValue<Handle>(v);
     // 27:     print(v.data)
     std::cout << v.data << "\n";
     // 28:     print(v2.data)

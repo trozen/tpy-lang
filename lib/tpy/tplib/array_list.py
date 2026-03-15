@@ -24,7 +24,7 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
     def __copy__(self) -> Own[ArrayList[T, N]]:
         result = ArrayList[T, N]()
         for ui in range(UInt32(self._size)):
-            result.append(self._storage.load(ui))
+            result.append(copy(self._storage.load(ui)))
         return result
 
     def append(self, value: Own[T]) -> None:

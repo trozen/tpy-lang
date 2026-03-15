@@ -1015,7 +1015,7 @@ class OwnType(TpyType):
         return self.wrapped.to_cpp()
 
     def is_value_type(self) -> bool:
-        # Own[T] is always passed by value (ownership transfer)
+        # Own[T] uses T&& at param boundaries; treat as value type for other purposes
         return True
 
     def is_send(self) -> bool:
@@ -1023,6 +1023,24 @@ class OwnType(TpyType):
 
     def is_sync(self) -> bool:
         return self.wrapped.is_sync()
+
+    def to_cpp_param(self, name: str) -> str:
+        # Value types (int32_t, bool, float, Char, Ptr, Span, str, etc.) are
+        # trivially movable — T by value is optimal, no T&& needed.
+        if self.wrapped.is_value_type():
+            return f"{self.wrapped.to_cpp()} {name}"
+        cpp_type = self.wrapped.to_cpp()
+        # Bare TypeParamRef needs std::type_identity_t to prevent forwarding-ref
+        # deduction in free function templates. For nested types (list[T], etc.),
+        # T is in a non-deduced context so plain T&& is fine.
+        if isinstance(self.wrapped, TypeParamRef):
+            return f"std::type_identity_t<{cpp_type}>&& {name}"
+        return f"{cpp_type}&& {name}"
+
+    def to_cpp_const_param(self, name: str) -> str:
+        if self.wrapped.is_value_type():
+            return f"{self.wrapped.to_cpp()} {name}"
+        return self.to_cpp_param(name)
 
     def to_cpp_return(self) -> str:
         return self.to_cpp()

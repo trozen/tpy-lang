@@ -31,7 +31,7 @@ void main() {
     // 53:     r.corner = p                  # tpyc: warning(/copies Point into field/)
     r.corner = p;
     // 54:     r.corner = copy(p)            # tpyc: ok
-    r.corner = p;
+    r.corner = Point(p);
     // 55:     r.corner = Point()            # tpyc: ok
     r.corner = Point();
     // 56:     r.width = 10                  # tpyc: ok

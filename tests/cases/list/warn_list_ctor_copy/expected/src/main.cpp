@@ -35,7 +35,7 @@ void test_list_ctor_copy_no_warn() {
     // 26:     b: list[Node] = [Node(Int32(1))]
     std::vector<Node> b = {Node(1)};
     // 27:     a = list(copy(b))  # tpyc: ok
-    std::vector<Node> a = tpy::from_range<std::vector<Node>>(b);
+    std::vector<Node> a = tpy::from_range<std::vector<Node>>(std::vector<Node>(b));
     // 28:     print(len(b))
     std::cout << tpy::__len__(b) << "\n";
 }

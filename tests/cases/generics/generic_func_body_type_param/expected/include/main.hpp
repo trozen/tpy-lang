@@ -36,9 +36,11 @@ std::vector<T> collect(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> 
     // 13:     result: list[T] = []
     std::vector<T> result = std::vector<T>{};
     // 14:     result.append(a)
-    result.push_back(a);
+    auto __tmp_1 = a;
+    result.push_back(std::move(__tmp_1));
     // 15:     result.append(b)
-    result.push_back(b);
+    auto __tmp_2 = b;
+    result.push_back(std::move(__tmp_2));
     // 16:     return result
     return result;
 }

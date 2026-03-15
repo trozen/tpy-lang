@@ -33,7 +33,7 @@ struct Outer {
 
     // 12:     def __init__(self, inner: Own[Inner]):
     Outer() = default;
-    explicit Outer(Inner inner) : inner(std::move(inner)) {}
+    explicit Outer(Inner&& inner) : inner(std::move(inner)) {}
 
     // 15:     def get_value(self) -> Int32:
     int32_t get_value() const {

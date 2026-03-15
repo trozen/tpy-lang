@@ -47,7 +47,7 @@ struct Holder {
     Holder& operator=(Holder&&) = default;
 
     // 13:     def take(self, h: Own[Handle]) -> None:
-    void take(Handle h) {
+    void take(Handle&& h) {
         // 14:         self.h = h
         this->h = std::move(h);
     }
@@ -68,10 +68,10 @@ struct GenericHolder {
 
     // 20:     def __init__(self, item: Own[T]):
     GenericHolder() = default;
-    explicit GenericHolder(T item) : item(std::move(item)) {}
+    explicit GenericHolder(T&& item) : item(std::move(item)) {}
 
     // 23:     def replace(self, item: Own[T]) -> None:
-    void replace(T item) {
+    void replace(T&& item) {
         // 24:         self.item = item
         this->item = std::move(item);
     }

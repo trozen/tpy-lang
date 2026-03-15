@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 10: def close(h: Own[Handle]) -> Int32:
-int32_t close(Handle h) {
+int32_t close(Handle&& h) {
     // 11:     return h.fd
     return h.fd;
 }

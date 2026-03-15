@@ -53,7 +53,7 @@ struct Wrapper {
     Pair<int32_t> pair = Pair<int32_t>();
 
     Wrapper() = default;
-    explicit Wrapper(std::string_view name, Pair<int32_t> pair = Pair<int32_t>()) : name(name), pair(std::move(pair)) {}
+    explicit Wrapper(std::string_view name, Pair<int32_t>&& pair = Pair<int32_t>()) : name(name), pair(std::move(pair)) {}
 
     bool __eq__(const Wrapper& other) const {
         return ((this->name == other.name) && (this->pair == other.pair));

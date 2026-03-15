@@ -83,7 +83,8 @@ void __tpy_init() {
     // 38: inner.append(Point(99, 88))
     (*inner).push_back(Point(99, 88));
     // 39: nested.append(inner)
-    (*nested).push_back((*inner));
+    auto __tmp_1 = (*inner);
+    (*nested).push_back(std::move(__tmp_1));
     // 40: print(len(nested))
     std::cout << tpy::__len__((*nested)) << "\n";
     // 41: print(nested[0][0].x)

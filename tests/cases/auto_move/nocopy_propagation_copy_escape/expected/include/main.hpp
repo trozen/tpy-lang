@@ -10,7 +10,7 @@ struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t consume(Container c);
+int32_t consume(Container&& c);
 void main();
 
 // @nocopy
@@ -43,7 +43,7 @@ struct Container {
 
     // 17:     def __init__(self, handle: Own[Handle]):
     Container() = default;
-    explicit Container(Handle handle) : handle(std::move(handle)) {}
+    explicit Container(Handle&& handle) : handle(std::move(handle)) {}
     // copyable via __copy__
     Container(const Container& other) : Container(other.__copy__()) {}
     Container& operator=(const Container& other) {

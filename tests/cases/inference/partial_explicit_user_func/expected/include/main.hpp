@@ -11,7 +11,7 @@ template<typename A, typename B> struct Wrapper;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename A, typename B>
-Wrapper<A, B> wrap_with_tag(A&& inner, B&& tag);
+Wrapper<A, B> wrap_with_tag(std::type_identity_t<A>&& inner, std::type_identity_t<B>&& tag);
 void main();
 
 // 4: class Box[T]:
@@ -22,7 +22,7 @@ struct Box {
 
     // 6:     def __init__(self, val: Own[T]) -> None:
     Box() = default;
-    explicit Box(T val) : val(std::move(val)) {}
+    explicit Box(T&& val) : val(std::move(val)) {}
 };
 
 template<typename T>
@@ -43,7 +43,7 @@ struct Wrapper {
 
     // 12:     def __init__(self, inner: Own[A], tag: Own[B]) -> None:
     Wrapper() = default;
-    explicit Wrapper(A inner, B tag) : inner(std::move(inner)), tag(std::move(tag)) {}
+    explicit Wrapper(A&& inner, B&& tag) : inner(std::move(inner)), tag(std::move(tag)) {}
 };
 
 template<typename A, typename B>
@@ -58,7 +58,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<A, B>& obj) {
 
 // 16: def wrap_with_tag[A, B](inner: Own[A], tag: Own[B]) -> Own[Wrapper[A, B]]:
 template<typename A, typename B>
-Wrapper<A, B> wrap_with_tag(A&& inner, B&& tag) {
+Wrapper<A, B> wrap_with_tag(std::type_identity_t<A>&& inner, std::type_identity_t<B>&& tag) {
     // 17:     return Wrapper[A, B](inner, tag)
     return Wrapper<A, B>(std::forward<A>(inner), std::forward<B>(tag));
 }

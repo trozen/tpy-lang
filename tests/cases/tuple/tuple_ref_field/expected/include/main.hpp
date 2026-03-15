@@ -40,7 +40,7 @@ struct Container {
 
     // 13:     def __init__(self, p: Point, n: Int32) -> None:
     Container() = default;
-    explicit Container(const Point& p, int32_t n) : data(std::tuple<Point, int32_t>{p, n}) {}
+    explicit Container(const Point& p, int32_t n) : data(std::tuple<Point, int32_t>{Point(p), n}) {}
 
     // 15:     def __repr__(self) -> str:
     std::string __repr__() const {

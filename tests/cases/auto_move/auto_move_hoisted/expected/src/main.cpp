@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // 9: def consume(p: Own[Point]) -> Int32:
-int32_t consume(Point p) {
+int32_t consume(Point&& p) {
     // 10:     return p.x
     return p.x;
 }

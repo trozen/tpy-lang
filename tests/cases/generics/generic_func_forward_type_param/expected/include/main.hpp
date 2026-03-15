@@ -11,11 +11,11 @@ template<typename T> struct Container;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-void sink(T&& x);
+void sink(std::type_identity_t<T>&& x);
 template<typename T>
 tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x);
 template<typename T>
-void wrapper(T&& x);
+void wrapper(std::type_identity_t<T>&& x);
 template<typename T>
 std::vector<T>& wrap_list(std::vector<T>& items);
 template<typename A, typename B>
@@ -61,7 +61,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 
 // 9: def sink[T](x: Own[T]) -> None:
 template<typename T>
-void sink(T&& x) {
+void sink(std::type_identity_t<T>&& x) {
     // 10:     pass
 }
 // 13: def identity[T](x: T) -> T:
@@ -73,7 +73,7 @@ tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x) {
 // # Forward T as explicit type arg
 // 18: def wrapper[T](x: Own[T]) -> None:
 template<typename T>
-void wrapper(T&& x) {
+void wrapper(std::type_identity_t<T>&& x) {
     // 19:     sink[T](x)  # tpyc: ok
     sink<T>(std::forward<T>(x));
 }

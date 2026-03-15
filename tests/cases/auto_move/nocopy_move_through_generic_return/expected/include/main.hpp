@@ -44,7 +44,7 @@ struct Holder {
 
     // 16:     def __init__(self, item: Own[T]):
     Holder() = default;
-    explicit Holder(T item) : item(std::move(item)) {}
+    explicit Holder(T&& item) : item(std::move(item)) {}
 };
 
 template<typename T>
