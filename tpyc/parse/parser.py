@@ -1368,6 +1368,7 @@ class Parser:
         is_overload_stub = False
         linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
+        cpp_template: str | None = None
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"function '{node.name}'")
             if qname == "tpy.noalloc":
@@ -1386,6 +1387,10 @@ class Parser:
                 if arg is not None:
                     raise ParseError("@overload does not take arguments", dec)
                 is_overload_stub = True
+            elif qname == "tpy.extern.cpp_template":
+                if not isinstance(arg, str):
+                    raise ParseError("@cpp_template() requires a string argument", dec)
+                cpp_template = arg
             elif qname in self._FUNCTION_LINKAGE_MAP:
                 new_linkage = self._FUNCTION_LINKAGE_MAP[qname]
                 if linkage != FunctionLinkage.DEFAULT:
@@ -1443,7 +1448,13 @@ class Parser:
         is_overload_stub_body = is_stub_body or self._is_pass_body(node.body)
         is_stub = False
 
-        if is_overload_stub:
+        if cpp_template is not None:
+            if not self._is_stub_body(node.body):
+                raise ParseError(
+                    f"@cpp_template function '{node.name}' must have `...` body", node)
+            is_stub = True
+            body = []
+        elif is_overload_stub:
             if not is_overload_stub_body:
                 raise ParseError(f"@overload function '{node.name}' must have `...` or `pass` body", node)
             body = []
@@ -1478,6 +1489,7 @@ class Parser:
             is_overload_stub=is_overload_stub,
             linkage=linkage,
             native_name=native_name,
+            cpp_template=cpp_template,
             is_stub=is_overload_stub_body if is_overload_stub else is_stub,
             type_params=type_params,
             type_param_bounds=type_param_bounds,

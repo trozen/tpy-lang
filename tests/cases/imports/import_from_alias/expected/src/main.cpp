@@ -8,7 +8,7 @@ namespace tpy_user::main {
 void main() {
     //     # Just verify the alias works - don't print actual time (varies between runs)
     //     t: float = get_time()
-    double t = tpy::time_time();
+    double t = ::tpy::time_time();
     //     if t > 0.0:
     if ((t > 0.0)) {
         //         print("time alias works")

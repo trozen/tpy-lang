@@ -7,11 +7,11 @@ namespace tpy_user::main {
 // def main():
 void main() {
     //     start = time.time()
-    double start = tpy::time_time();
+    double start = ::tpy::time_time();
     //     time.sleep(0.1)  # Sleep for 100ms
-    tpy::time_sleep(0.1);
+    ::tpy::time_sleep(0.1);
     //     end = time.time()
-    double end = tpy::time_time();
+    double end = ::tpy::time_time();
     //     elapsed = end - start
     double elapsed = ((end) - (start));
     //     # Check that at least 0.05 seconds passed (allowing for timer variance)

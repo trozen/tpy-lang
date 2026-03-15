@@ -4,12 +4,14 @@
 namespace tpy_user::main {
 
 
+
+
 // def main() -> None:
 void main() {
-    //     x = m.sqrt(16.0)
-    double x = ::std::sqrt(16.0);
-    //     print(x)
-    std::cout << tpy::print_float(x) << "\n";
+    //     print(log(1.0))
+    std::cout << tpy::print_float(::std::log(1.0)) << "\n";
+    //     print(log(8.0, 2.0))
+    std::cout << tpy::print_float(::tpy::math::log_base(8.0, 2.0)) << "\n";
 }
 
 void __tpy_init() {
@@ -17,9 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Test that import X as Y works
-    // import math as m
-    ::tpy_user::math::__tpy_init();
+    // from tpy.extern import native
     // main()
     main();
 }

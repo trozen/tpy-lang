@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def main():
 void main() {
     //     t = time()
-    double t = tpy::time_time();
+    double t = ::tpy::time_time();
     //     # Verify timestamp is reasonable (after 2024: 1704067200)
     //     # This avoids exact output comparison that would fail due to timing
     //     if t > 1704067200:

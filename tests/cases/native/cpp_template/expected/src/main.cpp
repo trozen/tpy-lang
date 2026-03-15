@@ -4,12 +4,17 @@
 namespace tpy_user::main {
 
 
+
+
+
 // def main() -> None:
 void main() {
-    //     x = m.sqrt(16.0)
-    double x = ::std::sqrt(16.0);
-    //     print(x)
-    std::cout << tpy::print_float(x) << "\n";
+    //     print(to_char(65))
+    std::cout << static_cast<char>(65) << "\n";
+    //     print(to_int("Z"))
+    std::cout << static_cast<int32_t>(static_cast<unsigned char>('Z')) << "\n";
+    //     print(add(10, 32))
+    std::cout << 10 + 32 << "\n";
 }
 
 void __tpy_init() {
@@ -17,9 +22,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Test that import X as Y works
-    // import math as m
-    ::tpy_user::math::__tpy_init();
+    // # @cpp_template: inline C++ expression templates in .py source
+    // from tpy.extern import cpp_template
     // main()
     main();
 }

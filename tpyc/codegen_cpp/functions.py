@@ -364,6 +364,8 @@ class FunctionGenerator:
         from ..parse.nodes import FunctionLinkage
         if func.linkage in (FunctionLinkage.NATIVE, FunctionLinkage.NATIVE_C, FunctionLinkage.EXTERN_C):
             return False
+        if func.cpp_template:
+            return False
         # @overload implementation: emit forward decls for each stub instead
         overload_stubs = self.ctx.analyzer.overload_groups.get(id(func))
         if overload_stubs:
@@ -419,6 +421,9 @@ class FunctionGenerator:
         """
         from ..parse.nodes import FunctionLinkage
         if func.linkage == FunctionLinkage.NATIVE:
+            return False
+        # @cpp_template functions expand inline at call sites -- no C++ declaration
+        if func.cpp_template:
             return False
 
         # @overload stubs are handled via the implementation function

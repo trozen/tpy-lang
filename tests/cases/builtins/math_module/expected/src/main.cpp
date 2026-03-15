@@ -8,7 +8,7 @@ namespace tpy_user::main {
 void main() {
     //     # Test math.log (natural log)
     //     x = math.log(2.718281828)
-    double x = std::log(2.718281828);
+    double x = ::std::log(2.718281828);
     //     if x > 0.99 and x < 1.01:
     if (((x > 0.99) && (x < 1.01))) {
         //         print("log(e) ok")
@@ -20,7 +20,7 @@ void main() {
     }
     //     # Test math.log with base
     //     y = math.log(8.0, 2.0)
-    double y = tpy::math::log_base(8.0, 2.0);
+    double y = ::tpy::math::log_base(8.0, 2.0);
     //     if y > 2.99 and y < 3.01:
     if (((y > 2.99) && (y < 3.01))) {
         //         print("log(8,2) ok")
@@ -32,7 +32,7 @@ void main() {
     }
     //     # Test math.sqrt
     //     z = math.sqrt(4.0)
-    double z = std::sqrt(4.0);
+    double z = ::std::sqrt(4.0);
     //     if z > 1.99 and z < 2.01:
     if (((z > 1.99) && (z < 2.01))) {
         //         print("sqrt ok")
@@ -44,9 +44,9 @@ void main() {
     }
     //     # Test math.sin/cos
     //     s = math.sin(0.0)
-    double s = std::sin(0.0);
+    double s = ::std::sin(0.0);
     //     c = math.cos(0.0)
-    double c = std::cos(0.0);
+    double c = ::std::cos(0.0);
     //     if s > -0.01 and s < 0.01 and c > 0.99 and c < 1.01:
     if (((((s > -(0.01)) && (s < 0.01)) && (c > 0.99)) && (c < 1.01))) {
         //         print("sin/cos ok")
@@ -58,9 +58,9 @@ void main() {
     }
     //     # Test math.floor/ceil
     //     f = math.floor(3.7)
-    tpy::BigInt f = tpy::BigInt::from_floor(3.7);
+    tpy::BigInt f = ::tpy::BigInt::from_floor(3.7);
     //     ce = math.ceil(3.2)
-    tpy::BigInt ce = tpy::BigInt::from_ceil(3.2);
+    tpy::BigInt ce = ::tpy::BigInt::from_ceil(3.2);
     //     if f > 2.99 and f < 3.01 and ce > 3.99 and ce < 4.01:
     if (((((static_cast<double>(f) > 2.99) && (static_cast<double>(f) < 3.01)) && (static_cast<double>(ce) > 3.99)) && (static_cast<double>(ce) < 4.01))) {
         //         print("floor/ceil ok")

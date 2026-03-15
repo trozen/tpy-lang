@@ -810,10 +810,10 @@ class SemanticAnalyzer:
             else:
                 self.registrar.register_function(func)
 
-        # Stubs left without an implementation: either @native overload
+        # Stubs left without an implementation: @native/@cpp_template overload
         # groups (each stub is a complete declaration) or an error.
         for name, stubs in pending_stubs.items():
-            if all(s.linkage.name in ("NATIVE", "NATIVE_C") for s in stubs):
+            if all(s.linkage.name in ("NATIVE", "NATIVE_C") or s.cpp_template for s in stubs):
                 self.registrar.register_overload_group(stubs)
             else:
                 raise SemanticError(

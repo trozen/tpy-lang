@@ -1335,6 +1335,10 @@ class ExpressionGenerator:
             if func_info.is_generic() and expr.inferred_type_args:
                 type_subst = dict(zip(func_info.type_params, expr.inferred_type_args))
 
+            # @cpp_template functions: expand the C++ expression template directly
+            if func_info.cpp_template:
+                return self.builtins.gen_builtin_function_overloads(expr, [func_info])
+
             gen_args = []
             for arg, (pname, ptype) in zip(expr.args, func_info.params):
                 # Resolve TypeParamRef for generic functions
@@ -1401,13 +1405,17 @@ class ExpressionGenerator:
                 # so no namespace qualification is needed (works for same-module,
                 # cross-module, and package re-export cases).
                 func_cpp_name = func_info.native_name or func_info.name
+                if "::" in func_cpp_name and not func_cpp_name.startswith("::"):
+                    func_cpp_name = f"::{func_cpp_name}"
             elif expr.func in self.ctx.user_imported_functions:
                 source_module, original_name = self.ctx.user_imported_functions[expr.func]
                 func_cpp_name = qualified_cpp_name(source_module, original_name)
 
-            # For generic functions, always emit explicit type args to avoid C++ deduction issues
-            # with tpy::param_val_or_ref_t<T> parameters
-            if func_info.is_generic() and expr.inferred_type_args:
+            # For generic TPy functions, emit explicit type args to avoid C++ deduction
+            # issues with tpy::param_val_or_ref_t<T> parameters.  Skip for @native
+            # functions -- their C++ signatures use natural parameter types so
+            # template argument deduction works correctly.
+            if func_info.is_generic() and expr.inferred_type_args and not func_info.is_native_import:
                 type_args_str = ", ".join(self.types.type_to_cpp(t) for t in expr.inferred_type_args)
                 return f"{func_cpp_name}<{type_args_str}>({', '.join(gen_args)})"
             return f"{func_cpp_name}({', '.join(gen_args)})"
@@ -1566,11 +1574,20 @@ class ExpressionGenerator:
         # Handle user module function calls: module.func() -> ::tpy_user::module::func()
         if expr.user_module_call is not None:
             fi = expr.resolved_function_info
+            # @cpp_template: expand inline regardless of module origin
+            if fi and fi.cpp_template:
+                from ..parse import TpyCall
+                temp_call = TpyCall(func=expr.method, args=expr.args, kwargs=expr.kwargs, loc=expr.loc)
+                temp_call.resolved_function_info = fi
+                temp_call.inferred_type_args = expr.inferred_type_args
+                return self.builtins.gen_builtin_function_overloads(temp_call, [fi])
             if fi and (fi.is_native_import or fi.is_extern_c):
                 func_name = fi.native_name or fi.name
-                # Qualified native names (e.g. "tpy::math::sqrt_") are absolute
-                # C++ symbols -- don't wrap in the user module namespace.
+                # Qualified native names (e.g. "tpy::math::log_base") are absolute
+                # C++ symbols -- prefix with :: and don't wrap in the user module namespace.
                 if "::" in func_name:
+                    if not func_name.startswith("::"):
+                        func_name = f"::{func_name}"
                     return f"{func_name}({args})"
                 return f"{qualified_cpp_name(expr.user_module_call, func_name)}({args})"
             # Emit explicit template args for generic user-module calls

@@ -24,6 +24,37 @@ if TYPE_CHECKING:
     SubclassChecker = Callable[['NamedType', 'NamedType'], bool]
 
 
+def _contains_type_param_ref(t: TpyType) -> bool:
+    """Check if a type contains any TypeParamRef."""
+    if isinstance(t, TypeParamRef):
+        return True
+    return any(_contains_type_param_ref(inner) for inner in t.inner_types())
+
+
+def _structural_match(arg: TpyType, param: TpyType) -> bool:
+    """Structural match with TypeParamRef as wildcard."""
+    if isinstance(param, TypeParamRef):
+        return True
+    # readonly[T] param accepts mutable arg (mirroring match_type_with_inference)
+    from ..typesys import ReadonlyType
+    if isinstance(param, ReadonlyType) and not isinstance(arg, ReadonlyType):
+        return _structural_match(arg, param.wrapped)
+    arg = unwrap_readonly(arg)
+    if type(arg) != type(param):
+        return False
+    # PtrType: readonly arg cannot match mutable param (would drop const)
+    if isinstance(arg, PtrType) and isinstance(param, PtrType):
+        if arg.is_readonly and not param.is_readonly:
+            return False
+    arg_inners = list(arg.inner_types())
+    param_inners = list(param.inner_types())
+    if len(arg_inners) != len(param_inners):
+        return False
+    if not arg_inners:
+        return arg == param
+    return all(_structural_match(a, p) for a, p in zip(arg_inners, param_inners))
+
+
 def type_matches_strict(
     arg_type: TpyType,
     param_type: TpyType,
@@ -175,12 +206,18 @@ def resolve_overload(
     Returns:
         The matching FunctionInfo, or None if no match found.
     """
-    # First pass: strict matching (exact types + protocols)
+    # First pass: strict matching (exact types + protocols).
+    # Generic overloads use structural matching (TypeParamRef as wildcard);
+    # actual type param inference happens later in _analyze_generic_function_call.
     for overload in overloads:
         if len(arg_types) < overload.min_args or len(arg_types) > overload.max_args:
             continue
-        if all(type_matches_strict(arg_t, ptype, protocol_checker)
-               for arg_t, (_, ptype) in zip(arg_types, overload.params)):
+        if overload.is_generic():
+            if all(_structural_match(arg_t, ptype)
+                   for arg_t, (_, ptype) in zip(arg_types, overload.params)):
+                return overload
+        elif all(type_matches_strict(arg_t, ptype, protocol_checker)
+                 for arg_t, (_, ptype) in zip(arg_types, overload.params)):
             return overload
 
     # Second pass: allow coercions, prefer overload with most non-coercion

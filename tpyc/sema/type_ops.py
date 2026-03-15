@@ -477,6 +477,16 @@ class TypeOperations:
             if _contains_type_param_ref(param_type.type_args):
                 return self._match_protocol_type_args_with_inference(param_type, arg_type, inferred)
 
+        # PtrType with TypeParamRef pointee (e.g., Ptr[T], Ptr[readonly[T]])
+        if isinstance(param_type, PtrType):
+            if not isinstance(arg_type, PtrType):
+                return False
+            if arg_type.is_readonly and not param_type.is_readonly:
+                return False
+            return self.match_type_with_inference(
+                param_type.pointee, arg_type.pointee, inferred
+            )
+
         # ListType with nested TypeParamRef (e.g., list[T])
         if isinstance(param_type, ListType):
             if isinstance(arg_type, (ListType, PendingListType)):
@@ -515,17 +525,7 @@ class TypeOperations:
         if isinstance(param_type, NamedType) and param_type.is_record and param_type.type_args:
             return self._match_record_with_inference(param_type, arg_type, inferred)
 
-        # Pointer types (Ptr[T], Ptr[readonly[T]])
-        if isinstance(param_type, PtrType):
-            if isinstance(arg_type, PtrType):
-                # Mutable Ptr param only matches mutable Ptr arg;
-                # readonly Ptr param matches both readonly and mutable Ptr args
-                if not param_type.is_readonly and arg_type.is_readonly:
-                    return False
-                return self.match_type_with_inference(
-                    param_type.pointee, arg_type.pointee, inferred
-                )
-            return False
+        # (PtrType handled above, before ListType)
 
         # Optional[T] -- unwrap and recurse (bare T can coerce to Optional[T])
         if isinstance(param_type, OptionalType):

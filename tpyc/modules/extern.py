@@ -42,4 +42,8 @@ def init_module() -> BuiltinModule:
         MethodDef(params=[], returns=VOID, cpp=""),
     ], special_handling=True)
 
+    module.function("cpp_template", overloads=[
+        MethodDef(params=[], returns=VOID, cpp=""),
+    ], special_handling=True)
+
     return module
