@@ -1,2 +1,0 @@
-TurboPython-specific test: user module shadows builtin 'math'
-CPython's import system resolves to the real math module, not user files.

@@ -521,6 +521,9 @@ public:
         return from_sign_mag(negative ? -1 : 1, std::move(mag));
     }
 
+    static BigInt from_floor(double v) { return from_float(std::floor(v)); }
+    static BigInt from_ceil(double v) { return from_float(std::ceil(v)); }
+
     static BigInt from_str(std::string_view s) {
         auto make_error = [&s]() -> std::string {
             return std::string("invalid literal for int() with base 10: '") + std::string(s) + "'";

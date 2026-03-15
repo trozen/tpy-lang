@@ -3,9 +3,6 @@
 
 #include <tpy/tpy.hpp>
 
-namespace physics { double calculate_force(double mass, double accel); }
-int32_t global_func(int32_t x);
-
 namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";

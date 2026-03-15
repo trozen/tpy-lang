@@ -20,7 +20,7 @@ void main() {
     }
     // 11:     # Test math.log with base
     // 12:     y = math.log(8.0, 2.0)
-    double y = (std::log(8.0) / std::log(2.0));
+    double y = tpy::math::log_base(8.0, 2.0);
     // 13:     if y > 2.99 and y < 3.01:
     if (((y > 2.99) && (y < 3.01))) {
         // 14:         print("log(8,2) ok")
@@ -58,9 +58,9 @@ void main() {
     }
     // 33:     # Test math.floor/ceil
     // 34:     f = math.floor(3.7)
-    tpy::BigInt f = BigInt::from_float(std::floor(3.7));
+    tpy::BigInt f = tpy::BigInt::from_floor(3.7);
     // 35:     ce = math.ceil(3.2)
-    tpy::BigInt ce = BigInt::from_float(std::ceil(3.2));
+    tpy::BigInt ce = tpy::BigInt::from_ceil(3.2);
     // 36:     if f > 2.99 and f < 3.01 and ce > 3.99 and ce < 4.01:
     if (((((static_cast<double>(f) > 2.99) && (static_cast<double>(f) < 3.01)) && (static_cast<double>(ce) > 3.99)) && (static_cast<double>(ce) < 4.01))) {
         // 37:         print("floor/ceil ok")
@@ -78,6 +78,7 @@ void __tpy_init() {
     initialized = true;
 
     // 1: import math
+    ::tpy_user::math::__tpy_init();
     // 41: main()
     main();
 }

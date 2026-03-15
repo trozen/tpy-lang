@@ -27,6 +27,7 @@ void __tpy_init() {
     initialized = true;
 
     // 1: from time import time
+    ::tpy_user::time::__tpy_init();
     // 12: main()
     main();
 }

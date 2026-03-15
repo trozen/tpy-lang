@@ -2637,7 +2637,7 @@ class ModuleVarInfo:
 class ModuleInfo:
     """Information about a module (builtin or user-defined)."""
     name: str
-    is_builtin: bool = True  # True for builtin modules (time/sys/math), False for user modules
+    is_builtin: bool = True  # True for hardcoded builtin modules (e.g. sys), False for user/.py modules
     functions: dict[str, list[FunctionInfo]] = field(default_factory=dict)  # func_name -> overloads
     variables: dict[str, ModuleVarInfo] = field(default_factory=dict)  # var_name -> ModuleVarInfo
     records: dict[str, RecordInfo] = field(default_factory=dict)  # type_name -> RecordInfo (exported types)

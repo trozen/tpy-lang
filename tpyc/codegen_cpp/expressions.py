@@ -1536,6 +1536,10 @@ class ExpressionGenerator:
             fi = expr.resolved_function_info
             if fi and (fi.is_native_import or fi.is_extern_c):
                 func_name = fi.native_name or fi.name
+                # Qualified native names (e.g. "tpy::math::sqrt_") are absolute
+                # C++ symbols -- don't wrap in the user module namespace.
+                if "::" in func_name:
+                    return f"{func_name}({args})"
                 return f"{qualified_cpp_name(expr.user_module_call, func_name)}({args})"
             # Emit explicit template args for generic user-module calls
             if fi and fi.is_generic() and expr.inferred_type_args:

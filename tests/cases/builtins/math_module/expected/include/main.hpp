@@ -2,6 +2,7 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "math.hpp"
 
 namespace tpy_user::main {
 

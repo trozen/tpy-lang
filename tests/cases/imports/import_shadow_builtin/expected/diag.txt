@@ -1,2 +1,0 @@
-math.py:7: warning: ALL_CAPS variable 'MAGIC' without Final annotation; use Final[Int32] if this is a constant
-main.py:1: warning: import 'math' shadows builtin module

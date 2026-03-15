@@ -810,13 +810,16 @@ class SemanticAnalyzer:
             else:
                 self.registrar.register_function(func)
 
-        # Error if stubs are left without an implementation
+        # Stubs left without an implementation: either @native overload
+        # groups (each stub is a complete declaration) or an error.
         for name, stubs in pending_stubs.items():
-            loc = stubs[0].loc
-            raise SemanticError(
-                f"@overload stubs for '{name}' have no implementation function",
-                loc,
-            )
+            if all(s.linkage.name in ("NATIVE", "NATIVE_C") for s in stubs):
+                self.registrar.register_overload_group(stubs)
+            else:
+                raise SemanticError(
+                    f"@overload stubs for '{name}' have no implementation function",
+                    stubs[0].loc,
+                )
 
     def _register_overload_group(
         self, impl: TpyFunction, stubs: list[TpyFunction],

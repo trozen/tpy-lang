@@ -79,6 +79,9 @@
 // System utilities (depends on core)
 #include "system.hpp"
 
+// Math helpers for lib/stdlib/math.py @native declarations (log_base wrapper)
+#include "math_ops.hpp"
+
 // Expose types in global namespace for TurboPython generated code
 using tpy::UninitArrayStorage;
 using tpy::UninitHeapStorage;

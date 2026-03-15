@@ -835,7 +835,7 @@ class CodeGenerator:
         # Skip builtin modules - they don't have separate header files
         included = set()
         for user_mod in sorted(self.ctx.user_module_imports):
-            # Skip builtin modules (math, time, sys) - they're part of the runtime
+            # Skip builtin modules - they don't generate separate headers
             module_info = self.analyzer.registry.get_module(user_mod)
             if module_info and module_info.is_builtin:
                 continue
@@ -855,12 +855,6 @@ class CodeGenerator:
                 out.write(f'#include "{include_path}"\n')
                 included.add(user_mod)
         out.write("\n")
-
-        # @native (C++ import) declarations go before the tpy_user namespace
-        if native_funcs:
-            for func in native_funcs:
-                self.functions.gen_native_header_decl(out, func)
-            out.write("\n")
 
         # Native global extern declarations go before the tpy_user namespace
         if native_globals:

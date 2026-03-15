@@ -3,9 +3,6 @@
 
 #include <tpy/tpy.hpp>
 
-namespace my_ns { int32_t exported_func(int32_t x); }
-int32_t global_export(int32_t x);
-
 namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";

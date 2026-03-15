@@ -4,8 +4,6 @@
 #include <tpy/tpy.hpp>
 #include "lib.hpp"
 
-int32_t vec2_sum(ns::Vec2* v);
-
 namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";

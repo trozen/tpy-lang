@@ -31,6 +31,13 @@ if TYPE_CHECKING:
 
 from tpyc import modules as builtin_modules
 
+_LINKAGE_MAP = {
+    'DEFAULT': FunctionLinkage.DEFAULT,
+    'NATIVE': FunctionLinkage.NATIVE,
+    'NATIVE_C': FunctionLinkage.NATIVE_C,
+    'EXTERN_C': FunctionLinkage.EXTERN_C,
+}
+
 
 def _contains_self_type(typ: TpyType) -> bool:
     """Check if a type contains SelfType anywhere in its structure."""
@@ -711,6 +718,10 @@ class TypeRegistrar:
         )
         self.ctx.registry.register_record(info)
         self.ctx.global_ns.bind_record(info)
+        # Local class definition shadows any `from X import name` import
+        self.ctx.user_imported_records.pop(info.name, None)
+        if self.ctx.user_imported_functions.pop(info.name, None):
+            self.ctx.registry.functions.pop(info.name, None)
 
         # Warn when a field or method name shadows an auto-synthesized C++ method
         SYNTHESIZED_FROM_DUNDER = {
@@ -1293,14 +1304,7 @@ class TypeRegistrar:
         type_param_bounds = self._resolve_type_param_bounds(
             func.type_param_bounds, func.loc)
 
-        # Map TpyFunction linkage to FunctionInfo linkage
-        linkage_map = {
-            'DEFAULT': FunctionLinkage.DEFAULT,
-            'NATIVE': FunctionLinkage.NATIVE,
-            'NATIVE_C': FunctionLinkage.NATIVE_C,
-            'EXTERN_C': FunctionLinkage.EXTERN_C,
-        }
-        fi_linkage = linkage_map[func.linkage.name]
+        fi_linkage = _LINKAGE_MAP[func.linkage.name]
 
         func_defaults = func.defaults if func.defaults else []
         info = FunctionInfo(
@@ -1334,6 +1338,9 @@ class TypeRegistrar:
 
         self.ctx.registry.register_function(info)
         self.ctx.global_ns.bind_function(info)
+        # Local definition shadows any `from X import name` import
+        self.ctx.user_imported_functions.pop(info.name, None)
+        self.ctx.user_imported_records.pop(info.name, None)
 
     def register_overload_group(self, stubs: list[TpyFunction]) -> None:
         """Register a group of @overload stubs as a single overloaded function binding.
@@ -1373,6 +1380,8 @@ class TypeRegistrar:
                 is_noalloc=func.is_noalloc,
                 is_readonly=func.is_readonly or func.is_pure,
                 is_pure=func.is_pure,
+                linkage=_LINKAGE_MAP[func.linkage.name],
+                native_name=func.native_name,
                 type_params=func.type_params,
                 type_param_bounds=type_param_bounds,
                 qualified_name=f"{self.ctx.module_name}.{func.name}",

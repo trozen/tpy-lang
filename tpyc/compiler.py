@@ -678,12 +678,22 @@ class Compiler:
         exports = compiled.exports
 
         # Export all user-defined functions
+        exported_funcs: set[str] = set()
         for func in compiled.ast.functions:
             if func.is_overload_stub:
                 continue
             func_infos = analyzer.registry.get_function(func.name)
             if func_infos:
                 exports.functions[func.name] = func_infos
+                exported_funcs.add(func.name)
+
+        # Export @native overload groups (all stubs, no implementation)
+        for func in compiled.ast.functions:
+            if func.is_overload_stub and func.name not in exported_funcs:
+                func_infos = analyzer.registry.get_function(func.name)
+                if func_infos:
+                    exports.functions[func.name] = func_infos
+                    exported_funcs.add(func.name)
 
         # For __init__.py, also re-export imported functions from user modules
         if compiled.is_package_init:

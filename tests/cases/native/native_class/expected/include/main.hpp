@@ -3,9 +3,6 @@
 
 #include <tpy/tpy.hpp>
 
-int32_t vec2_sum(Vec2* v);
-int32_t color_brightness(ns::Color* c);
-
 namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";

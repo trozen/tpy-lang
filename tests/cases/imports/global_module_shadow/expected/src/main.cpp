@@ -18,6 +18,7 @@ void __tpy_init() {
     initialized = true;
 
     // 1: import time
+    ::tpy_user::time::__tpy_init();
     // 7: time: Timer = Timer()
     static Timer __global_slot_1 = Timer();
     time = &__global_slot_1;

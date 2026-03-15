@@ -19,6 +19,7 @@ void __tpy_init() {
 
     // 1: # Test that import X as Y works
     // 2: import math as m
+    ::tpy_user::math::__tpy_init();
     // 8: main()
     main();
 }

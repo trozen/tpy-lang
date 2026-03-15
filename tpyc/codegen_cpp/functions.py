@@ -1014,24 +1014,6 @@ class FunctionGenerator:
         out.write(f"{INDENT}return 0;\n")
         out.write("}\n")
 
-    def gen_native_header_decl(self, out: TextIO, func: TpyFunction) -> None:
-        """Generate a @native C++ declaration outside the tpy_user namespace (in header).
-
-        Parses native_name on '::' to extract namespace and emits the declaration
-        wrapped in the appropriate namespace block.
-        """
-        cpp_name = func.native_name or func.name
-        ret_type = func.return_type.to_cpp_return()
-        params = self.gen_params(func.params, func.type_params)
-        ns, bare_name = self._split_native_name(cpp_name)
-        if ns:
-            out.write(f"namespace {ns} {{ {ret_type} {bare_name}({params}); }}\n")
-        else:
-            out.write(f"{ret_type} {bare_name}({params});\n")
-
-    # Backward compat alias
-    gen_extern_cpp_header_decl = gen_native_header_decl
-
     def gen_extern_cpp_source_def(self, out: TextIO, func: TpyFunction) -> None:
         """Generate an extern_cpp export definition outside the tpy_user namespace (in source).
 

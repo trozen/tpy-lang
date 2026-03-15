@@ -18,6 +18,7 @@ void __tpy_init() {
     initialized = true;
 
     // 1: import time
+    ::tpy_user::time::__tpy_init();
 }
 
 } // namespace tpy_user::main
