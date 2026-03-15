@@ -19,7 +19,6 @@
 ## C++ Codegen Review Findings (2026-03-12)
 
 ### Systematic suboptimalities
-- **[MED]** `str +=` doesn't reuse the buffer: `x += y` (and `x = x + y`) on strings is lowered to `x = tpy::str_concat(x, y)` which allocates a fresh `std::string` each time, discarding `x`'s existing buffer. In a loop this is O(n^2) allocations. Fix: detect the `x = x + y` pattern (and `x += y`) on `str`/`String` and emit `x += std::string_view(y)` instead, using `std::string::operator+=` for in-place buffer reuse.
 
 ### Missed optimizations
 - **[MED]** `return (*x)` on `Optional[non-trivial T]` copies instead of moves: liveness/auto-move analysis tracks `TpyName` last-uses but does not extend through optional-dereference expressions. When `x: Optional[str]` or `Optional[Record]` is returned at its last use, `return (*x)` copies the inner value. Should emit `return std::move(*x)`.

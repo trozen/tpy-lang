@@ -18,7 +18,7 @@ void literal_promote_augassign() {
     // 8:     b: str = "hello"  # tpyc: type(str)
     std::string b = "hello";
     // 9:     b += " world"
-    b = tpy::str_concat(b, " world");
+    b += " world";
     // 10:     print(b)
     std::cout << b << "\n";
 }
@@ -28,7 +28,7 @@ void literal_promote_reassign() {
     // 13:     c: str = "start"  # tpyc: type(str)
     std::string c = "start";
     // 14:     c = c + " end"
-    c = (tpy::str_concat(c, " end"));
+    c += " end";
     // 15:     print(c)
     std::cout << c << "\n";
 }

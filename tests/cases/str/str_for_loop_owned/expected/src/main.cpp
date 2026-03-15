@@ -17,7 +17,7 @@ void main() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string w = *__beg_0;
         // 7:         w += "!"
-        w = tpy::str_concat(w, "!");
+        w += "!";
         // 8:         print(w)
         std::cout << w << "\n";
     }

@@ -21,7 +21,7 @@ void test_str_plus_eq() {
     // 11:     s: String = String("hello")
     std::string s = std::string("hello");
     // 12:     s += " world"
-    s = tpy::str_concat(s, " world");
+    s += " world";
     // 13:     print(s)  # hello world
     std::cout << s << "\n";
 }
@@ -56,9 +56,51 @@ void test_cross_type_concat() {
     std::cout << (tpy::str_concat(b, a)) << "\n";
     // 30:     # str += with str target
     // 31:     a += " end"
-    a = tpy::str_concat(a, " end");
+    a += " end";
     // 32:     print(a)  # hello end
     std::cout << a << "\n";
+}
+
+// 34: def test_reassign_concat() -> None:
+void test_reassign_concat() {
+    // 35:     # x = x + y should use in-place append
+    // 36:     s: String = String("hello")
+    std::string s = std::string("hello");
+    // 37:     s = s + " world"
+    s += " world";
+    // 38:     print(s)  # hello world
+    std::cout << s << "\n";
+    // 39:     # str type
+    // 40:     a: str = str("a")
+    std::string a = std::string("a");
+    // 41:     a = a + "b"
+    a += "b";
+    // 42:     print(a)  # ab
+    std::cout << a << "\n";
+    // 43:     # with str() conversion
+    // 44:     n: Int32 = 42
+    int32_t n = 42;
+    // 45:     a = a + str(n)
+    a += tpy::fixed_to_str<int32_t>(n);
+    // 46:     print(a)  # ab42
+    std::cout << a << "\n";
+}
+
+// 48: def test_loop_concat() -> None:
+void test_loop_concat() {
+    // 49:     s: String = String("")
+    std::string s = std::string("");
+    // 50:     i: Int32 = 0
+    int32_t i = 0;
+    // 51:     while i < 5:
+    while ((i < 5)) {
+        // 52:         s += str(i)
+        s += tpy::fixed_to_str<int32_t>(i);
+        // 53:         i += 1
+        i = tpy::add_check<int32_t>(i, 1);
+    }
+    // 54:     print(s)  # 01234
+    std::cout << s << "\n";
 }
 
 void __tpy_init() {
@@ -66,16 +108,20 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 34: test_str_concat()
+    // 56: test_str_concat()
     test_str_concat();
-    // 35: test_str_plus_eq()
+    // 57: test_str_plus_eq()
     test_str_plus_eq();
-    // 36: test_str_multiconcat()
+    // 58: test_str_multiconcat()
     test_str_multiconcat();
-    // 37: test_literal_concat()
+    // 59: test_literal_concat()
     test_literal_concat();
-    // 38: test_cross_type_concat()
+    // 60: test_cross_type_concat()
     test_cross_type_concat();
+    // 61: test_reassign_concat()
+    test_reassign_concat();
+    // 62: test_loop_concat()
+    test_loop_concat();
 }
 
 } // namespace tpy_user::main

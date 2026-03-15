@@ -12,7 +12,7 @@ void test_alias_augassign() {
     // 4:     s2 = s1  # tpyc: type(str)
     std::string s2 = std::string(s1);
     // 5:     s2 += " world"
-    s2 = tpy::str_concat(s2, " world");
+    s2 += " world";
     // 6:     print(s1)   # s1 stays StrView (literal, no mutation)
     std::cout << s1 << "\n";
     // 7:     print(s2)   # s2 promoted to str (augmented assignment)
@@ -40,7 +40,7 @@ void test_chain_alias_promote() {
     // 18:     c = b  # tpyc: type(str)
     std::string c = b;
     // 19:     b += " y"
-    b = tpy::str_concat(b, " y");
+    b += " y";
     // 20:     print(a)   # StrView (literal, no mutation)
     std::cout << a << "\n";
     // 21:     print(b)   # str (augassign promotes b, which promotes c retroactively)
@@ -87,7 +87,7 @@ void test_source_promotes_alias() {
     // 41:     b = a  # tpyc: type(str)
     std::string b = a;
     // 42:     a += " y"
-    a = tpy::str_concat(a, " y");
+    a += " y";
     // 43:     print(a)
     std::cout << a << "\n";
     // 44:     print(b)

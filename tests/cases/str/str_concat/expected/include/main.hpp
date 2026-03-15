@@ -12,6 +12,8 @@ void test_str_plus_eq();
 void test_str_multiconcat();
 void test_literal_concat();
 void test_cross_type_concat();
+void test_reassign_concat();
+void test_loop_concat();
 
 void __tpy_init();
 } // namespace tpy_user::main

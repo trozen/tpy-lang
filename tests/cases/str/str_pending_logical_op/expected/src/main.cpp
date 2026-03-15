@@ -49,7 +49,7 @@ void test_or_right_promotes() {
     // 26:     x = a or b  # tpyc: type(str)
     std::string x = std::string(((!a.empty()) ? a : std::string_view(b)));
     // 27:     b += "!"
-    b = tpy::str_concat(b, "!");
+    b += "!";
     // 28:     print(x)
     std::cout << x << "\n";
 }
@@ -63,7 +63,7 @@ void test_ternary_right_promotes() {
     // 33:     x = a if True else b  # tpyc: type(str)
     std::string x = std::string(((true) ? (a) : (b)));
     // 34:     b += "!"
-    b = tpy::str_concat(b, "!");
+    b += "!";
     // 35:     print(x)
     std::cout << x << "\n";
 }
@@ -103,7 +103,7 @@ void test_or_chain_third_promotes() {
     auto&& __tmp_8 = ((!a.empty()) ? a : b);
     std::string x = std::string(((!__tmp_8.empty()) ? __tmp_8 : std::string_view(c)));
     // 52:     c += "?"
-    c = tpy::str_concat(c, "?");
+    c += "?";
     // 53:     print(x)
     std::cout << x << "\n";
 }

@@ -11,7 +11,7 @@ from typing import Callable, TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, FloatLiteralType, BoolType,
     ArrayType, ListType, PendingListType, PendingDictType, PendingSetType, PendingStrType, OwnType, OptionalType,
-    NoneType, NamedType, StrType, StrViewType, STR, TupleType,
+    NoneType, NamedType, StrType, StringType, StrViewType, STR, TupleType,
     INT32, BIGINT, FLOAT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType,
     local_var_is_movable, resolve_int_literals,
@@ -23,7 +23,7 @@ from ..parse import (
     TpyImport, TpySubscript, TpySlice, TpyStrLiteral, TpyNoneLiteral, TpyName, TpyExpr, TpyFunction,
     TpyAssert, TpyBoolLiteral, TpyArrayLiteral,
     TpyFieldAccess, TpyMethodCall,
-    TpyCall, TpyIntLiteral, TpyUnaryOp, TpyCoerce, TpyIfExpr,
+    TpyBinOp, TpyCall, TpyIntLiteral, TpyUnaryOp, TpyCoerce, TpyIfExpr,
     TpyMatch,
 )
 from ..namespace import Namespace
@@ -878,6 +878,9 @@ class StatementGenerator:
                         resolve_type = var_type.inner
                     cpp_type = self.types.type_to_cpp(resolve_type) if resolve_type else "auto"
                     return self._gen_pointer_local_rebind(stmt.name, cpp_type, stmt.init, var_type, indent)
+                # String x = x + y -> x += y for buffer reuse
+                if result := self._try_str_inplace_append(stmt.name, cpp_name, stmt.init, var_type, indent):
+                    return result
                 init_expr = self.expressions.gen_expr(stmt.init, var_type)
                 return f"{indent}{cpp_name} = {init_expr};\n"
             return None
@@ -1075,6 +1078,10 @@ class StatementGenerator:
         # Default: simple assignment (includes field assignments like self.x = val)
         target = self.expressions.gen_expr(stmt.target)
         target_type = self.ctx.get_expr_type(stmt.target)
+        # Detect x = x + y on string types -> emit x += y for buffer reuse
+        if isinstance(stmt.target, TpyName):
+            if result := self._try_str_inplace_append(stmt.target.name, target, stmt.value, target_type, indent):
+                return result
         value = self.expressions.gen_expr_deref(stmt.value, target_type)
         value = self.expressions._maybe_move(stmt.value, value)
         return f"{indent}{target} = {value};\n"
@@ -1138,6 +1145,9 @@ class StatementGenerator:
 
         # Use resolved binop from sema for augmented assignment (a += b is a = a + b)
         if binop_result := stmt.resolved_binop:
+            # String += optimization: in-place append instead of allocating a new string
+            if isinstance(target_type, (StrType, StringType, PendingStrType)) and stmt.op == "+":
+                return f"{indent}{target} += {value};\n"
             result = self.expressions._gen_binop_from_result(binop_result, target, value)
             return f"{indent}{target} = {result};\n"
         else:
@@ -1203,6 +1213,23 @@ class StatementGenerator:
             return f"{indent}{code};\n"
         else:
             return f"{indent}tpy::__setitem__({subscript_obj}, {index_expr}, {result_expr});\n"
+
+    def _try_str_inplace_append(
+        self, target_name: str, target_cpp: str, value_expr: TpyExpr,
+        target_type: TpyType, indent: str,
+    ) -> str | None:
+        """Emit x += rhs if value_expr is x + rhs on a string type, else None."""
+        if not isinstance(target_type, (StrType, StringType, PendingStrType)):
+            return None
+        inner = value_expr
+        while isinstance(inner, TpyCoerce):
+            inner = inner.expr
+        if (isinstance(inner, TpyBinOp) and inner.op == "+"
+                and isinstance(inner.left, TpyName)
+                and inner.left.name == target_name):
+            rhs = self.expressions.gen_expr_deref(inner.right, target_type)
+            return f"{indent}{target_cpp} += {rhs};\n"
+        return None
 
     def _is_optional_str_param(self, expr: TpyExpr) -> bool:
         """Check if expr is an Optional[str] function parameter (string_view in C++)."""

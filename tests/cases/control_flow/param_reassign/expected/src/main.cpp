@@ -32,7 +32,7 @@ std::string repeat_str(std::string_view s, const tpy::BigInt& n) {
     // 14:     while i < n:
     while ((i < n)) {
         // 15:         result = result + s
-        result = (tpy::str_concat(result, s));
+        result += s;
         // 16:         i = i + 1
         i = ((i) + (tpy::BigInt(1)));
     }

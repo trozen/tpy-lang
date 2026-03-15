@@ -93,15 +93,15 @@ struct Stack {
             // 33:             if not first:
             if ((!(first))) {
                 // 34:                 s += ", "
-                s = tpy::str_concat(s, ", ");
+                s += ", ";
             }
             // 35:             first = False
             first = false;
             // 36:             s += str(x)
-            s = tpy::str_concat(s, tpy::fixed_to_str<int32_t>(x));
+            s += tpy::fixed_to_str<int32_t>(x);
         }
         // 37:         s += ")"
-        s = tpy::str_concat(s, ")");
+        s += ")";
         // 38:         return s
         return s;
     }

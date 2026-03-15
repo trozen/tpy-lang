@@ -18,7 +18,7 @@ void test_augassign() {
     // 7:     s = "hello"  # tpyc: type(str)
     std::string s = "hello";
     // 8:     s += " world"
-    s = tpy::str_concat(s, " world");
+    s += " world";
     // 9:     print(s)
     std::cout << s << "\n";
 }

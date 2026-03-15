@@ -93,7 +93,7 @@ void test_field_aug_assign_mutates() {
     // 68:     s = p.name  # tpyc: type(str)
     std::string s = p.name;
     // 69:     p.name += "!"
-    p.name = tpy::str_concat(p.name, "!");
+    p.name += "!";
     // 70:     print(s)
     std::cout << s << "\n";
 }

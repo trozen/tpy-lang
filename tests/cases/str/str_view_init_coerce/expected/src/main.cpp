@@ -14,7 +14,7 @@ void from_param(std::string_view a) {
     // 8:     x = a  # tpyc: type(str)
     std::string x = std::string(a);
     // 9:     x += "!"
-    x = tpy::str_concat(x, "!");
+    x += "!";
     // 10:     print(x)
     std::cout << x << "\n";
 }
@@ -26,7 +26,7 @@ std::string from_param_return(std::string_view a) {
     std::string_view __tmp_1 = "default";
     std::string x = std::string(((!a.empty()) ? a : __tmp_1));
     // 16:     x += "."
-    x = tpy::str_concat(x, ".");
+    x += ".";
     // 17:     return x
     return x;
 }
@@ -37,7 +37,7 @@ void from_or_params(std::string_view a, std::string_view b) {
     // 22:     x = a or b  # tpyc: type(str)
     std::string x = std::string(((!a.empty()) ? a : b));
     // 23:     x += "!"
-    x = tpy::str_concat(x, "!");
+    x += "!";
     // 24:     print(x)
     std::cout << x << "\n";
 }
@@ -48,7 +48,7 @@ void from_ternary_params(std::string_view a, std::string_view b, bool cond) {
     // 29:     x = a if cond else b  # tpyc: type(str)
     std::string x = std::string(((cond) ? (a) : (b)));
     // 30:     x += "!"
-    x = tpy::str_concat(x, "!");
+    x += "!";
     // 31:     print(x)
     std::cout << x << "\n";
 }
