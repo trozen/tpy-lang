@@ -4434,10 +4434,27 @@ lives: Int32 = native_global()
 
 Generated C++ emits `extern` declarations before the module namespace. References use the C/C++ name directly. Must be at module level with a type annotation. For array globals, `native_c_global_array` generates `extern "C" T name[];` (incomplete array type) which correctly links to C arrays and decays to a pointer when used.
 
+### Module-Level Directives (Working)
+
+Compiler directives are special comments that must appear in the file preamble (before any code):
+
+```python
+# tpy: include("mylib/mylib.h")       # add #include "mylib/mylib.h" to generated header
+# tpy: include("<SDL2/SDL.h>")         # add #include <SDL2/SDL.h> (angle-bracket)
+# tpy: link("SDL2")                    # add -lSDL2 linker flag
+# tpy: link("m", platform="linux")     # platform-filtered: only link on Linux
+# tpy: native_module                   # binding-only module (no .cpp generated)
+```
+
+**Directives:**
+- **`include(path)`** -- adds a C/C++ `#include` to the generated header. Quoted paths use `#include "..."`, angle-bracket paths (`<...>`) use `#include <...>`.
+- **`link(lib)` / `link(lib, platform=name)`** -- adds `-llib` linker flag. Optional `platform` filter: `"linux"`, `"macos"`, `"windows"`.
+- **`native_module`** -- marks the module as binding-only: only a `.hpp` header is generated (no `.cpp`). Use for modules that only declare `@native_c` function bindings.
+
+Unknown directives produce a warning. Directives after the first line of code produce a warning and are ignored.
+
 **Not yet supported:**
-- `# tpy: include()` header directives (planned)
-- `# tpy: link()` link directives (planned)
-- `@extern_c` class — export TPy struct for C (planned)
+- `@extern_c` class -- export TPy struct for C (planned)
 - C header generation (`--emit-c-header`) (planned)
 
 ---

@@ -203,8 +203,9 @@ def main() -> int:
                     raise
                 print(f"// === include/{compiled.name}.hpp ===")
                 print(hpp_code)
-                print(f"// === src/{compiled.name}.cpp ===")
-                print(cpp_code)
+                if cpp_code:
+                    print(f"// === src/{compiled.name}.cpp ===")
+                    print(cpp_code)
                 continue
 
             # -vv: show generated C++ inline
@@ -217,8 +218,9 @@ def main() -> int:
                     raise
                 print(f"// === include/{compiled.name}.hpp ===")
                 print(hpp_code)
-                print(f"// === src/{compiled.name}.cpp ===")
-                print(cpp_code)
+                if cpp_code:
+                    print(f"// === src/{compiled.name}.cpp ===")
+                    print(cpp_code)
 
             try:
                 hpp_path, cpp_path = compiler.generate_code(compiled, output_dir, options=options)
@@ -226,11 +228,13 @@ def main() -> int:
                 if e.filename is None and not compiled.is_entry_point:
                     e.filename = source_name
                 raise
-            all_cpp_paths.append(cpp_path)
+            if cpp_path is not None:
+                all_cpp_paths.append(cpp_path)
 
             if not (args.build or args.exec):
                 print(f"Generated: {hpp_path}")
-                print(f"Generated: {cpp_path}")
+                if cpp_path is not None:
+                    print(f"Generated: {cpp_path}")
 
         if args.dump_code:
             return 0
@@ -244,6 +248,7 @@ def main() -> int:
 
             opt_flags = ["-O3", "-DNDEBUG"] if args.release else ["-g", "-O0"]
             cpp_config = CppCompilerConfig.from_env()
+            cpp_config.link_flags = compiler.collect_link_flags()
             compile_cmds = layout.build_cpp_commands(
                 runtime_include_dir=runtime_dir / "cpp" / "include",
                 cpp_files=all_cpp_paths,

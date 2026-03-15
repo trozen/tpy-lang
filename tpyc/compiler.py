@@ -11,6 +11,7 @@ Orchestrates compilation of multiple modules, handling:
 from __future__ import annotations
 import os
 import shutil
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -28,6 +29,9 @@ if TYPE_CHECKING:
 
 
 DEFAULT_INT_CHOICES = ("Int32", "Int64", "BigInt")
+
+# Maps user-facing platform names in # tpy: link() to sys.platform prefixes
+_PLATFORM_MAP = {"windows": "win32", "linux": "linux", "macos": "darwin"}
 
 
 def parse_default_int_type(name: str) -> TpyType:
@@ -828,7 +832,7 @@ class Compiler:
 
     def generate_code(self, compiled: CompiledModule, output_dir: Path,
                       entry_module_name: str | None = None,
-                      options: CodeGenOptions | None = None) -> tuple[Path, Path]:
+                      options: CodeGenOptions | None = None) -> tuple[Path, Path | None]:
         """Generate C++ code for a compiled module.
 
         Args:
@@ -838,7 +842,8 @@ class Compiler:
             options: Code generation options (optional).
 
         Returns:
-            Tuple of (hpp_path, cpp_path) for the generated files.
+            Tuple of (hpp_path, cpp_path). cpp_path is None for native_module modules
+            (no .cpp is generated for binding-only modules).
         """
         self._check_no_errors(compiled)
         mod_name = compiled.name
@@ -873,6 +878,8 @@ class Compiler:
         )
 
         hpp_path.write_text(hpp_code)
+        if compiled.ast.directives.native_module:
+            return hpp_path, None
         cpp_path.write_text(cpp_code)
 
         return hpp_path, cpp_path
@@ -892,3 +899,22 @@ class Compiler:
             reexported_variables=compiled.exports.reexported_variables,
             reexported_enums=compiled.exports.reexported_enums
         )
+
+    def collect_link_flags(self) -> list[str]:
+        """Collect -l linker flags from all compiled modules' link directives.
+
+        Filters by current platform. Deduplicates while preserving order.
+        """
+        seen: set[str] = set()
+        flags: list[str] = []
+        for compiled in self.modules.values():
+            for lib, platform_filter in compiled.ast.directives.link_libs:
+                if platform_filter is not None:
+                    mapped = _PLATFORM_MAP.get(platform_filter.lower(), platform_filter)
+                    if not sys.platform.startswith(mapped):
+                        continue
+                flag = f"-l{lib}"
+                if flag not in seen:
+                    seen.add(flag)
+                    flags.append(flag)
+        return flags

@@ -752,6 +752,15 @@ class ParseWarning:
 
 
 @dataclass
+class ModuleDirectives:
+    """Module-level compiler directives from # tpy: comments."""
+    includes: list[str] = field(default_factory=list)
+    # Each entry: (lib_name, platform_filter_or_None)
+    link_libs: list[tuple[str, str | None]] = field(default_factory=list)
+    native_module: bool = False
+
+
+@dataclass
 class TpyModule:
     """Top-level module."""
     records: list[TpyRecord]
@@ -774,6 +783,8 @@ class TpyModule:
     type_aliases: dict[str, tuple[TpyType, SourceLocation | None]] = field(default_factory=dict)
     # Parser warnings (e.g., imports after non-import code)
     parse_warnings: list[ParseWarning] = field(default_factory=list)
+    # Module-level # tpy: directives
+    directives: ModuleDirectives = field(default_factory=ModuleDirectives)
 
 
 def is_super_del_call(stmt: TpyStmt) -> bool:

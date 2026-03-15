@@ -9,6 +9,7 @@ from __future__ import annotations
 import ast
 import copy
 import dataclasses
+import re
 from typing import NoReturn, Optional
 
 from ..typesys import (
@@ -37,6 +38,7 @@ from .nodes import (
     TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
     TpyMatchCase, TpyMatch,
     RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol, TpyEnum, TpyModule,
+    ModuleDirectives,
 )
 from .imports import (
     ImportProcessor, SPECIAL_MODULES,
@@ -142,6 +144,116 @@ def _extract_subscript_slices(node: ast.Subscript) -> list[ast.expr]:
     if isinstance(node.slice, ast.Tuple):
         return node.slice.elts
     return [node.slice]
+
+
+# Requires whitespace after `tpy:` to avoid matching C++ namespace comments (# tpy::Foo)
+_DIRECTIVE_LINE_RE = re.compile(r'^#\s*tpy:\s+(\w.+)$')
+
+# Schema: (positional arg types, allowed keyword arg types)
+# Keys are the known directive names; unknown names produce a warning.
+_DIRECTIVE_SPECS: dict[str, tuple[list[type], dict[str, type]]] = {
+    "native_module": ([], {}),
+    "include":       ([str], {}),
+    "link":          ([str], {"platform": str}),
+}
+
+
+def _parse_directive_call(content: str) -> tuple[str, list, dict] | None:
+    """Parse directive content as a bare name or Python-style call.
+
+    Returns (name, positional_args, keyword_args), or None on parse error.
+    """
+    content = content.strip()
+    if re.match(r'^\w+$', content):
+        return (content, [], {})
+    try:
+        tree = ast.parse(content, mode='eval')
+        expr = tree.body
+        if isinstance(expr, ast.Call) and isinstance(expr.func, ast.Name):
+            name = expr.func.id
+            pos_args = [ast.literal_eval(a) for a in expr.args]
+            kw_args = {kw.arg: ast.literal_eval(kw.value)
+                       for kw in expr.keywords if kw.arg is not None}
+            return (name, pos_args, kw_args)
+    except (SyntaxError, ValueError):
+        pass
+    return None
+
+
+def _check_directive_args(
+    name: str, args: list, kwargs: dict,
+    spec: tuple[list[type], dict[str, type]],
+    loc: SourceLocation, warnings: list[ParseWarning],
+) -> bool:
+    """Validate args/kwargs against a directive spec. Returns True if valid."""
+    pos_types, kw_types = spec
+    if len(args) != len(pos_types):
+        warnings.append(ParseWarning(
+            f"'{name}' expects {len(pos_types)} positional argument(s), got {len(args)}", loc))
+        return False
+    for i, (val, typ) in enumerate(zip(args, pos_types)):
+        if not isinstance(val, typ):
+            warnings.append(ParseWarning(
+                f"'{name}' argument {i + 1} must be a {typ.__name__}", loc))
+            return False
+    unknown = {k for k in kwargs if k not in kw_types}
+    if unknown:
+        warnings.append(ParseWarning(
+            f"'{name}' unknown keyword arguments: {sorted(unknown)}", loc))
+        return False
+    for k, val in kwargs.items():
+        if not isinstance(val, kw_types[k]):
+            warnings.append(ParseWarning(
+                f"'{name}' keyword '{k}' must be a {kw_types[k].__name__}", loc))
+            return False
+    return True
+
+
+def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[ParseWarning]]:
+    """Scan all standalone # tpy: comment lines and return parsed directives."""
+    includes: list[str] = []
+    link_libs: list[tuple[str, str | None]] = []
+    native_module = False
+    warnings: list[ParseWarning] = []
+
+    preamble_ended = False
+    for lineno, line in enumerate(source_lines, start=1):
+        stripped = line.strip()
+        if stripped and not stripped.startswith('#'):
+            preamble_ended = True
+        if not stripped.startswith('#'):
+            continue
+        m = _DIRECTIVE_LINE_RE.match(stripped)
+        if not m:
+            continue
+        content = m.group(1).strip()
+        loc = SourceLocation(line=lineno)
+        if preamble_ended:
+            warnings.append(ParseWarning(
+                "# tpy: directives must appear before any code", loc))
+            continue
+
+        parsed = _parse_directive_call(content)
+        if parsed is None:
+            warnings.append(ParseWarning(f"invalid # tpy: directive syntax: {content!r}", loc))
+            continue
+
+        name, args, kwargs = parsed
+        spec = _DIRECTIVE_SPECS.get(name)
+        if spec is None:
+            warnings.append(ParseWarning(f"unknown # tpy: directive: {name!r}", loc))
+            continue
+        if not _check_directive_args(name, args, kwargs, spec, loc, warnings):
+            continue
+
+        if name == "native_module":
+            native_module = True
+        elif name == "include":
+            includes.append(args[0])
+        elif name == "link":
+            link_libs.append((args[0], kwargs.get("platform")))
+
+    return ModuleDirectives(includes=includes, link_libs=link_libs, native_module=native_module), warnings
 
 
 def _collect_bitor_arms(node: ast.BinOp) -> list[ast.expr]:
@@ -328,7 +440,11 @@ class Parser:
         self._bare_module_imports = set()
         self._reverse_module_aliases = {}
         tree = ast.parse(source)
-        return self._parse_module(tree)
+        module = self._parse_module(tree)
+        directives, directive_warnings = _scan_directives(self.source_lines)
+        module.directives = directives
+        module.parse_warnings.extend(directive_warnings)
+        return module
 
     # Names that _parse_type_annotation resolves directly (not through registry)
     _BUILTIN_TYPE_NAMES = frozenset({

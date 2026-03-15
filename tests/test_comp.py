@@ -122,7 +122,8 @@ def test_comp(case_dir, main_src, tmp_path):
     is_error = case_dir.name.startswith("error_")
     is_panic = case_dir.name.startswith("panic_")
     is_warn = case_dir.name.startswith("warn_")
-    if not UPDATE_EXPECTED and not is_error and not is_panic and not is_warn:
+    has_cpp = any(cpp_path is not None for _, _, cpp_path, _ in result.all_modules)
+    if not UPDATE_EXPECTED and not is_error and not is_panic and not is_warn and has_cpp:
         has_output = (expected_dir / "output.txt").exists()
         if not has_output:
             warnings.warn(
@@ -135,7 +136,10 @@ def test_comp(case_dir, main_src, tmp_path):
     for mod_name, hpp_path, cpp_path, is_local in result.all_modules:
         if not is_local:
             continue
-        for ext, gen_path in [(".hpp", hpp_path), (".cpp", cpp_path)]:
+        pairs = [(".hpp", hpp_path)]
+        if cpp_path is not None:  # None for native_module (no .cpp generated)
+            pairs.append((".cpp", cpp_path))
+        for ext, gen_path in pairs:
             expected_file = _module_to_expected_path(expected_dir, mod_name, ext)
             if not gen_path.exists():
                 pytest.fail(f"{gen_path} not generated", pytrace=False)

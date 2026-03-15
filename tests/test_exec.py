@@ -45,14 +45,19 @@ def test_exec(case_dir, main_src):
         pytest.skip("Compilation failed")
 
     # Build and run C++ (pass all cpp files for multi-module support)
-    all_cpp_files = [cpp_path for _, _, cpp_path, _ in result.all_modules] if result.all_modules else None
+    all_cpp_files = [cpp_path for _, _, cpp_path, _ in result.all_modules
+                     if cpp_path is not None] if result.all_modules else None
+    if not all_cpp_files:
+        pytest.skip("No C++ files to build (native_module)")
+
     extra_src = find_extra_src_files(case_dir)
     extra_includes = find_extra_include_dirs(case_dir)
     force_includes = find_force_includes(case_dir)
     run_result = build_and_run(build_dir, module_name, all_cpp_files=all_cpp_files,
                                extra_src_files=extra_src or None,
                                extra_include_dirs=extra_includes or None,
-                               force_includes=force_includes or None)
+                               force_includes=force_includes or None,
+                               link_flags=result.link_flags or None)
 
     if run_result.cpp_build_failed:
         pytest.fail(

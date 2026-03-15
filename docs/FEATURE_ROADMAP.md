@@ -41,7 +41,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B3 | Match/case | M-L | Done | [VI](#matchcase-with-pattern-matching) |
 | B4 | Dynamic dispatch -- @dynamic protocols | L | Done | [II](#dynamic-dispatch-dynp) |
 | B5 | Per-method type parameter bounds | S-M | Done | [I](#type-parameter-bounds----per-method) |
-| B6 | `# tpy:` directives | S-M | Not started | [I](#tpy-directives) |
+| B6 | `# tpy:` directives | S-M | Done | [I](#tpy-directives) |
 | B7 | Float32 type | S | Done | [I](#float32-type) |
 | B8 | Dataclasses | M | Done | [VII](#dataclasses) |
 | B9 | List comprehensions | M | Done | [VI](#list-comprehensions) |
@@ -699,13 +699,14 @@ See Future Extensions table for planned enhancements.
 
 ### `# tpy:` Directives
 
-Per-module configuration via source comments:
+Per-module configuration via source comments in the file preamble (before any code):
 
 ```python
-# tpy: default-int=Int64
-# tpy: range-check=off
-# tpy: include("SDL2/SDL.h")
-# tpy: link("SDL2")
+# tpy: include("mylib/mylib.h")       # add #include "mylib/mylib.h" to generated header
+# tpy: include("<SDL2/SDL.h>")         # add #include <SDL2/SDL.h> (angle-bracket)
+# tpy: link("SDL2")                    # add -lSDL2 linker flag
+# tpy: link("m", platform="linux")     # platform-filtered: only link on Linux
+# tpy: native_module                   # binding-only module (no .cpp generated)
 ```
 
 **Why it matters**: Multiple features depend on this infrastructure -- `default-int`
@@ -716,12 +717,22 @@ for native interop (blocks real C library integration and DOOM port), and potent
 Without a directive system, each of these needs its own ad-hoc mechanism. A unified
 `# tpy:` parser lets all of them share one implementation.
 
-**Current state**: Not started. `--default-int` CLI flag exists but per-module override
-does not. `# tpy: include`/`link` designed in NATIVE_INTEROP.md but not implemented.
+**Current state**: Done. Three directives implemented:
+- `include(path)` -- emits `#include` in the generated header (quoted or angle-bracket)
+- `link(lib)` / `link(lib, platform=name)` -- adds `-llib` linker flag with optional
+  platform filter (`"linux"`, `"macos"`, `"windows"`)
+- `native_module` -- marks the module as binding-only (only `.hpp` generated, no `.cpp`);
+  for modules that only declare `@native_c` function bindings
+
+Directives must appear in the file preamble (before any code). Unknown directives and
+malformed arguments produce warnings. The parser uses Python's `ast.literal_eval` for
+argument parsing (call-style syntax).
+
+Remaining: `default-int` per-module override, `range-check` toggle, `namespace` override.
 
 **Dependencies**: None (pure infrastructure). Enables many other features.
 
-**Effort**: S-M (parser + plumbing to sema/codegen)
+**Effort**: S-M (done)
 
 ---
 

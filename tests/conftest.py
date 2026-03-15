@@ -1,5 +1,6 @@
 """Shared fixtures and utilities for TurboPython tests."""
 
+import dataclasses
 import difflib
 import json
 import os
@@ -86,6 +87,8 @@ class CompileResult:
     div_zero_facts: dict[tuple[int, str], bool] | None = None
     # Cast safety facts (from sema), for # tpyc: cast_safe/cast_checked validation
     cast_safe_facts: dict[tuple[int, str], bool] | None = None
+    # Linker flags from # tpy: link() directives
+    link_flags: list[str] = field(default_factory=list)
 
 
 def _validate_default_int_name(name: str) -> str:
@@ -174,7 +177,9 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
                 is_local = True
             except ValueError:
                 pass
+            # cpp_path is None for native_module (binding-only) modules
             all_modules.append((mod.name, hpp_path, cpp_path, is_local))
+
 
         # Return paths for the entry point module
         layout = BuildLayout(output_dir, entry_module.name)
@@ -186,12 +191,14 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         subscript_bounds_facts = ctx.subscript_bounds_facts if ctx else None
         div_zero_facts = ctx.div_zero_facts if ctx else None
         cast_safe_facts = ctx.cast_safe_facts if ctx else None
+        link_flags = compiler.collect_link_flags()
         return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path,
                              all_modules=all_modules, declared_var_types=declared_var_types,
                              ptr_deref_facts=ptr_deref_facts,
                              subscript_bounds_facts=subscript_bounds_facts,
                              div_zero_facts=div_zero_facts,
-                             cast_safe_facts=cast_safe_facts)
+                             cast_safe_facts=cast_safe_facts,
+                             link_flags=link_flags)
 
     except CompileError as e:
         return CompileResult(success=False, diagnostics=e.format() + "\n")
@@ -241,7 +248,7 @@ def find_extra_include_dirs(case_dir: Path) -> list[Path]:
     definitions for interop tests), returns it as an include directory.
     """
     src_dir = case_dir / "src"
-    if any(src_dir.glob("*.hpp")):
+    if any(src_dir.glob("*.hpp")) or any(src_dir.glob("*.h")):
         return [src_dir]
     return []
 
@@ -262,6 +269,7 @@ def build_and_run(build_dir: Path, module_name: str,
                   extra_src_files: list[Path] | None = None,
                   extra_include_dirs: list[Path] | None = None,
                   force_includes: list[Path] | None = None,
+                  link_flags: list[str] | None = None,
                   build_variant: str = "debug") -> RunResult:
     """Compile generated C++ and run, capturing all output (including panics).
 
@@ -276,6 +284,7 @@ def build_and_run(build_dir: Path, module_name: str,
                             (e.g., directories containing native type headers).
         force_includes: Headers to force-include via -include before all source
                         (e.g., native type definitions for interop tests).
+        link_flags: Extra linker flags from # tpy: link() directives.
         build_variant: Build variant ("debug" or "release").
     """
     layout = BuildLayout(build_dir, module_name, build_variant=build_variant)
@@ -289,11 +298,16 @@ def build_and_run(build_dir: Path, module_name: str,
     if extra_src_files:
         cpp_files.extend(extra_src_files)
 
+    # Apply per-test link flags if provided
+    config = CPP_CONFIG
+    if link_flags:
+        config = dataclasses.replace(config, link_flags=link_flags)
+
     # Compile C++ with include path for cross-module references
     compile_cmds = layout.build_cpp_commands(
         runtime_include_dir=RUNTIME_DIR,
         cpp_files=cpp_files,
-        config=CPP_CONFIG,
+        config=config,
         extra_include_dirs=extra_include_dirs or None,
         force_includes=force_includes or None,
     )
@@ -335,15 +349,24 @@ def parse_annotations(source: str) -> list[Annotation]:
       # tpyc: warning(/pattern/)
       # tpyc: ok
 
-    Annotations must be at end of code lines (not in comment-only lines).
+    Inline annotations (after code) apply to their own line.
+    Standalone annotations (comment-only lines) apply to the next line.
     """
     annotations = []
     pattern = re.compile(r'#\s*tpyc:\s*(error|warning|ok)(?:\s*\(\s*/(.+?)/\s*\))?')
 
+    standalone_re = re.compile(r'^#\s*tpyc:\s')
+
     for lineno, line in enumerate(source.splitlines(), start=1):
-        # Skip comment-only lines (annotations must be on code lines)
         stripped = line.lstrip()
         if stripped.startswith('#'):
+            # Standalone annotation (e.g. "# tpyc: warning(...)") applies to next line
+            if standalone_re.match(stripped):
+                for match in pattern.finditer(line):
+                    level = match.group(1)
+                    regex = match.group(2)
+                    annotations.append(Annotation(line=lineno + 1, level=level, pattern=regex))
+            # Skip other comment-only lines (e.g. commented-out code)
             continue
         for match in pattern.finditer(line):
             level = match.group(1)

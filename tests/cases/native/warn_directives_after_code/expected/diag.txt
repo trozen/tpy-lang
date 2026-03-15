@@ -1,0 +1,1 @@
+main.py:6: warning: # tpy: directives must appear before any code

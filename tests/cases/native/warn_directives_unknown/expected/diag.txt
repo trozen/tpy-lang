@@ -1,0 +1,1 @@
+main.py:3: warning: unknown # tpy: directive: 'frobnicate'
