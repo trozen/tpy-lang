@@ -269,16 +269,13 @@ class ExpressionGenerator:
         return None
 
     def _maybe_move(self, expr: TpyExpr, gen_code: str) -> str:
-        """Wrap in std::move() or std::forward() if expr is a last-use of a movable local."""
+        """Wrap in std::move() if expr is a last-use of a movable local."""
         inner = expr
         while isinstance(inner, TpyCoerce):
             inner = inner.expr
         if (isinstance(inner, TpyName)
                 and inner.name in self.ctx.movable_locals
                 and id(inner) in self.ctx.analyzer.ctx.all_last_uses):
-            tp_name = self.ctx.forwarding_params.get(inner.name)
-            if tp_name is not None:
-                return f"std::forward<{tp_name}>({gen_code})"
             return f"std::move({gen_code})"
         return gen_code
 

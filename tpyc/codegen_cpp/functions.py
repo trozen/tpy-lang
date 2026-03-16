@@ -119,7 +119,8 @@ class FunctionGenerator:
                    reassigned_params: set[str] | None = None,
                    mutated_params: frozenset[int] | None = None,
                    defaults: list | None = None,
-                   emit_defaults: bool = False) -> str:
+                   emit_defaults: bool = False,
+                   class_type_params: set[str] | None = None) -> str:
         """Generate function parameter list.
 
         Own[T] params are emitted as T&& (rvalue ref) for concrete T, or
@@ -171,8 +172,8 @@ class FunctionGenerator:
             # redundant (T is already bound, T&& is a plain rvalue ref, not forwarding).
             # Only function-level type params need the deduction guard.
             if (isinstance(ptype, OwnType) and isinstance(ptype.wrapped, TypeParamRef)
-                    and func_type_params is not None
-                    and ptype.wrapped.name not in func_type_params):
+                    and class_type_params is not None
+                    and ptype.wrapped.name in class_type_params):
                 tp_cpp = ptype.wrapped.to_cpp()
                 part = part.replace(f"std::type_identity_t<{tp_cpp}>&&", f"{tp_cpp}&&")
             if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
@@ -789,13 +790,16 @@ class FunctionGenerator:
                                                         mutated_params=mp,
                                                         defaults=dfl, emit_defaults=True)
         else:
+            ctp = class_type_params or None
             if use_const_params:
                 params = self.gen_params(method.params, method.type_params, const_params=True,
-                                         defaults=dfl, emit_defaults=True)
+                                         defaults=dfl, emit_defaults=True,
+                                         class_type_params=ctp)
             else:
                 params = self.gen_params(method.params, method.type_params,
                                          reassigned_params=rp, mutated_params=mp,
-                                         defaults=dfl, emit_defaults=True)
+                                         defaults=dfl, emit_defaults=True,
+                                         class_type_params=ctp)
         const_suffix = " const" if const else ""
         rvalue_suffix = " &&" if method.is_consuming else ""
         override_suffix = " override" if override else ""

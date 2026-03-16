@@ -60,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<A, B>& obj) {
 template<typename A, typename B>
 Wrapper<A, B> wrap_with_tag(std::type_identity_t<A>&& inner, std::type_identity_t<B>&& tag) {
     //     return Wrapper[A, B](inner, tag)
-    return Wrapper<A, B>(std::forward<A>(inner), std::forward<B>(tag));
+    return Wrapper<A, B>(std::move(inner), std::move(tag));
 }
 
 void __tpy_init();

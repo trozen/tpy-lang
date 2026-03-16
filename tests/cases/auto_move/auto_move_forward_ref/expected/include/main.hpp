@@ -38,8 +38,8 @@ void sink(std::type_identity_t<T>&& x) {
 // def wrapper[T](x: Own[T]) -> None:
 template<typename T>
 void wrapper(std::type_identity_t<T>&& x) {
-    //     sink[T](x)  # std::forward<T>(x) at last use
-    sink<T>(std::forward<T>(x));
+    //     sink[T](x)  # std::move(x) at last use
+    sink<T>(std::move(x));
 }
 
 void __tpy_init();

@@ -242,6 +242,7 @@ class RecordGenerator:
                         const_params=True,
                         defaults=init_defaults,
                         emit_defaults=True,
+                        class_type_params=set(record.type_params) if record.type_params else None,
                     )
                 out.write(f"{INDENT}explicit {cpp_rec_name}({cpp_params})")
             else:

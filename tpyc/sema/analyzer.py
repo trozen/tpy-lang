@@ -628,6 +628,8 @@ class SemanticAnalyzer:
 
     def _warn_unconsumed_own_params(self, func: TpyFunction) -> None:
         """Warn when Own[T] params are never consumed (stored, forwarded, or returned)."""
+        if func.is_stub:
+            return
         for pname, ptype in func.params:
             own = unwrap_optional_own(unwrap_readonly(ptype))
             if own is None:

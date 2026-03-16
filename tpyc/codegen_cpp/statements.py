@@ -141,12 +141,6 @@ class StatementGenerator:
             own_actual = unwrap_optional_own(actual)
             if own_actual is not None and not own_actual.wrapped.is_value_type():
                 self.ctx.movable_locals.add(pname)
-                # T&& forwarding refs only apply to bare Own[T] free function template params
-                # (where T is deduced at the call site). Own[T] | None shouldn't use
-                # std::forward<T> and class method params use T by value.
-                if (isinstance(actual, OwnType)
-                        and isinstance(own_actual.wrapped, TypeParamRef) and not is_method):
-                    self.ctx.forwarding_params[pname] = own_actual.wrapped.name
         self.ctx.current_ns = local_ns
         self.ctx.indent_level = indent_level
         self.ctx.current_return_type = return_type

@@ -75,7 +75,7 @@ template<typename T>
 template<typename T>
 void wrapper(std::type_identity_t<T>&& x) {
     //     sink[T](x)  # tpyc: ok
-    sink<T>(std::forward<T>(x));
+    sink<T>(std::move(x));
 }
 // # Forward as compound type arg: list[T]
 // def wrap_list[T](items: list[T]) -> list[T]:

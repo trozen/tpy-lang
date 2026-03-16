@@ -1,4 +1,4 @@
-# Generic Own[T] params use forwarding refs (T&&) with std::forward.
+# Generic Own[T] params use T&& (rvalue ref); last-use auto-move uses std::move.
 from tpy import Int32, Own
 
 
@@ -15,7 +15,7 @@ def sink[T](x: Own[T]) -> None:
 
 
 def wrapper[T](x: Own[T]) -> None:
-    sink[T](x)  # std::forward<T>(x) at last use
+    sink[T](x)  # std::move(x) at last use
 
 
 def main():
@@ -26,7 +26,7 @@ def main():
 
     b2 = Box()
     b2.value = 20
-    # Generic forwarding chain: wrapper -> sink, both T&&
+    # Generic chain: wrapper -> sink, both T&&
     wrapper[Box](b2)
 
     b3 = Box()

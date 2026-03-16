@@ -23,7 +23,7 @@ void main() {
     Box b2 = Box();
     //     b2.value = 20
     b2.value = 20;
-    //     # Generic forwarding chain: wrapper -> sink, both T&&
+    //     # Generic chain: wrapper -> sink, both T&&
     //     wrapper[Box](b2)
     wrapper<Box>(std::move(b2));
     //     b3 = Box()

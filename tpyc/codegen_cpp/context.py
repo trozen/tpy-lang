@@ -292,8 +292,6 @@ class CodeGenContext:
 
     # --- Auto-move tracking (last-use -> std::move) ---
     movable_locals: set[str] = field(default_factory=set)
-    # Generic Own[T] params: name -> type param name (for std::forward)
-    forwarding_params: dict[str, str] = field(default_factory=dict)
 
     # --- Move-through vars (lvalue alias promoted to owned via std::move) ---
     move_through_vars: set[str] = field(default_factory=set)
@@ -366,7 +364,6 @@ class CodeGenContext:
         self.rvalue_reassigned_vars = set()
         self.lvalue_reassigned_vars = set()
         self.movable_locals = set()
-        self.forwarding_params = {}
         self.move_through_vars = set()
         self.hoisted_vars = set()
         self.pending_hoist_decls = []
