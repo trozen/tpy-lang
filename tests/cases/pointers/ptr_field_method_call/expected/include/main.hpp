@@ -2,6 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "tpy/mem.hpp"
 
 namespace tpy_user::main {
 
@@ -15,16 +17,16 @@ void main();
 template<typename T>
 struct Wrapper {
     //     _storage: Ptr[UninitHeapStorage[T]]
-    UninitHeapStorage<T>* _storage;
+    ::tpy::UninitHeapStorage<T>* _storage;
 
     //     def __init__(self, storage: Ptr[UninitHeapStorage[T]]) -> None:
     Wrapper() = default;
-    explicit Wrapper(UninitHeapStorage<T>* storage) : _storage(storage) {}
+    explicit Wrapper(::tpy::UninitHeapStorage<T>* storage) : _storage(storage) {}
 
     //     def load_at(self, index: UInt32) -> T:
     ::tpy::val_or_cref_t<T> load_at(uint32_t index) const {
         //         return self._storage.load(index)
-        return (*this->_storage).load(index);
+        return ::tpy::deref_check(this->_storage).load(index);
     }
 };
 

@@ -123,9 +123,10 @@ class RecordGenerator:
                 return None  # parent nocopy, not a field
         return None
 
-    def _is_native(self, record: TpyRecord) -> bool:
-        """Check if a record is a native import (no C++ generation needed)."""
-        record_info = self.ctx.analyzer.registry.get_record(record.name)
+    def _is_native(self, record_or_name) -> bool:
+        """Check if a record/type is a native import (no C++ generation needed)."""
+        name = record_or_name.name if hasattr(record_or_name, 'name') else record_or_name
+        record_info = self.ctx.analyzer.registry.get_record(name)
         return record_info is not None and record_info.is_native
 
     def gen_record_decl(self, out: TextIO, record: TpyRecord) -> None:
@@ -1005,7 +1006,7 @@ class RecordGenerator:
                 out.write(f' << ::tpy::SetPrinter({acc})')
             elif isinstance(fld.type, (ListType, ArrayType, SpanType)):
                 out.write(f' << ::tpy::ListPrinter({acc})')
-            elif isinstance(fld.type, NamedType) and fld.type.is_module_type:
+            elif isinstance(fld.type, NamedType) and (fld.type.is_module_type or self._is_native(fld.type)):
                 out.write(f' << "<{fld.type}>"')
             else:
                 out.write(f' << {acc}')

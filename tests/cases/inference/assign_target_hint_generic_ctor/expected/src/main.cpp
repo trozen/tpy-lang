@@ -8,7 +8,7 @@ namespace tpy_user::main {
 void main() {
     //     # Annotated var_decl: T inferred from annotation
     //     s: UninitHeapStorage[Int32] = UninitHeapStorage(1)  # tpyc: ok
-    UninitHeapStorage<int32_t> s = 1;
+    ::tpy::UninitHeapStorage<int32_t> s = ::tpy::UninitHeapStorage<int32_t>(1);
     //     s.init0(Int32(42))
     s.init0(42);
     //     print("var_decl:", s.load0())

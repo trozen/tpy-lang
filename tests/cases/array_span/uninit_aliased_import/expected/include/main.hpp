@@ -2,6 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "tpy/mem.hpp"
 
 namespace tpy_user::main {
 

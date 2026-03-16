@@ -21,7 +21,7 @@ from ..typesys import (
     PendingGenericInstanceType, PendingGenericInstanceInfo,
 )
 from ..parse import (
-    TpyCall, TpyMethodCall, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
+    TpyCall, TpyMethodCall, TpyFieldAccess, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyNoneLiteral, TpyUnaryOp,
     TpyTypeParamConstruct,
 )
@@ -1269,12 +1269,16 @@ class CallAnalyzer:
         name_to_idx = self.ctx.current_param_name_to_idx
         rebound = self.ctx.current_rebound_params
 
-        # Detect self.method() receiver so Phase 2 can propagate self-mutation.
-        receiver_is_self = (
-            isinstance(expr, TpyMethodCall)
-            and isinstance(expr.obj, TpyName)
-            and expr.obj.name == "self"
-        )
+        # Detect self.method() or self.<field>.method() receiver so Phase 2
+        # can propagate self-mutation (mutating a field's value mutates self).
+        receiver_is_self = False
+        if isinstance(expr, TpyMethodCall):
+            obj = expr.obj
+            # Walk through field access chain to find self at the root
+            while isinstance(obj, TpyFieldAccess):
+                obj = obj.obj
+            if isinstance(obj, TpyName) and obj.name == "self":
+                receiver_is_self = True
 
         # Nothing to record if no params flow through and no self-call
         if not name_to_idx and not receiver_is_self:

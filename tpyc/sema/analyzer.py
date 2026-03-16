@@ -1147,7 +1147,7 @@ class SemanticAnalyzer:
             # work through it. This is consistent with _sync_inferred_const, which
             # also reads back via get_method() and skips is_overload_stub nodes.
             record_info = self.ctx.registry.get_record(record.name)
-            if record_info is not None:
+            if record_info is not None and not method.is_stub:
                 method_fi = record_info.get_method(method.name)
                 if method_fi is not None and method_fi.direct_mutated_params is None:
                     param_list = [pname for pname, _ in method.params]
@@ -1439,8 +1439,10 @@ class SemanticAnalyzer:
         # Check for record
         if module_info.records and original_name in module_info.records:
             record_info = module_info.records[original_name]
-            # Register with local name for lookup
+            # Register with local name for lookup (and original name for type resolution)
             self.ctx.registry.register_record(record_info, local_name)
+            if local_name != original_name:
+                self.ctx.registry.register_record(record_info, original_name)
             self.ctx.user_imported_records[local_name] = (module_name, original_name)
             return
 

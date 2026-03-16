@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     storage = UninitHeapStorage[Int32](UInt32(4))
-    UninitHeapStorage<int32_t> storage = 4;
+    ::tpy::UninitHeapStorage<int32_t> storage = ::tpy::UninitHeapStorage<int32_t>(4);
     //     storage.init(UInt32(0), 42)
     storage.init(0, 42);
     //     storage.init(UInt32(1), 99)

@@ -2,14 +2,16 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "tpy/mem.hpp"
 
 namespace tpy_user::main {
 
 struct Point;
 
-extern UninitHeapStorage<int32_t>* h;
-extern UninitArrayStorage<int32_t, 1>* a;
-extern UninitHeapStorage<Point>* pts;
+extern ::tpy::UninitHeapStorage<int32_t>* h;
+extern ::tpy::UninitArrayStorage<int32_t, 1>* a;
+extern ::tpy::UninitHeapStorage<Point>* pts;
 extern Point* pt;
 inline constexpr std::string_view __name__ = "__main__";
 

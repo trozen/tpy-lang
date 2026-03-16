@@ -2,6 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "tpy/mem.hpp"
 
 namespace tpy_user::main {
 
@@ -72,12 +74,12 @@ inline std::ostream& operator<<(std::ostream& os, const WithDict<K, V>& obj) {
 template<typename T>
 struct WithHeapStorage {
     //     _storage: UninitHeapStorage[T]
-    UninitHeapStorage<T> _storage;
+    ::tpy::UninitHeapStorage<T> _storage;
     bool __tpy_owned_ = true;
 
     //     def __init__(self, val: Own[T]):
     WithHeapStorage() = default;
-    explicit WithHeapStorage(T&& val) : _storage(1) {
+    explicit WithHeapStorage(T&& val) : _storage(::tpy::UninitHeapStorage<T>(1)) {
         //         self._storage.init0(val)
         this->_storage.init0(std::move(val));
     }

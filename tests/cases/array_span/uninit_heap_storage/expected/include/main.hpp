@@ -3,15 +3,16 @@
 
 #include <tpy/tpy.hpp>
 #include "tpy.hpp"
+#include "tpy/mem.hpp"
 #include "tpy/unsafe.hpp"
 
 namespace tpy_user::main {
 
 struct Point;
 
-extern UninitHeapStorage<int32_t>* storage;
+extern ::tpy::UninitHeapStorage<int32_t>* storage;
 extern int32_t* p;
-extern UninitHeapStorage<Point>* points;
+extern ::tpy::UninitHeapStorage<Point>* points;
 extern Point* pt;
 extern Point* pt2;
 inline constexpr std::string_view __name__ = "__main__";

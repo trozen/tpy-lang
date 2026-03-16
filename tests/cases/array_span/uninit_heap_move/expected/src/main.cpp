@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 // storage = make_storage()
-UninitHeapStorage<int32_t>* storage{};
+::tpy::UninitHeapStorage<int32_t>* storage{};
 
 // # Move via return (NRVO or move construction)
 // def make_storage() -> Own[UninitHeapStorage[Int32]]:
-UninitHeapStorage<int32_t> make_storage() {
+::tpy::UninitHeapStorage<int32_t> make_storage() {
     //     s = UninitHeapStorage[Int32](4)
-    UninitHeapStorage<int32_t> s = 4;
+    ::tpy::UninitHeapStorage<int32_t> s = ::tpy::UninitHeapStorage<int32_t>(4);
     //     s.init(0, 100)
     s.init(0, 100);
     //     s.init(1, 200)
@@ -21,7 +21,7 @@ UninitHeapStorage<int32_t> make_storage() {
 
 // # Move via Own parameter (auto-move at last use)
 // def consume(s: Own[UninitHeapStorage[Int32]]) -> Int32:
-int32_t consume(UninitHeapStorage<int32_t>&& s) {
+int32_t consume(::tpy::UninitHeapStorage<int32_t>&& s) {
     //     val: Int32 = s.load(0)
     int32_t val = s.load(0);
     //     s.drop(0)
@@ -33,7 +33,7 @@ int32_t consume(UninitHeapStorage<int32_t>&& s) {
 // def test_pass_own() -> None:
 void test_pass_own() {
     //     s2 = UninitHeapStorage[Int32](2)
-    UninitHeapStorage<int32_t> s2 = 2;
+    ::tpy::UninitHeapStorage<int32_t> s2 = ::tpy::UninitHeapStorage<int32_t>(2);
     //     s2.init(0, 300)
     s2.init(0, 300);
     //     print(consume(s2))
@@ -47,16 +47,16 @@ void __tpy_init() {
 
     // from tpy.mem import UninitHeapStorage
     // storage = make_storage()
-    static UninitHeapStorage<int32_t> __global_slot_1 = make_storage();
+    static ::tpy::UninitHeapStorage<int32_t> __global_slot_1 = make_storage();
     storage = &__global_slot_1;
     // print(storage.load(0))
-    std::cout << (*storage).load(0) << "\n";
+    std::cout << storage->load(0) << "\n";
     // print(storage.load(1))
-    std::cout << (*storage).load(1) << "\n";
+    std::cout << storage->load(1) << "\n";
     // storage.drop(0)
-    (*storage).drop(0);
+    storage->drop(0);
     // storage.drop(1)
-    (*storage).drop(1);
+    storage->drop(1);
     // test_pass_own()
     test_pass_own();
 }

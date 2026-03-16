@@ -2,6 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "tpy/mem.hpp"
 
 namespace tpy_user::main {
 
@@ -16,7 +18,7 @@ void main();
 template<typename T, std::size_t N>
 struct StorageIter {
     //     _storage: Ptr[UninitArrayStorage[T, N]]
-    UninitArrayStorage<T, N>* _storage;
+    ::tpy::UninitArrayStorage<T, N>* _storage;
     //     _size: Int32
     int32_t _size;
     //     _index: Int32
@@ -24,7 +26,7 @@ struct StorageIter {
 
     //     def __init__(self, storage: Ptr[UninitArrayStorage[T, N]], size: Int32) -> None:
     StorageIter() = default;
-    explicit StorageIter(UninitArrayStorage<T, N>* storage, int32_t size) : _storage(storage), _size(size), _index(0) {}
+    explicit StorageIter(::tpy::UninitArrayStorage<T, N>* storage, int32_t size) : _storage(storage), _size(size), _index(0) {}
 
     auto& __iter__() { return *this; }
 
@@ -33,7 +35,7 @@ struct StorageIter {
         //         if self._index < self._size:
         if ((this->_index < this->_size)) {
             //             val = self._storage.load(UInt32(self._index))
-            T val = (*this->_storage).load(::tpy::int_cast_check<uint32_t>(this->_index));
+            ::tpy::val_or_cref_t<T> val = ::tpy::deref_check(this->_storage).load(::tpy::int_cast_check<uint32_t>(this->_index));
             //             self._index += 1
             this->_index = ::tpy::add_check<int32_t>(this->_index, 1);
             //             return val
@@ -64,13 +66,13 @@ inline std::ostream& operator<<(std::ostream& os, const StorageIter<T, N>& obj) 
 template<typename T, std::size_t N>
 struct SimpleList {
     //     _storage: UninitArrayStorage[T, N]
-    UninitArrayStorage<T, N> _storage;
+    ::tpy::UninitArrayStorage<T, N> _storage;
     //     _size: Int32
     int32_t _size;
     bool __tpy_owned_ = true;
 
     //     def __init__(self) -> None:
-    SimpleList() : _storage(UninitArrayStorage<T, N>()), _size(0) {}
+    SimpleList() : _storage(::tpy::UninitArrayStorage<T, N>()), _size(0) {}
     // non-copyable (field '_storage')
     SimpleList(const SimpleList&) = delete;
     SimpleList& operator=(const SimpleList&) = delete;

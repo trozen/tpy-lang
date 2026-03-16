@@ -2,6 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "tpy/mem.hpp"
 
 namespace tpy_user::main {
 
@@ -15,11 +17,11 @@ void main();
 // class Storage:
 struct Storage {
     //     buf: UninitHeapStorage[Int32]
-    UninitHeapStorage<int32_t> buf;
+    ::tpy::UninitHeapStorage<int32_t> buf;
     bool __tpy_owned_ = true;
 
     //     def __init__(self):
-    Storage() : buf(1) {
+    Storage() : buf(::tpy::UninitHeapStorage<int32_t>(1)) {
         //         self.buf.init0(42)
         this->buf.init0(42);
     }

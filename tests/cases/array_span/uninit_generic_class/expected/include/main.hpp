@@ -2,6 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "tpy/mem.hpp"
 
 namespace tpy_user::main {
 
@@ -15,11 +17,11 @@ inline constexpr std::string_view __name__ = "__main__";
 template<typename T>
 struct Holder {
     //     _storage: UninitHeapStorage[T]
-    UninitHeapStorage<T> _storage;
+    ::tpy::UninitHeapStorage<T> _storage;
 
     //     def __init__(self, value: T):
     Holder() = default;
-    explicit Holder(const T& value) : _storage(1) {
+    explicit Holder(const T& value) : _storage(::tpy::UninitHeapStorage<T>(1)) {
         //         self._storage.init0(value)
         auto __tmp_1 = value;
         this->_storage.init0(std::move(__tmp_1));
