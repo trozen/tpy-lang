@@ -141,6 +141,13 @@ class StatementGenerator:
             own_actual = unwrap_optional_own(actual)
             if own_actual is not None and not own_actual.wrapped.is_value_type():
                 self.ctx.movable_locals.add(pname)
+            # Value-optional params (std::optional<T> by value) are movable when
+            # the inner type has an expensive copy (String, BigInt, etc.).
+            # readonly params are excluded to respect the no-mutation contract.
+            elif (isinstance(actual, OptionalType) and not actual.uses_pointer_repr()
+                    and not isinstance(ptype, ReadonlyType)
+                    and actual.inner.is_expensive_copy()):
+                self.ctx.movable_locals.add(pname)
         self.ctx.current_ns = local_ns
         self.ctx.indent_level = indent_level
         self.ctx.current_return_type = return_type
@@ -281,8 +288,10 @@ class StatementGenerator:
                     analyzed_type = self.ctx.get_expr_type(ret_value)
                     if isinstance(analyzed_type, OptionalType):
                         ret_expr = f"::tpy::deref_optional_check({ret_expr})"
+                        ret_expr = self.expressions._maybe_move(ret_value, ret_expr)
                     else:
                         ret_expr = f"(*{ret_expr})"
+                        ret_expr = self.expressions._maybe_move(ret_value, ret_expr)
                         # Narrowed Optional[str] param: (*s) yields string_view
                         if (isinstance(ret_type, StrType)
                                 and self._is_optional_str_param(ret_value)):

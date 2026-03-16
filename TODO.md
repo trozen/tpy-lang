@@ -6,7 +6,6 @@
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 
 ## Bugs
-- **[LOW]** `FloatLiteralType -> FloatType` compatibility fast path missing: `b: float = 5.0` goes through the full coercion lookup in `compatibility.py` and inserts a `TpyCoerce` node with identity semantics (no codegen effect). Add a fast path analogous to `IntLiteralType -> BigInt` at line 334 of `sema/compatibility.py` to skip the coercion node.
 
 ## Fuzzy Testing Findings (2026-03-12)
 
@@ -21,7 +20,6 @@
 ### Systematic suboptimalities
 
 ### Missed optimizations
-- **[MED]** `return (*x)` on `Optional[non-trivial T]` copies instead of moves: liveness/auto-move analysis tracks `TpyName` last-uses but does not extend through optional-dereference expressions. When `x: Optional[str]` or `Optional[Record]` is returned at its last use, `return (*x)` copies the inner value. Should emit `return std::move(*x)`.
 - **[LOW]** String concat chain produces N-1 intermediate allocations: `a + b + c + d` emits left-associative nested `str_concat` calls, each allocating a temporary `std::string`. A codegen optimization detecting a chain of `+` on string-view operands could emit a single `reserve` + N `append` calls.
 - **[LOW]** Method returning a `str` field copies the string: a getter like `def get_name(self) -> str: return self.name` emits `return this->name` which copies the `std::string` field. The string-view deduction system handles `str` parameters but not field reads in return position. Should return `std::string_view` pointing into the field for read-only getters.
 

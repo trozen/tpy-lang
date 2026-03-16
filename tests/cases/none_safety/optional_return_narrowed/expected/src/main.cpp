@@ -9,7 +9,7 @@ namespace tpy_user::main {
     //     if x is not None:
     if ((x.has_value())) {
         //         return x
-        return (*x);
+        return std::move((*x));
     }
     //     return fallback
     return fallback;
