@@ -1,1 +1,1 @@
-main.py:5: error: No matching overload for unsafe_alloc()
+main.py:5: error: Cannot infer type arguments for 'unsafe_alloc'. Specify explicitly: unsafe_alloc[T](...)

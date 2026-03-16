@@ -1,3 +1,4 @@
+# tpy: native_module
 from typing import overload
 from tpy.extern import native
 

@@ -35,10 +35,10 @@ def _structural_match(arg: TpyType, param: TpyType) -> bool:
     """Structural match with TypeParamRef as wildcard."""
     if isinstance(param, TypeParamRef):
         return True
-    # readonly[T] param accepts mutable arg (mirroring match_type_with_inference)
+    # Unwrap ReadonlyType from both sides (readonly param accepts mutable arg)
     from ..typesys import ReadonlyType
-    if isinstance(param, ReadonlyType) and not isinstance(arg, ReadonlyType):
-        return _structural_match(arg, param.wrapped)
+    if isinstance(param, ReadonlyType):
+        return _structural_match(unwrap_readonly(arg), param.wrapped)
     arg = unwrap_readonly(arg)
     if type(arg) != type(param):
         return False

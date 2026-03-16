@@ -2656,6 +2656,7 @@ class ModuleInfo:
     """Information about a module (builtin or user-defined)."""
     name: str
     is_builtin: bool = True  # True for hardcoded builtin modules (e.g. sys), False for user/.py modules
+    is_native_module: bool = False  # True for # tpy: native_module (no __tpy_init, no .cpp)
     functions: dict[str, list[FunctionInfo]] = field(default_factory=dict)  # func_name -> overloads
     variables: dict[str, ModuleVarInfo] = field(default_factory=dict)  # var_name -> ModuleVarInfo
     records: dict[str, RecordInfo] = field(default_factory=dict)  # type_name -> RecordInfo (exported types)

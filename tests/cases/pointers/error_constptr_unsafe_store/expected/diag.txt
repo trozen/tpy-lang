@@ -1,1 +1,1 @@
-main.py:7: error: unsafe_store() requires a mutable pointer, got Ptr[readonly[Int32]]
+main.py:7: error: Cannot infer type arguments for 'unsafe_store'. Specify explicitly: unsafe_store[T](...)

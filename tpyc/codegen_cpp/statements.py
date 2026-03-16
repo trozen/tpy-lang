@@ -325,12 +325,11 @@ class StatementGenerator:
         elif isinstance(stmt, TpyRaiseStopIteration):
             return f"{indent}return std::nullopt;\n"
         elif isinstance(stmt, TpyImport):
-            # Only emit __tpy_init() for actual user modules (not builtins)
-            # Check is_builtin flag to handle single-file/REPL mode where builtins
-            # are still in user_module_imports
+            # Only emit __tpy_init() for user modules that have runtime init.
+            # Skip builtins (no .cpp) and native_module (binding-only, no .cpp).
             module_info = self.ctx.analyzer.registry.get_module(stmt.module_name)
-            is_builtin = module_info and module_info.is_builtin
-            if stmt.module_name in self.ctx.user_module_imports and not is_builtin:
+            skip_init = module_info and (module_info.is_builtin or module_info.is_native_module)
+            if stmt.module_name in self.ctx.user_module_imports and not skip_init:
                 result = ""
                 # For dotted imports, emit parent package inits first (Python semantics)
                 # e.g., "mypackage.utils" -> init mypackage first, then mypackage.utils

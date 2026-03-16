@@ -449,6 +449,12 @@ class CallAnalyzer:
                 if binding.kind == BindingKind.VARIABLE:
                     raise self.ctx.error(f"'{expr.func}' is not callable", expr)
                 elif binding.kind == BindingKind.FUNCTION:
+                    # Builtin-supplemented functions route through builtin path
+                    # (richer diagnostics for unsafe_ptr, unsafe_cast etc.)
+                    if binding.func_infos[0].is_builtin_function:
+                        if binding.func_infos[0].special_handling:
+                            return self._analyze_special_builtin(expr, binding.func_infos)
+                        return self._analyze_builtin_function_overloads(expr, binding.func_infos)
                     return self._analyze_user_function_call(expr, binding.func_infos)
                 elif binding.kind == BindingKind.RECORD:
                     return self._analyze_record_constructor(expr, binding.record_info)
@@ -489,6 +495,11 @@ class CallAnalyzer:
                         raise SemanticError(f"{func_name}() is not yet implemented", expr.loc)
                     # Check for user module function (registered via _register_user_module_import)
                     if func_infos := self.ctx.registry.get_function(expr.func):
+                        # Builtin-supplemented functions route through builtin path
+                        if func_infos[0].is_builtin_function:
+                            if func_infos[0].special_handling:
+                                return self._analyze_special_builtin(expr, func_infos)
+                            return self._analyze_builtin_function_overloads(expr, func_infos)
                         return self._analyze_user_function_call(expr, func_infos)
                     # Check for user module record (registered via _register_user_module_import)
                     if record_info := self.ctx.registry.get_record(expr.func):
@@ -1515,14 +1526,6 @@ class CallAnalyzer:
                     prefer_strview_for_literals(type_subst, overload, expr.args,
                                                protocol_checker, n_explicit)
                 resolved = self.type_ops.substitute_method_type_params(overload, type_subst)
-                # Catch Ptr[readonly[T]]-to-Ptr const-drop for unsafe_cast before
-                # the generic "type mismatch" at the assignment level.
-                if (overload.qualified_name == "tpy.unsafe.unsafe_cast"
-                        and is_readonly_ptr(resolved.return_type)
-                        and isinstance(self.ctx.expr_type_hint, PtrType) and not self.ctx.expr_type_hint.is_readonly):
-                    raise self.ctx.error(
-                        "unsafe_cast() cannot cast read-only pointer to mutable pointer (use unsafe_const_cast first)", expr
-                    )
                 expr.resolved_function_info = resolved
                 expr.inferred_type_args = tuple(type_subst[p] for p in overload.type_params)
                 for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, resolved.params)):
@@ -1606,32 +1609,6 @@ class CallAnalyzer:
                         f"{expr.func}() requires a mutable pointer, got {arg_t}", expr
                     )
 
-        # Targeted diagnostics for unsafe_cast
-        if overloads[0].qualified_name == "tpy.unsafe.unsafe_cast" and len(arg_types) == 1:
-            arg_t = arg_types[0]
-            if not isinstance(arg_t, PtrType):
-                raise self.ctx.error(
-                    f"unsafe_cast() requires a pointer argument, got {arg_t}", expr
-                )
-            hint = self.ctx.expr_type_hint
-            if hint is not None:
-                raw_hint = hint
-                if isinstance(hint, OwnType):
-                    hint = hint.wrapped
-                hint = unwrap_readonly(hint)
-                if not isinstance(hint, PtrType):
-                    raise self.ctx.error(
-                        f"unsafe_cast() target must be a pointer type, got {raw_hint}", expr
-                    )
-                if arg_t.is_readonly and not hint.is_readonly:
-                    raise self.ctx.error(
-                        "unsafe_cast() cannot cast read-only pointer to mutable pointer (use unsafe_const_cast first)", expr
-                    )
-            raise self.ctx.error(
-                "unsafe_cast() requires a type argument or target type annotation "
-                "(e.g., unsafe_cast[UInt32](p) or q: Ptr[UInt32] = unsafe_cast(p))", expr
-            )
-
         # Check for bound violations on generic overloads (give specific error)
         for overload in generic:
             if not overload.type_param_bounds:
@@ -1672,10 +1649,40 @@ class CallAnalyzer:
             )
             if matched is not None:
                 return self._analyze_single_function_call(expr, matched)
+            # Strict resolution failed -- try generic overloads via type inference.
+            # _analyze_single_function_call handles generic inference + coercion,
+            # which resolve_overload's structural matching can't do.
+            for overload in func_infos:
+                if overload.is_generic():
+                    try:
+                        return self._analyze_single_function_call(expr, overload)
+                    except SemanticError:
+                        continue
             arg_type_strs = ", ".join(str(t) for t in arg_types)
             raise self.ctx.error(
                 f"No matching @overload for {expr.func}({arg_type_strs})", expr)
         return self._analyze_single_function_call(expr, func_infos[0])
+
+    def _unsafe_cast_diagnostics(self, expr: TpyCall, arg_type: TpyType) -> None:
+        """Targeted diagnostics for unsafe_cast when overload resolution fails."""
+        if not isinstance(arg_type, PtrType):
+            raise self.ctx.error(
+                f"unsafe_cast() requires a pointer argument, got {arg_type}", expr)
+        hint = self.ctx.expr_type_hint
+        if hint is not None:
+            raw_hint = hint
+            if isinstance(hint, OwnType):
+                hint = hint.wrapped
+            hint = unwrap_readonly(hint)
+            if not isinstance(hint, PtrType):
+                raise self.ctx.error(
+                    f"unsafe_cast() target must be a pointer type, got {raw_hint}", expr)
+            if arg_type.is_readonly and not hint.is_readonly:
+                raise self.ctx.error(
+                    "unsafe_cast() cannot cast read-only pointer to mutable pointer (use unsafe_const_cast first)", expr)
+        raise self.ctx.error(
+            "unsafe_cast() requires a type argument or target type annotation "
+            "(e.g., unsafe_cast[UInt32](p) or q: Ptr[UInt32] = unsafe_cast(p))", expr)
 
     def _analyze_single_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
         """Analyze a call to a single user-defined function."""
@@ -1783,6 +1790,9 @@ class CallAnalyzer:
                 expected_return_type=self.ctx.expr_type_hint,
             )
             if type_subst is None:
+                # TODO: replace qualified_name check with @compiler_check decorator
+                if func.qualified_name == "tpy.unsafe.unsafe_cast" and len(arg_types) == 1:
+                    self._unsafe_cast_diagnostics(expr, arg_types[0])
                 raise self.ctx.error(
                     f"Cannot infer type arguments for '{func.name}'. "
                     f"Specify explicitly: {func.name}[{', '.join(func.type_params)}](...)",
@@ -1804,6 +1814,15 @@ class CallAnalyzer:
 
         # Resolve and check parameters
         resolved_func = self.type_ops.substitute_method_type_params(func, type_subst)
+
+        # TODO: replace qualified_name check with @compiler_check decorator
+        if (func.qualified_name == "tpy.unsafe.unsafe_cast"
+                and is_readonly_ptr(resolved_func.return_type)
+                and isinstance(self.ctx.expr_type_hint, PtrType) and not self.ctx.expr_type_hint.is_readonly):
+            raise self.ctx.error(
+                "unsafe_cast() cannot cast read-only pointer to mutable pointer (use unsafe_const_cast first)", expr
+            )
+
         expr.resolved_function_info = resolved_func
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
             resolved_ptype = self.type_ops.substitute_type_params(ptype, type_subst)

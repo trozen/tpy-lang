@@ -662,7 +662,12 @@ class MethodAnalyzer:
         module_info = self.ctx.registry.get_module(module_name)
         if module_info and module_info.functions and expr.method in module_info.functions:
             overloads = module_info.functions[expr.method]
-            if module_info.is_builtin:
+            # Route through builtin path if the function is from a builtin module
+            # or has a cpp_template (inline expansion, no C++ function body).
+            is_builtin_func = (module_info.is_builtin
+                               or overloads[0].is_builtin_function
+                               or overloads[0].cpp_template is not None)
+            if is_builtin_func:
                 expr.builtin_module_call = module_name
                 temp_call = TpyCall(func=expr.method, args=expr.args,
                                     kwargs=expr.kwargs,

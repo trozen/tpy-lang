@@ -1,1 +1,1 @@
-main.py:6: error: No matching overload for unsafe_copy_n(Ptr[UInt8], Ptr[readonly[Char]], UInt32): type parameter T inferred as UInt8 and Char
+main.py:6: error: Cannot infer type arguments for 'unsafe_copy_n'. Specify explicitly: unsafe_copy_n[T](...)

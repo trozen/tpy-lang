@@ -78,7 +78,6 @@ void __tpy_init() {
     initialized = true;
 
     // import math
-    ::tpy_user::math::__tpy_init();
     // main()
     main();
 }

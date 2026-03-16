@@ -1,3 +1,4 @@
+# tpy: native_module
 from tpy.extern import native
 
 @native("tpy::time_time")

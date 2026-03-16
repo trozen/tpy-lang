@@ -637,8 +637,9 @@ class Compiler:
             if dep_name in registered or dep_name not in self.modules:
                 continue
             registered.add(dep_name)
-            dep_exports = self.modules[dep_name].exports
-            module_info = self._exports_to_module_info(dep_name, dep_exports)
+            dep_compiled = self.modules[dep_name]
+            module_info = self._exports_to_module_info(dep_name, dep_compiled.exports, dep_compiled)
+            self._merge_builtin_supplements(module_info)
             analyzer.registry.register_module(module_info)
             # Enqueue transitive dependencies
             for transitive in self.modules[dep_name].ast.user_module_imports:
@@ -659,8 +660,11 @@ class Compiler:
                 e.filename = os.path.relpath(compiled.path)
             raise
 
-        # Emit warnings for shadowed builtins imported by this module
+        # Emit warnings for shadowed builtins imported by this module.
+        # Skip hybrid modules (builtin supplements a .py module).
         for shadowed_name, importers in self.shadowed_builtins.items():
+            if shadowed_name in self.modules:
+                continue
             for importing_module, lineno in importers:
                 if importing_module == compiled.name or (compiled.is_entry_point and importing_module == ModuleResolver.get_module_name(self.entry_point)):
                     from .parse import SourceLocation
@@ -788,7 +792,8 @@ class Compiler:
                 exports.reexported_variables[name] = (source_module, original_name)
             exports.variables[name] = var_type
 
-    def _exports_to_module_info(self, name: str, exports: ModuleExports) -> 'ModuleInfo':
+    def _exports_to_module_info(self, name: str, exports: ModuleExports,
+                               compiled: 'CompiledModule | None' = None) -> 'ModuleInfo':
         """Convert ModuleExports to ModuleInfo for unified registry storage.
 
         Args:
@@ -814,9 +819,11 @@ class Compiler:
                 cpp_expr = f"{ns}::{k}"
             variables[k] = ModuleVarInfo(k, v, cpp_expr)
 
+        is_native = compiled.ast.directives.native_module if compiled else False
         return ModuleInfo(
             name=name,
             is_builtin=False,
+            is_native_module=is_native,
             functions=functions,
             variables=variables,
             records=exports.records,
@@ -824,6 +831,27 @@ class Compiler:
             type_aliases=exports.type_aliases,
             enums=exports.enums,
         )
+
+    def _merge_builtin_supplements(self, module_info: 'ModuleInfo') -> None:
+        """Supplement a .py module's exports with definitions from a same-named builtin.
+
+        Enables hybrid modules: .py defines most functions, builtin provides
+        functions that need special compiler support (e.g., INT type params,
+        custom validation). Only adds missing names -- .py definitions take precedence.
+        """
+        from .modules import get_module as get_builtin_module, builtin_function_to_info
+        builtin = get_builtin_module(module_info.name)
+        if builtin is None:
+            return
+        for func_name, fn_def in builtin.functions.items():
+            if func_name not in module_info.functions:
+                module_info.functions[func_name] = builtin_function_to_info(
+                    fn_def, module_info.name)
+            else:
+                # Merge: add builtin overloads not covered by .py definitions
+                existing = module_info.functions[func_name]
+                module_info.functions[func_name] = existing + builtin_function_to_info(
+                    fn_def, module_info.name)
 
     def _check_no_errors(self, compiled: CompiledModule) -> None:
         """Raise if the module has any error-level diagnostics from analysis."""

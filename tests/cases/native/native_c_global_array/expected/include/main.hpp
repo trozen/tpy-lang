@@ -2,6 +2,7 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy/unsafe.hpp"
 
 extern "C" int16_t g_scores[];
 extern "C" int32_t g_ids[];
