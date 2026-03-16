@@ -1,0 +1,1 @@
+main.py:3: error: 'Char' requires: from tpy import Char

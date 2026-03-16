@@ -1136,6 +1136,9 @@ def init_module() -> BuiltinModule:
         MethodDef(params=[], returns=CHAR, cpp="'\\0'"),
         MethodDef(params=[ParamDef("x", INT32)], returns=CHAR, cpp="static_cast<char>({0})"),
         MethodDef(params=[ParamDef("x", BIGINT)], returns=CHAR, cpp="static_cast<char>(({0}).to_fixed_check<int32_t>())"),
+        MethodDef(params=[ParamDef("s", STR)], returns=CHAR, cpp="::tpy::char_from_str({0})"),
+        MethodDef(params=[ParamDef("s", STRING)], returns=CHAR, cpp="::tpy::char_from_str({0})"),
+        MethodDef(params=[ParamDef("s", STRVIEW)], returns=CHAR, cpp="::tpy::char_from_str({0})"),
     ], methods={
         "__hash__": [MethodDef(params=[], returns=UINT64, cpp="::tpy::__hash__({self})", is_readonly=True, is_pure=True)],
         "__add__": [

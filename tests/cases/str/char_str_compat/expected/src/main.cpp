@@ -33,6 +33,13 @@ void main() {
     //     # ord(Char) still works
     //     print(ord(c))
     std::cout << static_cast<int32_t>(static_cast<unsigned char>(c)) << "\n";
+    //     # Char(str) constructor
+    //     s2 = "Z"
+    std::string_view s2 = "Z";
+    //     z = Char(s2)
+    char z = ::tpy::char_from_str(s2);
+    //     print(z)
+    std::cout << z << "\n";
 }
 
 void __tpy_init() {

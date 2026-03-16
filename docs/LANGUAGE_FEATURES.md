@@ -309,7 +309,7 @@ This means `Float32` arithmetic stays in single precision without requiring expl
 - **Working**: `str` type -- context-dependent: `std::string` by default, `std::string_view` for parameters
 - **Working**: `String` (`tpy.String`) -- explicit owned `std::string` (parameters use `const std::string&`)
 - **Working**: `StrView` (`tpy.StrView`) -- explicit `std::string_view`
-- **Working**: `Char` type for single characters
+- **Working**: `Char` type for single characters (str-like: `str + Char`, `Char + str`, `Char + Char` concat, `Char * n` / `n * Char` repeat, `len(c)` returns 1, `ord(str)` with runtime length-1 check)
 - **Working**: String concatenation with `+` and `+=`
 - **Working**: `str()` conversions (e.g. `str(42)`) safe to store in variables (no dangling)
 - **Working**: `list[str]` generates `std::vector<std::string>`
@@ -3771,7 +3771,8 @@ class Car(Vehicle, Printable, Measurable):
   - Inline repeat cannot be passed directly to `Span` -- assign to a variable first
 - **Working**: Negative indexing for list, Array, Span: `items[-1]` (last element)
 - **Working**: `hash(x)` → `UInt64` hash value. Works on all `Hashable` types (str, int, fixed ints, float, bool, Char, Enum). Uses `tpy::__hash__()` free function dispatch.
-- **Working**: `abs()`, `min()`, `max()`, `ord()`, `pow()`, `round()`, `divmod()` for numeric types
+- **Working**: `abs()`, `min()`, `max()`, `pow()`, `round()`, `divmod()` for numeric types
+- **Working**: `ord(c)` accepts `Char` (zero-cost) and `str` (runtime length-1 check, panics like Python's `TypeError`)
   - `round(x)` uses banker's rounding (round half to even, matching Python)
   - `round[T](x)` is generic: return type defaults to `default_int`, can be inferred from context
   - `divmod(a, b)` returns `tuple[T, T]` with Python floor-division semantics

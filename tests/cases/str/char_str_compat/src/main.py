@@ -1,4 +1,4 @@
-# Char str-like behavior: concat, repeat, len, ord(str).
+# Char str-like behavior: concat, repeat, len, ord(str), Char(str).
 from tpy import Char
 
 
@@ -27,6 +27,11 @@ def main():
 
     # ord(Char) still works
     print(ord(c))
+
+    # Char(str) constructor
+    s2 = "Z"
+    z = Char(s2)
+    print(z)
 
 
 main()

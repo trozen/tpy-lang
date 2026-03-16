@@ -435,7 +435,7 @@ class CharType(TpyType):
         return "Char"
 
     def qualified_name(self) -> Optional[str]:
-        return "builtins.Char"
+        return "tpy.Char"
 
     def is_value_type(self) -> bool:
         return True
