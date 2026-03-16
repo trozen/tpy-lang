@@ -60,6 +60,26 @@ def loop_consume(b: Own[Box], items: list[Int32]) -> Int32:  # tpyc: warning(/ne
         return forward(b)
     return b.value
 
+# Warning: match -- consumed on one arm, wildcard only borrows
+def match_partial_arm(b: Own[Box], x: Int32) -> Int32:  # tpyc: warning(/never consumed/)
+    result: Int32 = 0
+    match x:
+        case 1:
+            h = Holder(b)
+            result = h.item.value
+        case _:
+            result = b.value
+    return result
+
+# No warning: match -- consumed on all arms (auto-move now works in match)
+def match_all_arms(b: Own[Box], x: Int32) -> Int32:  # tpyc: ok
+    match x:
+        case 1:
+            return forward(b)
+        case _:
+            h = Holder(b)
+            return h.item.value
+
 def main() -> None:
     print(borrow_only(Box(1)))
     print(forward(Box(2)))
@@ -70,5 +90,7 @@ def main() -> None:
     print(both_branches(Box(7), False))
     print(early_return(Box(8), False))
     print(loop_consume(Box(9), [1]))
+    print(match_partial_arm(Box(10), 1))
+    print(match_all_arms(Box(11), 2))
 
 main()

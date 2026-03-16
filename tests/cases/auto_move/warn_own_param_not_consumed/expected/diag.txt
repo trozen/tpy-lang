@@ -2,3 +2,4 @@ main.py:16: warning: Own[Box] param 'b' is never consumed (not stored in a field
 main.py:29: warning: unnecessary copy() -- 'b' is at its last use and would be moved automatically
 main.py:37: warning: Own[Box] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:58: warning: Own[Box] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:64: warning: Own[Box] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

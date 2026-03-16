@@ -20,6 +20,8 @@ int32_t partial_consume(Box&& b, bool cond);
 int32_t both_branches(Box&& b, bool cond);
 int32_t early_return(Box&& b, bool cond);
 int32_t loop_consume(Box&& b, const std::vector<int32_t>& items);
+int32_t match_partial_arm(Box&& b, int32_t x);
+int32_t match_all_arms(Box&& b, int32_t x);
 void main();
 
 // class Box:

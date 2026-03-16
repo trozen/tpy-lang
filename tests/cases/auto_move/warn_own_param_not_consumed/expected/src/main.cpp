@@ -92,6 +92,56 @@ int32_t loop_consume(Box&& b, const std::vector<int32_t>& items) {
     return b.value;
 }
 
+// # Warning: match -- consumed on one arm, wildcard only borrows
+// def match_partial_arm(b: Own[Box], x: Int32) -> Int32:  # tpyc: warning(/never consumed/)
+int32_t match_partial_arm(Box&& b, int32_t x) {
+    //     result: Int32 = 0
+    int32_t result = 0;
+    //     match x:
+    auto& __match_subject = x;
+    switch (__match_subject) {
+    //         case 1:
+    case 1: {
+        //             h = Holder(b)
+        Holder h = Holder(std::move(b));
+        //             result = h.item.value
+        result = h.item.value;
+        break;
+    }
+    //         case _:
+    default: {
+        //             result = b.value
+        result = b.value;
+        break;
+    }
+    }
+    //     return result
+    return result;
+}
+
+// # No warning: match -- consumed on all arms (auto-move now works in match)
+// def match_all_arms(b: Own[Box], x: Int32) -> Int32:  # tpyc: ok
+int32_t match_all_arms(Box&& b, int32_t x) {
+    //     match x:
+    auto& __match_subject = x;
+    switch (__match_subject) {
+    //         case 1:
+    case 1: {
+        //             return forward(b)
+        return forward(std::move(b));
+        break;
+    }
+    //         case _:
+    default: {
+        //             h = Holder(b)
+        Holder h = Holder(std::move(b));
+        //             return h.item.value
+        return h.item.value;
+        break;
+    }
+    }
+}
+
 // def main() -> None:
 void main() {
     //     print(borrow_only(Box(1)))
@@ -113,6 +163,10 @@ void main() {
     //     print(loop_consume(Box(9), [1]))
     std::vector<int32_t> __tmp_1 = {1};
     std::cout << loop_consume(Box(9), __tmp_1) << "\n";
+    //     print(match_partial_arm(Box(10), 1))
+    std::cout << match_partial_arm(Box(10), 1) << "\n";
+    //     print(match_all_arms(Box(11), 2))
+    std::cout << match_all_arms(Box(11), 2) << "\n";
 }
 
 void __tpy_init() {

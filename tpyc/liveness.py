@@ -18,7 +18,7 @@ from __future__ import annotations
 from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
     TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyAssert,
-    TpyExprStmt, TpyRaiseStopIteration,
+    TpyExprStmt, TpyRaiseStopIteration, TpyMatch,
     TpyName, TpyCall, TpyMethodCall, TpyBinOp, TpyChainedCompare, TpyUnaryOp,
     TpyTypeParamConstruct,
     TpyFieldAccess, TpySubscript, TpyArrayLiteral, TpyListRepeat,
@@ -160,6 +160,9 @@ def _stmts_terminate(stmts: list[TpyStmt]) -> bool:
     if isinstance(last, TpyIf):
         return (_stmts_terminate(last.then_body)
                 and _stmts_terminate(last.else_body))
+    if isinstance(last, TpyMatch):
+        return (bool(last.cases)
+                and all(_stmts_terminate(case.body) for case in last.cases))
     return False
 
 
@@ -198,6 +201,9 @@ def _analyze_stmt(
 
     if isinstance(stmt, TpyIf):
         _analyze_if(stmt, live, last_uses, source_aliases, detached_aliases)
+
+    elif isinstance(stmt, TpyMatch):
+        _analyze_match(stmt, live, last_uses, source_aliases, detached_aliases)
 
     elif isinstance(stmt, TpyWhile):
         _analyze_while(stmt, live, last_uses, source_aliases, detached_aliases)
@@ -301,6 +307,30 @@ def _analyze_if(
 
     # Process condition reads (evaluated before either branch)
     _process_reads(stmt.condition, live, last_uses, source_aliases, detached_aliases)
+
+
+def _analyze_match(
+    stmt: TpyMatch,
+    live: set[str],
+    last_uses: set[int],
+    source_aliases: _Aliases,
+    detached_aliases: set[str],
+) -> None:
+    """Analyze match/case with per-arm branch merging (same as if/else)."""
+    merged_live: set[str] = set()
+    for case in stmt.cases:
+        arm_terminates = _stmts_terminate(case.body)
+        arm_live = set() if arm_terminates else live.copy()
+        _analyze_stmts_backward(case.body, arm_live, last_uses, source_aliases, detached_aliases)
+        # Guard expression reads
+        if case.guard is not None:
+            _process_reads(case.guard, arm_live, last_uses, source_aliases, detached_aliases)
+        merged_live.update(arm_live)
+
+    live.clear()
+    live.update(merged_live)
+    # Subject expression reads
+    _process_reads(stmt.subject, live, last_uses, source_aliases, detached_aliases)
 
 
 def _analyze_while(
@@ -408,6 +438,21 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
         live.clear()
         live.update(live_then | live_else)
         for node in _collect_reads_expr(stmt.condition):
+            live.add(node.name)
+
+    elif isinstance(stmt, TpyMatch):
+        merged: set[str] = set()
+        for case in stmt.cases:
+            arm_terminates = _stmts_terminate(case.body)
+            arm_live = set() if arm_terminates else live.copy()
+            _compute_live_only(case.body, arm_live)
+            if case.guard is not None:
+                for node in _collect_reads_expr(case.guard):
+                    arm_live.add(node.name)
+            merged.update(arm_live)
+        live.clear()
+        live.update(merged)
+        for node in _collect_reads_expr(stmt.subject):
             live.add(node.name)
 
     elif isinstance(stmt, TpyWhile):

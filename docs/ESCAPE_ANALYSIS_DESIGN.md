@@ -9,6 +9,7 @@
 | 5 | Ptr `is not None` narrowing | S | Done | [5](#5-ptr-narrowing-after-is-not-none) |
 | 7a | `@pure` annotation (trusted, no enforcement) | S | Done | [7](#7-pure-annotation) |
 | 10a | Send/Sync auto-derivation (markers only) | S | Done | [10](#10-thread-safety-sendsync) |
+| 4a | Match arm liveness (`analyze_last_uses` for `match` statements) | S | Done | [4](#4-liveness-analysis) |
 
 ### Phase 2: Intra-Function Borrow Checking
 
@@ -209,6 +210,8 @@ Key features relevant to borrow checking:
   iterations (up to 4 passes).
 - **Branch merging**: If/else uses union (conservative -- live if used in either path).
 - **Termination detection**: `return`/`break`/`raise` clear the live set.
+- **Match arms**: Each arm is treated as an independent branch (like if/else).
+  A variable used in only one arm is recognized as last-use within that arm.
 
 This analysis is a foundation for borrow checking -- it already answers "is variable X
 alive at program point P?" and handles aliasing. The borrow checker extends this with
@@ -984,6 +987,17 @@ Borrow checking makes `@noalloc` more useful. In `@noalloc` functions:
 `Own[T]` in a return position means "this is a fresh value, not a borrow." The borrow
 checker uses this: `return Own[T](...)` creates no borrow relationship at the call
 site. `return x` (without Own) might borrow from a parameter.
+
+`Own[T]` parameters use `T&&` in C++ (rvalue reference) for non-value types, enabling
+zero-cost ownership transfer without move constructor overhead. Value types use `T` by
+value (copy == move). Generic `Own[T]` with function-level type params uses
+`std::type_identity_t<T>&&` to prevent forwarding-reference deduction; class-level
+type params use plain `T&&`.
+
+The compiler warns when an `Own[T]` param is never consumed (not stored in a field,
+forwarded to another `Own[T]`, or returned). This is tracked flow-sensitively:
+consumption must occur on all non-terminated paths through if/else branches, match
+arms, and loops.
 
 ### Move Semantics
 

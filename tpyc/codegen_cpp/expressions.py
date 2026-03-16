@@ -275,8 +275,7 @@ class ExpressionGenerator:
             return self.gen_expr(arg)
         arg_expr = self.gen_expr_deref(arg)
         # Record constructors are prvalues — already an rvalue, no copy needed
-        call_func = getattr(arg, 'func', None)
-        if call_func and self.ctx.analyzer.registry.get_record(call_func):
+        if isinstance(arg, TpyCall) and self.ctx.analyzer.registry.get_record(arg.func):
             return arg_expr
         return f"{arg_type.to_cpp()}({arg_expr})"
 
