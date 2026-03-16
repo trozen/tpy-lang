@@ -155,7 +155,10 @@ _DIRECTIVE_SPECS: dict[str, tuple[list[type], dict[str, type]]] = {
     "native_module": ([], {}),
     "include":       ([str], {}),
     "link":          ([str], {"platform": str}),
+    "cpp_namespace": ([str], {}),
 }
+
+_CPP_NAMESPACE_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*(::[A-Za-z_][A-Za-z0-9_]*)*$')
 
 
 def _parse_directive_call(content: str) -> tuple[str, list, dict] | None:
@@ -214,6 +217,7 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
     includes: list[str] = []
     link_libs: list[tuple[str, str | None]] = []
     native_module = False
+    cpp_namespace: str | None = None
     warnings: list[ParseWarning] = []
 
     preamble_ended = False
@@ -252,8 +256,19 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
             includes.append(args[0])
         elif name == "link":
             link_libs.append((args[0], kwargs.get("platform")))
+        elif name == "cpp_namespace":
+            ns_value = args[0]
+            if not _CPP_NAMESPACE_RE.match(ns_value):
+                warnings.append(ParseWarning(
+                    f"invalid namespace: {ns_value!r} (must be valid C++ namespace like 'foo::bar')", loc))
+                continue
+            if cpp_namespace is not None:
+                warnings.append(ParseWarning(
+                    f"duplicate 'cpp_namespace' directive (previous: {cpp_namespace!r})", loc))
+            cpp_namespace = ns_value
 
-    return ModuleDirectives(includes=includes, link_libs=link_libs, native_module=native_module), warnings
+    return ModuleDirectives(includes=includes, link_libs=link_libs, native_module=native_module,
+                            cpp_namespace=cpp_namespace), warnings
 
 
 def _collect_bitor_arms(node: ast.BinOp) -> list[ast.expr]:

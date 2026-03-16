@@ -11,6 +11,8 @@ namespace tpy_user::main {
 // # tpy: include(42)
 // # tpyc: warning(/unknown keyword/)
 // # tpy: link("x", bad_kw="y")
+// # tpyc: warning(/invalid namespace/)
+// # tpy: cpp_namespace("1bad-ns")
 // def main() -> None:
 void main() {
     //     pass

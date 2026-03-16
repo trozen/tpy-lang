@@ -728,7 +728,7 @@ Directives must appear in the file preamble (before any code). Unknown directive
 malformed arguments produce warnings. The parser uses Python's `ast.literal_eval` for
 argument parsing (call-style syntax).
 
-Remaining: `default-int` per-module override, `range-check` toggle, `namespace` override.
+Remaining: `default-int` per-module override, `range-check` toggle.
 
 **Dependencies**: None (pure infrastructure). Enables many other features.
 

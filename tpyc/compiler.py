@@ -21,7 +21,7 @@ from .sema import SemanticAnalyzer, SemanticError, DiagnosticLevel
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names
 from .codegen_cpp import CodeGenerator, CodeGenOptions
-from .codegen_cpp.context import module_to_cpp_namespace
+from .codegen_cpp.context import module_to_cpp_namespace, set_namespace_map, clear_namespace_map
 from .typesys import TpyType, INT32, INT64, BIGINT, clear_all_compilation_state
 
 if TYPE_CHECKING:
@@ -310,6 +310,7 @@ class Compiler:
             SemanticError: If semantic analysis fails.
         """
         clear_all_compilation_state()
+        clear_namespace_map()  # separate from clear_all_compilation_state (lives in codegen)
 
         if self._source_input is not None:
             source, entry_name = self._source_input
@@ -330,6 +331,7 @@ class Compiler:
             else:
                 self.compile_order = [entry_name]
 
+            set_namespace_map(self._build_namespace_map())
             for name in self.compile_order:
                 self._analyze_module(self.modules[name])
             return [self.modules[name] for name in self.compile_order]
@@ -342,7 +344,10 @@ class Compiler:
         # 2. Compute compilation order (topological sort)
         self._compute_compile_order()
 
-        # 3. Parse and analyze in dependency order
+        # 3. Build namespace map from # tpy: namespace directives
+        set_namespace_map(self._build_namespace_map())
+
+        # 4. Parse and analyze in dependency order
         for module_name in self.compile_order:
             compiled = self.modules[module_name]
             self._analyze_module(compiled)
@@ -899,6 +904,46 @@ class Compiler:
             reexported_variables=compiled.exports.reexported_variables,
             reexported_enums=compiled.exports.reexported_enums
         )
+
+    def _build_namespace_map(self) -> dict[str, str]:
+        """Build module_name -> C++ namespace mapping from # tpy: namespace directives.
+
+        Rules:
+        - Direct directive: module uses the specified namespace as-is.
+        - Package inheritance: if __init__.py has a directive, child modules
+          use "parent_ns::relative_child" (most-specific parent wins).
+        - No directive: default "tpy_user::module_name".
+        """
+        # Collect direct namespace overrides
+        direct: dict[str, str] = {}
+        # Package-level overrides (from __init__.py) propagate to children
+        package_overrides: dict[str, str] = {}
+        for name, compiled in self.modules.items():
+            ns = compiled.ast.directives.cpp_namespace
+            if ns is not None:
+                direct[name] = ns
+                if compiled.is_package_init:
+                    package_overrides[name] = ns
+
+        ns_map: dict[str, str] = {}
+        for name in self.modules:
+            if name in direct:
+                ns_map[name] = direct[name]
+                continue
+
+            # Walk up parent packages (most specific __init__.py first)
+            parts = name.split('.')
+            resolved = None
+            for i in range(len(parts) - 1, 0, -1):
+                parent = '.'.join(parts[:i])
+                if parent in package_overrides:
+                    relative = '::'.join(parts[i:])
+                    resolved = f"{package_overrides[parent]}::{relative}"
+                    break
+
+            ns_map[name] = resolved or f"tpy_user::{name.replace('.', '::')}"
+
+        return ns_map
 
     def collect_link_flags(self) -> list[str]:
         """Collect -l linker flags from all compiled modules' link directives.

@@ -4453,12 +4453,14 @@ Compiler directives are special comments that must appear in the file preamble (
 # tpy: link("SDL2")                    # add -lSDL2 linker flag
 # tpy: link("m", platform="linux")     # platform-filtered: only link on Linux
 # tpy: native_module                   # binding-only module (no .cpp generated)
+# tpy: cpp_namespace("myproject::core") # override C++ namespace
 ```
 
 **Directives:**
 - **`include(path)`** -- adds a C/C++ `#include` to the generated header. Quoted paths use `#include "..."`, angle-bracket paths (`<...>`) use `#include <...>`.
 - **`link(lib)` / `link(lib, platform=name)`** -- adds `-llib` linker flag. Optional `platform` filter: `"linux"`, `"macos"`, `"windows"`.
 - **`native_module`** -- marks the module as binding-only: only a `.hpp` header is generated (no `.cpp`). Use for modules that only declare `@native_c` function bindings.
+- **`cpp_namespace(name)`** -- overrides the C++ namespace for the module (replaces the default `tpy_user::module_name`). In `__init__.py`, child modules inherit the namespace with their relative name appended (e.g., `cpp_namespace("mypkg")` in `__init__.py` makes `pkg/foo.py` use `mypkg::foo`).
 
 Unknown directives produce a warning. Directives after the first line of code produce a warning and are ignored.
 

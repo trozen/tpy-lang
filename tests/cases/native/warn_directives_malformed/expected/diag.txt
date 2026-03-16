@@ -1,3 +1,4 @@
 main.py:3: warning: 'include' expects 1 positional argument(s), got 0
 main.py:5: warning: 'include' argument 1 must be a str
 main.py:7: warning: 'link' unknown keyword arguments: ['bad_kw']
+main.py:9: warning: invalid namespace: '1bad-ns' (must be valid C++ namespace like 'foo::bar')
