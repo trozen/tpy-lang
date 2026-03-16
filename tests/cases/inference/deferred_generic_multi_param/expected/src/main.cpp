@@ -4,27 +4,27 @@
 namespace tpy_user::main {
 
 
-// 21: def main() -> None:
+// def main() -> None:
 void main() {
-    // 22:     # Incremental resolution: set_a then set_b
-    // 23:     p1 = Pair()  # tpyc: type(/Pair\[Int32, Int64\]/)
+    //     # Incremental resolution: set_a then set_b
+    //     p1 = Pair()  # tpyc: type(/Pair\[Int32, Int64\]/)
     Pair<int32_t, int64_t> p1 = Pair<int32_t, int64_t>();
-    // 24:     p1.set_a(Int32(10))   # T = Int32, U still unknown
+    //     p1.set_a(Int32(10))   # T = Int32, U still unknown
     p1.set_a(10);
-    // 25:     p1.set_b(Int64(20))   # U = Int64, all resolved -> Pair[Int32, Int64]
+    //     p1.set_b(Int64(20))   # U = Int64, all resolved -> Pair[Int32, Int64]
     p1.set_b(20);
-    // 26:     print(p1.get_a())
+    //     print(p1.get_a())
     std::cout << p1.get_a() << "\n";
-    // 27:     print(p1.get_b())
+    //     print(p1.get_b())
     std::cout << p1.get_b() << "\n";
-    // 29:     # Single-call resolution: set_both resolves T and U at once
-    // 30:     p2 = Pair()  # tpyc: type(/Pair\[Int32, Int64\]/)
+    //     # Single-call resolution: set_both resolves T and U at once
+    //     p2 = Pair()  # tpyc: type(/Pair\[Int32, Int64\]/)
     Pair<int32_t, int64_t> p2 = Pair<int32_t, int64_t>();
-    // 31:     p2.set_both(Int32(1), Int64(2))
+    //     p2.set_both(Int32(1), Int64(2))
     p2.set_both(1, 2);
-    // 32:     print(p2.get_a())
+    //     print(p2.get_a())
     std::cout << p2.get_a() << "\n";
-    // 33:     print(p2.get_b())
+    //     print(p2.get_b())
     std::cout << p2.get_b() << "\n";
 }
 
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 35: main()
+    // main()
     main();
 }
 

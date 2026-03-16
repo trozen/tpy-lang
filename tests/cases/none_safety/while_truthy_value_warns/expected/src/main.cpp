@@ -4,14 +4,14 @@
 namespace tpy_user::main {
 
 
-// 4: def reduce_to_zero(x: Int32 | None) -> Int32:
+// def reduce_to_zero(x: Int32 | None) -> Int32:
 int32_t reduce_to_zero(std::optional<int32_t> x) {
-    // 5:     while x:  # tpyc: warning(/Truthiness check on optional value/)
+    //     while x:  # tpyc: warning(/Truthiness check on optional value/)
     while (tpy::is_truthy(x)) {
-        // 6:         x = x - 1  # tpyc: ok
+        //         x = x - 1  # tpyc: ok
         x = (tpy::sub_check<int32_t>((*x), 1));
     }
-    // 7:     return 0
+    //     return 0
     return 0;
 }
 
@@ -20,11 +20,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 10: print(reduce_to_zero(2))
+    // print(reduce_to_zero(2))
     std::cout << reduce_to_zero(2) << "\n";
-    // 11: print(reduce_to_zero(0))
+    // print(reduce_to_zero(0))
     std::cout << reduce_to_zero(0) << "\n";
-    // 12: print(reduce_to_zero(None))
+    // print(reduce_to_zero(None))
     std::cout << reduce_to_zero(std::nullopt) << "\n";
 }
 

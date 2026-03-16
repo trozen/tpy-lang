@@ -12,12 +12,12 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t read_box(const Box& b);
 void main();
 
-// 4: class Box:
+// class Box:
 struct Box {
-    // 5:     items: Span[Int32]
+    //     items: Span[Int32]
     std::span<int32_t> items;
 
-    // 6:     def __init__(self, items: Span[Int32]) -> None:
+    //     def __init__(self, items: Span[Int32]) -> None:
     Box() = default;
     explicit Box(std::span<int32_t> items) : items(items) {}
 };

@@ -4,24 +4,24 @@
 namespace tpy_user::main {
 
 
-// 3: def main():
+// def main():
 void main() {
-    // 4:     start = time.time()
+    //     start = time.time()
     double start = tpy::time_time();
-    // 5:     time.sleep(0.1)  # Sleep for 100ms
+    //     time.sleep(0.1)  # Sleep for 100ms
     tpy::time_sleep(0.1);
-    // 6:     end = time.time()
+    //     end = time.time()
     double end = tpy::time_time();
-    // 7:     elapsed = end - start
+    //     elapsed = end - start
     double elapsed = ((end) - (start));
-    // 8:     # Check that at least 0.05 seconds passed (allowing for timer variance)
-    // 9:     if elapsed >= 0.05:
+    //     # Check that at least 0.05 seconds passed (allowing for timer variance)
+    //     if elapsed >= 0.05:
     if ((elapsed >= 0.05)) {
-        // 10:         print("ok")
+        //         print("ok")
         std::cout << "ok" << "\n";
-    // 11:     else:
+    //     else:
     } else {
-        // 12:         print("error: sleep too short")
+        //         print("error: sleep too short")
         std::cout << "error: sleep too short" << "\n";
     }
 }
@@ -31,9 +31,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: import time
+    // import time
     ::tpy_user::time::__tpy_init();
-    // 14: main()
+    // main()
     main();
 }
 

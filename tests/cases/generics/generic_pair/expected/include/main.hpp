@@ -11,27 +11,27 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 3: class Pair[A, B]:
+// class Pair[A, B]:
 template<typename A, typename B>
 struct Pair {
-    // 4:     first: A
+    //     first: A
     A first;
-    // 5:     second: B
+    //     second: B
     B second;
 
-    // 7:     def __init__(self, first: A, second: B) -> None:
+    //     def __init__(self, first: A, second: B) -> None:
     Pair() = default;
     explicit Pair(const A& first, const B& second) : first(first), second(second) {}
 
-    // 11:     def get_first(self) -> A:
+    //     def get_first(self) -> A:
     tpy::val_or_ref_t<A> get_first() {
-        // 12:         return self.first
+        //         return self.first
         return this->first;
     }
 
-    // 14:     def get_second(self) -> B:
+    //     def get_second(self) -> B:
     tpy::val_or_ref_t<B> get_second() {
-        // 15:         return self.second
+        //         return self.second
         return this->second;
     }
 };

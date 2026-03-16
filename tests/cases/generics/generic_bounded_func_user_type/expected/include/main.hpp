@@ -13,18 +13,18 @@ template<tpy::Sized T>
 int32_t get_length(tpy::param_val_or_ref_t<T> item);
 void main();
 
-// 6: class MyContainer:
+// class MyContainer:
 struct MyContainer {
-    // 7:     data: list[Int32]
+    //     data: list[Int32]
     std::vector<int32_t> data;
 
-    // 9:     def __init__(self, items: list[Int32]) -> None:
+    //     def __init__(self, items: list[Int32]) -> None:
     MyContainer() = default;
     explicit MyContainer(const std::vector<int32_t>& items) : data(items) {}
 
-    // 12:     def __len__(self) -> Int32:
+    //     def __len__(self) -> Int32:
     int32_t __len__() const {
-        // 13:         return len(self.data)
+        //         return len(self.data)
         return tpy::__len__(this->data);
     }
 
@@ -42,12 +42,12 @@ inline std::ostream& operator<<(std::ostream& os, const MyContainer& obj) {
     return os;
 }
 
-// 15: def get_length[T: Sized](item: T) -> Int32:
+// def get_length[T: Sized](item: T) -> Int32:
 template<tpy::Sized T>
 int32_t get_length(tpy::param_val_or_ref_t<T> item) {
-    // 16:     # Note: Can't call len(item) here yet - returning fixed value
-    // 17:     # This tests that the bound is validated during inference
-    // 18:     return 42
+    //     # Note: Can't call len(item) here yet - returning fixed value
+    //     # This tests that the bound is validated during inference
+    //     return 42
     return 42;
 }
 

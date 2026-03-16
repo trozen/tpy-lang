@@ -4,79 +4,79 @@
 namespace tpy_user::main {
 
 
-// 4: def abs_val(x: Int32) -> Int32:
+// def abs_val(x: Int32) -> Int32:
 int32_t abs_val(int32_t x) {
-    // 5:     return x if x >= 0 else -x
+    //     return x if x >= 0 else -x
     return (((x >= 0)) ? (x) : (tpy::neg_check<int32_t>(x)));
 }
 
-// 7: def max_val(a: Int32, b: Int32) -> Int32:
+// def max_val(a: Int32, b: Int32) -> Int32:
 int32_t max_val(int32_t a, int32_t b) {
-    // 8:     return a if a > b else b
+    //     return a if a > b else b
     return (((a > b)) ? (a) : (b));
 }
 
-// 10: def clamp(x: Int32, lo: Int32, hi: Int32) -> Int32:
+// def clamp(x: Int32, lo: Int32, hi: Int32) -> Int32:
 int32_t clamp(int32_t x, int32_t lo, int32_t hi) {
-    // 11:     # Nested ternary
-    // 12:     return lo if x < lo else (hi if x > hi else x)
+    //     # Nested ternary
+    //     return lo if x < lo else (hi if x > hi else x)
     return (((x < lo)) ? (lo) : ((((x > hi)) ? (hi) : (x))));
 }
 
-// 14: def greet(formal: bool) -> str:
+// def greet(formal: bool) -> str:
 std::string greet(bool formal) {
-    // 15:     return "Good day" if formal else "Hey"
+    //     return "Good day" if formal else "Hey"
     return std::string(((formal) ? ("Good day") : ("Hey")));
 }
 
-// 17: def describe(x: Int32) -> str:
+// def describe(x: Int32) -> str:
 std::string describe(int32_t x) {
-    // 18:     label: str = "positive" if x > 0 else "non-positive"
+    //     label: str = "positive" if x > 0 else "non-positive"
     std::string_view label = (((x > 0)) ? ("positive") : ("non-positive"));
-    // 19:     return label
+    //     return label
     return std::string(label);
 }
 
-// 21: def main() -> None:
+// def main() -> None:
 void main() {
-    // 22:     # Basic ternary
-    // 23:     print(abs_val(5))
+    //     # Basic ternary
+    //     print(abs_val(5))
     std::cout << abs_val(5) << "\n";
-    // 24:     print(abs_val(-3))
+    //     print(abs_val(-3))
     std::cout << abs_val(-3) << "\n";
-    // 26:     # Ternary as function return
-    // 27:     print(max_val(10, 20))
+    //     # Ternary as function return
+    //     print(max_val(10, 20))
     std::cout << max_val(10, 20) << "\n";
-    // 28:     print(max_val(30, 15))
+    //     print(max_val(30, 15))
     std::cout << max_val(30, 15) << "\n";
-    // 30:     # Nested ternary
-    // 31:     print(clamp(-5, 0, 10))
+    //     # Nested ternary
+    //     print(clamp(-5, 0, 10))
     std::cout << clamp(-5, 0, 10) << "\n";
-    // 32:     print(clamp(5, 0, 10))
+    //     print(clamp(5, 0, 10))
     std::cout << clamp(5, 0, 10) << "\n";
-    // 33:     print(clamp(15, 0, 10))
+    //     print(clamp(15, 0, 10))
     std::cout << clamp(15, 0, 10) << "\n";
-    // 35:     # Ternary with strings
-    // 36:     print(greet(True))
+    //     # Ternary with strings
+    //     print(greet(True))
     std::cout << greet(true) << "\n";
-    // 37:     print(greet(False))
+    //     print(greet(False))
     std::cout << greet(false) << "\n";
-    // 39:     # Ternary in assignment
-    // 40:     print(describe(1))
+    //     # Ternary in assignment
+    //     print(describe(1))
     std::cout << describe(1) << "\n";
-    // 41:     print(describe(-1))
+    //     print(describe(-1))
     std::cout << describe(-1) << "\n";
-    // 43:     # Ternary as function argument
-    // 44:     x: Int32 = 7
+    //     # Ternary as function argument
+    //     x: Int32 = 7
     int32_t x = 7;
-    // 45:     print(x if x > 5 else 0)
+    //     print(x if x > 5 else 0)
     std::cout << (((x > 5)) ? (x) : (0)) << "\n";
-    // 47:     # Ternary with bool condition variable
-    // 48:     flag: bool = True
+    //     # Ternary with bool condition variable
+    //     flag: bool = True
     bool flag = true;
-    // 49:     val: Int32 = 100 if flag else 200
+    //     val: Int32 = 100 if flag else 200
     int32_t val = ((flag) ? (100) : (200));
-    // 50:     print(val)
+    //     print(val)
     std::cout << val << "\n";
 }
 
@@ -85,7 +85,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 52: main()
+    // main()
     main();
 }
 

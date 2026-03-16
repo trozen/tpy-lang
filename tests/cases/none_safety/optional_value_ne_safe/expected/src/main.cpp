@@ -4,9 +4,9 @@
 namespace tpy_user::main {
 
 
-// 4: def ne_check(x: Int32 | None, y: Int32) -> bool:
+// def ne_check(x: Int32 | None, y: Int32) -> bool:
 bool ne_check(std::optional<int32_t> x, int32_t y) {
-    // 5:     return x != y  # tpyc: ok
+    //     return x != y  # tpyc: ok
     return (x != y);
 }
 
@@ -15,11 +15,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: print(ne_check(5, 5))
+    // print(ne_check(5, 5))
     std::cout << tpy::print_bool(ne_check(5, 5)) << "\n";
-    // 9: print(ne_check(3, 5))
+    // print(ne_check(3, 5))
     std::cout << tpy::print_bool(ne_check(3, 5)) << "\n";
-    // 10: print(ne_check(None, 5))
+    // print(ne_check(None, 5))
     std::cout << tpy::print_bool(ne_check(std::nullopt, 5)) << "\n";
 }
 

@@ -8,18 +8,18 @@ namespace tpy_user::main {
 
 // # Test 1: Int32 returned where stub says -> int, union has float first
 // @overload
-// 24: def get_val(obj: A) -> int: ...  # tpyc: ok
+// def get_val(obj: A) -> int: ...  # tpyc: ok
 tpy::BigInt get_val(const A& obj) {
-    // 30:     if isinstance(obj, A):
-    // 31:         return obj.x  # Int32, stub -> int (not float)
+    //     if isinstance(obj, A):
+    //         return obj.x  # Int32, stub -> int (not float)
     return obj.x;
 }
 
 // @overload
-// 27: def get_val(obj: B) -> float: ...  # tpyc: ok
+// def get_val(obj: B) -> float: ...  # tpyc: ok
 double get_val(const B& obj) {
-    // 30:     if isinstance(obj, A):
-    // 33:         return obj.y
+    //     if isinstance(obj, A):
+    //         return obj.y
     return obj.y;
 }
 
@@ -28,18 +28,18 @@ double get_val(const B& obj) {
 
 // # Test 2: Int64 returned where stub says -> int, union has float first
 // @overload
-// 37: def get_big(obj: C) -> int: ...  # tpyc: ok
+// def get_big(obj: C) -> int: ...  # tpyc: ok
 tpy::BigInt get_big(const C& obj) {
-    // 43:     if isinstance(obj, C):
-    // 44:         return obj.z  # Int64, stub -> int (not float)
+    //     if isinstance(obj, C):
+    //         return obj.z  # Int64, stub -> int (not float)
     return obj.z;
 }
 
 // @overload
-// 40: def get_big(obj: B) -> float: ...  # tpyc: ok
+// def get_big(obj: B) -> float: ...  # tpyc: ok
 double get_big(const B& obj) {
-    // 43:     if isinstance(obj, C):
-    // 46:         return obj.y
+    //     if isinstance(obj, C):
+    //         return obj.y
     return obj.y;
 }
 
@@ -48,18 +48,18 @@ double get_big(const B& obj) {
 
 // # Test 3: Int32 returned where stub says -> Int64, union has float first
 // @overload
-// 50: def get_wide(obj: A) -> Int64: ...  # tpyc: ok
+// def get_wide(obj: A) -> Int64: ...  # tpyc: ok
 int64_t get_wide(const A& obj) {
-    // 56:     if isinstance(obj, A):
-    // 57:         return obj.x  # Int32, stub -> Int64 (not float)
+    //     if isinstance(obj, A):
+    //         return obj.x  # Int32, stub -> Int64 (not float)
     return obj.x;
 }
 
 // @overload
-// 53: def get_wide(obj: B) -> float: ...  # tpyc: ok
+// def get_wide(obj: B) -> float: ...  # tpyc: ok
 double get_wide(const B& obj) {
-    // 56:     if isinstance(obj, A):
-    // 59:         return obj.y
+    //     if isinstance(obj, A):
+    //         return obj.y
     return obj.y;
 }
 
@@ -68,46 +68,46 @@ double get_wide(const B& obj) {
 
 // # Test 4: Int32 returned where stub says -> float, union has int first
 // @overload
-// 63: def get_cast(obj: A) -> float: ...  # tpyc: ok
+// def get_cast(obj: A) -> float: ...  # tpyc: ok
 double get_cast(const A& obj) {
-    // 69:     if isinstance(obj, A):
-    // 70:         return obj.x  # Int32, stub -> float (not int)
+    //     if isinstance(obj, A):
+    //         return obj.x  # Int32, stub -> float (not int)
     return obj.x;
 }
 
 // @overload
-// 66: def get_cast(obj: C) -> int: ...  # tpyc: ok
+// def get_cast(obj: C) -> int: ...  # tpyc: ok
 tpy::BigInt get_cast(const C& obj) {
-    // 69:     if isinstance(obj, A):
-    // 72:         return obj.z
+    //     if isinstance(obj, A):
+    //         return obj.z
     return obj.z;
 }
 
 
-// 74: def main() -> None:
+// def main() -> None:
 void main() {
-    // 75:     a = A(Int32(42))
+    //     a = A(Int32(42))
     A a = A(42);
-    // 76:     b = B(3.14)
+    //     b = B(3.14)
     B b = B(3.14);
-    // 77:     c = C(Int64(100))
+    //     c = C(Int64(100))
     C c = C(100);
-    // 79:     print(get_val(a))
+    //     print(get_val(a))
     std::cout << get_val(a) << "\n";
-    // 80:     print(get_val(b))
+    //     print(get_val(b))
     std::cout << tpy::print_float(get_val(b)) << "\n";
-    // 81:     print(get_big(c))
+    //     print(get_big(c))
     std::cout << get_big(c) << "\n";
-    // 82:     print(get_big(b))
+    //     print(get_big(b))
     std::cout << tpy::print_float(get_big(b)) << "\n";
-    // 83:     print(get_wide(a))
+    //     print(get_wide(a))
     std::cout << get_wide(a) << "\n";
-    // 84:     print(get_wide(b))
+    //     print(get_wide(b))
     std::cout << tpy::print_float(get_wide(b)) << "\n";
-    // 85:     # int() normalizes output: TPy returns float (via stub), CPython returns Int32
-    // 86:     print(int(get_cast(a)))
+    //     # int() normalizes output: TPy returns float (via stub), CPython returns Int32
+    //     print(int(get_cast(a)))
     std::cout << tpy::BigInt::from_float(get_cast(a)) << "\n";
-    // 87:     print(get_cast(c))
+    //     print(get_cast(c))
     std::cout << get_cast(c) << "\n";
 }
 
@@ -116,7 +116,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 89: main()
+    // main()
     main();
 }
 

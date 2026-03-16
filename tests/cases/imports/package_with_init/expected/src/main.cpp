@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> Int32:
+// def main() -> Int32:
 int32_t main() {
-    // 5:     print(CONST)
+    //     print(CONST)
     std::cout << ::tpy_user::mypackage::CONST << "\n";
-    // 6:     func()
+    //     func()
     ::tpy_user::mypackage::func();
-    // 7:     return Int32(0)
+    //     return Int32(0)
     return 0;
 }
 
@@ -19,9 +19,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: from mypackage import func, CONST
+    // from mypackage import func, CONST
     ::tpy_user::mypackage::__tpy_init();
-    // 9: main()
+    // main()
     main();
 }
 

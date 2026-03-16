@@ -4,27 +4,27 @@
 namespace tpy_user::main {
 
 
-// 4: def greet(ch: Char = 'X') -> None:
+// def greet(ch: Char = 'X') -> None:
 void greet(char ch) {
-    // 5:     print(ch)
+    //     print(ch)
     std::cout << ch << "\n";
 }
 
-// 7: def bracket(text: str, open_ch: Char = '(', close_ch: Char = ')') -> str:
+// def bracket(text: str, open_ch: Char = '(', close_ch: Char = ')') -> str:
 std::string bracket(std::string_view text, char open_ch, char close_ch) {
-    // 8:     return str(open_ch) + text + str(close_ch)
+    //     return str(open_ch) + text + str(close_ch)
     return (tpy::str_concat((tpy::str_concat(std::string(tpy::char_to_str(open_ch)), text)), std::string(tpy::char_to_str(close_ch))));
 }
 
-// 10: def main() -> None:
+// def main() -> None:
 void main() {
-    // 11:     greet()
+    //     greet()
     greet();
-    // 12:     greet('A')
+    //     greet('A')
     greet('A');
-    // 14:     print(bracket("hello"))
+    //     print(bracket("hello"))
     std::cout << bracket("hello") << "\n";
-    // 15:     print(bracket("hello", '[', ']'))
+    //     print(bracket("hello", '[', ']'))
     std::cout << bracket("hello", '[', ']') << "\n";
 }
 
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 17: main()
+    // main()
     main();
 }
 

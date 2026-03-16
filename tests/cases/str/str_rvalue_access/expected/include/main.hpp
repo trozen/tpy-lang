@@ -13,14 +13,14 @@ std::tuple<int32_t, std::string> get_tuple();
 Pair get_pair();
 void main();
 
-// 4: class Pair:
+// class Pair:
 struct Pair {
-    // 5:     first: str
+    //     first: str
     std::string first;
-    // 6:     second: str
+    //     second: str
     std::string second;
 
-    // 8:     def __init__(self, first: str, second: str) -> None:
+    //     def __init__(self, first: str, second: str) -> None:
     Pair() = default;
     explicit Pair(std::string_view first, std::string_view second) : first(first), second(second) {}
 };

@@ -4,21 +4,21 @@
 namespace tpy_user::main {
 
 
-// 23: def main() -> None:
+// def main() -> None:
 void main() {
-    // 24:     p1 = Point(1, 2)
+    //     p1 = Point(1, 2)
     Point p1 = Point(1, 2);
-    // 25:     p2 = Point(3, 4)
+    //     p2 = Point(3, 4)
     Point p2 = Point(3, 4);
-    // 26:     # Call through protocol-typed parameter
-    // 27:     add_points(p1, p2)
+    //     # Call through protocol-typed parameter
+    //     add_points(p1, p2)
     add_points(p1, p2);
-    // 29:     # Directly verify the addition works and print result
-    // 30:     p3 = p1 + p2
+    //     # Directly verify the addition works and print result
+    //     p3 = p1 + p2
     Point p3 = ((p1) + (p2));
-    // 31:     print(p3.x)
+    //     print(p3.x)
     std::cout << p3.x << "\n";
-    // 32:     print(p3.y)
+    //     print(p3.y)
     std::cout << p3.y << "\n";
 }
 
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 34: main()
+    // main()
     main();
 }
 

@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 // # Reassigning an Int32-default variable with an out-of-range literal
 // # promotes it to BigInt and emits a warning.
-// 3: x = 0
+// x = 0
 tpy::BigInt x;
 
 void __tpy_init() {
@@ -13,13 +13,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # Reassigning an Int32-default variable with an out-of-range literal
-    // 2: # promotes it to BigInt and emits a warning.
-    // 3: x = 0
+    // # Reassigning an Int32-default variable with an out-of-range literal
+    // # promotes it to BigInt and emits a warning.
+    // x = 0
     x = tpy::BigInt(0);
-    // 4: x = 2_147_483_648  # tpyc: warning(/outside default Int32 range/)
+    // x = 2_147_483_648  # tpyc: warning(/outside default Int32 range/)
     x = tpy::BigInt(static_cast<int64_t>(2147483648LL));
-    // 5: print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 

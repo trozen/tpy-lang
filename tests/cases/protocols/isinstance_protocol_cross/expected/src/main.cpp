@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 11: def main() -> None:
+// def main() -> None:
 void main() {
-    // 12:     nums: list[Int32] = [10, 20, 30]
+    //     nums: list[Int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
-    // 13:     cross_protocol(nums)
+    //     cross_protocol(nums)
     cross_protocol(nums);
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 15: main()
+    // main()
     main();
 }
 

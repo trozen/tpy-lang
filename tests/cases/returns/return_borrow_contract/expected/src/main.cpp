@@ -5,55 +5,55 @@ namespace tpy_user::main {
 
 
 // # Direct param subscript -- borrows from items (param 0)
-// 16: def get_first(items: list[Point]) -> Point:
+// def get_first(items: list[Point]) -> Point:
 Point& get_first(std::vector<Point>& items) {
-    // 17:     return items[0]  # tpyc: ok
+    //     return items[0]  # tpyc: ok
     return tpy::__getitem__(items, 0);
 }
 
 // # Direct param -- borrows from p (param 0)
-// 21: def identity(p: Point) -> Point:
+// def identity(p: Point) -> Point:
 Point& identity(Point& p) {
-    // 22:     return p  # tpyc: ok
+    //     return p  # tpyc: ok
     return p;
 }
 
 // # No borrow: returns a newly constructed value
-// 26: def make_point(x: Int32) -> Own[Point]:
+// def make_point(x: Int32) -> Own[Point]:
 Point make_point(int32_t x) {
-    // 27:     return Point(x, x)  # tpyc: ok
+    //     return Point(x, x)  # tpyc: ok
     return Point(x, x);
 }
 
-// 44: def main() -> None:
+// def main() -> None:
 void main() {
-    // 45:     pts: list[Point] = [Point(1, 2), Point(3, 4)]
+    //     pts: list[Point] = [Point(1, 2), Point(3, 4)]
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
-    // 47:     # f borrows from pts (return_borrows_from = {0})
-    // 48:     f = get_first(pts)
+    //     # f borrows from pts (return_borrows_from = {0})
+    //     f = get_first(pts)
     Point& f = get_first(pts);
-    // 49:     print(f.x)
+    //     print(f.x)
     std::cout << f.x << "\n";
-    // 51:     # q borrows from p (return_borrows_from = {0})
-    // 52:     p = Point(10, 20)
+    //     # q borrows from p (return_borrows_from = {0})
+    //     p = Point(10, 20)
     Point p = Point(10, 20);
-    // 53:     q = identity(p)
+    //     q = identity(p)
     Point& q = identity(p);
-    // 54:     print(q.x)
+    //     print(q.x)
     std::cout << q.x << "\n";
-    // 56:     # r owns its own storage (return_borrows_from = frozenset())
-    // 57:     r = make_point(Int32(5))
+    //     # r owns its own storage (return_borrows_from = frozenset())
+    //     r = make_point(Int32(5))
     Point r = make_point(5);
-    // 58:     print(r.x)
+    //     print(r.x)
     std::cout << r.x << "\n";
-    // 60:     # first borrows from c (return_borrows_from = {-1})
-    // 61:     c = Container()
+    //     # first borrows from c (return_borrows_from = {-1})
+    //     c = Container()
     Container c = Container();
-    // 62:     c.add(Point(7, 8))
+    //     c.add(Point(7, 8))
     c.add(Point(7, 8));
-    // 63:     first = c.first()
+    //     first = c.first()
     Point& first = c.first();
-    // 64:     print(first.x)
+    //     print(first.x)
     std::cout << first.x << "\n";
 }
 
@@ -62,7 +62,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 67: main()
+    // main()
     main();
 }
 

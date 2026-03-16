@@ -5,11 +5,11 @@ namespace tpy_user::main {
 
 
 // @readonly
-// 12: def build() -> Int32:
+// def build() -> Int32:
 int32_t build() {
-    // 13:     b = Box(3)
+    //     b = Box(3)
     Box b = Box(3);
-    // 14:     return b.x  # tpyc: ok
+    //     return b.x  # tpyc: ok
     return b.x;
 }
 
@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 17: print(build())
+    // print(build())
     std::cout << build() << "\n";
 }
 

@@ -4,35 +4,35 @@
 namespace tpy_user::main {
 
 
-// 19: def greet(a: Animal) -> None:
+// def greet(a: Animal) -> None:
 void greet(const Animal& a) {
-    // 20:     print(a.name)
+    //     print(a.name)
     std::cout << a.name << "\n";
 }
 
-// 22: def main() -> None:
+// def main() -> None:
 void main() {
-    // 23:     d: Dog = Dog("Rex", "Lab")
+    //     d: Dog = Dog("Rex", "Lab")
     Dog d = Dog("Rex", "Lab");
-    // 24:     # Direct upcast
-    // 25:     a: Animal = Dog("Buddy", "Poodle")
+    //     # Direct upcast
+    //     a: Animal = Dog("Buddy", "Poodle")
     Animal a = Dog("Buddy", "Poodle");
-    // 26:     print(a.name)
+    //     print(a.name)
     std::cout << a.name << "\n";
-    // 27:     # Param passing (const ref binding, no slicing)
-    // 28:     greet(d)
+    //     # Param passing (const ref binding, no slicing)
+    //     greet(d)
     greet(d);
-    // 29:     greet(Dog("Max", "Beagle"))
+    //     greet(Dog("Max", "Beagle"))
     Animal __tmp_1 = Dog("Max", "Beagle");
     greet(__tmp_1);
-    // 30:     # Multi-level upcast (grandchild -> grandparent)
-    // 31:     p: Puppy = Puppy("Tiny", "Corgi", 8)
+    //     # Multi-level upcast (grandchild -> grandparent)
+    //     p: Puppy = Puppy("Tiny", "Corgi", 8)
     Puppy p = Puppy("Tiny", "Corgi", tpy::BigInt(8));
-    // 32:     greet(p)
+    //     greet(p)
     greet(p);
-    // 33:     a2: Animal = p
+    //     a2: Animal = p
     Animal a2 = std::move(p);
-    // 34:     print(a2.name)
+    //     print(a2.name)
     std::cout << a2.name << "\n";
 }
 
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 36: main()
+    // main()
     main();
 }
 

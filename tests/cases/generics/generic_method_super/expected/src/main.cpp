@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 20: def main() -> None:
+// def main() -> None:
 void main() {
-    // 21:     c = Child[Int32](Int32(5))
+    //     c = Child[Int32](Int32(5))
     Child<int32_t> c = Child<int32_t>(5);
-    // 22:     print(c.wrap(42))
+    //     print(c.wrap(42))
     std::cout << c.wrap<int32_t>(42) << "\n";
-    // 23:     print(c.wrap("hello"))
+    //     print(c.wrap("hello"))
     std::cout << c.wrap<std::string_view>("hello") << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 25: main()
+    // main()
     main();
 }
 

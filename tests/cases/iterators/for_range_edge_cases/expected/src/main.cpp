@@ -9,65 +9,65 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: # Empty ranges -- body should never execute
-    // 4: for i in range(0):
+    // # Empty ranges -- body should never execute
+    // for i in range(0):
     for (int32_t i = 0; i < 0; ++i) {
-        // 5:     print(i)
+        //     print(i)
         std::cout << i << "\n";
     }
-    // 7: for i in range(5, 5):
+    // for i in range(5, 5):
     for (int32_t i = 5; i < 5; ++i) {
-        // 8:     print(i)
+        //     print(i)
         std::cout << i << "\n";
     }
-    // 10: for i in range(5, 0):
+    // for i in range(5, 0):
     for (int32_t i = 5; i < 0; ++i) {
-        // 11:     print(i)
+        //     print(i)
         std::cout << i << "\n";
     }
-    // 13: for i in range(0, 10, -1):
+    // for i in range(0, 10, -1):
     for (int32_t i = 0; i > 10; --i) {
-        // 14:     print(i)
+        //     print(i)
         std::cout << i << "\n";
     }
-    // 16: # Single element
-    // 17: for i in range(1):
+    // # Single element
+    // for i in range(1):
     for (int32_t i = 0; i < 1; ++i) {
-        // 18:     print(i)
+        //     print(i)
         std::cout << i << "\n";
     }
-    // 20: for i in range(3, 4):
+    // for i in range(3, 4):
     for (int32_t i = 3; i < 4; ++i) {
-        // 21:     print(i)
+        //     print(i)
         std::cout << i << "\n";
     }
-    // 23: # Negative range
-    // 24: for i in range(-3, 0):
+    // # Negative range
+    // for i in range(-3, 0):
     for (int32_t i = -3; i < 0; ++i) {
-        // 25:     print(i)
+        //     print(i)
         std::cout << i << "\n";
     }
-    // 27: # Large step that overshoots
-    // 28: for i in range(0, 10, 100):
+    // # Large step that overshoots
+    // for i in range(0, 10, 100):
     tpy::range_check_overflow<int32_t>(0, 10, 100);
     for (int32_t i = 0; i < 10; i += 100) {
-        // 29:     print(i)
+        //     print(i)
         std::cout << i << "\n";
     }
-    // 31: for i in range(10, 0, -100):
+    // for i in range(10, 0, -100):
     tpy::range_check_overflow<int32_t>(10, 0, -100);
     for (int32_t i = 10; i > 0; i += -100) {
-        // 32:     print(i)
+        //     print(i)
         std::cout << i << "\n";
     }
-    // 34: # Compound expression -- constant-folded to Int32
-    // 35: for i in range(1 + 2):
+    // # Compound expression -- constant-folded to Int32
+    // for i in range(1 + 2):
     int32_t __stop_9 = tpy::add_check<int32_t>(1, 2);
     for (int32_t i = 0; i < __stop_9; ++i) {
-        // 36:     print(i)
+        //     print(i)
         std::cout << i << "\n";
     }
-    // 38: print("done")
+    // print("done")
     std::cout << "done" << "\n";
 }
 

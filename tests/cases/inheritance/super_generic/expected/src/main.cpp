@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # Test with generic parent
-// 25: lc = LabeledContainer("count", 42)
+// lc = LabeledContainer("count", 42)
 LabeledContainer* lc{};
 
 void __tpy_init() {
@@ -12,15 +12,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 24: # Test with generic parent
-    // 25: lc = LabeledContainer("count", 42)
+    // # Test with generic parent
+    // lc = LabeledContainer("count", 42)
     static LabeledContainer __global_slot_1 = LabeledContainer("count", 42);
     lc = &__global_slot_1;
-    // 26: print(lc.label)
+    // print(lc.label)
     std::cout << lc->label << "\n";
-    // 27: print(lc.get())
+    // print(lc.get())
     std::cout << lc->get() << "\n";
-    // 28: print(lc.describe())
+    // print(lc.describe())
     std::cout << lc->describe() << "\n";
 }
 

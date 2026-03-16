@@ -4,14 +4,14 @@
 namespace tpy_user::main {
 
 
-// 20: def main() -> None:
+// def main() -> None:
 void main() {
-    // 21:     c = MyContainer([1, 2, 3, 4, 5])
+    //     c = MyContainer([1, 2, 3, 4, 5])
     MyContainer c = MyContainer({1, 2, 3, 4, 5});
-    // 22:     # MyContainer satisfies Sized, so inference should work
-    // 23:     result = get_length(c)
+    //     # MyContainer satisfies Sized, so inference should work
+    //     result = get_length(c)
     int32_t result = get_length<MyContainer>(c);
-    // 24:     print(result)
+    //     print(result)
     std::cout << result << "\n";
 }
 
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 26: main()
+    // main()
     main();
 }
 

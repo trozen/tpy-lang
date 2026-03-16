@@ -4,20 +4,20 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     t = (Int32(42), "hello")
+    //     t = (Int32(42), "hello")
     std::tuple<int32_t, std::string> t = std::tuple<int32_t, std::string>{42, "hello"};
-    // 6:     a, b = t
+    //     a, b = t
     const auto& __tup_1 = t;
     int32_t a = std::get<0>(__tup_1);
     std::string_view b = std::get<1>(__tup_1);
-    // 7:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 8:     print(b)
+    //     print(b)
     std::cout << b << "\n";
-    // 10:     # Original variable still usable after unpack
-    // 11:     print(t)
+    //     # Original variable still usable after unpack
+    //     print(t)
     std::cout << tpy::TuplePrinter(t) << "\n";
 }
 
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 13: main()
+    // main()
     main();
 }
 

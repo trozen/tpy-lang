@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-// 4: class Addable(Protocol):
+// class Addable(Protocol):
 template<typename T>
 concept Addable = requires(const T& t) {
     { t + std::declval<T>() } -> std::convertible_to<T>;
@@ -17,13 +17,13 @@ template<Addable T_x, Addable T_y>
 void add_values(const T_x& x, const T_y& y);
 void main();
 
-// 7: def add_values(x: Addable, y: Addable) -> None:
+// def add_values(x: Addable, y: Addable) -> None:
 template<Addable T_x, Addable T_y>
 void add_values(const T_x& x, const T_y& y) {
-    // 8:     # Just verifies that x + y is valid for Addable types
-    // 9:     result = x + y
+    //     # Just verifies that x + y is valid for Addable types
+    //     result = x + y
     auto result = (x + y);
-    // 10:     print(result)
+    //     print(result)
     std::cout << result << "\n";
 }
 

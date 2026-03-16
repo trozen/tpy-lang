@@ -20,12 +20,12 @@ void test_iadd_span_warns();
 template<typename T>
 void test_iadd_generic_warns(std::vector<T>& a, const std::vector<T>& b);
 
-// 4: class Node:
+// class Node:
 struct Node {
-    // 5:     val: Int32
+    //     val: Int32
     int32_t val;
 
-    // 6:     def __init__(self, val: Int32) -> None:
+    //     def __init__(self, val: Int32) -> None:
     Node() = default;
     explicit Node(int32_t val) : val(val) {}
 };
@@ -37,12 +37,12 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     return os;
 }
 
-// 61: def test_iadd_generic_warns[T](a: list[T], b: list[T]) -> None:
+// def test_iadd_generic_warns[T](a: list[T], b: list[T]) -> None:
 template<typename T>
 void test_iadd_generic_warns(std::vector<T>& a, const std::vector<T>& b) {
-    // 63:     a += b  # tpyc: warning(/may copy T elements/)
+    //     a += b  # tpyc: warning(/may copy T elements/)
     tpy::list_extend(a, b);
-    // 64:     print(len(b))
+    //     print(len(b))
     std::cout << tpy::__len__(b) << "\n";
 }
 

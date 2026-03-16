@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     d: dict[str, dict[str, Int32]] = {"inner": {"a": 1, "b": 2}}
+    //     d: dict[str, dict[str, Int32]] = {"inner": {"a": 1, "b": 2}}
     tpy::ordered_map<std::string, tpy::ordered_map<std::string, int32_t>> d = tpy::ordered_map<std::string, tpy::ordered_map<std::string, int32_t>>({{"inner", tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}})}});
-    // 6:     print(d["inner"]["a"])
+    //     print(d["inner"]["a"])
     std::cout << tpy::__getitem__(tpy::__getitem__(d, "inner"), "a") << "\n";
-    // 7:     print(d["inner"]["b"])
+    //     print(d["inner"]["b"])
     std::cout << tpy::__getitem__(tpy::__getitem__(d, "inner"), "b") << "\n";
-    // 9:     d2: dict[str, dict[str, str]] = {"x": {"k": "v"}}
+    //     d2: dict[str, dict[str, str]] = {"x": {"k": "v"}}
     tpy::ordered_map<std::string, tpy::ordered_map<std::string, std::string>> d2 = tpy::ordered_map<std::string, tpy::ordered_map<std::string, std::string>>({{"x", tpy::ordered_map<std::string, std::string>({{"k", "v"}})}});
-    // 10:     print(d2["x"]["k"])
+    //     print(d2["x"]["k"])
     std::cout << tpy::__getitem__(tpy::__getitem__(d2, "x"), "k") << "\n";
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 11: main()
+    // main()
     main();
 }
 

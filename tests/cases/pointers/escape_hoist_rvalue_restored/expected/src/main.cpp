@@ -6,27 +6,27 @@ namespace tpy_user::main {
 
 // # Variable goes rvalue → lvalue → rvalue. The final rvalue assignment
 // # re-enables hoisting because p now owns its storage again.
-// 12: def rvalue_restored() -> None:
+// def rvalue_restored() -> None:
 void rvalue_restored() {
   std::optional<Point> __slot_2;
   std::optional<Point> __slot_3;
-    // 13:     saved: Point = Point(0, 0)
+    //     saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    // 14:     for i in range(3):
+    //     for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // 15:         items: list[Point] = [Point(99, 99)]
+        //         items: list[Point] = [Point(99, 99)]
         std::vector<Point> items = {Point(99, 99)};
-        // 16:         p: Point = Point(0, 0)
+        //         p: Point = Point(0, 0)
         Point* p = &*(__slot_2 = Point(0, 0));
-        // 17:         p = items[0]
+        //         p = items[0]
         p = &(tpy::__getitem__(items, 0));
-        // 18:         p = Point(i, i + 10)
+        //         p = Point(i, i + 10)
         p = &*(__slot_3 = Point(i, (tpy::add_check<int32_t>(i, 10))));
-        // 19:         saved = p  # tpyc: warning(/hoisted to function scope/)
+        //         saved = p  # tpyc: warning(/hoisted to function scope/)
         saved = p;
     }
-    // 20:     print(saved.x, saved.y)
+    //     print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: rvalue_restored()
+    // rvalue_restored()
     rvalue_restored();
 }
 

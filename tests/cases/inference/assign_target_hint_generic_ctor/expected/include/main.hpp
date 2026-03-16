@@ -11,17 +11,17 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 6: class Wrapper[T]:
+// class Wrapper[T]:
 template<typename T>
 struct Wrapper {
-    // 7:     _storage: UninitHeapStorage[T]
+    //     _storage: UninitHeapStorage[T]
     UninitHeapStorage<T> _storage;
     bool __tpy_owned_ = true;
 
-    // 9:     def __init__(self, val: Own[T]):
+    //     def __init__(self, val: Own[T]):
     Wrapper() = default;
     explicit Wrapper(T&& val) : _storage(1) {
-        // 12:         self._storage.init0(val)
+        //         self._storage.init0(val)
         this->_storage.init0(std::move(val));
     }
     // non-copyable (field '_storage')
@@ -37,17 +37,17 @@ struct Wrapper {
         }
         return *this;
     }
-    // 14:     def __del__(self):
+    //     def __del__(self):
 
     ~Wrapper() {
         if (!__tpy_owned_) return;
-        // 15:         self._storage.drop0()
+        //         self._storage.drop0()
         this->_storage.drop0();
     }
 
-    // 17:     def get(self) -> T:
+    //     def get(self) -> T:
     tpy::val_or_cref_t<T> get() const {
-        // 18:         return self._storage.load0()
+        //         return self._storage.load0()
         return this->_storage.load0();
     }
 };

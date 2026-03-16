@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 8: def main() -> None:
+// def main() -> None:
 void main() {
-    // 9:     # list[int] satisfies Sized, so inference should work
-    // 10:     items = identity([1, 2, 3])
+    //     # list[int] satisfies Sized, so inference should work
+    //     items = identity([1, 2, 3])
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
     std::vector<int32_t>& items = identity<std::vector<int32_t>>(__tmp_1);
-    // 11:     print(len(items))  # Should print 3
+    //     print(len(items))  # Should print 3
     std::cout << tpy::__len__(items) << "\n";
-    // 13:     # str satisfies Sized too
-    // 14:     s = identity("hello")
+    //     # str satisfies Sized too
+    //     s = identity("hello")
     std::string_view __tmp_2 = "hello";
     std::string_view s = identity<std::string_view>(__tmp_2);
-    // 15:     print(len(s))  # Should print 5
+    //     print(len(s))  # Should print 5
     std::cout << tpy::__len__(s) << "\n";
 }
 

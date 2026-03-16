@@ -13,31 +13,31 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 5: class RangeIter:
+// class RangeIter:
 struct RangeIter {
-    // 6:     current: Int32
+    //     current: Int32
     int32_t current;
-    // 7:     limit: Int32
+    //     limit: Int32
     int32_t limit;
 
-    // 9:     def __init__(self, start: Int32, limit: Int32) -> None:
+    //     def __init__(self, start: Int32, limit: Int32) -> None:
     RangeIter() = default;
     explicit RangeIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
 
     auto& __iter__() { return *this; }
 
-    // 13:     def __next__(self) -> Int32:
+    //     def __next__(self) -> Int32:
     std::optional<int32_t> __next_opt__() {
-        // 14:         if self.current < self.limit:
+        //         if self.current < self.limit:
         if ((this->current < this->limit)) {
-            // 15:             result = self.current
+            //             result = self.current
             int32_t result = this->current;
-            // 16:             self.current += 1
+            //             self.current += 1
             this->current = tpy::add_check<int32_t>(this->current, 1);
-            // 17:             return result
+            //             return result
             return result;
         }
-        // 18:         raise StopIteration
+        //         raise StopIteration
         return std::nullopt;
     }
 
@@ -55,20 +55,20 @@ inline std::ostream& operator<<(std::ostream& os, const RangeIter& obj) {
     return os;
 }
 
-// 20: class MyRange:
+// class MyRange:
 struct MyRange {
-    // 21:     start: Int32
+    //     start: Int32
     int32_t start;
-    // 22:     limit: Int32
+    //     limit: Int32
     int32_t limit;
 
-    // 24:     def __init__(self, start: Int32, limit: Int32) -> None:
+    //     def __init__(self, start: Int32, limit: Int32) -> None:
     MyRange() = default;
     explicit MyRange(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
-    // 28:     def __iter__(self) -> Own[RangeIter]:
+    //     def __iter__(self) -> Own[RangeIter]:
     RangeIter __iter__() const {
-        // 29:         return RangeIter(self.start, self.limit)
+        //         return RangeIter(self.start, self.limit)
         return RangeIter(this->start, this->limit);
     }
 };
@@ -82,31 +82,31 @@ inline std::ostream& operator<<(std::ostream& os, const MyRange& obj) {
     return os;
 }
 
-// 31: class Summer[T: Iterable[Int32]]:
+// class Summer[T: Iterable[Int32]]:
 template<tpy::Iterable<int32_t> T>
 struct Summer {
-    // 32:     items: T
+    //     items: T
     T items;
 
-    // 34:     def __init__(self, items: T) -> None:
+    //     def __init__(self, items: T) -> None:
     Summer() = default;
     explicit Summer(const T& items) : items(items) {}
 
-    // 37:     def total(self) -> Int32:
+    //     def total(self) -> Int32:
     int32_t total() const {
-        // 38:         result: Int32 = 0
+        //         result: Int32 = 0
         int32_t result = 0;
-        // 39:         for x in self.items:
+        //         for x in self.items:
         auto& __src_0 = this->items;
         auto __obj_0 = tpy::iter_for_loop(__src_0);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            // 40:             result += x
+            //             result += x
             result = tpy::add_check<int32_t>(result, x);
         }
-        // 41:         return result
+        //         return result
         return result;
     }
 };

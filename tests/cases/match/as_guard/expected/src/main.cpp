@@ -4,65 +4,65 @@
 namespace tpy_user::main {
 
 
-// 4: def literal_as_guard(x: Int32) -> str:
+// def literal_as_guard(x: Int32) -> str:
 std::string literal_as_guard(int32_t x) {
-    // 5:     match x:
+    //     match x:
     auto& __match_subject = x;
     switch (__match_subject) {
-    // 6:         case 1 as y if y > 0:
+    //         case 1 as y if y > 0:
     case 1: {
         auto& y = __match_subject;
         if ((y > 0)) {
-            // 7:             return "one positive"
+            //             return "one positive"
             return "one positive";
         } else {
-            // 9:             return "one"
+            //             return "one"
             return "one";
         }
         break;
     }
-    // 10:         case _:
+    //         case _:
     default: {
-        // 11:             return "other"
+        //             return "other"
         return "other";
         break;
     }
     }
-    // 12:     return ""
+    //     return ""
     return "";
 }
 
-// 14: def wildcard_as_guard(x: Int32) -> str:
+// def wildcard_as_guard(x: Int32) -> str:
 std::string wildcard_as_guard(int32_t x) {
-    // 15:     match x:
+    //     match x:
     auto& __match_subject = x;
     switch (__match_subject) {
-    // 16:         case _ as y if y > 10:
+    //         case _ as y if y > 10:
     default: {
         auto& y = __match_subject;
         if ((y > 10)) {
-            // 17:             return "big"
+            //             return "big"
             return "big";
         } else {
-            // 19:             return "small"
+            //             return "small"
             return "small";
         }
         break;
     }
     }
-    // 20:     return ""
+    //     return ""
     return "";
 }
 
-// 22: def main() -> None:
+// def main() -> None:
 void main() {
-    // 23:     print(literal_as_guard(Int32(1)))
+    //     print(literal_as_guard(Int32(1)))
     std::cout << literal_as_guard(1) << "\n";
-    // 24:     print(literal_as_guard(Int32(2)))
+    //     print(literal_as_guard(Int32(2)))
     std::cout << literal_as_guard(2) << "\n";
-    // 25:     print(wildcard_as_guard(Int32(20)))
+    //     print(wildcard_as_guard(Int32(20)))
     std::cout << wildcard_as_guard(20) << "\n";
-    // 26:     print(wildcard_as_guard(Int32(5)))
+    //     print(wildcard_as_guard(Int32(5)))
     std::cout << wildcard_as_guard(5) << "\n";
 }
 
@@ -71,7 +71,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 28: main()
+    // main()
     main();
 }
 

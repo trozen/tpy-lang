@@ -11,25 +11,25 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 3: class Box[T]:
+// class Box[T]:
 template<typename T>
 struct Box {
-    // 4:     value: T
+    //     value: T
     T value;
 
-    // 6:     def __init__(self, value: T) -> None:
+    //     def __init__(self, value: T) -> None:
     Box() = default;
     explicit Box(const T& value) : value(value) {}
 
-    // 9:     def get(self) -> T:
+    //     def get(self) -> T:
     tpy::val_or_ref_t<T> get() {
-        // 10:         return self.value
+        //         return self.value
         return this->value;
     }
 
-    // 12:     def set(self, value: T) -> None:
+    //     def set(self, value: T) -> None:
     void set(tpy::param_val_or_ref_t<T> value) {
-        // 13:         self.value = value
+        //         self.value = value
         this->value = value;
     }
 };

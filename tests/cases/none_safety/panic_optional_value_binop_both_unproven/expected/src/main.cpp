@@ -4,9 +4,9 @@
 namespace tpy_user::main {
 
 
-// 4: def add_pair(a: Int32 | None, b: Int32 | None) -> Int32:
+// def add_pair(a: Int32 | None, b: Int32 | None) -> Int32:
 int32_t add_pair(std::optional<int32_t> a, std::optional<int32_t> b) {
-    // 5:     return a + b  # tpyc: warning(/Potential None access/)
+    //     return a + b  # tpyc: warning(/Potential None access/)
     return (tpy::add_check<int32_t>(tpy::deref_optional_check(a), tpy::deref_optional_check(b)));
 }
 
@@ -15,9 +15,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: print(add_pair(1, 2))
+    // print(add_pair(1, 2))
     std::cout << add_pair(1, 2) << "\n";
-    // 9: print(add_pair(None, 2))
+    // print(add_pair(None, 2))
     std::cout << add_pair(std::nullopt, 2) << "\n";
 }
 

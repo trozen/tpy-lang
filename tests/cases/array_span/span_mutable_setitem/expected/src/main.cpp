@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 
-// 4: def set_first(s: Span[Int32], val: Int32) -> None:
+// def set_first(s: Span[Int32], val: Int32) -> None:
 void set_first(std::span<int32_t> s, int32_t val) {
-    // 5:     s[0] = val
+    //     s[0] = val
     tpy::__setitem__(s, 0, val);
 }
 
-// 7: def main() -> None:
+// def main() -> None:
 void main() {
-    // 8:     arr = Array[Int32, 3]([10, 20, 30])
+    //     arr = Array[Int32, 3]([10, 20, 30])
     std::array<int32_t, 3> arr = std::array<int32_t, 3>({10, 20, 30});
-    // 9:     set_first(arr, 42)
+    //     set_first(arr, 42)
     set_first(tpy::as_mut_span(arr), 42);
-    // 10:     print(arr[0])
+    //     print(arr[0])
     std::cout << tpy::__getitem__(arr, 0) << "\n";
-    // 11:     print(arr[1])
+    //     print(arr[1])
     std::cout << tpy::__getitem__(arr, 1) << "\n";
-    // 12:     print(arr[2])
+    //     print(arr[2])
     std::cout << tpy::__getitem__(arr, 2) << "\n";
 }
 
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 14: main()
+    // main()
     main();
 }
 

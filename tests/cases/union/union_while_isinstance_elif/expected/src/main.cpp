@@ -4,46 +4,46 @@
 namespace tpy_user::main {
 
 
-// 24: def describe(s: Circle | Rect | Triangle) -> None:
+// def describe(s: Circle | Rect | Triangle) -> None:
 void describe(const std::variant<Circle, Rect, Triangle>& s) {
-    // 25:     i: Int32 = 0
+    //     i: Int32 = 0
     int32_t i = 0;
-    // 26:     while i < 2:
+    //     while i < 2:
     while ((i < 2)) {
-        // 27:         if isinstance(s, Circle):
+        //         if isinstance(s, Circle):
         if (std::holds_alternative<Circle>(s)) {
             auto& __s = std::get<Circle>(s);
-            // 28:             print(s.radius)
+            //             print(s.radius)
             std::cout << tpy::print_float(__s.radius) << "\n";
-        // 29:         elif isinstance(s, Rect):
+        //         elif isinstance(s, Rect):
         } else if (std::holds_alternative<Rect>(s)) {
             auto& __s = std::get<Rect>(s);
-            // 30:             print(s.width)
+            //             print(s.width)
             std::cout << tpy::print_float(__s.width) << "\n";
-        // 31:         else:
+        //         else:
         } else {
             auto& __s = std::get<Triangle>(s);
-            // 32:             print(s.base)
+            //             print(s.base)
             std::cout << tpy::print_float(__s.base) << "\n";
         }
-        // 33:         i += 1
+        //         i += 1
         i = tpy::add_check<int32_t>(i, 1);
     }
 }
 
-// 35: def main() -> None:
+// def main() -> None:
 void main() {
-    // 36:     c: Circle | Rect | Triangle = Circle(1.0)
+    //     c: Circle | Rect | Triangle = Circle(1.0)
     std::variant<Circle, Rect, Triangle> c = Circle(1.0);
-    // 37:     describe(c)
+    //     describe(c)
     describe(c);
-    // 38:     r: Circle | Rect | Triangle = Rect(2.0, 3.0)
+    //     r: Circle | Rect | Triangle = Rect(2.0, 3.0)
     std::variant<Circle, Rect, Triangle> r = Rect(2.0, 3.0);
-    // 39:     describe(r)
+    //     describe(r)
     describe(r);
-    // 40:     t: Circle | Rect | Triangle = Triangle(4.0)
+    //     t: Circle | Rect | Triangle = Triangle(4.0)
     std::variant<Circle, Rect, Triangle> t = Triangle(4.0);
-    // 41:     describe(t)
+    //     describe(t)
     describe(t);
 }
 
@@ -52,7 +52,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 43: main()
+    // main()
     main();
 }
 

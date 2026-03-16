@@ -14,12 +14,12 @@ void test_no_warn_last_use();
 void test_no_warn_literal();
 void test_no_warn_explicit_copy();
 
-// 4: class Node:
+// class Node:
 struct Node {
-    // 5:     val: Int32
+    //     val: Int32
     int32_t val;
 
-    // 6:     def __init__(self, v: Int32) -> None:
+    //     def __init__(self, v: Int32) -> None:
     Node() = default;
     explicit Node(int32_t v) : val(v) {}
 };

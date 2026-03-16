@@ -11,18 +11,18 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Stack:
+// class Stack:
 struct Stack {
-    // 5:     size: Int32
+    //     size: Int32
     int32_t size;
 
-    // 7:     def __init__(self, size: Int32) -> None:
+    //     def __init__(self, size: Int32) -> None:
     Stack() = default;
     explicit Stack(int32_t size) : size(size) {}
 
-    // 10:     def __len__(self) -> Int32:
+    //     def __len__(self) -> Int32:
     int32_t __len__() const {
-        // 11:         return self.size
+        //         return self.size
         return this->size;
     }
 };

@@ -3,12 +3,12 @@
 
 namespace tpy_user::utils {
 
-// 11: MAX_VALUE: Int32 = Int32(100)
+// MAX_VALUE: Int32 = Int32(100)
 int32_t MAX_VALUE{};
 
-// 13: def add(a: Int32, b: Int32) -> Int32:
+// def add(a: Int32, b: Int32) -> Int32:
 int32_t add(int32_t a, int32_t b) {
-    // 14:     return a + b
+    //     return a + b
     return (tpy::add_check<int32_t>(a, b));
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 11: MAX_VALUE: Int32 = Int32(100)
+    // MAX_VALUE: Int32 = Int32(100)
     MAX_VALUE = 100;
 }
 

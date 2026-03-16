@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-// 7: class Mutable(Protocol):
+// class Mutable(Protocol):
 template<typename T>
 concept Mutable = requires(T& t) {
     { t.mutate() } -> std::convertible_to<void>;
@@ -21,18 +21,18 @@ template<Mutable T>
 void process(std::vector<T>& items);
 void test();
 
-// 11: class Point:
+// class Point:
 struct Point {
-    // 12:     x: int
+    //     x: int
     tpy::BigInt x;
 
-    // 14:     def __init__(self, x: int) -> None:
+    //     def __init__(self, x: int) -> None:
     Point() = default;
     explicit Point(const tpy::BigInt& x) : x(x) {}
 
-    // 17:     def mutate(self) -> None:
+    //     def mutate(self) -> None:
     void mutate() {
-        // 18:         self.x += 10
+        //         self.x += 10
         this->x = (this->x) + (tpy::BigInt(10));
     }
 };
@@ -44,18 +44,18 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 21: def first[T](items: list[T]) -> T:
+// def first[T](items: list[T]) -> T:
 template<typename T>
 tpy::val_or_ref_t<T> first(std::vector<T>& items) {
-    // 22:     return items[0]
+    //     return items[0]
     return tpy::__getitem__(items, 0);
 }
-// 25: def process[T: Mutable](items: list[T]) -> None:
+// def process[T: Mutable](items: list[T]) -> None:
 template<Mutable T>
 void process(std::vector<T>& items) {
-    // 26:     item = first(items)  # tpyc: type(T)  -- val_or_ref_t<T>: Point& for records
+    //     item = first(items)  # tpyc: type(T)  -- val_or_ref_t<T>: Point& for records
     tpy::val_or_ref_t<T> item = first<T>(items);
-    // 27:     item.mutate()        # mutation through the reference
+    //     item.mutate()        # mutation through the reference
     item.mutate();
 }
 

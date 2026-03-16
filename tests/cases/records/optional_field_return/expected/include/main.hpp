@@ -12,14 +12,14 @@ extern Box* b;
 extern Point* r;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 6:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 7:     def __init__(self, x: Int32, y: Int32):
+    //     def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -33,23 +33,23 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 12: class Box:
+// class Box:
 struct Box {
-    // 13:     item: Point | None
+    //     item: Point | None
     std::optional<Point> item;
 
-    // 15:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Box() : item(std::nullopt) {}
 
-    // 18:     def get_item(self) -> Point | None:
+    //     def get_item(self) -> Point | None:
     Point* get_item() {
-        // 19:         return self.item
+        //         return self.item
         return tpy::optional_to_ptr(this->item);
     }
 
-    // 21:     def has_item(self) -> bool:
+    //     def has_item(self) -> bool:
     bool has_item() const {
-        // 22:         return self.item is not None
+        //         return self.item is not None
         return (this->item.has_value());
     }
 };

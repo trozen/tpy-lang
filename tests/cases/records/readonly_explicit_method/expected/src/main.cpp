@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 18: def main() -> None:
+// def main() -> None:
 void main() {
-    // 19:     c: Counter = Counter(21)
+    //     c: Counter = Counter(21)
     Counter c = Counter(21);
-    // 20:     print(c.get_value())
+    //     print(c.get_value())
     std::cout << c.get_value() << "\n";
-    // 21:     print(c.doubled())
+    //     print(c.doubled())
     std::cout << c.doubled() << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 23: main()
+    // main()
     main();
 }
 

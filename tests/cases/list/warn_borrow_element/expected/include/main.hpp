@@ -18,14 +18,14 @@ void test_reassign_borrower_clears();
 void test_element_borrow_del();
 void test_field_borrow_write();
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 6:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 7:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

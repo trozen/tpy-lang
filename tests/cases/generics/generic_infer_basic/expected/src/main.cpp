@@ -4,12 +4,12 @@
 namespace tpy_user::main {
 
 // # Inference from int literal -> Box[int]
-// 13: box = Box(42)
+// box = Box(42)
 Box<int32_t>* box{};
 // # Inference from Int32 -> Box[Int32]
-// 17: x: Int32 = 10
+// x: Int32 = 10
 int32_t x{};
-// 18: box32 = Box(x)
+// box32 = Box(x)
 Box<int32_t>* box32{};
 
 void __tpy_init() {
@@ -17,19 +17,19 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 12: # Inference from int literal -> Box[int]
-    // 13: box = Box(42)
+    // # Inference from int literal -> Box[int]
+    // box = Box(42)
     static Box<int32_t> __global_slot_1 = Box<int32_t>(42);
     box = &__global_slot_1;
-    // 14: print(box.value)
+    // print(box.value)
     std::cout << box->value << "\n";
-    // 16: # Inference from Int32 -> Box[Int32]
-    // 17: x: Int32 = 10
+    // # Inference from Int32 -> Box[Int32]
+    // x: Int32 = 10
     x = 10;
-    // 18: box32 = Box(x)
+    // box32 = Box(x)
     static Box<int32_t> __global_slot_2 = Box<int32_t>(x);
     box32 = &__global_slot_2;
-    // 19: print(box32.value)
+    // print(box32.value)
     std::cout << box32->value << "\n";
 }
 

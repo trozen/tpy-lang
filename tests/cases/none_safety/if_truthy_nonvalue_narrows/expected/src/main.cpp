@@ -3,17 +3,17 @@
 
 namespace tpy_user::main {
 
-// 17: pt: Point = Point(2)
+// pt: Point = Point(2)
 Point* pt{};
 
-// 11: def score(p: Point | None) -> Int32:
+// def score(p: Point | None) -> Int32:
 int32_t score(Point* p) {
-    // 12:     if p:  # tpyc: ok
+    //     if p:  # tpyc: ok
     if (p) {
-        // 13:         return p.x + 1  # tpyc: ok
+        //         return p.x + 1  # tpyc: ok
         return (tpy::add_check<int32_t>(p->x, 1));
     }
-    // 14:     return 0
+    //     return 0
     return 0;
 }
 
@@ -22,12 +22,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 17: pt: Point = Point(2)
+    // pt: Point = Point(2)
     static Point __global_slot_1 = Point(2);
     pt = &__global_slot_1;
-    // 18: print(score(pt))
+    // print(score(pt))
     std::cout << score(pt) << "\n";
-    // 19: print(score(None))
+    // print(score(None))
     std::cout << score(nullptr) << "\n";
 }
 

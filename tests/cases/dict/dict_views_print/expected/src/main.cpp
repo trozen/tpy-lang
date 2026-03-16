@@ -5,15 +5,15 @@ namespace tpy_user::main {
 
 
 // # Print dict views directly
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     d = {"a": 1, "b": 2}
+    //     d = {"a": 1, "b": 2}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    // 4:     print(d.keys())
+    //     print(d.keys())
     std::cout << tpy::dict_keys(d) << "\n";
-    // 5:     print(d.values())
+    //     print(d.values())
     std::cout << tpy::dict_values(d) << "\n";
-    // 6:     print(d.items())
+    //     print(d.items())
     std::cout << tpy::dict_items(d) << "\n";
 }
 
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: main()
+    // main()
     main();
 }
 

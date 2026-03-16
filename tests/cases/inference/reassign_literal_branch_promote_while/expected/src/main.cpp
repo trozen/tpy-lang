@@ -6,62 +6,62 @@ namespace tpy_user::main {
 
 // # Literal-seeded variable promoted to BigInt inside an if-branch within
 // # a while loop should keep BigInt for subsequent operations in the loop body.
-// 4: def get_big() -> int:
+// def get_big() -> int:
 tpy::BigInt get_big() {
-    // 5:     return 42
+    //     return 42
     return tpy::BigInt(42);
 }
 
-// 7: def test_augassign_in_while() -> None:
+// def test_augassign_in_while() -> None:
 void test_augassign_in_while() {
-    // 8:     ip = 0
+    //     ip = 0
     tpy::BigInt ip = tpy::BigInt(0);
-    // 9:     while ip < 10:
+    //     while ip < 10:
     while ((ip < 10)) {
-        // 10:         c = '>'
+        //         c = '>'
         std::string_view c = ">";
-        // 11:         if c == '>':
+        //         if c == '>':
         if ((c == ">")) {
-            // 12:             pass
-        // 13:         elif c == '[':
+            //             pass
+        //         elif c == '[':
         } else if ((c == "[")) {
-            // 14:             if True:
+            //             if True:
             if (true) {
-                // 15:                 ip = get_big()
+                //                 ip = get_big()
                 ip = get_big();
             }
-        // 16:         elif c == ']':
+        //         elif c == ']':
         } else if ((c == "]")) {
-            // 17:             if True:
+            //             if True:
             if (true) {
-                // 18:                 ip = get_big()
+                //                 ip = get_big()
                 ip = get_big();
             }
         }
-        // 19:         ip += 1
+        //         ip += 1
         ip = (ip) + (tpy::BigInt(1));
     }
-    // 20:     print(ip)
+    //     print(ip)
     std::cout << ip << "\n";
 }
 
-// 22: def test_binop_in_while() -> None:
+// def test_binop_in_while() -> None:
 void test_binop_in_while() {
-    // 23:     x = 0
+    //     x = 0
     tpy::BigInt x = tpy::BigInt(0);
-    // 24:     while x < 5:
+    //     while x < 5:
     while ((x < 5)) {
-        // 25:         if True:
+        //         if True:
         if (true) {
-            // 26:             x = get_big()
+            //             x = get_big()
             x = get_big();
         }
-        // 27:         y: int = x + 1
+        //         y: int = x + 1
         tpy::BigInt y = ((x) + (tpy::BigInt(1)));
-        // 28:         x = y
+        //         x = y
         x = y;
     }
-    // 29:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
@@ -70,9 +70,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 31: test_augassign_in_while()
+    // test_augassign_in_while()
     test_augassign_in_while();
-    // 32: test_binop_in_while()
+    // test_binop_in_while()
     test_binop_in_while();
 }
 

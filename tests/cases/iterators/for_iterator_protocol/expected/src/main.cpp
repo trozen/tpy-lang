@@ -4,12 +4,12 @@
 namespace tpy_user::main {
 
 
-// 30: def main() -> None:
+// def main() -> None:
 void main() {
-    // 31:     print(sum_iter(Counter(5)))
+    //     print(sum_iter(Counter(5)))
     auto __tmp_1 = Counter(5);
     std::cout << sum_iter(__tmp_1) << "\n";
-    // 32:     print(sum_iter(Counter(0)))
+    //     print(sum_iter(Counter(0)))
     auto __tmp_2 = Counter(0);
     std::cout << sum_iter(__tmp_2) << "\n";
 }
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 34: main()
+    // main()
     main();
 }
 

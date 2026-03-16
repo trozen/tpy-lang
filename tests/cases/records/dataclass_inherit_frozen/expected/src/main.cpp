@@ -4,25 +4,25 @@
 namespace tpy_user::main {
 
 
-// 14: def main() -> None:
+// def main() -> None:
 void main() {
-    // 15:     v = Vec3(1, 2, 3)
+    //     v = Vec3(1, 2, 3)
     Vec3 v = Vec3(1, 2, 3);
-    // 16:     print(v)
+    //     print(v)
     std::cout << v << "\n";
-    // 17:     print(v.x)
+    //     print(v.x)
     std::cout << v.x << "\n";
-    // 18:     print(v.z)
+    //     print(v.z)
     std::cout << v.z << "\n";
-    // 19:     # Equality with all fields
-    // 20:     print(v == Vec3(1, 2, 3))
+    //     # Equality with all fields
+    //     print(v == Vec3(1, 2, 3))
     std::cout << tpy::print_bool((v == Vec3(1, 2, 3))) << "\n";
-    // 21:     print(v == Vec3(1, 2, 4))
+    //     print(v == Vec3(1, 2, 4))
     std::cout << tpy::print_bool((v == Vec3(1, 2, 4))) << "\n";
-    // 22:     # Hash works (frozen)
-    // 23:     d: dict[Vec3, str] = {v: "a"}
+    //     # Hash works (frozen)
+    //     d: dict[Vec3, str] = {v: "a"}
     tpy::ordered_map<Vec3, std::string> d = tpy::ordered_map<Vec3, std::string>({{v, "a"}});
-    // 24:     print(d[Vec3(1, 2, 3)])
+    //     print(d[Vec3(1, 2, 3)])
     std::cout << tpy::__getitem__(d, Vec3(1, 2, 3)) << "\n";
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 26: main()
+    // main()
     main();
 }
 

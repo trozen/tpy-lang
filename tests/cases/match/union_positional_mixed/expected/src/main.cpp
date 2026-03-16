@@ -4,41 +4,41 @@
 namespace tpy_user::main {
 
 
-// 14: def describe(s: Point | Label) -> None:
+// def describe(s: Point | Label) -> None:
 void describe(const std::variant<Label, Point>& s) {
-    // 15:     match s:
+    //     match s:
     auto& __match_subject = s;
     switch (__match_subject.index()) {
-    // 16:         case Point(px, py, z=pz):
+    //         case Point(px, py, z=pz):
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject);
         auto& px = __case_0.x;
         auto& py = __case_0.y;
         auto& pz = __case_0.z;
-        // 17:             print(px + py + pz)
+        //             print(px + py + pz)
         std::cout << tpy::print_float(((((px) + (py))) + (pz))) << "\n";
         break;
     }
-    // 18:         case Label(t):
+    //         case Label(t):
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject);
         auto& t = __case_1.text;
-        // 19:             print(t)
+        //             print(t)
         std::cout << t << "\n";
         break;
     }
     }
 }
 
-// 21: def main() -> None:
+// def main() -> None:
 void main() {
-    // 22:     p: Point | Label = Point(1.0, 2.0, 3.0)
+    //     p: Point | Label = Point(1.0, 2.0, 3.0)
     std::variant<Label, Point> p = Point(1.0, 2.0, 3.0);
-    // 23:     describe(p)
+    //     describe(p)
     describe(p);
-    // 24:     la: Point | Label = Label("hello")
+    //     la: Point | Label = Label("hello")
     std::variant<Label, Point> la = Label("hello");
-    // 25:     describe(la)
+    //     describe(la)
     describe(la);
 }
 
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 27: main()
+    // main()
     main();
 }
 

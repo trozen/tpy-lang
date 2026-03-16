@@ -4,57 +4,57 @@
 namespace tpy_user::main {
 
 
-// 4: def test_bool_list() -> None:
+// def test_bool_list() -> None:
 void test_bool_list() {
-    // 5:     bools: list[bool] = [True, False, True]
+    //     bools: list[bool] = [True, False, True]
     std::vector<bool> bools = {true, false, true};
-    // 6:     print(bools)
+    //     print(bools)
     std::cout << tpy::ListPrinter(bools) << "\n";
 }
 
-// 8: def test_float_list() -> None:
+// def test_float_list() -> None:
 void test_float_list() {
-    // 9:     floats: list[float] = [1.0, 2.5, 0.0, -3.0]
+    //     floats: list[float] = [1.0, 2.5, 0.0, -3.0]
     std::vector<double> floats = {1.0, 2.5, 0.0, -(3.0)};
-    // 10:     print(floats)
+    //     print(floats)
     std::cout << tpy::ListPrinter(floats) << "\n";
 }
 
-// 12: def test_str_list() -> None:
+// def test_str_list() -> None:
 void test_str_list() {
-    // 13:     strs: list[str] = ["hello", "world"]
+    //     strs: list[str] = ["hello", "world"]
     std::vector<std::string> strs = {"hello", "world"};
-    // 14:     print(strs)
+    //     print(strs)
     std::cout << tpy::ListPrinter(strs) << "\n";
 }
 
-// 16: def test_bool_array() -> None:
+// def test_bool_array() -> None:
 void test_bool_array() {
-    // 17:     arr: Array[bool, 3] = [True, False, True]
+    //     arr: Array[bool, 3] = [True, False, True]
     std::array<bool, 3> arr = {true, false, true};
-    // 18:     print(arr)
+    //     print(arr)
     std::cout << tpy::ListPrinter(arr) << "\n";
 }
 
-// 20: def test_nested_bool() -> None:
+// def test_nested_bool() -> None:
 void test_nested_bool() {
-    // 21:     nested: list[list[bool]] = [[True, False], [False, True]]
+    //     nested: list[list[bool]] = [[True, False], [False, True]]
     std::vector<std::vector<bool>> nested = {{true, false}, {false, true}};
-    // 22:     print(nested)
+    //     print(nested)
     std::cout << tpy::ListPrinter(nested) << "\n";
 }
 
-// 24: def main() -> None:
+// def main() -> None:
 void main() {
-    // 25:     test_bool_list()
+    //     test_bool_list()
     test_bool_list();
-    // 26:     test_float_list()
+    //     test_float_list()
     test_float_list();
-    // 27:     test_str_list()
+    //     test_str_list()
     test_str_list();
-    // 28:     test_bool_array()
+    //     test_bool_array()
     test_bool_array();
-    // 29:     test_nested_bool()
+    //     test_nested_bool()
     test_nested_bool();
 }
 
@@ -63,7 +63,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 31: main()
+    // main()
     main();
 }
 

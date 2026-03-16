@@ -4,16 +4,16 @@
 namespace tpy_user::main {
 
 // # BigInt-default profile should keep unannotated integer arithmetic in BigInt.
-// 2: x = 2 ** 64
+// x = 2 ** 64
 tpy::BigInt x;
 // # Large shifts stay precise.
-// 6: y = 1 << 100
+// y = 1 << 100
 tpy::BigInt y;
 // # Mixed unannotated literals remain BigInt.
-// 10: z = 5
+// z = 5
 tpy::BigInt z;
 // # List literal elements should be BigInt.
-// 18: items = [10, 20, 30]
+// items = [10, 20, 30]
 std::vector<tpy::BigInt>* items{};
 
 void __tpy_init() {
@@ -21,32 +21,32 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # BigInt-default profile should keep unannotated integer arithmetic in BigInt.
-    // 2: x = 2 ** 64
+    // # BigInt-default profile should keep unannotated integer arithmetic in BigInt.
+    // x = 2 ** 64
     x = ((tpy::BigInt(2)).pow(tpy::BigInt(64)));
-    // 3: print(x)
+    // print(x)
     std::cout << x << "\n";
-    // 5: # Large shifts stay precise.
-    // 6: y = 1 << 100
+    // # Large shifts stay precise.
+    // y = 1 << 100
     y = ((tpy::BigInt(1)) << (tpy::BigInt(100)));
-    // 7: print(y)
+    // print(y)
     std::cout << y << "\n";
-    // 9: # Mixed unannotated literals remain BigInt.
-    // 10: z = 5
+    // # Mixed unannotated literals remain BigInt.
+    // z = 5
     z = tpy::BigInt(5);
-    // 11: print(z + 7)
+    // print(z + 7)
     std::cout << ((z) + (tpy::BigInt(7))) << "\n";
-    // 13: # range() should use BigInt loop variable.
-    // 14: for i in range(3):
+    // # range() should use BigInt loop variable.
+    // for i in range(3):
     for (tpy::BigInt i = 0; i < tpy::BigInt(3); ++i) {
-        // 15:     print(i)
+        //     print(i)
         std::cout << i << "\n";
     }
-    // 17: # List literal elements should be BigInt.
-    // 18: items = [10, 20, 30]
+    // # List literal elements should be BigInt.
+    // items = [10, 20, 30]
     static std::vector<tpy::BigInt> __global_slot_1 = {10, 20, 30};
     items = &__global_slot_1;
-    // 19: print(items[0])
+    // print(items[0])
     std::cout << tpy::__getitem__((*items), 0) << "\n";
 }
 

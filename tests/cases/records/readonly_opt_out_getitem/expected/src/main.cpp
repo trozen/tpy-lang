@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 21: def main() -> None:
+// def main() -> None:
 void main() {
-    // 22:     c: CachingContainer = CachingContainer(42)
+    //     c: CachingContainer = CachingContainer(42)
     CachingContainer c = CachingContainer(42);
-    // 23:     print(c[0])
+    //     print(c[0])
     std::cout << c[0] << "\n";
-    // 24:     print(c.last_access)
+    //     print(c.last_access)
     std::cout << c.last_access << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 26: main()
+    // main()
     main();
 }
 

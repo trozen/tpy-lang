@@ -13,9 +13,9 @@ int32_t close(Handle&& h);
 void main();
 
 // @nocopy
-// 7: class Handle:
+// class Handle:
 struct Handle {
-    // 8:     fd: Int32
+    //     fd: Int32
     int32_t fd;
 
     Handle() = default;

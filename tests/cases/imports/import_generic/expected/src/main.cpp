@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> Int32:
+// def main() -> Int32:
 int32_t main() {
-    // 5:     b: Box[Int32] = Box(Int32(42))
+    //     b: Box[Int32] = Box(Int32(42))
     ::tpy_user::container::Box<int32_t> b = ::tpy_user::container::Box<int32_t>(42);
-    // 6:     print(b.value)
+    //     print(b.value)
     std::cout << b.value << "\n";
-    // 7:     return Int32(0)
+    //     return Int32(0)
     return 0;
 }
 
@@ -19,9 +19,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: from container import Box
+    // from container import Box
     ::tpy_user::container::__tpy_init();
-    // 9: main()
+    // main()
     main();
 }
 

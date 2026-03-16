@@ -9,14 +9,14 @@ namespace tpy_user::main {
 // # DynValued must keep value() non-const so it matches the C++ pure virtual signature.
 // # Without the recursive ancestor walk in _dynamic_proto_requires_nonconst, value()
 // # would be incorrectly inferred as const, making Valued abstract.
-// 66: class HasValue(Protocol):
+// class HasValue(Protocol):
 template<typename T>
 concept HasValue = requires(T& t) {
     { t.value() } -> std::convertible_to<int32_t>;
 };
 
 // @dynamic
-// 70: class DynValued(HasValue, Protocol):
+// class DynValued(HasValue, Protocol):
 template<typename T>
 concept __DynValued_Concept__ = requires(T& t) {
     { t.value() } -> std::convertible_to<int32_t>;
@@ -56,37 +56,37 @@ inline constexpr std::string_view __name__ = "__main__";
 void show(DynValued& v);
 void main();
 
-// 6: class Counter:
+// class Counter:
 struct Counter {
-    // 7:     count: Int32
+    //     count: Int32
     int32_t count;
 
-    // 9:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Counter() : count(0) {}
 
-    // 12:     def increment(self) -> None:        # mutates self -- must NOT be const
+    //     def increment(self) -> None:        # mutates self -- must NOT be const
     void increment() {
-        // 13:         self.count += 1
+        //         self.count += 1
         this->count = tpy::add_check<int32_t>(this->count, 1);
     }
 
-    // 15:     def increment_twice(self) -> None:  # delegates to self.increment() -- must NOT be const
+    //     def increment_twice(self) -> None:  # delegates to self.increment() -- must NOT be const
     void increment_twice() {
-        // 16:         self.increment()
+        //         self.increment()
         increment();
-        // 17:         self.increment()
+        //         self.increment()
         increment();
     }
 
-    // 19:     def get(self) -> Int32:             # only reads -- inferred const
+    //     def get(self) -> Int32:             # only reads -- inferred const
     int32_t get() const {
-        // 20:         return self.count
+        //         return self.count
         return this->count;
     }
 
-    // 22:     def is_zero(self) -> bool:          # only reads -- inferred const
+    //     def is_zero(self) -> bool:          # only reads -- inferred const
     bool is_zero() const {
-        // 23:         return self.count == 0
+        //         return self.count == 0
         return (this->count == 0);
     }
 };
@@ -98,30 +98,30 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// 26: class Box:
+// class Box:
 struct Box {
-    // 27:     items: list[Int32]
+    //     items: list[Int32]
     std::vector<int32_t> items;
 
-    // 29:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Box() : items(std::vector<int32_t>{}) {}
 
-    // 32:     def push(self, x: Int32) -> None:  # mutates self -- must NOT be const
+    //     def push(self, x: Int32) -> None:  # mutates self -- must NOT be const
     void push(int32_t x) {
-        // 33:         self.items.append(x)
+        //         self.items.append(x)
         auto __tmp_1 = x;
         this->items.push_back(std::move(__tmp_1));
     }
 
-    // 35:     def push_default(self) -> None:    # calls self.push() -- must NOT be const
+    //     def push_default(self) -> None:    # calls self.push() -- must NOT be const
     void push_default() {
-        // 36:         self.push(0)
+        //         self.push(0)
         push(0);
     }
 
-    // 38:     def size(self) -> Int32:           # only reads -- inferred const
+    //     def size(self) -> Int32:           # only reads -- inferred const
     int32_t size() const {
-        // 39:         return len(self.items)
+        //         return len(self.items)
         return tpy::__len__(this->items);
     }
 };
@@ -136,33 +136,33 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // # self.field.method() -- calling a non-readonly method on a field IS self-mutation.
 // # The receiver is self.items (a field access), not self directly, so mutation is
 // # recorded immediately rather than going through the call-edge propagation path.
-// 45: class SortableBox:
+// class SortableBox:
 struct SortableBox {
-    // 46:     items: list[Int32]
+    //     items: list[Int32]
     std::vector<int32_t> items;
 
-    // 48:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     SortableBox() : items(std::vector<int32_t>{}) {}
 
-    // 51:     def fill(self, a: Int32, b: Int32) -> None:   # mutates self.items -- must NOT be const
+    //     def fill(self, a: Int32, b: Int32) -> None:   # mutates self.items -- must NOT be const
     void fill(int32_t a, int32_t b) {
-        // 52:         self.items.append(a)
+        //         self.items.append(a)
         auto __tmp_2 = a;
         this->items.push_back(std::move(__tmp_2));
-        // 53:         self.items.append(b)
+        //         self.items.append(b)
         auto __tmp_3 = b;
         this->items.push_back(std::move(__tmp_3));
     }
 
-    // 55:     def sort_items(self) -> None:                  # self.field.method() -- must NOT be const
+    //     def sort_items(self) -> None:                  # self.field.method() -- must NOT be const
     void sort_items() {
-        // 56:         self.items.sort()
+        //         self.items.sort()
         std::stable_sort(this->items.begin(), this->items.end());
     }
 
-    // 58:     def get_first(self) -> Int32:                  # only reads -- inferred const
+    //     def get_first(self) -> Int32:                  # only reads -- inferred const
     int32_t get_first() const {
-        // 59:         return self.items[0]
+        //         return self.items[0]
         return tpy::__getitem__(this->items, 0);
     }
 };
@@ -174,18 +174,18 @@ inline std::ostream& operator<<(std::ostream& os, const SortableBox& obj) {
     return os;
 }
 
-// 73: class Valued(DynValued):
+// class Valued(DynValued):
 struct Valued : DynValued {
-    // 74:     _n: Int32
+    //     _n: Int32
     int32_t _n;
 
-    // 76:     def __init__(self, n: Int32) -> None:
+    //     def __init__(self, n: Int32) -> None:
     Valued() = default;
     explicit Valued(int32_t n) : _n(n) {}
 
-    // 79:     def value(self) -> Int32:           # must NOT be const (pure virtual override)
+    //     def value(self) -> Int32:           # must NOT be const (pure virtual override)
     int32_t value() override {
-        // 80:         return self._n
+        //         return self._n
         return this->_n;
     }
 };

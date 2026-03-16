@@ -4,46 +4,46 @@
 namespace tpy_user::main {
 
 
-// 12: def greet_dog(d: Dog) -> None:
+// def greet_dog(d: Dog) -> None:
 void greet_dog(const Dog& d) {
-    // 13:     print("Woof!", d.name)
+    //     print("Woof!", d.name)
     std::cout << "Woof!" << " " << d.name << "\n";
 }
 
-// 15: def greet_cat(c: Cat) -> None:
+// def greet_cat(c: Cat) -> None:
 void greet_cat(const Cat& c) {
-    // 16:     print("Meow!", c.name)
+    //     print("Meow!", c.name)
     std::cout << "Meow!" << " " << c.name << "\n";
 }
 
-// 18: def main() -> None:
+// def main() -> None:
 void main() {
-    // 19:     pet: Dog | Cat = Dog("Rex")
+    //     pet: Dog | Cat = Dog("Rex")
     std::variant<Cat, Dog> __slot_1 = Dog("Rex");
     std::optional<std::variant<Cat, Dog>> __slot_2;
     std::variant<Cat, Dog>* pet = &__slot_1;
-    // 20:     if isinstance(pet, Dog):
+    //     if isinstance(pet, Dog):
     if (std::holds_alternative<Dog>((*pet))) {
         auto& __pet = std::get<Dog>((*pet));
-        // 21:         greet_dog(pet)
+        //         greet_dog(pet)
         greet_dog(__pet);
-    // 22:     else:
+    //     else:
     } else {
         auto& __pet = std::get<Cat>((*pet));
-        // 23:         greet_cat(pet)
+        //         greet_cat(pet)
         greet_cat(__pet);
     }
-    // 24:     pet = Cat("Whiskers")
+    //     pet = Cat("Whiskers")
     pet = &*(__slot_2 = Cat("Whiskers"));
-    // 25:     if isinstance(pet, Cat):
+    //     if isinstance(pet, Cat):
     if (std::holds_alternative<Cat>((*pet))) {
         auto& __pet = std::get<Cat>((*pet));
-        // 26:         greet_cat(pet)
+        //         greet_cat(pet)
         greet_cat(__pet);
-    // 27:     else:
+    //     else:
     } else {
         auto& __pet = std::get<Dog>((*pet));
-        // 28:         greet_dog(pet)
+        //         greet_dog(pet)
         greet_dog(__pet);
     }
 }
@@ -53,7 +53,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 30: main()
+    // main()
     main();
 }
 

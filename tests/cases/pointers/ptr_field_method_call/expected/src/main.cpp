@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 
-// 16: def main() -> None:
+// def main() -> None:
 void main() {
-    // 17:     storage = UninitHeapStorage[Int32](UInt32(4))
+    //     storage = UninitHeapStorage[Int32](UInt32(4))
     UninitHeapStorage<int32_t> storage = 4;
-    // 18:     storage.init(UInt32(0), 42)
+    //     storage.init(UInt32(0), 42)
     storage.init(0, 42);
-    // 19:     storage.init(UInt32(1), 99)
+    //     storage.init(UInt32(1), 99)
     storage.init(1, 99);
-    // 21:     w = Wrapper[Int32](Ptr(storage))
+    //     w = Wrapper[Int32](Ptr(storage))
     Wrapper<int32_t> w = Wrapper<int32_t>(&storage);
-    // 22:     print(w.load_at(UInt32(0)))
+    //     print(w.load_at(UInt32(0)))
     std::cout << w.load_at(0) << "\n";
-    // 23:     print(w.load_at(UInt32(1)))
+    //     print(w.load_at(UInt32(1)))
     std::cout << w.load_at(1) << "\n";
-    // 25:     storage.drop(UInt32(0))
+    //     storage.drop(UInt32(0))
     storage.drop(0);
-    // 26:     storage.drop(UInt32(1))
+    //     storage.drop(UInt32(1))
     storage.drop(1);
 }
 
@@ -29,8 +29,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: from tpy.mem import UninitHeapStorage
-    // 28: main()
+    // from tpy.mem import UninitHeapStorage
+    // main()
     main();
 }
 

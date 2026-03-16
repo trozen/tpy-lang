@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     d = Dog("Rex")
+    //     d = Dog("Rex")
     ::tpy_user::animals::Dog d = ::tpy_user::animals::Dog("Rex");
-    // 6:     c = Cat(9)
+    //     c = Cat(9)
     ::tpy_user::animals::Cat c = ::tpy_user::animals::Cat(tpy::BigInt(9));
-    // 7:     print(describe(d))
+    //     print(describe(d))
     std::cout << ::tpy_user::animals::describe(d) << "\n";
-    // 8:     print(describe(c))
+    //     print(describe(c))
     std::cout << ::tpy_user::animals::describe(c) << "\n";
 }
 
@@ -21,10 +21,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # Cross-module @overload: import and call overloaded function from another module
-    // 2: from animals import Dog, Cat, describe
+    // # Cross-module @overload: import and call overloaded function from another module
+    // from animals import Dog, Cat, describe
     ::tpy_user::animals::__tpy_init();
-    // 10: main()
+    // main()
     main();
 }
 

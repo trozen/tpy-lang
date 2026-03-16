@@ -4,27 +4,27 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     # Basic ASCII
-    // 6:     c: Char = chr(65)
+    //     # Basic ASCII
+    //     c: Char = chr(65)
     char c = static_cast<char>(65);
-    // 7:     print(ord(c))
+    //     print(ord(c))
     std::cout << static_cast<int32_t>(static_cast<unsigned char>(c)) << "\n";
-    // 9:     # Lowercase letter
-    // 10:     d: Char = chr(122)
+    //     # Lowercase letter
+    //     d: Char = chr(122)
     char d = static_cast<char>(122);
-    // 11:     print(ord(d))
+    //     print(ord(d))
     std::cout << static_cast<int32_t>(static_cast<unsigned char>(d)) << "\n";
-    // 13:     # Null character
-    // 14:     zero: Char = chr(0)
+    //     # Null character
+    //     zero: Char = chr(0)
     char zero = static_cast<char>(0);
-    // 15:     print(ord(zero))
+    //     print(ord(zero))
     std::cout << static_cast<int32_t>(static_cast<unsigned char>(zero)) << "\n";
-    // 17:     # ord/chr roundtrip
-    // 18:     n: Int32 = 97
+    //     # ord/chr roundtrip
+    //     n: Int32 = 97
     int32_t n = 97;
-    // 19:     print(ord(chr(n)))
+    //     print(ord(chr(n)))
     std::cout << static_cast<int32_t>(static_cast<unsigned char>(static_cast<char>(n))) << "\n";
 }
 
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 21: main()
+    // main()
     main();
 }
 

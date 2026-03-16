@@ -4,9 +4,9 @@
 namespace tpy_user::main {
 
 
-// 4: def negate(x: Int32 | None) -> Int32:
+// def negate(x: Int32 | None) -> Int32:
 int32_t negate(std::optional<int32_t> x) {
-    // 5:     return -x
+    //     return -x
     return tpy::neg_check<int32_t>(tpy::deref_optional_check(x));
 }
 
@@ -15,9 +15,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: print(negate(3))
+    // print(negate(3))
     std::cout << negate(3) << "\n";
-    // 9: print(negate(None))
+    // print(negate(None))
     std::cout << negate(std::nullopt) << "\n";
 }
 

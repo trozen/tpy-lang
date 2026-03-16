@@ -4,34 +4,34 @@
 namespace tpy_user::main {
 
 
-// 13: def twice(x: Int32) -> Int32:
+// def twice(x: Int32) -> Int32:
 int32_t twice(int32_t x) {
-    // 14:     return x + x
+    //     return x + x
     return (tpy::add_check<int32_t>(x, x));
 }
 
-// 16: def main() -> None:
+// def main() -> None:
 void main() {
-    // 17:     print(MAX_SIZE)
+    //     print(MAX_SIZE)
     std::cout << MAX_SIZE << "\n";
-    // 18:     print(NEG_VAL)
+    //     print(NEG_VAL)
     std::cout << NEG_VAL << "\n";
-    // 19:     print(PI)
+    //     print(PI)
     std::cout << tpy::print_float(PI) << "\n";
-    // 20:     print(DEBUG)
+    //     print(DEBUG)
     std::cout << tpy::print_bool(DEBUG) << "\n";
-    // 21:     print(DISABLED)
+    //     print(DISABLED)
     std::cout << tpy::print_bool(DISABLED) << "\n";
-    // 22:     print(NAME)
+    //     print(NAME)
     std::cout << NAME << "\n";
-    // 23:     print(LETTER)
+    //     print(LETTER)
     std::cout << LETTER << "\n";
-    // 24:     # Use Final in expressions and as function argument
-    // 25:     print(twice(MAX_SIZE))
+    //     # Use Final in expressions and as function argument
+    //     print(twice(MAX_SIZE))
     std::cout << twice(MAX_SIZE) << "\n";
-    // 26:     y: Int32 = MAX_SIZE + NEG_VAL
+    //     y: Int32 = MAX_SIZE + NEG_VAL
     int32_t y = (tpy::add_check<int32_t>(MAX_SIZE, NEG_VAL));
-    // 27:     print(y)
+    //     print(y)
     std::cout << y << "\n";
 }
 
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 29: main()
+    // main()
     main();
 }
 

@@ -11,19 +11,19 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 5: class Config:
+// class Config:
 struct Config {
-    // 6:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 7:     y: Int32          # not initialized in init section -> warning at split point
+    //     y: Int32          # not initialized in init section -> warning at split point
     int32_t y;
-    // 8:     z: Int32 = Int32(0)  # has class-level default -> silent
+    //     z: Int32 = Int32(0)  # has class-level default -> silent
     int32_t z = 0;
 
-    // 10:     def __init__(self, x: Int32):
+    //     def __init__(self, x: Int32):
     Config() = default;
     explicit Config(int32_t x) : x(x) {
-        // 12:         print("init")          # tpyc: warning(/y.*is not initialized before the constructor body/)
+        //         print("init")          # tpyc: warning(/y.*is not initialized before the constructor body/)
         std::cout << "init" << "\n";
     }
 };

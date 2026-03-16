@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-// 42: obj = Impl(42)
+// obj = Impl(42)
 Impl* obj{};
 
 void __tpy_init() {
@@ -11,12 +11,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 42: obj = Impl(42)
+    // obj = Impl(42)
     static Impl __global_slot_1 = Impl(42);
     obj = &__global_slot_1;
-    // 43: print(read_via_child(obj))
+    // print(read_via_child(obj))
     std::cout << read_via_child((*obj)) << "\n";
-    // 44: print(read_via_bound(obj))
+    // print(read_via_bound(obj))
     std::cout << read_via_bound<Impl>((*obj)) << "\n";
 }
 

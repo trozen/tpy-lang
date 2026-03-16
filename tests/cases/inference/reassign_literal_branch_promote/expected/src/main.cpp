@@ -6,69 +6,69 @@ namespace tpy_user::main {
 
 // # Literal-seeded variable (Int32 default) promoted to BigInt via
 // # reassignment inside an if-branch should keep BigInt after the branch.
-// 4: def get_big() -> int:
+// def get_big() -> int:
 tpy::BigInt get_big() {
-    // 5:     return 42
+    //     return 42
     return tpy::BigInt(42);
 }
 
-// 7: def test_augassign() -> None:
+// def test_augassign() -> None:
 void test_augassign() {
-    // 8:     x = 0
+    //     x = 0
     tpy::BigInt x = tpy::BigInt(0);
-    // 9:     if True:
+    //     if True:
     if (true) {
-        // 10:         x = get_big()
+        //         x = get_big()
         x = get_big();
     }
-    // 11:     x += 1
+    //     x += 1
     x = (x) + (tpy::BigInt(1));
-    // 12:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 14: def test_binop() -> None:
+// def test_binop() -> None:
 void test_binop() {
-    // 15:     x = 0
+    //     x = 0
     tpy::BigInt x = tpy::BigInt(0);
-    // 16:     if True:
+    //     if True:
     if (true) {
-        // 17:         x = get_big()
+        //         x = get_big()
         x = get_big();
     }
-    // 18:     y: int = x + 10
+    //     y: int = x + 10
     tpy::BigInt y = ((x) + (tpy::BigInt(10)));
-    // 19:     print(y)
+    //     print(y)
     std::cout << y << "\n";
 }
 
-// 21: def test_elif_chain() -> None:
+// def test_elif_chain() -> None:
 void test_elif_chain() {
-    // 22:     x = 0
+    //     x = 0
     tpy::BigInt x = tpy::BigInt(0);
-    // 23:     c = '>'
+    //     c = '>'
     std::string_view c = ">";
-    // 24:     if c == '>':
+    //     if c == '>':
     if ((c == ">")) {
-        // 25:         pass
-    // 26:     elif c == '[':
+        //         pass
+    //     elif c == '[':
     } else if ((c == "[")) {
-        // 27:         if True:
+        //         if True:
         if (true) {
-            // 28:             x = get_big()
+            //             x = get_big()
             x = get_big();
         }
-    // 29:     elif c == ']':
+    //     elif c == ']':
     } else if ((c == "]")) {
-        // 30:         if True:
+        //         if True:
         if (true) {
-            // 31:             x = get_big()
+            //             x = get_big()
             x = get_big();
         }
     }
-    // 32:     x += 1
+    //     x += 1
     x = (x) + (tpy::BigInt(1));
-    // 33:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
@@ -77,11 +77,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 35: test_augassign()
+    // test_augassign()
     test_augassign();
-    // 36: test_binop()
+    // test_binop()
     test_binop();
-    // 37: test_elif_chain()
+    // test_elif_chain()
     test_elif_chain();
 }
 

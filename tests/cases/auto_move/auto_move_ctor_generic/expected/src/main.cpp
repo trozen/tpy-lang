@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 16: def main():
+// def main():
 void main() {
-    // 17:     inner = Inner()
+    //     inner = Inner()
     Inner inner = Inner();
-    // 18:     inner.value = 42
+    //     inner.value = 42
     inner.value = 42;
-    // 19:     box = Box[Inner](inner)
+    //     box = Box[Inner](inner)
     Box<Inner> box = Box<Inner>(std::move(inner));
-    // 20:     print(box.item.value)
+    //     print(box.item.value)
     std::cout << box.item.value << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 23: main()
+    // main()
     main();
 }
 

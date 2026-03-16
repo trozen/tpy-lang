@@ -12,18 +12,18 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // # Method-level type parameter on a non-generic class
-// 2: class Converter:
+// class Converter:
 struct Converter {
 
-    // 3:     def __init__(self):
+    //     def __init__(self):
     Converter() {
-        // 4:         pass
+        //         pass
     }
 
-    // 6:     def identity[U](self, val: U) -> U:
+    //     def identity[U](self, val: U) -> U:
     template<typename U>
     tpy::val_or_cref_t<U> identity(const U& val) const {
-        // 7:         return val
+        //         return val
         return val;
     }
 };

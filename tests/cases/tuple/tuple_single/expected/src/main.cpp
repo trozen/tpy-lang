@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     single = (Int32(42),)
+    //     single = (Int32(42),)
     std::tuple<int32_t> single = std::tuple<int32_t>{42};
-    // 6:     print(single)
+    //     print(single)
     std::cout << tpy::TuplePrinter(single) << "\n";
-    // 7:     print(single[0])
+    //     print(single[0])
     std::cout << std::get<0>(single) << "\n";
-    // 9:     single_str = ("only",)
+    //     single_str = ("only",)
     std::tuple<std::string> single_str = std::tuple<std::string>{"only"};
-    // 10:     print(single_str)
+    //     print(single_str)
     std::cout << tpy::TuplePrinter(single_str) << "\n";
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 12: main()
+    // main()
     main();
 }
 

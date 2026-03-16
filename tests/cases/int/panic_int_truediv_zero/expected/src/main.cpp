@@ -5,15 +5,15 @@ namespace tpy_user::main {
 
 
 // # int true division by zero panics (matches Python's ZeroDivisionError)
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     x: int = 10
+    //     x: int = 10
     tpy::BigInt x = tpy::BigInt(10);
-    // 4:     y: int = 0
+    //     y: int = 0
     tpy::BigInt y = tpy::BigInt(0);
-    // 5:     z: float = x / y
+    //     z: float = x / y
     double z = (tpy::truediv(static_cast<double>(x), static_cast<double>(y)));
-    // 6:     print(z)
+    //     print(z)
     std::cout << tpy::print_float(z) << "\n";
 }
 
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: main()
+    // main()
     main();
 }
 

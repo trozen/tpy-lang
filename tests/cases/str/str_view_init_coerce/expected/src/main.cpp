@@ -8,62 +8,62 @@ namespace tpy_user::main {
 // # later gets promoted to std::string (e.g. via +=) must be wrapped std::string(...).
 // # The str param is std::string_view at C++ runtime; its explicit constructor requires
 // # an explicit conversion when assigning to a std::string variable.
-// 6: def from_param(a: str) -> None:
+// def from_param(a: str) -> None:
 void from_param(std::string_view a) {
-    // 7:     # a is std::string_view at runtime; x gets promoted to str due to +=
-    // 8:     x = a  # tpyc: type(str)
+    //     # a is std::string_view at runtime; x gets promoted to str due to +=
+    //     x = a  # tpyc: type(str)
     std::string x = std::string(a);
-    // 9:     x += "!"
+    //     x += "!"
     x += "!";
-    // 10:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 13: def from_param_return(a: str) -> str:
+// def from_param_return(a: str) -> str:
 std::string from_param_return(std::string_view a) {
-    // 14:     # return a or b where both are str params: result is string_view at runtime
-    // 15:     x = a or "default"  # tpyc: type(str)
+    //     # return a or b where both are str params: result is string_view at runtime
+    //     x = a or "default"  # tpyc: type(str)
     std::string_view __tmp_1 = "default";
     std::string x = std::string(((!a.empty()) ? a : __tmp_1));
-    // 16:     x += "."
+    //     x += "."
     x += ".";
-    // 17:     return x
+    //     return x
     return x;
 }
 
-// 20: def from_or_params(a: str, b: str) -> None:
+// def from_or_params(a: str, b: str) -> None:
 void from_or_params(std::string_view a, std::string_view b) {
-    // 21:     # a or b is string_view at runtime; x promoted to str via +=
-    // 22:     x = a or b  # tpyc: type(str)
+    //     # a or b is string_view at runtime; x promoted to str via +=
+    //     x = a or b  # tpyc: type(str)
     std::string x = std::string(((!a.empty()) ? a : b));
-    // 23:     x += "!"
+    //     x += "!"
     x += "!";
-    // 24:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 27: def from_ternary_params(a: str, b: str, cond: bool) -> None:
+// def from_ternary_params(a: str, b: str, cond: bool) -> None:
 void from_ternary_params(std::string_view a, std::string_view b, bool cond) {
-    // 28:     # ternary of str params is string_view at runtime; x promoted to str via +=
-    // 29:     x = a if cond else b  # tpyc: type(str)
+    //     # ternary of str params is string_view at runtime; x promoted to str via +=
+    //     x = a if cond else b  # tpyc: type(str)
     std::string x = std::string(((cond) ? (a) : (b)));
-    // 30:     x += "!"
+    //     x += "!"
     x += "!";
-    // 31:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 34: def return_or_params(a: str, b: str) -> str:
+// def return_or_params(a: str, b: str) -> str:
 std::string return_or_params(std::string_view a, std::string_view b) {
-    // 35:     # return a or b: both are string_view at runtime, result must be owned string
-    // 36:     return a or b
+    //     # return a or b: both are string_view at runtime, result must be owned string
+    //     return a or b
     return std::string(((!a.empty()) ? a : b));
 }
 
-// 39: def return_ternary_params(a: str, b: str, cond: bool) -> str:
+// def return_ternary_params(a: str, b: str, cond: bool) -> str:
 std::string return_ternary_params(std::string_view a, std::string_view b, bool cond) {
-    // 40:     # return ternary of str params: result must be owned string
-    // 41:     return a if cond else b
+    //     # return ternary of str params: result must be owned string
+    //     return a if cond else b
     return std::string(((cond) ? (a) : (b)));
 }
 
@@ -72,25 +72,25 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 44: from_param("hello")
+    // from_param("hello")
     from_param("hello");
-    // 45: print(from_param_return("hi"))
+    // print(from_param_return("hi"))
     std::cout << from_param_return("hi") << "\n";
-    // 46: from_or_params("", "world")
+    // from_or_params("", "world")
     from_or_params("", "world");
-    // 47: from_or_params("hello", "world")
+    // from_or_params("hello", "world")
     from_or_params("hello", "world");
-    // 48: from_ternary_params("hello", "world", True)
+    // from_ternary_params("hello", "world", True)
     from_ternary_params("hello", "world", true);
-    // 49: from_ternary_params("hello", "world", False)
+    // from_ternary_params("hello", "world", False)
     from_ternary_params("hello", "world", false);
-    // 50: print(return_or_params("", "fallback"))
+    // print(return_or_params("", "fallback"))
     std::cout << return_or_params("", "fallback") << "\n";
-    // 51: print(return_or_params("first", "second"))
+    // print(return_or_params("first", "second"))
     std::cout << return_or_params("first", "second") << "\n";
-    // 52: print(return_ternary_params("yes", "no", True))
+    // print(return_ternary_params("yes", "no", True))
     std::cout << return_ternary_params("yes", "no", true) << "\n";
-    // 53: print(return_ternary_params("yes", "no", False))
+    // print(return_ternary_params("yes", "no", False))
     std::cout << return_ternary_params("yes", "no", false) << "\n";
 }
 

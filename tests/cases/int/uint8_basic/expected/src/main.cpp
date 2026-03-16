@@ -4,52 +4,52 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     # Constructors
-    // 6:     a: UInt8 = UInt8(0)
+    //     # Constructors
+    //     a: UInt8 = UInt8(0)
     uint8_t a = 0;
-    // 7:     b: UInt8 = UInt8(255)
+    //     b: UInt8 = UInt8(255)
     uint8_t b = 255;
-    // 8:     c: UInt8 = UInt8(42)
+    //     c: UInt8 = UInt8(42)
     uint8_t c = 42;
-    // 10:     print(a)
+    //     print(a)
     std::cout << static_cast<int>(a) << "\n";
-    // 11:     print(b)
+    //     print(b)
     std::cout << static_cast<int>(b) << "\n";
-    // 12:     print(c)
+    //     print(c)
     std::cout << static_cast<int>(c) << "\n";
-    // 14:     # Arithmetic
-    // 15:     x: UInt8 = UInt8(100)
+    //     # Arithmetic
+    //     x: UInt8 = UInt8(100)
     uint8_t x = 100;
-    // 16:     y: UInt8 = UInt8(50)
+    //     y: UInt8 = UInt8(50)
     uint8_t y = 50;
-    // 17:     print(x + y)
+    //     print(x + y)
     std::cout << static_cast<int>((tpy::add_check<uint8_t>(x, y))) << "\n";
-    // 18:     print(x - y)
+    //     print(x - y)
     std::cout << static_cast<int>((tpy::sub_check<uint8_t>(x, y))) << "\n";
-    // 19:     print(x * UInt8(2))
+    //     print(x * UInt8(2))
     std::cout << static_cast<int>((tpy::mul_check<uint8_t>(x, 2))) << "\n";
-    // 20:     print(x // UInt8(3))
+    //     print(x // UInt8(3))
     std::cout << static_cast<int>((tpy::div_check<uint8_t>(x, 3))) << "\n";
-    // 21:     print(x % UInt8(7))
+    //     print(x % UInt8(7))
     std::cout << static_cast<int>((tpy::mod_check<uint8_t>(x, 7))) << "\n";
-    // 23:     # Bitwise
-    // 24:     print(UInt8(0xFF) & UInt8(0x0F))
+    //     # Bitwise
+    //     print(UInt8(0xFF) & UInt8(0x0F))
     std::cout << static_cast<int>((static_cast<uint8_t>(255 & 15))) << "\n";
-    // 25:     print(UInt8(0xF0) | UInt8(0x0F))
+    //     print(UInt8(0xF0) | UInt8(0x0F))
     std::cout << static_cast<int>((static_cast<uint8_t>(240 | 15))) << "\n";
-    // 26:     print(UInt8(0xFF) ^ UInt8(0x0F))
+    //     print(UInt8(0xFF) ^ UInt8(0x0F))
     std::cout << static_cast<int>((static_cast<uint8_t>(255 ^ 15))) << "\n";
-    // 27:     print(~UInt8(0))
+    //     print(~UInt8(0))
     std::cout << static_cast<int>(static_cast<uint8_t>(~(0))) << "\n";
-    // 29:     # Conversion to BigInt
-    // 30:     n: int = int(c)
+    //     # Conversion to BigInt
+    //     n: int = int(c)
     tpy::BigInt n = tpy::BigInt(static_cast<uint64_t>(c));
-    // 31:     print(n)
+    //     print(n)
     std::cout << n << "\n";
-    // 33:     # Conversion to str
-    // 34:     print(str(c))
+    //     # Conversion to str
+    //     print(str(c))
     std::cout << tpy::fixed_to_str<uint8_t>(c) << "\n";
 }
 
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 36: main()
+    // main()
     main();
 }
 

@@ -15,24 +15,24 @@ template<tpy::Sequence<int32_t> T_s>
 int32_t first(const T_s& s);
 void main();
 
-// 4: class IntWrapper:
+// class IntWrapper:
 struct IntWrapper {
-    // 5:     data: list[Int32]
+    //     data: list[Int32]
     std::vector<int32_t> data;
 
-    // 7:     def __init__(self, items: list[Int32]) -> None:
+    //     def __init__(self, items: list[Int32]) -> None:
     IntWrapper() = default;
     explicit IntWrapper(const std::vector<int32_t>& items) : data(items) {}
 
-    // 10:     def __len__(self) -> Int32:
+    //     def __len__(self) -> Int32:
     int32_t __len__() const {
-        // 11:         return len(self.data)
+        //         return len(self.data)
         return tpy::__len__(this->data);
     }
 
-    // 13:     def __getitem__(self, index: Int32) -> Int32:
+    //     def __getitem__(self, index: Int32) -> Int32:
     int32_t __getitem__(int32_t index) const {
-        // 14:         return self.data[index]
+        //         return self.data[index]
         return tpy::__getitem__(this->data, index);
     }
 
@@ -54,27 +54,27 @@ inline std::ostream& operator<<(std::ostream& os, const IntWrapper& obj) {
     return os;
 }
 
-// 16: def sum_seq(s: Sequence[Int32]) -> Int32:
+// def sum_seq(s: Sequence[Int32]) -> Int32:
 template<tpy::Sequence<int32_t> T_s>
 int32_t sum_seq(const T_s& s) {
-    // 17:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 18:     i: Int32 = 0
+    //     i: Int32 = 0
     int32_t i = 0;
-    // 19:     while i < len(s):
+    //     while i < len(s):
     while ((i < tpy::__len__(s))) {
-        // 20:         total += s[i]
+        //         total += s[i]
         total = tpy::add_check<int32_t>(total, s[i]);
-        // 21:         i += 1
+        //         i += 1
         i = tpy::add_check<int32_t>(i, 1);
     }
-    // 22:     return total
+    //     return total
     return total;
 }
-// 24: def first(s: Sequence[Int32]) -> Int32:
+// def first(s: Sequence[Int32]) -> Int32:
 template<tpy::Sequence<int32_t> T_s>
 int32_t first(const T_s& s) {
-    // 25:     return s[0]
+    //     return s[0]
     return tpy::__getitem__(s, 0);
 }
 

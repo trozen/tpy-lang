@@ -4,25 +4,25 @@
 namespace tpy_user::main {
 
 
-// 15: def main() -> None:
+// def main() -> None:
 void main() {
-    // 16:     c = Counter()
+    //     c = Counter()
     Counter c = Counter();
-    // 17:     c.display()
+    //     c.display()
     c.display();
-    // 18:     c.increment()
+    //     c.increment()
     c.increment();
-    // 19:     c.display()
+    //     c.display()
     c.display();
-    // 20:     c.increment(Int32(5))
+    //     c.increment(Int32(5))
     c.increment(5);
-    // 21:     c.display()
+    //     c.display()
     c.display();
-    // 22:     c.display("total")
+    //     c.display("total")
     c.display("total");
-    // 24:     c2 = Counter(Int32(100))
+    //     c2 = Counter(Int32(100))
     Counter c2 = Counter(100);
-    // 25:     c2.display()
+    //     c2.display()
     c2.display();
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 27: main()
+    // main()
     main();
 }
 

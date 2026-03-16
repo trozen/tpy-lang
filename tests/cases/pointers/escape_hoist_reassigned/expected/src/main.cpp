@@ -7,23 +7,23 @@ namespace tpy_user::main {
 // # Loop-body var that is both hoisted (escapes to outer scope) and
 // # reassigned within the loop. Tests the intersection of hoisted_vars
 // # and reassigned_vars.
-// 13: def hoist_and_reassign() -> None:
+// def hoist_and_reassign() -> None:
 void hoist_and_reassign() {
   std::optional<Point> __slot_2;
   std::optional<Point> __slot_3;
-    // 14:     saved: Point = Point(0, 0)
+    //     saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    // 15:     for i in range(3):
+    //     for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // 16:         p: Point = Point(i, 0)
+        //         p: Point = Point(i, 0)
         Point* p = &*(__slot_2 = Point(i, 0));
-        // 17:         p = Point(i, i + 10)
+        //         p = Point(i, i + 10)
         p = &*(__slot_3 = Point(i, (tpy::add_check<int32_t>(i, 10))));
-        // 18:         saved = p  # tpyc: warning(/hoisted to function scope/)
+        //         saved = p  # tpyc: warning(/hoisted to function scope/)
         saved = p;
     }
-    // 19:     print(saved.x, saved.y)
+    //     print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 21: hoist_and_reassign()
+    // hoist_and_reassign()
     hoist_and_reassign();
 }
 

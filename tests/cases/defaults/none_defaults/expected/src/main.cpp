@@ -4,47 +4,47 @@
 namespace tpy_user::main {
 
 
-// 5: def find(items: list[Int32], target: Int32, default: Optional[Int32] = None) -> Optional[Int32]:
+// def find(items: list[Int32], target: Int32, default: Optional[Int32] = None) -> Optional[Int32]:
 std::optional<int32_t> find(const std::vector<int32_t>& items, int32_t target, std::optional<int32_t> default_) {
-    // 6:     for item in items:
+    //     for item in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t item = *__beg_0;
-        // 7:         if item == target:
+        //         if item == target:
         if ((item == target)) {
-            // 8:             return item
+            //             return item
             return item;
         }
     }
-    // 9:     return default
+    //     return default
     return default_;
 }
 
-// 11: def main() -> None:
+// def main() -> None:
 void main() {
-    // 12:     items: list[Int32] = [Int32(10), Int32(20), Int32(30)]
+    //     items: list[Int32] = [Int32(10), Int32(20), Int32(30)]
     std::vector<int32_t> items = {10, 20, 30};
-    // 14:     r1 = find(items, Int32(20))
+    //     r1 = find(items, Int32(20))
     std::optional<int32_t> r1 = find(items, 20);
-    // 15:     if r1 is not None:
+    //     if r1 is not None:
     if ((r1.has_value())) {
-        // 16:         print(r1)
+        //         print(r1)
         std::cout << tpy::print_optional_val(r1) << "\n";
     }
-    // 18:     r2 = find(items, Int32(99))
+    //     r2 = find(items, Int32(99))
     std::optional<int32_t> r2 = find(items, 99);
-    // 19:     if r2 is None:
+    //     if r2 is None:
     if ((!r2.has_value())) {
-        // 20:         print("not found")
+        //         print("not found")
         std::cout << "not found" << "\n";
     }
-    // 22:     r3 = find(items, Int32(99), Int32(-1))
+    //     r3 = find(items, Int32(99), Int32(-1))
     std::optional<int32_t> r3 = find(items, 99, -1);
-    // 23:     if r3 is not None:
+    //     if r3 is not None:
     if ((r3.has_value())) {
-        // 24:         print(r3)
+        //         print(r3)
         std::cout << tpy::print_optional_val(r3) << "\n";
     }
 }
@@ -54,7 +54,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 26: main()
+    // main()
     main();
 }
 

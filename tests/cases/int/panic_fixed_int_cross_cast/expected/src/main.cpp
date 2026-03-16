@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-// 4: x: Int32 = Int32(300)
+// x: Int32 = Int32(300)
 int32_t x{};
-// 5: y: UInt8 = UInt8(x)
+// y: UInt8 = UInt8(x)
 uint8_t y{};
 
 void __tpy_init() {
@@ -13,11 +13,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: x: Int32 = Int32(300)
+    // x: Int32 = Int32(300)
     x = 300;
-    // 5: y: UInt8 = UInt8(x)
+    // y: UInt8 = UInt8(x)
     y = tpy::int_cast_check<uint8_t>(x);
-    // 6: print(y)
+    // print(y)
     std::cout << static_cast<int>(y) << "\n";
 }
 

@@ -14,13 +14,13 @@ void main();
 
 // # Tests __del__ destructor: cleanup is called deterministically at end of scope (C++ RAII),
 // # both for local variables and globals
-// 4: class Resource:
+// class Resource:
 struct Resource {
-    // 5:     name: str
+    //     name: str
     std::string name;
     bool __tpy_owned_ = true;
 
-    // 6:     def __init__(self, name: str):
+    //     def __init__(self, name: str):
     Resource() = default;
     explicit Resource(std::string_view name) : name(name) {}
     Resource(const Resource&) = delete;
@@ -35,11 +35,11 @@ struct Resource {
         }
         return *this;
     }
-    // 8:     def __del__(self):
+    //     def __del__(self):
 
     ~Resource() {
         if (!__tpy_owned_) return;
-        // 9:         print("destroying", self.name)
+        //         print("destroying", self.name)
         std::cout << "destroying" << " " << this->name << "\n";
     }
 };

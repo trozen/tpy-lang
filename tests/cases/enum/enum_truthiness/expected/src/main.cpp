@@ -42,24 +42,24 @@ tpy_user::main::Signal EnumUtil<tpy_user::main::Signal>::from_name(std::string_v
 namespace tpy_user::main {
 
 
-// 8: def check(s: Signal) -> None:
+// def check(s: Signal) -> None:
 void check(Signal s) {
-    // 9:     if s:
+    //     if s:
     if (true) {
-        // 10:         print("truthy")
+        //         print("truthy")
         std::cout << "truthy" << "\n";
-    // 11:     else:
+    //     else:
     } else {
-        // 12:         print("falsy")
+        //         print("falsy")
         std::cout << "falsy" << "\n";
     }
 }
 
-// 14: def main() -> None:
+// def main() -> None:
 void main() {
-    // 15:     check(Signal.Off)
+    //     check(Signal.Off)
     check(Signal::Off);
-    // 16:     check(Signal.On)
+    //     check(Signal.On)
     check(Signal::On);
 }
 
@@ -68,7 +68,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: main()
+    // main()
     main();
 }
 

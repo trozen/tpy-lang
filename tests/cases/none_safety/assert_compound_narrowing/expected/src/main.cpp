@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 4: def clamp_positive(x: Int32 | None) -> Int32:
+// def clamp_positive(x: Int32 | None) -> Int32:
 int32_t clamp_positive(std::optional<int32_t> x) {
-    // 5:     assert x is not None and x > 0, "need positive"
+    //     assert x is not None and x > 0, "need positive"
     if (!(((x.has_value()) && ((*x) > 0)))) tpy::tpy_panic("need positive");
-    // 6:     return x + 1
+    //     return x + 1
     return (tpy::add_check<int32_t>((*x), 1));
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 9: print(clamp_positive(5))
+    // print(clamp_positive(5))
     std::cout << clamp_positive(5) << "\n";
 }
 

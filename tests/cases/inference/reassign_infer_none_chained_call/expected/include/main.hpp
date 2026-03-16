@@ -13,12 +13,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 Factory get_factory();
 
-// 4: class Product:
+// class Product:
 struct Product {
-    // 5:     value: Int32
+    //     value: Int32
     int32_t value;
 
-    // 7:     def __init__(self, value: Int32) -> None:
+    //     def __init__(self, value: Int32) -> None:
     Product() = default;
     explicit Product(int32_t value) : value(value) {}
 };
@@ -30,13 +30,13 @@ inline std::ostream& operator<<(std::ostream& os, const Product& obj) {
     return os;
 }
 
-// 11: class Factory:
+// class Factory:
 struct Factory {
 
 
-    // 12:     def create(self) -> Own[Product]:
+    //     def create(self) -> Own[Product]:
     Product create() const {
-        // 13:         return Product(Int32(9))
+        //         return Product(Int32(9))
         return Product(9);
     }
 };

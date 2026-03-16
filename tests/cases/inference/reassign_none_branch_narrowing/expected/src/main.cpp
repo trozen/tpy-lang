@@ -4,47 +4,47 @@
 namespace tpy_user::main {
 
 
-// 10: def make_box() -> Own[Box]:
+// def make_box() -> Own[Box]:
 Box make_box() {
-    // 11:     return Box(Int32(42))
+    //     return Box(Int32(42))
     return Box(42);
 }
 
-// 13: def test_if_branch() -> None:
+// def test_if_branch() -> None:
 void test_if_branch() {
-    // 14:     b = None
+    //     b = None
     std::optional<Box> __slot_1;
     Box* b = nullptr;
-    // 15:     if True:
+    //     if True:
     if (true) {
-        // 16:         b = make_box()
+        //         b = make_box()
         b = &*(__slot_1 = make_box());
     }
-    // 17:     if b is not None:
+    //     if b is not None:
     if ((b != nullptr)) {
-        // 18:         print(b.v)
+        //         print(b.v)
         std::cout << b->v << "\n";
     }
 }
 
-// 20: def test_elif_branch() -> None:
+// def test_elif_branch() -> None:
 void test_elif_branch() {
-    // 21:     b = None
+    //     b = None
     std::optional<Box> __slot_1;
     Box* b = nullptr;
-    // 22:     x = 1
+    //     x = 1
     int32_t x = 1;
-    // 23:     if x == 0:
+    //     if x == 0:
     if ((x == 0)) {
-        // 24:         pass
-    // 25:     elif x == 1:
+        //         pass
+    //     elif x == 1:
     } else if ((x == 1)) {
-        // 26:         b = make_box()
+        //         b = make_box()
         b = &*(__slot_1 = make_box());
     }
-    // 27:     if b is not None:
+    //     if b is not None:
     if ((b != nullptr)) {
-        // 28:         print(b.v)
+        //         print(b.v)
         std::cout << b->v << "\n";
     }
 }
@@ -54,9 +54,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 30: test_if_branch()
+    // test_if_branch()
     test_if_branch();
-    // 31: test_elif_branch()
+    // test_elif_branch()
     test_elif_branch();
 }
 

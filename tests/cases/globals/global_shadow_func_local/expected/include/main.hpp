@@ -13,14 +13,14 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void foo(bool cond);
 
-// 3: class Point:
+// class Point:
 struct Point {
-    // 4:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 5:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 6:     def __init__(self, x: Int32, y: Int32):
+    //     def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -35,29 +35,29 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 // # Record with method that has pointer-local `p` (tests method→global path)
-// 19: class Picker:
+// class Picker:
 struct Picker {
-    // 20:     val: Int32
+    //     val: Int32
     int32_t val;
 
-    // 21:     def __init__(self, val: Int32):
+    //     def __init__(self, val: Int32):
     Picker() = default;
     explicit Picker(int32_t val) : val(val) {}
 
-    // 23:     def pick(self, cond: bool) -> None:
+    //     def pick(self, cond: bool) -> None:
     void pick(bool cond) const {
-        // 24:         if cond:
+        //         if cond:
         std::optional<Point> __slot_1;
         Point* p;
         if (cond) {
-            // 25:             p = Point(self.val, self.val)
+            //             p = Point(self.val, self.val)
             p = &*(__slot_1 = Point(this->val, this->val));
-        // 26:         else:
+        //         else:
         } else {
-            // 27:             p = Point(0, 0)
+            //             p = Point(0, 0)
             p = &*(__slot_1 = Point(0, 0));
         }
-        // 28:         print(p.x, p.y)
+        //         print(p.x, p.y)
         std::cout << p->x << " " << p->y << "\n";
     }
 };

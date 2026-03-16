@@ -4,9 +4,9 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     print(BIG_VALUE)
+    //     print(BIG_VALUE)
     std::cout << ::tpy_user::constants::BIG_VALUE << "\n";
 }
 
@@ -15,10 +15,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # Cross-module import of a Final[int] (BigInt) constant
-    // 2: from constants import BIG_VALUE
+    // # Cross-module import of a Final[int] (BigInt) constant
+    // from constants import BIG_VALUE
     ::tpy_user::constants::__tpy_init();
-    // 7: main()
+    // main()
     main();
 }
 

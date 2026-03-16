@@ -15,25 +15,25 @@ template<tpy::ReadOnlySpanLike<int32_t> T_x>
 int32_t span_sum(const T_x& x);
 void main();
 
-// 4: class Buffer:
+// class Buffer:
 struct Buffer {
-    // 5:     _data: list[Int32]
+    //     _data: list[Int32]
     std::vector<int32_t> _data;
 
-    // 6:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Buffer() : _data({10, 20, 30}) {}
 
     //     @auto_readonly
-    // 9:     def __span__(self) -> Span[auto_readonly[Int32]]:
+    //     def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<int32_t> __span__() {
-        // 10:         return self._data
+        //         return self._data
         return tpy::as_mut_span(this->_data);
     }
 
     //     @auto_readonly
-    // 9:     def __span__(self) -> Span[auto_readonly[Int32]]:
+    //     def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> __span__() const {
-        // 10:         return self._data
+        //         return self._data
         return tpy::as_span(this->_data);
     }
 };
@@ -45,27 +45,27 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
     return os;
 }
 
-// 12: def span_len(x: ReadOnlySpanLike[Int32]) -> Int32:
+// def span_len(x: ReadOnlySpanLike[Int32]) -> Int32:
 template<tpy::ReadOnlySpanLike<int32_t> T_x>
 int32_t span_len(const T_x& x) {
-    // 13:     return len(span(x))
+    //     return len(span(x))
     return tpy::__len__(tpy::as_span(x));
 }
-// 15: def span_sum(x: ReadOnlySpanLike[Int32]) -> Int32:
+// def span_sum(x: ReadOnlySpanLike[Int32]) -> Int32:
 template<tpy::ReadOnlySpanLike<int32_t> T_x>
 int32_t span_sum(const T_x& x) {
-    // 16:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 17:     for v in span(x):
+    //     for v in span(x):
     auto __obj_0 = tpy::as_span(x);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        // 18:         total += v
+        //         total += v
         total = tpy::add_check<int32_t>(total, v);
     }
-    // 19:     return total
+    //     return total
     return total;
 }
 

@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     a: Int32 = Int32(10)
+    //     a: Int32 = Int32(10)
     int32_t a = 10;
-    // 6:     b: Int32 = Int32(0)
+    //     b: Int32 = Int32(0)
     int32_t b = 0;
-    // 7:     q, r = divmod(a, b)
+    //     q, r = divmod(a, b)
     auto __tup_1 = tpy::divmod_fixed<int32_t>(a, b);
     int32_t q = std::get<0>(__tup_1);
     int32_t r = std::get<1>(__tup_1);
-    // 8:     print(q)
+    //     print(q)
     std::cout << q << "\n";
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 10: main()
+    // main()
     main();
 }
 

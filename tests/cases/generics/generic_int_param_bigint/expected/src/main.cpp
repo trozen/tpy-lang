@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 9: def main() -> None:
+// def main() -> None:
 void main() {
-    // 10:     c: Container[str, 42] = Container[str, 42]()
+    //     c: Container[str, 42] = Container[str, 42]()
     Container<std::string, 42> c = Container<std::string, 42>();
-    // 11:     size: int = c.get_size_as_bigint()
+    //     size: int = c.get_size_as_bigint()
     tpy::BigInt size = c.get_size_as_bigint();
-    // 12:     print(size)
+    //     print(size)
     std::cout << size << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 15: main()
+    // main()
     main();
 }
 

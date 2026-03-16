@@ -9,21 +9,21 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # native_c_global_array for C array globals (extern T name[])
-    // 2: # Generates incomplete array extern, which decays to pointer when used.
-    // 3: from tpy.extern import native_c_global_array
-    // 5: from tpy.unsafe import unsafe_load, unsafe_store
-    // 10: # Read array elements
-    // 11: print(unsafe_load(scores, UInt32(0)))
+    // # native_c_global_array for C array globals (extern T name[])
+    // # Generates incomplete array extern, which decays to pointer when used.
+    // from tpy.extern import native_c_global_array
+    // from tpy.unsafe import unsafe_load, unsafe_store
+    // # Read array elements
+    // print(unsafe_load(scores, UInt32(0)))
     std::cout << g_scores[0] << "\n";
-    // 12: print(unsafe_load(scores, UInt32(2)))
+    // print(unsafe_load(scores, UInt32(2)))
     std::cout << g_scores[2] << "\n";
-    // 13: print(unsafe_load(ids, UInt32(1)))
+    // print(unsafe_load(ids, UInt32(1)))
     std::cout << g_ids[1] << "\n";
-    // 15: # Write and read back
-    // 16: unsafe_store(scores, UInt32(0), Int16(99))
+    // # Write and read back
+    // unsafe_store(scores, UInt32(0), Int16(99))
     g_scores[0] = 99;
-    // 17: print(unsafe_load(scores, UInt32(0)))
+    // print(unsafe_load(scores, UInt32(0)))
     std::cout << g_scores[0] << "\n";
 }
 

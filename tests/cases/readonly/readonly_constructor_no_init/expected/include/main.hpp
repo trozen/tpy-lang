@@ -11,13 +11,13 @@ inline constexpr std::string_view __name__ = "__main__";
 
 tpy::BigInt ok();
 
-// 4: class Logger:
+// class Logger:
 struct Logger {
 
     //     @readonly(False)
-    // 6:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Logger() {
-        // 7:         pass
+        //         pass
     }
 };
 

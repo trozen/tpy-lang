@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 
-// 9: def make() -> tuple[Own[Pair], Int32]:
+// def make() -> tuple[Own[Pair], Int32]:
 std::tuple<Pair, int32_t> make() {
-    // 10:     return (Pair(Int32(1), Int32(2)), Int32(99))
+    //     return (Pair(Int32(1), Int32(2)), Int32(99))
     return std::tuple<Pair, int32_t>{Pair(1, 2), 99};
 }
 
-// 12: def main() -> None:
+// def main() -> None:
 void main() {
-    // 13:     p, n = make()
+    //     p, n = make()
     auto __tup_1 = make();
     Pair p = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
-    // 14:     print(p.x)
+    //     print(p.x)
     std::cout << p.x << "\n";
-    // 15:     print(p.y)
+    //     print(p.y)
     std::cout << p.y << "\n";
-    // 16:     print(n)
+    //     print(n)
     std::cout << n << "\n";
 }
 
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: main()
+    // main()
     main();
 }
 

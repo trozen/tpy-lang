@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-// 7: class Readable(Protocol):
+// class Readable(Protocol):
 template<typename T>
 concept Readable = requires(const T& t) {
     { t.read() } -> std::convertible_to<int32_t>;
@@ -19,19 +19,19 @@ inline constexpr std::string_view __name__ = "__main__";
 template<Readable T_r>
 int32_t use_readable(const T_r& r);
 
-// 13: class GoodReader:
+// class GoodReader:
 struct GoodReader {
-    // 14:     value: Int32
+    //     value: Int32
     int32_t value;
 
-    // 16:     def __init__(self, value: Int32) -> None:
+    //     def __init__(self, value: Int32) -> None:
     GoodReader() = default;
     explicit GoodReader(int32_t value) : value(value) {}
 
     //     @readonly
-    // 20:     def read(self) -> Int32:
+    //     def read(self) -> Int32:
     int32_t read() const {
-        // 21:         return self.value
+        //         return self.value
         return this->value;
     }
 };
@@ -43,10 +43,10 @@ inline std::ostream& operator<<(std::ostream& os, const GoodReader& obj) {
     return os;
 }
 
-// 24: def use_readable(r: Readable) -> Int32:
+// def use_readable(r: Readable) -> Int32:
 template<Readable T_r>
 int32_t use_readable(const T_r& r) {
-    // 25:     return r.read()
+    //     return r.read()
     return r.read();
 }
 

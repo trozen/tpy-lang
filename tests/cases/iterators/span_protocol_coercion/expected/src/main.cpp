@@ -4,32 +4,32 @@
 namespace tpy_user::main {
 
 
-// 24: def sum_ro(items: Span[readonly[Int32]]) -> Int32:
+// def sum_ro(items: Span[readonly[Int32]]) -> Int32:
 int32_t sum_ro(std::span<const int32_t> items) {
-    // 25:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 26:     for x in items:
+    //     for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 27:         total += x
+        //         total += x
         total = tpy::add_check<int32_t>(total, x);
     }
-    // 28:     return total
+    //     return total
     return total;
 }
 
-// 30: def main() -> None:
+// def main() -> None:
 void main() {
-    // 31:     ro = ROBuffer()
+    //     ro = ROBuffer()
     ROBuffer ro = ROBuffer();
-    // 32:     print(sum_ro(ro))
+    //     print(sum_ro(ro))
     std::cout << sum_ro(ro.__span__()) << "\n";
-    // 33:     mut = MutBuffer()
+    //     mut = MutBuffer()
     MutBuffer mut = MutBuffer();
-    // 34:     print(sum_ro(mut))
+    //     print(sum_ro(mut))
     std::cout << sum_ro(mut.__span__()) << "\n";
 }
 
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 36: main()
+    // main()
     main();
 }
 

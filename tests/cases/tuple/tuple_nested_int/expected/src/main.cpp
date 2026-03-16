@@ -5,15 +5,15 @@ namespace tpy_user::main {
 
 
 // # Nested tuples with bare int literals (no explicit Int32)
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     t = ((1, 2), (3, 4))
+    //     t = ((1, 2), (3, 4))
     std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>> t = std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
-    // 4:     print(t)
+    //     print(t)
     std::cout << tpy::TuplePrinter(t) << "\n";
-    // 5:     print(t[0])
+    //     print(t[0])
     std::cout << tpy::TuplePrinter(std::get<0>(t)) << "\n";
-    // 6:     print(t[1][1])
+    //     print(t[1][1])
     std::cout << std::get<1>(std::get<1>(t)) << "\n";
 }
 
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: main()
+    // main()
     main();
 }
 

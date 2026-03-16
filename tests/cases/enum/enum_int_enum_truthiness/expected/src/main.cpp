@@ -46,32 +46,32 @@ tpy_user::main::Status EnumUtil<tpy_user::main::Status>::from_name(std::string_v
 namespace tpy_user::main {
 
 
-// 9: def main() -> None:
+// def main() -> None:
 void main() {
-    // 10:     # Value 0 is falsy
-    // 11:     if Status.Off:
+    //     # Value 0 is falsy
+    //     if Status.Off:
     if ((static_cast<int32_t>(Status::Off) != 0)) {
-        // 12:         print("off is truthy")
+        //         print("off is truthy")
         std::cout << "off is truthy" << "\n";
-    // 13:     else:
+    //     else:
     } else {
-        // 14:         print("off is falsy")
+        //         print("off is falsy")
         std::cout << "off is falsy" << "\n";
     }
-    // 16:     # Non-zero is truthy
-    // 17:     if Status.On:
+    //     # Non-zero is truthy
+    //     if Status.On:
     if ((static_cast<int32_t>(Status::On) != 0)) {
-        // 18:         print("on is truthy")
+        //         print("on is truthy")
         std::cout << "on is truthy" << "\n";
-    // 19:     else:
+    //     else:
     } else {
-        // 20:         print("on is falsy")
+        //         print("on is falsy")
         std::cout << "on is falsy" << "\n";
     }
-    // 22:     # not operator
-    // 23:     print(not Status.Off)
+    //     # not operator
+    //     print(not Status.Off)
     std::cout << tpy::print_bool((!((static_cast<int32_t>(Status::Off) != 0)))) << "\n";
-    // 24:     print(not Status.On)
+    //     print(not Status.On)
     std::cout << tpy::print_bool((!((static_cast<int32_t>(Status::On) != 0)))) << "\n";
 }
 
@@ -80,7 +80,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 26: main()
+    // main()
     main();
 }
 

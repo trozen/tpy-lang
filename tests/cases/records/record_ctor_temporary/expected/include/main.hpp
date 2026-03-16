@@ -11,29 +11,29 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 3: class Numbers:
+// class Numbers:
 struct Numbers {
-    // 4:     data: list[Int32]
+    //     data: list[Int32]
     std::vector<int32_t> data;
 
-    // 6:     def __init__(self, items: list[Int32]) -> None:
+    //     def __init__(self, items: list[Int32]) -> None:
     Numbers() = default;
     explicit Numbers(const std::vector<int32_t>& items) : data(items) {}
 
-    // 9:     def sum(self) -> Int32:
+    //     def sum(self) -> Int32:
     int32_t sum() const {
-        // 10:         total: Int32 = 0
+        //         total: Int32 = 0
         int32_t total = 0;
-        // 11:         i: Int32 = 0
+        //         i: Int32 = 0
         int32_t i = 0;
-        // 12:         while i < len(self.data):
+        //         while i < len(self.data):
         while ((i < tpy::__len__(this->data))) {
-            // 13:             total += self.data[i]
+            //             total += self.data[i]
             total = tpy::add_check<int32_t>(total, tpy::__getitem__(this->data, i));
-            // 14:             i += 1
+            //             i += 1
             i = tpy::add_check<int32_t>(i, 1);
         }
-        // 15:         return total
+        //         return total
         return total;
     }
 };

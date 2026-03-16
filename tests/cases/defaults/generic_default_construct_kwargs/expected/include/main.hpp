@@ -11,14 +11,14 @@ template<typename T>
 void three_params(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b = T{}, tpy::param_val_or_ref_t<T> c = T{});
 void main();
 
-// 4: def three_params[T](a: T, b: T = T(), c: T = T()) -> None:
+// def three_params[T](a: T, b: T = T(), c: T = T()) -> None:
 template<typename T>
 void three_params(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b, tpy::param_val_or_ref_t<T> c) {
-    // 5:     print(a)
+    //     print(a)
     std::cout << tpy::ValuePrinter(a) << "\n";
-    // 6:     print(b)
+    //     print(b)
     std::cout << tpy::ValuePrinter(b) << "\n";
-    // 7:     print(c)
+    //     print(c)
     std::cout << tpy::ValuePrinter(c) << "\n";
 }
 

@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 16: def main():
+// def main():
 void main() {
-    // 17:     a = Counter(5)
+    //     a = Counter(5)
     Counter a = Counter(5);
-    // 18:     b = copy(a)
+    //     b = copy(a)
     Counter b = Counter(a);
-    // 19:     print(a.count)
+    //     print(a.count)
     std::cout << a.count << "\n";
-    // 20:     print(b.count)
+    //     print(b.count)
     std::cout << b.count << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 23: main()
+    // main()
     main();
 }
 

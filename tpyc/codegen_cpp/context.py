@@ -204,6 +204,7 @@ class CodeGenError(Exception):
 class CodeGenOptions:
     """Options for C++ code generation."""
     emit_source_comments: bool = False  # Embed Python source as comments in generated C++
+    comment_line_numbers: bool = True   # Include .py line numbers in source comments
 
 
 @dataclass
@@ -427,6 +428,13 @@ class CodeGenContext:
             return True
         return self.any_ancestor_has_del(record_name)
 
+    def _write_source_comment(self, out: TextIO, line_no: int, source: str, indent: str = "") -> None:
+        """Write a source comment line, optionally including the .py line number."""
+        if self.options.comment_line_numbers:
+            out.write(f"{indent}// {line_no}: {source}\n")
+        else:
+            out.write(f"{indent}// {source}\n")
+
     def emit_source_comment(self, out: TextIO, loc: SourceLocation | None, indent: str = "") -> None:
         """Emit the original Python source line as a comment if enabled."""
         if not self.options.emit_source_comments:
@@ -436,7 +444,7 @@ class CodeGenContext:
         line_idx = loc.line - 1  # Convert 1-indexed to 0-indexed
         if 0 <= line_idx < len(self.source_lines):
             source_line = self.source_lines[line_idx].rstrip()
-            out.write(f"{indent}// {loc.line}: {source_line}\n")
+            self._write_source_comment(out, loc.line, source_line, indent)
 
     def emit_else_comment(self, out: TextIO, orelse: list, indent: str = "") -> None:
         """Emit the 'else:' source line as a comment.
@@ -454,7 +462,7 @@ class CodeGenContext:
             if 0 <= line_idx < len(self.source_lines):
                 stripped = self.source_lines[line_idx].strip()
                 if stripped.startswith('else:'):
-                    out.write(f"{indent}// {line_num}: {self.source_lines[line_idx].rstrip()}\n")
+                    self._write_source_comment(out, line_num, self.source_lines[line_idx].rstrip(), indent)
                     return
                 if stripped and not stripped.startswith('#'):
                     return
@@ -493,7 +501,7 @@ class CodeGenContext:
                 break
         # Emit in source order
         for line_no, source_line in reversed(collected):
-            out.write(f"{indent}// {line_no}: {source_line}\n")
+            self._write_source_comment(out, line_no, source_line, indent)
 
     def emit_block_trailing_comments(self, out: TextIO, body: list, indent: str = "") -> None:
         """Emit trailing comment lines after the last statement in a block.
@@ -529,7 +537,7 @@ class CodeGenContext:
             if line_indent < block_indent:
                 break
             if stripped.startswith("#"):
-                out.write(f"{indent}// {line_no}: {source_line.rstrip()}\n")
+                self._write_source_comment(out, line_no, source_line.rstrip(), indent)
                 line_no += 1
             else:
                 break
@@ -550,7 +558,7 @@ class CodeGenContext:
         # Determine the definition's indentation
         def_line = self.source_lines[loc.line - 1]
         def_indent = len(def_line) - len(def_line.lstrip())
-        collected: list[str] = []
+        collected: list[tuple[int, str]] = []
         idx = loc.line - 2  # 0-indexed line before definition
         # Skip blank lines between definition and block above
         while idx >= 0 and not self.source_lines[idx].strip():
@@ -559,7 +567,7 @@ class CodeGenContext:
         while idx >= 0:
             stripped = self.source_lines[idx].strip()
             if stripped.startswith("@"):
-                collected.append(self.source_lines[idx].rstrip())
+                collected.append((idx + 1, self.source_lines[idx].rstrip()))
                 idx -= 1
             else:
                 break
@@ -573,13 +581,13 @@ class CodeGenContext:
                 line_indent = len(self.source_lines[idx]) - len(self.source_lines[idx].lstrip())
                 if line_indent > def_indent:
                     break
-                collected.append(self.source_lines[idx].rstrip())
+                collected.append((idx + 1, self.source_lines[idx].rstrip()))
                 idx -= 1
             else:
                 break
         # Emit in source order (collected is reversed)
-        for line in reversed(collected):
-            out.write(f"{indent}// {line}\n")
+        for line_no, source_line in reversed(collected):
+            self._write_source_comment(out, line_no, source_line, indent)
 
     def is_global_name(self, expr: TpyExpr) -> bool:
         """Check if expression is a reference to a global variable.

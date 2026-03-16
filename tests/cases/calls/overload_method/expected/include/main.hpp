@@ -13,12 +13,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Dog:
+// class Dog:
 struct Dog {
-    // 5:     name: str
+    //     name: str
     std::string name;
 
-    // 6:     def __init__(self, name: str) -> None:
+    //     def __init__(self, name: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name) : name(name) {}
 };
@@ -30,12 +30,12 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
-// 9: class Cat:
+// class Cat:
 struct Cat {
-    // 10:     lives: int
+    //     lives: int
     tpy::BigInt lives;
 
-    // 11:     def __init__(self, lives: int) -> None:
+    //     def __init__(self, lives: int) -> None:
     Cat() = default;
     explicit Cat(const tpy::BigInt& lives) : lives(lives) {}
 };
@@ -47,31 +47,31 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
-// 14: class Vet:
+// class Vet:
 struct Vet {
-    // 15:     count: int
+    //     count: int
     tpy::BigInt count;
 
-    // 16:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Vet() : count(tpy::BigInt(0)) {}
 
     //     @overload
-    // 20:     def treat(self, animal: Dog) -> str: ...
+    //     def treat(self, animal: Dog) -> str: ...
     std::string treat(Dog& animal) {
-        // 26:         self.count = self.count + 1
+        //         self.count = self.count + 1
         this->count = ((this->count) + (tpy::BigInt(1)));
-        // 27:         if isinstance(animal, Dog):
-        // 28:             return "Treated dog: " + animal.name
+        //         if isinstance(animal, Dog):
+        //             return "Treated dog: " + animal.name
         return (tpy::str_concat("Treated dog: ", animal.name));
     }
 
     //     @overload
-    // 23:     def treat(self, animal: Cat) -> str: ...
+    //     def treat(self, animal: Cat) -> str: ...
     std::string treat(Cat& animal) {
-        // 26:         self.count = self.count + 1
+        //         self.count = self.count + 1
         this->count = ((this->count) + (tpy::BigInt(1)));
-        // 27:         if isinstance(animal, Dog):
-        // 30:             return "Treated cat with " + str(animal.lives) + " lives"
+        //         if isinstance(animal, Dog):
+        //             return "Treated cat with " + str(animal.lives) + " lives"
         return (tpy::str_concat((tpy::str_concat("Treated cat with ", (animal.lives).to_string())), " lives"));
     }
 };

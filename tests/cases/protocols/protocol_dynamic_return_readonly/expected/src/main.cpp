@@ -3,28 +3,28 @@
 
 namespace tpy_user::main {
 
-// 20: global_pet: Pet = Cat()
+// global_pet: Pet = Cat()
 Pet* global_pet{};
 
-// 22: def echo_readonly(pet: readonly[Pet]) -> readonly[Pet]:
+// def echo_readonly(pet: readonly[Pet]) -> readonly[Pet]:
 const Pet& echo_readonly(const Pet& pet) {
-    // 23:     return pet
+    //     return pet
     return pet;
 }
 
-// 25: def get_global_readonly() -> readonly[Pet]:
+// def get_global_readonly() -> readonly[Pet]:
 const Pet& get_global_readonly() {
-    // 26:     return global_pet
+    //     return global_pet
     return (*global_pet);
 }
 
-// 28: def main() -> None:
+// def main() -> None:
 void main() {
-    // 29:     dog = Dog()
+    //     dog = Dog()
     Dog dog = Dog();
-    // 30:     print(echo_readonly(dog).name())
+    //     print(echo_readonly(dog).name())
     std::cout << echo_readonly(dog).name() << "\n";
-    // 31:     print(get_global_readonly().name())
+    //     print(get_global_readonly().name())
     std::cout << get_global_readonly().name() << "\n";
 }
 
@@ -34,10 +34,10 @@ void __tpy_init() {
     initialized = true;
 
   static std::optional<Cat> __global_slot_1;
-    // 20: global_pet: Pet = Cat()
+    // global_pet: Pet = Cat()
     __global_slot_1.emplace(Cat());
     global_pet = &*__global_slot_1;
-    // 33: main()
+    // main()
     main();
 }
 

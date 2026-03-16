@@ -13,20 +13,20 @@ inline constexpr std::string_view __name__ = "__main__";
 void accept_opt(Point* p);
 void main();
 
-// 5: class Point:
+// class Point:
 struct Point {
-    // 6:     x: int
+    //     x: int
     tpy::BigInt x;
-    // 7:     y: int
+    //     y: int
     tpy::BigInt y;
 
-    // 8:     def __init__(self, x: int, y: int) -> None:
+    //     def __init__(self, x: int, y: int) -> None:
     Point() = default;
     explicit Point(const tpy::BigInt& x, const tpy::BigInt& y) : x(x), y(y) {}
 
-    // 12:     def sum(self) -> int:
+    //     def sum(self) -> int:
     tpy::BigInt sum() const {
-        // 13:         return self.x + self.y
+        //         return self.x + self.y
         return ((this->x) + (this->y));
     }
 };
@@ -40,26 +40,26 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 15: class Container[T]:
+// class Container[T]:
 template<typename T>
 struct Container {
-    // 16:     _value: T
+    //     _value: T
     T _value;
-    // 17:     _has: bool
+    //     _has: bool
     bool _has;
 
-    // 19:     def __init__(self, value: Own[T]) -> None:
+    //     def __init__(self, value: Own[T]) -> None:
     Container() = default;
     explicit Container(T&& value) : _value(std::move(value)), _has(true) {}
 
-    // 23:     def get(self) -> T | None:
+    //     def get(self) -> T | None:
     T* get() {
-        // 24:         if self._has:
+        //         if self._has:
         if (this->_has) {
-            // 25:             return self._value
+            //             return self._value
             return &(this->_value);
         }
-        // 26:         return None
+        //         return None
         return nullptr;
     }
 };

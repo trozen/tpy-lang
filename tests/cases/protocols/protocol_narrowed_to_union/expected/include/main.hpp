@@ -15,54 +15,54 @@ template<typename T_items = std::nullptr_t>
 int32_t maybe_total(const T_items* items);
 void main();
 
-// 7: def total(items: ReadOnlySpanLike[Int32] | Iterable[Int32]) -> Int32:
+// def total(items: ReadOnlySpanLike[Int32] | Iterable[Int32]) -> Int32:
 template<typename T_items>
   requires (tpy::Iterable<T_items, int32_t> || tpy::ReadOnlySpanLike<T_items, int32_t>)
 int32_t total(T_items& items) {
-    // 8:     if isinstance(items, ReadOnlySpanLike):
+    //     if isinstance(items, ReadOnlySpanLike):
     if constexpr (tpy::ReadOnlySpanLike<T_items, int32_t>) {
-        // 9:         s = span(items)
+        //         s = span(items)
         std::span<const int32_t> s = tpy::as_span(items);
-        // 10:         result: Int32 = 0
+        //         result: Int32 = 0
         int32_t result = 0;
-        // 11:         for x in s:
+        //         for x in s:
         auto& __obj_0 = s;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            // 12:             result += x
+            //             result += x
             result = tpy::add_check<int32_t>(result, x);
         }
-        // 13:         return result
+        //         return result
         return result;
-    // 14:     else:
+    //     else:
     } else {
-        // 15:         result2: Int32 = 0
+        //         result2: Int32 = 0
         int32_t result2 = 0;
-        // 16:         for x2 in items:
+        //         for x2 in items:
         auto& __obj_1 = items;
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             int32_t x2 = *__beg_1;
-            // 17:             result2 += x2
+            //             result2 += x2
             result2 = tpy::add_check<int32_t>(result2, x2);
         }
-        // 18:         return result2
+        //         return result2
         return result2;
     }
 }
-// 21: def maybe_total(items: ReadOnlySpanLike[Int32] | Iterable[Int32] | None) -> Int32:
+// def maybe_total(items: ReadOnlySpanLike[Int32] | Iterable[Int32] | None) -> Int32:
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || tpy::Iterable<T_items, int32_t> || tpy::ReadOnlySpanLike<T_items, int32_t>)
 int32_t maybe_total(const T_items* items) {
-    // 22:     if items is not None:
+    //     if items is not None:
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-        // 23:         return total(items)
+        //         return total(items)
         return total((*items));
     }
-    // 24:     return -1
+    //     return -1
     return -1;
 }
 

@@ -4,30 +4,30 @@
 namespace tpy_user::main {
 
 
-// 14: def check(s: str | None) -> None:
+// def check(s: str | None) -> None:
 void check(std::optional<std::string_view> s) {
-    // 15:     if s is not None:
+    //     if s is not None:
     if ((s.has_value())) {
-        // 16:         print(s[0])
+        //         print(s[0])
         std::cout << tpy::__getitem__((*s), 0) << "\n";
-        // 17:         print(s[1:4])
+        //         print(s[1:4])
         std::cout << tpy::str_slice((*s), 1, 4) << "\n";
-        // 18:         print(len(s))
+        //         print(len(s))
         std::cout << tpy::__len__((*s)) << "\n";
-    // 19:     else:
+    //     else:
     } else {
-        // 20:         print("none")
+        //         print("none")
         std::cout << "none" << "\n";
     }
 }
 
-// 22: def main() -> None:
+// def main() -> None:
 void main() {
-    // 23:     check("hello")
+    //     check("hello")
     check("hello");
-    // 24:     check(None)
+    //     check(None)
     check(std::nullopt);
-    // 25:     Wrapper("world").first_char()
+    //     Wrapper("world").first_char()
     Wrapper("world").first_char();
 }
 
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 27: main()
+    // main()
     main();
 }
 

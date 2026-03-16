@@ -4,9 +4,9 @@
 namespace tpy_user::mod_b {
 
 
-// 6: def func_b() -> None:
+// def func_b() -> None:
 void func_b() {
-    // 7:     print("func_b called")
+    //     print("func_b called")
     std::cout << "func_b called" << "\n";
 }
 
@@ -15,9 +15,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: from mod_c import shared_value
+    // from mod_c import shared_value
     ::tpy_user::mod_c::__tpy_init();
-    // 4: print("mod_b init")
+    // print("mod_b init")
     std::cout << "mod_b init" << "\n";
 }
 

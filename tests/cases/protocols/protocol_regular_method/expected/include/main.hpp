@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-// 5: class Duplicable(Protocol):
+// class Duplicable(Protocol):
 template<typename T>
 concept Duplicable = requires(T& t) {
     { t.duplicate() } -> std::convertible_to<T>;
@@ -19,18 +19,18 @@ template<Duplicable T_d>
 void double_it(T_d& d);
 void main();
 
-// 8: class Value:
+// class Value:
 struct Value {
-    // 9:     x: Int32
+    //     x: Int32
     int32_t x;
 
-    // 11:     def __init__(self, x: Int32) -> None:
+    //     def __init__(self, x: Int32) -> None:
     Value() = default;
     explicit Value(int32_t x) : x(x) {}
 
-    // 14:     def duplicate(self) -> Own[Value]:
+    //     def duplicate(self) -> Own[Value]:
     Value duplicate() const {
-        // 15:         return Value(self.x * 2)
+        //         return Value(self.x * 2)
         return Value((tpy::mul_check<int32_t>(this->x, 2)));
     }
 };
@@ -42,10 +42,10 @@ inline std::ostream& operator<<(std::ostream& os, const Value& obj) {
     return os;
 }
 
-// 17: def double_it(d: Duplicable) -> None:
+// def double_it(d: Duplicable) -> None:
 template<Duplicable T_d>
 void double_it(T_d& d) {
-    // 18:     result = d.duplicate()
+    //     result = d.duplicate()
     auto result = d.duplicate();
 }
 

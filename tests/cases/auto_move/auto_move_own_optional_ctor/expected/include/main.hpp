@@ -12,11 +12,11 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 5: class Point:
+// class Point:
 struct Point {
-    // 6:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 7:     y: Int32
+    //     y: Int32
     int32_t y;
 
 };
@@ -30,21 +30,21 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 10: class Wrapper:
+// class Wrapper:
 struct Wrapper {
-    // 11:     tag: Int32
+    //     tag: Int32
     int32_t tag;
 
-    // 13:     def __init__(self, p: Own[Point] | None, tag: Int32):
+    //     def __init__(self, p: Own[Point] | None, tag: Int32):
     Wrapper() = default;
     explicit Wrapper(std::optional<Point> p, int32_t tag) {
-        // 14:         if p is not None:
+        //         if p is not None:
         if ((p.has_value())) {
-            // 15:             self.tag = tag
+            //             self.tag = tag
             this->tag = tag;
-        // 16:         else:
+        //         else:
         } else {
-            // 17:             self.tag = Int32(-1)
+            //             self.tag = Int32(-1)
             this->tag = -1;
         }
     }

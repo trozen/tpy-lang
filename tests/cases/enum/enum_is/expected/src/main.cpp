@@ -46,21 +46,21 @@ tpy_user::main::Color EnumUtil<tpy_user::main::Color>::from_name(std::string_vie
 namespace tpy_user::main {
 
 
-// 9: def main() -> None:
+// def main() -> None:
 void main() {
-    // 10:     a: Color = Color.Red
+    //     a: Color = Color.Red
     Color a = Color::Red;
-    // 11:     b: Color = Color.Red
+    //     b: Color = Color.Red
     Color b = Color::Red;
-    // 12:     c: Color = Color.Blue
+    //     c: Color = Color.Blue
     Color c = Color::Blue;
-    // 13:     print(a is b)
+    //     print(a is b)
     std::cout << tpy::print_bool((a == b)) << "\n";
-    // 14:     print(a is c)
+    //     print(a is c)
     std::cout << tpy::print_bool((a == c)) << "\n";
-    // 15:     print(a is not b)
+    //     print(a is not b)
     std::cout << tpy::print_bool((a != b)) << "\n";
-    // 16:     print(a is not c)
+    //     print(a is not c)
     std::cout << tpy::print_bool((a != c)) << "\n";
 }
 
@@ -69,7 +69,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: main()
+    // main()
     main();
 }
 

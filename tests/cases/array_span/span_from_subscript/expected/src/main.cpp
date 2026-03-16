@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 3: def main() -> None:
+// def main() -> None:
 void main() {
-    // 4:     matrix: Array[Array[Int32, 2], 2] = [[1, 2], [3, 4]]
+    //     matrix: Array[Array[Int32, 2], 2] = [[1, 2], [3, 4]]
     std::array<std::array<int32_t, 2>, 2> matrix = {{{1, 2}, {3, 4}}};
-    // 5:     s: Span[Int32] = matrix[1]
+    //     s: Span[Int32] = matrix[1]
     std::span<int32_t> s = tpy::as_mut_span(tpy::__getitem__(matrix, 1));
-    // 6:     print(s[0])
+    //     print(s[0])
     std::cout << tpy::__getitem__(s, 0) << "\n";
-    // 7:     print(s[1])
+    //     print(s[1])
     std::cout << tpy::__getitem__(s, 1) << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 9: main()
+    // main()
     main();
 }
 

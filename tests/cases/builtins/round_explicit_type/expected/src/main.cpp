@@ -4,21 +4,21 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     # Explicit type parameter
-    // 6:     a: Int64 = round[Int64](7.7)
+    //     # Explicit type parameter
+    //     a: Int64 = round[Int64](7.7)
     int64_t a = tpy::round_to<int64_t>(7.7);
-    // 7:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 9:     b: Int32 = round[Int32](2.5)
+    //     b: Int32 = round[Int32](2.5)
     int32_t b = tpy::round_to<int32_t>(2.5);
-    // 10:     print(b)
+    //     print(b)
     std::cout << b << "\n";
-    // 12:     # round[T] with default_int inference
-    // 13:     c: Int64 = round(99.9)
+    //     # round[T] with default_int inference
+    //     c: Int64 = round(99.9)
     int64_t c = tpy::round_to<int64_t>(99.9);
-    // 14:     print(c)
+    //     print(c)
     std::cout << c << "\n";
 }
 
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 16: main()
+    // main()
     main();
 }
 

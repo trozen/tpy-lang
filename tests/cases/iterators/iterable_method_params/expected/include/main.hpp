@@ -15,22 +15,22 @@ template<tpy::Iterable<int32_t> T_items>
 std::vector<int32_t> list_from(const T_items& items);
 void main();
 
-// 5: def extend_from(target: list[Int32], items: Iterable[Int32]) -> None:
+// def extend_from(target: list[Int32], items: Iterable[Int32]) -> None:
 template<tpy::Iterable<int32_t> T_items>
 void extend_from(std::vector<int32_t>& target, T_items& items) {
-    // 6:     target.extend(items)
+    //     target.extend(items)
     tpy::list_extend(target, items);
 }
-// 8: def join_from(sep: str, items: Iterable[str]) -> str:
+// def join_from(sep: str, items: Iterable[str]) -> str:
 template<tpy::Iterable<std::string> T_items>
 std::string join_from(std::string_view sep, const T_items& items) {
-    // 9:     return sep.join(items)
+    //     return sep.join(items)
     return tpy::str_join(sep, items);
 }
-// 11: def list_from(items: Iterable[Int32]) -> Own[list[Int32]]:
+// def list_from(items: Iterable[Int32]) -> Own[list[Int32]]:
 template<tpy::Iterable<int32_t> T_items>
 std::vector<int32_t> list_from(const T_items& items) {
-    // 12:     return list(items)
+    //     return list(items)
     return tpy::from_range<std::vector<int32_t>>(items);
 }
 

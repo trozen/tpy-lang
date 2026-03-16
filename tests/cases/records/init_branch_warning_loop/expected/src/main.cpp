@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 13: def main() -> None:
+// def main() -> None:
 void main() {
-    // 14:     a = Accum(Int32(4))
+    //     a = Accum(Int32(4))
     Accum a = Accum(4);
-    // 15:     print(a.total)
+    //     print(a.total)
     std::cout << a.total << "\n";
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 17: main()
+    // main()
     main();
 }
 

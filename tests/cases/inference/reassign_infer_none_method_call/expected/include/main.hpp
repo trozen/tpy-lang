@@ -11,18 +11,18 @@ extern Box* b;
 extern std::optional<int32_t> x;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 4: class Box:
+// class Box:
 struct Box {
-    // 5:     value: Int32
+    //     value: Int32
     int32_t value;
 
-    // 7:     def __init__(self, value: Int32) -> None:
+    //     def __init__(self, value: Int32) -> None:
     Box() = default;
     explicit Box(int32_t value) : value(value) {}
 
-    // 10:     def get(self) -> Int32:
+    //     def get(self) -> Int32:
     int32_t get() const {
-        // 11:         return self.value
+        //         return self.value
         return this->value;
     }
 };

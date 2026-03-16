@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // # Tests __del__ whose body is only super().__del__() -- effective body is empty
-// 3: class Base:
+// class Base:
 struct Base {
     bool __tpy_owned_ = true;
 
@@ -30,11 +30,11 @@ struct Base {
         }
         return *this;
     }
-    // 4:     def __del__(self):
+    //     def __del__(self):
 
     ~Base() {
         if (!__tpy_owned_) return;
-        // 5:         print("Base destroyed")
+        //         print("Base destroyed")
         std::cout << "Base destroyed" << "\n";
     }
 };
@@ -45,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
     return os;
 }
 
-// 7: class Child(Base):
+// class Child(Base):
 struct Child : Base {
 
     Child() = default;
@@ -61,7 +61,7 @@ struct Child : Base {
         }
         return *this;
     }
-    // 8:     def __del__(self):
+    //     def __del__(self):
 
     ~Child() {
         if (!__tpy_owned_) return;

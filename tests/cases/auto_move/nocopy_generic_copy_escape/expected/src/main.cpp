@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 24: def main():
+// def main():
 void main() {
-    // 25:     v = TaggedValue[Handle](42)
+    //     v = TaggedValue[Handle](42)
     TaggedValue<Handle> v = TaggedValue<Handle>(42);
-    // 26:     v2 = copy(v)  # tpyc: ok
+    //     v2 = copy(v)  # tpyc: ok
     TaggedValue<Handle> v2 = TaggedValue<Handle>(v);
-    // 27:     print(v.data)
+    //     print(v.data)
     std::cout << v.data << "\n";
-    // 28:     print(v2.data)
+    //     print(v2.data)
     std::cout << v2.data << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 31: main()
+    // main()
     main();
 }
 

@@ -10,14 +10,14 @@ struct Child;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-// 4: class Base:
+// class Base:
 struct Base {
 
 
     //     @readonly
-    // 6:     def value(self) -> Int32:
+    //     def value(self) -> Int32:
     int32_t value() const {
-        // 7:         return 7
+        //         return 7
         return 7;
     }
 };
@@ -28,14 +28,14 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
     return os;
 }
 
-// 10: class Child(Base):
+// class Child(Base):
 struct Child : Base {
 
 
     //     @readonly
-    // 12:     def value_plus_one(self) -> Int32:
+    //     def value_plus_one(self) -> Int32:
     int32_t value_plus_one() const {
-        // 13:         return super().value() + 1  # tpyc: ok
+        //         return super().value() + 1  # tpyc: ok
         return (tpy::add_check<int32_t>(Base::value(), 1));
     }
 };

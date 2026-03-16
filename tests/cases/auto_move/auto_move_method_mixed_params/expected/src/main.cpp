@@ -4,44 +4,44 @@
 namespace tpy_user::main {
 
 
-// 35: def main():
+// def main():
 void main() {
-    // 36:     h = Holder()
+    //     h = Holder()
     Holder h = Holder();
-    // 37:     h.inner = Inner()
+    //     h.inner = Inner()
     h.inner = Inner();
-    // 39:     # Method with Own + non-Own: only Own param should be moved
-    // 40:     i = Inner()
+    //     # Method with Own + non-Own: only Own param should be moved
+    //     i = Inner()
     Inner i = Inner();
-    // 41:     i.value = 10
+    //     i.value = 10
     i.value = 10;
-    // 42:     h.set_with_tag(i, Int32(5))
+    //     h.set_with_tag(i, Int32(5))
     h.set_with_tag(std::move(i), 5);
-    // 43:     print(h.inner.value)
+    //     print(h.inner.value)
     std::cout << h.inner.value << "\n";
-    // 45:     # Generic ctor with non-Own param: should NOT move
-    // 46:     i2 = Inner()
+    //     # Generic ctor with non-Own param: should NOT move
+    //     i2 = Inner()
     Inner i2 = Inner();
-    // 47:     i2.value = 42
+    //     i2.value = 42
     i2.value = 42;
-    // 48:     box = GenericBox[Inner](i2)
+    //     box = GenericBox[Inner](i2)
     GenericBox<Inner> box = GenericBox<Inner>(i2);
-    // 49:     print(box.item.value)
+    //     print(box.item.value)
     std::cout << box.item.value << "\n";
-    // 50:     print(i2.value)
+    //     print(i2.value)
     std::cout << i2.value << "\n";
-    // 52:     # Generic method with Own + non-Own: only Own should move
-    // 53:     gh = GenericHolder[Inner](Inner())
+    //     # Generic method with Own + non-Own: only Own should move
+    //     gh = GenericHolder[Inner](Inner())
     GenericHolder<Inner> gh = GenericHolder<Inner>(Inner());
-    // 54:     i3 = Inner()
+    //     i3 = Inner()
     Inner i3 = Inner();
-    // 55:     i3.value = 7
+    //     i3.value = 7
     i3.value = 7;
-    // 56:     f = gh.replace_with_flag(i3, Int32(3))
+    //     f = gh.replace_with_flag(i3, Int32(3))
     int32_t f = gh.replace_with_flag(std::move(i3), 3);
-    // 57:     print(gh.item.value)
+    //     print(gh.item.value)
     std::cout << gh.item.value << "\n";
-    // 58:     print(f)
+    //     print(f)
     std::cout << f << "\n";
 }
 
@@ -50,7 +50,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 61: main()
+    // main()
     main();
 }
 

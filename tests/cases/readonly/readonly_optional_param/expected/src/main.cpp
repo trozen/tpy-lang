@@ -5,40 +5,40 @@ namespace tpy_user::main {
 
 
 // # Form 1: readonly[T | None]
-// 11: def f1(p: readonly[Point | None]) -> Int32:
+// def f1(p: readonly[Point | None]) -> Int32:
 int32_t f1(const Point* p) {
-    // 12:     if p is not None:
+    //     if p is not None:
     if ((p != nullptr)) {
-        // 13:         return p.x
+        //         return p.x
         return p->x;
     }
-    // 14:     return Int32(0)
+    //     return Int32(0)
     return 0;
 }
 
 // # Form 2: readonly[T] | None
-// 17: def f2(p: readonly[Point] | None) -> Int32:
+// def f2(p: readonly[Point] | None) -> Int32:
 int32_t f2(const Point* p) {
-    // 18:     if p is not None:
+    //     if p is not None:
     if ((p != nullptr)) {
-        // 19:         return p.x
+        //         return p.x
         return p->x;
     }
-    // 20:     return Int32(0)
+    //     return Int32(0)
     return 0;
 }
 
-// 22: def main() -> None:
+// def main() -> None:
 void main() {
-    // 23:     p = Point(Int32(42))
+    //     p = Point(Int32(42))
     Point p = Point(42);
-    // 24:     print(f1(p))
+    //     print(f1(p))
     std::cout << f1(&(p)) << "\n";
-    // 25:     print(f2(p))
+    //     print(f2(p))
     std::cout << f2(&(p)) << "\n";
-    // 26:     print(f1(None))
+    //     print(f1(None))
     std::cout << f1(nullptr) << "\n";
-    // 27:     print(f2(None))
+    //     print(f2(None))
     std::cout << f2(nullptr) << "\n";
 }
 
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 29: main()
+    // main()
     main();
 }
 

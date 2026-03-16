@@ -16,12 +16,12 @@ void test();
 
 // # Union param mutation inference: mutated params stay T& (non-const);
 // # read-only union params become const T&.
-// 5: class Cat:
+// class Cat:
 struct Cat {
-    // 6:     name: str
+    //     name: str
     std::string name;
 
-    // 8:     def __init__(self, name: str) -> None:
+    //     def __init__(self, name: str) -> None:
     Cat() = default;
     explicit Cat(std::string_view name) : name(name) {}
 };
@@ -33,12 +33,12 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
-// 12: class Dog:
+// class Dog:
 struct Dog {
-    // 13:     name: str
+    //     name: str
     std::string name;
 
-    // 15:     def __init__(self, name: str) -> None:
+    //     def __init__(self, name: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name) : name(name) {}
 };

@@ -5,25 +5,25 @@ namespace tpy_user::main {
 
 
 // # Positional + keyword arguments mixed
-// 3: def greet(name: str, greeting: str = "Hello", punctuation: str = "!") -> None:
+// def greet(name: str, greeting: str = "Hello", punctuation: str = "!") -> None:
 void greet(std::string_view name, std::string_view greeting, std::string_view punctuation) {
-    // 4:     print(f"{greeting}, {name}{punctuation}")
+    //     print(f"{greeting}, {name}{punctuation}")
     std::cout << std::format("{}, {}{}", greeting, name, punctuation) << "\n";
 }
 
-// 6: def compute(a: int, b: int, c: int) -> int:
+// def compute(a: int, b: int, c: int) -> int:
 tpy::BigInt compute(const tpy::BigInt& a, const tpy::BigInt& b, const tpy::BigInt& c) {
-    // 7:     return a + b + c
+    //     return a + b + c
     return ((((a) + (b))) + (c));
 }
 
-// 9: def main() -> None:
+// def main() -> None:
 void main() {
-    // 10:     greet("World", greeting="Hi")
+    //     greet("World", greeting="Hi")
     greet("World", "Hi");
-    // 11:     greet("Bob", punctuation=".")
+    //     greet("Bob", punctuation=".")
     greet("Bob", "Hello", ".");
-    // 12:     print(compute(1, 2, c=3))
+    //     print(compute(1, 2, c=3))
     std::cout << compute(tpy::BigInt(1), tpy::BigInt(2), tpy::BigInt(3)) << "\n";
 }
 
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 14: main()
+    // main()
     main();
 }
 

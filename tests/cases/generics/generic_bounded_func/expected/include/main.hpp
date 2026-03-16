@@ -11,10 +11,10 @@ template<tpy::Sized T>
 tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> item);
 void main();
 
-// 5: def identity[T: Sized](item: T) -> T:
+// def identity[T: Sized](item: T) -> T:
 template<tpy::Sized T>
 tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> item) {
-    // 6:     return item
+    //     return item
     return item;
 }
 

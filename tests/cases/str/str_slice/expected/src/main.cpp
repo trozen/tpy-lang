@@ -5,87 +5,87 @@ namespace tpy_user::main {
 
 
 // # String slicing with Python semantics (clamping, negative indices).
-// 4: def test_basic() -> None:
+// def test_basic() -> None:
 void test_basic() {
-    // 5:     s: str = "hello world"
+    //     s: str = "hello world"
     std::string_view s = "hello world";
-    // 6:     print(s[0:5])
+    //     print(s[0:5])
     std::cout << tpy::str_slice(s, 0, 5) << "\n";
-    // 7:     print(s[6:11])
+    //     print(s[6:11])
     std::cout << tpy::str_slice(s, 6, 11) << "\n";
-    // 8:     print(s[6:])
+    //     print(s[6:])
     std::cout << tpy::str_slice(s, 6, tpy::SLICE_END) << "\n";
-    // 9:     print(s[:5])
+    //     print(s[:5])
     std::cout << tpy::str_slice(s, 0, 5) << "\n";
-    // 10:     print(s[:])
+    //     print(s[:])
     std::cout << tpy::str_slice(s, 0, tpy::SLICE_END) << "\n";
 }
 
-// 13: def test_negative() -> None:
+// def test_negative() -> None:
 void test_negative() {
-    // 14:     s: str = "abcdef"
+    //     s: str = "abcdef"
     std::string_view s = "abcdef";
-    // 15:     print(s[-3:])
+    //     print(s[-3:])
     std::cout << tpy::str_slice(s, -3, tpy::SLICE_END) << "\n";
-    // 16:     print(s[:-2])
+    //     print(s[:-2])
     std::cout << tpy::str_slice(s, 0, -2) << "\n";
-    // 17:     print(s[-4:-1])
+    //     print(s[-4:-1])
     std::cout << tpy::str_slice(s, -4, -1) << "\n";
-    // 18:     print(s[-6:])
+    //     print(s[-6:])
     std::cout << tpy::str_slice(s, -6, tpy::SLICE_END) << "\n";
 }
 
-// 21: def test_clamping() -> None:
+// def test_clamping() -> None:
 void test_clamping() {
-    // 22:     s: str = "hello"
+    //     s: str = "hello"
     std::string_view s = "hello";
-    // 23:     print(s[0:100])
+    //     print(s[0:100])
     std::cout << tpy::str_slice(s, 0, 100) << "\n";
-    // 24:     print(s[-100:3])
+    //     print(s[-100:3])
     std::cout << tpy::str_slice(s, -100, 3) << "\n";
-    // 25:     print(s[-100:100])
+    //     print(s[-100:100])
     std::cout << tpy::str_slice(s, -100, 100) << "\n";
-    // 26:     print(s[10:20])
+    //     print(s[10:20])
     std::cout << tpy::str_slice(s, 10, 20) << "\n";
 }
 
-// 29: def test_empty() -> None:
+// def test_empty() -> None:
 void test_empty() {
-    // 30:     s: str = "hello"
+    //     s: str = "hello"
     std::string_view s = "hello";
-    // 31:     print(len(s[3:1]))
+    //     print(len(s[3:1]))
     std::cout << tpy::__len__(tpy::str_slice(s, 3, 1)) << "\n";
-    // 32:     print(len(s[5:5]))
+    //     print(len(s[5:5]))
     std::cout << tpy::__len__(tpy::str_slice(s, 5, 5)) << "\n";
-    // 33:     print(len(s[2:2]))
+    //     print(len(s[2:2]))
     std::cout << tpy::__len__(tpy::str_slice(s, 2, 2)) << "\n";
 }
 
-// 36: def test_param(s: str) -> None:
+// def test_param(s: str) -> None:
 void test_param(std::string_view s) {
-    // 37:     r = s[1:4]  # tpyc: type(StrView)
+    //     r = s[1:4]  # tpyc: type(StrView)
     std::string_view r = tpy::str_slice(s, 1, 4);
-    // 38:     print(r)
+    //     print(r)
     std::cout << r << "\n";
 }
 
-// 41: def test_local_type() -> None:
+// def test_local_type() -> None:
 void test_local_type() {
-    // 42:     s: str = "abcdef"
+    //     s: str = "abcdef"
     std::string_view s = "abcdef";
-    // 43:     r = s[1:3]  # tpyc: type(StrView)
+    //     r = s[1:3]  # tpyc: type(StrView)
     std::string_view r = tpy::str_slice(s, 1, 3);
-    // 44:     print(r)
+    //     print(r)
     std::cout << r << "\n";
 }
 
-// 47: def test_single_char() -> None:
+// def test_single_char() -> None:
 void test_single_char() {
-    // 48:     s: str = "hello"
+    //     s: str = "hello"
     std::string_view s = "hello";
-    // 49:     print(s[0:1])
+    //     print(s[0:1])
     std::cout << tpy::str_slice(s, 0, 1) << "\n";
-    // 50:     print(s[-1:])
+    //     print(s[-1:])
     std::cout << tpy::str_slice(s, -1, tpy::SLICE_END) << "\n";
 }
 
@@ -94,31 +94,31 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 53: test_basic()
+    // test_basic()
     test_basic();
-    // 54: print("---")
+    // print("---")
     std::cout << "---" << "\n";
-    // 55: test_negative()
+    // test_negative()
     test_negative();
-    // 56: print("---")
+    // print("---")
     std::cout << "---" << "\n";
-    // 57: test_clamping()
+    // test_clamping()
     test_clamping();
-    // 58: print("---")
+    // print("---")
     std::cout << "---" << "\n";
-    // 59: test_empty()
+    // test_empty()
     test_empty();
-    // 60: print("---")
+    // print("---")
     std::cout << "---" << "\n";
-    // 61: test_param("abcdef")
+    // test_param("abcdef")
     test_param("abcdef");
-    // 62: print("---")
+    // print("---")
     std::cout << "---" << "\n";
-    // 63: test_local_type()
+    // test_local_type()
     test_local_type();
-    // 64: print("---")
+    // print("---")
     std::cout << "---" << "\n";
-    // 65: test_single_char()
+    // test_single_char()
     test_single_char();
 }
 

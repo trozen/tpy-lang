@@ -4,29 +4,29 @@
 namespace tpy_user::main {
 
 
-// 3: def get_span(data: list[Int32]) -> Span[Int32]:
+// def get_span(data: list[Int32]) -> Span[Int32]:
 std::span<int32_t> get_span(std::vector<int32_t>& data) {
-    // 4:     return data
+    //     return data
     return tpy::as_mut_span(data);
 }
 
-// 6: def main() -> None:
+// def main() -> None:
 void main() {
-    // 7:     nums: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    //     nums: list[Int32] = [Int32(1), Int32(2), Int32(3)]
     std::vector<int32_t> nums = {1, 2, 3};
-    // 8:     span: Span[Int32] = get_span(nums)
+    //     span: Span[Int32] = get_span(nums)
     std::span<int32_t> span = get_span(nums);
-    // 10:     # copy() on a Span should work (creates a view)
-    // 11:     span_copy: Span[Int32] = copy(span)
+    //     # copy() on a Span should work (creates a view)
+    //     span_copy: Span[Int32] = copy(span)
     std::span<int32_t> span_copy = std::span<int32_t>(span);
-    // 13:     # Both spans can access the same data
-    // 14:     print(span[0])
+    //     # Both spans can access the same data
+    //     print(span[0])
     std::cout << tpy::__getitem__(span, 0) << "\n";
-    // 15:     print(span_copy[0])
+    //     print(span_copy[0])
     std::cout << tpy::__getitem__(span_copy, 0) << "\n";
-    // 16:     print(len(span))
+    //     print(len(span))
     std::cout << tpy::__len__(span) << "\n";
-    // 17:     print(len(span_copy))
+    //     print(len(span_copy))
     std::cout << tpy::__len__(span_copy) << "\n";
 }
 
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 19: main()
+    // main()
     main();
 }
 

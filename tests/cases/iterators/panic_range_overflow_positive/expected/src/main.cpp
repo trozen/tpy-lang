@@ -9,11 +9,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: # Exit value would be 2147483648 (INT32_MAX + 1) — must panic
-    // 4: for i in range(Int32(2147483646), Int32(2147483647), Int32(2)):
+    // # Exit value would be 2147483648 (INT32_MAX + 1) — must panic
+    // for i in range(Int32(2147483646), Int32(2147483647), Int32(2)):
     tpy::range_check_overflow<int32_t>(2147483646, 2147483647, 2);
     for (int32_t i = 2147483646; i < 2147483647; i += 2) {
-        // 5:     print(i)
+        //     print(i)
         std::cout << i << "\n";
     }
 }

@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 // @dynamic
-// 6: class Speaker(Protocol):
+// class Speaker(Protocol):
 template<typename T>
 concept __Speaker_Concept__ = requires(T& t) {
     { t.speak() } -> std::convertible_to<std::string>;
@@ -45,18 +45,18 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 10: class Dog(Speaker):
+// class Dog(Speaker):
 struct Dog : Speaker {
-    // 11:     name: str
+    //     name: str
     std::string name;
 
-    // 12:     def __init__(self, name: str) -> None:
+    //     def __init__(self, name: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name) : name(name) {}
 
-    // 14:     def speak(self) -> str:
+    //     def speak(self) -> str:
     std::string speak() override {
-        // 15:         return "Woof from " + self.name
+        //         return "Woof from " + self.name
         return (tpy::str_concat("Woof from ", this->name));
     }
 };
@@ -68,18 +68,18 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
-// 17: class Cat(Speaker):
+// class Cat(Speaker):
 struct Cat : Speaker {
-    // 18:     name: str
+    //     name: str
     std::string name;
 
-    // 19:     def __init__(self, name: str) -> None:
+    //     def __init__(self, name: str) -> None:
     Cat() = default;
     explicit Cat(std::string_view name) : name(name) {}
 
-    // 21:     def speak(self) -> str:
+    //     def speak(self) -> str:
     std::string speak() override {
-        // 22:         return "Meow from " + self.name
+        //         return "Meow from " + self.name
         return (tpy::str_concat("Meow from ", this->name));
     }
 };
@@ -91,12 +91,12 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
-// 24: class Recorder:
+// class Recorder:
 struct Recorder {
-    // 25:     message: str
+    //     message: str
     std::string message;
 
-    // 27:     def __init__(self, s: Speaker) -> None:
+    //     def __init__(self, s: Speaker) -> None:
     Recorder() = default;
     explicit Recorder(Speaker& s) : message(s.speak()) {}
 };
@@ -108,18 +108,18 @@ inline std::ostream& operator<<(std::ostream& os, const Recorder& obj) {
     return os;
 }
 
-// 30: class Announcer:
+// class Announcer:
 struct Announcer {
-    // 31:     prefix: str
+    //     prefix: str
     std::string prefix;
 
-    // 33:     def __init__(self, prefix: str) -> None:
+    //     def __init__(self, prefix: str) -> None:
     Announcer() = default;
     explicit Announcer(std::string_view prefix) : prefix(prefix) {}
 
-    // 36:     def announce(self, s: Speaker) -> None:
+    //     def announce(self, s: Speaker) -> None:
     void announce(Speaker& s) const {
-        // 37:         print(self.prefix + s.speak())
+        //         print(self.prefix + s.speak())
         std::cout << (tpy::str_concat(this->prefix, s.speak())) << "\n";
     }
 };

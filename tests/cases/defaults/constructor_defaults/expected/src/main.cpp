@@ -4,37 +4,37 @@
 namespace tpy_user::main {
 
 
-// 18: def main() -> None:
+// def main() -> None:
 void main() {
-    // 19:     p1 = Point()
+    //     p1 = Point()
     Point p1 = Point();
-    // 20:     print(p1.x)
+    //     print(p1.x)
     std::cout << p1.x << "\n";
-    // 21:     print(p1.y)
+    //     print(p1.y)
     std::cout << p1.y << "\n";
-    // 23:     p2 = Point(Int32(3))
+    //     p2 = Point(Int32(3))
     Point p2 = Point(3);
-    // 24:     print(p2.x)
+    //     print(p2.x)
     std::cout << p2.x << "\n";
-    // 25:     print(p2.y)
+    //     print(p2.y)
     std::cout << p2.y << "\n";
-    // 27:     p3 = Point(Int32(3), Int32(4))
+    //     p3 = Point(Int32(3), Int32(4))
     Point p3 = Point(3, 4);
-    // 28:     print(p3.x)
+    //     print(p3.x)
     std::cout << p3.x << "\n";
-    // 29:     print(p3.y)
+    //     print(p3.y)
     std::cout << p3.y << "\n";
-    // 31:     n1 = Named("test")
+    //     n1 = Named("test")
     Named n1 = Named("test");
-    // 32:     print(n1.name)
+    //     print(n1.name)
     std::cout << n1.name << "\n";
-    // 33:     print(n1.value)
+    //     print(n1.value)
     std::cout << n1.value << "\n";
-    // 35:     n2 = Named("test", Int32(99))
+    //     n2 = Named("test", Int32(99))
     Named n2 = Named("test", 99);
-    // 36:     print(n2.name)
+    //     print(n2.name)
     std::cout << n2.name << "\n";
-    // 37:     print(n2.value)
+    //     print(n2.value)
     std::cout << n2.value << "\n";
 }
 
@@ -43,7 +43,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 39: main()
+    // main()
     main();
 }
 

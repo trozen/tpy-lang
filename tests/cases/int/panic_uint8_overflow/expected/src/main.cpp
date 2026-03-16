@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     a: UInt8 = UInt8(255)
+    //     a: UInt8 = UInt8(255)
     uint8_t a = 255;
-    // 6:     b: UInt8 = a + UInt8(1)
+    //     b: UInt8 = a + UInt8(1)
     uint8_t b = (tpy::add_check<uint8_t>(a, 1));
-    // 7:     print(b)
+    //     print(b)
     std::cout << static_cast<int>(b) << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 9: main()
+    // main()
     main();
 }
 

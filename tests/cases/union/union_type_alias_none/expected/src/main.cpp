@@ -4,35 +4,35 @@
 namespace tpy_user::main {
 
 
-// 22: def describe(s: MaybeShape) -> str:
+// def describe(s: MaybeShape) -> str:
 std::string describe(const MaybeShape& s) {
-    // 23:     if s is None:
+    //     if s is None:
     if ((std::holds_alternative<std::monostate>(s))) {
-        // 24:         return "nothing"
+        //         return "nothing"
         return "nothing";
     }
-    // 25:     if isinstance(s, Circle):
+    //     if isinstance(s, Circle):
     if (std::holds_alternative<Circle>(s)) {
         auto& __s = std::get<Circle>(s);
-        // 26:         return "circle"
+        //         return "circle"
         return "circle";
     }
-    // 27:     assert isinstance(s, Rect)
+    //     assert isinstance(s, Rect)
     if (!(std::holds_alternative<Rect>(s))) tpy::tpy_panic("assertion failed");
     auto& __s = std::get<Rect>(s);
-    // 28:     return "rect"
+    //     return "rect"
     return "rect";
 }
 
-// 31: def main() -> None:
+// def main() -> None:
 void main() {
-    // 32:     a: MaybeShape = Circle(Int32(1))
+    //     a: MaybeShape = Circle(Int32(1))
     MaybeShape a = Circle(1);
-    // 33:     b: MaybeShape = None
+    //     b: MaybeShape = None
     MaybeShape b = std::monostate{};
-    // 34:     print(describe(a))
+    //     print(describe(a))
     std::cout << describe(a) << "\n";
-    // 35:     print(describe(b))
+    //     print(describe(b))
     std::cout << describe(b) << "\n";
 }
 
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 37: main()
+    // main()
     main();
 }
 

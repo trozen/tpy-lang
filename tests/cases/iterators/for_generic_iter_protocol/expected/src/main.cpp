@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 44: def main() -> None:
+// def main() -> None:
 void main() {
-    // 45:     s = SimpleList[Int32, 8]()
+    //     s = SimpleList[Int32, 8]()
     SimpleList<int32_t, 8> s = SimpleList<int32_t, 8>();
-    // 46:     s.add(10)
+    //     s.add(10)
     s.add(10);
-    // 47:     s.add(20)
+    //     s.add(20)
     s.add(20);
-    // 48:     s.add(30)
+    //     s.add(30)
     s.add(30);
-    // 50:     for x in s:
+    //     for x in s:
     auto& __src_0 = s;
     auto __iter_0 = __src_0.__iter__();
     auto __obj_0 = tpy::iter_adapt(__iter_0);
@@ -22,11 +22,11 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 51:         print(x)
+        //         print(x)
         std::cout << x << "\n";
     }
-    // 53:     # iterate again
-    // 54:     for x in s:
+    //     # iterate again
+    //     for x in s:
     auto& __src_1 = s;
     auto __iter_1 = __src_1.__iter__();
     auto __obj_1 = tpy::iter_adapt(__iter_1);
@@ -34,7 +34,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        // 55:         print(x)
+        //         print(x)
         std::cout << x << "\n";
     }
 }
@@ -44,8 +44,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: from tpy.mem import UninitArrayStorage
-    // 57: main()
+    // from tpy.mem import UninitArrayStorage
+    // main()
     main();
 }
 

@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-// 3: s: str = "hello"
+// s: str = "hello"
 std::string s;
-// 4: u = t.copy(s)
+// u = t.copy(s)
 std::string u;
 
 void __tpy_init() {
@@ -13,11 +13,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: s: str = "hello"
+    // s: str = "hello"
     s = "hello";
-    // 4: u = t.copy(s)
+    // u = t.copy(s)
     u = std::string(s);
-    // 5: print(u)
+    // print(u)
     std::cout << u << "\n";
 }
 

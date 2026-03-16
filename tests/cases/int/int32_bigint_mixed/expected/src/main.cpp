@@ -4,102 +4,102 @@
 namespace tpy_user::main {
 
 
-// 6: def test_int32_plus_bigint():
+// def test_int32_plus_bigint():
 void test_int32_plus_bigint() {
-    // 8:     x: Int32 = 5
+    //     x: Int32 = 5
     int32_t x = 5;
-    // 9:     y = 10  # default int (Int32)
+    //     y = 10  # default int (Int32)
     int32_t y = 10;
-    // 10:     z = x + y  # Should be BigInt(15)
+    //     z = x + y  # Should be BigInt(15)
     int32_t z = (tpy::add_check<int32_t>(x, y));
-    // 11:     print(z)
+    //     print(z)
     std::cout << z << "\n";
 }
 
-// 14: def test_bigint_plus_int32():
+// def test_bigint_plus_int32():
 void test_bigint_plus_int32() {
-    // 16:     x = 10  # default int (Int32)
+    //     x = 10  # default int (Int32)
     int32_t x = 10;
-    // 17:     y: Int32 = 5
+    //     y: Int32 = 5
     int32_t y = 5;
-    // 18:     z = x + y  # Should be BigInt(15)
+    //     z = x + y  # Should be BigInt(15)
     int32_t z = (tpy::add_check<int32_t>(x, y));
-    // 19:     print(z)
+    //     print(z)
     std::cout << z << "\n";
 }
 
-// 22: def test_mixed_arithmetic():
+// def test_mixed_arithmetic():
 void test_mixed_arithmetic() {
-    // 24:     a: Int32 = 20
+    //     a: Int32 = 20
     int32_t a = 20;
-    // 25:     b = 3  # default int (Int32)
+    //     b = 3  # default int (Int32)
     int32_t b = 3;
-    // 27:     print(a - b)   # 17
+    //     print(a - b)   # 17
     std::cout << (tpy::sub_check<int32_t>(a, b)) << "\n";
-    // 28:     print(a * b)   # 60
+    //     print(a * b)   # 60
     std::cout << (tpy::mul_check<int32_t>(a, b)) << "\n";
-    // 29:     print(a // b)  # 6
+    //     print(a // b)  # 6
     std::cout << (tpy::div_floor<int32_t>(a, b)) << "\n";
-    // 30:     print(a % b)   # 2
+    //     print(a % b)   # 2
     std::cout << (tpy::mod_floor<int32_t>(a, b)) << "\n";
 }
 
-// 33: def test_large_bigint():
+// def test_large_bigint():
 void test_large_bigint() {
-    // 35:     x: Int32 = 5
+    //     x: Int32 = 5
     int32_t x = 5;
-    // 36:     y = 10 ** 20  # tpyc: warning(/outside default Int32 range/)
+    //     y = 10 ** 20  # tpyc: warning(/outside default Int32 range/)
     tpy::BigInt y = ((tpy::BigInt(10)).pow(tpy::BigInt(20)));
-    // 37:     z = x + y     # Must promote to BigInt, not panic
+    //     z = x + y     # Must promote to BigInt, not panic
     tpy::BigInt z = ((tpy::BigInt(x)) + (y));
-    // 38:     print(z)
+    //     print(z)
     std::cout << z << "\n";
 }
 
-// 41: def test_augmented_assign_mixed():
+// def test_augmented_assign_mixed():
 void test_augmented_assign_mixed() {
-    // 43:     x: Int32 = 100
+    //     x: Int32 = 100
     int32_t x = 100;
-    // 44:     b = 7  # default int (Int32)
+    //     b = 7  # default int (Int32)
     int32_t b = 7;
-    // 46:     x += b
+    //     x += b
     x = tpy::add_check<int32_t>(x, b);
-    // 47:     print(x)  # 107
+    //     print(x)  # 107
     std::cout << x << "\n";
-    // 49:     x -= b
+    //     x -= b
     x = tpy::sub_check<int32_t>(x, b);
-    // 50:     print(x)  # 100
+    //     print(x)  # 100
     std::cout << x << "\n";
-    // 52:     x *= b
+    //     x *= b
     x = tpy::mul_check<int32_t>(x, b);
-    // 53:     print(x)  # 700
+    //     print(x)  # 700
     std::cout << x << "\n";
-    // 55:     x //= b
+    //     x //= b
     x = tpy::div_check<int32_t>(x, b);
-    // 56:     print(x)  # 100
+    //     print(x)  # 100
     std::cout << x << "\n";
-    // 58:     x %= b
+    //     x %= b
     x = tpy::mod_check<int32_t>(x, b);
-    // 59:     print(x)  # 2
+    //     print(x)  # 2
     std::cout << x << "\n";
 }
 
-// 62: def test_nested_literal_binop():
+// def test_nested_literal_binop():
 void test_nested_literal_binop() {
-    // 64:     x: Int32 = 1 + (2 + 3)
+    //     x: Int32 = 1 + (2 + 3)
     int32_t x = tpy::add_check<int32_t>(1, tpy::add_check<int32_t>(2, 3));
-    // 65:     print(x)  # 6
+    //     print(x)  # 6
     std::cout << x << "\n";
-    // 67:     y: Int32 = (1 + 2) * (3 + 4)
+    //     y: Int32 = (1 + 2) * (3 + 4)
     int32_t y = tpy::mul_check<int32_t>(tpy::add_check<int32_t>(1, 2), tpy::add_check<int32_t>(3, 4));
-    // 68:     print(y)  # 21
+    //     print(y)  # 21
     std::cout << y << "\n";
-    // 70:     # Assignment to existing Int32 variable
-    // 71:     z: Int32 = 0
+    //     # Assignment to existing Int32 variable
+    //     z: Int32 = 0
     int32_t z = 0;
-    // 72:     z = 10 + (20 + 30)
+    //     z = 10 + (20 + 30)
     z = tpy::add_check<int32_t>(10, tpy::add_check<int32_t>(20, 30));
-    // 73:     print(z)  # 60
+    //     print(z)  # 60
     std::cout << z << "\n";
 }
 
@@ -108,17 +108,17 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 76: test_int32_plus_bigint()
+    // test_int32_plus_bigint()
     test_int32_plus_bigint();
-    // 77: test_bigint_plus_int32()
+    // test_bigint_plus_int32()
     test_bigint_plus_int32();
-    // 78: test_mixed_arithmetic()
+    // test_mixed_arithmetic()
     test_mixed_arithmetic();
-    // 79: test_large_bigint()
+    // test_large_bigint()
     test_large_bigint();
-    // 80: test_augmented_assign_mixed()
+    // test_augmented_assign_mixed()
     test_augmented_assign_mixed();
-    // 81: test_nested_literal_binop()
+    // test_nested_literal_binop()
     test_nested_literal_binop();
 }
 

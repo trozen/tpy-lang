@@ -4,57 +4,57 @@
 namespace tpy_user::main {
 
 
-// 4: def take_str(s: str) -> None:
+// def take_str(s: str) -> None:
 void take_str(std::string_view s) {
-    // 5:     print(s)
+    //     print(s)
     std::cout << s << "\n";
 }
 
-// 7: def take_string(s: String) -> None:
+// def take_string(s: String) -> None:
 void take_string(const std::string& s) {
-    // 8:     print(s)
+    //     print(s)
     std::cout << s << "\n";
 }
 
-// 10: def take_strview(s: StrView) -> None:
+// def take_strview(s: StrView) -> None:
 void take_strview(std::string_view s) {
-    // 11:     print(s)
+    //     print(s)
     std::cout << s << "\n";
 }
 
-// 13: def main() -> None:
+// def main() -> None:
 void main() {
-    // 14:     # String -> str (identity, both std::string)
-    // 15:     s1: String = String("hello")
+    //     # String -> str (identity, both std::string)
+    //     s1: String = String("hello")
     std::string s1 = std::string("hello");
-    // 16:     take_str(s1)  # hello
+    //     take_str(s1)  # hello
     take_str(s1);
-    // 18:     # str -> String (identity)
-    // 19:     s2: str = "world"
+    //     # str -> String (identity)
+    //     s2: str = "world"
     std::string s2 = "world";
-    // 20:     take_string(s2)  # world
+    //     take_string(s2)  # world
     take_string(s2);
-    // 22:     # String -> StrView (safe implicit)
-    // 23:     take_strview(s1)  # hello
+    //     # String -> StrView (safe implicit)
+    //     take_strview(s1)  # hello
     take_strview(s1);
-    // 25:     # str -> StrView (safe implicit)
-    // 26:     take_strview(s2)  # world
+    //     # str -> StrView (safe implicit)
+    //     take_strview(s2)  # world
     take_strview(s2);
-    // 28:     # StrView -> String (allocates)
-    // 29:     sv: StrView = StrView("view")
+    //     # StrView -> String (allocates)
+    //     sv: StrView = StrView("view")
     std::string_view sv = std::string_view("view");
-    // 30:     take_string(sv)  # view
+    //     take_string(sv)  # view
     take_string(std::string(sv));
-    // 32:     # StrView -> str (allocates)
-    // 33:     take_str(sv)  # view
+    //     # StrView -> str (allocates)
+    //     take_str(sv)  # view
     take_str(std::string(sv));
-    // 35:     # Char -> str
-    // 36:     c: Char = "X"
+    //     # Char -> str
+    //     c: Char = "X"
     char c = 'X';
-    // 37:     take_str(c)  # X
+    //     take_str(c)  # X
     take_str(std::string(tpy::char_to_str(c)));
-    // 39:     # Char -> String
-    // 40:     take_string(c)  # X
+    //     # Char -> String
+    //     take_string(c)  # X
     take_string(std::string(1, c));
 }
 
@@ -63,7 +63,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 42: main()
+    // main()
     main();
 }
 

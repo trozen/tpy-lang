@@ -4,37 +4,37 @@
 namespace tpy_user::main {
 
 // # Basic: init to None, check, set, access
-// 31: line = Line(Point(1, 2))
+// line = Line(Point(1, 2))
 Line* line{};
-// 34: p2 = Point(3, 4)
+// p2 = Point(3, 4)
 Point* p2{};
 // # Return optional field from method (std::optional<T> → T*)
-// 41: result = line.get_end()
+// result = line.get_end()
 Point* result{};
-// 52: pts: list[Point] = list()
+// pts: list[Point] = list()
 std::vector<Point>* pts{};
-// 55: line2 = Line(Point(0, 0))
+// line2 = Line(Point(0, 0))
 Line* line2{};
 // # Field-to-field optional assignment (std::optional<T> → std::optional<T>)
-// 65: line3 = Line(Point(10, 20))
+// line3 = Line(Point(10, 20))
 Line* line3{};
 
 // # Assign function-returned T | None into optional field (T* → std::optional<T>)
-// 46: def find_point(points: list[Point], target: Int32) -> Point | None:
+// def find_point(points: list[Point], target: Int32) -> Point | None:
 Point* find_point(std::vector<Point>& points, int32_t target) {
-    // 47:     for p in points:
+    //     for p in points:
     auto& __obj_0 = points;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // 48:         if p.x == target:
+        //         if p.x == target:
         if ((p.x == target)) {
-            // 49:             return p
+            //             return p
             return &(p);
         }
     }
-    // 50:     return None
+    //     return None
     return nullptr;
 }
 
@@ -43,65 +43,65 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 30: # Basic: init to None, check, set, access
-    // 31: line = Line(Point(1, 2))
+    // # Basic: init to None, check, set, access
+    // line = Line(Point(1, 2))
     static Line __global_slot_1 = Line(Point(1, 2));
     line = &__global_slot_1;
-    // 32: print(line.has_end())
+    // print(line.has_end())
     std::cout << tpy::print_bool(line->has_end()) << "\n";
-    // 33: print(line.end is None)
+    // print(line.end is None)
     std::cout << tpy::print_bool((!line->end.has_value())) << "\n";
-    // 34: p2 = Point(3, 4)
+    // p2 = Point(3, 4)
     static Point __global_slot_2 = Point(3, 4);
     p2 = &__global_slot_2;
-    // 35: line.set_end(p2)
+    // line.set_end(p2)
     line->set_end((*p2));
-    // 36: print(line.has_end())
+    // print(line.has_end())
     std::cout << tpy::print_bool(line->has_end()) << "\n";
-    // 37: print(line.end.x)
+    // print(line.end.x)
     std::cout << tpy::deref_optional_check(line->end).x << "\n";
-    // 38: print(line.end.y)
+    // print(line.end.y)
     std::cout << tpy::deref_optional_check(line->end).y << "\n";
-    // 40: # Return optional field from method (std::optional<T> → T*)
-    // 41: result = line.get_end()
+    // # Return optional field from method (std::optional<T> → T*)
+    // result = line.get_end()
     result = line->get_end();
-    // 42: print(result is not None)
+    // print(result is not None)
     std::cout << tpy::print_bool((result != nullptr)) << "\n";
-    // 43: print(result.x)
+    // print(result.x)
     std::cout << tpy::deref_check(result).x << "\n";
-    // 52: pts: list[Point] = list()
+    // pts: list[Point] = list()
     static std::vector<Point> __global_slot_3 = std::vector<Point>();
     pts = &__global_slot_3;
-    // 53: pts.append(Point(5, 50))
+    // pts.append(Point(5, 50))
     (*pts).push_back(Point(5, 50));
-    // 54: pts.append(Point(7, 70))
+    // pts.append(Point(7, 70))
     (*pts).push_back(Point(7, 70));
-    // 55: line2 = Line(Point(0, 0))
+    // line2 = Line(Point(0, 0))
     static Line __global_slot_4 = Line(Point(0, 0));
     line2 = &__global_slot_4;
-    // 56: line2.end = copy(find_point(pts, 5))
+    // line2.end = copy(find_point(pts, 5))
     line2->end = tpy::ptr_to_optional(find_point((*pts), 5));
-    // 57: print(line2.end is None)
+    // print(line2.end is None)
     std::cout << tpy::print_bool((!line2->end.has_value())) << "\n";
-    // 58: print(line2.end.x)
+    // print(line2.end.x)
     std::cout << tpy::deref_optional_check(line2->end).x << "\n";
-    // 59: line2.end = copy(find_point(pts, 7))
+    // line2.end = copy(find_point(pts, 7))
     line2->end = tpy::ptr_to_optional(find_point((*pts), 7));
-    // 60: print(line2.end.y)
+    // print(line2.end.y)
     std::cout << tpy::deref_optional_check(line2->end).y << "\n";
-    // 61: line2.end = copy(find_point(pts, 99))
+    // line2.end = copy(find_point(pts, 99))
     line2->end = tpy::ptr_to_optional(find_point((*pts), 99));
-    // 62: print(line2.end is None)
+    // print(line2.end is None)
     std::cout << tpy::print_bool((!line2->end.has_value())) << "\n";
-    // 64: # Field-to-field optional assignment (std::optional<T> → std::optional<T>)
-    // 65: line3 = Line(Point(10, 20))
+    // # Field-to-field optional assignment (std::optional<T> → std::optional<T>)
+    // line3 = Line(Point(10, 20))
     static Line __global_slot_5 = Line(Point(10, 20));
     line3 = &__global_slot_5;
-    // 66: line3.end = copy(line.end)
+    // line3.end = copy(line.end)
     line3->end = line->end;
-    // 67: print(line3.end.x)
+    // print(line3.end.x)
     std::cout << tpy::deref_optional_check(line3->end).x << "\n";
-    // 68: print(line3.end.y)
+    // print(line3.end.y)
     std::cout << tpy::deref_optional_check(line3->end).y << "\n";
 }
 

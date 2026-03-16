@@ -11,19 +11,19 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Utils:
+// class Utils:
 struct Utils {
 
-    // 5:     def __init__(self):
+    //     def __init__(self):
     Utils() {
-        // 6:         pass
+        //         pass
     }
 
     //     @staticmethod
-    // 9:     def identity[U](val: U) -> U:
+    //     def identity[U](val: U) -> U:
     template<typename U>
     static tpy::val_or_ref_t<U> identity(tpy::param_val_or_ref_t<U> val) {
-        // 10:         return val
+        //         return val
         return val;
     }
 };

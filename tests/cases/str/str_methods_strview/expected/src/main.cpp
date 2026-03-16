@@ -4,33 +4,33 @@
 namespace tpy_user::main {
 
 
-// 4: def test_methods(s: StrView) -> None:
+// def test_methods(s: StrView) -> None:
 void test_methods(std::string_view s) {
-    // 5:     print("strip:", s.strip())
+    //     print("strip:", s.strip())
     std::cout << "strip:" << " " << tpy::str_strip(s) << "\n";
-    // 6:     print("upper:", s.upper())
+    //     print("upper:", s.upper())
     std::cout << "upper:" << " " << tpy::str_upper(s) << "\n";
-    // 7:     print("lower:", s.lower())
+    //     print("lower:", s.lower())
     std::cout << "lower:" << " " << tpy::str_lower(s) << "\n";
-    // 8:     print("find:", s.find("ll"))
+    //     print("find:", s.find("ll"))
     std::cout << "find:" << " " << tpy::str_find(s, "ll") << "\n";
-    // 9:     print("startswith:", s.startswith("he"))
+    //     print("startswith:", s.startswith("he"))
     std::cout << "startswith:" << " " << tpy::print_bool(tpy::str_startswith(s, "he")) << "\n";
-    // 10:     print("endswith:", s.endswith("lo"))
+    //     print("endswith:", s.endswith("lo"))
     std::cout << "endswith:" << " " << tpy::print_bool(tpy::str_endswith(s, "lo")) << "\n";
-    // 11:     print("count:", s.count("l"))
+    //     print("count:", s.count("l"))
     std::cout << "count:" << " " << tpy::str_count(s, "l") << "\n";
-    // 12:     print("replace:", s.replace("l", "r"))
+    //     print("replace:", s.replace("l", "r"))
     std::cout << "replace:" << " " << tpy::str_replace(s, "l", "r") << "\n";
-    // 13:     print("isalpha:", s.isalpha())
+    //     print("isalpha:", s.isalpha())
     std::cout << "isalpha:" << " " << tpy::print_bool(tpy::str_isalpha(s)) << "\n";
 }
 
-// 15: def main() -> None:
+// def main() -> None:
 void main() {
-    // 16:     sv: StrView = "hello"
+    //     sv: StrView = "hello"
     std::string_view sv = "hello";
-    // 17:     test_methods(sv)
+    //     test_methods(sv)
     test_methods(sv);
 }
 
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 19: main()
+    // main()
     main();
 }
 

@@ -4,29 +4,29 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     t = (Int32(10), "hello", True)
+    //     t = (Int32(10), "hello", True)
     std::tuple<int32_t, std::string, bool> t = std::tuple<int32_t, std::string, bool>{10, "hello", true};
-    // 7:     # Positive indexing
-    // 8:     a = t[0]
+    //     # Positive indexing
+    //     a = t[0]
     int32_t a = std::get<0>(t);
-    // 9:     b = t[1]
+    //     b = t[1]
     std::string_view b = std::get<1>(t);
-    // 10:     c = t[2]
+    //     c = t[2]
     bool c = std::get<2>(t);
-    // 11:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 12:     print(b)
+    //     print(b)
     std::cout << b << "\n";
-    // 13:     print(c)
+    //     print(c)
     std::cout << tpy::print_bool(c) << "\n";
-    // 15:     # Negative indexing
-    // 16:     print(t[-1])
+    //     # Negative indexing
+    //     print(t[-1])
     std::cout << tpy::print_bool(std::get<2>(t)) << "\n";
-    // 17:     print(t[-2])
+    //     print(t[-2])
     std::cout << std::get<1>(t) << "\n";
-    // 18:     print(t[-3])
+    //     print(t[-3])
     std::cout << std::get<0>(t) << "\n";
 }
 
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 20: main()
+    // main()
     main();
 }
 

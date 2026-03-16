@@ -10,15 +10,15 @@ template<typename A, typename B> struct Pair;
 extern Pair<int32_t, std::string>* pair;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 4: class Pair[A, B]:
+// class Pair[A, B]:
 template<typename A, typename B>
 struct Pair {
-    // 5:     first: A
+    //     first: A
     A first;
-    // 6:     second: B
+    //     second: B
     B second;
 
-    // 8:     def __init__(self, first: A, second: B) -> None:
+    //     def __init__(self, first: A, second: B) -> None:
     Pair() = default;
     explicit Pair(const A& first, const B& second) : first(first), second(second) {}
 };

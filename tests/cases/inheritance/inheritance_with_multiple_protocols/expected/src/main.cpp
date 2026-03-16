@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # Test combined inheritance with multiple protocols
-// 55: c = Car("Toyota", 2023, "Camry", 1500)
+// c = Car("Toyota", 2023, "Camry", 1500)
 Car* c{};
 
 void __tpy_init() {
@@ -12,29 +12,29 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 54: # Test combined inheritance with multiple protocols
-    // 55: c = Car("Toyota", 2023, "Camry", 1500)
+    // # Test combined inheritance with multiple protocols
+    // c = Car("Toyota", 2023, "Camry", 1500)
     static Car __global_slot_1 = Car("Toyota", 2023, "Camry", 1500);
     c = &__global_slot_1;
-    // 57: # Access inherited fields
-    // 58: print(c.brand)
+    // # Access inherited fields
+    // print(c.brand)
     std::cout << c->brand << "\n";
-    // 59: print(c.year)
+    // print(c.year)
     std::cout << c->year << "\n";
-    // 61: # Access own fields
-    // 62: print(c.model)
+    // # Access own fields
+    // print(c.model)
     std::cout << c->model << "\n";
-    // 63: print(c.car_weight)
+    // print(c.car_weight)
     std::cout << c->car_weight << "\n";
-    // 65: # Call inherited method
-    // 66: print(c.get_brand())
+    // # Call inherited method
+    // print(c.get_brand())
     std::cout << c->get_brand() << "\n";
-    // 68: # Call protocol methods
-    // 69: print(c.__str__())
+    // # Call protocol methods
+    // print(c.__str__())
     std::cout << c->__str__() << "\n";
-    // 70: print(c.weight())
+    // print(c.weight())
     std::cout << c->weight() << "\n";
-    // 71: print(c.describe())
+    // print(c.describe())
     std::cout << c->describe() << "\n";
 }
 

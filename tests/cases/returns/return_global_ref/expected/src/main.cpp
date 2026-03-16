@@ -4,26 +4,26 @@
 namespace tpy_user::main {
 
 // # Global variable - lives for the duration of the program
-// 8: ORIGIN: Point = Point()
+// ORIGIN: Point = Point()
 Point* ORIGIN{};
 
-// 10: def get_origin() -> Point:
+// def get_origin() -> Point:
 Point& get_origin() {
-    // 11:     return ORIGIN  # tpyc: ok (global lives forever)
+    //     return ORIGIN  # tpyc: ok (global lives forever)
     return (*ORIGIN);
 }
 
-// 13: def main():
+// def main():
 void main() {
-    // 14:     ORIGIN.x = 100
+    //     ORIGIN.x = 100
     ORIGIN->x = 100;
-    // 15:     ORIGIN.y = 200
+    //     ORIGIN.y = 200
     ORIGIN->y = 200;
-    // 17:     ref: Point = get_origin()
+    //     ref: Point = get_origin()
     Point& ref = get_origin();
-    // 18:     print(ref.x)
+    //     print(ref.x)
     std::cout << ref.x << "\n";
-    // 19:     print(ref.y)
+    //     print(ref.y)
     std::cout << ref.y << "\n";
 }
 
@@ -32,11 +32,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 7: # Global variable - lives for the duration of the program
-    // 8: ORIGIN: Point = Point()
+    // # Global variable - lives for the duration of the program
+    // ORIGIN: Point = Point()
     static Point __global_slot_1 = Point();
     ORIGIN = &__global_slot_1;
-    // 21: main()
+    // main()
     main();
 }
 

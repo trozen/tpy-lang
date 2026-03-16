@@ -14,14 +14,14 @@ tpy::BigInt get_port(const Config& cfg);
 std::string test_negated(const Config& cfg);
 void main();
 
-// 4: class Config:
+// class Config:
 struct Config {
-    // 5:     name: Optional[str]
+    //     name: Optional[str]
     std::optional<std::string> name;
-    // 6:     port: Optional[int]
+    //     port: Optional[int]
     std::optional<tpy::BigInt> port;
 
-    // 7:     def __init__(self, name: Optional[str], port: Optional[int]) -> None:
+    //     def __init__(self, name: Optional[str], port: Optional[int]) -> None:
     Config() = default;
     explicit Config(std::optional<std::string_view> name, std::optional<tpy::BigInt> port) : name(name ? std::make_optional(std::string(*name)) : std::nullopt), port(port) {}
 };

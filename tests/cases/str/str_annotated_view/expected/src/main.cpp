@@ -5,55 +5,55 @@ namespace tpy_user::main {
 
 
 // # Annotated str locals resolve to StrView when view-safe (never mutated)
-// 3: def literal_view() -> None:
+// def literal_view() -> None:
 void literal_view() {
-    // 4:     a: str = "hello"  # tpyc: type(StrView)
+    //     a: str = "hello"  # tpyc: type(StrView)
     std::string_view a = "hello";
-    // 5:     print(a)
+    //     print(a)
     std::cout << a << "\n";
 }
 
-// 7: def literal_promote_augassign() -> None:
+// def literal_promote_augassign() -> None:
 void literal_promote_augassign() {
-    // 8:     b: str = "hello"  # tpyc: type(str)
+    //     b: str = "hello"  # tpyc: type(str)
     std::string b = "hello";
-    // 9:     b += " world"
+    //     b += " world"
     b += " world";
-    // 10:     print(b)
+    //     print(b)
     std::cout << b << "\n";
 }
 
-// 12: def literal_promote_reassign() -> None:
+// def literal_promote_reassign() -> None:
 void literal_promote_reassign() {
-    // 13:     c: str = "start"  # tpyc: type(str)
+    //     c: str = "start"  # tpyc: type(str)
     std::string c = "start";
-    // 14:     c = c + " end"
+    //     c = c + " end"
     c += " end";
-    // 15:     print(c)
+    //     print(c)
     std::cout << c << "\n";
 }
 
-// 17: def multiple_views() -> None:
+// def multiple_views() -> None:
 void multiple_views() {
-    // 18:     x: str = "one"  # tpyc: type(StrView)
+    //     x: str = "one"  # tpyc: type(StrView)
     std::string_view x = "one";
-    // 19:     y: str = "two"  # tpyc: type(StrView)
+    //     y: str = "two"  # tpyc: type(StrView)
     std::string_view y = "two";
-    // 20:     print(x)
+    //     print(x)
     std::cout << x << "\n";
-    // 21:     print(y)
+    //     print(y)
     std::cout << y << "\n";
 }
 
-// 23: def main() -> None:
+// def main() -> None:
 void main() {
-    // 24:     literal_view()
+    //     literal_view()
     literal_view();
-    // 25:     literal_promote_augassign()
+    //     literal_promote_augassign()
     literal_promote_augassign();
-    // 26:     literal_promote_reassign()
+    //     literal_promote_reassign()
     literal_promote_reassign();
-    // 27:     multiple_views()
+    //     multiple_views()
     multiple_views();
 }
 
@@ -62,7 +62,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 29: main()
+    // main()
     main();
 }
 

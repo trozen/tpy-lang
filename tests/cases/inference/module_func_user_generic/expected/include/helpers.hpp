@@ -10,10 +10,10 @@ inline constexpr std::string_view __name__ = "helpers";
 template<typename T>
 tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x);
 
-// 3: def identity[T](x: T) -> T:
+// def identity[T](x: T) -> T:
 template<typename T>
 tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x) {
-    // 4:     return x
+    //     return x
     return x;
 }
 

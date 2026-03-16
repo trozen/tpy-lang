@@ -5,15 +5,15 @@ namespace tpy_user::main {
 
 
 // # Different-size list reassignment widens to list
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     x = [1, 2, 3]  # tpyc: type(/list/)
+    //     x = [1, 2, 3]  # tpyc: type(/list/)
     std::vector<int32_t> __slot_1 = {1, 2, 3};
     std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t>* x = &__slot_1;
-    // 4:     x = [4, 5]
+    //     x = [4, 5]
     x = &*(__slot_2 = {4, 5});
-    // 5:     print(len(x))
+    //     print(len(x))
     std::cout << tpy::__len__((*x)) << "\n";
 }
 
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 7: main()
+    // main()
     main();
 }
 

@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 9: def main():
+// def main():
 void main() {
-    // 10:     t = time(42)
+    //     t = time(42)
     time t = time(tpy::BigInt(42));
-    // 11:     print(t.value)
+    //     print(t.value)
     std::cout << t.value << "\n";
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: from time import time
+    // from time import time
     ::tpy_user::time::__tpy_init();
 }
 

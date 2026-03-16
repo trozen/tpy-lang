@@ -4,141 +4,141 @@
 namespace tpy_user::main {
 
 
-// 22: def branch_init(cond: bool) -> None:
+// def branch_init(cond: bool) -> None:
 void branch_init(bool cond) {
   std::optional<Dog> __slot_1;
   std::optional<tpy::Adapter<Pet, Cat>> __slot_2;
-    // 23:     if cond:
+    //     if cond:
     Pet* pet;
     if (cond) {
-        // 24:         pet: Pet = Dog()
+        //         pet: Pet = Dog()
         __slot_1.emplace(Dog());
         pet = &*__slot_1;
-    // 25:     else:
+    //     else:
     } else {
-        // 26:         pet = Cat()
+        //         pet = Cat()
         __slot_2.emplace(Cat());
         pet = &*__slot_2;
     }
-    // 27:     print(pet.name())
+    //     print(pet.name())
     std::cout << pet->name() << "\n";
 }
 
-// 29: def branch_reassign(cond: bool) -> None:
+// def branch_reassign(cond: bool) -> None:
 void branch_reassign(bool cond) {
   std::optional<tpy::Adapter<Pet, Cat>> __slot_2;
-    // 30:     pet: Pet = Dog()
+    //     pet: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    // 31:     if cond:
+    //     if cond:
     if (cond) {
-        // 32:         pet = Cat()
+        //         pet = Cat()
         __slot_2.emplace(Cat());
         pet = &*__slot_2;
     }
-    // 33:     print(pet.name())
+    //     print(pet.name())
     std::cout << pet->name() << "\n";
 }
 
-// 35: def nested_branches(a: bool, b: bool) -> None:
+// def nested_branches(a: bool, b: bool) -> None:
 void nested_branches(bool a, bool b) {
   std::optional<tpy::Adapter<Pet, Cat>> __slot_2;
   std::optional<tpy::Adapter<Pet, Parrot>> __slot_3;
-    // 36:     pet: Pet = Dog()
+    //     pet: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    // 37:     if a:
+    //     if a:
     if (a) {
-        // 38:         if b:
+        //         if b:
         if (b) {
-            // 39:             pet = Cat()
+            //             pet = Cat()
             __slot_2.emplace(Cat());
             pet = &*__slot_2;
-        // 40:         else:
+        //         else:
         } else {
-            // 41:             pet = Parrot()
+            //             pet = Parrot()
             __slot_3.emplace(Parrot());
             pet = &*__slot_3;
         }
     }
-    // 42:     print(pet.name())
+    //     print(pet.name())
     std::cout << pet->name() << "\n";
 }
 
-// 44: def loop_reassign(n: Int32) -> None:
+// def loop_reassign(n: Int32) -> None:
 void loop_reassign(int32_t n) {
   std::optional<tpy::Adapter<Pet, Cat>> __slot_2;
-    // 45:     pet: Pet = Dog()
+    //     pet: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    // 46:     i: Int32 = 0
+    //     i: Int32 = 0
     int32_t i = 0;
-    // 47:     while i < n:
+    //     while i < n:
     while ((i < n)) {
-        // 48:         pet = Cat()
+        //         pet = Cat()
         __slot_2.emplace(Cat());
         pet = &*__slot_2;
-        // 49:         i = i + 1
+        //         i = i + 1
         i = (tpy::add_check<int32_t>(i, 1));
     }
-    // 50:     print(pet.name())
+    //     print(pet.name())
     std::cout << pet->name() << "\n";
 }
 
-// 52: def branch_in_loop(n: Int32) -> None:
+// def branch_in_loop(n: Int32) -> None:
 void branch_in_loop(int32_t n) {
   std::optional<tpy::Adapter<Pet, Cat>> __slot_2;
   std::optional<tpy::Adapter<Pet, Parrot>> __slot_3;
-    // 53:     pet: Pet = Dog()
+    //     pet: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    // 54:     i: Int32 = 0
+    //     i: Int32 = 0
     int32_t i = 0;
-    // 55:     while i < n:
+    //     while i < n:
     while ((i < n)) {
-        // 56:         if i == 1:
+        //         if i == 1:
         if ((i == 1)) {
-            // 57:             pet = Cat()
+            //             pet = Cat()
             __slot_2.emplace(Cat());
             pet = &*__slot_2;
-        // 58:         else:
+        //         else:
         } else {
-            // 59:             pet = Parrot()
+            //             pet = Parrot()
             __slot_3.emplace(Parrot());
             pet = &*__slot_3;
         }
-        // 60:         i = i + 1
+        //         i = i + 1
         i = (tpy::add_check<int32_t>(i, 1));
     }
-    // 61:     print(pet.name())
+    //     print(pet.name())
     std::cout << pet->name() << "\n";
 }
 
-// 63: def main() -> None:
+// def main() -> None:
 void main() {
-    // 64:     branch_init(True)
+    //     branch_init(True)
     branch_init(true);
-    // 65:     branch_init(False)
+    //     branch_init(False)
     branch_init(false);
-    // 66:     branch_reassign(True)
+    //     branch_reassign(True)
     branch_reassign(true);
-    // 67:     branch_reassign(False)
+    //     branch_reassign(False)
     branch_reassign(false);
-    // 68:     nested_branches(True, True)
+    //     nested_branches(True, True)
     nested_branches(true, true);
-    // 69:     nested_branches(True, False)
+    //     nested_branches(True, False)
     nested_branches(true, false);
-    // 70:     nested_branches(False, True)
+    //     nested_branches(False, True)
     nested_branches(false, true);
-    // 71:     loop_reassign(0)
+    //     loop_reassign(0)
     loop_reassign(0);
-    // 72:     loop_reassign(3)
+    //     loop_reassign(3)
     loop_reassign(3);
-    // 73:     branch_in_loop(1)
+    //     branch_in_loop(1)
     branch_in_loop(1);
-    // 74:     branch_in_loop(2)
+    //     branch_in_loop(2)
     branch_in_loop(2);
-    // 75:     branch_in_loop(3)
+    //     branch_in_loop(3)
     branch_in_loop(3);
 }
 
@@ -147,7 +147,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 77: main()
+    // main()
     main();
 }
 

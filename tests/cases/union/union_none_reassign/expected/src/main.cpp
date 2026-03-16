@@ -4,55 +4,55 @@
 namespace tpy_user::main {
 
 
-// 9: def test_reassign_to_none() -> str:
+// def test_reassign_to_none() -> str:
 std::string test_reassign_to_none() {
-    // 10:     v: Int32 | Dog | None = Int32(5)
+    //     v: Int32 | Dog | None = Int32(5)
     std::variant<std::monostate, Dog, int32_t> __slot_1 = 5;
     std::optional<std::variant<std::monostate, Dog, int32_t>> __slot_2;
     std::variant<std::monostate, Dog, int32_t>* v = &__slot_1;
-    // 11:     if v is not None:
+    //     if v is not None:
     if ((!std::holds_alternative<std::monostate>((*v)))) {
-        // 12:         v = None
+        //         v = None
         __slot_2.emplace(std::monostate{});
         v = &(*__slot_2);
-        // 13:         if v is None:
+        //         if v is None:
         if ((std::holds_alternative<std::monostate>((*v)))) {
-            // 14:             return "reassigned to none"
+            //             return "reassigned to none"
             return "reassigned to none";
         }
     }
-    // 15:     return "was none"
+    //     return "was none"
     return "was none";
 }
 
-// 17: def test_init_none_then_assign() -> str:
+// def test_init_none_then_assign() -> str:
 std::string test_init_none_then_assign() {
-    // 18:     v: Int32 | Dog | None = None
+    //     v: Int32 | Dog | None = None
     std::variant<std::monostate, Dog, int32_t> __slot_1 = std::monostate{};
     std::optional<std::variant<std::monostate, Dog, int32_t>> __slot_2;
     std::variant<std::monostate, Dog, int32_t>* v = &__slot_1;
-    // 19:     v = Int32(42)
+    //     v = Int32(42)
     v = &*(__slot_2 = 42);
-    // 20:     if v is not None:
+    //     if v is not None:
     if ((!std::holds_alternative<std::monostate>((*v)))) {
-        // 21:         if isinstance(v, Int32):
+        //         if isinstance(v, Int32):
         if (std::holds_alternative<int32_t>((*v))) {
             auto& __v = std::get<int32_t>((*v));
-            // 22:             return "got int"
+            //             return "got int"
             return "got int";
         }
-        // 23:         return "got dog"
+        //         return "got dog"
         return "got dog";
     }
-    // 24:     return "none"
+    //     return "none"
     return "none";
 }
 
-// 26: def main() -> None:
+// def main() -> None:
 void main() {
-    // 27:     print(test_reassign_to_none())
+    //     print(test_reassign_to_none())
     std::cout << test_reassign_to_none() << "\n";
-    // 28:     print(test_init_none_then_assign())
+    //     print(test_init_none_then_assign())
     std::cout << test_init_none_then_assign() << "\n";
 }
 
@@ -61,7 +61,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 30: main()
+    // main()
     main();
 }
 

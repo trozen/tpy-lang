@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-// 4: x = 0  # tpyc: type(int)
+// x = 0  # tpyc: type(int)
 tpy::BigInt x;
-// 9: f = 0  # tpyc: type(float)
+// f = 0  # tpyc: type(float)
 double f{};
 
 void __tpy_init() {
@@ -13,21 +13,21 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: x = 0  # tpyc: type(int)
+    // x = 0  # tpyc: type(int)
     x = tpy::BigInt(0);
-    // 5: x = Int32(10)  # tpyc: type(int)
+    // x = Int32(10)  # tpyc: type(int)
     x = 10;
-    // 6: x = int(20)  # tpyc: type(int)
+    // x = int(20)  # tpyc: type(int)
     x = tpy::BigInt(static_cast<int64_t>(20));
-    // 7: print(x)
+    // print(x)
     std::cout << x << "\n";
-    // 9: f = 0  # tpyc: type(float)
+    // f = 0  # tpyc: type(float)
     f = 0;
-    // 10: f = Int32(3)  # tpyc: type(float)
+    // f = Int32(3)  # tpyc: type(float)
     f = 3;
-    // 11: f = 1.5  # tpyc: type(float)
+    // f = 1.5  # tpyc: type(float)
     f = 1.5;
-    // 12: print(f)
+    // print(f)
     std::cout << tpy::print_float(f) << "\n";
 }
 

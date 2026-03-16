@@ -14,12 +14,12 @@ int32_t consume(Container&& c);
 void main();
 
 // @nocopy
-// 7: class Handle:
+// class Handle:
 struct Handle {
-    // 8:     fd: Int32
+    //     fd: Int32
     int32_t fd;
 
-    // 10:     def __init__(self, fd: Int32):
+    //     def __init__(self, fd: Int32):
     Handle() = default;
     explicit Handle(int32_t fd) : fd(fd) {}
     // non-copyable (@nocopy)
@@ -36,12 +36,12 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
     return os;
 }
 
-// 14: class Container:
+// class Container:
 struct Container {
-    // 15:     handle: Handle
+    //     handle: Handle
     Handle handle;
 
-    // 17:     def __init__(self, handle: Own[Handle]):
+    //     def __init__(self, handle: Own[Handle]):
     Container() = default;
     explicit Container(Handle&& handle) : handle(std::move(handle)) {}
     // copyable via __copy__
@@ -53,9 +53,9 @@ struct Container {
     Container(Container&&) = default;
     Container& operator=(Container&&) = default;
 
-    // 20:     def __copy__(self) -> Own[Container]:
+    //     def __copy__(self) -> Own[Container]:
     Container __copy__() const {
-        // 21:         return Container(Handle(self.handle.fd))
+        //         return Container(Handle(self.handle.fd))
         return Container(Handle(this->handle.fd));
     }
 };

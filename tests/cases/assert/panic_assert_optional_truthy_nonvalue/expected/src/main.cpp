@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-// 11: x: C | None = None
+// x: C | None = None
 C* x{};
 
 void __tpy_init() {
@@ -11,9 +11,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 11: x: C | None = None
+    // x: C | None = None
     x = nullptr;
-    // 12: assert x
+    // assert x
     if (!(x)) tpy::tpy_panic("assertion failed");
 }
 

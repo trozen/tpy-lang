@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> Int32:
+// def main() -> Int32:
 int32_t main() {
-    // 5:     func()
+    //     func()
     ::tpy_user::outer::inner::mod::func();
-    // 6:     return Int32(0)
+    //     return Int32(0)
     return 0;
 }
 
@@ -17,11 +17,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: from outer.inner.mod import func
+    // from outer.inner.mod import func
     ::tpy_user::outer::__tpy_init();
     ::tpy_user::outer::inner::__tpy_init();
     ::tpy_user::outer::inner::mod::__tpy_init();
-    // 8: main()
+    // main()
     main();
 }
 

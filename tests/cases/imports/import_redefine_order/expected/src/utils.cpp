@@ -3,9 +3,9 @@
 
 namespace tpy_user::utils {
 
-// 3: MAX: Int32 = Int32(100)
+// MAX: Int32 = Int32(100)
 int32_t MAX{};
-// 4: MIN: Int32 = Int32(1)
+// MIN: Int32 = Int32(1)
 int32_t MIN{};
 
 void __tpy_init() {
@@ -13,9 +13,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: MAX: Int32 = Int32(100)
+    // MAX: Int32 = Int32(100)
     MAX = 100;
-    // 4: MIN: Int32 = Int32(1)
+    // MIN: Int32 = Int32(1)
     MIN = 1;
 }
 

@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     x: Int64 = Int64(1) << Int64(63)
+    //     x: Int64 = Int64(1) << Int64(63)
     int64_t x = (tpy::lshift_check<int64_t>(1, 63));
-    // 6:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: main()
+    // main()
     main();
 }
 

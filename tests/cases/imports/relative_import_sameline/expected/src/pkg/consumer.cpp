@@ -9,13 +9,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: from . import amod; from . import bmod
+    // from . import amod; from . import bmod
     ::tpy_user::pkg::__tpy_init();
     ::tpy_user::pkg::amod::__tpy_init();
-    // 1: from . import amod; from . import bmod
+    // from . import amod; from . import bmod
     ::tpy_user::pkg::__tpy_init();
     ::tpy_user::pkg::bmod::__tpy_init();
-    // 2: print("consumer done")
+    // print("consumer done")
     std::cout << "consumer done" << "\n";
 }
 

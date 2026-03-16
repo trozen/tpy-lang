@@ -11,15 +11,15 @@ inline constexpr std::string_view __name__ = "__main__";
 
 int32_t add_one(int32_t x);
 
-// 4: class Ops:
+// class Ops:
 struct Ops {
 
 
     //     @staticmethod
     //     @readonly
-    // 7:     def plus_one(x: Int32) -> Int32:
+    //     def plus_one(x: Int32) -> Int32:
     static int32_t plus_one(int32_t x) {
-        // 8:         return x + 1
+        //         return x + 1
         return (tpy::add_check<int32_t>(x, 1));
     }
 };

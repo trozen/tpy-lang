@@ -4,25 +4,25 @@
 namespace tpy_user::main {
 
 
-// 1: def pick(cond: bool) -> None:
+// def pick(cond: bool) -> None:
 void pick(bool cond) {
-    // 2:     if cond:
+    //     if cond:
     std::optional<int32_t> x;
     if (cond) {
-        // 3:         x = None
+        //         x = None
         x = std::nullopt;
-    // 4:     else:
+    //     else:
     } else {
-        // 5:         x = 5
+        //         x = 5
         x = 5;
     }
-    // 7:     if x is None:
+    //     if x is None:
     if ((!x.has_value())) {
-        // 8:         print(0)
+        //         print(0)
         std::cout << 0 << "\n";
-    // 9:     else:
+    //     else:
     } else {
-        // 10:         print(x)
+        //         print(x)
         std::cout << tpy::print_optional_val(x) << "\n";
     }
 }
@@ -32,9 +32,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 13: pick(True)
+    // pick(True)
     pick(true);
-    // 14: pick(False)
+    // pick(False)
     pick(false);
 }
 

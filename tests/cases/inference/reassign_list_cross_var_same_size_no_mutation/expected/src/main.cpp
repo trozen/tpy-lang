@@ -5,16 +5,16 @@ namespace tpy_user::main {
 
 
 // # Cross-variable same-size reassignment without mutation stays Array
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     a = [1, 2, 3]  # tpyc: type(/Array/)
+    //     a = [1, 2, 3]  # tpyc: type(/Array/)
     std::array<int32_t, 3> __slot_1 = {1, 2, 3};
     std::array<int32_t, 3>* a = &__slot_1;
-    // 4:     b = [4, 5, 6]  # tpyc: type(/Array/)
+    //     b = [4, 5, 6]  # tpyc: type(/Array/)
     std::array<int32_t, 3> b = {4, 5, 6};
-    // 5:     a = b
+    //     a = b
     a = &(b);
-    // 6:     print(len(a))
+    //     print(len(a))
     std::cout << tpy::__len__((*a)) << "\n";
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 7: main()
+    // main()
     main();
 }
 

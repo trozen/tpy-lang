@@ -13,14 +13,14 @@ void branch_rvalue_independent(bool cond);
 void branch_rvalue_three_way(int32_t flag);
 void branch_mixed_scope(bool cond);
 
-// 8: class Point:
+// class Point:
 struct Point {
-    // 9:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 10:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 11:     def __init__(self, x: Int32, y: Int32):
+    //     def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

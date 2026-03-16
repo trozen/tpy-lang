@@ -12,34 +12,34 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 6: class StorageIter[T, N: int]:
+// class StorageIter[T, N: int]:
 template<typename T, std::size_t N>
 struct StorageIter {
-    // 7:     _storage: Ptr[UninitArrayStorage[T, N]]
+    //     _storage: Ptr[UninitArrayStorage[T, N]]
     UninitArrayStorage<T, N>* _storage;
-    // 8:     _size: Int32
+    //     _size: Int32
     int32_t _size;
-    // 9:     _index: Int32
+    //     _index: Int32
     int32_t _index;
 
-    // 11:     def __init__(self, storage: Ptr[UninitArrayStorage[T, N]], size: Int32) -> None:
+    //     def __init__(self, storage: Ptr[UninitArrayStorage[T, N]], size: Int32) -> None:
     StorageIter() = default;
     explicit StorageIter(UninitArrayStorage<T, N>* storage, int32_t size) : _storage(storage), _size(size), _index(0) {}
 
     auto& __iter__() { return *this; }
 
-    // 16:     def __next__(self) -> Own[T]:
+    //     def __next__(self) -> Own[T]:
     std::optional<T> __next_opt__() {
-        // 17:         if self._index < self._size:
+        //         if self._index < self._size:
         if ((this->_index < this->_size)) {
-            // 18:             val = self._storage.load(UInt32(self._index))
+            //             val = self._storage.load(UInt32(self._index))
             T val = (*this->_storage).load(tpy::int_cast_check<uint32_t>(this->_index));
-            // 19:             self._index += 1
+            //             self._index += 1
             this->_index = tpy::add_check<int32_t>(this->_index, 1);
-            // 20:             return val
+            //             return val
             return val;
         }
-        // 21:         raise StopIteration
+        //         raise StopIteration
         return std::nullopt;
     }
 
@@ -60,16 +60,16 @@ inline std::ostream& operator<<(std::ostream& os, const StorageIter<T, N>& obj) 
     return os;
 }
 
-// 24: class SimpleList[T, N: int]:
+// class SimpleList[T, N: int]:
 template<typename T, std::size_t N>
 struct SimpleList {
-    // 25:     _storage: UninitArrayStorage[T, N]
+    //     _storage: UninitArrayStorage[T, N]
     UninitArrayStorage<T, N> _storage;
-    // 26:     _size: Int32
+    //     _size: Int32
     int32_t _size;
     bool __tpy_owned_ = true;
 
-    // 28:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     SimpleList() : _storage(UninitArrayStorage<T, N>()), _size(0) {}
     // non-copyable (field '_storage')
     SimpleList(const SimpleList&) = delete;
@@ -84,29 +84,29 @@ struct SimpleList {
         }
         return *this;
     }
-    // 32:     def __del__(self) -> None:
+    //     def __del__(self) -> None:
 
     ~SimpleList() {
         if (!__tpy_owned_) return;
-        // 33:         for i in range(self._size):
+        //         for i in range(self._size):
         int32_t __stop_0 = this->_size;
         for (int32_t i = 0; i < __stop_0; ++i) {
-            // 34:             self._storage.drop(UInt32(i))
+            //             self._storage.drop(UInt32(i))
             this->_storage.drop(static_cast<uint32_t>(i));
         }
     }
 
-    // 36:     def add(self, value: Own[T]) -> None:
+    //     def add(self, value: Own[T]) -> None:
     void add(T&& value) {
-        // 37:         self._storage.init(UInt32(self._size), value)
+        //         self._storage.init(UInt32(self._size), value)
         this->_storage.init(tpy::int_cast_check<uint32_t>(this->_size), std::move(value));
-        // 38:         self._size += 1
+        //         self._size += 1
         this->_size = tpy::add_check<int32_t>(this->_size, 1);
     }
 
-    // 40:     def __iter__(self) -> Own[StorageIter[T, N]]:
+    //     def __iter__(self) -> Own[StorageIter[T, N]]:
     StorageIter<T, N> __iter__() {
-        // 41:         return StorageIter[T, N](Ptr(self._storage), self._size)
+        //         return StorageIter[T, N](Ptr(self._storage), self._size)
         return StorageIter<T, N>(&this->_storage, this->_size);
     }
 };

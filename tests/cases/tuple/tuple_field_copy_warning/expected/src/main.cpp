@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 25: def main() -> None:
+// def main() -> None:
 void main() {
-    // 26:     p = Point(Int32(1), Int32(2))
+    //     p = Point(Int32(1), Int32(2))
     Point p = Point(1, 2);
-    // 27:     c = ContainerOk(p, Int32(42))
+    //     c = ContainerOk(p, Int32(42))
     ContainerOk c = ContainerOk(p, 42);
-    // 28:     print(c.data[0].x, c.data[1])
+    //     print(c.data[0].x, c.data[1])
     std::cout << std::get<0>(c.data).x << " " << std::get<1>(c.data) << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 30: main()
+    // main()
     main();
 }
 

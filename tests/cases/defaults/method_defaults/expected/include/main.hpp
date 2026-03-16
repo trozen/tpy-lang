@@ -11,23 +11,23 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Counter:
+// class Counter:
 struct Counter {
-    // 5:     count: Int32
+    //     count: Int32
     int32_t count;
 
-    // 6:     def __init__(self, start: Int32 = Int32(0)) -> None:
+    //     def __init__(self, start: Int32 = Int32(0)) -> None:
     explicit Counter(int32_t start = 0) : count(start) {}
 
-    // 9:     def increment(self, amount: Int32 = Int32(1)) -> None:
+    //     def increment(self, amount: Int32 = Int32(1)) -> None:
     void increment(int32_t amount = 1) {
-        // 10:         self.count = self.count + amount
+        //         self.count = self.count + amount
         this->count = (tpy::add_check<int32_t>(this->count, amount));
     }
 
-    // 12:     def display(self, prefix: str = "count") -> None:
+    //     def display(self, prefix: str = "count") -> None:
     void display(std::string_view prefix = "count") const {
-        // 13:         print(f"{prefix}: {self.count}")
+        //         print(f"{prefix}: {self.count}")
         std::cout << std::format("{}: {}", prefix, this->count) << "\n";
     }
 };

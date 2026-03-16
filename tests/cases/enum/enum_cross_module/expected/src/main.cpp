@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 
-// 5: def main() -> None:
+// def main() -> None:
 void main() {
-    // 6:     c = Color.Red
+    //     c = Color.Red
     ::tpy_user::colors::Color c = ::tpy_user::colors::Color::Red;
-    // 7:     print(c)
+    //     print(c)
     std::cout << c << "\n";
-    // 8:     print(c.name)
+    //     print(c.name)
     std::cout << tpy::EnumUtil<::tpy_user::colors::Color>::name(c) << "\n";
-    // 9:     print(color_value(c))
+    //     print(color_value(c))
     std::cout << ::tpy_user::colors::color_value(c) << "\n";
-    // 11:     g = Color.Green
+    //     g = Color.Green
     ::tpy_user::colors::Color g = ::tpy_user::colors::Color::Green;
-    // 12:     print(c == g)
+    //     print(c == g)
     std::cout << tpy::print_bool((c == g)) << "\n";
-    // 13:     print(c != g)
+    //     print(c != g)
     std::cout << tpy::print_bool((c != g)) << "\n";
-    // 14:     print(c == Color.Red)
+    //     print(c == Color.Red)
     std::cout << tpy::print_bool((c == ::tpy_user::colors::Color::Red)) << "\n";
 }
 
@@ -29,10 +29,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # Test importing enum from another module
-    // 2: from colors import Color, color_value
+    // # Test importing enum from another module
+    // from colors import Color, color_value
     ::tpy_user::colors::__tpy_init();
-    // 16: main()
+    // main()
     main();
 }
 

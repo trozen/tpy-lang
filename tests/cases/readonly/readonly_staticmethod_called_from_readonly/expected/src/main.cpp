@@ -5,9 +5,9 @@ namespace tpy_user::main {
 
 
 // @readonly
-// 12: def add_one(x: Int32) -> Int32:
+// def add_one(x: Int32) -> Int32:
 int32_t add_one(int32_t x) {
-    // 13:     return Ops.plus_one(x)  # tpyc: ok
+    //     return Ops.plus_one(x)  # tpyc: ok
     return Ops::plus_one(x);
 }
 
@@ -16,7 +16,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 16: print(add_one(3))
+    // print(add_one(3))
     std::cout << add_one(3) << "\n";
 }
 

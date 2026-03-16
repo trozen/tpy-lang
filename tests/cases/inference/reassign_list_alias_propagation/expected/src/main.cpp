@@ -5,15 +5,15 @@ namespace tpy_user::main {
 
 
 // # List alias propagation: mutation on alias promotes both to list
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     a = [1, 2, 3]  # tpyc: type(/list/)
+    //     a = [1, 2, 3]  # tpyc: type(/list/)
     std::vector<int32_t> a = {1, 2, 3};
-    // 4:     b = a
+    //     b = a
     std::vector<int32_t>& b = a;
-    // 5:     b.append(4)
+    //     b.append(4)
     b.push_back(4);
-    // 6:     print(len(a))
+    //     print(len(a))
     std::cout << tpy::__len__(a) << "\n";
 }
 
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: main()
+    // main()
     main();
 }
 

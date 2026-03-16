@@ -10,20 +10,20 @@ struct Settings;
 extern Settings* DEFAULT;
 inline constexpr std::string_view __name__ = "config";
 
-// 5: class Settings:
+// class Settings:
 struct Settings {
-    // 6:     width: Int32
+    //     width: Int32
     int32_t width;
-    // 7:     height: Int32
+    //     height: Int32
     int32_t height;
 
-    // 9:     def __init__(self, width: Int32, height: Int32) -> None:
+    //     def __init__(self, width: Int32, height: Int32) -> None:
     Settings() = default;
     explicit Settings(int32_t width, int32_t height) : width(width), height(height) {}
 
-    // 13:     def area(self) -> Int32:
+    //     def area(self) -> Int32:
     int32_t area() const {
-        // 14:         return self.width * self.height
+        //         return self.width * self.height
         return (tpy::mul_check<int32_t>(this->width, this->height));
     }
 };

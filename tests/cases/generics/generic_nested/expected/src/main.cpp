@@ -4,22 +4,22 @@
 namespace tpy_user::main {
 
 
-// 26: def main() -> None:
+// def main() -> None:
 void main() {
-    // 27:     # Test Container[Int32] which internally uses Box[Int32]
-    // 28:     c: Container[Int32] = Container[Int32](42)
+    //     # Test Container[Int32] which internally uses Box[Int32]
+    //     c: Container[Int32] = Container[Int32](42)
     Container<int32_t> c = Container<int32_t>(42);
-    // 29:     print(c.get_value())
+    //     print(c.get_value())
     std::cout << c.get_value() << "\n";
-    // 31:     # Get the inner box
-    // 32:     box: Box[Int32] = c.get_inner()
+    //     # Get the inner box
+    //     box: Box[Int32] = c.get_inner()
     Box<int32_t>& box = c.get_inner();
-    // 33:     print(box.get())
+    //     print(box.get())
     std::cout << box.get() << "\n";
-    // 35:     # Local variable with type parameter (tests the second fix)
-    // 36:     c2: Container[str] = Container[str]("hello")
+    //     # Local variable with type parameter (tests the second fix)
+    //     c2: Container[str] = Container[str]("hello")
     Container<std::string> c2 = Container<std::string>("hello");
-    // 37:     print(c2.get_value())
+    //     print(c2.get_value())
     std::cout << c2.get_value() << "\n";
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 40: main()
+    // main()
     main();
 }
 

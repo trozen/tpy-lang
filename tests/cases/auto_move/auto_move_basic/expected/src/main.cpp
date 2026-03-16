@@ -4,24 +4,24 @@
 namespace tpy_user::main {
 
 
-// 11: def consume(p: Own[Point]) -> Int32:
+// def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point&& p) {
-    // 12:     return p.x + p.y
+    //     return p.x + p.y
     return (tpy::add_check<int32_t>(p.x, p.y));
 }
 
-// 15: def main():
+// def main():
 void main() {
-    // 16:     p = Point()
+    //     p = Point()
     Point p = Point();
-    // 17:     p.x = 10
+    //     p.x = 10
     p.x = 10;
-    // 18:     p.y = 32
+    //     p.y = 32
     p.y = 32;
-    // 19:     # p is at last use here -- auto-move, no copy() needed
-    // 20:     result = consume(p)
+    //     # p is at last use here -- auto-move, no copy() needed
+    //     result = consume(p)
     int32_t result = consume(std::move(p));
-    // 21:     print(result)
+    //     print(result)
     std::cout << result << "\n";
 }
 
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 24: main()
+    // main()
     main();
 }
 

@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 5: def main() -> None:
+// def main() -> None:
 void main() {
-    // 6:     b = Box[Int32](42)
+    //     b = Box[Int32](42)
     ::tpy_user::tplib::Box<int32_t> b = ::tpy_user::tplib::Box<int32_t>(42);
-    // 7:     print(b.get())
+    //     print(b.get())
     std::cout << b.get() << "\n";
-    // 8:     b.set(100)
+    //     b.set(100)
     b.set(100);
-    // 9:     print(b.get())
+    //     print(b.get())
     std::cout << b.get() << "\n";
 }
 
@@ -21,10 +21,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # Test importing Box[T] from tplib standard library
-    // 2: from tplib import Box
+    // # Test importing Box[T] from tplib standard library
+    // from tplib import Box
     ::tpy_user::tplib::__tpy_init();
-    // 11: main()
+    // main()
     main();
 }
 

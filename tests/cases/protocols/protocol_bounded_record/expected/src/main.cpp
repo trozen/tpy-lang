@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 28: def main() -> None:
+// def main() -> None:
 void main() {
-    // 29:     factory = DefaultPairFactory()
+    //     factory = DefaultPairFactory()
     DefaultPairFactory factory = DefaultPairFactory();
-    // 30:     pair = create_pair(factory, 30, 10)
+    //     pair = create_pair(factory, 30, 10)
     SortedPair<int32_t> pair = create_pair<DefaultPairFactory>(factory, 30, 10);
-    // 31:     print(pair.first)
+    //     print(pair.first)
     std::cout << pair.first << "\n";
-    // 32:     print(pair.second)
+    //     print(pair.second)
     std::cout << pair.second << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 34: main()
+    // main()
     main();
 }
 

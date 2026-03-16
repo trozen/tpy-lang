@@ -5,107 +5,107 @@ namespace tpy_user::main {
 
 
 // # Test PendingStrType alias: each alias gets independent promotion
-// 2: def test_alias_augassign() -> None:
+// def test_alias_augassign() -> None:
 void test_alias_augassign() {
-    // 3:     s1 = "hello"  # tpyc: type(StrView)
+    //     s1 = "hello"  # tpyc: type(StrView)
     std::string_view s1 = "hello";
-    // 4:     s2 = s1  # tpyc: type(str)
+    //     s2 = s1  # tpyc: type(str)
     std::string s2 = std::string(s1);
-    // 5:     s2 += " world"
+    //     s2 += " world"
     s2 += " world";
-    // 6:     print(s1)   # s1 stays StrView (literal, no mutation)
+    //     print(s1)   # s1 stays StrView (literal, no mutation)
     std::cout << s1 << "\n";
-    // 7:     print(s2)   # s2 promoted to str (augmented assignment)
+    //     print(s2)   # s2 promoted to str (augmented assignment)
     std::cout << s2 << "\n";
 }
 
-// 9: def test_alias_stays_view() -> None:
+// def test_alias_stays_view() -> None:
 void test_alias_stays_view() {
-    // 10:     s1 = "hello"  # tpyc: type(StrView)
+    //     s1 = "hello"  # tpyc: type(StrView)
     std::string_view s1 = "hello";
-    // 11:     s2 = s1  # tpyc: type(StrView)
+    //     s2 = s1  # tpyc: type(StrView)
     std::string_view s2 = s1;
-    // 12:     print(s1)
+    //     print(s1)
     std::cout << s1 << "\n";
-    // 13:     print(s2)
+    //     print(s2)
     std::cout << s2 << "\n";
 }
 
-// 15: def test_chain_alias_promote() -> None:
+// def test_chain_alias_promote() -> None:
 void test_chain_alias_promote() {
-    // 16:     a = "x"  # tpyc: type(StrView)
+    //     a = "x"  # tpyc: type(StrView)
     std::string_view a = "x";
-    // 17:     b = a  # tpyc: type(str)
+    //     b = a  # tpyc: type(str)
     std::string b = std::string(a);
-    // 18:     c = b  # tpyc: type(str)
+    //     c = b  # tpyc: type(str)
     std::string c = b;
-    // 19:     b += " y"
+    //     b += " y"
     b += " y";
-    // 20:     print(a)   # StrView (literal, no mutation)
+    //     print(a)   # StrView (literal, no mutation)
     std::cout << a << "\n";
-    // 21:     print(b)   # str (augassign promotes b, which promotes c retroactively)
+    //     print(b)   # str (augassign promotes b, which promotes c retroactively)
     std::cout << b << "\n";
-    // 22:     print(c)   # str (source b resolved to str)
+    //     print(c)   # str (source b resolved to str)
     std::cout << c << "\n";
 }
 
-// 24: def test_reassign_from_owned_pending(cond: bool) -> None:
+// def test_reassign_from_owned_pending(cond: bool) -> None:
 void test_reassign_from_owned_pending(bool cond) {
-    // 25:     result = "ok"  # tpyc: type(str)
+    //     result = "ok"  # tpyc: type(str)
     std::string result = "ok";
-    // 26:     if cond:
+    //     if cond:
     if (cond) {
-        // 27:         s = str(123)  # tpyc: type(str)
+        //         s = str(123)  # tpyc: type(str)
         std::string s = tpy::fixed_to_str<int8_t>(123);
-        // 28:         result = s   # s resolves to str -> result must be promoted too
+        //         result = s   # s resolves to str -> result must be promoted too
         result = s;
     }
-    // 29:     print(result)
+    //     print(result)
     std::cout << result << "\n";
 }
 
-// 31: def test_reassign_from_owned_pending_return(cond: bool) -> str:
+// def test_reassign_from_owned_pending_return(cond: bool) -> str:
 std::string test_reassign_from_owned_pending_return(bool cond) {
-    // 32:     result = "ok"
+    //     result = "ok"
     std::string result = "ok";
-    // 33:     if cond:
+    //     if cond:
     if (cond) {
-        // 34:         s = str(123)
+        //         s = str(123)
         std::string s = tpy::fixed_to_str<int8_t>(123);
-        // 35:         result = s
+        //         result = s
         result = s;
     }
-    // 36:     return result
+    //     return result
     return result;
 }
 
-// 38: def test_source_promotes_alias() -> None:
+// def test_source_promotes_alias() -> None:
 void test_source_promotes_alias() {
-    // 39:     # Source mutation promotes alias (forward propagation)
-    // 40:     a = "x"  # tpyc: type(str)
+    //     # Source mutation promotes alias (forward propagation)
+    //     a = "x"  # tpyc: type(str)
     std::string a = "x";
-    // 41:     b = a  # tpyc: type(str)
+    //     b = a  # tpyc: type(str)
     std::string b = a;
-    // 42:     a += " y"
+    //     a += " y"
     a += " y";
-    // 43:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 44:     print(b)
+    //     print(b)
     std::cout << b << "\n";
 }
 
-// 46: def test_owned_reassign_no_backprop() -> None:
+// def test_owned_reassign_no_backprop() -> None:
 void test_owned_reassign_no_backprop() {
-    // 47:     # Reassignment to owned doesn't promote the source
-    // 48:     a = "x"  # tpyc: type(StrView)
+    //     # Reassignment to owned doesn't promote the source
+    //     a = "x"  # tpyc: type(StrView)
     std::string_view a = "x";
-    // 49:     b = a  # tpyc: type(str)
+    //     b = a  # tpyc: type(str)
     std::string b = std::string(a);
-    // 50:     b = str(99)
+    //     b = str(99)
     b = tpy::fixed_to_str<int8_t>(99);
-    // 51:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 52:     print(b)
+    //     print(b)
     std::cout << b << "\n";
 }
 
@@ -114,23 +114,23 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 54: test_alias_augassign()
+    // test_alias_augassign()
     test_alias_augassign();
-    // 55: test_alias_stays_view()
+    // test_alias_stays_view()
     test_alias_stays_view();
-    // 56: test_chain_alias_promote()
+    // test_chain_alias_promote()
     test_chain_alias_promote();
-    // 57: test_reassign_from_owned_pending(True)
+    // test_reassign_from_owned_pending(True)
     test_reassign_from_owned_pending(true);
-    // 58: test_reassign_from_owned_pending(False)
+    // test_reassign_from_owned_pending(False)
     test_reassign_from_owned_pending(false);
-    // 59: print(test_reassign_from_owned_pending_return(True))
+    // print(test_reassign_from_owned_pending_return(True))
     std::cout << test_reassign_from_owned_pending_return(true) << "\n";
-    // 60: print(test_reassign_from_owned_pending_return(False))
+    // print(test_reassign_from_owned_pending_return(False))
     std::cout << test_reassign_from_owned_pending_return(false) << "\n";
-    // 61: test_source_promotes_alias()
+    // test_source_promotes_alias()
     test_source_promotes_alias();
-    // 62: test_owned_reassign_no_backprop()
+    // test_owned_reassign_no_backprop()
     test_owned_reassign_no_backprop();
 }
 

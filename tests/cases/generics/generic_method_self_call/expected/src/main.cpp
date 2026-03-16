@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 16: def main() -> None:
+// def main() -> None:
 void main() {
-    // 17:     p = Processor[Int32](Int32(1))
+    //     p = Processor[Int32](Int32(1))
     Processor<int32_t> p = Processor<int32_t>(1);
-    // 18:     print(p.process())
+    //     print(p.process())
     std::cout << p.process() << "\n";
-    // 19:     print(p.wrap("hello"))
+    //     print(p.wrap("hello"))
     std::cout << p.wrap<std::string_view>("hello") << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 21: main()
+    // main()
     main();
 }
 

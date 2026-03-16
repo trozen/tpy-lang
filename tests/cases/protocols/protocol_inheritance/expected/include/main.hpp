@@ -5,13 +5,13 @@
 
 namespace tpy_user::main {
 
-// 5: class Printable(Protocol):
+// class Printable(Protocol):
 template<typename T>
 concept Printable = requires(T& t) {
     { t.to_str() } -> std::convertible_to<std::string>;
 };
 
-// 9: class PrintableAndSized(Printable, Sized, Protocol):
+// class PrintableAndSized(Printable, Sized, Protocol):
 template<typename T>
 concept PrintableAndSized = requires(T& t) {
     { t.to_str() } -> std::convertible_to<std::string>;
@@ -25,24 +25,24 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 13: class Message:
+// class Message:
 struct Message {
-    // 14:     text: str
+    //     text: str
     std::string text;
 
-    // 16:     def __init__(self, text: str) -> None:
+    //     def __init__(self, text: str) -> None:
     Message() = default;
     explicit Message(std::string_view text) : text(text) {}
 
-    // 19:     def to_str(self) -> str:
+    //     def to_str(self) -> str:
     std::string to_str() const {
-        // 20:         return self.text
+        //         return self.text
         return this->text;
     }
 
-    // 22:     def __len__(self) -> Int32:
+    //     def __len__(self) -> Int32:
     int32_t __len__() const {
-        // 23:         return Int32(5)
+        //         return Int32(5)
         return 5;
     }
 
@@ -60,21 +60,21 @@ inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
     return os;
 }
 
-// 26: class Container[T: PrintableAndSized]:
+// class Container[T: PrintableAndSized]:
 template<PrintableAndSized T>
 struct Container {
-    // 27:     value: T
+    //     value: T
     T value;
 
-    // 29:     def __init__(self, value: T) -> None:
+    //     def __init__(self, value: T) -> None:
     Container() = default;
     explicit Container(const T& value) : value(value) {}
 
-    // 32:     def describe(self) -> None:
+    //     def describe(self) -> None:
     void describe() {
-        // 33:         print(self.value.to_str())
+        //         print(self.value.to_str())
         std::cout << this->value.to_str() << "\n";
-        // 34:         print(len(self.value))
+        //         print(len(self.value))
         std::cout << tpy::__len__(this->value) << "\n";
     }
 };

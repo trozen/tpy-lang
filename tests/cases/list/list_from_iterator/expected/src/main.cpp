@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-// 18: result = list(Counter(5))
+// result = list(Counter(5))
 std::vector<int32_t>* result{};
 
 void __tpy_init() {
@@ -11,10 +11,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: result = list(Counter(5))
+    // result = list(Counter(5))
     static std::vector<int32_t> __global_slot_1 = tpy::collect<std::vector<int32_t>>(Counter(5));
     result = &__global_slot_1;
-    // 19: print(result)
+    // print(result)
     std::cout << tpy::ListPrinter((*result)) << "\n";
 }
 

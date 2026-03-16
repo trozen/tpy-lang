@@ -4,25 +4,25 @@
 namespace tpy_user::main {
 
 
-// 16: def read_buf(b: readonly[Buffer]) -> None:
+// def read_buf(b: readonly[Buffer]) -> None:
 void read_buf(const Buffer& b) {
-    // 17:     s = b.as_span()  # tpyc: type(Span[readonly[Int32]])
+    //     s = b.as_span()  # tpyc: type(Span[readonly[Int32]])
     std::span<const int32_t> s = b.as_span();
-    // 18:     print(s[Int32(0)])
+    //     print(s[Int32(0)])
     std::cout << tpy::__getitem__(s, 0) << "\n";
-    // 19:     print(s[Int32(1)])
+    //     print(s[Int32(1)])
     std::cout << tpy::__getitem__(s, 1) << "\n";
 }
 
-// 22: def main() -> None:
+// def main() -> None:
 void main() {
-    // 23:     b = Buffer()
+    //     b = Buffer()
     Buffer b = Buffer();
-    // 24:     s = b.as_span()  # tpyc: type(Span[Int32])
+    //     s = b.as_span()  # tpyc: type(Span[Int32])
     std::span<int32_t> s = b.as_span();
-    // 25:     print(s[Int32(2)])
+    //     print(s[Int32(2)])
     std::cout << tpy::__getitem__(s, 2) << "\n";
-    // 26:     read_buf(b)
+    //     read_buf(b)
     read_buf(b);
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 29: main()
+    // main()
     main();
 }
 

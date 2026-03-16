@@ -13,18 +13,18 @@ template<tpy::Sized T_items>
 tpy::BigInt count(const T_items& items);
 void main();
 
-// 4: class MyCollection:
+// class MyCollection:
 struct MyCollection {
-    // 5:     size: int
+    //     size: int
     tpy::BigInt size;
 
-    // 7:     def __init__(self, n: int) -> None:
+    //     def __init__(self, n: int) -> None:
     MyCollection() = default;
     explicit MyCollection(const tpy::BigInt& n) : size(n) {}
 
-    // 10:     def __len__(self) -> int:
+    //     def __len__(self) -> int:
     tpy::BigInt __len__() const {
-        // 11:         return self.size
+        //         return self.size
         return this->size;
     }
 };
@@ -36,10 +36,10 @@ inline std::ostream& operator<<(std::ostream& os, const MyCollection& obj) {
     return os;
 }
 
-// 13: def count(items: Sized) -> int:
+// def count(items: Sized) -> int:
 template<tpy::Sized T_items>
 tpy::BigInt count(const T_items& items) {
-    // 14:     return len(items)
+    //     return len(items)
     return tpy::BigInt(tpy::__len__(items));
 }
 

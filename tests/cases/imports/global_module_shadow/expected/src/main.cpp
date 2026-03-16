@@ -3,12 +3,12 @@
 
 namespace tpy_user::main {
 
-// 7: time: Timer = Timer()
+// time: Timer = Timer()
 Timer* time{};
 
-// 10: def f():
+// def f():
 void f() {
-    // 11:     print(time.x)
+    //     print(time.x)
     std::cout << time->x << "\n";
 }
 
@@ -17,14 +17,14 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: import time
+    // import time
     ::tpy_user::time::__tpy_init();
-    // 7: time: Timer = Timer()
+    // time: Timer = Timer()
     static Timer __global_slot_1 = Timer();
     time = &__global_slot_1;
-    // 8: time.x = 99
+    // time.x = 99
     time->x = 99;
-    // 13: f()
+    // f()
     f();
 }
 

@@ -4,28 +4,28 @@
 namespace tpy_user::main {
 
 
-// 17: def main() -> None:
+// def main() -> None:
 void main() {
-    // 18:     c = C(1, 2, 3)
+    //     c = C(1, 2, 3)
     C c = C(1, 2, 3);
-    // 19:     print(c)
+    //     print(c)
     std::cout << c << "\n";
-    // 20:     print(c.x)
+    //     print(c.x)
     std::cout << c.x << "\n";
-    // 21:     print(c.y)
+    //     print(c.y)
     std::cout << c.y << "\n";
-    // 22:     print(c.z)
+    //     print(c.z)
     std::cout << c.z << "\n";
-    // 23:     print(c == C(1, 2, 3))
+    //     print(c == C(1, 2, 3))
     std::cout << tpy::print_bool((c == C(1, 2, 3))) << "\n";
-    // 24:     print(c == C(1, 2, 4))
+    //     print(c == C(1, 2, 4))
     std::cout << tpy::print_bool((c == C(1, 2, 4))) << "\n";
-    // 25:     # Intermediate works
-    // 26:     b = B(10, 20)
+    //     # Intermediate works
+    //     b = B(10, 20)
     B b = B(10, 20);
-    // 27:     print(b)
+    //     print(b)
     std::cout << b << "\n";
-    // 28:     print(b == B(10, 20))
+    //     print(b == B(10, 20))
     std::cout << tpy::print_bool((b == B(10, 20))) << "\n";
 }
 
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 30: main()
+    // main()
     main();
 }
 

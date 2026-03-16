@@ -4,44 +4,44 @@
 namespace tpy_user::main {
 
 
-// 4: def unwrap_or(x: Optional[int], fallback: int) -> int:
+// def unwrap_or(x: Optional[int], fallback: int) -> int:
 tpy::BigInt unwrap_or(std::optional<tpy::BigInt> x, const tpy::BigInt& fallback) {
-    // 5:     if x is not None:
+    //     if x is not None:
     if ((x.has_value())) {
-        // 6:         return x
+        //         return x
         return (*x);
     }
-    // 7:     return fallback
+    //     return fallback
     return fallback;
 }
 
-// 9: def first_positive(nums: list[int]) -> Optional[int]:
+// def first_positive(nums: list[int]) -> Optional[int]:
 std::optional<tpy::BigInt> first_positive(const std::vector<tpy::BigInt>& nums) {
-    // 10:     for n in nums:
+    //     for n in nums:
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         tpy::BigInt n = *__beg_0;
-        // 11:         if n > 0:
+        //         if n > 0:
         if ((n > 0)) {
-            // 12:             return n
+            //             return n
             return n;
         }
     }
-    // 13:     return None
+    //     return None
     return std::nullopt;
 }
 
-// 15: def main() -> None:
+// def main() -> None:
 void main() {
-    // 16:     print(unwrap_or(first_positive([1, 2, 3]), 0))
+    //     print(unwrap_or(first_positive([1, 2, 3]), 0))
     std::vector<tpy::BigInt> __tmp_1 = {1, 2, 3};
     std::cout << unwrap_or(first_positive(__tmp_1), tpy::BigInt(0)) << "\n";
-    // 17:     print(unwrap_or(first_positive([-1, -2]), 0))
+    //     print(unwrap_or(first_positive([-1, -2]), 0))
     std::vector<tpy::BigInt> __tmp_2 = {-1, -2};
     std::cout << unwrap_or(first_positive(__tmp_2), tpy::BigInt(0)) << "\n";
-    // 18:     print(unwrap_or(None, 42))
+    //     print(unwrap_or(None, 42))
     std::cout << unwrap_or(std::nullopt, tpy::BigInt(42)) << "\n";
 }
 
@@ -50,7 +50,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 20: main()
+    // main()
     main();
 }
 

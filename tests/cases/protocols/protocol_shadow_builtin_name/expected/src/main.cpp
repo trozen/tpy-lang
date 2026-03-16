@@ -46,17 +46,17 @@ tpy_user::main::Priority EnumUtil<tpy_user::main::Priority>::from_name(std::stri
 namespace tpy_user::main {
 
 
-// 25: def main() -> None:
+// def main() -> None:
 void main() {
-    // 26:     # User Comparable protocol works (explicit implementation)
-    // 27:     w = Widget(42)
+    //     # User Comparable protocol works (explicit implementation)
+    //     w = Widget(42)
     Widget w = Widget(42);
-    // 28:     print(use_user_comparable(w))
+    //     print(use_user_comparable(w))
     std::cout << use_user_comparable(w) << "\n";
-    // 29:     # Builtin Comparable still works (IntEnum comparison)
-    // 30:     print(Priority.LOW < Priority.HIGH)
+    //     # Builtin Comparable still works (IntEnum comparison)
+    //     print(Priority.LOW < Priority.HIGH)
     std::cout << tpy::print_bool((static_cast<int32_t>(Priority::LOW) < static_cast<int32_t>(Priority::HIGH))) << "\n";
-    // 31:     print(Priority.HIGH < Priority.LOW)
+    //     print(Priority.HIGH < Priority.LOW)
     std::cout << tpy::print_bool((static_cast<int32_t>(Priority::HIGH) < static_cast<int32_t>(Priority::LOW))) << "\n";
 }
 
@@ -65,7 +65,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 33: main()
+    // main()
     main();
 }
 

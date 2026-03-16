@@ -4,10 +4,10 @@
 namespace tpy_user::main {
 
 // # Test Case 1: Generic child of non-generic parent
-// 32: b = Box[Int32]("mybox", 42)
+// b = Box[Int32]("mybox", 42)
 Box<int32_t>* b{};
 // # Test Case 2: Generic child of concrete generic parent
-// 37: w = Wrapper[str](100, "hello")
+// w = Wrapper[str](100, "hello")
 Wrapper<std::string>* w{};
 
 void __tpy_init() {
@@ -15,21 +15,21 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 31: # Test Case 1: Generic child of non-generic parent
-    // 32: b = Box[Int32]("mybox", 42)
+    // # Test Case 1: Generic child of non-generic parent
+    // b = Box[Int32]("mybox", 42)
     static Box<int32_t> __global_slot_1 = Box<int32_t>("mybox", 42);
     b = &__global_slot_1;
-    // 33: print(b.name)   # inherited from Animal
+    // print(b.name)   # inherited from Animal
     std::cout << b->name << "\n";
-    // 34: print(b.get())  # own method returning T=Int32
+    // print(b.get())  # own method returning T=Int32
     std::cout << b->get() << "\n";
-    // 36: # Test Case 2: Generic child of concrete generic parent
-    // 37: w = Wrapper[str](100, "hello")
+    // # Test Case 2: Generic child of concrete generic parent
+    // w = Wrapper[str](100, "hello")
     static Wrapper<std::string> __global_slot_2 = Wrapper<std::string>(100, "hello");
     w = &__global_slot_2;
-    // 38: print(w.get())  # inherited, returns Int32 (not U)
+    // print(w.get())  # inherited, returns Int32 (not U)
     std::cout << w->get() << "\n";
-    // 39: print(w.extra)  # own field of type U=str
+    // print(w.extra)  # own field of type U=str
     std::cout << w->extra << "\n";
 }
 

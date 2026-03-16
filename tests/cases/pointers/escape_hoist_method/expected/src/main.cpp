@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-// 22: f: Finder = Finder()
+// f: Finder = Finder()
 Finder* f{};
 
 void __tpy_init() {
@@ -11,12 +11,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: f: Finder = Finder()
+    // f: Finder = Finder()
     static Finder __global_slot_1 = Finder();
     f = &__global_slot_1;
-    // 23: f.find_last(4)
+    // f.find_last(4)
     f->find_last(4);
-    // 24: print(f.result.x, f.result.y)
+    // print(f.result.x, f.result.y)
     std::cout << f->result.x << " " << f->result.y << "\n";
 }
 

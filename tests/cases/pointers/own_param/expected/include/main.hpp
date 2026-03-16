@@ -13,11 +13,11 @@ Point make_point(int32_t x, int32_t y);
 int32_t take_point(Point&& p);
 void main();
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 6:     y: Int32
+    //     y: Int32
     int32_t y;
 
 };

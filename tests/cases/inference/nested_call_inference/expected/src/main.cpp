@@ -4,37 +4,37 @@
 namespace tpy_user::main {
 
 
-// 13: def sink(b: Own[Box[Int32]]) -> None:
+// def sink(b: Own[Box[Int32]]) -> None:
 void sink(Box<int32_t>&& b) {
-    // 14:     print(b.val)
+    //     print(b.val)
     std::cout << b.val << "\n";
 }
 
-// 16: def take_two(a: Own[Box[Int32]], b: Own[Box[Int32]]) -> None:
+// def take_two(a: Own[Box[Int32]], b: Own[Box[Int32]]) -> None:
 void take_two(Box<int32_t>&& a, Box<int32_t>&& b) {
-    // 17:     print(a.val + b.val)
+    //     print(a.val + b.val)
     std::cout << (tpy::add_check<int32_t>(a.val, b.val)) << "\n";
 }
 
-// 19: def main() -> None:
+// def main() -> None:
 void main() {
-    // 20:     # T=Int32 inferred from sink's parameter type
-    // 21:     sink(wrap(Int32(10)))
+    //     # T=Int32 inferred from sink's parameter type
+    //     sink(wrap(Int32(10)))
     int32_t __tmp_2 = 10;
     sink(wrap<int32_t>(__tmp_2));
-    // 22:     take_two(wrap(Int32(3)), wrap(Int32(7)))
+    //     take_two(wrap(Int32(3)), wrap(Int32(7)))
     int32_t __tmp_3 = 3;
     int32_t __tmp_4 = 7;
     take_two(wrap<int32_t>(__tmp_3), wrap<int32_t>(__tmp_4));
-    // 23:     # Bare literals: hint chain infers Int32, coerces literal
-    // 24:     sink(wrap(20))
+    //     # Bare literals: hint chain infers Int32, coerces literal
+    //     sink(wrap(20))
     int32_t __tmp_5 = 20;
     sink(wrap<int32_t>(__tmp_5));
-    // 25:     take_two(wrap(5), wrap(9))
+    //     take_two(wrap(5), wrap(9))
     int32_t __tmp_6 = 5;
     int32_t __tmp_7 = 9;
     take_two(wrap<int32_t>(__tmp_6), wrap<int32_t>(__tmp_7));
-    // 26:     print("done")
+    //     print("done")
     std::cout << "done" << "\n";
 }
 
@@ -43,7 +43,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 28: main()
+    // main()
     main();
 }
 

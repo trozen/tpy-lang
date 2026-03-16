@@ -21,24 +21,24 @@ void test_field_access_to_ptr();
 void test_nested_field_to_ptr();
 void test_literal_expr_to_int32();
 
-// 11: class Counter:
+// class Counter:
 struct Counter {
-    // 12:     value: int
+    //     value: int
     tpy::BigInt value;
 
-    // 14:     def __init__(self, v: int) -> None:
+    //     def __init__(self, v: int) -> None:
     Counter() = default;
     explicit Counter(const tpy::BigInt& v) : value(v) {}
 
-    // 17:     def get(self) -> int:
+    //     def get(self) -> int:
     tpy::BigInt get() const {
-        // 18:         return self.value
+        //         return self.value
         return this->value;
     }
 
-    // 20:     def add(self, x: int) -> int:
+    //     def add(self, x: int) -> int:
     tpy::BigInt add(const tpy::BigInt& x) const {
-        // 21:         return self.value + x
+        //         return self.value + x
         return ((this->value) + (x));
     }
 };
@@ -50,14 +50,14 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// 24: class Point:
+// class Point:
 struct Point {
-    // 25:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 26:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 28:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -71,12 +71,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 33: class Container:
+// class Container:
 struct Container {
-    // 34:     pt: Point
+    //     pt: Point
     Point pt;
 
-    // 36:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Container() = default;
     explicit Container(int32_t x, int32_t y) : pt(Point(x, y)) {}
 };
@@ -88,12 +88,12 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
-// 40: class Outer:
+// class Outer:
 struct Outer {
-    // 41:     inner: Container
+    //     inner: Container
     Container inner;
 
-    // 43:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Outer() = default;
     explicit Outer(int32_t x, int32_t y) : inner(Container(x, y)) {}
 };

@@ -13,9 +13,9 @@ int32_t consume_own(Box&& b);
 int32_t consume_optional(std::optional<Box> b);
 void main();
 
-// 5: class Box:
+// class Box:
 struct Box {
-    // 6:     value: Int32
+    //     value: Int32
     int32_t value;
 
 };

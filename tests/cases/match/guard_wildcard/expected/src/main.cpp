@@ -4,63 +4,63 @@
 namespace tpy_user::main {
 
 
-// 4: def classify(x: Int32) -> str:
+// def classify(x: Int32) -> str:
 std::string classify(int32_t x) {
-    // 5:     match x:
+    //     match x:
     auto& __match_subject = x;
     switch (__match_subject) {
-    // 6:         case _ if x > 10:
+    //         case _ if x > 10:
     default: {
         if ((x > 10)) {
-            // 7:             return "big"
+            //             return "big"
             return "big";
         } else if ((x > 5)) {
-            // 9:             return "medium"
+            //             return "medium"
             return "medium";
         } else {
-            // 11:             return "small"
+            //             return "small"
             return "small";
         }
         break;
     }
     }
-    // 12:     return ""
+    //     return ""
     return "";
 }
 
-// 14: def describe(x: Int32) -> str:
+// def describe(x: Int32) -> str:
 std::string describe(int32_t x) {
-    // 15:     match x:
+    //     match x:
     auto& __match_subject = x;
     switch (__match_subject) {
-    // 16:         case n if n == 0:
+    //         case n if n == 0:
     default: {
         auto& n = __match_subject;
         if ((n == 0)) {
-            // 17:             return "zero"
+            //             return "zero"
             return "zero";
         } else {
-            // 19:             return "nonzero: " + str(n)
+            //             return "nonzero: " + str(n)
             return (tpy::str_concat("nonzero: ", tpy::fixed_to_str<int32_t>(n)));
         }
         break;
     }
     }
-    // 20:     return ""
+    //     return ""
     return "";
 }
 
-// 22: def main() -> None:
+// def main() -> None:
 void main() {
-    // 23:     print(classify(Int32(20)))
+    //     print(classify(Int32(20)))
     std::cout << classify(20) << "\n";
-    // 24:     print(classify(Int32(7)))
+    //     print(classify(Int32(7)))
     std::cout << classify(7) << "\n";
-    // 25:     print(classify(Int32(3)))
+    //     print(classify(Int32(3)))
     std::cout << classify(3) << "\n";
-    // 26:     print(describe(Int32(0)))
+    //     print(describe(Int32(0)))
     std::cout << describe(0) << "\n";
-    // 27:     print(describe(Int32(42)))
+    //     print(describe(Int32(42)))
     std::cout << describe(42) << "\n";
 }
 
@@ -69,7 +69,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 29: main()
+    // main()
     main();
 }
 

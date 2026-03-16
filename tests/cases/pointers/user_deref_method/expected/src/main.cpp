@@ -4,14 +4,14 @@
 namespace tpy_user::main {
 
 
-// 20: def main() -> None:
+// def main() -> None:
 void main() {
-    // 21:     pt: Point = Point(10, 20)
+    //     pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    // 22:     r: Ref = Ref(pt)
+    //     r: Ref = Ref(pt)
     Ref r = Ref(pt);
-    // 23:     # Method call through user-defined __deref__
-    // 24:     print(r.sum())
+    //     # Method call through user-defined __deref__
+    //     print(r.sum())
     std::cout << r.__deref__().sum() << "\n";
 }
 
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 26: main()
+    // main()
     main();
 }
 

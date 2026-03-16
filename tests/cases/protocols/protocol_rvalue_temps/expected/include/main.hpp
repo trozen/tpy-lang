@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 // # Protocol that accepts various types
-// 11: class HasValue(Protocol):
+// class HasValue(Protocol):
 template<typename T>
 concept HasValue = requires(T& t) {
     { t.get() } -> std::convertible_to<int32_t>;
@@ -21,18 +21,18 @@ template<HasValue T_h>
 void show(T_h& h);
 void main();
 
-// 14: class IntBox:
+// class IntBox:
 struct IntBox {
-    // 15:     v: Int32
+    //     v: Int32
     int32_t v;
 
-    // 16:     def __init__(self, v: Int32) -> None:
+    //     def __init__(self, v: Int32) -> None:
     IntBox() = default;
     explicit IntBox(int32_t v) : v(v) {}
 
-    // 18:     def get(self) -> Int32:
+    //     def get(self) -> Int32:
     int32_t get() const {
-        // 19:         return self.v
+        //         return self.v
         return this->v;
     }
 };
@@ -45,25 +45,25 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
 }
 
 // # Container of boxes for subscript test
-// 22: class BoxContainer:
+// class BoxContainer:
 struct BoxContainer {
-    // 23:     items: list[IntBox]
+    //     items: list[IntBox]
     std::vector<IntBox> items;
 
-    // 24:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     BoxContainer() : items({IntBox(10), IntBox(20), IntBox(30)}) {}
 
     //     @auto_readonly
-    // 27:     def __getitem__(self, i: Int32) -> IntBox:
+    //     def __getitem__(self, i: Int32) -> IntBox:
     IntBox& __getitem__(int32_t i) {
-        // 28:         return self.items[i]
+        //         return self.items[i]
         return tpy::__getitem__(this->items, i);
     }
 
     //     @auto_readonly
-    // 27:     def __getitem__(self, i: Int32) -> IntBox:
+    //     def __getitem__(self, i: Int32) -> IntBox:
     const IntBox& __getitem__(int32_t i) const {
-        // 28:         return self.items[i]
+        //         return self.items[i]
         return tpy::__getitem__(this->items, i);
     }
 
@@ -83,10 +83,10 @@ inline std::ostream& operator<<(std::ostream& os, const BoxContainer& obj) {
     return os;
 }
 
-// 30: def show(h: HasValue) -> None:
+// def show(h: HasValue) -> None:
 template<HasValue T_h>
 void show(T_h& h) {
-    // 31:     print(h.get())
+    //     print(h.get())
     std::cout << h.get() << "\n";
 }
 

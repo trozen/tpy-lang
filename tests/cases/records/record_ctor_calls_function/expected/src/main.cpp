@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 5: def twice(x: Int32) -> Int32:
+// def twice(x: Int32) -> Int32:
 int32_t twice(int32_t x) {
-    // 6:     return x * 2
+    //     return x * 2
     return (tpy::mul_check<int32_t>(x, 2));
 }
 
-// 16: def main():
+// def main():
 void main() {
-    // 17:     p = Pair(5)
+    //     p = Pair(5)
     Pair p = Pair(5);
-    // 18:     print(p.a)
+    //     print(p.a)
     std::cout << p.a << "\n";
-    // 19:     print(p.b)
+    //     print(p.b)
     std::cout << p.b << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 21: main()
+    // main()
     main();
 }
 

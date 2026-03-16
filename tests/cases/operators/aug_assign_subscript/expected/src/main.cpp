@@ -4,67 +4,67 @@
 namespace tpy_user::main {
 
 
-// 4: def test_list_aug_assign() -> None:
+// def test_list_aug_assign() -> None:
 void test_list_aug_assign() {
-    // 5:     nums: list[Int32] = [1, 2, 3]
+    //     nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    // 6:     nums[0] += 10
+    //     nums[0] += 10
     tpy::__setitem__(nums, 0, tpy::add_check<int32_t>(tpy::__getitem__(nums, 0), 10));
-    // 7:     print(nums[0])  # 11
+    //     print(nums[0])  # 11
     std::cout << tpy::__getitem__(nums, 0) << "\n";
-    // 8:     nums[1] *= 5
+    //     nums[1] *= 5
     tpy::__setitem__(nums, 1, tpy::mul_check<int32_t>(tpy::__getitem__(nums, 1), 5));
-    // 9:     print(nums[1])  # 10
+    //     print(nums[1])  # 10
     std::cout << tpy::__getitem__(nums, 1) << "\n";
-    // 10:     nums[2] -= 1
+    //     nums[2] -= 1
     tpy::__setitem__(nums, 2, tpy::sub_check<int32_t>(tpy::__getitem__(nums, 2), 1));
-    // 11:     print(nums[2])  # 2
+    //     print(nums[2])  # 2
     std::cout << tpy::__getitem__(nums, 2) << "\n";
 }
 
-// 13: def test_arraylist_aug_assign() -> None:
+// def test_arraylist_aug_assign() -> None:
 void test_arraylist_aug_assign() {
-    // 14:     items = ArrayList[Int32, 4]()
+    //     items = ArrayList[Int32, 4]()
     ::tpy_user::tplib::ArrayList<int32_t, 4> items = ::tpy_user::tplib::ArrayList<int32_t, 4>();
-    // 15:     items.append(100)
+    //     items.append(100)
     items.append(100);
-    // 16:     items.append(200)
+    //     items.append(200)
     items.append(200);
-    // 17:     items[0] += 5
+    //     items[0] += 5
     tpy::__setitem__(items, 0, tpy::add_check<int32_t>(items[0], 5));
-    // 18:     print(items[0])  # 105
+    //     print(items[0])  # 105
     std::cout << items[0] << "\n";
-    // 19:     items[1] -= 50
+    //     items[1] -= 50
     tpy::__setitem__(items, 1, tpy::sub_check<int32_t>(items[1], 50));
-    // 20:     print(items[1])  # 150
+    //     print(items[1])  # 150
     std::cout << items[1] << "\n";
 }
 
-// 22: def test_negative_index_aug_assign() -> None:
+// def test_negative_index_aug_assign() -> None:
 void test_negative_index_aug_assign() {
-    // 23:     nums: list[Int32] = [10, 20, 30]
+    //     nums: list[Int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
-    // 24:     nums[-1] += 5
+    //     nums[-1] += 5
     tpy::__setitem__(nums, -1, tpy::add_check<int32_t>(tpy::__getitem__(nums, -1), 5));
-    // 25:     print(nums[-1])  # 35
+    //     print(nums[-1])  # 35
     std::cout << tpy::__getitem__(nums, -1) << "\n";
-    // 26:     nums[-2] *= 2
+    //     nums[-2] *= 2
     tpy::__setitem__(nums, -2, tpy::mul_check<int32_t>(tpy::__getitem__(nums, -2), 2));
-    // 27:     print(nums[-2])  # 40
+    //     print(nums[-2])  # 40
     std::cout << tpy::__getitem__(nums, -2) << "\n";
 }
 
-// 29: def test_array_aug_assign() -> None:
+// def test_array_aug_assign() -> None:
 void test_array_aug_assign() {
-    // 30:     arr: Array[Int32, 3] = [10, 20, 30]
+    //     arr: Array[Int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    // 31:     arr[0] += 5
+    //     arr[0] += 5
     tpy::__setitem__(arr, 0, tpy::add_check<int32_t>(tpy::__getitem__(arr, 0), 5));
-    // 32:     print(arr[0])  # 15
+    //     print(arr[0])  # 15
     std::cout << tpy::__getitem__(arr, 0) << "\n";
-    // 33:     arr[-1] *= 2
+    //     arr[-1] *= 2
     tpy::__setitem__(arr, -1, tpy::mul_check<int32_t>(tpy::__getitem__(arr, -1), 2));
-    // 34:     print(arr[-1])  # 60
+    //     print(arr[-1])  # 60
     std::cout << tpy::__getitem__(arr, -1) << "\n";
 }
 
@@ -73,15 +73,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: from tplib import ArrayList
+    // from tplib import ArrayList
     ::tpy_user::tplib::__tpy_init();
-    // 36: test_list_aug_assign()
+    // test_list_aug_assign()
     test_list_aug_assign();
-    // 37: test_arraylist_aug_assign()
+    // test_arraylist_aug_assign()
     test_arraylist_aug_assign();
-    // 38: test_negative_index_aug_assign()
+    // test_negative_index_aug_assign()
     test_negative_index_aug_assign();
-    // 39: test_array_aug_assign()
+    // test_array_aug_assign()
     test_array_aug_assign();
 }
 

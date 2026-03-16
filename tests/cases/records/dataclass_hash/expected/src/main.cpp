@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 
-// 10: def main() -> None:
+// def main() -> None:
 void main() {
-    // 11:     p = Point(1, 2)
+    //     p = Point(1, 2)
     Point p = Point(1, 2);
-    // 12:     # hash() works
-    // 13:     print(hash(p) == hash(Point(1, 2)))
+    //     # hash() works
+    //     print(hash(p) == hash(Point(1, 2)))
     std::cout << tpy::print_bool((tpy::__hash__(p) == tpy::__hash__(Point(1, 2)))) << "\n";
-    // 14:     print(hash(p) == hash(Point(3, 4)))
+    //     print(hash(p) == hash(Point(3, 4)))
     std::cout << tpy::print_bool((tpy::__hash__(p) == tpy::__hash__(Point(3, 4)))) << "\n";
-    // 15:     # dict key usage
-    // 16:     d: dict[Point, str] = {Point(1, 2): "a", Point(3, 4): "b"}
+    //     # dict key usage
+    //     d: dict[Point, str] = {Point(1, 2): "a", Point(3, 4): "b"}
     tpy::ordered_map<Point, std::string> d = tpy::ordered_map<Point, std::string>({{Point(1, 2), "a"}, {Point(3, 4), "b"}});
-    // 17:     print(d[Point(1, 2)])
+    //     print(d[Point(1, 2)])
     std::cout << tpy::__getitem__(d, Point(1, 2)) << "\n";
-    // 18:     print(d[Point(3, 4)])
+    //     print(d[Point(3, 4)])
     std::cout << tpy::__getitem__(d, Point(3, 4)) << "\n";
-    // 19:     print(len(d))
+    //     print(len(d))
     std::cout << tpy::__len__(d) << "\n";
 }
 
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 21: main()
+    // main()
     main();
 }
 

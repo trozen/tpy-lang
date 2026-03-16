@@ -12,20 +12,20 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 3: class Point:
+// class Point:
 struct Point {
-    // 4:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 5:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 6:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    // 9:     def sum(self) -> Int32:
+    //     def sum(self) -> Int32:
     int32_t sum() const {
-        // 10:         return self.x + self.y
+        //         return self.x + self.y
         return (tpy::add_check<int32_t>(this->x, this->y));
     }
 };
@@ -39,26 +39,26 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 12: class Ref:
+// class Ref:
 struct Ref {
-    // 13:     _target: Point
+    //     _target: Point
     Point _target;
 
-    // 14:     def __init__(self, target: Point) -> None:
+    //     def __init__(self, target: Point) -> None:
     Ref() = default;
     explicit Ref(const Point& target) : _target(target) {}
 
     //     @auto_readonly
-    // 17:     def __deref__(self) -> Point:
+    //     def __deref__(self) -> Point:
     Point& __deref__() {
-        // 18:         return self._target
+        //         return self._target
         return this->_target;
     }
 
     //     @auto_readonly
-    // 17:     def __deref__(self) -> Point:
+    //     def __deref__(self) -> Point:
     const Point& __deref__() const {
-        // 18:         return self._target
+        //         return self._target
         return this->_target;
     }
 

@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 35: def main() -> None:
+// def main() -> None:
 void main() {
-    // 36:     c = Child(Int32(42))
+    //     c = Child(Int32(42))
     Child c = Child(42);
-    // 37:     val: Int32 = c.take()
+    //     val: Int32 = c.take()
     int32_t val = std::move(c).take();
-    // 38:     print("got", val)
+    //     print("got", val)
     std::cout << "got" << " " << val << "\n";
-    // 40:     val2: Int32 = Child(Int32(99)).take()
+    //     val2: Int32 = Child(Int32(99)).take()
     int32_t val2 = Child(99).take();
-    // 41:     print("got", val2)
+    //     print("got", val2)
     std::cout << "got" << " " << val2 << "\n";
 }
 
@@ -23,8 +23,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 6: from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop, unsafe_move_out
-    // 43: main()
+    // from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop, unsafe_move_out
+    // main()
     main();
 }
 

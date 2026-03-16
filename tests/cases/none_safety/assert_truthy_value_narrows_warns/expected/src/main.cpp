@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 4: def use(x: Int32 | None) -> Int32:
+// def use(x: Int32 | None) -> Int32:
 int32_t use(std::optional<int32_t> x) {
-    // 5:     assert x  # tpyc: warning(/Truthiness check on optional value/)
+    //     assert x  # tpyc: warning(/Truthiness check on optional value/)
     if (!(tpy::is_truthy(x))) tpy::tpy_panic("assertion failed");
-    // 6:     return x + 1  # tpyc: ok
+    //     return x + 1  # tpyc: ok
     return (tpy::add_check<int32_t>((*x), 1));
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 9: print(use(41))
+    // print(use(41))
     std::cout << use(41) << "\n";
 }
 

@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-// 10: class Greetable(t.Protocol):
+// class Greetable(t.Protocol):
 template<typename T>
 concept Greetable = requires(T& t) {
     { t.greet() } -> std::convertible_to<std::string>;
@@ -20,18 +20,18 @@ template<Greetable T_g>
 void hello(T_g& g);
 void main();
 
-// 13: class Person:
+// class Person:
 struct Person {
-    // 14:     name: str
+    //     name: str
     std::string name;
 
-    // 15:     def __init__(self, n: str):
+    //     def __init__(self, n: str):
     Person() = default;
     explicit Person(std::string_view n) : name(n) {}
 
-    // 17:     def greet(self) -> str:
+    //     def greet(self) -> str:
     std::string greet() const {
-        // 18:         return self.name
+        //         return self.name
         return this->name;
     }
 };
@@ -43,10 +43,10 @@ inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
     return os;
 }
 
-// 20: def hello(g: Greetable) -> None:
+// def hello(g: Greetable) -> None:
 template<Greetable T_g>
 void hello(T_g& g) {
-    // 21:     print(g.greet())
+    //     print(g.greet())
     std::cout << g.greet() << "\n";
 }
 

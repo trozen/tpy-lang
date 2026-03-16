@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 
-// 19: def read_items(c: readonly[Container]) -> None:
+// def read_items(c: readonly[Container]) -> None:
 void read_items(const Container& c) {
-    // 20:     items = c.items()
+    //     items = c.items()
     const std::vector<int32_t>& items = c.items();
-    // 21:     print(len(items))
+    //     print(len(items))
     std::cout << tpy::__len__(items) << "\n";
-    // 22:     print(items[0])
+    //     print(items[0])
     std::cout << tpy::__getitem__(items, 0) << "\n";
 }
 
-// 24: def main() -> None:
+// def main() -> None:
 void main() {
-    // 25:     c = Container()
+    //     c = Container()
     Container c = Container();
-    // 26:     read_items(c)
+    //     read_items(c)
     read_items(c);
-    // 27:     print(c.count())
+    //     print(c.count())
     std::cout << c.count() << "\n";
 }
 
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 29: main()
+    // main()
     main();
 }
 

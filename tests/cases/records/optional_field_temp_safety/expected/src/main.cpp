@@ -4,67 +4,67 @@
 namespace tpy_user::main {
 
 
-// 19: def make_holder(p: Point) -> Own[Holder]:
+// def make_holder(p: Point) -> Own[Holder]:
 Holder make_holder(const Point& p) {
-    // 20:     h = Holder()
+    //     h = Holder()
     Holder h = Holder();
-    // 21:     h.value = copy(p)
+    //     h.value = copy(p)
     h.value = Point(p);
-    // 22:     return copy(h)  # tpyc: warning(/unnecessary copy/)
+    //     return copy(h)  # tpyc: warning(/unnecessary copy/)
     return Holder(h);
 }
 
-// 25: def test_init_from_temp() -> None:
+// def test_init_from_temp() -> None:
 void test_init_from_temp() {
-    // 26:     p = Point(1, 2)
+    //     p = Point(1, 2)
     Point p = Point(1, 2);
-    // 27:     # Field access on Own[Holder] return (temporary) — must not dangle
-    // 28:     v: Point | None = make_holder(p).value
+    //     # Field access on Own[Holder] return (temporary) — must not dangle
+    //     v: Point | None = make_holder(p).value
     std::optional<Point> __slot_1 = make_holder(p).value;
     Point* v = tpy::optional_to_ptr(__slot_1);
-    // 29:     print(v is not None)
+    //     print(v is not None)
     std::cout << tpy::print_bool((v != nullptr)) << "\n";
-    // 30:     print(v.x)
+    //     print(v.x)
     std::cout << tpy::deref_check(v).x << "\n";
-    // 31:     print(v.y)
+    //     print(v.y)
     std::cout << tpy::deref_check(v).y << "\n";
 }
 
-// 34: def test_rebind_from_temp() -> None:
+// def test_rebind_from_temp() -> None:
 void test_rebind_from_temp() {
-    // 35:     v: Point | None = None
+    //     v: Point | None = None
     std::optional<Point> __slot_1;
     Point* v = nullptr;
-    // 36:     p = Point(3, 4)
+    //     p = Point(3, 4)
     Point p = Point(3, 4);
-    // 37:     # Rebind pointer-local from field of temporary
-    // 38:     v = make_holder(p).value
+    //     # Rebind pointer-local from field of temporary
+    //     v = make_holder(p).value
     v = tpy::optional_to_ptr(__slot_1 = make_holder(p).value);
-    // 39:     print(v is not None)
+    //     print(v is not None)
     std::cout << tpy::print_bool((v != nullptr)) << "\n";
-    // 40:     print(v.x)
+    //     print(v.x)
     std::cout << tpy::deref_check(v).x << "\n";
 }
 
-// 43: def test_rebind_in_block() -> None:
+// def test_rebind_in_block() -> None:
 void test_rebind_in_block() {
-    // 44:     v: Point | None = None
+    //     v: Point | None = None
     std::optional<Point> __slot_1;
     Point* v = nullptr;
-    // 45:     p = Point(5, 6)
+    //     p = Point(5, 6)
     Point p = Point(5, 6);
-    // 46:     # Rebind inside if-block — slot must survive block exit
-    // 47:     if True:
+    //     # Rebind inside if-block — slot must survive block exit
+    //     if True:
     if (true) {
-        // 48:         v = make_holder(p).value
+        //         v = make_holder(p).value
         v = tpy::optional_to_ptr(__slot_1 = make_holder(p).value);
     }
-    // 49:     # v must still be valid here (slot hoisted to function scope)
-    // 50:     print(v is not None)
+    //     # v must still be valid here (slot hoisted to function scope)
+    //     print(v is not None)
     std::cout << tpy::print_bool((v != nullptr)) << "\n";
-    // 51:     print(v.x)
+    //     print(v.x)
     std::cout << tpy::deref_check(v).x << "\n";
-    // 52:     print(v.y)
+    //     print(v.y)
     std::cout << tpy::deref_check(v).y << "\n";
 }
 
@@ -73,11 +73,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 55: test_init_from_temp()
+    // test_init_from_temp()
     test_init_from_temp();
-    // 56: test_rebind_from_temp()
+    // test_rebind_from_temp()
     test_rebind_from_temp();
-    // 57: test_rebind_in_block()
+    // test_rebind_in_block()
     test_rebind_in_block();
 }
 

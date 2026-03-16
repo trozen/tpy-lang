@@ -11,14 +11,14 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 5: class Point:
+// class Point:
 struct Point {
-    // 7:         self.x = x
+    //         self.x = x
     int32_t x;
-    // 8:         self.y = y
+    //         self.y = y
     int32_t y;
 
-    // 6:     def __init__(self, x: Int32, y: Int32):
+    //     def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

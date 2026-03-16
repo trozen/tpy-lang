@@ -32,14 +32,14 @@ extern int32_t delta;
 inline constexpr std::string_view __name__ = "__main__";
 
 // # Test 8: Global pointer field access
-// 50: class Point:
+// class Point:
 struct Point {
-    // 51:     a: Int32
+    //     a: Int32
     int32_t a;
-    // 52:     b: Int32
+    //     b: Int32
     int32_t b;
 
-    // 54:     def __init__(self, a: Int32, b: Int32) -> None:
+    //     def __init__(self, a: Int32, b: Int32) -> None:
     Point() = default;
     explicit Point(int32_t a, int32_t b) : a(a), b(b) {}
 };
@@ -54,19 +54,19 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 // # Test 11: Method parameter shadows global
-// 78: class Counter:
+// class Counter:
 struct Counter {
-    // 79:     val: Int32
+    //     val: Int32
     int32_t val;
 
-    // 81:     def __init__(self, val: Int32) -> None:
+    //     def __init__(self, val: Int32) -> None:
     Counter() = default;
     explicit Counter(int32_t val) : val(val) {}
 
-    // 85:     def add(self, a: Int32) -> Int32:
+    //     def add(self, a: Int32) -> Int32:
     int32_t add(int32_t a) const {
-        // 86:         # 'a' param shadows global 'a' above - should NOT deref
-        // 87:         return self.val + a
+        //         # 'a' param shadows global 'a' above - should NOT deref
+        //         return self.val + a
         return (tpy::add_check<int32_t>(this->val, a));
     }
 };

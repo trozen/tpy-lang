@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 // # Mixed int/float operations (auto-promotion to float)
-// 2: a = 1 + 2.0
+// a = 1 + 2.0
 double a{};
-// 3: b = 3.14 * 2
+// b = 3.14 * 2
 double b{};
-// 4: c = 10 - 1.5
+// c = 10 - 1.5
 double c{};
 
 void __tpy_init() {
@@ -16,18 +16,18 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # Mixed int/float operations (auto-promotion to float)
-    // 2: a = 1 + 2.0
+    // # Mixed int/float operations (auto-promotion to float)
+    // a = 1 + 2.0
     a = (static_cast<double>(tpy::BigInt(1)) + (2.0));
-    // 3: b = 3.14 * 2
+    // b = 3.14 * 2
     b = ((3.14) * static_cast<double>(tpy::BigInt(2)));
-    // 4: c = 10 - 1.5
+    // c = 10 - 1.5
     c = (static_cast<double>(tpy::BigInt(10)) - (1.5));
-    // 5: print(a)
+    // print(a)
     std::cout << tpy::print_float(a) << "\n";
-    // 6: print(b)
+    // print(b)
     std::cout << tpy::print_float(b) << "\n";
-    // 7: print(c)
+    // print(c)
     std::cout << tpy::print_float(c) << "\n";
 }
 

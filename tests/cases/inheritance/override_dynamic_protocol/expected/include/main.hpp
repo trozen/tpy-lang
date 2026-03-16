@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 // @dynamic
-// 7: class Speaker(Protocol):
+// class Speaker(Protocol):
 template<typename T>
 concept __Speaker_Concept__ = requires(T& t) {
     { t.speak() } -> std::convertible_to<std::string>;
@@ -43,14 +43,14 @@ inline constexpr std::string_view __name__ = "__main__";
 void greet(Speaker& s);
 void main();
 
-// 11: class Dog(Speaker):
+// class Dog(Speaker):
 struct Dog : Speaker {
 
 
     //     @override
-    // 13:     def speak(self) -> str:  # tpyc: ok
+    //     def speak(self) -> str:  # tpyc: ok
     std::string speak() override {
-        // 14:         return "woof"
+        //         return "woof"
         return "woof";
     }
 };

@@ -5,277 +5,277 @@ namespace tpy_user::main {
 
 
 // # Test Char type comprehensively
-// 5: def test_char_literals() -> None:
+// def test_char_literals() -> None:
 void test_char_literals() {
-    // 7:     a: Char = "A"
+    //     a: Char = "A"
     char a = 'A';
-    // 8:     b: Char = "B"
+    //     b: Char = "B"
     char b = 'B';
-    // 9:     space: Char = " "
+    //     space: Char = " "
     char space = ' ';
-    // 10:     newline: Char = "\n"
+    //     newline: Char = "\n"
     char newline = '\n';
-    // 12:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 13:     print(b)
+    //     print(b)
     std::cout << b << "\n";
-    // 14:     print(space, end="")
+    //     print(space, end="")
     std::cout << space;
-    // 15:     print("x")
+    //     print("x")
     std::cout << "x" << "\n";
 }
 
-// 17: def test_char_from_string_index() -> None:
+// def test_char_from_string_index() -> None:
 void test_char_from_string_index() {
-    // 19:     text: str = "Hello"
+    //     text: str = "Hello"
     std::string_view text = "Hello";
-    // 21:     c0: Char = text[0]
+    //     c0: Char = text[0]
     char c0 = tpy::__getitem__(text, 0);
-    // 22:     c1: Char = text[1]
+    //     c1: Char = text[1]
     char c1 = tpy::__getitem__(text, 1);
-    // 23:     c4: Char = text[4]
+    //     c4: Char = text[4]
     char c4 = tpy::__getitem__(text, 4);
-    // 25:     print(c0)
+    //     print(c0)
     std::cout << c0 << "\n";
-    // 26:     print(c1)
+    //     print(c1)
     std::cout << c1 << "\n";
-    // 27:     print(c4)
+    //     print(c4)
     std::cout << c4 << "\n";
 }
 
-// 29: def test_char_comparison() -> None:
+// def test_char_comparison() -> None:
 void test_char_comparison() {
-    // 31:     a: Char = "a"
+    //     a: Char = "a"
     char a = 'a';
-    // 32:     b: Char = "b"
+    //     b: Char = "b"
     char b = 'b';
-    // 33:     a2: Char = "a"
+    //     a2: Char = "a"
     char a2 = 'a';
-    // 35:     # Equality
-    // 36:     if a == a2:
+    //     # Equality
+    //     if a == a2:
     if ((a == a2)) {
-        // 37:         print("a == a: yes")
+        //         print("a == a: yes")
         std::cout << "a == a: yes" << "\n";
     }
-    // 39:     if a == b:
+    //     if a == b:
     if ((a == b)) {
-        // 40:         print("a == b: yes")
+        //         print("a == b: yes")
         std::cout << "a == b: yes" << "\n";
-    // 41:     else:
+    //     else:
     } else {
-        // 42:         print("a == b: no")
+        //         print("a == b: no")
         std::cout << "a == b: no" << "\n";
     }
-    // 44:     # Inequality
-    // 45:     if a != b:
+    //     # Inequality
+    //     if a != b:
     if ((a != b)) {
-        // 46:         print("a != b: yes")
+        //         print("a != b: yes")
         std::cout << "a != b: yes" << "\n";
     }
-    // 48:     # Ordering (lexicographic by ASCII)
-    // 49:     if a < b:
+    //     # Ordering (lexicographic by ASCII)
+    //     if a < b:
     if ((a < b)) {
-        // 50:         print("a < b: yes")
+        //         print("a < b: yes")
         std::cout << "a < b: yes" << "\n";
     }
-    // 52:     if b > a:
+    //     if b > a:
     if ((b > a)) {
-        // 53:         print("b > a: yes")
+        //         print("b > a: yes")
         std::cout << "b > a: yes" << "\n";
     }
-    // 55:     if a <= a2:
+    //     if a <= a2:
     if ((a <= a2)) {
-        // 56:         print("a <= a: yes")
+        //         print("a <= a: yes")
         std::cout << "a <= a: yes" << "\n";
     }
-    // 58:     if b >= a:
+    //     if b >= a:
     if ((b >= a)) {
-        // 59:         print("b >= a: yes")
+        //         print("b >= a: yes")
         std::cout << "b >= a: yes" << "\n";
     }
 }
 
-// 61: def test_char_in_string() -> None:
+// def test_char_in_string() -> None:
 void test_char_in_string() {
-    // 63:     text: str = "hello world"
+    //     text: str = "hello world"
     std::string_view text = "hello world";
-    // 64:     target: Char = "o"
+    //     target: Char = "o"
     char target = 'o';
-    // 65:     missing: Char = "z"
+    //     missing: Char = "z"
     char missing = 'z';
-    // 67:     if target in text:
+    //     if target in text:
     if ((text.find(target) != std::string::npos)) {
-        // 68:         print("o in text: yes")
+        //         print("o in text: yes")
         std::cout << "o in text: yes" << "\n";
     }
-    // 70:     if missing in text:
+    //     if missing in text:
     if ((text.find(missing) != std::string::npos)) {
-        // 71:         print("z in text: yes")
+        //         print("z in text: yes")
         std::cout << "z in text: yes" << "\n";
-    // 72:     else:
+    //     else:
     } else {
-        // 73:         print("z in text: no")
+        //         print("z in text: no")
         std::cout << "z in text: no" << "\n";
     }
 }
 
-// 75: def is_vowel(c: Char) -> bool:
+// def is_vowel(c: Char) -> bool:
 bool is_vowel(char c) {
-    // 77:     if c == "a":
+    //     if c == "a":
     if ((c == 'a')) {
-        // 78:         return True
+        //         return True
         return true;
     }
-    // 79:     if c == "e":
+    //     if c == "e":
     if ((c == 'e')) {
-        // 80:         return True
+        //         return True
         return true;
     }
-    // 81:     if c == "i":
+    //     if c == "i":
     if ((c == 'i')) {
-        // 82:         return True
+        //         return True
         return true;
     }
-    // 83:     if c == "o":
+    //     if c == "o":
     if ((c == 'o')) {
-        // 84:         return True
+        //         return True
         return true;
     }
-    // 85:     if c == "u":
+    //     if c == "u":
     if ((c == 'u')) {
-        // 86:         return True
+        //         return True
         return true;
     }
-    // 87:     return False
+    //     return False
     return false;
 }
 
-// 89: def count_vowels(text: str) -> Int32:
+// def count_vowels(text: str) -> Int32:
 int32_t count_vowels(std::string_view text) {
-    // 91:     count: Int32 = 0
+    //     count: Int32 = 0
     int32_t count = 0;
-    // 92:     i: Int32 = 0
+    //     i: Int32 = 0
     int32_t i = 0;
-    // 93:     while i < len(text):
+    //     while i < len(text):
     while ((i < tpy::__len__(text))) {
-        // 94:         if is_vowel(text[i]):
+        //         if is_vowel(text[i]):
         if (is_vowel(text[i])) {
-            // 95:             count += 1
+            //             count += 1
             count = tpy::add_check<int32_t>(count, 1);
         }
-        // 96:         i += 1
+        //         i += 1
         i = tpy::add_check<int32_t>(i, 1);
     }
-    // 97:     return count
+    //     return count
     return count;
 }
 
-// 99: def test_char_function_param() -> None:
+// def test_char_function_param() -> None:
 void test_char_function_param() {
-    // 101:     if is_vowel("a"):
+    //     if is_vowel("a"):
     if (is_vowel('a')) {
-        // 102:         print("a is vowel")
+        //         print("a is vowel")
         std::cout << "a is vowel" << "\n";
     }
-    // 103:     if is_vowel("b"):
+    //     if is_vowel("b"):
     if (is_vowel('b')) {
-        // 104:         print("b is vowel")
+        //         print("b is vowel")
         std::cout << "b is vowel" << "\n";
-    // 105:     else:
+    //     else:
     } else {
-        // 106:         print("b is not vowel")
+        //         print("b is not vowel")
         std::cout << "b is not vowel" << "\n";
     }
-    // 107:     if is_vowel("e"):
+    //     if is_vowel("e"):
     if (is_vowel('e')) {
-        // 108:         print("e is vowel")
+        //         print("e is vowel")
         std::cout << "e is vowel" << "\n";
     }
-    // 109:     if is_vowel("x"):
+    //     if is_vowel("x"):
     if (is_vowel('x')) {
-        // 110:         print("x is vowel")
+        //         print("x is vowel")
         std::cout << "x is vowel" << "\n";
-    // 111:     else:
+    //     else:
     } else {
-        // 112:         print("x is not vowel")
+        //         print("x is not vowel")
         std::cout << "x is not vowel" << "\n";
     }
 }
 
-// 114: def test_char_iteration() -> None:
+// def test_char_iteration() -> None:
 void test_char_iteration() {
-    // 116:     text: str = "abc"
+    //     text: str = "abc"
     std::string_view text = "abc";
-    // 117:     for c in text:
+    //     for c in text:
     auto& __obj_0 = text;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char c = *__beg_0;
-        // 118:         print(c)
+        //         print(c)
         std::cout << c << "\n";
     }
 }
 
-// 120: def test_vowel_counting() -> None:
+// def test_vowel_counting() -> None:
 void test_vowel_counting() {
-    // 122:     print(count_vowels("hello"))
+    //     print(count_vowels("hello"))
     std::cout << count_vowels("hello") << "\n";
-    // 123:     print(count_vowels("world"))
+    //     print(count_vowels("world"))
     std::cout << count_vowels("world") << "\n";
-    // 124:     print(count_vowels("aeiou"))
+    //     print(count_vowels("aeiou"))
     std::cout << count_vowels("aeiou") << "\n";
-    // 125:     print(count_vowels("xyz"))
+    //     print(count_vowels("xyz"))
     std::cout << count_vowels("xyz") << "\n";
 }
 
-// 127: def test_chr_function() -> None:
+// def test_chr_function() -> None:
 void test_chr_function() {
-    // 129:     c65: Char = chr(65)
+    //     c65: Char = chr(65)
     char c65 = static_cast<char>(65);
-    // 130:     c97: Char = chr(97)
+    //     c97: Char = chr(97)
     char c97 = static_cast<char>(97);
-    // 132:     print(c65)
+    //     print(c65)
     std::cout << c65 << "\n";
-    // 133:     print(c97)
+    //     print(c97)
     std::cout << c97 << "\n";
-    // 135:     # Compare chr result
-    // 136:     if c65 == "A":
+    //     # Compare chr result
+    //     if c65 == "A":
     if ((c65 == 'A')) {
-        // 137:         print("chr(65) == A: yes")
+        //         print("chr(65) == A: yes")
         std::cout << "chr(65) == A: yes" << "\n";
     }
-    // 139:     if c97 == "a":
+    //     if c97 == "a":
     if ((c97 == 'a')) {
-        // 140:         print("chr(97) == a: yes")
+        //         print("chr(97) == a: yes")
         std::cout << "chr(97) == a: yes" << "\n";
     }
 }
 
-// 160: def accepts_str(s: str) -> None:
+// def accepts_str(s: str) -> None:
 void accepts_str(std::string_view s) {
-    // 162:     print(s)
+    //     print(s)
     std::cout << s << "\n";
 }
 
-// 164: def test_char_to_str_coercion() -> None:
+// def test_char_to_str_coercion() -> None:
 void test_char_to_str_coercion() {
-    // 166:     # Assign single-char literal to str variable
-    // 167:     s1: str = "x"
+    //     # Assign single-char literal to str variable
+    //     s1: str = "x"
     std::string_view s1 = "x";
-    // 168:     print(s1)
+    //     print(s1)
     std::cout << s1 << "\n";
-    // 170:     # Pass single-char literal to str parameter
-    // 171:     accepts_str("w")
+    //     # Pass single-char literal to str parameter
+    //     accepts_str("w")
     accepts_str("w");
-    // 173:     # Multiple single-char str variables
-    // 174:     a: str = "a"
+    //     # Multiple single-char str variables
+    //     a: str = "a"
     std::string_view a = "a";
-    // 175:     b: str = "b"
+    //     b: str = "b"
     std::string_view b = "b";
-    // 176:     if a < b:
+    //     if a < b:
     if ((a < b)) {
-        // 177:         print("a < b")
+        //         print("a < b")
         std::cout << "a < b" << "\n";
     }
 }
@@ -285,42 +285,42 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 142: # Run all tests
-    // 143: print("=== literals ===")
+    // # Run all tests
+    // print("=== literals ===")
     std::cout << "=== literals ===" << "\n";
-    // 144: test_char_literals()
+    // test_char_literals()
     test_char_literals();
-    // 145: print("=== from index ===")
+    // print("=== from index ===")
     std::cout << "=== from index ===" << "\n";
-    // 146: test_char_from_string_index()
+    // test_char_from_string_index()
     test_char_from_string_index();
-    // 147: print("=== comparison ===")
+    // print("=== comparison ===")
     std::cout << "=== comparison ===" << "\n";
-    // 148: test_char_comparison()
+    // test_char_comparison()
     test_char_comparison();
-    // 149: print("=== in string ===")
+    // print("=== in string ===")
     std::cout << "=== in string ===" << "\n";
-    // 150: test_char_in_string()
+    // test_char_in_string()
     test_char_in_string();
-    // 151: print("=== function param ===")
+    // print("=== function param ===")
     std::cout << "=== function param ===" << "\n";
-    // 152: test_char_function_param()
+    // test_char_function_param()
     test_char_function_param();
-    // 153: print("=== iteration ===")
+    // print("=== iteration ===")
     std::cout << "=== iteration ===" << "\n";
-    // 154: test_char_iteration()
+    // test_char_iteration()
     test_char_iteration();
-    // 155: print("=== vowel counting ===")
+    // print("=== vowel counting ===")
     std::cout << "=== vowel counting ===" << "\n";
-    // 156: test_vowel_counting()
+    // test_vowel_counting()
     test_vowel_counting();
-    // 157: print("=== chr function ===")
+    // print("=== chr function ===")
     std::cout << "=== chr function ===" << "\n";
-    // 158: test_chr_function()
+    // test_chr_function()
     test_chr_function();
-    // 179: print("=== char to str ===")
+    // print("=== char to str ===")
     std::cout << "=== char to str ===" << "\n";
-    // 180: test_char_to_str_coercion()
+    // test_char_to_str_coercion()
     test_char_to_str_coercion();
 }
 

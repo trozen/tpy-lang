@@ -14,22 +14,22 @@ void test_lazy_for_loop();
 void test_direct_iterable_arg();
 void test_print_lazy_repeat();
 
-// 5: def consume(items: Iterable[Int32]) -> None:
+// def consume(items: Iterable[Int32]) -> None:
 template<tpy::Iterable<int32_t> T_items>
 void consume(T_items& items) {
-    // 6:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 7:     for v in items:
+    //     for v in items:
     auto& __src_0 = items;
     auto __obj_0 = tpy::iter_for_loop(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        // 8:         total += v
+        //         total += v
         total = tpy::add_check<int32_t>(total, v);
     }
-    // 9:     print(total)
+    //     print(total)
     std::cout << total << "\n";
 }
 

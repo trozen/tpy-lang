@@ -4,39 +4,39 @@
 namespace tpy_user::main {
 
 
-// 4: def greet(name: str) -> str:
+// def greet(name: str) -> str:
 std::string greet(std::string_view name) {
-    // 5:     return str("Hello ") + name
+    //     return str("Hello ") + name
     return (tpy::str_concat(std::string("Hello "), name));
 }
 
-// 7: def get_name() -> str:
+// def get_name() -> str:
 std::string get_name() {
-    // 8:     return str(Int32(42))
+    //     return str(Int32(42))
     return tpy::fixed_to_str<int32_t>(42);
 }
 
-// 16: def main() -> None:
+// def main() -> None:
 void main() {
-    // 17:     # str param is string_view (zero-copy)
-    // 18:     msg: str = greet("world")
+    //     # str param is string_view (zero-copy)
+    //     msg: str = greet("world")
     std::string msg = greet("world");
-    // 19:     print(msg)  # Hello world
+    //     print(msg)  # Hello world
     std::cout << msg << "\n";
-    // 21:     # str() conversion stored in variable (owned, no dangling)
-    // 22:     n: str = get_name()
+    //     # str() conversion stored in variable (owned, no dangling)
+    //     n: str = get_name()
     std::string n = get_name();
-    // 23:     print(n)  # 42
+    //     print(n)  # 42
     std::cout << n << "\n";
-    // 25:     # str field in record (owned)
-    // 26:     p: Person = Person("Alice")
+    //     # str field in record (owned)
+    //     p: Person = Person("Alice")
     Person p = Person("Alice");
-    // 27:     print(p.name)  # Alice
+    //     print(p.name)  # Alice
     std::cout << p.name << "\n";
-    // 29:     # list[str] generates vector<string>
-    // 30:     names: list[str] = ["hello", "world"]
+    //     # list[str] generates vector<string>
+    //     names: list[str] = ["hello", "world"]
     std::vector<std::string> names = {"hello", "world"};
-    // 31:     print(names[0])  # hello
+    //     print(names[0])  # hello
     std::cout << tpy::__getitem__(names, 0) << "\n";
 }
 
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 33: main()
+    // main()
     main();
 }
 

@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> Int32:
+// def main() -> Int32:
 int32_t main() {
-    // 5:     print(__name__)
+    //     print(__name__)
     std::cout << __name__ << "\n";
-    // 6:     print(get_name())
+    //     print(get_name())
     std::cout << ::tpy_user::utils::get_name() << "\n";
-    // 7:     return Int32(0)
+    //     return Int32(0)
     return 0;
 }
 
@@ -19,9 +19,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: from utils import get_name
+    // from utils import get_name
     ::tpy_user::utils::__tpy_init();
-    // 9: main()
+    // main()
     main();
 }
 

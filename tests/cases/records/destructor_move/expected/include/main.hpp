@@ -12,13 +12,13 @@ inline constexpr std::string_view __name__ = "__main__";
 void consume(Tracker&& t);
 void main();
 
-// 5: class Tracker:
+// class Tracker:
 struct Tracker {
-    // 6:     name: str
+    //     name: str
     std::string name;
     bool __tpy_owned_ = true;
 
-    // 7:     def __init__(self, name: str):
+    //     def __init__(self, name: str):
     Tracker() = default;
     explicit Tracker(std::string_view name) : name(name) {}
     Tracker(const Tracker&) = delete;
@@ -33,11 +33,11 @@ struct Tracker {
         }
         return *this;
     }
-    // 9:     def __del__(self):
+    //     def __del__(self):
 
     ~Tracker() {
         if (!__tpy_owned_) return;
-        // 10:         print("drop", self.name)
+        //         print("drop", self.name)
         std::cout << "drop" << " " << this->name << "\n";
     }
 };

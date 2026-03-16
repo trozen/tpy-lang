@@ -4,28 +4,28 @@
 namespace tpy_user::main {
 
 
-// 14: def main() -> None:
+// def main() -> None:
 void main() {
-    // 15:     # Use default for z
-    // 16:     p1 = Point3D(1, 2)
+    //     # Use default for z
+    //     p1 = Point3D(1, 2)
     Point3D p1 = Point3D(1, 2);
-    // 17:     print(p1.x)
+    //     print(p1.x)
     std::cout << p1.x << "\n";
-    // 18:     print(p1.y)
+    //     print(p1.y)
     std::cout << p1.y << "\n";
-    // 19:     print(p1.z)
+    //     print(p1.z)
     std::cout << p1.z << "\n";
-    // 20:     print(p1)
+    //     print(p1)
     std::cout << p1 << "\n";
-    // 21:     # Override z
-    // 22:     p2 = Point3D(1, 2, 99)
+    //     # Override z
+    //     p2 = Point3D(1, 2, 99)
     Point3D p2 = Point3D(1, 2, 99);
-    // 23:     print(p2.z)
+    //     print(p2.z)
     std::cout << p2.z << "\n";
-    // 24:     # Equality
-    // 25:     print(p1 == Point3D(1, 2, 0))
+    //     # Equality
+    //     print(p1 == Point3D(1, 2, 0))
     std::cout << tpy::print_bool((p1 == Point3D(1, 2, 0))) << "\n";
-    // 26:     print(p1 == p2)
+    //     print(p1 == p2)
     std::cout << tpy::print_bool((p1 == p2)) << "\n";
 }
 
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 28: main()
+    // main()
     main();
 }
 

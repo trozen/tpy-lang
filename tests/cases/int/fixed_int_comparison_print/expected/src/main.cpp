@@ -4,61 +4,61 @@
 namespace tpy_user::main {
 
 
-// 4: def test_int32_cmp() -> None:
+// def test_int32_cmp() -> None:
 void test_int32_cmp() {
-    // 5:     a = Int32(5)
+    //     a = Int32(5)
     int32_t a = 5;
-    // 6:     b = Int32(3)
+    //     b = Int32(3)
     int32_t b = 3;
-    // 7:     print(a > b)
+    //     print(a > b)
     std::cout << tpy::print_bool((a > b)) << "\n";
-    // 8:     print(a < b)
+    //     print(a < b)
     std::cout << tpy::print_bool((a < b)) << "\n";
-    // 9:     print(a == b)
+    //     print(a == b)
     std::cout << tpy::print_bool((a == b)) << "\n";
-    // 10:     print(a != b)
+    //     print(a != b)
     std::cout << tpy::print_bool((a != b)) << "\n";
-    // 11:     print(a >= b)
+    //     print(a >= b)
     std::cout << tpy::print_bool((a >= b)) << "\n";
-    // 12:     print(a <= b)
+    //     print(a <= b)
     std::cout << tpy::print_bool((a <= b)) << "\n";
 }
 
-// 14: def test_int64_cmp() -> None:
+// def test_int64_cmp() -> None:
 void test_int64_cmp() {
-    // 15:     x = Int64(100)
+    //     x = Int64(100)
     int64_t x = 100;
-    // 16:     y = Int64(200)
+    //     y = Int64(200)
     int64_t y = 200;
-    // 17:     print(x < y)
+    //     print(x < y)
     std::cout << tpy::print_bool((x < y)) << "\n";
-    // 18:     print(x > y)
+    //     print(x > y)
     std::cout << tpy::print_bool((x > y)) << "\n";
-    // 19:     print(x == y)
+    //     print(x == y)
     std::cout << tpy::print_bool((x == y)) << "\n";
 }
 
-// 21: def test_uint32_cmp() -> None:
+// def test_uint32_cmp() -> None:
 void test_uint32_cmp() {
-    // 22:     m = UInt32(10)
+    //     m = UInt32(10)
     uint32_t m = 10;
-    // 23:     n = UInt32(10)
+    //     n = UInt32(10)
     uint32_t n = 10;
-    // 24:     print(m == n)
+    //     print(m == n)
     std::cout << tpy::print_bool((m == n)) << "\n";
-    // 25:     print(m != n)
+    //     print(m != n)
     std::cout << tpy::print_bool((m != n)) << "\n";
-    // 26:     print(m >= n)
+    //     print(m >= n)
     std::cout << tpy::print_bool((m >= n)) << "\n";
 }
 
-// 28: def main() -> None:
+// def main() -> None:
 void main() {
-    // 29:     test_int32_cmp()
+    //     test_int32_cmp()
     test_int32_cmp();
-    // 30:     test_int64_cmp()
+    //     test_int64_cmp()
     test_int64_cmp();
-    // 31:     test_uint32_cmp()
+    //     test_uint32_cmp()
     test_uint32_cmp();
 }
 
@@ -67,7 +67,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 33: main()
+    // main()
     main();
 }
 

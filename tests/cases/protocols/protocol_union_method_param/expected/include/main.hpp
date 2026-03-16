@@ -5,13 +5,13 @@
 
 namespace tpy_user::main {
 
-// 5: class Measurable(Protocol):
+// class Measurable(Protocol):
 template<typename T>
 concept Measurable = requires(T& t) {
     { t.measure() } -> std::convertible_to<tpy::BigInt>;
 };
 
-// 8: class Walkable(Protocol):
+// class Walkable(Protocol):
 template<typename T>
 concept Walkable = requires(T& t) {
     { t.walk() } -> std::convertible_to<tpy::BigInt>;
@@ -25,25 +25,25 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 12: class Processor:
+// class Processor:
 struct Processor {
-    // 13:     count: int
+    //     count: int
     tpy::BigInt count;
 
-    // 15:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Processor() : count(tpy::BigInt(0)) {}
 
-    // 18:     def process(self, items: Measurable | Walkable) -> None:
+    //     def process(self, items: Measurable | Walkable) -> None:
     template<typename T_items>
   requires (Measurable<T_items> || Walkable<T_items>)
     void process(T_items& items) {
-        // 19:         if isinstance(items, Measurable):
+        //         if isinstance(items, Measurable):
         if constexpr (Measurable<T_items>) {
-            // 20:             self.count = items.measure()
+            //             self.count = items.measure()
             this->count = items.measure();
-        // 21:         elif isinstance(items, Walkable):
+        //         elif isinstance(items, Walkable):
         } else if constexpr (Walkable<T_items>) {
-            // 22:             self.count = items.walk()
+            //             self.count = items.walk()
             this->count = items.walk();
         }
     }
@@ -56,13 +56,13 @@ inline std::ostream& operator<<(std::ostream& os, const Processor& obj) {
     return os;
 }
 
-// 25: class Ruler:
+// class Ruler:
 struct Ruler {
 
 
-    // 26:     def measure(self) -> int:
+    //     def measure(self) -> int:
     tpy::BigInt measure() const {
-        // 27:         return 5
+        //         return 5
         return tpy::BigInt(5);
     }
 };
@@ -73,13 +73,13 @@ inline std::ostream& operator<<(std::ostream& os, const Ruler& obj) {
     return os;
 }
 
-// 29: class Walker:
+// class Walker:
 struct Walker {
 
 
-    // 30:     def walk(self) -> int:
+    //     def walk(self) -> int:
     tpy::BigInt walk() const {
-        // 31:         return 99
+        //         return 99
         return tpy::BigInt(99);
     }
 };

@@ -5,15 +5,15 @@ namespace tpy_user::main {
 
 
 // # Float floor division by zero panics (matches Python's ZeroDivisionError)
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     x: float = 10.0
+    //     x: float = 10.0
     double x = 10.0;
-    // 4:     y: float = 0.0
+    //     y: float = 0.0
     double y = 0.0;
-    // 5:     z: float = x // y
+    //     z: float = x // y
     double z = (tpy::floordiv(x, y));
-    // 6:     print(z)
+    //     print(z)
     std::cout << tpy::print_float(z) << "\n";
 }
 
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: main()
+    // main()
     main();
 }
 

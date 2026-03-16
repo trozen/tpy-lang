@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 13: def main() -> None:
+// def main() -> None:
 void main() {
-    // 14:     w = Wrapper[Int32](Int32(5))
+    //     w = Wrapper[Int32](Int32(5))
     Wrapper<int32_t> w = Wrapper<int32_t>(5);
-    // 15:     print(w.is_less(1, 2))
+    //     print(w.is_less(1, 2))
     std::cout << tpy::print_bool(w.is_less<int32_t>(1, 2)) << "\n";
-    // 16:     print(w.is_less(10, 3))
+    //     print(w.is_less(10, 3))
     std::cout << tpy::print_bool(w.is_less<int32_t>(10, 3)) << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: main()
+    // main()
     main();
 }
 

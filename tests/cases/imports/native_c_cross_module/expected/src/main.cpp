@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 7: def main() -> None:
+// def main() -> None:
 void main() {
-    // 8:     r = Rect(Int32(10), Int32(20), Int32(100), Int32(50))
+    //     r = Rect(Int32(10), Int32(20), Int32(100), Int32(50))
     c_rect r = c_rect{10, 20, 100, 50};
-    // 9:     print(r.w)
+    //     print(r.w)
     std::cout << r.w << "\n";
-    // 10:     print(rect_area(Ptr(r)))
+    //     print(rect_area(Ptr(r)))
     std::cout << rect_area(&r) << "\n";
 }
 
@@ -19,11 +19,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # Test: both `import lib` and `from lib import ...` coexist
-    // 2: # The named imports must not be dropped when bare import also exists.
-    // 3: import lib
+    // # Test: both `import lib` and `from lib import ...` coexist
+    // # The named imports must not be dropped when bare import also exists.
+    // import lib
     ::tpy_user::lib::__tpy_init();
-    // 12: main()
+    // main()
     main();
 }
 

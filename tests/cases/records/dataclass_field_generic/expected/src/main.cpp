@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 19: def main() -> None:
+// def main() -> None:
 void main() {
-    // 20:     w = Wrapper("test")
+    //     w = Wrapper("test")
     Wrapper w = Wrapper("test");
-    // 21:     print(w.pair.first)
+    //     print(w.pair.first)
     std::cout << w.pair.first << "\n";
-    // 22:     print(w.pair.second)
+    //     print(w.pair.second)
     std::cout << w.pair.second << "\n";
-    // 23:     w2 = Wrapper("test2", Pair(10, 20))
+    //     w2 = Wrapper("test2", Pair(10, 20))
     Wrapper w2 = Wrapper("test2", Pair<int32_t>(10, 20));
-    // 24:     print(w2.pair.first)
+    //     print(w2.pair.first)
     std::cout << w2.pair.first << "\n";
-    // 25:     print(w2.pair.second)
+    //     print(w2.pair.second)
     std::cout << w2.pair.second << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 27: main()
+    // main()
     main();
 }
 

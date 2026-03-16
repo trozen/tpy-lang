@@ -11,19 +11,19 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 5: class Container[T: Sized]:
+// class Container[T: Sized]:
 template<tpy::Sized T>
 struct Container {
-    // 6:     item: T
+    //     item: T
     T item;
 
-    // 8:     def __init__(self, item: T):
+    //     def __init__(self, item: T):
     Container() = default;
     explicit Container(const T& item) : item(item) {}
 
-    // 11:     def get_item(self) -> T:
+    //     def get_item(self) -> T:
     tpy::val_or_ref_t<T> get_item() {
-        // 12:         return self.item
+        //         return self.item
         return this->item;
     }
 };

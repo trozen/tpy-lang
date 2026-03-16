@@ -46,21 +46,21 @@ tpy_user::main::Color EnumUtil<tpy_user::main::Color>::from_name(std::string_vie
 namespace tpy_user::main {
 
 
-// 9: def lookup(name: str) -> Color:
+// def lookup(name: str) -> Color:
 Color lookup(std::string_view name) {
-    // 10:     return Color[name]
+    //     return Color[name]
     return tpy::EnumUtil<Color>::from_name(name);
 }
 
-// 12: def main() -> None:
+// def main() -> None:
 void main() {
-    // 13:     print(Color["Red"])
+    //     print(Color["Red"])
     std::cout << tpy::EnumUtil<Color>::from_name("Red") << "\n";
-    // 14:     print(Color["Green"])
+    //     print(Color["Green"])
     std::cout << tpy::EnumUtil<Color>::from_name("Green") << "\n";
-    // 15:     print(Color["Blue"])
+    //     print(Color["Blue"])
     std::cout << tpy::EnumUtil<Color>::from_name("Blue") << "\n";
-    // 16:     print(lookup("Green"))
+    //     print(lookup("Green"))
     std::cout << lookup("Green") << "\n";
 }
 
@@ -69,7 +69,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: main()
+    // main()
     main();
 }
 

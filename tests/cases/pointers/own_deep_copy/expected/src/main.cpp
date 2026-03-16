@@ -4,30 +4,30 @@
 namespace tpy_user::main {
 
 
-// 17: def take_items(c: Container) -> Own[list[Point]]:
+// def take_items(c: Container) -> Own[list[Point]]:
 std::vector<Point> take_items(const Container& c) {
-    // 18:     return copy(c.items)
+    //     return copy(c.items)
     return std::vector<Point>(c.items);
 }
 
-// 21: def main() -> None:
+// def main() -> None:
 void main() {
-    // 22:     c: Container = Container()
+    //     c: Container = Container()
     Container c = Container();
-    // 23:     c.items = [Point()]
+    //     c.items = [Point()]
     c.items = {Point()};
-    // 24:     c.items[0].x = 10
+    //     c.items[0].x = 10
     tpy::__getitem__(c.items, 0).x = 10;
-    // 26:     # Get a copy of the items
-    // 27:     taken: list[Point] = take_items(c)
+    //     # Get a copy of the items
+    //     taken: list[Point] = take_items(c)
     std::vector<Point> taken = take_items(c);
-    // 29:     # Modify the copy
-    // 30:     taken[0].x = 99
+    //     # Modify the copy
+    //     taken[0].x = 99
     tpy::__getitem__(taken, 0).x = 99;
-    // 32:     # Original should be unchanged (deep copy semantics)
-    // 33:     print(c.items[0].x)  # 10
+    //     # Original should be unchanged (deep copy semantics)
+    //     print(c.items[0].x)  # 10
     std::cout << tpy::__getitem__(c.items, 0).x << "\n";
-    // 34:     print(taken[0].x)    # 99
+    //     print(taken[0].x)    # 99
     std::cout << tpy::__getitem__(taken, 0).x << "\n";
 }
 
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 37: main()
+    // main()
     main();
 }
 

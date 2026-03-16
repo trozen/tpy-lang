@@ -16,12 +16,12 @@ void test_field_to_ptr();
 void test_field_to_const_ptr();
 void test_subscript_to_ptr();
 
-// 3: class Inner:
+// class Inner:
 struct Inner {
-    // 4:     x: Int32
+    //     x: Int32
     int32_t x;
 
-    // 5:     def __init__(self, x: Int32) -> None:
+    //     def __init__(self, x: Int32) -> None:
     Inner() = default;
     explicit Inner(int32_t x) : x(x) {}
 };
@@ -33,12 +33,12 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
     return os;
 }
 
-// 8: class Outer:
+// class Outer:
 struct Outer {
-    // 9:     inner: Inner
+    //     inner: Inner
     Inner inner;
 
-    // 10:     def __init__(self, x: Int32) -> None:
+    //     def __init__(self, x: Int32) -> None:
     Outer() = default;
     explicit Outer(int32_t x) : inner(Inner(x)) {}
 };

@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     s: set[Int32] = set()
+    //     s: set[Int32] = set()
     tpy::ordered_set<int32_t> s = tpy::ordered_set<int32_t>();
-    // 6:     s.pop()
+    //     s.pop()
     tpy::set_pop(s);
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: main()
+    // main()
     main();
 }
 

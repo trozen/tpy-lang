@@ -17,16 +17,16 @@ std::string make_str();
 void test_non_literal_no_downgrade();
 
 // # Test that generic inference prefers StrView for string literal arguments.
-// 3: def identity[T](x: T) -> T:
+// def identity[T](x: T) -> T:
 template<typename T>
 tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x) {
-    // 4:     return x
+    //     return x
     return x;
 }
-// 6: def first[T](a: T, b: T) -> T:
+// def first[T](a: T, b: T) -> T:
 template<typename T>
 tpy::val_or_ref_t<T> first(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
-    // 7:     return a
+    //     return a
     return a;
 }
 

@@ -4,27 +4,27 @@
 namespace tpy_user::main {
 
 
-// 4: def show_span(s: Span[Int32]) -> None:
+// def show_span(s: Span[Int32]) -> None:
 void show_span(std::span<int32_t> s) {
-    // 5:     print(str(s))
+    //     print(str(s))
     std::cout << tpy::list_to_str(s) << "\n";
-    // 6:     print(f"span={s}")
+    //     print(f"span={s}")
     std::cout << std::format("span={}", tpy::list_to_str(s)) << "\n";
 }
 
-// 8: def main() -> None:
+// def main() -> None:
 void main() {
-    // 9:     a: Array[Int32, 3] = [10, 20, 30]
+    //     a: Array[Int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> a = {10, 20, 30};
-    // 10:     print(str(a))
+    //     print(str(a))
     std::cout << tpy::list_to_str(a) << "\n";
-    // 11:     print(repr(a))
+    //     print(repr(a))
     std::cout << tpy::list_to_str(a) << "\n";
-    // 12:     print(f"{a}")
+    //     print(f"{a}")
     std::cout << std::format("{}", tpy::list_to_str(a)) << "\n";
-    // 13:     print(f"array={a!r}")
+    //     print(f"array={a!r}")
     std::cout << std::format("array={}", tpy::list_to_str(a)) << "\n";
-    // 15:     show_span(a)
+    //     show_span(a)
     show_span(tpy::as_mut_span(a));
 }
 
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 17: main()
+    // main()
     main();
 }
 

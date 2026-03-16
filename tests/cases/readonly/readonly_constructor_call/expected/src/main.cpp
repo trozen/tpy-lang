@@ -5,11 +5,11 @@ namespace tpy_user::main {
 
 
 // @readonly
-// 9: def build_flag() -> int:
+// def build_flag() -> int:
 tpy::BigInt build_flag() {
-    // 10:     Token()  # tpyc: ok
+    //     Token()  # tpyc: ok
     Token();
-    // 11:     return 0
+    //     return 0
     return tpy::BigInt(0);
 }
 
@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 14: print(build_flag())
+    // print(build_flag())
     std::cout << build_flag() << "\n";
 }
 

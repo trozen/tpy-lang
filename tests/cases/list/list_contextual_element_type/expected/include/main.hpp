@@ -13,11 +13,11 @@ inline constexpr std::string_view __name__ = "__main__";
 std::vector<std::optional<int32_t>> make_optional_list();
 void main();
 
-// 7: class Rect:
+// class Rect:
 struct Rect {
-    // 8:     w: Int32
+    //     w: Int32
     int32_t w;
-    // 9:     h: Int32
+    //     h: Int32
     int32_t h;
 
 };
@@ -31,9 +31,9 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
     return os;
 }
 
-// 11: class Circle:
+// class Circle:
 struct Circle {
-    // 12:     r: Int32
+    //     r: Int32
     int32_t r;
 
 };

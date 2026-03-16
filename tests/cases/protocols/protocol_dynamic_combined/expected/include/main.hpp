@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 // @dynamic
-// 6: class Describable(Protocol):
+// class Describable(Protocol):
 template<typename T>
 concept __Describable_Concept__ = requires(T& t) {
     { t.describe() } -> std::convertible_to<std::string>;
@@ -18,7 +18,7 @@ struct Describable {
 };
 
 // @dynamic
-// 11: class Noise(Protocol):
+// class Noise(Protocol):
 template<typename T>
 concept __Noise_Concept__ = requires(T& t) {
     { t.make_noise() } -> std::convertible_to<std::string>;
@@ -72,19 +72,19 @@ void show_desc(Describable& d);
 void show_noise(Noise& n);
 void main();
 
-// 15: class Dog(Describable, Noise):
+// class Dog(Describable, Noise):
 struct Dog : Describable, Noise {
 
 
-    // 16:     def describe(self) -> str:
+    //     def describe(self) -> str:
     std::string describe() override {
-        // 17:         return "a dog"
+        //         return "a dog"
         return "a dog";
     }
 
-    // 18:     def make_noise(self) -> str:
+    //     def make_noise(self) -> str:
     std::string make_noise() override {
-        // 19:         return "Woof"
+        //         return "Woof"
         return "Woof";
     }
 };
@@ -95,19 +95,19 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
-// 21: class Cat(Describable, Noise):
+// class Cat(Describable, Noise):
 struct Cat : Describable, Noise {
 
 
-    // 22:     def describe(self) -> str:
+    //     def describe(self) -> str:
     std::string describe() override {
-        // 23:         return "a cat"
+        //         return "a cat"
         return "a cat";
     }
 
-    // 24:     def make_noise(self) -> str:
+    //     def make_noise(self) -> str:
     std::string make_noise() override {
-        // 25:         return "Meow"
+        //         return "Meow"
         return "Meow";
     }
 };

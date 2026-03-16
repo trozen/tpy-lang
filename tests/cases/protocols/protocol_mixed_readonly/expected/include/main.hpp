@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-// 7: class Mixed(Protocol):
+// class Mixed(Protocol):
 template<typename T>
 concept Mixed = requires(T& t) {
     { t.read() } -> std::convertible_to<int32_t>;
@@ -22,25 +22,25 @@ int32_t safe_read(const T_m& m);
 template<Mixed T_m>
 int32_t use_both(T_m& m);
 
-// 16: class Impl:
+// class Impl:
 struct Impl {
-    // 17:     value: Int32
+    //     value: Int32
     int32_t value;
 
-    // 19:     def __init__(self, value: Int32) -> None:
+    //     def __init__(self, value: Int32) -> None:
     Impl() = default;
     explicit Impl(int32_t value) : value(value) {}
 
     //     @readonly
-    // 23:     def read(self) -> Int32:
+    //     def read(self) -> Int32:
     int32_t read() const {
-        // 24:         return self.value
+        //         return self.value
         return this->value;
     }
 
-    // 26:     def write(self, v: Int32) -> None:
+    //     def write(self, v: Int32) -> None:
     void write(int32_t v) {
-        // 27:         self.value = v
+        //         self.value = v
         this->value = v;
     }
 };
@@ -53,18 +53,18 @@ inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
 }
 
 // @readonly
-// 31: def safe_read(m: Mixed) -> Int32:
+// def safe_read(m: Mixed) -> Int32:
 template<Mixed T_m>
 int32_t safe_read(const T_m& m) {
-    // 32:     return m.read()
+    //     return m.read()
     return m.read();
 }
-// 35: def use_both(m: Mixed) -> Int32:
+// def use_both(m: Mixed) -> Int32:
 template<Mixed T_m>
 int32_t use_both(T_m& m) {
-    // 36:     m.write(10)
+    //     m.write(10)
     m.write(10);
-    // 37:     return m.read()
+    //     return m.read()
     return m.read();
 }
 

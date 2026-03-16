@@ -13,29 +13,29 @@ template<tpy::Sized T_items>
 void check_not(const T_items& items);
 void main();
 
-// 5: def describe(items: Sized) -> None:
+// def describe(items: Sized) -> None:
 template<tpy::Sized T_items>
 void describe(const T_items& items) {
-    // 6:     if isinstance(items, Sized):
+    //     if isinstance(items, Sized):
     if constexpr (tpy::Sized<T_items>) {
-        // 7:         print("sized:", len(items))
+        //         print("sized:", len(items))
         std::cout << "sized:" << " " << tpy::__len__(items) << "\n";
-    // 8:     else:
+    //     else:
     } else {
-        // 9:         print("not sized")
+        //         print("not sized")
         std::cout << "not sized" << "\n";
     }
 }
-// 11: def check_not(items: Sized) -> None:
+// def check_not(items: Sized) -> None:
 template<tpy::Sized T_items>
 void check_not(const T_items& items) {
-    // 12:     if not isinstance(items, Sized):
+    //     if not isinstance(items, Sized):
     if constexpr ((!(tpy::Sized<T_items>))) {
-        // 13:         print("not sized")
+        //         print("not sized")
         std::cout << "not sized" << "\n";
-    // 14:     else:
+    //     else:
     } else {
-        // 15:         print("sized:", len(items))
+        //         print("sized:", len(items))
         std::cout << "sized:" << " " << tpy::__len__(items) << "\n";
     }
 }

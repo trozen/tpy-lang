@@ -4,21 +4,21 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     s: set[Int32] = {1, 2, 3}
+    //     s: set[Int32] = {1, 2, 3}
     tpy::ordered_set<int32_t> s = tpy::ordered_set<int32_t>({1, 2, 3});
-    // 6:     x: str = str(s)
+    //     x: str = str(s)
     std::string x = tpy::set_to_str(s);
-    // 7:     print(x)
+    //     print(x)
     std::cout << x << "\n";
-    // 8:     print(f"set: {s}")
+    //     print(f"set: {s}")
     std::cout << std::format("set: {}", tpy::set_to_str(s)) << "\n";
-    // 10:     empty: set[Int32] = set()
+    //     empty: set[Int32] = set()
     tpy::ordered_set<int32_t> empty = tpy::ordered_set<int32_t>();
-    // 11:     print(str(empty))
+    //     print(str(empty))
     std::cout << tpy::set_to_str(empty) << "\n";
-    // 12:     print(f"empty: {empty}")
+    //     print(f"empty: {empty}")
     std::cout << std::format("empty: {}", tpy::set_to_str(empty)) << "\n";
 }
 
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 14: main()
+    // main()
     main();
 }
 

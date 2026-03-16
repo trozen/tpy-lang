@@ -19,75 +19,75 @@ template<tpy::NativeIterable<int32_t> T_items>
 bool contains_value(const T_items& items, int32_t target);
 void main();
 
-// 3: def sum_iter(items: NativeIterable[Int32]) -> Int32:
+// def sum_iter(items: NativeIterable[Int32]) -> Int32:
 template<tpy::NativeIterable<int32_t> T_items>
 int32_t sum_iter(T_items& items) {
-    // 4:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 5:     for x in items:
+    //     for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 6:         total += x
+        //         total += x
         total = tpy::add_check<int32_t>(total, x);
     }
-    // 7:     return total
+    //     return total
     return total;
 }
-// 9: def print_all(items: NativeIterable[Int32]) -> None:
+// def print_all(items: NativeIterable[Int32]) -> None:
 template<tpy::NativeIterable<int32_t> T_items>
 void print_all(T_items& items) {
-    // 10:     for x in items:
+    //     for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 11:         print(x)
+        //         print(x)
         std::cout << x << "\n";
     }
 }
-// 13: def process_and_sum(items: NativeIterable[Int32]) -> Int32:
+// def process_and_sum(items: NativeIterable[Int32]) -> Int32:
 template<tpy::NativeIterable<int32_t> T_items>
 int32_t process_and_sum(T_items& items) {
-    // 14:     # Test protocol-to-protocol passing: NativeIterable[T] -> NativeIterable[T]
-    // 15:     print_all(items)
+    //     # Test protocol-to-protocol passing: NativeIterable[T] -> NativeIterable[T]
+    //     print_all(items)
     print_all(items);
-    // 16:     return sum_iter(items)
+    //     return sum_iter(items)
     return sum_iter(items);
 }
-// 18: def nested_iteration(outer: NativeIterable[Int32], inner: NativeIterable[Int32]) -> Int32:
+// def nested_iteration(outer: NativeIterable[Int32], inner: NativeIterable[Int32]) -> Int32:
 template<tpy::NativeIterable<int32_t> T_outer, tpy::NativeIterable<int32_t> T_inner>
 int32_t nested_iteration(T_outer& outer, T_inner& inner) {
-    // 19:     # Test nested for loops over protocol-typed params
-    // 20:     total: Int32 = 0
+    //     # Test nested for loops over protocol-typed params
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 21:     for x in outer:
+    //     for x in outer:
     auto& __obj_0 = outer;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 22:         for y in inner:
+        //         for y in inner:
         auto& __obj_1 = inner;
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             int32_t y = *__beg_1;
-            // 23:             total += x * y
+            //             total += x * y
             total = tpy::add_check<int32_t>(total, (tpy::mul_check<int32_t>(x, y)));
         }
     }
-    // 24:     return total
+    //     return total
     return total;
 }
-// 26: def contains_value(items: NativeIterable[Int32], target: Int32) -> bool:
+// def contains_value(items: NativeIterable[Int32], target: Int32) -> bool:
 template<tpy::NativeIterable<int32_t> T_items>
 bool contains_value(const T_items& items, int32_t target) {
-    // 27:     # Test "in" operator with NativeIterable-typed param
-    // 28:     return target in items
+    //     # Test "in" operator with NativeIterable-typed param
+    //     return target in items
     return (std::find(items.begin(), items.end(), target) != items.end());
 }
 

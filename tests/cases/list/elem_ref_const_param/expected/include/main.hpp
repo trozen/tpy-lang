@@ -22,14 +22,14 @@ int32_t read_nested(const std::vector<std::vector<int32_t>>& matrix);
 void write_nested(std::vector<std::vector<int32_t>>& matrix, int32_t val);
 void main();
 
-// 6: class Point:
+// class Point:
 struct Point {
-    // 7:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 8:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 9:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

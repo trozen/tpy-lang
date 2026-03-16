@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     arr: Array[Int32, 3] = [10, 20, 30]
+    //     arr: Array[Int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    // 6:     print(arr[10])
+    //     print(arr[10])
     std::cout << tpy::__getitem__(arr, 10) << "\n";
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: main()
+    // main()
     main();
 }
 

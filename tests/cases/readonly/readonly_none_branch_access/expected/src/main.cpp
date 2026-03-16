@@ -5,35 +5,35 @@ namespace tpy_user::main {
 
 
 // @readonly
-// 15: def observe_field(flag: bool, p: Box) -> None:
+// def observe_field(flag: bool, p: Box) -> None:
 void observe_field(bool flag, const Box& p) {
-    // 16:     x = None
+    //     x = None
     const Box* x = nullptr;
-    // 17:     if flag:
+    //     if flag:
     if (flag) {
-        // 18:         x = p
+        //         x = p
         x = &(p);
     }
-    // 19:     if x is not None:
+    //     if x is not None:
     if ((x != nullptr)) {
-        // 20:         print(x.v)
+        //         print(x.v)
         std::cout << x->v << "\n";
     }
 }
 
 // @readonly
-// 23: def observe_method(flag: bool, p: Box) -> None:
+// def observe_method(flag: bool, p: Box) -> None:
 void observe_method(bool flag, const Box& p) {
-    // 24:     x = None
+    //     x = None
     const Box* x = nullptr;
-    // 25:     if flag:
+    //     if flag:
     if (flag) {
-        // 26:         x = p
+        //         x = p
         x = &(p);
     }
-    // 27:     if x is not None:
+    //     if x is not None:
     if ((x != nullptr)) {
-        // 28:         print(x.get_v())
+        //         print(x.get_v())
         std::cout << x->get_v() << "\n";
     }
 }
@@ -43,13 +43,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 30: observe_field(True, Box(Int32(42)))
+    // observe_field(True, Box(Int32(42)))
     Box __tmp_1 = Box(42);
     observe_field(true, __tmp_1);
-    // 31: observe_field(False, Box(Int32(0)))
+    // observe_field(False, Box(Int32(0)))
     Box __tmp_2 = Box(0);
     observe_field(false, __tmp_2);
-    // 32: observe_method(True, Box(Int32(99)))
+    // observe_method(True, Box(Int32(99)))
     Box __tmp_3 = Box(99);
     observe_method(true, __tmp_3);
 }

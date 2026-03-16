@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 17: def main() -> None:
+// def main() -> None:
 void main() {
-    // 18:     d = Dog()
+    //     d = Dog()
     Dog d = Dog();
-    // 19:     speak(d)
+    //     speak(d)
     speak<Dog>(d);
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 21: main()
+    // main()
     main();
 }
 

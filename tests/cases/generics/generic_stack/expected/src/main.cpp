@@ -4,27 +4,27 @@
 namespace tpy_user::main {
 
 
-// 19: def main() -> None:
+// def main() -> None:
 void main() {
-    // 20:     stack: Stack[Int32] = Stack[Int32]()
+    //     stack: Stack[Int32] = Stack[Int32]()
     Stack<int32_t> stack = Stack<int32_t>();
-    // 21:     print(stack.is_empty())  # True
+    //     print(stack.is_empty())  # True
     std::cout << tpy::print_bool(stack.is_empty()) << "\n";
-    // 23:     stack.push(10)
+    //     stack.push(10)
     stack.push(10);
-    // 24:     stack.push(20)
+    //     stack.push(20)
     stack.push(20);
-    // 25:     stack.push(30)
+    //     stack.push(30)
     stack.push(30);
-    // 26:     print(stack.is_empty())  # False
+    //     print(stack.is_empty())  # False
     std::cout << tpy::print_bool(stack.is_empty()) << "\n";
-    // 28:     print(stack.pop())  # 30
+    //     print(stack.pop())  # 30
     std::cout << stack.pop() << "\n";
-    // 29:     print(stack.pop())  # 20
+    //     print(stack.pop())  # 20
     std::cout << stack.pop() << "\n";
-    // 30:     print(stack.pop())  # 10
+    //     print(stack.pop())  # 10
     std::cout << stack.pop() << "\n";
-    // 31:     print(stack.is_empty())  # True
+    //     print(stack.is_empty())  # True
     std::cout << tpy::print_bool(stack.is_empty()) << "\n";
 }
 
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 34: main()
+    // main()
     main();
 }
 

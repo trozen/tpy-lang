@@ -11,14 +11,14 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Container[T, N: int]:
+// class Container[T, N: int]:
 template<typename T, std::size_t N>
 struct Container {
 
 
-    // 5:     def get_size_as_bigint(self) -> int:
+    //     def get_size_as_bigint(self) -> int:
     tpy::BigInt get_size_as_bigint() const {
-        // 6:         return N  # N coerces to BigInt
+        //         return N  # N coerces to BigInt
         return tpy::BigInt(static_cast<int64_t>(N));
     }
 };

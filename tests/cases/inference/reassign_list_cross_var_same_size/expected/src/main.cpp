@@ -5,18 +5,18 @@ namespace tpy_user::main {
 
 
 // # Cross-variable same-size reassignment: mutation on one promotes both
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     a = [1, 2, 3]  # tpyc: type(/list/)
+    //     a = [1, 2, 3]  # tpyc: type(/list/)
     std::vector<int32_t> __slot_1 = {1, 2, 3};
     std::vector<int32_t>* a = &__slot_1;
-    // 4:     b = [4, 5, 6]  # tpyc: type(/list/)
+    //     b = [4, 5, 6]  # tpyc: type(/list/)
     std::vector<int32_t> b = {4, 5, 6};
-    // 5:     a = b
+    //     a = b
     a = &(b);
-    // 6:     a.append(7)
+    //     a.append(7)
     (*a).push_back(7);
-    // 7:     print(len(b))
+    //     print(len(b))
     std::cout << tpy::__len__(b) << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: main()
+    // main()
     main();
 }
 

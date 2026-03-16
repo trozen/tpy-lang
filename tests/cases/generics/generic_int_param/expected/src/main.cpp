@@ -4,20 +4,20 @@
 namespace tpy_user::main {
 
 
-// 11: def main() -> None:
+// def main() -> None:
 void main() {
-    // 12:     # Test basic integer type parameter
-    // 13:     c1: Container[str, 10] = Container[str, 10]("hello")
+    //     # Test basic integer type parameter
+    //     c1: Container[str, 10] = Container[str, 10]("hello")
     Container<std::string, 10> c1 = Container<std::string, 10>("hello");
-    // 14:     print(c1.value)
+    //     print(c1.value)
     std::cout << c1.value << "\n";
-    // 16:     c2: Container[Int32, 5] = Container[Int32, 5](Int32(42))
+    //     c2: Container[Int32, 5] = Container[Int32, 5](Int32(42))
     Container<int32_t, 5> c2 = Container<int32_t, 5>(42);
-    // 17:     print(c2.value)
+    //     print(c2.value)
     std::cout << c2.value << "\n";
-    // 19:     c3: Container[str, 100] = Container[str, 100]("world")
+    //     c3: Container[str, 100] = Container[str, 100]("world")
     Container<std::string, 100> c3 = Container<std::string, 100>("world");
-    // 20:     print(c3.value)
+    //     print(c3.value)
     std::cout << c3.value << "\n";
 }
 
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 23: main()
+    // main()
     main();
 }
 

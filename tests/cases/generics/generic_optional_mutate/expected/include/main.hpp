@@ -12,14 +12,14 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 6:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 7:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -33,26 +33,26 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 11: class Container[T]:
+// class Container[T]:
 template<typename T>
 struct Container {
-    // 12:     _value: T
+    //     _value: T
     T _value;
-    // 13:     _has: bool
+    //     _has: bool
     bool _has;
 
-    // 14:     def __init__(self, value: T) -> None:
+    //     def __init__(self, value: T) -> None:
     Container() = default;
     explicit Container(const T& value) : _value(value), _has(true) {}
 
-    // 17:     def get(self) -> T | None:
+    //     def get(self) -> T | None:
     T* get() {
-        // 18:         if self._has:
+        //         if self._has:
         if (this->_has) {
-            // 19:             return self._value
+            //             return self._value
             return &(this->_value);
         }
-        // 20:         return None
+        //         return None
         return nullptr;
     }
 };

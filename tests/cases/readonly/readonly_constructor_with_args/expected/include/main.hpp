@@ -11,12 +11,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 int32_t build();
 
-// 4: class Box:
+// class Box:
 struct Box {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
 
-    // 7:     def __init__(self, x: Int32) -> None:
+    //     def __init__(self, x: Int32) -> None:
     Box() = default;
     explicit Box(int32_t x) : x(x) {}
 };

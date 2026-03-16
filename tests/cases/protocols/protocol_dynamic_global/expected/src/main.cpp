@@ -4,10 +4,10 @@
 namespace tpy_user::main {
 
 // # Global init + reassign
-// 23: pet: Pet = Dog()
+// pet: Pet = Dog()
 Pet* pet{};
 // # Global reassign inside loop
-// 35: i: Int32 = 0
+// i: Int32 = 0
 int32_t i{};
 
 void __tpy_init() {
@@ -19,38 +19,38 @@ void __tpy_init() {
   static std::optional<tpy::Adapter<Pet, Cat>> __global_slot_2;
   static std::optional<tpy::Adapter<Pet, Parrot>> __global_slot_3;
   static std::optional<Dog> __global_slot_4;
-    // 22: # Global init + reassign
-    // 23: pet: Pet = Dog()
+    // # Global init + reassign
+    // pet: Pet = Dog()
     __global_slot_1.emplace(Dog());
     pet = &*__global_slot_1;
-    // 24: print(pet.name())
+    // print(pet.name())
     std::cout << pet->name() << "\n";
-    // 26: pet = Cat()
+    // pet = Cat()
     __global_slot_2.emplace(Cat());
     pet = &*__global_slot_2;
-    // 27: print(pet.name())
+    // print(pet.name())
     std::cout << pet->name() << "\n";
-    // 29: # Global reassign inside branch
-    // 30: if True:
+    // # Global reassign inside branch
+    // if True:
     if (true) {
-        // 31:     pet = Parrot()
+        //     pet = Parrot()
         __global_slot_3.emplace(Parrot());
         pet = &*__global_slot_3;
     }
-    // 32: print(pet.name())
+    // print(pet.name())
     std::cout << pet->name() << "\n";
-    // 34: # Global reassign inside loop
-    // 35: i: Int32 = 0
+    // # Global reassign inside loop
+    // i: Int32 = 0
     i = 0;
-    // 36: while i < 2:
+    // while i < 2:
     while ((i < 2)) {
-        // 37:     pet = Dog()
+        //     pet = Dog()
         __global_slot_4.emplace(Dog());
         pet = &*__global_slot_4;
-        // 38:     i = i + 1
+        //     i = i + 1
         i = (tpy::add_check<int32_t>(i, 1));
     }
-    // 39: print(pet.name())
+    // print(pet.name())
     std::cout << pet->name() << "\n";
 }
 

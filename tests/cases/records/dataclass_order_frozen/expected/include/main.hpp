@@ -12,13 +12,13 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // @dataclass(frozen=True, order=True)
-// 6: class Version:
+// class Version:
 struct Version {
-    // 7:     major: Int32
+    //     major: Int32
     int32_t major;
-    // 8:     minor: Int32
+    //     minor: Int32
     int32_t minor;
-    // 9:     patch: Int32
+    //     patch: Int32
     int32_t patch;
 
     Version() = default;

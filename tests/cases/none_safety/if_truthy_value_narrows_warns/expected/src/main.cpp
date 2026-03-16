@@ -4,14 +4,14 @@
 namespace tpy_user::main {
 
 
-// 4: def score(x: Int32 | None) -> Int32:
+// def score(x: Int32 | None) -> Int32:
 int32_t score(std::optional<int32_t> x) {
-    // 5:     if x:  # tpyc: warning(/Truthiness check on optional value/)
+    //     if x:  # tpyc: warning(/Truthiness check on optional value/)
     if (tpy::is_truthy(x)) {
-        // 6:         return x + 1  # tpyc: ok
+        //         return x + 1  # tpyc: ok
         return (tpy::add_check<int32_t>((*x), 1));
     }
-    // 7:     return 0
+    //     return 0
     return 0;
 }
 
@@ -20,11 +20,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 10: print(score(3))
+    // print(score(3))
     std::cout << score(3) << "\n";
-    // 11: print(score(0))
+    // print(score(0))
     std::cout << score(0) << "\n";
-    // 12: print(score(None))
+    // print(score(None))
     std::cout << score(std::nullopt) << "\n";
 }
 

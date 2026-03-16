@@ -11,7 +11,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: from tpy.extern import native
+    // from tpy.extern import native
 }
 
 } // namespace tpy_user::main

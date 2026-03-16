@@ -4,9 +4,9 @@
 namespace tpy_user::mypackage::utils {
 
 
-// 1: def helper() -> None:
+// def helper() -> None:
 void helper() {
-    // 2:     print("helper called")
+    //     print("helper called")
     std::cout << "helper called" << "\n";
 }
 

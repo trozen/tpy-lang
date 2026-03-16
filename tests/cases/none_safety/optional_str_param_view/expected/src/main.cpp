@@ -4,84 +4,84 @@
 namespace tpy_user::main {
 
 
-// 4: def pass_through(s: Optional[str]) -> Optional[str]:
+// def pass_through(s: Optional[str]) -> Optional[str]:
 std::optional<std::string> pass_through(std::optional<std::string_view> s) {
-    // 5:     return s
+    //     return s
     return s ? std::make_optional(std::string(*s)) : std::nullopt;
 }
 
-// 7: def assign_local(s: Optional[str]) -> None:
+// def assign_local(s: Optional[str]) -> None:
 void assign_local(std::optional<std::string_view> s) {
-    // 8:     local: Optional[str] = s
+    //     local: Optional[str] = s
     std::optional<std::string> local = s ? std::make_optional(std::string(*s)) : std::nullopt;
-    // 9:     if local is not None:
+    //     if local is not None:
     if ((local.has_value())) {
-        // 10:         print(local)
+        //         print(local)
         std::cout << tpy::print_optional_val(local) << "\n";
-    // 11:     else:
+    //     else:
     } else {
-        // 12:         print("none")
+        //         print("none")
         std::cout << "none" << "\n";
     }
 }
 
-// 14: def unwrap(s: Optional[str]) -> str:
+// def unwrap(s: Optional[str]) -> str:
 std::string unwrap(std::optional<std::string_view> s) {
-    // 15:     if s is not None:
+    //     if s is not None:
     if ((s.has_value())) {
-        // 16:         return s
+        //         return s
         return std::string((*s));
     }
-    // 17:     return "default"
+    //     return "default"
     return "default";
 }
 
-// 19: def append_to_list(items: list[Optional[str]], s: Optional[str]) -> None:
+// def append_to_list(items: list[Optional[str]], s: Optional[str]) -> None:
 void append_to_list(std::vector<std::optional<std::string>>& items, std::optional<std::string_view> s) {
-    // 20:     items.append(s)
+    //     items.append(s)
     auto __tmp_1 = s ? std::make_optional(std::string(*s)) : std::nullopt;
     items.push_back(std::move(__tmp_1));
 }
 
-// 22: def normalize(s: Optional[str]) -> Optional[str]:
+// def normalize(s: Optional[str]) -> Optional[str]:
 std::optional<std::string> normalize(std::optional<std::string_view> __param_s) {
     std::optional<std::string> s = __param_s ? std::make_optional(std::string(*__param_s)) : std::nullopt;
-    // 23:     if s is None:
+    //     if s is None:
     if ((!s.has_value())) {
-        // 24:         s = "default"
+        //         s = "default"
         s = "default";
     }
-    // 25:     return s
+    //     return s
     return s ? std::make_optional(std::string(*s)) : std::nullopt;
 }
 
-// 27: def main() -> None:
+// def main() -> None:
 void main() {
-    // 28:     print(pass_through("hello"))
+    //     print(pass_through("hello"))
     std::cout << tpy::print_optional_val(pass_through("hello")) << "\n";
-    // 29:     print(pass_through(None))
+    //     print(pass_through(None))
     std::cout << tpy::print_optional_val(pass_through(std::nullopt)) << "\n";
-    // 30:     assign_local("world")
+    //     assign_local("world")
     assign_local("world");
-    // 31:     assign_local(None)
+    //     assign_local(None)
     assign_local(std::nullopt);
-    // 32:     print(unwrap("value"))
+    //     print(unwrap("value"))
     std::cout << unwrap("value") << "\n";
-    // 33:     print(unwrap(None))
+    //     print(unwrap(None))
     std::cout << unwrap(std::nullopt) << "\n";
-    // 35:     items: list[Optional[str]] = []
+    //     items: list[Optional[str]] = []
     std::vector<std::optional<std::string>> items = std::vector<std::optional<std::string>>{};
-    // 36:     append_to_list(items, "a")
+    //     append_to_list(items, "a")
     append_to_list(items, "a");
-    // 37:     append_to_list(items, None)
+    //     append_to_list(items, None)
     append_to_list(items, std::nullopt);
-    // 38:     append_to_list(items, "b")
+    //     append_to_list(items, "b")
     append_to_list(items, "b");
-    // 39:     print(len(items))
+    //     print(len(items))
     std::cout << tpy::__len__(items) << "\n";
-    // 41:     print(normalize("hello"))
+    //     print(normalize("hello"))
     std::cout << tpy::print_optional_val(normalize("hello")) << "\n";
-    // 42:     print(normalize(None))
+    //     print(normalize(None))
     std::cout << tpy::print_optional_val(normalize(std::nullopt)) << "\n";
 }
 
@@ -90,7 +90,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 44: main()
+    // main()
     main();
 }
 

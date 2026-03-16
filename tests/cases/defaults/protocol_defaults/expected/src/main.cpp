@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 26: def main() -> None:
+// def main() -> None:
 void main() {
-    // 27:     impl = Impl(Int32(42))
+    //     impl = Impl(Int32(42))
     Impl impl = Impl(42);
-    // 28:     use_callable(impl)
+    //     use_callable(impl)
     use_callable(impl);
-    // 29:     use_one_arg(impl)
+    //     use_one_arg(impl)
     use_one_arg(impl);
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 31: main()
+    // main()
     main();
 }
 

@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 12: def main() -> None:
+// def main() -> None:
 void main() {
-    // 13:     fmt = Formatter()
+    //     fmt = Formatter()
     Formatter fmt = Formatter();
-    // 14:     print(fmt.format("hello"))
+    //     print(fmt.format("hello"))
     std::cout << fmt.format("hello") << "\n";
-    // 15:     print(fmt.format("hello", fill="*"))
+    //     print(fmt.format("hello", fill="*"))
     std::cout << fmt.format("hello", 0, "*") << "\n";
-    // 16:     print(fmt.format(text="world", width=10))
+    //     print(fmt.format(text="world", width=10))
     std::cout << fmt.format("world", 10) << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: main()
+    // main()
     main();
 }
 

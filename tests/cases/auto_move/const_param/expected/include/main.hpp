@@ -19,14 +19,14 @@ void append_item(std::vector<int32_t>& items, int32_t v);
 void append_wrapper(std::vector<int32_t>& items, int32_t v);
 void main();
 
-// 6: class Point:
+// class Point:
 struct Point {
-    // 7:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 8:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 9:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

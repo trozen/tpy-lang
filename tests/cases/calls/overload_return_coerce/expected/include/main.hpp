@@ -21,12 +21,12 @@ double get_cast(const A& obj);
 tpy::BigInt get_cast(const C& obj);
 void main();
 
-// 7: class A:
+// class A:
 struct A {
-    // 8:     x: Int32
+    //     x: Int32
     int32_t x;
 
-    // 9:     def __init__(self, x: Int32) -> None:
+    //     def __init__(self, x: Int32) -> None:
     A() = default;
     explicit A(int32_t x) : x(x) {}
 };
@@ -38,12 +38,12 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
     return os;
 }
 
-// 12: class B:
+// class B:
 struct B {
-    // 13:     y: float
+    //     y: float
     double y;
 
-    // 14:     def __init__(self, y: float) -> None:
+    //     def __init__(self, y: float) -> None:
     B() = default;
     explicit B(double y) : y(y) {}
 };
@@ -55,12 +55,12 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
     return os;
 }
 
-// 17: class C:
+// class C:
 struct C {
-    // 18:     z: Int64
+    //     z: Int64
     int64_t z;
 
-    // 19:     def __init__(self, z: Int64) -> None:
+    //     def __init__(self, z: Int64) -> None:
     C() = default;
     explicit C(int64_t z) : z(z) {}
 };

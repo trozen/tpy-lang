@@ -31,18 +31,18 @@ void test_annotated();
 void test_literal_or_literal();
 void main();
 
-// 119: class Counter:
+// class Counter:
 struct Counter {
-    // 120:     count: Int32
+    //     count: Int32
     int32_t count;
 
-    // 121:     def __init__(self, n: Int32) -> None:
+    //     def __init__(self, n: Int32) -> None:
     Counter() = default;
     explicit Counter(int32_t n) : count(n) {}
 
-    // 123:     def __bool__(self) -> bool:
+    //     def __bool__(self) -> bool:
     bool __bool__() const {
-        // 124:         return self.count != 0
+        //         return self.count != 0
         return (this->count != 0);
     }
 };
@@ -54,14 +54,14 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// 126: class Point:
+// class Point:
 struct Point {
-    // 127:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 128:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 129:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

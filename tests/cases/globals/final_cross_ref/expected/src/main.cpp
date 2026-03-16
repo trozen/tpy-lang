@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 8: def main() -> None:
+// def main() -> None:
 void main() {
-    // 9:     print(BASE)
+    //     print(BASE)
     std::cout << BASE << "\n";
-    // 10:     print(ALIAS)
+    //     print(ALIAS)
     std::cout << ALIAS << "\n";
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 12: main()
+    // main()
     main();
 }
 

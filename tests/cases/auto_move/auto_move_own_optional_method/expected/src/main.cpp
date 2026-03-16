@@ -4,21 +4,21 @@
 namespace tpy_user::main {
 
 
-// 20: def main():
+// def main():
 void main() {
-    // 21:     c = Container()
+    //     c = Container()
     Container c = Container();
-    // 22:     c.val = Int32(-1)
+    //     c.val = Int32(-1)
     c.val = -1;
-    // 23:     p = Point()
+    //     p = Point()
     Point p = Point();
-    // 24:     p.x = Int32(3)
+    //     p.x = Int32(3)
     p.x = 3;
-    // 25:     p.y = Int32(4)
+    //     p.y = Int32(4)
     p.y = 4;
-    // 26:     c.take(p)
+    //     c.take(p)
     c.take(std::move(p));
-    // 27:     print(c.val)
+    //     print(c.val)
     std::cout << c.val << "\n";
 }
 
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 30: main()
+    // main()
     main();
 }
 

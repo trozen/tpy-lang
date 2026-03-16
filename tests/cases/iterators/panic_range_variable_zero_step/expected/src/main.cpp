@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # Variable zero-step should panic, same as literal zero-step
-// 4: step: Int32 = 0
+// step: Int32 = 0
 int32_t step{};
 
 void __tpy_init() {
@@ -12,15 +12,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: # Variable zero-step should panic, same as literal zero-step
-    // 4: step: Int32 = 0
+    // # Variable zero-step should panic, same as literal zero-step
+    // step: Int32 = 0
     step = 0;
-    // 5: for i in range(1, 5, step):
+    // for i in range(1, 5, step):
     int32_t __step_0 = step;
     if (__step_0 == 0) tpy::tpy_panic("range() arg 3 must not be zero");
     tpy::range_check_overflow<int32_t>(1, 5, __step_0);
     for (int32_t i = 1; __step_0 > 0 ? i < 5 : i > 5; i += __step_0) {
-        // 6:     print(i)
+        //     print(i)
         std::cout << i << "\n";
     }
 }

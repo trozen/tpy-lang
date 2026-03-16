@@ -4,250 +4,250 @@
 namespace tpy_user::main {
 
 
-// 6: def test_contains() -> None:
+// def test_contains() -> None:
 void test_contains() {
-    // 7:     a = ArrayList[Int32, 8]()
+    //     a = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> a = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    // 8:     a.append(10)
+    //     a.append(10)
     a.append(10);
-    // 9:     a.append(20)
+    //     a.append(20)
     a.append(20);
-    // 10:     a.append(30)
+    //     a.append(30)
     a.append(30);
-    // 11:     print(20 in a)
+    //     print(20 in a)
     std::cout << tpy::print_bool((a.__contains__(20))) << "\n";
-    // 12:     print(99 in a)
+    //     print(99 in a)
     std::cout << tpy::print_bool((a.__contains__(99))) << "\n";
 }
 
-// 14: def test_eq() -> None:
+// def test_eq() -> None:
 void test_eq() {
-    // 15:     a = ArrayList[Int32, 8]()
+    //     a = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> a = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    // 16:     a.append(1)
+    //     a.append(1)
     a.append(1);
-    // 17:     a.append(2)
+    //     a.append(2)
     a.append(2);
-    // 18:     b = ArrayList[Int32, 8]()
+    //     b = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> b = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    // 19:     b.append(1)
+    //     b.append(1)
     b.append(1);
-    // 20:     b.append(2)
+    //     b.append(2)
     b.append(2);
-    // 21:     print(a == b)
+    //     print(a == b)
     std::cout << tpy::print_bool((a == b)) << "\n";
-    // 22:     b.append(3)
+    //     b.append(3)
     b.append(3);
-    // 23:     print(a == b)
+    //     print(a == b)
     std::cout << tpy::print_bool((a == b)) << "\n";
 }
 
-// 25: def test_repr() -> None:
+// def test_repr() -> None:
 void test_repr() {
-    // 26:     a = ArrayList[Int32, 4]()
+    //     a = ArrayList[Int32, 4]()
     ::tpy_user::tplib::ArrayList<int32_t, 4> a = ::tpy_user::tplib::ArrayList<int32_t, 4>();
-    // 27:     a.append(10)
+    //     a.append(10)
     a.append(10);
-    // 28:     a.append(20)
+    //     a.append(20)
     a.append(20);
-    // 29:     print(repr(a))
+    //     print(repr(a))
     std::cout << std::string(tpy::__repr__(a)) << "\n";
 }
 
-// 31: def test_swap() -> None:
+// def test_swap() -> None:
 void test_swap() {
-    // 32:     a = ArrayList[Int32, 4]()
+    //     a = ArrayList[Int32, 4]()
     ::tpy_user::tplib::ArrayList<int32_t, 4> a = ::tpy_user::tplib::ArrayList<int32_t, 4>();
-    // 33:     a.append(1)
+    //     a.append(1)
     a.append(1);
-    // 34:     a.append(2)
+    //     a.append(2)
     a.append(2);
-    // 35:     a.append(3)
+    //     a.append(3)
     a.append(3);
-    // 36:     a.swap(0, 2)
+    //     a.swap(0, 2)
     a.swap(0, 2);
-    // 37:     print(a)
+    //     print(a)
     std::cout << a << "\n";
 }
 
-// 39: def test_truncate() -> None:
+// def test_truncate() -> None:
 void test_truncate() {
-    // 40:     a = ArrayList[Int32, 8]()
+    //     a = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> a = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    // 41:     a.append(10)
+    //     a.append(10)
     a.append(10);
-    // 42:     a.append(20)
+    //     a.append(20)
     a.append(20);
-    // 43:     a.append(30)
+    //     a.append(30)
     a.append(30);
-    // 44:     a.append(40)
+    //     a.append(40)
     a.append(40);
-    // 45:     a.truncate(2)
+    //     a.truncate(2)
     a.truncate(2);
-    // 46:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 47:     print(len(a))
+    //     print(len(a))
     std::cout << tpy::__len__(a) << "\n";
 }
 
-// 49: def test_index() -> None:
+// def test_index() -> None:
 void test_index() {
-    // 50:     a = ArrayList[Int32, 4]()
+    //     a = ArrayList[Int32, 4]()
     ::tpy_user::tplib::ArrayList<int32_t, 4> a = ::tpy_user::tplib::ArrayList<int32_t, 4>();
-    // 51:     a.append(10)
+    //     a.append(10)
     a.append(10);
-    // 52:     a.append(20)
+    //     a.append(20)
     a.append(20);
-    // 53:     a.append(30)
+    //     a.append(30)
     a.append(30);
-    // 54:     print(a.index(20))
+    //     print(a.index(20))
     std::cout << a.index(20) << "\n";
 }
 
-// 56: def test_count() -> None:
+// def test_count() -> None:
 void test_count() {
-    // 57:     a = ArrayList[Int32, 8]()
+    //     a = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> a = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    // 58:     a.append(1)
+    //     a.append(1)
     a.append(1);
-    // 59:     a.append(2)
+    //     a.append(2)
     a.append(2);
-    // 60:     a.append(1)
+    //     a.append(1)
     a.append(1);
-    // 61:     a.append(3)
+    //     a.append(3)
     a.append(3);
-    // 62:     a.append(1)
+    //     a.append(1)
     a.append(1);
-    // 63:     print(a.count(1))
+    //     print(a.count(1))
     std::cout << a.count(1) << "\n";
-    // 64:     print(a.count(2))
+    //     print(a.count(2))
     std::cout << a.count(2) << "\n";
-    // 65:     print(a.count(99))
+    //     print(a.count(99))
     std::cout << a.count(99) << "\n";
 }
 
-// 67: def test_remove() -> None:
+// def test_remove() -> None:
 void test_remove() {
-    // 68:     a = ArrayList[Int32, 8]()
+    //     a = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> a = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    // 69:     a.append(10)
+    //     a.append(10)
     a.append(10);
-    // 70:     a.append(20)
+    //     a.append(20)
     a.append(20);
-    // 71:     a.append(30)
+    //     a.append(30)
     a.append(30);
-    // 72:     a.remove(20)
+    //     a.remove(20)
     a.remove(20);
-    // 73:     print(a)
+    //     print(a)
     std::cout << a << "\n";
 }
 
-// 75: def test_reverse() -> None:
+// def test_reverse() -> None:
 void test_reverse() {
-    // 76:     a = ArrayList[Int32, 8]()
+    //     a = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> a = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    // 77:     a.append(1)
+    //     a.append(1)
     a.append(1);
-    // 78:     a.append(2)
+    //     a.append(2)
     a.append(2);
-    // 79:     a.append(3)
+    //     a.append(3)
     a.append(3);
-    // 80:     a.append(4)
+    //     a.append(4)
     a.append(4);
-    // 81:     a.reverse()
+    //     a.reverse()
     a.reverse();
-    // 82:     print(a)
+    //     print(a)
     std::cout << a << "\n";
 }
 
-// 84: def test_sort() -> None:
+// def test_sort() -> None:
 void test_sort() {
-    // 85:     # General case
-    // 86:     a = ArrayList[Int32, 8]()
+    //     # General case
+    //     a = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> a = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    // 87:     a.append(5)
+    //     a.append(5)
     a.append(5);
-    // 88:     a.append(3)
+    //     a.append(3)
     a.append(3);
-    // 89:     a.append(1)
+    //     a.append(1)
     a.append(1);
-    // 90:     a.append(4)
+    //     a.append(4)
     a.append(4);
-    // 91:     a.append(2)
+    //     a.append(2)
     a.append(2);
-    // 92:     a.sort()
+    //     a.sort()
     a.sort();
-    // 93:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 94:     # Duplicates
-    // 95:     b = ArrayList[Int32, 8]()
+    //     # Duplicates
+    //     b = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> b = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    // 96:     b.append(3)
+    //     b.append(3)
     b.append(3);
-    // 97:     b.append(1)
+    //     b.append(1)
     b.append(1);
-    // 98:     b.append(3)
+    //     b.append(3)
     b.append(3);
-    // 99:     b.append(2)
+    //     b.append(2)
     b.append(2);
-    // 100:     b.append(1)
+    //     b.append(1)
     b.append(1);
-    // 101:     b.sort()
+    //     b.sort()
     b.sort();
-    // 102:     print(b)
+    //     print(b)
     std::cout << b << "\n";
-    // 103:     # Empty
-    // 104:     c = ArrayList[Int32, 4]()
+    //     # Empty
+    //     c = ArrayList[Int32, 4]()
     ::tpy_user::tplib::ArrayList<int32_t, 4> c = ::tpy_user::tplib::ArrayList<int32_t, 4>();
-    // 105:     c.sort()
+    //     c.sort()
     c.sort();
-    // 106:     print(c)
+    //     print(c)
     std::cout << c << "\n";
-    // 107:     # Single element
-    // 108:     d = ArrayList[Int32, 4]()
+    //     # Single element
+    //     d = ArrayList[Int32, 4]()
     ::tpy_user::tplib::ArrayList<int32_t, 4> d = ::tpy_user::tplib::ArrayList<int32_t, 4>();
-    // 109:     d.append(42)
+    //     d.append(42)
     d.append(42);
-    // 110:     d.sort()
+    //     d.sort()
     d.sort();
-    // 111:     print(d)
+    //     print(d)
     std::cout << d << "\n";
-    // 112:     # Already sorted
-    // 113:     e = ArrayList[Int32, 4]()
+    //     # Already sorted
+    //     e = ArrayList[Int32, 4]()
     ::tpy_user::tplib::ArrayList<int32_t, 4> e = ::tpy_user::tplib::ArrayList<int32_t, 4>();
-    // 114:     e.append(1)
+    //     e.append(1)
     e.append(1);
-    // 115:     e.append(2)
+    //     e.append(2)
     e.append(2);
-    // 116:     e.append(3)
+    //     e.append(3)
     e.append(3);
-    // 117:     e.sort()
+    //     e.sort()
     e.sort();
-    // 118:     print(e)
+    //     print(e)
     std::cout << e << "\n";
 }
 
-// 120: def main() -> None:
+// def main() -> None:
 void main() {
-    // 121:     test_contains()
+    //     test_contains()
     test_contains();
-    // 122:     test_eq()
+    //     test_eq()
     test_eq();
-    // 123:     test_repr()
+    //     test_repr()
     test_repr();
-    // 124:     test_swap()
+    //     test_swap()
     test_swap();
-    // 125:     test_truncate()
+    //     test_truncate()
     test_truncate();
-    // 126:     test_index()
+    //     test_index()
     test_index();
-    // 127:     test_count()
+    //     test_count()
     test_count();
-    // 128:     test_remove()
+    //     test_remove()
     test_remove();
-    // 129:     test_reverse()
+    //     test_reverse()
     test_reverse();
-    // 130:     test_sort()
+    //     test_sort()
     test_sort();
 }
 
@@ -256,9 +256,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: from tplib import ArrayList
+    // from tplib import ArrayList
     ::tpy_user::tplib::__tpy_init();
-    // 132: main()
+    // main()
     main();
 }
 

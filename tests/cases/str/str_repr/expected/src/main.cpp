@@ -4,27 +4,27 @@
 namespace tpy_user::main {
 
 
-// 16: def main() -> None:
+// def main() -> None:
 void main() {
-    // 17:     p: Point = Point(3, 7)
+    //     p: Point = Point(3, 7)
     Point p = Point(tpy::BigInt(3), tpy::BigInt(7));
-    // 19:     # str() dispatches to __str__
-    // 20:     print(str(p))
+    //     # str() dispatches to __str__
+    //     print(str(p))
     std::cout << std::string(tpy::__str__(p)) << "\n";
-    // 22:     # repr() dispatches to __repr__
-    // 23:     print(repr(p))
+    //     # repr() dispatches to __repr__
+    //     print(repr(p))
     std::cout << std::string(tpy::__repr__(p)) << "\n";
-    // 25:     # print() uses operator<< which delegates to __str__
-    // 26:     print(p)
+    //     # print() uses operator<< which delegates to __str__
+    //     print(p)
     std::cout << p << "\n";
-    // 28:     # f-string uses __str__
-    // 29:     print(f"point = {p}")
+    //     # f-string uses __str__
+    //     print(f"point = {p}")
     std::cout << std::format("point = {}", tpy::__str__(p)) << "\n";
-    // 31:     # !r uses __repr__
-    // 32:     print(f"debug: {p!r}")
+    //     # !r uses __repr__
+    //     print(f"debug: {p!r}")
     std::cout << std::format("debug: {}", tpy::__repr__(p)) << "\n";
-    // 34:     # !s uses __str__
-    // 35:     print(f"display: {p!s}")
+    //     # !s uses __str__
+    //     print(f"display: {p!s}")
     std::cout << std::format("display: {}", tpy::__str__(p)) << "\n";
 }
 
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 37: main()
+    // main()
     main();
 }
 

@@ -4,31 +4,31 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     # Basic shifts
-    // 6:     print(Int8(1) << Int8(0))    # 1
+    //     # Basic shifts
+    //     print(Int8(1) << Int8(0))    # 1
     std::cout << static_cast<int>((tpy::lshift_check<int8_t>(1, 0))) << "\n";
-    // 7:     print(Int8(1) << Int8(6))    # 64
+    //     print(Int8(1) << Int8(6))    # 64
     std::cout << static_cast<int>((tpy::lshift_check<int8_t>(1, 6))) << "\n";
-    // 8:     print(Int8(-1) << Int8(0))   # -1
+    //     print(Int8(-1) << Int8(0))   # -1
     std::cout << static_cast<int>((tpy::lshift_check<int8_t>(-1, 0))) << "\n";
-    // 10:     # UInt8 shifts
-    // 11:     print(UInt8(1) << UInt8(7))  # 128
+    //     # UInt8 shifts
+    //     print(UInt8(1) << UInt8(7))  # 128
     std::cout << static_cast<int>((tpy::lshift_check<uint8_t>(1, 7))) << "\n";
-    // 12:     print(UInt8(3) << UInt8(4))  # 48
+    //     print(UInt8(3) << UInt8(4))  # 48
     std::cout << static_cast<int>((tpy::lshift_check<uint8_t>(3, 4))) << "\n";
-    // 14:     # Int16 shifts
-    // 15:     print(Int16(1) << Int16(14))  # 16384
+    //     # Int16 shifts
+    //     print(Int16(1) << Int16(14))  # 16384
     std::cout << (tpy::lshift_check<int16_t>(1, 14)) << "\n";
-    // 17:     # UInt16 shifts
-    // 18:     print(UInt16(1) << UInt16(15))  # 32768
+    //     # UInt16 shifts
+    //     print(UInt16(1) << UInt16(15))  # 32768
     std::cout << (tpy::lshift_check<uint16_t>(1, 15)) << "\n";
-    // 20:     # Int32 shifts
-    // 21:     print(Int32(1) << Int32(30))  # 1073741824
+    //     # Int32 shifts
+    //     print(Int32(1) << Int32(30))  # 1073741824
     std::cout << (tpy::lshift_check<int32_t>(1, 30)) << "\n";
-    // 23:     # Int64 shifts
-    // 24:     print(Int64(1) << Int64(62))  # 4611686018427387904
+    //     # Int64 shifts
+    //     print(Int64(1) << Int64(62))  # 4611686018427387904
     std::cout << (tpy::lshift_check<int64_t>(1, 62)) << "\n";
 }
 
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 26: main()
+    // main()
     main();
 }
 

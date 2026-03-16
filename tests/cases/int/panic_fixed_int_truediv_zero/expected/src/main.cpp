@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     a: Int32 = Int32(5)
+    //     a: Int32 = Int32(5)
     int32_t a = 5;
-    // 6:     b: Int32 = Int32(0)
+    //     b: Int32 = Int32(0)
     int32_t b = 0;
-    // 7:     print(a / b)
+    //     print(a / b)
     std::cout << tpy::print_float((tpy::truediv(static_cast<double>(a), static_cast<double>(b)))) << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 9: main()
+    // main()
     main();
 }
 

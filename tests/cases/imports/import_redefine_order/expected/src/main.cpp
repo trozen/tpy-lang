@@ -4,10 +4,10 @@
 namespace tpy_user::main {
 
 // # Redefine MAX with same type (explicit annotation)
-// 9: MAX: Int32 = Int32(42)
+// MAX: Int32 = Int32(42)
 int32_t MAX{};
 // # Redefine MIN with different type (int/BigInt)
-// 12: MIN: int = 99
+// MIN: int = 99
 tpy::BigInt MIN;
 
 void __tpy_init() {
@@ -15,23 +15,23 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: from utils import MAX, MIN
+    // from utils import MAX, MIN
     ::tpy_user::utils::__tpy_init();
-    // 4: # Use imported values first
-    // 5: print(MAX)  # 100
+    // # Use imported values first
+    // print(MAX)  # 100
     std::cout << ::tpy_user::utils::MAX << "\n";
-    // 6: print(MIN)  # 1
+    // print(MIN)  # 1
     std::cout << ::tpy_user::utils::MIN << "\n";
-    // 8: # Redefine MAX with same type (explicit annotation)
-    // 9: MAX: Int32 = Int32(42)
+    // # Redefine MAX with same type (explicit annotation)
+    // MAX: Int32 = Int32(42)
     MAX = 42;
-    // 11: # Redefine MIN with different type (int/BigInt)
-    // 12: MIN: int = 99
+    // # Redefine MIN with different type (int/BigInt)
+    // MIN: int = 99
     MIN = tpy::BigInt(99);
-    // 14: # Use local values
-    // 15: print(MAX)  # 42
+    // # Use local values
+    // print(MAX)  # 42
     std::cout << MAX << "\n";
-    // 16: print(MIN)  # 99
+    // print(MIN)  # 99
     std::cout << MIN << "\n";
 }
 

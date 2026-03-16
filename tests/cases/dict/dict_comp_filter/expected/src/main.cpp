@@ -4,10 +4,10 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     # Single condition
-    // 6:     evens: dict[Int32, Int32] = {x: x * x for x in range(10) if x % 2 == 0}
+    //     # Single condition
+    //     evens: dict[Int32, Int32] = {x: x * x for x in range(10) if x % 2 == 0}
     tpy::ordered_map<int32_t, int32_t> evens = [&]() {
         tpy::ordered_map<int32_t, int32_t> __result;
         const int32_t __stop_0 = 10;
@@ -18,19 +18,19 @@ void main() {
         }
         return __result;
     }();
-    // 7:     for k in evens:
+    //     for k in evens:
     auto& __obj_1 = evens;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t k = *__beg_1;
-        // 8:         print(k, evens[k])
+        //         print(k, evens[k])
         std::cout << k << " " << tpy::__getitem__(evens, k) << "\n";
     }
-    // 10:     # Filter from existing dict
-    // 11:     src: dict[str, Int32] = {"a": 1, "b": 5, "c": 2, "d": 8}
+    //     # Filter from existing dict
+    //     src: dict[str, Int32] = {"a": 1, "b": 5, "c": 2, "d": 8}
     tpy::ordered_map<std::string, int32_t> src = tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 5}, {"c", 2}, {"d", 8}});
-    // 12:     big: dict[str, Int32] = {k: v for k, v in src.items() if v > 3}
+    //     big: dict[str, Int32] = {k: v for k, v in src.items() if v > 3}
     tpy::ordered_map<std::string, int32_t> big = [&]() {
         tpy::ordered_map<std::string, int32_t> __result;
         auto __obj_2 = tpy::dict_items(src);
@@ -46,13 +46,13 @@ void main() {
         }
         return __result;
     }();
-    // 13:     for k in big:
+    //     for k in big:
     auto& __obj_3 = big;
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         std::string_view k = *__beg_3;
-        // 14:         print(k, big[k])
+        //         print(k, big[k])
         std::cout << k << " " << tpy::__getitem__(big, k) << "\n";
     }
 }
@@ -62,7 +62,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 16: main()
+    // main()
     main();
 }
 

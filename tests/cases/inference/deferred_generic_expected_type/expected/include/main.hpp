@@ -15,26 +15,26 @@ Container<int64_t> make_container();
 void setup_pair(Pair<int32_t, int64_t>& p);
 void main();
 
-// 4: class Container[T]:
+// class Container[T]:
 template<typename T>
 struct Container {
-    // 5:     val: T
+    //     val: T
     T val;
 
-    // 6:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Container() {
-        // 7:         pass
+        //         pass
     }
 
-    // 8:     def set(self, val: T) -> None:
+    //     def set(self, val: T) -> None:
     void set(tpy::param_val_or_ref_t<T> val) {
-        // 9:         self.val = val
+        //         self.val = val
         this->val = val;
     }
 
-    // 10:     def get(self) -> T:
+    //     def get(self) -> T:
     tpy::val_or_ref_t<T> get() {
-        // 11:         return self.val
+        //         return self.val
         return this->val;
     }
 };
@@ -47,28 +47,28 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     return os;
 }
 
-// 13: class Pair[T, U]:
+// class Pair[T, U]:
 template<typename T, typename U>
 struct Pair {
-    // 14:     a: T
+    //     a: T
     T a;
-    // 15:     b: U
+    //     b: U
     U b;
 
-    // 16:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Pair() {
-        // 17:         pass
+        //         pass
     }
 
-    // 18:     def get_a(self) -> T:
+    //     def get_a(self) -> T:
     tpy::val_or_ref_t<T> get_a() {
-        // 19:         return self.a
+        //         return self.a
         return this->a;
     }
 
-    // 20:     def get_b(self) -> U:
+    //     def get_b(self) -> U:
     tpy::val_or_ref_t<U> get_b() {
-        // 21:         return self.b
+        //         return self.b
         return this->b;
     }
 };

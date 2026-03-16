@@ -3,24 +3,24 @@
 
 namespace tpy_user::main {
 
-// 23: points: list[Point] = list()
+// points: list[Point] = list()
 std::vector<Point>* points{};
 
-// 16: def find(points: list[Point], target: Int32) -> Point | None:
+// def find(points: list[Point], target: Int32) -> Point | None:
 Point* find(std::vector<Point>& points, int32_t target) {
-    // 17:     for p in points:
+    //     for p in points:
     auto& __obj_0 = points;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // 18:         if p.x == target:
+        //         if p.x == target:
         if ((p.x == target)) {
-            // 19:             return p
+            //             return p
             return &(p);
         }
     }
-    // 20:     return None
+    //     return None
     return nullptr;
 }
 
@@ -29,17 +29,17 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 23: points: list[Point] = list()
+    // points: list[Point] = list()
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     points = &__global_slot_1;
-    // 24: points.append(Point(3, 4))
+    // points.append(Point(3, 4))
     (*points).push_back(Point(3, 4));
-    // 25: points.append(Point(5, 6))
+    // points.append(Point(5, 6))
     (*points).push_back(Point(5, 6));
-    // 27: # Chain field/method access on Optional-returning expression
-    // 28: print(find(points, 3).x)      # tpyc: warning(/Potential None access on optional value/)
+    // # Chain field/method access on Optional-returning expression
+    // print(find(points, 3).x)      # tpyc: warning(/Potential None access on optional value/)
     std::cout << tpy::deref_check(find((*points), 3)).x << "\n";
-    // 29: print(find(points, 5).mag())  # tpyc: warning(/Potential None access on optional value/)
+    // print(find(points, 5).mag())  # tpyc: warning(/Potential None access on optional value/)
     std::cout << tpy::deref_check(find((*points), 5)).mag() << "\n";
 }
 

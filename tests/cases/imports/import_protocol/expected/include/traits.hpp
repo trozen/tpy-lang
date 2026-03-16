@@ -5,7 +5,7 @@
 
 namespace tpy_user::traits {
 
-// 3: class Printable(Protocol):
+// class Printable(Protocol):
 template<typename T>
 concept Printable = requires(T& t) {
     { t.to_string() } -> std::convertible_to<std::string>;

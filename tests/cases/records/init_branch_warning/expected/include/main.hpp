@@ -11,21 +11,21 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Config:
+// class Config:
 struct Config {
-    // 5:     value: Int32
+    //     value: Int32
     int32_t value;
 
-    // 6:     def __init__(self, flag: bool):
+    //     def __init__(self, flag: bool):
     Config() = default;
     explicit Config(bool flag) {
-        // 7:         if flag:  # tpyc: warning(/is not initialized before the constructor body/)
+        //         if flag:  # tpyc: warning(/is not initialized before the constructor body/)
         if (flag) {
-            // 8:             self.value = 10  # tpyc: ok
+            //             self.value = 10  # tpyc: ok
             this->value = 10;
-        // 9:         else:
+        //         else:
         } else {
-            // 10:             self.value = 20  # tpyc: ok
+            //             self.value = 20  # tpyc: ok
             this->value = 20;
         }
     }

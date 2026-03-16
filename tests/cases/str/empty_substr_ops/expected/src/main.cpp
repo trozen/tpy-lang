@@ -6,51 +6,51 @@ namespace tpy_user::main {
 
 // # Test that count("") and replace("", ...) follow Python semantics
 // # instead of panicking on empty substring.
-// 4: def test_count_empty() -> None:
+// def test_count_empty() -> None:
 void test_count_empty() {
-    // 5:     print("count hello:", "hello".count(""))
+    //     print("count hello:", "hello".count(""))
     std::cout << "count hello:" << " " << tpy::str_count("hello", "") << "\n";
-    // 6:     print("count empty:", "".count(""))
+    //     print("count empty:", "".count(""))
     std::cout << "count empty:" << " " << tpy::str_count("", "") << "\n";
-    // 7:     print("count single:", "x".count(""))
+    //     print("count single:", "x".count(""))
     std::cout << "count single:" << " " << tpy::str_count("x", "") << "\n";
 }
 
-// 9: def test_replace_empty() -> None:
+// def test_replace_empty() -> None:
 void test_replace_empty() {
-    // 10:     print("replace hello:", "hello".replace("", "-"))
+    //     print("replace hello:", "hello".replace("", "-"))
     std::cout << "replace hello:" << " " << tpy::str_replace("hello", "", "-") << "\n";
-    // 11:     print("replace empty:", "".replace("", "-"))
+    //     print("replace empty:", "".replace("", "-"))
     std::cout << "replace empty:" << " " << tpy::str_replace("", "", "-") << "\n";
-    // 12:     print("replace single:", "x".replace("", "[]"))
+    //     print("replace single:", "x".replace("", "[]"))
     std::cout << "replace single:" << " " << tpy::str_replace("x", "", "[]") << "\n";
 }
 
-// 14: def test_count_nonempty() -> None:
+// def test_count_nonempty() -> None:
 void test_count_nonempty() {
-    // 15:     print("count normal:", "banana".count("an"))
+    //     print("count normal:", "banana".count("an"))
     std::cout << "count normal:" << " " << tpy::str_count("banana", "an") << "\n";
-    // 16:     print("count miss:", "hello".count("xyz"))
+    //     print("count miss:", "hello".count("xyz"))
     std::cout << "count miss:" << " " << tpy::str_count("hello", "xyz") << "\n";
 }
 
-// 18: def test_replace_nonempty() -> None:
+// def test_replace_nonempty() -> None:
 void test_replace_nonempty() {
-    // 19:     print("replace normal:", "aabaa".replace("a", "x"))
+    //     print("replace normal:", "aabaa".replace("a", "x"))
     std::cout << "replace normal:" << " " << tpy::str_replace("aabaa", "a", "x") << "\n";
-    // 20:     print("replace miss:", "hello".replace("xyz", "!"))
+    //     print("replace miss:", "hello".replace("xyz", "!"))
     std::cout << "replace miss:" << " " << tpy::str_replace("hello", "xyz", "!") << "\n";
 }
 
-// 22: def main() -> None:
+// def main() -> None:
 void main() {
-    // 23:     test_count_empty()
+    //     test_count_empty()
     test_count_empty();
-    // 24:     test_replace_empty()
+    //     test_replace_empty()
     test_replace_empty();
-    // 25:     test_count_nonempty()
+    //     test_count_nonempty()
     test_count_nonempty();
-    // 26:     test_replace_nonempty()
+    //     test_replace_nonempty()
     test_replace_nonempty();
 }
 
@@ -59,7 +59,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 28: main()
+    // main()
     main();
 }
 

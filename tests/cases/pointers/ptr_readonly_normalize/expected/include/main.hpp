@@ -12,12 +12,12 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t read_via_ptr(const Data* p);
 void main();
 
-// 5: class Data:
+// class Data:
 struct Data {
-    // 6:     value: Int32
+    //     value: Int32
     int32_t value;
 
-    // 7:     def __init__(self, v: Int32) -> None:
+    //     def __init__(self, v: Int32) -> None:
     Data() = default;
     explicit Data(int32_t v) : value(v) {}
 };

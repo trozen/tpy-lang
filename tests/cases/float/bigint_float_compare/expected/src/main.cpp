@@ -5,53 +5,53 @@ namespace tpy_user::main {
 
 
 // # Test comparison between int (BigInt) and float variables
-// 2: def test_eq() -> None:
+// def test_eq() -> None:
 void test_eq() {
-    // 3:     a: int = 5
+    //     a: int = 5
     tpy::BigInt a = tpy::BigInt(5);
-    // 4:     b: float = 5.0
+    //     b: float = 5.0
     double b = 5.0;
-    // 5:     print(a == b)
+    //     print(a == b)
     std::cout << tpy::print_bool((static_cast<double>(a) == b)) << "\n";
-    // 6:     print(a != b)
+    //     print(a != b)
     std::cout << tpy::print_bool((static_cast<double>(a) != b)) << "\n";
 }
 
-// 8: def test_ordering() -> None:
+// def test_ordering() -> None:
 void test_ordering() {
-    // 9:     x: int = 3
+    //     x: int = 3
     tpy::BigInt x = tpy::BigInt(3);
-    // 10:     y: float = 3.5
+    //     y: float = 3.5
     double y = 3.5;
-    // 11:     print(x < y)
+    //     print(x < y)
     std::cout << tpy::print_bool((static_cast<double>(x) < y)) << "\n";
-    // 12:     print(x > y)
+    //     print(x > y)
     std::cout << tpy::print_bool((static_cast<double>(x) > y)) << "\n";
-    // 13:     print(x <= y)
+    //     print(x <= y)
     std::cout << tpy::print_bool((static_cast<double>(x) <= y)) << "\n";
-    // 14:     print(x >= y)
+    //     print(x >= y)
     std::cout << tpy::print_bool((static_cast<double>(x) >= y)) << "\n";
 }
 
-// 16: def test_float_gt_int() -> None:
+// def test_float_gt_int() -> None:
 void test_float_gt_int() {
-    // 17:     f: float = 10.0
+    //     f: float = 10.0
     double f = 10.0;
-    // 18:     i: int = 7
+    //     i: int = 7
     tpy::BigInt i = tpy::BigInt(7);
-    // 19:     print(f > i)
+    //     print(f > i)
     std::cout << tpy::print_bool((f > static_cast<double>(i))) << "\n";
-    // 20:     print(f < i)
+    //     print(f < i)
     std::cout << tpy::print_bool((f < static_cast<double>(i))) << "\n";
 }
 
-// 22: def main() -> None:
+// def main() -> None:
 void main() {
-    // 23:     test_eq()
+    //     test_eq()
     test_eq();
-    // 24:     test_ordering()
+    //     test_ordering()
     test_ordering();
-    // 25:     test_float_gt_int()
+    //     test_float_gt_int()
     test_float_gt_int();
 }
 
@@ -60,7 +60,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 27: main()
+    // main()
     main();
 }
 

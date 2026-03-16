@@ -4,40 +4,40 @@
 namespace tpy_user::main {
 
 
-// 4: def classify(n: Int32) -> str:
+// def classify(n: Int32) -> str:
 std::string classify(int32_t n) {
-    // 5:     match n:
+    //     match n:
     auto& __match_subject = n;
     switch (__match_subject) {
-    // 6:         case 0:
+    //         case 0:
     case 0: {
-        // 7:             return "zero"
+        //             return "zero"
         return "zero";
         break;
     }
-    // 8:         case 1:
+    //         case 1:
     case 1: {
-        // 9:             return "one"
+        //             return "one"
         return "one";
         break;
     }
-    // 10:         case x:
+    //         case x:
     default: {
         auto& x = __match_subject;
-        // 11:             return "other"
+        //             return "other"
         return "other";
         break;
     }
     }
 }
 
-// 13: def main() -> None:
+// def main() -> None:
 void main() {
-    // 14:     print(classify(0))
+    //     print(classify(0))
     std::cout << classify(0) << "\n";
-    // 15:     print(classify(1))
+    //     print(classify(1))
     std::cout << classify(1) << "\n";
-    // 16:     print(classify(42))
+    //     print(classify(42))
     std::cout << classify(42) << "\n";
 }
 
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: main()
+    // main()
     main();
 }
 

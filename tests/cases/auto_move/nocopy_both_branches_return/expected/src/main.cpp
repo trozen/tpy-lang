@@ -4,34 +4,34 @@
 namespace tpy_user::main {
 
 
-// 10: def test(cond: bool) -> Own[Handle]:
+// def test(cond: bool) -> Own[Handle]:
 Handle test(bool cond) {
-    // 11:     h = Handle()
+    //     h = Handle()
     Handle h = Handle();
-    // 12:     h.fd = 1
+    //     h.fd = 1
     h.fd = 1;
-    // 13:     if cond:
+    //     if cond:
     if (cond) {
-        // 14:         return h  # tpyc: ok
+        //         return h  # tpyc: ok
         return h;
-    // 15:     else:
+    //     else:
     } else {
-        // 16:         print(h.fd)
+        //         print(h.fd)
         std::cout << h.fd << "\n";
-        // 17:         return h  # tpyc: ok
+        //         return h  # tpyc: ok
         return h;
     }
 }
 
-// 20: def main():
+// def main():
 void main() {
-    // 21:     h1 = test(True)
+    //     h1 = test(True)
     Handle h1 = test(true);
-    // 22:     print(h1.fd)
+    //     print(h1.fd)
     std::cout << h1.fd << "\n";
-    // 23:     h2 = test(False)
+    //     h2 = test(False)
     Handle h2 = test(false);
-    // 24:     print(h2.fd)
+    //     print(h2.fd)
     std::cout << h2.fd << "\n";
 }
 
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 27: main()
+    // main()
     main();
 }
 

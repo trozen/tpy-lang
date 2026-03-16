@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     d = {"a": Int32(1)}
+    //     d = {"a": Int32(1)}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    // 6:     del d["missing"]
+    //     del d["missing"]
     tpy::__delitem__(d, "missing");
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: main()
+    // main()
     main();
 }
 

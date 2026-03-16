@@ -5,41 +5,41 @@ namespace tpy_user::main {
 
 
 // @pure
-// 26: def add_values(a: Int32, b: Int32) -> Int32:
+// def add_values(a: Int32, b: Int32) -> Int32:
 int32_t add_values(int32_t a, int32_t b) {
-    // 27:     return a + b
+    //     return a + b
     return (tpy::add_check<int32_t>(a, b));
 }
 
 // @pure
-// 31: def compute(p: Point) -> Int32:
+// def compute(p: Point) -> Int32:
 int32_t compute(const Point& p) {
-    // 32:     return p.magnitude_sq() + add_values(p.x, p.y)
+    //     return p.magnitude_sq() + add_values(p.x, p.y)
     return (tpy::add_check<int32_t>(p.magnitude_sq(), add_values(p.x, p.y)));
 }
 
-// 35: def use_readonly(p: readonly[Point]) -> None:
+// def use_readonly(p: readonly[Point]) -> None:
 void use_readonly(const Point& p) {
-    // 36:     # Pure methods can be called on readonly receivers
-    // 37:     print(p.magnitude_sq())
+    //     # Pure methods can be called on readonly receivers
+    //     print(p.magnitude_sq())
     std::cout << p.magnitude_sq() << "\n";
-    // 38:     print(p.distance_sq(Point(Int32(0), Int32(0))))
+    //     print(p.distance_sq(Point(Int32(0), Int32(0))))
     std::cout << p.distance_sq(Point(0, 0)) << "\n";
 }
 
-// 41: def main() -> None:
+// def main() -> None:
 void main() {
-    // 42:     p = Point(Int32(3), Int32(4))
+    //     p = Point(Int32(3), Int32(4))
     Point p = Point(3, 4);
-    // 43:     print(p.magnitude_sq())
+    //     print(p.magnitude_sq())
     std::cout << p.magnitude_sq() << "\n";
-    // 44:     print(p.distance_sq(Point(Int32(1), Int32(1))))
+    //     print(p.distance_sq(Point(Int32(1), Int32(1))))
     std::cout << p.distance_sq(Point(1, 1)) << "\n";
-    // 45:     print(add_values(Int32(10), Int32(20)))
+    //     print(add_values(Int32(10), Int32(20)))
     std::cout << add_values(10, 20) << "\n";
-    // 46:     print(compute(p))
+    //     print(compute(p))
     std::cout << compute(p) << "\n";
-    // 47:     use_readonly(p)
+    //     use_readonly(p)
     use_readonly(p);
 }
 
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 50: main()
+    // main()
     main();
 }
 

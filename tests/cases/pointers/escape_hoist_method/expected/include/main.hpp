@@ -11,14 +11,14 @@ struct Finder;
 extern Finder* f;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 3: class Point:
+// class Point:
 struct Point {
-    // 4:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 5:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 6:     def __init__(self, x: Int32, y: Int32):
+    //     def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -32,29 +32,29 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 10: class Finder:
+// class Finder:
 struct Finder {
-    // 11:     result: Point
+    //     result: Point
     Point result;
 
-    // 12:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Finder() : result(Point(0, 0)) {}
 
-    // 15:     def find_last(self, n: Int32) -> None:
+    //     def find_last(self, n: Int32) -> None:
     void find_last(int32_t n) {
       std::optional<Point> __slot_2;
-        // 16:         saved: Point = Point(0, 0)
+        //         saved: Point = Point(0, 0)
         Point __slot_1 = Point(0, 0);
         Point* saved = &__slot_1;
-        // 17:         for i in range(n):
+        //         for i in range(n):
         int32_t __stop_0 = n;
         for (int32_t i = 0; i < __stop_0; ++i) {
-            // 18:             p: Point = Point(i, i * 2)
+            //             p: Point = Point(i, i * 2)
             Point* p = &*(__slot_2 = Point(i, (tpy::mul_check<int32_t>(i, 2))));
-            // 19:             saved = p  # tpyc: warning(/hoisted to function scope/)
+            //             saved = p  # tpyc: warning(/hoisted to function scope/)
             saved = p;
         }
-        // 20:         self.result = saved  # tpyc: warning(/copies Point into field/)
+        //         self.result = saved  # tpyc: warning(/copies Point into field/)
         this->result = (*saved);
     }
 };

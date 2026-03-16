@@ -28,21 +28,21 @@ void test_sequential_loops_same_var();
 void test_bigint_const_ref();
 void test_bigint_mutated();
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 6:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 7:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
     //     @readonly
-    // 12:     def value(self) -> Int32:
+    //     def value(self) -> Int32:
     int32_t value() const {
-        // 13:         return self.x + self.y
+        //         return self.x + self.y
         return (tpy::add_check<int32_t>(this->x, this->y));
     }
 };
@@ -56,12 +56,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 15: class Container:
+// class Container:
 struct Container {
-    // 16:     items: list[Int32]
+    //     items: list[Int32]
     std::vector<int32_t> items;
 
-    // 17:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Container() : items({1, 2}) {}
 };
 

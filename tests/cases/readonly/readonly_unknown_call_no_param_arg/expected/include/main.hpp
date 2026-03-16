@@ -12,12 +12,12 @@ inline constexpr std::string_view __name__ = "__main__";
 void mutate(Box& b);
 int32_t ok(const Box& b);
 
-// 6: class Box:
+// class Box:
 struct Box {
-    // 7:     value: Int32
+    //     value: Int32
     int32_t value;
 
-    // 9:     def __init__(self, v: Int32):
+    //     def __init__(self, v: Int32):
     Box() = default;
     explicit Box(int32_t v) : value(v) {}
 };

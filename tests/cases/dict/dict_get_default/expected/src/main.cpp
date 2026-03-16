@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     d: dict[str, Int32] = {"a": 1, "b": 2}
+    //     d: dict[str, Int32] = {"a": 1, "b": 2}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    // 6:     print(d.get("a", 99))     # 1
+    //     print(d.get("a", 99))     # 1
     std::cout << tpy::dict_get_default(d, "a", 99) << "\n";
-    // 7:     print(d.get("z", 99))     # 99
+    //     print(d.get("z", 99))     # 99
     std::cout << tpy::dict_get_default(d, "z", 99) << "\n";
-    // 8:     print(d.get("b", 0))      # 2
+    //     print(d.get("b", 0))      # 2
     std::cout << tpy::dict_get_default(d, "b", 0) << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 10: main()
+    // main()
     main();
 }
 

@@ -4,85 +4,85 @@
 namespace tpy_user::main {
 
 
-// 3: def test_break():
+// def test_break():
 void test_break() {
-    // 4:     # Break in while loop
-    // 5:     i: Int32 = 0
+    //     # Break in while loop
+    //     i: Int32 = 0
     int32_t i = 0;
-    // 6:     while i < 10:
+    //     while i < 10:
     while ((i < 10)) {
-        // 7:         if i == 5:
+        //         if i == 5:
         if ((i == 5)) {
-            // 8:             break
+            //             break
             break;
         }
-        // 9:         i += 1
+        //         i += 1
         i = tpy::add_check<int32_t>(i, 1);
     }
-    // 10:     print(i)  # 5
+    //     print(i)  # 5
     std::cout << i << "\n";
 }
 
-// 12: def test_continue():
+// def test_continue():
 void test_continue() {
-    // 13:     # Continue in for loop - skip even numbers
-    // 14:     total: Int32 = 0
+    //     # Continue in for loop - skip even numbers
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 15:     for i in range(10):
+    //     for i in range(10):
     for (int32_t i = 0; i < 10; ++i) {
-        // 16:         if i % 2 == 0:
+        //         if i % 2 == 0:
         if (((tpy::mod_floor<int32_t>(i, 2)) == 0)) {
-            // 17:             continue
+            //             continue
             continue;
         }
-        // 18:         total += i
+        //         total += i
         total = tpy::add_check<int32_t>(total, i);
     }
-    // 19:     print(total)  # 1 + 3 + 5 + 7 + 9 = 25
+    //     print(total)  # 1 + 3 + 5 + 7 + 9 = 25
     std::cout << total << "\n";
 }
 
-// 21: def test_nested_break():
+// def test_nested_break():
 void test_nested_break() {
-    // 22:     # Break only exits innermost loop
-    // 23:     count: Int32 = 0
+    //     # Break only exits innermost loop
+    //     count: Int32 = 0
     int32_t count = 0;
-    // 24:     for i in range(3):
+    //     for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // 25:         for j in range(5):
+        //         for j in range(5):
         for (int32_t j = 0; j < 5; ++j) {
-            // 26:             if j == 2:
+            //             if j == 2:
             if ((j == 2)) {
-                // 27:                 break
+                //                 break
                 break;
             }
-            // 28:             count += 1
+            //             count += 1
             count = tpy::add_check<int32_t>(count, 1);
         }
     }
-    // 29:     print(count)  # 2 * 3 = 6 (j goes 0, 1 then breaks, 3 times)
+    //     print(count)  # 2 * 3 = 6 (j goes 0, 1 then breaks, 3 times)
     std::cout << count << "\n";
 }
 
-// 31: def test_nested_continue():
+// def test_nested_continue():
 void test_nested_continue() {
-    // 32:     # Continue only affects innermost loop
-    // 33:     count: Int32 = 0
+    //     # Continue only affects innermost loop
+    //     count: Int32 = 0
     int32_t count = 0;
-    // 34:     for i in range(3):
+    //     for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // 35:         for j in range(4):
+        //         for j in range(4):
         for (int32_t j = 0; j < 4; ++j) {
-            // 36:             if j == 1:
+            //             if j == 1:
             if ((j == 1)) {
-                // 37:                 continue
+                //                 continue
                 continue;
             }
-            // 38:             count += 1
+            //             count += 1
             count = tpy::add_check<int32_t>(count, 1);
         }
     }
-    // 39:     print(count)  # 3 * 3 = 9 (j skips 1, so 0, 2, 3 for each i)
+    //     print(count)  # 3 * 3 = 9 (j skips 1, so 0, 2, 3 for each i)
     std::cout << count << "\n";
 }
 
@@ -91,13 +91,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 41: test_break()
+    // test_break()
     test_break();
-    // 42: test_continue()
+    // test_continue()
     test_continue();
-    // 43: test_nested_break()
+    // test_nested_break()
     test_nested_break();
-    // 44: test_nested_continue()
+    // test_nested_continue()
     test_nested_continue();
 }
 

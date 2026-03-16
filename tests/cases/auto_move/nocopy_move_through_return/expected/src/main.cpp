@@ -4,21 +4,21 @@
 namespace tpy_user::main {
 
 
-// 13: def transfer() -> Own[Handle]:
+// def transfer() -> Own[Handle]:
 Handle transfer() {
-    // 14:     h = Handle(10)
+    //     h = Handle(10)
     Handle h = Handle(10);
-    // 15:     alias = h
+    //     alias = h
     Handle alias = std::move(h);
-    // 16:     return alias
+    //     return alias
     return alias;
 }
 
-// 19: def main():
+// def main():
 void main() {
-    // 20:     r = transfer()
+    //     r = transfer()
     Handle r = transfer();
-    // 21:     print(r.fd)
+    //     print(r.fd)
     std::cout << r.fd << "\n";
 }
 
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 24: main()
+    // main()
     main();
 }
 

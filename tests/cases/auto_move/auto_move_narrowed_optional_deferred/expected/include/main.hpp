@@ -13,9 +13,9 @@ int32_t consume(Handle&& h);
 int32_t test();
 void main();
 
-// 5: class Handle:
+// class Handle:
 struct Handle {
-    // 6:     value: Int32
+    //     value: Int32
     int32_t value;
 
 };

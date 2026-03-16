@@ -4,20 +4,20 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     items: list[tuple[Int32, str]] = [(1, "one"), (2, "two")]
+    //     items: list[tuple[Int32, str]] = [(1, "one"), (2, "two")]
     std::vector<std::tuple<int32_t, std::string>> items = {std::tuple<int32_t, std::string>{1, "one"}, std::tuple<int32_t, std::string>{2, "two"}};
-    // 6:     for _, name in items:
+    //     for _, name in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::tuple<int32_t, std::string> __for_tup_0 = *__beg_0;
-        // 6:     for _, name in items:
+        //     for _, name in items:
         const auto& __tup_1 = __for_tup_0;
         std::string_view name = std::get<1>(__tup_1);
-        // 7:         print(name)
+        //         print(name)
         std::cout << name << "\n";
     }
 }
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 9: main()
+    // main()
     main();
 }
 

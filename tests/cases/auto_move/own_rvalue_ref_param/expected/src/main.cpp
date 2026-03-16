@@ -4,52 +4,52 @@
 namespace tpy_user::main {
 
 
-// 18: def consume(b: Own[Box]) -> Int32:
+// def consume(b: Own[Box]) -> Int32:
 int32_t consume(Box&& b) {
-    // 19:     return b.value
+    //     return b.value
     return b.value;
 }
 
-// 21: def use_int(x: Own[Int32]) -> Int32:
+// def use_int(x: Own[Int32]) -> Int32:
 int32_t use_int(int32_t x) {
-    // 22:     return x
+    //     return x
     return x;
 }
 
-// 24: def main() -> None:
+// def main() -> None:
 void main() {
-    // 25:     # Last use of b -- auto-moved into consume (Box&& param, std::move at call site)
-    // 26:     b = Box(42)
+    //     # Last use of b -- auto-moved into consume (Box&& param, std::move at call site)
+    //     b = Box(42)
     Box b = Box(42);
-    // 27:     print(consume(b))
+    //     print(consume(b))
     std::cout << consume(std::move(b)) << "\n";
-    // 29:     # Non-last use -- copy-temp inserted (sema warns about the copy)
-    // 30:     b2 = Box(99)
+    //     # Non-last use -- copy-temp inserted (sema warns about the copy)
+    //     b2 = Box(99)
     Box b2 = Box(99);
-    // 31:     print(consume(copy(b2)))
+    //     print(consume(copy(b2)))
     std::cout << consume(Box(b2)) << "\n";
-    // 32:     print(b2.value)
+    //     print(b2.value)
     std::cout << b2.value << "\n";
-    // 34:     # Value type Own[Int32] -- passed by value (no T&&), std::move is harmless
-    // 35:     n: Int32 = 7
+    //     # Value type Own[Int32] -- passed by value (no T&&), std::move is harmless
+    //     n: Int32 = 7
     int32_t n = 7;
-    // 36:     print(use_int(n))
+    //     print(use_int(n))
     auto __tmp_1 = n;
     std::cout << use_int(std::move(__tmp_1)) << "\n";
-    // 38:     # Generic Own[T] -- uses std::type_identity_t<T>&& in C++
-    // 39:     c: Container[Box] = Container()
+    //     # Generic Own[T] -- uses std::type_identity_t<T>&& in C++
+    //     c: Container[Box] = Container()
     Container<Box> c = Container<Box>();
-    // 40:     b3 = Box(10)
+    //     b3 = Box(10)
     Box b3 = Box(10);
-    // 41:     b4 = Box(20)
+    //     b4 = Box(20)
     Box b4 = Box(20);
-    // 42:     c.push(b3)
+    //     c.push(b3)
     c.push(std::move(b3));
-    // 43:     c.push(b4)
+    //     c.push(b4)
     c.push(std::move(b4));
-    // 44:     print(c.items[0].value)
+    //     print(c.items[0].value)
     std::cout << tpy::__getitem__(c.items, 0).value << "\n";
-    // 45:     print(c.items[1].value)
+    //     print(c.items[1].value)
     std::cout << tpy::__getitem__(c.items, 1).value << "\n";
 }
 
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 47: main()
+    // main()
     main();
 }
 

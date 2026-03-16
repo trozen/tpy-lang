@@ -4,43 +4,43 @@
 namespace tpy_user::main {
 
 
-// 9: def test_literal_infer_strview() -> None:
+// def test_literal_infer_strview() -> None:
 void test_literal_infer_strview() {
-    // 10:     x = identity("hello")  # tpyc: type(/StrView|PendingStr/)
+    //     x = identity("hello")  # tpyc: type(/StrView|PendingStr/)
     std::string_view __tmp_1 = "hello";
     std::string_view x = identity<std::string_view>(__tmp_1);
-    // 11:     print(x)
+    //     print(x)
     std::cout << x << "\n";
-    // 12:     y = first("hello", "world")  # tpyc: type(/StrView|PendingStr/)
+    //     y = first("hello", "world")  # tpyc: type(/StrView|PendingStr/)
     std::string_view __tmp_2 = "hello";
     std::string_view __tmp_3 = "world";
     std::string_view y = first<std::string_view>(__tmp_2, __tmp_3);
-    // 13:     print(y)
+    //     print(y)
     std::cout << y << "\n";
 }
 
-// 15: def test_explicit_no_downgrade() -> None:
+// def test_explicit_no_downgrade() -> None:
 void test_explicit_no_downgrade() {
-    // 16:     x = identity[str]("hello")
+    //     x = identity[str]("hello")
     std::string __tmp_4 = "hello";
     std::string x = identity<std::string>(__tmp_4);
-    // 17:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 19: def make_str() -> str:
+// def make_str() -> str:
 std::string make_str() {
-    // 20:     return "hi"
+    //     return "hi"
     return "hi";
 }
 
-// 22: def test_non_literal_no_downgrade() -> None:
+// def test_non_literal_no_downgrade() -> None:
 void test_non_literal_no_downgrade() {
-    // 23:     x = first(make_str(), make_str())  # tpyc: type(str)
+    //     x = first(make_str(), make_str())  # tpyc: type(str)
     std::string __tmp_5 = make_str();
     std::string __tmp_6 = make_str();
     std::string x = first<std::string>(__tmp_5, __tmp_6);
-    // 24:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
@@ -49,11 +49,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 26: test_literal_infer_strview()
+    // test_literal_infer_strview()
     test_literal_infer_strview();
-    // 27: test_explicit_no_downgrade()
+    // test_explicit_no_downgrade()
     test_explicit_no_downgrade();
-    // 28: test_non_literal_no_downgrade()
+    // test_non_literal_no_downgrade()
     test_non_literal_no_downgrade();
 }
 

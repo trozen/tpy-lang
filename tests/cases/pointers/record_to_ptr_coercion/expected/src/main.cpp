@@ -4,38 +4,38 @@
 namespace tpy_user::main {
 
 
-// 11: def modify_point(p: Ptr[Point]) -> None:
+// def modify_point(p: Ptr[Point]) -> None:
 void modify_point(Point* p) {
-    // 12:     p.x = 999
+    //     p.x = 999
     tpy::deref_check(p).x = 999;
 }
 
-// 14: def read_point(p: Ptr[readonly[Point]]) -> Int32:
+// def read_point(p: Ptr[readonly[Point]]) -> Int32:
 int32_t read_point(const Point* p) {
-    // 15:     return p.x
+    //     return p.x
     return tpy::deref_check(p).x;
 }
 
-// 17: def test_coercion() -> None:
+// def test_coercion() -> None:
 void test_coercion() {
-    // 18:     pt: Point = Point(10, 20)
+    //     pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    // 20:     # Record -> Ptr coercion in function call
-    // 21:     modify_point(pt)
+    //     # Record -> Ptr coercion in function call
+    //     modify_point(pt)
     modify_point(&pt);
-    // 22:     print(pt.x)  # Should print 999
+    //     print(pt.x)  # Should print 999
     std::cout << pt.x << "\n";
-    // 24:     # Record -> Ptr[readonly[...]] coercion in function call
-    // 25:     result: Int32 = read_point(pt)
+    //     # Record -> Ptr[readonly[...]] coercion in function call
+    //     result: Int32 = read_point(pt)
     int32_t result = read_point(&pt);
-    // 26:     print(result)  # Should print 999
+    //     print(result)  # Should print 999
     std::cout << result << "\n";
-    // 28:     # Explicit Ptr -> Ptr[readonly[...]] also works
-    // 29:     ptr: Ptr[Point] = pt
+    //     # Explicit Ptr -> Ptr[readonly[...]] also works
+    //     ptr: Ptr[Point] = pt
     Point* ptr = &pt;
-    // 30:     result2: Int32 = read_point(ptr)
+    //     result2: Int32 = read_point(ptr)
     int32_t result2 = read_point(ptr);
-    // 31:     print(result2)  # Should print 999
+    //     print(result2)  # Should print 999
     std::cout << result2 << "\n";
 }
 
@@ -44,8 +44,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 33: # Run test
-    // 34: test_coercion()
+    // # Run test
+    // test_coercion()
     test_coercion();
 }
 

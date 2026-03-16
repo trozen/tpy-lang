@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 
-// 20: def main():
+// def main():
 void main() {
-    // 21:     # Annotated var_decl: T inferred from annotation
-    // 22:     s: UninitHeapStorage[Int32] = UninitHeapStorage(1)  # tpyc: ok
+    //     # Annotated var_decl: T inferred from annotation
+    //     s: UninitHeapStorage[Int32] = UninitHeapStorage(1)  # tpyc: ok
     UninitHeapStorage<int32_t> s = 1;
-    // 23:     s.init0(Int32(42))
+    //     s.init0(Int32(42))
     s.init0(42);
-    // 24:     print("var_decl:", s.load0())
+    //     print("var_decl:", s.load0())
     std::cout << "var_decl:" << " " << s.load0() << "\n";
-    // 25:     s.drop0()
+    //     s.drop0()
     s.drop0();
-    // 27:     # Field assignment via generic class
-    // 28:     w = Wrapper[Int32](Int32(99))
+    //     # Field assignment via generic class
+    //     w = Wrapper[Int32](Int32(99))
     Wrapper<int32_t> w = Wrapper<int32_t>(99);
-    // 29:     print("field:", w.get())
+    //     print("field:", w.get())
     std::cout << "field:" << " " << w.get() << "\n";
-    // 31:     print("done")
+    //     print("done")
     std::cout << "done" << "\n";
 }
 
@@ -29,8 +29,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: from tpy.mem import UninitHeapStorage
-    // 33: main()
+    // from tpy.mem import UninitHeapStorage
+    // main()
     main();
 }
 

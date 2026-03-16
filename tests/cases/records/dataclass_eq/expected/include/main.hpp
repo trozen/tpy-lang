@@ -14,9 +14,9 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // @dataclass
-// 7: class Id:
+// class Id:
 struct Id {
-    // 8:     value: Int32
+    //     value: Int32
     int32_t value;
 
     Id() = default;
@@ -45,11 +45,11 @@ inline std::ostream& operator<<(std::ostream& os, const Id& obj) {
 }
 
 // @dataclass
-// 11: class Point:
+// class Point:
 struct Point {
-    // 12:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 13:     y: Int32
+    //     y: Int32
     int32_t y;
 
     Point() = default;
@@ -80,13 +80,13 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 // @dataclass
-// 16: class Config:
+// class Config:
 struct Config {
-    // 17:     name: str
+    //     name: str
     std::string name;
-    // 18:     value: Int32
+    //     value: Int32
     int32_t value;
-    // 19:     label: Optional[str] = None
+    //     label: Optional[str] = None
     std::optional<std::string> label = std::nullopt;
 
     Config() = default;

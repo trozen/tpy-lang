@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 // # Inference from list[int]
-// 14: nums = [10, 20, 30]
+// nums = [10, 20, 30]
 std::vector<int32_t>* nums{};
 // # Inference from list[str]
-// 19: words = ["hello", "world"]
+// words = ["hello", "world"]
 std::vector<std::string>* words{};
 // # Inference from list[Int32]
-// 24: vals: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+// vals: list[Int32] = [Int32(1), Int32(2), Int32(3)]
 std::vector<int32_t>* vals{};
 
 void __tpy_init() {
@@ -18,29 +18,29 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 13: # Inference from list[int]
-    // 14: nums = [10, 20, 30]
+    // # Inference from list[int]
+    // nums = [10, 20, 30]
     static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
     nums = &__global_slot_1;
-    // 15: print(first(nums))
+    // print(first(nums))
     std::cout << first<int32_t>((*nums)) << "\n";
-    // 16: print(last(nums))
+    // print(last(nums))
     std::cout << last<int32_t>((*nums)) << "\n";
-    // 18: # Inference from list[str]
-    // 19: words = ["hello", "world"]
+    // # Inference from list[str]
+    // words = ["hello", "world"]
     static std::vector<std::string> __global_slot_2 = {"hello", "world"};
     words = &__global_slot_2;
-    // 20: print(first(words))
+    // print(first(words))
     std::cout << first<std::string>((*words)) << "\n";
-    // 21: print(last(words))
+    // print(last(words))
     std::cout << last<std::string>((*words)) << "\n";
-    // 23: # Inference from list[Int32]
-    // 24: vals: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    // # Inference from list[Int32]
+    // vals: list[Int32] = [Int32(1), Int32(2), Int32(3)]
     static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
     vals = &__global_slot_3;
-    // 25: print(first(vals))
+    // print(first(vals))
     std::cout << first<int32_t>((*vals)) << "\n";
-    // 26: print(last(vals))
+    // print(last(vals))
     std::cout << last<int32_t>((*vals)) << "\n";
 }
 

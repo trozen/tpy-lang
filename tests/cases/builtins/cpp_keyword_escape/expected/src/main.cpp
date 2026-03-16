@@ -4,65 +4,65 @@
 namespace tpy_user::main {
 
 
-// 6: def get_or_default(x: Int32, default: Int32) -> Int32:
+// def get_or_default(x: Int32, default: Int32) -> Int32:
 int32_t get_or_default(int32_t x, int32_t default_) {
-    // 7:     if x > 0:
+    //     if x > 0:
     if ((x > 0)) {
-        // 8:         return x
+        //         return x
         return x;
     }
-    // 9:     return default
+    //     return default
     return default_;
 }
 
-// 11: def test_local_keywords() -> None:
+// def test_local_keywords() -> None:
 void test_local_keywords() {
-    // 12:     delete: Int32 = 10
+    //     delete: Int32 = 10
     int32_t delete_ = 10;
-    // 13:     new: Int32 = 20
+    //     new: Int32 = 20
     int32_t new_ = 20;
-    // 14:     result: Int32 = delete + new
+    //     result: Int32 = delete + new
     int32_t result = (tpy::add_check<int32_t>(delete_, new_));
-    // 15:     print(result)
+    //     print(result)
     std::cout << result << "\n";
 }
 
-// 17: def test_for_loop_keyword() -> None:
+// def test_for_loop_keyword() -> None:
 void test_for_loop_keyword() {
-    // 18:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 19:     items: list[Int32] = [1, 2, 3]
+    //     items: list[Int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
-    // 20:     for operator in items:
+    //     for operator in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t operator_ = *__beg_0;
-        // 21:         total = total + operator
+        //         total = total + operator
         total = (tpy::add_check<int32_t>(total, operator_));
     }
-    // 22:     print(total)
+    //     print(total)
     std::cout << total << "\n";
 }
 
-// 24: def delete(x: Int32) -> Int32:
+// def delete(x: Int32) -> Int32:
 int32_t delete_(int32_t x) {
-    // 25:     return x * 2
+    //     return x * 2
     return (tpy::mul_check<int32_t>(x, 2));
 }
 
-// 27: def main() -> None:
+// def main() -> None:
 void main() {
-    // 28:     print(get_or_default(5, 42))
+    //     print(get_or_default(5, 42))
     std::cout << get_or_default(5, 42) << "\n";
-    // 29:     print(get_or_default(-1, 42))
+    //     print(get_or_default(-1, 42))
     std::cout << get_or_default(-1, 42) << "\n";
-    // 30:     test_local_keywords()
+    //     test_local_keywords()
     test_local_keywords();
-    // 31:     test_for_loop_keyword()
+    //     test_for_loop_keyword()
     test_for_loop_keyword();
-    // 32:     print(delete(7))
+    //     print(delete(7))
     std::cout << delete_(7) << "\n";
 }
 
@@ -71,7 +71,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 34: main()
+    // main()
     main();
 }
 

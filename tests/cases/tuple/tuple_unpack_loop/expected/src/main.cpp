@@ -4,39 +4,39 @@
 namespace tpy_user::main {
 
 
-// 4: def make_pair(i: Int32) -> tuple[Int32, str]:
+// def make_pair(i: Int32) -> tuple[Int32, str]:
 std::tuple<int32_t, std::string> make_pair(int32_t i) {
-    // 5:     if i == 0:
+    //     if i == 0:
     if ((i == 0)) {
-        // 6:         return (Int32(10), "ten")
+        //         return (Int32(10), "ten")
         return std::tuple<int32_t, std::string>{10, "ten"};
-    // 7:     elif i == 1:
+    //     elif i == 1:
     } else if ((i == 1)) {
-        // 8:         return (Int32(20), "twenty")
+        //         return (Int32(20), "twenty")
         return std::tuple<int32_t, std::string>{20, "twenty"};
-    // 9:     else:
+    //     else:
     } else {
-        // 10:         return (Int32(30), "thirty")
+        //         return (Int32(30), "thirty")
         return std::tuple<int32_t, std::string>{30, "thirty"};
     }
 }
 
-// 12: def main() -> None:
+// def main() -> None:
 void main() {
-    // 13:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 14:     for i in range(3):
+    //     for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // 15:         n, s = make_pair(Int32(i))
+        //         n, s = make_pair(Int32(i))
         auto __tup_1 = make_pair(i);
         int32_t n = std::get<0>(__tup_1);
         std::string_view s = std::get<1>(__tup_1);
-        // 16:         print(s)
+        //         print(s)
         std::cout << s << "\n";
-        // 17:         total = total + n
+        //         total = total + n
         total = (tpy::add_check<int32_t>(total, n));
     }
-    // 18:     print(total)
+    //     print(total)
     std::cout << total << "\n";
 }
 
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 20: main()
+    // main()
     main();
 }
 

@@ -18,12 +18,12 @@ void test_list_ctor_rvalue_no_warn();
 template<typename T>
 void test_list_ctor_generic_warns(const std::vector<T>& b);
 
-// 4: class Node:
+// class Node:
 struct Node {
-    // 5:     val: Int32
+    //     val: Int32
     int32_t val;
 
-    // 6:     def __init__(self, val: Int32) -> None:
+    //     def __init__(self, val: Int32) -> None:
     Node() = default;
     explicit Node(int32_t val) : val(val) {}
 };
@@ -35,12 +35,12 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     return os;
 }
 
-// 42: def test_list_ctor_generic_warns[T](b: list[T]) -> None:
+// def test_list_ctor_generic_warns[T](b: list[T]) -> None:
 template<typename T>
 void test_list_ctor_generic_warns(const std::vector<T>& b) {
-    // 44:     a = list(b)  # tpyc: warning(/may copy T elements/)
+    //     a = list(b)  # tpyc: warning(/may copy T elements/)
     std::vector<T> a = tpy::from_range<std::vector<T>>(b);
-    // 45:     print(len(b))
+    //     print(len(b))
     std::cout << tpy::__len__(b) << "\n";
 }
 

@@ -4,46 +4,46 @@
 namespace tpy_user::main {
 
 
-// 4: def classify(x: Int32) -> str:
+// def classify(x: Int32) -> str:
 std::string classify(int32_t x) {
-    // 5:     match x:
+    //     match x:
     auto& __match_subject = x;
     switch (__match_subject) {
-    // 6:         case 1 if False:
+    //         case 1 if False:
     case 1: {
         if (false) {
-            // 7:             return "never"
+            //             return "never"
             return "never";
         } else {
-            // 9:             return "one (fallthrough)"
+            //             return "one (fallthrough)"
             return "one (fallthrough)";
         }
         break;
     }
-    // 10:         case 2:
+    //         case 2:
     case 2: {
-        // 11:             return "two"
+        //             return "two"
         return "two";
         break;
     }
-    // 12:         case _:
+    //         case _:
     default: {
-        // 13:             return "other"
+        //             return "other"
         return "other";
         break;
     }
     }
-    // 14:     return ""
+    //     return ""
     return "";
 }
 
-// 16: def main() -> None:
+// def main() -> None:
 void main() {
-    // 17:     print(classify(Int32(1)))
+    //     print(classify(Int32(1)))
     std::cout << classify(1) << "\n";
-    // 18:     print(classify(Int32(2)))
+    //     print(classify(Int32(2)))
     std::cout << classify(2) << "\n";
-    // 19:     print(classify(Int32(3)))
+    //     print(classify(Int32(3)))
     std::cout << classify(3) << "\n";
 }
 
@@ -52,7 +52,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 21: main()
+    // main()
     main();
 }
 

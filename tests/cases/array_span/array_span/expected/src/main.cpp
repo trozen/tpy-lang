@@ -4,29 +4,29 @@
 namespace tpy_user::main {
 
 // # Test 2: Array literal assigned to variable with explicit type, then passed
-// 15: nums: Array[Int32, 3] = [10, 20, 30]
+// nums: Array[Int32, 3] = [10, 20, 30]
 std::array<int32_t, 3>* nums{};
 // # Test 3: Array with explicit type annotation
-// 19: arr: Array[Int32, 3] = [100, 200, 300]
+// arr: Array[Int32, 3] = [100, 200, 300]
 std::array<int32_t, 3>* arr{};
 // # Test 4: list -> Span conversion
-// 23: items: list[Int32] = [1000, 2000, 3000, 4000]
+// items: list[Int32] = [1000, 2000, 3000, 4000]
 std::vector<int32_t>* items{};
 
-// 3: def sum_span(values: Span[Int32]) -> Int32:
+// def sum_span(values: Span[Int32]) -> Int32:
 int32_t sum_span(std::span<int32_t> values) {
-    // 4:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 5:     i: Int32 = 0
+    //     i: Int32 = 0
     int32_t i = 0;
-    // 6:     while i < len(values):
+    //     while i < len(values):
     while ((i < tpy::__len__(values))) {
-        // 7:         total += values[i]
+        //         total += values[i]
         total = tpy::add_check<int32_t>(total, values[i]);
-        // 8:         i += 1
+        //         i += 1
         i = tpy::add_check<int32_t>(i, 1);
     }
-    // 9:     return total
+    //     return total
     return total;
 }
 
@@ -35,26 +35,26 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 11: # Test 1: Array literal passed directly to Span parameter
-    // 12: print(sum_span([1, 2, 3, 4, 5]))
+    // # Test 1: Array literal passed directly to Span parameter
+    // print(sum_span([1, 2, 3, 4, 5]))
     std::cout << sum_span(tpy::as_mut_span(std::array<int32_t, 5>{1, 2, 3, 4, 5})) << "\n";
-    // 14: # Test 2: Array literal assigned to variable with explicit type, then passed
-    // 15: nums: Array[Int32, 3] = [10, 20, 30]
+    // # Test 2: Array literal assigned to variable with explicit type, then passed
+    // nums: Array[Int32, 3] = [10, 20, 30]
     static std::array<int32_t, 3> __global_slot_1 = {10, 20, 30};
     nums = &__global_slot_1;
-    // 16: print(sum_span(nums))
+    // print(sum_span(nums))
     std::cout << sum_span(tpy::as_mut_span((*nums))) << "\n";
-    // 18: # Test 3: Array with explicit type annotation
-    // 19: arr: Array[Int32, 3] = [100, 200, 300]
+    // # Test 3: Array with explicit type annotation
+    // arr: Array[Int32, 3] = [100, 200, 300]
     static std::array<int32_t, 3> __global_slot_2 = {100, 200, 300};
     arr = &__global_slot_2;
-    // 20: print(sum_span(arr))
+    // print(sum_span(arr))
     std::cout << sum_span(tpy::as_mut_span((*arr))) << "\n";
-    // 22: # Test 4: list -> Span conversion
-    // 23: items: list[Int32] = [1000, 2000, 3000, 4000]
+    // # Test 4: list -> Span conversion
+    // items: list[Int32] = [1000, 2000, 3000, 4000]
     static std::vector<int32_t> __global_slot_3 = {1000, 2000, 3000, 4000};
     items = &__global_slot_3;
-    // 24: print(sum_span(items))
+    // print(sum_span(items))
     std::cout << sum_span(tpy::as_mut_span((*items))) << "\n";
 }
 

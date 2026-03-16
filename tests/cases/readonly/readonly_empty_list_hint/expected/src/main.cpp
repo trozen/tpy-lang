@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 4: def f(l: readonly[list[Int32]]) -> None:
+// def f(l: readonly[list[Int32]]) -> None:
 void f(const std::vector<int32_t>& l) {
-    // 5:     print(len(l))
+    //     print(len(l))
     std::cout << tpy::__len__(l) << "\n";
 }
 
-// 7: def main() -> None:
+// def main() -> None:
 void main() {
-    // 8:     f(list())
+    //     f(list())
     f(std::vector<int32_t>());
-    // 9:     f([])
+    //     f([])
     f(std::vector<int32_t>{});
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 11: main()
+    // main()
     main();
 }
 

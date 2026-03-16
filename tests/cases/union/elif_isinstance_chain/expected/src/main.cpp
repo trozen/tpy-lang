@@ -4,43 +4,43 @@
 namespace tpy_user::main {
 
 
-// 17: def describe(a: Dog | Cat | Bird) -> str:
+// def describe(a: Dog | Cat | Bird) -> str:
 std::string describe(const std::variant<Bird, Cat, Dog>& a) {
-    // 18:     if isinstance(a, Dog):
+    //     if isinstance(a, Dog):
     if (std::holds_alternative<Dog>(a)) {
         auto& __a = std::get<Dog>(a);
-        // 19:         return "dog: " + a.name
+        //         return "dog: " + a.name
         return (tpy::str_concat("dog: ", __a.name));
-    // 20:     elif isinstance(a, Cat):
+    //     elif isinstance(a, Cat):
     } else if (std::holds_alternative<Cat>(a)) {
         auto& __a = std::get<Cat>(a);
-        // 21:         return "cat: " + a.name
+        //         return "cat: " + a.name
         return (tpy::str_concat("cat: ", __a.name));
     } else {
-        // 22:     elif isinstance(a, Bird):
+        //     elif isinstance(a, Bird):
         if (std::holds_alternative<Bird>(a)) {
             auto& __a = std::get<Bird>(a);
-            // 23:         return "bird: " + a.name
+            //         return "bird: " + a.name
             return (tpy::str_concat("bird: ", __a.name));
         }
     }
-    // 24:     return "unknown"
+    //     return "unknown"
     return "unknown";
 }
 
-// 26: def main() -> None:
+// def main() -> None:
 void main() {
-    // 27:     d: Dog | Cat | Bird = Dog("Rex")
+    //     d: Dog | Cat | Bird = Dog("Rex")
     std::variant<Bird, Cat, Dog> d = Dog("Rex");
-    // 28:     c: Dog | Cat | Bird = Cat("Whiskers")
+    //     c: Dog | Cat | Bird = Cat("Whiskers")
     std::variant<Bird, Cat, Dog> c = Cat("Whiskers");
-    // 29:     b: Dog | Cat | Bird = Bird("Tweety")
+    //     b: Dog | Cat | Bird = Bird("Tweety")
     std::variant<Bird, Cat, Dog> b = Bird("Tweety");
-    // 30:     print(describe(d))
+    //     print(describe(d))
     std::cout << describe(d) << "\n";
-    // 31:     print(describe(c))
+    //     print(describe(c))
     std::cout << describe(c) << "\n";
-    // 32:     print(describe(b))
+    //     print(describe(b))
     std::cout << describe(b) << "\n";
 }
 
@@ -49,7 +49,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 34: main()
+    // main()
     main();
 }
 

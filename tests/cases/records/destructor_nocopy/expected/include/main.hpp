@@ -13,13 +13,13 @@ void consume(Handle&& h);
 void main();
 
 // @nocopy
-// 6: class Handle:
+// class Handle:
 struct Handle {
-    // 7:     id: Int32
+    //     id: Int32
     int32_t id;
     bool __tpy_owned_ = true;
 
-    // 8:     def __init__(self, id: Int32):
+    //     def __init__(self, id: Int32):
     Handle() = default;
     explicit Handle(int32_t id) : id(id) {}
     // non-copyable (@nocopy)
@@ -35,11 +35,11 @@ struct Handle {
         }
         return *this;
     }
-    // 10:     def __del__(self):
+    //     def __del__(self):
 
     ~Handle() {
         if (!__tpy_owned_) return;
-        // 11:         print("close", self.id)
+        //         print("close", self.id)
         std::cout << "close" << " " << this->id << "\n";
     }
 };

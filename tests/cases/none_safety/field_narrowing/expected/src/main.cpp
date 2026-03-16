@@ -4,27 +4,27 @@
 namespace tpy_user::main {
 
 
-// 9: def show_port(cfg: Config) -> None:
+// def show_port(cfg: Config) -> None:
 void show_port(const Config& cfg) {
-    // 10:     if cfg.port is not None:
+    //     if cfg.port is not None:
     if ((cfg.port.has_value())) {
-        // 11:         p: int = cfg.port
+        //         p: int = cfg.port
         tpy::BigInt p = (*cfg.port);
-        // 12:         print(p)
+        //         print(p)
         std::cout << p << "\n";
-    // 13:     else:
+    //     else:
     } else {
-        // 14:         print("no port")
+        //         print("no port")
         std::cout << "no port" << "\n";
     }
 }
 
-// 16: def main() -> None:
+// def main() -> None:
 void main() {
-    // 17:     show_port(Config(8080))
+    //     show_port(Config(8080))
     Config __tmp_1 = Config(8080);
     show_port(__tmp_1);
-    // 18:     show_port(Config(None))
+    //     show_port(Config(None))
     Config __tmp_2 = Config(std::nullopt);
     show_port(__tmp_2);
 }
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 20: main()
+    // main()
     main();
 }
 

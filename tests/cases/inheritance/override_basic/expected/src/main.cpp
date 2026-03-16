@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 29: def main() -> None:
+// def main() -> None:
 void main() {
-    // 30:     s = Square(Int32(4))
+    //     s = Square(Int32(4))
     Square s = Square(4);
-    // 31:     print(s.area())
+    //     print(s.area())
     std::cout << s.area() << "\n";
-    // 32:     print(s.describe())
+    //     print(s.describe())
     std::cout << s.describe() << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 34: main()
+    // main()
     main();
 }
 

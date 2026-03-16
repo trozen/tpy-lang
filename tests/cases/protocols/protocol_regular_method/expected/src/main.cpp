@@ -4,16 +4,16 @@
 namespace tpy_user::main {
 
 
-// 20: def main() -> None:
+// def main() -> None:
 void main() {
-    // 21:     v = Value(21)
+    //     v = Value(21)
     Value v = Value(21);
-    // 22:     double_it(v)
+    //     double_it(v)
     double_it(v);
-    // 24:     # Direct call to verify it works
-    // 25:     v2 = v.duplicate()
+    //     # Direct call to verify it works
+    //     v2 = v.duplicate()
     Value v2 = v.duplicate();
-    // 26:     print(v2.x)
+    //     print(v2.x)
     std::cout << v2.x << "\n";
 }
 
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 28: main()
+    // main()
     main();
 }
 

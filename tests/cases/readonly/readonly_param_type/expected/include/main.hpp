@@ -13,21 +13,21 @@ int32_t observe(const Point& p);
 int32_t call_readonly_method(const Point& p);
 void main();
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 6:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 8:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
     //     @readonly
-    // 13:     def magnitude_sq(self) -> Int32:
+    //     def magnitude_sq(self) -> Int32:
     int32_t magnitude_sq() const {
-        // 14:         return self.x * self.x + self.y * self.y
+        //         return self.x * self.x + self.y * self.y
         return (tpy::add_check<int32_t>((tpy::mul_check<int32_t>(this->x, this->x)), (tpy::mul_check<int32_t>(this->y, this->y))));
     }
 };

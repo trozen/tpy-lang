@@ -13,12 +13,12 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // # Assignment narrowing: union var initialized with concrete type narrows without isinstance
-// 2: class Circle:
+// class Circle:
 struct Circle {
-    // 3:     radius: float
+    //     radius: float
     double radius;
 
-    // 5:     def __init__(self, radius: float) -> None:
+    //     def __init__(self, radius: float) -> None:
     Circle() = default;
     explicit Circle(double radius) : radius(radius) {}
 };
@@ -30,14 +30,14 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
     return os;
 }
 
-// 8: class Rect:
+// class Rect:
 struct Rect {
-    // 9:     width: float
+    //     width: float
     double width;
-    // 10:     height: float
+    //     height: float
     double height;
 
-    // 12:     def __init__(self, width: float, height: float) -> None:
+    //     def __init__(self, width: float, height: float) -> None:
     Rect() = default;
     explicit Rect(double width, double height) : width(width), height(height) {}
 };

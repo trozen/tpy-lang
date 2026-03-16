@@ -4,20 +4,20 @@
 namespace tpy_user::main {
 
 
-// 13: def mutate(b: Box) -> None:
+// def mutate(b: Box) -> None:
 void mutate(Box& b) {
-    // 14:     b.value = b.value + 1
+    //     b.value = b.value + 1
     b.value = (tpy::add_check<int32_t>(b.value, 1));
 }
 
 // @readonly
-// 18: def ok(b: Box) -> Int32:
+// def ok(b: Box) -> Int32:
 int32_t ok(const Box& b) {
-    // 19:     local = Box(b.value)
+    //     local = Box(b.value)
     Box local = Box(b.value);
-    // 20:     mutate(local)  # tpyc: ok
+    //     mutate(local)  # tpyc: ok
     mutate(local);
-    // 21:     return local.value
+    //     return local.value
     return local.value;
 }
 
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 24: print(ok(Box(5)))
+    // print(ok(Box(5)))
     Box __tmp_1 = Box(5);
     std::cout << ok(__tmp_1) << "\n";
 }

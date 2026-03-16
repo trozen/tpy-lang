@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 13: def forward_via_alias(h: Own[Handle]) -> Own[Handle]:
+// def forward_via_alias(h: Own[Handle]) -> Own[Handle]:
 Handle forward_via_alias(Handle&& h) {
-    // 14:     alias = h
+    //     alias = h
     Handle alias = std::move(h);
-    // 15:     return alias
+    //     return alias
     return alias;
 }
 
-// 18: def main():
+// def main():
 void main() {
-    // 19:     r = forward_via_alias(Handle(55))
+    //     r = forward_via_alias(Handle(55))
     Handle r = forward_via_alias(Handle(55));
-    // 20:     print(r.fd)
+    //     print(r.fd)
     std::cout << r.fd << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 23: main()
+    // main()
     main();
 }
 

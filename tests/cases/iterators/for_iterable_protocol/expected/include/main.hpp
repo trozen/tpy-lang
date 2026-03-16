@@ -14,31 +14,31 @@ template<tpy::Iterable<int32_t> T_items>
 int32_t sum_items(T_items& items);
 void main();
 
-// 5: class CounterIter:
+// class CounterIter:
 struct CounterIter {
-    // 6:     current: Int32
+    //     current: Int32
     int32_t current;
-    // 7:     limit: Int32
+    //     limit: Int32
     int32_t limit;
 
-    // 9:     def __init__(self, start: Int32, limit: Int32) -> None:
+    //     def __init__(self, start: Int32, limit: Int32) -> None:
     CounterIter() = default;
     explicit CounterIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
 
     auto& __iter__() { return *this; }
 
-    // 13:     def __next__(self) -> Int32:
+    //     def __next__(self) -> Int32:
     std::optional<int32_t> __next_opt__() {
-        // 14:         if self.current < self.limit:
+        //         if self.current < self.limit:
         if ((this->current < this->limit)) {
-            // 15:             result = self.current
+            //             result = self.current
             int32_t result = this->current;
-            // 16:             self.current += 1
+            //             self.current += 1
             this->current = tpy::add_check<int32_t>(this->current, 1);
-            // 17:             return result
+            //             return result
             return result;
         }
-        // 18:         raise StopIteration
+        //         raise StopIteration
         return std::nullopt;
     }
 
@@ -56,20 +56,20 @@ inline std::ostream& operator<<(std::ostream& os, const CounterIter& obj) {
     return os;
 }
 
-// 20: class Counter:
+// class Counter:
 struct Counter {
-    // 21:     start: Int32
+    //     start: Int32
     int32_t start;
-    // 22:     limit: Int32
+    //     limit: Int32
     int32_t limit;
 
-    // 24:     def __init__(self, start: Int32, limit: Int32) -> None:
+    //     def __init__(self, start: Int32, limit: Int32) -> None:
     Counter() = default;
     explicit Counter(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
-    // 28:     def __iter__(self) -> Own[CounterIter]:
+    //     def __iter__(self) -> Own[CounterIter]:
     CounterIter __iter__() const {
-        // 29:         return CounterIter(self.start, self.limit)
+        //         return CounterIter(self.start, self.limit)
         return CounterIter(this->start, this->limit);
     }
 };
@@ -83,22 +83,22 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// 31: def sum_items(items: Iterable[Int32]) -> Int32:
+// def sum_items(items: Iterable[Int32]) -> Int32:
 template<tpy::Iterable<int32_t> T_items>
 int32_t sum_items(T_items& items) {
-    // 32:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 33:     for x in items:
+    //     for x in items:
     auto& __src_0 = items;
     auto __obj_0 = tpy::iter_for_loop(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 34:         total += x
+        //         total += x
         total = tpy::add_check<int32_t>(total, x);
     }
-    // 35:     return total
+    //     return total
     return total;
 }
 

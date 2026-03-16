@@ -12,9 +12,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 5: class Inner:
+// class Inner:
 struct Inner {
-    // 6:     value: Int32
+    //     value: Int32
     int32_t value;
 
 };
@@ -26,13 +26,13 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
     return os;
 }
 
-// 9: class Box[T]:
+// class Box[T]:
 template<typename T>
 struct Box {
-    // 10:     item: T
+    //     item: T
     T item;
 
-    // 12:     def __init__(self, item: Own[T]):
+    //     def __init__(self, item: Own[T]):
     Box() = default;
     explicit Box(T&& item) : item(std::move(item)) {}
 };

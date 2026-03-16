@@ -4,39 +4,39 @@
 namespace tpy_user::main {
 
 
-// 5: def has_items(items: list[Int32]) -> bool:
+// def has_items(items: list[Int32]) -> bool:
 bool has_items(const std::vector<int32_t>& items) {
-    // 6:     return len(items) > 0
+    //     return len(items) > 0
     return (tpy::__len__(items) > 0);
 }
 
-// 8: def test(x: Int32) -> Int32:
+// def test(x: Int32) -> Int32:
 int32_t test(int32_t x) {
-    // 9:     if x < 0:
+    //     if x < 0:
     if ((x < 0)) {
-        // 10:         return -1
+        //         return -1
         return -1;
-    // 11:     elif has_items([10, 20]):
+    //     elif has_items([10, 20]):
     } else {
         std::vector<int32_t> __tmp_2 = {10, 20};
         if (has_items(__tmp_2)) {
-            // 12:         return 0
+            //         return 0
             return 0;
-        // 13:     else:
+        //     else:
         } else {
-            // 14:         return 1
+            //         return 1
             return 1;
         }
     }
 }
 
-// 16: def main() -> None:
+// def main() -> None:
 void main() {
-    // 17:     print(test(-5))
+    //     print(test(-5))
     std::cout << test(-5) << "\n";
-    // 18:     print(test(0))
+    //     print(test(0))
     std::cout << test(0) << "\n";
-    // 19:     print(test(5))
+    //     print(test(5))
     std::cout << test(5) << "\n";
 }
 
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 21: main()
+    // main()
     main();
 }
 

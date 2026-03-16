@@ -13,18 +13,18 @@ void show_guarded(const Config& cfg);
 void show_truthy(const Config& cfg);
 void main();
 
-// 5: class Config:
+// class Config:
 struct Config {
-    // 6:     port: Optional[Int32]
+    //     port: Optional[Int32]
     std::optional<int32_t> port;
-    // 7:     name: Optional[str]
+    //     name: Optional[str]
     std::optional<std::string> name;
-    // 8:     flag: Optional[bool]
+    //     flag: Optional[bool]
     std::optional<bool> flag;
-    // 9:     ratio: Optional[float]
+    //     ratio: Optional[float]
     std::optional<double> ratio;
 
-    // 10:     def __init__(self, port: Optional[Int32], name: Optional[str],
+    //     def __init__(self, port: Optional[Int32], name: Optional[str],
     Config() = default;
     explicit Config(std::optional<int32_t> port, std::optional<std::string_view> name, std::optional<bool> flag, std::optional<double> ratio) : port(port), name(name ? std::make_optional(std::string(*name)) : std::nullopt), flag(flag), ratio(ratio) {}
 };

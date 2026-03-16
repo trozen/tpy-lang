@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 20: def consume(h: Own[Holder[Handle]]) -> Int32:
+// def consume(h: Own[Holder[Handle]]) -> Int32:
 int32_t consume(Holder<Handle>&& h) {
-    // 21:     return h.item.fd
+    //     return h.item.fd
     return h.item.fd;
 }
 
-// 24: def main():
+// def main():
 void main() {
-    // 25:     h = Holder[Handle](Handle(42))
+    //     h = Holder[Handle](Handle(42))
     Holder<Handle> h = Holder<Handle>(Handle(42));
-    // 26:     result = consume(h)  # tpyc: ok
+    //     result = consume(h)  # tpyc: ok
     int32_t result = consume(std::move(h));
-    // 27:     print(result)
+    //     print(result)
     std::cout << result << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 30: main()
+    // main()
     main();
 }
 

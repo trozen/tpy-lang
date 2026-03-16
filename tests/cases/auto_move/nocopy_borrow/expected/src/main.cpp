@@ -4,27 +4,27 @@
 namespace tpy_user::main {
 
 
-// 10: def inspect(h: Handle) -> Int32:
+// def inspect(h: Handle) -> Int32:
 int32_t inspect(const Handle& h) {
-    // 11:     return h.fd
+    //     return h.fd
     return h.fd;
 }
 
-// 14: def close(h: Own[Handle]) -> Int32:
+// def close(h: Own[Handle]) -> Int32:
 int32_t close(Handle&& h) {
-    // 15:     return h.fd
+    //     return h.fd
     return h.fd;
 }
 
-// 18: def main():
+// def main():
 void main() {
-    // 19:     h = Handle()
+    //     h = Handle()
     Handle h = Handle();
-    // 20:     h.fd = 42
+    //     h.fd = 42
     h.fd = 42;
-    // 21:     print(inspect(h))   # borrow (const ref), non-consuming
+    //     print(inspect(h))   # borrow (const ref), non-consuming
     std::cout << inspect(h) << "\n";
-    // 22:     print(close(h))     # last use -> auto-move  # tpyc: ok
+    //     print(close(h))     # last use -> auto-move  # tpyc: ok
     std::cout << close(std::move(h)) << "\n";
 }
 
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 25: main()
+    // main()
     main();
 }
 

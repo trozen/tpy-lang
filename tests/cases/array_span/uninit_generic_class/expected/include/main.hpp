@@ -11,16 +11,16 @@ extern Holder<int32_t>* h;
 extern Holder<std::string>* s;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 5: class Holder[T]:
+// class Holder[T]:
 template<typename T>
 struct Holder {
-    // 6:     _storage: UninitHeapStorage[T]
+    //     _storage: UninitHeapStorage[T]
     UninitHeapStorage<T> _storage;
 
-    // 8:     def __init__(self, value: T):
+    //     def __init__(self, value: T):
     Holder() = default;
     explicit Holder(const T& value) : _storage(1) {
-        // 10:         self._storage.init0(value)
+        //         self._storage.init0(value)
         auto __tmp_1 = value;
         this->_storage.init0(std::move(__tmp_1));
     }
@@ -30,24 +30,24 @@ struct Holder {
     Holder(Holder&&) = default;
     Holder& operator=(Holder&&) = default;
 
-    // 12:     def get(self) -> T:
+    //     def get(self) -> T:
     tpy::val_or_cref_t<T> get() const {
-        // 13:         return self._storage.load0()
+        //         return self._storage.load0()
         return this->_storage.load0();
     }
 
-    // 15:     def set(self, value: T) -> None:
+    //     def set(self, value: T) -> None:
     void set(tpy::param_val_or_ref_t<T> value) {
-        // 16:         self._storage.drop0()
+        //         self._storage.drop0()
         this->_storage.drop0();
-        // 17:         self._storage.init0(value)
+        //         self._storage.init0(value)
         auto __tmp_2 = value;
         this->_storage.init0(std::move(__tmp_2));
     }
 
-    // 19:     def take(self) -> Own[T]:
+    //     def take(self) -> Own[T]:
     T take() {
-        // 20:         return self._storage.take0()
+        //         return self._storage.take0()
         return this->_storage.take0();
     }
 };

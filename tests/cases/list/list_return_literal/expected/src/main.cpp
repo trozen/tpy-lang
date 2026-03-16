@@ -4,50 +4,50 @@
 namespace tpy_user::main {
 
 
-// 14: def make_list(x: Int32) -> Own[list[Int32]]:
+// def make_list(x: Int32) -> Own[list[Int32]]:
 std::vector<int32_t> make_list(int32_t x) {
-    // 15:     return [x, x + 1, x + 2]
+    //     return [x, x + 1, x + 2]
     return {x, (tpy::add_check<int32_t>(x, 1)), (tpy::add_check<int32_t>(x, 2))};
 }
 
-// 18: def main():
+// def main():
 void main() {
-    // 19:     # Empty list from generic function
-    // 20:     a: list[Int32] = make_empty[Int32]()
+    //     # Empty list from generic function
+    //     a: list[Int32] = make_empty[Int32]()
     std::vector<int32_t> a = make_empty<int32_t>();
-    // 21:     a.append(99)
+    //     a.append(99)
     a.push_back(99);
-    // 22:     print(len(a))
+    //     print(len(a))
     std::cout << tpy::__len__(a) << "\n";
-    // 23:     print(a[0])
+    //     print(a[0])
     std::cout << tpy::__getitem__(a, 0) << "\n";
-    // 25:     # Single-element list from generic function (T inferred from arg)
-    // 26:     b: list[Int32] = make_single(42)
+    //     # Single-element list from generic function (T inferred from arg)
+    //     b: list[Int32] = make_single(42)
     int32_t __tmp_1 = 42;
     std::vector<int32_t> b = make_single<int32_t>(__tmp_1);
-    // 27:     b.append(100)
+    //     b.append(100)
     b.push_back(100);
-    // 28:     for x in b:
+    //     for x in b:
     auto& __obj_0 = b;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 29:         print(x)
+        //         print(x)
         std::cout << x << "\n";
     }
-    // 31:     # Multi-element list from non-generic function
-    // 32:     c: list[Int32] = make_list(10)
+    //     # Multi-element list from non-generic function
+    //     c: list[Int32] = make_list(10)
     std::vector<int32_t> c = make_list(10);
-    // 33:     c.append(100)
+    //     c.append(100)
     c.push_back(100);
-    // 34:     for x in c:
+    //     for x in c:
     auto& __obj_1 = c;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        // 35:         print(x)
+        //         print(x)
         std::cout << x << "\n";
     }
 }
@@ -57,7 +57,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 38: main()
+    // main()
     main();
 }
 

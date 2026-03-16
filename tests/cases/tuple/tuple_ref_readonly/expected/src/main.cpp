@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 20: def main() -> None:
+// def main() -> None:
 void main() {
-    // 21:     c = Container(Int32(42))
+    //     c = Container(Int32(42))
     Container c = Container(42);
-    // 22:     w = Wrapper(c)
+    //     w = Wrapper(c)
     Wrapper w = Wrapper(c);
-    // 23:     pair = w.get_pair()
+    //     pair = w.get_pair()
     auto pair = w.get_pair();
-    // 24:     print(pair[0])
+    //     print(pair[0])
     std::cout << std::get<0>(pair) << "\n";
-    // 25:     print(pair[1])
+    //     print(pair[1])
     std::cout << std::get<1>(pair) << "\n";
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 27: main()
+    // main()
     main();
 }
 

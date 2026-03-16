@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-// 8: value: Int32 = Int32(7)
+// value: Int32 = Int32(7)
 int32_t value{};
 
 void __tpy_init() {
@@ -11,9 +11,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: value: Int32 = Int32(7)
+    // value: Int32 = Int32(7)
     value = 7;
-    // 9: print(echo_with_delta(value, Int32(5)))  # tpyc: ok
+    // print(echo_with_delta(value, Int32(5)))  # tpyc: ok
     std::cout << echo_with_delta<int32_t>(value, static_cast<int64_t>(5)) << "\n";
 }
 

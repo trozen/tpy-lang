@@ -13,16 +13,16 @@ template<tpy::Sequence<char> T_s>
 int32_t count_chars(const T_s& s);
 void main();
 
-// 4: def first_char(s: Sequence[Char]) -> Char:
+// def first_char(s: Sequence[Char]) -> Char:
 template<tpy::Sequence<char> T_s>
 char first_char(const T_s& s) {
-    // 5:     return s[0]
+    //     return s[0]
     return tpy::__getitem__(s, 0);
 }
-// 7: def count_chars(s: Sequence[Char]) -> Int32:
+// def count_chars(s: Sequence[Char]) -> Int32:
 template<tpy::Sequence<char> T_s>
 int32_t count_chars(const T_s& s) {
-    // 8:     return len(s)
+    //     return len(s)
     return tpy::__len__(s);
 }
 

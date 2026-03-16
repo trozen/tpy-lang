@@ -13,9 +13,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void f();
 
-// 4: class Timer:
+// class Timer:
 struct Timer {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
 
 };

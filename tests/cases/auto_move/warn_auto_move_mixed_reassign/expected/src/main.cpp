@@ -4,32 +4,32 @@
 namespace tpy_user::main {
 
 
-// 10: def consume(p: Own[Point]) -> Int32:
+// def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point&& p) {
-    // 11:     return p.x
+    //     return p.x
     return p.x;
 }
 
-// 14: def test(a: Point, cond: bool) -> Int32:
+// def test(a: Point, cond: bool) -> Int32:
 int32_t test(Point& a, bool cond) {
-    // 15:     p = Point()
+    //     p = Point()
     Point __slot_1 = Point();
     std::optional<Point> __slot_2;
     Point* p = &__slot_1;
-    // 16:     p.x = 10
+    //     p.x = 10
     p->x = 10;
-    // 17:     if cond:
+    //     if cond:
     if (cond) {
-        // 18:         p = Point()  # rvalue reassignment
+        //         p = Point()  # rvalue reassignment
         p = &*(__slot_2 = Point());
-        // 19:         p.x = 20
+        //         p.x = 20
         p->x = 20;
-    // 20:     else:
+    //     else:
     } else {
-        // 21:         p = a  # lvalue reassignment -> borrowed
+        //         p = a  # lvalue reassignment -> borrowed
         p = &(a);
     }
-    // 22:     return consume(p)  # tpyc: warning(/copies.*into owned storage/)
+    //     return consume(p)  # tpyc: warning(/copies.*into owned storage/)
     auto __tmp_1 = (*p);
     return consume(std::move(__tmp_1));
 }

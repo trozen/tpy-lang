@@ -4,34 +4,34 @@
 namespace tpy_user::main {
 
 
-// 21: def main() -> None:
+// def main() -> None:
 void main() {
-    // 22:     # Single field
-    // 23:     print(Id(1) == Id(1))
+    //     # Single field
+    //     print(Id(1) == Id(1))
     std::cout << tpy::print_bool((Id(1) == Id(1))) << "\n";
-    // 24:     print(Id(1) == Id(2))
+    //     print(Id(1) == Id(2))
     std::cout << tpy::print_bool((Id(1) == Id(2))) << "\n";
-    // 26:     p1 = Point(1, 2)
+    //     p1 = Point(1, 2)
     Point p1 = Point(1, 2);
-    // 27:     p2 = Point(1, 2)
+    //     p2 = Point(1, 2)
     Point p2 = Point(1, 2);
-    // 28:     p3 = Point(1, 3)
+    //     p3 = Point(1, 3)
     Point p3 = Point(1, 3);
-    // 29:     print(p1 == p2)
+    //     print(p1 == p2)
     std::cout << tpy::print_bool((p1 == p2)) << "\n";
-    // 30:     print(p1 == p3)
+    //     print(p1 == p3)
     std::cout << tpy::print_bool((p1 == p3)) << "\n";
-    // 31:     print(p1 != p3)
+    //     print(p1 != p3)
     std::cout << tpy::print_bool((p1 != p3)) << "\n";
-    // 33:     c1 = Config("a", 1)
+    //     c1 = Config("a", 1)
     Config c1 = Config("a", 1);
-    // 34:     c2 = Config("a", 1)
+    //     c2 = Config("a", 1)
     Config c2 = Config("a", 1);
-    // 35:     c3 = Config("a", 1, "x")
+    //     c3 = Config("a", 1, "x")
     Config c3 = Config("a", 1, "x");
-    // 36:     print(c1 == c2)
+    //     print(c1 == c2)
     std::cout << tpy::print_bool((c1 == c2)) << "\n";
-    // 37:     print(c1 == c3)
+    //     print(c1 == c3)
     std::cout << tpy::print_bool((c1 == c3)) << "\n";
 }
 
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 39: main()
+    // main()
     main();
 }
 

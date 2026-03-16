@@ -5,31 +5,31 @@ namespace tpy_user::main {
 
 
 // # Test PendingStrType promotes to str (std::string) for owned-requiring usage
-// 2: def test_str_constructor() -> None:
+// def test_str_constructor() -> None:
 void test_str_constructor() {
-    // 3:     s = str(42)  # tpyc: type(str)
+    //     s = str(42)  # tpyc: type(str)
     std::string s = tpy::fixed_to_str<int8_t>(42);
-    // 4:     print(s)
+    //     print(s)
     std::cout << s << "\n";
 }
 
-// 6: def test_augassign() -> None:
+// def test_augassign() -> None:
 void test_augassign() {
-    // 7:     s = "hello"  # tpyc: type(str)
+    //     s = "hello"  # tpyc: type(str)
     std::string s = "hello";
-    // 8:     s += " world"
+    //     s += " world"
     s += " world";
-    // 9:     print(s)
+    //     print(s)
     std::cout << s << "\n";
 }
 
-// 11: def test_reassign_from_owned() -> None:
+// def test_reassign_from_owned() -> None:
 void test_reassign_from_owned() {
-    // 12:     s = "start"  # tpyc: type(str)
+    //     s = "start"  # tpyc: type(str)
     std::string s = "start";
-    // 13:     s = str(99)
+    //     s = str(99)
     s = tpy::fixed_to_str<int8_t>(99);
-    // 14:     print(s)
+    //     print(s)
     std::cout << s << "\n";
 }
 
@@ -38,11 +38,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 16: test_str_constructor()
+    // test_str_constructor()
     test_str_constructor();
-    // 17: test_augassign()
+    // test_augassign()
     test_augassign();
-    // 18: test_reassign_from_owned()
+    // test_reassign_from_owned()
     test_reassign_from_owned();
 }
 

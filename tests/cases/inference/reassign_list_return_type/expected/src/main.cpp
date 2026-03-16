@@ -3,14 +3,14 @@
 
 namespace tpy_user::main {
 
-// 8: items = get_items()
+// items = get_items()
 std::vector<tpy::BigInt>* items{};
 
-// 4: def get_items() -> Own[list[int]]:
+// def get_items() -> Own[list[int]]:
 std::vector<tpy::BigInt> get_items() {
-    // 5:     xs = [1, 2, 3]  # tpyc: type(/list/)
+    //     xs = [1, 2, 3]  # tpyc: type(/list/)
     std::vector<tpy::BigInt> xs = {1, 2, 3};
-    // 6:     return xs
+    //     return xs
     return xs;
 }
 
@@ -19,10 +19,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: items = get_items()
+    // items = get_items()
     static std::vector<tpy::BigInt> __global_slot_1 = get_items();
     items = &__global_slot_1;
-    // 9: print(len(items))
+    // print(len(items))
     std::cout << tpy::__len__((*items)) << "\n";
 }
 

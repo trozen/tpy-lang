@@ -12,13 +12,13 @@ extern int32_t x;
 extern Box<int32_t>* box32;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 5: class Box[T]:
+// class Box[T]:
 template<typename T>
 struct Box {
-    // 6:     value: T
+    //     value: T
     T value;
 
-    // 8:     def __init__(self, value: T) -> None:
+    //     def __init__(self, value: T) -> None:
     Box() = default;
     explicit Box(const T& value) : value(value) {}
 };

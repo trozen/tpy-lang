@@ -13,14 +13,14 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 6:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 7:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -34,18 +34,18 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 11: class Container:
+// class Container:
 struct Container {
-    // 12:     data: tuple[Point, Int32]
+    //     data: tuple[Point, Int32]
     std::tuple<Point, int32_t> data;
 
-    // 13:     def __init__(self, p: Point, n: Int32) -> None:
+    //     def __init__(self, p: Point, n: Int32) -> None:
     Container() = default;
     explicit Container(const Point& p, int32_t n) : data(std::tuple<Point, int32_t>{p, n}) {}
 
-    // 15:     def __repr__(self) -> str:
+    //     def __repr__(self) -> str:
     std::string __repr__() const {
-        // 16:         return "Container"
+        //         return "Container"
         return "Container";
     }
 };
@@ -55,18 +55,18 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
-// 18: class ContainerOk:
+// class ContainerOk:
 struct ContainerOk {
-    // 19:     data: tuple[Point, Int32]
+    //     data: tuple[Point, Int32]
     std::tuple<Point, int32_t> data;
 
-    // 20:     def __init__(self, p: Point, n: Int32) -> None:
+    //     def __init__(self, p: Point, n: Int32) -> None:
     ContainerOk() = default;
     explicit ContainerOk(const Point& p, int32_t n) : data(std::tuple<Point, int32_t>{Point(p), n}) {}
 
-    // 22:     def __repr__(self) -> str:
+    //     def __repr__(self) -> str:
     std::string __repr__() const {
-        // 23:         return "ContainerOk"
+        //         return "ContainerOk"
         return "ContainerOk";
     }
 };

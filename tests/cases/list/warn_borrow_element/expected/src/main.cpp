@@ -4,106 +4,106 @@
 namespace tpy_user::main {
 
 
-// 11: def test_element_borrow_append() -> None:
+// def test_element_borrow_append() -> None:
 void test_element_borrow_append() {
-    // 13:     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    //     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // 14:     v = items[Int32(0)]
+    //     v = items[Int32(0)]
     Point& v = tpy::__getitem__(items, 0);
-    // 15:     items.append(Point(Int32(5), Int32(6)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
+    //     items.append(Point(Int32(5), Int32(6)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     items.push_back(Point(5, 6));
-    // 16:     print(len(items))
+    //     print(len(items))
     std::cout << tpy::__len__(items) << "\n";
 }
 
-// 18: def test_element_borrow_subscript_assign() -> None:
+// def test_element_borrow_subscript_assign() -> None:
 void test_element_borrow_subscript_assign() {
-    // 20:     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    //     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // 21:     v = items[Int32(0)]
+    //     v = items[Int32(0)]
     Point& v = tpy::__getitem__(items, 0);
-    // 22:     items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: ok
+    //     items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: ok
     tpy::__setitem__(items, 0, Point(9, 9));
-    // 23:     print(items[Int32(0)].x)
+    //     print(items[Int32(0)].x)
     std::cout << tpy::__getitem__(items, 0).x << "\n";
 }
 
-// 25: def test_alias_no_warn() -> None:
+// def test_alias_no_warn() -> None:
 void test_alias_no_warn() {
-    // 27:     items: list[Point] = [Point(Int32(1), Int32(2))]
+    //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    // 28:     alias = items
+    //     alias = items
     std::vector<Point>& alias = items;
-    // 29:     items.append(Point(Int32(3), Int32(4)))  # tpyc: ok
+    //     items.append(Point(Int32(3), Int32(4)))  # tpyc: ok
     items.push_back(Point(3, 4));
-    // 30:     print(len(alias))
+    //     print(len(alias))
     std::cout << tpy::__len__(alias) << "\n";
 }
 
-// 32: def test_value_type_no_borrow() -> None:
+// def test_value_type_no_borrow() -> None:
 void test_value_type_no_borrow() {
-    // 34:     items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    //     items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
-    // 35:     v = items[Int32(0)]
+    //     v = items[Int32(0)]
     int32_t v = tpy::__getitem__(items, 0);
-    // 36:     items.append(Int32(4))  # tpyc: ok
+    //     items.append(Int32(4))  # tpyc: ok
     items.push_back(4);
-    // 37:     print(v)
+    //     print(v)
     std::cout << v << "\n";
 }
 
-// 39: def test_reassign_clears_borrows() -> None:
+// def test_reassign_clears_borrows() -> None:
 void test_reassign_clears_borrows() {
-    // 41:     items: list[Point] = [Point(Int32(1), Int32(2))]
+    //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> __slot_1 = {Point(1, 2)};
     std::optional<std::vector<Point>> __slot_2;
     std::vector<Point>* items = &__slot_1;
-    // 42:     v = items[Int32(0)]
+    //     v = items[Int32(0)]
     Point& v = tpy::__getitem__((*items), 0);
-    // 43:     items = [Point(Int32(3), Int32(4))]
+    //     items = [Point(Int32(3), Int32(4))]
     items = &*(__slot_2 = {Point(3, 4)});
-    // 44:     items.append(Point(Int32(5), Int32(6)))  # tpyc: ok
+    //     items.append(Point(Int32(5), Int32(6)))  # tpyc: ok
     (*items).push_back(Point(5, 6));
-    // 45:     print(len(items))
+    //     print(len(items))
     std::cout << tpy::__len__((*items)) << "\n";
 }
 
-// 47: def test_reassign_borrower_clears() -> None:
+// def test_reassign_borrower_clears() -> None:
 void test_reassign_borrower_clears() {
-    // 49:     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    //     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // 50:     v = items[Int32(0)]
+    //     v = items[Int32(0)]
     std::optional<Point> __slot_1;
     Point* v = &(tpy::__getitem__(items, 0));
-    // 51:     v = Point(Int32(9), Int32(9))
+    //     v = Point(Int32(9), Int32(9))
     v = &*(__slot_1 = Point(9, 9));
-    // 52:     items.append(Point(Int32(5), Int32(6)))  # tpyc: ok
+    //     items.append(Point(Int32(5), Int32(6)))  # tpyc: ok
     items.push_back(Point(5, 6));
-    // 53:     print(v.x)
+    //     print(v.x)
     std::cout << v->x << "\n";
 }
 
-// 55: def test_element_borrow_del() -> None:
+// def test_element_borrow_del() -> None:
 void test_element_borrow_del() {
-    // 57:     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    //     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // 58:     v = items[Int32(0)]
+    //     v = items[Int32(0)]
     Point& v = tpy::__getitem__(items, 0);
-    // 59:     del items[Int32(0)]  # tpyc: warning(/'del' may invalidate references/)
+    //     del items[Int32(0)]  # tpyc: warning(/'del' may invalidate references/)
     tpy::__delitem__(items, 0);
-    // 60:     print(len(items))
+    //     print(len(items))
     std::cout << tpy::__len__(items) << "\n";
 }
 
-// 62: def test_field_borrow_write() -> None:
+// def test_field_borrow_write() -> None:
 void test_field_borrow_write() {
-    // 64:     p = Point(Int32(1), Int32(2))
+    //     p = Point(Int32(1), Int32(2))
     Point p = Point(1, 2);
-    // 65:     ref = p
+    //     ref = p
     Point& ref = p;
-    // 66:     p.x = Int32(10)  # tpyc: ok (alias borrow, not field borrow)
+    //     p.x = Int32(10)  # tpyc: ok (alias borrow, not field borrow)
     p.x = 10;
-    // 67:     print(ref.x)
+    //     print(ref.x)
     std::cout << ref.x << "\n";
 }
 
@@ -112,21 +112,21 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 69: test_element_borrow_append()
+    // test_element_borrow_append()
     test_element_borrow_append();
-    // 70: test_element_borrow_subscript_assign()
+    // test_element_borrow_subscript_assign()
     test_element_borrow_subscript_assign();
-    // 71: test_alias_no_warn()
+    // test_alias_no_warn()
     test_alias_no_warn();
-    // 72: test_value_type_no_borrow()
+    // test_value_type_no_borrow()
     test_value_type_no_borrow();
-    // 73: test_reassign_clears_borrows()
+    // test_reassign_clears_borrows()
     test_reassign_clears_borrows();
-    // 74: test_reassign_borrower_clears()
+    // test_reassign_borrower_clears()
     test_reassign_borrower_clears();
-    // 75: test_element_borrow_del()
+    // test_element_borrow_del()
     test_element_borrow_del();
-    // 76: test_field_borrow_write()
+    // test_field_borrow_write()
     test_field_borrow_write();
 }
 

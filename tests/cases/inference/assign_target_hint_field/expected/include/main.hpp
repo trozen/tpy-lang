@@ -14,13 +14,13 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 6: class WithArray[T, N: int]:
+// class WithArray[T, N: int]:
 template<typename T, std::size_t N>
 struct WithArray {
-    // 7:     data: Array[T, N]
+    //     data: Array[T, N]
     std::array<T, N> data;
 
-    // 9:     def __init__(self):
+    //     def __init__(self):
     WithArray() : data(std::array<T, N>()) {}
 };
 
@@ -32,13 +32,13 @@ inline std::ostream& operator<<(std::ostream& os, const WithArray<T, N>& obj) {
     return os;
 }
 
-// 12: class WithList[T]:
+// class WithList[T]:
 template<typename T>
 struct WithList {
-    // 13:     items: list[T]
+    //     items: list[T]
     std::vector<T> items;
 
-    // 15:     def __init__(self):
+    //     def __init__(self):
     WithList() : items(std::vector<T>()) {}
 };
 
@@ -50,13 +50,13 @@ inline std::ostream& operator<<(std::ostream& os, const WithList<T>& obj) {
     return os;
 }
 
-// 18: class WithDict[K, V]:
+// class WithDict[K, V]:
 template<typename K, typename V>
 struct WithDict {
-    // 19:     data: dict[K, V]
+    //     data: dict[K, V]
     tpy::ordered_map<K, V> data;
 
-    // 21:     def __init__(self):
+    //     def __init__(self):
     WithDict() : data(tpy::ordered_map<K, V>()) {}
 };
 
@@ -68,17 +68,17 @@ inline std::ostream& operator<<(std::ostream& os, const WithDict<K, V>& obj) {
     return os;
 }
 
-// 24: class WithHeapStorage[T]:
+// class WithHeapStorage[T]:
 template<typename T>
 struct WithHeapStorage {
-    // 25:     _storage: UninitHeapStorage[T]
+    //     _storage: UninitHeapStorage[T]
     UninitHeapStorage<T> _storage;
     bool __tpy_owned_ = true;
 
-    // 27:     def __init__(self, val: Own[T]):
+    //     def __init__(self, val: Own[T]):
     WithHeapStorage() = default;
     explicit WithHeapStorage(T&& val) : _storage(1) {
-        // 29:         self._storage.init0(val)
+        //         self._storage.init0(val)
         this->_storage.init0(std::move(val));
     }
     // non-copyable (field '_storage')
@@ -94,17 +94,17 @@ struct WithHeapStorage {
         }
         return *this;
     }
-    // 31:     def __del__(self):
+    //     def __del__(self):
 
     ~WithHeapStorage() {
         if (!__tpy_owned_) return;
-        // 32:         self._storage.drop0()
+        //         self._storage.drop0()
         this->_storage.drop0();
     }
 
-    // 34:     def get(self) -> T:
+    //     def get(self) -> T:
     tpy::val_or_cref_t<T> get() const {
-        // 35:         return self._storage.load0()
+        //         return self._storage.load0()
         return this->_storage.load0();
     }
 };

@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 // @dynamic
-// 8: class Animal(Protocol):
+// class Animal(Protocol):
 template<typename T>
 concept __Animal_Concept__ = requires(T& t) {
     { t.name() } -> std::convertible_to<std::string>;
@@ -46,18 +46,18 @@ void show(Tagged<Animal, std::string>& t);
 Tagged<Animal, std::string> make_tagged();
 void main();
 
-// 11: class Dog(Animal):
+// class Dog(Animal):
 struct Dog : Animal {
-    // 12:     _name: str
+    //     _name: str
     std::string _name;
 
-    // 13:     def __init__(self, n: str) -> None:
+    //     def __init__(self, n: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view n) : _name(n) {}
 
-    // 15:     def name(self) -> str:
+    //     def name(self) -> str:
     std::string name() override {
-        // 16:         return self._name
+        //         return self._name
         return this->_name;
     }
 };
@@ -69,18 +69,18 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
-// 18: class Cat(Animal):
+// class Cat(Animal):
 struct Cat : Animal {
-    // 19:     _name: str
+    //     _name: str
     std::string _name;
 
-    // 20:     def __init__(self, n: str) -> None:
+    //     def __init__(self, n: str) -> None:
     Cat() = default;
     explicit Cat(std::string_view n) : _name(n) {}
 
-    // 22:     def name(self) -> str:
+    //     def name(self) -> str:
     std::string name() override {
-        // 23:         return self._name
+        //         return self._name
         return this->_name;
     }
 };
@@ -94,21 +94,21 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 // # Two type params: T (covariant), N (invariant).
 // # Uses Ptr[T] (raw pointer is naturally covariant in C++) and N for a tag.
-// 27: class Tagged[T, N](Covariant[T]):
+// class Tagged[T, N](Covariant[T]):
 template<typename T, typename N>
 struct Tagged {
-    // 28:     _ptr: Ptr[T]
+    //     _ptr: Ptr[T]
     T* _ptr;
-    // 29:     _tag: N
+    //     _tag: N
     N _tag;
-    // 30:     _owned: bool
+    //     _owned: bool
     bool _owned;
     bool __tpy_owned_ = true;
 
-    // 31:     def __init__(self, val: Own[T], tag: N) -> None:
+    //     def __init__(self, val: Own[T], tag: N) -> None:
     Tagged() = default;
     explicit Tagged(T&& val, const N& tag) : _ptr(static_cast<T*>(::operator new(sizeof(T), std::align_val_t(alignof(T))))), _tag(tag), _owned(true) {
-        // 33:         unsafe_init(self._ptr, val)
+        //         unsafe_init(self._ptr, val)
         ::new(static_cast<void*>(this->_ptr)) T(std::move(val));
     }
     Tagged(const Tagged&) = delete;
@@ -123,15 +123,15 @@ struct Tagged {
         }
         return *this;
     }
-    // 40:     def __del__(self) -> None:
+    //     def __del__(self) -> None:
 
     ~Tagged() {
         if (!__tpy_owned_) return;
-        // 41:         if self._owned:
+        //         if self._owned:
         if (this->_owned) {
-            // 42:             unsafe_drop(self._ptr)
+            //             unsafe_drop(self._ptr)
             tpy::destroy_at(this->_ptr);
-            // 43:             unsafe_free(self._ptr)
+            //             unsafe_free(self._ptr)
             ::operator delete(this->_ptr, std::align_val_t(alignof(T)));
         }
     }
@@ -143,15 +143,15 @@ struct Tagged {
     }
     template<typename, typename> friend struct Tagged;
 
-    // 36:     def get(self) -> T:
+    //     def get(self) -> T:
     tpy::val_or_ref_t<T> get() {
-        // 37:         return self._ptr
+        //         return self._ptr
         return tpy::deref_check(this->_ptr);
     }
 
-    // 38:     def tag(self) -> N:
+    //     def tag(self) -> N:
     tpy::val_or_ref_t<N> tag() {
-        // 39:         return self._tag
+        //         return self._tag
         return this->_tag;
     }
 };

@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-// 12: d = Dog()
+// d = Dog()
 Dog* d{};
 
 void __tpy_init() {
@@ -11,10 +11,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 12: d = Dog()
+    // d = Dog()
     static Dog __global_slot_1 = Dog();
     d = &__global_slot_1;
-    // 13: d.make_noise()
+    // d.make_noise()
     d->make_noise();
 }
 

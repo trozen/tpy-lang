@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 22: def main() -> None:
+// def main() -> None:
 void main() {
-    // 23:     c: Circle | Rect = Circle(5.0)
+    //     c: Circle | Rect = Circle(5.0)
     std::variant<Circle, Rect> c = Circle(5.0);
-    // 24:     print(c.area())
+    //     print(c.area())
     std::cout << tpy::print_float(std::get<Circle>(c).area()) << "\n";
-    // 25:     r: Circle | Rect = Rect(3.0, 4.0)
+    //     r: Circle | Rect = Rect(3.0, 4.0)
     std::variant<Circle, Rect> r = Rect(3.0, 4.0);
-    // 26:     print(r.area())
+    //     print(r.area())
     std::cout << tpy::print_float(std::get<Rect>(r).area()) << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 28: main()
+    // main()
     main();
 }
 

@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 27: def consume(o: Own[Outer]) -> Int32:
+// def consume(o: Own[Outer]) -> Int32:
 int32_t consume(Outer&& o) {
-    // 28:     return o.w.res.id
+    //     return o.w.res.id
     return o.w.res.id;
 }
 
-// 31: def main():
+// def main():
 void main() {
-    // 32:     o = Outer(Wrapper(Resource(99)))
+    //     o = Outer(Wrapper(Resource(99)))
     Outer o = Outer(Wrapper(Resource(99)));
-    // 33:     print(consume(o))  # tpyc: ok
+    //     print(consume(o))  # tpyc: ok
     std::cout << consume(std::move(o)) << "\n";
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 36: main()
+    // main()
     main();
 }
 

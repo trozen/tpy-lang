@@ -14,11 +14,11 @@ std::string or_pattern(const Point& p);
 void main();
 
 // @dataclass
-// 6: class Point:
+// class Point:
 struct Point {
-    // 7:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 8:     y: Int32
+    //     y: Int32
     int32_t y;
 
     Point() = default;

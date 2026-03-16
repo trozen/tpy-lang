@@ -13,12 +13,12 @@ std::string test_reassign_to_none();
 std::string test_init_none_then_assign();
 void main();
 
-// 4: class Dog:
+// class Dog:
 struct Dog {
-    // 5:     name: str
+    //     name: str
     std::string name;
 
-    // 6:     def __init__(self, name: str) -> None:
+    //     def __init__(self, name: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name) : name(name) {}
 };

@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-// 18: c = Counter(5)
+// c = Counter(5)
 Counter* c{};
 
 void __tpy_init() {
@@ -11,10 +11,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: c = Counter(5)
+    // c = Counter(5)
     static Counter __global_slot_1 = Counter(5);
     c = &__global_slot_1;
-    // 19: c.__next__()
+    // c.__next__()
     c->__next__();
 }
 

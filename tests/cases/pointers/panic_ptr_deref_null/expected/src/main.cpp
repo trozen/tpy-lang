@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 3: def main() -> None:
+// def main() -> None:
 void main() {
-    // 4:     p: Ptr[Int32] = Ptr[Int32]()
+    //     p: Ptr[Int32] = Ptr[Int32]()
     int32_t* p = static_cast<int32_t*>(nullptr);
-    // 5:     print(p.__deref__())
+    //     print(p.__deref__())
     std::cout << tpy::deref_check(p) << "\n";
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 7: main()
+    // main()
     main();
 }
 

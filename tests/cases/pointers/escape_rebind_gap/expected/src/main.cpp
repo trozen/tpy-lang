@@ -8,23 +8,23 @@ namespace tpy_user::main {
 // # The escape detection doesn't flag this (variable depth stays at function
 // # scope), but the rebind-slot codegen makes it safe: rvalue rebinds reuse
 // # the function-scoped slot instead of creating loop-scoped storage.
-// 14: def rebind_gap() -> None:
+// def rebind_gap() -> None:
 void rebind_gap() {
-    // 15:     p: Point = Point(0, 0)
+    //     p: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     std::optional<Point> __slot_2;
     Point* p = &__slot_1;
-    // 16:     saved: Point = Point(0, 0)
+    //     saved: Point = Point(0, 0)
     Point __slot_3 = Point(0, 0);
     Point* saved = &__slot_3;
-    // 17:     for i in range(3):
+    //     for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // 18:         p = Point(i, i)
+        //         p = Point(i, i)
         p = &*(__slot_2 = Point(i, i));
-        // 19:         saved = p
+        //         saved = p
         saved = p;
     }
-    // 20:     print(saved.x, saved.y)
+    //     print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: rebind_gap()
+    // rebind_gap()
     rebind_gap();
 }
 

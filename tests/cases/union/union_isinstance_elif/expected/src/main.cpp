@@ -4,39 +4,39 @@
 namespace tpy_user::main {
 
 
-// 21: def area(s: Circle | Rect | Triangle) -> float:
+// def area(s: Circle | Rect | Triangle) -> float:
 double area(const std::variant<Circle, Rect, Triangle>& s) {
-    // 22:     if isinstance(s, Circle):
+    //     if isinstance(s, Circle):
     if (std::holds_alternative<Circle>(s)) {
         auto& __s = std::get<Circle>(s);
-        // 23:         return 3.14159 * s.radius * s.radius
+        //         return 3.14159 * s.radius * s.radius
         return ((((3.14159) * (__s.radius))) * (__s.radius));
-    // 24:     elif isinstance(s, Rect):
+    //     elif isinstance(s, Rect):
     } else if (std::holds_alternative<Rect>(s)) {
         auto& __s = std::get<Rect>(s);
-        // 25:         return s.width * s.height
+        //         return s.width * s.height
         return ((__s.width) * (__s.height));
-    // 26:     else:
+    //     else:
     } else {
         auto& __s = std::get<Triangle>(s);
-        // 27:         return 0.5 * s.base * s.height
+        //         return 0.5 * s.base * s.height
         return ((((0.5) * (__s.base))) * (__s.height));
     }
 }
 
-// 29: def main() -> None:
+// def main() -> None:
 void main() {
-    // 30:     c: Circle | Rect | Triangle = Circle(5.0)
+    //     c: Circle | Rect | Triangle = Circle(5.0)
     std::variant<Circle, Rect, Triangle> c = Circle(5.0);
-    // 31:     print(area(c))
+    //     print(area(c))
     std::cout << tpy::print_float(area(c)) << "\n";
-    // 32:     r: Circle | Rect | Triangle = Rect(3.0, 4.0)
+    //     r: Circle | Rect | Triangle = Rect(3.0, 4.0)
     std::variant<Circle, Rect, Triangle> r = Rect(3.0, 4.0);
-    // 33:     print(area(r))
+    //     print(area(r))
     std::cout << tpy::print_float(area(r)) << "\n";
-    // 34:     t: Circle | Rect | Triangle = Triangle(6.0, 8.0)
+    //     t: Circle | Rect | Triangle = Triangle(6.0, 8.0)
     std::variant<Circle, Rect, Triangle> t = Triangle(6.0, 8.0);
-    // 35:     print(area(t))
+    //     print(area(t))
     std::cout << tpy::print_float(area(t)) << "\n";
 }
 
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 37: main()
+    // main()
     main();
 }
 

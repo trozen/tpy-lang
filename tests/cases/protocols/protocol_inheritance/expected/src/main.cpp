@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 37: def main() -> None:
+// def main() -> None:
 void main() {
-    // 38:     msg = Message("hello")
+    //     msg = Message("hello")
     Message msg = Message("hello");
-    // 39:     c = Container(msg)
+    //     c = Container(msg)
     Container<Message> c = Container<Message>(msg);
-    // 40:     c.describe()
+    //     c.describe()
     c.describe();
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 43: main()
+    // main()
     main();
 }
 

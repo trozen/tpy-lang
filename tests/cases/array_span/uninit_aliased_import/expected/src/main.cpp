@@ -4,10 +4,10 @@
 namespace tpy_user::main {
 
 // # Aliased array storage
-// 7: a = U[Int32, 2]()
+// a = U[Int32, 2]()
 UninitArrayStorage<int32_t, 2>* a{};
 // # Aliased heap storage
-// 16: h = H[Int32](2)
+// h = H[Int32](2)
 UninitHeapStorage<int32_t>* h{};
 
 void __tpy_init() {
@@ -15,32 +15,32 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: from tpy.mem import UninitArrayStorage as U
-    // 6: # Aliased array storage
-    // 7: a = U[Int32, 2]()
+    // from tpy.mem import UninitArrayStorage as U
+    // # Aliased array storage
+    // a = U[Int32, 2]()
     static UninitArrayStorage<int32_t, 2> __global_slot_1 = UninitArrayStorage<int32_t, 2>();
     a = &__global_slot_1;
-    // 8: a.init(0, 10)
+    // a.init(0, 10)
     (*a).init(0, 10);
-    // 9: a.init(1, 20)
+    // a.init(1, 20)
     (*a).init(1, 20);
-    // 10: print(a.load(0))
+    // print(a.load(0))
     std::cout << (*a).load(0) << "\n";
-    // 11: print(a.load(1))
+    // print(a.load(1))
     std::cout << (*a).load(1) << "\n";
-    // 12: a.drop(0)
+    // a.drop(0)
     (*a).drop(0);
-    // 13: a.drop(1)
+    // a.drop(1)
     (*a).drop(1);
-    // 15: # Aliased heap storage
-    // 16: h = H[Int32](2)
+    // # Aliased heap storage
+    // h = H[Int32](2)
     static UninitHeapStorage<int32_t> __global_slot_2 = 2;
     h = &__global_slot_2;
-    // 17: h.init(0, 30)
+    // h.init(0, 30)
     (*h).init(0, 30);
-    // 18: print(h.load(0))
+    // print(h.load(0))
     std::cout << (*h).load(0) << "\n";
-    // 19: h.drop(0)
+    // h.drop(0)
     (*h).drop(0);
 }
 

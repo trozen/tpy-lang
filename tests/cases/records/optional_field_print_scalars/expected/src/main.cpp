@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-// 17: s = Settings()
+// s = Settings()
 Settings* s{};
 
 void __tpy_init() {
@@ -11,26 +11,26 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 17: s = Settings()
+    // s = Settings()
     static Settings __global_slot_1 = Settings();
     s = &__global_slot_1;
-    // 18: print(s)
+    // print(s)
     std::cout << (*s) << "\n";
-    // 20: s.count = 42
+    // s.count = 42
     s->count = 42;
-    // 21: s.flag = True
+    // s.flag = True
     s->flag = true;
-    // 22: s.ratio = 3.14
+    // s.ratio = 3.14
     s->ratio = 3.14;
-    // 23: s.label = "hello"
+    // s.label = "hello"
     s->label = "hello";
-    // 24: print(s)
+    // print(s)
     std::cout << (*s) << "\n";
-    // 26: s.flag = False
+    // s.flag = False
     s->flag = false;
-    // 27: s.ratio = 0.0
+    // s.ratio = 0.0
     s->ratio = 0.0;
-    // 28: print(s)
+    // print(s)
     std::cout << (*s) << "\n";
 }
 

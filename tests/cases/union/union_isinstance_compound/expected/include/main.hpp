@@ -18,12 +18,12 @@ tpy::BigInt test_multi_var(const std::variant<A, B>& a, const std::variant<A, B>
 void main();
 
 // # isinstance in compound conditions: and/or, negation, multi-variable
-// 2: class A:
+// class A:
 struct A {
-    // 3:     x: int
+    //     x: int
     tpy::BigInt x;
 
-    // 4:     def __init__(self, x: int) -> None:
+    //     def __init__(self, x: int) -> None:
     A() = default;
     explicit A(const tpy::BigInt& x) : x(x) {}
 };
@@ -35,12 +35,12 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
     return os;
 }
 
-// 7: class B:
+// class B:
 struct B {
-    // 8:     y: int
+    //     y: int
     tpy::BigInt y;
 
-    // 9:     def __init__(self, y: int) -> None:
+    //     def __init__(self, y: int) -> None:
     B() = default;
     explicit B(const tpy::BigInt& y) : y(y) {}
 };

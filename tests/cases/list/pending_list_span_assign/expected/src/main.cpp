@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 3: def main() -> None:
+// def main() -> None:
 void main() {
-    // 4:     data = [1, 2, 3]
+    //     data = [1, 2, 3]
     std::array<int32_t, 3> data = {1, 2, 3};
-    // 5:     s: Span[Int32] = data
+    //     s: Span[Int32] = data
     std::span<int32_t> s = tpy::as_mut_span(data);
-    // 6:     print(s[0])
+    //     print(s[0])
     std::cout << tpy::__getitem__(s, 0) << "\n";
-    // 7:     print(s[2])
+    //     print(s[2])
     std::cout << tpy::__getitem__(s, 2) << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 9: main()
+    // main()
     main();
 }
 

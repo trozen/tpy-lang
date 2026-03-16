@@ -17,10 +17,10 @@ tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x);
 Container<int32_t> get_box();
 void main();
 
-// 4: class Container[T]:
+// class Container[T]:
 template<typename T>
 struct Container {
-    // 5:     val: T
+    //     val: T
     T val;
 
 };
@@ -33,15 +33,15 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     return os;
 }
 
-// 7: class Pair[A, B]:
+// class Pair[A, B]:
 template<typename A, typename B>
 struct Pair {
-    // 8:     first: A
+    //     first: A
     A first;
-    // 9:     second: B
+    //     second: B
     B second;
 
-    // 11:     def __init__(self, a: A) -> None:
+    //     def __init__(self, a: A) -> None:
     Pair() = default;
     explicit Pair(const A& a) : first(a) {}
 };
@@ -56,16 +56,16 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
     return os;
 }
 
-// 14: def make_box[T]() -> Own[Container[T]]:
+// def make_box[T]() -> Own[Container[T]]:
 template<typename T>
 Container<T> make_box() {
-    // 15:     return Container[T]()
+    //     return Container[T]()
     return Container<T>();
 }
-// 17: def identity[T](x: T) -> T:
+// def identity[T](x: T) -> T:
 template<typename T>
 tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x) {
-    // 18:     return x
+    //     return x
     return x;
 }
 

@@ -4,79 +4,79 @@
 namespace tpy_user::main {
 
 
-// 20: def test_list_sort() -> None:
+// def test_list_sort() -> None:
 void test_list_sort() {
-    // 21:     a: list[Int32] = [5, 3, 1, 4, 2]
+    //     a: list[Int32] = [5, 3, 1, 4, 2]
     std::vector<int32_t> a = {5, 3, 1, 4, 2};
-    // 22:     a.sort()
+    //     a.sort()
     std::stable_sort(a.begin(), a.end());
-    // 23:     print(a)
+    //     print(a)
     std::cout << tpy::ListPrinter(a) << "\n";
 }
 
-// 25: def test_arraylist_sort() -> None:
+// def test_arraylist_sort() -> None:
 void test_arraylist_sort() {
-    // 26:     a = ArrayList[Int32, 8]()
+    //     a = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> a = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    // 27:     a.append(5)
+    //     a.append(5)
     a.append(5);
-    // 28:     a.append(3)
+    //     a.append(3)
     a.append(3);
-    // 29:     a.append(1)
+    //     a.append(1)
     a.append(1);
-    // 30:     a.append(4)
+    //     a.append(4)
     a.append(4);
-    // 31:     a.append(2)
+    //     a.append(2)
     a.append(2);
-    // 32:     a.sort()
+    //     a.sort()
     a.sort();
-    // 33:     print(a)
+    //     print(a)
     std::cout << a << "\n";
 }
 
-// 35: def test_user_type_sort() -> None:
+// def test_user_type_sort() -> None:
 void test_user_type_sort() {
-    // 36:     a: list[Pair] = [Pair(3, 0), Pair(1, 0), Pair(2, 0)]
+    //     a: list[Pair] = [Pair(3, 0), Pair(1, 0), Pair(2, 0)]
     std::vector<Pair> a = {Pair(3, 0), Pair(1, 0), Pair(2, 0)};
-    // 37:     a.sort()
+    //     a.sort()
     std::stable_sort(a.begin(), a.end());
-    // 38:     for p in a:
+    //     for p in a:
     auto& __obj_0 = a;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        // 39:         print(p)
+        //         print(p)
         std::cout << p << "\n";
     }
 }
 
-// 41: def test_stable_sort() -> None:
+// def test_stable_sort() -> None:
 void test_stable_sort() {
-    // 42:     a: list[Pair] = [
+    //     a: list[Pair] = [
     std::vector<Pair> a = {Pair(2, 1), Pair(1, 1), Pair(2, 2), Pair(1, 2), Pair(2, 3)};
-    // 49:     a.sort()
+    //     a.sort()
     std::stable_sort(a.begin(), a.end());
-    // 50:     for p in a:
+    //     for p in a:
     auto& __obj_0 = a;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        // 51:         print(p)
+        //         print(p)
         std::cout << p << "\n";
     }
 }
 
-// 53: def main() -> None:
+// def main() -> None:
 void main() {
-    // 54:     test_list_sort()
+    //     test_list_sort()
     test_list_sort();
-    // 55:     test_arraylist_sort()
+    //     test_arraylist_sort()
     test_arraylist_sort();
-    // 56:     test_user_type_sort()
+    //     test_user_type_sort()
     test_user_type_sort();
-    // 57:     test_stable_sort()
+    //     test_stable_sort()
     test_stable_sort();
 }
 
@@ -85,9 +85,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: from tplib import ArrayList
+    // from tplib import ArrayList
     ::tpy_user::tplib::__tpy_init();
-    // 59: main()
+    // main()
     main();
 }
 

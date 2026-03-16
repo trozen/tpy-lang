@@ -9,7 +9,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: from .funcs import abs, get_clock
+    // from .funcs import abs, get_clock
     ::tpy_user::mathlib::funcs::__tpy_init();
 }
 

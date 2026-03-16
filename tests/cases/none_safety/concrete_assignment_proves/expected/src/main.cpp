@@ -4,12 +4,12 @@
 namespace tpy_user::main {
 
 
-// 11: def make() -> Int32:
+// def make() -> Int32:
 int32_t make() {
-    // 12:     p: Point | None = Point(7)
+    //     p: Point | None = Point(7)
     Point __slot_1 = Point(7);
     Point* p = &__slot_1;
-    // 13:     return p.x
+    //     return p.x
     return p->x;
 }
 
@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 16: print(make())
+    // print(make())
     std::cout << make() << "\n";
 }
 

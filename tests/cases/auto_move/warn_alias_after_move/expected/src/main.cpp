@@ -4,24 +4,24 @@
 namespace tpy_user::main {
 
 
-// 9: def consume(p: Own[Point]) -> Int32:
+// def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point&& p) {
-    // 10:     return p.x
+    //     return p.x
     return p.x;
 }
 
-// 13: def main():
+// def main():
 void main() {
-    // 14:     p = Point()
+    //     p = Point()
     Point p = Point();
-    // 15:     p.x = 42
+    //     p.x = 42
     p.x = 42;
-    // 16:     alias = p
+    //     alias = p
     Point& alias = p;
-    // 17:     consume(p)         # tpyc: warning(/copies.*into owned storage/)
+    //     consume(p)         # tpyc: warning(/copies.*into owned storage/)
     auto __tmp_1 = p;
     consume(std::move(__tmp_1));
-    // 18:     print(alias.x)
+    //     print(alias.x)
     std::cout << alias.x << "\n";
 }
 
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 21: main()
+    // main()
     main();
 }
 

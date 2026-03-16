@@ -7,7 +7,7 @@
 namespace tpy_user::main {
 
 // @dynamic
-// 8: class Shape(Protocol):
+// class Shape(Protocol):
 template<typename T>
 concept __Shape_Concept__ = requires(T& t) {
     { t.area() } -> std::convertible_to<double>;
@@ -46,18 +46,18 @@ void print_area(::tpy_user::tplib::Box<Shape>& b);
 ::tpy_user::tplib::Box<Shape> make_shape();
 void main();
 
-// 11: class Circle(Shape):
+// class Circle(Shape):
 struct Circle : Shape {
-    // 12:     _r: float
+    //     _r: float
     double _r;
 
-    // 13:     def __init__(self, r: float) -> None:
+    //     def __init__(self, r: float) -> None:
     Circle() = default;
     explicit Circle(double r) : _r(r) {}
 
-    // 15:     def area(self) -> float:
+    //     def area(self) -> float:
     double area() override {
-        // 16:         return 3.14 * self._r * self._r
+        //         return 3.14 * self._r * self._r
         return ((((3.14) * (this->_r))) * (this->_r));
     }
 };
@@ -69,18 +69,18 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
     return os;
 }
 
-// 18: class Square(Shape):
+// class Square(Shape):
 struct Square : Shape {
-    // 19:     _s: float
+    //     _s: float
     double _s;
 
-    // 20:     def __init__(self, s: float) -> None:
+    //     def __init__(self, s: float) -> None:
     Square() = default;
     explicit Square(double s) : _s(s) {}
 
-    // 22:     def area(self) -> float:
+    //     def area(self) -> float:
     double area() override {
-        // 23:         return self._s * self._s
+        //         return self._s * self._s
         return ((this->_s) * (this->_s));
     }
 };

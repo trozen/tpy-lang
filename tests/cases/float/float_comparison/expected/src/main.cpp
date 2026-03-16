@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # Comparisons
-// 2: x = 3.14
+// x = 3.14
 double x{};
 
 void __tpy_init() {
@@ -12,20 +12,20 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # Comparisons
-    // 2: x = 3.14
+    // # Comparisons
+    // x = 3.14
     x = 3.14;
-    // 3: print(x > 3.0)
+    // print(x > 3.0)
     std::cout << tpy::print_bool((x > 3.0)) << "\n";
-    // 4: print(x == 3.14)
+    // print(x == 3.14)
     std::cout << tpy::print_bool((x == 3.14)) << "\n";
-    // 5: print(x < 4.0)
+    // print(x < 4.0)
     std::cout << tpy::print_bool((x < 4.0)) << "\n";
-    // 6: print(x >= 3.14)
+    // print(x >= 3.14)
     std::cout << tpy::print_bool((x >= 3.14)) << "\n";
-    // 7: print(x <= 3.14)
+    // print(x <= 3.14)
     std::cout << tpy::print_bool((x <= 3.14)) << "\n";
-    // 8: print(x != 0.0)
+    // print(x != 0.0)
     std::cout << tpy::print_bool((x != 0.0)) << "\n";
 }
 

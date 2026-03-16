@@ -12,14 +12,14 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // @dataclass
-// 6: class Point:
+// class Point:
 struct Point {
-    // 7:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 8:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 9:     def __init__(self, x: Int32, y: Int32) -> None:  # tpyc: warning(/will not generate __init__/)
+    //     def __init__(self, x: Int32, y: Int32) -> None:  # tpyc: warning(/will not generate __init__/)
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x((tpy::mul_check<int32_t>(x, 2))), y(y) {}
 

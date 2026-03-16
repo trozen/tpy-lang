@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 20: def main() -> None:
+// def main() -> None:
 void main() {
-    // 21:     o = Owner(Int32(1), Int32(42))
+    //     o = Owner(Int32(1), Int32(42))
     Owner o = Owner(1, 42);
-    // 22:     print(o.h.id)
+    //     print(o.h.id)
     std::cout << o.h.id << "\n";
-    // 23:     print(o.tag)
+    //     print(o.tag)
     std::cout << o.tag << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 25: main()
+    // main()
     main();
 }
 

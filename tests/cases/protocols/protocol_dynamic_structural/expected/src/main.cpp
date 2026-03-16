@@ -4,26 +4,26 @@
 namespace tpy_user::main {
 
 
-// 16: def greet(pet: Pet) -> None:
+// def greet(pet: Pet) -> None:
 void greet(Pet& pet) {
-    // 17:     print(pet.make_noise())
+    //     print(pet.make_noise())
     std::cout << pet.make_noise() << "\n";
 }
 
-// 19: def main() -> None:
+// def main() -> None:
 void main() {
-    // 20:     greet(Parrot())       # rvalue: owning adapter
+    //     greet(Parrot())       # rvalue: owning adapter
     tpy::Adapter<Pet, Parrot> __tmp_1{Parrot()};
     greet(__tmp_1);
-    // 21:     p = Parrot()
+    //     p = Parrot()
     Parrot p = Parrot();
-    // 22:     greet(p)              # lvalue: ref adapter (zero-copy)
+    //     greet(p)              # lvalue: ref adapter (zero-copy)
     tpy::RefAdapter<Pet, Parrot> __tmp_2{p};
     greet(__tmp_2);
-    // 23:     pet: Pet = Parrot()   # local: owning adapter (owns inner value)
+    //     pet: Pet = Parrot()   # local: owning adapter (owns inner value)
     tpy::Adapter<Pet, Parrot> __slot_1{Parrot()};
     Pet* pet = &__slot_1;
-    // 24:     print(pet.make_noise())
+    //     print(pet.make_noise())
     std::cout << pet->make_noise() << "\n";
 }
 
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 26: main()
+    // main()
     main();
 }
 

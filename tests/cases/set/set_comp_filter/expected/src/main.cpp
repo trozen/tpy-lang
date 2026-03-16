@@ -4,10 +4,10 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     # Single condition -- integer sets have deterministic order
-    // 6:     evens: set[Int32] = {x for x in range(10) if x % 2 == 0}
+    //     # Single condition -- integer sets have deterministic order
+    //     evens: set[Int32] = {x for x in range(10) if x % 2 == 0}
     tpy::ordered_set<int32_t> evens = [&]() {
         tpy::ordered_set<int32_t> __result;
         const int32_t __stop_0 = 10;
@@ -18,19 +18,19 @@ void main() {
         }
         return __result;
     }();
-    // 7:     for v in evens:
+    //     for v in evens:
     auto& __obj_1 = evens;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t v = *__beg_1;
-        // 8:         print(v)
+        //         print(v)
         std::cout << v << "\n";
     }
-    // 10:     # Filter from list -- check membership and size instead of iteration order
-    // 11:     words: list[str] = ["hello", "hi", "world", "hey", "wow"]
+    //     # Filter from list -- check membership and size instead of iteration order
+    //     words: list[str] = ["hello", "hi", "world", "hey", "wow"]
     std::vector<std::string> words = {"hello", "hi", "world", "hey", "wow"};
-    // 12:     long_words: set[str] = {w for w in words if len(w) > 2}
+    //     long_words: set[str] = {w for w in words if len(w) > 2}
     tpy::ordered_set<std::string> long_words = [&]() {
         tpy::ordered_set<std::string> __result;
         auto& __obj_2 = words;
@@ -44,11 +44,11 @@ void main() {
         }
         return __result;
     }();
-    // 13:     print(len(long_words))
+    //     print(len(long_words))
     std::cout << tpy::__len__(long_words) << "\n";
-    // 14:     print("hello" in long_words)
+    //     print("hello" in long_words)
     std::cout << tpy::print_bool((long_words.contains("hello"))) << "\n";
-    // 15:     print("hi" in long_words)
+    //     print("hi" in long_words)
     std::cout << tpy::print_bool((long_words.contains("hi"))) << "\n";
 }
 
@@ -57,7 +57,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 17: main()
+    // main()
     main();
 }
 

@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-// 7: class Comparable(Protocol):
+// class Comparable(Protocol):
 template<typename T>
 concept Comparable = requires(T& t) {
     { t.compare_to() } -> std::convertible_to<int32_t>;
@@ -42,18 +42,18 @@ template<Comparable T_x>
 int32_t use_user_comparable(T_x& x);
 void main();
 
-// 15: class Widget(Comparable):
+// class Widget(Comparable):
 struct Widget {
-    // 16:     val: Int32
+    //     val: Int32
     int32_t val;
 
-    // 17:     def __init__(self, val: Int32):
+    //     def __init__(self, val: Int32):
     Widget() = default;
     explicit Widget(int32_t val) : val(val) {}
 
-    // 19:     def compare_to(self) -> Int32:
+    //     def compare_to(self) -> Int32:
     int32_t compare_to() const {
-        // 20:         return self.val
+        //         return self.val
         return this->val;
     }
 };
@@ -65,10 +65,10 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
     return os;
 }
 
-// 22: def use_user_comparable(x: Comparable) -> Int32:
+// def use_user_comparable(x: Comparable) -> Int32:
 template<Comparable T_x>
 int32_t use_user_comparable(T_x& x) {
-    // 23:     return x.compare_to()
+    //     return x.compare_to()
     return x.compare_to();
 }
 

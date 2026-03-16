@@ -4,21 +4,21 @@
 namespace tpy_user::main {
 
 
-// 39: def main() -> None:
+// def main() -> None:
 void main() {
-    // 40:     d = Dog("Rex")
+    //     d = Dog("Rex")
     Dog d = Dog("Rex");
-    // 41:     c = Cat("Whiskers")
+    //     c = Cat("Whiskers")
     Cat c = Cat("Whiskers");
-    // 42:     r = Recorder(d)
+    //     r = Recorder(d)
     Recorder r = Recorder(d);
-    // 43:     print(r.message)
+    //     print(r.message)
     std::cout << r.message << "\n";
-    // 44:     ann = Announcer(">> ")
+    //     ann = Announcer(">> ")
     Announcer ann = Announcer(">> ");
-    // 45:     ann.announce(d)
+    //     ann.announce(d)
     ann.announce(d);
-    // 46:     ann.announce(c)
+    //     ann.announce(c)
     ann.announce(c);
 }
 
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 48: main()
+    // main()
     main();
 }
 

@@ -4,78 +4,78 @@
 namespace tpy_user::main {
 
 
-// 11: def print_point(p: Point) -> None:
+// def print_point(p: Point) -> None:
 void print_point(const Point& p) {
-    // 12:     print(p.x)
+    //     print(p.x)
     std::cout << p.x << "\n";
-    // 13:     print(p.y)
+    //     print(p.y)
     std::cout << p.y << "\n";
 }
 
-// 15: def get_sum(p: Point) -> Int32:
+// def get_sum(p: Point) -> Int32:
 int32_t get_sum(const Point& p) {
-    // 16:     return p.x + p.y
+    //     return p.x + p.y
     return (tpy::add_check<int32_t>(p.x, p.y));
 }
 
-// 18: def modify_point(p: Point) -> None:
+// def modify_point(p: Point) -> None:
 void modify_point(Point& p) {
-    // 19:     p.x = 999
+    //     p.x = 999
     p.x = 999;
 }
 
-// 21: def deref_and_return(ptr: Ptr[Point]) -> Point:
+// def deref_and_return(ptr: Ptr[Point]) -> Point:
 Point& deref_and_return(Point* ptr) {
-    // 22:     # Ptr -> Point coercion in return statement
-    // 23:     return ptr
+    //     # Ptr -> Point coercion in return statement
+    //     return ptr
     return tpy::deref_check(ptr);
 }
 
-// 25: def test_ptr_to_value() -> None:
+// def test_ptr_to_value() -> None:
 void test_ptr_to_value() {
-    // 26:     pt: Point = Point(10, 20)
+    //     pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    // 27:     ptr: Ptr[Point] = pt
+    //     ptr: Ptr[Point] = pt
     Point* ptr = &pt;
-    // 29:     # Ptr[Point] -> Point coercion in function call
-    // 30:     print_point(ptr)
+    //     # Ptr[Point] -> Point coercion in function call
+    //     print_point(ptr)
     print_point(tpy::deref_check(ptr));
-    // 32:     result: Int32 = get_sum(ptr)
+    //     result: Int32 = get_sum(ptr)
     int32_t result = get_sum(tpy::deref_check(ptr));
-    // 33:     print(result)
+    //     print(result)
     std::cout << result << "\n";
-    // 35:     # Modification through coerced pointer affects original
-    // 36:     modify_point(ptr)
+    //     # Modification through coerced pointer affects original
+    //     modify_point(ptr)
     modify_point(tpy::deref_check(ptr));
-    // 37:     print(pt.x)
+    //     print(pt.x)
     std::cout << pt.x << "\n";
 }
 
-// 39: def test_ptr_to_value_assign() -> None:
+// def test_ptr_to_value_assign() -> None:
 void test_ptr_to_value_assign() {
-    // 40:     pt: Point = Point(5, 7)
+    //     pt: Point = Point(5, 7)
     Point pt = Point(5, 7);
-    // 41:     ptr: Ptr[Point] = pt
+    //     ptr: Ptr[Point] = pt
     Point* ptr = &pt;
-    // 43:     # Ptr[Point] -> Point coercion in assignment
-    // 44:     p2: Point = ptr
+    //     # Ptr[Point] -> Point coercion in assignment
+    //     p2: Point = ptr
     Point& p2 = tpy::deref_check(ptr);
-    // 45:     print(p2.x)
+    //     print(p2.x)
     std::cout << p2.x << "\n";
-    // 46:     print(p2.y)
+    //     print(p2.y)
     std::cout << p2.y << "\n";
 }
 
-// 48: def test_ptr_to_value_return() -> None:
+// def test_ptr_to_value_return() -> None:
 void test_ptr_to_value_return() {
-    // 49:     pt: Point = Point(100, 200)
+    //     pt: Point = Point(100, 200)
     Point pt = Point(100, 200);
-    // 50:     ptr: Ptr[Point] = pt
+    //     ptr: Ptr[Point] = pt
     Point* ptr = &pt;
-    // 52:     # Ptr -> Point coercion in return
-    // 53:     p2: Point = deref_and_return(ptr)
+    //     # Ptr -> Point coercion in return
+    //     p2: Point = deref_and_return(ptr)
     Point& p2 = deref_and_return(ptr);
-    // 54:     print(p2.x)
+    //     print(p2.x)
     std::cout << p2.x << "\n";
 }
 
@@ -84,18 +84,18 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 56: # Run tests
-    // 57: print("=== call ===")
+    // # Run tests
+    // print("=== call ===")
     std::cout << "=== call ===" << "\n";
-    // 58: test_ptr_to_value()
+    // test_ptr_to_value()
     test_ptr_to_value();
-    // 59: print("=== assign ===")
+    // print("=== assign ===")
     std::cout << "=== assign ===" << "\n";
-    // 60: test_ptr_to_value_assign()
+    // test_ptr_to_value_assign()
     test_ptr_to_value_assign();
-    // 61: print("=== return ===")
+    // print("=== return ===")
     std::cout << "=== return ===" << "\n";
-    // 62: test_ptr_to_value_return()
+    // test_ptr_to_value_return()
     test_ptr_to_value_return();
 }
 

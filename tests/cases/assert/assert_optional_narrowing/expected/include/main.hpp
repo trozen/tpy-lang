@@ -13,18 +13,18 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t get_x(Point* p);
 int32_t get_mag(Point* p);
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
 
-    // 7:     def __init__(self, x: Int32):
+    //     def __init__(self, x: Int32):
     Point() = default;
     explicit Point(int32_t x) : x(x) {}
 
-    // 10:     def mag(self) -> Int32:
+    //     def mag(self) -> Int32:
     int32_t mag() const {
-        // 11:         return self.x
+        //         return self.x
         return this->x;
     }
 };

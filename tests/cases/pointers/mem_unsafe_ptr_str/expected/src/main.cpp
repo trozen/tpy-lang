@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 4: def test_str_ptr() -> None:
+// def test_str_ptr() -> None:
 void test_str_ptr() {
-    // 5:     s: str = "hello"
+    //     s: str = "hello"
     std::string_view s = "hello";
-    // 6:     cp: Ptr[readonly[Char]] = unsafe_ptr(s)
+    //     cp: Ptr[readonly[Char]] = unsafe_ptr(s)
     const char* cp = s.data();
-    // 7:     print(unsafe_load(cp, UInt32(0)))
+    //     print(unsafe_load(cp, UInt32(0)))
     std::cout << cp[0] << "\n";
-    // 8:     print(unsafe_load(cp, UInt32(4)))
+    //     print(unsafe_load(cp, UInt32(4)))
     std::cout << cp[4] << "\n";
 }
 
@@ -21,8 +21,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: from tpy.unsafe import unsafe_ptr, unsafe_load
-    // 10: test_str_ptr()
+    // from tpy.unsafe import unsafe_ptr, unsafe_load
+    // test_str_ptr()
     test_str_ptr();
 }
 

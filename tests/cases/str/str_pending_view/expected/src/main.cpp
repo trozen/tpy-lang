@@ -4,31 +4,31 @@
 namespace tpy_user::main {
 
 
-// 4: def test_literal() -> None:
+// def test_literal() -> None:
 void test_literal() {
-    // 5:     s = "hello"  # tpyc: type(StrView)
+    //     s = "hello"  # tpyc: type(StrView)
     std::string_view s = "hello";
-    // 6:     print(s)
+    //     print(s)
     std::cout << s << "\n";
-    // 7:     print(len(s))
+    //     print(len(s))
     std::cout << tpy::__len__(s) << "\n";
 }
 
-// 9: def test_param(msg: str) -> None:
+// def test_param(msg: str) -> None:
 void test_param(std::string_view msg) {
-    // 10:     s = msg  # tpyc: type(StrView)
+    //     s = msg  # tpyc: type(StrView)
     std::string_view s = msg;
-    // 11:     print(s)
+    //     print(s)
     std::cout << s << "\n";
 }
 
-// 13: def test_strview_source() -> None:
+// def test_strview_source() -> None:
 void test_strview_source() {
-    // 14:     sv: StrView = StrView("view")
+    //     sv: StrView = StrView("view")
     std::string_view sv = std::string_view("view");
-    // 15:     s = sv  # tpyc: type(StrView)
+    //     s = sv  # tpyc: type(StrView)
     std::string_view s = sv;
-    // 16:     print(s)
+    //     print(s)
     std::cout << s << "\n";
 }
 
@@ -37,11 +37,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: test_literal()
+    // test_literal()
     test_literal();
-    // 19: test_param("from param")
+    // test_param("from param")
     test_param("from param");
-    // 20: test_strview_source()
+    // test_strview_source()
     test_strview_source();
 }
 

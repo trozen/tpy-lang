@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # First loop consumes the iterator
-// 23: c = Counter(3)
+// c = Counter(3)
 Counter* c{};
 
 void __tpy_init() {
@@ -12,36 +12,36 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: # First loop consumes the iterator
-    // 23: c = Counter(3)
+    // # First loop consumes the iterator
+    // c = Counter(3)
     static Counter __global_slot_1 = Counter(3);
     c = &__global_slot_1;
-    // 24: print("first:")
+    // print("first:")
     std::cout << "first:" << "\n";
-    // 25: for x in c:
+    // for x in c:
     auto& __src_0 = (*c);
     auto __obj_0 = tpy::iter_adapt(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 26:     print(x)
+        //     print(x)
         std::cout << x << "\n";
     }
-    // 28: # Second loop over same iterator should produce nothing
-    // 29: print("second:")
+    // # Second loop over same iterator should produce nothing
+    // print("second:")
     std::cout << "second:" << "\n";
-    // 30: for x in c:
+    // for x in c:
     auto& __src_1 = (*c);
     auto __obj_1 = tpy::iter_adapt(__src_1);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        // 31:     print(x)
+        //     print(x)
         std::cout << x << "\n";
     }
-    // 33: print("done")
+    // print("done")
     std::cout << "done" << "\n";
 }
 

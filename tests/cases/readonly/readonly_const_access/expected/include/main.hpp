@@ -12,25 +12,25 @@ inline constexpr std::string_view __name__ = "__main__";
 void read_items(const Container& c);
 void main();
 
-// 5: class Container:
+// class Container:
 struct Container {
-    // 6:     _items: list[Int32]
+    //     _items: list[Int32]
     std::vector<int32_t> _items;
 
-    // 8:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Container() : _items({10, 20, 30}) {}
 
     //     @readonly
-    // 12:     def items(self) -> list[Int32]:
+    //     def items(self) -> list[Int32]:
     const std::vector<int32_t>& items() const {
-        // 13:         return self._items
+        //         return self._items
         return this->_items;
     }
 
     //     @readonly
-    // 16:     def count(self) -> Int32:
+    //     def count(self) -> Int32:
     int32_t count() const {
-        // 17:         return Int32(len(self._items))
+        //         return Int32(len(self._items))
         return tpy::__len__(this->_items);
     }
 };

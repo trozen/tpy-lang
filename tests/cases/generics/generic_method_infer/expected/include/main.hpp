@@ -11,20 +11,20 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Box[T]:
+// class Box[T]:
 template<typename T>
 struct Box {
-    // 5:     val: T
+    //     val: T
     T val;
 
-    // 7:     def __init__(self, val: T):
+    //     def __init__(self, val: T):
     Box() = default;
     explicit Box(const T& val) : val(val) {}
 
-    // 10:     def transform[U](self, other: U) -> U:
+    //     def transform[U](self, other: U) -> U:
     template<typename U>
     tpy::val_or_cref_t<U> transform(const U& other) const {
-        // 11:         return other
+        //         return other
         return other;
     }
 };

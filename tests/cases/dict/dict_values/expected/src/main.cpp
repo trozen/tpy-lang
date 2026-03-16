@@ -5,24 +5,24 @@ namespace tpy_user::main {
 
 
 // # Iterate values via d.values(), check len() and 'in' operator
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     d = {"x": 10, "y": 20, "z": 30}
+    //     d = {"x": 10, "y": 20, "z": 30}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}, {"z", 30}});
-    // 5:     for v in d.values():
+    //     for v in d.values():
     auto __obj_0 = tpy::dict_values(d);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        // 6:         print(v)
+        //         print(v)
         std::cout << v << "\n";
     }
-    // 8:     print(len(d.values()))
+    //     print(len(d.values()))
     std::cout << tpy::__len__(tpy::dict_values(d)) << "\n";
-    // 9:     print(20 in d.values())
+    //     print(20 in d.values())
     std::cout << tpy::print_bool((std::find(tpy::dict_values(d).begin(), tpy::dict_values(d).end(), 20) != tpy::dict_values(d).end())) << "\n";
-    // 10:     print(99 in d.values())
+    //     print(99 in d.values())
     std::cout << tpy::print_bool((std::find(tpy::dict_values(d).begin(), tpy::dict_values(d).end(), 99) != tpy::dict_values(d).end())) << "\n";
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 12: main()
+    // main()
     main();
 }
 

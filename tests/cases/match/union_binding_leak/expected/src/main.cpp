@@ -4,40 +4,40 @@
 namespace tpy_user::main {
 
 
-// 12: def describe(a: Dog | Cat) -> str:
+// def describe(a: Dog | Cat) -> str:
 std::string describe(const std::variant<Cat, Dog>& a) {
-    // 13:     match a:
+    //     match a:
     std::string n;
     auto& __match_subject = a;
     switch (__match_subject.index()) {
-    // 14:         case Dog(name=n):
+    //         case Dog(name=n):
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject);
         n = __case_0.name;
-        // 15:             pass
+        //             pass
         break;
     }
-    // 16:         case Cat(name=n):
+    //         case Cat(name=n):
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject);
         n = __case_1.name;
-        // 17:             pass
+        //             pass
         break;
     }
     }
-    // 18:     return n
+    //     return n
     return n;
 }
 
-// 20: def main() -> None:
+// def main() -> None:
 void main() {
-    // 21:     d: Dog | Cat = Dog("Rex")
+    //     d: Dog | Cat = Dog("Rex")
     std::variant<Cat, Dog> d = Dog("Rex");
-    // 22:     c: Dog | Cat = Cat("Whiskers")
+    //     c: Dog | Cat = Cat("Whiskers")
     std::variant<Cat, Dog> c = Cat("Whiskers");
-    // 23:     print(describe(d))
+    //     print(describe(d))
     std::cout << describe(d) << "\n";
-    // 24:     print(describe(c))
+    //     print(describe(c))
     std::cout << describe(c) << "\n";
 }
 
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 26: main()
+    // main()
     main();
 }
 

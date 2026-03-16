@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-// 21: c = IntContainer(42, 100)
+// c = IntContainer(42, 100)
 IntContainer* c{};
 
 void __tpy_init() {
@@ -11,14 +11,14 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 21: c = IntContainer(42, 100)
+    // c = IntContainer(42, 100)
     static IntContainer __global_slot_1 = IntContainer(42, 100);
     c = &__global_slot_1;
-    // 22: print(c.value)   # 42
+    // print(c.value)   # 42
     std::cout << c->value << "\n";
-    // 23: print(c.get())   # 42
+    // print(c.get())   # 42
     std::cout << c->get() << "\n";
-    // 24: print(c.extra)   # 100
+    // print(c.extra)   # 100
     std::cout << c->extra << "\n";
 }
 

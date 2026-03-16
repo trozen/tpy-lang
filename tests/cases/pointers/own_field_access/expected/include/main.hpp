@@ -13,14 +13,14 @@ Point make_point(int32_t x, int32_t y);
 int32_t use_owned_point(Point&& p);
 void main();
 
-// 11: class Point:
+// class Point:
 struct Point {
-    // 12:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 13:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 15:     def __init__(self, x: Int32, y: Int32):
+    //     def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

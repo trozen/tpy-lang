@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 20: def main():
+// def main():
 void main() {
-    // 21:     r1 = Resource(1)
+    //     r1 = Resource(1)
     Resource r1 = Resource(1);
-    // 22:     r2 = copy(r1)
+    //     r2 = copy(r1)
     Resource r2 = Resource(r1);
-    // 23:     print("r1 =", r1.id)
+    //     print("r1 =", r1.id)
     std::cout << "r1 =" << " " << r1.id << "\n";
-    // 24:     print("r2 =", r2.id)
+    //     print("r2 =", r2.id)
     std::cout << "r2 =" << " " << r2.id << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 27: main()
+    // main()
     main();
 }
 

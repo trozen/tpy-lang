@@ -11,34 +11,34 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Pair[T]:
+// class Pair[T]:
 template<typename T>
 struct Pair {
-    // 5:     a: T
+    //     a: T
     T a;
-    // 6:     b: T
+    //     b: T
     T b;
 
-    // 8:     def __init__(self, a: Own[T], b: Own[T]) -> None:
+    //     def __init__(self, a: Own[T], b: Own[T]) -> None:
     Pair() = default;
     explicit Pair(T&& a, T&& b) : a(std::move(a)), b(std::move(b)) {}
 
-    // 12:     def min_val[T: Comparable](self) -> T:
+    //     def min_val[T: Comparable](self) -> T:
     tpy::val_or_ref_t<T> min_val()
       requires tpy::Comparable<T> {
-        // 13:         if self.a < self.b:
+        //         if self.a < self.b:
         if ((this->a < this->b)) {
-            // 14:             return self.a
+            //             return self.a
             return this->a;
         }
-        // 15:         return self.b
+        //         return self.b
         return this->b;
     }
 
-    // 17:     def with_default[T: Default](self) -> T:
+    //     def with_default[T: Default](self) -> T:
     tpy::val_or_cref_t<T> with_default() const
       requires std::default_initializable<T> {
-        // 18:         return make_default()
+        //         return make_default()
         return T{};
     }
 };

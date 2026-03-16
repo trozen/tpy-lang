@@ -5,9 +5,9 @@ namespace tpy_user::main {
 
 const tpy::BigInt BIG_VALUE = tpy::BigInt(1000000);
 
-// 6: def main() -> None:
+// def main() -> None:
 void main() {
-    // 7:     print(BIG_VALUE)
+    //     print(BIG_VALUE)
     std::cout << BIG_VALUE << "\n";
 }
 
@@ -16,7 +16,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 9: main()
+    // main()
     main();
 }
 

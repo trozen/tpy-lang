@@ -4,16 +4,16 @@
 namespace tpy_user::main {
 
 
-// 14: def main() -> None:
+// def main() -> None:
 void main() {
-    // 15:     w = Wrapper(42)
+    //     w = Wrapper(42)
     Wrapper w = Wrapper(tpy::BigInt(42));
-    // 16:     result = w.take()
+    //     result = w.take()
     tpy::BigInt result = std::move(w).take();
-    // 17:     print(result)
+    //     print(result)
     std::cout << result << "\n";
-    // 19:     # Calling on a temporary should also work
-    // 20:     print(Wrapper(99).take())
+    //     # Calling on a temporary should also work
+    //     print(Wrapper(99).take())
     std::cout << Wrapper(tpy::BigInt(99)).take() << "\n";
 }
 
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: main()
+    // main()
     main();
 }
 

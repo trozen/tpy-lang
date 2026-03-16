@@ -12,25 +12,25 @@ inline constexpr std::string_view __name__ = "__main__";
 void modify_list(std::vector<int32_t>& items);
 void main();
 
-// 4: class Box[T]:
+// class Box[T]:
 template<typename T>
 struct Box {
-    // 5:     value: T
+    //     value: T
     T value;
 
-    // 7:     def __init__(self, value: T) -> None:
+    //     def __init__(self, value: T) -> None:
     Box() = default;
     explicit Box(const T& value) : value(value) {}
 
-    // 10:     def get(self) -> T:
+    //     def get(self) -> T:
     tpy::val_or_ref_t<T> get() {
-        // 11:         return self.value
+        //         return self.value
         return this->value;
     }
 
-    // 13:     def set(self, value: T) -> None:
+    //     def set(self, value: T) -> None:
     void set(tpy::param_val_or_ref_t<T> value) {
-        // 14:         self.value = value
+        //         self.value = value
         this->value = value;
     }
 };

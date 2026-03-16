@@ -5,11 +5,11 @@ namespace tpy_user::main {
 
 
 // # Subscript access on missing key should panic
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     d = {"x": 1}
+    //     d = {"x": 1}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"x", 1}});
-    // 4:     print(d["missing"])
+    //     print(d["missing"])
     std::cout << tpy::__getitem__(d, "missing") << "\n";
 }
 
@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 6: main()
+    // main()
     main();
 }
 

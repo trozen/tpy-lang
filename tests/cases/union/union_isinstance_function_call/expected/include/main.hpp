@@ -15,12 +15,12 @@ void greet_cat(const Cat& c);
 void main();
 
 // # Pass narrowed union var to function expecting the member type
-// 2: class Dog:
+// class Dog:
 struct Dog {
-    // 3:     name: str
+    //     name: str
     std::string name;
 
-    // 4:     def __init__(self, name: str) -> None:
+    //     def __init__(self, name: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name) : name(name) {}
 };
@@ -32,12 +32,12 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
-// 7: class Cat:
+// class Cat:
 struct Cat {
-    // 8:     name: str
+    //     name: str
     std::string name;
 
-    // 9:     def __init__(self, name: str) -> None:
+    //     def __init__(self, name: str) -> None:
     Cat() = default;
     explicit Cat(std::string_view name) : name(name) {}
 };

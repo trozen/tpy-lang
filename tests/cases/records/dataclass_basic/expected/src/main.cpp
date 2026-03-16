@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 10: def main() -> None:
+// def main() -> None:
 void main() {
-    // 11:     p = Point(1, 2)
+    //     p = Point(1, 2)
     Point p = Point(1, 2);
-    // 12:     print(p)
+    //     print(p)
     std::cout << p << "\n";
-    // 13:     print(p.x, p.y)
+    //     print(p.x, p.y)
     std::cout << p.x << " " << p.y << "\n";
-    // 14:     print(repr(p))
+    //     print(repr(p))
     std::cout << std::string(tpy::__repr__(p)) << "\n";
-    // 15:     p2 = Point(x=10, y=20)
+    //     p2 = Point(x=10, y=20)
     Point p2 = Point(10, 20);
-    // 16:     print(p2)
+    //     print(p2)
     std::cout << p2 << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: main()
+    // main()
     main();
 }
 

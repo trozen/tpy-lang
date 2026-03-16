@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 26: def main() -> None:
+// def main() -> None:
 void main() {
-    // 27:     item = Item("Widget", 42)
+    //     item = Item("Widget", 42)
     Item item = Item("Widget", 42);
-    // 28:     print(item.describe())
+    //     print(item.describe())
     std::cout << item.describe() << "\n";
-    // 29:     print(item.id())
+    //     print(item.id())
     std::cout << item.id() << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 31: main()
+    // main()
     main();
 }
 

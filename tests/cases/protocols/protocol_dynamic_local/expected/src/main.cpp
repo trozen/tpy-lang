@@ -4,12 +4,12 @@
 namespace tpy_user::main {
 
 
-// 14: def main() -> None:
+// def main() -> None:
 void main() {
-    // 15:     pet: Pet = Dog()
+    //     pet: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    // 16:     print(pet.make_noise())
+    //     print(pet.make_noise())
     std::cout << pet->make_noise() << "\n";
 }
 
@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: main()
+    // main()
     main();
 }
 

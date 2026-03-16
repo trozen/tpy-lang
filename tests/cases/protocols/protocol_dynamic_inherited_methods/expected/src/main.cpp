@@ -4,18 +4,18 @@
 namespace tpy_user::main {
 
 
-// 20: def greet(n: DynNamed) -> None:
+// def greet(n: DynNamed) -> None:
 void greet(DynNamed& n) {
-    // 21:     print(n.name())
+    //     print(n.name())
     std::cout << n.name() << "\n";
 }
 
-// 23: def main() -> None:
+// def main() -> None:
 void main() {
-    // 24:     greet(Dog())
+    //     greet(Dog())
     Dog __tmp_1{Dog()};
     greet(__tmp_1);
-    // 25:     greet(Cat())
+    //     greet(Cat())
     tpy::Adapter<DynNamed, Cat> __tmp_2{Cat()};
     greet(__tmp_2);
 }
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 27: main()
+    // main()
     main();
 }
 

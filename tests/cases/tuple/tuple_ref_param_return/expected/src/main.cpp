@@ -4,28 +4,28 @@
 namespace tpy_user::main {
 
 
-// 11: def make_pair(n: Int32, p: Point) -> tuple[Int32, Point]:
+// def make_pair(n: Int32, p: Point) -> tuple[Int32, Point]:
 std::tuple<int32_t, Point&> make_pair(int32_t n, Point& p) {
-    // 12:     return (n, p)
+    //     return (n, p)
     return std::tuple<int32_t, Point&>{n, p};
 }
 
-// 14: def main() -> None:
+// def main() -> None:
 void main() {
-    // 15:     p = Point(Int32(1), Int32(2))
+    //     p = Point(Int32(1), Int32(2))
     Point p = Point(1, 2);
-    // 16:     pair = make_pair(Int32(42), p)
+    //     pair = make_pair(Int32(42), p)
     auto pair = make_pair(42, p);
-    // 17:     print(pair[0])
+    //     print(pair[0])
     std::cout << std::get<0>(pair) << "\n";
-    // 18:     print(pair[1].x)
+    //     print(pair[1].x)
     std::cout << std::get<1>(pair).x << "\n";
-    // 19:     print(pair[1].y)
+    //     print(pair[1].y)
     std::cout << std::get<1>(pair).y << "\n";
-    // 20:     # Mutation through p is visible via pair[1] (reference semantics)
-    // 21:     p.x = Int32(99)
+    //     # Mutation through p is visible via pair[1] (reference semantics)
+    //     p.x = Int32(99)
     p.x = 99;
-    // 22:     print(pair[1].x)
+    //     print(pair[1].x)
     std::cout << std::get<1>(pair).x << "\n";
 }
 
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 24: main()
+    // main()
     main();
 }
 

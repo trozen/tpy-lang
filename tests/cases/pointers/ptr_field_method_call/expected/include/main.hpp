@@ -11,19 +11,19 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 6: class Wrapper[T]:
+// class Wrapper[T]:
 template<typename T>
 struct Wrapper {
-    // 7:     _storage: Ptr[UninitHeapStorage[T]]
+    //     _storage: Ptr[UninitHeapStorage[T]]
     UninitHeapStorage<T>* _storage;
 
-    // 9:     def __init__(self, storage: Ptr[UninitHeapStorage[T]]) -> None:
+    //     def __init__(self, storage: Ptr[UninitHeapStorage[T]]) -> None:
     Wrapper() = default;
     explicit Wrapper(UninitHeapStorage<T>* storage) : _storage(storage) {}
 
-    // 12:     def load_at(self, index: UInt32) -> T:
+    //     def load_at(self, index: UInt32) -> T:
     tpy::val_or_cref_t<T> load_at(uint32_t index) const {
-        // 13:         return self._storage.load(index)
+        //         return self._storage.load(index)
         return (*this->_storage).load(index);
     }
 };

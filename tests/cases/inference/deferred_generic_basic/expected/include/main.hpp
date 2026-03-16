@@ -11,34 +11,34 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Container[T]:
+// class Container[T]:
 template<typename T>
 struct Container {
-    // 6:     count: Int32
+    //     count: Int32
     int32_t count;
-    // 5:     val: T
+    //     val: T
     T val;
 
-    // 8:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Container() : count(0) {}
 
-    // 11:     def set(self, val: T) -> None:
+    //     def set(self, val: T) -> None:
     void set(tpy::param_val_or_ref_t<T> val) {
-        // 12:         self.val = val
+        //         self.val = val
         this->val = val;
-        // 13:         self.count = self.count + Int32(1)
+        //         self.count = self.count + Int32(1)
         this->count = (tpy::add_check<int32_t>(this->count, 1));
     }
 
-    // 15:     def get(self) -> T:
+    //     def get(self) -> T:
     tpy::val_or_ref_t<T> get() {
-        // 16:         return self.val
+        //         return self.val
         return this->val;
     }
 
-    // 18:     def get_count(self) -> Int32:
+    //     def get_count(self) -> Int32:
     int32_t get_count() const {
-        // 19:         return self.count
+        //         return self.count
         return this->count;
     }
 };

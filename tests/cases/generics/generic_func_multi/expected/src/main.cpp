@@ -4,10 +4,10 @@
 namespace tpy_user::main {
 
 // # Inference from arguments
-// 23: p1 = create_pair(10, "hello")
+// p1 = create_pair(10, "hello")
 Pair<int32_t, std::string>* p1{};
 // # Swap pair
-// 28: p2 = swap_pair(p1)
+// p2 = swap_pair(p1)
 Pair<std::string, int32_t>* p2{};
 
 void __tpy_init() {
@@ -15,23 +15,23 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: # Inference from arguments
-    // 23: p1 = create_pair(10, "hello")
+    // # Inference from arguments
+    // p1 = create_pair(10, "hello")
     int32_t __tmp_1 = 10;
     std::string __tmp_2 = "hello";
     static Pair<int32_t, std::string> __global_slot_1 = create_pair<int32_t, std::string>(__tmp_1, __tmp_2);
     p1 = &__global_slot_1;
-    // 24: print(p1.first)
+    // print(p1.first)
     std::cout << p1->first << "\n";
-    // 25: print(p1.second)
+    // print(p1.second)
     std::cout << p1->second << "\n";
-    // 27: # Swap pair
-    // 28: p2 = swap_pair(p1)
+    // # Swap pair
+    // p2 = swap_pair(p1)
     static Pair<std::string, int32_t> __global_slot_2 = swap_pair<int32_t, std::string>((*p1));
     p2 = &__global_slot_2;
-    // 29: print(p2.first)
+    // print(p2.first)
     std::cout << p2->first << "\n";
-    // 30: print(p2.second)
+    // print(p2.second)
     std::cout << p2->second << "\n";
 }
 

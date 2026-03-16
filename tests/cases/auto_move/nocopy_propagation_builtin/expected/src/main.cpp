@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 20: def consume(s: Own[Storage]) -> Int32:
+// def consume(s: Own[Storage]) -> Int32:
 int32_t consume(Storage&& s) {
-    // 21:     return s.get()
+    //     return s.get()
     return s.get();
 }
 
-// 24: def main():
+// def main():
 void main() {
-    // 25:     s = Storage()
+    //     s = Storage()
     Storage s = Storage();
-    // 26:     print(consume(s))  # tpyc: ok
+    //     print(consume(s))  # tpyc: ok
     std::cout << consume(std::move(s)) << "\n";
 }
 
@@ -23,8 +23,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: from tpy.mem import UninitHeapStorage
-    // 29: main()
+    // from tpy.mem import UninitHeapStorage
+    // main()
     main();
 }
 

@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # Inference from int, str -> Pair[int, str]
-// 14: pair = Pair(1, "hello")
+// pair = Pair(1, "hello")
 Pair<int32_t, std::string>* pair{};
 
 void __tpy_init() {
@@ -12,13 +12,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 13: # Inference from int, str -> Pair[int, str]
-    // 14: pair = Pair(1, "hello")
+    // # Inference from int, str -> Pair[int, str]
+    // pair = Pair(1, "hello")
     static Pair<int32_t, std::string> __global_slot_1 = Pair<int32_t, std::string>(1, "hello");
     pair = &__global_slot_1;
-    // 15: print(pair.first)
+    // print(pair.first)
     std::cout << pair->first << "\n";
-    // 16: print(pair.second)
+    // print(pair.second)
     std::cout << pair->second << "\n";
 }
 

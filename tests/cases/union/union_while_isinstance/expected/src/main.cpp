@@ -4,34 +4,34 @@
 namespace tpy_user::main {
 
 
-// 18: def drain_circles(s: Circle | Rect) -> None:
+// def drain_circles(s: Circle | Rect) -> None:
 void drain_circles(const std::variant<Circle, Rect>& s) {
-    // 19:     count: Int32 = 0
+    //     count: Int32 = 0
     int32_t count = 0;
-    // 20:     while isinstance(s, Circle):
+    //     while isinstance(s, Circle):
     while (std::holds_alternative<Circle>(s)) {
         auto& __s = std::get<Circle>(s);
-        // 21:         print(s.radius)
+        //         print(s.radius)
         std::cout << tpy::print_float(__s.radius) << "\n";
-        // 22:         count += 1
+        //         count += 1
         count = tpy::add_check<int32_t>(count, 1);
-        // 23:         if count >= 3:
+        //         if count >= 3:
         if ((count >= 3)) {
-            // 24:             break
+            //             break
             break;
         }
     }
 }
 
-// 26: def main() -> None:
+// def main() -> None:
 void main() {
-    // 27:     c: Circle | Rect = Circle(5.0)
+    //     c: Circle | Rect = Circle(5.0)
     std::variant<Circle, Rect> c = Circle(5.0);
-    // 28:     drain_circles(c)
+    //     drain_circles(c)
     drain_circles(c);
-    // 29:     r: Circle | Rect = Rect(3.0, 4.0)
+    //     r: Circle | Rect = Rect(3.0, 4.0)
     std::variant<Circle, Rect> r = Rect(3.0, 4.0);
-    // 30:     drain_circles(r)
+    //     drain_circles(r)
     drain_circles(r);
 }
 
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 32: main()
+    // main()
     main();
 }
 

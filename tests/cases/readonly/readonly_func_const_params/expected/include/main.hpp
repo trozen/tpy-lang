@@ -13,19 +13,19 @@ int32_t read_box(const Box& b, int32_t offset);
 int32_t sum_list(const std::vector<int32_t>& items);
 void main();
 
-// 5: class Box:
+// class Box:
 struct Box {
-    // 6:     value: Int32
+    //     value: Int32
     int32_t value;
 
-    // 7:     def __init__(self, value: Int32) -> None:
+    //     def __init__(self, value: Int32) -> None:
     Box() = default;
     explicit Box(int32_t value) : value(value) {}
 
     //     @readonly
-    // 11:     def get_value(self) -> Int32:
+    //     def get_value(self) -> Int32:
     int32_t get_value() const {
-        // 12:         return self.value
+        //         return self.value
         return this->value;
     }
 };

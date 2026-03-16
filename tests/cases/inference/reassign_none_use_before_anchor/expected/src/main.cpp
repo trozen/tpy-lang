@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-// 11: x = None
+// x = None
 Point* x{};
 
 void __tpy_init() {
@@ -11,14 +11,14 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 11: x = None
+    // x = None
     x = nullptr;
-    // 12: print(x)
+    // print(x)
     std::cout << tpy::print_optional(x) << "\n";
-    // 13: x = Point(Int32(7))
+    // x = Point(Int32(7))
     static Point __global_slot_1 = Point(7);
     x = &__global_slot_1;
-    // 14: print(x.x)
+    // print(x.x)
     std::cout << x->x << "\n";
 }
 

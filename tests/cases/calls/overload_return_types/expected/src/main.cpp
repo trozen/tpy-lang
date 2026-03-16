@@ -7,47 +7,47 @@ namespace tpy_user::main {
 
 
 // @overload
-// 15: def get_value(animal: Dog) -> str: ...  # tpyc: ok
+// def get_value(animal: Dog) -> str: ...  # tpyc: ok
 std::string get_value(const Dog& animal) {
-    // 21:     if isinstance(animal, Dog):
-    // 22:         return animal.name
+    //     if isinstance(animal, Dog):
+    //         return animal.name
     return animal.name;
 }
 
 // @overload
-// 18: def get_value(animal: Cat) -> int: ...  # tpyc: ok
+// def get_value(animal: Cat) -> int: ...  # tpyc: ok
 tpy::BigInt get_value(const Cat& animal) {
-    // 21:     if isinstance(animal, Dog):
-    // 24:         return animal.lives
+    //     if isinstance(animal, Dog):
+    //         return animal.lives
     return animal.lives;
 }
 
 
-// 26: def use_dog_result(name: str) -> None:
+// def use_dog_result(name: str) -> None:
 void use_dog_result(std::string_view name) {
-    // 27:     print("Dog name: " + name)
+    //     print("Dog name: " + name)
     std::cout << (tpy::str_concat("Dog name: ", name)) << "\n";
 }
 
-// 29: def use_cat_result(lives: int) -> None:
+// def use_cat_result(lives: int) -> None:
 void use_cat_result(const tpy::BigInt& lives) {
-    // 30:     print("Cat lives: " + str(lives))
+    //     print("Cat lives: " + str(lives))
     std::cout << (tpy::str_concat("Cat lives: ", (lives).to_string())) << "\n";
 }
 
-// 32: def main() -> None:
+// def main() -> None:
 void main() {
-    // 33:     d = Dog("Rex")
+    //     d = Dog("Rex")
     Dog d = Dog("Rex");
-    // 34:     c = Cat(9)
+    //     c = Cat(9)
     Cat c = Cat(tpy::BigInt(9));
-    // 36:     dog_val = get_value(d)  # tpyc: type(str)
+    //     dog_val = get_value(d)  # tpyc: type(str)
     std::string dog_val = get_value(d);
-    // 37:     cat_val = get_value(c)  # tpyc: type(int)
+    //     cat_val = get_value(c)  # tpyc: type(int)
     tpy::BigInt cat_val = get_value(c);
-    // 39:     use_dog_result(dog_val)
+    //     use_dog_result(dog_val)
     use_dog_result(dog_val);
-    // 40:     use_cat_result(cat_val)
+    //     use_cat_result(cat_val)
     use_cat_result(cat_val);
 }
 
@@ -56,7 +56,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 42: main()
+    // main()
     main();
 }
 

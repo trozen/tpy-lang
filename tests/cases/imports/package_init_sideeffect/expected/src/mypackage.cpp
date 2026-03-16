@@ -9,8 +9,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # Package init with side effect
-    // 2: print("init executed")
+    // # Package init with side effect
+    // print("init executed")
     std::cout << "init executed" << "\n";
 }
 

@@ -13,9 +13,9 @@ inline constexpr std::string_view __name__ = "__main__";
 std::vector<Point> take_items(const Container& c);
 void main();
 
-// 9: class Point:
+// class Point:
 struct Point {
-    // 10:     x: Int32
+    //     x: Int32
     int32_t x;
 
 };
@@ -27,9 +27,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 13: class Container:
+// class Container:
 struct Container {
-    // 14:     items: list[Point]
+    //     items: list[Point]
     std::vector<Point> items;
 
 };

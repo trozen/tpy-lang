@@ -12,29 +12,29 @@ inline constexpr std::string_view __name__ = "__main__";
 template<tpy::OptIterator<int32_t> T_it>
 int32_t sum_iter(T_it& it);
 
-// 3: class Counter:
+// class Counter:
 struct Counter {
-    // 4:     current: Int32
+    //     current: Int32
     int32_t current;
-    // 5:     limit: Int32
+    //     limit: Int32
     int32_t limit;
 
-    // 7:     def __init__(self, limit: Int32) -> None:
+    //     def __init__(self, limit: Int32) -> None:
     Counter() = default;
     explicit Counter(int32_t limit) : current(0), limit(limit) {}
 
-    // 11:     def __next_opt__(self) -> Int32 | None:
+    //     def __next_opt__(self) -> Int32 | None:
     std::optional<int32_t> __next_opt__() {
-        // 12:         if self.current < self.limit:
+        //         if self.current < self.limit:
         if ((this->current < this->limit)) {
-            // 13:             result = self.current
+            //             result = self.current
             int32_t result = this->current;
-            // 14:             self.current += 1
+            //             self.current += 1
             this->current = tpy::add_check<int32_t>(this->current, 1);
-            // 15:             return result
+            //             return result
             return result;
         }
-        // 16:         return None
+        //         return None
         return std::nullopt;
     }
 };
@@ -49,22 +49,22 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 // # 2. Pass to function taking OptIterator[Int32] (structural conformance)
-// 23: def sum_iter(it: OptIterator[Int32]) -> Int32:
+// def sum_iter(it: OptIterator[Int32]) -> Int32:
 template<tpy::OptIterator<int32_t> T_it>
 int32_t sum_iter(T_it& it) {
-    // 24:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 25:     for x in it:
+    //     for x in it:
     auto& __src_0 = it;
     auto __obj_0 = tpy::iter_adapt(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 26:         total += x
+        //         total += x
         total = tpy::add_check<int32_t>(total, x);
     }
-    // 27:     return total
+    //     return total
     return total;
 }
 

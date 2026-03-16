@@ -3,70 +3,70 @@
 
 namespace tpy_user::main {
 
-// 30: count: Int32 = 0
+// count: Int32 = 0
 int32_t count{};
 // # 4. BigInt stop mutated — .to_int32() captured once
-// 36: n = 4
+// n = 4
 int32_t n{};
-// 37: count2: Int32 = 0
+// count2: Int32 = 0
 int32_t count2{};
 
 // # 1. Mutating stop inside loop — should iterate original count
-// 4: def test_stop_snapshot() -> None:
+// def test_stop_snapshot() -> None:
 void test_stop_snapshot() {
-    // 5:     n: Int32 = 5
+    //     n: Int32 = 5
     int32_t n = 5;
-    // 6:     count: Int32 = 0
+    //     count: Int32 = 0
     int32_t count = 0;
-    // 7:     for i in range(n):
+    //     for i in range(n):
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // 8:         n = 0
+        //         n = 0
         n = 0;
-        // 9:         count += 1
+        //         count += 1
         count = tpy::add_check<int32_t>(count, 1);
     }
-    // 10:     print(count)  # 5
+    //     print(count)  # 5
     std::cout << count << "\n";
 }
 
 // # 2. Mutating start/stop/step inside loop — all captured once
-// 13: def test_all_args_snapshot() -> None:
+// def test_all_args_snapshot() -> None:
 void test_all_args_snapshot() {
-    // 14:     start: Int32 = 0
+    //     start: Int32 = 0
     int32_t start = 0;
-    // 15:     stop: Int32 = 10
+    //     stop: Int32 = 10
     int32_t stop = 10;
-    // 16:     step: Int32 = 2
+    //     step: Int32 = 2
     int32_t step = 2;
-    // 17:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 18:     for i in range(start, stop, step):
+    //     for i in range(start, stop, step):
     int32_t __start_0 = start;
     int32_t __stop_0 = stop;
     int32_t __step_0 = step;
     if (__step_0 == 0) tpy::tpy_panic("range() arg 3 must not be zero");
     tpy::range_check_overflow<int32_t>(__start_0, __stop_0, __step_0);
     for (int32_t i = __start_0; __step_0 > 0 ? i < __stop_0 : i > __stop_0; i += __step_0) {
-        // 19:         start = 100
+        //         start = 100
         start = 100;
-        // 20:         stop = 100
+        //         stop = 100
         stop = 100;
-        // 21:         step = 100
+        //         step = 100
         step = 100;
-        // 22:         total += i
+        //         total += i
         total = tpy::add_check<int32_t>(total, i);
     }
-    // 23:     print(total)  # 0 + 2 + 4 + 6 + 8 = 20
+    //     print(total)  # 0 + 2 + 4 + 6 + 8 = 20
     std::cout << total << "\n";
 }
 
 // # 3. Function call in stop — evaluated once, not per-iteration
-// 26: def get_stop(n: Int32) -> Int32:
+// def get_stop(n: Int32) -> Int32:
 int32_t get_stop(int32_t n) {
-    // 27:     print(n)  # side effect to verify call count
+    //     print(n)  # side effect to verify call count
     std::cout << n << "\n";
-    // 28:     return n
+    //     return n
     return n;
 }
 
@@ -75,34 +75,34 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 30: count: Int32 = 0
+    // count: Int32 = 0
     count = 0;
-    // 31: for i in range(get_stop(3)):
+    // for i in range(get_stop(3)):
     int32_t __stop_0 = get_stop(3);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        // 32:     count += 1
+        //     count += 1
         count = tpy::add_check<int32_t>(count, 1);
     }
-    // 33: print(count)  # 3 (get_stop prints "3" once, then loop runs 3 times)
+    // print(count)  # 3 (get_stop prints "3" once, then loop runs 3 times)
     std::cout << count << "\n";
-    // 35: # 4. BigInt stop mutated — .to_int32() captured once
-    // 36: n = 4
+    // # 4. BigInt stop mutated — .to_int32() captured once
+    // n = 4
     n = 4;
-    // 37: count2: Int32 = 0
+    // count2: Int32 = 0
     count2 = 0;
-    // 38: for i in range(n):
+    // for i in range(n):
     int32_t __stop_1 = n;
     for (int32_t i = 0; i < __stop_1; ++i) {
-        // 39:     n = 0
+        //     n = 0
         n = 0;
-        // 40:     count2 += 1
+        //     count2 += 1
         count2 = tpy::add_check<int32_t>(count2, 1);
     }
-    // 41: print(count2)  # 4
+    // print(count2)  # 4
     std::cout << count2 << "\n";
-    // 43: test_stop_snapshot()
+    // test_stop_snapshot()
     test_stop_snapshot();
-    // 44: test_all_args_snapshot()
+    // test_all_args_snapshot()
     test_all_args_snapshot();
 }
 

@@ -38,9 +38,9 @@ tpy_user::main::Color EnumUtil<tpy_user::main::Color>::from_name(std::string_vie
 namespace tpy_user::main {
 
 
-// 7: def main() -> None:
+// def main() -> None:
 void main() {
-    // 8:     c = Color["Purple"]
+    //     c = Color["Purple"]
     Color c = tpy::EnumUtil<Color>::from_name("Purple");
 }
 
@@ -49,7 +49,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 10: main()
+    // main()
     main();
 }
 

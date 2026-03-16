@@ -4,72 +4,72 @@
 namespace tpy_user::main {
 
 
-// 5: def classify(x: Optional[Int32]) -> str:
+// def classify(x: Optional[Int32]) -> str:
 std::string classify(std::optional<int32_t> x) {
-    // 6:     match x:
+    //     match x:
     auto& __match_subject = x;
-    // 7:         case None:
+    //         case None:
     if (!__match_subject.has_value()) {
-        // 8:             return "nothing"
+        //             return "nothing"
         return "nothing";
     } else {
         auto& __match_inner = (*__match_subject);
         switch (__match_inner) {
-        // 9:         case 0:
+        //         case 0:
         case 0: {
-            // 10:             return "zero"
+            //             return "zero"
             return "zero";
             break;
         }
-        // 11:         case _:
+        //         case _:
         default: {
-            // 12:             return "something"
+            //             return "something"
             return "something";
             break;
         }
         }
     }
-    // 13:     return ""
+    //     return ""
     return "";
 }
 
-// 15: def describe(s: Optional[str]) -> str:
+// def describe(s: Optional[str]) -> str:
 std::string describe(std::optional<std::string_view> s) {
-    // 16:     match s:
+    //     match s:
     auto& __match_subject = s;
-    // 17:         case None:
+    //         case None:
     if (!__match_subject.has_value()) {
-        // 18:             return "none"
+        //             return "none"
         return "none";
     } else {
         auto& __match_inner = (*__match_subject);
-        // 19:         case "hello":
+        //         case "hello":
         if (__match_inner == "hello") {
-            // 20:             return "greeting"
+            //             return "greeting"
             return "greeting";
-        // 21:         case _:
+        //         case _:
         } else {
-            // 22:             return "other: " + s
+            //             return "other: " + s
             return (tpy::str_concat("other: ", (*s)));
         }
     }
-    // 23:     return ""
+    //     return ""
     return "";
 }
 
-// 25: def main() -> None:
+// def main() -> None:
 void main() {
-    // 26:     print(classify(None))
+    //     print(classify(None))
     std::cout << classify(std::nullopt) << "\n";
-    // 27:     print(classify(Int32(0)))
+    //     print(classify(Int32(0)))
     std::cout << classify(0) << "\n";
-    // 28:     print(classify(Int32(42)))
+    //     print(classify(Int32(42)))
     std::cout << classify(42) << "\n";
-    // 29:     print(describe(None))
+    //     print(describe(None))
     std::cout << describe(std::nullopt) << "\n";
-    // 30:     print(describe("hello"))
+    //     print(describe("hello"))
     std::cout << describe("hello") << "\n";
-    // 31:     print(describe("world"))
+    //     print(describe("world"))
     std::cout << describe("world") << "\n";
 }
 
@@ -78,7 +78,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 33: main()
+    // main()
     main();
 }
 

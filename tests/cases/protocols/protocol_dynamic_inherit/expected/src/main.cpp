@@ -4,33 +4,33 @@
 namespace tpy_user::main {
 
 
-// 15: def greet(pet: Pet) -> None:
+// def greet(pet: Pet) -> None:
 void greet(Pet& pet) {
-    // 16:     print(pet.make_noise())
+    //     print(pet.make_noise())
     std::cout << pet.make_noise() << "\n";
 }
 
-// 18: def use_dog(d: Dog) -> None:
+// def use_dog(d: Dog) -> None:
 void use_dog(Dog& d) {
-    // 19:     greet(d)  # lvalue, direct inheritor -- no adapter, no copy
+    //     greet(d)  # lvalue, direct inheritor -- no adapter, no copy
     greet(d);
 }
 
-// 21: def main() -> None:
+// def main() -> None:
 void main() {
-    // 22:     greet(Dog())   # rvalue, direct inheritor -- materialized then upcast
+    //     greet(Dog())   # rvalue, direct inheritor -- materialized then upcast
     Dog __tmp_1{Dog()};
     greet(__tmp_1);
-    // 23:     d = Dog()
+    //     d = Dog()
     Dog d = Dog();
-    // 24:     greet(d)       # lvalue, direct inheritor -- implicit upcast
+    //     greet(d)       # lvalue, direct inheritor -- implicit upcast
     greet(d);
-    // 25:     use_dog(d)
+    //     use_dog(d)
     use_dog(d);
-    // 26:     pet: Pet = Dog()
+    //     pet: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    // 27:     print(pet.make_noise())  # virtual dispatch via pointer-local
+    //     print(pet.make_noise())  # virtual dispatch via pointer-local
     std::cout << pet->make_noise() << "\n";
 }
 
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 29: main()
+    // main()
     main();
 }
 

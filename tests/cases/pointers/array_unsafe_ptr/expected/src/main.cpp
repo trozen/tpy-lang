@@ -4,31 +4,31 @@
 namespace tpy_user::main {
 
 
-// 4: def test_array_to_ptr() -> None:
+// def test_array_to_ptr() -> None:
 void test_array_to_ptr() {
-    // 5:     arr: Array[Int32, 4] = [Int32(10), Int32(20), Int32(30), Int32(40)]
+    //     arr: Array[Int32, 4] = [Int32(10), Int32(20), Int32(30), Int32(40)]
     std::array<int32_t, 4> arr = {10, 20, 30, 40};
-    // 6:     p: Ptr[Int32] = unsafe_ptr(arr)
+    //     p: Ptr[Int32] = unsafe_ptr(arr)
     int32_t* p = arr.data();
-    // 7:     print(unsafe_load(p, UInt32(0)))
+    //     print(unsafe_load(p, UInt32(0)))
     std::cout << p[0] << "\n";
-    // 8:     print(unsafe_load(p, UInt32(1)))
+    //     print(unsafe_load(p, UInt32(1)))
     std::cout << p[1] << "\n";
-    // 9:     print(unsafe_load(p, UInt32(2)))
+    //     print(unsafe_load(p, UInt32(2)))
     std::cout << p[2] << "\n";
-    // 10:     print(unsafe_load(p, UInt32(3)))
+    //     print(unsafe_load(p, UInt32(3)))
     std::cout << p[3] << "\n";
 }
 
-// 12: def test_write_through_array_ptr() -> None:
+// def test_write_through_array_ptr() -> None:
 void test_write_through_array_ptr() {
-    // 13:     arr: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
+    //     arr: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
     std::array<int32_t, 3> arr = {1, 2, 3};
-    // 14:     p: Ptr[Int32] = unsafe_ptr(arr)
+    //     p: Ptr[Int32] = unsafe_ptr(arr)
     int32_t* p = arr.data();
-    // 15:     unsafe_store(p, UInt32(1), Int32(99))
+    //     unsafe_store(p, UInt32(1), Int32(99))
     p[1] = 99;
-    // 16:     print(arr[Int32(1)])
+    //     print(arr[Int32(1)])
     std::cout << tpy::__getitem__(arr, 1) << "\n";
 }
 
@@ -37,10 +37,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
-    // 18: test_array_to_ptr()
+    // from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store
+    // test_array_to_ptr()
     test_array_to_ptr();
-    // 19: test_write_through_array_ptr()
+    // test_write_through_array_ptr()
     test_write_through_array_ptr();
 }
 

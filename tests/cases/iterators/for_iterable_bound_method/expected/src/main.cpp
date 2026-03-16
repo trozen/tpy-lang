@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 43: def main() -> None:
+// def main() -> None:
 void main() {
-    // 44:     r = MyRange(1, 6)
+    //     r = MyRange(1, 6)
     MyRange r = MyRange(1, 6);
-    // 45:     s = Summer(r)
+    //     s = Summer(r)
     Summer<MyRange> s = Summer<MyRange>(r);
-    // 46:     print(s.total())
+    //     print(s.total())
     std::cout << s.total() << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 48: main()
+    // main()
     main();
 }
 

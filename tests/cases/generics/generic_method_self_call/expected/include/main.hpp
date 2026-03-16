@@ -11,26 +11,26 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Processor[T]:
+// class Processor[T]:
 template<typename T>
 struct Processor {
-    // 5:     val: T
+    //     val: T
     T val;
 
-    // 7:     def __init__(self, val: T):
+    //     def __init__(self, val: T):
     Processor() = default;
     explicit Processor(const T& val) : val(val) {}
 
-    // 10:     def wrap[U](self, x: U) -> U:
+    //     def wrap[U](self, x: U) -> U:
     template<typename U>
     tpy::val_or_cref_t<U> wrap(const U& x) const {
-        // 11:         return x
+        //         return x
         return x;
     }
 
-    // 13:     def process(self) -> Int32:
+    //     def process(self) -> Int32:
     int32_t process() {
-        // 14:         return self.wrap(Int32(99))
+        //         return self.wrap(Int32(99))
         return wrap<int32_t>(99);
     }
 };

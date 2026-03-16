@@ -3,19 +3,19 @@
 
 namespace tpy_user::main {
 
-// 1: x: int = 0
+// x: int = 0
 tpy::BigInt x;
 
-// 3: def update(val: int) -> None:
+// def update(val: int) -> None:
 void update(const tpy::BigInt& val) {
-    // 4:     global x
-    // 5:     if val > 0:
+    //     global x
+    //     if val > 0:
     if ((val > 0)) {
-        // 6:         x = val
+        //         x = val
         x = val;
-    // 7:     else:
+    //     else:
     } else {
-        // 8:         x = 0
+        //         x = 0
         x = 0;
     }
 }
@@ -25,15 +25,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: x: int = 0
+    // x: int = 0
     x = tpy::BigInt(0);
-    // 10: update(42)
+    // update(42)
     update(tpy::BigInt(42));
-    // 11: print(x)
+    // print(x)
     std::cout << x << "\n";
-    // 12: update(-1)
+    // update(-1)
     update(tpy::BigInt(-1));
-    // 13: print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 

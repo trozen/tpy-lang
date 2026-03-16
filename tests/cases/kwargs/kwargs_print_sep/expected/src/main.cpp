@@ -5,13 +5,13 @@ namespace tpy_user::main {
 
 
 // # Test print() with sep= keyword argument.
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     print("a", "b", "c", sep=",")
+    //     print("a", "b", "c", sep=",")
     std::cout << "a" << "," << "b" << "," << "c" << "\n";
-    // 4:     print("x", "y", sep="")
+    //     print("x", "y", sep="")
     std::cout << "x" << "" << "y" << "\n";
-    // 5:     print("hello", "world", sep=" -- ")
+    //     print("hello", "world", sep=" -- ")
     std::cout << "hello" << " -- " << "world" << "\n";
 }
 
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 7: main()
+    // main()
     main();
 }
 

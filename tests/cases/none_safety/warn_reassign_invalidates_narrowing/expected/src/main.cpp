@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 4: def bad(x: Int32 | None) -> Int32:
+// def bad(x: Int32 | None) -> Int32:
 int32_t bad(std::optional<int32_t> x) {
-    // 5:     assert x is not None
+    //     assert x is not None
     if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
-    // 6:     x = None
+    //     x = None
     x = std::nullopt;
-    // 7:     return x + 1  # tpyc: warning(/Potential None access/)
+    //     return x + 1  # tpyc: warning(/Potential None access/)
     return (tpy::add_check<int32_t>(tpy::deref_optional_check(x), 1));
 }
 

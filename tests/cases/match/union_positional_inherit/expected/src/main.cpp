@@ -4,41 +4,41 @@
 namespace tpy_user::main {
 
 
-// 17: def describe(s: Child | Other) -> None:
+// def describe(s: Child | Other) -> None:
 void describe(const std::variant<Child, Other>& s) {
-    // 18:     match s:
+    //     match s:
     auto& __match_subject = s;
     switch (__match_subject.index()) {
-    // 19:         case Child(a, b, c):
+    //         case Child(a, b, c):
     case 0: {
         auto& __case_0 = std::get<0>(__match_subject);
         auto& a = __case_0.x;
         auto& b = __case_0.y;
         auto& c = __case_0.z;
-        // 20:             print(a + b + c)
+        //             print(a + b + c)
         std::cout << tpy::print_float(((((a) + (b))) + (c))) << "\n";
         break;
     }
-    // 21:         case Other(v):
+    //         case Other(v):
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject);
         auto& v = __case_1.v;
-        // 22:             print(v)
+        //             print(v)
         std::cout << tpy::print_float(v) << "\n";
         break;
     }
     }
 }
 
-// 24: def main() -> None:
+// def main() -> None:
 void main() {
-    // 25:     obj: Child | Other = Child(1.0, 2.0, 3.0)
+    //     obj: Child | Other = Child(1.0, 2.0, 3.0)
     std::variant<Child, Other> obj = Child(1.0, 2.0, 3.0);
-    // 26:     describe(obj)
+    //     describe(obj)
     describe(obj);
-    // 27:     o: Child | Other = Other(9.0)
+    //     o: Child | Other = Other(9.0)
     std::variant<Child, Other> o = Other(9.0);
-    // 28:     describe(o)
+    //     describe(o)
     describe(o);
 }
 
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 30: main()
+    // main()
     main();
 }
 

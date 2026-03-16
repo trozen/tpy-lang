@@ -4,28 +4,28 @@
 namespace tpy_user::main {
 
 
-// 5: def main() -> None:
+// def main() -> None:
 void main() {
-    // 6:     # int (BigInt) -- template deduction needs std::vector<BigInt>{...}, not bare {...}
-    // 7:     a: list[int] = [1, 2, 3]
+    //     # int (BigInt) -- template deduction needs std::vector<BigInt>{...}, not bare {...}
+    //     a: list[int] = [1, 2, 3]
     std::vector<tpy::BigInt> a = {1, 2, 3};
-    // 8:     a += [4, 5]
+    //     a += [4, 5]
     tpy::list_extend(a, std::vector<tpy::BigInt>{4, 5});
-    // 9:     print(a)
+    //     print(a)
     std::cout << tpy::ListPrinter(a) << "\n";
-    // 11:     # Int32 -- works with or without prefix, include for completeness
-    // 12:     b: list[Int32] = [10, 20]
+    //     # Int32 -- works with or without prefix, include for completeness
+    //     b: list[Int32] = [10, 20]
     std::vector<int32_t> b = {10, 20};
-    // 13:     b += [30, 40]
+    //     b += [30, 40]
     tpy::list_extend(b, std::vector<int32_t>{30, 40});
-    // 14:     print(b)
+    //     print(b)
     std::cout << tpy::ListPrinter(b) << "\n";
-    // 16:     # str -- const char* doesn't deduce std::string in template deduction context
-    // 17:     c: list[str] = ["a", "b"]
+    //     # str -- const char* doesn't deduce std::string in template deduction context
+    //     c: list[str] = ["a", "b"]
     std::vector<std::string> c = {"a", "b"};
-    // 18:     c += ["c", "d"]
+    //     c += ["c", "d"]
     tpy::list_extend(c, std::vector<std::string>{"c", "d"});
-    // 19:     print(c)
+    //     print(c)
     std::cout << tpy::ListPrinter(c) << "\n";
 }
 
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: main()
+    // main()
     main();
 }
 

@@ -14,14 +14,14 @@ Point* pick(bool flag, Point* a, Point* b);
 tpy::BigInt narrowed_field(Point* p);
 void main();
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 6:         self.x = x
+    //         self.x = x
     tpy::BigInt x;
-    // 7:         self.y = y
+    //         self.y = y
     tpy::BigInt y;
 
-    // 5:     def __init__(self, x: int, y: int) -> None:
+    //     def __init__(self, x: int, y: int) -> None:
     Point() = default;
     explicit Point(const tpy::BigInt& x, const tpy::BigInt& y) : x(x), y(y) {}
 };

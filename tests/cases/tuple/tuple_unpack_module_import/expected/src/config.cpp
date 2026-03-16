@@ -3,14 +3,14 @@
 
 namespace tpy_user::config {
 
-// 7: lo, hi = get_bounds()
+// lo, hi = get_bounds()
 int32_t lo{};
-// 7: lo, hi = get_bounds()
+// lo, hi = get_bounds()
 int32_t hi{};
 
-// 4: def get_bounds() -> tuple[Int32, Int32]:
+// def get_bounds() -> tuple[Int32, Int32]:
 std::tuple<int32_t, int32_t> get_bounds() {
-    // 5:     return (Int32(10), Int32(20))
+    //     return (Int32(10), Int32(20))
     return std::tuple<int32_t, int32_t>{10, 20};
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 7: lo, hi = get_bounds()
+    // lo, hi = get_bounds()
     auto __tup_1 = get_bounds();
     lo = std::get<0>(__tup_1);
     hi = std::get<1>(__tup_1);

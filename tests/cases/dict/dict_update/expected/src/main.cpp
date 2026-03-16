@@ -4,37 +4,37 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     d: dict[str, Int32] = {"a": 1, "b": 2}
+    //     d: dict[str, Int32] = {"a": 1, "b": 2}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    // 6:     d2: dict[str, Int32] = {"b": 20, "c": 30}
+    //     d2: dict[str, Int32] = {"b": 20, "c": 30}
     tpy::ordered_map<std::string, int32_t> d2 = tpy::ordered_map<std::string, int32_t>({{"b", 20}, {"c", 30}});
-    // 7:     d.update(d2)
+    //     d.update(d2)
     tpy::dict_update(d, d2);
-    // 8:     for k in d:
+    //     for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // 9:         print(k, d[k])
+        //         print(k, d[k])
         std::cout << k << " " << tpy::__getitem__(d, k) << "\n";
     }
-    // 10:     print(len(d))              # 3
+    //     print(len(d))              # 3
     std::cout << tpy::__len__(d) << "\n";
-    // 12:     # Literal argument -- type inferred from receiver
-    // 13:     d3: dict[str, Int32] = {"x": 10}
+    //     # Literal argument -- type inferred from receiver
+    //     d3: dict[str, Int32] = {"x": 10}
     tpy::ordered_map<std::string, int32_t> d3 = tpy::ordered_map<std::string, int32_t>({{"x", 10}});
-    // 14:     d3.update({"x": 99, "y": 20})
+    //     d3.update({"x": 99, "y": 20})
     tpy::dict_update(d3, tpy::ordered_map<std::string, int32_t>({{"x", 99}, {"y", 20}}));
-    // 15:     for k in d3:
+    //     for k in d3:
     auto& __obj_1 = d3;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
-        // 16:         print(k, d3[k])
+        //         print(k, d3[k])
         std::cout << k << " " << tpy::__getitem__(d3, k) << "\n";
     }
 }
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: main()
+    // main()
     main();
 }
 

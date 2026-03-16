@@ -4,35 +4,35 @@
 namespace tpy_user::main {
 
 
-// 10: def main() -> None:
+// def main() -> None:
 void main() {
-    // 11:     a = Point(1, 2)
+    //     a = Point(1, 2)
     Point a = Point(1, 2);
-    // 12:     b = Point(3, 4)
+    //     b = Point(3, 4)
     Point b = Point(3, 4);
-    // 13:     c = Point(1, 3)
+    //     c = Point(1, 3)
     Point c = Point(1, 3);
-    // 14:     # Lexicographic ordering by fields
-    // 15:     print(a < b)
+    //     # Lexicographic ordering by fields
+    //     print(a < b)
     std::cout << tpy::print_bool((a < b)) << "\n";
-    // 16:     print(b < a)
+    //     print(b < a)
     std::cout << tpy::print_bool((b < a)) << "\n";
-    // 17:     print(a < c)
+    //     print(a < c)
     std::cout << tpy::print_bool((a < c)) << "\n";
-    // 18:     # <= and >=
-    // 19:     print(a <= Point(1, 2))
+    //     # <= and >=
+    //     print(a <= Point(1, 2))
     std::cout << tpy::print_bool((a <= Point(1, 2))) << "\n";
-    // 20:     print(a >= a)
+    //     print(a >= a)
     std::cout << tpy::print_bool((a >= a)) << "\n";
-    // 21:     # > operator
-    // 22:     print(b > a)
+    //     # > operator
+    //     print(b > a)
     std::cout << tpy::print_bool((b > a)) << "\n";
-    // 23:     print(a > c)
+    //     print(a > c)
     std::cout << tpy::print_bool((a > c)) << "\n";
-    // 24:     # Equality still works
-    // 25:     print(a == Point(1, 2))
+    //     # Equality still works
+    //     print(a == Point(1, 2))
     std::cout << tpy::print_bool((a == Point(1, 2))) << "\n";
-    // 26:     print(a != b)
+    //     print(a != b)
     std::cout << tpy::print_bool((a != b)) << "\n";
 }
 
@@ -41,7 +41,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 28: main()
+    // main()
     main();
 }
 

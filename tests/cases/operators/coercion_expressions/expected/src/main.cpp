@@ -5,123 +5,123 @@ namespace tpy_user::main {
 
 
 // # --- BigInt expression -> Int32 ---
-// 49: def return_expr_as_int32(a: int, b: int) -> Int32:
+// def return_expr_as_int32(a: int, b: int) -> Int32:
 int32_t return_expr_as_int32(const tpy::BigInt& a, const tpy::BigInt& b) {
-    // 50:     return a + b  # Expression result (BigInt) -> Int32
+    //     return a + b  # Expression result (BigInt) -> Int32
     return (((a) + (b))).to_fixed_check<int32_t>();
 }
 
-// 52: def take_int32(n: Int32) -> Int32:
+// def take_int32(n: Int32) -> Int32:
 int32_t take_int32(int32_t n) {
-    // 53:     return n * 2
+    //     return n * 2
     return (tpy::mul_check<int32_t>(n, 2));
 }
 
-// 56: def test_bigint_expr_to_int32() -> None:
+// def test_bigint_expr_to_int32() -> None:
 void test_bigint_expr_to_int32() {
-    // 57:     print("BigInt expressions -> Int32:")
+    //     print("BigInt expressions -> Int32:")
     std::cout << "BigInt expressions -> Int32:" << "\n";
-    // 59:     a: int = 10
+    //     a: int = 10
     tpy::BigInt a = tpy::BigInt(10);
-    // 60:     b: int = 20
+    //     b: int = 20
     tpy::BigInt b = tpy::BigInt(20);
-    // 62:     # Binary op result in return
-    // 63:     result: Int32 = return_expr_as_int32(a, b)
+    //     # Binary op result in return
+    //     result: Int32 = return_expr_as_int32(a, b)
     int32_t result = return_expr_as_int32(a, b);
-    // 64:     print(result)  # 30
+    //     print(result)  # 30
     std::cout << result << "\n";
-    // 66:     # Binary op result in function argument
-    // 67:     print(take_int32(a + b))  # 60
+    //     # Binary op result in function argument
+    //     print(take_int32(a + b))  # 60
     std::cout << take_int32((((a) + (b))).to_fixed_check<int32_t>()) << "\n";
-    // 69:     # Binary op result in variable declaration
-    // 70:     sum_val: Int32 = a + b + 5
+    //     # Binary op result in variable declaration
+    //     sum_val: Int32 = a + b + 5
     int32_t sum_val = (((((a) + (b))) + (tpy::BigInt(5)))).to_fixed_check<int32_t>();
-    // 71:     print(sum_val)  # 35
+    //     print(sum_val)  # 35
     std::cout << sum_val << "\n";
-    // 73:     # Binary op result in assignment
-    // 74:     sum_val = a * b
+    //     # Binary op result in assignment
+    //     sum_val = a * b
     sum_val = (((a) * (b))).to_fixed_check<int32_t>();
-    // 75:     print(sum_val)  # 200
+    //     print(sum_val)  # 200
     std::cout << sum_val << "\n";
-    // 77:     # Method call result -> Int32
-    // 78:     c: Counter = Counter(100)
+    //     # Method call result -> Int32
+    //     c: Counter = Counter(100)
     Counter c = Counter(tpy::BigInt(100));
-    // 79:     val: Int32 = c.get()
+    //     val: Int32 = c.get()
     int32_t val = (c.get()).to_fixed_check<int32_t>();
-    // 80:     print(val)  # 100
+    //     print(val)  # 100
     std::cout << val << "\n";
-    // 82:     # Method call with arg result -> Int32
-    // 83:     val = c.add(50)
+    //     # Method call with arg result -> Int32
+    //     val = c.add(50)
     val = (c.add(50)).to_fixed_check<int32_t>();
-    // 84:     print(val)  # 150
+    //     print(val)  # 150
     std::cout << val << "\n";
 }
 
 // # --- Field access -> Ptr ---
-// 89: def modify_via_ptr(p: Ptr[Point]) -> None:
+// def modify_via_ptr(p: Ptr[Point]) -> None:
 void modify_via_ptr(Point* p) {
-    // 90:     p.x = p.x + 100
+    //     p.x = p.x + 100
     tpy::deref_check(p).x = (tpy::add_check<int32_t>(tpy::deref_check(p).x, 100));
 }
 
-// 92: def read_via_const_ptr(p: Ptr[readonly[Point]]) -> Int32:
+// def read_via_const_ptr(p: Ptr[readonly[Point]]) -> Int32:
 int32_t read_via_const_ptr(const Point* p) {
-    // 93:     return p.x + p.y
+    //     return p.x + p.y
     return (tpy::add_check<int32_t>(tpy::deref_check(p).x, tpy::deref_check(p).y));
 }
 
-// 96: def test_field_access_to_ptr() -> None:
+// def test_field_access_to_ptr() -> None:
 void test_field_access_to_ptr() {
-    // 97:     print("Field access -> Ptr:")
+    //     print("Field access -> Ptr:")
     std::cout << "Field access -> Ptr:" << "\n";
-    // 99:     cont: Container = Container(5, 10)
+    //     cont: Container = Container(5, 10)
     Container cont = Container(5, 10);
-    // 101:     # Field access -> Ptr in function call
-    // 102:     modify_via_ptr(cont.pt)
+    //     # Field access -> Ptr in function call
+    //     modify_via_ptr(cont.pt)
     modify_via_ptr(&cont.pt);
-    // 103:     print(cont.pt.x)  # 105
+    //     print(cont.pt.x)  # 105
     std::cout << cont.pt.x << "\n";
-    // 105:     # Field access -> Ptr[readonly[...]] in function call
-    // 106:     print(read_via_const_ptr(cont.pt))  # 115
+    //     # Field access -> Ptr[readonly[...]] in function call
+    //     print(read_via_const_ptr(cont.pt))  # 115
     std::cout << read_via_const_ptr(&cont.pt) << "\n";
 }
 
-// 109: def test_nested_field_to_ptr() -> None:
+// def test_nested_field_to_ptr() -> None:
 void test_nested_field_to_ptr() {
-    // 110:     print("Nested field -> Ptr:")
+    //     print("Nested field -> Ptr:")
     std::cout << "Nested field -> Ptr:" << "\n";
-    // 112:     outer: Outer = Outer(7, 8)
+    //     outer: Outer = Outer(7, 8)
     Outer outer = Outer(7, 8);
-    // 114:     # Nested field access -> Ptr
-    // 115:     modify_via_ptr(outer.inner.pt)
+    //     # Nested field access -> Ptr
+    //     modify_via_ptr(outer.inner.pt)
     modify_via_ptr(&outer.inner.pt);
-    // 116:     print(outer.inner.pt.x)  # 107
+    //     print(outer.inner.pt.x)  # 107
     std::cout << outer.inner.pt.x << "\n";
-    // 118:     # Nested field access -> Ptr[readonly[...]]
-    // 119:     print(read_via_const_ptr(outer.inner.pt))  # 115
+    //     # Nested field access -> Ptr[readonly[...]]
+    //     print(read_via_const_ptr(outer.inner.pt))  # 115
     std::cout << read_via_const_ptr(&outer.inner.pt) << "\n";
 }
 
-// 122: def test_literal_expr_to_int32() -> None:
+// def test_literal_expr_to_int32() -> None:
 void test_literal_expr_to_int32() {
-    // 123:     print("Literal expressions -> Int32:")
+    //     print("Literal expressions -> Int32:")
     std::cout << "Literal expressions -> Int32:" << "\n";
-    // 125:     # Literal arithmetic assigned to Int32 (should use Int32 ops)
-    // 126:     x: Int32 = 10 + 20 + 30
+    //     # Literal arithmetic assigned to Int32 (should use Int32 ops)
+    //     x: Int32 = 10 + 20 + 30
     int32_t x = tpy::add_check<int32_t>(tpy::add_check<int32_t>(10, 20), 30);
-    // 127:     print(x)  # 60
+    //     print(x)  # 60
     std::cout << x << "\n";
-    // 129:     # Nested literal expression
-    // 130:     y: Int32 = (5 + 5) * (2 + 3)
+    //     # Nested literal expression
+    //     y: Int32 = (5 + 5) * (2 + 3)
     int32_t y = tpy::mul_check<int32_t>(tpy::add_check<int32_t>(5, 5), tpy::add_check<int32_t>(2, 3));
-    // 131:     print(y)  # 50
+    //     print(y)  # 50
     std::cout << y << "\n";
-    // 133:     # Mixed literal and variable
-    // 134:     aa: Int32 = 100
+    //     # Mixed literal and variable
+    //     aa: Int32 = 100
     int32_t aa = 100;
-    // 135:     bb: Int32 = aa + 50  # Int32 + literal -> Int32
+    //     bb: Int32 = aa + 50  # Int32 + literal -> Int32
     int32_t bb = (tpy::add_check<int32_t>(aa, 50));
-    // 136:     print(bb)  # 150
+    //     print(bb)  # 150
     std::cout << bb << "\n";
 }
 
@@ -130,14 +130,14 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 139: # --- Run all tests ---
-    // 141: test_bigint_expr_to_int32()
+    // # --- Run all tests ---
+    // test_bigint_expr_to_int32()
     test_bigint_expr_to_int32();
-    // 142: test_field_access_to_ptr()
+    // test_field_access_to_ptr()
     test_field_access_to_ptr();
-    // 143: test_nested_field_to_ptr()
+    // test_nested_field_to_ptr()
     test_nested_field_to_ptr();
-    // 144: test_literal_expr_to_int32()
+    // test_literal_expr_to_int32()
     test_literal_expr_to_int32();
 }
 

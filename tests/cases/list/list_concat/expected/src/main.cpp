@@ -6,91 +6,91 @@ namespace tpy_user::main {
 
 // # Test list concatenation with + and += operators,
 // # including inferred types and literal operands.
-// 3: def test_add() -> None:
+// def test_add() -> None:
 void test_add() {
-    // 4:     a: list[int] = [1, 2]
+    //     a: list[int] = [1, 2]
     std::vector<tpy::BigInt> a = {1, 2};
-    // 5:     b: list[int] = [3, 4]
+    //     b: list[int] = [3, 4]
     std::vector<tpy::BigInt> b = {3, 4};
-    // 6:     c: list[int] = a + b
+    //     c: list[int] = a + b
     std::vector<tpy::BigInt> c = (tpy::list_concat(a, b));
-    // 7:     print(c)
+    //     print(c)
     std::cout << tpy::ListPrinter(c) << "\n";
 }
 
-// 9: def test_iadd() -> None:
+// def test_iadd() -> None:
 void test_iadd() {
-    // 10:     a: list[int] = [10, 20]
+    //     a: list[int] = [10, 20]
     std::vector<tpy::BigInt> a = {10, 20};
-    // 11:     b: list[int] = [30, 40]
+    //     b: list[int] = [30, 40]
     std::vector<tpy::BigInt> b = {30, 40};
-    // 12:     a += b
+    //     a += b
     tpy::list_extend(a, b);
-    // 13:     print(a)
+    //     print(a)
     std::cout << tpy::ListPrinter(a) << "\n";
 }
 
-// 15: def test_empty() -> None:
+// def test_empty() -> None:
 void test_empty() {
-    // 16:     a: list[int] = []
+    //     a: list[int] = []
     std::vector<tpy::BigInt> a = std::vector<tpy::BigInt>{};
-    // 17:     b: list[int] = [1, 2, 3]
+    //     b: list[int] = [1, 2, 3]
     std::vector<tpy::BigInt> b = {1, 2, 3};
-    // 18:     print(a + b)
+    //     print(a + b)
     std::cout << tpy::ListPrinter((tpy::list_concat(a, b))) << "\n";
-    // 19:     print(b + a)
+    //     print(b + a)
     std::cout << tpy::ListPrinter((tpy::list_concat(b, a))) << "\n";
 }
 
-// 21: def test_inferred() -> None:
+// def test_inferred() -> None:
 void test_inferred() {
-    // 22:     a = [1, 2, 3]
+    //     a = [1, 2, 3]
     std::vector<int32_t> a = {1, 2, 3};
-    // 23:     b = [4, 5]
+    //     b = [4, 5]
     std::vector<int32_t> b = {4, 5};
-    // 24:     print(a + b)
+    //     print(a + b)
     std::cout << tpy::ListPrinter((tpy::list_concat(a, b))) << "\n";
 }
 
-// 26: def test_literal() -> None:
+// def test_literal() -> None:
 void test_literal() {
-    // 27:     print([10, 20] + [30])
+    //     print([10, 20] + [30])
     std::cout << tpy::ListPrinter((tpy::list_concat(std::vector<int32_t>{10, 20}, std::vector<int32_t>{30}))) << "\n";
 }
 
-// 29: def test_mixed_annotated_literal() -> None:
+// def test_mixed_annotated_literal() -> None:
 void test_mixed_annotated_literal() {
-    // 30:     a: list[int] = [1, 2]
+    //     a: list[int] = [1, 2]
     std::vector<tpy::BigInt> a = {1, 2};
-    // 31:     print(a + [3, 4])
+    //     print(a + [3, 4])
     std::cout << tpy::ListPrinter((tpy::list_concat(a, std::vector<tpy::BigInt>{3, 4}))) << "\n";
 }
 
-// 33: def test_strings() -> None:
+// def test_strings() -> None:
 void test_strings() {
-    // 34:     s1 = ["a", "b"]
+    //     s1 = ["a", "b"]
     std::vector<std::string> s1 = {"a", "b"};
-    // 35:     s2 = ["c"]
+    //     s2 = ["c"]
     std::vector<std::string> s2 = {"c"};
-    // 36:     print(s1 + s2)
+    //     print(s1 + s2)
     std::cout << tpy::ListPrinter((tpy::list_concat(s1, s2))) << "\n";
 }
 
-// 38: def main() -> None:
+// def main() -> None:
 void main() {
-    // 39:     test_add()
+    //     test_add()
     test_add();
-    // 40:     test_iadd()
+    //     test_iadd()
     test_iadd();
-    // 41:     test_empty()
+    //     test_empty()
     test_empty();
-    // 42:     test_inferred()
+    //     test_inferred()
     test_inferred();
-    // 43:     test_literal()
+    //     test_literal()
     test_literal();
-    // 44:     test_mixed_annotated_literal()
+    //     test_mixed_annotated_literal()
     test_mixed_annotated_literal();
-    // 45:     test_strings()
+    //     test_strings()
     test_strings();
 }
 
@@ -99,7 +99,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 47: main()
+    // main()
     main();
 }
 

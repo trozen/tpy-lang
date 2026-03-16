@@ -4,26 +4,26 @@
 namespace tpy_user::main {
 
 
-// 4: def get_triple() -> tuple[Int32, str, bool]:
+// def get_triple() -> tuple[Int32, str, bool]:
 std::tuple<int32_t, std::string, bool> get_triple() {
-    // 5:     return (Int32(42), "hello", True)
+    //     return (Int32(42), "hello", True)
     return std::tuple<int32_t, std::string, bool>{42, "hello", true};
 }
 
-// 7: def main() -> None:
+// def main() -> None:
 void main() {
-    // 8:     _, b, _ = get_triple()
+    //     _, b, _ = get_triple()
     auto __tup_1 = get_triple();
     std::string_view b = std::get<1>(__tup_1);
-    // 9:     print(b)
+    //     print(b)
     std::cout << b << "\n";
-    // 11:     a, _, c = get_triple()
+    //     a, _, c = get_triple()
     auto __tup_2 = get_triple();
     int32_t a = std::get<0>(__tup_2);
     bool c = std::get<2>(__tup_2);
-    // 12:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 13:     print(c)
+    //     print(c)
     std::cout << tpy::print_bool(c) << "\n";
 }
 
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 15: main()
+    // main()
     main();
 }
 

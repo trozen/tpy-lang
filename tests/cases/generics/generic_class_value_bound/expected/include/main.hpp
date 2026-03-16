@@ -14,25 +14,25 @@ template<tpy::ValueType T>
 tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> v);
 void main();
 
-// 5: class Box[T: ValueType]:
+// class Box[T: ValueType]:
 template<tpy::ValueType T>
 struct Box {
-    // 6:     value: T
+    //     value: T
     T value;
 
-    // 8:     def __init__(self, value: T) -> None:
+    //     def __init__(self, value: T) -> None:
     Box() = default;
     explicit Box(const T& value) : value(value) {}
 
-    // 11:     def get(self) -> T:
+    //     def get(self) -> T:
     tpy::val_or_cref_t<T> get() const {
-        // 12:         return self.value
+        //         return self.value
         return this->value;
     }
 
-    // 14:     def set(self, value: T) -> None:
+    //     def set(self, value: T) -> None:
     void set(tpy::param_val_or_ref_t<T> value) {
-        // 15:         self.value = value  # tpyc: ok
+        //         self.value = value  # tpyc: ok
         this->value = value;
     }
 };
@@ -45,29 +45,29 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     return os;
 }
 
-// 18: class Ring[T: ValueType]:
+// class Ring[T: ValueType]:
 template<tpy::ValueType T>
 struct Ring {
-    // 19:     data: Array[T, 4]
+    //     data: Array[T, 4]
     std::array<T, 4> data;
-    // 20:     size: Int32
+    //     size: Int32
     int32_t size;
 
-    // 22:     def __init__(self, fill: T) -> None:
+    //     def __init__(self, fill: T) -> None:
     Ring() = default;
     explicit Ring(const T& fill) : data({fill, fill, fill, fill}), size(0) {}
 
-    // 26:     def put(self, v: T) -> None:
+    //     def put(self, v: T) -> None:
     void put(tpy::param_val_or_ref_t<T> v) {
-        // 27:         self.data[self.size] = v  # tpyc: ok
+        //         self.data[self.size] = v  # tpyc: ok
         tpy::__setitem__(this->data, this->size, v);
-        // 28:         self.size += 1
+        //         self.size += 1
         this->size = tpy::add_check<int32_t>(this->size, 1);
     }
 
-    // 30:     def get(self, i: Int32) -> T:
+    //     def get(self, i: Int32) -> T:
     tpy::val_or_cref_t<T> get(int32_t i) const {
-        // 31:         return self.data[i]
+        //         return self.data[i]
         return tpy::__getitem__(this->data, i);
     }
 };
@@ -82,10 +82,10 @@ inline std::ostream& operator<<(std::ostream& os, const Ring<T>& obj) {
     return os;
 }
 
-// 34: def identity[T: ValueType](v: T) -> T:
+// def identity[T: ValueType](v: T) -> T:
 template<tpy::ValueType T>
 tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> v) {
-    // 35:     return v
+    //     return v
     return v;
 }
 

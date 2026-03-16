@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 16: def main() -> Int32:
+// def main() -> Int32:
 int32_t main() {
-    // 17:     m = Message("Hello")
+    //     m = Message("Hello")
     Message m = Message("Hello");
-    // 18:     show(m)
+    //     show(m)
     show(m);
-    // 19:     return Int32(0)
+    //     return Int32(0)
     return 0;
 }
 
@@ -19,9 +19,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: from traits import Printable
+    // from traits import Printable
     ::tpy_user::traits::__tpy_init();
-    // 21: main()
+    // main()
     main();
 }
 

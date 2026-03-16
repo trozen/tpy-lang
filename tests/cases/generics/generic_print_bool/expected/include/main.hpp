@@ -12,10 +12,10 @@ void show(tpy::param_val_or_ref_t<T> x);
 void main();
 
 // # Generic function print should display bool as True/False, not 1/0
-// 2: def show[T](x: T) -> None:
+// def show[T](x: T) -> None:
 template<typename T>
 void show(tpy::param_val_or_ref_t<T> x) {
-    // 3:     print(x)
+    //     print(x)
     std::cout << tpy::ValuePrinter(x) << "\n";
 }
 

@@ -4,56 +4,56 @@
 namespace tpy_user::main {
 
 
-// 11: def get_name(cfg: Config) -> str:
+// def get_name(cfg: Config) -> str:
 std::string get_name(const Config& cfg) {
-    // 12:     if cfg.name:
+    //     if cfg.name:
     if (tpy::is_truthy(cfg.name)) {
-        // 13:         return cfg.name  # tpyc: ok
+        //         return cfg.name  # tpyc: ok
         return (*cfg.name);
     }
-    // 14:     return "default"
+    //     return "default"
     return "default";
 }
 
-// 16: def get_port(cfg: Config) -> int:
+// def get_port(cfg: Config) -> int:
 tpy::BigInt get_port(const Config& cfg) {
-    // 17:     if cfg.port:
+    //     if cfg.port:
     if (tpy::is_truthy(cfg.port)) {
-        // 18:         return cfg.port  # tpyc: ok
+        //         return cfg.port  # tpyc: ok
         return (*cfg.port);
     }
-    // 19:     return 0
+    //     return 0
     return tpy::BigInt(0);
 }
 
-// 21: def test_negated(cfg: Config) -> str:
+// def test_negated(cfg: Config) -> str:
 std::string test_negated(const Config& cfg) {
-    // 22:     if not cfg.name:
+    //     if not cfg.name:
     if ((!(tpy::is_truthy(cfg.name)))) {
-        // 23:         return "missing"
+        //         return "missing"
         return "missing";
     }
-    // 24:     return cfg.name  # tpyc: ok
+    //     return cfg.name  # tpyc: ok
     return (*cfg.name);
 }
 
-// 26: def main() -> None:
+// def main() -> None:
 void main() {
-    // 27:     c1 = Config("hello", 8080)
+    //     c1 = Config("hello", 8080)
     Config c1 = Config("hello", 8080);
-    // 28:     c2 = Config(None, None)
+    //     c2 = Config(None, None)
     Config c2 = Config(std::nullopt, std::nullopt);
-    // 29:     print(get_name(c1))
+    //     print(get_name(c1))
     std::cout << get_name(c1) << "\n";
-    // 30:     print(get_name(c2))
+    //     print(get_name(c2))
     std::cout << get_name(c2) << "\n";
-    // 31:     print(get_port(c1))
+    //     print(get_port(c1))
     std::cout << get_port(c1) << "\n";
-    // 32:     print(get_port(c2))
+    //     print(get_port(c2))
     std::cout << get_port(c2) << "\n";
-    // 33:     print(test_negated(c1))
+    //     print(test_negated(c1))
     std::cout << test_negated(c1) << "\n";
-    // 34:     print(test_negated(c2))
+    //     print(test_negated(c2))
     std::cout << test_negated(c2) << "\n";
 }
 
@@ -62,7 +62,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 36: main()
+    // main()
     main();
 }
 

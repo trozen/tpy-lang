@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # Invalid string for Int32 parsing
-// 3: x: Int32 = Int32("abc")
+// x: Int32 = Int32("abc")
 int32_t x{};
 
 void __tpy_init() {
@@ -12,10 +12,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: # Invalid string for Int32 parsing
-    // 3: x: Int32 = Int32("abc")
+    // # Invalid string for Int32 parsing
+    // x: Int32 = Int32("abc")
     x = tpy::from_str_check<int32_t>("abc");
-    // 4: print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 

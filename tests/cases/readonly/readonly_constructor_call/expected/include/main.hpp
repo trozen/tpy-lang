@@ -11,7 +11,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 tpy::BigInt build_flag();
 
-// 4: class Token:
+// class Token:
 struct Token {
 
 };

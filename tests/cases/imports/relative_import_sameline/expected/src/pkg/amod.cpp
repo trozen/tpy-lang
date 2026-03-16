@@ -9,7 +9,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: print("init: amod")
+    // print("init: amod")
     std::cout << "init: amod" << "\n";
 }
 

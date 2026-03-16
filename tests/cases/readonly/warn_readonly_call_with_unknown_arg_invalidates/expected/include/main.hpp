@@ -13,12 +13,12 @@ int32_t mutate_and_get(Box& b);
 void observe(int32_t _);
 int32_t use(Box& b);
 
-// 4: class Box:
+// class Box:
 struct Box {
-    // 5:     value: Int32 | None
+    //     value: Int32 | None
     std::optional<int32_t> value;
 
-    // 7:     def __init__(self, value: Int32):
+    //     def __init__(self, value: Int32):
     Box() = default;
     explicit Box(int32_t value) : value(value) {}
 };

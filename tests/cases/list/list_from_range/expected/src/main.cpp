@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-// 1: nums = list(range(5))
+// nums = list(range(5))
 std::vector<int32_t>* nums{};
-// 3: nums2 = list(range(2, 7))
+// nums2 = list(range(2, 7))
 std::vector<int32_t>* nums2{};
 
 void __tpy_init() {
@@ -13,15 +13,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: nums = list(range(5))
+    // nums = list(range(5))
     static std::vector<int32_t> __global_slot_1 = tpy::from_range<std::vector<int32_t>>(tpy::Range<int32_t>(5));
     nums = &__global_slot_1;
-    // 2: print(nums)
+    // print(nums)
     std::cout << tpy::ListPrinter((*nums)) << "\n";
-    // 3: nums2 = list(range(2, 7))
+    // nums2 = list(range(2, 7))
     static std::vector<int32_t> __global_slot_2 = tpy::from_range<std::vector<int32_t>>(tpy::Range<int32_t>(2, 7));
     nums2 = &__global_slot_2;
-    // 4: print(nums2)
+    // print(nums2)
     std::cout << tpy::ListPrinter((*nums2)) << "\n";
 }
 

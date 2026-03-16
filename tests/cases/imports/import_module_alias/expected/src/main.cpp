@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     x = m.sqrt(16.0)
+    //     x = m.sqrt(16.0)
     double x = std::sqrt(16.0);
-    // 6:     print(x)
+    //     print(x)
     std::cout << tpy::print_float(x) << "\n";
 }
 
@@ -17,10 +17,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # Test that import X as Y works
-    // 2: import math as m
+    // # Test that import X as Y works
+    // import math as m
     ::tpy_user::math::__tpy_init();
-    // 8: main()
+    // main()
     main();
 }
 

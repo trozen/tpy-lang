@@ -11,12 +11,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 5: class Holder:
+// class Holder:
 struct Holder {
-    // 6:     value: Int32 | None
+    //     value: Int32 | None
     std::optional<int32_t> value;
 
-    // 8:     def __init__(self, value: Int32 | None):
+    //     def __init__(self, value: Int32 | None):
     Holder() = default;
     explicit Holder(std::optional<int32_t> value) : value(value) {}
 };

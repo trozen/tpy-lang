@@ -12,15 +12,15 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t consume(Storage&& s);
 void main();
 
-// 6: class Storage:
+// class Storage:
 struct Storage {
-    // 7:     buf: UninitHeapStorage[Int32]
+    //     buf: UninitHeapStorage[Int32]
     UninitHeapStorage<int32_t> buf;
     bool __tpy_owned_ = true;
 
-    // 9:     def __init__(self):
+    //     def __init__(self):
     Storage() : buf(1) {
-        // 11:         self.buf.init0(42)
+        //         self.buf.init0(42)
         this->buf.init0(42);
     }
     // non-copyable (field 'buf')
@@ -36,17 +36,17 @@ struct Storage {
         }
         return *this;
     }
-    // 13:     def __del__(self):
+    //     def __del__(self):
 
     ~Storage() {
         if (!__tpy_owned_) return;
-        // 14:         self.buf.drop0()
+        //         self.buf.drop0()
         this->buf.drop0();
     }
 
-    // 16:     def get(self) -> Int32:
+    //     def get(self) -> Int32:
     int32_t get() const {
-        // 17:         return self.buf.load0()
+        //         return self.buf.load0()
         return this->buf.load0();
     }
 };

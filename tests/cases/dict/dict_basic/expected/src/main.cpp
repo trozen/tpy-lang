@@ -5,23 +5,23 @@ namespace tpy_user::main {
 
 
 // # Dict literal, subscript read/write, len, print
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     d = {"x": 1, "y": 2, "z": 3}
+    //     d = {"x": 1, "y": 2, "z": 3}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"x", 1}, {"y", 2}, {"z", 3}});
-    // 4:     print(d)
+    //     print(d)
     std::cout << tpy::DictPrinter(d) << "\n";
-    // 5:     print(d["x"])
+    //     print(d["x"])
     std::cout << tpy::__getitem__(d, "x") << "\n";
-    // 6:     print(d["y"])
+    //     print(d["y"])
     std::cout << tpy::__getitem__(d, "y") << "\n";
-    // 7:     print(len(d))
+    //     print(len(d))
     std::cout << tpy::__len__(d) << "\n";
-    // 8:     d["w"] = 4
+    //     d["w"] = 4
     tpy::__setitem__(d, "w", 4);
-    // 9:     print(d["w"])
+    //     print(d["w"])
     std::cout << tpy::__getitem__(d, "w") << "\n";
-    // 10:     print(len(d))
+    //     print(len(d))
     std::cout << tpy::__len__(d) << "\n";
 }
 
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 12: main()
+    // main()
     main();
 }
 

@@ -14,7 +14,7 @@ void main();
 
 // # Tests super().__del__() as last statement: call is dropped (parent dtor is automatic),
 // # no warning emitted
-// 4: class Base:
+// class Base:
 struct Base {
     bool __tpy_owned_ = true;
 
@@ -31,11 +31,11 @@ struct Base {
         }
         return *this;
     }
-    // 5:     def __del__(self):
+    //     def __del__(self):
 
     ~Base() {
         if (!__tpy_owned_) return;
-        // 6:         print("Base destroyed")
+        //         print("Base destroyed")
         std::cout << "Base destroyed" << "\n";
     }
 };
@@ -46,12 +46,12 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
     return os;
 }
 
-// 8: class Child(Base):
+// class Child(Base):
 struct Child : Base {
-    // 9:     label: str
+    //     label: str
     std::string label;
 
-    // 10:     def __init__(self, label: str):
+    //     def __init__(self, label: str):
     Child() = default;
     explicit Child(std::string_view label) : label(label) {}
     Child(const Child&) = delete;
@@ -66,11 +66,11 @@ struct Child : Base {
         }
         return *this;
     }
-    // 12:     def __del__(self):
+    //     def __del__(self):
 
     ~Child() {
         if (!__tpy_owned_) return;
-        // 13:         print("Child destroyed:", self.label)
+        //         print("Child destroyed:", self.label)
         std::cout << "Child destroyed:" << " " << this->label << "\n";
     }
 };

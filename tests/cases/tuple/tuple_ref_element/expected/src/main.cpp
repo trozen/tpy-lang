@@ -4,20 +4,20 @@
 namespace tpy_user::main {
 
 
-// 13: def main() -> None:
+// def main() -> None:
 void main() {
-    // 14:     p = Point(Int32(1), Int32(2))
+    //     p = Point(Int32(1), Int32(2))
     Point p = Point(1, 2);
-    // 15:     t = (Int32(0), p)  # tpyc: ok
+    //     t = (Int32(0), p)  # tpyc: ok
     auto t = std::tuple<int32_t, Point&>{0, p};
-    // 16:     print(t[0])
+    //     print(t[0])
     std::cout << std::get<0>(t) << "\n";
-    // 17:     print(t[1])
+    //     print(t[1])
     std::cout << std::get<1>(t) << "\n";
-    // 18:     # Mutation through reference is visible
-    // 19:     p.x = Int32(99)
+    //     # Mutation through reference is visible
+    //     p.x = Int32(99)
     p.x = 99;
-    // 20:     print(t[1])
+    //     print(t[1])
     std::cout << std::get<1>(t) << "\n";
 }
 
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: main()
+    // main()
     main();
 }
 

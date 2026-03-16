@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 
-// 11: def stale_after_rebind(b: Box, other: Box) -> Int32:
+// def stale_after_rebind(b: Box, other: Box) -> Int32:
 int32_t stale_after_rebind(Box& b, Box& other) {
-    // 12:     local: Box = b
+    //     local: Box = b
     Box* local = &(b);
-    // 13:     while local.value is not None:
+    //     while local.value is not None:
     while ((local->value.has_value())) {
-        // 14:         local = other
+        //         local = other
         local = &(other);
-        // 15:         if 0 == 1:
+        //         if 0 == 1:
         if ((0 == 1)) {
-            // 16:             return local.value + 1  # tpyc: warning(/Potential None access/)
+            //             return local.value + 1  # tpyc: warning(/Potential None access/)
             return (tpy::add_check<int32_t>(tpy::deref_optional_check(local->value), 1));
         }
-        // 17:         break
+        //         break
         break;
     }
-    // 18:     return 0
+    //     return 0
     return 0;
 }
 
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 21: print(stale_after_rebind(Box(5), Box(3)))
+    // print(stale_after_rebind(Box(5), Box(3)))
     Box __tmp_1 = Box(5);
     Box __tmp_2 = Box(3);
     std::cout << stale_after_rebind(__tmp_1, __tmp_2) << "\n";

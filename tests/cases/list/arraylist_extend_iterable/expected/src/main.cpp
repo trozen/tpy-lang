@@ -4,24 +4,24 @@
 namespace tpy_user::main {
 
 
-// 6: def main() -> None:
+// def main() -> None:
 void main() {
-    // 7:     a = ArrayList[Int32, 16]()
+    //     a = ArrayList[Int32, 16]()
     ::tpy_user::tplib::ArrayList<int32_t, 16> a = ::tpy_user::tplib::ArrayList<int32_t, 16>();
-    // 8:     a.append(1)
+    //     a.append(1)
     a.append(1);
-    // 10:     # extend from list (Iterable, not ReadOnlySpanLike)
-    // 11:     items: list[Int32] = [10, 20, 30]
+    //     # extend from list (Iterable, not ReadOnlySpanLike)
+    //     items: list[Int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    // 12:     a.extend(items)
+    //     a.extend(items)
     a.extend(items);
-    // 13:     print(len(a))       # 4
+    //     print(len(a))       # 4
     std::cout << tpy::__len__(a) << "\n";
-    // 14:     print(a[0])         # 1
+    //     print(a[0])         # 1
     std::cout << a[0] << "\n";
-    // 15:     print(a[1])         # 10
+    //     print(a[1])         # 10
     std::cout << a[1] << "\n";
-    // 16:     print(a[3])         # 30
+    //     print(a[3])         # 30
     std::cout << a[3] << "\n";
 }
 
@@ -30,9 +30,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: from tplib import ArrayList
+    // from tplib import ArrayList
     ::tpy_user::tplib::__tpy_init();
-    // 19: main()
+    // main()
     main();
 }
 

@@ -11,12 +11,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 int32_t stale_after_rebind(Box& b, Box& other);
 
-// 4: class Box:
+// class Box:
 struct Box {
-    // 5:     value: Int32 | None
+    //     value: Int32 | None
     std::optional<int32_t> value;
 
-    // 7:     def __init__(self, value: Int32):
+    //     def __init__(self, value: Int32):
     Box() = default;
     explicit Box(int32_t value) : value(value) {}
 };

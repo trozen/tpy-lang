@@ -34,16 +34,16 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 9: class Pixel:
+// class Pixel:
 struct Pixel {
-    // 10:     x: int
+    //     x: int
     tpy::BigInt x;
-    // 11:     y: int
+    //     y: int
     tpy::BigInt y;
-    // 12:     color: Color
+    //     color: Color
     Color color;
 
-    // 14:     def __init__(self, x: int, y: int, color: Color) -> None:
+    //     def __init__(self, x: int, y: int, color: Color) -> None:
     Pixel() = default;
     explicit Pixel(const tpy::BigInt& x, const tpy::BigInt& y, Color color) : x(x), y(y), color(color) {}
 };

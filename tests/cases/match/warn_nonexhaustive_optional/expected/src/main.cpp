@@ -4,38 +4,38 @@
 namespace tpy_user::main {
 
 
-// 5: def classify(x: Optional[Int32]) -> str:
+// def classify(x: Optional[Int32]) -> str:
 std::string classify(std::optional<int32_t> x) {
-    // 6:     match x:  # tpyc: warning(/non-exhaustive match.*missing: None.*case _:/)
+    //     match x:  # tpyc: warning(/non-exhaustive match.*missing: None.*case _:/)
     auto& __match_subject = x;
     if (__match_subject.has_value()) {
         auto& __match_inner = (*__match_subject);
         switch (__match_inner) {
-        // 7:         case 0:
+        //         case 0:
         case 0: {
-            // 8:             return "zero"
+            //             return "zero"
             return "zero";
             break;
         }
-        // 9:         case 1:
+        //         case 1:
         case 1: {
-            // 10:             return "one"
+            //             return "one"
             return "one";
             break;
         }
         }
     }
-    // 11:     return "unknown"
+    //     return "unknown"
     return "unknown";
 }
 
-// 13: def main() -> None:
+// def main() -> None:
 void main() {
-    // 14:     print(classify(Int32(0)))
+    //     print(classify(Int32(0)))
     std::cout << classify(0) << "\n";
-    // 15:     print(classify(Int32(1)))
+    //     print(classify(Int32(1)))
     std::cout << classify(1) << "\n";
-    // 16:     print(classify(Int32(5)))
+    //     print(classify(Int32(5)))
     std::cout << classify(5) << "\n";
 }
 
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: main()
+    // main()
     main();
 }
 

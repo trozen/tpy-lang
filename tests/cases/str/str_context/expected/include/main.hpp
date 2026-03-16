@@ -13,12 +13,12 @@ std::string greet(std::string_view name);
 std::string get_name();
 void main();
 
-// 10: class Person:
+// class Person:
 struct Person {
-    // 11:     name: str
+    //     name: str
     std::string name;
 
-    // 13:     def __init__(self, name: str) -> None:
+    //     def __init__(self, name: str) -> None:
     Person() = default;
     explicit Person(std::string_view name) : name(name) {}
 };

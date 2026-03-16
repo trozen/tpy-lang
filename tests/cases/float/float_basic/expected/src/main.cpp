@@ -4,9 +4,9 @@
 namespace tpy_user::main {
 
 // # Basic float operations
-// 2: x = 3.5
+// x = 3.5
 double x{};
-// 3: y = 2.0
+// y = 2.0
 double y{};
 
 void __tpy_init() {
@@ -14,20 +14,20 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # Basic float operations
-    // 2: x = 3.5
+    // # Basic float operations
+    // x = 3.5
     x = 3.5;
-    // 3: y = 2.0
+    // y = 2.0
     y = 2.0;
-    // 4: print(x + y)
+    // print(x + y)
     std::cout << tpy::print_float(((x) + (y))) << "\n";
-    // 5: print(x - y)
+    // print(x - y)
     std::cout << tpy::print_float(((x) - (y))) << "\n";
-    // 6: print(x * y)
+    // print(x * y)
     std::cout << tpy::print_float(((x) * (y))) << "\n";
-    // 7: print(x / y)
+    // print(x / y)
     std::cout << tpy::print_float((tpy::truediv(x, y))) << "\n";
-    // 8: print(-x)
+    // print(-x)
     std::cout << tpy::print_float(-(x)) << "\n";
 }
 

@@ -14,13 +14,13 @@ void describe(const std::variant<Label, Point>& s);
 void main();
 
 // @dataclass
-// 5: class Point:
+// class Point:
 struct Point {
-    // 6:     x: float
+    //     x: float
     double x;
-    // 7:     y: float
+    //     y: float
     double y;
-    // 8:     z: float
+    //     z: float
     double z;
 
     Point() = default;
@@ -53,9 +53,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 // @dataclass
-// 11: class Label:
+// class Label:
 struct Label {
-    // 12:     text: str
+    //     text: str
     std::string text;
 
     Label() = default;

@@ -11,18 +11,18 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Pair:
+// class Pair:
 struct Pair {
-    // 5:     data: tuple[Int32, str]
+    //     data: tuple[Int32, str]
     std::tuple<int32_t, std::string> data;
 
-    // 6:     def __init__(self, a: Int32, b: str) -> None:
+    //     def __init__(self, a: Int32, b: str) -> None:
     Pair() = default;
     explicit Pair(int32_t a, std::string_view b) : data(std::tuple<int32_t, std::string>{a, b}) {}
 
-    // 8:     def __str__(self) -> str:
+    //     def __str__(self) -> str:
     std::string __str__() const {
-        // 9:         return "Pair((" + str(self.data[0]) + ", '" + self.data[1] + "'))"
+        //         return "Pair((" + str(self.data[0]) + ", '" + self.data[1] + "'))"
         return (tpy::str_concat((tpy::str_concat((tpy::str_concat((tpy::str_concat("Pair((", tpy::fixed_to_str<int32_t>(std::get<0>(this->data)))), ", '")), std::get<1>(this->data))), "'))"));
     }
 };

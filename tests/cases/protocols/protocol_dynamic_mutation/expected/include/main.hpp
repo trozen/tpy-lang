@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 // @dynamic
-// 7: class Counter(Protocol):
+// class Counter(Protocol):
 template<typename T>
 concept __Counter_Concept__ = requires(T& t) {
     { t.increment() } -> std::convertible_to<void>;
@@ -49,23 +49,23 @@ void bump(Counter& c);
 void main();
 
 // # Direct inheritor
-// 14: class MyCounter(Counter):
+// class MyCounter(Counter):
 struct MyCounter : Counter {
-    // 15:     count: Int32
+    //     count: Int32
     int32_t count;
 
-    // 16:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     MyCounter() : count(0) {}
 
-    // 18:     def increment(self) -> None:
+    //     def increment(self) -> None:
     void increment() override {
-        // 19:         self.count = self.count + Int32(1)
+        //         self.count = self.count + Int32(1)
         this->count = (tpy::add_check<int32_t>(this->count, 1));
     }
 
-    // 20:     def value(self) -> Int32:
+    //     def value(self) -> Int32:
     int32_t value() override {
-        // 21:         return self.count
+        //         return self.count
         return this->count;
     }
 };
@@ -78,23 +78,23 @@ inline std::ostream& operator<<(std::ostream& os, const MyCounter& obj) {
 }
 
 // # Structural conformance (no inheritance)
-// 24: class Tally:
+// class Tally:
 struct Tally {
-    // 25:     count: Int32
+    //     count: Int32
     int32_t count;
 
-    // 26:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Tally() : count(0) {}
 
-    // 28:     def increment(self) -> None:
+    //     def increment(self) -> None:
     void increment() {
-        // 29:         self.count = self.count + Int32(1)
+        //         self.count = self.count + Int32(1)
         this->count = (tpy::add_check<int32_t>(this->count, 1));
     }
 
-    // 30:     def value(self) -> Int32:
+    //     def value(self) -> Int32:
     int32_t value() const {
-        // 31:         return self.count
+        //         return self.count
         return this->count;
     }
 };

@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 
 // @extern_c
-// 8: def greet(name: str) -> None:
+// def greet(name: str) -> None:
 extern "C" void greet(const char* name) {
-    // 9:     puts(name)
+    //     puts(name)
     puts(name);
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: from tpy.extern import native_c, extern_c
+    // from tpy.extern import native_c, extern_c
 }
 
 } // namespace tpy_user::main

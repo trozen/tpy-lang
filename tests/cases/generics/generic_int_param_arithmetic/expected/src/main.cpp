@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 15: def main() -> None:
+// def main() -> None:
 void main() {
-    // 16:     c: Container[str, 10] = Container[str, 10]()
+    //     c: Container[str, 10] = Container[str, 10]()
     Container<std::string, 10> c = Container<std::string, 10>();
-    // 17:     print(c.get_double())      # 20
+    //     print(c.get_double())      # 20
     std::cout << c.get_double() << "\n";
-    // 18:     print(c.get_plus_one())    # 11
+    //     print(c.get_plus_one())    # 11
     std::cout << c.get_plus_one() << "\n";
-    // 19:     print(c.get_minus_five())  # 5
+    //     print(c.get_minus_five())  # 5
     std::cout << c.get_minus_five() << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: main()
+    // main()
     main();
 }
 

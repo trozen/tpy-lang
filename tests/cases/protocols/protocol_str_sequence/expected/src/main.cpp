@@ -4,21 +4,21 @@
 namespace tpy_user::main {
 
 
-// 10: def main() -> None:
+// def main() -> None:
 void main() {
-    // 11:     text: str = "hello"
+    //     text: str = "hello"
     std::string_view text = "hello";
-    // 13:     # str conforms to Sequence[Char]
-    // 14:     print(first_char(text))    # h
+    //     # str conforms to Sequence[Char]
+    //     print(first_char(text))    # h
     std::cout << first_char(text) << "\n";
-    // 15:     print(count_chars(text))   # 5
+    //     print(count_chars(text))   # 5
     std::cout << count_chars(text) << "\n";
-    // 17:     # Direct indexing on str
-    // 18:     print(text[0])             # h
+    //     # Direct indexing on str
+    //     print(text[0])             # h
     std::cout << tpy::__getitem__(text, 0) << "\n";
-    // 19:     print(text[-1])            # o
+    //     print(text[-1])            # o
     std::cout << tpy::__getitem__(text, -1) << "\n";
-    // 20:     print(text[2])             # l
+    //     print(text[2])             # l
     std::cout << tpy::__getitem__(text, 2) << "\n";
 }
 
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: main()
+    // main()
     main();
 }
 

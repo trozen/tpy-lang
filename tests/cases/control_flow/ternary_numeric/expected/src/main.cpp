@@ -4,42 +4,42 @@
 namespace tpy_user::main {
 
 
-// 4: def wider(flag: bool, a: Int32, b: Int64) -> Int64:
+// def wider(flag: bool, a: Int32, b: Int64) -> Int64:
 int64_t wider(bool flag, int32_t a, int64_t b) {
-    // 5:     # Int32 + Int64 -> Int64
-    // 6:     return a if flag else b
+    //     # Int32 + Int64 -> Int64
+    //     return a if flag else b
     return ((flag) ? (static_cast<int64_t>(a)) : (b));
 }
 
-// 8: def literal_with_typed(flag: bool, x: Int32) -> Int32:
+// def literal_with_typed(flag: bool, x: Int32) -> Int32:
 int32_t literal_with_typed(bool flag, int32_t x) {
-    // 9:     # Int literal adopts the concrete type from the other branch
-    // 10:     return x if flag else 0
+    //     # Int literal adopts the concrete type from the other branch
+    //     return x if flag else 0
     return ((flag) ? (x) : (0));
 }
 
-// 12: def both_literals(flag: bool) -> None:
+// def both_literals(flag: bool) -> None:
 void both_literals(bool flag) {
-    // 13:     # Both branches are int literals -> default int type
-    // 14:     x = 10 if flag else 20
+    //     # Both branches are int literals -> default int type
+    //     x = 10 if flag else 20
     int32_t x = ((flag) ? (10) : (20));
-    // 15:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 17: def main() -> None:
+// def main() -> None:
 void main() {
-    // 18:     print(wider(True, 42, 100))
+    //     print(wider(True, 42, 100))
     std::cout << wider(true, 42, 100) << "\n";
-    // 19:     print(wider(False, 42, 100))
+    //     print(wider(False, 42, 100))
     std::cout << wider(false, 42, 100) << "\n";
-    // 21:     print(literal_with_typed(True, 5))
+    //     print(literal_with_typed(True, 5))
     std::cout << literal_with_typed(true, 5) << "\n";
-    // 22:     print(literal_with_typed(False, 5))
+    //     print(literal_with_typed(False, 5))
     std::cout << literal_with_typed(false, 5) << "\n";
-    // 24:     both_literals(True)
+    //     both_literals(True)
     both_literals(true);
-    // 25:     both_literals(False)
+    //     both_literals(False)
     both_literals(false);
 }
 
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 27: main()
+    // main()
     main();
 }
 

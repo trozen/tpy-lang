@@ -9,32 +9,32 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 27: # 1. for-loop over child inheriting next() from parent
-    // 28: for x in DoubleCounter(3):
+    // # 1. for-loop over child inheriting next() from parent
+    // for x in DoubleCounter(3):
     auto __src_0 = DoubleCounter(3);
     auto __obj_0 = tpy::iter_adapt(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 29:     print(x)
+        //     print(x)
         std::cout << x << "\n";
     }
-    // 38: print(sum_iter(DoubleCounter(3)))
+    // print(sum_iter(DoubleCounter(3)))
     auto __tmp_1 = DoubleCounter(3);
     std::cout << sum_iter(__tmp_1) << "\n";
-    // 40: # 3. Multi-level: for-loop + protocol param
-    // 41: for x in GrandChild(2):
+    // # 3. Multi-level: for-loop + protocol param
+    // for x in GrandChild(2):
     auto __src_1 = GrandChild(2);
     auto __obj_1 = tpy::iter_adapt(__src_1);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        // 42:     print(x)
+        //     print(x)
         std::cout << x << "\n";
     }
-    // 43: print(sum_iter(GrandChild(2)))
+    // print(sum_iter(GrandChild(2)))
     auto __tmp_2 = GrandChild(2);
     std::cout << sum_iter(__tmp_2) << "\n";
 }

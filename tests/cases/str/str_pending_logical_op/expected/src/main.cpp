@@ -4,107 +4,107 @@
 namespace tpy_user::main {
 
 
-// 5: def test_or(a: str, b: str) -> None:
+// def test_or(a: str, b: str) -> None:
 void test_or(std::string_view a, std::string_view b) {
-    // 6:     x = a or b  # tpyc: type(StrView)
+    //     x = a or b  # tpyc: type(StrView)
     std::string_view x = ((!a.empty()) ? a : b);
-    // 7:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 9: def test_and(a: str, b: str) -> None:
+// def test_and(a: str, b: str) -> None:
 void test_and(std::string_view a, std::string_view b) {
-    // 10:     x = a and b  # tpyc: type(StrView)
+    //     x = a and b  # tpyc: type(StrView)
     std::string_view x = ((!a.empty()) ? b : a);
-    // 11:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 13: def test_ternary(a: str, b: str, cond: bool) -> None:
+// def test_ternary(a: str, b: str, cond: bool) -> None:
 void test_ternary(std::string_view a, std::string_view b, bool cond) {
-    // 14:     x = a if cond else b  # tpyc: type(StrView)
+    //     x = a if cond else b  # tpyc: type(StrView)
     std::string_view x = ((cond) ? (a) : (b));
-    // 15:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 17: def test_literal_or() -> None:
+// def test_literal_or() -> None:
 void test_literal_or() {
-    // 18:     x = "hello" or "world"  # tpyc: type(StrView)
+    //     x = "hello" or "world"  # tpyc: type(StrView)
     std::string_view __tmp_1 = "hello";
     std::string_view __tmp_2 = "world";
     std::string_view x = ((!__tmp_1.empty()) ? __tmp_1 : __tmp_2);
-    // 19:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 21: def test_or_right_promotes() -> None:
+// def test_or_right_promotes() -> None:
 void test_or_right_promotes() {
-    // 22:     # When the right-hand operand later promotes to std::string (via augassign),
-    // 23:     # the result x must also promote -- it might point to b's buffer at runtime.
-    // 24:     a = "hello"
+    //     # When the right-hand operand later promotes to std::string (via augassign),
+    //     # the result x must also promote -- it might point to b's buffer at runtime.
+    //     a = "hello"
     std::string_view a = "hello";
-    // 25:     b = "world"
+    //     b = "world"
     std::string b = "world";
-    // 26:     x = a or b  # tpyc: type(str)
+    //     x = a or b  # tpyc: type(str)
     std::string x = std::string(((!a.empty()) ? a : std::string_view(b)));
-    // 27:     b += "!"
+    //     b += "!"
     b += "!";
-    // 28:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 30: def test_ternary_right_promotes() -> None:
+// def test_ternary_right_promotes() -> None:
 void test_ternary_right_promotes() {
-    // 31:     a = "hello"
+    //     a = "hello"
     std::string_view a = "hello";
-    // 32:     b = "world"
+    //     b = "world"
     std::string b = "world";
-    // 33:     x = a if True else b  # tpyc: type(str)
+    //     x = a if True else b  # tpyc: type(str)
     std::string x = std::string(((true) ? (a) : (b)));
-    // 34:     b += "!"
+    //     b += "!"
     b += "!";
-    // 35:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 37: def test_or_chain(a: str, b: str, c: str) -> None:
+// def test_or_chain(a: str, b: str, c: str) -> None:
 void test_or_chain(std::string_view a, std::string_view b, std::string_view c) {
-    // 38:     # Three-operand chain: (a or b) or c -- parsed left-associatively.
-    // 39:     x = a or b or c  # tpyc: type(StrView)
+    //     # Three-operand chain: (a or b) or c -- parsed left-associatively.
+    //     x = a or b or c  # tpyc: type(StrView)
     auto&& __tmp_3 = ((!a.empty()) ? a : b);
     std::string_view x = ((!__tmp_3.empty()) ? __tmp_3 : c);
-    // 40:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 42: def test_literal_or_chain() -> None:
+// def test_literal_or_chain() -> None:
 void test_literal_or_chain() {
-    // 43:     x = "foo" or "bar" or "baz"  # tpyc: type(StrView)
+    //     x = "foo" or "bar" or "baz"  # tpyc: type(StrView)
     std::string_view __tmp_4 = "foo";
     std::string_view __tmp_5 = "bar";
     auto&& __tmp_6 = ((!__tmp_4.empty()) ? __tmp_4 : __tmp_5);
     std::string_view __tmp_7 = "baz";
     std::string_view x = ((!__tmp_6.empty()) ? __tmp_6 : __tmp_7);
-    // 44:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 46: def test_or_chain_third_promotes() -> None:
+// def test_or_chain_third_promotes() -> None:
 void test_or_chain_third_promotes() {
-    // 47:     # Promotion must propagate from the third operand too, not just left/right.
-    // 48:     a = "hello"
+    //     # Promotion must propagate from the third operand too, not just left/right.
+    //     a = "hello"
     std::string_view a = "hello";
-    // 49:     b = "world"
+    //     b = "world"
     std::string_view b = "world";
-    // 50:     c = "!"
+    //     c = "!"
     std::string c = "!";
-    // 51:     x = a or b or c  # tpyc: type(str)
+    //     x = a or b or c  # tpyc: type(str)
     auto&& __tmp_8 = ((!a.empty()) ? a : b);
     std::string x = std::string(((!__tmp_8.empty()) ? __tmp_8 : std::string_view(c)));
-    // 52:     c += "?"
+    //     c += "?"
     c += "?";
-    // 53:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
@@ -113,23 +113,23 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 55: test_or("hello", "world")
+    // test_or("hello", "world")
     test_or("hello", "world");
-    // 56: test_and("hello", "world")
+    // test_and("hello", "world")
     test_and("hello", "world");
-    // 57: test_ternary("hello", "world", True)
+    // test_ternary("hello", "world", True)
     test_ternary("hello", "world", true);
-    // 58: test_literal_or()
+    // test_literal_or()
     test_literal_or();
-    // 59: test_or_right_promotes()
+    // test_or_right_promotes()
     test_or_right_promotes();
-    // 60: test_ternary_right_promotes()
+    // test_ternary_right_promotes()
     test_ternary_right_promotes();
-    // 61: test_or_chain("hello", "world", "!")
+    // test_or_chain("hello", "world", "!")
     test_or_chain("hello", "world", "!");
-    // 62: test_literal_or_chain()
+    // test_literal_or_chain()
     test_literal_or_chain();
-    // 63: test_or_chain_third_promotes()
+    // test_or_chain_third_promotes()
     test_or_chain_third_promotes();
 }
 

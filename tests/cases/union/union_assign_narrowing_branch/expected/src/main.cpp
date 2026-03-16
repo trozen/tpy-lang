@@ -4,39 +4,39 @@
 namespace tpy_user::main {
 
 
-// 16: def describe(s: Circle | Rect) -> str:
+// def describe(s: Circle | Rect) -> str:
 std::string describe(const std::variant<Circle, Rect>& s) {
-    // 17:     if isinstance(s, Circle):
+    //     if isinstance(s, Circle):
     if (std::holds_alternative<Circle>(s)) {
         auto& __s = std::get<Circle>(s);
-        // 18:         return "circle"
+        //         return "circle"
         return "circle";
-    // 19:     else:
+    //     else:
     } else {
         auto& __s = std::get<Rect>(s);
-        // 20:         return "rect"
+        //         return "rect"
         return "rect";
     }
 }
 
-// 22: def main() -> None:
+// def main() -> None:
 void main() {
-    // 23:     c: Circle | Rect = Circle(5.0)
+    //     c: Circle | Rect = Circle(5.0)
     std::variant<Circle, Rect> c = Circle(5.0);
-    // 24:     print(c.radius)
+    //     print(c.radius)
     std::cout << tpy::print_float(std::get<Circle>(c).radius) << "\n";
-    // 25:     if isinstance(c, Circle):
+    //     if isinstance(c, Circle):
     if (std::holds_alternative<Circle>(c)) {
         auto& __c = std::get<Circle>(c);
-        // 26:         print("yes circle")
+        //         print("yes circle")
         std::cout << "yes circle" << "\n";
-    // 27:     else:
+    //     else:
     } else {
         auto& __c = std::get<Rect>(c);
-        // 28:         print("no")
+        //         print("no")
         std::cout << "no" << "\n";
     }
-    // 29:     print(describe(c))
+    //     print(describe(c))
     std::cout << describe(c) << "\n";
 }
 
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 31: main()
+    // main()
     main();
 }
 

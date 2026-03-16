@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     a: list[Int32] = [1, 2, 3, 4, 5]
+    //     a: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> a = {1, 2, 3, 4, 5};
-    // 6:     for x in a:
+    //     for x in a:
     auto& __obj_0 = a;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 7:         a[0:1] = [99]  # tpyc: warning(/Mutation of 'a'.*while borrowed/)
+        //         a[0:1] = [99]  # tpyc: warning(/Mutation of 'a'.*while borrowed/)
         tpy::list_set_slice(a, 0, 1, std::vector<int32_t>{99});
-        // 8:         break
+        //         break
         break;
     }
 }
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 10: main()
+    // main()
     main();
 }
 

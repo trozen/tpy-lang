@@ -15,12 +15,12 @@ void bump(Point& p);
 void test();
 
 // # Test: ref-returning call passed directly as mutable ref arg -- no copy, mutation propagates
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: int
+    //     x: int
     tpy::BigInt x;
 
-    // 7:     def __init__(self, x: int) -> None:
+    //     def __init__(self, x: int) -> None:
     Point() = default;
     explicit Point(const tpy::BigInt& x) : x(x) {}
 };
@@ -32,17 +32,17 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 11: class Holder:
+// class Holder:
 struct Holder {
-    // 12:     inner: Point
+    //     inner: Point
     Point inner;
 
-    // 14:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Holder() : inner(Point(tpy::BigInt(5))) {}
 
-    // 17:     def get(self) -> Point:
+    //     def get(self) -> Point:
     Point& get() {
-        // 18:         return self.inner
+        //         return self.inner
         return this->inner;
     }
 };

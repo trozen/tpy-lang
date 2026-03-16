@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 
-// 19: def consume(c: Own[Child]) -> None:
+// def consume(c: Own[Child]) -> None:
 void consume(Child&& c) {
-    // 20:     print("consumed", c.name, c.tag)
+    //     print("consumed", c.name, c.tag)
     std::cout << "consumed" << " " << c.name << " " << c.tag << "\n";
 }
 
-// 22: def main():
+// def main():
 void main() {
-    // 23:     c = Child("x", "t1")
+    //     c = Child("x", "t1")
     Child c = Child("x", "t1");
-    // 24:     consume(c)
+    //     consume(c)
     consume(std::move(c));
-    // 25:     print("---")
+    //     print("---")
     std::cout << "---" << "\n";
-    // 27:     consume(Child("y", "t2"))
+    //     consume(Child("y", "t2"))
     consume(Child("y", "t2"));
-    // 28:     print("done")
+    //     print("done")
     std::cout << "done" << "\n";
 }
 
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 30: main()
+    // main()
     main();
 }
 

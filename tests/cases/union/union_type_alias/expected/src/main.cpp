@@ -4,30 +4,30 @@
 namespace tpy_user::main {
 
 
-// 24: def describe(s: Shape) -> str:
+// def describe(s: Shape) -> str:
 std::string describe(const Shape& s) {
-    // 25:     if isinstance(s, Circle):
+    //     if isinstance(s, Circle):
     if (std::holds_alternative<Circle>(s)) {
         auto& __s = std::get<Circle>(s);
-        // 26:         return "circle"
+        //         return "circle"
         return "circle";
     }
-    // 27:     assert isinstance(s, Rect)
+    //     assert isinstance(s, Rect)
     if (!(std::holds_alternative<Rect>(s))) tpy::tpy_panic("assertion failed");
     auto& __s = std::get<Rect>(s);
-    // 28:     return "rect"
+    //     return "rect"
     return "rect";
 }
 
-// 31: def main() -> None:
+// def main() -> None:
 void main() {
-    // 32:     c: Shape = Circle(Int32(10))
+    //     c: Shape = Circle(Int32(10))
     Shape c = Circle(10);
-    // 33:     r: Shape = Rect(Int32(3), Int32(4))
+    //     r: Shape = Rect(Int32(3), Int32(4))
     Shape r = Rect(3, 4);
-    // 34:     print(describe(c))
+    //     print(describe(c))
     std::cout << describe(c) << "\n";
-    // 35:     print(describe(r))
+    //     print(describe(r))
     std::cout << describe(r) << "\n";
 }
 
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 37: main()
+    // main()
     main();
 }
 

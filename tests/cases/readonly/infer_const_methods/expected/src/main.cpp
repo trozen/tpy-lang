@@ -4,41 +4,41 @@
 namespace tpy_user::main {
 
 
-// 83: def show(v: DynValued) -> None:
+// def show(v: DynValued) -> None:
 void show(DynValued& v) {
-    // 84:     print(v.value())
+    //     print(v.value())
     std::cout << v.value() << "\n";
 }
 
-// 87: def main() -> None:
+// def main() -> None:
 void main() {
-    // 88:     c = Counter()
+    //     c = Counter()
     Counter c = Counter();
-    // 89:     c.increment()
+    //     c.increment()
     c.increment();
-    // 90:     c.increment_twice()
+    //     c.increment_twice()
     c.increment_twice();
-    // 91:     print(c.get())
+    //     print(c.get())
     std::cout << c.get() << "\n";
-    // 92:     print(c.is_zero())
+    //     print(c.is_zero())
     std::cout << tpy::print_bool(c.is_zero()) << "\n";
-    // 94:     b = Box()
+    //     b = Box()
     Box b = Box();
-    // 95:     b.push(1)
+    //     b.push(1)
     b.push(1);
-    // 96:     b.push_default()
+    //     b.push_default()
     b.push_default();
-    // 97:     print(b.size())
+    //     print(b.size())
     std::cout << b.size() << "\n";
-    // 99:     sb = SortableBox()
+    //     sb = SortableBox()
     SortableBox sb = SortableBox();
-    // 100:     sb.fill(3, 1)
+    //     sb.fill(3, 1)
     sb.fill(3, 1);
-    // 101:     sb.sort_items()
+    //     sb.sort_items()
     sb.sort_items();
-    // 102:     print(sb.get_first())
+    //     print(sb.get_first())
     std::cout << sb.get_first() << "\n";
-    // 104:     show(Valued(7))
+    //     show(Valued(7))
     Valued __tmp_4{Valued(7)};
     show(__tmp_4);
 }
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 106: main()
+    // main()
     main();
 }
 

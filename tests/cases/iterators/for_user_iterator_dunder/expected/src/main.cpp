@@ -9,29 +9,29 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: # 1. Direct use in for-loop
-    // 23: for x in Counter(5):
+    // # 1. Direct use in for-loop
+    // for x in Counter(5):
     auto __src_0 = Counter(5);
     auto __obj_0 = tpy::iter_adapt(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 24:     print(x)
+        //     print(x)
         std::cout << x << "\n";
     }
-    // 26: # 2. Empty iterator
-    // 27: for x in Counter(0):
+    // # 2. Empty iterator
+    // for x in Counter(0):
     auto __src_1 = Counter(0);
     auto __obj_1 = tpy::iter_adapt(__src_1);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        // 28:     print(x)
+        //     print(x)
         std::cout << x << "\n";
     }
-    // 29: print("done")
+    // print("done")
     std::cout << "done" << "\n";
 }
 

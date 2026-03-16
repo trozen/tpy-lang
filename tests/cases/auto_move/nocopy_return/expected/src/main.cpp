@@ -4,21 +4,21 @@
 namespace tpy_user::main {
 
 
-// 10: def make(val: Int32) -> Own[Handle]:
+// def make(val: Int32) -> Own[Handle]:
 Handle make(int32_t val) {
-    // 11:     h = Handle()
+    //     h = Handle()
     Handle h = Handle();
-    // 12:     h.fd = val
+    //     h.fd = val
     h.fd = val;
-    // 13:     return h
+    //     return h
     return h;
 }
 
-// 16: def main():
+// def main():
 void main() {
-    // 17:     h = make(99)
+    //     h = make(99)
     Handle h = make(99);
-    // 18:     print(h.fd)
+    //     print(h.fd)
     std::cout << h.fd << "\n";
 }
 
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 21: main()
+    // main()
     main();
 }
 

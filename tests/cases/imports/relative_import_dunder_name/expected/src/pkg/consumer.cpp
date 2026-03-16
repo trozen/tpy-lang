@@ -4,9 +4,9 @@
 namespace tpy_user::pkg::consumer {
 
 
-// 4: def compute() -> Int32:
+// def compute() -> Int32:
 int32_t compute() {
-    // 5:     return get_value()
+    //     return get_value()
     return ::tpy_user::pkg::my__helper::get_value();
 }
 
@@ -15,7 +15,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: from .my__helper import get_value
+    // from .my__helper import get_value
     ::tpy_user::pkg::__tpy_init();
     ::tpy_user::pkg::my__helper::__tpy_init();
 }

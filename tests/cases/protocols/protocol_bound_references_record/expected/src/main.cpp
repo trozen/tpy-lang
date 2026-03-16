@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 34: def main() -> None:
+// def main() -> None:
 void main() {
-    // 35:     factory = DefaultFooMaker()
+    //     factory = DefaultFooMaker()
     DefaultFooMaker factory = DefaultFooMaker();
-    // 36:     bar = Bar(factory)
+    //     bar = Bar(factory)
     Bar<DefaultFooMaker> bar = Bar<DefaultFooMaker>(factory);
-    // 37:     foo = bar.create_foo()
+    //     foo = bar.create_foo()
     Foo foo = bar.create_foo();
-    // 38:     print(foo.value)
+    //     print(foo.value)
     std::cout << foo.value << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 40: main()
+    // main()
     main();
 }
 

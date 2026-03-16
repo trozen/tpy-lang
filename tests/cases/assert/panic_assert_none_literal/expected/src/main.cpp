@@ -9,7 +9,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: assert None
+    // assert None
     tpy::tpy_panic("assertion failed");
 }
 

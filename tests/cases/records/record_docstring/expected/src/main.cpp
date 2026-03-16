@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 18: def main() -> None:
+// def main() -> None:
 void main() {
-    // 19:     p = Point(3, 4)
+    //     p = Point(3, 4)
     Point p = Point(3, 4);
-    // 20:     print(p.magnitude_sq())
+    //     print(p.magnitude_sq())
     std::cout << p.magnitude_sq() << "\n";
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: main()
+    // main()
     main();
 }
 

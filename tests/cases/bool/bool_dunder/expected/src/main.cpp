@@ -4,22 +4,22 @@
 namespace tpy_user::main {
 
 
-// 12: def main() -> None:
+// def main() -> None:
 void main() {
-    // 13:     # Non-empty container -> True
-    // 14:     c1 = Container(3)
+    //     # Non-empty container -> True
+    //     c1 = Container(3)
     Container c1 = Container(tpy::BigInt(3));
-    // 15:     print(bool(c1))  # True
+    //     print(bool(c1))  # True
     std::cout << tpy::print_bool(tpy::__bool__(c1)) << "\n";
-    // 17:     # Empty container -> False
-    // 18:     c2 = Container(0)
+    //     # Empty container -> False
+    //     c2 = Container(0)
     Container c2 = Container(tpy::BigInt(0));
-    // 19:     print(bool(c2))  # False
+    //     print(bool(c2))  # False
     std::cout << tpy::print_bool(tpy::__bool__(c2)) << "\n";
-    // 21:     # Direct __bool__() call
-    // 22:     print(c1.__bool__())  # True
+    //     # Direct __bool__() call
+    //     print(c1.__bool__())  # True
     std::cout << tpy::print_bool(c1.__bool__()) << "\n";
-    // 23:     print(c2.__bool__())  # False
+    //     print(c2.__bool__())  # False
     std::cout << tpy::print_bool(c2.__bool__()) << "\n";
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 25: main()
+    // main()
     main();
 }
 

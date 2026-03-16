@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 // # From Char (static lookup - safe)
-// 15: c: Char = "A"
+// c: Char = "A"
 char c{};
 // # From float (inline usage - safe)
 // # Note: exact output format may vary
-// 29: x: float = 3.14
+// x: float = 3.14
 double x{};
 
 void __tpy_init() {
@@ -16,39 +16,39 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: # Empty string
-    // 5: print(str())  # empty
+    // # Empty string
+    // print(str())  # empty
     std::cout << std::string() << "\n";
-    // 7: # From str (identity)
-    // 8: print(str("hello"))  # hello
+    // # From str (identity)
+    // print(str("hello"))  # hello
     std::cout << std::string("hello") << "\n";
-    // 10: # From bool (static strings - safe)
-    // 11: print(str(True))   # True
+    // # From bool (static strings - safe)
+    // print(str(True))   # True
     std::cout << std::string(tpy::bool_to_str(true)) << "\n";
-    // 12: print(str(False))  # False
+    // print(str(False))  # False
     std::cout << std::string(tpy::bool_to_str(false)) << "\n";
-    // 14: # From Char (static lookup - safe)
-    // 15: c: Char = "A"
+    // # From Char (static lookup - safe)
+    // c: Char = "A"
     c = 'A';
-    // 16: print(str(c))  # A
+    // print(str(c))  # A
     std::cout << std::string(tpy::char_to_str(c)) << "\n";
-    // 18: # From Int32 (inline usage - safe)
-    // 19: print(str(Int32(42)))    # 42
+    // # From Int32 (inline usage - safe)
+    // print(str(Int32(42)))    # 42
     std::cout << tpy::fixed_to_str<int32_t>(42) << "\n";
-    // 20: print(str(Int32(-123)))  # -123
+    // print(str(Int32(-123)))  # -123
     std::cout << tpy::fixed_to_str<int32_t>(-123) << "\n";
-    // 21: print(str(Int32(0)))     # 0
+    // print(str(Int32(0)))     # 0
     std::cout << tpy::fixed_to_str<int32_t>(0) << "\n";
-    // 23: # From int/BigInt (inline usage - safe)
-    // 24: print(str(12345))         # 12345
+    // # From int/BigInt (inline usage - safe)
+    // print(str(12345))         # 12345
     std::cout << tpy::fixed_to_str<int16_t>(12345) << "\n";
-    // 25: print(str(-99999))        # -99999
+    // print(str(-99999))        # -99999
     std::cout << tpy::fixed_to_str<int32_t>(-99999) << "\n";
-    // 27: # From float (inline usage - safe)
-    // 28: # Note: exact output format may vary
-    // 29: x: float = 3.14
+    // # From float (inline usage - safe)
+    // # Note: exact output format may vary
+    // x: float = 3.14
     x = 3.14;
-    // 30: print(str(x))  # 3.140000
+    // print(str(x))  # 3.140000
     std::cout << tpy::float_to_str(x) << "\n";
 }
 

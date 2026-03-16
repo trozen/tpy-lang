@@ -3,24 +3,24 @@
 
 namespace tpy_user::main {
 
-// 9: g: Point | None = Point()
+// g: Point | None = Point()
 Point* g{};
 
-// 13: def consume(p: Own[Point]) -> Int32:
+// def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point&& p) {
-    // 14:     return p.x
+    //     return p.x
     return p.x;
 }
 
-// 17: def test() -> Int32:
+// def test() -> Int32:
 int32_t test() {
-    // 18:     q: Point | None
+    //     q: Point | None
     Point* q = nullptr;
-    // 19:     q = g
+    //     q = g
     q = g;
-    // 20:     assert q is not None
+    //     assert q is not None
     if (!((q != nullptr))) tpy::tpy_panic("assertion failed");
-    // 21:     return consume(q)  # tpyc: warning(/copies.*into owned storage/)
+    //     return consume(q)  # tpyc: warning(/copies.*into owned storage/)
     auto __tmp_1 = (*q);
     return consume(std::move(__tmp_1));
 }
@@ -30,10 +30,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 9: g: Point | None = Point()
+    // g: Point | None = Point()
     static Point __global_slot_1 = Point();
     g = &__global_slot_1;
-    // 10: g.x = Int32(99)
+    // g.x = Int32(99)
     g->x = 99;
 }
 

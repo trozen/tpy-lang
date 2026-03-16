@@ -12,18 +12,18 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // # Test __repr__ fallback: str()/print()/f-string fall back to __repr__ when no __str__
-// 2: class Tag:
+// class Tag:
 struct Tag {
-    // 3:     label: str
+    //     label: str
     std::string label;
 
-    // 5:     def __init__(self, label: str) -> None:
+    //     def __init__(self, label: str) -> None:
     Tag() = default;
     explicit Tag(std::string_view label) : label(label) {}
 
-    // 8:     def __repr__(self) -> str:
+    //     def __repr__(self) -> str:
     std::string __repr__() const {
-        // 9:         return "Tag(" + self.label + ")"
+        //         return "Tag(" + self.label + ")"
         return (tpy::str_concat((tpy::str_concat("Tag(", this->label)), ")"));
     }
 };

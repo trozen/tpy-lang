@@ -4,39 +4,39 @@
 namespace tpy_user::main {
 
 
-// 4: def test_string_basic() -> None:
+// def test_string_basic() -> None:
 void test_string_basic() {
-    // 5:     s: String = String("hello")
+    //     s: String = String("hello")
     std::string s = std::string("hello");
-    // 6:     print(s)  # hello
+    //     print(s)  # hello
     std::cout << s << "\n";
-    // 7:     print(len(s))  # 5
+    //     print(len(s))  # 5
     std::cout << tpy::__len__(s) << "\n";
 }
 
-// 9: def test_string_from_int() -> None:
+// def test_string_from_int() -> None:
 void test_string_from_int() {
-    // 10:     s: String = String(Int32(42))
+    //     s: String = String(Int32(42))
     std::string s = tpy::fixed_to_str<int32_t>(42);
-    // 11:     print(s)  # 42
+    //     print(s)  # 42
     std::cout << s << "\n";
 }
 
-// 13: def test_string_from_bool() -> None:
+// def test_string_from_bool() -> None:
 void test_string_from_bool() {
-    // 14:     s: String = String(True)
+    //     s: String = String(True)
     std::string s = std::string(tpy::bool_to_str(true));
-    // 15:     print(s)  # True
+    //     print(s)  # True
     std::cout << s << "\n";
 }
 
-// 17: def test_string_getitem() -> None:
+// def test_string_getitem() -> None:
 void test_string_getitem() {
-    // 18:     s: String = String("abc")
+    //     s: String = String("abc")
     std::string s = std::string("abc");
-    // 19:     print(s[0])  # a
+    //     print(s[0])  # a
     std::cout << tpy::__getitem__(s, 0) << "\n";
-    // 20:     print(s[-1])  # c
+    //     print(s[-1])  # c
     std::cout << tpy::__getitem__(s, -1) << "\n";
 }
 
@@ -45,13 +45,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: test_string_basic()
+    // test_string_basic()
     test_string_basic();
-    // 23: test_string_from_int()
+    // test_string_from_int()
     test_string_from_int();
-    // 24: test_string_from_bool()
+    // test_string_from_bool()
     test_string_from_bool();
-    // 25: test_string_getitem()
+    // test_string_getitem()
     test_string_getitem();
 }
 

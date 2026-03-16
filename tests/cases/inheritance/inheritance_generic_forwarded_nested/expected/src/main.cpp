@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-// 24: items: list[str] = ["hello", "world"]
+// items: list[str] = ["hello", "world"]
 std::vector<std::string>* items{};
-// 25: c: Child[str] = Child[str](items, Int32(42))
+// c: Child[str] = Child[str](items, Int32(42))
 Child<std::string>* c{};
-// 26: val: list[str] = c.get_value()
+// val: list[str] = c.get_value()
 std::vector<std::string>* val{};
 
 void __tpy_init() {
@@ -15,19 +15,19 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 24: items: list[str] = ["hello", "world"]
+    // items: list[str] = ["hello", "world"]
     static std::vector<std::string> __global_slot_1 = {"hello", "world"};
     items = &__global_slot_1;
-    // 25: c: Child[str] = Child[str](items, Int32(42))
+    // c: Child[str] = Child[str](items, Int32(42))
     static Child<std::string> __global_slot_2 = Child<std::string>((*items), 42);
     c = &__global_slot_2;
-    // 26: val: list[str] = c.get_value()
+    // val: list[str] = c.get_value()
     val = &(c->get_value());
-    // 27: print(val[0])
+    // print(val[0])
     std::cout << tpy::__getitem__((*val), 0) << "\n";
-    // 28: print(val[1])
+    // print(val[1])
     std::cout << tpy::__getitem__((*val), 1) << "\n";
-    // 29: print(c.get_extra())
+    // print(c.get_extra())
     std::cout << c->get_extra() << "\n";
 }
 

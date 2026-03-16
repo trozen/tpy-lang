@@ -4,9 +4,9 @@
 namespace tpy_user::mod_d {
 
 
-// 6: def d_value() -> Int32:
+// def d_value() -> Int32:
 int32_t d_value() {
-    // 7:     return Int32(5)
+    //     return Int32(5)
     return 5;
 }
 
@@ -15,8 +15,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: # This print verifies D is only initialized once
-    // 4: print("D init")
+    // # This print verifies D is only initialized once
+    // print("D init")
     std::cout << "D init" << "\n";
 }
 

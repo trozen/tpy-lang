@@ -12,14 +12,14 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 6:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 7:     def __init__(self, x: Int32 = Int32(0), y: Int32 = Int32(0)) -> None:
+    //     def __init__(self, x: Int32 = Int32(0), y: Int32 = Int32(0)) -> None:
     explicit Point(int32_t x = 0, int32_t y = 0) : x(x), y(y) {}
 };
 
@@ -32,14 +32,14 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 11: class Named:
+// class Named:
 struct Named {
-    // 12:     name: str
+    //     name: str
     std::string name;
-    // 13:     value: Int32
+    //     value: Int32
     int32_t value;
 
-    // 14:     def __init__(self, name: str, value: Int32 = Int32(42)) -> None:
+    //     def __init__(self, name: str, value: Int32 = Int32(42)) -> None:
     Named() = default;
     explicit Named(std::string_view name, int32_t value = 42) : name(name), value(value) {}
 };

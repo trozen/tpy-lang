@@ -3,26 +3,26 @@
 
 namespace tpy_user::main {
 
-// 19: p = None
+// p = None
 Point* p{};
-// 23: n = None
+// n = None
 std::optional<int32_t> n;
-// 27: z = 0
+// z = 0
 int32_t z{};
-// 31: f = 0
+// f = 0
 double f{};
-// 35: flag = None
+// flag = None
 std::optional<bool> flag;
 
-// 11: def make_point() -> Own[Point]:
+// def make_point() -> Own[Point]:
 Point make_point() {
-    // 12:     return Point(7)
+    //     return Point(7)
     return Point(7);
 }
 
-// 15: def get_flag() -> bool:
+// def get_flag() -> bool:
 bool get_flag() {
-    // 16:     return True
+    //     return True
     return true;
 }
 
@@ -31,36 +31,36 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 19: p = None
+    // p = None
     p = nullptr;
-    // 20: p = make_point()
+    // p = make_point()
     static Point __global_slot_1 = make_point();
     p = &__global_slot_1;
-    // 21: print(p.x)
+    // print(p.x)
     std::cout << p->x << "\n";
-    // 23: n = None
+    // n = None
     n = std::nullopt;
-    // 24: n = 123
+    // n = 123
     n = 123;
-    // 25: print(n)
+    // print(n)
     std::cout << tpy::print_optional_val(n) << "\n";
-    // 27: z = 0
+    // z = 0
     z = 0;
-    // 28: z = Int32(666)
+    // z = Int32(666)
     z = 666;
-    // 29: print(z)
+    // print(z)
     std::cout << z << "\n";
-    // 31: f = 0
+    // f = 0
     f = 0;
-    // 32: f = 1.5
+    // f = 1.5
     f = 1.5;
-    // 33: print(f)
+    // print(f)
     std::cout << tpy::print_float(f) << "\n";
-    // 35: flag = None
+    // flag = None
     flag = std::nullopt;
-    // 36: flag = get_flag()
+    // flag = get_flag()
     flag = get_flag();
-    // 37: print(flag)
+    // print(flag)
     std::cout << tpy::print_optional_val<tpy::print_bool, bool>(flag) << "\n";
 }
 

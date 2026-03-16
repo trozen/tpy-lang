@@ -3,14 +3,14 @@
 
 namespace tpy_user::main {
 
-// 11: g = Resource("global")
+// g = Resource("global")
 Resource* g{};
 
-// 13: def main():
+// def main():
 void main() {
-    // 14:     r = Resource("local")
+    //     r = Resource("local")
     Resource r = Resource("local");
-    // 15:     print("alive")
+    //     print("alive")
     std::cout << "alive" << "\n";
 }
 
@@ -19,10 +19,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 11: g = Resource("global")
+    // g = Resource("global")
     static Resource __global_slot_1 = Resource("global");
     g = &__global_slot_1;
-    // 17: main()
+    // main()
     main();
 }
 

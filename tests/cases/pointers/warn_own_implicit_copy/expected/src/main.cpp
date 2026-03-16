@@ -4,31 +4,31 @@
 namespace tpy_user::main {
 
 
-// 9: def take_point(p: Own[Point]) -> Int32:
+// def take_point(p: Own[Point]) -> Int32:
 int32_t take_point(Point&& p) {
-    // 10:     return 42
+    //     return 42
     return 42;
 }
 
-// 13: def use_point(p: Point) -> None:
+// def use_point(p: Point) -> None:
 void use_point(const Point& p) {
-    // 14:     print(p.x)
+    //     print(p.x)
     std::cout << p.x << "\n";
 }
 
-// 17: def main():
+// def main():
 void main() {
-    // 18:     p: Point = Point()
+    //     p: Point = Point()
     Point p = Point();
-    // 19:     p.x = 10
+    //     p.x = 10
     p.x = 10;
-    // 20:     # Passing Point to Own[Point] would be implicit copy -- p is used after
-    // 21:     result: Int32 = take_point(p)  # tpyc: warning(/copies.*into owned storage/)
+    //     # Passing Point to Own[Point] would be implicit copy -- p is used after
+    //     result: Int32 = take_point(p)  # tpyc: warning(/copies.*into owned storage/)
     auto __tmp_1 = p;
     int32_t result = take_point(std::move(__tmp_1));
-    // 22:     use_point(p)
+    //     use_point(p)
     use_point(p);
-    // 23:     print(result)
+    //     print(result)
     std::cout << result << "\n";
 }
 
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 26: main()
+    // main()
     main();
 }
 

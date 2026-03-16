@@ -13,14 +13,14 @@ inline constexpr std::string_view __name__ = "__main__";
 void print_point(const Point& p);
 void test();
 
-// 3: class Point:
+// class Point:
 struct Point {
-    // 4:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 5:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 6:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -34,27 +34,27 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 10: class Box[T]:
+// class Box[T]:
 template<typename T>
 struct Box {
-    // 11:     _value: T
+    //     _value: T
     T _value;
 
-    // 12:     def __init__(self, value: T) -> None:
+    //     def __init__(self, value: T) -> None:
     Box() = default;
     explicit Box(const T& value) : _value(value) {}
 
     //     @auto_readonly
-    // 15:     def __deref__(self) -> T:
+    //     def __deref__(self) -> T:
     tpy::val_or_ref_t<T> __deref__() {
-        // 16:         return self._value
+        //         return self._value
         return this->_value;
     }
 
     //     @auto_readonly
-    // 15:     def __deref__(self) -> T:
+    //     def __deref__(self) -> T:
     tpy::val_or_cref_t<T> __deref__() const {
-        // 16:         return self._value
+        //         return self._value
         return this->_value;
     }
 

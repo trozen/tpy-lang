@@ -3,14 +3,14 @@
 
 namespace tpy_user::main {
 
-// 16: pt: Point = Point(7)
+// pt: Point = Point(7)
 Point* pt{};
 
-// 11: def get_x(p: Point | None) -> Int32:
+// def get_x(p: Point | None) -> Int32:
 int32_t get_x(Point* p) {
-    // 12:     assert p  # tpyc: ok
+    //     assert p  # tpyc: ok
     if (!(p)) tpy::tpy_panic("assertion failed");
-    // 13:     return p.x  # tpyc: ok
+    //     return p.x  # tpyc: ok
     return p->x;
 }
 
@@ -19,10 +19,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 16: pt: Point = Point(7)
+    // pt: Point = Point(7)
     static Point __global_slot_1 = Point(7);
     pt = &__global_slot_1;
-    // 17: print(get_x(pt))
+    // print(get_x(pt))
     std::cout << get_x(pt) << "\n";
 }
 

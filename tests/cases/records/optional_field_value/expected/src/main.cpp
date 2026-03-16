@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 // # Basic: init to None, set, read
-// 17: c = Config("test")
+// c = Config("test")
 Config* c{};
 // # Return optional value-type field from method
-// 24: r = c.get_retries()
+// r = c.get_retries()
 std::optional<int32_t> r;
 // # Field-to-field value-type optional
-// 29: c2 = Config("other")
+// c2 = Config("other")
 Config* c2{};
 
 void __tpy_init() {
@@ -18,32 +18,32 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 16: # Basic: init to None, set, read
-    // 17: c = Config("test")
+    // # Basic: init to None, set, read
+    // c = Config("test")
     static Config __global_slot_1 = Config("test");
     c = &__global_slot_1;
-    // 18: print(c.max_retries is None)
+    // print(c.max_retries is None)
     std::cout << tpy::print_bool((!c->max_retries.has_value())) << "\n";
-    // 19: c.max_retries = 5
+    // c.max_retries = 5
     c->max_retries = 5;
-    // 20: print(c.max_retries)
+    // print(c.max_retries)
     std::cout << tpy::print_optional_val(c->max_retries) << "\n";
-    // 21: print(c.name)
+    // print(c.name)
     std::cout << c->name << "\n";
-    // 23: # Return optional value-type field from method
-    // 24: r = c.get_retries()
+    // # Return optional value-type field from method
+    // r = c.get_retries()
     r = c->get_retries();
-    // 25: print(r)
+    // print(r)
     std::cout << tpy::print_optional_val(r) << "\n";
-    // 26: print(r is not None)
+    // print(r is not None)
     std::cout << tpy::print_bool((r.has_value())) << "\n";
-    // 28: # Field-to-field value-type optional
-    // 29: c2 = Config("other")
+    // # Field-to-field value-type optional
+    // c2 = Config("other")
     static Config __global_slot_2 = Config("other");
     c2 = &__global_slot_2;
-    // 30: c2.max_retries = c.max_retries
+    // c2.max_retries = c.max_retries
     c2->max_retries = c->max_retries;
-    // 31: print(c2.max_retries)
+    // print(c2.max_retries)
     std::cout << tpy::print_optional_val(c2->max_retries) << "\n";
 }
 

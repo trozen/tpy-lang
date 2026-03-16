@@ -4,28 +4,28 @@
 namespace tpy_user::main {
 
 
-// 11: def main() -> None:
+// def main() -> None:
 void main() {
-    // 12:     # ArrayList has __iter__() -> SpanIter -> auto NativeIterable
-    // 13:     a = ArrayList[Int32, 8]()
+    //     # ArrayList has __iter__() -> SpanIter -> auto NativeIterable
+    //     a = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> a = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    // 14:     a.append(1)
+    //     a.append(1)
     a.append(1);
-    // 15:     a.append(2)
+    //     a.append(2)
     a.append(2);
-    // 16:     a.append(3)
+    //     a.append(3)
     a.append(3);
-    // 17:     print(sum_items(a))
+    //     print(sum_items(a))
     std::cout << sum_items(a) << "\n";
-    // 19:     # For loop over ArrayList
-    // 20:     for x in a:
+    //     # For loop over ArrayList
+    //     for x in a:
     auto& __src_0 = a;
     auto __obj_0 = __src_0.__iter__();
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 21:         print(x)
+        //         print(x)
         std::cout << x << "\n";
     }
 }
@@ -35,9 +35,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: from tplib import ArrayList
+    // from tplib import ArrayList
     ::tpy_user::tplib::__tpy_init();
-    // 23: main()
+    // main()
     main();
 }
 

@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-// 18: c = CachedList()
+// c = CachedList()
 CachedList* c{};
 
 void __tpy_init() {
@@ -11,12 +11,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: c = CachedList()
+    // c = CachedList()
     static CachedList __global_slot_1 = CachedList();
     c = &__global_slot_1;
-    // 19: print(c[0])
+    // print(c[0])
     std::cout << (*c)[0] << "\n";
-    // 20: print(c[1])
+    // print(c[1])
     std::cout << (*c)[1] << "\n";
 }
 

@@ -4,16 +4,16 @@
 namespace tpy_user::main {
 
 // # Exactly Int32 min -- should stay Int32
-// 5: a = -2147483648
+// a = -2147483648
 int32_t a{};
 // # One below Int32 min -- should promote to BigInt with warning
-// 9: b = -2147483649  # tpyc: warning(/outside default Int32 range/)
+// b = -2147483649  # tpyc: warning(/outside default Int32 range/)
 tpy::BigInt b;
 // # Exactly Int32 max -- should stay Int32
-// 13: c = 2147483647
+// c = 2147483647
 int32_t c{};
 // # One above Int32 max -- should promote to BigInt with warning
-// 17: d = 2147483648  # tpyc: warning(/outside default Int32 range/)
+// d = 2147483648  # tpyc: warning(/outside default Int32 range/)
 tpy::BigInt d;
 
 void __tpy_init() {
@@ -21,25 +21,25 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: # Exactly Int32 min -- should stay Int32
-    // 5: a = -2147483648
+    // # Exactly Int32 min -- should stay Int32
+    // a = -2147483648
     a = -2147483648;
-    // 6: print(a)
+    // print(a)
     std::cout << a << "\n";
-    // 8: # One below Int32 min -- should promote to BigInt with warning
-    // 9: b = -2147483649  # tpyc: warning(/outside default Int32 range/)
+    // # One below Int32 min -- should promote to BigInt with warning
+    // b = -2147483649  # tpyc: warning(/outside default Int32 range/)
     b = tpy::BigInt(static_cast<int64_t>(-2147483649LL));
-    // 10: print(b)
+    // print(b)
     std::cout << b << "\n";
-    // 12: # Exactly Int32 max -- should stay Int32
-    // 13: c = 2147483647
+    // # Exactly Int32 max -- should stay Int32
+    // c = 2147483647
     c = 2147483647;
-    // 14: print(c)
+    // print(c)
     std::cout << c << "\n";
-    // 16: # One above Int32 max -- should promote to BigInt with warning
-    // 17: d = 2147483648  # tpyc: warning(/outside default Int32 range/)
+    // # One above Int32 max -- should promote to BigInt with warning
+    // d = 2147483648  # tpyc: warning(/outside default Int32 range/)
     d = tpy::BigInt(static_cast<int64_t>(2147483648LL));
-    // 18: print(d)
+    // print(d)
     std::cout << d << "\n";
 }
 

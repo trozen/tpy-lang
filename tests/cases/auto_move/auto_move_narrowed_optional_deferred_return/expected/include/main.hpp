@@ -12,9 +12,9 @@ inline constexpr std::string_view __name__ = "__main__";
 Handle extract();
 void main();
 
-// 5: class Handle:
+// class Handle:
 struct Handle {
-    // 6:     value: Int32
+    //     value: Int32
     int32_t value;
 
 };

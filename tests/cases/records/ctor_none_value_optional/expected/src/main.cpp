@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 11: def main():
+// def main():
 void main() {
-    // 12:     h1 = Holder(None)
+    //     h1 = Holder(None)
     Holder h1 = Holder(std::nullopt);
-    // 13:     print(h1.value is None)
+    //     print(h1.value is None)
     std::cout << tpy::print_bool((!h1.value.has_value())) << "\n";
-    // 15:     h2 = Holder(Int32(42))
+    //     h2 = Holder(Int32(42))
     Holder h2 = Holder(42);
-    // 16:     print(h2.value)
+    //     print(h2.value)
     std::cout << tpy::print_optional_val(h2.value) << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: main()
+    // main()
     main();
 }
 

@@ -15,14 +15,14 @@ void test_alloc_n();
 void test_explicit_type_arg();
 void test_alloc_n_value_type();
 
-// 8: class Point:
+// class Point:
 struct Point {
-    // 9:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 10:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 11:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 18: def main() -> None:
+// def main() -> None:
 void main() {
-    // 19:     c = Config(True, 3.14, [Int32(1), Int32(2)], {"a": Int32(10)}, (Int32(7), "ok"))
+    //     c = Config(True, 3.14, [Int32(1), Int32(2)], {"a": Int32(10)}, (Int32(7), "ok"))
     Config c = Config(true, 3.14, {1, 2}, tpy::ordered_map<std::string, int32_t>({{"a", 10}}), std::tuple<int32_t, std::string>{7, "ok"});
-    // 20:     print(c)
+    //     print(c)
     std::cout << c << "\n";
-    // 21:     empty: dict[str, Int32] = {}
+    //     empty: dict[str, Int32] = {}
     tpy::ordered_map<std::string, int32_t> empty = tpy::ordered_map<std::string, int32_t>();
-    // 22:     c2 = Config(False, 1.0, [], empty, (Int32(0), ""))
+    //     c2 = Config(False, 1.0, [], empty, (Int32(0), ""))
     Config c2 = Config(false, 1.0, std::vector<int32_t>{}, empty, std::tuple<int32_t, std::string>{0, ""});
-    // 23:     print(c2)
+    //     print(c2)
     std::cout << c2 << "\n";
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 25: main()
+    // main()
     main();
 }
 

@@ -11,20 +11,20 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Config:
+// class Config:
 struct Config {
-    // 5:     flag: bool
+    //     flag: bool
     bool flag;
-    // 6:     ratio: float
+    //     ratio: float
     double ratio;
-    // 7:     items: list[Int32]
+    //     items: list[Int32]
     std::vector<int32_t> items;
-    // 8:     tags: dict[str, Int32]
+    //     tags: dict[str, Int32]
     tpy::ordered_map<std::string, int32_t> tags;
-    // 9:     pair: tuple[Int32, str]
+    //     pair: tuple[Int32, str]
     std::tuple<int32_t, std::string> pair;
 
-    // 10:     def __init__(self, flag: bool, ratio: float, items: list[Int32],
+    //     def __init__(self, flag: bool, ratio: float, items: list[Int32],
     Config() = default;
     explicit Config(bool flag, double ratio, const std::vector<int32_t>& items, const tpy::ordered_map<std::string, int32_t>& tags, const std::tuple<int32_t, std::string>& pair) : flag(flag), ratio(ratio), items(items), tags(tags), pair(pair) {}
 };

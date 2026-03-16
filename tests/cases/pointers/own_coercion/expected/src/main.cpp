@@ -4,33 +4,33 @@
 namespace tpy_user::main {
 
 
-// 7: def return_owned_int32() -> Own[Int32]:
+// def return_owned_int32() -> Own[Int32]:
 int32_t return_owned_int32() {
-    // 8:     big: int = 42
+    //     big: int = 42
     tpy::BigInt big = tpy::BigInt(42);
-    // 9:     return copy(big)  # BigInt -> Own[Int32] requires .to_int32() coercion
+    //     return copy(big)  # BigInt -> Own[Int32] requires .to_int32() coercion
     return (tpy::BigInt(big)).to_fixed_check<int32_t>();
 }
 
-// 11: def take_owned_int32(x: Own[Int32]) -> Int32:
+// def take_owned_int32(x: Own[Int32]) -> Int32:
 int32_t take_owned_int32(int32_t x) {
-    // 12:     return x
+    //     return x
     return x;
 }
 
-// 14: def main() -> None:
+// def main() -> None:
 void main() {
-    // 15:     # Test return coercion
-    // 16:     result1: Int32 = return_owned_int32()
+    //     # Test return coercion
+    //     result1: Int32 = return_owned_int32()
     int32_t result1 = return_owned_int32();
-    // 17:     print(result1)  # 42
+    //     print(result1)  # 42
     std::cout << result1 << "\n";
-    // 19:     # Test argument coercion
-    // 20:     big: int = 100
+    //     # Test argument coercion
+    //     big: int = 100
     tpy::BigInt big = tpy::BigInt(100);
-    // 21:     result2: Int32 = take_owned_int32(big)
+    //     result2: Int32 = take_owned_int32(big)
     int32_t result2 = take_owned_int32((big).to_fixed_check<int32_t>());
-    // 22:     print(result2)  # 100
+    //     print(result2)  # 100
     std::cout << result2 << "\n";
 }
 
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 24: main()
+    // main()
     main();
 }
 

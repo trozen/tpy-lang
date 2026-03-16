@@ -4,43 +4,43 @@
 namespace tpy_user::main {
 
 
-// 14: def greet(pet: Pet) -> None:
+// def greet(pet: Pet) -> None:
 void greet(::tpy_user::pet::Pet& pet) {
-    // 15:     print(pet.speak())
+    //     print(pet.speak())
     std::cout << pet.speak() << "\n";
 }
 
-// 17: def echo(pet: Pet) -> Pet:
+// def echo(pet: Pet) -> Pet:
 ::tpy_user::pet::Pet& echo(::tpy_user::pet::Pet& pet) {
-    // 18:     return pet
+    //     return pet
     return pet;
 }
 
-// 20: def main() -> None:
+// def main() -> None:
 void main() {
-    // 21:     # Local variable with direct inheritor
-    // 22:     dog: Pet = Dog()
+    //     # Local variable with direct inheritor
+    //     dog: Pet = Dog()
     Dog __slot_1{Dog()};
     ::tpy_user::pet::Pet* dog = &__slot_1;
-    // 23:     print(dog.speak())
+    //     print(dog.speak())
     std::cout << dog->speak() << "\n";
-    // 25:     # Local variable with structural conformance
-    // 26:     cat: Pet = Cat()
+    //     # Local variable with structural conformance
+    //     cat: Pet = Cat()
     tpy::Adapter<::tpy_user::pet::Pet, Cat> __slot_2{Cat()};
     ::tpy_user::pet::Pet* cat = &__slot_2;
-    // 27:     print(cat.speak())
+    //     print(cat.speak())
     std::cout << cat->speak() << "\n";
-    // 29:     # Pass to function param
-    // 30:     greet(Dog())
+    //     # Pass to function param
+    //     greet(Dog())
     Dog __tmp_1{Dog()};
     greet(__tmp_1);
-    // 31:     greet(Cat())
+    //     greet(Cat())
     tpy::Adapter<::tpy_user::pet::Pet, Cat> __tmp_2{Cat()};
     greet(__tmp_2);
-    // 33:     # Return type
-    // 34:     p = echo(dog)
+    //     # Return type
+    //     p = echo(dog)
     ::tpy_user::pet::Pet* p = &echo((*dog));
-    // 35:     print(p.speak())
+    //     print(p.speak())
     std::cout << p->speak() << "\n";
 }
 
@@ -49,10 +49,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # Tests cross-module @dynamic protocol: import, local vars, params, return, structural conformance.
-    // 2: from pet import Pet
+    // # Tests cross-module @dynamic protocol: import, local vars, params, return, structural conformance.
+    // from pet import Pet
     ::tpy_user::pet::__tpy_init();
-    // 37: main()
+    // main()
     main();
 }
 

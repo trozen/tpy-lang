@@ -11,11 +11,11 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 6:     y: Int32
+    //     y: Int32
     int32_t y;
 
 };

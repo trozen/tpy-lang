@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 27: def main() -> None:
+// def main() -> None:
 void main() {
-    // 28:     nums: list[Int32] = [10, 20, 30]
+    //     nums: list[Int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
-    // 29:     print(maybe_total(nums))    # 60
+    //     print(maybe_total(nums))    # 60
     std::cout << maybe_total(&(nums)) << "\n";
-    // 30:     print(maybe_total(None))    # -1
+    //     print(maybe_total(None))    # -1
     std::cout << maybe_total(static_cast<std::nullptr_t*>(nullptr)) << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 33: main()
+    // main()
     main();
 }
 

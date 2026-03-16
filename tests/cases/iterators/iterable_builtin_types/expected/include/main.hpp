@@ -22,98 +22,98 @@ template<tpy::Iterable<tpy::BigInt> T_items>
 tpy::BigInt sum_bigints(T_items& items);
 void main();
 
-// 6: def sum_items(items: Iterable[Int32]) -> Int32:
+// def sum_items(items: Iterable[Int32]) -> Int32:
 template<tpy::Iterable<int32_t> T_items>
 int32_t sum_items(T_items& items) {
-    // 7:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 8:     for x in items:
+    //     for x in items:
     auto& __src_0 = items;
     auto __obj_0 = tpy::iter_for_loop(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 9:         total += x
+        //         total += x
         total = tpy::add_check<int32_t>(total, x);
     }
-    // 10:     return total
+    //     return total
     return total;
 }
-// 12: def count_chars(items: Iterable[Char]) -> Int32:
+// def count_chars(items: Iterable[Char]) -> Int32:
 template<tpy::Iterable<char> T_items>
 int32_t count_chars(T_items& items) {
-    // 13:     n: Int32 = 0
+    //     n: Int32 = 0
     int32_t n = 0;
-    // 14:     for c in items:
+    //     for c in items:
     auto& __src_0 = items;
     auto __obj_0 = tpy::iter_for_loop(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char c = *__beg_0;
-        // 15:         n += 1
+        //         n += 1
         n = tpy::add_check<int32_t>(n, 1);
     }
-    // 16:     return n
+    //     return n
     return n;
 }
-// 18: def sum_strs(items: Iterable[str]) -> str:
+// def sum_strs(items: Iterable[str]) -> str:
 template<tpy::Iterable<std::string> T_items>
 std::string sum_strs(T_items& items) {
-    // 19:     result: str = ""
+    //     result: str = ""
     std::string result = "";
-    // 20:     for s in items:
+    //     for s in items:
     auto& __src_0 = items;
     auto __obj_0 = tpy::iter_for_loop(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view s = *__beg_0;
-        // 21:         result = result + s + " "
+        //         result = result + s + " "
         result = (tpy::str_concat((tpy::str_concat(result, s)), " "));
     }
-    // 22:     return result
+    //     return result
     return result;
 }
-// 90: def test_iter_on_protocol(items: Iterable[Int32]) -> None:
+// def test_iter_on_protocol(items: Iterable[Int32]) -> None:
 template<tpy::Iterable<int32_t> T_items>
 void test_iter_on_protocol(T_items& items) {
-    // 91:     # __iter__() on a protocol-typed variable
-    // 92:     it = items.__iter__()
+    //     # __iter__() on a protocol-typed variable
+    //     it = items.__iter__()
     auto it = tpy::__iter__(items);
-    // 93:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 94:     for x in it:
+    //     for x in it:
     auto& __src_0 = it;
     auto __obj_0 = tpy::iter_adapt(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 95:         total += x
+        //         total += x
         total = tpy::add_check<int32_t>(total, x);
     }
-    // 96:     print(total)
+    //     print(total)
     std::cout << total << "\n";
 }
-// 113: def sum_bigints(items: Iterable[int]) -> int:
+// def sum_bigints(items: Iterable[int]) -> int:
 template<tpy::Iterable<tpy::BigInt> T_items>
 tpy::BigInt sum_bigints(T_items& items) {
-    // 114:     # Iterable[int] (BigInt) -- expensive value type, const ref when unmutated
-    // 115:     total: int = 0
+    //     # Iterable[int] (BigInt) -- expensive value type, const ref when unmutated
+    //     total: int = 0
     tpy::BigInt total = tpy::BigInt(0);
-    // 116:     for x in items:
+    //     for x in items:
     auto& __src_0 = items;
     auto __obj_0 = tpy::iter_for_loop(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const tpy::BigInt& x = *__beg_0;
-        // 117:         total = total + x
+        //         total = total + x
         total = ((total) + (x));
     }
-    // 118:     return total
+    //     return total
     return total;
 }
 

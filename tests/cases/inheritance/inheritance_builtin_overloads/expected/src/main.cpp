@@ -3,16 +3,16 @@
 
 namespace tpy_user::main {
 
-// 15: ml: MyList = MyList("test")
+// ml: MyList = MyList("test")
 MyList* ml{};
 // # Test pop() with no args - should remove and return last element
-// 22: last: Int32 = ml.pop()
+// last: Int32 = ml.pop()
 int32_t last{};
 // # Test pop(index) - should remove and return element at index
-// 26: first: Int32 = ml.pop(0)
+// first: Int32 = ml.pop(0)
 int32_t first{};
 // # Also test that regular list pop overloads work (sanity check)
-// 35: items: list[Int32] = [1, 2, 3, 4, 5]
+// items: list[Int32] = [1, 2, 3, 4, 5]
 std::vector<int32_t>* items{};
 
 void __tpy_init() {
@@ -20,43 +20,43 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 15: ml: MyList = MyList("test")
+    // ml: MyList = MyList("test")
     static MyList __global_slot_1 = MyList("test");
     ml = &__global_slot_1;
-    // 16: ml.append(10)
+    // ml.append(10)
     (*ml).push_back(10);
-    // 17: ml.append(20)
+    // ml.append(20)
     (*ml).push_back(20);
-    // 18: ml.append(30)
+    // ml.append(30)
     (*ml).push_back(30);
-    // 19: ml.append(40)
+    // ml.append(40)
     (*ml).push_back(40);
-    // 21: # Test pop() with no args - should remove and return last element
-    // 22: last: Int32 = ml.pop()
+    // # Test pop() with no args - should remove and return last element
+    // last: Int32 = ml.pop()
     last = tpy::pop_back((*ml));
-    // 23: print(last)  # 40
+    // print(last)  # 40
     std::cout << last << "\n";
-    // 25: # Test pop(index) - should remove and return element at index
-    // 26: first: Int32 = ml.pop(0)
+    // # Test pop(index) - should remove and return element at index
+    // first: Int32 = ml.pop(0)
     first = tpy::list_pop_at((*ml), 0);
-    // 27: print(first)  # 10
+    // print(first)  # 10
     std::cout << first << "\n";
-    // 29: # Remaining elements should be [20, 30]
-    // 30: print(ml[0])  # 20
+    // # Remaining elements should be [20, 30]
+    // print(ml[0])  # 20
     std::cout << (*ml)[0] << "\n";
-    // 31: print(ml[1])  # 30
+    // print(ml[1])  # 30
     std::cout << (*ml)[1] << "\n";
-    // 32: print(len(ml))  # 2
+    // print(len(ml))  # 2
     std::cout << tpy::__len__((*ml)) << "\n";
-    // 34: # Also test that regular list pop overloads work (sanity check)
-    // 35: items: list[Int32] = [1, 2, 3, 4, 5]
+    // # Also test that regular list pop overloads work (sanity check)
+    // items: list[Int32] = [1, 2, 3, 4, 5]
     static std::vector<int32_t> __global_slot_2 = {1, 2, 3, 4, 5};
     items = &__global_slot_2;
-    // 36: print(items.pop())  # 5 - pop last
+    // print(items.pop())  # 5 - pop last
     std::cout << tpy::pop_back((*items)) << "\n";
-    // 37: print(items.pop(0))  # 1 - pop first
+    // print(items.pop(0))  # 1 - pop first
     std::cout << tpy::list_pop_at((*items), 0) << "\n";
-    // 38: print(len(items))  # 3
+    // print(len(items))  # 3
     std::cout << tpy::__len__((*items)) << "\n";
 }
 

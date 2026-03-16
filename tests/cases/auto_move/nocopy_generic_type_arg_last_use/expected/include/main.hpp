@@ -14,12 +14,12 @@ int32_t consume(Holder<Handle>&& h);
 void main();
 
 // @nocopy
-// 6: class Handle:
+// class Handle:
 struct Handle {
-    // 7:     fd: Int32
+    //     fd: Int32
     int32_t fd;
 
-    // 9:     def __init__(self, fd: Int32):
+    //     def __init__(self, fd: Int32):
     Handle() = default;
     explicit Handle(int32_t fd) : fd(fd) {}
     // non-copyable (@nocopy)
@@ -36,13 +36,13 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
     return os;
 }
 
-// 13: class Holder[T]:
+// class Holder[T]:
 template<typename T>
 struct Holder {
-    // 14:     item: T
+    //     item: T
     T item;
 
-    // 16:     def __init__(self, item: Own[T]):
+    //     def __init__(self, item: Own[T]):
     Holder() = default;
     explicit Holder(T&& item) : item(std::move(item)) {}
 };

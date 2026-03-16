@@ -4,22 +4,22 @@
 namespace tpy_user::main {
 
 
-// 4: def check(v: Int32 | None) -> str:
+// def check(v: Int32 | None) -> str:
 std::string check(std::optional<int32_t> v) {
-    // 5:     if v is None:
+    //     if v is None:
     if ((!v.has_value())) {
-        // 6:         return "none"
+        //         return "none"
         return "none";
     }
-    // 7:     return "has value"
+    //     return "has value"
     return "has value";
 }
 
-// 9: def main() -> None:
+// def main() -> None:
 void main() {
-    // 10:     print(check(Int32(42)))
+    //     print(check(Int32(42)))
     std::cout << check(42) << "\n";
-    // 11:     print(check(None))
+    //     print(check(None))
     std::cout << check(std::nullopt) << "\n";
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 13: main()
+    // main()
     main();
 }
 

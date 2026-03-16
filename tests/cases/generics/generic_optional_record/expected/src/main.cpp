@@ -4,45 +4,45 @@
 namespace tpy_user::main {
 
 
-// 28: def accept_opt(p: Point | None) -> None:
+// def accept_opt(p: Point | None) -> None:
 void accept_opt(Point* p) {
-    // 29:     if p is not None:
+    //     if p is not None:
     if ((p != nullptr)) {
-        // 30:         print(p.x)
+        //         print(p.x)
         std::cout << p->x << "\n";
     }
 }
 
-// 32: def main() -> None:
+// def main() -> None:
 void main() {
-    // 33:     c = Container[Point](Point(1, 2))
+    //     c = Container[Point](Point(1, 2))
     Container<Point> c = Container<Point>(Point(tpy::BigInt(1), tpy::BigInt(2)));
-    // 34:     p = c.get()
+    //     p = c.get()
     Point* p = c.get();
-    // 35:     # Field access on narrowed std::optional
-    // 36:     if p is not None:
+    //     # Field access on narrowed std::optional
+    //     if p is not None:
     if ((p != nullptr)) {
-        // 37:         print(p.x)
+        //         print(p.x)
         std::cout << p->x << "\n";
-        // 38:         print(p.y)
+        //         print(p.y)
         std::cout << p->y << "\n";
-        // 39:         # Method call on narrowed std::optional
-        // 40:         print(p.sum())
+        //         # Method call on narrowed std::optional
+        //         print(p.sum())
         std::cout << p->sum() << "\n";
     }
-    // 42:     # Pass generic Optional return to function expecting Optional[Point]
-    // 43:     p2 = c.get()
+    //     # Pass generic Optional return to function expecting Optional[Point]
+    //     p2 = c.get()
     Point* p2 = c.get();
-    // 44:     accept_opt(p2)
+    //     accept_opt(p2)
     accept_opt(p2);
-    // 46:     # Also test with value type (should still work)
-    // 47:     c2 = Container[int](42)
+    //     # Also test with value type (should still work)
+    //     c2 = Container[int](42)
     Container<tpy::BigInt> c2 = Container<tpy::BigInt>(42);
-    // 48:     v = c2.get()
+    //     v = c2.get()
     tpy::BigInt* v = c2.get();
-    // 49:     if v is not None:
+    //     if v is not None:
     if ((v != nullptr)) {
-        // 50:         print(v)
+        //         print(v)
         std::cout << tpy::print_optional(v) << "\n";
     }
 }
@@ -52,7 +52,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 52: main()
+    // main()
     main();
 }
 

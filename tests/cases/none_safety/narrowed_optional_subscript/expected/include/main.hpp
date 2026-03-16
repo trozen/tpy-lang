@@ -14,20 +14,20 @@ void main();
 
 // # Test subscript, slice, and len() on narrowed Optional[str] values,
 // # including field access on narrowed optional fields.
-// 4: class Wrapper:
+// class Wrapper:
 struct Wrapper {
-    // 5:     text: str | None
+    //     text: str | None
     std::optional<std::string> text;
 
-    // 7:     def __init__(self, text: str | None) -> None:
+    //     def __init__(self, text: str | None) -> None:
     Wrapper() = default;
     explicit Wrapper(std::optional<std::string_view> text) : text(text ? std::make_optional(std::string(*text)) : std::nullopt) {}
 
-    // 10:     def first_char(self) -> None:
+    //     def first_char(self) -> None:
     void first_char() const {
-        // 11:         if self.text is not None:
+        //         if self.text is not None:
         if ((this->text.has_value())) {
-            // 12:             print(self.text[0])
+            //             print(self.text[0])
             std::cout << tpy::__getitem__((*this->text), 0) << "\n";
         }
     }

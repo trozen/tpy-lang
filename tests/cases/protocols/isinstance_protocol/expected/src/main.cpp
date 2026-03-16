@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 17: def main() -> None:
+// def main() -> None:
 void main() {
-    // 18:     nums: list[Int32] = [10, 20, 30]
+    //     nums: list[Int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
-    // 19:     describe(nums)
+    //     describe(nums)
     describe(nums);
-    // 20:     check_not(nums)
+    //     check_not(nums)
     check_not(nums);
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: main()
+    // main()
     main();
 }
 

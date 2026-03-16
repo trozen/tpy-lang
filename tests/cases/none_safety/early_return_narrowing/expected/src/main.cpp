@@ -4,14 +4,14 @@
 namespace tpy_user::main {
 
 
-// 4: def safe_add(x: Int32 | None) -> Int32:
+// def safe_add(x: Int32 | None) -> Int32:
 int32_t safe_add(std::optional<int32_t> x) {
-    // 5:     if x is None:
+    //     if x is None:
     if ((!x.has_value())) {
-        // 6:         return 0
+        //         return 0
         return 0;
     }
-    // 7:     return x + 1
+    //     return x + 1
     return (tpy::add_check<int32_t>((*x), 1));
 }
 
@@ -20,9 +20,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 10: print(safe_add(5))
+    // print(safe_add(5))
     std::cout << safe_add(5) << "\n";
-    // 11: print(safe_add(None))
+    // print(safe_add(None))
     std::cout << safe_add(std::nullopt) << "\n";
 }
 

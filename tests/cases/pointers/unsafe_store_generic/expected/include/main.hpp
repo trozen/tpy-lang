@@ -13,14 +13,14 @@ template<typename T>
 void store_at(T* p, uint32_t idx, tpy::param_val_or_ref_t<T> val);
 void main();
 
-// 5: class Point:
+// class Point:
 struct Point {
-    // 6:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 7:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 8:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -34,10 +34,10 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 12: def store_at[T](p: Ptr[T], idx: UInt32, val: T) -> None:
+// def store_at[T](p: Ptr[T], idx: UInt32, val: T) -> None:
 template<typename T>
 void store_at(T* p, uint32_t idx, tpy::param_val_or_ref_t<T> val) {
-    // 13:     unsafe_store(p, idx, val)
+    //     unsafe_store(p, idx, val)
     p[idx] = val;
 }
 

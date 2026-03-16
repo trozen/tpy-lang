@@ -4,22 +4,22 @@
 namespace tpy_user::main {
 
 
-// 5: def accept(x: Int32 | str | None) -> None:
+// def accept(x: Int32 | str | None) -> None:
 void accept(const std::variant<std::monostate, int32_t, std::string>& x) {
-    // 6:     pass
+    //     pass
 }
 
-// 9: def test() -> None:
+// def test() -> None:
 void test() {
-    // 10:     a: Int32 | str | None = Int32(42)
+    //     a: Int32 | str | None = Int32(42)
     std::variant<std::monostate, int32_t, std::string> a = 42;
-    // 11:     b: Int32 | str | None = "hello"
+    //     b: Int32 | str | None = "hello"
     std::variant<std::monostate, int32_t, std::string> b = "hello";
-    // 12:     accept(a)
+    //     accept(a)
     accept(a);
-    // 13:     accept(b)
+    //     accept(b)
     accept(b);
-    // 14:     print("ok")
+    //     print("ok")
     std::cout << "ok" << "\n";
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 16: test()
+    // test()
     test();
 }
 

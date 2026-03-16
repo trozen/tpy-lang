@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 12: def main() -> None:
+// def main() -> None:
 void main() {
-    // 13:     red = Color(255, 0, 0)
+    //     red = Color(255, 0, 0)
     Color red = Color(255, 0, 0);
-    // 14:     print(red)
+    //     print(red)
     std::cout << red << "\n";
-    // 15:     semi = Color(255, 0, 0, 128)
+    //     semi = Color(255, 0, 0, 128)
     Color semi = Color(255, 0, 0, 128);
-    // 16:     print(semi)
+    //     print(semi)
     std::cout << semi << "\n";
-    // 17:     named = Color(r=0, g=128, b=255)
+    //     named = Color(r=0, g=128, b=255)
     Color named = Color(0, 128, 255);
-    // 18:     print(named)
+    //     print(named)
     std::cout << named << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 20: main()
+    // main()
     main();
 }
 

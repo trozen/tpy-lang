@@ -4,46 +4,46 @@
 namespace tpy_user::main {
 
 
-// 33: def bump(c: Counter) -> None:
+// def bump(c: Counter) -> None:
 void bump(Counter& c) {
-    // 34:     c.increment()
+    //     c.increment()
     c.increment();
 }
 
-// 36: def main() -> None:
+// def main() -> None:
 void main() {
-    // 37:     # 1. Direct inheritance: mutation visible (pass by ref, implicit upcast)
-    // 38:     mc = MyCounter()
+    //     # 1. Direct inheritance: mutation visible (pass by ref, implicit upcast)
+    //     mc = MyCounter()
     MyCounter mc = MyCounter();
-    // 39:     bump(mc)
+    //     bump(mc)
     bump(mc);
-    // 40:     print(mc.value())      # 1
+    //     print(mc.value())      # 1
     std::cout << mc.value() << "\n";
-    // 42:     # 2. Structural conformance lvalue: mutation visible (ref adapter)
-    // 43:     t = Tally()
+    //     # 2. Structural conformance lvalue: mutation visible (ref adapter)
+    //     t = Tally()
     Tally t = Tally();
-    // 44:     bump(t)
+    //     bump(t)
     tpy::RefAdapter<Counter, Tally> __tmp_1{t};
     bump(__tmp_1);
-    // 45:     print(t.value())       # 1
+    //     print(t.value())       # 1
     std::cout << t.value() << "\n";
-    // 47:     # 3. Local owning: mutation visible (modifying through pointer to owned slot)
-    // 48:     c: Counter = MyCounter()
+    //     # 3. Local owning: mutation visible (modifying through pointer to owned slot)
+    //     c: Counter = MyCounter()
     MyCounter __slot_1{MyCounter()};
     Counter* c = &__slot_1;
-    // 49:     c.increment()
+    //     c.increment()
     c->increment();
-    // 50:     c.increment()
+    //     c.increment()
     c->increment();
-    // 51:     print(c.value())       # 2
+    //     print(c.value())       # 2
     std::cout << c->value() << "\n";
-    // 53:     # 4. Local owning, structural: same behavior
-    // 54:     c2: Counter = Tally()
+    //     # 4. Local owning, structural: same behavior
+    //     c2: Counter = Tally()
     tpy::Adapter<Counter, Tally> __slot_2{Tally()};
     Counter* c2 = &__slot_2;
-    // 55:     c2.increment()
+    //     c2.increment()
     c2->increment();
-    // 56:     print(c2.value())      # 1
+    //     print(c2.value())      # 1
     std::cout << c2->value() << "\n";
 }
 
@@ -52,7 +52,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 58: main()
+    // main()
     main();
 }
 

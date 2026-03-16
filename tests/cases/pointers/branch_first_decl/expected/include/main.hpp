@@ -19,14 +19,14 @@ int32_t nested_if(bool a, bool b);
 void param_branch(std::vector<Point>& points, bool cond);
 void mixed_init(std::vector<Point>& points, bool cond);
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 6:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 7:     def __init__(self, x: Int32, y: Int32):
+    //     def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

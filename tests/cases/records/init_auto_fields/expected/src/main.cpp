@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 11: def main() -> None:
+// def main() -> None:
 void main() {
-    // 12:     p = Point(Int32(10), Int32(20))
+    //     p = Point(Int32(10), Int32(20))
     Point p = Point(10, 20);
-    // 13:     print(p.x)
+    //     print(p.x)
     std::cout << p.x << "\n";
-    // 14:     print(p.y)
+    //     print(p.y)
     std::cout << p.y << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 17: main()
+    // main()
     main();
 }
 

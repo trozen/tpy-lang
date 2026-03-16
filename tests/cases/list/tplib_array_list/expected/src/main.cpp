@@ -4,136 +4,136 @@
 namespace tpy_user::main {
 
 
-// 6: def main() -> None:
+// def main() -> None:
 void main() {
-    // 7:     # -- basics: empty, append, len, getitem --
-    // 8:     a = ArrayList[Int32, 8]()
+    //     # -- basics: empty, append, len, getitem --
+    //     a = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> a = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    // 9:     print(len(a))               # 0
+    //     print(len(a))               # 0
     std::cout << tpy::__len__(a) << "\n";
-    // 10:     a.append(10)
+    //     a.append(10)
     a.append(10);
-    // 11:     a.append(20)
+    //     a.append(20)
     a.append(20);
-    // 12:     a.append(30)
+    //     a.append(30)
     a.append(30);
-    // 13:     print(len(a))               # 3
+    //     print(len(a))               # 3
     std::cout << tpy::__len__(a) << "\n";
-    // 14:     print(a[0])                 # 10
+    //     print(a[0])                 # 10
     std::cout << a[0] << "\n";
-    // 15:     print(a[2])                 # 30
+    //     print(a[2])                 # 30
     std::cout << a[2] << "\n";
-    // 17:     # -- setitem --
-    // 18:     a[1] = 99
+    //     # -- setitem --
+    //     a[1] = 99
     tpy::__setitem__(a, 1, 99);
-    // 19:     print(a[1])                 # 99
+    //     print(a[1])                 # 99
     std::cout << a[1] << "\n";
-    // 21:     # -- pop --
-    // 22:     print(a.pop())              # 30
+    //     # -- pop --
+    //     print(a.pop())              # 30
     std::cout << a.pop() << "\n";
-    // 23:     print(len(a))               # 2
+    //     print(len(a))               # 2
     std::cout << tpy::__len__(a) << "\n";
-    // 25:     # -- insert --
-    // 26:     a.insert(0, 5)
+    //     # -- insert --
+    //     a.insert(0, 5)
     a.insert(0, 5);
-    // 27:     print(a[0])                 # 5
+    //     print(a[0])                 # 5
     std::cout << a[0] << "\n";
-    // 28:     print(a[1])                 # 10
+    //     print(a[1])                 # 10
     std::cout << a[1] << "\n";
-    // 29:     print(len(a))               # 3
+    //     print(len(a))               # 3
     std::cout << tpy::__len__(a) << "\n";
-    // 31:     # -- pop(index) --
-    // 32:     print(a.pop(1))             # 10
+    //     # -- pop(index) --
+    //     print(a.pop(1))             # 10
     std::cout << a.pop(1) << "\n";
-    // 33:     print(len(a))               # 2
+    //     print(len(a))               # 2
     std::cout << tpy::__len__(a) << "\n";
-    // 35:     # -- index, count --
-    // 36:     a.append(5)
+    //     # -- index, count --
+    //     a.append(5)
     a.append(5);
-    // 37:     print(a.index(5))           # 0
+    //     print(a.index(5))           # 0
     std::cout << a.index(5) << "\n";
-    // 38:     print(a.count(5))           # 2
+    //     print(a.count(5))           # 2
     std::cout << a.count(5) << "\n";
-    // 39:     print(a.index(99))          # 1
+    //     print(a.index(99))          # 1
     std::cout << a.index(99) << "\n";
-    // 41:     # -- remove --
-    // 42:     a.remove(99)
+    //     # -- remove --
+    //     a.remove(99)
     a.remove(99);
-    // 43:     print(len(a))               # 2
+    //     print(len(a))               # 2
     std::cout << tpy::__len__(a) << "\n";
-    // 44:     print(a[0])                 # 5
+    //     print(a[0])                 # 5
     std::cout << a[0] << "\n";
-    // 45:     print(a[1])                 # 5
+    //     print(a[1])                 # 5
     std::cout << a[1] << "\n";
-    // 47:     # -- reverse --
-    // 48:     a[1] = 7
+    //     # -- reverse --
+    //     a[1] = 7
     tpy::__setitem__(a, 1, 7);
-    // 49:     a.reverse()
+    //     a.reverse()
     a.reverse();
-    // 50:     print(a[0])                 # 7
+    //     print(a[0])                 # 7
     std::cout << a[0] << "\n";
-    // 51:     print(a[1])                 # 5
+    //     print(a[1])                 # 5
     std::cout << a[1] << "\n";
-    // 53:     # -- copy --
-    // 54:     b = copy(a)
+    //     # -- copy --
+    //     b = copy(a)
     ::tpy_user::tplib::ArrayList<int32_t, 8> b = ::tpy_user::tplib::ArrayList<int32_t, 8>(a);
-    // 55:     b[0] = 100
+    //     b[0] = 100
     tpy::__setitem__(b, 0, 100);
-    // 56:     print(a[0])                 # 7 (original unchanged)
+    //     print(a[0])                 # 7 (original unchanged)
     std::cout << a[0] << "\n";
-    // 57:     print(b[0])                 # 100
+    //     print(b[0])                 # 100
     std::cout << b[0] << "\n";
-    // 59:     # -- iter --
-    // 60:     c = ArrayList[Int32, 4]()
+    //     # -- iter --
+    //     c = ArrayList[Int32, 4]()
     ::tpy_user::tplib::ArrayList<int32_t, 4> c = ::tpy_user::tplib::ArrayList<int32_t, 4>();
-    // 61:     c.append(1)
+    //     c.append(1)
     c.append(1);
-    // 62:     c.append(2)
+    //     c.append(2)
     c.append(2);
-    // 63:     c.append(3)
+    //     c.append(3)
     c.append(3);
-    // 64:     for x in c:
+    //     for x in c:
     auto& __src_0 = c;
     auto __obj_0 = __src_0.__iter__();
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 65:         print(x)
+        //         print(x)
         std::cout << x << "\n";
     }
-    // 66:     # iterate again (fresh iterator each time)
-    // 67:     for x in c:
+    //     # iterate again (fresh iterator each time)
+    //     for x in c:
     auto& __src_1 = c;
     auto __obj_1 = __src_1.__iter__();
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        // 68:         print(x)
+        //         print(x)
         std::cout << x << "\n";
     }
-    // 70:     # -- clear --
-    // 71:     a.clear()
+    //     # -- clear --
+    //     a.clear()
     a.clear();
-    // 72:     print(len(a))               # 0
+    //     print(len(a))               # 0
     std::cout << tpy::__len__(a) << "\n";
-    // 74:     # -- construct from Span --
-    // 75:     arr: Array[Int32, 3] = [10, 20, 30]
+    //     # -- construct from Span --
+    //     arr: Array[Int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    // 76:     s: Span[Int32] = arr
+    //     s: Span[Int32] = arr
     std::span<int32_t> s = tpy::as_mut_span(arr);
-    // 77:     d = ArrayList[Int32, 8](s)
+    //     d = ArrayList[Int32, 8](s)
     ::tpy_user::tplib::ArrayList<int32_t, 8> d = ::tpy_user::tplib::ArrayList<int32_t, 8>(&(s));
-    // 78:     print(len(d))               # 3
+    //     print(len(d))               # 3
     std::cout << tpy::__len__(d) << "\n";
-    // 79:     print(d[0])                 # 10
+    //     print(d[0])                 # 10
     std::cout << d[0] << "\n";
-    // 80:     print(d[2])                 # 30
+    //     print(d[2])                 # 30
     std::cout << d[2] << "\n";
-    // 81:     d.append(40)
+    //     d.append(40)
     d.append(40);
-    // 82:     print(len(d))               # 4
+    //     print(len(d))               # 4
     std::cout << tpy::__len__(d) << "\n";
 }
 
@@ -142,9 +142,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: from tplib import ArrayList
+    // from tplib import ArrayList
     ::tpy_user::tplib::__tpy_init();
-    // 85: main()
+    // main()
     main();
 }
 

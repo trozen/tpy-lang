@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 
-// 4: def test_strview_basic() -> None:
+// def test_strview_basic() -> None:
 void test_strview_basic() {
-    // 5:     s: StrView = StrView("hello")
+    //     s: StrView = StrView("hello")
     std::string_view s = std::string_view("hello");
-    // 6:     print(s)  # hello
+    //     print(s)  # hello
     std::cout << s << "\n";
-    // 7:     print(len(s))  # 5
+    //     print(len(s))  # 5
     std::cout << tpy::__len__(s) << "\n";
 }
 
-// 9: def test_strview_getitem() -> None:
+// def test_strview_getitem() -> None:
 void test_strview_getitem() {
-    // 10:     s: StrView = StrView("abc")
+    //     s: StrView = StrView("abc")
     std::string_view s = std::string_view("abc");
-    // 11:     print(s[0])  # a
+    //     print(s[0])  # a
     std::cout << tpy::__getitem__(s, 0) << "\n";
-    // 12:     print(s[-1])  # c
+    //     print(s[-1])  # c
     std::cout << tpy::__getitem__(s, -1) << "\n";
 }
 
@@ -29,9 +29,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 14: test_strview_basic()
+    // test_strview_basic()
     test_strview_basic();
-    // 15: test_strview_getitem()
+    // test_strview_getitem()
     test_strview_getitem();
 }
 

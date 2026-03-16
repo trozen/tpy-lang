@@ -3,20 +3,20 @@
 
 namespace tpy_user::main {
 
-// 27: h = Holder()
+// h = Holder()
 Holder* h{};
 
-// 19: def describe(p: Point | None) -> None:
+// def describe(p: Point | None) -> None:
 void describe(Point* p) {
-    // 20:     if p is not None:
+    //     if p is not None:
     if ((p != nullptr)) {
-        // 21:         print(p.x)
+        //         print(p.x)
         std::cout << p->x << "\n";
-        // 22:         print(p.y)
+        //         print(p.y)
         std::cout << p->y << "\n";
-    // 23:     else:
+    //     else:
     } else {
-        // 24:         print("empty")
+        //         print("empty")
         std::cout << "empty" << "\n";
     }
 }
@@ -26,14 +26,14 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 27: h = Holder()
+    // h = Holder()
     static Holder __global_slot_1 = Holder();
     h = &__global_slot_1;
-    // 28: describe(h.value)
+    // describe(h.value)
     describe(tpy::optional_to_ptr(h->value));
-    // 30: h.value = Point(5, 6)
+    // h.value = Point(5, 6)
     h->value = Point(5, 6);
-    // 31: describe(h.value)
+    // describe(h.value)
     describe(tpy::optional_to_ptr(h->value));
 }
 

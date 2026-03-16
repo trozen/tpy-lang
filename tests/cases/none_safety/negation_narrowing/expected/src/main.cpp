@@ -4,14 +4,14 @@
 namespace tpy_user::main {
 
 
-// 4: def f(x: Int32 | None) -> Int32:
+// def f(x: Int32 | None) -> Int32:
 int32_t f(std::optional<int32_t> x) {
-    // 5:     if not (x is None):
+    //     if not (x is None):
     if ((!((!x.has_value())))) {
-        // 6:         return x + 1
+        //         return x + 1
         return (tpy::add_check<int32_t>((*x), 1));
     }
-    // 7:     return 0
+    //     return 0
     return 0;
 }
 
@@ -20,9 +20,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 10: print(f(3))
+    // print(f(3))
     std::cout << f(3) << "\n";
-    // 11: print(f(None))
+    // print(f(None))
     std::cout << f(std::nullopt) << "\n";
 }
 

@@ -12,14 +12,14 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // # str()/f-string for containers holding records
-// 2: class Point:
+// class Point:
 struct Point {
-    // 3:     x: int
+    //     x: int
     tpy::BigInt x;
-    // 4:     y: int
+    //     y: int
     tpy::BigInt y;
 
-    // 5:     def __init__(self, x: int, y: int) -> None:
+    //     def __init__(self, x: int, y: int) -> None:
     Point() = default;
     explicit Point(const tpy::BigInt& x, const tpy::BigInt& y) : x(x), y(y) {}
 };

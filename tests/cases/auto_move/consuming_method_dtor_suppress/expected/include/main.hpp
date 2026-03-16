@@ -11,18 +11,18 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 8: class HeapVal:
+// class HeapVal:
 struct HeapVal {
-    // 9:     _ptr: Ptr[Int32]
+    //     _ptr: Ptr[Int32]
     int32_t* _ptr;
     bool __tpy_owned_ = true;
 
-    // 11:     def __init__(self, value: Int32):
+    //     def __init__(self, value: Int32):
     HeapVal() = default;
     explicit HeapVal(int32_t value) : _ptr(static_cast<int32_t*>(::operator new(sizeof(int32_t), std::align_val_t(alignof(int32_t))))) {
-        // 12:         print("init", value)
+        //         print("init", value)
         std::cout << "init" << " " << value << "\n";
-        // 14:         unsafe_init(self._ptr, value)
+        //         unsafe_init(self._ptr, value)
         ::new(static_cast<void*>(this->_ptr)) int32_t(std::move(value));
     }
     HeapVal(const HeapVal&) = delete;
@@ -37,28 +37,28 @@ struct HeapVal {
         }
         return *this;
     }
-    // 16:     def __del__(self):
+    //     def __del__(self):
 
     ~HeapVal() {
         if (!__tpy_owned_) return;
-        // 17:         print("del")
+        //         print("del")
         std::cout << "del" << "\n";
-        // 18:         unsafe_drop(self._ptr)
+        //         unsafe_drop(self._ptr)
         tpy::destroy_at(this->_ptr);
-        // 19:         unsafe_free(self._ptr)
+        //         unsafe_free(self._ptr)
         ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
     }
 
-    // 21:     def take(self: Own[Self]) -> Int32:
+    //     def take(self: Own[Self]) -> Int32:
     int32_t take() && {
         this->__tpy_owned_ = false;
-        // 22:         print("take")
+        //         print("take")
         std::cout << "take" << "\n";
-        // 23:         val: Int32 = unsafe_move_out(self._ptr)
+        //         val: Int32 = unsafe_move_out(self._ptr)
         int32_t val = std::move(*this->_ptr);
-        // 24:         unsafe_free(self._ptr)
+        //         unsafe_free(self._ptr)
         ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
-        // 25:         return val
+        //         return val
         return val;
     }
 };

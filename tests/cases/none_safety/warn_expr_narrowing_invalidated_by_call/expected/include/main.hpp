@@ -12,12 +12,12 @@ inline constexpr std::string_view __name__ = "__main__";
 void opaque(const Box& b);
 int32_t use_after_call(const Box& b);
 
-// 4: class Box:
+// class Box:
 struct Box {
-    // 5:     value: Int32 | None
+    //     value: Int32 | None
     std::optional<int32_t> value;
 
-    // 7:     def __init__(self, value: Int32 | None):
+    //     def __init__(self, value: Int32 | None):
     Box() = default;
     explicit Box(std::optional<int32_t> value) : value(value) {}
 };

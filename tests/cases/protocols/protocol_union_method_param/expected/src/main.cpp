@@ -4,21 +4,21 @@
 namespace tpy_user::main {
 
 
-// 34: def main() -> None:
+// def main() -> None:
 void main() {
-    // 35:     p = Processor()
+    //     p = Processor()
     Processor p = Processor();
-    // 36:     r = Ruler()
+    //     r = Ruler()
     Ruler r = Ruler();
-    // 37:     p.process(r)
+    //     p.process(r)
     p.process(r);
-    // 38:     print(p.count)
+    //     print(p.count)
     std::cout << p.count << "\n";
-    // 40:     w = Walker()
+    //     w = Walker()
     Walker w = Walker();
-    // 41:     p.process(w)
+    //     p.process(w)
     p.process(w);
-    // 42:     print(p.count)
+    //     print(p.count)
     std::cout << p.count << "\n";
 }
 
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 45: main()
+    // main()
     main();
 }
 

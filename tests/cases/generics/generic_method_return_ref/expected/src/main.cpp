@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 26: def test() -> None:
+// def test() -> None:
 void test() {
-    // 27:     b = Box[Point](Point(1))
+    //     b = Box[Point](Point(1))
     ::tpy_user::tplib::Box<Point> b = ::tpy_user::tplib::Box<Point>(Point(tpy::BigInt(1)));
-    // 28:     process(b)
+    //     process(b)
     process<Point>(b);
-    // 29:     print(b.get().x)  # 11: mutation in process() was visible, so item was a ref not a copy
+    //     print(b.get().x)  # 11: mutation in process() was visible, so item was a ref not a copy
     std::cout << b.get().x << "\n";
 }
 
@@ -19,9 +19,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: from tplib import Box
+    // from tplib import Box
     ::tpy_user::tplib::__tpy_init();
-    // 32: test()
+    // test()
     test();
 }
 

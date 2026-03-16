@@ -6,47 +6,47 @@ namespace tpy_user::main {
 
 // # Test that reassigning parameters works correctly for types
 // # passed as const reference (int/BigInt, str).
-// 4: def gcd(a: int, b: int) -> int:
+// def gcd(a: int, b: int) -> int:
 tpy::BigInt gcd(const tpy::BigInt& __param_a, const tpy::BigInt& __param_b) {
     tpy::BigInt a = __param_a;
     tpy::BigInt b = __param_b;
-    // 5:     while b != 0:
+    //     while b != 0:
     while ((b != 0)) {
-        // 6:         t: int = b
+        //         t: int = b
         tpy::BigInt t = b;
-        // 7:         b = a % b
+        //         b = a % b
         b = ((a) % (b));
-        // 8:         a = t
+        //         a = t
         a = t;
     }
-    // 9:     return a
+    //     return a
     return a;
 }
 
-// 11: def repeat_str(s: str, n: int) -> str:
+// def repeat_str(s: str, n: int) -> str:
 std::string repeat_str(std::string_view s, const tpy::BigInt& n) {
-    // 12:     result: str = ""
+    //     result: str = ""
     std::string result = "";
-    // 13:     i: int = 0
+    //     i: int = 0
     tpy::BigInt i = tpy::BigInt(0);
-    // 14:     while i < n:
+    //     while i < n:
     while ((i < n)) {
-        // 15:         result = result + s
+        //         result = result + s
         result += s;
-        // 16:         i = i + 1
+        //         i = i + 1
         i = ((i) + (tpy::BigInt(1)));
     }
-    // 17:     return result
+    //     return result
     return result;
 }
 
-// 19: def main() -> None:
+// def main() -> None:
 void main() {
-    // 20:     print(gcd(48, 18))
+    //     print(gcd(48, 18))
     std::cout << gcd(tpy::BigInt(48), tpy::BigInt(18)) << "\n";
-    // 21:     print(gcd(100, 75))
+    //     print(gcd(100, 75))
     std::cout << gcd(tpy::BigInt(100), tpy::BigInt(75)) << "\n";
-    // 22:     print(repeat_str("ab", 3))
+    //     print(repeat_str("ab", 3))
     std::cout << repeat_str("ab", tpy::BigInt(3)) << "\n";
 }
 
@@ -55,7 +55,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 24: main()
+    // main()
     main();
 }
 

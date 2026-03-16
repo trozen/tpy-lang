@@ -4,21 +4,21 @@
 namespace tpy_user::main {
 
 
-// 11: def main() -> None:
+// def main() -> None:
 void main() {
-    // 12:     t: Tag = Tag("hello")
+    //     t: Tag = Tag("hello")
     Tag t = Tag("hello");
-    // 13:     print(repr(t))
+    //     print(repr(t))
     std::cout << std::string(tpy::__repr__(t)) << "\n";
-    // 14:     print(f"{t!r}")
+    //     print(f"{t!r}")
     std::cout << std::format("{}", tpy::__repr__(t)) << "\n";
-    // 15:     print(t)
+    //     print(t)
     std::cout << t << "\n";
-    // 16:     print(str(t))
+    //     print(str(t))
     std::cout << std::string(tpy::__repr__(t)) << "\n";
-    // 17:     print(f"{t}")
+    //     print(f"{t}")
     std::cout << std::format("{}", tpy::__str__(t)) << "\n";
-    // 18:     print(f"{t!s}")
+    //     print(f"{t!s}")
     std::cout << std::format("{}", tpy::__str__(t)) << "\n";
 }
 
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 20: main()
+    // main()
     main();
 }
 

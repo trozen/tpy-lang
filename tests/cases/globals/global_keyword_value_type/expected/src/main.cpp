@@ -3,18 +3,18 @@
 
 namespace tpy_user::main {
 
-// 3: counter: Int32 = 0
+// counter: Int32 = 0
 int32_t counter{};
-// 4: flag: bool = False
+// flag: bool = False
 bool flag{};
 
-// 6: def bump() -> None:
+// def bump() -> None:
 void bump() {
-    // 7:     global counter
-    // 8:     global flag
-    // 9:     counter = counter + Int32(1)
+    //     global counter
+    //     global flag
+    //     counter = counter + Int32(1)
     counter = (tpy::add_check<int32_t>(counter, 1));
-    // 10:     flag = True
+    //     flag = True
     flag = true;
 }
 
@@ -23,19 +23,19 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: counter: Int32 = 0
+    // counter: Int32 = 0
     counter = 0;
-    // 4: flag: bool = False
+    // flag: bool = False
     flag = false;
-    // 12: bump()
+    // bump()
     bump();
-    // 13: bump()
+    // bump()
     bump();
-    // 14: bump()
+    // bump()
     bump();
-    // 15: print(counter)
+    // print(counter)
     std::cout << counter << "\n";
-    // 16: print(flag)
+    // print(flag)
     std::cout << tpy::print_bool(flag) << "\n";
 }
 

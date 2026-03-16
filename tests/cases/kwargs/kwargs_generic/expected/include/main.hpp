@@ -12,10 +12,10 @@ tpy::val_or_ref_t<T> first(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t
 void main();
 
 // # Keyword arguments with generic functions
-// 3: def first[T](a: T, b: T) -> T:
+// def first[T](a: T, b: T) -> T:
 template<typename T>
 tpy::val_or_ref_t<T> first(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
-    // 4:     return a
+    //     return a
     return a;
 }
 

@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     d: dict[str, Int32] = {}
+    //     d: dict[str, Int32] = {}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>();
-    // 6:     print(d)
+    //     print(d)
     std::cout << tpy::DictPrinter(d) << "\n";
-    // 7:     print(len(d))
+    //     print(len(d))
     std::cout << tpy::__len__(d) << "\n";
-    // 8:     d["x"] = 1
+    //     d["x"] = 1
     tpy::__setitem__(d, "x", 1);
-    // 9:     print(d)
+    //     print(d)
     std::cout << tpy::DictPrinter(d) << "\n";
-    // 10:     print(len(d))
+    //     print(len(d))
     std::cout << tpy::__len__(d) << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 12: main()
+    // main()
     main();
 }
 

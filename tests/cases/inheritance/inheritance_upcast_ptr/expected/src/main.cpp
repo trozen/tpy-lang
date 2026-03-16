@@ -4,42 +4,42 @@
 namespace tpy_user::main {
 
 
-// 22: def read_animal(p: Ptr[readonly[Animal]]) -> None:
+// def read_animal(p: Ptr[readonly[Animal]]) -> None:
 void read_animal(const Animal* p) {
-    // 23:     print(p.name)
+    //     print(p.name)
     std::cout << tpy::deref_check(p).name << "\n";
 }
 
-// 25: def main() -> None:
+// def main() -> None:
 void main() {
-    // 26:     d: Dog = Dog("Rex", "Lab")
+    //     d: Dog = Dog("Rex", "Lab")
     Dog d = Dog("Rex", "Lab");
-    // 28:     # Dog -> Ptr[readonly[Animal]] (param passing)
-    // 29:     read_animal(d)
+    //     # Dog -> Ptr[readonly[Animal]] (param passing)
+    //     read_animal(d)
     read_animal(&d);
-    // 31:     # Ptr[Dog] -> Ptr[Animal]
-    // 32:     dp: Ptr[Dog] = Ptr(d)
+    //     # Ptr[Dog] -> Ptr[Animal]
+    //     dp: Ptr[Dog] = Ptr(d)
     Dog* dp = &d;
-    // 33:     ap: Ptr[Animal] = dp
+    //     ap: Ptr[Animal] = dp
     Animal* ap = dp;
-    // 34:     print(ap.name)
+    //     print(ap.name)
     std::cout << ap->name << "\n";
-    // 36:     # Ptr[Dog] -> Ptr[readonly[Animal]]
-    // 37:     cap: Ptr[readonly[Animal]] = dp
+    //     # Ptr[Dog] -> Ptr[readonly[Animal]]
+    //     cap: Ptr[readonly[Animal]] = dp
     const Animal* cap = dp;
-    // 38:     print(cap.name)
+    //     print(cap.name)
     std::cout << cap->name << "\n";
-    // 40:     # Ptr[readonly[Dog]] -> Ptr[readonly[Animal]]
-    // 41:     cdp: Ptr[readonly[Dog]] = Ptr(d)
+    //     # Ptr[readonly[Dog]] -> Ptr[readonly[Animal]]
+    //     cdp: Ptr[readonly[Dog]] = Ptr(d)
     const Dog* cdp = &d;
-    // 42:     cap2: Ptr[readonly[Animal]] = cdp
+    //     cap2: Ptr[readonly[Animal]] = cdp
     const Animal* cap2 = cdp;
-    // 43:     print(cap2.name)
+    //     print(cap2.name)
     std::cout << cap2->name << "\n";
-    // 45:     # Multi-level: Puppy -> Ptr[readonly[Animal]] (grandchild -> grandparent)
-    // 46:     p: Puppy = Puppy("Tiny", "Corgi", 8)
+    //     # Multi-level: Puppy -> Ptr[readonly[Animal]] (grandchild -> grandparent)
+    //     p: Puppy = Puppy("Tiny", "Corgi", 8)
     Puppy p = Puppy("Tiny", "Corgi", tpy::BigInt(8));
-    // 47:     read_animal(p)
+    //     read_animal(p)
     read_animal(&p);
 }
 
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 49: main()
+    // main()
     main();
 }
 

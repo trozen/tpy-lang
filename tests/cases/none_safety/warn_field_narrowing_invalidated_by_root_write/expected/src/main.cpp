@@ -4,18 +4,18 @@
 namespace tpy_user::main {
 
 
-// 11: def use_after_rebind(a: Box, b: Box) -> Int32:
+// def use_after_rebind(a: Box, b: Box) -> Int32:
 int32_t use_after_rebind(Box& a, Box& b) {
-    // 12:     local = a
+    //     local = a
     Box* local = &(a);
-    // 13:     if local.value is not None:
+    //     if local.value is not None:
     if ((local->value.has_value())) {
-        // 14:         local = b
+        //         local = b
         local = &(b);
-        // 15:         return local.value + 1  # tpyc: warning(/Potential None access/)
+        //         return local.value + 1  # tpyc: warning(/Potential None access/)
         return (tpy::add_check<int32_t>(tpy::deref_optional_check(local->value), 1));
     }
-    // 16:     return 0
+    //     return 0
     return 0;
 }
 
@@ -24,11 +24,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 19: print(use_after_rebind(Box(2), Box(10)))
+    // print(use_after_rebind(Box(2), Box(10)))
     Box __tmp_1 = Box(2);
     Box __tmp_2 = Box(10);
     std::cout << use_after_rebind(__tmp_1, __tmp_2) << "\n";
-    // 20: print(use_after_rebind(Box(2), Box(11)))
+    // print(use_after_rebind(Box(2), Box(11)))
     Box __tmp_3 = Box(2);
     Box __tmp_4 = Box(11);
     std::cout << use_after_rebind(__tmp_3, __tmp_4) << "\n";

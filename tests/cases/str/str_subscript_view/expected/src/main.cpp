@@ -4,35 +4,35 @@
 namespace tpy_user::main {
 
 
-// 5: def test_tuple() -> None:
+// def test_tuple() -> None:
 void test_tuple() {
-    // 6:     t = (Int32(10), "hello", True)
+    //     t = (Int32(10), "hello", True)
     std::tuple<int32_t, std::string, bool> t = std::tuple<int32_t, std::string, bool>{10, "hello", true};
-    // 7:     b = t[1]  # tpyc: type(StrView)
+    //     b = t[1]  # tpyc: type(StrView)
     std::string_view b = std::get<1>(t);
-    // 8:     print(b)
+    //     print(b)
     std::cout << b << "\n";
 }
 
-// 10: def test_list_view() -> None:
+// def test_list_view() -> None:
 void test_list_view() {
-    // 11:     items: list[str] = ["alpha", "beta"]
+    //     items: list[str] = ["alpha", "beta"]
     std::vector<std::string> items = {"alpha", "beta"};
-    // 12:     s = items[0]  # tpyc: type(StrView)
+    //     s = items[0]  # tpyc: type(StrView)
     std::string_view s = tpy::__getitem__(items, 0);
-    // 13:     print(s)
+    //     print(s)
     std::cout << s << "\n";
 }
 
-// 15: def test_nested_tuple() -> None:
+// def test_nested_tuple() -> None:
 void test_nested_tuple() {
-    // 16:     t = ("outer", ("inner_a", "inner_b"))
+    //     t = ("outer", ("inner_a", "inner_b"))
     std::tuple<std::string, std::tuple<std::string, std::string>> t = std::tuple<std::string, std::tuple<std::string, std::string>>{"outer", std::tuple<std::string, std::string>{"inner_a", "inner_b"}};
-    // 17:     inner = t[1]
+    //     inner = t[1]
     std::tuple<std::string, std::string> inner = std::get<1>(t);
-    // 18:     a = inner[0]  # tpyc: type(StrView)
+    //     a = inner[0]  # tpyc: type(StrView)
     std::string_view a = std::get<0>(inner);
-    // 19:     print(a)
+    //     print(a)
     std::cout << a << "\n";
 }
 
@@ -41,11 +41,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 21: test_tuple()
+    // test_tuple()
     test_tuple();
-    // 22: test_list_view()
+    // test_list_view()
     test_list_view();
-    // 23: test_nested_tuple()
+    // test_nested_tuple()
     test_nested_tuple();
 }
 

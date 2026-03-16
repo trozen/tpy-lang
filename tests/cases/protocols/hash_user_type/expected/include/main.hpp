@@ -13,20 +13,20 @@ template<tpy::Hashable T_x>
 uint64_t get_hash(const T_x& x);
 void main();
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: int
+    //     x: int
     tpy::BigInt x;
-    // 6:     y: int
+    //     y: int
     tpy::BigInt y;
 
-    // 7:     def __init__(self, x: int, y: int) -> None:
+    //     def __init__(self, x: int, y: int) -> None:
     Point() = default;
     explicit Point(const tpy::BigInt& x, const tpy::BigInt& y) : x(x), y(y) {}
 
-    // 10:     def __hash__(self) -> UInt64:
+    //     def __hash__(self) -> UInt64:
     uint64_t __hash__() const {
-        // 11:         return hash(self.x) ^ hash(self.y)
+        //         return hash(self.x) ^ hash(self.y)
         return (static_cast<uint64_t>(tpy::__hash__(this->x) ^ tpy::__hash__(this->y)));
     }
 };
@@ -50,10 +50,10 @@ template<> struct std::hash<tpy_user::main::Point> {
 
 namespace tpy_user::main {
 
-// 13: def get_hash(x: Hashable) -> UInt64:
+// def get_hash(x: Hashable) -> UInt64:
 template<tpy::Hashable T_x>
 uint64_t get_hash(const T_x& x) {
-    // 14:     return hash(x)
+    //     return hash(x)
     return tpy::__hash__(x);
 }
 

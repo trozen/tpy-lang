@@ -13,12 +13,12 @@ template<typename T>
 std::vector<T> collect(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b);
 void main();
 
-// 5: class Box:
+// class Box:
 struct Box {
-    // 6:     value: Int32
+    //     value: Int32
     int32_t value;
 
-    // 8:     def __init__(self, value: Int32) -> None:
+    //     def __init__(self, value: Int32) -> None:
     Box() = default;
     explicit Box(int32_t value) : value(value) {}
 };
@@ -30,18 +30,18 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// 12: def collect[T](a: T, b: T) -> Own[list[T]]:
+// def collect[T](a: T, b: T) -> Own[list[T]]:
 template<typename T>
 std::vector<T> collect(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
-    // 13:     result: list[T] = []
+    //     result: list[T] = []
     std::vector<T> result = std::vector<T>{};
-    // 14:     result.append(a)
+    //     result.append(a)
     auto __tmp_1 = a;
     result.push_back(std::move(__tmp_1));
-    // 15:     result.append(b)
+    //     result.append(b)
     auto __tmp_2 = b;
     result.push_back(std::move(__tmp_2));
-    // 16:     return result
+    //     return result
     return result;
 }
 

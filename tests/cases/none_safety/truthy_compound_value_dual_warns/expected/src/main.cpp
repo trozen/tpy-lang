@@ -4,14 +4,14 @@
 namespace tpy_user::main {
 
 
-// 4: def add_if_both(a: Int32 | None, b: Int32 | None) -> Int32:
+// def add_if_both(a: Int32 | None, b: Int32 | None) -> Int32:
 int32_t add_if_both(std::optional<int32_t> a, std::optional<int32_t> b) {
-    // 5:     if a and b:  # tpyc: warning(/variable 'a'/)  # tpyc: warning(/variable 'b'/)
+    //     if a and b:  # tpyc: warning(/variable 'a'/)  # tpyc: warning(/variable 'b'/)
     if ((tpy::is_truthy(a) && tpy::is_truthy(b))) {
-        // 6:         return a + b  # tpyc: ok
+        //         return a + b  # tpyc: ok
         return (tpy::add_check<int32_t>((*a), (*b)));
     }
-    // 7:     return 0
+    //     return 0
     return 0;
 }
 
@@ -20,11 +20,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 10: print(add_if_both(1, 2))
+    // print(add_if_both(1, 2))
     std::cout << add_if_both(1, 2) << "\n";
-    // 11: print(add_if_both(0, 2))
+    // print(add_if_both(0, 2))
     std::cout << add_if_both(0, 2) << "\n";
-    // 12: print(add_if_both(None, 2))
+    // print(add_if_both(None, 2))
     std::cout << add_if_both(std::nullopt, 2) << "\n";
 }
 

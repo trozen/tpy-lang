@@ -12,12 +12,12 @@ inline constexpr std::string_view __name__ = "__main__";
 void show_port(const Config& cfg);
 void main();
 
-// 4: class Config:
+// class Config:
 struct Config {
-    // 5:     port: Optional[int]
+    //     port: Optional[int]
     std::optional<tpy::BigInt> port;
 
-    // 6:     def __init__(self, port: Optional[int]) -> None:
+    //     def __init__(self, port: Optional[int]) -> None:
     Config() = default;
     explicit Config(std::optional<tpy::BigInt> port) : port(port) {}
 };

@@ -15,27 +15,27 @@ int32_t sum_all(const T_items& items);
 int32_t use_span(std::span<int32_t> s);
 void main();
 
-// 5: def first(items: Sequence[Int32]) -> Int32:
+// def first(items: Sequence[Int32]) -> Int32:
 template<tpy::Sequence<int32_t> T_items>
 int32_t first(const T_items& items) {
-    // 6:     return items[0]
+    //     return items[0]
     return tpy::__getitem__(items, 0);
 }
-// 8: def sum_all(items: Sequence[Int32]) -> Int32:
+// def sum_all(items: Sequence[Int32]) -> Int32:
 template<tpy::Sequence<int32_t> T_items>
 int32_t sum_all(const T_items& items) {
-    // 9:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 10:     i: Int32 = 0
+    //     i: Int32 = 0
     int32_t i = 0;
-    // 11:     while i < len(items):
+    //     while i < len(items):
     while ((i < tpy::__len__(items))) {
-        // 12:         total += items[i]
+        //         total += items[i]
         total = tpy::add_check<int32_t>(total, items[i]);
-        // 13:         i += 1
+        //         i += 1
         i = tpy::add_check<int32_t>(i, 1);
     }
-    // 14:     return total
+    //     return total
     return total;
 }
 

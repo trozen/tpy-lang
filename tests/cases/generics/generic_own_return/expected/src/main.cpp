@@ -4,44 +4,44 @@
 namespace tpy_user::main {
 
 
-// 17: def main() -> None:
+// def main() -> None:
 void main() {
-    // 18:     # Test 1: Own[T] with value type (Int32) - same behavior as T
-    // 19:     box_int: Box[Int32] = Box[Int32](42)
+    //     # Test 1: Own[T] with value type (Int32) - same behavior as T
+    //     box_int: Box[Int32] = Box[Int32](42)
     Box<int32_t> box_int = Box<int32_t>(42);
-    // 20:     val: Int32 = box_int.take()
+    //     val: Int32 = box_int.take()
     int32_t val = box_int.take();
-    // 21:     print(val)
+    //     print(val)
     std::cout << val << "\n";
-    // 23:     # Test 2: Own[T] with object type returns by value
-    // 24:     box_list: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
+    //     # Test 2: Own[T] with object type returns by value
+    //     box_list: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
     Box<std::vector<int32_t>> box_list = Box<std::vector<int32_t>>({1, 2, 3});
-    // 25:     taken: list[Int32] = box_list.take()
+    //     taken: list[Int32] = box_list.take()
     std::vector<int32_t> taken = box_list.take();
-    // 26:     for x in taken:
+    //     for x in taken:
     auto& __obj_0 = taken;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 27:         print(x)
+        //         print(x)
         std::cout << x << "\n";
     }
-    // 29:     # Test 3: Verify get() still works (uses trait-based return)
-    // 30:     print(box_int.get())
+    //     # Test 3: Verify get() still works (uses trait-based return)
+    //     print(box_int.get())
     std::cout << box_int.get() << "\n";
-    // 32:     # Test 4: Variable inference from Own[T] unwraps to T
-    // 33:     c = box_list.take()
+    //     # Test 4: Variable inference from Own[T] unwraps to T
+    //     c = box_list.take()
     std::vector<int32_t> c = box_list.take();
-    // 34:     c.append(4)
+    //     c.append(4)
     c.push_back(4);
-    // 35:     for x in c:
+    //     for x in c:
     auto& __obj_1 = c;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        // 36:         print(x)
+        //         print(x)
         std::cout << x << "\n";
     }
 }
@@ -51,7 +51,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 39: main()
+    // main()
     main();
 }
 

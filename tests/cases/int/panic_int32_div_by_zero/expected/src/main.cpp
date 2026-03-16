@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-// 4: x: Int32 = 42
+// x: Int32 = 42
 int32_t x{};
-// 5: y: Int32 = 0
+// y: Int32 = 0
 int32_t y{};
-// 6: z: Int32 = x // y  # Should panic
+// z: Int32 = x // y  # Should panic
 int32_t z{};
 
 void __tpy_init() {
@@ -15,13 +15,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: x: Int32 = 42
+    // x: Int32 = 42
     x = 42;
-    // 5: y: Int32 = 0
+    // y: Int32 = 0
     y = 0;
-    // 6: z: Int32 = x // y  # Should panic
+    // z: Int32 = x // y  # Should panic
     z = (tpy::div_check<int32_t>(x, y));
-    // 7: print(z)
+    // print(z)
     std::cout << z << "\n";
 }
 

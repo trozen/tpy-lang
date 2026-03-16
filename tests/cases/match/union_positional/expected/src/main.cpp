@@ -4,39 +4,39 @@
 namespace tpy_user::main {
 
 
-// 13: def describe(s: Circle | Rect) -> None:
+// def describe(s: Circle | Rect) -> None:
 void describe(const std::variant<Circle, Rect>& s) {
-    // 14:     match s:
+    //     match s:
     auto& __match_subject = s;
     switch (__match_subject.index()) {
-    // 15:         case Circle(r):
+    //         case Circle(r):
     case 0: {
         auto& __case_0 = std::get<0>(__match_subject);
         auto& r = __case_0.radius;
-        // 16:             print(r)
+        //             print(r)
         std::cout << tpy::print_float(r) << "\n";
         break;
     }
-    // 17:         case Rect(_, h):
+    //         case Rect(_, h):
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject);
         auto& h = __case_1.height;
-        // 18:             print(h)
+        //             print(h)
         std::cout << tpy::print_float(h) << "\n";
         break;
     }
     }
 }
 
-// 20: def main() -> None:
+// def main() -> None:
 void main() {
-    // 21:     c: Circle | Rect = Circle(5.0)
+    //     c: Circle | Rect = Circle(5.0)
     std::variant<Circle, Rect> c = Circle(5.0);
-    // 22:     describe(c)
+    //     describe(c)
     describe(c);
-    // 23:     r: Circle | Rect = Rect(3.0, 4.0)
+    //     r: Circle | Rect = Rect(3.0, 4.0)
     std::variant<Circle, Rect> r = Rect(3.0, 4.0);
-    // 24:     describe(r)
+    //     describe(r)
     describe(r);
 }
 
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 26: main()
+    // main()
     main();
 }
 

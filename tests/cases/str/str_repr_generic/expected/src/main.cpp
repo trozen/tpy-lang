@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 27: def main() -> None:
+// def main() -> None:
 void main() {
-    // 28:     wp: Wrapper[Pair] = Wrapper(Pair(1, 2))
+    //     wp: Wrapper[Pair] = Wrapper(Pair(1, 2))
     Wrapper<Pair> wp = Wrapper<Pair>(Pair(1, 2));
-    // 29:     print(str(wp))
+    //     print(str(wp))
     std::cout << std::string(tpy::__str__(wp)) << "\n";
-    // 30:     print(repr(wp))
+    //     print(repr(wp))
     std::cout << std::string(tpy::__repr__(wp)) << "\n";
-    // 31:     print(wp)
+    //     print(wp)
     std::cout << wp << "\n";
-    // 32:     print(f"val = {wp}")
+    //     print(f"val = {wp}")
     std::cout << std::format("val = {}", tpy::__str__(wp)) << "\n";
-    // 33:     print(f"debug: {wp!r}")
+    //     print(f"debug: {wp!r}")
     std::cout << std::format("debug: {}", tpy::__repr__(wp)) << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 35: main()
+    // main()
     main();
 }
 

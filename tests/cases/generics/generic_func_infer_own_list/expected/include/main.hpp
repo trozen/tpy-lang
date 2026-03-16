@@ -17,11 +17,11 @@ template<typename T>
 void consume_both(std::type_identity_t<T>&& a, std::type_identity_t<T>&& b);
 void main();
 
-// 5: class Point:
+// class Point:
 struct Point {
-    // 6:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 7:     y: Int32
+    //     y: Int32
     int32_t y;
 
 };
@@ -35,21 +35,21 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 10: def first_val[T](items: Own[list[T]]) -> T:
+// def first_val[T](items: Own[list[T]]) -> T:
 template<typename T>
 tpy::val_or_ref_t<T> first_val(std::vector<T>&& items) {
-    // 11:     return items[0]
+    //     return items[0]
     return items[0];
 }
-// 14: def consume_list[T](items: Own[list[T]]) -> None:
+// def consume_list[T](items: Own[list[T]]) -> None:
 template<typename T>
 void consume_list(std::vector<T>&& items) {
-    // 15:     pass
+    //     pass
 }
-// 18: def consume_both[T](a: Own[T], b: Own[T]) -> None:
+// def consume_both[T](a: Own[T], b: Own[T]) -> None:
 template<typename T>
 void consume_both(std::type_identity_t<T>&& a, std::type_identity_t<T>&& b) {
-    // 19:     pass
+    //     pass
 }
 
 void __tpy_init();

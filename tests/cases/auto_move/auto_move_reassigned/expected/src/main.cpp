@@ -4,31 +4,31 @@
 namespace tpy_user::main {
 
 
-// 9: def consume(p: Own[Point]) -> Int32:
+// def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point&& p) {
-    // 10:     return p.x
+    //     return p.x
     return p.x;
 }
 
-// 13: def test() -> Int32:
+// def test() -> Int32:
 int32_t test() {
-    // 14:     p = Point()
+    //     p = Point()
     Point __slot_1 = Point();
     std::optional<Point> __slot_2;
     Point* p = &__slot_1;
-    // 15:     p.x = 10
+    //     p.x = 10
     p->x = 10;
-    // 16:     p = Point()  # reassignment -> T* pointer-local
+    //     p = Point()  # reassignment -> T* pointer-local
     p = &*(__slot_2 = Point());
-    // 17:     p.x = 20
+    //     p.x = 20
     p->x = 20;
-    // 18:     return consume(p)  # last use -> std::move((*p))
+    //     return consume(p)  # last use -> std::move((*p))
     return consume(std::move((*p)));
 }
 
-// 21: def main():
+// def main():
 void main() {
-    // 22:     print(test())
+    //     print(test())
     std::cout << test() << "\n";
 }
 

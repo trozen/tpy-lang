@@ -11,18 +11,18 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 3: class Counter:
+// class Counter:
 struct Counter {
-    // 4:     x: Int32
+    //     x: Int32
     int32_t x;
 
-    // 5:     def __init__(self, x: Int32) -> None:
+    //     def __init__(self, x: Int32) -> None:
     Counter() = default;
     explicit Counter(int32_t x) : x(x) {}
 
-    // 7:     def __len__(self) -> Int32:
+    //     def __len__(self) -> Int32:
     int32_t __len__() const {
-        // 8:         return self.x
+        //         return self.x
         return this->x;
     }
 

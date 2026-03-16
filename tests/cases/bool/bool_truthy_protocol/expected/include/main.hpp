@@ -13,18 +13,18 @@ template<tpy::Truthy T>
 bool check(tpy::param_val_or_ref_t<T> x);
 void main();
 
-// 4: class Box:
+// class Box:
 struct Box {
-    // 5:     value: int
+    //     value: int
     tpy::BigInt value;
 
-    // 7:     def __init__(self, value: int) -> None:
+    //     def __init__(self, value: int) -> None:
     Box() = default;
     explicit Box(const tpy::BigInt& value) : value(value) {}
 
-    // 10:     def __bool__(self) -> bool:
+    //     def __bool__(self) -> bool:
     bool __bool__() const {
-        // 11:         return self.value != 0
+        //         return self.value != 0
         return (this->value != 0);
     }
 };
@@ -36,10 +36,10 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// 13: def check[T: Truthy](x: T) -> bool:
+// def check[T: Truthy](x: T) -> bool:
 template<tpy::Truthy T>
 bool check(tpy::param_val_or_ref_t<T> x) {
-    // 14:     return bool(x)
+    //     return bool(x)
     return tpy::__bool__(x);
 }
 

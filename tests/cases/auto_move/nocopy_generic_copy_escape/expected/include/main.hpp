@@ -13,12 +13,12 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // @nocopy
-// 7: class Handle:
+// class Handle:
 struct Handle {
-    // 8:     fd: Int32
+    //     fd: Int32
     int32_t fd;
 
-    // 10:     def __init__(self, fd: Int32):
+    //     def __init__(self, fd: Int32):
     Handle() = default;
     explicit Handle(int32_t fd) : fd(fd) {}
     // non-copyable (@nocopy)
@@ -35,13 +35,13 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
     return os;
 }
 
-// 14: class TaggedValue[T]:
+// class TaggedValue[T]:
 template<typename T>
 struct TaggedValue {
-    // 15:     data: Int32
+    //     data: Int32
     int32_t data;
 
-    // 17:     def __init__(self, data: Int32):
+    //     def __init__(self, data: Int32):
     TaggedValue() = default;
     explicit TaggedValue(int32_t data) : data(data) {}
     // copyable via __copy__
@@ -53,9 +53,9 @@ struct TaggedValue {
     TaggedValue(TaggedValue&&) = default;
     TaggedValue& operator=(TaggedValue&&) = default;
 
-    // 20:     def __copy__(self) -> Own[TaggedValue[T]]:
+    //     def __copy__(self) -> Own[TaggedValue[T]]:
     TaggedValue<T> __copy__() const {
-        // 21:         return TaggedValue[T](self.data)
+        //         return TaggedValue[T](self.data)
         return TaggedValue<T>(this->data);
     }
 };

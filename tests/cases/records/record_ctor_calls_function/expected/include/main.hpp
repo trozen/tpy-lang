@@ -12,14 +12,14 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t twice(int32_t x);
 void main();
 
-// 8: class Pair:
+// class Pair:
 struct Pair {
-    // 9:     a: Int32
+    //     a: Int32
     int32_t a;
-    // 10:     b: Int32
+    //     b: Int32
     int32_t b;
 
-    // 12:     def __init__(self, x: Int32):
+    //     def __init__(self, x: Int32):
     Pair() = default;
     explicit Pair(int32_t x) : a(x), b(twice(x)) {}
 };

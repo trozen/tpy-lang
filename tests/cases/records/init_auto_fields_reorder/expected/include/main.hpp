@@ -11,14 +11,14 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 6: class Rect:
+// class Rect:
 struct Rect {
-    // 10:         self.width = width
+    //         self.width = width
     int32_t width;
-    // 7:     height: Int32
+    //     height: Int32
     int32_t height;
 
-    // 9:     def __init__(self, width: Int32, height: Int32):
+    //     def __init__(self, width: Int32, height: Int32):
     Rect() = default;
     explicit Rect(int32_t width, int32_t height) : width(width), height(height) {}
 };

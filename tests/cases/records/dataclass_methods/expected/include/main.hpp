@@ -12,27 +12,27 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // @dataclass
-// 6: class Rect:
+// class Rect:
 struct Rect {
-    // 7:     width: Int32
+    //     width: Int32
     int32_t width;
-    // 8:     height: Int32
+    //     height: Int32
     int32_t height;
 
     Rect() = default;
     explicit Rect(int32_t width, int32_t height) : width(width), height(height) {}
 
-    // 10:     def area(self) -> Int32:
+    //     def area(self) -> Int32:
     int32_t area() const {
-        // 11:         return self.width * self.height
+        //         return self.width * self.height
         return (tpy::mul_check<int32_t>(this->width, this->height));
     }
 
-    // 13:     def scale(self, factor: Int32) -> None:
+    //     def scale(self, factor: Int32) -> None:
     void scale(int32_t factor) {
-        // 14:         self.width = self.width * factor
+        //         self.width = self.width * factor
         this->width = (tpy::mul_check<int32_t>(this->width, factor));
-        // 15:         self.height = self.height * factor
+        //         self.height = self.height * factor
         this->height = (tpy::mul_check<int32_t>(this->height, factor));
     }
 

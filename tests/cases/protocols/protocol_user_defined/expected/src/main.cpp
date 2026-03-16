@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 10: def main() -> None:
+// def main() -> None:
 void main() {
-    // 11:     nums: list[Int32] = [1, 2, 3]
+    //     nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    // 12:     print(count(nums))
+    //     print(count(nums))
     std::cout << count(nums) << "\n";
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 14: main()
+    // main()
     main();
 }
 

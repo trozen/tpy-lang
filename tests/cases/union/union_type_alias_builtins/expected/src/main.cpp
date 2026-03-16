@@ -4,30 +4,30 @@
 namespace tpy_user::main {
 
 
-// 8: def show_num(x: Num) -> None:
+// def show_num(x: Num) -> None:
 void show_num(const Num& x) {
-    // 9:     if isinstance(x, bool):
+    //     if isinstance(x, bool):
     if (std::holds_alternative<bool>(x)) {
         const auto& __x = std::get<bool>(x);
-        // 10:         print("bool")
+        //         print("bool")
         std::cout << "bool" << "\n";
-    // 11:     else:
+    //     else:
     } else {
         const auto& __x = std::get<tpy::BigInt>(x);
-        // 12:         print("int")
+        //         print("int")
         std::cout << "int" << "\n";
     }
 }
 
-// 15: def main() -> None:
+// def main() -> None:
 void main() {
-    // 16:     a: Num = 42
+    //     a: Num = 42
     Num a = 42;
-    // 17:     b: Num = True
+    //     b: Num = True
     Num b = true;
-    // 18:     show_num(a)
+    //     show_num(a)
     show_num(a);
-    // 19:     show_num(b)
+    //     show_num(b)
     show_num(b);
 }
 
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 21: main()
+    // main()
     main();
 }
 

@@ -4,33 +4,33 @@
 namespace tpy_user::main {
 
 
-// 21: def find_first(items: list[Point]) -> Point:
+// def find_first(items: list[Point]) -> Point:
 Point& find_first(std::vector<Point>& items) {
-    // 22:     return items[0]
+    //     return items[0]
     return tpy::__getitem__(items, 0);
 }
 
-// 25: def bump(p: Point) -> None:
+// def bump(p: Point) -> None:
 void bump(Point& p) {
-    // 26:     p.x += 10
+    //     p.x += 10
     p.x = (p.x) + (tpy::BigInt(10));
 }
 
-// 29: def test() -> None:
+// def test() -> None:
 void test() {
-    // 30:     pts = [Point(1), Point(2)]
+    //     pts = [Point(1), Point(2)]
     std::vector<Point> pts = {Point(tpy::BigInt(1)), Point(tpy::BigInt(2))};
-    // 32:     # Free function: find_first returns Point& -> bump receives it directly
-    // 33:     bump(find_first(pts))
+    //     # Free function: find_first returns Point& -> bump receives it directly
+    //     bump(find_first(pts))
     bump(find_first(pts));
-    // 34:     print(pts[0].x)   # 11
+    //     print(pts[0].x)   # 11
     std::cout << tpy::__getitem__(pts, 0).x << "\n";
-    // 36:     # Method: holder.get() returns Point& -> bump receives it directly
-    // 37:     h = Holder()
+    //     # Method: holder.get() returns Point& -> bump receives it directly
+    //     h = Holder()
     Holder h = Holder();
-    // 38:     bump(h.get())
+    //     bump(h.get())
     bump(h.get());
-    // 39:     print(h.inner.x)  # 15
+    //     print(h.inner.x)  # 15
     std::cout << h.inner.x << "\n";
 }
 
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 42: test()
+    // test()
     test();
 }
 

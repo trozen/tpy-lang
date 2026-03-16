@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 11: def observe(items: readonly[list[Int32]]) -> None:
+// def observe(items: readonly[list[Int32]]) -> None:
 void observe(const std::vector<int32_t>& items) {
-    // 12:     print(get_len(items))
+    //     print(get_len(items))
     std::cout << get_len(items) << "\n";
-    // 13:     print(get_first(items))
+    //     print(get_first(items))
     std::cout << get_first(items) << "\n";
 }
 
-// 15: def main() -> None:
+// def main() -> None:
 void main() {
-    // 16:     xs: list[Int32] = [Int32(10), Int32(20), Int32(30)]
+    //     xs: list[Int32] = [Int32(10), Int32(20), Int32(30)]
     std::vector<int32_t> xs = {10, 20, 30};
-    // 17:     observe(xs)
+    //     observe(xs)
     observe(xs);
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 19: main()
+    // main()
     main();
 }
 

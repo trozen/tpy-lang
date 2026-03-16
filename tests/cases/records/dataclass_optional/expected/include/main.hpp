@@ -12,11 +12,11 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // @dataclass
-// 7: class Node:
+// class Node:
 struct Node {
-    // 8:     value: Int32
+    //     value: Int32
     int32_t value;
-    // 9:     label: Optional[str] = None
+    //     label: Optional[str] = None
     std::optional<std::string> label = std::nullopt;
 
     Node() = default;

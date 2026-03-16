@@ -4,31 +4,31 @@
 namespace tpy_user::main {
 
 // # Test min/max with Int32
-// 5: a: Int32 = 10
+// a: Int32 = 10
 int32_t a{};
-// 6: b: Int32 = 20
+// b: Int32 = 20
 int32_t b{};
 // # Test min/max with BigInt (default int)
-// 13: x = 100
+// x = 100
 int32_t x{};
-// 14: y = -50
+// y = -50
 int32_t y{};
 // # Use int() for large values to avoid literal issues
-// 18: big1 = int(-1000000)
+// big1 = int(-1000000)
 tpy::BigInt big1;
-// 19: big2 = int(1000000)
+// big2 = int(1000000)
 tpy::BigInt big2;
 // # Test min/max with float
-// 24: f1: float = 3.14
+// f1: float = 3.14
 double f1{};
-// 25: f2: float = 2.71
+// f2: float = 2.71
 double f2{};
 // # Test 3-argument min/max
-// 30: c: Int32 = 5
+// c: Int32 = 5
 int32_t c{};
-// 34: z = 200
+// z = 200
 int32_t z{};
-// 38: f3: float = 1.0
+// f3: float = 1.0
 double f3{};
 
 void __tpy_init() {
@@ -36,64 +36,64 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: # Test min/max with Int32
-    // 5: a: Int32 = 10
+    // # Test min/max with Int32
+    // a: Int32 = 10
     a = 10;
-    // 6: b: Int32 = 20
+    // b: Int32 = 20
     b = 20;
-    // 7: print(min(a, b))
+    // print(min(a, b))
     std::cout << std::min(a, b) << "\n";
-    // 8: print(max(a, b))
+    // print(max(a, b))
     std::cout << std::max(a, b) << "\n";
-    // 9: print(min(b, a))
+    // print(min(b, a))
     std::cout << std::min(b, a) << "\n";
-    // 10: print(max(b, a))
+    // print(max(b, a))
     std::cout << std::max(b, a) << "\n";
-    // 12: # Test min/max with BigInt (default int)
-    // 13: x = 100
+    // # Test min/max with BigInt (default int)
+    // x = 100
     x = 100;
-    // 14: y = -50
+    // y = -50
     y = -50;
-    // 15: print(min(x, y))
+    // print(min(x, y))
     std::cout << std::min(x, y) << "\n";
-    // 16: print(max(x, y))
+    // print(max(x, y))
     std::cout << std::max(x, y) << "\n";
-    // 17: # Use int() for large values to avoid literal issues
-    // 18: big1 = int(-1000000)
+    // # Use int() for large values to avoid literal issues
+    // big1 = int(-1000000)
     big1 = tpy::BigInt(static_cast<int64_t>(-1000000));
-    // 19: big2 = int(1000000)
+    // big2 = int(1000000)
     big2 = tpy::BigInt(static_cast<int64_t>(1000000));
-    // 20: print(min(big1, big2))
+    // print(min(big1, big2))
     std::cout << ((big1) < (big2) ? (big1) : (big2)) << "\n";
-    // 21: print(max(big1, big2))
+    // print(max(big1, big2))
     std::cout << ((big1) > (big2) ? (big1) : (big2)) << "\n";
-    // 23: # Test min/max with float
-    // 24: f1: float = 3.14
+    // # Test min/max with float
+    // f1: float = 3.14
     f1 = 3.14;
-    // 25: f2: float = 2.71
+    // f2: float = 2.71
     f2 = 2.71;
-    // 26: print(min(f1, f2))
+    // print(min(f1, f2))
     std::cout << tpy::print_float(std::fmin(f1, f2)) << "\n";
-    // 27: print(max(f1, f2))
+    // print(max(f1, f2))
     std::cout << tpy::print_float(std::fmax(f1, f2)) << "\n";
-    // 29: # Test 3-argument min/max
-    // 30: c: Int32 = 5
+    // # Test 3-argument min/max
+    // c: Int32 = 5
     c = 5;
-    // 31: print(min(a, b, c))
+    // print(min(a, b, c))
     std::cout << std::min(std::min(a, b), c) << "\n";
-    // 32: print(max(a, b, c))
+    // print(max(a, b, c))
     std::cout << std::max(std::max(a, b), c) << "\n";
-    // 34: z = 200
+    // z = 200
     z = 200;
-    // 35: print(min(x, y, z))
+    // print(min(x, y, z))
     std::cout << std::min(std::min(x, y), z) << "\n";
-    // 36: print(max(x, y, z))
+    // print(max(x, y, z))
     std::cout << std::max(std::max(x, y), z) << "\n";
-    // 38: f3: float = 1.0
+    // f3: float = 1.0
     f3 = 1.0;
-    // 39: print(min(f1, f2, f3))
+    // print(min(f1, f2, f3))
     std::cout << tpy::print_float(std::fmin(std::fmin(f1, f2), f3)) << "\n";
-    // 40: print(max(f1, f2, f3))
+    // print(max(f1, f2, f3))
     std::cout << tpy::print_float(std::fmax(std::fmax(f1, f2), f3)) << "\n";
 }
 

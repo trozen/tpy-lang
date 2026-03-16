@@ -4,20 +4,20 @@
 namespace tpy_user::main {
 
 
-// 10: def loop_escape() -> None:
+// def loop_escape() -> None:
 void loop_escape() {
   std::optional<Point> __slot_2;
-    // 11:     saved: Point = Point(0, 0)
+    //     saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    // 12:     for i in range(3):
+    //     for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // 13:         p: Point = Point(i, i)
+        //         p: Point = Point(i, i)
         Point* p = &*(__slot_2 = Point(i, i));
-        // 14:         saved = p  # tpyc: warning(/hoisted to function scope/)
+        //         saved = p  # tpyc: warning(/hoisted to function scope/)
         saved = p;
     }
-    // 15:     print(saved.x, saved.y)
+    //     print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 17: loop_escape()
+    // loop_escape()
     loop_escape();
 }
 

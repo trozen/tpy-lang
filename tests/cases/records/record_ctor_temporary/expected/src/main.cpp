@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 17: def main() -> None:
+// def main() -> None:
 void main() {
-    // 18:     # Constructor with temporary list literal
-    // 19:     n1: Numbers = Numbers([1, 2, 3, 4, 5])
+    //     # Constructor with temporary list literal
+    //     n1: Numbers = Numbers([1, 2, 3, 4, 5])
     Numbers n1 = Numbers({1, 2, 3, 4, 5});
-    // 20:     print(n1.sum())  # 15
+    //     print(n1.sum())  # 15
     std::cout << n1.sum() << "\n";
-    // 22:     # Constructor with variable
-    // 23:     items: list[Int32] = [10, 20, 30]
+    //     # Constructor with variable
+    //     items: list[Int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    // 24:     n2: Numbers = Numbers(items)
+    //     n2: Numbers = Numbers(items)
     Numbers n2 = Numbers(items);
-    // 25:     print(n2.sum())  # 60
+    //     print(n2.sum())  # 60
     std::cout << n2.sum() << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 27: main()
+    // main()
     main();
 }
 

@@ -4,92 +4,92 @@
 namespace tpy_user::main {
 
 
-// 4: def print_i16(x: Int16) -> None:
+// def print_i16(x: Int16) -> None:
 void print_i16(int16_t x) {
-    // 5:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 7: def print_i32(x: Int32) -> None:
+// def print_i32(x: Int32) -> None:
 void print_i32(int32_t x) {
-    // 8:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 10: def print_i64(x: Int64) -> None:
+// def print_i64(x: Int64) -> None:
 void print_i64(int64_t x) {
-    // 11:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 13: def print_u16(x: UInt16) -> None:
+// def print_u16(x: UInt16) -> None:
 void print_u16(uint16_t x) {
-    // 14:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 16: def print_u32(x: UInt32) -> None:
+// def print_u32(x: UInt32) -> None:
 void print_u32(uint32_t x) {
-    // 17:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 19: def print_u64(x: UInt64) -> None:
+// def print_u64(x: UInt64) -> None:
 void print_u64(uint64_t x) {
-    // 20:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 22: def main() -> None:
+// def main() -> None:
 void main() {
-    // 23:     # Signed widening: Int8 -> Int16 -> Int32 -> Int64
-    // 24:     a: Int8 = Int8(42)
+    //     # Signed widening: Int8 -> Int16 -> Int32 -> Int64
+    //     a: Int8 = Int8(42)
     int8_t a = 42;
-    // 25:     print_i16(a)
+    //     print_i16(a)
     print_i16(static_cast<int16_t>(a));
-    // 26:     print_i32(a)
+    //     print_i32(a)
     print_i32(static_cast<int32_t>(a));
-    // 27:     print_i64(a)
+    //     print_i64(a)
     print_i64(static_cast<int64_t>(a));
-    // 29:     b: Int16 = Int16(1000)
+    //     b: Int16 = Int16(1000)
     int16_t b = 1000;
-    // 30:     print_i32(b)
+    //     print_i32(b)
     print_i32(static_cast<int32_t>(b));
-    // 31:     print_i64(b)
+    //     print_i64(b)
     print_i64(static_cast<int64_t>(b));
-    // 33:     c: Int32 = Int32(100000)
+    //     c: Int32 = Int32(100000)
     int32_t c = 100000;
-    // 34:     print_i64(c)
+    //     print_i64(c)
     print_i64(static_cast<int64_t>(c));
-    // 36:     # Unsigned widening: UInt8 -> UInt16 -> UInt32 -> UInt64
-    // 37:     d: UInt8 = UInt8(200)
+    //     # Unsigned widening: UInt8 -> UInt16 -> UInt32 -> UInt64
+    //     d: UInt8 = UInt8(200)
     uint8_t d = 200;
-    // 38:     print_u16(d)
+    //     print_u16(d)
     print_u16(static_cast<uint16_t>(d));
-    // 39:     print_u32(d)
+    //     print_u32(d)
     print_u32(static_cast<uint32_t>(d));
-    // 40:     print_u64(d)
+    //     print_u64(d)
     print_u64(static_cast<uint64_t>(d));
-    // 42:     e: UInt16 = UInt16(50000)
+    //     e: UInt16 = UInt16(50000)
     uint16_t e = 50000;
-    // 43:     print_u32(e)
+    //     print_u32(e)
     print_u32(static_cast<uint32_t>(e));
-    // 44:     print_u64(e)
+    //     print_u64(e)
     print_u64(static_cast<uint64_t>(e));
-    // 46:     f: UInt32 = UInt32(3000000000)
+    //     f: UInt32 = UInt32(3000000000)
     uint32_t f = 3000000000;
-    // 47:     print_u64(f)
+    //     print_u64(f)
     print_u64(static_cast<uint64_t>(f));
-    // 49:     # Cross-sign widening: UInt8 -> Int16, UInt16 -> Int32, UInt32 -> Int64
-    // 50:     print_i16(d)   # UInt8(200) -> Int16
+    //     # Cross-sign widening: UInt8 -> Int16, UInt16 -> Int32, UInt32 -> Int64
+    //     print_i16(d)   # UInt8(200) -> Int16
     print_i16(static_cast<int16_t>(d));
-    // 51:     print_i32(d)   # UInt8(200) -> Int32
+    //     print_i32(d)   # UInt8(200) -> Int32
     print_i32(static_cast<int32_t>(d));
-    // 53:     g: UInt16 = UInt16(60000)
+    //     g: UInt16 = UInt16(60000)
     uint16_t g = 60000;
-    // 54:     print_i32(g)   # UInt16(60000) -> Int32
+    //     print_i32(g)   # UInt16(60000) -> Int32
     print_i32(static_cast<int32_t>(g));
-    // 56:     print_i64(f)   # UInt32(3000000000) -> Int64
+    //     print_i64(f)   # UInt32(3000000000) -> Int64
     print_i64(static_cast<int64_t>(f));
 }
 
@@ -98,7 +98,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 58: main()
+    // main()
     main();
 }
 

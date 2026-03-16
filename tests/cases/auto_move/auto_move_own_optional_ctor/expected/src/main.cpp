@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 20: def main():
+// def main():
 void main() {
-    // 21:     p = Point()
+    //     p = Point()
     Point p = Point();
-    // 22:     p.x = Int32(1)
+    //     p.x = Int32(1)
     p.x = 1;
-    // 23:     p.y = Int32(2)
+    //     p.y = Int32(2)
     p.y = 2;
-    // 24:     w = Wrapper(p, Int32(42))
+    //     w = Wrapper(p, Int32(42))
     Wrapper w = Wrapper(std::move(p), 42);
-    // 25:     print(w.tag)
+    //     print(w.tag)
     std::cout << w.tag << "\n";
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 28: main()
+    // main()
     main();
 }
 

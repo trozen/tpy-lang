@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 16: def main() -> None:
+// def main() -> None:
 void main() {
-    // 17:     b1 = Box(42)
+    //     b1 = Box(42)
     Box b1 = Box(tpy::BigInt(42));
-    // 18:     b2 = Box(0)
+    //     b2 = Box(0)
     Box b2 = Box(tpy::BigInt(0));
-    // 19:     print(check(b1))  # True
+    //     print(check(b1))  # True
     std::cout << tpy::print_bool(check<Box>(b1)) << "\n";
-    // 20:     print(check(b2))  # False
+    //     print(check(b2))  # False
     std::cout << tpy::print_bool(check<Box>(b2)) << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: main()
+    // main()
     main();
 }
 

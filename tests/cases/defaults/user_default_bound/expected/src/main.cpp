@@ -4,27 +4,27 @@
 namespace tpy_user::main {
 
 
-// 13: def main() -> None:
+// def main() -> None:
 void main() {
-    // 14:     x = create_default[Int32]()
+    //     x = create_default[Int32]()
     int32_t x = create_default<int32_t>();
-    // 15:     print(x)
+    //     print(x)
     std::cout << x << "\n";
-    // 17:     s = create_default[str]()
+    //     s = create_default[str]()
     std::string s = create_default<std::string>();
-    // 18:     print(len(s))
+    //     print(len(s))
     std::cout << tpy::__len__(s) << "\n";
-    // 20:     nums = fill[Int32](3)
+    //     nums = fill[Int32](3)
     std::vector<int32_t> nums = fill<int32_t>(3);
-    // 21:     print(len(nums))
+    //     print(len(nums))
     std::cout << tpy::__len__(nums) << "\n";
-    // 22:     for v in nums:
+    //     for v in nums:
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        // 23:         print(v)
+        //         print(v)
         std::cout << v << "\n";
     }
 }
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 25: main()
+    // main()
     main();
 }
 

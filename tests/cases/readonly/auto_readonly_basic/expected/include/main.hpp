@@ -12,32 +12,32 @@ inline constexpr std::string_view __name__ = "__main__";
 void read_buf(const Buffer& b);
 void main();
 
-// 5: class Buffer:
+// class Buffer:
 struct Buffer {
-    // 6:     _data: list[Int32]
+    //     _data: list[Int32]
     std::vector<int32_t> _data;
 
-    // 8:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Buffer() : _data({1, 2, 3}) {}
 
     //     @auto_readonly
-    // 12:     def as_span(self) -> Span[auto_readonly[Int32]]:
+    //     def as_span(self) -> Span[auto_readonly[Int32]]:
     std::span<int32_t> as_span() {
-        // 13:         return self._data
+        //         return self._data
         return tpy::as_mut_span(this->_data);
     }
 
     //     @auto_readonly
-    // 12:     def as_span(self) -> Span[auto_readonly[Int32]]:
+    //     def as_span(self) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> as_span() const {
-        // 13:         return self._data
+        //         return self._data
         return tpy::as_span(this->_data);
     }
 
     //     # __getitem__ is implicitly readonly; returns Int32 (value type), no dual overload needed
-    // 16:     def __getitem__(self, index: Int32) -> Int32:
+    //     def __getitem__(self, index: Int32) -> Int32:
     int32_t __getitem__(int32_t index) const {
-        // 17:         return self._data[index]
+        //         return self._data[index]
         return tpy::__getitem__(this->_data, index);
     }
 

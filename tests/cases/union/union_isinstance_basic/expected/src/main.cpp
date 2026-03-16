@@ -4,30 +4,30 @@
 namespace tpy_user::main {
 
 
-// 16: def area(s: Circle | Rect) -> float:
+// def area(s: Circle | Rect) -> float:
 double area(const std::variant<Circle, Rect>& s) {
-    // 17:     if isinstance(s, Circle):
+    //     if isinstance(s, Circle):
     if (std::holds_alternative<Circle>(s)) {
         auto& __s = std::get<Circle>(s);
-        // 18:         return 3.14159 * s.radius * s.radius
+        //         return 3.14159 * s.radius * s.radius
         return ((((3.14159) * (__s.radius))) * (__s.radius));
-    // 19:     else:
+    //     else:
     } else {
         auto& __s = std::get<Rect>(s);
-        // 20:         return s.width * s.height
+        //         return s.width * s.height
         return ((__s.width) * (__s.height));
     }
 }
 
-// 22: def main() -> None:
+// def main() -> None:
 void main() {
-    // 23:     c: Circle | Rect = Circle(5.0)
+    //     c: Circle | Rect = Circle(5.0)
     std::variant<Circle, Rect> c = Circle(5.0);
-    // 24:     print(area(c))
+    //     print(area(c))
     std::cout << tpy::print_float(area(c)) << "\n";
-    // 25:     r: Circle | Rect = Rect(3.0, 4.0)
+    //     r: Circle | Rect = Rect(3.0, 4.0)
     std::variant<Circle, Rect> r = Rect(3.0, 4.0);
-    // 26:     print(area(r))
+    //     print(area(r))
     std::cout << tpy::print_float(area(r)) << "\n";
 }
 
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 28: main()
+    // main()
     main();
 }
 

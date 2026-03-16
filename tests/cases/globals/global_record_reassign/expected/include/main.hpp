@@ -10,12 +10,12 @@ struct Container;
 extern Container* c;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 4: class Container:
+// class Container:
 struct Container {
-    // 5:     value: Int32
+    //     value: Int32
     int32_t value;
 
-    // 6:     def __init__(self, value: Int32):
+    //     def __init__(self, value: Int32):
     Container() = default;
     explicit Container(int32_t value) : value(value) {}
 };

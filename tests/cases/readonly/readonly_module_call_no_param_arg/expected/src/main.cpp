@@ -5,9 +5,9 @@ namespace tpy_user::main {
 
 
 // @readonly
-// 7: def ok() -> None:
+// def ok() -> None:
 void ok() {
-    // 8:     h.mutate()  # tpyc: ok
+    //     h.mutate()  # tpyc: ok
     ::tpy_user::helpers::mutate();
 }
 
@@ -16,11 +16,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: import helpers as h
+    // import helpers as h
     ::tpy_user::helpers::__tpy_init();
-    // 11: ok()
+    // ok()
     ok();
-    // 12: print(0)
+    // print(0)
     std::cout << 0 << "\n";
 }
 

@@ -15,13 +15,13 @@ void sink(Box<int32_t>&& b);
 void take_two(Box<int32_t>&& a, Box<int32_t>&& b);
 void main();
 
-// 4: class Box[T]:
+// class Box[T]:
 template<typename T>
 struct Box {
-    // 5:     val: T
+    //     val: T
     T val;
 
-    // 7:     def __init__(self, val: Own[T]) -> None:
+    //     def __init__(self, val: Own[T]) -> None:
     Box() = default;
     explicit Box(T&& val) : val(std::move(val)) {}
 };
@@ -34,10 +34,10 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     return os;
 }
 
-// 10: def wrap[T](v: T) -> Own[Box[T]]:
+// def wrap[T](v: T) -> Own[Box[T]]:
 template<typename T>
 Box<T> wrap(tpy::param_val_or_ref_t<T> v) {
-    // 11:     return Box[T](v)
+    //     return Box[T](v)
     auto __tmp_1 = v;
     return Box<T>(std::move(__tmp_1));
 }

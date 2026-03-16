@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 4: def show(l: readonly[list[Int32]]) -> None:
+// def show(l: readonly[list[Int32]]) -> None:
 void show(const std::vector<int32_t>& l) {
-    // 5:     print(l)
+    //     print(l)
     std::cout << tpy::ListPrinter(l) << "\n";
 }
 
-// 7: def main() -> None:
+// def main() -> None:
 void main() {
-    // 8:     nums: list[Int32] = [1, 2, 3]
+    //     nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    // 9:     show(nums)
+    //     show(nums)
     show(nums);
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 11: main()
+    // main()
     main();
 }
 

@@ -11,32 +11,32 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Container[T]:
+// class Container[T]:
 template<typename T>
 struct Container {
-    // 5:     value: T
+    //     value: T
     T value;
 
-    // 7:     def __init__(self, value: Own[T]):
+    //     def __init__(self, value: Own[T]):
     Container() = default;
     explicit Container(T&& value) : value(std::move(value)) {}
 
     //     @staticmethod
-    // 11:     def create(v: Own[T]) -> Own[Container[T]]:
+    //     def create(v: Own[T]) -> Own[Container[T]]:
     static Container<T> create(T&& v) {
-        // 12:         return Container(v)
+        //         return Container(v)
         return Container<T>(std::move(v));
     }
 
     //     @staticmethod
-    // 15:     def wrap_optional(v: Own[T] | None) -> Own[Container[T]] | None:
+    //     def wrap_optional(v: Own[T] | None) -> Own[Container[T]] | None:
     static std::optional<Container<T>> wrap_optional(std::optional<T> v) {
-        // 16:         if v is not None:
+        //         if v is not None:
         if ((v.has_value())) {
-            // 17:             return Container(v)
+            //             return Container(v)
             return Container<T>(std::move((*v)));
         }
-        // 18:         return None
+        //         return None
         return std::nullopt;
     }
 };

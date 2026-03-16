@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-// 6: class Addable(Protocol):
+// class Addable(Protocol):
 template<typename T>
 concept Addable = requires(T& t) {
     { t.add(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
@@ -18,18 +18,18 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 9: class MyNumber:
+// class MyNumber:
 struct MyNumber {
-    // 10:     value: Int32
+    //     value: Int32
     int32_t value;
 
-    // 12:     def __init__(self, v: Int32) -> None:
+    //     def __init__(self, v: Int32) -> None:
     MyNumber() = default;
     explicit MyNumber(int32_t v) : value(v) {}
 
-    // 15:     def add(self, x: Int32) -> Int32:
+    //     def add(self, x: Int32) -> Int32:
     int32_t add(int32_t x) const {
-        // 16:         return self.value + x
+        //         return self.value + x
         return (tpy::add_check<int32_t>(this->value, x));
     }
 };
@@ -41,19 +41,19 @@ inline std::ostream& operator<<(std::ostream& os, const MyNumber& obj) {
     return os;
 }
 
-// 18: class Holder[T: Addable]:
+// class Holder[T: Addable]:
 template<Addable T>
 struct Holder {
-    // 19:     item: T
+    //     item: T
     T item;
 
-    // 21:     def __init__(self, item: T):
+    //     def __init__(self, item: T):
     Holder() = default;
     explicit Holder(const T& item) : item(item) {}
 
-    // 24:     def get_item(self) -> T:
+    //     def get_item(self) -> T:
     tpy::val_or_ref_t<T> get_item() {
-        // 25:         return self.item
+        //         return self.item
         return this->item;
     }
 };

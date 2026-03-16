@@ -4,18 +4,18 @@
 namespace tpy_user::main {
 
 
-// 18: def greet(pet: Pet) -> None:
+// def greet(pet: Pet) -> None:
 void greet(Pet& pet) {
-    // 19:     print(pet.make_noise())
+    //     print(pet.make_noise())
     std::cout << pet.make_noise() << "\n";
 }
 
-// 21: def main() -> None:
+// def main() -> None:
 void main() {
-    // 22:     greet(Dog())
+    //     greet(Dog())
     Dog __tmp_1{Dog()};
     greet(__tmp_1);
-    // 23:     greet(Cat())
+    //     greet(Cat())
     Cat __tmp_2{Cat()};
     greet(__tmp_2);
 }
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 25: main()
+    // main()
     main();
 }
 

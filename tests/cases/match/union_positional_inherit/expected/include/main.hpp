@@ -15,11 +15,11 @@ void describe(const std::variant<Child, Other>& s);
 void main();
 
 // @dataclass
-// 5: class Base:
+// class Base:
 struct Base {
-    // 6:     x: float
+    //     x: float
     double x;
-    // 7:     y: float
+    //     y: float
     double y;
 
     Base() = default;
@@ -50,9 +50,9 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 }
 
 // @dataclass
-// 14: class Other:
+// class Other:
 struct Other {
-    // 15:     v: float
+    //     v: float
     double v;
 
     Other() = default;
@@ -81,9 +81,9 @@ inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
 }
 
 // @dataclass
-// 10: class Child(Base):
+// class Child(Base):
 struct Child : Base {
-    // 11:     z: float
+    //     z: float
     double z;
 
     Child() = default;

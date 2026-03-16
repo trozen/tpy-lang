@@ -5,33 +5,33 @@ namespace tpy_user::main {
 
 
 // # match/case on float subject with literal patterns
-// 2: def classify(x: float) -> str:
+// def classify(x: float) -> str:
 std::string classify(double x) {
-    // 3:     match x:
+    //     match x:
     auto& __match_subject = x;
-    // 4:         case 0.0:
+    //         case 0.0:
     if (__match_subject == 0.0) {
-        // 5:             return "zero"
+        //             return "zero"
         return "zero";
-    // 6:         case 1.0:
+    //         case 1.0:
     } else if (__match_subject == 1.0) {
-        // 7:             return "one"
+        //             return "one"
         return "one";
-    // 8:         case other:
+    //         case other:
     } else {
         auto& other = __match_subject;
-        // 9:             return "other"
+        //             return "other"
         return "other";
     }
 }
 
-// 11: def main() -> None:
+// def main() -> None:
 void main() {
-    // 12:     print(classify(0.0))
+    //     print(classify(0.0))
     std::cout << classify(0.0) << "\n";
-    // 13:     print(classify(1.0))
+    //     print(classify(1.0))
     std::cout << classify(1.0) << "\n";
-    // 14:     print(classify(3.14))
+    //     print(classify(3.14))
     std::cout << classify(3.14) << "\n";
 }
 
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 16: main()
+    // main()
     main();
 }
 

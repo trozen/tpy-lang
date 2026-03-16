@@ -4,26 +4,26 @@
 namespace tpy_user::main {
 
 
-// 27: def main() -> None:
+// def main() -> None:
 void main() {
-    // 28:     nums: list[Int32] = [10, 20, 30, 40]
+    //     nums: list[Int32] = [10, 20, 30, 40]
     std::vector<int32_t> nums = {10, 20, 30, 40};
-    // 29:     wrapper: IntWrapper = IntWrapper(nums)
+    //     wrapper: IntWrapper = IntWrapper(nums)
     IntWrapper wrapper = IntWrapper(nums);
-    // 31:     # Direct indexing on user record
-    // 32:     print(wrapper[0])      # 10
+    //     # Direct indexing on user record
+    //     print(wrapper[0])      # 10
     std::cout << wrapper[0] << "\n";
-    // 33:     print(wrapper[-1])     # 40
+    //     print(wrapper[-1])     # 40
     std::cout << wrapper[-1] << "\n";
-    // 35:     # User record conforms to Sequence[Int32]
-    // 36:     print(sum_seq(wrapper))  # 100
+    //     # User record conforms to Sequence[Int32]
+    //     print(sum_seq(wrapper))  # 100
     std::cout << sum_seq(wrapper) << "\n";
-    // 37:     print(first(wrapper))    # 10
+    //     print(first(wrapper))    # 10
     std::cout << first(wrapper) << "\n";
-    // 39:     # Same functions work with regular list
-    // 40:     print(sum_seq(nums))     # 100
+    //     # Same functions work with regular list
+    //     print(sum_seq(nums))     # 100
     std::cout << sum_seq(nums) << "\n";
-    // 41:     print(first(nums))       # 10
+    //     print(first(nums))       # 10
     std::cout << first(nums) << "\n";
 }
 
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 43: main()
+    // main()
     main();
 }
 

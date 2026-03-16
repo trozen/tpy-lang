@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 // # Top-level (module scope) escape: same detection should work
 // # outside of function bodies.
-// 12: saved: Point = Point(0, 0)
+// saved: Point = Point(0, 0)
 Point* saved{};
 
 void __tpy_init() {
@@ -14,19 +14,19 @@ void __tpy_init() {
     initialized = true;
 
   static std::optional<Point> __global_slot_2;
-    // 10: # Top-level (module scope) escape: same detection should work
-    // 11: # outside of function bodies.
-    // 12: saved: Point = Point(0, 0)
+    // # Top-level (module scope) escape: same detection should work
+    // # outside of function bodies.
+    // saved: Point = Point(0, 0)
     static Point __global_slot_1 = Point(0, 0);
     saved = &__global_slot_1;
-    // 13: for i in range(3):
+    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // 14:     p: Point = Point(i, i)
+        //     p: Point = Point(i, i)
         Point* p = &*(__global_slot_2 = Point(i, i));
-        // 15:     saved = p  # tpyc: warning(/hoisted to function scope/)
+        //     saved = p  # tpyc: warning(/hoisted to function scope/)
         saved = p;
     }
-    // 17: print(saved.x, saved.y)
+    // print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 

@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 
-// 21: def read_through(c: readonly[Container]) -> Int32:
+// def read_through(c: readonly[Container]) -> Int32:
 int32_t read_through(const Container& c) {
-    // 22:     return c.ptr.__deref__().value
+    //     return c.ptr.__deref__().value
     return tpy::deref_check(c.ptr).value;
 }
 
-// 24: def main() -> None:
+// def main() -> None:
 void main() {
-    // 25:     d = Data(Int32(42))
+    //     d = Data(Int32(42))
     Data d = Data(42);
-    // 26:     c = Container()
+    //     c = Container()
     Container c = Container();
-    // 27:     c.ptr = Ptr(d)
+    //     c.ptr = Ptr(d)
     c.ptr = &d;
-    // 28:     print(c.read_value())
+    //     print(c.read_value())
     std::cout << c.read_value() << "\n";
-    // 29:     print(read_through(c))
+    //     print(read_through(c))
     std::cout << read_through(c) << "\n";
 }
 
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 31: main()
+    // main()
     main();
 }
 

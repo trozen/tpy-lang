@@ -4,21 +4,21 @@
 namespace tpy_user::main {
 
 
-// 20: def transfer() -> Own[Holder[Handle]]:
+// def transfer() -> Own[Holder[Handle]]:
 Holder<Handle> transfer() {
-    // 21:     h = Holder[Handle](Handle(42))
+    //     h = Holder[Handle](Handle(42))
     Holder<Handle> h = Holder<Handle>(Handle(42));
-    // 22:     alias = h
+    //     alias = h
     Holder<Handle> alias = std::move(h);
-    // 23:     return alias
+    //     return alias
     return alias;
 }
 
-// 26: def main():
+// def main():
 void main() {
-    // 27:     r = transfer()
+    //     r = transfer()
     Holder<Handle> r = transfer();
-    // 28:     print(r.item.fd)
+    //     print(r.item.fd)
     std::cout << r.item.fd << "\n";
 }
 
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 31: main()
+    // main()
     main();
 }
 

@@ -4,38 +4,38 @@
 namespace tpy_user::main {
 
 
-// 4: def get_pair() -> tuple[Int32, str]:
+// def get_pair() -> tuple[Int32, str]:
 std::tuple<int32_t, std::string> get_pair() {
-    // 5:     return (Int32(42), "hello")
+    //     return (Int32(42), "hello")
     return std::tuple<int32_t, std::string>{42, "hello"};
 }
 
-// 7: def get_triple() -> tuple[bool, Int32, str]:
+// def get_triple() -> tuple[bool, Int32, str]:
 std::tuple<bool, int32_t, std::string> get_triple() {
-    // 8:     return (True, Int32(7), "world")
+    //     return (True, Int32(7), "world")
     return std::tuple<bool, int32_t, std::string>{true, 7, "world"};
 }
 
-// 10: def main() -> None:
+// def main() -> None:
 void main() {
-    // 11:     a, b = get_pair()
+    //     a, b = get_pair()
     auto __tup_1 = get_pair();
     int32_t a = std::get<0>(__tup_1);
     std::string_view b = std::get<1>(__tup_1);
-    // 12:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 13:     print(b)
+    //     print(b)
     std::cout << b << "\n";
-    // 15:     x, y, z = get_triple()
+    //     x, y, z = get_triple()
     auto __tup_2 = get_triple();
     bool x = std::get<0>(__tup_2);
     int32_t y = std::get<1>(__tup_2);
     std::string_view z = std::get<2>(__tup_2);
-    // 16:     print(x)
+    //     print(x)
     std::cout << tpy::print_bool(x) << "\n";
-    // 17:     print(y)
+    //     print(y)
     std::cout << y << "\n";
-    // 18:     print(z)
+    //     print(z)
     std::cout << z << "\n";
 }
 
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 20: main()
+    // main()
     main();
 }
 

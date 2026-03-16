@@ -5,19 +5,19 @@ namespace tpy_user::main {
 
 
 // # Dict with BigInt (int) keys -- verifies std::hash<BigInt> works at C++ level
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     d: dict[int, str] = {1: "one", 2: "two", 3: "three"}
+    //     d: dict[int, str] = {1: "one", 2: "two", 3: "three"}
     tpy::ordered_map<tpy::BigInt, std::string> d = tpy::ordered_map<tpy::BigInt, std::string>({{tpy::BigInt(1), "one"}, {tpy::BigInt(2), "two"}, {tpy::BigInt(3), "three"}});
-    // 4:     print(d[1])
+    //     print(d[1])
     std::cout << tpy::__getitem__(d, 1) << "\n";
-    // 5:     print(d[2])
+    //     print(d[2])
     std::cout << tpy::__getitem__(d, 2) << "\n";
-    // 6:     print(1 in d)
+    //     print(1 in d)
     std::cout << tpy::print_bool((d.contains(1))) << "\n";
-    // 7:     print(99 in d)
+    //     print(99 in d)
     std::cout << tpy::print_bool((d.contains(99))) << "\n";
-    // 8:     print(len(d))
+    //     print(len(d))
     std::cout << tpy::__len__(d) << "\n";
 }
 
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 10: main()
+    // main()
     main();
 }
 

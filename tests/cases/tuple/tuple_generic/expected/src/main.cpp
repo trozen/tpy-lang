@@ -4,34 +4,34 @@
 namespace tpy_user::main {
 
 
-// 19: def main() -> None:
+// def main() -> None:
 void main() {
-    // 20:     nums = (Int32(10), Int32(20))
+    //     nums = (Int32(10), Int32(20))
     std::tuple<int32_t, int32_t> nums = std::tuple<int32_t, int32_t>{10, 20};
-    // 21:     x = first_of_pair(nums)
+    //     x = first_of_pair(nums)
     int32_t x = first_of_pair<int32_t>(nums);
-    // 22:     print(x)
+    //     print(x)
     std::cout << x << "\n";
-    // 24:     pair = (Int32(5), "five")
+    //     pair = (Int32(5), "five")
     std::tuple<int32_t, std::string> pair = std::tuple<int32_t, std::string>{5, "five"};
-    // 25:     swapped = swap(pair)
+    //     swapped = swap(pair)
     std::tuple<std::string, int32_t> swapped = swap<int32_t, std::string>(pair);
-    // 26:     print(swapped)
+    //     print(swapped)
     std::cout << tpy::TuplePrinter(swapped) << "\n";
-    // 28:     # Generic swap with record type (non-value) -- verify reference semantics
-    // 29:     pt = Point(Int32(1), Int32(2))
+    //     # Generic swap with record type (non-value) -- verify reference semantics
+    //     pt = Point(Int32(1), Int32(2))
     Point pt = Point(1, 2);
-    // 30:     pt_pair = (Int32(42), pt)
+    //     pt_pair = (Int32(42), pt)
     auto pt_pair = std::tuple<int32_t, Point&>{42, pt};
-    // 31:     swapped2 = swap(pt_pair)
+    //     swapped2 = swap(pt_pair)
     auto swapped2 = swap<int32_t, Point>(pt_pair);
-    // 32:     print(swapped2[0].x)
+    //     print(swapped2[0].x)
     std::cout << std::get<0>(swapped2).x << "\n";
-    // 33:     print(swapped2[1])
+    //     print(swapped2[1])
     std::cout << std::get<1>(swapped2) << "\n";
-    // 34:     pt.x = Int32(99)
+    //     pt.x = Int32(99)
     pt.x = 99;
-    // 35:     print(swapped2[0].x)
+    //     print(swapped2[0].x)
     std::cout << std::get<0>(swapped2).x << "\n";
 }
 
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 37: main()
+    // main()
     main();
 }
 

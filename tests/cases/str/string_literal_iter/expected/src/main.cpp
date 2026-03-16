@@ -6,60 +6,60 @@ namespace tpy_user::main {
 
 // # Test that iterating over string literals produces the same result as string variables,
 // # without including the null terminator.
-// 4: def test_literal_iter() -> None:
+// def test_literal_iter() -> None:
 void test_literal_iter() {
-    // 5:     for ch in "abc":
+    //     for ch in "abc":
     auto __obj_0 = std::string_view("abc");
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char ch = *__beg_0;
-        // 6:         print(ch)
+        //         print(ch)
         std::cout << ch << "\n";
     }
 }
 
-// 8: def test_var_iter() -> None:
+// def test_var_iter() -> None:
 void test_var_iter() {
-    // 9:     s = "abc"
+    //     s = "abc"
     std::string_view s = "abc";
-    // 10:     for ch in s:
+    //     for ch in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char ch = *__beg_0;
-        // 11:         print(ch)
+        //         print(ch)
         std::cout << ch << "\n";
     }
 }
 
-// 13: def test_empty_literal() -> None:
+// def test_empty_literal() -> None:
 void test_empty_literal() {
-    // 14:     count = 0
+    //     count = 0
     int32_t count = 0;
-    // 15:     for ch in "":
+    //     for ch in "":
     auto __obj_0 = std::string_view("");
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char ch = *__beg_0;
-        // 16:         count += 1
+        //         count += 1
         count = tpy::add_check<int32_t>(count, 1);
     }
-    // 17:     print("empty:", count)
+    //     print("empty:", count)
     std::cout << "empty:" << " " << count << "\n";
 }
 
-// 19: def test_single_char() -> None:
+// def test_single_char() -> None:
 void test_single_char() {
-    // 20:     for ch in "x":
+    //     for ch in "x":
     auto __obj_0 = std::string_view("x");
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char ch = *__beg_0;
-        // 21:         print(ch)
+        //         print(ch)
         std::cout << ch << "\n";
     }
 }
@@ -69,13 +69,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 23: test_literal_iter()
+    // test_literal_iter()
     test_literal_iter();
-    // 24: test_var_iter()
+    // test_var_iter()
     test_var_iter();
-    // 25: test_empty_literal()
+    // test_empty_literal()
     test_empty_literal();
-    // 26: test_single_char()
+    // test_single_char()
     test_single_char();
 }
 

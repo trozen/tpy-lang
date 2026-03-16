@@ -14,12 +14,12 @@ void process(const std::variant<A, B>& v);
 void main();
 
 // # Test passing concrete types to functions expecting union parameters
-// 2: class A:
+// class A:
 struct A {
-    // 3:     x: int
+    //     x: int
     tpy::BigInt x;
 
-    // 4:     def __init__(self, x: int) -> None:
+    //     def __init__(self, x: int) -> None:
     A() = default;
     explicit A(const tpy::BigInt& x) : x(x) {}
 };
@@ -31,12 +31,12 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
     return os;
 }
 
-// 7: class B:
+// class B:
 struct B {
-    // 8:     y: str
+    //     y: str
     std::string y;
 
-    // 9:     def __init__(self, y: str) -> None:
+    //     def __init__(self, y: str) -> None:
     B() = default;
     explicit B(std::string_view y) : y(y) {}
 };

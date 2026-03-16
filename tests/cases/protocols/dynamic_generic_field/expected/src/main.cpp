@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 20: def main() -> None:
+// def main() -> None:
 void main() {
-    // 21:     t = Tagged[Greeter](42)
+    //     t = Tagged[Greeter](42)
     Tagged<Greeter> t = Tagged<Greeter>(42);
-    // 22:     o = Owner(t)
+    //     o = Owner(t)
     Owner o = Owner(t);
-    // 23:     print(o.item.tag)
+    //     print(o.item.tag)
     std::cout << o.item.tag << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 25: main()
+    // main()
     main();
 }
 

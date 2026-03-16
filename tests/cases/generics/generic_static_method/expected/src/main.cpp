@@ -4,32 +4,32 @@
 namespace tpy_user::main {
 
 
-// 20: def main() -> None:
+// def main() -> None:
 void main() {
-    // 21:     # Inference from argument type
-    // 22:     c1 = Container.create(42)
+    //     # Inference from argument type
+    //     c1 = Container.create(42)
     Container<int32_t> c1 = Container<int32_t>::create(42);
-    // 23:     print("c1:", c1)
+    //     print("c1:", c1)
     std::cout << "c1:" << " " << c1 << "\n";
-    // 25:     # Explicit type args
-    // 26:     c2 = Container[Int32].create(10)
+    //     # Explicit type args
+    //     c2 = Container[Int32].create(10)
     Container<int32_t> c2 = Container<int32_t>::create(10);
-    // 27:     print("c2:", c2)
+    //     print("c2:", c2)
     std::cout << "c2:" << " " << c2 << "\n";
-    // 29:     # Inference with optional param (non-None value)
-    // 30:     c3 = Container.wrap_optional(99)
+    //     # Inference with optional param (non-None value)
+    //     c3 = Container.wrap_optional(99)
     std::optional<Container<int32_t>> c3 = Container<int32_t>::wrap_optional(99);
-    // 31:     print("c3:", c3)
+    //     print("c3:", c3)
     std::cout << "c3:" << " " << tpy::print_optional_val(c3) << "\n";
-    // 33:     # Explicit with None
-    // 34:     c4 = Container[Int32].wrap_optional(None)
+    //     # Explicit with None
+    //     c4 = Container[Int32].wrap_optional(None)
     std::optional<Container<int32_t>> c4 = Container<int32_t>::wrap_optional(std::nullopt);
-    // 35:     print("c4:", c4)
+    //     print("c4:", c4)
     std::cout << "c4:" << " " << tpy::print_optional_val(c4) << "\n";
-    // 37:     # Explicit with value
-    // 38:     c5 = Container[Int32].wrap_optional(77)
+    //     # Explicit with value
+    //     c5 = Container[Int32].wrap_optional(77)
     std::optional<Container<int32_t>> c5 = Container<int32_t>::wrap_optional(77);
-    // 39:     print("c5:", c5)
+    //     print("c5:", c5)
     std::cout << "c5:" << " " << tpy::print_optional_val(c5) << "\n";
 }
 
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 41: main()
+    // main()
     main();
 }
 

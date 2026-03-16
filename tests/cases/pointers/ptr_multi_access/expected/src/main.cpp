@@ -4,29 +4,29 @@
 namespace tpy_user::main {
 
 
-// 12: def use_fields(p: Ptr[Point]) -> None:
+// def use_fields(p: Ptr[Point]) -> None:
 void use_fields(Point* p) {
-    // 13:     # Multiple field accesses on same pointer in one expression
-    // 14:     print(p.x + p.y)
+    //     # Multiple field accesses on same pointer in one expression
+    //     print(p.x + p.y)
     std::cout << (tpy::add_check<int32_t>(tpy::deref_check(p).x, tpy::deref_check(p).y)) << "\n";
 }
 
-// 16: def use_methods(p: Ptr[Point]) -> None:
+// def use_methods(p: Ptr[Point]) -> None:
 void use_methods(Point* p) {
-    // 17:     # Method + field access on same pointer
-    // 18:     print(p.sum(), p.x)
+    //     # Method + field access on same pointer
+    //     print(p.sum(), p.x)
     std::cout << tpy::deref_check(p).sum() << " " << tpy::deref_check(p).x << "\n";
 }
 
-// 20: def test() -> None:
+// def test() -> None:
 void test() {
-    // 21:     pt: Point = Point(3, 7)
+    //     pt: Point = Point(3, 7)
     Point pt = Point(3, 7);
-    // 22:     p: Ptr[Point] = Ptr(pt)
+    //     p: Ptr[Point] = Ptr(pt)
     Point* p = &pt;
-    // 23:     use_fields(p)
+    //     use_fields(p)
     use_fields(p);
-    // 24:     use_methods(p)
+    //     use_methods(p)
     use_methods(p);
 }
 
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 26: test()
+    // test()
     test();
 }
 

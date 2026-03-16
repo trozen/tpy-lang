@@ -4,9 +4,9 @@
 namespace tpy_user::utils {
 
 
-// 1: def get_name() -> str:
+// def get_name() -> str:
 std::string get_name() {
-    // 2:     return __name__
+    //     return __name__
     return std::string(__name__);
 }
 

@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # Test combined inheritance
-// 37: p = Person("Alice", 42, 30)
+// p = Person("Alice", 42, 30)
 Person* p{};
 
 void __tpy_init() {
@@ -12,23 +12,23 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 36: # Test combined inheritance
-    // 37: p = Person("Alice", 42, 30)
+    // # Test combined inheritance
+    // p = Person("Alice", 42, 30)
     static Person __global_slot_1 = Person("Alice", 42, 30);
     p = &__global_slot_1;
-    // 39: # Access inherited fields
-    // 40: print(p.name)
+    // # Access inherited fields
+    // print(p.name)
     std::cout << p->name << "\n";
-    // 41: print(p.id)
+    // print(p.id)
     std::cout << p->id << "\n";
-    // 43: # Access own field
-    // 44: print(p.age)
+    // # Access own field
+    // print(p.age)
     std::cout << p->age << "\n";
-    // 46: # Call inherited method
-    // 47: print(p.get_name())
+    // # Call inherited method
+    // print(p.get_name())
     std::cout << p->get_name() << "\n";
-    // 49: # Call protocol method
-    // 50: print(p.__str__())
+    // # Call protocol method
+    // print(p.__str__())
     std::cout << p->__str__() << "\n";
 }
 

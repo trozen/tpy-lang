@@ -13,12 +13,12 @@ inline constexpr std::string_view __name__ = "__main__";
 std::string describe(const std::variant<std::monostate, Circle, Rect>& s);
 void main();
 
-// 5: class Circle:
+// class Circle:
 struct Circle {
-    // 6:     radius: Int32
+    //     radius: Int32
     int32_t radius;
 
-    // 8:     def __init__(self, radius: Int32) -> None:
+    //     def __init__(self, radius: Int32) -> None:
     Circle() = default;
     explicit Circle(int32_t radius) : radius(radius) {}
 };
@@ -30,12 +30,12 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
     return os;
 }
 
-// 12: class Rect:
+// class Rect:
 struct Rect {
-    // 13:     width: Int32
+    //     width: Int32
     int32_t width;
 
-    // 15:     def __init__(self, width: Int32) -> None:
+    //     def __init__(self, width: Int32) -> None:
     Rect() = default;
     explicit Rect(int32_t width) : width(width) {}
 };

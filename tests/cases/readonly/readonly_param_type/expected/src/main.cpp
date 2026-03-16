@@ -4,25 +4,25 @@
 namespace tpy_user::main {
 
 
-// 16: def observe(p: readonly[Point]) -> Int32:
+// def observe(p: readonly[Point]) -> Int32:
 int32_t observe(const Point& p) {
-    // 17:     return p.x + p.y
+    //     return p.x + p.y
     return (tpy::add_check<int32_t>(p.x, p.y));
 }
 
-// 19: def call_readonly_method(p: readonly[Point]) -> Int32:
+// def call_readonly_method(p: readonly[Point]) -> Int32:
 int32_t call_readonly_method(const Point& p) {
-    // 20:     return p.magnitude_sq()
+    //     return p.magnitude_sq()
     return p.magnitude_sq();
 }
 
-// 22: def main() -> None:
+// def main() -> None:
 void main() {
-    // 23:     p = Point(Int32(3), Int32(4))
+    //     p = Point(Int32(3), Int32(4))
     Point p = Point(3, 4);
-    // 24:     print(observe(p))
+    //     print(observe(p))
     std::cout << observe(p) << "\n";
-    // 25:     print(call_readonly_method(p))
+    //     print(call_readonly_method(p))
     std::cout << call_readonly_method(p) << "\n";
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 27: main()
+    // main()
     main();
 }
 

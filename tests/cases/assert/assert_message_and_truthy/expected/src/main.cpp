@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 4: def bump_positive(n: Int32) -> Int32:
+// def bump_positive(n: Int32) -> Int32:
 int32_t bump_positive(int32_t n) {
-    // 5:     assert n > 0, "n must be positive"
+    //     assert n > 0, "n must be positive"
     if (!((n > 0))) tpy::tpy_panic("n must be positive");
-    // 6:     return n + 1
+    //     return n + 1
     return (tpy::add_check<int32_t>(n, 1));
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 9: print(bump_positive(4))
+    // print(bump_positive(4))
     std::cout << bump_positive(4) << "\n";
 }
 

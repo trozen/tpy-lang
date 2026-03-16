@@ -11,10 +11,10 @@ template<tpy::Sized T_items>
 int32_t count(const T_items& items);
 void main();
 
-// 4: def count(items: Sized) -> Int32:
+// def count(items: Sized) -> Int32:
 template<tpy::Sized T_items>
 int32_t count(const T_items& items) {
-    // 5:     return len(items)
+    //     return len(items)
     return tpy::__len__(items);
 }
 

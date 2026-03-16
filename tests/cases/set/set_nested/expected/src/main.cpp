@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     sets: list[set[Int32]] = [{1, 2}, {3, 4}]
+    //     sets: list[set[Int32]] = [{1, 2}, {3, 4}]
     std::vector<tpy::ordered_set<int32_t>> sets = {tpy::ordered_set<int32_t>({1, 2}), tpy::ordered_set<int32_t>({3, 4})};
-    // 6:     print(sets)
+    //     print(sets)
     std::cout << tpy::ListPrinter(sets) << "\n";
-    // 7:     sets[0].add(5)
+    //     sets[0].add(5)
     tpy::__getitem__(sets, 0).insert(5);
-    // 8:     print(sets)
+    //     print(sets)
     std::cout << tpy::ListPrinter(sets) << "\n";
-    // 10:     t: tuple[set[Int32], str] = ({10, 20}, "hello")
+    //     t: tuple[set[Int32], str] = ({10, 20}, "hello")
     auto t = std::tuple<tpy::ordered_set<int32_t>, std::string>{tpy::ordered_set<int32_t>({10, 20}), "hello"};
-    // 11:     print(t)
+    //     print(t)
     std::cout << tpy::TuplePrinter(t) << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 13: main()
+    // main()
     main();
 }
 

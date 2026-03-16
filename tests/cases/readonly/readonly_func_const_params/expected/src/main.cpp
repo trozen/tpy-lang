@@ -5,41 +5,41 @@ namespace tpy_user::main {
 
 
 // @readonly
-// 15: def read_box(b: Box, offset: Int32) -> Int32:
+// def read_box(b: Box, offset: Int32) -> Int32:
 int32_t read_box(const Box& b, int32_t offset) {
-    // 16:     return b.value + offset
+    //     return b.value + offset
     return (tpy::add_check<int32_t>(b.value, offset));
 }
 
 // @readonly
-// 19: def sum_list(items: list[Int32]) -> Int32:
+// def sum_list(items: list[Int32]) -> Int32:
 int32_t sum_list(const std::vector<int32_t>& items) {
-    // 20:     total = Int32(0)
+    //     total = Int32(0)
     int32_t total = 0;
-    // 21:     for x in items:
+    //     for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 22:         total = total + x
+        //         total = total + x
         total = (tpy::add_check<int32_t>(total, x));
     }
-    // 23:     return total
+    //     return total
     return total;
 }
 
-// 25: def main() -> None:
+// def main() -> None:
 void main() {
-    // 26:     b = Box(Int32(10))
+    //     b = Box(Int32(10))
     Box b = Box(10);
-    // 27:     print(read_box(b, Int32(5)))
+    //     print(read_box(b, Int32(5)))
     std::cout << read_box(b, 5) << "\n";
-    // 28:     nums: list[Int32] = [1, 2, 3]
+    //     nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    // 29:     print(sum_list(nums))
+    //     print(sum_list(nums))
     std::cout << sum_list(nums) << "\n";
-    // 30:     print(b.get_value())
+    //     print(b.get_value())
     std::cout << b.get_value() << "\n";
 }
 
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 32: main()
+    // main()
     main();
 }
 

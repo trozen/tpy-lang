@@ -46,9 +46,9 @@ tpy_user::colors::Color EnumUtil<tpy_user::colors::Color>::from_name(std::string
 namespace tpy_user::colors {
 
 
-// 12: def color_value(c: Color) -> Int32:
+// def color_value(c: Color) -> Int32:
 int32_t color_value(Color c) {
-    // 13:     return c.value
+    //     return c.value
     return static_cast<int32_t>(c);
 }
 

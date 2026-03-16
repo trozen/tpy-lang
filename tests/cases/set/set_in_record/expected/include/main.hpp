@@ -12,11 +12,11 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // @dataclass
-// 6: class TaggedItem:
+// class TaggedItem:
 struct TaggedItem {
-    // 7:     name: str
+    //     name: str
     std::string name;
-    // 8:     tags: set[str]
+    //     tags: set[str]
     tpy::ordered_set<std::string> tags;
 
     TaggedItem() = default;

@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 54: def main() -> None:
+// def main() -> None:
 void main() {
-    // 55:     factory = DefaultWrapperMaker()
+    //     factory = DefaultWrapperMaker()
     DefaultWrapperMaker factory = DefaultWrapperMaker();
-    // 56:     container = Container(factory)
+    //     container = Container(factory)
     Container<DefaultWrapperMaker> container = Container<DefaultWrapperMaker>(factory);
-    // 57:     wrapper = container.create_wrapper("test")
+    //     wrapper = container.create_wrapper("test")
     Wrapper<Message> wrapper = container.create_wrapper("test");
-    // 58:     result = wrapper.get_result()
+    //     result = wrapper.get_result()
     Result result = wrapper.get_result();
-    // 59:     print(result.value)
+    //     print(result.value)
     std::cout << result.value << "\n";
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 61: main()
+    // main()
     main();
 }
 

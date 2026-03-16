@@ -3,16 +3,16 @@
 
 namespace tpy_user::main {
 
-// 8: x: I = I(42)
+// x: I = I(42)
 int32_t x{};
-// 9: ch: C = "x"  # Char from string literal, not constructor
+// ch: C = "x"  # Char from string literal, not constructor
 char ch{};
 
-// 4: def greet(n: I, c: C) -> None:
+// def greet(n: I, c: C) -> None:
 void greet(int32_t n, char c) {
-    // 5:     print(n)
+    //     print(n)
     std::cout << n << "\n";
-    // 6:     print(c)
+    //     print(c)
     std::cout << c << "\n";
 }
 
@@ -21,11 +21,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: x: I = I(42)
+    // x: I = I(42)
     x = 42;
-    // 9: ch: C = "x"  # Char from string literal, not constructor
+    // ch: C = "x"  # Char from string literal, not constructor
     ch = 'x';
-    // 10: greet(x, ch)
+    // greet(x, ch)
     greet(x, ch);
 }
 

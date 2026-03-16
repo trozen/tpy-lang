@@ -13,16 +13,16 @@ template<tpy::Sequence<std::string> T_s>
 std::string seq_str_at(const T_s& s, int32_t i);
 void main();
 
-// 6: def seq_at(s: Sequence[Int32], i: Int32) -> Int32:
+// def seq_at(s: Sequence[Int32], i: Int32) -> Int32:
 template<tpy::Sequence<int32_t> T_s>
 int32_t seq_at(const T_s& s, int32_t i) {
-    // 7:     return s[i]
+    //     return s[i]
     return tpy::__getitem__(s, i);
 }
-// 9: def seq_str_at(s: Sequence[str], i: Int32) -> str:
+// def seq_str_at(s: Sequence[str], i: Int32) -> str:
 template<tpy::Sequence<std::string> T_s>
 std::string seq_str_at(const T_s& s, int32_t i) {
-    // 10:     return s[i]
+    //     return s[i]
     return tpy::__getitem__(s, i);
 }
 

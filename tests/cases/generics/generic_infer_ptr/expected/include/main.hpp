@@ -17,13 +17,13 @@ extern ReadOnlyPtrHolder<Point>* const_holder;
 extern ReadOnlyPtrHolder<Point>* const_holder2;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 5: class PtrHolder[T]:
+// class PtrHolder[T]:
 template<typename T>
 struct PtrHolder {
-    // 6:     ptr: Ptr[T]
+    //     ptr: Ptr[T]
     T* ptr;
 
-    // 8:     def __init__(self, ptr: Ptr[T]) -> None:
+    //     def __init__(self, ptr: Ptr[T]) -> None:
     PtrHolder() = default;
     explicit PtrHolder(T* ptr) : ptr(ptr) {}
 };
@@ -36,13 +36,13 @@ inline std::ostream& operator<<(std::ostream& os, const PtrHolder<T>& obj) {
     return os;
 }
 
-// 12: class ReadOnlyPtrHolder[T]:
+// class ReadOnlyPtrHolder[T]:
 template<typename T>
 struct ReadOnlyPtrHolder {
-    // 13:     ptr: Ptr[readonly[T]]
+    //     ptr: Ptr[readonly[T]]
     const T* ptr;
 
-    // 15:     def __init__(self, ptr: Ptr[readonly[T]]) -> None:
+    //     def __init__(self, ptr: Ptr[readonly[T]]) -> None:
     ReadOnlyPtrHolder() = default;
     explicit ReadOnlyPtrHolder(const T* ptr) : ptr(ptr) {}
 };
@@ -55,11 +55,11 @@ inline std::ostream& operator<<(std::ostream& os, const ReadOnlyPtrHolder<T>& ob
     return os;
 }
 
-// 19: class Point:
+// class Point:
 struct Point {
-    // 20:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 21:     y: Int32
+    //     y: Int32
     int32_t y;
 
 };

@@ -28,88 +28,88 @@ void test_invert();
 void test_builtin_pos();
 void main();
 
-// 6: class Vec2:
+// class Vec2:
 struct Vec2 {
-    // 7:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 8:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 10:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Vec2() = default;
     explicit Vec2(int32_t x, int32_t y) : x(x), y(y) {}
 
-    // 14:     def __add__(self, other: Vec2) -> Own[Vec2]:
+    //     def __add__(self, other: Vec2) -> Own[Vec2]:
     Vec2 __add__(const Vec2& other) const {
-        // 15:         return Vec2(self.x + other.x, self.y + other.y)
+        //         return Vec2(self.x + other.x, self.y + other.y)
         return Vec2((tpy::add_check<int32_t>(this->x, other.x)), (tpy::add_check<int32_t>(this->y, other.y)));
     }
 
-    // 17:     def __sub__(self, other: Vec2) -> Own[Vec2]:
+    //     def __sub__(self, other: Vec2) -> Own[Vec2]:
     Vec2 __sub__(const Vec2& other) const {
-        // 18:         return Vec2(self.x - other.x, self.y - other.y)
+        //         return Vec2(self.x - other.x, self.y - other.y)
         return Vec2((tpy::sub_check<int32_t>(this->x, other.x)), (tpy::sub_check<int32_t>(this->y, other.y)));
     }
 
-    // 20:     def __mul__(self, scalar: Int32) -> Own[Vec2]:
+    //     def __mul__(self, scalar: Int32) -> Own[Vec2]:
     Vec2 __mul__(int32_t scalar) const {
-        // 21:         return Vec2(self.x * scalar, self.y * scalar)
+        //         return Vec2(self.x * scalar, self.y * scalar)
         return Vec2((tpy::mul_check<int32_t>(this->x, scalar)), (tpy::mul_check<int32_t>(this->y, scalar)));
     }
 
-    // 23:     def __neg__(self) -> Own[Vec2]:
+    //     def __neg__(self) -> Own[Vec2]:
     Vec2 __neg__() const {
-        // 24:         return Vec2(-self.x, -self.y)
+        //         return Vec2(-self.x, -self.y)
         return Vec2(tpy::neg_check<int32_t>(this->x), tpy::neg_check<int32_t>(this->y));
     }
 
-    // 26:     def __pos__(self) -> Own[Vec2]:
+    //     def __pos__(self) -> Own[Vec2]:
     Vec2 __pos__() const {
-        // 27:         return Vec2(+self.x, +self.y)
+        //         return Vec2(+self.x, +self.y)
         return Vec2(+this->x, +this->y);
     }
 
-    // 29:     def __eq__(self, other: Vec2) -> bool:
+    //     def __eq__(self, other: Vec2) -> bool:
     bool __eq__(const Vec2& other) const {
-        // 30:         return self.x == other.x and self.y == other.y
+        //         return self.x == other.x and self.y == other.y
         return ((this->x == other.x) && (this->y == other.y));
     }
 
-    // 32:     def __hash__(self) -> UInt64:
+    //     def __hash__(self) -> UInt64:
     uint64_t __hash__() const {
-        // 33:         return UInt64(self.x * 31 + self.y)
+        //         return UInt64(self.x * 31 + self.y)
         return tpy::int_cast_check<uint64_t>((tpy::add_check<int32_t>((tpy::mul_check<int32_t>(this->x, 31)), this->y)));
     }
 
-    // 35:     def __len__(self) -> Int32:
+    //     def __len__(self) -> Int32:
     int32_t __len__() const {
-        // 36:         return Int32(2)
+        //         return Int32(2)
         return 2;
     }
 
-    // 38:     def __contains__(self, value: Int32) -> bool:
+    //     def __contains__(self, value: Int32) -> bool:
     bool __contains__(int32_t value) const {
-        // 39:         return value == self.x or value == self.y
+        //         return value == self.x or value == self.y
         return ((value == this->x) || (value == this->y));
     }
 
-    // 41:     def __iadd__(self, other: Vec2) -> Vec2:
+    //     def __iadd__(self, other: Vec2) -> Vec2:
     Vec2& __iadd__(const Vec2& other) {
-        // 42:         self.x += other.x
+        //         self.x += other.x
         this->x = tpy::add_check<int32_t>(this->x, other.x);
-        // 43:         self.y += other.y
+        //         self.y += other.y
         this->y = tpy::add_check<int32_t>(this->y, other.y);
-        // 44:         return self
+        //         return self
         return (*this);
     }
 
-    // 46:     def __isub__(self, other: Vec2) -> Vec2:
+    //     def __isub__(self, other: Vec2) -> Vec2:
     Vec2& __isub__(const Vec2& other) {
-        // 47:         self.x -= other.x
+        //         self.x -= other.x
         this->x = tpy::sub_check<int32_t>(this->x, other.x);
-        // 48:         self.y -= other.y
+        //         self.y -= other.y
         this->y = tpy::sub_check<int32_t>(this->y, other.y);
-        // 49:         return self
+        //         return self
         return (*this);
     }
 
@@ -153,42 +153,42 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
     return os;
 }
 
-// 51: class Score:
+// class Score:
 struct Score {
-    // 52:     value: Int32
+    //     value: Int32
     int32_t value;
 
-    // 54:     def __init__(self, value: Int32) -> None:
+    //     def __init__(self, value: Int32) -> None:
     Score() = default;
     explicit Score(int32_t value) : value(value) {}
 
-    // 57:     def __eq__(self, other: Score) -> bool:
+    //     def __eq__(self, other: Score) -> bool:
     bool __eq__(const Score& other) const {
-        // 58:         return self.value == other.value
+        //         return self.value == other.value
         return (this->value == other.value);
     }
 
-    // 60:     def __lt__(self, other: Score) -> bool:
+    //     def __lt__(self, other: Score) -> bool:
     bool __lt__(const Score& other) const {
-        // 61:         return self.value < other.value
+        //         return self.value < other.value
         return (this->value < other.value);
     }
 
-    // 63:     def __le__(self, other: Score) -> bool:
+    //     def __le__(self, other: Score) -> bool:
     bool __le__(const Score& other) const {
-        // 64:         return self.value <= other.value
+        //         return self.value <= other.value
         return (this->value <= other.value);
     }
 
-    // 66:     def __gt__(self, other: Score) -> bool:
+    //     def __gt__(self, other: Score) -> bool:
     bool __gt__(const Score& other) const {
-        // 67:         return self.value > other.value
+        //         return self.value > other.value
         return (this->value > other.value);
     }
 
-    // 69:     def __ge__(self, other: Score) -> bool:
+    //     def __ge__(self, other: Score) -> bool:
     bool __ge__(const Score& other) const {
-        // 70:         return self.value >= other.value
+        //         return self.value >= other.value
         return (this->value >= other.value);
     }
 
@@ -220,18 +220,18 @@ inline std::ostream& operator<<(std::ostream& os, const Score& obj) {
     return os;
 }
 
-// 72: class Mask:
+// class Mask:
 struct Mask {
-    // 73:     bits: Int32
+    //     bits: Int32
     int32_t bits;
 
-    // 75:     def __init__(self, bits: Int32) -> None:
+    //     def __init__(self, bits: Int32) -> None:
     Mask() = default;
     explicit Mask(int32_t bits) : bits(bits) {}
 
-    // 78:     def __invert__(self) -> Own[Mask]:
+    //     def __invert__(self) -> Own[Mask]:
     Mask __invert__() const {
-        // 79:         return Mask(~self.bits)
+        //         return Mask(~self.bits)
         return Mask(static_cast<int32_t>(~(this->bits)));
     }
 
@@ -247,24 +247,24 @@ inline std::ostream& operator<<(std::ostream& os, const Mask& obj) {
     return os;
 }
 
-// 137: class Tag:
+// class Tag:
 struct Tag {
-    // 138:     value: Int32
+    //     value: Int32
     int32_t value;
 
-    // 140:     def __init__(self, value: Int32) -> None:
+    //     def __init__(self, value: Int32) -> None:
     Tag() = default;
     explicit Tag(int32_t value) : value(value) {}
 
-    // 143:     def __eq__(self, other: Tag) -> bool:
+    //     def __eq__(self, other: Tag) -> bool:
     bool __eq__(const Tag& other) const {
-        // 144:         return self.value == other.value
+        //         return self.value == other.value
         return (this->value == other.value);
     }
 
-    // 146:     def __ne__(self, other: Tag) -> bool:
+    //     def __ne__(self, other: Tag) -> bool:
     bool __ne__(const Tag& other) const {
-        // 147:         return self.value != other.value
+        //         return self.value != other.value
         return (this->value != other.value);
     }
 
@@ -284,10 +284,10 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
     return os;
 }
 
-// 156: class Child(Vec2):
+// class Child(Vec2):
 struct Child : Vec2 {
 
-    // 157:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Child() = default;
     explicit Child(int32_t x, int32_t y) : Vec2(x, y) {}
 };

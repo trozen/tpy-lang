@@ -4,28 +4,28 @@
 namespace tpy_user::main {
 
 
-// 9: def consume(h: Own[Handle]) -> Int32:
+// def consume(h: Own[Handle]) -> Int32:
 int32_t consume(Handle&& h) {
-    // 10:     return h.value
+    //     return h.value
     return h.value;
 }
 
-// 13: def test_consume() -> Int32:
+// def test_consume() -> Int32:
 int32_t test_consume() {
-    // 14:     h: Handle | None = Handle()
+    //     h: Handle | None = Handle()
     Handle __slot_1 = Handle();
     Handle* h = &__slot_1;
-    // 15:     h.value = Int32(42)
+    //     h.value = Int32(42)
     h->value = 42;
-    // 16:     assert h is not None
+    //     assert h is not None
     if (!((h != nullptr))) tpy::tpy_panic("assertion failed");
-    // 17:     return consume(h)  # tpyc: ok
+    //     return consume(h)  # tpyc: ok
     return consume(std::move((*h)));
 }
 
-// 20: def main():
+// def main():
 void main() {
-    // 21:     print(test_consume())
+    //     print(test_consume())
     std::cout << test_consume() << "\n";
 }
 
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 24: main()
+    // main()
     main();
 }
 

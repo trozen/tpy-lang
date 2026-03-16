@@ -4,12 +4,12 @@
 namespace tpy_user::main {
 
 // # Test __init__ with parameter
-// 22: c = Counter(100)
+// c = Counter(100)
 Counter* c{};
 // # Test multiple print arguments
-// 36: a: Int32 = 42
+// a: Int32 = 42
 int32_t a{};
-// 37: b: Int32 = 99
+// b: Int32 = 99
 int32_t b{};
 
 void __tpy_init() {
@@ -17,34 +17,34 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 21: # Test __init__ with parameter
-    // 22: c = Counter(100)
+    // # Test __init__ with parameter
+    // c = Counter(100)
     static Counter __global_slot_1 = Counter(100);
     c = &__global_slot_1;
-    // 23: print(c.get())
+    // print(c.get())
     std::cout << c->get() << "\n";
-    // 25: # Test methods
-    // 26: c.increment()
+    // # Test methods
+    // c.increment()
     c->increment();
-    // 27: print(c.get())
+    // print(c.get())
     std::cout << c->get() << "\n";
-    // 29: c.add(5)
+    // c.add(5)
     c->add(5);
-    // 30: print(c.get())
+    // print(c.get())
     std::cout << c->get() << "\n";
-    // 32: c.reset()
+    // c.reset()
     c->reset();
-    // 33: print(c.get())
+    // print(c.get())
     std::cout << c->get() << "\n";
-    // 35: # Test multiple print arguments
-    // 36: a: Int32 = 42
+    // # Test multiple print arguments
+    // a: Int32 = 42
     a = 42;
-    // 37: b: Int32 = 99
+    // b: Int32 = 99
     b = 99;
-    // 38: print(a, b)
+    // print(a, b)
     std::cout << a << " " << b << "\n";
-    // 40: # Test string printing
-    // 41: print("done")
+    // # Test string printing
+    // print("done")
     std::cout << "done" << "\n";
 }
 

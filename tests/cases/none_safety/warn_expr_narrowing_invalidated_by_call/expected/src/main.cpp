@@ -4,22 +4,22 @@
 namespace tpy_user::main {
 
 
-// 11: def opaque(b: Box) -> None:
+// def opaque(b: Box) -> None:
 void opaque(const Box& b) {
-    // 12:     print(0)
+    //     print(0)
     std::cout << 0 << "\n";
 }
 
-// 15: def use_after_call(b: Box) -> Int32:
+// def use_after_call(b: Box) -> Int32:
 int32_t use_after_call(const Box& b) {
-    // 16:     if b.value is not None:
+    //     if b.value is not None:
     if ((b.value.has_value())) {
-        // 17:         opaque(b)
+        //         opaque(b)
         opaque(b);
-        // 18:         return b.value + 1  # tpyc: warning(/Potential None access/)
+        //         return b.value + 1  # tpyc: warning(/Potential None access/)
         return (tpy::add_check<int32_t>(tpy::deref_optional_check(b.value), 1));
     }
-    // 19:     return 0
+    //     return 0
     return 0;
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: print(use_after_call(Box(4)))
+    // print(use_after_call(Box(4)))
     Box __tmp_1 = Box(4);
     std::cout << use_after_call(__tmp_1) << "\n";
 }

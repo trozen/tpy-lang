@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-// 4: x: Int32 = -2147483648  # INT32_MIN
+// x: Int32 = -2147483648  # INT32_MIN
 int32_t x{};
-// 5: y: Int32 = -1
+// y: Int32 = -1
 int32_t y{};
-// 6: z: Int32 = x // y       # Result would be INT32_MAX + 1, should panic
+// z: Int32 = x // y       # Result would be INT32_MAX + 1, should panic
 int32_t z{};
 
 void __tpy_init() {
@@ -15,13 +15,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: x: Int32 = -2147483648  # INT32_MIN
+    // x: Int32 = -2147483648  # INT32_MIN
     x = -2147483648;
-    // 5: y: Int32 = -1
+    // y: Int32 = -1
     y = -1;
-    // 6: z: Int32 = x // y       # Result would be INT32_MAX + 1, should panic
+    // z: Int32 = x // y       # Result would be INT32_MAX + 1, should panic
     z = (tpy::div_check<int32_t>(x, y));
-    // 7: print(z)
+    // print(z)
     std::cout << z << "\n";
 }
 

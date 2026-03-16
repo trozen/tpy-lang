@@ -4,42 +4,42 @@
 namespace tpy_user::main {
 
 
-// 6: def sum_span(s: Span[readonly[Int32]]) -> Int32:
+// def sum_span(s: Span[readonly[Int32]]) -> Int32:
 int32_t sum_span(std::span<const int32_t> s) {
-    // 7:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 8:     for x in s:
+    //     for x in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 9:         total += x
+        //         total += x
         total = tpy::add_check<int32_t>(total, x);
     }
-    // 10:     return total
+    //     return total
     return total;
 }
 
-// 13: def main() -> None:
+// def main() -> None:
 void main() {
-    // 14:     a = ArrayList[Int32, 8]()
+    //     a = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> a = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    // 15:     a.append(10)
+    //     a.append(10)
     a.append(10);
-    // 16:     a.append(20)
+    //     a.append(20)
     a.append(20);
-    // 17:     a.append(30)
+    //     a.append(30)
     a.append(30);
-    // 19:     # __str__ via str()
-    // 20:     print(str(a))
+    //     # __str__ via str()
+    //     print(str(a))
     std::cout << std::string(tpy::__str__(a)) << "\n";
-    // 22:     # __span__ returns mutable Span
-    // 23:     s: Span[Int32] = a.__span__()
+    //     # __span__ returns mutable Span
+    //     s: Span[Int32] = a.__span__()
     std::span<int32_t> s = a.__span__();
-    // 24:     print(len(s))       # 3
+    //     print(len(s))       # 3
     std::cout << tpy::__len__(s) << "\n";
-    // 25:     print(sum_span(s))  # 60
+    //     print(sum_span(s))  # 60
     std::cout << sum_span(s) << "\n";
 }
 
@@ -48,9 +48,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: from tplib import ArrayList
+    // from tplib import ArrayList
     ::tpy_user::tplib::__tpy_init();
-    // 28: main()
+    // main()
     main();
 }
 

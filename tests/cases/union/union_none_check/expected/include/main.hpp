@@ -13,12 +13,12 @@ std::string describe(const std::variant<std::monostate, Dog, int32_t>& v);
 void process(const std::variant<std::monostate, Dog, int32_t>& v);
 void main();
 
-// 4: class Dog:
+// class Dog:
 struct Dog {
-    // 5:     name: str
+    //     name: str
     std::string name;
 
-    // 6:     def __init__(self, name: str) -> None:
+    //     def __init__(self, name: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name) : name(name) {}
 };

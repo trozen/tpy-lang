@@ -4,9 +4,9 @@
 namespace tpy_user::main {
 
 
-// 4: def gt_pair(a: Int32 | None, b: Int32 | None) -> bool:
+// def gt_pair(a: Int32 | None, b: Int32 | None) -> bool:
 bool gt_pair(std::optional<int32_t> a, std::optional<int32_t> b) {
-    // 5:     return a > b  # tpyc: warning(/Potential None access/)
+    //     return a > b  # tpyc: warning(/Potential None access/)
     return (tpy::deref_optional_check(a) > tpy::deref_optional_check(b));
 }
 
@@ -15,9 +15,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: print(gt_pair(3, 1))
+    // print(gt_pair(3, 1))
     std::cout << tpy::print_bool(gt_pair(3, 1)) << "\n";
-    // 9: print(gt_pair(None, 1))
+    // print(gt_pair(None, 1))
     std::cout << tpy::print_bool(gt_pair(std::nullopt, 1)) << "\n";
 }
 

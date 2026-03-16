@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 // # ArrayList methods (append, len, subscript)
-// 6: al = ArrayList[Int32, 8]()
+// al = ArrayList[Int32, 8]()
 ::tpy_user::tplib::ArrayList<int32_t, 8>* al{};
 // # Array methods (subscript, len)
-// 15: arr: Array[Int32, 3] = [100, 200, 300]
+// arr: Array[Int32, 3] = [100, 200, 300]
 std::array<int32_t, 3>* arr{};
 // # list methods
-// 31: nums: list[Int32] = [1, 2, 3]
+// nums: list[Int32] = [1, 2, 3]
 std::vector<int32_t>* nums{};
 
 // # Span methods (via function parameter)
-// 23: def span_ops(sp: Span[Int32]) -> None:
+// def span_ops(sp: Span[Int32]) -> None:
 void span_ops(std::span<int32_t> sp) {
-    // 24:     print(len(sp))
+    //     print(len(sp))
     std::cout << tpy::__len__(sp) << "\n";
-    // 25:     print(sp[0])
+    //     print(sp[0])
     std::cout << tpy::__getitem__(sp, 0) << "\n";
-    // 26:     print(sp[1])
+    //     print(sp[1])
     std::cout << tpy::__getitem__(sp, 1) << "\n";
 }
 
@@ -29,55 +29,55 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: from tplib import ArrayList
+    // from tplib import ArrayList
     ::tpy_user::tplib::__tpy_init();
-    // 5: # ArrayList methods (append, len, subscript)
-    // 6: al = ArrayList[Int32, 8]()
+    // # ArrayList methods (append, len, subscript)
+    // al = ArrayList[Int32, 8]()
     static ::tpy_user::tplib::ArrayList<int32_t, 8> __global_slot_1 = ::tpy_user::tplib::ArrayList<int32_t, 8>();
     al = &__global_slot_1;
-    // 7: al.append(10)
+    // al.append(10)
     al->append(10);
-    // 8: al.append(20)
+    // al.append(20)
     al->append(20);
-    // 9: al.append(30)
+    // al.append(30)
     al->append(30);
-    // 10: print(len(al))
+    // print(len(al))
     std::cout << tpy::__len__((*al)) << "\n";
-    // 11: print(al[0])
+    // print(al[0])
     std::cout << (*al)[0] << "\n";
-    // 12: print(al[2])
+    // print(al[2])
     std::cout << (*al)[2] << "\n";
-    // 14: # Array methods (subscript, len)
-    // 15: arr: Array[Int32, 3] = [100, 200, 300]
+    // # Array methods (subscript, len)
+    // arr: Array[Int32, 3] = [100, 200, 300]
     static std::array<int32_t, 3> __global_slot_2 = {100, 200, 300};
     arr = &__global_slot_2;
-    // 16: print(len(arr))
+    // print(len(arr))
     std::cout << tpy::__len__((*arr)) << "\n";
-    // 17: print(arr[0])
+    // print(arr[0])
     std::cout << tpy::__getitem__((*arr), 0) << "\n";
-    // 18: print(arr[2])
+    // print(arr[2])
     std::cout << tpy::__getitem__((*arr), 2) << "\n";
-    // 19: arr[1] = 250
+    // arr[1] = 250
     tpy::__setitem__((*arr), 1, 250);
-    // 20: print(arr[1])
+    // print(arr[1])
     std::cout << tpy::__getitem__((*arr), 1) << "\n";
-    // 28: span_ops(arr)
+    // span_ops(arr)
     span_ops(tpy::as_mut_span((*arr)));
-    // 30: # list methods
-    // 31: nums: list[Int32] = [1, 2, 3]
+    // # list methods
+    // nums: list[Int32] = [1, 2, 3]
     static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
     nums = &__global_slot_3;
-    // 32: nums.append(4)
+    // nums.append(4)
     (*nums).push_back(4);
-    // 33: print(len(nums))
+    // print(len(nums))
     std::cout << tpy::__len__((*nums)) << "\n";
-    // 34: print(nums[0])
+    // print(nums[0])
     std::cout << tpy::__getitem__((*nums), 0) << "\n";
-    // 35: print(nums[3])
+    // print(nums[3])
     std::cout << tpy::__getitem__((*nums), 3) << "\n";
-    // 36: nums.pop()
+    // nums.pop()
     tpy::pop_back((*nums));
-    // 37: print(len(nums))
+    // print(len(nums))
     std::cout << tpy::__len__((*nums)) << "\n";
 }
 

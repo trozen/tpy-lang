@@ -50,19 +50,19 @@ tpy_user::main::Direction EnumUtil<tpy_user::main::Direction>::from_name(std::st
 namespace tpy_user::main {
 
 
-// 10: def main() -> None:
+// def main() -> None:
 void main() {
-    // 11:     d: Direction = Direction.North
+    //     d: Direction = Direction.North
     Direction d = Direction::North;
-    // 12:     print(d)
+    //     print(d)
     std::cout << d << "\n";
-    // 13:     print(d.value)
+    //     print(d.value)
     std::cout << static_cast<int32_t>(d) << "\n";
-    // 14:     d = Direction.West
+    //     d = Direction.West
     d = Direction::West;
-    // 15:     print(d)
+    //     print(d)
     std::cout << d << "\n";
-    // 16:     print(d.value)
+    //     print(d.value)
     std::cout << static_cast<int32_t>(d) << "\n";
 }
 
@@ -71,7 +71,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: main()
+    // main()
     main();
 }
 

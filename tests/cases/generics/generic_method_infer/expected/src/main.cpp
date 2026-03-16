@@ -4,21 +4,21 @@
 namespace tpy_user::main {
 
 
-// 13: def main() -> None:
+// def main() -> None:
 void main() {
-    // 14:     b = Box[Int32](Int32(10))
+    //     b = Box[Int32](Int32(10))
     Box<int32_t> b = Box<int32_t>(10);
-    // 15:     r1 = b.transform(42)
+    //     r1 = b.transform(42)
     int32_t r1 = b.transform<int32_t>(42);
-    // 16:     print(r1)
+    //     print(r1)
     std::cout << r1 << "\n";
-    // 17:     r2 = b.transform("hello")
+    //     r2 = b.transform("hello")
     std::string_view r2 = b.transform<std::string_view>("hello");
-    // 18:     print(r2)
+    //     print(r2)
     std::cout << r2 << "\n";
-    // 19:     r3 = b.transform(True)
+    //     r3 = b.transform(True)
     bool r3 = b.transform<bool>(true);
-    // 20:     print(r3)
+    //     print(r3)
     std::cout << tpy::print_bool(r3) << "\n";
 }
 
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: main()
+    // main()
     main();
 }
 

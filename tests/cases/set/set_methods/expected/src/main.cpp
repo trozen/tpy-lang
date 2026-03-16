@@ -4,48 +4,48 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     s: set[Int32] = {10, 20, 30}
+    //     s: set[Int32] = {10, 20, 30}
     tpy::ordered_set<int32_t> s = tpy::ordered_set<int32_t>({10, 20, 30});
-    // 7:     # discard (no error if missing)
-    // 8:     s.discard(20)
+    //     # discard (no error if missing)
+    //     s.discard(20)
     s.erase(20);
-    // 9:     print(s)
+    //     print(s)
     std::cout << tpy::SetPrinter(s) << "\n";
-    // 10:     s.discard(99)  # no error
+    //     s.discard(99)  # no error
     s.erase(99);
-    // 11:     print(s)
+    //     print(s)
     std::cout << tpy::SetPrinter(s) << "\n";
-    // 13:     # remove (panics if missing, tested separately)
-    // 14:     s.remove(10)
+    //     # remove (panics if missing, tested separately)
+    //     s.remove(10)
     tpy::set_remove(s, 10);
-    // 15:     print(s)
+    //     print(s)
     std::cout << tpy::SetPrinter(s) << "\n";
-    // 17:     # pop (removes first element)
-    // 18:     val: Int32 = s.pop()
+    //     # pop (removes first element)
+    //     val: Int32 = s.pop()
     int32_t val = tpy::set_pop(s);
-    // 19:     print(val)
+    //     print(val)
     std::cout << val << "\n";
-    // 20:     print(s)
+    //     print(s)
     std::cout << tpy::SetPrinter(s) << "\n";
-    // 22:     # copy
-    // 23:     a: set[Int32] = {1, 2, 3}
+    //     # copy
+    //     a: set[Int32] = {1, 2, 3}
     tpy::ordered_set<int32_t> a = tpy::ordered_set<int32_t>({1, 2, 3});
-    // 24:     b: set[Int32] = a.copy()
+    //     b: set[Int32] = a.copy()
     tpy::ordered_set<int32_t> b = tpy::set_copy(a);
-    // 25:     b.add(4)
+    //     b.add(4)
     b.insert(4);
-    // 26:     print(a)
+    //     print(a)
     std::cout << tpy::SetPrinter(a) << "\n";
-    // 27:     print(b)
+    //     print(b)
     std::cout << tpy::SetPrinter(b) << "\n";
-    // 29:     # clear
-    // 30:     a.clear()
+    //     # clear
+    //     a.clear()
     a.clear();
-    // 31:     print(a)
+    //     print(a)
     std::cout << tpy::SetPrinter(a) << "\n";
-    // 32:     print(len(a))
+    //     print(len(a))
     std::cout << tpy::__len__(a) << "\n";
 }
 
@@ -54,7 +54,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 34: main()
+    // main()
     main();
 }
 

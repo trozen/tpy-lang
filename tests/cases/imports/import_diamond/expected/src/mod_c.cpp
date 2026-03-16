@@ -4,9 +4,9 @@
 namespace tpy_user::mod_c {
 
 
-// 4: def c_value() -> Int32:
+// def c_value() -> Int32:
 int32_t c_value() {
-    // 5:     return d_value() + Int32(20)
+    //     return d_value() + Int32(20)
     return (tpy::add_check<int32_t>(::tpy_user::mod_d::d_value(), 20));
 }
 
@@ -15,7 +15,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: from mod_d import d_value
+    // from mod_d import d_value
     ::tpy_user::mod_d::__tpy_init();
 }
 

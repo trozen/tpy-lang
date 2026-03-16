@@ -9,7 +9,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 11: print(Ops.plus_one(3))
+    // print(Ops.plus_one(3))
     std::cout << Ops::plus_one(3) << "\n";
 }
 

@@ -4,9 +4,9 @@
 namespace tpy_user::main {
 
 
-// 4: def eq_both(a: Int32 | None, b: Int32 | None) -> bool:
+// def eq_both(a: Int32 | None, b: Int32 | None) -> bool:
 bool eq_both(std::optional<int32_t> a, std::optional<int32_t> b) {
-    // 5:     return a == b  # tpyc: ok
+    //     return a == b  # tpyc: ok
     return (a == b);
 }
 
@@ -15,15 +15,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: print(eq_both(5, 5))
+    // print(eq_both(5, 5))
     std::cout << tpy::print_bool(eq_both(5, 5)) << "\n";
-    // 9: print(eq_both(5, 3))
+    // print(eq_both(5, 3))
     std::cout << tpy::print_bool(eq_both(5, 3)) << "\n";
-    // 10: print(eq_both(None, 5))
+    // print(eq_both(None, 5))
     std::cout << tpy::print_bool(eq_both(std::nullopt, 5)) << "\n";
-    // 11: print(eq_both(5, None))
+    // print(eq_both(5, None))
     std::cout << tpy::print_bool(eq_both(5, std::nullopt)) << "\n";
-    // 12: print(eq_both(None, None))
+    // print(eq_both(None, None))
     std::cout << tpy::print_bool(eq_both(std::nullopt, std::nullopt)) << "\n";
 }
 

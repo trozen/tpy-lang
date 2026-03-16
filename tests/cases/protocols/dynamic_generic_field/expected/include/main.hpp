@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 // @dynamic
-// 7: class Greeter(Protocol):
+// class Greeter(Protocol):
 template<typename T>
 concept __Greeter_Concept__ = requires(T& t) {
     { t.greet() } -> std::convertible_to<std::string>;
@@ -43,13 +43,13 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 10: class Tagged[T]:
+// class Tagged[T]:
 template<typename T>
 struct Tagged {
-    // 11:     tag: Int32
+    //     tag: Int32
     int32_t tag;
 
-    // 12:     def __init__(self, tag: Int32):
+    //     def __init__(self, tag: Int32):
     Tagged() = default;
     explicit Tagged(int32_t tag) : tag(tag) {}
 };
@@ -62,12 +62,12 @@ inline std::ostream& operator<<(std::ostream& os, const Tagged<T>& obj) {
     return os;
 }
 
-// 15: class Owner:
+// class Owner:
 struct Owner {
-    // 16:     item: Tagged[Greeter]
+    //     item: Tagged[Greeter]
     Tagged<Greeter> item;
 
-    // 17:     def __init__(self, item: Tagged[Greeter]):
+    //     def __init__(self, item: Tagged[Greeter]):
     Owner() = default;
     explicit Owner(const Tagged<Greeter>& item) : item(item) {}
 };

@@ -46,41 +46,41 @@ tpy_user::main::Color EnumUtil<tpy_user::main::Color>::from_name(std::string_vie
 namespace tpy_user::main {
 
 
-// 9: def next_color(c: Color) -> Color:
+// def next_color(c: Color) -> Color:
 Color next_color(Color c) {
-    // 10:     if c.value == 0:
+    //     if c.value == 0:
     if ((static_cast<int32_t>(c) == 0)) {
-        // 11:         return Color.Green
+        //         return Color.Green
         return Color::Green;
     }
-    // 12:     if c.value == 1:
+    //     if c.value == 1:
     if ((static_cast<int32_t>(c) == 1)) {
-        // 13:         return Color.Blue
+        //         return Color.Blue
         return Color::Blue;
     }
-    // 14:     return Color.Red
+    //     return Color.Red
     return Color::Red;
 }
 
-// 16: def print_color(c: Color) -> None:
+// def print_color(c: Color) -> None:
 void print_color(Color c) {
-    // 17:     print(c)
+    //     print(c)
     std::cout << c << "\n";
 }
 
-// 19: def main() -> None:
+// def main() -> None:
 void main() {
-    // 20:     c: Color = Color.Red
+    //     c: Color = Color.Red
     Color c = Color::Red;
-    // 21:     print_color(c)
+    //     print_color(c)
     print_color(c);
-    // 22:     c = next_color(c)
+    //     c = next_color(c)
     c = next_color(c);
-    // 23:     print_color(c)
+    //     print_color(c)
     print_color(c);
-    // 24:     c = next_color(c)
+    //     c = next_color(c)
     c = next_color(c);
-    // 25:     print_color(c)
+    //     print_color(c)
     print_color(c);
 }
 
@@ -89,7 +89,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 27: main()
+    // main()
     main();
 }
 

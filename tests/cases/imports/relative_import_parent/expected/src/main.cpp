@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> Int32:
+// def main() -> Int32:
 int32_t main() {
-    // 5:     result: Int32 = compute()
+    //     result: Int32 = compute()
     int32_t result = ::tpy_user::outer::inner::consumer::compute();
-    // 6:     print(result)
+    //     print(result)
     std::cout << result << "\n";
-    // 7:     return Int32(0)
+    //     return Int32(0)
     return 0;
 }
 
@@ -19,11 +19,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: from outer.inner.consumer import compute
+    // from outer.inner.consumer import compute
     ::tpy_user::outer::__tpy_init();
     ::tpy_user::outer::inner::__tpy_init();
     ::tpy_user::outer::inner::consumer::__tpy_init();
-    // 9: main()
+    // main()
     main();
 }
 

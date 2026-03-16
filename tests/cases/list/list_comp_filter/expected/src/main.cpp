@@ -4,12 +4,12 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     # Filter: keep only positive
-    // 6:     data: list[Int32] = [3, -1, 4, -2, 5]
+    //     # Filter: keep only positive
+    //     data: list[Int32] = [3, -1, 4, -2, 5]
     std::vector<int32_t> data = {3, -1, 4, -2, 5};
-    // 7:     pos = [x for x in data if x > 0]
+    //     pos = [x for x in data if x > 0]
     std::vector<int32_t> pos = [&]() {
         std::vector<int32_t> __result;
         auto& __obj_0 = data;
@@ -24,10 +24,10 @@ void main() {
         }
         return __result;
     }();
-    // 8:     print(pos)
+    //     print(pos)
     std::cout << tpy::ListPrinter(pos) << "\n";
-    // 10:     # Filter with transformation
-    // 11:     evens = [x * x for x in range(10) if x % 2 == 0]
+    //     # Filter with transformation
+    //     evens = [x * x for x in range(10) if x % 2 == 0]
     std::vector<int32_t> evens = [&]() {
         std::vector<int32_t> __result;
         const int32_t __stop_1 = 10;
@@ -39,10 +39,10 @@ void main() {
         }
         return __result;
     }();
-    // 12:     print(evens)
+    //     print(evens)
     std::cout << tpy::ListPrinter(evens) << "\n";
-    // 14:     # Multiple conditions (all must be true)
-    // 15:     result = [x for x in range(20) if x % 2 == 0 if x % 3 == 0]
+    //     # Multiple conditions (all must be true)
+    //     result = [x for x in range(20) if x % 2 == 0 if x % 3 == 0]
     std::vector<int32_t> result = [&]() {
         std::vector<int32_t> __result;
         const int32_t __stop_2 = 20;
@@ -54,12 +54,12 @@ void main() {
         }
         return __result;
     }();
-    // 16:     print(result)
+    //     print(result)
     std::cout << tpy::ListPrinter(result) << "\n";
-    // 18:     # Filter strings by length
-    // 19:     words: list[str] = ["hi", "hello", "hey", "howdy", "yo"]
+    //     # Filter strings by length
+    //     words: list[str] = ["hi", "hello", "hey", "howdy", "yo"]
     std::vector<std::string> words = {"hi", "hello", "hey", "howdy", "yo"};
-    // 20:     short = [w for w in words if len(w) <= 3]
+    //     short = [w for w in words if len(w) <= 3]
     std::vector<std::string> short_ = [&]() {
         std::vector<std::string> __result;
         auto& __obj_3 = words;
@@ -74,7 +74,7 @@ void main() {
         }
         return __result;
     }();
-    // 21:     print(short)
+    //     print(short)
     std::cout << tpy::ListPrinter(short_) << "\n";
 }
 
@@ -83,7 +83,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 23: main()
+    // main()
     main();
 }
 

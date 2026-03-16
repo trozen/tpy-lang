@@ -10,12 +10,12 @@ struct C;
 extern C* x;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 4: class C:
+// class C:
 struct C {
-    // 5:     v: Int32
+    //     v: Int32
     int32_t v;
 
-    // 7:     def __init__(self, v: Int32):
+    //     def __init__(self, v: Int32):
     C() = default;
     explicit C(int32_t v) : v(v) {}
 };

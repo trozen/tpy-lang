@@ -13,12 +13,12 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t describe(const std::variant<Cat, Dog>& a);
 void main();
 
-// 4: class Dog:
+// class Dog:
 struct Dog {
-    // 5:     age: Int32
+    //     age: Int32
     int32_t age;
 
-    // 6:     def __init__(self, age: Int32) -> None:
+    //     def __init__(self, age: Int32) -> None:
     Dog() = default;
     explicit Dog(int32_t age) : age(age) {}
 };
@@ -30,12 +30,12 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
-// 9: class Cat:
+// class Cat:
 struct Cat {
-    // 10:     age: Int32
+    //     age: Int32
     int32_t age;
 
-    // 11:     def __init__(self, age: Int32) -> None:
+    //     def __init__(self, age: Int32) -> None:
     Cat() = default;
     explicit Cat(int32_t age) : age(age) {}
 };

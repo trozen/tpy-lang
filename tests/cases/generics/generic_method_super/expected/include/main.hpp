@@ -12,20 +12,20 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Base[T]:
+// class Base[T]:
 template<typename T>
 struct Base {
-    // 5:     val: T
+    //     val: T
     T val;
 
-    // 7:     def __init__(self, val: T):
+    //     def __init__(self, val: T):
     Base() = default;
     explicit Base(const T& val) : val(val) {}
 
-    // 10:     def transform[U](self, other: U) -> U:
+    //     def transform[U](self, other: U) -> U:
     template<typename U>
     tpy::val_or_cref_t<U> transform(const U& other) const {
-        // 11:         return other
+        //         return other
         return other;
     }
 };
@@ -38,18 +38,18 @@ inline std::ostream& operator<<(std::ostream& os, const Base<T>& obj) {
     return os;
 }
 
-// 13: class Child[T](Base[T]):
+// class Child[T](Base[T]):
 template<typename T>
 struct Child : Base<T> {
 
-    // 14:     def __init__(self, val: T):
+    //     def __init__(self, val: T):
     Child() = default;
     explicit Child(const T& val) : Base<T>(val) {}
 
-    // 17:     def wrap[U](self, other: U) -> U:
+    //     def wrap[U](self, other: U) -> U:
     template<typename U>
     tpy::val_or_cref_t<U> wrap(const U& other) const {
-        // 18:         return super().transform(other)
+        //         return super().transform(other)
         return Base<T>::template transform<U>(other);
     }
 };

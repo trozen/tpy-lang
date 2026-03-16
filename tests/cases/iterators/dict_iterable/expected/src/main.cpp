@@ -4,31 +4,31 @@
 namespace tpy_user::main {
 
 
-// 18: def main() -> None:
+// def main() -> None:
 void main() {
-    // 19:     d: dict[str, Int32] = {"a": 1, "b": 2, "c": 3}
+    //     d: dict[str, Int32] = {"a": 1, "b": 2, "c": 3}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
-    // 21:     # dict itself is Iterable[K]
-    // 22:     print("keys via dict:")
+    //     # dict itself is Iterable[K]
+    //     print("keys via dict:")
     std::cout << "keys via dict:" << "\n";
-    // 23:     collect_items(d)
+    //     collect_items(d)
     collect_items(d);
-    // 25:     # dict.keys() is Iterable[K]
-    // 26:     print("keys via keys():")
+    //     # dict.keys() is Iterable[K]
+    //     print("keys via keys():")
     std::cout << "keys via keys():" << "\n";
-    // 27:     collect_items(d.keys())
+    //     collect_items(d.keys())
     auto __tmp_1 = tpy::dict_keys(d);
     collect_items(__tmp_1);
-    // 29:     # dict.values() is Iterable[V]
-    // 30:     print("values via values():")
+    //     # dict.values() is Iterable[V]
+    //     print("values via values():")
     std::cout << "values via values():" << "\n";
-    // 31:     collect_ints(d.values())
+    //     collect_ints(d.values())
     auto __tmp_2 = tpy::dict_values(d);
     collect_ints(__tmp_2);
-    // 33:     # dict.items() is Iterable[tuple[K, V]]
-    // 34:     print("items via items():")
+    //     # dict.items() is Iterable[tuple[K, V]]
+    //     print("items via items():")
     std::cout << "items via items():" << "\n";
-    // 35:     collect_pairs(d.items())
+    //     collect_pairs(d.items())
     auto __tmp_3 = tpy::dict_items(d);
     collect_pairs(__tmp_3);
 }
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 37: main()
+    // main()
     main();
 }
 

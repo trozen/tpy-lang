@@ -4,29 +4,29 @@
 namespace tpy_user::main {
 
 // # Test 1: Uppercase generic function (inferred) - critical for routing test
-// 20: nums = [10, 20, 30]
+// nums = [10, 20, 30]
 std::vector<int32_t>* nums{};
 // # Test 2: list constructor in same file (tests routing still works)
-// 24: nums2: list[Int32] = [1, 2, 3]
+// nums2: list[Int32] = [1, 2, 3]
 std::vector<int32_t>* nums2{};
 // # Test 3: list constructor in same file
-// 28: items = list[Int32]()
+// items = list[Int32]()
 std::vector<int32_t>* items{};
 // # Test 4: Same generic function with different types
-// 33: strs = ["hello", "world"]
+// strs = ["hello", "world"]
 std::vector<std::string>* strs{};
 // # Test 5: Generic function with record type (inferred)
-// 37: points = [Point(1, 2), Point(3, 4)]
+// points = [Point(1, 2), Point(3, 4)]
 std::vector<Point>* points{};
-// 38: p = get_item(points, Int32(0))
+// p = get_item(points, Int32(0))
 Point* p{};
 // # Test 6: Chained generic calls
-// 42: first_num = First([10, 20, 30])
+// first_num = First([10, 20, 30])
 int32_t first_num{};
-// 43: second_num = First([first_num, 40, 50])
+// second_num = First([first_num, 40, 50])
 int32_t second_num{};
 // # Test 7: Generic function in expression context
-// 47: result = First([5, 6, 7]) + 10
+// result = First([5, 6, 7]) + 10
 int32_t result{};
 
 void __tpy_init() {
@@ -34,54 +34,54 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 19: # Test 1: Uppercase generic function (inferred) - critical for routing test
-    // 20: nums = [10, 20, 30]
+    // # Test 1: Uppercase generic function (inferred) - critical for routing test
+    // nums = [10, 20, 30]
     static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
     nums = &__global_slot_1;
-    // 21: print(First(nums))
+    // print(First(nums))
     std::cout << First<int32_t>((*nums)) << "\n";
-    // 23: # Test 2: list constructor in same file (tests routing still works)
-    // 24: nums2: list[Int32] = [1, 2, 3]
+    // # Test 2: list constructor in same file (tests routing still works)
+    // nums2: list[Int32] = [1, 2, 3]
     static std::vector<int32_t> __global_slot_2 = {1, 2, 3};
     nums2 = &__global_slot_2;
-    // 25: print(len(nums2))
+    // print(len(nums2))
     std::cout << tpy::__len__((*nums2)) << "\n";
-    // 27: # Test 3: list constructor in same file
-    // 28: items = list[Int32]()
+    // # Test 3: list constructor in same file
+    // items = list[Int32]()
     static std::vector<int32_t> __global_slot_3 = std::vector<int32_t>();
     items = &__global_slot_3;
-    // 29: items.append(100)
+    // items.append(100)
     (*items).push_back(100);
-    // 30: print(len(items))
+    // print(len(items))
     std::cout << tpy::__len__((*items)) << "\n";
-    // 32: # Test 4: Same generic function with different types
-    // 33: strs = ["hello", "world"]
+    // # Test 4: Same generic function with different types
+    // strs = ["hello", "world"]
     static std::vector<std::string> __global_slot_4 = {"hello", "world"};
     strs = &__global_slot_4;
-    // 34: print(First(strs))
+    // print(First(strs))
     std::cout << First<std::string>((*strs)) << "\n";
-    // 36: # Test 5: Generic function with record type (inferred)
-    // 37: points = [Point(1, 2), Point(3, 4)]
+    // # Test 5: Generic function with record type (inferred)
+    // points = [Point(1, 2), Point(3, 4)]
     static std::vector<Point> __global_slot_5 = {Point(1, 2), Point(3, 4)};
     points = &__global_slot_5;
-    // 38: p = get_item(points, Int32(0))
+    // p = get_item(points, Int32(0))
     p = &(get_item<Point>((*points), 0));
-    // 39: print(p.x)
+    // print(p.x)
     std::cout << p->x << "\n";
-    // 41: # Test 6: Chained generic calls
-    // 42: first_num = First([10, 20, 30])
+    // # Test 6: Chained generic calls
+    // first_num = First([10, 20, 30])
     std::vector<int32_t> __tmp_1 = {10, 20, 30};
     first_num = First<int32_t>(__tmp_1);
-    // 43: second_num = First([first_num, 40, 50])
+    // second_num = First([first_num, 40, 50])
     std::vector<int32_t> __tmp_2 = {first_num, 40, 50};
     second_num = First<int32_t>(__tmp_2);
-    // 44: print(second_num)
+    // print(second_num)
     std::cout << second_num << "\n";
-    // 46: # Test 7: Generic function in expression context
-    // 47: result = First([5, 6, 7]) + 10
+    // # Test 7: Generic function in expression context
+    // result = First([5, 6, 7]) + 10
     std::vector<int32_t> __tmp_3 = {5, 6, 7};
     result = (tpy::add_check<int32_t>(First<int32_t>(__tmp_3), 10));
-    // 48: print(result)
+    // print(result)
     std::cout << result << "\n";
 }
 

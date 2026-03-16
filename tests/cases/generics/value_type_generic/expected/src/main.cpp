@@ -4,40 +4,40 @@
 namespace tpy_user::main {
 
 
-// 15: def swap(p: Pair[Int32]) -> Pair[Int32]:
+// def swap(p: Pair[Int32]) -> Pair[Int32]:
 Pair<int32_t> swap(Pair<int32_t> p) {
-    // 16:     return Pair[Int32](p.second, p.first)
+    //     return Pair[Int32](p.second, p.first)
     return Pair<int32_t>(p.second, p.first);
 }
 
-// 19: def main() -> None:
+// def main() -> None:
 void main() {
-    // 20:     # Builtin value type as bound
-    // 21:     p = Pair[Int32](1, 2)
+    //     # Builtin value type as bound
+    //     p = Pair[Int32](1, 2)
     Pair<int32_t> p = Pair<int32_t>(1, 2);
-    // 22:     q = p
+    //     q = p
     Pair<int32_t> q = p;
-    // 23:     q.first = 10
+    //     q.first = 10
     q.first = 10;
-    // 24:     print(p.first)
+    //     print(p.first)
     std::cout << p.first << "\n";
-    // 25:     print(q.first)
+    //     print(q.first)
     std::cout << q.first << "\n";
-    // 27:     s = swap(p)
+    //     s = swap(p)
     Pair<int32_t> s = swap(p);
-    // 28:     print(s.first)
+    //     print(s.first)
     std::cout << s.first << "\n";
-    // 29:     print(s.second)
+    //     print(s.second)
     std::cout << s.second << "\n";
-    // 31:     # User ValueType record as bound
-    // 32:     vp = Pair[Vec2](Vec2(1, 2), Vec2(3, 4))
+    //     # User ValueType record as bound
+    //     vp = Pair[Vec2](Vec2(1, 2), Vec2(3, 4))
     Pair<Vec2> vp = Pair<Vec2>(Vec2(1, 2), Vec2(3, 4));
-    // 33:     print(vp.first.x)
+    //     print(vp.first.x)
     std::cout << vp.first.x << "\n";
-    // 35:     # bool as bound
-    // 36:     bp = Pair[bool](True, False)
+    //     # bool as bound
+    //     bp = Pair[bool](True, False)
     Pair<bool> bp = Pair<bool>(true, false);
-    // 37:     print(bp.first)
+    //     print(bp.first)
     std::cout << tpy::print_bool(bp.first) << "\n";
 }
 
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 39: main()
+    // main()
     main();
 }
 

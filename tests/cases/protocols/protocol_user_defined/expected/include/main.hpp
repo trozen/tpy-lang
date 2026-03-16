@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-// 4: class Measurable(Protocol):
+// class Measurable(Protocol):
 template<typename T>
 concept Measurable = requires(const T& t) {
     { tpy::__len__(t) } -> std::convertible_to<int32_t>;
@@ -17,10 +17,10 @@ template<Measurable T_items>
 int32_t count(const T_items& items);
 void main();
 
-// 7: def count(items: Measurable) -> Int32:
+// def count(items: Measurable) -> Int32:
 template<Measurable T_items>
 int32_t count(const T_items& items) {
-    // 8:     return len(items)
+    //     return len(items)
     return tpy::__len__(items);
 }
 

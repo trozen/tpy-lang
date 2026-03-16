@@ -4,9 +4,9 @@
 namespace tpy_user::helper {
 
 
-// 3: def get_value() -> Int32:
+// def get_value() -> Int32:
 int32_t get_value() {
-    // 4:     return Int32(77)
+    //     return Int32(77)
     return 77;
 }
 

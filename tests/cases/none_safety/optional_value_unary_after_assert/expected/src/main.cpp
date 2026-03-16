@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 4: def negate_checked(x: Int32 | None) -> Int32:
+// def negate_checked(x: Int32 | None) -> Int32:
 int32_t negate_checked(std::optional<int32_t> x) {
-    // 5:     assert x is not None
+    //     assert x is not None
     if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
-    // 6:     return -x  # tpyc: ok
+    //     return -x  # tpyc: ok
     return tpy::neg_check<int32_t>((*x));
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 9: print(negate_checked(3))
+    // print(negate_checked(3))
     std::cout << negate_checked(3) << "\n";
 }
 

@@ -12,19 +12,19 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // # Keyword arguments in method calls
-// 3: class Formatter:
+// class Formatter:
 struct Formatter {
-    // 4:     prefix: str
+    //     prefix: str
     std::string prefix;
 
-    // 5:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Formatter() : prefix(">") {}
 
-    // 8:     def format(self, text: str, width: int = 0, fill: str = " ") -> str:
+    //     def format(self, text: str, width: int = 0, fill: str = " ") -> str:
     std::string format(std::string_view text, const tpy::BigInt& width = 0, std::string_view fill = " ") const {
-        // 9:         result = self.prefix + text
+        //         result = self.prefix + text
         std::string result = (tpy::str_concat(this->prefix, text));
-        // 10:         return result
+        //         return result
         return result;
     }
 };

@@ -14,12 +14,12 @@ tpy::BigInt get_value(const Outer& o);
 tpy::BigInt get_value_truthy(const Outer& o);
 void main();
 
-// 4: class Inner:
+// class Inner:
 struct Inner {
-    // 5:     value: Optional[int]
+    //     value: Optional[int]
     std::optional<tpy::BigInt> value;
 
-    // 6:     def __init__(self, value: Optional[int]) -> None:
+    //     def __init__(self, value: Optional[int]) -> None:
     Inner() = default;
     explicit Inner(std::optional<tpy::BigInt> value) : value(value) {}
 };
@@ -31,12 +31,12 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
     return os;
 }
 
-// 9: class Outer:
+// class Outer:
 struct Outer {
-    // 10:     inner: Inner
+    //     inner: Inner
     Inner inner;
 
-    // 11:     def __init__(self, inner: Inner) -> None:
+    //     def __init__(self, inner: Inner) -> None:
     Outer() = default;
     explicit Outer(const Inner& inner) : inner(inner) {}
 };

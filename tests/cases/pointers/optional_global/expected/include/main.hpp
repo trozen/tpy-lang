@@ -10,20 +10,20 @@ struct Point;
 extern Point* g;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 6:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 8:     def __init__(self, x: Int32, y: Int32):
+    //     def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    // 12:     def mag(self) -> Int32:
+    //     def mag(self) -> Int32:
     int32_t mag() const {
-        // 13:         return self.x + self.y
+        //         return self.x + self.y
         return (tpy::add_check<int32_t>(this->x, this->y));
     }
 };

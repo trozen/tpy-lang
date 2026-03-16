@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # Float value exceeds Int32 range
-// 3: x: Int32 = Int32(3000000000.0)
+// x: Int32 = Int32(3000000000.0)
 int32_t x{};
 
 void __tpy_init() {
@@ -12,10 +12,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: # Float value exceeds Int32 range
-    // 3: x: Int32 = Int32(3000000000.0)
+    // # Float value exceeds Int32 range
+    // x: Int32 = Int32(3000000000.0)
     x = tpy::from_float_check<int32_t>(3000000000.0);
-    // 4: print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 

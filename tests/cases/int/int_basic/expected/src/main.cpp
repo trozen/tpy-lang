@@ -4,67 +4,67 @@
 namespace tpy_user::main {
 
 // # Unary negation
-// 50: neg = -42
+// neg = -42
 int32_t neg{};
 
-// 4: def factorial(n: int) -> int:
+// def factorial(n: int) -> int:
 tpy::BigInt factorial(const tpy::BigInt& n) {
-    // 5:     if n <= 1:
+    //     if n <= 1:
     if ((n <= 1)) {
-        // 6:         return 1
+        //         return 1
         return tpy::BigInt(1);
     }
-    // 7:     return n * factorial(n - 1)
+    //     return n * factorial(n - 1)
     return ((n) * (factorial(((n) - (tpy::BigInt(1))))));
 }
 
-// 10: def test_arithmetic():
+// def test_arithmetic():
 void test_arithmetic() {
-    // 11:     a = 10
+    //     a = 10
     int32_t a = 10;
-    // 12:     b = 3
+    //     b = 3
     int32_t b = 3;
-    // 14:     # Basic arithmetic
-    // 15:     print(a + b)  # 13
+    //     # Basic arithmetic
+    //     print(a + b)  # 13
     std::cout << (tpy::add_check<int32_t>(a, b)) << "\n";
-    // 16:     print(a - b)  # 7
+    //     print(a - b)  # 7
     std::cout << (tpy::sub_check<int32_t>(a, b)) << "\n";
-    // 17:     print(a * b)  # 30
+    //     print(a * b)  # 30
     std::cout << (tpy::mul_check<int32_t>(a, b)) << "\n";
-    // 18:     print(a // b)  # 3 (floor division)
+    //     print(a // b)  # 3 (floor division)
     std::cout << (tpy::div_floor<int32_t>(a, b)) << "\n";
-    // 19:     print(a % b)  # 1
+    //     print(a % b)  # 1
     std::cout << (tpy::mod_floor<int32_t>(a, b)) << "\n";
-    // 21:     # Negative division (Python semantics)
-    // 22:     c = -7
+    //     # Negative division (Python semantics)
+    //     c = -7
     int32_t c = -7;
-    // 23:     d = 3
+    //     d = 3
     int32_t d = 3;
-    // 24:     print(c // d)  # -3 (not -2!)
+    //     print(c // d)  # -3 (not -2!)
     std::cout << (tpy::div_floor<int32_t>(c, d)) << "\n";
-    // 25:     print(c % d)   # 2 (not -1!)
+    //     print(c % d)   # 2 (not -1!)
     std::cout << (tpy::mod_floor<int32_t>(c, d)) << "\n";
 }
 
-// 28: def test_comparison():
+// def test_comparison():
 void test_comparison() {
-    // 29:     x = 42
+    //     x = 42
     int32_t x = 42;
-    // 30:     y = 100
+    //     y = 100
     int32_t y = 100;
-    // 32:     if x < y:
+    //     if x < y:
     if ((x < y)) {
-        // 33:         print("x < y")
+        //         print("x < y")
         std::cout << "x < y" << "\n";
     }
-    // 35:     if x != y:
+    //     if x != y:
     if ((x != y)) {
-        // 36:         print("x != y")
+        //         print("x != y")
         std::cout << "x != y" << "\n";
     }
-    // 38:     if x == 42:
+    //     if x == 42:
     if ((x == 42)) {
-        // 39:         print("x == 42")
+        //         print("x == 42")
         std::cout << "x == 42" << "\n";
     }
 }
@@ -74,19 +74,19 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 42: # Top-level execution
-    // 43: print(factorial(10))  # 3628800
+    // # Top-level execution
+    // print(factorial(10))  # 3628800
     std::cout << factorial(tpy::BigInt(10)) << "\n";
-    // 44: print(factorial(20))  # 2432902008176640000 (fits in 63 bits)
+    // print(factorial(20))  # 2432902008176640000 (fits in 63 bits)
     std::cout << factorial(tpy::BigInt(20)) << "\n";
-    // 46: test_arithmetic()
+    // test_arithmetic()
     test_arithmetic();
-    // 47: test_comparison()
+    // test_comparison()
     test_comparison();
-    // 49: # Unary negation
-    // 50: neg = -42
+    // # Unary negation
+    // neg = -42
     neg = -42;
-    // 51: print(neg)
+    // print(neg)
     std::cout << neg << "\n";
 }
 

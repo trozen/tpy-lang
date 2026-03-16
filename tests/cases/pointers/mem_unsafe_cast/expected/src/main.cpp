@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-// 4: arr: Array[Int32, 2] = [Int32(1), Int32(2)]
+// arr: Array[Int32, 2] = [Int32(1), Int32(2)]
 std::array<int32_t, 2>* arr{};
-// 5: p: Ptr[Int32] = unsafe_ptr(arr)
+// p: Ptr[Int32] = unsafe_ptr(arr)
 int32_t* p{};
-// 6: p2: Ptr[UInt32] = unsafe_cast(p)
+// p2: Ptr[UInt32] = unsafe_cast(p)
 uint32_t* p2{};
 
 void __tpy_init() {
@@ -15,17 +15,17 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_cast
-    // 4: arr: Array[Int32, 2] = [Int32(1), Int32(2)]
+    // from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_cast
+    // arr: Array[Int32, 2] = [Int32(1), Int32(2)]
     static std::array<int32_t, 2> __global_slot_1 = {1, 2};
     arr = &__global_slot_1;
-    // 5: p: Ptr[Int32] = unsafe_ptr(arr)
+    // p: Ptr[Int32] = unsafe_ptr(arr)
     p = (*arr).data();
-    // 6: p2: Ptr[UInt32] = unsafe_cast(p)
+    // p2: Ptr[UInt32] = unsafe_cast(p)
     p2 = reinterpret_cast<uint32_t*>(p);
-    // 7: print(unsafe_load(p2, UInt32(0)))
+    // print(unsafe_load(p2, UInt32(0)))
     std::cout << p2[0] << "\n";
-    // 8: print(unsafe_load(p2, UInt32(1)))
+    // print(unsafe_load(p2, UInt32(1)))
     std::cout << p2[1] << "\n";
 }
 

@@ -5,56 +5,56 @@ namespace tpy_user::main {
 
 
 // # --- Non-mutating imported function: no warning ---
-// 8: def test_imported_read_no_warn() -> None:
+// def test_imported_read_no_warn() -> None:
 void test_imported_read_no_warn() {
-    // 10:     items: list[Point] = [Point(Int32(1), Int32(2))]
+    //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<::tpy_user::helpers::Point> items = {::tpy_user::helpers::Point(1, 2)};
-    // 11:     v = items[Int32(0)]
+    //     v = items[Int32(0)]
     ::tpy_user::helpers::Point& v = tpy::__getitem__(items, 0);
-    // 12:     sum_points(items)  # tpyc: ok
+    //     sum_points(items)  # tpyc: ok
     ::tpy_user::helpers::sum_points(items);
-    // 13:     print(v.x)
+    //     print(v.x)
     std::cout << v.x << "\n";
 }
 
 // # --- Mutating imported function: warns ---
-// 17: def test_imported_mutate_warns() -> None:
+// def test_imported_mutate_warns() -> None:
 void test_imported_mutate_warns() {
-    // 19:     items: list[Point] = [Point(Int32(1), Int32(2))]
+    //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<::tpy_user::helpers::Point> items = {::tpy_user::helpers::Point(1, 2)};
-    // 20:     v = items[Int32(0)]
+    //     v = items[Int32(0)]
     ::tpy_user::helpers::Point& v = tpy::__getitem__(items, 0);
-    // 21:     add_point(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
+    //     add_point(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
     ::tpy_user::helpers::Point __tmp_1 = ::tpy_user::helpers::Point(9, 9);
     ::tpy_user::helpers::add_point(items, __tmp_1);
-    // 22:     print(len(items))
+    //     print(len(items))
     std::cout << tpy::__len__(items) << "\n";
 }
 
 // # --- Transitive: imported wrapper that calls mutator ---
-// 26: def test_imported_transitive_mutation_warns() -> None:
+// def test_imported_transitive_mutation_warns() -> None:
 void test_imported_transitive_mutation_warns() {
-    // 28:     items: list[Point] = [Point(Int32(1), Int32(2))]
+    //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<::tpy_user::helpers::Point> items = {::tpy_user::helpers::Point(1, 2)};
-    // 29:     v = items[Int32(0)]
+    //     v = items[Int32(0)]
     ::tpy_user::helpers::Point& v = tpy::__getitem__(items, 0);
-    // 30:     add_point_wrapper(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
+    //     add_point_wrapper(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
     ::tpy_user::helpers::Point __tmp_2 = ::tpy_user::helpers::Point(9, 9);
     ::tpy_user::helpers::add_point_wrapper(items, __tmp_2);
-    // 31:     print(len(items))
+    //     print(len(items))
     std::cout << tpy::__len__(items) << "\n";
 }
 
 // # --- Transitive: imported wrapper that only reads ---
-// 35: def test_imported_transitive_read_no_warn() -> None:
+// def test_imported_transitive_read_no_warn() -> None:
 void test_imported_transitive_read_no_warn() {
-    // 37:     items: list[Point] = [Point(Int32(1), Int32(2))]
+    //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<::tpy_user::helpers::Point> items = {::tpy_user::helpers::Point(1, 2)};
-    // 38:     v = items[Int32(0)]
+    //     v = items[Int32(0)]
     ::tpy_user::helpers::Point& v = tpy::__getitem__(items, 0);
-    // 39:     read_wrapper(items)  # tpyc: ok
+    //     read_wrapper(items)  # tpyc: ok
     ::tpy_user::helpers::read_wrapper(items);
-    // 40:     print(v.x)
+    //     print(v.x)
     std::cout << v.x << "\n";
 }
 
@@ -63,15 +63,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: from helpers import Point, sum_points, add_point, add_point_wrapper, read_wrapper
+    // from helpers import Point, sum_points, add_point, add_point_wrapper, read_wrapper
     ::tpy_user::helpers::__tpy_init();
-    // 42: test_imported_read_no_warn()
+    // test_imported_read_no_warn()
     test_imported_read_no_warn();
-    // 43: test_imported_mutate_warns()
+    // test_imported_mutate_warns()
     test_imported_mutate_warns();
-    // 44: test_imported_transitive_mutation_warns()
+    // test_imported_transitive_mutation_warns()
     test_imported_transitive_mutation_warns();
-    // 45: test_imported_transitive_read_no_warn()
+    // test_imported_transitive_read_no_warn()
     test_imported_transitive_read_no_warn();
 }
 

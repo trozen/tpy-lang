@@ -3,20 +3,20 @@
 
 namespace tpy_user::main {
 
-// 4: t1 = (Int32(1), "hello")
+// t1 = (Int32(1), "hello")
 std::tuple<int32_t, std::string> t1;
-// 5: t2 = (Int32(42), True)
+// t2 = (Int32(42), True)
 std::tuple<int32_t, bool> t2;
 
-// 7: def main() -> None:
+// def main() -> None:
 void main() {
-    // 8:     print(t1)
+    //     print(t1)
     std::cout << tpy::TuplePrinter(t1) << "\n";
-    // 9:     print(t2)
+    //     print(t2)
     std::cout << tpy::TuplePrinter(t2) << "\n";
-    // 10:     print(t1[0])
+    //     print(t1[0])
     std::cout << std::get<0>(t1) << "\n";
-    // 11:     print(t2[1])
+    //     print(t2[1])
     std::cout << tpy::print_bool(std::get<1>(t2)) << "\n";
 }
 
@@ -25,11 +25,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: t1 = (Int32(1), "hello")
+    // t1 = (Int32(1), "hello")
     t1 = std::tuple<int32_t, std::string>{1, "hello"};
-    // 5: t2 = (Int32(42), True)
+    // t2 = (Int32(42), True)
     t2 = std::tuple<int32_t, bool>{42, true};
-    // 13: main()
+    // main()
     main();
 }
 

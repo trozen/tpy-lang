@@ -4,9 +4,9 @@
 namespace tpy_user::utils {
 
 
-// 11: def add(a: Int32, b: Int32) -> Int32:
+// def add(a: Int32, b: Int32) -> Int32:
 int32_t add(int32_t a, int32_t b) {
-    // 12:     return a + b
+    //     return a + b
     return (tpy::add_check<int32_t>(a, b));
 }
 

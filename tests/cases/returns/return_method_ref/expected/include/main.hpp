@@ -12,18 +12,18 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void test();
 
-// 5: class Inner:
+// class Inner:
 struct Inner {
-    // 6:     val: int
+    //     val: int
     tpy::BigInt val;
 
-    // 8:     def __init__(self, val: int) -> None:
+    //     def __init__(self, val: int) -> None:
     Inner() = default;
     explicit Inner(const tpy::BigInt& val) : val(val) {}
 
-    // 11:     def mutate(self) -> None:
+    //     def mutate(self) -> None:
     void mutate() {
-        // 12:         self.val += 10
+        //         self.val += 10
         this->val = (this->val) + (tpy::BigInt(10));
     }
 };
@@ -35,23 +35,23 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
     return os;
 }
 
-// 15: class Holder:
+// class Holder:
 struct Holder {
-    // 16:     inner: Inner
+    //     inner: Inner
     Inner inner;
 
-    // 18:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Holder() : inner(Inner(tpy::BigInt(1))) {}
 
-    // 21:     def get(self) -> Inner:
+    //     def get(self) -> Inner:
     Inner& get() {
-        // 22:         return self.inner
+        //         return self.inner
         return this->inner;
     }
 
-    // 24:     def get_ro(self) -> readonly[Inner]:
+    //     def get_ro(self) -> readonly[Inner]:
     const Inner& get_ro() {
-        // 25:         return self.inner
+        //         return self.inner
         return this->inner;
     }
 };

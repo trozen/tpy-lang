@@ -5,81 +5,81 @@ namespace tpy_user::main {
 
 
 // # Test 'pass' statement in various contexts
-// 5: def empty_function() -> None:
+// def empty_function() -> None:
 void empty_function() {
-    // 6:     pass
+    //     pass
 }
 
-// 8: def function_with_pass_branch(x: Int32) -> Int32:
+// def function_with_pass_branch(x: Int32) -> Int32:
 int32_t function_with_pass_branch(int32_t x) {
-    // 9:     if x > 0:
+    //     if x > 0:
     if ((x > 0)) {
-        // 10:         pass
-    // 11:     else:
+        //         pass
+    //     else:
     } else {
-        // 12:         return -1
+        //         return -1
         return -1;
     }
-    // 13:     return x * 2
+    //     return x * 2
     return (tpy::mul_check<int32_t>(x, 2));
 }
 
-// 15: def pass_in_loop() -> Int32:
+// def pass_in_loop() -> Int32:
 int32_t pass_in_loop() {
-    // 16:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 17:     i: Int32 = 0
+    //     i: Int32 = 0
     int32_t i = 0;
-    // 18:     while i < 10:
+    //     while i < 10:
     while ((i < 10)) {
-        // 19:         if i % 2 == 0:
+        //         if i % 2 == 0:
         if (((tpy::mod_floor<int32_t>(i, 2)) == 0)) {
-            // 20:             pass
-        // 21:         else:
+            //             pass
+        //         else:
         } else {
-            // 22:             total += i
+            //             total += i
             total = tpy::add_check<int32_t>(total, i);
         }
-        // 23:         i += 1
+        //         i += 1
         i = tpy::add_check<int32_t>(i, 1);
     }
-    // 24:     return total
+    //     return total
     return total;
 }
 
-// 26: def pass_in_elif(x: Int32) -> Int32:
+// def pass_in_elif(x: Int32) -> Int32:
 int32_t pass_in_elif(int32_t x) {
-    // 27:     if x < 0:
+    //     if x < 0:
     if ((x < 0)) {
-        // 28:         return -1
+        //         return -1
         return -1;
-    // 29:     elif x == 0:
+    //     elif x == 0:
     } else if ((x == 0)) {
-        // 30:         pass
-    // 31:     else:
+        //         pass
+    //     else:
     } else {
-        // 32:         return 1
+        //         return 1
         return 1;
     }
-    // 33:     return 0
+    //     return 0
     return 0;
 }
 
-// 50: def test_class_with_pass() -> None:
+// def test_class_with_pass() -> None:
 void test_class_with_pass() {
-    // 51:     obj: Counter = Counter(10)
+    //     obj: Counter = Counter(10)
     Counter obj = Counter(10);
-    // 52:     obj.do_nothing()
+    //     obj.do_nothing()
     obj.do_nothing();
-    // 53:     print(obj.value)
+    //     print(obj.value)
     std::cout << obj.value << "\n";
-    // 54:     obj.maybe_increment(1)
+    //     obj.maybe_increment(1)
     obj.maybe_increment(1);
-    // 55:     print(obj.value)
+    //     print(obj.value)
     std::cout << obj.value << "\n";
-    // 56:     obj.maybe_increment(0)
+    //     obj.maybe_increment(0)
     obj.maybe_increment(0);
-    // 57:     print(obj.value)
+    //     print(obj.value)
     std::cout << obj.value << "\n";
 }
 
@@ -88,28 +88,28 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 59: # Test empty function
-    // 60: empty_function()
+    // # Test empty function
+    // empty_function()
     empty_function();
-    // 61: print("empty_function called")
+    // print("empty_function called")
     std::cout << "empty_function called" << "\n";
-    // 63: # Test pass in branch
-    // 64: print(function_with_pass_branch(5))
+    // # Test pass in branch
+    // print(function_with_pass_branch(5))
     std::cout << function_with_pass_branch(5) << "\n";
-    // 65: print(function_with_pass_branch(-3))
+    // print(function_with_pass_branch(-3))
     std::cout << function_with_pass_branch(-3) << "\n";
-    // 67: # Test pass in loop
-    // 68: print(pass_in_loop())
+    // # Test pass in loop
+    // print(pass_in_loop())
     std::cout << pass_in_loop() << "\n";
-    // 70: # Test pass in elif
-    // 71: print(pass_in_elif(-1))
+    // # Test pass in elif
+    // print(pass_in_elif(-1))
     std::cout << pass_in_elif(-1) << "\n";
-    // 72: print(pass_in_elif(0))
+    // print(pass_in_elif(0))
     std::cout << pass_in_elif(0) << "\n";
-    // 73: print(pass_in_elif(1))
+    // print(pass_in_elif(1))
     std::cout << pass_in_elif(1) << "\n";
-    // 75: # Test class with pass method
-    // 76: test_class_with_pass()
+    // # Test class with pass method
+    // test_class_with_pass()
     test_class_with_pass();
 }
 

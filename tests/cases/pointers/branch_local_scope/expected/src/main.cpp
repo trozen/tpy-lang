@@ -4,77 +4,77 @@
 namespace tpy_user::main {
 
 
-// 16: def branch_rvalue_independent(cond: bool) -> None:
+// def branch_rvalue_independent(cond: bool) -> None:
 void branch_rvalue_independent(bool cond) {
-    // 17:     # p is rvalue-init in both branches, used only within each branch (not after)
-    // 18:     if cond:
+    //     # p is rvalue-init in both branches, used only within each branch (not after)
+    //     if cond:
     std::optional<Point> __slot_1;
     Point* p;
     if (cond) {
-        // 19:         p = Point(1, 2)
+        //         p = Point(1, 2)
         p = &*(__slot_1 = Point(1, 2));
-        // 20:         print(p.x, p.y)
+        //         print(p.x, p.y)
         std::cout << p->x << " " << p->y << "\n";
-    // 21:     else:
+    //     else:
     } else {
-        // 22:         p = Point(3, 4)
+        //         p = Point(3, 4)
         p = &*(__slot_1 = Point(3, 4));
-        // 23:         print(p.x, p.y)
+        //         print(p.x, p.y)
         std::cout << p->x << " " << p->y << "\n";
     }
 }
 
-// 26: def branch_rvalue_three_way(flag: Int32) -> None:
+// def branch_rvalue_three_way(flag: Int32) -> None:
 void branch_rvalue_three_way(int32_t flag) {
-    // 27:     # Three-way: each elif/else branch has its own independent local
-    // 28:     if flag == 0:
+    //     # Three-way: each elif/else branch has its own independent local
+    //     if flag == 0:
     std::optional<Point> __slot_1;
     Point* p;
     if ((flag == 0)) {
-        // 29:         p = Point(10, 20)
+        //         p = Point(10, 20)
         p = &*(__slot_1 = Point(10, 20));
-        // 30:         print(p.x, p.y)
+        //         print(p.x, p.y)
         std::cout << p->x << " " << p->y << "\n";
-    // 31:     elif flag == 1:
+    //     elif flag == 1:
     } else if ((flag == 1)) {
-        // 32:         p = Point(30, 40)
+        //         p = Point(30, 40)
         p = &*(__slot_1 = Point(30, 40));
-        // 33:         print(p.x, p.y)
+        //         print(p.x, p.y)
         std::cout << p->x << " " << p->y << "\n";
-    // 34:     else:
+    //     else:
     } else {
-        // 35:         p = Point(50, 60)
+        //         p = Point(50, 60)
         p = &*(__slot_1 = Point(50, 60));
-        // 36:         print(p.x, p.y)
+        //         print(p.x, p.y)
         std::cout << p->x << " " << p->y << "\n";
     }
 }
 
-// 39: def branch_mixed_scope(cond: bool) -> None:
+// def branch_mixed_scope(cond: bool) -> None:
 void branch_mixed_scope(bool cond) {
-    // 40:     # First var is used after (pre-declared), second is branch-only (independent)
-    // 41:     if cond:
+    //     # First var is used after (pre-declared), second is branch-only (independent)
+    //     if cond:
     std::optional<Point> __slot_1;
     Point* local;
     std::optional<Point> __slot_2;
     Point* shared;
     if (cond) {
-        // 42:         shared = Point(1, 2)
+        //         shared = Point(1, 2)
         shared = &*(__slot_2 = Point(1, 2));
-        // 43:         local = Point(10, 20)
+        //         local = Point(10, 20)
         local = &*(__slot_1 = Point(10, 20));
-        // 44:         print(local.x, local.y)
+        //         print(local.x, local.y)
         std::cout << local->x << " " << local->y << "\n";
-    // 45:     else:
+    //     else:
     } else {
-        // 46:         shared = Point(3, 4)
+        //         shared = Point(3, 4)
         shared = &*(__slot_2 = Point(3, 4));
-        // 47:         local = Point(30, 40)
+        //         local = Point(30, 40)
         local = &*(__slot_1 = Point(30, 40));
-        // 48:         print(local.x, local.y)
+        //         print(local.x, local.y)
         std::cout << local->x << " " << local->y << "\n";
     }
-    // 49:     print(shared.x, shared.y)
+    //     print(shared.x, shared.y)
     std::cout << shared->x << " " << shared->y << "\n";
 }
 
@@ -83,19 +83,19 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 52: branch_rvalue_independent(True)
+    // branch_rvalue_independent(True)
     branch_rvalue_independent(true);
-    // 53: branch_rvalue_independent(False)
+    // branch_rvalue_independent(False)
     branch_rvalue_independent(false);
-    // 54: branch_rvalue_three_way(0)
+    // branch_rvalue_three_way(0)
     branch_rvalue_three_way(0);
-    // 55: branch_rvalue_three_way(1)
+    // branch_rvalue_three_way(1)
     branch_rvalue_three_way(1);
-    // 56: branch_rvalue_three_way(2)
+    // branch_rvalue_three_way(2)
     branch_rvalue_three_way(2);
-    // 57: branch_mixed_scope(True)
+    // branch_mixed_scope(True)
     branch_mixed_scope(true);
-    // 58: branch_mixed_scope(False)
+    // branch_mixed_scope(False)
     branch_mixed_scope(false);
 }
 

@@ -4,41 +4,41 @@
 namespace tpy_user::main {
 
 
-// 10: def close(h: Own[Handle]) -> Int32:
+// def close(h: Own[Handle]) -> Int32:
 int32_t close(Handle&& h) {
-    // 11:     return h.fd
+    //     return h.fd
     return h.fd;
 }
 
-// 14: def test() -> Int32:
+// def test() -> Int32:
 int32_t test() {
-    // 15:     h = Handle()
+    //     h = Handle()
     Handle h = Handle();
-    // 16:     h.fd = 42
+    //     h.fd = 42
     h.fd = 42;
-    // 17:     result = Int32(0)
+    //     result = Int32(0)
     int32_t result = 0;
-    // 18:     i = Int32(0)
+    //     i = Int32(0)
     int32_t i = 0;
-    // 19:     while i < 3:
+    //     while i < 3:
     while ((i < 3)) {
-        // 20:         if i == 1:
+        //         if i == 1:
         if ((i == 1)) {
-            // 21:             result = close(h)  # tpyc: ok
+            //             result = close(h)  # tpyc: ok
             result = close(std::move(h));
-            // 22:             break
+            //             break
             break;
         }
-        // 23:         i += 1
+        //         i += 1
         i = tpy::add_check<int32_t>(i, 1);
     }
-    // 24:     return result
+    //     return result
     return result;
 }
 
-// 27: def main():
+// def main():
 void main() {
-    // 28:     print(test())
+    //     print(test())
     std::cout << test() << "\n";
 }
 
@@ -47,7 +47,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 31: main()
+    // main()
     main();
 }
 

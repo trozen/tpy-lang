@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 47: def main() -> None:
+// def main() -> None:
 void main() {
-    // 48:     factory = DefaultWrapperMaker()
+    //     factory = DefaultWrapperMaker()
     DefaultWrapperMaker factory = DefaultWrapperMaker();
-    // 49:     container = Container(factory)
+    //     container = Container(factory)
     Container<DefaultWrapperMaker> container = Container<DefaultWrapperMaker>(factory);
-    // 50:     wrapper = container.create_wrapper("Hello from wrapper")
+    //     wrapper = container.create_wrapper("Hello from wrapper")
     Wrapper<Message> wrapper = container.create_wrapper("Hello from wrapper");
-    // 51:     wrapper.print_wrapped()
+    //     wrapper.print_wrapped()
     wrapper.print_wrapped();
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 53: main()
+    // main()
     main();
 }
 

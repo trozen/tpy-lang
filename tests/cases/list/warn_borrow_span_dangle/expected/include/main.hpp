@@ -16,14 +16,14 @@ void test_span_no_mutation_no_warn();
 void test_no_span_no_warn();
 void test_value_type_span_warns();
 
-// 5: class Point:
+// class Point:
 struct Point {
-    // 6:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 7:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 8:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

@@ -6,27 +6,27 @@ namespace tpy_user::main {
 
 // # Annotation-only str decl followed by assignment -- regression guard for
 // # PendingStrType inference on uninit declarations.
-// 3: def make_str() -> str:
+// def make_str() -> str:
 std::string make_str() {
-    // 4:     return "owned"
+    //     return "owned"
     return "owned";
 }
 
-// 6: def main() -> None:
+// def main() -> None:
 void main() {
-    // 7:     # Owned source -> resolves to std::string
-    // 8:     x: str
+    //     # Owned source -> resolves to std::string
+    //     x: str
     std::string x;
-    // 9:     x = make_str()
+    //     x = make_str()
     x = make_str();
-    // 10:     print(x)
+    //     print(x)
     std::cout << x << "\n";
-    // 12:     # View-compatible source -> resolves to std::string_view
-    // 13:     y: str
+    //     # View-compatible source -> resolves to std::string_view
+    //     y: str
     std::string_view y;
-    // 14:     y = "hello"
+    //     y = "hello"
     y = "hello";
-    // 15:     print(y)
+    //     print(y)
     std::cout << y << "\n";
 }
 
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 17: main()
+    // main()
     main();
 }
 

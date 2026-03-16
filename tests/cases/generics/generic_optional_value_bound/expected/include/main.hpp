@@ -11,32 +11,32 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Box[T: ValueType]:
+// class Box[T: ValueType]:
 template<tpy::ValueType T>
 struct Box {
-    // 5:     _value: T
+    //     _value: T
     T _value;
-    // 6:     _has: bool
+    //     _has: bool
     bool _has;
 
-    // 7:     def __init__(self, value: T) -> None:
+    //     def __init__(self, value: T) -> None:
     Box() = default;
     explicit Box(const T& value) : _value(value), _has(true) {}
 
-    // 10:     def get(self) -> T | None:
+    //     def get(self) -> T | None:
     std::optional<T> get() const {
-        // 11:         if self._has:
+        //         if self._has:
         if (this->_has) {
-            // 12:             return self._value
+            //             return self._value
             return this->_value;
         }
-        // 13:         return None
+        //         return None
         return std::nullopt;
     }
 
-    // 14:     def clear(self) -> None:
+    //     def clear(self) -> None:
     void clear() {
-        // 15:         self._has = False
+        //         self._has = False
         this->_has = false;
     }
 };

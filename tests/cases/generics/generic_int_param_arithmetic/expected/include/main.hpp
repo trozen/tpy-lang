@@ -11,26 +11,26 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Container[T, N: int]:
+// class Container[T, N: int]:
 template<typename T, std::size_t N>
 struct Container {
 
 
-    // 5:     def get_double(self) -> Int32:
+    //     def get_double(self) -> Int32:
     int32_t get_double() const {
-        // 6:         return Int32(N * 2)
+        //         return Int32(N * 2)
         return (tpy::mul_check<int32_t>(N, 2));
     }
 
-    // 8:     def get_plus_one(self) -> Int32:
+    //     def get_plus_one(self) -> Int32:
     int32_t get_plus_one() const {
-        // 9:         return Int32(N + 1)
+        //         return Int32(N + 1)
         return (tpy::add_check<int32_t>(N, 1));
     }
 
-    // 11:     def get_minus_five(self) -> Int32:
+    //     def get_minus_five(self) -> Int32:
     int32_t get_minus_five() const {
-        // 12:         return Int32(N - 5)
+        //         return Int32(N - 5)
         return (tpy::sub_check<int32_t>(N, 5));
     }
 };

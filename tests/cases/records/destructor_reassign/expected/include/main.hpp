@@ -16,13 +16,13 @@ void test_loop();
 void test_conditional(int32_t flag);
 void test_inherit();
 
-// 6: class Resource:
+// class Resource:
 struct Resource {
-    // 7:     name: str
+    //     name: str
     std::string name;
     bool __tpy_owned_ = true;
 
-    // 8:     def __init__(self, name: str):
+    //     def __init__(self, name: str):
     Resource() = default;
     explicit Resource(std::string_view name) : name(name) {}
     Resource(const Resource&) = delete;
@@ -37,11 +37,11 @@ struct Resource {
         }
         return *this;
     }
-    // 10:     def __del__(self):
+    //     def __del__(self):
 
     ~Resource() {
         if (!__tpy_owned_) return;
-        // 11:         print("drop", self.name)
+        //         print("drop", self.name)
         std::cout << "drop" << " " << this->name << "\n";
     }
 };
@@ -53,13 +53,13 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
     return os;
 }
 
-// 31: class Base:
+// class Base:
 struct Base {
-    // 32:     tag: str
+    //     tag: str
     std::string tag;
     bool __tpy_owned_ = true;
 
-    // 33:     def __init__(self, tag: str):
+    //     def __init__(self, tag: str):
     Base() = default;
     explicit Base(std::string_view tag) : tag(tag) {}
     Base(const Base&) = delete;
@@ -74,11 +74,11 @@ struct Base {
         }
         return *this;
     }
-    // 35:     def __del__(self):
+    //     def __del__(self):
 
     ~Base() {
         if (!__tpy_owned_) return;
-        // 36:         print("~Base", self.tag)
+        //         print("~Base", self.tag)
         std::cout << "~Base" << " " << this->tag << "\n";
     }
 };
@@ -90,10 +90,10 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
     return os;
 }
 
-// 38: class Child(Base):
+// class Child(Base):
 struct Child : Base {
 
-    // 39:     def __init__(self, tag: str):
+    //     def __init__(self, tag: str):
     Child() = default;
     explicit Child(std::string_view tag) : Base(tag) {}
     Child(const Child&) = delete;
@@ -108,11 +108,11 @@ struct Child : Base {
         }
         return *this;
     }
-    // 41:     def __del__(self):
+    //     def __del__(self):
 
     ~Child() {
         if (!__tpy_owned_) return;
-        // 42:         print("~Child", self.tag)
+        //         print("~Child", self.tag)
         std::cout << "~Child" << " " << this->tag << "\n";
     }
 };

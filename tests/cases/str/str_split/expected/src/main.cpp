@@ -5,44 +5,44 @@ namespace tpy_user::main {
 
 
 // # Test str.split() -- separator split, whitespace split, maxsplit
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     # Split with separator
-    // 4:     parts = "a,b,c".split(",")
+    //     # Split with separator
+    //     parts = "a,b,c".split(",")
     std::vector<std::string> parts = tpy::str_split("a,b,c", ",");
-    // 5:     print(len(parts), parts[0], parts[1], parts[2])
+    //     print(len(parts), parts[0], parts[1], parts[2])
     std::cout << tpy::__len__(parts) << " " << tpy::__getitem__(parts, 0) << " " << tpy::__getitem__(parts, 1) << " " << tpy::__getitem__(parts, 2) << "\n";
-    // 7:     # Split whitespace default
-    // 8:     words = "  one  two  three  ".split()
+    //     # Split whitespace default
+    //     words = "  one  two  three  ".split()
     std::vector<std::string> words = tpy::str_split_whitespace("  one  two  three  ");
-    // 9:     print(len(words), words[0], words[1], words[2])
+    //     print(len(words), words[0], words[1], words[2])
     std::cout << tpy::__len__(words) << " " << tpy::__getitem__(words, 0) << " " << tpy::__getitem__(words, 1) << " " << tpy::__getitem__(words, 2) << "\n";
-    // 11:     # Split with maxsplit
-    // 12:     limited = "a,b,c,d".split(",", 2)
+    //     # Split with maxsplit
+    //     limited = "a,b,c,d".split(",", 2)
     std::vector<std::string> limited = tpy::str_split("a,b,c,d", ",", 2);
-    // 13:     print(len(limited), limited[0], limited[1], limited[2])
+    //     print(len(limited), limited[0], limited[1], limited[2])
     std::cout << tpy::__len__(limited) << " " << tpy::__getitem__(limited, 0) << " " << tpy::__getitem__(limited, 1) << " " << tpy::__getitem__(limited, 2) << "\n";
-    // 15:     # Empty parts from consecutive separators
-    // 16:     empties = ",a,,b,".split(",")
+    //     # Empty parts from consecutive separators
+    //     empties = ",a,,b,".split(",")
     std::vector<std::string> empties = tpy::str_split(",a,,b,", ",");
-    // 17:     print(len(empties))
+    //     print(len(empties))
     std::cout << tpy::__len__(empties) << "\n";
-    // 19:     # No match -- entire string as single element
-    // 20:     nomatch = "hello".split(",")
+    //     # No match -- entire string as single element
+    //     nomatch = "hello".split(",")
     std::vector<std::string> nomatch = tpy::str_split("hello", ",");
-    // 21:     print(len(nomatch), nomatch[0])
+    //     print(len(nomatch), nomatch[0])
     std::cout << tpy::__len__(nomatch) << " " << tpy::__getitem__(nomatch, 0) << "\n";
-    // 23:     # Whitespace split on simple spaces
-    // 24:     two = "one two three".split()
+    //     # Whitespace split on simple spaces
+    //     two = "one two three".split()
     std::vector<std::string> two = tpy::str_split_whitespace("one two three");
-    // 25:     print(len(two), two[0], two[1], two[2])
+    //     print(len(two), two[0], two[1], two[2])
     std::cout << tpy::__len__(two) << " " << tpy::__getitem__(two, 0) << " " << tpy::__getitem__(two, 1) << " " << tpy::__getitem__(two, 2) << "\n";
-    // 27:     # Variable separator
-    // 28:     sep = ":"
+    //     # Variable separator
+    //     sep = ":"
     std::string_view sep = ":";
-    // 29:     data = "x:y:z".split(sep)
+    //     data = "x:y:z".split(sep)
     std::vector<std::string> data = tpy::str_split("x:y:z", sep);
-    // 30:     print(len(data), data[0], data[1], data[2])
+    //     print(len(data), data[0], data[1], data[2])
     std::cout << tpy::__len__(data) << " " << tpy::__getitem__(data, 0) << " " << tpy::__getitem__(data, 1) << " " << tpy::__getitem__(data, 2) << "\n";
 }
 
@@ -51,7 +51,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 32: main()
+    // main()
     main();
 }
 

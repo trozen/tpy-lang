@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-// 6: class Container[T](Protocol):
+// class Container[T](Protocol):
 template<typename T, typename _T0>
 concept Container = requires(T& t) {
     { t.get() } -> std::convertible_to<_T0>;
@@ -18,18 +18,18 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 9: class IntBox:
+// class IntBox:
 struct IntBox {
-    // 10:     value: Int32
+    //     value: Int32
     int32_t value;
 
-    // 12:     def __init__(self, v: Int32) -> None:
+    //     def __init__(self, v: Int32) -> None:
     IntBox() = default;
     explicit IntBox(int32_t v) : value(v) {}
 
-    // 15:     def get(self) -> Int32:
+    //     def get(self) -> Int32:
     int32_t get() const {
-        // 16:         return self.value
+        //         return self.value
         return this->value;
     }
 };
@@ -42,19 +42,19 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
 }
 
 // # Bound is a parameterized user-defined protocol: Container[Int32]
-// 19: class Holder[V: Container[Int32]]:
+// class Holder[V: Container[Int32]]:
 template<Container<int32_t> V>
 struct Holder {
-    // 20:     item: V
+    //     item: V
     V item;
 
-    // 22:     def __init__(self, item: V) -> None:
+    //     def __init__(self, item: V) -> None:
     Holder() = default;
     explicit Holder(const V& item) : item(item) {}
 
-    // 25:     def get_item(self) -> V:
+    //     def get_item(self) -> V:
     tpy::val_or_ref_t<V> get_item() {
-        // 26:         return self.item
+        //         return self.item
         return this->item;
     }
 };

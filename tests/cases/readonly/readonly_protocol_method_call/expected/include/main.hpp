@@ -12,10 +12,10 @@ template<tpy::Sized T_s>
 int32_t get_len(const T_s& s);
 
 // @readonly
-// 7: def get_len(s: Sized) -> Int32:
+// def get_len(s: Sized) -> Int32:
 template<tpy::Sized T_s>
 int32_t get_len(const T_s& s) {
-    // 8:     return len(s)  # tpyc: ok
+    //     return len(s)  # tpyc: ok
     return tpy::__len__(s);
 }
 

@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 18: def test_branch(flag: bool) -> None:
+// def test_branch(flag: bool) -> None:
 void test_branch(bool flag) {
-    // 19:     w = Wrapper(42)
+    //     w = Wrapper(42)
     Wrapper w = Wrapper(tpy::BigInt(42));
-    // 20:     if flag:
+    //     if flag:
     if (flag) {
-        // 21:         result = w.take()
+        //         result = w.take()
         tpy::BigInt result = std::move(w).take();
-        // 22:         print(result)
+        //         print(result)
         std::cout << result << "\n";
-    // 23:     else:
+    //     else:
     } else {
-        // 24:         print(w.get())
+        //         print(w.get())
         std::cout << w.get() << "\n";
     }
 }
@@ -26,9 +26,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 26: test_branch(True)
+    // test_branch(True)
     test_branch(true);
-    // 27: test_branch(False)
+    // test_branch(False)
     test_branch(false);
 }
 

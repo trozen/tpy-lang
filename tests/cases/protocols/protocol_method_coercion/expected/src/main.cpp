@@ -4,14 +4,14 @@
 namespace tpy_user::main {
 
 
-// 29: def main() -> None:
+// def main() -> None:
 void main() {
-    // 30:     calc = SimpleCalc(32)
+    //     calc = SimpleCalc(32)
     SimpleCalc calc = SimpleCalc(32);
-    // 31:     use_calc(calc)
+    //     use_calc(calc)
     use_calc(calc);
-    // 33:     # Also test passing constructor as rvalue
-    // 34:     use_calc(SimpleCalc(0))
+    //     # Also test passing constructor as rvalue
+    //     use_calc(SimpleCalc(0))
     auto __tmp_1 = SimpleCalc(0);
     use_calc(__tmp_1);
 }
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 36: main()
+    // main()
     main();
 }
 

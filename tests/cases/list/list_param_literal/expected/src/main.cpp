@@ -4,25 +4,25 @@
 namespace tpy_user::main {
 
 
-// 3: def takes_list(x: list[int]) -> None:
+// def takes_list(x: list[int]) -> None:
 void takes_list(std::vector<tpy::BigInt>& x) {
-    // 4:     x.append(42)
+    //     x.append(42)
     x.push_back(42);
-    // 5:     print(len(x))
+    //     print(len(x))
     std::cout << tpy::__len__(x) << "\n";
 }
 
-// 7: def takes_list_int32(x: list[Int32]) -> None:
+// def takes_list_int32(x: list[Int32]) -> None:
 void takes_list_int32(std::vector<int32_t>& x) {
-    // 8:     x.append(Int32(99))
+    //     x.append(Int32(99))
     x.push_back(99);
-    // 9:     print(len(x))
+    //     print(len(x))
     std::cout << tpy::__len__(x) << "\n";
 }
 
-// 11: def takes_array(x: Array[Int32, 3]) -> None:
+// def takes_array(x: Array[Int32, 3]) -> None:
 void takes_array(const std::array<int32_t, 3>& x) {
-    // 12:     print(x[0])
+    //     print(x[0])
     std::cout << tpy::__getitem__(x, 0) << "\n";
 }
 
@@ -31,26 +31,26 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 14: # Empty list literals
-    // 15: takes_list([])
+    // # Empty list literals
+    // takes_list([])
     std::vector<tpy::BigInt> __tmp_1 = std::vector<tpy::BigInt>{};
     takes_list(__tmp_1);
-    // 16: takes_list_int32([])
+    // takes_list_int32([])
     std::vector<int32_t> __tmp_2 = std::vector<int32_t>{};
     takes_list_int32(__tmp_2);
-    // 18: # Empty list constructors
-    // 19: takes_list(list())
+    // # Empty list constructors
+    // takes_list(list())
     std::vector<tpy::BigInt> __tmp_3 = std::vector<tpy::BigInt>();
     takes_list(__tmp_3);
-    // 20: takes_list_int32(list())
+    // takes_list_int32(list())
     std::vector<int32_t> __tmp_4 = std::vector<int32_t>();
     takes_list_int32(__tmp_4);
-    // 22: # Non-empty list literals
-    // 23: takes_list([1, 2, 3])
+    // # Non-empty list literals
+    // takes_list([1, 2, 3])
     std::vector<tpy::BigInt> __tmp_5 = {1, 2, 3};
     takes_list(__tmp_5);
-    // 25: # Array literals
-    // 26: takes_array([Int32(10), Int32(20), Int32(30)])
+    // # Array literals
+    // takes_array([Int32(10), Int32(20), Int32(30)])
     std::array<int32_t, 3> __tmp_6 = {10, 20, 30};
     takes_array(__tmp_6);
 }

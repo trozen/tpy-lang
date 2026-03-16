@@ -4,40 +4,40 @@
 namespace tpy_user::main {
 
 
-// 16: def modify(v: Vec2) -> None:
+// def modify(v: Vec2) -> None:
 void modify(Vec2 v) {
-    // 17:     v.x = 99
+    //     v.x = 99
     v.x = 99;
 }
 
-// 20: def main() -> None:
+// def main() -> None:
 void main() {
-    // 21:     a = Vec2(1, 2)
+    //     a = Vec2(1, 2)
     Vec2 a = Vec2(1, 2);
-    // 23:     # Assignment copies (value type, not reference)
-    // 24:     b = a
+    //     # Assignment copies (value type, not reference)
+    //     b = a
     Vec2 b = a;
-    // 25:     b.x = 10
+    //     b.x = 10
     b.x = 10;
-    // 26:     print(a.x)                 # 1
+    //     print(a.x)                 # 1
     std::cout << a.x << "\n";
-    // 27:     print(b.x)                 # 10
+    //     print(b.x)                 # 10
     std::cout << b.x << "\n";
-    // 29:     # Function parameter is a copy (value type passed by value)
-    // 30:     modify(a)
+    //     # Function parameter is a copy (value type passed by value)
+    //     modify(a)
     modify(a);
-    // 31:     print(a.x)                 # 1
+    //     print(a.x)                 # 1
     std::cout << a.x << "\n";
-    // 33:     # Nested value types are also copied
-    // 34:     r = Rect(Vec2(0, 0), Vec2(10, 20))
+    //     # Nested value types are also copied
+    //     r = Rect(Vec2(0, 0), Vec2(10, 20))
     Rect r = Rect(Vec2(0, 0), Vec2(10, 20));
-    // 35:     r2 = r
+    //     r2 = r
     Rect r2 = r;
-    // 36:     r2.pos.x = 99
+    //     r2.pos.x = 99
     r2.pos.x = 99;
-    // 37:     print(r.pos.x)             # 0
+    //     print(r.pos.x)             # 0
     std::cout << r.pos.x << "\n";
-    // 38:     print(r2.pos.x)            # 99
+    //     print(r2.pos.x)            # 99
     std::cout << r2.pos.x << "\n";
 }
 
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 40: main()
+    // main()
     main();
 }
 

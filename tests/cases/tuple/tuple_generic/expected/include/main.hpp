@@ -15,20 +15,20 @@ template<typename A, typename B>
 std::tuple<tpy::val_or_ref_t<B>, tpy::val_or_ref_t<A>> swap(const std::tuple<tpy::val_or_ref_t<A>, tpy::val_or_ref_t<B>>& p);
 void main();
 
-// 10: class Point:
+// class Point:
 struct Point {
-    // 11:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 12:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 13:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    // 16:     def __repr__(self) -> str:
+    //     def __repr__(self) -> str:
     std::string __repr__() const {
-        // 17:         return "Point(" + str(self.x) + ", " + str(self.y) + ")"
+        //         return "Point(" + str(self.x) + ", " + str(self.y) + ")"
         return (tpy::str_concat((tpy::str_concat((tpy::str_concat((tpy::str_concat("Point(", tpy::fixed_to_str<int32_t>(this->x))), ", ")), tpy::fixed_to_str<int32_t>(this->y))), ")"));
     }
 };
@@ -38,16 +38,16 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 4: def first_of_pair[T](p: tuple[T, T]) -> T:
+// def first_of_pair[T](p: tuple[T, T]) -> T:
 template<typename T>
 tpy::val_or_ref_t<T> first_of_pair(const std::tuple<tpy::val_or_ref_t<T>, tpy::val_or_ref_t<T>>& p) {
-    // 5:     return p[0]
+    //     return p[0]
     return std::get<0>(p);
 }
-// 7: def swap[A, B](p: tuple[A, B]) -> tuple[B, A]:
+// def swap[A, B](p: tuple[A, B]) -> tuple[B, A]:
 template<typename A, typename B>
 std::tuple<tpy::val_or_ref_t<B>, tpy::val_or_ref_t<A>> swap(const std::tuple<tpy::val_or_ref_t<A>, tpy::val_or_ref_t<B>>& p) {
-    // 8:     return (p[1], p[0])
+    //     return (p[1], p[0])
     return std::tuple<tpy::val_or_ref_t<B>, tpy::val_or_ref_t<A>>{std::get<1>(p), std::get<0>(p)};
 }
 

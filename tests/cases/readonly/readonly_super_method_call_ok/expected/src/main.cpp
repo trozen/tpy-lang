@@ -9,7 +9,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 16: print(Child().value_plus_one())
+    // print(Child().value_plus_one())
     std::cout << Child().value_plus_one() << "\n";
 }
 

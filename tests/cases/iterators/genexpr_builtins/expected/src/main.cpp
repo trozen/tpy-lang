@@ -4,10 +4,10 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     # list() from genexpr
-    // 6:     squares: list[Int32] = list(x * x for x in range(5))
+    //     # list() from genexpr
+    //     squares: list[Int32] = list(x * x for x in range(5))
     std::vector<int32_t> squares = tpy::collect<std::vector<int32_t>>(tpy::make_generator<int32_t>(
         [&, __i = int32_t(0), __stop = static_cast<int32_t>(5)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
@@ -17,12 +17,12 @@ void main() {
             return std::nullopt;
         }
     ));
-    // 7:     print(squares)
+    //     print(squares)
     std::cout << tpy::ListPrinter(squares) << "\n";
-    // 9:     # list.extend with genexpr
-    // 10:     items: list[Int32] = [1, 2, 3]
+    //     # list.extend with genexpr
+    //     items: list[Int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
-    // 11:     items.extend(x * 10 for x in range(3))
+    //     items.extend(x * 10 for x in range(3))
     tpy::list_extend(items, tpy::make_generator<int32_t>(
         [&, __i = int32_t(0), __stop = static_cast<int32_t>(3)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
@@ -32,10 +32,10 @@ void main() {
             return std::nullopt;
         }
     ));
-    // 12:     print(items)
+    //     print(items)
     std::cout << tpy::ListPrinter(items) << "\n";
-    // 14:     # set() from genexpr
-    // 15:     mods: set[Int32] = set(x % 3 for x in range(10))
+    //     # set() from genexpr
+    //     mods: set[Int32] = set(x % 3 for x in range(10))
     tpy::ordered_set<int32_t> mods = tpy::set_collect<int32_t>(tpy::make_generator<int32_t>(
         [&, __i = int32_t(0), __stop = static_cast<int32_t>(10)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
@@ -45,10 +45,10 @@ void main() {
             return std::nullopt;
         }
     ));
-    // 16:     print(mods)
+    //     print(mods)
     std::cout << tpy::SetPrinter(mods) << "\n";
-    // 18:     # dict() from genexpr of tuples
-    // 19:     d: dict[str, Int32] = dict((str(x), x * x) for x in range(4))
+    //     # dict() from genexpr of tuples
+    //     d: dict[str, Int32] = dict((str(x), x * x) for x in range(4))
     tpy::ordered_map<std::string, int32_t> d = tpy::dict_collect_pairs<std::string, int32_t>(tpy::make_generator<std::tuple<std::string, int32_t>>(
         [&, __i = int32_t(0), __stop = static_cast<int32_t>(4)]() mutable -> std::optional<std::tuple<std::string, int32_t>> {
             while (__i < __stop) {
@@ -58,12 +58,12 @@ void main() {
             return std::nullopt;
         }
     ));
-    // 20:     print(d)
+    //     print(d)
     std::cout << tpy::DictPrinter(d) << "\n";
-    // 22:     # str.join with genexpr
-    // 23:     words: list[str] = ["hello", "world", "test"]
+    //     # str.join with genexpr
+    //     words: list[str] = ["hello", "world", "test"]
     std::vector<std::string> words = {"hello", "world", "test"};
-    // 24:     print(" ".join(w.upper() for w in words))
+    //     print(" ".join(w.upper() for w in words))
     std::cout << tpy::str_join(" ", [&]() {
         auto& __src = words;
         return tpy::make_generator<std::string>(
@@ -83,7 +83,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 26: main()
+    // main()
     main();
 }
 

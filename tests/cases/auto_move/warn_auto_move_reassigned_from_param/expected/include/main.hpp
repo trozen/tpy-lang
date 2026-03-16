@@ -12,9 +12,9 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t consume(Point&& p);
 int32_t test(Point& a);
 
-// 5: class Point:
+// class Point:
 struct Point {
-    // 6:     x: Int32
+    //     x: Int32
     int32_t x;
 
 };

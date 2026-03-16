@@ -11,21 +11,21 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 6:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 7:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 9:     def __init__(self, x: Int32, y: Int32):
+    //     def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {
     }
 
-    // 14:     def magnitude_sq(self) -> Int32:
+    //     def magnitude_sq(self) -> Int32:
     int32_t magnitude_sq() const {
-        // 16:         return self.x * self.x + self.y * self.y
+        //         return self.x * self.x + self.y * self.y
         return (tpy::add_check<int32_t>((tpy::mul_check<int32_t>(this->x, this->x)), (tpy::mul_check<int32_t>(this->y, this->y))));
     }
 };

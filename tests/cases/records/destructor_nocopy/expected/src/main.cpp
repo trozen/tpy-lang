@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 
-// 13: def consume(h: Own[Handle]) -> None:
+// def consume(h: Own[Handle]) -> None:
 void consume(Handle&& h) {
-    // 14:     print("use", h.id)
+    //     print("use", h.id)
     std::cout << "use" << " " << h.id << "\n";
 }
 
-// 16: def main():
+// def main():
 void main() {
-    // 17:     h = Handle(1)
+    //     h = Handle(1)
     Handle h = Handle(1);
-    // 18:     consume(h)
+    //     consume(h)
     consume(std::move(h));
-    // 19:     print("---")
+    //     print("---")
     std::cout << "---" << "\n";
-    // 21:     consume(Handle(2))
+    //     consume(Handle(2))
     consume(Handle(2));
-    // 22:     print("done")
+    //     print("done")
     std::cout << "done" << "\n";
 }
 
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 24: main()
+    // main()
     main();
 }
 

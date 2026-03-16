@@ -46,32 +46,32 @@ tpy_user::main::Color EnumUtil<tpy_user::main::Color>::from_name(std::string_vie
 namespace tpy_user::main {
 
 
-// 10: def try_it(name: str) -> None:
+// def try_it(name: str) -> None:
 void try_it(std::string_view name) {
-    // 11:     c = try_parse(Color, name)
+    //     c = try_parse(Color, name)
     std::optional<Color> c = tpy::EnumUtil<Color>::try_parse(name);
-    // 12:     if c is not None:
+    //     if c is not None:
     if ((c.has_value())) {
-        // 13:         print(c)
+        //         print(c)
         std::cout << tpy::print_optional_val(c) << "\n";
-    // 14:     else:
+    //     else:
     } else {
-        // 15:         print("not found")
+        //         print("not found")
         std::cout << "not found" << "\n";
     }
 }
 
-// 17: def main() -> None:
+// def main() -> None:
 void main() {
-    // 18:     try_it("Red")
+    //     try_it("Red")
     try_it("Red");
-    // 19:     try_it("Green")
+    //     try_it("Green")
     try_it("Green");
-    // 20:     try_it("Blue")
+    //     try_it("Blue")
     try_it("Blue");
-    // 21:     try_it("Purple")
+    //     try_it("Purple")
     try_it("Purple");
-    // 22:     try_it("")
+    //     try_it("")
     try_it("");
 }
 
@@ -80,7 +80,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 24: main()
+    // main()
     main();
 }
 

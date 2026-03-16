@@ -5,13 +5,13 @@
 
 namespace tpy_user::main {
 
-// 5: class Callable(Protocol):
+// class Callable(Protocol):
 template<typename T>
 concept Callable = requires(T& t) {
     { t.call() } -> std::convertible_to<int32_t>;
 };
 
-// 8: class OneArg(Protocol):
+// class OneArg(Protocol):
 template<typename T>
 concept OneArg = requires(T& t) {
     { t.process(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
@@ -27,24 +27,24 @@ template<OneArg T_p>
 void use_one_arg(T_p& p);
 void main();
 
-// 11: class Impl:
+// class Impl:
 struct Impl {
-    // 12:     value: Int32
+    //     value: Int32
     int32_t value;
 
-    // 13:     def __init__(self, value: Int32) -> None:
+    //     def __init__(self, value: Int32) -> None:
     Impl() = default;
     explicit Impl(int32_t value) : value(value) {}
 
-    // 15:     def call(self, extra: Int32 = Int32(0)) -> Int32:
+    //     def call(self, extra: Int32 = Int32(0)) -> Int32:
     int32_t call(int32_t extra = 0) const {
-        // 16:         return self.value + extra
+        //         return self.value + extra
         return (tpy::add_check<int32_t>(this->value, extra));
     }
 
-    // 17:     def process(self, x: Int32, scale: Int32 = Int32(1)) -> Int32:
+    //     def process(self, x: Int32, scale: Int32 = Int32(1)) -> Int32:
     int32_t process(int32_t x, int32_t scale = 1) const {
-        // 18:         return x * scale + self.value
+        //         return x * scale + self.value
         return (tpy::add_check<int32_t>((tpy::mul_check<int32_t>(x, scale)), this->value));
     }
 };
@@ -56,16 +56,16 @@ inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
     return os;
 }
 
-// 20: def use_callable(c: Callable) -> None:
+// def use_callable(c: Callable) -> None:
 template<Callable T_c>
 void use_callable(T_c& c) {
-    // 21:     print(c.call())
+    //     print(c.call())
     std::cout << c.call() << "\n";
 }
-// 23: def use_one_arg(p: OneArg) -> None:
+// def use_one_arg(p: OneArg) -> None:
 template<OneArg T_p>
 void use_one_arg(T_p& p) {
-    // 24:     print(p.process(Int32(10)))
+    //     print(p.process(Int32(10)))
     std::cout << p.process(10) << "\n";
 }
 

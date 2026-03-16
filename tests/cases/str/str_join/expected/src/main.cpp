@@ -5,36 +5,36 @@ namespace tpy_user::main {
 
 
 // # Test str.join() -- join strings from a list
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     # Basic join
-    // 4:     result = ",".join(["a", "b", "c"])
+    //     # Basic join
+    //     result = ",".join(["a", "b", "c"])
     std::string result = tpy::str_join(",", {"a", "b", "c"});
-    // 5:     print(result)
+    //     print(result)
     std::cout << result << "\n";
-    // 7:     # Empty separator
-    // 8:     together = "".join(["a", "b", "c"])
+    //     # Empty separator
+    //     together = "".join(["a", "b", "c"])
     std::string together = tpy::str_join("", {"a", "b", "c"});
-    // 9:     print(together)
+    //     print(together)
     std::cout << together << "\n";
-    // 11:     # Single element
-    // 12:     single = ",".join(["only"])
+    //     # Single element
+    //     single = ",".join(["only"])
     std::string single = tpy::str_join(",", {"only"});
-    // 13:     print(single)
+    //     print(single)
     std::cout << single << "\n";
-    // 15:     # Empty list
-    // 16:     empty_items: list[str] = []
+    //     # Empty list
+    //     empty_items: list[str] = []
     std::vector<std::string> empty_items = std::vector<std::string>{};
-    // 17:     empty = ",".join(empty_items)
+    //     empty = ",".join(empty_items)
     std::string empty = tpy::str_join(",", empty_items);
-    // 18:     print("empty:", len(empty))
+    //     print("empty:", len(empty))
     std::cout << "empty:" << " " << tpy::__len__(empty) << "\n";
-    // 20:     # Join with variable separator
-    // 21:     sep = " - "
+    //     # Join with variable separator
+    //     sep = " - "
     std::string_view sep = " - ";
-    // 22:     items = ["one", "two", "three"]
+    //     items = ["one", "two", "three"]
     std::array<std::string, 3> items = {"one", "two", "three"};
-    // 23:     print(sep.join(items))
+    //     print(sep.join(items))
     std::cout << tpy::str_join(sep, items) << "\n";
 }
 
@@ -43,7 +43,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 25: main()
+    // main()
     main();
 }
 

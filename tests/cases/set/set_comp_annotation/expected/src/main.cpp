@@ -4,12 +4,12 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     # Int32 -> Int64 widening via annotation
-    // 6:     items: list[Int32] = [1, 2, 3]
+    //     # Int32 -> Int64 widening via annotation
+    //     items: list[Int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
-    // 7:     wide: set[Int64] = {x for x in items}
+    //     wide: set[Int64] = {x for x in items}
     tpy::ordered_set<int64_t> wide = [&]() {
         tpy::ordered_set<int64_t> __result;
         auto& __obj_0 = items;
@@ -21,17 +21,17 @@ void main() {
         }
         return __result;
     }();
-    // 8:     for v in wide:
+    //     for v in wide:
     auto& __obj_1 = wide;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int64_t v = *__beg_1;
-        // 9:         print(v)
+        //         print(v)
         std::cout << v << "\n";
     }
-    // 11:     # Int32 -> int (BigInt) widening via annotation
-    // 12:     big: set[int] = {x * x for x in range(4)}
+    //     # Int32 -> int (BigInt) widening via annotation
+    //     big: set[int] = {x * x for x in range(4)}
     tpy::ordered_set<tpy::BigInt> big = [&]() {
         tpy::ordered_set<tpy::BigInt> __result;
         const int32_t __stop_2 = 4;
@@ -40,13 +40,13 @@ void main() {
         }
         return __result;
     }();
-    // 13:     for v in big:
+    //     for v in big:
     auto& __obj_3 = big;
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         const tpy::BigInt& v = *__beg_3;
-        // 14:         print(v)
+        //         print(v)
         std::cout << v << "\n";
     }
 }
@@ -56,7 +56,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 16: main()
+    // main()
     main();
 }
 

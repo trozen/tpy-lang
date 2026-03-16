@@ -4,24 +4,24 @@
 namespace tpy_user::main {
 
 
-// 16: def main() -> None:
+// def main() -> None:
 void main() {
-    // 17:     p1 = Point(1, 2)
+    //     p1 = Point(1, 2)
     Point p1 = Point(tpy::BigInt(1), tpy::BigInt(2));
-    // 18:     p2 = Point(1, 2)
+    //     p2 = Point(1, 2)
     Point p2 = Point(tpy::BigInt(1), tpy::BigInt(2));
-    // 19:     p3 = Point(3, 4)
+    //     p3 = Point(3, 4)
     Point p3 = Point(tpy::BigInt(3), tpy::BigInt(4));
-    // 21:     # Same fields produce the same hash
-    // 22:     print(hash(p1) == hash(p2))
+    //     # Same fields produce the same hash
+    //     print(hash(p1) == hash(p2))
     std::cout << tpy::print_bool((tpy::__hash__(p1) == tpy::__hash__(p2))) << "\n";
-    // 24:     # Different fields (likely) produce different hashes
-    // 25:     print(hash(p1) != hash(p3))
+    //     # Different fields (likely) produce different hashes
+    //     print(hash(p1) != hash(p3))
     std::cout << tpy::print_bool((tpy::__hash__(p1) != tpy::__hash__(p3))) << "\n";
-    // 27:     # Works through Hashable protocol parameter
-    // 28:     print(get_hash(p1) == get_hash(p2))
+    //     # Works through Hashable protocol parameter
+    //     print(get_hash(p1) == get_hash(p2))
     std::cout << tpy::print_bool((get_hash(p1) == get_hash(p2))) << "\n";
-    // 29:     print("ok")
+    //     print("ok")
     std::cout << "ok" << "\n";
 }
 
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 31: main()
+    // main()
     main();
 }
 

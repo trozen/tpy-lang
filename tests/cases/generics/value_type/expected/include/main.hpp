@@ -13,11 +13,11 @@ inline constexpr std::string_view __name__ = "__main__";
 void modify(Vec2 v);
 void main();
 
-// 5: class Vec2(ValueType):
+// class Vec2(ValueType):
 struct Vec2 {
-    // 6:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 7:     y: Int32
+    //     y: Int32
     int32_t y;
 
 };
@@ -32,11 +32,11 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
 }
 
 // # Rect uses Vec2 -- tests nested value types
-// 11: class Rect(ValueType):
+// class Rect(ValueType):
 struct Rect {
-    // 12:     pos: Vec2
+    //     pos: Vec2
     Vec2 pos;
-    // 13:     size: Vec2
+    //     size: Vec2
     Vec2 size;
 
 };

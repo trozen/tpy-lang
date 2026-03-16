@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-// 19: h = Holder()
+// h = Holder()
 Holder* h{};
 
 void __tpy_init() {
@@ -11,28 +11,28 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 19: h = Holder()
+    // h = Holder()
     static Holder __global_slot_1 = Holder();
     h = &__global_slot_1;
-    // 21: # None field: all four combinations
-    // 22: print(h.value is None)
+    // # None field: all four combinations
+    // print(h.value is None)
     std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
-    // 23: print(h.value is not None)
+    // print(h.value is not None)
     std::cout << tpy::print_bool((h->value.has_value())) << "\n";
-    // 24: print(None is h.value)
+    // print(None is h.value)
     std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
-    // 25: print(None is not h.value)
+    // print(None is not h.value)
     std::cout << tpy::print_bool((h->value.has_value())) << "\n";
-    // 27: h.value = copy(Point(1, 2))
+    // h.value = copy(Point(1, 2))
     h->value = Point(1, 2);
-    // 29: # Non-None field: all four combinations
-    // 30: print(h.value is None)
+    // # Non-None field: all four combinations
+    // print(h.value is None)
     std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
-    // 31: print(h.value is not None)
+    // print(h.value is not None)
     std::cout << tpy::print_bool((h->value.has_value())) << "\n";
-    // 32: print(None is h.value)
+    // print(None is h.value)
     std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
-    // 33: print(None is not h.value)
+    // print(None is not h.value)
     std::cout << tpy::print_bool((h->value.has_value())) << "\n";
 }
 

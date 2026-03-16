@@ -4,31 +4,31 @@
 namespace tpy_user::main {
 
 
-// 10: def close(h: Own[Handle]) -> Int32:
+// def close(h: Own[Handle]) -> Int32:
 int32_t close(Handle&& h) {
-    // 11:     return h.fd
+    //     return h.fd
     return h.fd;
 }
 
-// 14: def main():
+// def main():
 void main() {
-    // 15:     h = Handle()
+    //     h = Handle()
     Handle __slot_1 = Handle();
     std::optional<Handle> __slot_2;
     Handle* h = &__slot_1;
-    // 16:     h.fd = 42
+    //     h.fd = 42
     h->fd = 42;
-    // 17:     alias = h
+    //     alias = h
     Handle& alias = (*h);
-    // 18:     print(alias.fd)
+    //     print(alias.fd)
     std::cout << alias.fd << "\n";
-    // 19:     h = Handle()       # reassign h -- alias detached, points to old slot
+    //     h = Handle()       # reassign h -- alias detached, points to old slot
     h = &*(__slot_2 = Handle());
-    // 20:     h.fd = 99
+    //     h.fd = 99
     h->fd = 99;
-    // 21:     print(close(h))    # tpyc: ok (auto-move, alias doesn't constrain)
+    //     print(close(h))    # tpyc: ok (auto-move, alias doesn't constrain)
     std::cout << close(std::move((*h))) << "\n";
-    // 22:     print(alias.fd)
+    //     print(alias.fd)
     std::cout << alias.fd << "\n";
 }
 
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 25: main()
+    // main()
     main();
 }
 

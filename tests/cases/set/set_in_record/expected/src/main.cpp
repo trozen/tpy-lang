@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 10: def main() -> None:
+// def main() -> None:
 void main() {
-    // 11:     item = TaggedItem("apple", {"fruit", "red"})
+    //     item = TaggedItem("apple", {"fruit", "red"})
     TaggedItem item = TaggedItem("apple", tpy::ordered_set<std::string>({"fruit", "red"}));
-    // 12:     print(len(item.tags))
+    //     print(len(item.tags))
     std::cout << tpy::__len__(item.tags) << "\n";
-    // 13:     print("fruit" in item.tags)
+    //     print("fruit" in item.tags)
     std::cout << tpy::print_bool((item.tags.contains("fruit"))) << "\n";
-    // 14:     item.tags.add("sweet")
+    //     item.tags.add("sweet")
     item.tags.insert("sweet");
-    // 15:     print(len(item.tags))
+    //     print(len(item.tags))
     std::cout << tpy::__len__(item.tags) << "\n";
-    // 16:     print("sweet" in item.tags)
+    //     print("sweet" in item.tags)
     std::cout << tpy::print_bool((item.tags.contains("sweet"))) << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: main()
+    // main()
     main();
 }
 

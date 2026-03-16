@@ -4,29 +4,29 @@
 namespace tpy_user::main {
 
 
-// 28: def main() -> None:
+// def main() -> None:
 void main() {
-    // 29:     # iter() returns an iterator from an iterable
-    // 30:     c = Counter(4)
+    //     # iter() returns an iterator from an iterable
+    //     c = Counter(4)
     Counter c = Counter(4);
-    // 31:     it = iter(c)
+    //     it = iter(c)
     auto it = tpy::__iter__(c);
-    // 33:     # try_next() returns next value or None
-    // 34:     v = try_next(it)
+    //     # try_next() returns next value or None
+    //     v = try_next(it)
     std::optional<int32_t> v = it.__next_opt__();
-    // 35:     while v is not None:
+    //     while v is not None:
     while ((v.has_value())) {
-        // 36:         print(v)
+        //         print(v)
         std::cout << tpy::print_optional_val(v) << "\n";
-        // 37:         v = try_next(it)
+        //         v = try_next(it)
         v = it.__next_opt__();
     }
-    // 39:     # Exhausted iterator returns None
-    // 40:     v2 = try_next(it)
+    //     # Exhausted iterator returns None
+    //     v2 = try_next(it)
     std::optional<int32_t> v2 = it.__next_opt__();
-    // 41:     if v2 is None:
+    //     if v2 is None:
     if ((!v2.has_value())) {
-        // 42:         print("exhausted")
+        //         print("exhausted")
         std::cout << "exhausted" << "\n";
     }
 }
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 44: main()
+    // main()
     main();
 }
 

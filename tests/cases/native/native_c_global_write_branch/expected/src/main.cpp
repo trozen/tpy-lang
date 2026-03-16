@@ -4,43 +4,43 @@
 namespace tpy_user::main {
 
 
-// 10: def update_same_name(a: Int32, b: Int32) -> None:
+// def update_same_name(a: Int32, b: Int32) -> None:
 void update_same_name(int32_t a, int32_t b) {
-    // 11:     global opentop
-    // 12:     if a < b:
+    //     global opentop
+    //     if a < b:
     if ((a < b)) {
-        // 13:         opentop = a
+        //         opentop = a
         opentop = a;
-    // 14:     else:
+    //     else:
     } else {
-        // 15:         opentop = b
+        //         opentop = b
         opentop = b;
     }
 }
 
-// 17: def update_renamed(a: Int32, b: Int32) -> None:
+// def update_renamed(a: Int32, b: Int32) -> None:
 void update_renamed(int32_t a, int32_t b) {
-    // 18:     global counter
-    // 19:     if a < b:
+    //     global counter
+    //     if a < b:
     if ((a < b)) {
-        // 20:         counter = a
+        //         counter = a
         g_counter = a;
-    // 21:     else:
+    //     else:
     } else {
-        // 22:         counter = b
+        //         counter = b
         g_counter = b;
     }
 }
 
-// 24: def main() -> None:
+// def main() -> None:
 void main() {
-    // 25:     update_same_name(Int32(10), Int32(20))
+    //     update_same_name(Int32(10), Int32(20))
     update_same_name(10, 20);
-    // 26:     print(opentop)
+    //     print(opentop)
     std::cout << opentop << "\n";
-    // 27:     update_renamed(Int32(30), Int32(40))
+    //     update_renamed(Int32(30), Int32(40))
     update_renamed(30, 40);
-    // 28:     print(counter)
+    //     print(counter)
     std::cout << g_counter << "\n";
 }
 
@@ -49,10 +49,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: from tpy.extern import native_c_global
-    // 4: # Write to native_c_global inside if/else branches (no prior function-scope assignment).
-    // 5: # Must NOT emit a local declaration that shadows the extern global.
-    // 30: main()
+    // from tpy.extern import native_c_global
+    // # Write to native_c_global inside if/else branches (no prior function-scope assignment).
+    // # Must NOT emit a local declaration that shadows the extern global.
+    // main()
     main();
 }
 

@@ -3,20 +3,20 @@
 
 namespace tpy_user::main {
 
-// 8: x: Char = "x"
+// x: Char = "x"
 char x{};
-// 9: y: Char = "y"
+// y: Char = "y"
 char y{};
-// 10: sx: Char | None = x
+// sx: Char | None = x
 std::optional<char> sx;
-// 11: sy: Char | None = y
+// sy: Char | None = y
 std::optional<char> sy;
-// 12: n: Char | None = None
+// n: Char | None = None
 std::optional<char> n;
 
-// 4: def eq_both(a: Char | None, b: Char | None) -> bool:
+// def eq_both(a: Char | None, b: Char | None) -> bool:
 bool eq_both(std::optional<char> a, std::optional<char> b) {
-    // 5:     return a == b  # tpyc: ok
+    //     return a == b  # tpyc: ok
     return (a == b);
 }
 
@@ -25,25 +25,25 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: x: Char = "x"
+    // x: Char = "x"
     x = 'x';
-    // 9: y: Char = "y"
+    // y: Char = "y"
     y = 'y';
-    // 10: sx: Char | None = x
+    // sx: Char | None = x
     sx = x;
-    // 11: sy: Char | None = y
+    // sy: Char | None = y
     sy = y;
-    // 12: n: Char | None = None
+    // n: Char | None = None
     n = std::nullopt;
-    // 14: print(eq_both(sx, sx))
+    // print(eq_both(sx, sx))
     std::cout << tpy::print_bool(eq_both(sx, sx)) << "\n";
-    // 15: print(eq_both(sx, sy))
+    // print(eq_both(sx, sy))
     std::cout << tpy::print_bool(eq_both(sx, sy)) << "\n";
-    // 16: print(eq_both(n, sx))
+    // print(eq_both(n, sx))
     std::cout << tpy::print_bool(eq_both(n, sx)) << "\n";
-    // 17: print(eq_both(sx, n))
+    // print(eq_both(sx, n))
     std::cout << tpy::print_bool(eq_both(sx, n)) << "\n";
-    // 18: print(eq_both(n, n))
+    // print(eq_both(n, n))
     std::cout << tpy::print_bool(eq_both(n, n)) << "\n";
 }
 

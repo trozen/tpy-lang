@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 7: def main() -> None:
+// def main() -> None:
 void main() {
-    // 8:     X: Int32 = 99
+    //     X: Int32 = 99
     int32_t X = 99;
-    // 9:     print(X)
+    //     print(X)
     std::cout << X << "\n";
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 11: main()
+    // main()
     main();
 }
 

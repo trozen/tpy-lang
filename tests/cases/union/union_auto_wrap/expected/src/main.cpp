@@ -4,31 +4,31 @@
 namespace tpy_user::main {
 
 
-// 12: def process(v: A | B) -> None:
+// def process(v: A | B) -> None:
 void process(const std::variant<A, B>& v) {
-    // 13:     if isinstance(v, A):
+    //     if isinstance(v, A):
     if (std::holds_alternative<A>(v)) {
         auto& __v = std::get<A>(v);
-        // 14:         print(v.x)
+        //         print(v.x)
         std::cout << __v.x << "\n";
-    // 15:     else:
+    //     else:
     } else {
         auto& __v = std::get<B>(v);
-        // 16:         print(v.y)
+        //         print(v.y)
         std::cout << __v.y << "\n";
     }
 }
 
-// 18: def main() -> None:
+// def main() -> None:
 void main() {
-    // 19:     a: A = A(42)
+    //     a: A = A(42)
     A a = A(tpy::BigInt(42));
-    // 20:     b: B = B("hello")
+    //     b: B = B("hello")
     B b = B("hello");
-    // 21:     process(a)
+    //     process(a)
     std::variant<A, B> __tmp_1 = std::move(a);
     process(__tmp_1);
-    // 22:     process(b)
+    //     process(b)
     std::variant<A, B> __tmp_2 = std::move(b);
     process(__tmp_2);
 }
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 24: main()
+    // main()
     main();
 }
 

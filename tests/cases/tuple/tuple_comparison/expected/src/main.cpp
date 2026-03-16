@@ -4,31 +4,31 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     a = (Int32(1), "hello")
+    //     a = (Int32(1), "hello")
     std::tuple<int32_t, std::string> a = std::tuple<int32_t, std::string>{1, "hello"};
-    // 6:     b = (Int32(1), "hello")
+    //     b = (Int32(1), "hello")
     std::tuple<int32_t, std::string> b = std::tuple<int32_t, std::string>{1, "hello"};
-    // 7:     c = (Int32(2), "world")
+    //     c = (Int32(2), "world")
     std::tuple<int32_t, std::string> c = std::tuple<int32_t, std::string>{2, "world"};
-    // 9:     print(a == b)
+    //     print(a == b)
     std::cout << tpy::print_bool((a == b)) << "\n";
-    // 10:     print(a != b)
+    //     print(a != b)
     std::cout << tpy::print_bool((a != b)) << "\n";
-    // 11:     print(a == c)
+    //     print(a == c)
     std::cout << tpy::print_bool((a == c)) << "\n";
-    // 12:     print(a != c)
+    //     print(a != c)
     std::cout << tpy::print_bool((a != c)) << "\n";
-    // 14:     # Comparison in conditional
-    // 15:     if a == b:
+    //     # Comparison in conditional
+    //     if a == b:
     if ((a == b)) {
-        // 16:         print("equal")
+        //         print("equal")
         std::cout << "equal" << "\n";
     }
-    // 17:     if a != c:
+    //     if a != c:
     if ((a != c)) {
-        // 18:         print("not equal")
+        //         print("not equal")
         std::cout << "not equal" << "\n";
     }
 }
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 20: main()
+    // main()
     main();
 }
 

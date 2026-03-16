@@ -12,26 +12,26 @@ extern Dog* d;
 extern Animal* a;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 3: class Animal:
+// class Animal:
 struct Animal {
-    // 4:     name: str
+    //     name: str
     std::string name;
-    // 5:     age: Int32
+    //     age: Int32
     int32_t age;
 
-    // 7:     def __init__(self, name: str, age: Int32) -> None:
+    //     def __init__(self, name: str, age: Int32) -> None:
     Animal() = default;
     explicit Animal(std::string_view name, int32_t age) : name(name), age(age) {}
 
-    // 11:     def speak(self) -> str:
+    //     def speak(self) -> str:
     std::string speak() const {
-        // 12:         return "..."
+        //         return "..."
         return "...";
     }
 
-    // 14:     def describe(self) -> str:
+    //     def describe(self) -> str:
     std::string describe() const {
-        // 15:         return self.name
+        //         return self.name
         return this->name;
     }
 };
@@ -45,18 +45,18 @@ inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
     return os;
 }
 
-// 18: class Dog(Animal):
+// class Dog(Animal):
 struct Dog : Animal {
-    // 19:     breed: str
+    //     breed: str
     std::string breed;
 
-    // 21:     def __init__(self, name: str, age: Int32, breed: str) -> None:
+    //     def __init__(self, name: str, age: Int32, breed: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name, int32_t age, std::string_view breed) : Animal(name, age), breed(breed) {}
 
-    // 25:     def speak(self) -> str:
+    //     def speak(self) -> str:
     std::string speak() const {
-        // 26:         return "Woof!"
+        //         return "Woof!"
         return "Woof!";
     }
 };

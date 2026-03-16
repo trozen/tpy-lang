@@ -13,12 +13,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 8: class Point:
+// class Point:
 struct Point {
-    // 9:     x: int
+    //     x: int
     tpy::BigInt x;
 
-    // 11:     def __init__(self, x: int) -> None:
+    //     def __init__(self, x: int) -> None:
     Point() = default;
     explicit Point(const tpy::BigInt& x) : x(x) {}
 };
@@ -30,30 +30,30 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 15: class Container:
+// class Container:
 struct Container {
-    // 16:     _items: list[Point]
+    //     _items: list[Point]
     std::vector<Point> _items;
 
-    // 18:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Container() : _items({Point(tpy::BigInt(1)), Point(tpy::BigInt(2))}) {}
 
-    // 21:     def first_mutable(self) -> Point:    # non-const: mutable ref into self's data
+    //     def first_mutable(self) -> Point:    # non-const: mutable ref into self's data
     Point& first_mutable() {
-        // 22:         return self._items[0]
+        //         return self._items[0]
         return tpy::__getitem__(this->_items, 0);
     }
 
     //     @readonly
-    // 25:     def first_readonly(self) -> Point:   # const: explicitly read-only
+    //     def first_readonly(self) -> Point:   # const: explicitly read-only
     const Point& first_readonly() const {
-        // 26:         return self._items[0]
+        //         return self._items[0]
         return tpy::__getitem__(this->_items, 0);
     }
 
-    // 28:     def first_x(self) -> int:            # auto-const: value return, no self borrow
+    //     def first_x(self) -> int:            # auto-const: value return, no self borrow
     tpy::BigInt first_x() const {
-        // 29:         return self._items[0].x
+        //         return self._items[0].x
         return tpy::__getitem__(this->_items, 0).x;
     }
 };
@@ -65,17 +65,17 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     return os;
 }
 
-// 32: class Wrapper:
+// class Wrapper:
 struct Wrapper {
-    // 33:     _c: Container
+    //     _c: Container
     Container _c;
 
-    // 35:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Wrapper() : _c(Container()) {}
 
-    // 38:     def get_mutable(self) -> Point:      # non-const: transitive through non-readonly callee
+    //     def get_mutable(self) -> Point:      # non-const: transitive through non-readonly callee
     Point& get_mutable() {
-        // 39:         return self._c.first_mutable()
+        //         return self._c.first_mutable()
         return this->_c.first_mutable();
     }
 };

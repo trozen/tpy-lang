@@ -10,14 +10,14 @@ struct Point;
 extern Point* saved;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 3: class Point:
+// class Point:
 struct Point {
-    // 4:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 5:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 6:     def __init__(self, x: Int32, y: Int32):
+    //     def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

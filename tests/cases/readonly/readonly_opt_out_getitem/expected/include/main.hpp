@@ -10,22 +10,22 @@ struct CachedList;
 extern CachedList* c;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 5: class CachedList:
+// class CachedList:
 struct CachedList {
-    // 6:     _data: list[Int32]
+    //     _data: list[Int32]
     std::vector<int32_t> _data;
-    // 7:     _hits: Int32
+    //     _hits: Int32
     int32_t _hits;
 
-    // 9:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     CachedList() : _data({10, 20, 30}), _hits(0) {}
 
     //     @readonly(False)
-    // 14:     def __getitem__(self, idx: Int32) -> Int32:
+    //     def __getitem__(self, idx: Int32) -> Int32:
     int32_t __getitem__(int32_t idx) {
-        // 15:         self._hits = self._hits + 1
+        //         self._hits = self._hits + 1
         this->_hits = (tpy::add_check<int32_t>(this->_hits, 1));
-        // 16:         return self._data[idx]
+        //         return self._data[idx]
         return tpy::__getitem__(this->_data, idx);
     }
 

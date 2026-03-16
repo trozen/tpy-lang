@@ -4,77 +4,77 @@
 namespace tpy_user::main {
 
 // # Case 1: Pure literals (BigInt by default)
-// 4: pure_literals = [1, 2, 3]
+// pure_literals = [1, 2, 3]
 std::vector<int32_t>* pure_literals{};
 // # Case 2: Int32 constructor in list forces Int32 element type
-// 8: mixed_int32 = [Int32(1), 2, 3]
+// mixed_int32 = [Int32(1), 2, 3]
 std::vector<int32_t>* mixed_int32{};
 // # Case 3: Literal first, then Int32 - should infer Int32
-// 12: mixed_int32_rev = [1, Int32(2), 3]
+// mixed_int32_rev = [1, Int32(2), 3]
 std::vector<int32_t>* mixed_int32_rev{};
 // # Case 4: Explicit list[Int32] annotation
-// 16: annotated_int32: list[Int32] = [10, 20, 30]
+// annotated_int32: list[Int32] = [10, 20, 30]
 std::vector<int32_t>* annotated_int32{};
 // # Case 5: Explicit list[int] annotation (BigInt)
-// 20: annotated_bigint: list[int] = [100, 200, 300]
+// annotated_bigint: list[int] = [100, 200, 300]
 std::vector<tpy::BigInt>* annotated_bigint{};
 // # Must annotate or use Int32 constructor for Span[Int32] compatibility
-// 38: global_for_span: list[Int32] = [1, 2, 3]
+// global_for_span: list[Int32] = [1, 2, 3]
 std::vector<int32_t>* global_for_span{};
-// 55: bigint_list = [1000, 2000, 3000]
+// bigint_list = [1000, 2000, 3000]
 std::vector<tpy::BigInt>* bigint_list{};
 
 // # Case 6: Local variable with Int32 element
-// 24: def local_mixed() -> Int32:
+// def local_mixed() -> Int32:
 int32_t local_mixed() {
-    // 25:     data = [Int32(5), 6, 7]
+    //     data = [Int32(5), 6, 7]
     std::array<int32_t, 3> data = {5, 6, 7};
-    // 26:     return data[2]
+    //     return data[2]
     return tpy::__getitem__(data, 2);
 }
 
 // # Case 7: Passing to Span[Int32] param requires Int32 elements
-// 31: def sum_span(nums: Span[Int32]) -> Int32:
+// def sum_span(nums: Span[Int32]) -> Int32:
 int32_t sum_span(std::span<int32_t> nums) {
-    // 32:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 33:     for n in nums:
+    //     for n in nums:
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t n = *__beg_0;
-        // 34:         total += n
+        //         total += n
         total = tpy::add_check<int32_t>(total, n);
     }
-    // 35:     return total
+    //     return total
     return total;
 }
 
 // # Case 8: Local list passed to Span[Int32] infers Int32
-// 42: def test_local_span() -> Int32:
+// def test_local_span() -> Int32:
 int32_t test_local_span() {
-    // 43:     local_data = [4, 5, 6]  # Inferred as Int32 when passed to Span[Int32]
+    //     local_data = [4, 5, 6]  # Inferred as Int32 when passed to Span[Int32]
     std::array<int32_t, 3> local_data = {4, 5, 6};
-    // 44:     return sum_span(local_data)
+    //     return sum_span(local_data)
     return sum_span(tpy::as_mut_span(local_data));
 }
 
 // # Case 9: Span[int] (BigInt span)
-// 49: def sum_span_bigint(nums: Span[int]) -> int:
+// def sum_span_bigint(nums: Span[int]) -> int:
 tpy::BigInt sum_span_bigint(std::span<tpy::BigInt> nums) {
-    // 50:     total: int = 0
+    //     total: int = 0
     tpy::BigInt total = tpy::BigInt(0);
-    // 51:     for n in nums:
+    //     for n in nums:
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const tpy::BigInt& n = *__beg_0;
-        // 52:         total += n
+        //         total += n
         total = (total) + (n);
     }
-    // 53:     return total
+    //     return total
     return total;
 }
 
@@ -83,50 +83,50 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: # Case 1: Pure literals (BigInt by default)
-    // 4: pure_literals = [1, 2, 3]
+    // # Case 1: Pure literals (BigInt by default)
+    // pure_literals = [1, 2, 3]
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
     pure_literals = &__global_slot_1;
-    // 5: print(pure_literals[0])
+    // print(pure_literals[0])
     std::cout << tpy::__getitem__((*pure_literals), 0) << "\n";
-    // 7: # Case 2: Int32 constructor in list forces Int32 element type
-    // 8: mixed_int32 = [Int32(1), 2, 3]
+    // # Case 2: Int32 constructor in list forces Int32 element type
+    // mixed_int32 = [Int32(1), 2, 3]
     static std::vector<int32_t> __global_slot_2 = {1, 2, 3};
     mixed_int32 = &__global_slot_2;
-    // 9: print(mixed_int32[0])
+    // print(mixed_int32[0])
     std::cout << tpy::__getitem__((*mixed_int32), 0) << "\n";
-    // 11: # Case 3: Literal first, then Int32 - should infer Int32
-    // 12: mixed_int32_rev = [1, Int32(2), 3]
+    // # Case 3: Literal first, then Int32 - should infer Int32
+    // mixed_int32_rev = [1, Int32(2), 3]
     static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
     mixed_int32_rev = &__global_slot_3;
-    // 13: print(mixed_int32_rev[1])
+    // print(mixed_int32_rev[1])
     std::cout << tpy::__getitem__((*mixed_int32_rev), 1) << "\n";
-    // 15: # Case 4: Explicit list[Int32] annotation
-    // 16: annotated_int32: list[Int32] = [10, 20, 30]
+    // # Case 4: Explicit list[Int32] annotation
+    // annotated_int32: list[Int32] = [10, 20, 30]
     static std::vector<int32_t> __global_slot_4 = {10, 20, 30};
     annotated_int32 = &__global_slot_4;
-    // 17: print(annotated_int32[0])
+    // print(annotated_int32[0])
     std::cout << tpy::__getitem__((*annotated_int32), 0) << "\n";
-    // 19: # Case 5: Explicit list[int] annotation (BigInt)
-    // 20: annotated_bigint: list[int] = [100, 200, 300]
+    // # Case 5: Explicit list[int] annotation (BigInt)
+    // annotated_bigint: list[int] = [100, 200, 300]
     static std::vector<tpy::BigInt> __global_slot_5 = {100, 200, 300};
     annotated_bigint = &__global_slot_5;
-    // 21: print(annotated_bigint[0])
+    // print(annotated_bigint[0])
     std::cout << tpy::__getitem__((*annotated_bigint), 0) << "\n";
-    // 28: print(local_mixed())
+    // print(local_mixed())
     std::cout << local_mixed() << "\n";
-    // 37: # Must annotate or use Int32 constructor for Span[Int32] compatibility
-    // 38: global_for_span: list[Int32] = [1, 2, 3]
+    // # Must annotate or use Int32 constructor for Span[Int32] compatibility
+    // global_for_span: list[Int32] = [1, 2, 3]
     static std::vector<int32_t> __global_slot_6 = {1, 2, 3};
     global_for_span = &__global_slot_6;
-    // 39: print(sum_span(global_for_span))
+    // print(sum_span(global_for_span))
     std::cout << sum_span(tpy::as_mut_span((*global_for_span))) << "\n";
-    // 46: print(test_local_span())
+    // print(test_local_span())
     std::cout << test_local_span() << "\n";
-    // 55: bigint_list = [1000, 2000, 3000]
+    // bigint_list = [1000, 2000, 3000]
     static std::vector<tpy::BigInt> __global_slot_7 = {1000, 2000, 3000};
     bigint_list = &__global_slot_7;
-    // 56: print(sum_span_bigint(bigint_list))
+    // print(sum_span_bigint(bigint_list))
     std::cout << sum_span_bigint(tpy::as_mut_span((*bigint_list))) << "\n";
 }
 

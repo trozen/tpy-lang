@@ -11,13 +11,13 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Container[T, N: int]:
+// class Container[T, N: int]:
 template<typename T, std::size_t N>
 struct Container {
-    // 5:     value: T
+    //     value: T
     T value;
 
-    // 7:     def __init__(self, v: T) -> None:
+    //     def __init__(self, v: T) -> None:
     Container() = default;
     explicit Container(const T& v) : value(v) {}
 };

@@ -16,12 +16,12 @@ void use_dog_result(std::string_view name);
 void use_cat_result(const tpy::BigInt& lives);
 void main();
 
-// 4: class Dog:
+// class Dog:
 struct Dog {
-    // 5:     name: str
+    //     name: str
     std::string name;
 
-    // 6:     def __init__(self, name: str) -> None:
+    //     def __init__(self, name: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name) : name(name) {}
 };
@@ -33,12 +33,12 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
-// 9: class Cat:
+// class Cat:
 struct Cat {
-    // 10:     lives: int
+    //     lives: int
     tpy::BigInt lives;
 
-    // 11:     def __init__(self, lives: int) -> None:
+    //     def __init__(self, lives: int) -> None:
     Cat() = default;
     explicit Cat(const tpy::BigInt& lives) : lives(lives) {}
 };

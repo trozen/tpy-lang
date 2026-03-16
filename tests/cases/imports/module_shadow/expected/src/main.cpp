@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 7: def main():
+// def main():
 void main() {
-    // 8:     time: Timer = Timer()
+    //     time: Timer = Timer()
     Timer time = Timer();
-    // 9:     time.x = 42
+    //     time.x = 42
     time.x = 42;
-    // 10:     print(time.x)
+    //     print(time.x)
     std::cout << time.x << "\n";
 }
 
@@ -19,9 +19,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: import time
+    // import time
     ::tpy_user::time::__tpy_init();
-    // 12: main()
+    // main()
     main();
 }
 

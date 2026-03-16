@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # Iterator stored in a list, accessed by subscript
-// 23: items: list[Counter] = [Counter(3)]
+// items: list[Counter] = [Counter(3)]
 std::vector<Counter>* items{};
 
 void __tpy_init() {
@@ -12,35 +12,35 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: # Iterator stored in a list, accessed by subscript
-    // 23: items: list[Counter] = [Counter(3)]
+    // # Iterator stored in a list, accessed by subscript
+    // items: list[Counter] = [Counter(3)]
     static std::vector<Counter> __global_slot_1 = {Counter(3)};
     items = &__global_slot_1;
-    // 25: print("first:")
+    // print("first:")
     std::cout << "first:" << "\n";
-    // 26: for x in items[0]:
+    // for x in items[0]:
     auto& __src_0 = tpy::__getitem__((*items), 0);
     auto __obj_0 = tpy::iter_adapt(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 27:     print(x)
+        //     print(x)
         std::cout << x << "\n";
     }
-    // 29: print("second:")
+    // print("second:")
     std::cout << "second:" << "\n";
-    // 30: for x in items[0]:
+    // for x in items[0]:
     auto& __src_1 = tpy::__getitem__((*items), 0);
     auto __obj_1 = tpy::iter_adapt(__src_1);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        // 31:     print(x)
+        //     print(x)
         std::cout << x << "\n";
     }
-    // 33: print("done")
+    // print("done")
     std::cout << "done" << "\n";
 }
 

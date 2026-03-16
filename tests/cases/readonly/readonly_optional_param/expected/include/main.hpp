@@ -13,12 +13,12 @@ int32_t f1(const Point* p);
 int32_t f2(const Point* p);
 void main();
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
 
-    // 7:     def __init__(self, x: Int32) -> None:
+    //     def __init__(self, x: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x) : x(x) {}
 };

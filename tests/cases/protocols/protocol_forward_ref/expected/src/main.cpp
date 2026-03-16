@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # Test that it works
-// 34: p = Person("Alice", 30)
+// p = Person("Alice", 30)
 Person* p{};
 
 void __tpy_init() {
@@ -12,17 +12,17 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 33: # Test that it works
-    // 34: p = Person("Alice", 30)
+    // # Test that it works
+    // p = Person("Alice", 30)
     static Person __global_slot_1 = Person("Alice", 30);
     p = &__global_slot_1;
-    // 35: print(p.__str__())
+    // print(p.__str__())
     std::cout << p->__str__() << "\n";
-    // 36: print(p.describe())
+    // print(p.describe())
     std::cout << p->describe() << "\n";
-    // 37: print(p.name)
+    // print(p.name)
     std::cout << p->name << "\n";
-    // 38: print(p.age)
+    // print(p.age)
     std::cout << p->age << "\n";
 }
 

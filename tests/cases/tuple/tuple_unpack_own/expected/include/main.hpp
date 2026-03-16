@@ -12,14 +12,14 @@ inline constexpr std::string_view __name__ = "__main__";
 std::tuple<Pair, int32_t> make();
 void main();
 
-// 4: class Pair:
+// class Pair:
 struct Pair {
-    // 6:         self.x = x
+    //         self.x = x
     int32_t x;
-    // 7:         self.y = y
+    //         self.y = y
     int32_t y;
 
-    // 5:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Pair() = default;
     explicit Pair(int32_t x, int32_t y) : x(x), y(y) {}
 };

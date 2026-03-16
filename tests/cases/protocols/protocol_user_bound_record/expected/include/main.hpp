@@ -6,25 +6,25 @@
 namespace tpy_user::main {
 
 // # User-defined protocol
-// 5: class Printable(Protocol):
+// class Printable(Protocol):
 template<typename T>
 concept Printable = requires(T& t) {
     { t.to_str() } -> std::convertible_to<std::string>;
 };
 
 // # Implementation of Printable
-// 9: class Message:
+// class Message:
 struct Message {
-    // 10:     text: str
+    //     text: str
     std::string text;
 
-    // 12:     def __init__(self, text: str) -> None:
+    //     def __init__(self, text: str) -> None:
     Message() = default;
     explicit Message(std::string_view text) : text(text) {}
 
-    // 15:     def to_str(self) -> str:
+    //     def to_str(self) -> str:
     std::string to_str() const {
-        // 16:         return self.text
+        //         return self.text
         return this->text;
     }
 };
@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
 template<Printable T> struct Container;
 
 // # Protocol that references the bounded record - this is the key test
-// 29: class ContainerFactory(Protocol):
+// class ContainerFactory(Protocol):
 template<typename T>
 concept ContainerFactory = requires(T& t) {
     { t.make(std::declval<std::string>()) } -> std::convertible_to<Container<Message>>;
@@ -54,19 +54,19 @@ Container<Message> create_container(tpy::param_val_or_ref_t<F> factory, std::str
 void main();
 
 // # Record with user-defined protocol bound
-// 19: class Container[T: Printable]:
+// class Container[T: Printable]:
 template<Printable T>
 struct Container {
-    // 20:     value: T
+    //     value: T
     T value;
 
-    // 22:     def __init__(self, value: T) -> None:
+    //     def __init__(self, value: T) -> None:
     Container() = default;
     explicit Container(const T& value) : value(value) {}
 
-    // 25:     def print_value(self) -> None:
+    //     def print_value(self) -> None:
     void print_value() {
-        // 26:         print(self.value.to_str())
+        //         print(self.value.to_str())
         std::cout << this->value.to_str() << "\n";
     }
 };
@@ -80,13 +80,13 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 }
 
 // # Factory implementation
-// 33: class DefaultFactory:
+// class DefaultFactory:
 struct DefaultFactory {
 
 
-    // 34:     def make(self, text: str) -> Own[Container[Message]]:
+    //     def make(self, text: str) -> Own[Container[Message]]:
     Container<Message> make(std::string_view text) const {
-        // 35:         return Container(Message(text))
+        //         return Container(Message(text))
         return Container<Message>(Message(text));
     }
 };
@@ -98,10 +98,10 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultFactory& obj) {
 }
 
 // # Generic function using the factory protocol
-// 38: def create_container[F: ContainerFactory](factory: F, text: str) -> Own[Container[Message]]:
+// def create_container[F: ContainerFactory](factory: F, text: str) -> Own[Container[Message]]:
 template<ContainerFactory F>
 Container<Message> create_container(tpy::param_val_or_ref_t<F> factory, std::string_view text) {
-    // 39:     return factory.make(text)
+    //     return factory.make(text)
     return factory.make(text);
 }
 

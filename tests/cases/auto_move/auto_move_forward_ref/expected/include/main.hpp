@@ -16,9 +16,9 @@ template<typename T>
 void wrapper(std::type_identity_t<T>&& x);
 void main();
 
-// 5: class Box:
+// class Box:
 struct Box {
-    // 6:     value: Int32
+    //     value: Int32
     int32_t value;
 
 };
@@ -30,15 +30,15 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// 13: def sink[T](x: Own[T]) -> None:
+// def sink[T](x: Own[T]) -> None:
 template<typename T>
 void sink(std::type_identity_t<T>&& x) {
-    // 14:     pass
+    //     pass
 }
-// 17: def wrapper[T](x: Own[T]) -> None:
+// def wrapper[T](x: Own[T]) -> None:
 template<typename T>
 void wrapper(std::type_identity_t<T>&& x) {
-    // 18:     sink[T](x)  # std::forward<T>(x) at last use
+    //     sink[T](x)  # std::forward<T>(x) at last use
     sink<T>(std::forward<T>(x));
 }
 

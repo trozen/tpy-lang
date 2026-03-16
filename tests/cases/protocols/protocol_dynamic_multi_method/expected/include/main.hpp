@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 // @dynamic
-// 6: class Shape(Protocol):
+// class Shape(Protocol):
 template<typename T>
 concept __Shape_Concept__ = requires(T& t) {
     { t.area() } -> std::convertible_to<double>;
@@ -50,30 +50,30 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 14: class Circle(Shape):
+// class Circle(Shape):
 struct Circle : Shape {
-    // 15:     radius: float
+    //     radius: float
     double radius;
 
-    // 17:     def __init__(self, radius: float) -> None:
+    //     def __init__(self, radius: float) -> None:
     Circle() = default;
     explicit Circle(double radius) : radius(radius) {}
 
-    // 20:     def area(self) -> float:
+    //     def area(self) -> float:
     double area() override {
-        // 21:         return 3.14159 * self.radius * self.radius
+        //         return 3.14159 * self.radius * self.radius
         return ((((3.14159) * (this->radius))) * (this->radius));
     }
 
-    // 23:     def name(self) -> str:
+    //     def name(self) -> str:
     std::string name() override {
-        // 24:         return "Circle"
+        //         return "Circle"
         return "Circle";
     }
 
-    // 26:     def scale(self, factor: float) -> None:
+    //     def scale(self, factor: float) -> None:
     void scale(double factor) override {
-        // 27:         self.radius = self.radius * factor
+        //         self.radius = self.radius * factor
         this->radius = ((this->radius) * (factor));
     }
 };

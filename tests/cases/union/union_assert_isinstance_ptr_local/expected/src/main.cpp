@@ -4,24 +4,24 @@
 namespace tpy_user::main {
 
 
-// 14: def process(flag: bool) -> Int32:
+// def process(flag: bool) -> Int32:
 int32_t process(bool flag) {
-    // 15:     v: Circle | Rect = Circle(Int32(1))
+    //     v: Circle | Rect = Circle(Int32(1))
     std::variant<Circle, Rect> __slot_1 = Circle(1);
     std::optional<std::variant<Circle, Rect>> __slot_2;
     std::variant<Circle, Rect>* v = &__slot_1;
-    // 16:     v = Rect(Int32(3))  # reassignment makes v a pointer-local
+    //     v = Rect(Int32(3))  # reassignment makes v a pointer-local
     v = &*(__slot_2 = Rect(3));
-    // 17:     assert isinstance(v, Rect)
+    //     assert isinstance(v, Rect)
     if (!(std::holds_alternative<Rect>((*v)))) tpy::tpy_panic("assertion failed");
     auto& __v = std::get<Rect>((*v));
-    // 18:     return v.width
+    //     return v.width
     return __v.width;
 }
 
-// 20: def main() -> None:
+// def main() -> None:
 void main() {
-    // 21:     print(process(True))
+    //     print(process(True))
     std::cout << process(true) << "\n";
 }
 
@@ -30,7 +30,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 23: main()
+    // main()
     main();
 }
 

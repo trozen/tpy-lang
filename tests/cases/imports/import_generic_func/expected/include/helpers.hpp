@@ -12,16 +12,16 @@ tpy::val_or_ref_t<T> first(std::vector<T>& items);
 template<typename T>
 int32_t length(const std::vector<T>& items);
 
-// 4: def first[T](items: list[T]) -> T:
+// def first[T](items: list[T]) -> T:
 template<typename T>
 tpy::val_or_ref_t<T> first(std::vector<T>& items) {
-    // 5:     return items[0]
+    //     return items[0]
     return tpy::__getitem__(items, 0);
 }
-// 7: def length[T](items: list[T]) -> Int32:
+// def length[T](items: list[T]) -> Int32:
 template<typename T>
 int32_t length(const std::vector<T>& items) {
-    // 8:     return len(items)
+    //     return len(items)
     return tpy::__len__(items);
 }
 

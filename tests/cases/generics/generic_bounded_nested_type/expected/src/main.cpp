@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 28: def main() -> None:
+// def main() -> None:
 void main() {
-    // 29:     h = IntListHolder([1, 2, 3])
+    //     h = IntListHolder([1, 2, 3])
     IntListHolder h = IntListHolder({1, 2, 3});
-    // 30:     w = Wrapper[IntListHolder](h)
+    //     w = Wrapper[IntListHolder](h)
     Wrapper<IntListHolder> w = Wrapper<IntListHolder>(h);
-    // 31:     result = w.get_holder()
+    //     result = w.get_holder()
     IntListHolder& result = w.get_holder();
-    // 32:     print(len(result.items()))
+    //     print(len(result.items()))
     std::cout << tpy::__len__(result.items()) << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 34: main()
+    // main()
     main();
 }
 

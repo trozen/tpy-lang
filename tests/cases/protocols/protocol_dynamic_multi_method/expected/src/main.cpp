@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 29: def main() -> None:
+// def main() -> None:
 void main() {
-    // 30:     c = Circle(5.0)
+    //     c = Circle(5.0)
     Circle c = Circle(5.0);
-    // 31:     print(c.name())
+    //     print(c.name())
     std::cout << c.name() << "\n";
-    // 32:     print(c.area())
+    //     print(c.area())
     std::cout << tpy::print_float(c.area()) << "\n";
-    // 33:     c.scale(2.0)
+    //     c.scale(2.0)
     c.scale(2.0);
-    // 34:     print(c.area())
+    //     print(c.area())
     std::cout << tpy::print_float(c.area()) << "\n";
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 36: main()
+    // main()
     main();
 }
 

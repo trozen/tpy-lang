@@ -11,17 +11,17 @@ template<tpy::Iterator<int32_t> T_it>
 void consume(T_it& it);
 void main();
 
-// 5: def consume(it: Iterator[Int32]) -> None:
+// def consume(it: Iterator[Int32]) -> None:
 template<tpy::Iterator<int32_t> T_it>
 void consume(T_it& it) {
-    // 6:     for x in it:
+    //     for x in it:
     auto& __src_0 = it;
     auto __obj_0 = tpy::iter_adapt(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 7:         print(x)
+        //         print(x)
         std::cout << x << "\n";
     }
 }

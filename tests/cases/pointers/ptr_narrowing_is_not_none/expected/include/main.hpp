@@ -19,20 +19,20 @@ int32_t test_readonly_ptr(const Point* p);
 int32_t test_merge_no_guarantee(Point* p);
 void main();
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 6:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 7:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    // 10:     def sum(self) -> Int32:
+    //     def sum(self) -> Int32:
     int32_t sum() const {
-        // 11:         return self.x + self.y
+        //         return self.x + self.y
         return (tpy::add_check<int32_t>(this->x, this->y));
     }
 };

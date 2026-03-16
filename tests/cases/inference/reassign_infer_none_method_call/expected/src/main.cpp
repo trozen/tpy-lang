@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-// 14: b = Box(Int32(123))
+// b = Box(Int32(123))
 Box* b{};
-// 15: x = None
+// x = None
 std::optional<int32_t> x;
 
 void __tpy_init() {
@@ -13,14 +13,14 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 14: b = Box(Int32(123))
+    // b = Box(Int32(123))
     static Box __global_slot_1 = Box(123);
     b = &__global_slot_1;
-    // 15: x = None
+    // x = None
     x = std::nullopt;
-    // 16: x = b.get()
+    // x = b.get()
     x = b->get();
-    // 17: print(x)
+    // print(x)
     std::cout << tpy::print_optional_val(x) << "\n";
 }
 

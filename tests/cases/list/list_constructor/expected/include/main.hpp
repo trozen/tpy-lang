@@ -20,14 +20,14 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void test_local_list();
 
-// 11: class Point:
+// class Point:
 struct Point {
-    // 12:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 13:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 14:     def __init__(self, x: Int32 = 0, y: Int32 = 0):
+    //     def __init__(self, x: Int32 = 0, y: Int32 = 0):
     explicit Point(int32_t x = 0, int32_t y = 0) : x(x), y(y) {}
 };
 

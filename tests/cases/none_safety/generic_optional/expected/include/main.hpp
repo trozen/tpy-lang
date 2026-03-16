@@ -12,25 +12,25 @@ inline constexpr std::string_view __name__ = "__main__";
 std::optional<int32_t> maybe_val(std::optional<int32_t> x);
 void main();
 
-// 6: class Container[T]:
+// class Container[T]:
 template<typename T>
 struct Container {
-    // 7:     _val: T | None
+    //     _val: T | None
     std::optional<T> _val;
 
-    // 9:     def __init__(self, val: T | None):
+    //     def __init__(self, val: T | None):
     Container() = default;
     explicit Container(const T* val) : _val(tpy::ptr_to_optional(val)) {}
 
-    // 12:     def get(self) -> T | None:
+    //     def get(self) -> T | None:
     T* get() {
-        // 13:         return self._val
+        //         return self._val
         return tpy::optional_to_ptr(this->_val);
     }
 
-    // 15:     def set(self, val: T | None) -> None:
+    //     def set(self, val: T | None) -> None:
     void set(T* val) {
-        // 16:         self._val = val
+        //         self._val = val
         this->_val = tpy::ptr_to_optional(val);
     }
 };

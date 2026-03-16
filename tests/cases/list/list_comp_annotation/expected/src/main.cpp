@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 4: def make_bigints() -> Own[list[int]]:
+// def make_bigints() -> Own[list[int]]:
 std::vector<tpy::BigInt> make_bigints() {
-    // 5:     items: list[Int32] = [1, 2, 3]
+    //     items: list[Int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
-    // 6:     return [x for x in items]
+    //     return [x for x in items]
     return [&]() {
         std::vector<tpy::BigInt> __result;
         auto& __obj_0 = items;
@@ -23,18 +23,18 @@ std::vector<tpy::BigInt> make_bigints() {
     }();
 }
 
-// 8: def accept_wide(items: list[Int64]) -> None:
+// def accept_wide(items: list[Int64]) -> None:
 void accept_wide(const std::vector<int64_t>& items) {
-    // 9:     print(items)
+    //     print(items)
     std::cout << tpy::ListPrinter(items) << "\n";
 }
 
-// 11: def main() -> None:
+// def main() -> None:
 void main() {
-    // 12:     # Widen Int32 -> BigInt via annotation
-    // 13:     items: list[Int32] = [10, 20, 30]
+    //     # Widen Int32 -> BigInt via annotation
+    //     items: list[Int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    // 14:     big: list[int] = [x for x in items]
+    //     big: list[int] = [x for x in items]
     std::vector<tpy::BigInt> big = [&]() {
         std::vector<tpy::BigInt> __result;
         auto& __obj_0 = items;
@@ -47,10 +47,10 @@ void main() {
         }
         return __result;
     }();
-    // 15:     print(big)
+    //     print(big)
     std::cout << tpy::ListPrinter(big) << "\n";
-    // 17:     # Widen Int32 -> Int64
-    // 18:     wide: list[Int64] = [x for x in items]
+    //     # Widen Int32 -> Int64
+    //     wide: list[Int64] = [x for x in items]
     std::vector<int64_t> wide = [&]() {
         std::vector<int64_t> __result;
         auto& __obj_1 = items;
@@ -63,15 +63,15 @@ void main() {
         }
         return __result;
     }();
-    // 19:     print(wide)
+    //     print(wide)
     std::cout << tpy::ListPrinter(wide) << "\n";
-    // 21:     # Return type propagation (Own[list[int]] from Int32 source)
-    // 22:     result = make_bigints()
+    //     # Return type propagation (Own[list[int]] from Int32 source)
+    //     result = make_bigints()
     std::vector<tpy::BigInt> result = make_bigints();
-    // 23:     print(result)
+    //     print(result)
     std::cout << tpy::ListPrinter(result) << "\n";
-    // 25:     # Annotation with expression (coercion applies to element expr result)
-    // 26:     doubled: list[int] = [x * 2 for x in items]
+    //     # Annotation with expression (coercion applies to element expr result)
+    //     doubled: list[int] = [x * 2 for x in items]
     std::vector<tpy::BigInt> doubled = [&]() {
         std::vector<tpy::BigInt> __result;
         auto& __obj_2 = items;
@@ -84,10 +84,10 @@ void main() {
         }
         return __result;
     }();
-    // 27:     print(doubled)
+    //     print(doubled)
     std::cout << tpy::ListPrinter(doubled) << "\n";
-    // 29:     # Annotation + filter: coercion inside conditional push_back
-    // 30:     big_pos: list[int] = [x for x in items if x > 15]
+    //     # Annotation + filter: coercion inside conditional push_back
+    //     big_pos: list[int] = [x for x in items if x > 15]
     std::vector<tpy::BigInt> big_pos = [&]() {
         std::vector<tpy::BigInt> __result;
         auto& __obj_3 = items;
@@ -102,10 +102,10 @@ void main() {
         }
         return __result;
     }();
-    // 31:     print(big_pos)
+    //     print(big_pos)
     std::cout << tpy::ListPrinter(big_pos) << "\n";
-    // 33:     # Comprehension as function argument (temp variable for rvalue binding)
-    // 34:     accept_wide([x for x in items])
+    //     # Comprehension as function argument (temp variable for rvalue binding)
+    //     accept_wide([x for x in items])
     std::vector<int64_t> __tmp_1 = [&]() {
         std::vector<int64_t> __result;
         auto& __obj_4 = items;
@@ -119,8 +119,8 @@ void main() {
         return __result;
     }();
     accept_wide(__tmp_1);
-    // 36:     # No annotation: element type inferred from iterable (no coercion)
-    // 37:     same = [x + 1 for x in items]
+    //     # No annotation: element type inferred from iterable (no coercion)
+    //     same = [x + 1 for x in items]
     std::vector<int32_t> same = [&]() {
         std::vector<int32_t> __result;
         auto& __obj_5 = items;
@@ -133,7 +133,7 @@ void main() {
         }
         return __result;
     }();
-    // 38:     print(same)
+    //     print(same)
     std::cout << tpy::ListPrinter(same) << "\n";
 }
 
@@ -142,7 +142,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 40: main()
+    // main()
     main();
 }
 

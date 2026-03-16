@@ -46,42 +46,42 @@ tpy_user::main::Priority EnumUtil<tpy_user::main::Priority>::from_name(std::stri
 namespace tpy_user::main {
 
 
-// 9: def main() -> None:
+// def main() -> None:
 void main() {
-    // 10:     p: Priority = Priority.High
+    //     p: Priority = Priority.High
     Priority p = Priority::High;
-    // 12:     # Ordering between IntEnum members
-    // 13:     print(Priority.Low < Priority.High)
+    //     # Ordering between IntEnum members
+    //     print(Priority.Low < Priority.High)
     std::cout << tpy::print_bool((static_cast<int32_t>(Priority::Low) < static_cast<int32_t>(Priority::High))) << "\n";
-    // 14:     print(Priority.High > Priority.Medium)
+    //     print(Priority.High > Priority.Medium)
     std::cout << tpy::print_bool((static_cast<int32_t>(Priority::High) > static_cast<int32_t>(Priority::Medium))) << "\n";
-    // 15:     print(Priority.Low <= Priority.Low)
+    //     print(Priority.Low <= Priority.Low)
     std::cout << tpy::print_bool((static_cast<int32_t>(Priority::Low) <= static_cast<int32_t>(Priority::Low))) << "\n";
-    // 16:     print(Priority.High >= Priority.Medium)
+    //     print(Priority.High >= Priority.Medium)
     std::cout << tpy::print_bool((static_cast<int32_t>(Priority::High) >= static_cast<int32_t>(Priority::Medium))) << "\n";
-    // 18:     # Equality with int
-    // 19:     print(p == 2)
+    //     # Equality with int
+    //     print(p == 2)
     std::cout << tpy::print_bool((static_cast<int32_t>(p) == 2)) << "\n";
-    // 20:     print(p != 1)
+    //     print(p != 1)
     std::cout << tpy::print_bool((static_cast<int32_t>(p) != 1)) << "\n";
-    // 21:     print(Priority.Low == 0)
+    //     print(Priority.Low == 0)
     std::cout << tpy::print_bool((static_cast<int32_t>(Priority::Low) == 0)) << "\n";
-    // 23:     # Arithmetic with int (result is int, not Priority)
-    // 24:     x: int = Priority.Medium + 10
+    //     # Arithmetic with int (result is int, not Priority)
+    //     x: int = Priority.Medium + 10
     tpy::BigInt x = tpy::BigInt((tpy::add_check<int32_t>(static_cast<int32_t>(Priority::Medium), 10)));
-    // 25:     print(x)
+    //     print(x)
     std::cout << x << "\n";
-    // 26:     y: int = 10 + Priority.Medium
+    //     y: int = 10 + Priority.Medium
     tpy::BigInt y = tpy::BigInt((tpy::add_check<int32_t>(10, static_cast<int32_t>(Priority::Medium))));
-    // 27:     print(y)
+    //     print(y)
     std::cout << y << "\n";
-    // 28:     z: int = Priority.High * 3
+    //     z: int = Priority.High * 3
     tpy::BigInt z = tpy::BigInt((tpy::mul_check<int32_t>(static_cast<int32_t>(Priority::High), 3)));
-    // 29:     print(z)
+    //     print(z)
     std::cout << z << "\n";
-    // 30:     w: int = Priority.High - 1
+    //     w: int = Priority.High - 1
     tpy::BigInt w = tpy::BigInt((tpy::sub_check<int32_t>(static_cast<int32_t>(Priority::High), 1)));
-    // 31:     print(w)
+    //     print(w)
     std::cout << w << "\n";
 }
 
@@ -90,7 +90,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 33: main()
+    // main()
     main();
 }
 

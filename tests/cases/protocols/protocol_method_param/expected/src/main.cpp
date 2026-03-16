@@ -4,21 +4,21 @@
 namespace tpy_user::main {
 
 
-// 39: def main() -> None:
+// def main() -> None:
 void main() {
-    // 40:     w = Words(["hello", "world", "!"])
+    //     w = Words(["hello", "world", "!"])
     Words w = Words({"hello", "world", "!"});
-    // 41:     c = Container(w)
+    //     c = Container(w)
     Container c = Container(w);
-    // 42:     print(c.count)
+    //     print(c.count)
     std::cout << c.count << "\n";
-    // 43:     n = Numbers([10, 20])
+    //     n = Numbers([10, 20])
     Numbers n = Numbers({10, 20});
-    // 44:     c.update(n)
+    //     c.update(n)
     c.update(n);
-    // 45:     print(c.count)
+    //     print(c.count)
     std::cout << c.count << "\n";
-    // 46:     print(c.combined_len(w))
+    //     print(c.combined_len(w))
     std::cout << c.combined_len(w) << "\n";
 }
 
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 48: main()
+    // main()
     main();
 }
 

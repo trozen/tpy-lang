@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> Int32:
+// def main() -> Int32:
 int32_t main() {
-    // 5:     p = Pt(Int32(3), Int32(4))
+    //     p = Pt(Int32(3), Int32(4))
     ::tpy_user::utils::Point p = ::tpy_user::utils::Point(3, 4);
-    // 6:     print(p.x)
+    //     print(p.x)
     std::cout << p.x << "\n";
-    // 7:     print(MAX)
+    //     print(MAX)
     std::cout << ::tpy_user::utils::MAX_VALUE << "\n";
-    // 8:     print(sum_nums(Int32(10), Int32(20)))
+    //     print(sum_nums(Int32(10), Int32(20)))
     std::cout << ::tpy_user::utils::add(10, 20) << "\n";
-    // 9:     return Int32(0)
+    //     return Int32(0)
     return 0;
 }
 
@@ -23,9 +23,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: from utils import Point as Pt, MAX_VALUE as MAX, add as sum_nums
+    // from utils import Point as Pt, MAX_VALUE as MAX, add as sum_nums
     ::tpy_user::utils::__tpy_init();
-    // 11: main()
+    // main()
     main();
 }
 

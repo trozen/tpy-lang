@@ -11,31 +11,31 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 3: class Stack[T]:
+// class Stack[T]:
 template<typename T>
 struct Stack {
-    // 4:     items: list[T]
+    //     items: list[T]
     std::vector<T> items;
 
-    // 6:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Stack() : items(std::vector<T>()) {}
 
-    // 9:     def push(self, value: T) -> None:
+    //     def push(self, value: T) -> None:
     void push(tpy::param_val_or_ref_t<T> value) {
-        // 10:         self.items.append(value)
+        //         self.items.append(value)
         auto __tmp_1 = value;
         this->items.push_back(std::move(__tmp_1));
     }
 
-    // 12:     def pop(self) -> T:
+    //     def pop(self) -> T:
     tpy::val_or_ref_t<T> pop() {
-        // 13:         return self.items.pop()
+        //         return self.items.pop()
         return tpy::pop_back(this->items);
     }
 
-    // 15:     def is_empty(self) -> bool:
+    //     def is_empty(self) -> bool:
     bool is_empty() const {
-        // 16:         return len(self.items) == 0
+        //         return len(self.items) == 0
         return (tpy::__len__(this->items) == 0);
     }
 };

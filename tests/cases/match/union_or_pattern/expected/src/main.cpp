@@ -4,71 +4,71 @@
 namespace tpy_user::main {
 
 
-// 16: def describe(a: Dog | Cat | Bird) -> str:
+// def describe(a: Dog | Cat | Bird) -> str:
 std::string describe(const std::variant<Bird, Cat, Dog>& a) {
-    // 17:     match a:
+    //     match a:
     auto& __match_subject = a;
     switch (__match_subject.index()) {
-    // 18:         case Dog() | Cat():
+    //         case Dog() | Cat():
     case 2:
     case 1:
     {
-        // 19:             return "mammal"
+        //             return "mammal"
         return "mammal";
         break;
     }
-    // 20:         case Bird():
+    //         case Bird():
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject);
-        // 21:             return "bird"
+        //             return "bird"
         return "bird";
         break;
     }
     }
-    // 22:     return ""
+    //     return ""
     return "";
 }
 
-// 24: def with_default(a: Dog | Cat | Bird) -> str:
+// def with_default(a: Dog | Cat | Bird) -> str:
 std::string with_default(const std::variant<Bird, Cat, Dog>& a) {
-    // 25:     match a:
+    //     match a:
     auto& __match_subject = a;
     switch (__match_subject.index()) {
-    // 26:         case Dog():
+    //         case Dog():
     case 2: {
         auto& __case_0 = std::get<2>(__match_subject);
-        // 27:             return "dog"
+        //             return "dog"
         return "dog";
         break;
     }
-    // 28:         case _:
+    //         case _:
     default: {
-        // 29:             return "other"
+        //             return "other"
         return "other";
         break;
     }
     }
 }
 
-// 31: def main() -> None:
+// def main() -> None:
 void main() {
-    // 32:     d: Dog | Cat | Bird = Dog("Rex")
+    //     d: Dog | Cat | Bird = Dog("Rex")
     std::variant<Bird, Cat, Dog> d = Dog("Rex");
-    // 33:     c: Dog | Cat | Bird = Cat("Whiskers")
+    //     c: Dog | Cat | Bird = Cat("Whiskers")
     std::variant<Bird, Cat, Dog> c = Cat("Whiskers");
-    // 34:     b: Dog | Cat | Bird = Bird("Tweety")
+    //     b: Dog | Cat | Bird = Bird("Tweety")
     std::variant<Bird, Cat, Dog> b = Bird("Tweety");
-    // 35:     print(describe(d))
+    //     print(describe(d))
     std::cout << describe(d) << "\n";
-    // 36:     print(describe(c))
+    //     print(describe(c))
     std::cout << describe(c) << "\n";
-    // 37:     print(describe(b))
+    //     print(describe(b))
     std::cout << describe(b) << "\n";
-    // 38:     print(with_default(d))
+    //     print(with_default(d))
     std::cout << with_default(d) << "\n";
-    // 39:     print(with_default(c))
+    //     print(with_default(c))
     std::cout << with_default(c) << "\n";
-    // 40:     print(with_default(b))
+    //     print(with_default(b))
     std::cout << with_default(b) << "\n";
 }
 
@@ -77,7 +77,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 42: main()
+    // main()
     main();
 }
 

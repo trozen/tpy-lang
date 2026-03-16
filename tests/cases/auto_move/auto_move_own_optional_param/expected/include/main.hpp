@@ -13,11 +13,11 @@ int32_t consume_own(Point&& p);
 int32_t forward_optional(std::optional<Point> p);
 void main();
 
-// 5: class Point:
+// class Point:
 struct Point {
-    // 6:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 7:     y: Int32
+    //     y: Int32
     int32_t y;
 
 };

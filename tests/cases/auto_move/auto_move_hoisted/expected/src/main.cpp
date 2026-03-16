@@ -4,39 +4,39 @@
 namespace tpy_user::main {
 
 
-// 9: def consume(p: Own[Point]) -> Int32:
+// def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point&& p) {
-    // 10:     return p.x
+    //     return p.x
     return p.x;
 }
 
-// 13: def test(cond: bool) -> Int32:
+// def test(cond: bool) -> Int32:
 int32_t test(bool cond) {
-    // 14:     if cond:
+    //     if cond:
     std::optional<Point> __slot_1;
     Point* p;
     if (cond) {
-        // 15:         p = Point()
+        //         p = Point()
         p = &*(__slot_1 = Point());
-        // 16:         p.x = 42
+        //         p.x = 42
         p->x = 42;
-    // 17:     else:
+    //     else:
     } else {
-        // 18:         p = Point()
+        //         p = Point()
         p = &*(__slot_1 = Point());
-        // 19:         p.x = 99
+        //         p.x = 99
         p->x = 99;
     }
-    // 20:     # p is reassigned (assigned in both branches) -> T* pointer-local
-    // 21:     return consume(p)  # last use -> std::move((*p))
+    //     # p is reassigned (assigned in both branches) -> T* pointer-local
+    //     return consume(p)  # last use -> std::move((*p))
     return consume(std::move((*p)));
 }
 
-// 24: def main():
+// def main():
 void main() {
-    // 25:     print(test(True))
+    //     print(test(True))
     std::cout << test(true) << "\n";
-    // 26:     print(test(False))
+    //     print(test(False))
     std::cout << test(false) << "\n";
 }
 

@@ -13,9 +13,9 @@ Box copy(Box&& b);
 int32_t consume(Box&& b);
 void main();
 
-// 6: class Box:
+// class Box:
 struct Box {
-    // 7:     value: Int32
+    //     value: Int32
     int32_t value;
 
 };

@@ -14,25 +14,25 @@ void read_base(const Base& b);
 void read_child(const Child& c);
 void main();
 
-// 7: class Base:
+// class Base:
 struct Base {
-    // 8:     _data: list[Int32]
+    //     _data: list[Int32]
     std::vector<int32_t> _data;
 
-    // 10:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Base() : _data({1, 2}) {}
 
     //     @auto_readonly
-    // 14:     def items(self) -> Span[auto_readonly[Int32]]:
+    //     def items(self) -> Span[auto_readonly[Int32]]:
     std::span<int32_t> items() {
-        // 15:         return self._data
+        //         return self._data
         return tpy::as_mut_span(this->_data);
     }
 
     //     @auto_readonly
-    // 14:     def items(self) -> Span[auto_readonly[Int32]]:
+    //     def items(self) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> items() const {
-        // 15:         return self._data
+        //         return self._data
         return tpy::as_span(this->_data);
     }
 };
@@ -44,27 +44,27 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
     return os;
 }
 
-// 18: class Child(Base):
+// class Child(Base):
 struct Child : Base {
-    // 19:     _extra: list[Int32]
+    //     _extra: list[Int32]
     std::vector<int32_t> _extra;
 
-    // 21:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Child() : Base(), _extra({3, 4}) {}
 
     //     @override
     //     @auto_readonly
-    // 27:     def items(self) -> Span[auto_readonly[Int32]]:  # tpyc: warning(/non-polymorphic/)
+    //     def items(self) -> Span[auto_readonly[Int32]]:  # tpyc: warning(/non-polymorphic/)
     std::span<int32_t> items() {
-        // 28:         return self._extra
+        //         return self._extra
         return tpy::as_mut_span(this->_extra);
     }
 
     //     @override
     //     @auto_readonly
-    // 27:     def items(self) -> Span[auto_readonly[Int32]]:  # tpyc: warning(/non-polymorphic/)
+    //     def items(self) -> Span[auto_readonly[Int32]]:  # tpyc: warning(/non-polymorphic/)
     std::span<const int32_t> items() const {
-        // 28:         return self._extra
+        //         return self._extra
         return tpy::as_span(this->_extra);
     }
 };

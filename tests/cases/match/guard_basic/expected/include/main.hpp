@@ -14,9 +14,9 @@ std::string describe(const std::variant<Cat, Dog>& a);
 void main();
 
 // @dataclass
-// 5: class Dog:
+// class Dog:
 struct Dog {
-    // 6:     name: str
+    //     name: str
     std::string name;
 
     Dog() = default;
@@ -45,9 +45,9 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 }
 
 // @dataclass
-// 9: class Cat:
+// class Cat:
 struct Cat {
-    // 10:     name: str
+    //     name: str
     std::string name;
 
     Cat() = default;

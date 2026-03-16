@@ -4,16 +4,16 @@
 namespace tpy_user::main {
 
 // # Test abs with Int32
-// 5: x: Int32 = -42
+// x: Int32 = -42
 int32_t x{};
 // # Test abs with BigInt (default int)
-// 11: y = -100
+// y = -100
 int32_t y{};
 // # Large BigInt
-// 15: big = int(-1000000)
+// big = int(-1000000)
 tpy::BigInt big;
 // # Test abs with float
-// 19: z: float = -3.14
+// z: float = -3.14
 double z{};
 
 void __tpy_init() {
@@ -21,35 +21,35 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: # Test abs with Int32
-    // 5: x: Int32 = -42
+    // # Test abs with Int32
+    // x: Int32 = -42
     x = -42;
-    // 6: print(abs(x))
+    // print(abs(x))
     std::cout << std::abs(x) << "\n";
-    // 7: print(abs(Int32(10)))
+    // print(abs(Int32(10)))
     std::cout << std::abs(10) << "\n";
-    // 8: print(abs(Int32(0)))
+    // print(abs(Int32(0)))
     std::cout << std::abs(0) << "\n";
-    // 10: # Test abs with BigInt (default int)
-    // 11: y = -100
+    // # Test abs with BigInt (default int)
+    // y = -100
     y = -100;
-    // 12: print(abs(y))
+    // print(abs(y))
     std::cout << std::abs(y) << "\n";
-    // 13: print(abs(99))
+    // print(abs(99))
     std::cout << std::abs(99) << "\n";
-    // 14: # Large BigInt
-    // 15: big = int(-1000000)
+    // # Large BigInt
+    // big = int(-1000000)
     big = tpy::BigInt(static_cast<int64_t>(-1000000));
-    // 16: print(abs(big))
+    // print(abs(big))
     std::cout << tpy::BigInt::abs(big) << "\n";
-    // 18: # Test abs with float
-    // 19: z: float = -3.14
+    // # Test abs with float
+    // z: float = -3.14
     z = -(3.14);
-    // 20: print(abs(z))
+    // print(abs(z))
     std::cout << tpy::print_float(std::fabs(z)) << "\n";
-    // 21: print(abs(2.5))
+    // print(abs(2.5))
     std::cout << tpy::print_float(std::fabs(2.5)) << "\n";
-    // 22: print(abs(-0.0))
+    // print(abs(-0.0))
     std::cout << tpy::print_float(std::fabs(-(0.0))) << "\n";
 }
 

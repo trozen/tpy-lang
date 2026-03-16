@@ -4,74 +4,74 @@
 namespace tpy_user::main {
 
 
-// 5: def sum_span(values: Span[Int32]) -> Int32:
+// def sum_span(values: Span[Int32]) -> Int32:
 int32_t sum_span(std::span<int32_t> values) {
-    // 6:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 7:     for v in values:
+    //     for v in values:
     auto& __obj_0 = values;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        // 8:         total += v
+        //         total += v
         total = tpy::add_check<int32_t>(total, v);
     }
-    // 9:     return total
+    //     return total
     return total;
 }
 
-// 11: def sum_span_bigint(values: Span[int]) -> int:
+// def sum_span_bigint(values: Span[int]) -> int:
 tpy::BigInt sum_span_bigint(std::span<tpy::BigInt> values) {
-    // 12:     total: int = 0
+    //     total: int = 0
     tpy::BigInt total = tpy::BigInt(0);
-    // 13:     for v in values:
+    //     for v in values:
     auto& __obj_0 = values;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const tpy::BigInt& v = *__beg_0;
-        // 14:         total += v
+        //         total += v
         total = (total) + (v);
     }
-    // 15:     return total
+    //     return total
     return total;
 }
 
-// 17: def main() -> None:
+// def main() -> None:
 void main() {
-    // 18:     # Array coerces to Span
-    // 19:     arr: Array[Int32, 4] = [1, 2, 3, 4]
+    //     # Array coerces to Span
+    //     arr: Array[Int32, 4] = [1, 2, 3, 4]
     std::array<int32_t, 4> arr = {1, 2, 3, 4};
-    // 20:     print(sum_span(arr))  # 10
+    //     print(sum_span(arr))  # 10
     std::cout << sum_span(tpy::as_mut_span(arr)) << "\n";
-    // 22:     # ArrayList coerces to Span (user type with __span__)
-    // 23:     al = ArrayList[Int32, 8]()
+    //     # ArrayList coerces to Span (user type with __span__)
+    //     al = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> al = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    // 24:     al.append(10)
+    //     al.append(10)
     al.append(10);
-    // 25:     al.append(20)
+    //     al.append(20)
     al.append(20);
-    // 26:     al.append(30)
+    //     al.append(30)
     al.append(30);
-    // 27:     print(sum_span(al))  # 60
+    //     print(sum_span(al))  # 60
     std::cout << sum_span(al.__span__()) << "\n";
-    // 29:     # list coerces to Span
-    // 30:     lst: list[Int32] = [100, 200, 300, 400]
+    //     # list coerces to Span
+    //     lst: list[Int32] = [100, 200, 300, 400]
     std::vector<int32_t> lst = {100, 200, 300, 400};
-    // 31:     print(sum_span(lst))  # 1000
+    //     print(sum_span(lst))  # 1000
     std::cout << sum_span(tpy::as_mut_span(lst)) << "\n";
-    // 33:     # Literal array coerces to Span (via PendingListType)
-    // 34:     print(sum_span([5, 5, 5, 5, 5]))  # 25
+    //     # Literal array coerces to Span (via PendingListType)
+    //     print(sum_span([5, 5, 5, 5, 5]))  # 25
     std::cout << sum_span(tpy::as_mut_span(std::array<int32_t, 5>{5, 5, 5, 5, 5})) << "\n";
-    // 36:     # BigInt tests - IntLiteral elements coerce to BigInt
-    // 37:     # list[int] coerces to Span[int]
-    // 38:     bigint_list: list[int] = [1000, 2000, 3000]
+    //     # BigInt tests - IntLiteral elements coerce to BigInt
+    //     # list[int] coerces to Span[int]
+    //     bigint_list: list[int] = [1000, 2000, 3000]
     std::vector<tpy::BigInt> bigint_list = {1000, 2000, 3000};
-    // 39:     print(sum_span_bigint(bigint_list))  # 6000
+    //     print(sum_span_bigint(bigint_list))  # 6000
     std::cout << sum_span_bigint(tpy::as_mut_span(bigint_list)) << "\n";
-    // 41:     # PendingListType with IntLiteral -> Span[int] (BigInt)
-    // 42:     print(sum_span_bigint([100, 200, 300]))  # 600
+    //     # PendingListType with IntLiteral -> Span[int] (BigInt)
+    //     print(sum_span_bigint([100, 200, 300]))  # 600
     std::cout << sum_span_bigint(tpy::as_mut_span(std::array<tpy::BigInt, 3>{tpy::BigInt(100), tpy::BigInt(200), tpy::BigInt(300)})) << "\n";
 }
 
@@ -80,9 +80,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: from tplib import ArrayList
+    // from tplib import ArrayList
     ::tpy_user::tplib::__tpy_init();
-    // 44: main()
+    // main()
     main();
 }
 

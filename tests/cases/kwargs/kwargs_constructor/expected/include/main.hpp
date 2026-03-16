@@ -13,14 +13,14 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // # Keyword arguments in record constructors
-// 3: class Point:
+// class Point:
 struct Point {
-    // 5:         self.x = x
+    //         self.x = x
     tpy::BigInt x;
-    // 6:         self.y = y
+    //         self.y = y
     tpy::BigInt y;
 
-    // 4:     def __init__(self, x: int, y: int) -> None:
+    //     def __init__(self, x: int, y: int) -> None:
     Point() = default;
     explicit Point(const tpy::BigInt& x, const tpy::BigInt& y) : x(x), y(y) {}
 };
@@ -34,16 +34,16 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 8: class Config:
+// class Config:
 struct Config {
-    // 10:         self.host = host
+    //         self.host = host
     std::string host;
-    // 11:         self.port = port
+    //         self.port = port
     tpy::BigInt port;
-    // 12:         self.verbose = verbose
+    //         self.verbose = verbose
     bool verbose;
 
-    // 9:     def __init__(self, host: str, port: int = 8080, verbose: bool = False) -> None:
+    //     def __init__(self, host: str, port: int = 8080, verbose: bool = False) -> None:
     Config() = default;
     explicit Config(std::string_view host, const tpy::BigInt& port = 8080, bool verbose = false) : host(host), port(port), verbose(verbose) {}
 };

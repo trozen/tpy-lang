@@ -12,19 +12,19 @@ inline constexpr std::string_view __name__ = "__main__";
 void observe_field(bool flag, const Box& p);
 void observe_method(bool flag, const Box& p);
 
-// 5: class Box:
+// class Box:
 struct Box {
-    // 6:     v: Int32
+    //     v: Int32
     int32_t v;
 
-    // 7:     def __init__(self, v: Int32) -> None:
+    //     def __init__(self, v: Int32) -> None:
     Box() = default;
     explicit Box(int32_t v) : v(v) {}
 
     //     @readonly
-    // 11:     def get_v(self) -> Int32:
+    //     def get_v(self) -> Int32:
     int32_t get_v() const {
-        // 12:         return self.v
+        //         return self.v
         return this->v;
     }
 };

@@ -46,32 +46,32 @@ tpy_user::main::Color EnumUtil<tpy_user::main::Color>::from_name(std::string_vie
 namespace tpy_user::main {
 
 
-// 9: def color_name(c: Color) -> str:
+// def color_name(c: Color) -> str:
 std::string color_name(Color c) {
-    // 10:     if c == Color.Red:
+    //     if c == Color.Red:
     if ((c == Color::Red)) {
-        // 11:         return "red"
+        //         return "red"
         return "red";
-    // 12:     elif c == Color.Green:
+    //     elif c == Color.Green:
     } else if ((c == Color::Green)) {
-        // 13:         return "green"
+        //         return "green"
         return "green";
-    // 14:     elif c == Color.Blue:
+    //     elif c == Color.Blue:
     } else if ((c == Color::Blue)) {
-        // 15:         return "blue"
+        //         return "blue"
         return "blue";
     }
-    // 16:     return "unknown"
+    //     return "unknown"
     return "unknown";
 }
 
-// 18: def main() -> None:
+// def main() -> None:
 void main() {
-    // 19:     print(color_name(Color.Red))
+    //     print(color_name(Color.Red))
     std::cout << color_name(Color::Red) << "\n";
-    // 20:     print(color_name(Color.Green))
+    //     print(color_name(Color.Green))
     std::cout << color_name(Color::Green) << "\n";
-    // 21:     print(color_name(Color.Blue))
+    //     print(color_name(Color.Blue))
     std::cout << color_name(Color::Blue) << "\n";
 }
 
@@ -80,7 +80,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 23: main()
+    // main()
     main();
 }
 

@@ -4,47 +4,47 @@
 namespace tpy_user::main {
 
 
-// 22: def main() -> None:
+// def main() -> None:
 void main() {
-    // 23:     c = Container[Point](Point(1, 2))
+    //     c = Container[Point](Point(1, 2))
     Container<Point> c = Container<Point>(Point(1, 2));
-    // 24:     p = c.get()
+    //     p = c.get()
     Point* p = c.get();
-    // 25:     if p is not None:
+    //     if p is not None:
     if ((p != nullptr)) {
-        // 26:         print(p.x, p.y)
+        //         print(p.x, p.y)
         std::cout << p->x << " " << p->y << "\n";
-        // 27:         # Mutate through the returned pointer -- should modify the original
-        // 28:         p.x = 10
+        //         # Mutate through the returned pointer -- should modify the original
+        //         p.x = 10
         p->x = 10;
-        // 29:         p.y = 20
+        //         p.y = 20
         p->y = 20;
     }
-    // 31:     # Verify the original was mutated
-    // 32:     p2 = c.get()
+    //     # Verify the original was mutated
+    //     p2 = c.get()
     Point* p2 = c.get();
-    // 33:     if p2 is not None:
+    //     if p2 is not None:
     if ((p2 != nullptr)) {
-        // 34:         print(p2.x, p2.y)
+        //         print(p2.x, p2.y)
         std::cout << p2->x << " " << p2->y << "\n";
     }
-    // 36:     # Also test via dict.get()
-    // 37:     d: dict[str, Point] = {"a": Point(3, 4)}
+    //     # Also test via dict.get()
+    //     d: dict[str, Point] = {"a": Point(3, 4)}
     tpy::ordered_map<std::string, Point> d = tpy::ordered_map<std::string, Point>({{"a", Point(3, 4)}});
-    // 38:     dp = d.get("a")
+    //     dp = d.get("a")
     Point* dp = tpy::dict_get(d, "a");
-    // 39:     if dp is not None:
+    //     if dp is not None:
     if ((dp != nullptr)) {
-        // 40:         dp.x = 30
+        //         dp.x = 30
         dp->x = 30;
-        // 41:         dp.y = 40
+        //         dp.y = 40
         dp->y = 40;
     }
-    // 42:     dp2 = d.get("a")
+    //     dp2 = d.get("a")
     Point* dp2 = tpy::dict_get(d, "a");
-    // 43:     if dp2 is not None:
+    //     if dp2 is not None:
     if ((dp2 != nullptr)) {
-        // 44:         print(dp2.x, dp2.y)
+        //         print(dp2.x, dp2.y)
         std::cout << dp2->x << " " << dp2->y << "\n";
     }
 }
@@ -54,7 +54,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 46: main()
+    // main()
     main();
 }
 

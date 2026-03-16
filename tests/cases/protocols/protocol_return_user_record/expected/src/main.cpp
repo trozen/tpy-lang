@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 22: def main() -> None:
+// def main() -> None:
 void main() {
-    // 23:     factory = DefaultFactory()
+    //     factory = DefaultFactory()
     DefaultFactory factory = DefaultFactory();
-    // 24:     p = make_point(factory, 10, 20)
+    //     p = make_point(factory, 10, 20)
     Point p = make_point<DefaultFactory>(factory, 10, 20);
-    // 25:     print(p.x)
+    //     print(p.x)
     std::cout << p.x << "\n";
-    // 26:     print(p.y)
+    //     print(p.y)
     std::cout << p.y << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 28: main()
+    // main()
     main();
 }
 

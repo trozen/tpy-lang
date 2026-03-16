@@ -5,31 +5,31 @@ namespace tpy_user::main {
 
 
 // @readonly
-// 17: def maybe_read(b: Box, flag: bool) -> Int32:
+// def maybe_read(b: Box, flag: bool) -> Int32:
 int32_t maybe_read(const Box& b, bool flag) {
-    // 18:     x: Box | None = None
+    //     x: Box | None = None
     const Box* x = nullptr;
-    // 19:     if flag:
+    //     if flag:
     if (flag) {
-        // 20:         x = b
+        //         x = b
         x = &(b);
     }
-    // 21:     if x is not None:
+    //     if x is not None:
     if ((x != nullptr)) {
-        // 22:         return x.get_value()
+        //         return x.get_value()
         return x->get_value();
     }
-    // 23:     return Int32(0)
+    //     return Int32(0)
     return 0;
 }
 
-// 26: def main() -> None:
+// def main() -> None:
 void main() {
-    // 27:     b = Box(Int32(42))
+    //     b = Box(Int32(42))
     Box b = Box(42);
-    // 28:     print(maybe_read(b, True))
+    //     print(maybe_read(b, True))
     std::cout << maybe_read(b, true) << "\n";
-    // 29:     print(maybe_read(b, False))
+    //     print(maybe_read(b, False))
     std::cout << maybe_read(b, false) << "\n";
 }
 
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 31: main()
+    // main()
     main();
 }
 

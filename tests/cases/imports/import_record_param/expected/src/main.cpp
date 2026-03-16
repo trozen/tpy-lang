@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 6: def get_radius(c: Circle) -> Int32:
+// def get_radius(c: Circle) -> Int32:
 int32_t get_radius(const ::tpy_user::shapes::Circle& c) {
-    // 7:     return c.radius
+    //     return c.radius
     return c.radius;
 }
 
-// 10: def main() -> None:
+// def main() -> None:
 void main() {
-    // 11:     c = Circle(Int32(10))
+    //     c = Circle(Int32(10))
     ::tpy_user::shapes::Circle c = ::tpy_user::shapes::Circle(10);
-    // 12:     print(get_radius(c))
+    //     print(get_radius(c))
     std::cout << get_radius(c) << "\n";
 }
 
@@ -23,9 +23,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: from shapes import Circle
+    // from shapes import Circle
     ::tpy_user::shapes::__tpy_init();
-    // 14: main()
+    // main()
     main();
 }
 

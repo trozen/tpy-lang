@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 8: def main() -> None:
+// def main() -> None:
 void main() {
-    // 9:     p = Person("Alice", "NYC")
+    //     p = Person("Alice", "NYC")
     Person p = Person("Alice", "NYC");
-    // 10:     print(p.name)
+    //     print(p.name)
     std::cout << p.name << "\n";
-    // 11:     print(p.city)
+    //     print(p.city)
     std::cout << p.city << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 14: main()
+    // main()
     main();
 }
 

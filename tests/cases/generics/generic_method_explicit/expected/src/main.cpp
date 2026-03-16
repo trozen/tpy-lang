@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 13: def main() -> None:
+// def main() -> None:
 void main() {
-    // 14:     b = Box[Int32](Int32(10))
+    //     b = Box[Int32](Int32(10))
     Box<int32_t> b = Box<int32_t>(10);
-    // 15:     r1 = b.transform[int](42)
+    //     r1 = b.transform[int](42)
     tpy::BigInt r1 = b.transform<tpy::BigInt>(42);
-    // 16:     print(r1)
+    //     print(r1)
     std::cout << r1 << "\n";
-    // 17:     r2 = b.transform[str]("world")
+    //     r2 = b.transform[str]("world")
     std::string r2 = b.transform<std::string>("world");
-    // 18:     print(r2)
+    //     print(r2)
     std::cout << r2 << "\n";
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 20: main()
+    // main()
     main();
 }
 

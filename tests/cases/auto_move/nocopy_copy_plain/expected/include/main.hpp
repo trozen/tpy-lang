@@ -11,12 +11,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 6: class Counter:
+// class Counter:
 struct Counter {
-    // 7:     count: Int32
+    //     count: Int32
     int32_t count;
 
-    // 9:     def __init__(self, count: Int32):
+    //     def __init__(self, count: Int32):
     Counter() = default;
     explicit Counter(int32_t count) : count(count) {}
     // copyable via __copy__
@@ -28,9 +28,9 @@ struct Counter {
     Counter(Counter&&) = default;
     Counter& operator=(Counter&&) = default;
 
-    // 12:     def __copy__(self) -> Own[Counter]:
+    //     def __copy__(self) -> Own[Counter]:
     Counter __copy__() const {
-        // 13:         return Counter(self.count * 2)
+        //         return Counter(self.count * 2)
         return Counter((tpy::mul_check<int32_t>(this->count, 2)));
     }
 };

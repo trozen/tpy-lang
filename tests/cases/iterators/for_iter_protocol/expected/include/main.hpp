@@ -11,31 +11,31 @@ struct NumberRange;
 extern NumberRange* nums;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 3: class RangeIter:
+// class RangeIter:
 struct RangeIter {
-    // 4:     current: Int32
+    //     current: Int32
     int32_t current;
-    // 5:     limit: Int32
+    //     limit: Int32
     int32_t limit;
 
-    // 7:     def __init__(self, start: Int32, limit: Int32) -> None:
+    //     def __init__(self, start: Int32, limit: Int32) -> None:
     RangeIter() = default;
     explicit RangeIter(int32_t start, int32_t limit) : current(start), limit(limit) {}
 
     auto& __iter__() { return *this; }
 
-    // 11:     def __next__(self) -> Int32:
+    //     def __next__(self) -> Int32:
     std::optional<int32_t> __next_opt__() {
-        // 12:         if self.current < self.limit:
+        //         if self.current < self.limit:
         if ((this->current < this->limit)) {
-            // 13:             result = self.current
+            //             result = self.current
             int32_t result = this->current;
-            // 14:             self.current += 1
+            //             self.current += 1
             this->current = tpy::add_check<int32_t>(this->current, 1);
-            // 15:             return result
+            //             return result
             return result;
         }
-        // 16:         raise StopIteration
+        //         raise StopIteration
         return std::nullopt;
     }
 
@@ -53,20 +53,20 @@ inline std::ostream& operator<<(std::ostream& os, const RangeIter& obj) {
     return os;
 }
 
-// 18: class NumberRange:
+// class NumberRange:
 struct NumberRange {
-    // 19:     start: Int32
+    //     start: Int32
     int32_t start;
-    // 20:     limit: Int32
+    //     limit: Int32
     int32_t limit;
 
-    // 22:     def __init__(self, start: Int32, limit: Int32) -> None:
+    //     def __init__(self, start: Int32, limit: Int32) -> None:
     NumberRange() = default;
     explicit NumberRange(int32_t start, int32_t limit) : start(start), limit(limit) {}
 
-    // 26:     def __iter__(self) -> Own[RangeIter]:
+    //     def __iter__(self) -> Own[RangeIter]:
     RangeIter __iter__() const {
-        // 27:         return RangeIter(self.start, self.limit)
+        //         return RangeIter(self.start, self.limit)
         return RangeIter(this->start, this->limit);
     }
 };

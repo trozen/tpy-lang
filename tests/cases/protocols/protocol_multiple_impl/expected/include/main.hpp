@@ -6,19 +6,19 @@
 namespace tpy_user::main {
 
 // # Define custom protocols
-// 5: class Printable(Protocol):
+// class Printable(Protocol):
 template<typename T>
 concept Printable = requires(const T& t) {
     { t.__str__() } -> std::convertible_to<std::string>;
 };
 
-// 10: class Describable(Protocol):
+// class Describable(Protocol):
 template<typename T>
 concept Describable = requires(T& t) {
     { t.describe() } -> std::convertible_to<std::string>;
 };
 
-// 15: class Measurable(Protocol):
+// class Measurable(Protocol):
 template<typename T>
 concept Measurable = requires(T& t) {
     { t.size() } -> std::convertible_to<int32_t>;
@@ -30,32 +30,32 @@ extern Box* b;
 inline constexpr std::string_view __name__ = "__main__";
 
 // # Class that implements multiple protocols
-// 21: class Box(Printable, Describable, Measurable):
+// class Box(Printable, Describable, Measurable):
 struct Box {
-    // 22:     width: Int32
+    //     width: Int32
     int32_t width;
-    // 23:     height: Int32
+    //     height: Int32
     int32_t height;
 
-    // 25:     def __init__(self, width: Int32, height: Int32) -> None:
+    //     def __init__(self, width: Int32, height: Int32) -> None:
     Box() = default;
     explicit Box(int32_t width, int32_t height) : width(width), height(height) {}
 
-    // 29:     def __str__(self) -> str:
+    //     def __str__(self) -> str:
     std::string __str__() const {
-        // 30:         return "Box"
+        //         return "Box"
         return "Box";
     }
 
-    // 32:     def describe(self) -> str:
+    //     def describe(self) -> str:
     std::string describe() const {
-        // 33:         return "A rectangular box"
+        //         return "A rectangular box"
         return "A rectangular box";
     }
 
-    // 35:     def size(self) -> Int32:
+    //     def size(self) -> Int32:
     int32_t size() const {
-        // 36:         return self.width * self.height
+        //         return self.width * self.height
         return (tpy::mul_check<int32_t>(this->width, this->height));
     }
 };

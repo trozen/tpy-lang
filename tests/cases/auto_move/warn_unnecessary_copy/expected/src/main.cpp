@@ -4,32 +4,32 @@
 namespace tpy_user::main {
 
 
-// 9: def consume(b: Own[Box]) -> Int32:
+// def consume(b: Own[Box]) -> Int32:
 int32_t consume(Box&& b) {
-    // 10:     return b.value
+    //     return b.value
     return b.value;
 }
 
-// 13: def make_box(v: Int32) -> Own[Box]:
+// def make_box(v: Int32) -> Own[Box]:
 Box make_box(int32_t v) {
-    // 14:     b = Box()
+    //     b = Box()
     Box b = Box();
-    // 15:     b.value = v
+    //     b.value = v
     b.value = v;
-    // 16:     return copy(b)  # tpyc: warning(/unnecessary copy/)
+    //     return copy(b)  # tpyc: warning(/unnecessary copy/)
     return Box(b);
 }
 
-// 19: def main():
+// def main():
 void main() {
-    // 20:     b = Box()
+    //     b = Box()
     Box b = Box();
-    // 21:     b.value = 42
+    //     b.value = 42
     b.value = 42;
-    // 22:     # Warning at call arg site too
-    // 23:     print(consume(copy(b)))  # tpyc: warning(/unnecessary copy/)
+    //     # Warning at call arg site too
+    //     print(consume(copy(b)))  # tpyc: warning(/unnecessary copy/)
     std::cout << consume(Box(b)) << "\n";
-    // 24:     print(make_box(99).value)
+    //     print(make_box(99).value)
     std::cout << make_box(99).value << "\n";
 }
 
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 27: main()
+    // main()
     main();
 }
 

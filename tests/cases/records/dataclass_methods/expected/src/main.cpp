@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 17: def main() -> None:
+// def main() -> None:
 void main() {
-    // 18:     r = Rect(3, 4)
+    //     r = Rect(3, 4)
     Rect r = Rect(3, 4);
-    // 19:     print(r)
+    //     print(r)
     std::cout << r << "\n";
-    // 20:     print(r.area())
+    //     print(r.area())
     std::cout << r.area() << "\n";
-    // 21:     r.scale(2)
+    //     r.scale(2)
     r.scale(2);
-    // 22:     print(r)
+    //     print(r)
     std::cout << r << "\n";
-    // 23:     print(r.area())
+    //     print(r.area())
     std::cout << r.area() << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 25: main()
+    // main()
     main();
 }
 

@@ -12,29 +12,29 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 5: class MyIter:
+// class MyIter:
 struct MyIter {
-    // 6:     _val: Int32
+    //     _val: Int32
     int32_t _val;
 
-    // 7:     def __init__(self, val: Int32) -> None:
+    //     def __init__(self, val: Int32) -> None:
     MyIter() = default;
     explicit MyIter(int32_t val) : _val(val) {}
 
     auto& __iter__() { return *this; }
 
-    // 9:     def __next__(self) -> Int32:
+    //     def __next__(self) -> Int32:
     std::optional<int32_t> __next_opt__() {
-        // 10:         if self._val > 0:
+        //         if self._val > 0:
         if ((this->_val > 0)) {
-            // 11:             result = self._val
+            //             result = self._val
             int32_t result = this->_val;
-            // 12:             self._val -= 1
+            //             self._val -= 1
             this->_val = tpy::sub_check<int32_t>(this->_val, 1);
-            // 13:             return result
+            //             return result
             return result;
         }
-        // 14:         raise StopIteration
+        //         raise StopIteration
         return std::nullopt;
     }
 
@@ -50,31 +50,31 @@ inline std::ostream& operator<<(std::ostream& os, const MyIter& obj) {
     return os;
 }
 
-// 16: class Dual:  # tpyc: ok
+// class Dual:  # tpyc: ok
 struct Dual {
-    // 17:     _data: list[Int32]
+    //     _data: list[Int32]
     std::vector<int32_t> _data;
 
-    // 18:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Dual() : _data({1, 2, 3}) {}
 
     //     @auto_readonly
-    // 21:     def __span__(self) -> Span[auto_readonly[Int32]]:
+    //     def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<int32_t> __span__() {
-        // 22:         return self._data
+        //         return self._data
         return tpy::as_mut_span(this->_data);
     }
 
     //     @auto_readonly
-    // 21:     def __span__(self) -> Span[auto_readonly[Int32]]:
+    //     def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> __span__() const {
-        // 22:         return self._data
+        //         return self._data
         return tpy::as_span(this->_data);
     }
 
-    // 23:     def __iter__(self) -> Own[MyIter]:
+    //     def __iter__(self) -> Own[MyIter]:
     MyIter __iter__() const {
-        // 24:         return MyIter(Int32(3))
+        //         return MyIter(Int32(3))
         return MyIter(3);
     }
 };

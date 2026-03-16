@@ -4,32 +4,32 @@
 namespace tpy_user::main {
 
 
-// 4: def describe(c: Color) -> str:
+// def describe(c: Color) -> str:
 std::string describe(::tpy_user::colors::Color c) {
-    // 5:     if c == Color.Red:
+    //     if c == Color.Red:
     if ((c == ::tpy_user::colors::Color::Red)) {
-        // 6:         return "red"
+        //         return "red"
         return "red";
     }
-    // 7:     return "other"
+    //     return "other"
     return "other";
 }
 
-// 9: def default_color() -> Color:
+// def default_color() -> Color:
 ::tpy_user::colors::Color default_color() {
-    // 10:     return Color.Blue
+    //     return Color.Blue
     return ::tpy_user::colors::Color::Blue;
 }
 
-// 12: def main() -> None:
+// def main() -> None:
 void main() {
-    // 13:     c: Color = Color.Green
+    //     c: Color = Color.Green
     ::tpy_user::colors::Color c = ::tpy_user::colors::Color::Green;
-    // 14:     print(c)
+    //     print(c)
     std::cout << c << "\n";
-    // 15:     print(describe(Color.Red))
+    //     print(describe(Color.Red))
     std::cout << describe(::tpy_user::colors::Color::Red) << "\n";
-    // 16:     print(default_color())
+    //     print(default_color())
     std::cout << default_color() << "\n";
 }
 
@@ -38,10 +38,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # Cross-module enum with explicit type annotations in params, returns, and locals
-    // 2: from colors import Color
+    // # Cross-module enum with explicit type annotations in params, returns, and locals
+    // from colors import Color
     ::tpy_user::colors::__tpy_init();
-    // 18: main()
+    // main()
     main();
 }
 

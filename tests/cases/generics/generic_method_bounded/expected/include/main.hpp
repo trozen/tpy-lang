@@ -11,20 +11,20 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Wrapper[T]:
+// class Wrapper[T]:
 template<typename T>
 struct Wrapper {
-    // 5:     val: T
+    //     val: T
     T val;
 
-    // 7:     def __init__(self, val: T):
+    //     def __init__(self, val: T):
     Wrapper() = default;
     explicit Wrapper(const T& val) : val(val) {}
 
-    // 10:     def is_less[U: Comparable](self, a: U, b: U) -> bool:
+    //     def is_less[U: Comparable](self, a: U, b: U) -> bool:
     template<tpy::Comparable U>
     bool is_less(const U& a, const U& b) const {
-        // 11:         return a < b
+        //         return a < b
         return (a < b);
     }
 };

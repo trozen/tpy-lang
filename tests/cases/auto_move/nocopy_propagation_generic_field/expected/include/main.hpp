@@ -14,12 +14,12 @@ void consume(Handles&& h);
 void main();
 
 // @nocopy
-// 6: class Handle:
+// class Handle:
 struct Handle {
-    // 7:     fd: Int32
+    //     fd: Int32
     int32_t fd;
 
-    // 9:     def __init__(self, fd: Int32):
+    //     def __init__(self, fd: Int32):
     Handle() = default;
     explicit Handle(int32_t fd) : fd(fd) {}
     // non-copyable (@nocopy)
@@ -36,12 +36,12 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
     return os;
 }
 
-// 13: class Handles:
+// class Handles:
 struct Handles {
-    // 14:     items: list[Handle]
+    //     items: list[Handle]
     std::vector<Handle> items;
 
-    // 16:     def __init__(self):
+    //     def __init__(self):
     Handles() : items(std::vector<Handle>{}) {}
     // non-copyable (field 'items')
     Handles(const Handles&) = delete;

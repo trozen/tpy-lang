@@ -3,28 +3,28 @@
 
 namespace tpy_user::main {
 
-// 13: vals: list[Int32 | None] = list()
+// vals: list[Int32 | None] = list()
 std::vector<std::optional<int32_t>>* vals{};
 
-// 4: def sum_non_none(items: list[Int32 | None]) -> Int32:
+// def sum_non_none(items: list[Int32 | None]) -> Int32:
 int32_t sum_non_none(const std::vector<std::optional<int32_t>>& items) {
-    // 5:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 6:     for item in items:
+    //     for item in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::optional<int32_t> item = *__beg_0;
-        // 7:         if item is None:
+        //         if item is None:
         if ((!item.has_value())) {
-            // 8:             continue
+            //             continue
             continue;
         }
-        // 9:         total = total + item  # tpyc: ok
+        //         total = total + item  # tpyc: ok
         total = (tpy::add_check<int32_t>(total, (*item)));
     }
-    // 10:     return total
+    //     return total
     return total;
 }
 
@@ -33,14 +33,14 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 13: vals: list[Int32 | None] = list()
+    // vals: list[Int32 | None] = list()
     static std::vector<std::optional<int32_t>> __global_slot_1 = std::vector<std::optional<int32_t>>();
     vals = &__global_slot_1;
-    // 14: vals.append(3)
+    // vals.append(3)
     (*vals).push_back(3);
-    // 15: vals.append(4)
+    // vals.append(4)
     (*vals).push_back(4);
-    // 16: print(sum_non_none(vals))
+    // print(sum_non_none(vals))
     std::cout << sum_non_none((*vals)) << "\n";
 }
 

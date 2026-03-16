@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 28: def main() -> None:
+// def main() -> None:
 void main() {
-    // 29:     box = IntBox(42)
+    //     box = IntBox(42)
     IntBox box = IntBox(42);
-    // 30:     # IntBox satisfies Container[Int32]
-    // 31:     h = Holder[IntBox](box)
+    //     # IntBox satisfies Container[Int32]
+    //     h = Holder[IntBox](box)
     Holder<IntBox> h = Holder<IntBox>(box);
-    // 32:     # Call get() on the concrete type after retrieval
-    // 33:     result = h.get_item()
+    //     # Call get() on the concrete type after retrieval
+    //     result = h.get_item()
     IntBox& result = h.get_item();
-    // 34:     print(result.get())
+    //     print(result.get())
     std::cout << result.get() << "\n";
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 36: main()
+    // main()
     main();
 }
 

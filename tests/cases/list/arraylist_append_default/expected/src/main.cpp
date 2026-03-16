@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 
-// 5: def main() -> None:
+// def main() -> None:
 void main() {
-    // 6:     a = ArrayList[Int32, 4]()
+    //     a = ArrayList[Int32, 4]()
     ::tpy_user::tplib::array_list::ArrayList<int32_t, 4> a = ::tpy_user::tplib::array_list::ArrayList<int32_t, 4>();
-    // 7:     a.append(10)
+    //     a.append(10)
     a.append(10);
-    // 8:     a.append_default()
+    //     a.append_default()
     a.append_default();
-    // 9:     a.append(30)
+    //     a.append(30)
     a.append(30);
-    // 10:     print(len(a))
+    //     print(len(a))
     std::cout << tpy::__len__(a) << "\n";
-    // 11:     print(a[0])
+    //     print(a[0])
     std::cout << a[0] << "\n";
-    // 12:     print(a[1])
+    //     print(a[1])
     std::cout << a[1] << "\n";
-    // 13:     print(a[2])
+    //     print(a[2])
     std::cout << a[2] << "\n";
 }
 
@@ -29,10 +29,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: from tplib.array_list import ArrayList
+    // from tplib.array_list import ArrayList
     ::tpy_user::tplib::__tpy_init();
     ::tpy_user::tplib::array_list::__tpy_init();
-    // 15: main()
+    // main()
     main();
 }
 

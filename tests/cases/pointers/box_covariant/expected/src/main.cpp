@@ -4,42 +4,42 @@
 namespace tpy_user::main {
 
 
-// 25: def print_area(b: Box[Shape]) -> None:
+// def print_area(b: Box[Shape]) -> None:
 void print_area(::tpy_user::tplib::Box<Shape>& b) {
-    // 26:     print(b.get().area())
+    //     print(b.get().area())
     std::cout << tpy::print_float(b.get().area()) << "\n";
 }
 
-// 28: def make_shape() -> Own[Box[Shape]]:
+// def make_shape() -> Own[Box[Shape]]:
 ::tpy_user::tplib::Box<Shape> make_shape() {
-    // 29:     return Box(Circle(3.0))
+    //     return Box(Circle(3.0))
     return ::tpy_user::tplib::Box<Circle>(Circle(3.0));
 }
 
-// 31: def main() -> None:
+// def main() -> None:
 void main() {
-    // 32:     # Function arg coercion
-    // 33:     bc = Box(Circle(5.0))
+    //     # Function arg coercion
+    //     bc = Box(Circle(5.0))
     ::tpy_user::tplib::Box<Circle> bc = ::tpy_user::tplib::Box<Circle>(Circle(5.0));
-    // 34:     print_area(bc)
+    //     print_area(bc)
     ::tpy_user::tplib::Box<Shape> __tmp_1 = std::move(bc);
     print_area(__tmp_1);
-    // 36:     bs = Box(Square(3.0))
+    //     bs = Box(Square(3.0))
     ::tpy_user::tplib::Box<Square> bs = ::tpy_user::tplib::Box<Square>(Square(3.0));
-    // 37:     print_area(bs)
+    //     print_area(bs)
     ::tpy_user::tplib::Box<Shape> __tmp_2 = std::move(bs);
     print_area(__tmp_2);
-    // 39:     # Variable assignment coercion
-    // 40:     bc2 = Box(Circle(2.0))
+    //     # Variable assignment coercion
+    //     bc2 = Box(Circle(2.0))
     ::tpy_user::tplib::Box<Circle> bc2 = ::tpy_user::tplib::Box<Circle>(Circle(2.0));
-    // 41:     b_shape: Box[Shape] = bc2
+    //     b_shape: Box[Shape] = bc2
     ::tpy_user::tplib::Box<Shape> b_shape = std::move(bc2);
-    // 42:     print(b_shape.get().area())
+    //     print(b_shape.get().area())
     std::cout << tpy::print_float(b_shape.get().area()) << "\n";
-    // 44:     # Return coercion via Own
-    // 45:     b3 = make_shape()
+    //     # Return coercion via Own
+    //     b3 = make_shape()
     ::tpy_user::tplib::Box<Shape> b3 = make_shape();
-    // 46:     print(b3.get().area())
+    //     print(b3.get().area())
     std::cout << tpy::print_float(b3.get().area()) << "\n";
 }
 
@@ -48,9 +48,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 5: from tplib import Box
+    // from tplib import Box
     ::tpy_user::tplib::__tpy_init();
-    // 48: main()
+    // main()
     main();
 }
 

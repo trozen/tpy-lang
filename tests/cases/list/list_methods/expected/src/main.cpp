@@ -5,161 +5,161 @@ namespace tpy_user::main {
 
 
 // # Test all list methods: pop(), insert(), remove(), clear(), extend()
-// 5: def print_list(nums: list[Int32]) -> None:
+// def print_list(nums: list[Int32]) -> None:
 void print_list(const std::vector<int32_t>& nums) {
-    // 6:     i: Int32 = 0
+    //     i: Int32 = 0
     int32_t i = 0;
-    // 7:     while i < len(nums):
+    //     while i < len(nums):
     while ((i < tpy::__len__(nums))) {
-        // 8:         print(nums[i])
+        //         print(nums[i])
         std::cout << nums[i] << "\n";
-        // 9:         i += 1
+        //         i += 1
         i = tpy::add_check<int32_t>(i, 1);
     }
-    // 10:     print("---")
+    //     print("---")
     std::cout << "---" << "\n";
 }
 
-// 12: def test_pop() -> None:
+// def test_pop() -> None:
 void test_pop() {
-    // 13:     nums: list[Int32] = [10, 20, 30, 40]
+    //     nums: list[Int32] = [10, 20, 30, 40]
     std::vector<int32_t> nums = {10, 20, 30, 40};
-    // 15:     # Pop last element
-    // 16:     last: Int32 = nums.pop()
+    //     # Pop last element
+    //     last: Int32 = nums.pop()
     int32_t last = tpy::pop_back(nums);
-    // 17:     print(last)
+    //     print(last)
     std::cout << last << "\n";
-    // 18:     print(len(nums))
+    //     print(len(nums))
     std::cout << tpy::__len__(nums) << "\n";
-    // 20:     # Pop again
-    // 21:     second_last: Int32 = nums.pop()
+    //     # Pop again
+    //     second_last: Int32 = nums.pop()
     int32_t second_last = tpy::pop_back(nums);
-    // 22:     print(second_last)
+    //     print(second_last)
     std::cout << second_last << "\n";
-    // 23:     print(len(nums))
+    //     print(len(nums))
     std::cout << tpy::__len__(nums) << "\n";
-    // 25:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
 }
 
-// 27: def test_insert() -> None:
+// def test_insert() -> None:
 void test_insert() {
-    // 28:     nums: list[Int32] = [10, 30, 40]
+    //     nums: list[Int32] = [10, 30, 40]
     std::vector<int32_t> nums = {10, 30, 40};
-    // 30:     # Insert at beginning
-    // 31:     nums.insert(0, 5)
+    //     # Insert at beginning
+    //     nums.insert(0, 5)
     tpy::list_insert(nums, 0, 5);
-    // 32:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
-    // 34:     # Insert in middle
-    // 35:     nums.insert(2, 20)
+    //     # Insert in middle
+    //     nums.insert(2, 20)
     tpy::list_insert(nums, 2, 20);
-    // 36:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
-    // 38:     # Insert at end (same as append)
-    // 39:     nums.insert(5, 50)
+    //     # Insert at end (same as append)
+    //     nums.insert(5, 50)
     tpy::list_insert(nums, 5, 50);
-    // 40:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
 }
 
-// 42: def test_remove() -> None:
+// def test_remove() -> None:
 void test_remove() {
-    // 43:     nums: list[Int32] = [10, 20, 30, 20, 40]
+    //     nums: list[Int32] = [10, 20, 30, 20, 40]
     std::vector<int32_t> nums = {10, 20, 30, 20, 40};
-    // 45:     # Remove first occurrence of 20
-    // 46:     nums.remove(20)
+    //     # Remove first occurrence of 20
+    //     nums.remove(20)
     tpy::list_remove(nums, 20);
-    // 47:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
-    // 49:     # Remove 10
-    // 50:     nums.remove(10)
+    //     # Remove 10
+    //     nums.remove(10)
     tpy::list_remove(nums, 10);
-    // 51:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
-    // 53:     # Remove 40
-    // 54:     nums.remove(40)
+    //     # Remove 40
+    //     nums.remove(40)
     tpy::list_remove(nums, 40);
-    // 55:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
 }
 
-// 57: def test_clear() -> None:
+// def test_clear() -> None:
 void test_clear() {
-    // 58:     nums: list[Int32] = [1, 2, 3, 4, 5]
+    //     nums: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
-    // 59:     print(len(nums))
+    //     print(len(nums))
     std::cout << tpy::__len__(nums) << "\n";
-    // 61:     nums.clear()
+    //     nums.clear()
     nums.clear();
-    // 62:     print(len(nums))
+    //     print(len(nums))
     std::cout << tpy::__len__(nums) << "\n";
-    // 64:     # Can still append after clear
-    // 65:     nums.append(100)
+    //     # Can still append after clear
+    //     nums.append(100)
     nums.push_back(100);
-    // 66:     print(len(nums))
+    //     print(len(nums))
     std::cout << tpy::__len__(nums) << "\n";
-    // 67:     print(nums[0])
+    //     print(nums[0])
     std::cout << tpy::__getitem__(nums, 0) << "\n";
 }
 
-// 69: def test_extend() -> None:
+// def test_extend() -> None:
 void test_extend() {
-    // 70:     nums: list[Int32] = [1, 2, 3]
+    //     nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    // 72:     # Extend with array literal
-    // 73:     nums.extend([4, 5, 6])
+    //     # Extend with array literal
+    //     nums.extend([4, 5, 6])
     tpy::list_extend(nums, {4, 5, 6});
-    // 74:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
-    // 76:     # Extend with another list
-    // 77:     more: list[Int32] = [7, 8]
+    //     # Extend with another list
+    //     more: list[Int32] = [7, 8]
     std::vector<int32_t> more = {7, 8};
-    // 78:     nums.extend(more)
+    //     nums.extend(more)
     tpy::list_extend(nums, more);
-    // 79:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
-    // 81:     # Extend with Array variable
-    // 82:     arr: Array[Int32, 2] = [9, 10]
+    //     # Extend with Array variable
+    //     arr: Array[Int32, 2] = [9, 10]
     std::array<int32_t, 2> arr = {9, 10};
-    // 83:     nums.extend(arr)
+    //     nums.extend(arr)
     tpy::list_extend(nums, arr);
-    // 84:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
-    // 86:     # Extend with another list
-    // 87:     extra: list[Int32] = [11, 12]
+    //     # Extend with another list
+    //     extra: list[Int32] = [11, 12]
     std::vector<int32_t> extra = {11, 12};
-    // 88:     nums.extend(extra)
+    //     nums.extend(extra)
     tpy::list_extend(nums, extra);
-    // 89:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
 }
 
-// 91: def test_combined_operations() -> None:
+// def test_combined_operations() -> None:
 void test_combined_operations() {
-    // 92:     nums: list[Int32] = [5]
+    //     nums: list[Int32] = [5]
     std::vector<int32_t> nums = {5};
-    // 94:     nums.append(10)
+    //     nums.append(10)
     nums.push_back(10);
-    // 95:     nums.insert(0, 1)
+    //     nums.insert(0, 1)
     tpy::list_insert(nums, 0, 1);
-    // 96:     nums.extend([15, 20])
+    //     nums.extend([15, 20])
     tpy::list_extend(nums, {15, 20});
-    // 97:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
-    // 99:     nums.remove(10)
+    //     nums.remove(10)
     tpy::list_remove(nums, 10);
-    // 100:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
-    // 102:     popped: Int32 = nums.pop()
+    //     popped: Int32 = nums.pop()
     int32_t popped = tpy::pop_back(nums);
-    // 103:     print(popped)
+    //     print(popped)
     std::cout << popped << "\n";
-    // 104:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
-    // 106:     nums.clear()
+    //     nums.clear()
     nums.clear();
-    // 107:     print(len(nums))
+    //     print(len(nums))
     std::cout << tpy::__len__(nums) << "\n";
 }
 
@@ -168,30 +168,30 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 109: # Run all tests
-    // 110: print("=== pop ===")
+    // # Run all tests
+    // print("=== pop ===")
     std::cout << "=== pop ===" << "\n";
-    // 111: test_pop()
+    // test_pop()
     test_pop();
-    // 112: print("=== insert ===")
+    // print("=== insert ===")
     std::cout << "=== insert ===" << "\n";
-    // 113: test_insert()
+    // test_insert()
     test_insert();
-    // 114: print("=== remove ===")
+    // print("=== remove ===")
     std::cout << "=== remove ===" << "\n";
-    // 115: test_remove()
+    // test_remove()
     test_remove();
-    // 116: print("=== clear ===")
+    // print("=== clear ===")
     std::cout << "=== clear ===" << "\n";
-    // 117: test_clear()
+    // test_clear()
     test_clear();
-    // 118: print("=== extend ===")
+    // print("=== extend ===")
     std::cout << "=== extend ===" << "\n";
-    // 119: test_extend()
+    // test_extend()
     test_extend();
-    // 120: print("=== combined ===")
+    // print("=== combined ===")
     std::cout << "=== combined ===" << "\n";
-    // 121: test_combined_operations()
+    // test_combined_operations()
     test_combined_operations();
 }
 

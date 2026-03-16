@@ -12,12 +12,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 3: class time:
+// class time:
 struct time {
-    // 4:     value: int
+    //     value: int
     tpy::BigInt value;
 
-    // 6:     def __init__(self, v: int):
+    //     def __init__(self, v: int):
     time() = default;
     explicit time(const tpy::BigInt& v) : value(v) {}
 };

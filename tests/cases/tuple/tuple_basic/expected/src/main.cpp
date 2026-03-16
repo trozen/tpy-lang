@@ -4,22 +4,22 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     # Annotated tuple (testing annotation support)
-    // 6:     t: tuple[Int32, str] = (Int32(1), "hello")
+    //     # Annotated tuple (testing annotation support)
+    //     t: tuple[Int32, str] = (Int32(1), "hello")
     std::tuple<int32_t, std::string> t = std::tuple<int32_t, std::string>{1, "hello"};
-    // 7:     print(t)
+    //     print(t)
     std::cout << tpy::TuplePrinter(t) << "\n";
-    // 9:     # Inferred tuple type
-    // 10:     t2 = (Int32(42), True, "world")
+    //     # Inferred tuple type
+    //     t2 = (Int32(42), True, "world")
     std::tuple<int32_t, bool, std::string> t2 = std::tuple<int32_t, bool, std::string>{42, true, "world"};
-    // 11:     print(t2)
+    //     print(t2)
     std::cout << tpy::TuplePrinter(t2) << "\n";
-    // 13:     # Nested tuple (inferred)
-    // 14:     t3 = (Int32(10), ("inner", False))
+    //     # Nested tuple (inferred)
+    //     t3 = (Int32(10), ("inner", False))
     std::tuple<int32_t, std::tuple<std::string, bool>> t3 = std::tuple<int32_t, std::tuple<std::string, bool>>{10, std::tuple<std::string, bool>{"inner", false}};
-    // 15:     print(t3)
+    //     print(t3)
     std::cout << tpy::TuplePrinter(t3) << "\n";
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 17: main()
+    // main()
     main();
 }
 

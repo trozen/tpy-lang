@@ -13,11 +13,11 @@ Point* identity_ptr(Point* p);
 Point* get_ptr_copy(Point* p);
 void main();
 
-// 3: class Point:
+// class Point:
 struct Point {
-    // 4:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 5:     y: Int32
+    //     y: Int32
     int32_t y;
 
 };

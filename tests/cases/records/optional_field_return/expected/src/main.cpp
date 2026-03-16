@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-// 25: b = Box()
+// b = Box()
 Box* b{};
-// 26: r = b.get_item()
+// r = b.get_item()
 Point* r{};
 
 void __tpy_init() {
@@ -13,22 +13,22 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 25: b = Box()
+    // b = Box()
     static Box __global_slot_1 = Box();
     b = &__global_slot_1;
-    // 26: r = b.get_item()
+    // r = b.get_item()
     r = b->get_item();
-    // 27: print(r is None)
+    // print(r is None)
     std::cout << tpy::print_bool((r == nullptr)) << "\n";
-    // 29: b.item = copy(Point(3, 4))
+    // b.item = copy(Point(3, 4))
     b->item = Point(3, 4);
-    // 30: r = b.get_item()
+    // r = b.get_item()
     r = b->get_item();
-    // 31: print(r is not None)
+    // print(r is not None)
     std::cout << tpy::print_bool((r != nullptr)) << "\n";
-    // 32: print(r.x)
+    // print(r.x)
     std::cout << tpy::deref_check(r).x << "\n";
-    // 33: print(r.y)
+    // print(r.y)
     std::cout << tpy::deref_check(r).y << "\n";
 }
 

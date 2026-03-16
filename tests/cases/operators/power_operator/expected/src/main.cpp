@@ -4,9 +4,9 @@
 namespace tpy_user::main {
 
 // # Power with variables
-// 23: x = 5
+// x = 5
 int32_t x{};
-// 24: y = 3
+// y = 3
 int32_t y{};
 
 void __tpy_init() {
@@ -14,38 +14,38 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: # Basic powers
-    // 4: print(2 ** 0)   # 1
+    // # Basic powers
+    // print(2 ** 0)   # 1
     std::cout << 1 << "\n";
-    // 5: print(2 ** 1)   # 2
+    // print(2 ** 1)   # 2
     std::cout << 2 << "\n";
-    // 6: print(2 ** 10)  # 1024
+    // print(2 ** 10)  # 1024
     std::cout << 1024 << "\n";
-    // 7: print(3 ** 3)   # 27
+    // print(3 ** 3)   # 27
     std::cout << 27 << "\n";
-    // 9: # Large exponents (arbitrary precision)
-    // 10: print(2 ** 32)   # 4294967296
+    // # Large exponents (arbitrary precision)
+    // print(2 ** 32)   # 4294967296
     std::cout << tpy::BigInt(static_cast<int64_t>(4294967296LL)) << "\n";
-    // 11: print(2 ** 64)   # 18446744073709551616
+    // print(2 ** 64)   # 18446744073709551616
     std::cout << tpy::BigInt::from_str("18446744073709551616") << "\n";
-    // 12: print(10 ** 20)  # 100000000000000000000
+    // print(10 ** 20)  # 100000000000000000000
     std::cout << tpy::BigInt::from_str("100000000000000000000") << "\n";
-    // 14: # Negative base with even/odd exponents
-    // 15: print((-2) ** 3)  # -8
+    // # Negative base with even/odd exponents
+    // print((-2) ** 3)  # -8
     std::cout << -8 << "\n";
-    // 16: print((-2) ** 4)  # 16
+    // print((-2) ** 4)  # 16
     std::cout << 16 << "\n";
-    // 18: # Zero base
-    // 19: print(0 ** 5)  # 0
+    // # Zero base
+    // print(0 ** 5)  # 0
     std::cout << 0 << "\n";
-    // 20: print(0 ** 0)  # 1 (by convention)
+    // print(0 ** 0)  # 1 (by convention)
     std::cout << 1 << "\n";
-    // 22: # Power with variables
-    // 23: x = 5
+    // # Power with variables
+    // x = 5
     x = 5;
-    // 24: y = 3
+    // y = 3
     y = 3;
-    // 25: print(x ** y)  # 125
+    // print(x ** y)  # 125
     std::cout << (tpy::pow_check<int32_t>(x, y)) << "\n";
 }
 

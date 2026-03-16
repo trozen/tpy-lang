@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 
-// 13: def with_reads() -> Own[Handle]:
+// def with_reads() -> Own[Handle]:
 Handle with_reads() {
-    // 14:     h = Handle(7)
+    //     h = Handle(7)
     Handle h = Handle(7);
-    // 15:     alias = h
+    //     alias = h
     Handle alias = std::move(h);
-    // 16:     print(alias.fd)
+    //     print(alias.fd)
     std::cout << alias.fd << "\n";
-    // 17:     return alias
+    //     return alias
     return alias;
 }
 
-// 20: def main():
+// def main():
 void main() {
-    // 21:     r = with_reads()
+    //     r = with_reads()
     Handle r = with_reads();
-    // 22:     print(r.fd)
+    //     print(r.fd)
     std::cout << r.fd << "\n";
 }
 
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 25: main()
+    // main()
     main();
 }
 

@@ -13,11 +13,11 @@ int32_t consume(Point&& p);
 int32_t forward(Point&& p);
 void main();
 
-// 6: class Point:
+// class Point:
 struct Point {
-    // 7:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 8:     y: Int32
+    //     y: Int32
     int32_t y;
 
 };

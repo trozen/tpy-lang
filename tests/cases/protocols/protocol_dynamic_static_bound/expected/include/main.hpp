@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 // @dynamic
-// 6: class Pet(Protocol):
+// class Pet(Protocol):
 template<typename T>
 concept __Pet_Concept__ = requires(T& t) {
     { t.make_noise() } -> std::convertible_to<std::string>;
@@ -44,13 +44,13 @@ template<__Pet_Concept__ T>
 void speak(tpy::param_val_or_ref_t<T> animal);
 void main();
 
-// 10: class Dog(Pet):
+// class Dog(Pet):
 struct Dog : Pet {
 
 
-    // 11:     def make_noise(self) -> str:
+    //     def make_noise(self) -> str:
     std::string make_noise() override {
-        // 12:         return "Woof"
+        //         return "Woof"
         return "Woof";
     }
 };
@@ -61,10 +61,10 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
-// 14: def speak[T: Pet](animal: T) -> None:
+// def speak[T: Pet](animal: T) -> None:
 template<__Pet_Concept__ T>
 void speak(tpy::param_val_or_ref_t<T> animal) {
-    // 15:     print(animal.make_noise())
+    //     print(animal.make_noise())
     std::cout << animal.make_noise() << "\n";
 }
 

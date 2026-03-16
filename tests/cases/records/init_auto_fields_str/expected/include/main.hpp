@@ -12,14 +12,14 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // # Auto-declare string fields from __init__
-// 2: class Person:
+// class Person:
 struct Person {
-    // 4:         self.name = name
+    //         self.name = name
     std::string name;
-    // 5:         self.city = city
+    //         self.city = city
     std::string city;
 
-    // 3:     def __init__(self, name: str, city: str):
+    //     def __init__(self, name: str, city: str):
     Person() = default;
     explicit Person(std::string_view name, std::string_view city) : name(name), city(city) {}
 };

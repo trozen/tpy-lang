@@ -4,33 +4,33 @@
 namespace tpy_user::main {
 
 
-// 23: def read_holder(h: readonly[NodeHolder]) -> None:
+// def read_holder(h: readonly[NodeHolder]) -> None:
 void read_holder(const NodeHolder& h) {
-    // 24:     p = h.get_node()  # tpyc: type(Ptr[readonly[Node]])
+    //     p = h.get_node()  # tpyc: type(Ptr[readonly[Node]])
     const Node* p = h.get_node();
-    // 25:     print(p.value)
+    //     print(p.value)
     std::cout << tpy::deref_check(p).value << "\n";
 }
 
-// 28: def main() -> None:
+// def main() -> None:
 void main() {
-    // 29:     n = Node(Int32(7))
+    //     n = Node(Int32(7))
     Node n = Node(7);
-    // 30:     h = NodeHolder()
+    //     h = NodeHolder()
     NodeHolder h = NodeHolder();
-    // 31:     h._node = Ptr(n)
+    //     h._node = Ptr(n)
     h._node = &n;
-    // 33:     p = h.get_node()  # tpyc: type(Ptr[Node])
+    //     p = h.get_node()  # tpyc: type(Ptr[Node])
     Node* p = h.get_node();
-    // 34:     p.value = Int32(99)
+    //     p.value = Int32(99)
     tpy::deref_check(p).value = 99;
-    // 35:     print(h.get_node().value)
+    //     print(h.get_node().value)
     std::cout << tpy::deref_check(h.get_node()).value << "\n";
-    // 37:     n2 = Node(Int32(42))
+    //     n2 = Node(Int32(42))
     Node n2 = Node(42);
-    // 38:     h._node = Ptr(n2)
+    //     h._node = Ptr(n2)
     h._node = &n2;
-    // 39:     read_holder(h)
+    //     read_holder(h)
     read_holder(h);
 }
 
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 42: main()
+    // main()
     main();
 }
 

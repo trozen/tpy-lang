@@ -4,20 +4,20 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     n = (Int32(10), ("inner", True))
+    //     n = (Int32(10), ("inner", True))
     std::tuple<int32_t, std::tuple<std::string, bool>> n = std::tuple<int32_t, std::tuple<std::string, bool>>{10, std::tuple<std::string, bool>{"inner", true}};
-    // 6:     inner = n[1]
+    //     inner = n[1]
     std::tuple<std::string, bool> inner = std::get<1>(n);
-    // 7:     print(inner[0])
+    //     print(inner[0])
     std::cout << std::get<0>(inner) << "\n";
-    // 8:     print(inner[1])
+    //     print(inner[1])
     std::cout << tpy::print_bool(std::get<1>(inner)) << "\n";
-    // 10:     # Return value access
-    // 11:     print(n[0])
+    //     # Return value access
+    //     print(n[0])
     std::cout << std::get<0>(n) << "\n";
-    // 12:     print(n[1])
+    //     print(n[1])
     std::cout << tpy::TuplePrinter(std::get<1>(n)) << "\n";
 }
 
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 14: main()
+    // main()
     main();
 }
 

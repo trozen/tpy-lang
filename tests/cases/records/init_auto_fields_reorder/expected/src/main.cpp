@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 14: def main() -> None:
+// def main() -> None:
 void main() {
-    // 15:     r = Rect(Int32(5), Int32(10))
+    //     r = Rect(Int32(5), Int32(10))
     Rect r = Rect(5, 10);
-    // 16:     print(r.width)
+    //     print(r.width)
     std::cout << r.width << "\n";
-    // 17:     print(r.height)
+    //     print(r.height)
     std::cout << r.height << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 20: main()
+    // main()
     main();
 }
 

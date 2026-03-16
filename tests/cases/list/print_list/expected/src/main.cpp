@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-// 1: nums = [1, 2, 3]
+// nums = [1, 2, 3]
 std::vector<int32_t>* nums{};
-// 4: nested = [[1, 2], [3, 4]]
+// nested = [[1, 2], [3, 4]]
 std::vector<std::vector<int32_t>>* nested{};
 
 void __tpy_init() {
@@ -13,17 +13,17 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: nums = [1, 2, 3]
+    // nums = [1, 2, 3]
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
     nums = &__global_slot_1;
-    // 2: print(nums)
+    // print(nums)
     std::cout << tpy::ListPrinter((*nums)) << "\n";
-    // 3: print([10, 20, 30])
+    // print([10, 20, 30])
     std::cout << tpy::ListPrinter(std::vector<int32_t>{10, 20, 30}) << "\n";
-    // 4: nested = [[1, 2], [3, 4]]
+    // nested = [[1, 2], [3, 4]]
     static std::vector<std::vector<int32_t>> __global_slot_2 = {{1, 2}, {3, 4}};
     nested = &__global_slot_2;
-    // 5: print(nested)
+    // print(nested)
     std::cout << tpy::ListPrinter((*nested)) << "\n";
 }
 

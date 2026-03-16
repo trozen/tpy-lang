@@ -3,34 +3,34 @@
 
 namespace tpy_user::main {
 
-// 11: global_pt: Point = Point(1, 2)
+// global_pt: Point = Point(1, 2)
 Point* global_pt{};
 
-// 13: def addr_param(p: Point) -> Ptr[Point]:
+// def addr_param(p: Point) -> Ptr[Point]:
 Point* addr_param(Point& p) {
-    // 14:     # Returning pointer to parameter should be allowed (safe lifetime)
-    // 15:     return p
+    //     # Returning pointer to parameter should be allowed (safe lifetime)
+    //     return p
     return &p;
 }
 
-// 17: def addr_global() -> Ptr[Point]:
+// def addr_global() -> Ptr[Point]:
 Point* addr_global() {
-    // 18:     # Returning pointer to global should be allowed
-    // 19:     return global_pt
+    //     # Returning pointer to global should be allowed
+    //     return global_pt
     return &(*global_pt);
 }
 
-// 21: def main() -> None:
+// def main() -> None:
 void main() {
-    // 22:     local: Point = Point(10, 20)
+    //     local: Point = Point(10, 20)
     Point local = Point(10, 20);
-    // 23:     p1: Ptr[Point] = addr_param(local)
+    //     p1: Ptr[Point] = addr_param(local)
     Point* p1 = addr_param(local);
-    // 24:     print(p1.x)
+    //     print(p1.x)
     std::cout << tpy::deref_check(p1).x << "\n";
-    // 25:     p2: Ptr[Point] = addr_global()
+    //     p2: Ptr[Point] = addr_global()
     Point* p2 = addr_global();
-    // 26:     print(p2.y)
+    //     print(p2.y)
     std::cout << tpy::deref_check(p2).y << "\n";
 }
 
@@ -39,10 +39,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 11: global_pt: Point = Point(1, 2)
+    // global_pt: Point = Point(1, 2)
     static Point __global_slot_1 = Point(1, 2);
     global_pt = &__global_slot_1;
-    // 28: main()
+    // main()
     main();
 }
 

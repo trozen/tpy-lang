@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 
-// 4: def use_after_continue_merge(flag: bool, x: Int32 | None) -> Int32:
+// def use_after_continue_merge(flag: bool, x: Int32 | None) -> Int32:
 int32_t use_after_continue_merge(bool flag, std::optional<int32_t> x) {
-    // 5:     while flag:
+    //     while flag:
     while (flag) {
-        // 6:         if x is None:
+        //         if x is None:
         if ((!x.has_value())) {
-            // 7:             flag = False
+            //             flag = False
             flag = false;
-            // 8:             continue
+            //             continue
             continue;
         }
-        // 9:         x = x + 1  # tpyc: ok
+        //         x = x + 1  # tpyc: ok
         x = (tpy::add_check<int32_t>((*x), 1));
-        // 10:         flag = False
+        //         flag = False
         flag = false;
     }
-    // 11:     return 0
+    //     return 0
     return 0;
 }
 
@@ -29,9 +29,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 14: print(use_after_continue_merge(True, 2))
+    // print(use_after_continue_merge(True, 2))
     std::cout << use_after_continue_merge(true, 2) << "\n";
-    // 15: print(use_after_continue_merge(True, None))
+    // print(use_after_continue_merge(True, None))
     std::cout << use_after_continue_merge(true, std::nullopt) << "\n";
 }
 

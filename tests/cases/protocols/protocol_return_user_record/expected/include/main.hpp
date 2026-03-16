@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Point;
 
-// 12: class PointFactory(Protocol):
+// class PointFactory(Protocol):
 template<typename T>
 concept PointFactory = requires(T& t) {
     { t.create_point(std::declval<int32_t>(), std::declval<int32_t>()) } -> std::convertible_to<Point>;
@@ -21,14 +21,14 @@ template<PointFactory T>
 Point make_point(tpy::param_val_or_ref_t<T> factory, int32_t x, int32_t y);
 void main();
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 6:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 8:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -42,13 +42,13 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 15: class DefaultFactory:
+// class DefaultFactory:
 struct DefaultFactory {
 
 
-    // 16:     def create_point(self, x: Int32, y: Int32) -> Own[Point]:
+    //     def create_point(self, x: Int32, y: Int32) -> Own[Point]:
     Point create_point(int32_t x, int32_t y) const {
-        // 17:         return Point(x, y)
+        //         return Point(x, y)
         return Point(x, y);
     }
 };
@@ -59,10 +59,10 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultFactory& obj) {
     return os;
 }
 
-// 19: def make_point[T: PointFactory](factory: T, x: Int32, y: Int32) -> Own[Point]:
+// def make_point[T: PointFactory](factory: T, x: Int32, y: Int32) -> Own[Point]:
 template<PointFactory T>
 Point make_point(tpy::param_val_or_ref_t<T> factory, int32_t x, int32_t y) {
-    // 20:     return factory.create_point(x, y)
+    //     return factory.create_point(x, y)
     return factory.create_point(x, y);
 }
 

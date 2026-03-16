@@ -11,31 +11,31 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class SimpleIter:
+// class SimpleIter:
 struct SimpleIter {
-    // 5:     current: Int32
+    //     current: Int32
     int32_t current;
-    // 6:     limit: Int32
+    //     limit: Int32
     int32_t limit;
 
-    // 8:     def __init__(self, limit: Int32) -> None:
+    //     def __init__(self, limit: Int32) -> None:
     SimpleIter() = default;
     explicit SimpleIter(int32_t limit) : current(0), limit(limit) {}
 
     auto& __iter__() { return *this; }
 
-    // 12:     def __next__(self) -> Int32:
+    //     def __next__(self) -> Int32:
     std::optional<int32_t> __next_opt__() {
-        // 13:         if self.current < self.limit:
+        //         if self.current < self.limit:
         if ((this->current < this->limit)) {
-            // 14:             result = self.current
+            //             result = self.current
             int32_t result = this->current;
-            // 15:             self.current += 1
+            //             self.current += 1
             this->current = tpy::add_check<int32_t>(this->current, 1);
-            // 16:             return result
+            //             return result
             return result;
         }
-        // 17:         raise StopIteration
+        //         raise StopIteration
         return std::nullopt;
     }
 

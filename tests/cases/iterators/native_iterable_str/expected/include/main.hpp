@@ -15,53 +15,53 @@ template<tpy::NativeIterable<int32_t> T_items>
 int32_t sum_span(T_items& items);
 void main();
 
-// 4: def count_chars(text: NativeIterable[Char]) -> Int32:
+// def count_chars(text: NativeIterable[Char]) -> Int32:
 template<tpy::NativeIterable<char> T_text>
 int32_t count_chars(T_text& text) {
-    // 6:     count: Int32 = 0
+    //     count: Int32 = 0
     int32_t count = 0;
-    // 7:     for c in text:
+    //     for c in text:
     auto& __obj_0 = text;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char c = *__beg_0;
-        // 8:         count += 1
+        //         count += 1
         count = tpy::add_check<int32_t>(count, 1);
     }
-    // 9:     return count
+    //     return count
     return count;
 }
-// 11: def first_char(text: NativeIterable[Char]) -> Char:
+// def first_char(text: NativeIterable[Char]) -> Char:
 template<tpy::NativeIterable<char> T_text>
 char first_char(T_text& text) {
-    // 13:     for c in text:
+    //     for c in text:
     auto& __obj_0 = text;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char c = *__beg_0;
-        // 14:         return c
+        //         return c
         return c;
     }
-    // 15:     return chr(0)
+    //     return chr(0)
     return static_cast<char>(0);
 }
-// 17: def sum_span(items: NativeIterable[Int32]) -> Int32:
+// def sum_span(items: NativeIterable[Int32]) -> Int32:
 template<tpy::NativeIterable<int32_t> T_items>
 int32_t sum_span(T_items& items) {
-    // 19:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 20:     for x in items:
+    //     for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 21:         total += x
+        //         total += x
         total = tpy::add_check<int32_t>(total, x);
     }
-    // 22:     return total
+    //     return total
     return total;
 }
 

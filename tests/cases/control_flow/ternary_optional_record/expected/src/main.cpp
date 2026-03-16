@@ -4,61 +4,61 @@
 namespace tpy_user::main {
 
 
-// 9: def get_or_none(flag: bool, p: Point) -> Optional[Point]:
+// def get_or_none(flag: bool, p: Point) -> Optional[Point]:
 Point* get_or_none(bool flag, Point& p) {
-    // 10:     # T + None -> Optional[T] where T is a record (pointer-repr)
-    // 11:     return p if flag else None
+    //     # T + None -> Optional[T] where T is a record (pointer-repr)
+    //     return p if flag else None
     return ((flag) ? (&(p)) : (nullptr));
 }
 
-// 13: def pick(flag: bool, a: Optional[Point], b: Optional[Point]) -> Optional[Point]:
+// def pick(flag: bool, a: Optional[Point], b: Optional[Point]) -> Optional[Point]:
 Point* pick(bool flag, Point* a, Point* b) {
-    // 14:     # Both branches are Optional[Record]
-    // 15:     return a if flag else b
+    //     # Both branches are Optional[Record]
+    //     return a if flag else b
     return ((flag) ? (a) : (b));
 }
 
-// 17: def narrowed_field(p: Optional[Point]) -> int:
+// def narrowed_field(p: Optional[Point]) -> int:
 tpy::BigInt narrowed_field(Point* p) {
-    // 18:     # is not None narrowing on pointer-repr Optional, then access field
-    // 19:     return p.x if p is not None else 0
+    //     # is not None narrowing on pointer-repr Optional, then access field
+    //     return p.x if p is not None else 0
     return (((p != nullptr)) ? (p->x) : (tpy::BigInt(0)));
 }
 
-// 21: def main() -> None:
+// def main() -> None:
 void main() {
-    // 22:     p = Point(1, 2)
+    //     p = Point(1, 2)
     Point p = Point(tpy::BigInt(1), tpy::BigInt(2));
-    // 23:     q = Point(3, 4)
+    //     q = Point(3, 4)
     Point q = Point(tpy::BigInt(3), tpy::BigInt(4));
-    // 25:     r1 = get_or_none(True, p)
+    //     r1 = get_or_none(True, p)
     Point* r1 = get_or_none(true, p);
-    // 26:     if r1 is not None:
+    //     if r1 is not None:
     if ((r1 != nullptr)) {
-        // 27:         print(r1.x)
+        //         print(r1.x)
         std::cout << r1->x << "\n";
     }
-    // 28:     r2 = get_or_none(False, p)
+    //     r2 = get_or_none(False, p)
     Point* r2 = get_or_none(false, p);
-    // 29:     print(r2)
+    //     print(r2)
     std::cout << tpy::print_optional(r2) << "\n";
-    // 31:     r3 = pick(True, p, q)
+    //     r3 = pick(True, p, q)
     Point* r3 = pick(true, &(p), &(q));
-    // 32:     if r3 is not None:
+    //     if r3 is not None:
     if ((r3 != nullptr)) {
-        // 33:         print(r3.x)
+        //         print(r3.x)
         std::cout << r3->x << "\n";
     }
-    // 34:     r4 = pick(False, p, q)
+    //     r4 = pick(False, p, q)
     Point* r4 = pick(false, &(p), &(q));
-    // 35:     if r4 is not None:
+    //     if r4 is not None:
     if ((r4 != nullptr)) {
-        // 36:         print(r4.x)
+        //         print(r4.x)
         std::cout << r4->x << "\n";
     }
-    // 38:     print(narrowed_field(p))
+    //     print(narrowed_field(p))
     std::cout << narrowed_field(&(p)) << "\n";
-    // 39:     print(narrowed_field(None))
+    //     print(narrowed_field(None))
     std::cout << narrowed_field(nullptr) << "\n";
 }
 
@@ -67,7 +67,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 41: main()
+    // main()
     main();
 }
 

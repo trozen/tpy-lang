@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 // # Test that negative exponent panics at runtime
-// 2: x = 2
+// x = 2
 int32_t x{};
-// 3: y = -1
+// y = -1
 int32_t y{};
-// 4: z = x ** y  # Should panic
+// z = x ** y  # Should panic
 int32_t z{};
 
 void __tpy_init() {
@@ -16,12 +16,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # Test that negative exponent panics at runtime
-    // 2: x = 2
+    // # Test that negative exponent panics at runtime
+    // x = 2
     x = 2;
-    // 3: y = -1
+    // y = -1
     y = -1;
-    // 4: z = x ** y  # Should panic
+    // z = x ** y  # Should panic
     z = (tpy::pow_check<int32_t>(x, y));
 }
 

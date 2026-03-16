@@ -4,43 +4,43 @@
 namespace tpy_user::main {
 
 
-// 23: def main() -> None:
+// def main() -> None:
 void main() {
-    // 24:     # All defaults
-    // 25:     c1 = Config("test")
+    //     # All defaults
+    //     c1 = Config("test")
     Config c1 = Config("test");
-    // 26:     print(c1.name)
+    //     print(c1.name)
     std::cout << c1.name << "\n";
-    // 27:     print(c1.value)
+    //     print(c1.value)
     std::cout << c1.value << "\n";
-    // 28:     print(len(c1.tags))
+    //     print(len(c1.tags))
     std::cout << tpy::__len__(c1.tags) << "\n";
-    // 29:     print(len(c1.lookup))
+    //     print(len(c1.lookup))
     std::cout << tpy::__len__(c1.lookup) << "\n";
-    // 30:     # Override some defaults
-    // 31:     c2 = Config("prod", 99, ["a", "b"])
+    //     # Override some defaults
+    //     c2 = Config("prod", 99, ["a", "b"])
     Config c2 = Config("prod", 99, {"a", "b"});
-    // 32:     print(c2.name)
+    //     print(c2.name)
     std::cout << c2.name << "\n";
-    // 33:     print(c2.value)
+    //     print(c2.value)
     std::cout << c2.value << "\n";
-    // 34:     print(len(c2.tags))
+    //     print(len(c2.tags))
     std::cout << tpy::__len__(c2.tags) << "\n";
-    // 35:     # Each instance gets its own list/dict (no sharing)
-    // 36:     c1.tags.append("x")
+    //     # Each instance gets its own list/dict (no sharing)
+    //     c1.tags.append("x")
     c1.tags.push_back("x");
-    // 37:     print(len(c1.tags))
+    //     print(len(c1.tags))
     std::cout << tpy::__len__(c1.tags) << "\n";
-    // 38:     print(len(c2.tags))
+    //     print(len(c2.tags))
     std::cout << tpy::__len__(c2.tags) << "\n";
-    // 39:     # Non-generic user type as factory default
-    // 40:     cv = Canvas("drawing")
+    //     # Non-generic user type as factory default
+    //     cv = Canvas("drawing")
     Canvas cv = Canvas("drawing");
-    // 41:     print(cv.origin)
+    //     print(cv.origin)
     std::cout << cv.origin << "\n";
-    // 42:     cv2 = Canvas("art", Point(10, 20))
+    //     cv2 = Canvas("art", Point(10, 20))
     Canvas cv2 = Canvas("art", Point(10, 20));
-    // 43:     print(cv2.origin)
+    //     print(cv2.origin)
     std::cout << cv2.origin << "\n";
 }
 
@@ -49,7 +49,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 45: main()
+    // main()
     main();
 }
 

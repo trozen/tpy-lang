@@ -14,12 +14,12 @@ inline constexpr std::string_view __name__ = "__main__";
 void read_animal(const Animal* p);
 void main();
 
-// 5: class Animal:
+// class Animal:
 struct Animal {
-    // 6:     name: str
+    //     name: str
     std::string name;
 
-    // 7:     def __init__(self, name: str) -> None:
+    //     def __init__(self, name: str) -> None:
     Animal() = default;
     explicit Animal(std::string_view name) : name(name) {}
 };
@@ -31,12 +31,12 @@ inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
     return os;
 }
 
-// 10: class Dog(Animal):
+// class Dog(Animal):
 struct Dog : Animal {
-    // 11:     breed: str
+    //     breed: str
     std::string breed;
 
-    // 12:     def __init__(self, name: str, breed: str) -> None:
+    //     def __init__(self, name: str, breed: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
 };
@@ -48,12 +48,12 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
-// 16: class Puppy(Dog):
+// class Puppy(Dog):
 struct Puppy : Dog {
-    // 17:     age_weeks: int
+    //     age_weeks: int
     tpy::BigInt age_weeks;
 
-    // 18:     def __init__(self, name: str, breed: str, age_weeks: int) -> None:
+    //     def __init__(self, name: str, breed: str, age_weeks: int) -> None:
     Puppy() = default;
     explicit Puppy(std::string_view name, std::string_view breed, const tpy::BigInt& age_weeks) : Dog(name, breed), age_weeks(age_weeks) {}
 };

@@ -3,20 +3,20 @@
 
 namespace tpy_user::main {
 
-// 9: g = Point()
+// g = Point()
 Point* g{};
 
-// 13: def consume(p: Own[Point]) -> Int32:
+// def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point&& p) {
-    // 14:     return p.x
+    //     return p.x
     return p.x;
 }
 
-// 17: def test() -> Int32:
+// def test() -> Int32:
 int32_t test() {
-    // 18:     q = g  # lvalue init -> T& reference (Tier 2)
+    //     q = g  # lvalue init -> T& reference (Tier 2)
     Point& q = (*g);
-    // 19:     return consume(q)  # tpyc: warning(/copies.*into owned storage/)
+    //     return consume(q)  # tpyc: warning(/copies.*into owned storage/)
     auto __tmp_1 = q;
     return consume(std::move(__tmp_1));
 }
@@ -26,10 +26,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 9: g = Point()
+    // g = Point()
     static Point __global_slot_1 = Point();
     g = &__global_slot_1;
-    // 10: g.x = 42
+    // g.x = 42
     g->x = 42;
 }
 

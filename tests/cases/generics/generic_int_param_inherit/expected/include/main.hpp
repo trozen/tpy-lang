@@ -13,13 +13,13 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Base[T, N: int]:
+// class Base[T, N: int]:
 template<typename T, std::size_t N>
 struct Base {
-    // 5:     value: T
+    //     value: T
     T value;
 
-    // 7:     def __init__(self, v: T) -> None:
+    //     def __init__(self, v: T) -> None:
     Base() = default;
     explicit Base(const T& v) : value(v) {}
 };
@@ -32,16 +32,16 @@ inline std::ostream& operator<<(std::ostream& os, const Base<T, N>& obj) {
     return os;
 }
 
-// 11: class Child[T, N: int](Base[T, N]):
+// class Child[T, N: int](Base[T, N]):
 template<typename T, std::size_t N>
 struct Child : Base<T, N> {
-    // 12:     extra: Int32
+    //     extra: Int32
     int32_t extra;
 
-    // 14:     def __init__(self, v: T, e: Int32) -> None:
+    //     def __init__(self, v: T, e: Int32) -> None:
     Child() = default;
     explicit Child(const T& v, int32_t e) : extra(e) {
-        // 15:         self.value = v
+        //         self.value = v
         this->value = v;
     }
 };
@@ -54,18 +54,18 @@ inline std::ostream& operator<<(std::ostream& os, const Child<T, N>& obj) {
     return os;
 }
 
-// 19: class GrandChild[T, N: int](Child[T, N]):
+// class GrandChild[T, N: int](Child[T, N]):
 template<typename T, std::size_t N>
 struct GrandChild : Child<T, N> {
-    // 20:     name: str
+    //     name: str
     std::string name;
 
-    // 22:     def __init__(self, v: T, e: Int32, n: str) -> None:
+    //     def __init__(self, v: T, e: Int32, n: str) -> None:
     GrandChild() = default;
     explicit GrandChild(const T& v, int32_t e, std::string_view n) : name(n) {
-        // 23:         self.value = v
+        //         self.value = v
         this->value = v;
-        // 24:         self.extra = e
+        //         self.extra = e
         this->extra = e;
     }
 };

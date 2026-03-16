@@ -11,53 +11,53 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 6: class Container[T]:
+// class Container[T]:
 template<typename T>
 struct Container {
-    // 7:     _data: list[T]
+    //     _data: list[T]
     std::vector<T> _data;
 
-    // 9:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Container() : _data(std::vector<T>{}) {}
 
-    // 12:     def add(self, item: T) -> None:
+    //     def add(self, item: T) -> None:
     void add(tpy::param_val_or_ref_t<T> item) {
-        // 13:         self._data.append(item)
+        //         self._data.append(item)
         auto __tmp_1 = item;
         this->_data.push_back(std::move(__tmp_1));
     }
 
     //     @overload
     //     @auto_readonly
-    // 17:     def __getitem__(self, index: Int32) -> T: ...  # tpyc: ok
+    //     def __getitem__(self, index: Int32) -> T: ...  # tpyc: ok
     tpy::val_or_ref_t<T> __getitem__(int32_t index) {
-        // 23:         if isinstance(index, slice):
-        // 30:             return self._data[index]
+        //         if isinstance(index, slice):
+        //             return self._data[index]
         return tpy::__getitem__(this->_data, index);
     }
 
     //     @overload
     //     @auto_readonly
-    // 17:     def __getitem__(self, index: Int32) -> T: ...  # tpyc: ok
+    //     def __getitem__(self, index: Int32) -> T: ...  # tpyc: ok
     tpy::val_or_cref_t<T> __getitem__(int32_t index) const {
-        // 23:         if isinstance(index, slice):
-        // 30:             return self._data[index]
+        //         if isinstance(index, slice):
+        //             return self._data[index]
         return tpy::__getitem__(this->_data, index);
     }
 
     //     @overload
-    // 20:     def __getitem__(self, index: slice) -> Span[readonly[T]]: ...  # tpyc: ok
+    //     def __getitem__(self, index: slice) -> Span[readonly[T]]: ...  # tpyc: ok
     std::span<const T> __getitem__(tpy::Slice index) const {
-        // 23:         if isinstance(index, slice):
-        // 24:             s_start = index.start
+        //         if isinstance(index, slice):
+        //             s_start = index.start
         std::optional<int32_t> s_start = index.start;
-        // 25:             s_stop = index.stop
+        //             s_stop = index.stop
         std::optional<int32_t> s_stop = index.stop;
-        // 26:             start: Int32 = s_start if s_start is not None else Int32(0)
+        //             start: Int32 = s_start if s_start is not None else Int32(0)
         int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
-        // 27:             stop: Int32 = s_stop if s_stop is not None else Int32(len(self._data))
+        //             stop: Int32 = s_stop if s_stop is not None else Int32(len(self._data))
         int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (tpy::__len__(this->_data)));
-        // 28:             return self._data[start:stop]
+        //             return self._data[start:stop]
         return tpy::list_slice(this->_data, start, stop);
     }
 

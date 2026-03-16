@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 30: def test() -> None:
+// def test() -> None:
 void test() {
-    // 31:     pts = [Point(1), Point(2)]
+    //     pts = [Point(1), Point(2)]
     std::vector<Point> pts = {Point(tpy::BigInt(1)), Point(tpy::BigInt(2))};
-    // 32:     process(pts)
+    //     process(pts)
     process<Point>(pts);
-    // 33:     print(pts[0].x)  # 11: mutation was visible, so item was a ref not a copy
+    //     print(pts[0].x)  # 11: mutation was visible, so item was a ref not a copy
     std::cout << tpy::__getitem__(pts, 0).x << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 36: test()
+    // test()
     test();
 }
 

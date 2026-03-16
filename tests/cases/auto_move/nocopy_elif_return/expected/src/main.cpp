@@ -4,42 +4,42 @@
 namespace tpy_user::main {
 
 
-// 10: def test(n: Int32) -> Own[Handle]:
+// def test(n: Int32) -> Own[Handle]:
 Handle test(int32_t n) {
-    // 11:     h = Handle()
+    //     h = Handle()
     Handle h = Handle();
-    // 12:     h.fd = n
+    //     h.fd = n
     h.fd = n;
-    // 13:     if n == 1:
+    //     if n == 1:
     if ((n == 1)) {
-        // 14:         return h     # tpyc: ok
+        //         return h     # tpyc: ok
         return h;
-    // 15:     elif n == 2:
+    //     elif n == 2:
     } else if ((n == 2)) {
-        // 16:         print(h.fd)
+        //         print(h.fd)
         std::cout << h.fd << "\n";
-        // 17:         return h     # tpyc: ok
+        //         return h     # tpyc: ok
         return h;
     }
-    // 18:     print(h.fd)
+    //     print(h.fd)
     std::cout << h.fd << "\n";
-    // 19:     return h         # tpyc: ok
+    //     return h         # tpyc: ok
     return h;
 }
 
-// 22: def main():
+// def main():
 void main() {
-    // 23:     h1 = test(1)
+    //     h1 = test(1)
     Handle h1 = test(1);
-    // 24:     print(h1.fd)
+    //     print(h1.fd)
     std::cout << h1.fd << "\n";
-    // 25:     h2 = test(2)
+    //     h2 = test(2)
     Handle h2 = test(2);
-    // 26:     print(h2.fd)
+    //     print(h2.fd)
     std::cout << h2.fd << "\n";
-    // 27:     h3 = test(3)
+    //     h3 = test(3)
     Handle h3 = test(3);
-    // 28:     print(h3.fd)
+    //     print(h3.fd)
     std::cout << h3.fd << "\n";
 }
 
@@ -48,7 +48,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 31: main()
+    // main()
     main();
 }
 

@@ -5,14 +5,14 @@
 
 namespace tpy_user::main {
 
-// 5: class HasName(Protocol):
+// class HasName(Protocol):
 template<typename T>
 concept HasName = requires(T& t) {
     { t.name() } -> std::convertible_to<std::string>;
 };
 
 // @dynamic
-// 9: class DynNamed(HasName, Protocol):
+// class DynNamed(HasName, Protocol):
 template<typename T>
 concept __DynNamed_Concept__ = requires(T& t) {
     { t.name() } -> std::convertible_to<std::string>;
@@ -50,13 +50,13 @@ inline constexpr std::string_view __name__ = "__main__";
 void greet(DynNamed& n);
 void main();
 
-// 12: class Dog(DynNamed):
+// class Dog(DynNamed):
 struct Dog : DynNamed {
 
 
-    // 13:     def name(self) -> str:
+    //     def name(self) -> str:
     std::string name() override {
-        // 14:         return "Rex"
+        //         return "Rex"
         return "Rex";
     }
 };
@@ -67,13 +67,13 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
-// 16: class Cat:
+// class Cat:
 struct Cat {
 
 
-    // 17:     def name(self) -> str:
+    //     def name(self) -> str:
     std::string name() const {
-        // 18:         return "Whiskers"
+        //         return "Whiskers"
         return "Whiskers";
     }
 };

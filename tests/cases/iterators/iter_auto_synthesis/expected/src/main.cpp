@@ -4,20 +4,20 @@
 namespace tpy_user::main {
 
 
-// 19: def main() -> None:
+// def main() -> None:
 void main() {
-    // 20:     # Auto-synthesized __iter__ enables for-loop
-    // 21:     for x in SimpleIter(4):
+    //     # Auto-synthesized __iter__ enables for-loop
+    //     for x in SimpleIter(4):
     auto __src_0 = SimpleIter(4);
     auto __obj_0 = tpy::iter_adapt(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 22:         print(x)
+        //         print(x)
         std::cout << x << "\n";
     }
-    // 23:     print("done")
+    //     print("done")
     std::cout << "done" << "\n";
 }
 
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 25: main()
+    // main()
     main();
 }
 

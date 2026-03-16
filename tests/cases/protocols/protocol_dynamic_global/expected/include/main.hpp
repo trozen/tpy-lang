@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 // @dynamic
-// 6: class Pet(Protocol):
+// class Pet(Protocol):
 template<typename T>
 concept __Pet_Concept__ = requires(T& t) {
     { t.name() } -> std::convertible_to<std::string>;
@@ -44,13 +44,13 @@ extern Pet* pet;
 extern int32_t i;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 10: class Dog(Pet):
+// class Dog(Pet):
 struct Dog : Pet {
 
 
-    // 11:     def name(self) -> str:
+    //     def name(self) -> str:
     std::string name() override {
-        // 12:         return "Rex"
+        //         return "Rex"
         return "Rex";
     }
 };
@@ -61,13 +61,13 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
-// 14: class Cat:
+// class Cat:
 struct Cat {
 
 
-    // 15:     def name(self) -> str:
+    //     def name(self) -> str:
     std::string name() const {
-        // 16:         return "Whiskers"
+        //         return "Whiskers"
         return "Whiskers";
     }
 };
@@ -78,13 +78,13 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
-// 18: class Parrot:
+// class Parrot:
 struct Parrot {
 
 
-    // 19:     def name(self) -> str:
+    //     def name(self) -> str:
     std::string name() const {
-        // 20:         return "Polly"
+        //         return "Polly"
         return "Polly";
     }
 };

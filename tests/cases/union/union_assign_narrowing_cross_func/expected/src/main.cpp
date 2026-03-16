@@ -4,25 +4,25 @@
 namespace tpy_user::main {
 
 
-// 17: def f() -> None:
+// def f() -> None:
 void f() {
-    // 18:     a: A | B = A(1.0)
+    //     a: A | B = A(1.0)
     std::variant<A, B> a = A(1.0);
-    // 19:     print(a.x)
+    //     print(a.x)
     std::cout << tpy::print_float(std::get<A>(a).x) << "\n";
 }
 
-// 21: def g(a: C) -> None:
+// def g(a: C) -> None:
 void g(const C& a) {
-    // 22:     print(a.x)
+    //     print(a.x)
     std::cout << tpy::print_float(a.x) << "\n";
 }
 
-// 24: def main() -> None:
+// def main() -> None:
 void main() {
-    // 25:     f()
+    //     f()
     f();
-    // 26:     g(C(2.0))
+    //     g(C(2.0))
     C __tmp_1 = C(2.0);
     g(__tmp_1);
 }
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 28: main()
+    // main()
     main();
 }
 

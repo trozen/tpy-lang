@@ -46,20 +46,20 @@ tpy_user::main::Color EnumUtil<tpy_user::main::Color>::from_name(std::string_vie
 namespace tpy_user::main {
 
 
-// 9: def main() -> None:
+// def main() -> None:
 void main() {
-    // 10:     colors: list[Color] = [Color.Red, Color.Green, Color.Blue]
+    //     colors: list[Color] = [Color.Red, Color.Green, Color.Blue]
     std::vector<Color> colors = {Color::Red, Color::Green, Color::Blue};
-    // 11:     for c in colors:
+    //     for c in colors:
     auto& __obj_0 = colors;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         Color c = *__beg_0;
-        // 12:         print(c)
+        //         print(c)
         std::cout << c << "\n";
     }
-    // 13:     print(len(colors))
+    //     print(len(colors))
     std::cout << tpy::__len__(colors) << "\n";
 }
 
@@ -68,7 +68,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 15: main()
+    // main()
     main();
 }
 

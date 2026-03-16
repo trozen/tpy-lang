@@ -4,14 +4,14 @@
 namespace tpy_user::main {
 
 
-// 27: def main() -> None:
+// def main() -> None:
 void main() {
-    // 28:     # MyNumber satisfies Addable protocol
-    // 29:     h = Holder[MyNumber](MyNumber(10))
+    //     # MyNumber satisfies Addable protocol
+    //     h = Holder[MyNumber](MyNumber(10))
     Holder<MyNumber> h = Holder<MyNumber>(MyNumber(10));
-    // 30:     num = h.get_item()
+    //     num = h.get_item()
     MyNumber& num = h.get_item();
-    // 31:     print(num.add(5))  # Should print 15
+    //     print(num.add(5))  # Should print 15
     std::cout << num.add(5) << "\n";
 }
 
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 33: main()
+    // main()
     main();
 }
 

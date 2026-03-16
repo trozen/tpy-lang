@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 37: def main() -> None:
+// def main() -> None:
 void main() {
-    // 38:     c = Counter(0, 5)
+    //     c = Counter(0, 5)
     Counter c = Counter(0, 5);
-    // 39:     print(sum_items(c))
+    //     print(sum_items(c))
     std::cout << sum_items(c) << "\n";
-    // 41:     c2 = Counter(10, 15)
+    //     c2 = Counter(10, 15)
     Counter c2 = Counter(10, 15);
-    // 42:     print(sum_items(c2))
+    //     print(sum_items(c2))
     std::cout << sum_items(c2) << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 44: main()
+    // main()
     main();
 }
 

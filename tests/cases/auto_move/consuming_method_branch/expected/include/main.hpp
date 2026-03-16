@@ -11,25 +11,25 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void test_branch(bool flag);
 
-// 5: class Wrapper:
+// class Wrapper:
 struct Wrapper {
-    // 6:     _value: int
+    //     _value: int
     tpy::BigInt _value;
 
-    // 8:     def __init__(self, value: int):
+    //     def __init__(self, value: int):
     Wrapper() = default;
     explicit Wrapper(const tpy::BigInt& value) : _value(value) {}
 
-    // 11:     def take(self: Own[Self]) -> int:
+    //     def take(self: Own[Self]) -> int:
     tpy::BigInt take() && {
-        // 12:         return self._value
+        //         return self._value
         return std::move(this->_value);
     }
 
     //     @readonly
-    // 15:     def get(self) -> int:
+    //     def get(self) -> int:
     tpy::BigInt get() const {
-        // 16:         return self._value
+        //         return self._value
         return this->_value;
     }
 };

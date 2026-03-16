@@ -3,11 +3,11 @@
 
 namespace tpy_user::main {
 
-// 4: s: str = "hello"
+// s: str = "hello"
 std::string s;
-// 5: cp: Ptr[readonly[Char]] = unsafe_ptr(s)
+// cp: Ptr[readonly[Char]] = unsafe_ptr(s)
 const char* cp{};
-// 6: p: Ptr[Char] = unsafe_const_cast(cp)
+// p: Ptr[Char] = unsafe_const_cast(cp)
 char* p{};
 
 void __tpy_init() {
@@ -15,16 +15,16 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store, unsafe_const_cast
-    // 4: s: str = "hello"
+    // from tpy.unsafe import unsafe_ptr, unsafe_load, unsafe_store, unsafe_const_cast
+    // s: str = "hello"
     s = "hello";
-    // 5: cp: Ptr[readonly[Char]] = unsafe_ptr(s)
+    // cp: Ptr[readonly[Char]] = unsafe_ptr(s)
     cp = s.data();
-    // 6: p: Ptr[Char] = unsafe_const_cast(cp)
+    // p: Ptr[Char] = unsafe_const_cast(cp)
     p = const_cast<char*>(cp);
-    // 7: print(unsafe_load(p, UInt32(0)))
+    // print(unsafe_load(p, UInt32(0)))
     std::cout << p[0] << "\n";
-    // 8: print(unsafe_load(p, UInt32(4)))
+    // print(unsafe_load(p, UInt32(4)))
     std::cout << p[4] << "\n";
 }
 

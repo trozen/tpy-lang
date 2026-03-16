@@ -4,71 +4,71 @@
 namespace tpy_user::main {
 
 
-// 9: def test_list_aug_assign() -> None:
+// def test_list_aug_assign() -> None:
 void test_list_aug_assign() {
-    // 10:     items: list[Point] = [Point(Int32(1)), Point(Int32(2))]
+    //     items: list[Point] = [Point(Int32(1)), Point(Int32(2))]
     std::vector<Point> items = {Point(1), Point(2)};
-    // 11:     v = items[Int32(0)]
+    //     v = items[Int32(0)]
     Point& v = tpy::__getitem__(items, 0);
-    // 12:     items += [Point(Int32(3))]  # tpyc: warning(/Mutation of 'items'.*'\+='/)
+    //     items += [Point(Int32(3))]  # tpyc: warning(/Mutation of 'items'.*'\+='/)
     tpy::list_extend(items, std::vector<Point>{Point(3)});
-    // 13:     print(len(items))
+    //     print(len(items))
     std::cout << tpy::__len__(items) << "\n";
 }
 
-// 15: def test_list_method_still_warns() -> None:
+// def test_list_method_still_warns() -> None:
 void test_list_method_still_warns() {
-    // 17:     items: list[Point] = [Point(Int32(1))]
+    //     items: list[Point] = [Point(Int32(1))]
     std::vector<Point> items = {Point(1)};
-    // 18:     v = items[Int32(0)]
+    //     v = items[Int32(0)]
     Point& v = tpy::__getitem__(items, 0);
-    // 19:     items.append(Point(Int32(2)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
+    //     items.append(Point(Int32(2)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     items.push_back(Point(2));
-    // 20:     print(len(items))
+    //     print(len(items))
     std::cout << tpy::__len__(items) << "\n";
 }
 
-// 22: def test_value_type_no_warn() -> None:
+// def test_value_type_no_warn() -> None:
 void test_value_type_no_warn() {
-    // 24:     items: list[Int32] = [Int32(1), Int32(2)]
+    //     items: list[Int32] = [Int32(1), Int32(2)]
     std::vector<int32_t> items = {1, 2};
-    // 25:     v = items[Int32(0)]
+    //     v = items[Int32(0)]
     int32_t v = tpy::__getitem__(items, 0);
-    // 26:     items += [Int32(3)]  # tpyc: ok
+    //     items += [Int32(3)]  # tpyc: ok
     tpy::list_extend(items, std::vector<int32_t>{3});
-    // 27:     print(len(items))
+    //     print(len(items))
     std::cout << tpy::__len__(items) << "\n";
 }
 
-// 29: def test_iter_borrow_aug_assign() -> None:
+// def test_iter_borrow_aug_assign() -> None:
 void test_iter_borrow_aug_assign() {
-    // 31:     items: list[Point] = [Point(Int32(1)), Point(Int32(2))]
+    //     items: list[Point] = [Point(Int32(1)), Point(Int32(2))]
     std::vector<Point> items = {Point(1), Point(2)};
-    // 32:     for p in items:
+    //     for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        // 33:         items += [Point(Int32(3))]  # tpyc: warning(/Mutation of 'items'.*'\+=' invalidates the iterator/)
+        //         items += [Point(Int32(3))]  # tpyc: warning(/Mutation of 'items'.*'\+=' invalidates the iterator/)
         tpy::list_extend(items, std::vector<Point>{Point(3)});
-        // 34:         break
+        //         break
         break;
     }
 }
 
-// 36: def test_reassign_borrower_clears() -> None:
+// def test_reassign_borrower_clears() -> None:
 void test_reassign_borrower_clears() {
-    // 38:     items: list[Point] = [Point(Int32(1))]
+    //     items: list[Point] = [Point(Int32(1))]
     std::vector<Point> items = {Point(1)};
-    // 39:     v = items[Int32(0)]
+    //     v = items[Int32(0)]
     std::optional<Point> __slot_1;
     Point* v = &(tpy::__getitem__(items, 0));
-    // 40:     v = Point(Int32(9))
+    //     v = Point(Int32(9))
     v = &*(__slot_1 = Point(9));
-    // 41:     items += [Point(Int32(2))]  # tpyc: ok
+    //     items += [Point(Int32(2))]  # tpyc: ok
     tpy::list_extend(items, std::vector<Point>{Point(2)});
-    // 42:     print(len(items))
+    //     print(len(items))
     std::cout << tpy::__len__(items) << "\n";
 }
 
@@ -77,15 +77,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 44: test_list_aug_assign()
+    // test_list_aug_assign()
     test_list_aug_assign();
-    // 45: test_list_method_still_warns()
+    // test_list_method_still_warns()
     test_list_method_still_warns();
-    // 46: test_value_type_no_warn()
+    // test_value_type_no_warn()
     test_value_type_no_warn();
-    // 47: test_iter_borrow_aug_assign()
+    // test_iter_borrow_aug_assign()
     test_iter_borrow_aug_assign();
-    // 48: test_reassign_borrower_clears()
+    // test_reassign_borrower_clears()
     test_reassign_borrower_clears();
 }
 

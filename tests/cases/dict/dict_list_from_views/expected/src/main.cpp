@@ -4,27 +4,27 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     d: dict[str, Int32] = {"a": 1, "b": 2, "c": 3}
+    //     d: dict[str, Int32] = {"a": 1, "b": 2, "c": 3}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
-    // 7:     keys = list(d.keys())
+    //     keys = list(d.keys())
     std::vector<std::string> keys = tpy::from_range<std::vector<std::string>>(tpy::dict_keys(d));
-    // 8:     print(keys)
+    //     print(keys)
     std::cout << tpy::ListPrinter(keys) << "\n";
-    // 10:     vals = list(d.values())
+    //     vals = list(d.values())
     std::vector<int32_t> vals = tpy::from_range<std::vector<int32_t>>(tpy::dict_values(d));
-    // 11:     print(vals)
+    //     print(vals)
     std::cout << tpy::ListPrinter(vals) << "\n";
-    // 13:     items = list(d.items())
+    //     items = list(d.items())
     std::vector<std::tuple<std::string, int32_t>> items = tpy::from_range<std::vector<std::tuple<std::string, int32_t>>>(tpy::dict_items(d));
-    // 14:     print(len(items))
+    //     print(len(items))
     std::cout << tpy::__len__(items) << "\n";
-    // 15:     k, v = items[0]
+    //     k, v = items[0]
     auto __tup_1 = tpy::__getitem__(items, 0);
     std::string_view k = std::get<0>(__tup_1);
     int32_t v = std::get<1>(__tup_1);
-    // 16:     print(k, v)
+    //     print(k, v)
     std::cout << k << " " << v << "\n";
 }
 
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: main()
+    // main()
     main();
 }
 

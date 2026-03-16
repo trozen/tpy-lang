@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 17: def greet(s: Speaker) -> None:
+// def greet(s: Speaker) -> None:
 void greet(Speaker& s) {
-    // 18:     print(s.speak())
+    //     print(s.speak())
     std::cout << s.speak() << "\n";
 }
 
-// 21: def main() -> None:
+// def main() -> None:
 void main() {
-    // 22:     greet(Dog())
+    //     greet(Dog())
     Dog __tmp_1{Dog()};
     greet(__tmp_1);
 }
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 24: main()
+    // main()
     main();
 }
 

@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # Inference from list literal -> Box[list[int]]
-// 12: box = Box([1, 2, 3])
+// box = Box([1, 2, 3])
 Box<std::vector<int32_t>>* box{};
 
 void __tpy_init() {
@@ -12,13 +12,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 11: # Inference from list literal -> Box[list[int]]
-    // 12: box = Box([1, 2, 3])
+    // # Inference from list literal -> Box[list[int]]
+    // box = Box([1, 2, 3])
     static Box<std::vector<int32_t>> __global_slot_1 = Box<std::vector<int32_t>>({1, 2, 3});
     box = &__global_slot_1;
-    // 13: print(box.value[0])
+    // print(box.value[0])
     std::cout << tpy::__getitem__(box->value, 0) << "\n";
-    // 14: print(len(box.value))
+    // print(len(box.value))
     std::cout << tpy::__len__(box->value) << "\n";
 }
 

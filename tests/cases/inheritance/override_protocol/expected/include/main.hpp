@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-// 6: class Measurable(Protocol):
+// class Measurable(Protocol):
 template<typename T>
 concept Measurable = requires(T& t) {
     { t.measure() } -> std::convertible_to<int32_t>;
@@ -17,19 +17,19 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 10: class Box(Measurable):
+// class Box(Measurable):
 struct Box {
-    // 11:     volume: Int32
+    //     volume: Int32
     int32_t volume;
 
-    // 13:     def __init__(self, v: Int32) -> None:
+    //     def __init__(self, v: Int32) -> None:
     Box() = default;
     explicit Box(int32_t v) : volume(v) {}
 
     //     @override
-    // 17:     def measure(self) -> Int32:  # tpyc: ok
+    //     def measure(self) -> Int32:  # tpyc: ok
     int32_t measure() const {
-        // 18:         return self.volume
+        //         return self.volume
         return this->volume;
     }
 };

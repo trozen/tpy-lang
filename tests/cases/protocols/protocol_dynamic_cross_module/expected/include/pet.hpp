@@ -6,7 +6,7 @@
 namespace tpy_user::pet {
 
 // @dynamic
-// 6: class Pet(Protocol):
+// class Pet(Protocol):
 template<typename T>
 concept __Pet_Concept__ = requires(T& t) {
     { t.speak() } -> std::convertible_to<std::string>;

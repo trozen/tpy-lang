@@ -15,12 +15,12 @@ int32_t consume(Outer&& o);
 void main();
 
 // @nocopy
-// 6: class Resource:
+// class Resource:
 struct Resource {
-    // 7:     id: Int32
+    //     id: Int32
     int32_t id;
 
-    // 9:     def __init__(self, id: Int32):
+    //     def __init__(self, id: Int32):
     Resource() = default;
     explicit Resource(int32_t id) : id(id) {}
     // non-copyable (@nocopy)
@@ -37,12 +37,12 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
     return os;
 }
 
-// 13: class Wrapper:
+// class Wrapper:
 struct Wrapper {
-    // 14:     res: Resource
+    //     res: Resource
     Resource res;
 
-    // 16:     def __init__(self, res: Own[Resource]):
+    //     def __init__(self, res: Own[Resource]):
     Wrapper() = default;
     explicit Wrapper(Resource&& res) : res(std::move(res)) {}
     // non-copyable (field 'res')
@@ -59,12 +59,12 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
     return os;
 }
 
-// 20: class Outer:
+// class Outer:
 struct Outer {
-    // 21:     w: Wrapper
+    //     w: Wrapper
     Wrapper w;
 
-    // 23:     def __init__(self, w: Own[Wrapper]):
+    //     def __init__(self, w: Own[Wrapper]):
     Outer() = default;
     explicit Outer(Wrapper&& w) : w(std::move(w)) {}
     // non-copyable (field 'w')

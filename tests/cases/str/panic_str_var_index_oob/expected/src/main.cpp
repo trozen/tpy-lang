@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     s: str = "hi"
+    //     s: str = "hi"
     std::string_view s = "hi";
-    // 6:     i: Int32 = -10
+    //     i: Int32 = -10
     int32_t i = -10;
-    // 7:     print(s[i])
+    //     print(s[i])
     std::cout << tpy::__getitem__(s, i) << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 9: main()
+    // main()
     main();
 }
 

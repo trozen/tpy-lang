@@ -3,32 +3,32 @@
 
 namespace tpy_user::main {
 
-// 22: points: list[Point] = list()
+// points: list[Point] = list()
 std::vector<Point>* points{};
 
 // # Accessing fields/methods on Optional without None check.
 // # Compiles with warning and inserts a runtime null check.
-// 18: def use_without_check(p: Point | None) -> Int32:
+// def use_without_check(p: Point | None) -> Int32:
 int32_t use_without_check(Point* p) {
-    // 19:     return p.mag()  # tpyc: warning(/Potential None access on optional value/)
+    //     return p.mag()  # tpyc: warning(/Potential None access on optional value/)
     return tpy::deref_check(p).mag();
 }
 
-// 25: def find(pts: list[Point], target: Int32) -> Point | None:
+// def find(pts: list[Point], target: Int32) -> Point | None:
 Point* find(std::vector<Point>& pts, int32_t target) {
-    // 26:     for pt in pts:
+    //     for pt in pts:
     auto& __obj_0 = pts;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& pt = *__beg_0;
-        // 27:         if pt.x == target:
+        //         if pt.x == target:
         if ((pt.x == target)) {
-            // 28:             return pt
+            //             return pt
             return &(pt);
         }
     }
-    // 29:     return None
+    //     return None
     return nullptr;
 }
 
@@ -37,13 +37,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: points: list[Point] = list()
+    // points: list[Point] = list()
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     points = &__global_slot_1;
-    // 23: points.append(Point(3, 4))
+    // points.append(Point(3, 4))
     (*points).push_back(Point(3, 4));
-    // 31: # Safe at runtime because we know the value exists
-    // 32: print(use_without_check(find(points, 3)))
+    // # Safe at runtime because we know the value exists
+    // print(use_without_check(find(points, 3)))
     std::cout << use_without_check(find((*points), 3)) << "\n";
 }
 

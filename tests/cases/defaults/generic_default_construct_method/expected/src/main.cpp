@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 13: def main() -> None:
+// def main() -> None:
 void main() {
-    // 14:     c = Container[Int32](10)
+    //     c = Container[Int32](10)
     Container<int32_t> c = Container<int32_t>(10);
-    // 15:     print(c.get_or_default())
+    //     print(c.get_or_default())
     std::cout << c.get_or_default() << "\n";
-    // 16:     print(c.get_or_default(99))
+    //     print(c.get_or_default(99))
     std::cout << c.get_or_default(99) << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: main()
+    // main()
     main();
 }
 

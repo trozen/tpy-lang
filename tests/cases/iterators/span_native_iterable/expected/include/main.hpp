@@ -12,21 +12,21 @@ template<tpy::NativeIterable<int32_t> T_items>
 int32_t sum_items(T_items& items);
 void main();
 
-// 5: def sum_items(items: NativeIterable[Int32]) -> Int32:
+// def sum_items(items: NativeIterable[Int32]) -> Int32:
 template<tpy::NativeIterable<int32_t> T_items>
 int32_t sum_items(T_items& items) {
-    // 6:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 7:     for x in items:
+    //     for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 8:         total += x
+        //         total += x
         total = tpy::add_check<int32_t>(total, x);
     }
-    // 9:     return total
+    //     return total
     return total;
 }
 

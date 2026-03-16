@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 10: def main() -> None:
+// def main() -> None:
 void main() {
-    // 11:     print(frame_count)
+    //     print(frame_count)
     std::cout << g_frame_count << "\n";
-    // 12:     print(tick)
+    //     print(tick)
     std::cout << tick << "\n";
 }
 
@@ -17,10 +17,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: from tpy.extern import native_c_global
-    // 4: # C global import with rename
-    // 7: # C global import without rename (Python name = C name)
-    // 14: main()
+    // from tpy.extern import native_c_global
+    // # C global import with rename
+    // # C global import without rename (Python name = C name)
+    // main()
     main();
 }
 

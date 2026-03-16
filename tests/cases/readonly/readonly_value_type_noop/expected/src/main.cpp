@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 4: def add_one(x: readonly[Int32]) -> Int32:
+// def add_one(x: readonly[Int32]) -> Int32:
 int32_t add_one(int32_t x) {
-    // 5:     return x + Int32(1)
+    //     return x + Int32(1)
     return (tpy::add_check<int32_t>(x, 1));
 }
 
-// 7: def main() -> None:
+// def main() -> None:
 void main() {
-    // 8:     v = Int32(10)
+    //     v = Int32(10)
     int32_t v = 10;
-    // 9:     print(add_one(v))
+    //     print(add_one(v))
     std::cout << add_one(v) << "\n";
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 11: main()
+    // main()
     main();
 }
 

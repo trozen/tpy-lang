@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 42: def main() -> None:
+// def main() -> None:
 void main() {
-    // 43:     w = Wrapper()
+    //     w = Wrapper()
     Wrapper w = Wrapper();
-    // 44:     print(w.get_mutable().x)   # 1
+    //     print(w.get_mutable().x)   # 1
     std::cout << w.get_mutable().x << "\n";
-    // 45:     c = Container()
+    //     c = Container()
     Container c = Container();
-    // 46:     print(c.first_x())         # 1
+    //     print(c.first_x())         # 1
     std::cout << c.first_x() << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 49: main()
+    // main()
     main();
 }
 

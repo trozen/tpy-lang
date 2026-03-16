@@ -4,51 +4,51 @@
 namespace tpy_user::main {
 
 
-// 6: def main() -> None:
+// def main() -> None:
 void main() {
-    // 7:     a = ArrayList[Int32, 8]()
+    //     a = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> a = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    // 8:     a.append(10)
+    //     a.append(10)
     a.append(10);
-    // 9:     a.append(20)
+    //     a.append(20)
     a.append(20);
-    // 10:     a.append(30)
+    //     a.append(30)
     a.append(30);
-    // 11:     a.append(40)
+    //     a.append(40)
     a.append(40);
-    // 12:     print(len(a))       # 4
+    //     print(len(a))       # 4
     std::cout << tpy::__len__(a) << "\n";
-    // 14:     # Delete middle element
-    // 15:     del a[1]
+    //     # Delete middle element
+    //     del a[1]
     tpy::__delitem__(a, 1);
-    // 16:     print(len(a))       # 3
+    //     print(len(a))       # 3
     std::cout << tpy::__len__(a) << "\n";
-    // 17:     print(a[0])         # 10
+    //     print(a[0])         # 10
     std::cout << a[0] << "\n";
-    // 18:     print(a[1])         # 30
+    //     print(a[1])         # 30
     std::cout << a[1] << "\n";
-    // 19:     print(a[2])         # 40
+    //     print(a[2])         # 40
     std::cout << a[2] << "\n";
-    // 21:     # Delete first element
-    // 22:     del a[0]
+    //     # Delete first element
+    //     del a[0]
     tpy::__delitem__(a, 0);
-    // 23:     print(len(a))       # 2
+    //     print(len(a))       # 2
     std::cout << tpy::__len__(a) << "\n";
-    // 24:     print(a[0])         # 30
+    //     print(a[0])         # 30
     std::cout << a[0] << "\n";
-    // 25:     print(a[1])         # 40
+    //     print(a[1])         # 40
     std::cout << a[1] << "\n";
-    // 27:     # Delete last element
-    // 28:     del a[1]
+    //     # Delete last element
+    //     del a[1]
     tpy::__delitem__(a, 1);
-    // 29:     print(len(a))       # 1
+    //     print(len(a))       # 1
     std::cout << tpy::__len__(a) << "\n";
-    // 30:     print(a[0])         # 30
+    //     print(a[0])         # 30
     std::cout << a[0] << "\n";
-    // 32:     # Delete only remaining element
-    // 33:     del a[0]
+    //     # Delete only remaining element
+    //     del a[0]
     tpy::__delitem__(a, 0);
-    // 34:     print(len(a))       # 0
+    //     print(len(a))       # 0
     std::cout << tpy::__len__(a) << "\n";
 }
 
@@ -57,9 +57,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: from tplib import ArrayList
+    // from tplib import ArrayList
     ::tpy_user::tplib::__tpy_init();
-    // 37: main()
+    // main()
     main();
 }
 

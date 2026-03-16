@@ -3,71 +3,71 @@
 
 namespace tpy_user::main {
 
-// 31: s1 = {Int32(1), Int32(2)}
+// s1 = {Int32(1), Int32(2)}
 tpy::ordered_set<int32_t>* s1{};
-// 32: s2 = {Int32(3), Int32(4)}
+// s2 = {Int32(3), Int32(4)}
 tpy::ordered_set<int32_t>* s2{};
-// 38: sa1 = {1, 2}
+// sa1 = {1, 2}
 tpy::ordered_set<int32_t>* sa1{};
-// 39: sb1 = {3, 4}
+// sb1 = {3, 4}
 tpy::ordered_set<int32_t>* sb1{};
-// 41: sa2 = {1, 2}
+// sa2 = {1, 2}
 tpy::ordered_set<int32_t>* sa2{};
-// 42: sb2 = {3, 4}
+// sb2 = {3, 4}
 tpy::ordered_set<int32_t>* sb2{};
 
-// 4: def test_or(a: set[Int32], b: set[Int32]) -> None:
+// def test_or(a: set[Int32], b: set[Int32]) -> None:
 void test_or(tpy::ordered_set<int32_t>& a, tpy::ordered_set<int32_t>& b) {
-    // 5:     x = a or b  # tpyc: type(set[Int32])
+    //     x = a or b  # tpyc: type(set[Int32])
     tpy::ordered_set<int32_t>& x = ((tpy::__len__(a) != 0) ? a : b);
-    // 6:     print(x)
+    //     print(x)
     std::cout << tpy::SetPrinter(x) << "\n";
 }
 
-// 8: def test_and(a: set[Int32], b: set[Int32]) -> None:
+// def test_and(a: set[Int32], b: set[Int32]) -> None:
 void test_and(tpy::ordered_set<int32_t>& a, tpy::ordered_set<int32_t>& b) {
-    // 9:     x = a and b  # tpyc: type(set[Int32])
+    //     x = a and b  # tpyc: type(set[Int32])
     tpy::ordered_set<int32_t>& x = ((tpy::__len__(a) != 0) ? b : a);
-    // 10:     print(x)
+    //     print(x)
     std::cout << tpy::SetPrinter(x) << "\n";
 }
 
-// 12: def test_ternary(a: set[Int32], b: set[Int32], cond: bool) -> None:
+// def test_ternary(a: set[Int32], b: set[Int32], cond: bool) -> None:
 void test_ternary(tpy::ordered_set<int32_t>& a, tpy::ordered_set<int32_t>& b, bool cond) {
-    // 13:     x = a if cond else b  # tpyc: type(set[Int32])
+    //     x = a if cond else b  # tpyc: type(set[Int32])
     tpy::ordered_set<int32_t>& x = ((cond) ? (a) : (b));
-    // 14:     print(x)
+    //     print(x)
     std::cout << tpy::SetPrinter(x) << "\n";
 }
 
-// 16: def test_literal_or() -> None:
+// def test_literal_or() -> None:
 void test_literal_or() {
-    // 17:     x = {Int32(1), Int32(2)} or {Int32(3), Int32(4)}  # tpyc: type(set[Int32])
+    //     x = {Int32(1), Int32(2)} or {Int32(3), Int32(4)}  # tpyc: type(set[Int32])
     auto&& __tmp_1 = tpy::ordered_set<int32_t>({1, 2});
     auto&& __tmp_2 = tpy::ordered_set<int32_t>({3, 4});
     tpy::ordered_set<int32_t> x = ((tpy::__len__(__tmp_1) != 0) ? __tmp_1 : __tmp_2);
-    // 18:     print(x)
+    //     print(x)
     std::cout << tpy::SetPrinter(x) << "\n";
 }
 
-// 20: def test_literal_ternary(cond: bool) -> None:
+// def test_literal_ternary(cond: bool) -> None:
 void test_literal_ternary(bool cond) {
-    // 21:     x = {Int32(1), Int32(2)} if cond else {Int32(3), Int32(4)}  # tpyc: type(set[Int32])
+    //     x = {Int32(1), Int32(2)} if cond else {Int32(3), Int32(4)}  # tpyc: type(set[Int32])
     tpy::ordered_set<int32_t> x = ((cond) ? (tpy::ordered_set<int32_t>({1, 2})) : (tpy::ordered_set<int32_t>({3, 4})));
-    // 22:     print(x)
+    //     print(x)
     std::cout << tpy::SetPrinter(x) << "\n";
 }
 
-// 24: def test_ternary_alias(a: set[Int32], b: set[Int32], cond: bool) -> None:
+// def test_ternary_alias(a: set[Int32], b: set[Int32], cond: bool) -> None:
 void test_ternary_alias(tpy::ordered_set<int32_t>& a, tpy::ordered_set<int32_t>& b, bool cond) {
-    // 25:     # x binds to a or b by reference; mutation through x must be visible in original.
-    // 26:     x = a if cond else b
+    //     # x binds to a or b by reference; mutation through x must be visible in original.
+    //     x = a if cond else b
     tpy::ordered_set<int32_t>& x = ((cond) ? (a) : (b));
-    // 27:     x.add(Int32(99))
+    //     x.add(Int32(99))
     x.insert(99);
-    // 28:     print(99 in a)  # True if cond, else False
+    //     print(99 in a)  # True if cond, else False
     std::cout << tpy::print_bool((a.contains(99))) << "\n";
-    // 29:     print(99 in b)  # False if cond, else True
+    //     print(99 in b)  # False if cond, else True
     std::cout << tpy::print_bool((b.contains(99))) << "\n";
 }
 
@@ -76,37 +76,37 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 31: s1 = {Int32(1), Int32(2)}
+    // s1 = {Int32(1), Int32(2)}
     static tpy::ordered_set<int32_t> __global_slot_1 = tpy::ordered_set<int32_t>({1, 2});
     s1 = &__global_slot_1;
-    // 32: s2 = {Int32(3), Int32(4)}
+    // s2 = {Int32(3), Int32(4)}
     static tpy::ordered_set<int32_t> __global_slot_2 = tpy::ordered_set<int32_t>({3, 4});
     s2 = &__global_slot_2;
-    // 33: test_or(s1, s2)
+    // test_or(s1, s2)
     test_or((*s1), (*s2));
-    // 34: test_and(s1, s2)
+    // test_and(s1, s2)
     test_and((*s1), (*s2));
-    // 35: test_ternary(s1, s2, True)
+    // test_ternary(s1, s2, True)
     test_ternary((*s1), (*s2), true);
-    // 36: test_literal_or()
+    // test_literal_or()
     test_literal_or();
-    // 37: test_literal_ternary(True)
+    // test_literal_ternary(True)
     test_literal_ternary(true);
-    // 38: sa1 = {1, 2}
+    // sa1 = {1, 2}
     static tpy::ordered_set<int32_t> __global_slot_3 = tpy::ordered_set<int32_t>({1, 2});
     sa1 = &__global_slot_3;
-    // 39: sb1 = {3, 4}
+    // sb1 = {3, 4}
     static tpy::ordered_set<int32_t> __global_slot_4 = tpy::ordered_set<int32_t>({3, 4});
     sb1 = &__global_slot_4;
-    // 40: test_ternary_alias(sa1, sb1, True)
+    // test_ternary_alias(sa1, sb1, True)
     test_ternary_alias((*sa1), (*sb1), true);
-    // 41: sa2 = {1, 2}
+    // sa2 = {1, 2}
     static tpy::ordered_set<int32_t> __global_slot_5 = tpy::ordered_set<int32_t>({1, 2});
     sa2 = &__global_slot_5;
-    // 42: sb2 = {3, 4}
+    // sb2 = {3, 4}
     static tpy::ordered_set<int32_t> __global_slot_6 = tpy::ordered_set<int32_t>({3, 4});
     sb2 = &__global_slot_6;
-    // 43: test_ternary_alias(sa2, sb2, False)
+    // test_ternary_alias(sa2, sb2, False)
     test_ternary_alias((*sa2), (*sb2), false);
 }
 

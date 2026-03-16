@@ -4,152 +4,152 @@
 namespace tpy_user::main {
 
 
-// 14: def get_first(items: list[Point]) -> Point:
+// def get_first(items: list[Point]) -> Point:
 Point& get_first(std::vector<Point>& items) {
-    // 15:     return items[0]  # return_borrows_from = {0}
+    //     return items[0]  # return_borrows_from = {0}
     return tpy::__getitem__(items, 0);
 }
 
-// 18: def get_list(items: list[Point]) -> list[Point]:
+// def get_list(items: list[Point]) -> list[Point]:
 std::vector<Point>& get_list(std::vector<Point>& items) {
-    // 19:     return items  # return_borrows_from = {0}
+    //     return items  # return_borrows_from = {0}
     return items;
 }
 
 // # --- Gap (a): reassignment ---
-// 24: def test_reassign_then_mutate_warns() -> None:
+// def test_reassign_then_mutate_warns() -> None:
 void test_reassign_then_mutate_warns() {
-    // 26:     items = [Point(1, 2), Point(3, 4)]
+    //     items = [Point(1, 2), Point(3, 4)]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // 27:     x = Point(0, 0)             # initial assignment (no borrow from items)
+    //     x = Point(0, 0)             # initial assignment (no borrow from items)
     Point __slot_1 = Point(0, 0);
     std::optional<Point> __slot_2;
     Point* x = &__slot_1;
-    // 28:     x = get_first(items)        # reassignment: borrow from items registered here
+    //     x = get_first(items)        # reassignment: borrow from items registered here
     x = &(get_first(items));
-    // 29:     items.append(Point(5, 6))   # tpyc: warning(/Mutation of 'items' while borrowed/)
+    //     items.append(Point(5, 6))   # tpyc: warning(/Mutation of 'items' while borrowed/)
     items.push_back(Point(5, 6));
-    // 30:     print(len(items))           # 3 (don't dereference x after potential realloc)
+    //     print(len(items))           # 3 (don't dereference x after potential realloc)
     std::cout << tpy::__len__(items) << "\n";
 }
 
-// 33: def test_reassign_no_mutation_ok() -> None:
+// def test_reassign_no_mutation_ok() -> None:
 void test_reassign_no_mutation_ok() {
-    // 35:     items = [Point(1, 2), Point(3, 4)]
+    //     items = [Point(1, 2), Point(3, 4)]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // 36:     x = Point(0, 0)
+    //     x = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     std::optional<Point> __slot_2;
     Point* x = &__slot_1;
-    // 37:     x = get_first(items)        # tpyc: ok
+    //     x = get_first(items)        # tpyc: ok
     x = &(get_first(items));
-    // 38:     print(x.x)                  # 1
+    //     print(x.x)                  # 1
     std::cout << x->x << "\n";
 }
 
-// 41: def test_reassign_overwrite_clears_borrow() -> None:
+// def test_reassign_overwrite_clears_borrow() -> None:
 void test_reassign_overwrite_clears_borrow() {
-    // 43:     items = [Point(1, 2), Point(3, 4)]
+    //     items = [Point(1, 2), Point(3, 4)]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // 44:     other = [Point(9, 9)]
+    //     other = [Point(9, 9)]
     std::vector<Point> other = {Point(9, 9)};
-    // 45:     x = Point(0, 0)
+    //     x = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     std::optional<Point> __slot_2;
     Point* x = &__slot_1;
-    // 46:     x = get_first(items)        # borrows items
+    //     x = get_first(items)        # borrows items
     x = &(get_first(items));
-    // 47:     x = get_first(other)        # rebinds x to other; clears borrow on items
+    //     x = get_first(other)        # rebinds x to other; clears borrow on items
     x = &(get_first(other));
-    // 48:     items.append(Point(5, 6))   # tpyc: ok (x no longer borrows items)
+    //     items.append(Point(5, 6))   # tpyc: ok (x no longer borrows items)
     items.push_back(Point(5, 6));
-    // 49:     print(x.x)                  # 9
+    //     print(x.x)                  # 9
     std::cout << x->x << "\n";
 }
 
 // # --- Gap (b): call iterable ---
-// 54: def test_for_call_iterable_warns() -> None:
+// def test_for_call_iterable_warns() -> None:
 void test_for_call_iterable_warns() {
-    // 56:     items = [Point(1, 2), Point(3, 4)]
+    //     items = [Point(1, 2), Point(3, 4)]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // 57:     for p in get_list(items):   # ITER borrow registered on items via return_borrows_from
+    //     for p in get_list(items):   # ITER borrow registered on items via return_borrows_from
     auto& __obj_0 = get_list(items);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        // 58:         items.append(Point(9, 9))  # tpyc: warning(/Mutation of 'items' while iterating/)
+        //         items.append(Point(9, 9))  # tpyc: warning(/Mutation of 'items' while iterating/)
         items.push_back(Point(9, 9));
-        // 59:         break
+        //         break
         break;
     }
-    // 60:     print(len(items))           # 3
+    //     print(len(items))           # 3
     std::cout << tpy::__len__(items) << "\n";
 }
 
-// 63: def test_for_call_iterable_readonly_ok() -> None:
+// def test_for_call_iterable_readonly_ok() -> None:
 void test_for_call_iterable_readonly_ok() {
-    // 65:     items = [Point(1, 2), Point(3, 4)]
+    //     items = [Point(1, 2), Point(3, 4)]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // 66:     total = Int32(0)
+    //     total = Int32(0)
     int32_t total = 0;
-    // 67:     for p in get_list(items):   # tpyc: ok
+    //     for p in get_list(items):   # tpyc: ok
     auto& __obj_0 = get_list(items);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        // 68:         total = total + p.x
+        //         total = total + p.x
         total = (tpy::add_check<int32_t>(total, p.x));
     }
-    // 69:     print(total)                # 4 (1+3)
+    //     print(total)                # 4 (1+3)
     std::cout << total << "\n";
 }
 
 // # --- Gap (c): transitive return inference ---
-// 74: def get_first_wrapper(items: list[Point]) -> Point:
+// def get_first_wrapper(items: list[Point]) -> Point:
 Point& get_first_wrapper(std::vector<Point>& items) {
-    // 76:     return get_first(items)  # transitive: return_borrows_from = {0} via get_first
+    //     return get_first(items)  # transitive: return_borrows_from = {0} via get_first
     return get_first(items);
 }
 
-// 79: def test_transitive_return_warns() -> None:
+// def test_transitive_return_warns() -> None:
 void test_transitive_return_warns() {
-    // 81:     items = [Point(1, 2), Point(3, 4)]
+    //     items = [Point(1, 2), Point(3, 4)]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // 82:     x = get_first_wrapper(items)
+    //     x = get_first_wrapper(items)
     Point& x = get_first_wrapper(items);
-    // 83:     items.append(Point(5, 6))   # tpyc: warning(/Mutation of 'items' while borrowed/)
+    //     items.append(Point(5, 6))   # tpyc: warning(/Mutation of 'items' while borrowed/)
     items.push_back(Point(5, 6));
-    // 84:     print(len(items))           # 3
+    //     print(len(items))           # 3
     std::cout << tpy::__len__(items) << "\n";
 }
 
-// 87: def test_transitive_return_no_mutation_ok() -> None:
+// def test_transitive_return_no_mutation_ok() -> None:
 void test_transitive_return_no_mutation_ok() {
-    // 89:     items = [Point(1, 2), Point(3, 4)]
+    //     items = [Point(1, 2), Point(3, 4)]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // 90:     x = get_first_wrapper(items)    # tpyc: ok
+    //     x = get_first_wrapper(items)    # tpyc: ok
     Point& x = get_first_wrapper(items);
-    // 91:     print(x.x)                      # 1
+    //     print(x.x)                      # 1
     std::cout << x.x << "\n";
 }
 
-// 94: def main() -> None:
+// def main() -> None:
 void main() {
-    // 95:     test_reassign_then_mutate_warns()
+    //     test_reassign_then_mutate_warns()
     test_reassign_then_mutate_warns();
-    // 96:     test_reassign_no_mutation_ok()
+    //     test_reassign_no_mutation_ok()
     test_reassign_no_mutation_ok();
-    // 97:     test_reassign_overwrite_clears_borrow()
+    //     test_reassign_overwrite_clears_borrow()
     test_reassign_overwrite_clears_borrow();
-    // 98:     test_for_call_iterable_warns()
+    //     test_for_call_iterable_warns()
     test_for_call_iterable_warns();
-    // 99:     test_for_call_iterable_readonly_ok()
+    //     test_for_call_iterable_readonly_ok()
     test_for_call_iterable_readonly_ok();
-    // 100:     test_transitive_return_warns()
+    //     test_transitive_return_warns()
     test_transitive_return_warns();
-    // 101:     test_transitive_return_no_mutation_ok()
+    //     test_transitive_return_no_mutation_ok()
     test_transitive_return_no_mutation_ok();
 }
 
@@ -158,7 +158,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 104: main()
+    // main()
     main();
 }
 

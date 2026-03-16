@@ -4,9 +4,9 @@
 namespace tpy_user::utils {
 
 
-// 3: def root_func() -> Int32:
+// def root_func() -> Int32:
 int32_t root_func() {
-    // 4:     return Int32(42)
+    //     return Int32(42)
     return 42;
 }
 

@@ -4,33 +4,33 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     lst: list[Int32] = [10, 20, 30]
+    //     lst: list[Int32] = [10, 20, 30]
     std::vector<int32_t> lst = {10, 20, 30};
-    // 6:     ros: Span[readonly[Int32]] = Span[readonly[Int32]](lst)
+    //     ros: Span[readonly[Int32]] = Span[readonly[Int32]](lst)
     std::span<const int32_t> ros = std::span<const int32_t>(lst);
-    // 7:     print(len(ros))
+    //     print(len(ros))
     std::cout << tpy::__len__(ros) << "\n";
-    // 8:     print(ros[0])
+    //     print(ros[0])
     std::cout << tpy::__getitem__(ros, 0) << "\n";
-    // 10:     arr: Array[Int32, 3] = [1, 2, 3]
+    //     arr: Array[Int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> arr = {1, 2, 3};
-    // 11:     s: Span[Int32] = Span[Int32](arr)
+    //     s: Span[Int32] = Span[Int32](arr)
     std::span<int32_t> s = std::span<int32_t>(arr);
-    // 12:     print(len(s))
+    //     print(len(s))
     std::cout << tpy::__len__(s) << "\n";
-    // 13:     s[0] = 99
+    //     s[0] = 99
     tpy::__setitem__(s, 0, 99);
-    // 14:     print(arr[0])
+    //     print(arr[0])
     std::cout << tpy::__getitem__(arr, 0) << "\n";
-    // 16:     lst2: list[Int32] = [5, 6]
+    //     lst2: list[Int32] = [5, 6]
     std::vector<int32_t> lst2 = {5, 6};
-    // 17:     ros2: Span[readonly[Int32]] = Span[readonly[Int32]](lst2)
+    //     ros2: Span[readonly[Int32]] = Span[readonly[Int32]](lst2)
     std::span<const int32_t> ros2 = std::span<const int32_t>(lst2);
-    // 18:     print(len(ros2))
+    //     print(len(ros2))
     std::cout << tpy::__len__(ros2) << "\n";
-    // 19:     print(ros2[0])
+    //     print(ros2[0])
     std::cout << tpy::__getitem__(ros2, 0) << "\n";
 }
 
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 21: main()
+    // main()
     main();
 }
 

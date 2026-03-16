@@ -12,26 +12,26 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // # Test __str__/__repr__ dispatch: str(), repr(), print(), f-string, !r, !s
-// 2: class Point:
+// class Point:
 struct Point {
-    // 3:     x: int
+    //     x: int
     tpy::BigInt x;
-    // 4:     y: int
+    //     y: int
     tpy::BigInt y;
 
-    // 6:     def __init__(self, x: int, y: int) -> None:
+    //     def __init__(self, x: int, y: int) -> None:
     Point() = default;
     explicit Point(const tpy::BigInt& x, const tpy::BigInt& y) : x(x), y(y) {}
 
-    // 10:     def __str__(self) -> str:
+    //     def __str__(self) -> str:
     std::string __str__() const {
-        // 11:         return f"({self.x}, {self.y})"
+        //         return f"({self.x}, {self.y})"
         return std::format("({}, {})", (this->x).to_string(), (this->y).to_string());
     }
 
-    // 13:     def __repr__(self) -> str:
+    //     def __repr__(self) -> str:
     std::string __repr__() const {
-        // 14:         return f"Point(x={self.x}, y={self.y})"
+        //         return f"Point(x={self.x}, y={self.y})"
         return std::format("Point(x={}, y={})", (this->x).to_string(), (this->y).to_string());
     }
 };

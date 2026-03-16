@@ -11,19 +11,19 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 4: class Container[T]:
+// class Container[T]:
 template<typename T>
 struct Container {
-    // 5:     val: T
+    //     val: T
     T val;
 
-    // 7:     def __init__(self, val: T) -> None:
+    //     def __init__(self, val: T) -> None:
     Container() = default;
     explicit Container(const T& val) : val(val) {}
 
-    // 10:     def get_or_default(self, fallback: T = T()) -> T:
+    //     def get_or_default(self, fallback: T = T()) -> T:
     tpy::val_or_cref_t<T> get_or_default(const T& fallback = T{}) const {
-        // 11:         return fallback
+        //         return fallback
         return fallback;
     }
 };

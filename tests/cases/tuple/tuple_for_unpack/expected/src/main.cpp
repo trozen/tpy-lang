@@ -4,54 +4,54 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     # Explicit annotation, bare literals coerced
-    // 6:     items: list[tuple[Int32, str]] = [(1, "one"), (2, "two")]
+    //     # Explicit annotation, bare literals coerced
+    //     items: list[tuple[Int32, str]] = [(1, "one"), (2, "two")]
     std::vector<std::tuple<int32_t, std::string>> items = {std::tuple<int32_t, std::string>{1, "one"}, std::tuple<int32_t, std::string>{2, "two"}};
-    // 7:     for n, s in items:
+    //     for n, s in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::tuple<int32_t, std::string> __for_tup_0 = *__beg_0;
-        // 7:     for n, s in items:
+        //     for n, s in items:
         const auto& __tup_1 = __for_tup_0;
         int32_t n = std::get<0>(__tup_1);
         std::string_view s = std::get<1>(__tup_1);
-        // 8:         print(n, s)
+        //         print(n, s)
         std::cout << n << " " << s << "\n";
     }
-    // 10:     # Inferred from typed constructors
-    // 11:     pairs = [(Int32(10), True), (Int32(20), False)]
+    //     # Inferred from typed constructors
+    //     pairs = [(Int32(10), True), (Int32(20), False)]
     std::array<std::tuple<int32_t, bool>, 2> pairs = {std::tuple<int32_t, bool>{10, true}, std::tuple<int32_t, bool>{20, false}};
-    // 12:     for n, flag in pairs:
+    //     for n, flag in pairs:
     auto& __obj_1 = pairs;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::tuple<int32_t, bool> __for_tup_1 = *__beg_1;
-        // 12:     for n, flag in pairs:
+        //     for n, flag in pairs:
         const auto& __tup_2 = __for_tup_1;
         int32_t n = std::get<0>(__tup_2);
         bool flag = std::get<1>(__tup_2);
-        // 13:         print(n, flag)
+        //         print(n, flag)
         std::cout << n << " " << tpy::print_bool(flag) << "\n";
     }
-    // 15:     # Tuple of two strings, fully inferred
-    // 16:     names = [("Alice", "A"), ("Bob", "B")]
+    //     # Tuple of two strings, fully inferred
+    //     names = [("Alice", "A"), ("Bob", "B")]
     std::array<std::tuple<std::string, std::string>, 2> names = {std::tuple<std::string, std::string>{"Alice", "A"}, std::tuple<std::string, std::string>{"Bob", "B"}};
-    // 17:     for full, initial in names:
+    //     for full, initial in names:
     auto& __obj_2 = names;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         std::tuple<std::string, std::string> __for_tup_2 = *__beg_2;
-        // 17:     for full, initial in names:
+        //     for full, initial in names:
         const auto& __tup_3 = __for_tup_2;
         std::string_view full = std::get<0>(__tup_3);
         std::string_view initial = std::get<1>(__tup_3);
-        // 18:         print(full, initial)
+        //         print(full, initial)
         std::cout << full << " " << initial << "\n";
     }
 }
@@ -61,7 +61,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 20: main()
+    // main()
     main();
 }
 

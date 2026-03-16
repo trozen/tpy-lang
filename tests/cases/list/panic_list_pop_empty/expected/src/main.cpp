@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 3: def main() -> None:
+// def main() -> None:
 void main() {
-    // 4:     items: list[Int32] = [1]
+    //     items: list[Int32] = [1]
     std::vector<int32_t> items = {1};
-    // 5:     items.pop()  # Remove the only element
+    //     items.pop()  # Remove the only element
     tpy::pop_back(items);
-    // 6:     x: Int32 = items.pop()  # Should panic: pop from empty list
+    //     x: Int32 = items.pop()  # Should panic: pop from empty list
     int32_t x = tpy::pop_back(items);
-    // 7:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 9: main()
+    // main()
     main();
 }
 

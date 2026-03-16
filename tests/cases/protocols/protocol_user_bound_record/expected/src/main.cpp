@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 41: def main() -> None:
+// def main() -> None:
 void main() {
-    // 42:     factory = DefaultFactory()
+    //     factory = DefaultFactory()
     DefaultFactory factory = DefaultFactory();
-    // 43:     container = create_container(factory, "Hello from container")
+    //     container = create_container(factory, "Hello from container")
     Container<Message> container = create_container<DefaultFactory>(factory, "Hello from container");
-    // 44:     container.print_value()
+    //     container.print_value()
     container.print_value();
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 46: main()
+    // main()
     main();
 }
 

@@ -14,12 +14,12 @@ std::string test_and_isinstance(const std::variant<std::monostate, Dog, int32_t>
 std::string test_or(const std::variant<std::monostate, Dog, int32_t>& v, const std::variant<std::monostate, Dog, int32_t>& w);
 void main();
 
-// 4: class Dog:
+// class Dog:
 struct Dog {
-    // 5:     name: str
+    //     name: str
     std::string name;
 
-    // 6:     def __init__(self, name: str) -> None:
+    //     def __init__(self, name: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name) : name(name) {}
 };

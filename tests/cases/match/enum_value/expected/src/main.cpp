@@ -46,39 +46,39 @@ tpy_user::main::Color EnumUtil<tpy_user::main::Color>::from_name(std::string_vie
 namespace tpy_user::main {
 
 
-// 9: def describe(c: Color) -> str:
+// def describe(c: Color) -> str:
 std::string describe(Color c) {
-    // 10:     match c:
+    //     match c:
     auto& __match_subject = c;
     switch (__match_subject) {
-    // 11:         case Color.Red:
+    //         case Color.Red:
     case Color::Red: {
-        // 12:             return "red"
+        //             return "red"
         return "red";
         break;
     }
-    // 13:         case Color.Green:
+    //         case Color.Green:
     case Color::Green: {
-        // 14:             return "green"
+        //             return "green"
         return "green";
         break;
     }
-    // 15:         case _:
+    //         case _:
     default: {
-        // 16:             return "other"
+        //             return "other"
         return "other";
         break;
     }
     }
 }
 
-// 18: def main() -> None:
+// def main() -> None:
 void main() {
-    // 19:     print(describe(Color.Red))
+    //     print(describe(Color.Red))
     std::cout << describe(Color::Red) << "\n";
-    // 20:     print(describe(Color.Green))
+    //     print(describe(Color.Green))
     std::cout << describe(Color::Green) << "\n";
-    // 21:     print(describe(Color.Blue))
+    //     print(describe(Color.Blue))
     std::cout << describe(Color::Blue) << "\n";
 }
 
@@ -87,7 +87,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 23: main()
+    // main()
     main();
 }
 

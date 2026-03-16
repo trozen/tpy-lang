@@ -4,25 +4,25 @@
 namespace tpy_user::main {
 
 
-// 13: def chain_reads() -> Own[Handle]:
+// def chain_reads() -> Own[Handle]:
 Handle chain_reads() {
-    // 14:     h = Handle(33)
+    //     h = Handle(33)
     Handle h = Handle(33);
-    // 15:     a = h
+    //     a = h
     Handle a = std::move(h);
-    // 16:     print(a.fd)
+    //     print(a.fd)
     std::cout << a.fd << "\n";
-    // 17:     b = a
+    //     b = a
     Handle b = std::move(a);
-    // 18:     return b
+    //     return b
     return b;
 }
 
-// 21: def main():
+// def main():
 void main() {
-    // 22:     r = chain_reads()
+    //     r = chain_reads()
     Handle r = chain_reads();
-    // 23:     print(r.fd)
+    //     print(r.fd)
     std::cout << r.fd << "\n";
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 26: main()
+    // main()
     main();
 }
 

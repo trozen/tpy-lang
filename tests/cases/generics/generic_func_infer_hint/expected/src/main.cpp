@@ -4,14 +4,14 @@
 namespace tpy_user::main {
 
 // # Type inferred from list[Int32]
-// 10: nums32: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+// nums32: list[Int32] = [Int32(1), Int32(2), Int32(3)]
 std::vector<int32_t>* nums32{};
-// 11: result: Int32 = first(nums32)
+// result: Int32 = first(nums32)
 int32_t result{};
 // # Type inferred from list[int]
-// 15: nums: list[int] = [10, 20, 30]
+// nums: list[int] = [10, 20, 30]
 std::vector<tpy::BigInt>* nums{};
-// 16: result2: int = first(nums)
+// result2: int = first(nums)
 tpy::BigInt result2;
 
 void __tpy_init() {
@@ -19,21 +19,21 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 9: # Type inferred from list[Int32]
-    // 10: nums32: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    // # Type inferred from list[Int32]
+    // nums32: list[Int32] = [Int32(1), Int32(2), Int32(3)]
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
     nums32 = &__global_slot_1;
-    // 11: result: Int32 = first(nums32)
+    // result: Int32 = first(nums32)
     result = first<int32_t>((*nums32));
-    // 12: print(result)
+    // print(result)
     std::cout << result << "\n";
-    // 14: # Type inferred from list[int]
-    // 15: nums: list[int] = [10, 20, 30]
+    // # Type inferred from list[int]
+    // nums: list[int] = [10, 20, 30]
     static std::vector<tpy::BigInt> __global_slot_2 = {10, 20, 30};
     nums = &__global_slot_2;
-    // 16: result2: int = first(nums)
+    // result2: int = first(nums)
     result2 = first<tpy::BigInt>((*nums));
-    // 17: print(result2)
+    // print(result2)
     std::cout << result2 << "\n";
 }
 

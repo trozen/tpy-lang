@@ -4,32 +4,32 @@
 namespace tpy_user::main {
 
 
-// 11: def main() -> None:
+// def main() -> None:
 void main() {
-    // 12:     v1 = Version(1, 0, 0)
+    //     v1 = Version(1, 0, 0)
     Version v1 = Version(1, 0, 0);
-    // 13:     v2 = Version(2, 0, 0)
+    //     v2 = Version(2, 0, 0)
     Version v2 = Version(2, 0, 0);
-    // 14:     v3 = Version(1, 1, 0)
+    //     v3 = Version(1, 1, 0)
     Version v3 = Version(1, 1, 0);
-    // 15:     # Ordering
-    // 16:     print(v1 < v2)
+    //     # Ordering
+    //     print(v1 < v2)
     std::cout << tpy::print_bool((v1 < v2)) << "\n";
-    // 17:     print(v1 < v3)
+    //     print(v1 < v3)
     std::cout << tpy::print_bool((v1 < v3)) << "\n";
-    // 18:     print(v2 > v3)
+    //     print(v2 > v3)
     std::cout << tpy::print_bool((v2 > v3)) << "\n";
-    // 19:     # Equality
-    // 20:     print(v1 == Version(1, 0, 0))
+    //     # Equality
+    //     print(v1 == Version(1, 0, 0))
     std::cout << tpy::print_bool((v1 == Version(1, 0, 0))) << "\n";
-    // 21:     print(v1 != v2)
+    //     print(v1 != v2)
     std::cout << tpy::print_bool((v1 != v2)) << "\n";
-    // 22:     # Hash (from frozen) -- usable as dict key
-    // 23:     d: dict[Version, str] = {v1: "one", v2: "two"}
+    //     # Hash (from frozen) -- usable as dict key
+    //     d: dict[Version, str] = {v1: "one", v2: "two"}
     tpy::ordered_map<Version, std::string> d = tpy::ordered_map<Version, std::string>({{v1, "one"}, {v2, "two"}});
-    // 24:     print(d[v1])
+    //     print(d[v1])
     std::cout << tpy::__getitem__(d, v1) << "\n";
-    // 25:     print(d[v2])
+    //     print(d[v2])
     std::cout << tpy::__getitem__(d, v2) << "\n";
 }
 
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 27: main()
+    // main()
     main();
 }
 

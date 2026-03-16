@@ -11,16 +11,16 @@ template<tpy::Sequence<int32_t> T_items>
 void cross_protocol(const T_items& items);
 void main();
 
-// 5: def cross_protocol(items: Sequence[Int32]) -> None:
+// def cross_protocol(items: Sequence[Int32]) -> None:
 template<tpy::Sequence<int32_t> T_items>
 void cross_protocol(const T_items& items) {
-    // 6:     if isinstance(items, Hashable):
+    //     if isinstance(items, Hashable):
     if constexpr (tpy::Hashable<T_items>) {
-        // 7:         print("hashable sequence of", len(items))
+        //         print("hashable sequence of", len(items))
         std::cout << "hashable sequence of" << " " << tpy::__len__(items) << "\n";
-    // 8:     else:
+    //     else:
     } else {
-        // 9:         print("non-hashable sequence of", len(items))
+        //         print("non-hashable sequence of", len(items))
         std::cout << "non-hashable sequence of" << " " << tpy::__len__(items) << "\n";
     }
 }

@@ -4,45 +4,45 @@
 namespace tpy_user::main {
 
 
-// 4: def in_dict_value() -> Own[dict[str, str]]:
+// def in_dict_value() -> Own[dict[str, str]]:
 tpy::ordered_map<std::string, std::string> in_dict_value() {
-    // 5:     label: str = "no"
+    //     label: str = "no"
     std::string_view label = "no";
-    // 6:     return {"key": label}
+    //     return {"key": label}
     return tpy::ordered_map<std::string, std::string>({{"key", std::string(label)}});
 }
 
-// 8: def in_dict_key() -> Own[dict[str, int]]:
+// def in_dict_key() -> Own[dict[str, int]]:
 tpy::ordered_map<std::string, tpy::BigInt> in_dict_key() {
-    // 9:     k: str = "mykey"
+    //     k: str = "mykey"
     std::string_view k = "mykey";
-    // 10:     return {k: 42}
+    //     return {k: 42}
     return tpy::ordered_map<std::string, tpy::BigInt>({{std::string(k), tpy::BigInt(42)}});
 }
 
-// 12: def in_dict_var() -> Own[dict[str, str]]:
+// def in_dict_var() -> Own[dict[str, str]]:
 tpy::ordered_map<std::string, std::string> in_dict_var() {
-    // 13:     label: str = "no"
+    //     label: str = "no"
     std::string_view label = "no";
-    // 14:     d = {"key": label}
+    //     d = {"key": label}
     tpy::ordered_map<std::string, std::string> d = tpy::ordered_map<std::string, std::string>({{"key", std::string(label)}});
-    // 15:     return d
+    //     return d
     return d;
 }
 
-// 17: def in_dict_literal() -> Own[dict[str, str]]:
+// def in_dict_literal() -> Own[dict[str, str]]:
 tpy::ordered_map<std::string, std::string> in_dict_literal() {
-    // 18:     label: str = "no"
+    //     label: str = "no"
     std::string_view label = "no";
-    // 19:     return {label: label}
+    //     return {label: label}
     return tpy::ordered_map<std::string, std::string>({{std::string(label), std::string(label)}});
 }
 
-// 21: def in_dict_comp() -> Own[dict[str, str]]:
+// def in_dict_comp() -> Own[dict[str, str]]:
 tpy::ordered_map<std::string, std::string> in_dict_comp() {
-    // 22:     label: str = "no"
+    //     label: str = "no"
     std::string_view label = "no";
-    // 23:     return {label: label for _ in range(3)}
+    //     return {label: label for _ in range(3)}
     return [&]() {
         tpy::ordered_map<std::string, std::string> __result;
         const int32_t __stop_0 = 3;
@@ -58,15 +58,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 25: print(in_dict_value())
+    // print(in_dict_value())
     std::cout << tpy::DictPrinter(in_dict_value()) << "\n";
-    // 26: print(in_dict_key())
+    // print(in_dict_key())
     std::cout << tpy::DictPrinter(in_dict_key()) << "\n";
-    // 27: print(in_dict_var())
+    // print(in_dict_var())
     std::cout << tpy::DictPrinter(in_dict_var()) << "\n";
-    // 28: print(in_dict_literal())
+    // print(in_dict_literal())
     std::cout << tpy::DictPrinter(in_dict_literal()) << "\n";
-    // 29: print(in_dict_comp())
+    // print(in_dict_comp())
     std::cout << tpy::DictPrinter(in_dict_comp()) << "\n";
 }
 

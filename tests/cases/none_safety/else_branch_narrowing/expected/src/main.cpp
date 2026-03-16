@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 4: def describe(x: Int32 | None) -> Int32:
+// def describe(x: Int32 | None) -> Int32:
 int32_t describe(std::optional<int32_t> x) {
-    // 5:     if x is None:
+    //     if x is None:
     if ((!x.has_value())) {
-        // 6:         return -1
+        //         return -1
         return -1;
-    // 7:     else:
+    //     else:
     } else {
-        // 8:         return x + 1
+        //         return x + 1
         return (tpy::add_check<int32_t>((*x), 1));
     }
 }
@@ -22,9 +22,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 11: print(describe(10))
+    // print(describe(10))
     std::cout << describe(10) << "\n";
-    // 12: print(describe(None))
+    // print(describe(None))
     std::cout << describe(std::nullopt) << "\n";
 }
 

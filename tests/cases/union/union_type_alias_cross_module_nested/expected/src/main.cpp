@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 6: def main() -> None:
+// def main() -> None:
 void main() {
-    // 7:     xs: list[Shape] = []
+    //     xs: list[Shape] = []
     std::vector<Shape> xs = std::vector<Shape>{};
-    // 8:     xs.append(Circle(Int32(1)))
+    //     xs.append(Circle(Int32(1)))
     xs.push_back(::tpy_user::shapes::Circle(1));
-    // 9:     xs.append(Rect(Int32(2)))
+    //     xs.append(Rect(Int32(2)))
     xs.push_back(::tpy_user::shapes::Rect(2));
-    // 10:     print(len(xs))
+    //     print(len(xs))
     std::cout << tpy::__len__(xs) << "\n";
 }
 
@@ -21,9 +21,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: from shapes import Circle, Rect, Shape
+    // from shapes import Circle, Rect, Shape
     ::tpy_user::shapes::__tpy_init();
-    // 12: main()
+    // main()
     main();
 }
 

@@ -4,46 +4,46 @@
 namespace tpy_user::main {
 
 
-// 27: def show_desc(d: Describable) -> None:
+// def show_desc(d: Describable) -> None:
 void show_desc(Describable& d) {
-    // 28:     print(d.describe())
+    //     print(d.describe())
     std::cout << d.describe() << "\n";
 }
 
-// 30: def show_noise(n: Noise) -> None:
+// def show_noise(n: Noise) -> None:
 void show_noise(Noise& n) {
-    // 31:     print(n.make_noise())
+    //     print(n.make_noise())
     std::cout << n.make_noise() << "\n";
 }
 
-// 33: def main() -> None:
+// def main() -> None:
 void main() {
   std::optional<Cat> __slot_2;
   std::optional<Dog> __slot_4;
-    // 34:     d: Describable = Dog()
+    //     d: Describable = Dog()
     Dog __slot_1{Dog()};
     Describable* d = &__slot_1;
-    // 35:     show_desc(d)
+    //     show_desc(d)
     show_desc((*d));
-    // 36:     d = Cat()
+    //     d = Cat()
     __slot_2.emplace(Cat());
     d = &*__slot_2;
-    // 37:     show_desc(d)
+    //     show_desc(d)
     show_desc((*d));
-    // 39:     n: Noise = Cat()
+    //     n: Noise = Cat()
     Cat __slot_3{Cat()};
     Noise* n = &__slot_3;
-    // 40:     show_noise(n)
+    //     show_noise(n)
     show_noise((*n));
-    // 41:     n = Dog()
+    //     n = Dog()
     __slot_4.emplace(Dog());
     n = &*__slot_4;
-    // 42:     show_noise(n)
+    //     show_noise(n)
     show_noise((*n));
-    // 44:     show_desc(Dog())
+    //     show_desc(Dog())
     Dog __tmp_1{Dog()};
     show_desc(__tmp_1);
-    // 45:     show_noise(Cat())
+    //     show_noise(Cat())
     Cat __tmp_2{Cat()};
     show_noise(__tmp_2);
 }
@@ -53,7 +53,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 47: main()
+    // main()
     main();
 }
 

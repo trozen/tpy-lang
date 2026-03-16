@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 5: def main() -> Int32:
+// def main() -> Int32:
 int32_t main() {
-    // 6:     helper()
+    //     helper()
     ::tpy_user::mypackage::utils::helper();
-    // 7:     return Int32(0)
+    //     return Int32(0)
     return 0;
 }
 
@@ -17,11 +17,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: # Import submodule - should execute parent __init__ first
-    // 3: from mypackage.utils import helper
+    // # Import submodule - should execute parent __init__ first
+    // from mypackage.utils import helper
     ::tpy_user::mypackage::__tpy_init();
     ::tpy_user::mypackage::utils::__tpy_init();
-    // 9: main()
+    // main()
     main();
 }
 

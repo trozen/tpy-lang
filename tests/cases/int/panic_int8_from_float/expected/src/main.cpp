@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     x: Int8 = Int8(128.0)
+    //     x: Int8 = Int8(128.0)
     int8_t x = tpy::from_float_check<int8_t>(128.0);
-    // 6:     print(x)
+    //     print(x)
     std::cout << static_cast<int>(x) << "\n";
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: main()
+    // main()
     main();
 }
 

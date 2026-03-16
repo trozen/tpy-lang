@@ -4,117 +4,117 @@
 namespace tpy_user::main {
 
 
-// 10: def describe(p: Point) -> str:
+// def describe(p: Point) -> str:
 std::string describe(const Point& p) {
-    // 11:     match p:
+    //     match p:
     auto& __match_subject = p;
-    // 12:         case Point(x=0, y=0):
+    //         case Point(x=0, y=0):
     if (__match_subject.x == 0 && __match_subject.y == 0) {
-        // 13:             return "origin"
+        //             return "origin"
         return "origin";
-    // 14:         case Point(x=x, y=0):
+    //         case Point(x=x, y=0):
     } else if (__match_subject.y == 0) {
         auto& x = __match_subject.x;
-        // 15:             return "x-axis: " + str(x)
+        //             return "x-axis: " + str(x)
         return (tpy::str_concat("x-axis: ", tpy::fixed_to_str<int32_t>(x)));
-    // 16:         case Point(x=0, y=y):
+    //         case Point(x=0, y=y):
     } else if (__match_subject.x == 0) {
         auto& y = __match_subject.y;
-        // 17:             return "y-axis: " + str(y)
+        //             return "y-axis: " + str(y)
         return (tpy::str_concat("y-axis: ", tpy::fixed_to_str<int32_t>(y)));
-    // 18:         case Point(x=x, y=y):
+    //         case Point(x=x, y=y):
     } else {
         auto& x = __match_subject.x;
         auto& y = __match_subject.y;
-        // 19:             return "(" + str(x) + ", " + str(y) + ")"
+        //             return "(" + str(x) + ", " + str(y) + ")"
         return (tpy::str_concat((tpy::str_concat((tpy::str_concat((tpy::str_concat("(", tpy::fixed_to_str<int32_t>(x))), ", ")), tpy::fixed_to_str<int32_t>(y))), ")"));
     }
-    // 20:     return ""
+    //     return ""
     return "";
 }
 
-// 22: def check_quadrant(p: Point) -> str:
+// def check_quadrant(p: Point) -> str:
 std::string check_quadrant(const Point& p) {
-    // 23:     match p:
+    //     match p:
     auto& __match_subject = p;
-    // 24:         case Point(x=0, y=0):
+    //         case Point(x=0, y=0):
     if (__match_subject.x == 0 && __match_subject.y == 0) {
-        // 25:             return "origin"
+        //             return "origin"
         return "origin";
-    // 26:         case _:
+    //         case _:
     } else {
-        // 27:             return "not origin"
+        //             return "not origin"
         return "not origin";
     }
-    // 28:     return ""
+    //     return ""
     return "";
 }
 
-// 30: def positional(p: Point) -> str:
+// def positional(p: Point) -> str:
 std::string positional(const Point& p) {
-    // 31:     match p:
+    //     match p:
     auto& __match_subject = p;
-    // 32:         case Point(0, 0):
+    //         case Point(0, 0):
     if (__match_subject.x == 0 && __match_subject.y == 0) {
-        // 33:             return "origin"
+        //             return "origin"
         return "origin";
-    // 34:         case Point(_, 0):
+    //         case Point(_, 0):
     } else if (__match_subject.y == 0) {
-        // 35:             return "x-axis"
+        //             return "x-axis"
         return "x-axis";
-    // 36:         case _:
+    //         case _:
     } else {
-        // 37:             return "other"
+        //             return "other"
         return "other";
     }
-    // 38:     return ""
+    //     return ""
     return "";
 }
 
-// 40: def with_capture(p: Point) -> str:
+// def with_capture(p: Point) -> str:
 std::string with_capture(const Point& p) {
-    // 41:     match p:
+    //     match p:
     auto& __match_subject = p;
-    // 42:         case Point() as q:
+    //         case Point() as q:
     {
         auto& q = __match_subject;
-        // 43:             return "point: " + str(q.x) + ", " + str(q.y)
+        //             return "point: " + str(q.x) + ", " + str(q.y)
         return (tpy::str_concat((tpy::str_concat((tpy::str_concat("point: ", tpy::fixed_to_str<int32_t>(q.x))), ", ")), tpy::fixed_to_str<int32_t>(q.y)));
     }
-    // 44:     return ""
+    //     return ""
     return "";
 }
 
-// 46: def main() -> None:
+// def main() -> None:
 void main() {
-    // 47:     print(describe(Point(Int32(0), Int32(0))))
+    //     print(describe(Point(Int32(0), Int32(0))))
     Point __tmp_1 = Point(0, 0);
     std::cout << describe(__tmp_1) << "\n";
-    // 48:     print(describe(Point(Int32(3), Int32(0))))
+    //     print(describe(Point(Int32(3), Int32(0))))
     Point __tmp_2 = Point(3, 0);
     std::cout << describe(__tmp_2) << "\n";
-    // 49:     print(describe(Point(Int32(0), Int32(5))))
+    //     print(describe(Point(Int32(0), Int32(5))))
     Point __tmp_3 = Point(0, 5);
     std::cout << describe(__tmp_3) << "\n";
-    // 50:     print(describe(Point(Int32(3), Int32(4))))
+    //     print(describe(Point(Int32(3), Int32(4))))
     Point __tmp_4 = Point(3, 4);
     std::cout << describe(__tmp_4) << "\n";
-    // 51:     print(check_quadrant(Point(Int32(0), Int32(0))))
+    //     print(check_quadrant(Point(Int32(0), Int32(0))))
     Point __tmp_5 = Point(0, 0);
     std::cout << check_quadrant(__tmp_5) << "\n";
-    // 52:     print(check_quadrant(Point(Int32(1), Int32(2))))
+    //     print(check_quadrant(Point(Int32(1), Int32(2))))
     Point __tmp_6 = Point(1, 2);
     std::cout << check_quadrant(__tmp_6) << "\n";
-    // 53:     print(positional(Point(Int32(0), Int32(0))))
+    //     print(positional(Point(Int32(0), Int32(0))))
     Point __tmp_7 = Point(0, 0);
     std::cout << positional(__tmp_7) << "\n";
-    // 54:     print(positional(Point(Int32(5), Int32(0))))
+    //     print(positional(Point(Int32(5), Int32(0))))
     Point __tmp_8 = Point(5, 0);
     std::cout << positional(__tmp_8) << "\n";
-    // 55:     print(positional(Point(Int32(1), Int32(2))))
+    //     print(positional(Point(Int32(1), Int32(2))))
     Point __tmp_9 = Point(1, 2);
     std::cout << positional(__tmp_9) << "\n";
-    // 56:     print(with_capture(Point(Int32(7), Int32(8))))
+    //     print(with_capture(Point(Int32(7), Int32(8))))
     Point __tmp_10 = Point(7, 8);
     std::cout << with_capture(__tmp_10) << "\n";
 }
@@ -124,7 +124,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 58: main()
+    // main()
     main();
 }
 

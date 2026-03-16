@@ -4,21 +4,21 @@
 namespace tpy_user::main {
 
 
-// 5: def classify(x: Optional[Int32]) -> str:
+// def classify(x: Optional[Int32]) -> str:
 std::string classify(std::optional<int32_t> x) {
-    // 6:     match x:
+    //     match x:
     auto& __match_subject = x;
-    // 7:         case None:
+    //         case None:
     if (!__match_subject.has_value()) {
-        // 8:             return "none"
+        //             return "none"
         return "none";
     } else {
         auto& __match_inner = (*__match_subject);
         switch (__match_inner) {
-        // 9:         case v:
+        //         case v:
         default: {
             auto& v = __match_inner;
-            // 10:             return str(v)
+            //             return str(v)
             return tpy::fixed_to_str<int32_t>(v);
             break;
         }
@@ -26,34 +26,34 @@ std::string classify(std::optional<int32_t> x) {
     }
 }
 
-// 12: def describe(x: Optional[str]) -> str:
+// def describe(x: Optional[str]) -> str:
 std::string describe(std::optional<std::string_view> x) {
-    // 13:     match x:
+    //     match x:
     auto& __match_subject = x;
-    // 14:         case None:
+    //         case None:
     if (!__match_subject.has_value()) {
-        // 15:             return "empty"
+        //             return "empty"
         return "empty";
     } else {
         auto& __match_inner = (*__match_subject);
-        // 16:         case s:
+        //         case s:
         {
             auto& s = __match_inner;
-            // 17:             return "got: " + s
+            //             return "got: " + s
             return (tpy::str_concat("got: ", s));
         }
     }
 }
 
-// 19: def main() -> None:
+// def main() -> None:
 void main() {
-    // 20:     print(classify(None))
+    //     print(classify(None))
     std::cout << classify(std::nullopt) << "\n";
-    // 21:     print(classify(Int32(42)))
+    //     print(classify(Int32(42)))
     std::cout << classify(42) << "\n";
-    // 22:     print(describe(None))
+    //     print(describe(None))
     std::cout << describe(std::nullopt) << "\n";
-    // 23:     print(describe("hello"))
+    //     print(describe("hello"))
     std::cout << describe("hello") << "\n";
 }
 
@@ -62,7 +62,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 25: main()
+    // main()
     main();
 }
 

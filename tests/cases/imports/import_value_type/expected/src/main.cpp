@@ -4,27 +4,27 @@
 namespace tpy_user::main {
 
 
-// 6: def modify(v: Vec2) -> None:
+// def modify(v: Vec2) -> None:
 void modify(::tpy_user::shapes::Vec2 v) {
-    // 7:     v.x = 99
+    //     v.x = 99
     v.x = 99;
 }
 
-// 10: def main() -> None:
+// def main() -> None:
 void main() {
-    // 11:     a = Vec2(1, 2)
+    //     a = Vec2(1, 2)
     ::tpy_user::shapes::Vec2 a = ::tpy_user::shapes::Vec2(1, 2);
-    // 12:     b = a
+    //     b = a
     ::tpy_user::shapes::Vec2 b = a;
-    // 13:     b.x = 10
+    //     b.x = 10
     b.x = 10;
-    // 14:     print(a.x)
+    //     print(a.x)
     std::cout << a.x << "\n";
-    // 15:     print(b.x)
+    //     print(b.x)
     std::cout << b.x << "\n";
-    // 17:     modify(a)
+    //     modify(a)
     modify(a);
-    // 18:     print(a.x)
+    //     print(a.x)
     std::cout << a.x << "\n";
 }
 
@@ -33,9 +33,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: from shapes import Vec2
+    // from shapes import Vec2
     ::tpy_user::shapes::__tpy_init();
-    // 20: main()
+    // main()
     main();
 }
 

@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-// 11: items: list[Int32] = []
+// items: list[Int32] = []
 std::vector<int32_t>* items{};
 
 void __tpy_init() {
@@ -11,16 +11,16 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 11: items: list[Int32] = []
+    // items: list[Int32] = []
     static std::vector<int32_t> __global_slot_1 = std::vector<int32_t>{};
     items = &__global_slot_1;
-    // 12: items.append(1)
+    // items.append(1)
     (*items).push_back(1);
-    // 13: items.append(2)
+    // items.append(2)
     (*items).push_back(2);
-    // 14: items.append(3)
+    // items.append(3)
     (*items).push_back(3);
-    // 15: print(get_len(items))
+    // print(get_len(items))
     std::cout << get_len((*items)) << "\n";
 }
 

@@ -4,26 +4,26 @@
 namespace tpy_user::main {
 
 
-// 28: def main() -> None:
+// def main() -> None:
 void main() {
-    // 29:     # Test forwarding int param through inheritance chain
-    // 30:     b: Base[str, 10] = Base[str, 10]("base")
+    //     # Test forwarding int param through inheritance chain
+    //     b: Base[str, 10] = Base[str, 10]("base")
     Base<std::string, 10> b = Base<std::string, 10>("base");
-    // 31:     print(b.value)
+    //     print(b.value)
     std::cout << b.value << "\n";
-    // 33:     c: Child[str, 20] = Child[str, 20]("child", Int32(42))
+    //     c: Child[str, 20] = Child[str, 20]("child", Int32(42))
     Child<std::string, 20> c = Child<std::string, 20>("child", 42);
-    // 34:     print(c.value)
+    //     print(c.value)
     std::cout << c.value << "\n";
-    // 35:     print(c.extra)
+    //     print(c.extra)
     std::cout << c.extra << "\n";
-    // 37:     g: GrandChild[str, 30] = GrandChild[str, 30]("grand", Int32(100), "test")
+    //     g: GrandChild[str, 30] = GrandChild[str, 30]("grand", Int32(100), "test")
     GrandChild<std::string, 30> g = GrandChild<std::string, 30>("grand", 100, "test");
-    // 38:     print(g.value)
+    //     print(g.value)
     std::cout << g.value << "\n";
-    // 39:     print(g.extra)
+    //     print(g.extra)
     std::cout << g.extra << "\n";
-    // 40:     print(g.name)
+    //     print(g.name)
     std::cout << g.name << "\n";
 }
 
@@ -32,7 +32,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 43: main()
+    // main()
     main();
 }
 

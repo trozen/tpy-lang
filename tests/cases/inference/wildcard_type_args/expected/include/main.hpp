@@ -21,19 +21,19 @@ tpy::val_or_ref_t<B> triple(tpy::param_val_or_ref_t<A> a, tpy::param_val_or_ref_
 void take_box(Box<int32_t>& b);
 void main();
 
-// 13: class Box[T]:
+// class Box[T]:
 template<typename T>
 struct Box {
-    // 14:     val: T
+    //     val: T
     T val;
 
-    // 15:     def __init__(self, val: T) -> None:
+    //     def __init__(self, val: T) -> None:
     Box() = default;
     explicit Box(const T& val) : val(val) {}
 
-    // 17:     def get(self) -> T:
+    //     def get(self) -> T:
     tpy::val_or_ref_t<T> get() {
-        // 18:         return self.val
+        //         return self.val
         return this->val;
     }
 };
@@ -46,15 +46,15 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     return os;
 }
 
-// 20: class Pair[T, U]:
+// class Pair[T, U]:
 template<typename T, typename U>
 struct Pair {
-    // 21:     a: T
+    //     a: T
     T a;
-    // 22:     b: U
+    //     b: U
     U b;
 
-    // 23:     def __init__(self, a: T, b: U) -> None:
+    //     def __init__(self, a: T, b: U) -> None:
     Pair() = default;
     explicit Pair(const T& a, const U& b) : a(a), b(b) {}
 };
@@ -69,26 +69,26 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<T, U>& obj) {
     return os;
 }
 
-// 27: class Container[T]:
+// class Container[T]:
 template<typename T>
 struct Container {
-    // 28:     val: T
+    //     val: T
     T val;
 
-    // 29:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Container() {
-        // 30:         pass
+        //         pass
     }
 
-    // 31:     def set(self, val: T) -> None:
+    //     def set(self, val: T) -> None:
     void set(tpy::param_val_or_ref_t<T> val) {
-        // 32:         self.val = val
+        //         self.val = val
         this->val = val;
     }
 
-    // 33:     def get(self) -> T:
+    //     def get(self) -> T:
     tpy::val_or_ref_t<T> get() {
-        // 34:         return self.val
+        //         return self.val
         return this->val;
     }
 };
@@ -101,20 +101,20 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     return os;
 }
 
-// 36: class Mapper[T]:
+// class Mapper[T]:
 template<typename T>
 struct Mapper {
-    // 37:     val: T
+    //     val: T
     T val;
 
-    // 38:     def __init__(self, val: T) -> None:
+    //     def __init__(self, val: T) -> None:
     Mapper() = default;
     explicit Mapper(const T& val) : val(val) {}
 
-    // 40:     def transform[U, V](self, u: U, v: V) -> V:
+    //     def transform[U, V](self, u: U, v: V) -> V:
     template<typename U, typename V>
     tpy::val_or_cref_t<V> transform(const U& u, const V& v) const {
-        // 41:         return v
+        //         return v
         return v;
     }
 };
@@ -127,22 +127,22 @@ inline std::ostream& operator<<(std::ostream& os, const Mapper<T>& obj) {
     return os;
 }
 
-// 4: def identity[T](x: T) -> T:
+// def identity[T](x: T) -> T:
 template<typename T>
 tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x) {
-    // 5:     return x
+    //     return x
     return x;
 }
-// 7: def pair_func[T, U](a: T, b: U) -> T:
+// def pair_func[T, U](a: T, b: U) -> T:
 template<typename T, typename U>
 tpy::val_or_ref_t<T> pair_func(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<U> b) {
-    // 8:     return a
+    //     return a
     return a;
 }
-// 10: def triple[A, B, C](a: A, b: B, c: C) -> B:
+// def triple[A, B, C](a: A, b: B, c: C) -> B:
 template<typename A, typename B, typename C>
 tpy::val_or_ref_t<B> triple(tpy::param_val_or_ref_t<A> a, tpy::param_val_or_ref_t<B> b, tpy::param_val_or_ref_t<C> c) {
-    // 11:     return b
+    //     return b
     return b;
 }
 

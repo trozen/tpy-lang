@@ -12,11 +12,11 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 5: class Point:
+// class Point:
 struct Point {
-    // 6:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 7:     y: Int32
+    //     y: Int32
     int32_t y;
 
 };
@@ -30,21 +30,21 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 10: class Container:
+// class Container:
 struct Container {
-    // 11:     val: Int32
+    //     val: Int32
     int32_t val;
 
 
-    // 13:     def take(self, p: Own[Point] | None) -> None:
+    //     def take(self, p: Own[Point] | None) -> None:
     void take(std::optional<Point> p) {
-        // 14:         if p is not None:
+        //         if p is not None:
         if ((p.has_value())) {
-            // 15:             self.val = Int32(1)
+            //             self.val = Int32(1)
             this->val = 1;
-        // 16:         else:
+        //         else:
         } else {
-            // 17:             self.val = Int32(0)
+            //             self.val = Int32(0)
             this->val = 0;
         }
     }

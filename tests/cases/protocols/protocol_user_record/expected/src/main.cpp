@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 16: def main() -> None:
+// def main() -> None:
 void main() {
-    // 17:     c: MyContainer = MyContainer(42)
+    //     c: MyContainer = MyContainer(42)
     MyContainer c = MyContainer(42);
-    // 18:     print(count(c))
+    //     print(count(c))
     std::cout << count(c) << "\n";
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 20: main()
+    // main()
     main();
 }
 

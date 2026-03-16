@@ -4,9 +4,9 @@
 namespace tpy_user::helpers {
 
 
-// 1: def mutate() -> None:
+// def mutate() -> None:
 void mutate() {
-    // 2:     return
+    //     return
     return;
 }
 

@@ -4,21 +4,21 @@
 namespace tpy_user::main {
 
 
-// 15: def main() -> None:
+// def main() -> None:
 void main() {
-    // 16:     p = Point(1, 2)
+    //     p = Point(1, 2)
     Point p = Point(1, 2);
-    // 17:     print(p)
+    //     print(p)
     std::cout << p << "\n";
-    // 18:     print(p.x, p.y)
+    //     print(p.x, p.y)
     std::cout << p.x << " " << p.y << "\n";
-    // 19:     print(p == Point(1, 2))
+    //     print(p == Point(1, 2))
     std::cout << tpy::print_bool((p == Point(1, 2))) << "\n";
-    // 20:     print(p == Point(3, 4))
+    //     print(p == Point(3, 4))
     std::cout << tpy::print_bool((p == Point(3, 4))) << "\n";
-    // 22:     c = Config("test", 42)
+    //     c = Config("test", 42)
     Config c = Config("test", 42);
-    // 23:     print(c)
+    //     print(c)
     std::cout << c << "\n";
 }
 
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 25: main()
+    // main()
     main();
 }
 

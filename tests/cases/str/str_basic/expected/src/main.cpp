@@ -4,23 +4,23 @@
 namespace tpy_user::main {
 
 
-// 3: def count_char(text: str, target: Char) -> Int32:
+// def count_char(text: str, target: Char) -> Int32:
 int32_t count_char(std::string_view text, char target) {
-    // 5:     count: Int32 = 0
+    //     count: Int32 = 0
     int32_t count = 0;
-    // 6:     i: Int32 = 0
+    //     i: Int32 = 0
     int32_t i = 0;
-    // 7:     while i < len(text):
+    //     while i < len(text):
     while ((i < tpy::__len__(text))) {
-        // 8:         if text[i] == target:
+        //         if text[i] == target:
         if ((text[i] == target)) {
-            // 9:             count += 1
+            //             count += 1
             count = tpy::add_check<int32_t>(count, 1);
         }
-        // 10:         i += 1
+        //         i += 1
         i = tpy::add_check<int32_t>(i, 1);
     }
-    // 11:     return count
+    //     return count
     return count;
 }
 
@@ -29,11 +29,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 13: print(count_char("xoxox", "x"))
+    // print(count_char("xoxox", "x"))
     std::cout << count_char("xoxox", 'x') << "\n";
-    // 14: print(len("hello"))
+    // print(len("hello"))
     std::cout << tpy::__len__("hello") << "\n";
-    // 15: print(chr(65))
+    // print(chr(65))
     std::cout << static_cast<char>(65) << "\n";
 }
 

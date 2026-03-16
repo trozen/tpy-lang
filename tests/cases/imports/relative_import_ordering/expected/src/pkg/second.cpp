@@ -9,7 +9,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: print("init: second")
+    // print("init: second")
     std::cout << "init: second" << "\n";
 }
 

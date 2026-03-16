@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 10: def read_via_ptr(p: Ptr[readonly[Data]]) -> Int32:
+// def read_via_ptr(p: Ptr[readonly[Data]]) -> Int32:
 int32_t read_via_ptr(const Data* p) {
-    // 11:     return p.__deref__().value
+    //     return p.__deref__().value
     return tpy::deref_check(p).value;
 }
 
-// 13: def main() -> None:
+// def main() -> None:
 void main() {
-    // 14:     d = Data(Int32(42))
+    //     d = Data(Int32(42))
     Data d = Data(42);
-    // 15:     p: Ptr[readonly[Data]] = Ptr(d)
+    //     p: Ptr[readonly[Data]] = Ptr(d)
     const Data* p = &d;
-    // 16:     print(read_via_ptr(p))
+    //     print(read_via_ptr(p))
     std::cout << read_via_ptr(p) << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 18: main()
+    // main()
     main();
 }
 

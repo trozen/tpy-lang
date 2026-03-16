@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # Test multiple protocol implementation
-// 40: b = Box(5, 3)
+// b = Box(5, 3)
 Box* b{};
 
 void __tpy_init() {
@@ -12,19 +12,19 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 39: # Test multiple protocol implementation
-    // 40: b = Box(5, 3)
+    // # Test multiple protocol implementation
+    // b = Box(5, 3)
     static Box __global_slot_1 = Box(5, 3);
     b = &__global_slot_1;
-    // 41: print(b.__str__())
+    // print(b.__str__())
     std::cout << b->__str__() << "\n";
-    // 42: print(b.describe())
+    // print(b.describe())
     std::cout << b->describe() << "\n";
-    // 43: print(b.size())
+    // print(b.size())
     std::cout << b->size() << "\n";
-    // 44: print(b.width)
+    // print(b.width)
     std::cout << b->width << "\n";
-    // 45: print(b.height)
+    // print(b.height)
     std::cout << b->height << "\n";
 }
 

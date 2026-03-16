@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 15: def main():
+// def main():
 void main() {
-    // 16:     c = Child("hello")
+    //     c = Child("hello")
     Child c = Child("hello");
-    // 17:     print("alive")
+    //     print("alive")
     std::cout << "alive" << "\n";
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 19: main()
+    // main()
     main();
 }
 

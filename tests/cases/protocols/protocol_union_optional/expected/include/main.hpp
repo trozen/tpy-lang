@@ -17,25 +17,25 @@ template<typename T_items = std::nullptr_t>
 tpy::BigInt with_else(const T_items* items = nullptr);
 void main();
 
-// 23: class Holder:
+// class Holder:
 struct Holder {
-    // 24:     count: int
+    //     count: int
     tpy::BigInt count;
 
-    // 26:     def __init__(self, items: Sized | Sequence[int] | None = None) -> None:
+    //     def __init__(self, items: Sized | Sequence[int] | None = None) -> None:
     Holder() : Holder(static_cast<std::nullptr_t*>(nullptr)) {}
     template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || tpy::Sequence<T_items, tpy::BigInt> || tpy::Sized<T_items>)
     explicit Holder(const T_items* items = nullptr) : count(tpy::BigInt(0)) {
-        // 28:         if items is not None:
+        //         if items is not None:
         if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-            // 29:             if isinstance(items, Sized):
+            //             if isinstance(items, Sized):
             if constexpr (tpy::Sized<T_items>) {
-                // 30:                 self.count = len(items)
+                //                 self.count = len(items)
                 this->count = tpy::BigInt(tpy::__len__((*items)));
-            // 31:             else:
+            //             else:
             } else {
-                // 32:                 self.count = -1
+                //                 self.count = -1
                 this->count = tpy::BigInt(-1);
             }
         }
@@ -49,46 +49,46 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// 5: def process(items: Sized | Sequence[int] | None = None) -> int:
+// def process(items: Sized | Sequence[int] | None = None) -> int:
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || tpy::Sequence<T_items, tpy::BigInt> || tpy::Sized<T_items>)
 tpy::BigInt process(const T_items* items) {
-    // 6:     if items is not None:
+    //     if items is not None:
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-        // 7:         if isinstance(items, Sequence):
+        //         if isinstance(items, Sequence):
         if constexpr (tpy::Sequence<T_items, tpy::BigInt>) {
-            // 8:             return items[0]
+            //             return items[0]
             return (*items)[0];
-        // 9:         elif isinstance(items, Sized):
+        //         elif isinstance(items, Sized):
         } else if constexpr (tpy::Sized<T_items>) {
-            // 10:             return len(items)
+            //             return len(items)
             return tpy::BigInt(tpy::__len__((*items)));
         }
     }
-    // 11:     return -1
+    //     return -1
     return tpy::BigInt(-1);
 }
-// 13: def with_else(items: Sized | Sequence[int] | None = None) -> int:
+// def with_else(items: Sized | Sequence[int] | None = None) -> int:
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || tpy::Sequence<T_items, tpy::BigInt> || tpy::Sized<T_items>)
 tpy::BigInt with_else(const T_items* items) {
-    // 14:     if items is not None:
+    //     if items is not None:
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-        // 15:         if isinstance(items, Sequence):
+        //         if isinstance(items, Sequence):
         if constexpr (tpy::Sequence<T_items, tpy::BigInt>) {
-            // 16:             return items[0]
+            //             return items[0]
             return (*items)[0];
-        // 17:         elif isinstance(items, Sized):
+        //         elif isinstance(items, Sized):
         } else if constexpr (tpy::Sized<T_items>) {
-            // 18:             return len(items)
+            //             return len(items)
             return tpy::BigInt(tpy::__len__((*items)));
         }
-    // 19:     else:
+    //     else:
     } else {
-        // 20:         return -99
+        //         return -99
         return tpy::BigInt(-99);
     }
-    // 21:     return -1
+    //     return -1
     return tpy::BigInt(-1);
 }
 

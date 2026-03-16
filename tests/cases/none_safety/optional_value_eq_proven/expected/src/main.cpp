@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 4: def eq_proven(x: Int32 | None, y: Int32) -> bool:
+// def eq_proven(x: Int32 | None, y: Int32) -> bool:
 bool eq_proven(std::optional<int32_t> x, int32_t y) {
-    // 5:     assert x is not None
+    //     assert x is not None
     if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
-    // 6:     return x == y  # tpyc: ok
+    //     return x == y  # tpyc: ok
     return ((*x) == y);
 }
 
@@ -17,9 +17,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 9: print(eq_proven(5, 5))
+    // print(eq_proven(5, 5))
     std::cout << tpy::print_bool(eq_proven(5, 5)) << "\n";
-    // 10: print(eq_proven(3, 5))
+    // print(eq_proven(3, 5))
     std::cout << tpy::print_bool(eq_proven(3, 5)) << "\n";
 }
 

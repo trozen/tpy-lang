@@ -15,14 +15,14 @@ void test_init_from_temp();
 void test_rebind_from_temp();
 void test_rebind_in_block();
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 6:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 7:     def __init__(self, x: Int32, y: Int32):
+    //     def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -36,12 +36,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 12: class Holder:
+// class Holder:
 struct Holder {
-    // 13:     value: Point | None
+    //     value: Point | None
     std::optional<Point> value;
 
-    // 15:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Holder() : value(std::nullopt) {}
 };
 

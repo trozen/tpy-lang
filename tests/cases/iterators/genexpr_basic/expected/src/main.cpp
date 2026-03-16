@@ -4,10 +4,10 @@
 namespace tpy_user::main {
 
 
-// 11: def main() -> None:
+// def main() -> None:
 void main() {
-    // 12:     # Range source
-    // 13:     print(sum_items(x * x for x in range(5)))
+    //     # Range source
+    //     print(sum_items(x * x for x in range(5)))
     auto __tmp_1 = tpy::make_generator<int32_t>(
         [&, __i = int32_t(0), __stop = static_cast<int32_t>(5)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
@@ -18,10 +18,10 @@ void main() {
         }
     );
     std::cout << sum_items(__tmp_1) << "\n";
-    // 15:     # List source
-    // 16:     items: list[Int32] = [1, 2, 3, 4, 5]
+    //     # List source
+    //     items: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> items = {1, 2, 3, 4, 5};
-    // 17:     print(sum_items(x * 2 for x in items))
+    //     print(sum_items(x * 2 for x in items))
     auto __tmp_2 = [&]() {
         auto& __src = items;
         return tpy::make_generator<int32_t>(
@@ -35,8 +35,8 @@ void main() {
         );
     }();
     std::cout << sum_items(__tmp_2) << "\n";
-    // 19:     # Filter with if clause
-    // 20:     print(sum_items(x for x in range(10) if x % 2 == 0))
+    //     # Filter with if clause
+    //     print(sum_items(x for x in range(10) if x % 2 == 0))
     auto __tmp_3 = tpy::make_generator<int32_t>(
         [&, __i = int32_t(0), __stop = static_cast<int32_t>(10)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
@@ -49,8 +49,8 @@ void main() {
         }
     );
     std::cout << sum_items(__tmp_3) << "\n";
-    // 22:     # 2-arg range
-    // 23:     print(sum_items(x for x in range(5, 10)))
+    //     # 2-arg range
+    //     print(sum_items(x for x in range(5, 10)))
     auto __tmp_4 = tpy::make_generator<int32_t>(
         [&, __i = static_cast<int32_t>(5), __stop = static_cast<int32_t>(10)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
@@ -61,8 +61,8 @@ void main() {
         }
     );
     std::cout << sum_items(__tmp_4) << "\n";
-    // 25:     # 3-arg range (step) -- exercises IIFE+Range codegen path
-    // 26:     print(sum_items(x for x in range(0, 10, 2)))
+    //     # 3-arg range (step) -- exercises IIFE+Range codegen path
+    //     print(sum_items(x for x in range(0, 10, 2)))
     auto __tmp_5 = [&]() {
         auto __src = tpy::Range<int32_t>(0, 10, 2);
         return tpy::make_generator<int32_t>(
@@ -76,10 +76,10 @@ void main() {
         );
     }();
     std::cout << sum_items(__tmp_5) << "\n";
-    // 28:     # Body referencing outer local -- exercises [&] capture
-    // 29:     multiplier: Int32 = 3
+    //     # Body referencing outer local -- exercises [&] capture
+    //     multiplier: Int32 = 3
     int32_t multiplier = 3;
-    // 30:     print(sum_items(x * multiplier for x in range(5)))
+    //     print(sum_items(x * multiplier for x in range(5)))
     auto __tmp_6 = tpy::make_generator<int32_t>(
         [&, __i = int32_t(0), __stop = static_cast<int32_t>(5)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
@@ -90,10 +90,10 @@ void main() {
         }
     );
     std::cout << sum_items(__tmp_6) << "\n";
-    // 32:     # str.join with generator expression
-    // 33:     nums: list[Int32] = [1, 2, 3]
+    //     # str.join with generator expression
+    //     nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    // 34:     print(", ".join(str(x) for x in nums))
+    //     print(", ".join(str(x) for x in nums))
     std::cout << tpy::str_join(", ", [&]() {
         auto& __src = nums;
         return tpy::make_generator<std::string>(
@@ -106,10 +106,10 @@ void main() {
             }
         );
     }()) << "\n";
-    // 36:     # Tuple unpacking in generator
-    // 37:     pairs: list[tuple[str, Int32]] = [("a", 1), ("b", 2), ("c", 3)]
+    //     # Tuple unpacking in generator
+    //     pairs: list[tuple[str, Int32]] = [("a", 1), ("b", 2), ("c", 3)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}, std::tuple<std::string, int32_t>{"c", 3}};
-    // 38:     print(sum_items(v for _, v in pairs))
+    //     print(sum_items(v for _, v in pairs))
     auto __tmp_7 = [&]() {
         auto& __src = pairs;
         return tpy::make_generator<int32_t>(
@@ -131,7 +131,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 40: main()
+    // main()
     main();
 }
 

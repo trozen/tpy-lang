@@ -4,21 +4,21 @@
 namespace tpy_user::main {
 
 
-// 14: def main() -> None:
+// def main() -> None:
 void main() {
-    // 15:     w = Wrapper(42)
+    //     w = Wrapper(42)
     Wrapper __slot_1 = Wrapper(tpy::BigInt(42));
     std::optional<Wrapper> __slot_2;
     Wrapper* w = &__slot_1;
-    // 16:     r1 = w.take()
+    //     r1 = w.take()
     tpy::BigInt r1 = std::move(*w).take();
-    // 17:     w = Wrapper(99)
+    //     w = Wrapper(99)
     w = &*(__slot_2 = Wrapper(tpy::BigInt(99)));
-    // 18:     r2 = w.take()
+    //     r2 = w.take()
     tpy::BigInt r2 = std::move(*w).take();
-    // 19:     print(r1)
+    //     print(r1)
     std::cout << r1 << "\n";
-    // 20:     print(r2)
+    //     print(r2)
     std::cout << r2 << "\n";
 }
 
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: main()
+    // main()
     main();
 }
 

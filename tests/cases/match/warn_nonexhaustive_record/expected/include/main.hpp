@@ -15,14 +15,14 @@ std::string describe_exhaustive(const Point& p);
 void main();
 
 // # warning: non-exhaustive match on record (guarded and literal-field arms only)
-// 2: class Point:
+// class Point:
 struct Point {
-    // 3:     x: int
+    //     x: int
     tpy::BigInt x;
-    // 4:     y: int
+    //     y: int
     tpy::BigInt y;
 
-    // 5:     def __init__(self, x: int, y: int) -> None:
+    //     def __init__(self, x: int, y: int) -> None:
     Point() = default;
     explicit Point(const tpy::BigInt& x, const tpy::BigInt& y) : x(x), y(y) {}
 };

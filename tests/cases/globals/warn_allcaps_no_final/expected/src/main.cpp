@@ -3,12 +3,12 @@
 
 namespace tpy_user::main {
 
-// 4: MAX_SIZE: Int32 = 100  # tpyc: warning(/without Final/)
+// MAX_SIZE: Int32 = 100  # tpyc: warning(/without Final/)
 int32_t MAX_SIZE{};
 
-// 6: def main() -> None:
+// def main() -> None:
 void main() {
-    // 7:     print(MAX_SIZE)
+    //     print(MAX_SIZE)
     std::cout << MAX_SIZE << "\n";
 }
 
@@ -17,9 +17,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: MAX_SIZE: Int32 = 100  # tpyc: warning(/without Final/)
+    // MAX_SIZE: Int32 = 100  # tpyc: warning(/without Final/)
     MAX_SIZE = 100;
-    // 9: main()
+    // main()
     main();
 }
 

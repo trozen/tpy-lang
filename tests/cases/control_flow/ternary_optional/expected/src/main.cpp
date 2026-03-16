@@ -4,81 +4,81 @@
 namespace tpy_user::main {
 
 
-// 4: def safe_len(s: Optional[str]) -> int:
+// def safe_len(s: Optional[str]) -> int:
 tpy::BigInt safe_len(std::optional<std::string_view> s) {
-    // 5:     # Optional narrowing: s is narrowed to str in the then-branch
-    // 6:     return len(s) if s is not None else 0
+    //     # Optional narrowing: s is narrowed to str in the then-branch
+    //     return len(s) if s is not None else 0
     return tpy::BigInt((((s.has_value())) ? (tpy::__len__((*s))) : (0)));
 }
 
-// 8: def value_or_none(flag: bool) -> Optional[str]:
+// def value_or_none(flag: bool) -> Optional[str]:
 std::optional<std::string> value_or_none(bool flag) {
-    // 9:     # None in then-branch -> Optional[str]
-    // 10:     return None if flag else "hello"
+    //     # None in then-branch -> Optional[str]
+    //     return None if flag else "hello"
     return ((flag) ? (std::optional<std::string>(std::nullopt)) : (std::optional<std::string>("hello")));
 }
 
-// 12: def none_or_value(flag: bool) -> Optional[str]:
+// def none_or_value(flag: bool) -> Optional[str]:
 std::optional<std::string> none_or_value(bool flag) {
-    // 13:     # None in else-branch -> Optional[str]
-    // 14:     return "world" if flag else None
+    //     # None in else-branch -> Optional[str]
+    //     return "world" if flag else None
     return ((flag) ? (std::optional<std::string>("world")) : (std::optional<std::string>(std::nullopt)));
 }
 
-// 16: def with_default(val: Optional[str]) -> str:
+// def with_default(val: Optional[str]) -> str:
 std::string with_default(std::optional<std::string_view> val) {
-    // 17:     # Common pattern: provide a default for Optional
-    // 18:     return val if val is not None else "default"
+    //     # Common pattern: provide a default for Optional
+    //     return val if val is not None else "default"
     return std::string((((val.has_value())) ? ((*val)) : ("default")));
 }
 
-// 20: def truthy_narrowing(s: Optional[str]) -> str:
+// def truthy_narrowing(s: Optional[str]) -> str:
 std::string truthy_narrowing(std::optional<std::string_view> s) {
-    // 21:     # Truthy condition narrows Optional[str] to str in then-branch
-    // 22:     return s if s else "empty"
+    //     # Truthy condition narrows Optional[str] to str in then-branch
+    //     return s if s else "empty"
     return std::string(((tpy::is_truthy(s)) ? ((*s)) : ("empty")));
 }
 
-// 24: def main() -> None:
+// def main() -> None:
 void main() {
-    // 25:     print(safe_len("hello"))
+    //     print(safe_len("hello"))
     std::cout << safe_len("hello") << "\n";
-    // 26:     print(safe_len(None))
+    //     print(safe_len(None))
     std::cout << safe_len(std::nullopt) << "\n";
-    // 28:     r1 = value_or_none(True)
+    //     r1 = value_or_none(True)
     std::optional<std::string> r1 = value_or_none(true);
-    // 29:     print(r1)
+    //     print(r1)
     std::cout << tpy::print_optional_val(r1) << "\n";
-    // 30:     r1 = value_or_none(False)
+    //     r1 = value_or_none(False)
     r1 = value_or_none(false);
-    // 31:     print(r1)
+    //     print(r1)
     std::cout << tpy::print_optional_val(r1) << "\n";
-    // 33:     r2 = none_or_value(True)
+    //     r2 = none_or_value(True)
     std::optional<std::string> r2 = none_or_value(true);
-    // 34:     print(r2)
+    //     print(r2)
     std::cout << tpy::print_optional_val(r2) << "\n";
-    // 35:     r2 = none_or_value(False)
+    //     r2 = none_or_value(False)
     r2 = none_or_value(false);
-    // 36:     print(r2)
+    //     print(r2)
     std::cout << tpy::print_optional_val(r2) << "\n";
-    // 38:     print(with_default("custom"))
+    //     print(with_default("custom"))
     std::cout << with_default("custom") << "\n";
-    // 39:     print(with_default(None))
+    //     print(with_default(None))
     std::cout << with_default(std::nullopt) << "\n";
-    // 41:     print(truthy_narrowing("hello"))
+    //     print(truthy_narrowing("hello"))
     std::cout << truthy_narrowing("hello") << "\n";
-    // 42:     print(truthy_narrowing(None))
+    //     print(truthy_narrowing(None))
     std::cout << truthy_narrowing(std::nullopt) << "\n";
-    // 43:     print(truthy_narrowing(""))
+    //     print(truthy_narrowing(""))
     std::cout << truthy_narrowing("") << "\n";
-    // 45:     # Truthy narrowing in non-return context (print arg, assignment)
-    // 46:     s: Optional[str] = "world"
+    //     # Truthy narrowing in non-return context (print arg, assignment)
+    //     s: Optional[str] = "world"
     std::optional<std::string> s = "world";
-    // 47:     print(s if s else "empty")
+    //     print(s if s else "empty")
     std::cout << ((tpy::is_truthy(s)) ? ((*s)) : ("empty")) << "\n";
-    // 48:     s = None
+    //     s = None
     s = std::nullopt;
-    // 49:     print(s if s else "empty")
+    //     print(s if s else "empty")
     std::cout << ((tpy::is_truthy(s)) ? ((*s)) : ("empty")) << "\n";
 }
 
@@ -87,7 +87,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 51: main()
+    // main()
     main();
 }
 

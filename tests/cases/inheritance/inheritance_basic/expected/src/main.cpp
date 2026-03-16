@@ -4,10 +4,10 @@
 namespace tpy_user::main {
 
 // # Test creating a Dog (child class)
-// 31: d = Dog("Buddy", 3, "Golden Retriever")
+// d = Dog("Buddy", 3, "Golden Retriever")
 Dog* d{};
 // # Test creating an Animal (parent class)
-// 47: a = Animal("Generic", 5)
+// a = Animal("Generic", 5)
 Animal* a{};
 
 void __tpy_init() {
@@ -15,31 +15,31 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 30: # Test creating a Dog (child class)
-    // 31: d = Dog("Buddy", 3, "Golden Retriever")
+    // # Test creating a Dog (child class)
+    // d = Dog("Buddy", 3, "Golden Retriever")
     static Dog __global_slot_1 = Dog("Buddy", 3, "Golden Retriever");
     d = &__global_slot_1;
-    // 33: # Access child field
-    // 34: print(d.breed)
+    // # Access child field
+    // print(d.breed)
     std::cout << d->breed << "\n";
-    // 36: # Access inherited fields
-    // 37: print(d.name)
+    // # Access inherited fields
+    // print(d.name)
     std::cout << d->name << "\n";
-    // 38: print(d.age)
+    // print(d.age)
     std::cout << d->age << "\n";
-    // 40: # Call overridden method
-    // 41: print(d.speak())
+    // # Call overridden method
+    // print(d.speak())
     std::cout << d->speak() << "\n";
-    // 43: # Call inherited method
-    // 44: print(d.describe())
+    // # Call inherited method
+    // print(d.describe())
     std::cout << d->describe() << "\n";
-    // 46: # Test creating an Animal (parent class)
-    // 47: a = Animal("Generic", 5)
+    // # Test creating an Animal (parent class)
+    // a = Animal("Generic", 5)
     static Animal __global_slot_2 = Animal("Generic", 5);
     a = &__global_slot_2;
-    // 48: print(a.speak())
+    // print(a.speak())
     std::cout << a->speak() << "\n";
-    // 49: print(a.describe())
+    // print(a.describe())
     std::cout << a->describe() << "\n";
 }
 

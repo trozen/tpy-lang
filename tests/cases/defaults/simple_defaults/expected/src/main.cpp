@@ -4,54 +4,54 @@
 namespace tpy_user::main {
 
 
-// 4: def greet(name: str, greeting: str = "Hello") -> None:
+// def greet(name: str, greeting: str = "Hello") -> None:
 void greet(std::string_view name, std::string_view greeting) {
-    // 5:     print(f"{greeting}, {name}!")
+    //     print(f"{greeting}, {name}!")
     std::cout << std::format("{}, {}!", greeting, name) << "\n";
 }
 
-// 7: def add(a: Int32, b: Int32 = Int32(0)) -> Int32:
+// def add(a: Int32, b: Int32 = Int32(0)) -> Int32:
 int32_t add(int32_t a, int32_t b) {
-    // 8:     return a + b
+    //     return a + b
     return (tpy::add_check<int32_t>(a, b));
 }
 
-// 10: def scale(value: float, factor: float = 1.0) -> float:
+// def scale(value: float, factor: float = 1.0) -> float:
 double scale(double value, double factor) {
-    // 11:     return value * factor
+    //     return value * factor
     return ((value) * (factor));
 }
 
-// 13: def log(msg: str, verbose: bool = False) -> None:
+// def log(msg: str, verbose: bool = False) -> None:
 void log(std::string_view msg, bool verbose) {
-    // 14:     if verbose:
+    //     if verbose:
     if (verbose) {
-        // 15:         print(f"[V] {msg}")
+        //         print(f"[V] {msg}")
         std::cout << std::format("[V] {}", msg) << "\n";
-    // 16:     else:
+    //     else:
     } else {
-        // 17:         print(msg)
+        //         print(msg)
         std::cout << msg << "\n";
     }
 }
 
-// 19: def main() -> None:
+// def main() -> None:
 void main() {
-    // 20:     greet("World")
+    //     greet("World")
     greet("World");
-    // 21:     greet("World", "Hi")
+    //     greet("World", "Hi")
     greet("World", "Hi");
-    // 23:     print(add(Int32(5)))
+    //     print(add(Int32(5)))
     std::cout << add(5) << "\n";
-    // 24:     print(add(Int32(5), Int32(3)))
+    //     print(add(Int32(5), Int32(3)))
     std::cout << add(5, 3) << "\n";
-    // 26:     print(scale(2.5))
+    //     print(scale(2.5))
     std::cout << tpy::print_float(scale(2.5)) << "\n";
-    // 27:     print(scale(2.5, 3.0))
+    //     print(scale(2.5, 3.0))
     std::cout << tpy::print_float(scale(2.5, 3.0)) << "\n";
-    // 29:     log("info")
+    //     log("info")
     log("info");
-    // 30:     log("debug", True)
+    //     log("debug", True)
     log("debug", true);
 }
 
@@ -60,7 +60,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 32: main()
+    // main()
     main();
 }
 

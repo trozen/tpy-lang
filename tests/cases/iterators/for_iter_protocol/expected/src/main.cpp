@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # 2. Can iterate again (fresh iterator each time)
-// 34: nums = NumberRange(10, 13)
+// nums = NumberRange(10, 13)
 NumberRange* nums{};
 
 void __tpy_init() {
@@ -12,8 +12,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 29: # 1. Container with __iter__ in for-loop
-    // 30: for x in NumberRange(0, 5):
+    // # 1. Container with __iter__ in for-loop
+    // for x in NumberRange(0, 5):
     auto __src_0 = NumberRange(0, 5);
     auto __iter_0 = __src_0.__iter__();
     auto __obj_0 = tpy::iter_adapt(__iter_0);
@@ -21,14 +21,14 @@ void __tpy_init() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 31:     print(x)
+        //     print(x)
         std::cout << x << "\n";
     }
-    // 33: # 2. Can iterate again (fresh iterator each time)
-    // 34: nums = NumberRange(10, 13)
+    // # 2. Can iterate again (fresh iterator each time)
+    // nums = NumberRange(10, 13)
     static NumberRange __global_slot_1 = NumberRange(10, 13);
     nums = &__global_slot_1;
-    // 35: for x in nums:
+    // for x in nums:
     auto& __src_1 = (*nums);
     auto __iter_1 = __src_1.__iter__();
     auto __obj_1 = tpy::iter_adapt(__iter_1);
@@ -36,10 +36,10 @@ void __tpy_init() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        // 36:     print(x)
+        //     print(x)
         std::cout << x << "\n";
     }
-    // 37: for x in nums:
+    // for x in nums:
     auto& __src_2 = (*nums);
     auto __iter_2 = __src_2.__iter__();
     auto __obj_2 = tpy::iter_adapt(__iter_2);
@@ -47,10 +47,10 @@ void __tpy_init() {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         int32_t x = *__beg_2;
-        // 38:     print(x)
+        //     print(x)
         std::cout << x << "\n";
     }
-    // 40: print("done")
+    // print("done")
     std::cout << "done" << "\n";
 }
 

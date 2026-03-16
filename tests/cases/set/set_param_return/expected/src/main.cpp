@@ -4,36 +4,36 @@
 namespace tpy_user::main {
 
 
-// 4: def make_set() -> Own[set[Int32]]:
+// def make_set() -> Own[set[Int32]]:
 tpy::ordered_set<int32_t> make_set() {
-    // 5:     return {1, 2, 3}
+    //     return {1, 2, 3}
     return tpy::ordered_set<int32_t>({1, 2, 3});
 }
 
-// 7: def add_to_set(s: set[Int32], val: Int32) -> None:
+// def add_to_set(s: set[Int32], val: Int32) -> None:
 void add_to_set(tpy::ordered_set<int32_t>& s, int32_t val) {
-    // 8:     s.add(val)
+    //     s.add(val)
     auto __tmp_1 = val;
     s.insert(std::move(__tmp_1));
 }
 
-// 10: def get_size(s: set[Int32]) -> Int32:
+// def get_size(s: set[Int32]) -> Int32:
 int32_t get_size(const tpy::ordered_set<int32_t>& s) {
-    // 11:     return len(s)
+    //     return len(s)
     return tpy::__len__(s);
 }
 
-// 13: def main() -> None:
+// def main() -> None:
 void main() {
-    // 14:     s = make_set()
+    //     s = make_set()
     tpy::ordered_set<int32_t> s = make_set();
-    // 15:     print(s)
+    //     print(s)
     std::cout << tpy::SetPrinter(s) << "\n";
-    // 16:     add_to_set(s, 4)
+    //     add_to_set(s, 4)
     add_to_set(s, 4);
-    // 17:     print(s)
+    //     print(s)
     std::cout << tpy::SetPrinter(s) << "\n";
-    // 18:     print(get_size(s))
+    //     print(get_size(s))
     std::cout << get_size(s) << "\n";
 }
 
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 20: main()
+    // main()
     main();
 }
 

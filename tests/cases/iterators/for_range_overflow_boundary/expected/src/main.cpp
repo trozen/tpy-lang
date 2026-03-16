@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # Step exactly divides range: exit value = stop = INT32_MAX
-// 10: count: Int32 = Int32(0)
+// count: Int32 = Int32(0)
 int32_t count{};
 
 void __tpy_init() {
@@ -12,73 +12,73 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 5: # Large step, one iteration (step > range width)
-    // 6: for i in range(Int32(0), Int32(2147483647), Int32(2147483647)):
+    // # Large step, one iteration (step > range width)
+    // for i in range(Int32(0), Int32(2147483647), Int32(2147483647)):
     tpy::range_check_overflow<int32_t>(0, 2147483647, 2147483647);
     for (int32_t i = 0; i < 2147483647; i += 2147483647) {
-        // 7:     print(i)
+        //     print(i)
         std::cout << i << "\n";
     }
-    // 9: # Step exactly divides range: exit value = stop = INT32_MAX
-    // 10: count: Int32 = Int32(0)
+    // # Step exactly divides range: exit value = stop = INT32_MAX
+    // count: Int32 = Int32(0)
     count = 0;
-    // 11: for i in range(Int32(1), Int32(2147483647), Int32(2)):
+    // for i in range(Int32(1), Int32(2147483647), Int32(2)):
     tpy::range_check_overflow<int32_t>(1, 2147483647, 2);
     for (int32_t i = 1; i < 2147483647; i += 2) {
-        // 12:     count += Int32(1)
+        //     count += Int32(1)
         count = tpy::add_check<int32_t>(count, 1);
     }
-    // 13: print(count)  # 1073741823
+    // print(count)  # 1073741823
     std::cout << count << "\n";
-    // 15: # Negative step at INT32_MIN boundary, step=-1
-    // 16: for i in range(Int32(-2147483647), Int32(-2147483648), Int32(-1)):
+    // # Negative step at INT32_MIN boundary, step=-1
+    // for i in range(Int32(-2147483647), Int32(-2147483648), Int32(-1)):
     for (int32_t i = -2147483647; i > -2147483648; --i) {
-        // 17:     print(i)
+        //     print(i)
         std::cout << i << "\n";
     }
-    // 19: # Large negative step, one iteration
-    // 20: for i in range(Int32(0), Int32(-1), Int32(-2147483648)):
+    // # Large negative step, one iteration
+    // for i in range(Int32(0), Int32(-1), Int32(-2147483648)):
     tpy::range_check_overflow<int32_t>(0, -1, -2147483648);
     for (int32_t i = 0; i > -1; i += -2147483648) {
-        // 21:     print(i)
+        //     print(i)
         std::cout << i << "\n";
     }
-    // 23: # One iteration near max, step > 1
-    // 24: for i in range(Int32(0), Int32(1), Int32(2147483647)):
+    // # One iteration near max, step > 1
+    // for i in range(Int32(0), Int32(1), Int32(2147483647)):
     tpy::range_check_overflow<int32_t>(0, 1, 2147483647);
     for (int32_t i = 0; i < 1; i += 2147483647) {
-        // 25:     print(i)
+        //     print(i)
         std::cout << i << "\n";
     }
-    // 27: # Empty range (start >= stop with positive step) — no check needed
-    // 28: for i in range(Int32(2147483647), Int32(0), Int32(2)):
+    // # Empty range (start >= stop with positive step) — no check needed
+    // for i in range(Int32(2147483647), Int32(0), Int32(2)):
     tpy::range_check_overflow<int32_t>(2147483647, 0, 2);
     for (int32_t i = 2147483647; i < 0; i += 2) {
-        // 29:     print(i)
+        //     print(i)
         std::cout << i << "\n";
     }
-    // 31: # Int8: step divides evenly, exit = stop = 127
-    // 32: for i in range(Int8(0), Int8(127), Int8(127)):
+    // # Int8: step divides evenly, exit = stop = 127
+    // for i in range(Int8(0), Int8(127), Int8(127)):
     tpy::range_check_overflow<int8_t>(0, 127, 127);
     for (int8_t i = 0; i < 127; i += 127) {
-        // 33:     print(i)
+        //     print(i)
         std::cout << static_cast<int>(i) << "\n";
     }
-    // 35: # Int8: negative step at boundary
-    // 36: for i in range(Int8(0), Int8(-1), Int8(-128)):
+    // # Int8: negative step at boundary
+    // for i in range(Int8(0), Int8(-1), Int8(-128)):
     tpy::range_check_overflow<int8_t>(0, -1, -128);
     for (int8_t i = 0; i > -1; i += -128) {
-        // 37:     print(i)
+        //     print(i)
         std::cout << static_cast<int>(i) << "\n";
     }
-    // 39: # UInt8: step divides evenly, exit = stop = 250
-    // 40: for i in range(UInt8(0), UInt8(250), UInt8(50)):
+    // # UInt8: step divides evenly, exit = stop = 250
+    // for i in range(UInt8(0), UInt8(250), UInt8(50)):
     tpy::range_check_overflow<uint8_t>(0, 250, 50);
     for (uint8_t i = 0; i < 250; i += 50) {
-        // 41:     print(i)
+        //     print(i)
         std::cout << static_cast<int>(i) << "\n";
     }
-    // 43: print("all safe cases done")
+    // print("all safe cases done")
     std::cout << "all safe cases done" << "\n";
 }
 

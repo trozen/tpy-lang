@@ -4,14 +4,14 @@
 namespace tpy_user::main {
 
 
-// 18: def main() -> None:
+// def main() -> None:
 void main() {
-    // 19:     nums: list[int] = [10, 20, 30]
+    //     nums: list[int] = [10, 20, 30]
     std::vector<tpy::BigInt> nums = {10, 20, 30};
-    // 20:     # list satisfies both Sized and Sequence[int]; Sequence branch fires first
-    // 21:     describe(nums)
+    //     # list satisfies both Sized and Sequence[int]; Sequence branch fires first
+    //     describe(nums)
     describe(nums);
-    // 22:     print(get_value(nums))
+    //     print(get_value(nums))
     std::cout << get_value(nums) << "\n";
 }
 
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 24: main()
+    // main()
     main();
 }
 

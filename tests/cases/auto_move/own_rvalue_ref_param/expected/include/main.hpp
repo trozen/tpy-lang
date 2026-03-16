@@ -14,12 +14,12 @@ int32_t consume(Box&& b);
 int32_t use_int(int32_t x);
 void main();
 
-// 6: class Box:
+// class Box:
 struct Box {
-    // 7:     value: Int32
+    //     value: Int32
     int32_t value;
 
-    // 8:     def __init__(self, value: Int32) -> None:
+    //     def __init__(self, value: Int32) -> None:
     Box() = default;
     explicit Box(int32_t value) : value(value) {}
 };
@@ -31,18 +31,18 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
-// 11: class Container[T]:
+// class Container[T]:
 template<typename T>
 struct Container {
-    // 12:     items: list[T]
+    //     items: list[T]
     std::vector<T> items;
 
-    // 13:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Container() : items(std::vector<T>{}) {}
 
-    // 15:     def push(self, item: Own[T]) -> None:
+    //     def push(self, item: Own[T]) -> None:
     void push(T&& item) {
-        // 16:         self.items.append(item)
+        //         self.items.append(item)
         this->items.push_back(std::move(item));
     }
 };

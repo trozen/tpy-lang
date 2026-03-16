@@ -4,12 +4,12 @@
 namespace tpy_user::main {
 
 
-// 6: def main() -> None:
+// def main() -> None:
 void main() {
-    // 7:     # Local should shadow the native global
-    // 8:     score: Int32 = Int32(42)
+    //     # Local should shadow the native global
+    //     score: Int32 = Int32(42)
     int32_t score = 42;
-    // 9:     print(score)
+    //     print(score)
     std::cout << score << "\n";
 }
 
@@ -18,8 +18,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: from tpy.extern import native_global
-    // 11: main()
+    // from tpy.extern import native_global
+    // main()
     main();
 }
 

@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     items: list[Int32] = [10, 20, 30, 20, 10]
+    //     items: list[Int32] = [10, 20, 30, 20, 10]
     std::vector<int32_t> items = {10, 20, 30, 20, 10};
-    // 6:     s: set[Int32] = set(items)
+    //     s: set[Int32] = set(items)
     tpy::ordered_set<int32_t> s = tpy::set_from_range<int32_t>(items);
-    // 7:     print(s)
+    //     print(s)
     std::cout << tpy::SetPrinter(s) << "\n";
-    // 8:     print(len(s))
+    //     print(len(s))
     std::cout << tpy::__len__(s) << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 10: main()
+    // main()
     main();
 }
 

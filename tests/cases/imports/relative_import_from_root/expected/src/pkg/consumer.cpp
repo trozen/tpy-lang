@@ -4,9 +4,9 @@
 namespace tpy_user::pkg::consumer {
 
 
-// 4: def compute() -> Int32:
+// def compute() -> Int32:
 int32_t compute() {
-    // 5:     return utils.root_func()
+    //     return utils.root_func()
     return ::tpy_user::utils::root_func();
 }
 
@@ -15,7 +15,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: from .. import utils
+    // from .. import utils
     ::tpy_user::utils::__tpy_init();
 }
 

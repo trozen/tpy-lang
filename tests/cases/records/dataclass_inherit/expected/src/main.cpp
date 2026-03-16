@@ -4,36 +4,36 @@
 namespace tpy_user::main {
 
 
-// 14: def main() -> None:
+// def main() -> None:
 void main() {
-    // 15:     c = Child(1, 2, 3)
+    //     c = Child(1, 2, 3)
     Child c = Child(1, 2, 3);
-    // 16:     print(c.x)
+    //     print(c.x)
     std::cout << c.x << "\n";
-    // 17:     print(c.y)
+    //     print(c.y)
     std::cout << c.y << "\n";
-    // 18:     print(c.z)
+    //     print(c.z)
     std::cout << c.z << "\n";
-    // 19:     print(c)
+    //     print(c)
     std::cout << c << "\n";
-    // 20:     # Equality compares all fields (parent + child)
-    // 21:     print(c == Child(1, 2, 3))
+    //     # Equality compares all fields (parent + child)
+    //     print(c == Child(1, 2, 3))
     std::cout << tpy::print_bool((c == Child(1, 2, 3))) << "\n";
-    // 22:     print(c == Child(1, 2, 4))
+    //     print(c == Child(1, 2, 4))
     std::cout << tpy::print_bool((c == Child(1, 2, 4))) << "\n";
-    // 23:     print(c == Child(9, 9, 3))
+    //     print(c == Child(9, 9, 3))
     std::cout << tpy::print_bool((c == Child(9, 9, 3))) << "\n";
-    // 24:     # Keyword args
-    // 25:     c2 = Child(x=1, y=2, z=3)
+    //     # Keyword args
+    //     c2 = Child(x=1, y=2, z=3)
     Child c2 = Child(1, 2, 3);
-    // 26:     print(c == c2)
+    //     print(c == c2)
     std::cout << tpy::print_bool((c == c2)) << "\n";
-    // 27:     # Parent works independently
-    // 28:     b = Base(1, 2)
+    //     # Parent works independently
+    //     b = Base(1, 2)
     Base b = Base(1, 2);
-    // 29:     print(b)
+    //     print(b)
     std::cout << b << "\n";
-    // 30:     print(b == Base(1, 2))
+    //     print(b == Base(1, 2))
     std::cout << tpy::print_bool((b == Base(1, 2))) << "\n";
 }
 
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 32: main()
+    // main()
     main();
 }
 

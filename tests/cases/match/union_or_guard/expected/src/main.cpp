@@ -4,44 +4,44 @@
 namespace tpy_user::main {
 
 
-// 16: def describe(a: Dog | Cat | Bird, verbose: bool) -> str:
+// def describe(a: Dog | Cat | Bird, verbose: bool) -> str:
 std::string describe(const std::variant<Bird, Cat, Dog>& a, bool verbose) {
-    // 17:     match a:
+    //     match a:
     auto& __match_subject = a;
-    // 18:         case Dog() | Cat() if verbose:
+    //         case Dog() | Cat() if verbose:
     if ((std::holds_alternative<Dog>(__match_subject) || std::holds_alternative<Cat>(__match_subject)) && verbose) {
-        // 19:             return "verbose pet"
+        //             return "verbose pet"
         return "verbose pet";
         goto __match_end_1;
     }
-    // 20:         case Dog() | Cat():
+    //         case Dog() | Cat():
     if (std::holds_alternative<Dog>(__match_subject) || std::holds_alternative<Cat>(__match_subject)) {
-        // 21:             return "pet"
+        //             return "pet"
         return "pet";
         goto __match_end_1;
     }
-    // 22:         case Bird():
+    //         case Bird():
     if (std::holds_alternative<Bird>(__match_subject)) {
         auto& __case_2 = std::get<Bird>(__match_subject);
-        // 23:             return "bird"
+        //             return "bird"
         return "bird";
         goto __match_end_1;
     }
 __match_end_1:;
-    // 24:     return ""
+    //     return ""
     return "";
 }
 
-// 26: def find(a: Dog | Cat | Bird) -> str:
+// def find(a: Dog | Cat | Bird) -> str:
 std::string find(const std::variant<Bird, Cat, Dog>& a) {
-    // 27:     match a:
+    //     match a:
     auto& __match_subject = a;
-    // 28:         case Dog(name=n) | Cat(name=n) if n == "Rex":
+    //         case Dog(name=n) | Cat(name=n) if n == "Rex":
     if (std::holds_alternative<Dog>(__match_subject)) {
         auto& __case_0_0 = std::get<Dog>(__match_subject);
         auto& n = __case_0_0.name;
         if ((n == "Rex")) {
-            // 29:             return "found Rex"
+            //             return "found Rex"
             return "found Rex";
             goto __match_end_2;
         }
@@ -50,60 +50,60 @@ std::string find(const std::variant<Bird, Cat, Dog>& a) {
         auto& __case_0_1 = std::get<Cat>(__match_subject);
         auto& n = __case_0_1.name;
         if ((n == "Rex")) {
-            // 29:             return "found Rex"
+            //             return "found Rex"
             return "found Rex";
             goto __match_end_2;
         }
     }
-    // 30:         case Dog(name=n) | Cat(name=n):
+    //         case Dog(name=n) | Cat(name=n):
     if (std::holds_alternative<Dog>(__match_subject)) {
         auto& __case_1_0 = std::get<Dog>(__match_subject);
         auto& n = __case_1_0.name;
-        // 31:             return "other pet: " + n
+        //             return "other pet: " + n
         return (tpy::str_concat("other pet: ", n));
         goto __match_end_2;
     }
     if (std::holds_alternative<Cat>(__match_subject)) {
         auto& __case_1_1 = std::get<Cat>(__match_subject);
         auto& n = __case_1_1.name;
-        // 31:             return "other pet: " + n
+        //             return "other pet: " + n
         return (tpy::str_concat("other pet: ", n));
         goto __match_end_2;
     }
-    // 32:         case Bird(name=n):
+    //         case Bird(name=n):
     if (std::holds_alternative<Bird>(__match_subject)) {
         auto& __case_2 = std::get<Bird>(__match_subject);
         auto& n = __case_2.name;
-        // 33:             return "bird: " + n
+        //             return "bird: " + n
         return (tpy::str_concat("bird: ", n));
         goto __match_end_2;
     }
 __match_end_2:;
-    // 34:     return ""
+    //     return ""
     return "";
 }
 
-// 36: def main() -> None:
+// def main() -> None:
 void main() {
-    // 37:     d: Dog | Cat | Bird = Dog("Rex")
+    //     d: Dog | Cat | Bird = Dog("Rex")
     std::variant<Bird, Cat, Dog> d = Dog("Rex");
-    // 38:     c: Dog | Cat | Bird = Cat("Luna")
+    //     c: Dog | Cat | Bird = Cat("Luna")
     std::variant<Bird, Cat, Dog> c = Cat("Luna");
-    // 39:     b: Dog | Cat | Bird = Bird("Tweety")
+    //     b: Dog | Cat | Bird = Bird("Tweety")
     std::variant<Bird, Cat, Dog> b = Bird("Tweety");
-    // 40:     print(describe(d, True))
+    //     print(describe(d, True))
     std::cout << describe(d, true) << "\n";
-    // 41:     print(describe(d, False))
+    //     print(describe(d, False))
     std::cout << describe(d, false) << "\n";
-    // 42:     print(describe(c, True))
+    //     print(describe(c, True))
     std::cout << describe(c, true) << "\n";
-    // 43:     print(describe(b, False))
+    //     print(describe(b, False))
     std::cout << describe(b, false) << "\n";
-    // 44:     print(find(d))
+    //     print(find(d))
     std::cout << find(d) << "\n";
-    // 45:     print(find(c))
+    //     print(find(c))
     std::cout << find(c) << "\n";
-    // 46:     print(find(b))
+    //     print(find(b))
     std::cout << find(b) << "\n";
 }
 
@@ -112,7 +112,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 48: main()
+    // main()
     main();
 }
 

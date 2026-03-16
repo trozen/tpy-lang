@@ -14,11 +14,11 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // @dataclass
-// 6: class Point:
+// class Point:
 struct Point {
-    // 7:     x: Int32 = 0
+    //     x: Int32 = 0
     int32_t x = 0;
-    // 8:     y: Int32 = 0
+    //     y: Int32 = 0
     int32_t y = 0;
 
     explicit Point(int32_t x = 0, int32_t y = 0) : x(x), y(y) {}
@@ -48,15 +48,15 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 // @dataclass
-// 11: class Config:
+// class Config:
 struct Config {
-    // 12:     name: str
+    //     name: str
     std::string name;
-    // 13:     value: Int32 = field(default=42)
+    //     value: Int32 = field(default=42)
     int32_t value = 42;
-    // 14:     tags: list[str] = field(default_factory=list)
+    //     tags: list[str] = field(default_factory=list)
     std::vector<std::string> tags = {};
-    // 15:     lookup: dict[str, Int32] = field(default_factory=dict)
+    //     lookup: dict[str, Int32] = field(default_factory=dict)
     tpy::ordered_map<std::string, int32_t> lookup = {};
 
     Config() = default;
@@ -92,11 +92,11 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 
 // # Non-generic user type as factory default
 // @dataclass
-// 19: class Canvas:
+// class Canvas:
 struct Canvas {
-    // 20:     name: str
+    //     name: str
     std::string name;
-    // 21:     origin: Point = field(default_factory=Point)
+    //     origin: Point = field(default_factory=Point)
     Point origin = Point();
 
     Canvas() = default;

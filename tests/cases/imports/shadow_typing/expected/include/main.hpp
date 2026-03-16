@@ -11,12 +11,12 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 5: class Sized:  # tpyc: warning(/shadows import from 'typing'/)
+// class Sized:  # tpyc: warning(/shadows import from 'typing'/)
 struct Sized {
-    // 6:     val: Int32
+    //     val: Int32
     int32_t val;
 
-    // 7:     def __init__(self, v: Int32):
+    //     def __init__(self, v: Int32):
     Sized() = default;
     explicit Sized(int32_t v) : val(v) {}
 };

@@ -4,48 +4,48 @@
 namespace tpy_user::main {
 
 
-// 13: def modify_inner(p: Ptr[Inner]) -> None:
+// def modify_inner(p: Ptr[Inner]) -> None:
 void modify_inner(Inner* p) {
-    // 14:     p.x = 999
+    //     p.x = 999
     tpy::deref_check(p).x = 999;
 }
 
-// 16: def read_inner(p: Ptr[readonly[Inner]]) -> Int32:
+// def read_inner(p: Ptr[readonly[Inner]]) -> Int32:
 int32_t read_inner(const Inner* p) {
-    // 17:     return p.x
+    //     return p.x
     return tpy::deref_check(p).x;
 }
 
-// 19: def test_field_to_ptr() -> None:
+// def test_field_to_ptr() -> None:
 void test_field_to_ptr() {
-    // 20:     outer: Outer = Outer(42)
+    //     outer: Outer = Outer(42)
     Outer outer = Outer(42);
-    // 21:     # obj.field -> Ptr coercion
-    // 22:     modify_inner(outer.inner)
+    //     # obj.field -> Ptr coercion
+    //     modify_inner(outer.inner)
     modify_inner(&outer.inner);
-    // 23:     print(outer.inner.x)
+    //     print(outer.inner.x)
     std::cout << outer.inner.x << "\n";
 }
 
-// 25: def test_field_to_const_ptr() -> None:
+// def test_field_to_const_ptr() -> None:
 void test_field_to_const_ptr() {
-    // 26:     outer: Outer = Outer(100)
+    //     outer: Outer = Outer(100)
     Outer outer = Outer(100);
-    // 27:     # obj.field -> Ptr[readonly[...]] coercion
-    // 28:     result: Int32 = read_inner(outer.inner)
+    //     # obj.field -> Ptr[readonly[...]] coercion
+    //     result: Int32 = read_inner(outer.inner)
     int32_t result = read_inner(&outer.inner);
-    // 29:     print(result)
+    //     print(result)
     std::cout << result << "\n";
 }
 
-// 31: def test_subscript_to_ptr() -> None:
+// def test_subscript_to_ptr() -> None:
 void test_subscript_to_ptr() {
-    // 32:     arr: Array[Inner, 3] = [Inner(1), Inner(2), Inner(3)]
+    //     arr: Array[Inner, 3] = [Inner(1), Inner(2), Inner(3)]
     std::array<Inner, 3> arr = {Inner(1), Inner(2), Inner(3)};
-    // 33:     # arr[i] -> Ptr coercion
-    // 34:     modify_inner(arr[1])
+    //     # arr[i] -> Ptr coercion
+    //     modify_inner(arr[1])
     modify_inner(&tpy::__getitem__(arr, 1));
-    // 35:     print(arr[1].x)
+    //     print(arr[1].x)
     std::cout << tpy::__getitem__(arr, 1).x << "\n";
 }
 
@@ -54,18 +54,18 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 37: # Run tests
-    // 38: print("=== field to ptr ===")
+    // # Run tests
+    // print("=== field to ptr ===")
     std::cout << "=== field to ptr ===" << "\n";
-    // 39: test_field_to_ptr()
+    // test_field_to_ptr()
     test_field_to_ptr();
-    // 40: print("=== field to const ptr ===")
+    // print("=== field to const ptr ===")
     std::cout << "=== field to const ptr ===" << "\n";
-    // 41: test_field_to_const_ptr()
+    // test_field_to_const_ptr()
     test_field_to_const_ptr();
-    // 42: print("=== subscript to ptr ===")
+    // print("=== subscript to ptr ===")
     std::cout << "=== subscript to ptr ===" << "\n";
-    // 43: test_subscript_to_ptr()
+    // test_subscript_to_ptr()
     test_subscript_to_ptr();
 }
 

@@ -5,11 +5,11 @@ namespace tpy_user::main {
 
 
 // @readonly
-// 11: def ok() -> int:
+// def ok() -> int:
 tpy::BigInt ok() {
-    // 12:     Logger()  # tpyc: ok
+    //     Logger()  # tpyc: ok
     Logger();
-    // 13:     return 0
+    //     return 0
     return tpy::BigInt(0);
 }
 
@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 16: print(ok())
+    // print(ok())
     std::cout << ok() << "\n";
 }
 

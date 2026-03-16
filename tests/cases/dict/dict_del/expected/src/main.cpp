@@ -4,42 +4,42 @@
 namespace tpy_user::main {
 
 
-// 4: def test_basic() -> None:
+// def test_basic() -> None:
 void test_basic() {
-    // 5:     d = {"a": Int32(1), "b": Int32(2), "c": Int32(3)}
+    //     d = {"a": Int32(1), "b": Int32(2), "c": Int32(3)}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
-    // 6:     print(len(d))
+    //     print(len(d))
     std::cout << tpy::__len__(d) << "\n";
-    // 7:     del d["b"]
+    //     del d["b"]
     tpy::__delitem__(d, "b");
-    // 8:     print(len(d))
+    //     print(len(d))
     std::cout << tpy::__len__(d) << "\n";
-    // 9:     print(d)
+    //     print(d)
     std::cout << tpy::DictPrinter(d) << "\n";
 }
 
-// 11: def test_multi_target() -> None:
+// def test_multi_target() -> None:
 void test_multi_target() {
-    // 12:     d = {"x": Int32(10), "y": Int32(20), "z": Int32(30)}
+    //     d = {"x": Int32(10), "y": Int32(20), "z": Int32(30)}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}, {"z", 30}});
-    // 13:     del d["x"], d["z"]
+    //     del d["x"], d["z"]
     tpy::__delitem__(d, "x");
     tpy::__delitem__(d, "z");
-    // 14:     print(d)
+    //     print(d)
     std::cout << tpy::DictPrinter(d) << "\n";
-    // 15:     print(len(d))
+    //     print(len(d))
     std::cout << tpy::__len__(d) << "\n";
 }
 
-// 17: def test_del_then_insert() -> None:
+// def test_del_then_insert() -> None:
 void test_del_then_insert() {
-    // 18:     d = {"a": Int32(1), "b": Int32(2)}
+    //     d = {"a": Int32(1), "b": Int32(2)}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    // 19:     del d["a"]
+    //     del d["a"]
     tpy::__delitem__(d, "a");
-    // 20:     d["c"] = Int32(3)
+    //     d["c"] = Int32(3)
     tpy::__setitem__(d, "c", 3);
-    // 21:     print(d)
+    //     print(d)
     std::cout << tpy::DictPrinter(d) << "\n";
 }
 
@@ -48,11 +48,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 23: test_basic()
+    // test_basic()
     test_basic();
-    // 24: test_multi_target()
+    // test_multi_target()
     test_multi_target();
-    // 25: test_del_then_insert()
+    // test_del_then_insert()
     test_del_then_insert();
 }
 

@@ -3,21 +3,21 @@
 
 namespace tpy_user::main {
 
-// 24: pt: Point = Point()
+// pt: Point = Point()
 Point* pt{};
 // # Create explicitly-typed pointer variables
-// 29: ptr: Ptr[Point] = pt
+// ptr: Ptr[Point] = pt
 Point* ptr{};
-// 30: cptr: Ptr[readonly[Point]] = pt
+// cptr: Ptr[readonly[Point]] = pt
 const Point* cptr{};
 // # Inference from Ptr[Point] -> PtrHolder[Point]
-// 33: holder = PtrHolder(ptr)
+// holder = PtrHolder(ptr)
 PtrHolder<Point>* holder{};
 // # Inference from Ptr[readonly[Point]] -> ReadOnlyPtrHolder[Point]
-// 38: const_holder = ReadOnlyPtrHolder(cptr)
+// const_holder = ReadOnlyPtrHolder(cptr)
 ReadOnlyPtrHolder<Point>* const_holder{};
 // # Inference from Ptr[Point] -> ReadOnlyPtrHolder[Point] (Ptr coerces to Ptr[readonly[...]])
-// 42: const_holder2 = ReadOnlyPtrHolder(ptr)
+// const_holder2 = ReadOnlyPtrHolder(ptr)
 ReadOnlyPtrHolder<Point>* const_holder2{};
 
 void __tpy_init() {
@@ -25,37 +25,37 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 24: pt: Point = Point()
+    // pt: Point = Point()
     static Point __global_slot_1 = Point();
     pt = &__global_slot_1;
-    // 25: pt.x = 10
+    // pt.x = 10
     pt->x = 10;
-    // 26: pt.y = 20
+    // pt.y = 20
     pt->y = 20;
-    // 28: # Create explicitly-typed pointer variables
-    // 29: ptr: Ptr[Point] = pt
+    // # Create explicitly-typed pointer variables
+    // ptr: Ptr[Point] = pt
     ptr = &(*pt);
-    // 30: cptr: Ptr[readonly[Point]] = pt
+    // cptr: Ptr[readonly[Point]] = pt
     cptr = &(*pt);
-    // 32: # Inference from Ptr[Point] -> PtrHolder[Point]
-    // 33: holder = PtrHolder(ptr)
+    // # Inference from Ptr[Point] -> PtrHolder[Point]
+    // holder = PtrHolder(ptr)
     static PtrHolder<Point> __global_slot_2 = PtrHolder<Point>(ptr);
     holder = &__global_slot_2;
-    // 34: holder.ptr.x = 100
+    // holder.ptr.x = 100
     tpy::deref_check(holder->ptr).x = 100;
-    // 35: print(pt.x)
+    // print(pt.x)
     std::cout << pt->x << "\n";
-    // 37: # Inference from Ptr[readonly[Point]] -> ReadOnlyPtrHolder[Point]
-    // 38: const_holder = ReadOnlyPtrHolder(cptr)
+    // # Inference from Ptr[readonly[Point]] -> ReadOnlyPtrHolder[Point]
+    // const_holder = ReadOnlyPtrHolder(cptr)
     static ReadOnlyPtrHolder<Point> __global_slot_3 = ReadOnlyPtrHolder<Point>(cptr);
     const_holder = &__global_slot_3;
-    // 39: print(const_holder.ptr.y)
+    // print(const_holder.ptr.y)
     std::cout << tpy::deref_check(const_holder->ptr).y << "\n";
-    // 41: # Inference from Ptr[Point] -> ReadOnlyPtrHolder[Point] (Ptr coerces to Ptr[readonly[...]])
-    // 42: const_holder2 = ReadOnlyPtrHolder(ptr)
+    // # Inference from Ptr[Point] -> ReadOnlyPtrHolder[Point] (Ptr coerces to Ptr[readonly[...]])
+    // const_holder2 = ReadOnlyPtrHolder(ptr)
     static ReadOnlyPtrHolder<Point> __global_slot_4 = ReadOnlyPtrHolder<Point>(ptr);
     const_holder2 = &__global_slot_4;
-    // 43: print(const_holder2.ptr.x)
+    // print(const_holder2.ptr.x)
     std::cout << tpy::deref_check(const_holder2->ptr).x << "\n";
 }
 

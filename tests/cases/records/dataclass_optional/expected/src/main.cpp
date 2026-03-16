@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 11: def main() -> None:
+// def main() -> None:
 void main() {
-    // 12:     n1 = Node(42)
+    //     n1 = Node(42)
     Node n1 = Node(42);
-    // 13:     print(n1)
+    //     print(n1)
     std::cout << n1 << "\n";
-    // 14:     n2 = Node(10, "hello")
+    //     n2 = Node(10, "hello")
     Node n2 = Node(10, "hello");
-    // 15:     print(n2)
+    //     print(n2)
     std::cout << n2 << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 17: main()
+    // main()
     main();
 }
 

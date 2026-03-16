@@ -3,35 +3,35 @@
 
 namespace tpy_user::main {
 
-// 10: l: list[Int32 | None] = make_list()
+// l: list[Int32 | None] = make_list()
 std::vector<std::optional<int32_t>>* l{};
 
-// 5: def make_list() -> Own[list[Int32 | None]]:
+// def make_list() -> Own[list[Int32 | None]]:
 std::vector<std::optional<int32_t>> make_list() {
-    // 6:     result: list[Int32 | None] = []
+    //     result: list[Int32 | None] = []
     std::vector<std::optional<int32_t>> result = std::vector<std::optional<int32_t>>{};
-    // 7:     result.append(Int32(1))
+    //     result.append(Int32(1))
     result.push_back(1);
-    // 8:     return copy(result)  # tpyc: warning(/unnecessary copy/)
+    //     return copy(result)  # tpyc: warning(/unnecessary copy/)
     return std::vector<std::optional<int32_t>>(result);
 }
 
 // # Mutates global l, which may alias the parameter
-// 13: def mut() -> None:
+// def mut() -> None:
 void mut() {
-    // 14:     l[0] = None
+    //     l[0] = None
     tpy::__setitem__((*l), 0, std::nullopt);
 }
 
-// 16: def f(items: list[Int32 | None]) -> None:
+// def f(items: list[Int32 | None]) -> None:
 void f(const std::vector<std::optional<int32_t>>& items) {
-    // 17:     if items[0] is not None:
+    //     if items[0] is not None:
     if ((tpy::__getitem__(items, 0).has_value())) {
-        // 18:         mut()
+        //         mut()
         mut();
-        // 19:         i: Int32 = Int32(1) + items[0]  # tpyc: warning(/Potential None access/)
+        //         i: Int32 = Int32(1) + items[0]  # tpyc: warning(/Potential None access/)
         int32_t i = (tpy::add_check<int32_t>(1, tpy::deref_optional_check(tpy::__getitem__(items, 0))));
-        // 20:         print(i)
+        //         print(i)
         std::cout << i << "\n";
     }
 }
@@ -41,10 +41,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 10: l: list[Int32 | None] = make_list()
+    // l: list[Int32 | None] = make_list()
     static std::vector<std::optional<int32_t>> __global_slot_1 = make_list();
     l = &__global_slot_1;
-    // 22: f(l)
+    // f(l)
     f((*l));
 }
 

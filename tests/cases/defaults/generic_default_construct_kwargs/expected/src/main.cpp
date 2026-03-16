@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 9: def main() -> None:
+// def main() -> None:
 void main() {
-    // 10:     three_params[Int32](10, c=5)
+    //     three_params[Int32](10, c=5)
     int32_t __tmp_1 = 10;
     int32_t __tmp_2 = 5;
     three_params<int32_t>(__tmp_1, int32_t{}, __tmp_2);
-    // 11:     three_params[Int32](1, 2, 3)
+    //     three_params[Int32](1, 2, 3)
     int32_t __tmp_3 = 1;
     int32_t __tmp_4 = 2;
     int32_t __tmp_5 = 3;
     three_params<int32_t>(__tmp_3, __tmp_4, __tmp_5);
-    // 12:     # T inferred from first arg
-    // 13:     three_params(42)
+    //     # T inferred from first arg
+    //     three_params(42)
     int32_t __tmp_6 = 42;
     three_params<int32_t>(__tmp_6);
 }
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 15: main()
+    // main()
     main();
 }
 

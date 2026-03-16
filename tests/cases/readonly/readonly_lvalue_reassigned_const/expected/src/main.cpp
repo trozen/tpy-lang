@@ -5,28 +5,28 @@ namespace tpy_user::main {
 
 
 // @readonly
-// 17: def pick(a: Box, b: Box, flag: bool) -> Int32:
+// def pick(a: Box, b: Box, flag: bool) -> Int32:
 int32_t pick(const Box& a, const Box& b, bool flag) {
-    // 18:     x = a
+    //     x = a
     const Box* x = &(a);
-    // 19:     if flag:
+    //     if flag:
     if (flag) {
-        // 20:         x = b
+        //         x = b
         x = &(b);
     }
-    // 21:     return x.get_value()
+    //     return x.get_value()
     return x->get_value();
 }
 
-// 24: def main() -> None:
+// def main() -> None:
 void main() {
-    // 25:     a = Box(Int32(10))
+    //     a = Box(Int32(10))
     Box a = Box(10);
-    // 26:     b = Box(Int32(20))
+    //     b = Box(Int32(20))
     Box b = Box(20);
-    // 27:     print(pick(a, b, True))
+    //     print(pick(a, b, True))
     std::cout << pick(a, b, true) << "\n";
-    // 28:     print(pick(a, b, False))
+    //     print(pick(a, b, False))
     std::cout << pick(a, b, false) << "\n";
 }
 
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 30: main()
+    // main()
     main();
 }
 

@@ -15,12 +15,12 @@ std::string describe(const std::variant<Bird, Cat, Dog>& a);
 void main();
 
 // # Test elif isinstance chain for 3-way union narrowing
-// 2: class Dog:
+// class Dog:
 struct Dog {
-    // 3:     name: str
+    //     name: str
     std::string name;
 
-    // 4:     def __init__(self, name: str) -> None:
+    //     def __init__(self, name: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name) : name(name) {}
 };
@@ -32,12 +32,12 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
-// 7: class Cat:
+// class Cat:
 struct Cat {
-    // 8:     name: str
+    //     name: str
     std::string name;
 
-    // 9:     def __init__(self, name: str) -> None:
+    //     def __init__(self, name: str) -> None:
     Cat() = default;
     explicit Cat(std::string_view name) : name(name) {}
 };
@@ -49,12 +49,12 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
-// 12: class Bird:
+// class Bird:
 struct Bird {
-    // 13:     name: str
+    //     name: str
     std::string name;
 
-    // 14:     def __init__(self, name: str) -> None:
+    //     def __init__(self, name: str) -> None:
     Bird() = default;
     explicit Bird(std::string_view name) : name(name) {}
 };

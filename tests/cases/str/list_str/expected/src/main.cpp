@@ -5,30 +5,30 @@ namespace tpy_user::main {
 
 
 // # list[str] operations with owned strings
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     words: list[str] = ["hello", "world", "foo"]
+    //     words: list[str] = ["hello", "world", "foo"]
     std::vector<std::string> words = {"hello", "world", "foo"};
-    // 4:     print(len(words))
+    //     print(len(words))
     std::cout << tpy::__len__(words) << "\n";
-    // 5:     print(words[0])
+    //     print(words[0])
     std::cout << tpy::__getitem__(words, 0) << "\n";
-    // 6:     print(words[1])
+    //     print(words[1])
     std::cout << tpy::__getitem__(words, 1) << "\n";
-    // 7:     words.append("bar")
+    //     words.append("bar")
     words.push_back("bar");
-    // 8:     print(len(words))
+    //     print(len(words))
     std::cout << tpy::__len__(words) << "\n";
-    // 9:     print(words[3])
+    //     print(words[3])
     std::cout << tpy::__getitem__(words, 3) << "\n";
-    // 11:     # Iterate over list of strings
-    // 12:     for w in words:
+    //     # Iterate over list of strings
+    //     for w in words:
     auto& __obj_0 = words;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view w = *__beg_0;
-        // 13:         print(w)
+        //         print(w)
         std::cout << w << "\n";
     }
 }
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 15: main()
+    // main()
     main();
 }
 

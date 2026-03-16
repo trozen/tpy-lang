@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 10: def consume(b: Own[Box]) -> Int32:
+// def consume(b: Own[Box]) -> Int32:
 int32_t consume(Box&& b) {
-    // 11:     return b.value
+    //     return b.value
     return b.value;
 }
 
-// 14: def main():
+// def main():
 void main() {
-    // 15:     b = Box()
+    //     b = Box()
     Box b = Box();
-    // 16:     b.value = 42
+    //     b.value = 42
     b.value = 42;
-    // 17:     print(consume(c(b)))  # tpyc: warning(/unnecessary copy/)
+    //     print(consume(c(b)))  # tpyc: warning(/unnecessary copy/)
     std::cout << consume(Box(b)) << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 20: main()
+    // main()
     main();
 }
 

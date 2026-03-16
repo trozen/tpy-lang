@@ -10,8 +10,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # Module defining a @native_c type and a helper function
-    // 2: from tpy.extern import native_c
+    // # Module defining a @native_c type and a helper function
+    // from tpy.extern import native_c
 }
 
 } // namespace tpy_user::lib

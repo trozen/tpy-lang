@@ -16,22 +16,22 @@ void test_span();
 void test_ro_span();
 void test_arraylist();
 
-// 5: def sum_span(c: ReadOnlySpanLike[Int32]) -> Int32:
+// def sum_span(c: ReadOnlySpanLike[Int32]) -> Int32:
 template<tpy::ReadOnlySpanLike<int32_t> T_c>
 int32_t sum_span(const T_c& c) {
-    // 6:     total: Int32 = 0
+    //     total: Int32 = 0
     int32_t total = 0;
-    // 7:     for x in c:
+    //     for x in c:
     auto& __src_0 = c;
     auto __obj_0 = tpy::as_span(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 8:         total += x
+        //         total += x
         total = tpy::add_check<int32_t>(total, x);
     }
-    // 9:     return total
+    //     return total
     return total;
 }
 

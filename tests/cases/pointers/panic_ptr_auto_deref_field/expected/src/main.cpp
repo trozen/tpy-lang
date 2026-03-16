@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 10: def main() -> None:
+// def main() -> None:
 void main() {
-    // 11:     p: Ptr[Point] = Ptr[Point]()
+    //     p: Ptr[Point] = Ptr[Point]()
     Point* p = static_cast<Point*>(nullptr);
-    // 12:     print(p.x)
+    //     print(p.x)
     std::cout << tpy::deref_check(p).x << "\n";
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 14: main()
+    // main()
     main();
 }
 

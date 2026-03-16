@@ -4,27 +4,27 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     s: str = "abc"
+    //     s: str = "abc"
     std::string_view s = "abc";
-    // 6:     n: Int32 = 3
+    //     n: Int32 = 3
     int32_t n = 3;
-    // 8:     # Basic repetition
-    // 9:     print(s * n)
+    //     # Basic repetition
+    //     print(s * n)
     std::cout << (tpy::str_repeat(s, n)) << "\n";
-    // 10:     print(s * 1)
+    //     print(s * 1)
     std::cout << (tpy::str_repeat(s, 1)) << "\n";
-    // 11:     print(s * 0)
+    //     print(s * 0)
     std::cout << (tpy::str_repeat(s, 0)) << "\n";
-    // 13:     # Reverse form
-    // 14:     print(n * s)
+    //     # Reverse form
+    //     print(n * s)
     std::cout << (tpy::str_repeat(s, n)) << "\n";
-    // 16:     # Literal repetition
-    // 17:     print("xy" * 4)
+    //     # Literal repetition
+    //     print("xy" * 4)
     std::cout << (tpy::str_repeat("xy", 4)) << "\n";
-    // 19:     # Negative count returns empty
-    // 20:     print(s * -1)
+    //     # Negative count returns empty
+    //     print(s * -1)
     std::cout << (tpy::str_repeat(s, -1)) << "\n";
 }
 
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: main()
+    // main()
     main();
 }
 

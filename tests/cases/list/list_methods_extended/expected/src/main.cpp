@@ -5,124 +5,124 @@ namespace tpy_user::main {
 
 
 // # Test extended list methods: pop(index), index(), count(), reverse(), copy(), __setitem__
-// 5: def print_list(nums: list[Int32]) -> None:
+// def print_list(nums: list[Int32]) -> None:
 void print_list(const std::vector<int32_t>& nums) {
-    // 6:     i: Int32 = 0
+    //     i: Int32 = 0
     int32_t i = 0;
-    // 7:     while i < len(nums):
+    //     while i < len(nums):
     while ((i < tpy::__len__(nums))) {
-        // 8:         print(nums[i])
+        //         print(nums[i])
         std::cout << nums[i] << "\n";
-        // 9:         i += 1
+        //         i += 1
         i = tpy::add_check<int32_t>(i, 1);
     }
-    // 10:     print("---")
+    //     print("---")
     std::cout << "---" << "\n";
 }
 
 // # === list[T] methods ===
-// 14: def test_pop_at_index() -> None:
+// def test_pop_at_index() -> None:
 void test_pop_at_index() {
-    // 15:     nums: list[Int32] = [10, 20, 30, 40, 50]
+    //     nums: list[Int32] = [10, 20, 30, 40, 50]
     std::vector<int32_t> nums = {10, 20, 30, 40, 50};
-    // 17:     # Pop from middle
-    // 18:     val: Int32 = nums.pop(2)
+    //     # Pop from middle
+    //     val: Int32 = nums.pop(2)
     int32_t val = tpy::list_pop_at(nums, 2);
-    // 19:     print(val)
+    //     print(val)
     std::cout << val << "\n";
-    // 20:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
-    // 22:     # Pop from beginning
-    // 23:     val = nums.pop(0)
+    //     # Pop from beginning
+    //     val = nums.pop(0)
     val = tpy::list_pop_at(nums, 0);
-    // 24:     print(val)
+    //     print(val)
     std::cout << val << "\n";
-    // 25:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
-    // 27:     # Pop with negative index (-1 = last)
-    // 28:     val = nums.pop(-1)
+    //     # Pop with negative index (-1 = last)
+    //     val = nums.pop(-1)
     val = tpy::list_pop_at(nums, -1);
-    // 29:     print(val)
+    //     print(val)
     std::cout << val << "\n";
-    // 30:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
 }
 
-// 32: def test_index() -> None:
+// def test_index() -> None:
 void test_index() {
-    // 33:     nums: list[Int32] = [10, 20, 30, 20, 40]
+    //     nums: list[Int32] = [10, 20, 30, 20, 40]
     std::vector<int32_t> nums = {10, 20, 30, 20, 40};
-    // 35:     print(nums.index(10))  # 0
+    //     print(nums.index(10))  # 0
     std::cout << tpy::list_index(nums, 10) << "\n";
-    // 36:     print(nums.index(20))  # 1 (first occurrence)
+    //     print(nums.index(20))  # 1 (first occurrence)
     std::cout << tpy::list_index(nums, 20) << "\n";
-    // 37:     print(nums.index(30))  # 2
+    //     print(nums.index(30))  # 2
     std::cout << tpy::list_index(nums, 30) << "\n";
-    // 38:     print(nums.index(40))  # 4
+    //     print(nums.index(40))  # 4
     std::cout << tpy::list_index(nums, 40) << "\n";
 }
 
-// 40: def test_count() -> None:
+// def test_count() -> None:
 void test_count() {
-    // 41:     nums: list[Int32] = [1, 2, 2, 3, 2, 4, 2]
+    //     nums: list[Int32] = [1, 2, 2, 3, 2, 4, 2]
     std::vector<int32_t> nums = {1, 2, 2, 3, 2, 4, 2};
-    // 43:     print(nums.count(1))  # 1
+    //     print(nums.count(1))  # 1
     std::cout << tpy::list_count(nums, 1) << "\n";
-    // 44:     print(nums.count(2))  # 4
+    //     print(nums.count(2))  # 4
     std::cout << tpy::list_count(nums, 2) << "\n";
-    // 45:     print(nums.count(3))  # 1
+    //     print(nums.count(3))  # 1
     std::cout << tpy::list_count(nums, 3) << "\n";
-    // 46:     print(nums.count(5))  # 0 (not found)
+    //     print(nums.count(5))  # 0 (not found)
     std::cout << tpy::list_count(nums, 5) << "\n";
 }
 
-// 48: def test_reverse() -> None:
+// def test_reverse() -> None:
 void test_reverse() {
-    // 49:     nums: list[Int32] = [1, 2, 3, 4, 5]
+    //     nums: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
-    // 50:     nums.reverse()
+    //     nums.reverse()
     tpy::list_reverse(nums);
-    // 51:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
-    // 53:     # Reverse again
-    // 54:     nums.reverse()
+    //     # Reverse again
+    //     nums.reverse()
     tpy::list_reverse(nums);
-    // 55:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
 }
 
-// 57: def test_copy() -> None:
+// def test_copy() -> None:
 void test_copy() {
-    // 58:     nums: list[Int32] = [1, 2, 3]
+    //     nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    // 59:     copy: list[Int32] = nums.copy()
+    //     copy: list[Int32] = nums.copy()
     std::vector<int32_t> copy = tpy::list_copy(nums);
-    // 61:     # Modify original
-    // 62:     nums.append(4)
+    //     # Modify original
+    //     nums.append(4)
     nums.push_back(4);
-    // 64:     # Copy should be unaffected
-    // 65:     print(len(nums))   # 4
+    //     # Copy should be unaffected
+    //     print(len(nums))   # 4
     std::cout << tpy::__len__(nums) << "\n";
-    // 66:     print(len(copy))   # 3
+    //     print(len(copy))   # 3
     std::cout << tpy::__len__(copy) << "\n";
-    // 67:     print_list(copy)
+    //     print_list(copy)
     print_list(copy);
 }
 
-// 69: def test_setitem() -> None:
+// def test_setitem() -> None:
 void test_setitem() {
-    // 70:     nums: list[Int32] = [10, 20, 30]
+    //     nums: list[Int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
-    // 72:     nums[0] = 100
+    //     nums[0] = 100
     tpy::__setitem__(nums, 0, 100);
-    // 73:     nums[2] = 300
+    //     nums[2] = 300
     tpy::__setitem__(nums, 2, 300);
-    // 74:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
-    // 76:     # Negative index
-    // 77:     nums[-1] = 999
+    //     # Negative index
+    //     nums[-1] = 999
     tpy::__setitem__(nums, -1, 999);
-    // 78:     print_list(nums)
+    //     print_list(nums)
     print_list(nums);
 }
 
@@ -131,30 +131,30 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 80: # Run all tests
-    // 81: print("=== list pop(index) ===")
+    // # Run all tests
+    // print("=== list pop(index) ===")
     std::cout << "=== list pop(index) ===" << "\n";
-    // 82: test_pop_at_index()
+    // test_pop_at_index()
     test_pop_at_index();
-    // 83: print("=== list index ===")
+    // print("=== list index ===")
     std::cout << "=== list index ===" << "\n";
-    // 84: test_index()
+    // test_index()
     test_index();
-    // 85: print("=== list count ===")
+    // print("=== list count ===")
     std::cout << "=== list count ===" << "\n";
-    // 86: test_count()
+    // test_count()
     test_count();
-    // 87: print("=== list reverse ===")
+    // print("=== list reverse ===")
     std::cout << "=== list reverse ===" << "\n";
-    // 88: test_reverse()
+    // test_reverse()
     test_reverse();
-    // 89: print("=== list copy ===")
+    // print("=== list copy ===")
     std::cout << "=== list copy ===" << "\n";
-    // 90: test_copy()
+    // test_copy()
     test_copy();
-    // 91: print("=== list setitem ===")
+    // print("=== list setitem ===")
     std::cout << "=== list setitem ===" << "\n";
-    // 92: test_setitem()
+    // test_setitem()
     test_setitem();
 }
 

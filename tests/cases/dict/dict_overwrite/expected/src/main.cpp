@@ -5,23 +5,23 @@ namespace tpy_user::main {
 
 
 // # Overwriting a key preserves insertion order
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     d = {"a": 1, "b": 2, "c": 3}
+    //     d = {"a": 1, "b": 2, "c": 3}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
-    // 4:     d["a"] = 10
+    //     d["a"] = 10
     tpy::__setitem__(d, "a", 10);
-    // 5:     d["b"] = 20
+    //     d["b"] = 20
     tpy::__setitem__(d, "b", 20);
-    // 6:     print(d)
+    //     print(d)
     std::cout << tpy::DictPrinter(d) << "\n";
-    // 7:     for k in d:
+    //     for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        // 8:         print(k)
+        //         print(k)
         std::cout << k << "\n";
     }
 }
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 10: main()
+    // main()
     main();
 }
 

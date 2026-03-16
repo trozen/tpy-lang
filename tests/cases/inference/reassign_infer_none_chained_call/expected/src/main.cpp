@@ -3,12 +3,12 @@
 
 namespace tpy_user::main {
 
-// 20: x = None
+// x = None
 Product* x{};
 
-// 16: def get_factory() -> Own[Factory]:
+// def get_factory() -> Own[Factory]:
 Factory get_factory() {
-    // 17:     return Factory()
+    //     return Factory()
     return Factory();
 }
 
@@ -17,12 +17,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 20: x = None
+    // x = None
     x = nullptr;
-    // 21: x = get_factory().create()
+    // x = get_factory().create()
     static Product __global_slot_1 = get_factory().create();
     x = &__global_slot_1;
-    // 22: print(x.value)
+    // print(x.value)
     std::cout << x->value << "\n";
 }
 

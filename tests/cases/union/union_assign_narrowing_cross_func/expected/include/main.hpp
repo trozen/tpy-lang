@@ -16,12 +16,12 @@ void g(const C& a);
 void main();
 
 // # Assignment narrowing in one function must not leak into another
-// 2: class A:
+// class A:
 struct A {
-    // 3:     x: float
+    //     x: float
     double x;
 
-    // 4:     def __init__(self, x: float) -> None:
+    //     def __init__(self, x: float) -> None:
     A() = default;
     explicit A(double x) : x(x) {}
 };
@@ -33,12 +33,12 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
     return os;
 }
 
-// 7: class B:
+// class B:
 struct B {
-    // 8:     y: float
+    //     y: float
     double y;
 
-    // 9:     def __init__(self, y: float) -> None:
+    //     def __init__(self, y: float) -> None:
     B() = default;
     explicit B(double y) : y(y) {}
 };
@@ -50,12 +50,12 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
     return os;
 }
 
-// 12: class C:
+// class C:
 struct C {
-    // 13:     x: float
+    //     x: float
     double x;
 
-    // 14:     def __init__(self, x: float) -> None:
+    //     def __init__(self, x: float) -> None:
     C() = default;
     explicit C(double x) : x(x) {}
 };

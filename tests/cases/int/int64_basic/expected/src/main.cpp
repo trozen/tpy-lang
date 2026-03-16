@@ -4,48 +4,48 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     # Int64 constructors and large values
-    // 6:     a: Int64 = Int64(9223372036854775807)  # Max Int64
+    //     # Int64 constructors and large values
+    //     a: Int64 = Int64(9223372036854775807)  # Max Int64
     int64_t a = 9223372036854775807;
-    // 7:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 9:     b: Int64 = Int64(-9223372036854775808)  # Min Int64
+    //     b: Int64 = Int64(-9223372036854775808)  # Min Int64
     int64_t b = -9223372036854775808;
-    // 10:     print(b)
+    //     print(b)
     std::cout << b << "\n";
-    // 12:     # Int64 arithmetic
-    // 13:     x: Int64 = Int64(1000000000)
+    //     # Int64 arithmetic
+    //     x: Int64 = Int64(1000000000)
     int64_t x = 1000000000;
-    // 14:     y: Int64 = Int64(2000000000)
+    //     y: Int64 = Int64(2000000000)
     int64_t y = 2000000000;
-    // 15:     print(x + y)
+    //     print(x + y)
     std::cout << (tpy::add_check<int64_t>(x, y)) << "\n";
-    // 16:     print(x * Int64(3))
+    //     print(x * Int64(3))
     std::cout << (tpy::mul_check<int64_t>(x, 3)) << "\n";
-    // 18:     # UInt64 constructors
-    // 19:     c: UInt64 = UInt64(0)
+    //     # UInt64 constructors
+    //     c: UInt64 = UInt64(0)
     uint64_t c = 0;
-    // 20:     d: UInt64 = UInt64(18446744073709551615)  # Max UInt64
+    //     d: UInt64 = UInt64(18446744073709551615)  # Max UInt64
     uint64_t d = 18446744073709551615;
-    // 21:     print(c)
+    //     print(c)
     std::cout << c << "\n";
-    // 22:     print(d)
+    //     print(d)
     std::cout << d << "\n";
-    // 24:     # UInt64 arithmetic
-    // 25:     u: UInt64 = UInt64(10000000000)
+    //     # UInt64 arithmetic
+    //     u: UInt64 = UInt64(10000000000)
     uint64_t u = 10000000000;
-    // 26:     v: UInt64 = UInt64(5000000000)
+    //     v: UInt64 = UInt64(5000000000)
     uint64_t v = 5000000000;
-    // 27:     print(u + v)
+    //     print(u + v)
     std::cout << (tpy::add_check<uint64_t>(u, v)) << "\n";
-    // 28:     print(u - v)
+    //     print(u - v)
     std::cout << (tpy::sub_check<uint64_t>(u, v)) << "\n";
-    // 30:     # Conversion to BigInt
-    // 31:     big: int = int(a)
+    //     # Conversion to BigInt
+    //     big: int = int(a)
     tpy::BigInt big = tpy::BigInt(static_cast<int64_t>(a));
-    // 32:     print(big)
+    //     print(big)
     std::cout << big << "\n";
 }
 
@@ -54,7 +54,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 34: main()
+    // main()
     main();
 }
 

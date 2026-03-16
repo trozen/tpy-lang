@@ -4,24 +4,24 @@
 namespace tpy_user::main {
 
 // # Basic parsing
-// 5: a: int = int("42")
+// a: int = int("42")
 tpy::BigInt a;
-// 8: b: int = int("-123")
+// b: int = int("-123")
 tpy::BigInt b;
-// 11: c: int = int("+456")
+// c: int = int("+456")
 tpy::BigInt c;
 // # Zero
-// 15: d: int = int("0")
+// d: int = int("0")
 tpy::BigInt d;
 // # Leading/trailing whitespace
-// 19: e: int = int("  789  ")
+// e: int = int("  789  ")
 tpy::BigInt e;
-// 22: f: int = int("  -99  ")
+// f: int = int("  -99  ")
 tpy::BigInt f;
 // # Large numbers
-// 26: g: int = int("12345678901234567890")
+// g: int = int("12345678901234567890")
 tpy::BigInt g;
-// 29: h: int = int("-12345678901234567890")
+// h: int = int("-12345678901234567890")
 tpy::BigInt h;
 
 void __tpy_init() {
@@ -29,41 +29,41 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: # Basic parsing
-    // 5: a: int = int("42")
+    // # Basic parsing
+    // a: int = int("42")
     a = tpy::BigInt::from_str("42");
-    // 6: print(a)  # 42
+    // print(a)  # 42
     std::cout << a << "\n";
-    // 8: b: int = int("-123")
+    // b: int = int("-123")
     b = tpy::BigInt::from_str("-123");
-    // 9: print(b)  # -123
+    // print(b)  # -123
     std::cout << b << "\n";
-    // 11: c: int = int("+456")
+    // c: int = int("+456")
     c = tpy::BigInt::from_str("+456");
-    // 12: print(c)  # 456
+    // print(c)  # 456
     std::cout << c << "\n";
-    // 14: # Zero
-    // 15: d: int = int("0")
+    // # Zero
+    // d: int = int("0")
     d = tpy::BigInt::from_str("0");
-    // 16: print(d)  # 0
+    // print(d)  # 0
     std::cout << d << "\n";
-    // 18: # Leading/trailing whitespace
-    // 19: e: int = int("  789  ")
+    // # Leading/trailing whitespace
+    // e: int = int("  789  ")
     e = tpy::BigInt::from_str("  789  ");
-    // 20: print(e)  # 789
+    // print(e)  # 789
     std::cout << e << "\n";
-    // 22: f: int = int("  -99  ")
+    // f: int = int("  -99  ")
     f = tpy::BigInt::from_str("  -99  ");
-    // 23: print(f)  # -99
+    // print(f)  # -99
     std::cout << f << "\n";
-    // 25: # Large numbers
-    // 26: g: int = int("12345678901234567890")
+    // # Large numbers
+    // g: int = int("12345678901234567890")
     g = tpy::BigInt::from_str("12345678901234567890");
-    // 27: print(g)  # 12345678901234567890
+    // print(g)  # 12345678901234567890
     std::cout << g << "\n";
-    // 29: h: int = int("-12345678901234567890")
+    // h: int = int("-12345678901234567890")
     h = tpy::BigInt::from_str("-12345678901234567890");
-    // 30: print(h)  # -12345678901234567890
+    // print(h)  # -12345678901234567890
     std::cout << h << "\n";
 }
 

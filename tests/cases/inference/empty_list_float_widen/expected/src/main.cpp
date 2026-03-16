@@ -5,15 +5,15 @@ namespace tpy_user::main {
 
 
 // # Empty list int-to-float widening: append(int) then append(float) widens to list[float]
-// 2: def test() -> None:
+// def test() -> None:
 void test() {
-    // 3:     xs = []  # tpyc: type(list[float])
+    //     xs = []  # tpyc: type(list[float])
     std::vector<double> xs = std::vector<double>{};
-    // 4:     xs.append(1)
+    //     xs.append(1)
     xs.push_back(1);
-    // 5:     xs.append(2.0)
+    //     xs.append(2.0)
     xs.push_back(2.0);
-    // 6:     print(xs)
+    //     print(xs)
     std::cout << tpy::ListPrinter(xs) << "\n";
 }
 
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: test()
+    // test()
     test();
 }
 

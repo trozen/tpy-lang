@@ -13,13 +13,13 @@ inline constexpr std::string_view __name__ = "__main__";
 void consume(Child&& c);
 void main();
 
-// 6: class Base:
+// class Base:
 struct Base {
-    // 7:     name: str
+    //     name: str
     std::string name;
     bool __tpy_owned_ = true;
 
-    // 8:     def __init__(self, name: str):
+    //     def __init__(self, name: str):
     Base() = default;
     explicit Base(std::string_view name) : name(name) {}
     Base(const Base&) = delete;
@@ -34,11 +34,11 @@ struct Base {
         }
         return *this;
     }
-    // 10:     def __del__(self):
+    //     def __del__(self):
 
     ~Base() {
         if (!__tpy_owned_) return;
-        // 11:         print("drop", self.name)
+        //         print("drop", self.name)
         std::cout << "drop" << " " << this->name << "\n";
     }
 };
@@ -50,12 +50,12 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
     return os;
 }
 
-// 13: class Child(Base):
+// class Child(Base):
 struct Child : Base {
-    // 14:     tag: str
+    //     tag: str
     std::string tag;
 
-    // 15:     def __init__(self, name: str, tag: str):
+    //     def __init__(self, name: str, tag: str):
     Child() = default;
     explicit Child(std::string_view name, std::string_view tag) : Base(name), tag(tag) {}
 };

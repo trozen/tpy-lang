@@ -11,19 +11,19 @@ struct Dog;
 extern Dog* d;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 1: class Animal:
+// class Animal:
 struct Animal {
 
 
-    // 2:     def speak(self) -> None:
+    //     def speak(self) -> None:
     void speak() const {
-        // 3:         print("...")
+        //         print("...")
         std::cout << "..." << "\n";
     }
 
-    // 5:     def make_noise(self) -> None:
+    //     def make_noise(self) -> None:
     void make_noise() const {
-        // 6:         self.speak()
+        //         self.speak()
         speak();
     }
 };
@@ -34,13 +34,13 @@ inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
     return os;
 }
 
-// 8: class Dog(Animal):
+// class Dog(Animal):
 struct Dog : Animal {
 
 
-    // 9:     def speak(self) -> None:
+    //     def speak(self) -> None:
     void speak() const {
-        // 10:         print("Woof!")
+        //         print("Woof!")
         std::cout << "Woof!" << "\n";
     }
 };

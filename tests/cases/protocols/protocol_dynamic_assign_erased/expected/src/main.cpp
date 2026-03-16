@@ -4,33 +4,33 @@
 namespace tpy_user::main {
 
 
-// 17: def greet(pet: Pet) -> None:
+// def greet(pet: Pet) -> None:
 void greet(Pet& pet) {
-    // 18:     print(pet.name())
+    //     print(pet.name())
     std::cout << pet.name() << "\n";
 }
 
-// 20: def main() -> None:
+// def main() -> None:
 void main() {
   std::optional<tpy::Adapter<Pet, Cat>> __slot_2;
-    // 21:     p1: Pet = Dog()
+    //     p1: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* p1 = &__slot_1;
-    // 22:     p2: Pet = p1
+    //     p2: Pet = p1
     Pet* p2 = &(*p1);
-    // 23:     greet(p1)
+    //     greet(p1)
     greet((*p1));
-    // 24:     greet(p2)
+    //     greet(p2)
     greet((*p2));
-    // 25:     # Reassign to concrete, then back to erased
-    // 26:     p2 = Cat()
+    //     # Reassign to concrete, then back to erased
+    //     p2 = Cat()
     __slot_2.emplace(Cat());
     p2 = &*__slot_2;
-    // 27:     greet(p2)
+    //     greet(p2)
     greet((*p2));
-    // 28:     p2 = p1
+    //     p2 = p1
     p2 = &(*p1);
-    // 29:     greet(p2)
+    //     greet(p2)
     greet((*p2));
 }
 
@@ -39,7 +39,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 31: main()
+    // main()
     main();
 }
 

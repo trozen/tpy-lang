@@ -16,12 +16,12 @@ void test_iterate_twice();
 void test_readonly_param(const MutBuffer& buf);
 void test_rvalue_span();
 
-// 6: class MutBuffer:
+// class MutBuffer:
 struct MutBuffer {
-    // 7:     _data: list[Int32]
+    //     _data: list[Int32]
     std::vector<int32_t> _data;
 
-    // 9:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     MutBuffer() : _data({10, 20, 30}) {}
 
     auto begin() { return __iter__().begin(); }
@@ -30,30 +30,30 @@ struct MutBuffer {
     auto end() const { return __iter__().end(); }
 
     //     @auto_readonly
-    // 13:     def __span__(self) -> Span[auto_readonly[Int32]]:
+    //     def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<int32_t> __span__() {
-        // 14:         return self._data
+        //         return self._data
         return tpy::as_mut_span(this->_data);
     }
 
     //     @auto_readonly
-    // 13:     def __span__(self) -> Span[auto_readonly[Int32]]:
+    //     def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> __span__() const {
-        // 14:         return self._data
+        //         return self._data
         return tpy::as_span(this->_data);
     }
 
     //     @auto_readonly
-    // 17:     def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
+    //     def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
     tpy::SpanIter<int32_t> __iter__() {
-        // 18:         return SpanIter(self.__span__())
+        //         return SpanIter(self.__span__())
         return tpy::SpanIter<int32_t>(__span__());
     }
 
     //     @auto_readonly
-    // 17:     def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
+    //     def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
     tpy::SpanIter<const int32_t> __iter__() const {
-        // 18:         return SpanIter(self.__span__())
+        //         return SpanIter(self.__span__())
         return tpy::SpanIter<const int32_t>(__span__());
     }
 };
@@ -65,12 +65,12 @@ inline std::ostream& operator<<(std::ostream& os, const MutBuffer& obj) {
     return os;
 }
 
-// 20: class ROBuffer:
+// class ROBuffer:
 struct ROBuffer {
-    // 21:     _data: list[Int32]
+    //     _data: list[Int32]
     std::vector<int32_t> _data;
 
-    // 23:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     ROBuffer() : _data({40, 50, 60}) {}
 
     auto begin() { return __iter__().begin(); }
@@ -78,16 +78,16 @@ struct ROBuffer {
     auto begin() const { return __iter__().begin(); }
     auto end() const { return __iter__().end(); }
 
-    // 26:     def __span__(self) -> Span[readonly[Int32]]:
+    //     def __span__(self) -> Span[readonly[Int32]]:
     std::span<const int32_t> __span__() const {
-        // 27:         return self._data
+        //         return self._data
         return tpy::as_span(this->_data);
     }
 
     //     @readonly
-    // 30:     def __iter__(self) -> SpanIter[readonly[Int32]]:
+    //     def __iter__(self) -> SpanIter[readonly[Int32]]:
     tpy::SpanIter<const int32_t> __iter__() const {
-        // 31:         return SpanIter(self.__span__())
+        //         return SpanIter(self.__span__())
         return tpy::SpanIter<const int32_t>(__span__());
     }
 };

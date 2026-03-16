@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 20: def main() -> None:
+// def main() -> None:
 void main() {
-    // 21:     p = Pair[Int32](3, 7)
+    //     p = Pair[Int32](3, 7)
     Pair<int32_t> p = Pair<int32_t>(3, 7);
-    // 22:     print(p.min_val())
+    //     print(p.min_val())
     std::cout << p.min_val() << "\n";
-    // 23:     print(p.with_default())
+    //     print(p.with_default())
     std::cout << p.with_default() << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 25: main()
+    // main()
     main();
 }
 

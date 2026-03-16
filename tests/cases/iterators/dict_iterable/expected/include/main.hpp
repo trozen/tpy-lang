@@ -15,49 +15,49 @@ template<tpy::Iterable<std::tuple<std::string, int32_t>> T_items>
 void collect_pairs(T_items& items);
 void main();
 
-// 5: def collect_items(items: Iterable[str]) -> None:
+// def collect_items(items: Iterable[str]) -> None:
 template<tpy::Iterable<std::string> T_items>
 void collect_items(T_items& items) {
-    // 6:     for x in items:
+    //     for x in items:
     auto& __src_0 = items;
     auto __obj_0 = tpy::iter_for_loop(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view x = *__beg_0;
-        // 7:         print(x)
+        //         print(x)
         std::cout << x << "\n";
     }
 }
-// 9: def collect_ints(items: Iterable[Int32]) -> None:
+// def collect_ints(items: Iterable[Int32]) -> None:
 template<tpy::Iterable<int32_t> T_items>
 void collect_ints(T_items& items) {
-    // 10:     for x in items:
+    //     for x in items:
     auto& __src_0 = items;
     auto __obj_0 = tpy::iter_for_loop(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 11:         print(x)
+        //         print(x)
         std::cout << x << "\n";
     }
 }
-// 13: def collect_pairs(items: Iterable[tuple[str, Int32]]) -> None:
+// def collect_pairs(items: Iterable[tuple[str, Int32]]) -> None:
 template<tpy::Iterable<std::tuple<std::string, int32_t>> T_items>
 void collect_pairs(T_items& items) {
-    // 14:     for pair in items:
+    //     for pair in items:
     auto& __src_0 = items;
     auto __obj_0 = tpy::iter_for_loop(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::tuple<std::string, int32_t> pair = *__beg_0;
-        // 15:         k, v = pair
+        //         k, v = pair
         const auto& __tup_1 = pair;
         std::string_view k = std::get<0>(__tup_1);
         int32_t v = std::get<1>(__tup_1);
-        // 16:         print(k, v)
+        //         print(k, v)
         std::cout << k << " " << v << "\n";
     }
 }

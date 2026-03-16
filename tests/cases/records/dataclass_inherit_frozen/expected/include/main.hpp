@@ -13,11 +13,11 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // @dataclass(frozen=True)
-// 6: class Vec2:
+// class Vec2:
 struct Vec2 {
-    // 7:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 8:     y: Int32
+    //     y: Int32
     int32_t y;
 
     Vec2() = default;
@@ -52,9 +52,9 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
 }
 
 // @dataclass(frozen=True)
-// 11: class Vec3(Vec2):
+// class Vec3(Vec2):
 struct Vec3 : Vec2 {
-    // 12:     z: Int32
+    //     z: Int32
     int32_t z;
 
     Vec3() = default;

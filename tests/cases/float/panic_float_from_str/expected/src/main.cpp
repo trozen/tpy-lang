@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # Invalid string for float parsing
-// 2: x: float = float("not_a_number")
+// x: float = float("not_a_number")
 double x{};
 
 void __tpy_init() {
@@ -12,10 +12,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # Invalid string for float parsing
-    // 2: x: float = float("not_a_number")
+    // # Invalid string for float parsing
+    // x: float = float("not_a_number")
     x = tpy::float_from_str("not_a_number");
-    // 3: print(x)
+    // print(x)
     std::cout << tpy::print_float(x) << "\n";
 }
 

@@ -6,29 +6,29 @@ namespace tpy_user::main {
 
 // # The lvalue branch terminates (continue), so only the rvalue path
 // # reaches the escape point. Hoisting is safe.
-// 12: def terminated_branch() -> None:
+// def terminated_branch() -> None:
 void terminated_branch() {
   std::optional<Point> __slot_2;
-    // 13:     saved: Point = Point(0, 0)
+    //     saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    // 14:     for i in range(3):
+    //     for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        // 15:         items: list[Point] = [Point(99, 99)]
+        //         items: list[Point] = [Point(99, 99)]
         std::vector<Point> items = {Point(99, 99)};
-        // 16:         p: Point = Point(i, i)
+        //         p: Point = Point(i, i)
         Point* p = &*(__slot_2 = Point(i, i));
-        // 17:         if i == 0:
+        //         if i == 0:
         if ((i == 0)) {
-            // 18:             p = items[0]
+            //             p = items[0]
             p = &(tpy::__getitem__(items, 0));
-            // 19:             continue
+            //             continue
             continue;
         }
-        // 20:         saved = p  # tpyc: warning(/hoisted to function scope/)
+        //         saved = p  # tpyc: warning(/hoisted to function scope/)
         saved = p;
     }
-    // 21:     print(saved.x, saved.y)
+    //     print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 
@@ -37,7 +37,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 23: terminated_branch()
+    // terminated_branch()
     terminated_branch();
 }
 

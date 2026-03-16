@@ -5,11 +5,11 @@ namespace tpy_user::main {
 
 // # Unannotated literals default to Int32 -- adding two values that
 // # individually fit but overflow together should panic at runtime.
-// 3: x = 2000000000
+// x = 2000000000
 int32_t x{};
-// 4: y = 2000000000
+// y = 2000000000
 int32_t y{};
-// 5: z = x + y
+// z = x + y
 int32_t z{};
 
 void __tpy_init() {
@@ -17,15 +17,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # Unannotated literals default to Int32 -- adding two values that
-    // 2: # individually fit but overflow together should panic at runtime.
-    // 3: x = 2000000000
+    // # Unannotated literals default to Int32 -- adding two values that
+    // # individually fit but overflow together should panic at runtime.
+    // x = 2000000000
     x = 2000000000;
-    // 4: y = 2000000000
+    // y = 2000000000
     y = 2000000000;
-    // 5: z = x + y
+    // z = x + y
     z = (tpy::add_check<int32_t>(x, y));
-    // 6: print(z)
+    // print(z)
     std::cout << z << "\n";
 }
 

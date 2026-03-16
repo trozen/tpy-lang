@@ -5,23 +5,23 @@ namespace tpy_user::main {
 
 
 
-// 9: def main() -> None:
+// def main() -> None:
 void main() {
-    // 10:     v = Vec2(Int32(3), Int32(7))
+    //     v = Vec2(Int32(3), Int32(7))
     ns::Vec2 v = ns::Vec2(3, 7);
-    // 11:     print(v.x)
+    //     print(v.x)
     std::cout << v.x << "\n";
-    // 12:     print(vec2_sum(Ptr(v)))
+    //     print(vec2_sum(Ptr(v)))
     std::cout << vec2_sum(&v) << "\n";
-    // 13:     print(v.sum())
+    //     print(v.sum())
     std::cout << v.sum() << "\n";
-    // 15:     r = MyRect(Int32(0), Int32(0), Int32(40), Int32(30))
+    //     r = MyRect(Int32(0), Int32(0), Int32(40), Int32(30))
     Rect r = Rect{0, 0, 40, 30};
-    // 16:     print(r.w)
+    //     print(r.w)
     std::cout << r.w << "\n";
-    // 17:     print(rect_area(Ptr(r)))
+    //     print(rect_area(Ptr(r)))
     std::cout << rect_area(&r) << "\n";
-    // 18:     print(r.area())
+    //     print(r.area())
     std::cout << r.area() << "\n";
 }
 
@@ -30,10 +30,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: from tpy.extern import native, native_c
-    // 3: from lib import Vec2, MyRect, rect_area
+    // from tpy.extern import native, native_c
+    // from lib import Vec2, MyRect, rect_area
     ::tpy_user::lib::__tpy_init();
-    // 20: main()
+    // main()
     main();
 }
 

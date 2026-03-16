@@ -4,52 +4,52 @@
 namespace tpy_user::main {
 
 
-// 16: def describe(a: Dog | Cat | Bird) -> str:
+// def describe(a: Dog | Cat | Bird) -> str:
 std::string describe(const std::variant<Bird, Cat, Dog>& a) {
-    // 17:     match a:
+    //     match a:
     auto& __match_subject = a;
     switch (__match_subject.index()) {
-    // 18:         case Dog(name=n) | Cat(name=n):
+    //         case Dog(name=n) | Cat(name=n):
     case 2: {
         auto& __case_0_0 = std::get<2>(__match_subject);
         auto& n = __case_0_0.name;
-        // 19:             return "pet: " + n
+        //             return "pet: " + n
         return (tpy::str_concat("pet: ", n));
         break;
     }
     case 1: {
         auto& __case_0_1 = std::get<1>(__match_subject);
         auto& n = __case_0_1.name;
-        // 19:             return "pet: " + n
+        //             return "pet: " + n
         return (tpy::str_concat("pet: ", n));
         break;
     }
-    // 20:         case Bird(name=n):
+    //         case Bird(name=n):
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject);
         auto& n = __case_1.name;
-        // 21:             return "bird: " + n
+        //             return "bird: " + n
         return (tpy::str_concat("bird: ", n));
         break;
     }
     }
-    // 22:     return ""
+    //     return ""
     return "";
 }
 
-// 24: def main() -> None:
+// def main() -> None:
 void main() {
-    // 25:     d: Dog | Cat | Bird = Dog("Rex")
+    //     d: Dog | Cat | Bird = Dog("Rex")
     std::variant<Bird, Cat, Dog> d = Dog("Rex");
-    // 26:     c: Dog | Cat | Bird = Cat("Whiskers")
+    //     c: Dog | Cat | Bird = Cat("Whiskers")
     std::variant<Bird, Cat, Dog> c = Cat("Whiskers");
-    // 27:     b: Dog | Cat | Bird = Bird("Tweety")
+    //     b: Dog | Cat | Bird = Bird("Tweety")
     std::variant<Bird, Cat, Dog> b = Bird("Tweety");
-    // 28:     print(describe(d))
+    //     print(describe(d))
     std::cout << describe(d) << "\n";
-    // 29:     print(describe(c))
+    //     print(describe(c))
     std::cout << describe(c) << "\n";
-    // 30:     print(describe(b))
+    //     print(describe(b))
     std::cout << describe(b) << "\n";
 }
 
@@ -58,7 +58,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 32: main()
+    // main()
     main();
 }
 

@@ -14,14 +14,14 @@ inline constexpr std::string_view __name__ = "__main__";
 std::optional<Point> maybe_make(int32_t x);
 void test();
 
-// 3: class Point:
+// class Point:
 struct Point {
-    // 4:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 5:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 6:     def __init__(self, x: Int32, y: Int32):
+    //     def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -35,12 +35,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 10: class Holder:
+// class Holder:
 struct Holder {
-    // 11:     value: Point | None
+    //     value: Point | None
     std::optional<Point> value;
 
-    // 13:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Holder() : value(std::nullopt) {}
 };
 

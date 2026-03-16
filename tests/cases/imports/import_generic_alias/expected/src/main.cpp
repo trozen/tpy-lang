@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-// 4: x: Arr[Int32, 3] = [1, 2, 3]
+// x: Arr[Int32, 3] = [1, 2, 3]
 std::array<int32_t, 3>* x{};
 
 void __tpy_init() {
@@ -11,14 +11,14 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: x: Arr[Int32, 3] = [1, 2, 3]
+    // x: Arr[Int32, 3] = [1, 2, 3]
     static std::array<int32_t, 3> __global_slot_1 = {1, 2, 3};
     x = &__global_slot_1;
-    // 5: print(len(x))
+    // print(len(x))
     std::cout << tpy::__len__((*x)) << "\n";
-    // 6: print(x[0])
+    // print(x[0])
     std::cout << tpy::__getitem__((*x), 0) << "\n";
-    // 7: print(x[1])
+    // print(x[1])
     std::cout << tpy::__getitem__((*x), 1) << "\n";
 }
 

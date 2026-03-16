@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 4: def takes_string(s: String) -> None:
+// def takes_string(s: String) -> None:
 void takes_string(const std::string& s) {
-    // 5:     print(s)
+    //     print(s)
     std::cout << s << "\n";
 }
 
-// 7: def test_string_param() -> None:
+// def test_string_param() -> None:
 void test_string_param() {
-    // 8:     s = "hello"  # tpyc: type(str)
+    //     s = "hello"  # tpyc: type(str)
     std::string s = "hello";
-    // 9:     takes_string(s)
+    //     takes_string(s)
     takes_string(s);
-    // 10:     print(s)
+    //     print(s)
     std::cout << s << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 12: test_string_param()
+    // test_string_param()
     test_string_param();
 }
 

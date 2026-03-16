@@ -4,32 +4,32 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     # Int32 pow
-    // 6:     a: Int32 = pow(Int32(2), Int32(10))
+    //     # Int32 pow
+    //     a: Int32 = pow(Int32(2), Int32(10))
     int32_t a = tpy::pow_check<int32_t>(2, 10);
-    // 7:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 8:     print(pow(Int32(3), Int32(0)))
+    //     print(pow(Int32(3), Int32(0)))
     std::cout << tpy::pow_check<int32_t>(3, 0) << "\n";
-    // 9:     print(pow(Int32(-2), Int32(3)))
+    //     print(pow(Int32(-2), Int32(3)))
     std::cout << tpy::pow_check<int32_t>(-2, 3) << "\n";
-    // 11:     # BigInt pow
-    // 12:     b = pow(int(2), int(30))
+    //     # BigInt pow
+    //     b = pow(int(2), int(30))
     tpy::BigInt b = (tpy::BigInt(static_cast<int64_t>(2))).pow(tpy::BigInt(static_cast<int64_t>(30)));
-    // 13:     print(b)
+    //     print(b)
     std::cout << b << "\n";
-    // 14:     c = pow(int(10), int(3))
+    //     c = pow(int(10), int(3))
     tpy::BigInt c = (tpy::BigInt(static_cast<int64_t>(10))).pow(tpy::BigInt(static_cast<int64_t>(3)));
-    // 15:     print(c)
+    //     print(c)
     std::cout << c << "\n";
-    // 17:     # float pow
-    // 18:     d: float = pow(2.0, 0.5)
+    //     # float pow
+    //     d: float = pow(2.0, 0.5)
     double d = std::pow(2.0, 0.5);
-    // 19:     print(d)
+    //     print(d)
     std::cout << tpy::print_float(d) << "\n";
-    // 20:     print(pow(3.0, 2.0))
+    //     print(pow(3.0, 2.0))
     std::cout << tpy::print_float(std::pow(3.0, 2.0)) << "\n";
 }
 
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: main()
+    // main()
     main();
 }
 

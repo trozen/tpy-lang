@@ -12,20 +12,20 @@ extern std::optional<int32_t> r;
 extern Config* c2;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 4: class Config:
+// class Config:
 struct Config {
-    // 5:     name: str
+    //     name: str
     std::string name;
-    // 6:     max_retries: Int32 | None
+    //     max_retries: Int32 | None
     std::optional<int32_t> max_retries;
 
-    // 8:     def __init__(self, name: str):
+    //     def __init__(self, name: str):
     Config() = default;
     explicit Config(std::string_view name) : name(name), max_retries(std::nullopt) {}
 
-    // 12:     def get_retries(self) -> Int32 | None:
+    //     def get_retries(self) -> Int32 | None:
     std::optional<int32_t> get_retries() const {
-        // 13:         return self.max_retries
+        //         return self.max_retries
         return this->max_retries;
     }
 };

@@ -4,21 +4,21 @@
 namespace tpy_user::main {
 
 
-// 53: def main() -> None:
+// def main() -> None:
 void main() {
-    // 54:     # Test with IntBox
-    // 55:     box = IntBox(42)
+    //     # Test with IntBox
+    //     box = IntBox(42)
     IntBox box = IntBox(42);
-    // 56:     print(extract(box))
+    //     print(extract(box))
     std::cout << extract<IntBox>(box) << "\n";
-    // 58:     update(box, 100)
+    //     update(box, 100)
     update<IntBox>(box, 100);
-    // 59:     print(extract(box))
+    //     print(extract(box))
     std::cout << extract<IntBox>(box) << "\n";
-    // 61:     # Test with StrBox
-    // 62:     sbox = StrBox("hello")
+    //     # Test with StrBox
+    //     sbox = StrBox("hello")
     StrBox sbox = StrBox("hello");
-    // 63:     print(extract_str(sbox))
+    //     print(extract_str(sbox))
     std::cout << extract_str<StrBox>(sbox) << "\n";
 }
 
@@ -27,7 +27,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 66: main()
+    // main()
     main();
 }
 

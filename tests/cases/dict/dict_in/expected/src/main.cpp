@@ -5,17 +5,17 @@ namespace tpy_user::main {
 
 
 // # Dict membership: in and not in
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     d = {"x": 1, "y": 2}
+    //     d = {"x": 1, "y": 2}
     tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"x", 1}, {"y", 2}});
-    // 4:     print("x" in d)
+    //     print("x" in d)
     std::cout << tpy::print_bool((d.contains("x"))) << "\n";
-    // 5:     print("z" in d)
+    //     print("z" in d)
     std::cout << tpy::print_bool((d.contains("z"))) << "\n";
-    // 6:     print("x" not in d)
+    //     print("x" not in d)
     std::cout << tpy::print_bool((!(d.contains("x")))) << "\n";
-    // 7:     print("z" not in d)
+    //     print("z" not in d)
     std::cout << tpy::print_bool((!(d.contains("z")))) << "\n";
 }
 
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 9: main()
+    // main()
     main();
 }
 

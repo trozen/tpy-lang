@@ -80,19 +80,19 @@ tpy_user::main::Priority EnumUtil<tpy_user::main::Priority>::from_name(std::stri
 namespace tpy_user::main {
 
 
-// 13: def main() -> None:
+// def main() -> None:
 void main() {
-    // 14:     # Same member produces same hash
-    // 15:     print(hash(Color.Red) == hash(Color.Red))
+    //     # Same member produces same hash
+    //     print(hash(Color.Red) == hash(Color.Red))
     std::cout << tpy::print_bool((tpy::__hash__(Color::Red) == tpy::__hash__(Color::Red))) << "\n";
-    // 16:     print(hash(Priority.Low) == hash(Priority.Low))
+    //     print(hash(Priority.Low) == hash(Priority.Low))
     std::cout << tpy::print_bool((tpy::__hash__(Priority::Low) == tpy::__hash__(Priority::Low))) << "\n";
-    // 18:     # Different members produce different hashes
-    // 19:     print(hash(Color.Red) != hash(Color.Green))
+    //     # Different members produce different hashes
+    //     print(hash(Color.Red) != hash(Color.Green))
     std::cout << tpy::print_bool((tpy::__hash__(Color::Red) != tpy::__hash__(Color::Green))) << "\n";
-    // 20:     print(hash(Priority.Low) != hash(Priority.High))
+    //     print(hash(Priority.Low) != hash(Priority.High))
     std::cout << tpy::print_bool((tpy::__hash__(Priority::Low) != tpy::__hash__(Priority::High))) << "\n";
-    // 21:     print("ok")
+    //     print("ok")
     std::cout << "ok" << "\n";
 }
 
@@ -101,7 +101,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 23: main()
+    // main()
     main();
 }
 

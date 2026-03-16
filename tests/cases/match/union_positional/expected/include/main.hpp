@@ -14,9 +14,9 @@ void describe(const std::variant<Circle, Rect>& s);
 void main();
 
 // @dataclass
-// 5: class Circle:
+// class Circle:
 struct Circle {
-    // 6:     radius: float
+    //     radius: float
     double radius;
 
     Circle() = default;
@@ -45,11 +45,11 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
 }
 
 // @dataclass
-// 9: class Rect:
+// class Rect:
 struct Rect {
-    // 10:     width: float
+    //     width: float
     double width;
-    // 11:     height: float
+    //     height: float
     double height;
 
     Rect() = default;

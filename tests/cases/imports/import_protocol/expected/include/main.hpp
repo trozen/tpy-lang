@@ -14,18 +14,18 @@ template<::tpy_user::traits::Printable T_p>
 void show(T_p& p);
 int32_t main();
 
-// 4: class Message:
+// class Message:
 struct Message {
-    // 5:     text: str
+    //     text: str
     std::string text;
 
-    // 7:     def __init__(self, text: str):
+    //     def __init__(self, text: str):
     Message() = default;
     explicit Message(std::string_view text) : text(text) {}
 
-    // 10:     def to_string(self) -> str:
+    //     def to_string(self) -> str:
     std::string to_string() const {
-        // 11:         return self.text
+        //         return self.text
         return this->text;
     }
 };
@@ -37,10 +37,10 @@ inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
     return os;
 }
 
-// 13: def show(p: Printable) -> None:
+// def show(p: Printable) -> None:
 template<::tpy_user::traits::Printable T_p>
 void show(T_p& p) {
-    // 14:     print(p.to_string())
+    //     print(p.to_string())
     std::cout << p.to_string() << "\n";
 }
 

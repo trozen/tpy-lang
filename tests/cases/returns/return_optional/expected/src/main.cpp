@@ -3,26 +3,26 @@
 
 namespace tpy_user::main {
 
-// 20: points: list[Point] = list()
+// points: list[Point] = list()
 std::vector<Point>* points{};
-// 24: result = find(points, 2)
+// result = find(points, 2)
 Point* result{};
 
-// 13: def find(points: list[Point], target: Int32) -> Point | None:
+// def find(points: list[Point], target: Int32) -> Point | None:
 Point* find(std::vector<Point>& points, int32_t target) {
-    // 14:     for p in points:
+    //     for p in points:
     auto& __obj_0 = points;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // 15:         if p.x == target:
+        //         if p.x == target:
         if ((p.x == target)) {
-            // 16:             return p
+            //             return p
             return &(p);
         }
     }
-    // 17:     return None
+    //     return None
     return nullptr;
 }
 
@@ -31,25 +31,25 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 20: points: list[Point] = list()
+    // points: list[Point] = list()
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     points = &__global_slot_1;
-    // 21: points.append(Point(1, 10))
+    // points.append(Point(1, 10))
     (*points).push_back(Point(1, 10));
-    // 22: points.append(Point(2, 20))
+    // points.append(Point(2, 20))
     (*points).push_back(Point(2, 20));
-    // 23: points.append(Point(3, 30))
+    // points.append(Point(3, 30))
     (*points).push_back(Point(3, 30));
-    // 24: result = find(points, 2)
+    // result = find(points, 2)
     result = find((*points), 2);
-    // 25: if result is not None:
+    // if result is not None:
     if ((result != nullptr)) {
-        // 26:     print(result.y)
+        //     print(result.y)
         std::cout << result->y << "\n";
     }
-    // 27: result = find(points, 99)
+    // result = find(points, 99)
     result = find((*points), 99);
-    // 28: print(result is None)
+    // print(result is None)
     std::cout << tpy::print_bool((result == nullptr)) << "\n";
 }
 

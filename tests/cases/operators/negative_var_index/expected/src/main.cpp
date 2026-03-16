@@ -4,25 +4,25 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     arr: Array[Int32, 3] = [10, 20, 30]
+    //     arr: Array[Int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    // 6:     i: Int32 = -1
+    //     i: Int32 = -1
     int32_t i = -1;
-    // 7:     print(arr[i])
+    //     print(arr[i])
     std::cout << tpy::__getitem__(arr, i) << "\n";
-    // 9:     nums: list[Int32] = [1, 2, 3, 4, 5]
+    //     nums: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
-    // 10:     j: Int32 = -2
+    //     j: Int32 = -2
     int32_t j = -2;
-    // 11:     print(nums[j])
+    //     print(nums[j])
     std::cout << tpy::__getitem__(nums, j) << "\n";
-    // 13:     s: str = "hello"
+    //     s: str = "hello"
     std::string_view s = "hello";
-    // 14:     k: Int32 = -3
+    //     k: Int32 = -3
     int32_t k = -3;
-    // 15:     print(s[k])
+    //     print(s[k])
     std::cout << tpy::__getitem__(s, k) << "\n";
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 17: main()
+    // main()
     main();
 }
 

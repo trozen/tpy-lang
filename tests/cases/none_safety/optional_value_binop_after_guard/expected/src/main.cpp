@@ -4,14 +4,14 @@
 namespace tpy_user::main {
 
 
-// 4: def add_after_guard(x: Int32 | None) -> Int32:
+// def add_after_guard(x: Int32 | None) -> Int32:
 int32_t add_after_guard(std::optional<int32_t> x) {
-    // 5:     if x is not None:
+    //     if x is not None:
     if ((x.has_value())) {
-        // 6:         return x + 1  # tpyc: ok
+        //         return x + 1  # tpyc: ok
         return (tpy::add_check<int32_t>((*x), 1));
     }
-    // 7:     return 0
+    //     return 0
     return 0;
 }
 
@@ -20,9 +20,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 10: print(add_after_guard(2))
+    // print(add_after_guard(2))
     std::cout << add_after_guard(2) << "\n";
-    // 11: print(add_after_guard(None))
+    // print(add_after_guard(None))
     std::cout << add_after_guard(std::nullopt) << "\n";
 }
 

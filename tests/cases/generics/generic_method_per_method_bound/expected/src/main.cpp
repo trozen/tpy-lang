@@ -4,27 +4,27 @@
 namespace tpy_user::main {
 
 
-// 22: def main() -> None:
+// def main() -> None:
 void main() {
-    // 23:     c: Container[Int32] = Container[Int32]()
+    //     c: Container[Int32] = Container[Int32]()
     Container<int32_t> c = Container<int32_t>();
-    // 24:     c.add(Int32(30))
+    //     c.add(Int32(30))
     c.add(30);
-    // 25:     c.add(Int32(10))
+    //     c.add(Int32(10))
     c.add(10);
-    // 26:     c.add(Int32(20))
+    //     c.add(Int32(20))
     c.add(20);
-    // 27:     print(c.is_sorted())
+    //     print(c.is_sorted())
     std::cout << tpy::print_bool(c.is_sorted()) << "\n";
-    // 29:     c2: Container[Int32] = Container[Int32]()
+    //     c2: Container[Int32] = Container[Int32]()
     Container<int32_t> c2 = Container<int32_t>();
-    // 30:     c2.add(Int32(1))
+    //     c2.add(Int32(1))
     c2.add(1);
-    // 31:     c2.add(Int32(2))
+    //     c2.add(Int32(2))
     c2.add(2);
-    // 32:     c2.add(Int32(3))
+    //     c2.add(Int32(3))
     c2.add(3);
-    // 33:     print(c2.is_sorted())
+    //     print(c2.is_sorted())
     std::cout << tpy::print_bool(c2.is_sorted()) << "\n";
 }
 
@@ -33,7 +33,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 35: main()
+    // main()
     main();
 }
 

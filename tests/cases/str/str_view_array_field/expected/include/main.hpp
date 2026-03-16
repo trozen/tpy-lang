@@ -21,27 +21,27 @@ void test_array_passed_to_func(std::array<std::string, 2>& arr);
 void mutate_array(std::array<std::string, 2>& arr);
 void test_multiple_views_one_source();
 
-// 4: class Person:
+// class Person:
 struct Person {
-    // 5:     name: str
+    //     name: str
     std::string name;
-    // 6:     age: Int32
+    //     age: Int32
     int32_t age;
 
-    // 7:     def __init__(self, name: str, age: Int32) -> None:
+    //     def __init__(self, name: str, age: Int32) -> None:
     Person() = default;
     explicit Person(std::string_view name, int32_t age) : name(name), age(age) {}
 
-    // 11:     def rename(self, new_name: str) -> None:
+    //     def rename(self, new_name: str) -> None:
     void rename(std::string_view new_name) {
-        // 12:         self.name = new_name
+        //         self.name = new_name
         this->name = new_name;
     }
 
     //     @readonly
-    // 15:     def greeting(self) -> str:
+    //     def greeting(self) -> str:
     std::string greeting() const {
-        // 16:         return "Hi, " + self.name
+        //         return "Hi, " + self.name
         return (tpy::str_concat("Hi, ", this->name));
     }
 };

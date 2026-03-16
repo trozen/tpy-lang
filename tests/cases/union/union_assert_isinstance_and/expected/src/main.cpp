@@ -4,20 +4,20 @@
 namespace tpy_user::main {
 
 
-// 14: def get_positive_radius(s: Circle | Rect) -> Int32:
+// def get_positive_radius(s: Circle | Rect) -> Int32:
 int32_t get_positive_radius(const std::variant<Circle, Rect>& s) {
-    // 15:     assert isinstance(s, Circle) and s.radius > Int32(0)
+    //     assert isinstance(s, Circle) and s.radius > Int32(0)
     if (!((std::holds_alternative<Circle>(s) && (std::get<Circle>(s).radius > 0)))) tpy::tpy_panic("assertion failed");
     auto& __s = std::get<Circle>(s);
-    // 16:     return s.radius
+    //     return s.radius
     return __s.radius;
 }
 
-// 18: def main() -> None:
+// def main() -> None:
 void main() {
-    // 19:     c: Circle | Rect = Circle(Int32(5))
+    //     c: Circle | Rect = Circle(Int32(5))
     std::variant<Circle, Rect> c = Circle(5);
-    // 20:     print(get_positive_radius(c))
+    //     print(get_positive_radius(c))
     std::cout << get_positive_radius(c) << "\n";
 }
 
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: main()
+    // main()
     main();
 }
 

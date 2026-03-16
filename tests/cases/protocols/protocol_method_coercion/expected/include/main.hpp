@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-// 5: class Calculator(Protocol):
+// class Calculator(Protocol):
 template<typename T>
 concept Calculator = requires(T& t) {
     { t.add(std::declval<int32_t>()) } -> std::convertible_to<int32_t>;
@@ -20,24 +20,24 @@ template<Calculator T_c>
 void use_calc(T_c& c);
 void main();
 
-// 9: class SimpleCalc:
+// class SimpleCalc:
 struct SimpleCalc {
-    // 10:     base: Int32
+    //     base: Int32
     int32_t base;
 
-    // 12:     def __init__(self, b: Int32) -> None:
+    //     def __init__(self, b: Int32) -> None:
     SimpleCalc() = default;
     explicit SimpleCalc(int32_t b) : base(b) {}
 
-    // 15:     def add(self, x: Int32) -> Int32:
+    //     def add(self, x: Int32) -> Int32:
     int32_t add(int32_t x) const {
-        // 16:         return self.base + x
+        //         return self.base + x
         return (tpy::add_check<int32_t>(this->base, x));
     }
 
-    // 18:     def multiply(self, x: Int32, y: Int32) -> Int32:
+    //     def multiply(self, x: Int32, y: Int32) -> Int32:
     int32_t multiply(int32_t x, int32_t y) const {
-        // 19:         return x * y
+        //         return x * y
         return (tpy::mul_check<int32_t>(x, y));
     }
 };
@@ -49,17 +49,17 @@ inline std::ostream& operator<<(std::ostream& os, const SimpleCalc& obj) {
     return os;
 }
 
-// 21: def use_calc(c: Calculator) -> None:
+// def use_calc(c: Calculator) -> None:
 template<Calculator T_c>
 void use_calc(T_c& c) {
-    // 22:     # Test: Literal coercion to Int32 in protocol method calls
-    // 23:     result1 = c.add(10)
+    //     # Test: Literal coercion to Int32 in protocol method calls
+    //     result1 = c.add(10)
     int32_t result1 = c.add(10);
-    // 24:     print(result1)
+    //     print(result1)
     std::cout << result1 << "\n";
-    // 26:     result2 = c.multiply(6, 7)
+    //     result2 = c.multiply(6, 7)
     int32_t result2 = c.multiply(6, 7);
-    // 27:     print(result2)
+    //     print(result2)
     std::cout << result2 << "\n";
 }
 

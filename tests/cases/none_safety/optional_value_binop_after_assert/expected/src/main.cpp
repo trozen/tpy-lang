@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 4: def add_one(x: Int32 | None) -> Int32:
+// def add_one(x: Int32 | None) -> Int32:
 int32_t add_one(std::optional<int32_t> x) {
-    // 5:     assert x is not None
+    //     assert x is not None
     if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
-    // 6:     return x + 1
+    //     return x + 1
     return (tpy::add_check<int32_t>((*x), 1));
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 9: print(add_one(41))
+    // print(add_one(41))
     std::cout << add_one(41) << "\n";
 }
 

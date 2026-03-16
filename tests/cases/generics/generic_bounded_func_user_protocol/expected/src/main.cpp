@@ -4,12 +4,12 @@
 namespace tpy_user::main {
 
 
-// 25: def main() -> None:
+// def main() -> None:
 void main() {
-    // 26:     p = Point(10, 20)
+    //     p = Point(10, 20)
     Point p = Point(10, 20);
-    // 27:     # Point satisfies Printable, so inference should work
-    // 28:     print_item(p)
+    //     # Point satisfies Printable, so inference should work
+    //     print_item(p)
     print_item<Point>(p);
 }
 
@@ -18,7 +18,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 30: main()
+    // main()
     main();
 }
 

@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 5: def main() -> None:
+// def main() -> None:
 void main() {
-    // 6:     a: list[Int32] = [1, 3, 5, 7]
+    //     a: list[Int32] = [1, 3, 5, 7]
     std::vector<int32_t> a = {1, 3, 5, 7};
-    // 7:     print(bisect_left(a, Int32(4)))
+    //     print(bisect_left(a, Int32(4)))
     int32_t __tmp_1 = 4;
     std::cout << ::tpy_user::bisect::bisect_left<int32_t>(a, __tmp_1) << "\n";
-    // 8:     insort_left(a, Int32(4))
+    //     insort_left(a, Int32(4))
     int32_t __tmp_2 = 4;
     ::tpy_user::bisect::insort_left<int32_t>(a, __tmp_2);
-    // 9:     print(len(a))
+    //     print(len(a))
     std::cout << tpy::__len__(a) << "\n";
 }
 
@@ -23,10 +23,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # Test importing bisect from stdlib
-    // 2: from bisect import bisect_left, insort_left
+    // # Test importing bisect from stdlib
+    // from bisect import bisect_left, insort_left
     ::tpy_user::bisect::__tpy_init();
-    // 11: main()
+    // main()
     main();
 }
 

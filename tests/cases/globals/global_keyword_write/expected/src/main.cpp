@@ -3,13 +3,13 @@
 
 namespace tpy_user::main {
 
-// 1: x: int = 0
+// x: int = 0
 tpy::BigInt x;
 
-// 3: def increment() -> None:
+// def increment() -> None:
 void increment() {
-    // 4:     global x
-    // 5:     x = x + 1
+    //     global x
+    //     x = x + 1
     x = ((x) + (tpy::BigInt(1)));
 }
 
@@ -18,13 +18,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: x: int = 0
+    // x: int = 0
     x = tpy::BigInt(0);
-    // 7: increment()
+    // increment()
     increment();
-    // 8: increment()
+    // increment()
     increment();
-    // 9: print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 

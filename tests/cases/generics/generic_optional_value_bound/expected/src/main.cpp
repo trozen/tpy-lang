@@ -4,33 +4,33 @@
 namespace tpy_user::main {
 
 
-// 17: def main() -> None:
+// def main() -> None:
 void main() {
-    // 18:     b = Box[Int32](42)
+    //     b = Box[Int32](42)
     Box<int32_t> b = Box<int32_t>(42);
-    // 19:     v = b.get()  # tpyc: type(Int32 | None)
+    //     v = b.get()  # tpyc: type(Int32 | None)
     std::optional<int32_t> v = b.get();
-    // 20:     if v is not None:
+    //     if v is not None:
     if ((v.has_value())) {
-        // 21:         print("got:", v)
+        //         print("got:", v)
         std::cout << "got:" << " " << tpy::print_optional_val(v) << "\n";
     }
-    // 23:     b.clear()
+    //     b.clear()
     b.clear();
-    // 24:     v2 = b.get()
+    //     v2 = b.get()
     std::optional<int32_t> v2 = b.get();
-    // 25:     if v2 is None:
+    //     if v2 is None:
     if ((!v2.has_value())) {
-        // 26:         print("cleared: ok")
+        //         print("cleared: ok")
         std::cout << "cleared: ok" << "\n";
     }
-    // 28:     b2 = Box[bool](True)
+    //     b2 = Box[bool](True)
     Box<bool> b2 = Box<bool>(true);
-    // 29:     v3 = b2.get()
+    //     v3 = b2.get()
     std::optional<bool> v3 = b2.get();
-    // 30:     if v3 is not None:
+    //     if v3 is not None:
     if ((v3.has_value())) {
-        // 31:         print("bool:", v3)
+        //         print("bool:", v3)
         std::cout << "bool:" << " " << tpy::print_optional_val<tpy::print_bool, bool>(v3) << "\n";
     }
 }
@@ -40,7 +40,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 33: main()
+    // main()
     main();
 }
 

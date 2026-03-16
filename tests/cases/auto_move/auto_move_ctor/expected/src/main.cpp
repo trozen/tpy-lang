@@ -4,16 +4,16 @@
 namespace tpy_user::main {
 
 
-// 19: def main():
+// def main():
 void main() {
-    // 20:     inner = Inner()
+    //     inner = Inner()
     Inner inner = Inner();
-    // 21:     inner.value = 99
+    //     inner.value = 99
     inner.value = 99;
-    // 22:     # inner is at last use -- auto-moved into Outer constructor
-    // 23:     outer = Outer(inner)
+    //     # inner is at last use -- auto-moved into Outer constructor
+    //     outer = Outer(inner)
     Outer outer = Outer(std::move(inner));
-    // 24:     print(outer.get_value())
+    //     print(outer.get_value())
     std::cout << outer.get_value() << "\n";
 }
 
@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 27: main()
+    // main()
     main();
 }
 

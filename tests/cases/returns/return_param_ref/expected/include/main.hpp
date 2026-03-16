@@ -17,11 +17,11 @@ Point& chained(std::vector<Point>& points);
 Point& both_branches(std::vector<Point>& points, bool flag);
 void main();
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 6:     y: Int32
+    //     y: Int32
     int32_t y;
 
 };

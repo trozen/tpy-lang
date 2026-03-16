@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 6: def main() -> None:
+// def main() -> None:
 void main() {
-    // 7:     print(first(a=1, b=2))
+    //     print(first(a=1, b=2))
     int32_t __tmp_1 = 1;
     int32_t __tmp_2 = 2;
     std::cout << first<int32_t>(__tmp_1, __tmp_2) << "\n";
-    // 8:     print(first(10, b=20))
+    //     print(first(10, b=20))
     int32_t __tmp_3 = 10;
     int32_t __tmp_4 = 20;
     std::cout << first<int32_t>(__tmp_3, __tmp_4) << "\n";
-    // 9:     print(first(b="world", a="hello"))
+    //     print(first(b="world", a="hello"))
     std::string_view __tmp_5 = "hello";
     std::string_view __tmp_6 = "world";
     std::cout << first<std::string_view>(__tmp_5, __tmp_6) << "\n";
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 11: main()
+    // main()
     main();
 }
 

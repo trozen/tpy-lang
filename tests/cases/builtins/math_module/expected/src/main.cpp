@@ -4,70 +4,70 @@
 namespace tpy_user::main {
 
 
-// 3: def main():
+// def main():
 void main() {
-    // 4:     # Test math.log (natural log)
-    // 5:     x = math.log(2.718281828)
+    //     # Test math.log (natural log)
+    //     x = math.log(2.718281828)
     double x = std::log(2.718281828);
-    // 6:     if x > 0.99 and x < 1.01:
+    //     if x > 0.99 and x < 1.01:
     if (((x > 0.99) && (x < 1.01))) {
-        // 7:         print("log(e) ok")
+        //         print("log(e) ok")
         std::cout << "log(e) ok" << "\n";
-    // 8:     else:
+    //     else:
     } else {
-        // 9:         print("log(e) error")
+        //         print("log(e) error")
         std::cout << "log(e) error" << "\n";
     }
-    // 11:     # Test math.log with base
-    // 12:     y = math.log(8.0, 2.0)
+    //     # Test math.log with base
+    //     y = math.log(8.0, 2.0)
     double y = tpy::math::log_base(8.0, 2.0);
-    // 13:     if y > 2.99 and y < 3.01:
+    //     if y > 2.99 and y < 3.01:
     if (((y > 2.99) && (y < 3.01))) {
-        // 14:         print("log(8,2) ok")
+        //         print("log(8,2) ok")
         std::cout << "log(8,2) ok" << "\n";
-    // 15:     else:
+    //     else:
     } else {
-        // 16:         print("log(8,2) error")
+        //         print("log(8,2) error")
         std::cout << "log(8,2) error" << "\n";
     }
-    // 18:     # Test math.sqrt
-    // 19:     z = math.sqrt(4.0)
+    //     # Test math.sqrt
+    //     z = math.sqrt(4.0)
     double z = std::sqrt(4.0);
-    // 20:     if z > 1.99 and z < 2.01:
+    //     if z > 1.99 and z < 2.01:
     if (((z > 1.99) && (z < 2.01))) {
-        // 21:         print("sqrt ok")
+        //         print("sqrt ok")
         std::cout << "sqrt ok" << "\n";
-    // 22:     else:
+    //     else:
     } else {
-        // 23:         print("sqrt error")
+        //         print("sqrt error")
         std::cout << "sqrt error" << "\n";
     }
-    // 25:     # Test math.sin/cos
-    // 26:     s = math.sin(0.0)
+    //     # Test math.sin/cos
+    //     s = math.sin(0.0)
     double s = std::sin(0.0);
-    // 27:     c = math.cos(0.0)
+    //     c = math.cos(0.0)
     double c = std::cos(0.0);
-    // 28:     if s > -0.01 and s < 0.01 and c > 0.99 and c < 1.01:
+    //     if s > -0.01 and s < 0.01 and c > 0.99 and c < 1.01:
     if (((((s > -(0.01)) && (s < 0.01)) && (c > 0.99)) && (c < 1.01))) {
-        // 29:         print("sin/cos ok")
+        //         print("sin/cos ok")
         std::cout << "sin/cos ok" << "\n";
-    // 30:     else:
+    //     else:
     } else {
-        // 31:         print("sin/cos error")
+        //         print("sin/cos error")
         std::cout << "sin/cos error" << "\n";
     }
-    // 33:     # Test math.floor/ceil
-    // 34:     f = math.floor(3.7)
+    //     # Test math.floor/ceil
+    //     f = math.floor(3.7)
     tpy::BigInt f = tpy::BigInt::from_floor(3.7);
-    // 35:     ce = math.ceil(3.2)
+    //     ce = math.ceil(3.2)
     tpy::BigInt ce = tpy::BigInt::from_ceil(3.2);
-    // 36:     if f > 2.99 and f < 3.01 and ce > 3.99 and ce < 4.01:
+    //     if f > 2.99 and f < 3.01 and ce > 3.99 and ce < 4.01:
     if (((((static_cast<double>(f) > 2.99) && (static_cast<double>(f) < 3.01)) && (static_cast<double>(ce) > 3.99)) && (static_cast<double>(ce) < 4.01))) {
-        // 37:         print("floor/ceil ok")
+        //         print("floor/ceil ok")
         std::cout << "floor/ceil ok" << "\n";
-    // 38:     else:
+    //     else:
     } else {
-        // 39:         print("floor/ceil error")
+        //         print("floor/ceil error")
         std::cout << "floor/ceil error" << "\n";
     }
 }
@@ -77,9 +77,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: import math
+    // import math
     ::tpy_user::math::__tpy_init();
-    // 41: main()
+    // main()
     main();
 }
 

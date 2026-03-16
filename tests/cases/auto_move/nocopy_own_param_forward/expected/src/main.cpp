@@ -4,25 +4,25 @@
 namespace tpy_user::main {
 
 
-// 10: def close(h: Own[Handle]) -> Int32:
+// def close(h: Own[Handle]) -> Int32:
 int32_t close(Handle&& h) {
-    // 11:     return h.fd
+    //     return h.fd
     return h.fd;
 }
 
-// 14: def forward(h: Own[Handle]) -> Int32:
+// def forward(h: Own[Handle]) -> Int32:
 int32_t forward(Handle&& h) {
-    // 15:     return close(h)  # tpyc: ok
+    //     return close(h)  # tpyc: ok
     return close(std::move(h));
 }
 
-// 18: def main():
+// def main():
 void main() {
-    // 19:     h = Handle()
+    //     h = Handle()
     Handle h = Handle();
-    // 20:     h.fd = 77
+    //     h.fd = 77
     h.fd = 77;
-    // 21:     print(forward(h))  # tpyc: ok
+    //     print(forward(h))  # tpyc: ok
     std::cout << forward(std::move(h)) << "\n";
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 24: main()
+    // main()
     main();
 }
 

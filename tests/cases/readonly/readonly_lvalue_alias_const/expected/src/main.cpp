@@ -5,19 +5,19 @@ namespace tpy_user::main {
 
 
 // @readonly
-// 17: def alias_param(b: Box) -> Int32:
+// def alias_param(b: Box) -> Int32:
 int32_t alias_param(const Box& b) {
-    // 18:     alias = b  # lvalue alias -> const Box*
+    //     alias = b  # lvalue alias -> const Box*
     const Box& alias = b;
-    // 19:     return alias.get_value()
+    //     return alias.get_value()
     return alias.get_value();
 }
 
-// 22: def main() -> None:
+// def main() -> None:
 void main() {
-    // 23:     b = Box(Int32(42))
+    //     b = Box(Int32(42))
     Box b = Box(42);
-    // 24:     print(alias_param(b))
+    //     print(alias_param(b))
     std::cout << alias_param(b) << "\n";
 }
 
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 26: main()
+    // main()
     main();
 }
 

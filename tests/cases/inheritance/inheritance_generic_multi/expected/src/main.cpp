@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # Test with Leaf[str]
-// 49: leaf: Leaf[str] = Leaf[str]("hello", Int32(42), "bonus")
+// leaf: Leaf[str] = Leaf[str]("hello", Int32(42), "bonus")
 Leaf<std::string>* leaf{};
 
 void __tpy_init() {
@@ -12,26 +12,26 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 48: # Test with Leaf[str]
-    // 49: leaf: Leaf[str] = Leaf[str]("hello", Int32(42), "bonus")
+    // # Test with Leaf[str]
+    // leaf: Leaf[str] = Leaf[str]("hello", Int32(42), "bonus")
     static Leaf<std::string> __global_slot_1 = Leaf<std::string>("hello", 42, "bonus");
     leaf = &__global_slot_1;
-    // 51: # Inherited method with type param in parameter (from Base)
-    // 52: leaf.set_first("world")
+    // # Inherited method with type param in parameter (from Base)
+    // leaf.set_first("world")
     leaf->set_first("world");
-    // 54: # Inherited method with forwarded type param return (from Base, through Middle)
-    // 55: print(leaf.get_first())
+    // # Inherited method with forwarded type param return (from Base, through Middle)
+    // print(leaf.get_first())
     std::cout << leaf->get_first() << "\n";
-    // 57: # Inherited method with concrete type param return (U=Int32 from Middle)
-    // 58: print(leaf.get_second())
+    // # Inherited method with concrete type param return (U=Int32 from Middle)
+    // print(leaf.get_second())
     std::cout << leaf->get_second() << "\n";
-    // 60: # Own method
-    // 61: print(leaf.get_extra())
+    // # Own method
+    // print(leaf.get_extra())
     std::cout << leaf->get_extra() << "\n";
-    // 63: # Direct field access on inherited field
-    // 64: print(leaf.first)
+    // # Direct field access on inherited field
+    // print(leaf.first)
     std::cout << leaf->first << "\n";
-    // 65: print(leaf.second)
+    // print(leaf.second)
     std::cout << leaf->second << "\n";
 }
 

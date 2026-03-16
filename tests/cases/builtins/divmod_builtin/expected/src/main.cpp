@@ -4,51 +4,51 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     # Int32 divmod
-    // 6:     q1, r1 = divmod(Int32(17), Int32(5))
+    //     # Int32 divmod
+    //     q1, r1 = divmod(Int32(17), Int32(5))
     auto __tup_1 = tpy::divmod_fixed<int32_t>(17, 5);
     int32_t q1 = std::get<0>(__tup_1);
     int32_t r1 = std::get<1>(__tup_1);
-    // 7:     print(q1)
+    //     print(q1)
     std::cout << q1 << "\n";
-    // 8:     print(r1)
+    //     print(r1)
     std::cout << r1 << "\n";
-    // 10:     # Int32 divmod with negative (Python floor semantics)
-    // 11:     q2, r2 = divmod(Int32(-17), Int32(5))
+    //     # Int32 divmod with negative (Python floor semantics)
+    //     q2, r2 = divmod(Int32(-17), Int32(5))
     auto __tup_2 = tpy::divmod_fixed<int32_t>(-17, 5);
     int32_t q2 = std::get<0>(__tup_2);
     int32_t r2 = std::get<1>(__tup_2);
-    // 12:     print(q2)
+    //     print(q2)
     std::cout << q2 << "\n";
-    // 13:     print(r2)
+    //     print(r2)
     std::cout << r2 << "\n";
-    // 15:     # BigInt divmod
-    // 16:     q3, r3 = divmod(int(100), int(7))
+    //     # BigInt divmod
+    //     q3, r3 = divmod(int(100), int(7))
     auto __tup_3 = tpy::divmod_bigint(tpy::BigInt(static_cast<int64_t>(100)), tpy::BigInt(static_cast<int64_t>(7)));
     const tpy::BigInt& q3 = std::get<0>(__tup_3);
     const tpy::BigInt& r3 = std::get<1>(__tup_3);
-    // 17:     print(q3)
+    //     print(q3)
     std::cout << q3 << "\n";
-    // 18:     print(r3)
+    //     print(r3)
     std::cout << r3 << "\n";
-    // 20:     # float divmod
-    // 21:     q4, r4 = divmod(7.5, 2.5)
+    //     # float divmod
+    //     q4, r4 = divmod(7.5, 2.5)
     auto __tup_4 = tpy::divmod_float(7.5, 2.5);
     double q4 = std::get<0>(__tup_4);
     double r4 = std::get<1>(__tup_4);
-    // 22:     print(q4)
+    //     print(q4)
     std::cout << tpy::print_float(q4) << "\n";
-    // 23:     print(r4)
+    //     print(r4)
     std::cout << tpy::print_float(r4) << "\n";
-    // 25:     q5, r5 = divmod(10.0, 3.0)
+    //     q5, r5 = divmod(10.0, 3.0)
     auto __tup_5 = tpy::divmod_float(10.0, 3.0);
     double q5 = std::get<0>(__tup_5);
     double r5 = std::get<1>(__tup_5);
-    // 26:     print(q5)
+    //     print(q5)
     std::cout << tpy::print_float(q5) << "\n";
-    // 27:     print(r5)
+    //     print(r5)
     std::cout << tpy::print_float(r5) << "\n";
 }
 
@@ -57,7 +57,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 29: main()
+    // main()
     main();
 }
 

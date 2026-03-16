@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-// 4: x: Int32 = lib.abs(Int32(-5))
+// x: Int32 = lib.abs(Int32(-5))
 int32_t x{};
-// 6: y: Int32 = lib.get_clock()
+// y: Int32 = lib.get_clock()
 int32_t y{};
 
 void __tpy_init() {
@@ -13,15 +13,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: import lib
+    // import lib
     ::tpy_user::lib::__tpy_init();
-    // 4: x: Int32 = lib.abs(Int32(-5))
+    // x: Int32 = lib.abs(Int32(-5))
     x = ::tpy_user::lib::abs(-5);
-    // 5: print(x)
+    // print(x)
     std::cout << x << "\n";
-    // 6: y: Int32 = lib.get_clock()
+    // y: Int32 = lib.get_clock()
     y = ::tpy_user::lib::tpy_clock();
-    // 7: print(y)
+    // print(y)
     std::cout << y << "\n";
 }
 

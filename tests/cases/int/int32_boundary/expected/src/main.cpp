@@ -4,10 +4,10 @@
 namespace tpy_user::main {
 
 // # INT32_MAX operations that don't overflow
-// 5: x: Int32 = 2147483647
+// x: Int32 = 2147483647
 int32_t x{};
 // # INT32_MIN operations that don't overflow
-// 11: y: Int32 = -2147483648
+// y: Int32 = -2147483648
 int32_t y{};
 
 void __tpy_init() {
@@ -15,23 +15,23 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: # INT32_MAX operations that don't overflow
-    // 5: x: Int32 = 2147483647
+    // # INT32_MAX operations that don't overflow
+    // x: Int32 = 2147483647
     x = 2147483647;
-    // 6: print(x)
+    // print(x)
     std::cout << x << "\n";
-    // 7: print(x - 1)
+    // print(x - 1)
     std::cout << (tpy::sub_check<int32_t>(x, 1)) << "\n";
-    // 8: print(x // 2)
+    // print(x // 2)
     std::cout << (tpy::div_floor<int32_t>(x, 2)) << "\n";
-    // 10: # INT32_MIN operations that don't overflow
-    // 11: y: Int32 = -2147483648
+    // # INT32_MIN operations that don't overflow
+    // y: Int32 = -2147483648
     y = -2147483648;
-    // 12: print(y)
+    // print(y)
     std::cout << y << "\n";
-    // 13: print(y + 1)
+    // print(y + 1)
     std::cout << (tpy::add_check<int32_t>(y, 1)) << "\n";
-    // 14: print(y // 2)
+    // print(y // 2)
     std::cout << (tpy::div_floor<int32_t>(y, 2)) << "\n";
 }
 

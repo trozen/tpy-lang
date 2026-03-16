@@ -11,29 +11,29 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 5: class CachingContainer:
+// class CachingContainer:
 struct CachingContainer {
-    // 6:     data: Int32
+    //     data: Int32
     int32_t data;
-    // 7:     last_access: Int32
+    //     last_access: Int32
     int32_t last_access;
 
-    // 9:     def __init__(self, data: Int32) -> None:
+    //     def __init__(self, data: Int32) -> None:
     CachingContainer() = default;
     explicit CachingContainer(int32_t data) : data(data), last_access(-1) {}
 
     //     @readonly(False)
-    // 14:     def __getitem__(self, index: Int32) -> Int32:
+    //     def __getitem__(self, index: Int32) -> Int32:
     int32_t __getitem__(int32_t index) {
-        // 15:         self.last_access = index
+        //         self.last_access = index
         this->last_access = index;
-        // 16:         return self.data
+        //         return self.data
         return this->data;
     }
 
-    // 18:     def __len__(self) -> Int32:
+    //     def __len__(self) -> Int32:
     int32_t __len__() const {
-        // 19:         return 1
+        //         return 1
         return 1;
     }
 

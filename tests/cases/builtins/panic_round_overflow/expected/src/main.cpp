@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     x: Int32 = Int32(2147483647)
+    //     x: Int32 = Int32(2147483647)
     int32_t x = 2147483647;
-    // 6:     print(round(x, Int32(-1)))
+    //     print(round(x, Int32(-1)))
     std::cout << tpy::round_fixed<int32_t>(x, -1) << "\n";
 }
 
@@ -17,7 +17,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: main()
+    // main()
     main();
 }
 

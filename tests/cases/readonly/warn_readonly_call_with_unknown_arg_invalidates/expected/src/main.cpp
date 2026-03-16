@@ -4,36 +4,36 @@
 namespace tpy_user::main {
 
 
-// 11: def mutate_and_get(b: Box) -> Int32:
+// def mutate_and_get(b: Box) -> Int32:
 int32_t mutate_and_get(Box& b) {
-    // 12:     if b.value is not None:
+    //     if b.value is not None:
     if ((b.value.has_value())) {
-        // 13:         b.value = b.value + 1
+        //         b.value = b.value + 1
         b.value = (tpy::add_check<int32_t>((*b.value), 1));
-        // 14:         return b.value + 0
+        //         return b.value + 0
         return (tpy::add_check<int32_t>((*b.value), 0));
     }
-    // 15:     return 0
+    //     return 0
     return 0;
 }
 
 // @readonly
-// 19: def observe(_: Int32) -> None:
+// def observe(_: Int32) -> None:
 void observe(int32_t _) {
-    // 20:     return
+    //     return
     return;
 }
 
-// 23: def use(b: Box) -> Int32:
+// def use(b: Box) -> Int32:
 int32_t use(Box& b) {
-    // 24:     if b.value is not None:
+    //     if b.value is not None:
     if ((b.value.has_value())) {
-        // 25:         observe(mutate_and_get(b))
+        //         observe(mutate_and_get(b))
         observe(mutate_and_get(b));
-        // 26:         return b.value + 1  # tpyc: warning(/Potential None access/)
+        //         return b.value + 1  # tpyc: warning(/Potential None access/)
         return (tpy::add_check<int32_t>(tpy::deref_optional_check(b.value), 1));
     }
-    // 27:     return 0
+    //     return 0
     return 0;
 }
 
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 30: print(use(Box(4)))
+    // print(use(Box(4)))
     Box __tmp_1 = Box(4);
     std::cout << use(__tmp_1) << "\n";
 }

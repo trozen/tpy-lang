@@ -46,19 +46,19 @@ tpy_user::main::Signal EnumUtil<tpy_user::main::Signal>::from_name(std::string_v
 namespace tpy_user::main {
 
 
-// 9: def main() -> None:
+// def main() -> None:
 void main() {
-    // 10:     s: Signal = Signal.Error
+    //     s: Signal = Signal.Error
     Signal s = Signal::Error;
-    // 11:     print(s)
+    //     print(s)
     std::cout << s << "\n";
-    // 12:     print(s.value)
+    //     print(s.value)
     std::cout << static_cast<int32_t>(s) << "\n";
-    // 13:     s = Signal.Ok
+    //     s = Signal.Ok
     s = Signal::Ok;
-    // 14:     print(s)
+    //     print(s)
     std::cout << s << "\n";
-    // 15:     print(s.value)
+    //     print(s.value)
     std::cout << static_cast<int32_t>(s) << "\n";
 }
 
@@ -67,7 +67,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 17: main()
+    // main()
     main();
 }
 

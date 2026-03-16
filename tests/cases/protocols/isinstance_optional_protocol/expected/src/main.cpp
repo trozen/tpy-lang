@@ -4,28 +4,28 @@
 namespace tpy_user::main {
 
 
-// 27: def main() -> None:
+// def main() -> None:
 void main() {
-    // 28:     arr: Array[Int32, 3] = [10, 20, 30]
+    //     arr: Array[Int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    // 29:     s: Span[Int32] = arr
+    //     s: Span[Int32] = arr
     std::span<int32_t> s = tpy::as_mut_span(arr);
-    // 31:     # Sized | None
-    // 32:     nums: list[Int32] = [1, 2, 3, 4, 5]
+    //     # Sized | None
+    //     nums: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
-    // 33:     print(count_if_sized(nums))
+    //     print(count_if_sized(nums))
     std::cout << count_if_sized(&(nums)) << "\n";
-    // 34:     print(count_if_sized())
+    //     print(count_if_sized())
     std::cout << count_if_sized() << "\n";
-    // 36:     # ReadOnlySpanLike[T] | None (generic protocol)
-    // 37:     print(sum_span(s))
+    //     # ReadOnlySpanLike[T] | None (generic protocol)
+    //     print(sum_span(s))
     std::cout << sum_span(&(s)) << "\n";
-    // 38:     print(sum_span())
+    //     print(sum_span())
     std::cout << sum_span() << "\n";
-    // 40:     # not isinstance
-    // 41:     print(check_not(nums))
+    //     # not isinstance
+    //     print(check_not(nums))
     std::cout << check_not(&(nums)) << "\n";
-    // 42:     print(check_not())
+    //     print(check_not())
     std::cout << check_not() << "\n";
 }
 
@@ -34,7 +34,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 45: main()
+    // main()
     main();
 }
 

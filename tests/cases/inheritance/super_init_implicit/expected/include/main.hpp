@@ -12,7 +12,7 @@ extern Child* c;
 inline constexpr std::string_view __name__ = "__main__";
 
 // # Test: super().__init__() when parent has no explicit __init__ (calls default constructor)
-// 3: class Base:
+// class Base:
 struct Base {
 
 };
@@ -23,12 +23,12 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
     return os;
 }
 
-// 7: class Child(Base):
+// class Child(Base):
 struct Child : Base {
-    // 8:     value: int
+    //     value: int
     tpy::BigInt value;
 
-    // 10:     def __init__(self, value: int) -> None:
+    //     def __init__(self, value: int) -> None:
     Child() = default;
     explicit Child(const tpy::BigInt& value) : Base(), value(value) {}
 };

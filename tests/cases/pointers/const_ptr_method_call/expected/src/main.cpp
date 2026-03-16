@@ -4,14 +4,14 @@
 namespace tpy_user::main {
 
 
-// 10: def main() -> None:
+// def main() -> None:
 void main() {
-    // 11:     c: Counter = Counter(42)
+    //     c: Counter = Counter(42)
     Counter c = Counter(42);
-    // 12:     cp: Ptr[readonly[Counter]] = Ptr(c)
+    //     cp: Ptr[readonly[Counter]] = Ptr(c)
     const Counter* cp = &c;
-    // 13:     # Const-safe dunder method call through Ptr[readonly[...]] auto-deref
-    // 14:     print(cp.__len__())
+    //     # Const-safe dunder method call through Ptr[readonly[...]] auto-deref
+    //     print(cp.__len__())
     std::cout << cp->__len__() << "\n";
 }
 
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 16: main()
+    // main()
     main();
 }
 

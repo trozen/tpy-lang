@@ -36,11 +36,11 @@ std::string check_color(std::optional<Color> c);
 void main();
 
 // @dataclass
-// 8: class Point:
+// class Point:
 struct Point {
-    // 9:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 10:     y: Int32
+    //     y: Int32
     int32_t y;
 
     Point() = default;

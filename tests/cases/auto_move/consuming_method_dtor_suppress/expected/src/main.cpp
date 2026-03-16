@@ -4,18 +4,18 @@
 namespace tpy_user::main {
 
 
-// 27: def main() -> None:
+// def main() -> None:
 void main() {
-    // 28:     h = HeapVal(Int32(42))
+    //     h = HeapVal(Int32(42))
     HeapVal h = HeapVal(42);
-    // 29:     val: Int32 = h.take()
+    //     val: Int32 = h.take()
     int32_t val = std::move(h).take();
-    // 30:     print("got", val)
+    //     print("got", val)
     std::cout << "got" << " " << val << "\n";
-    // 32:     # Temporary
-    // 33:     val2: Int32 = HeapVal(Int32(99)).take()
+    //     # Temporary
+    //     val2: Int32 = HeapVal(Int32(99)).take()
     int32_t val2 = HeapVal(99).take();
-    // 34:     print("got", val2)
+    //     print("got", val2)
     std::cout << "got" << " " << val2 << "\n";
 }
 
@@ -24,8 +24,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 6: from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop, unsafe_move_out
-    // 36: main()
+    // from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop, unsafe_move_out
+    // main()
     main();
 }
 

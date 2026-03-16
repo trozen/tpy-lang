@@ -12,15 +12,15 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // @dataclass
-// 6: class Color:
+// class Color:
 struct Color {
-    // 7:     r: Int32
+    //     r: Int32
     int32_t r;
-    // 8:     g: Int32
+    //     g: Int32
     int32_t g;
-    // 9:     b: Int32
+    //     b: Int32
     int32_t b;
-    // 10:     a: Int32 = 255
+    //     a: Int32 = 255
     int32_t a = 255;
 
     Color() = default;

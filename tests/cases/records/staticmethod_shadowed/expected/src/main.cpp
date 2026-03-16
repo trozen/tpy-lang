@@ -4,14 +4,14 @@
 namespace tpy_user::main {
 
 // # Create instance and call function
-// 26: h = Helper(42)
+// h = Helper(42)
 Helper* h{};
 
-// 17: def use_helper(Helper: Helper) -> Int32:
+// def use_helper(Helper: Helper) -> Int32:
 int32_t use_helper(Helper& Helper) {
-    // 18:     # Inside this function, 'Helper' is the parameter (an instance), not the class
-    // 19:     # So Helper.get() should call the instance method, not try to find a static method
-    // 20:     return Helper.get()
+    //     # Inside this function, 'Helper' is the parameter (an instance), not the class
+    //     # So Helper.get() should call the instance method, not try to find a static method
+    //     return Helper.get()
     return Helper.get();
 }
 
@@ -20,14 +20,14 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: # Static method call via class name
-    // 23: print(Helper.add(10, 20))
+    // # Static method call via class name
+    // print(Helper.add(10, 20))
     std::cout << Helper::add(10, 20) << "\n";
-    // 25: # Create instance and call function
-    // 26: h = Helper(42)
+    // # Create instance and call function
+    // h = Helper(42)
     static Helper __global_slot_1 = Helper(42);
     h = &__global_slot_1;
-    // 27: print(use_helper(h))
+    // print(use_helper(h))
     std::cout << use_helper((*h)) << "\n";
 }
 

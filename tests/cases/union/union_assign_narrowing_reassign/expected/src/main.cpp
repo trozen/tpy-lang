@@ -4,35 +4,35 @@
 namespace tpy_user::main {
 
 
-// 16: def check(s: Circle | Rect) -> None:
+// def check(s: Circle | Rect) -> None:
 void check(const std::variant<Circle, Rect>& s) {
-    // 17:     if isinstance(s, Circle):
+    //     if isinstance(s, Circle):
     if (std::holds_alternative<Circle>(s)) {
         auto& __s = std::get<Circle>(s);
-        // 18:         print(s.radius)
+        //         print(s.radius)
         std::cout << tpy::print_float(__s.radius) << "\n";
-    // 19:     else:
+    //     else:
     } else {
         auto& __s = std::get<Rect>(s);
-        // 20:         print(s.width)
+        //         print(s.width)
         std::cout << tpy::print_float(__s.width) << "\n";
     }
 }
 
-// 22: def main() -> None:
+// def main() -> None:
 void main() {
-    // 23:     s: Circle | Rect = Circle(1.0)
+    //     s: Circle | Rect = Circle(1.0)
     std::variant<Circle, Rect> __slot_1 = Circle(1.0);
     std::optional<std::variant<Circle, Rect>> __slot_2;
     std::variant<Circle, Rect>* s = &__slot_1;
-    // 24:     print(s.radius)
+    //     print(s.radius)
     std::cout << tpy::print_float(std::get<Circle>((*s)).radius) << "\n";
-    // 25:     s = Rect(3.0, 4.0)
+    //     s = Rect(3.0, 4.0)
     s = &*(__slot_2 = Rect(3.0, 4.0));
-    // 26:     if isinstance(s, Rect):
+    //     if isinstance(s, Rect):
     if (std::holds_alternative<Rect>((*s))) {
         auto& __s = std::get<Rect>((*s));
-        // 27:         print(s.width)
+        //         print(s.width)
         std::cout << tpy::print_float(__s.width) << "\n";
     }
 }
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 29: main()
+    // main()
     main();
 }
 

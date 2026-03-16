@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 // @dynamic
-// 7: class Pet(Protocol):
+// class Pet(Protocol):
 template<typename T>
 concept __Pet_Concept__ = requires(T& t) {
     { t.make_noise() } -> std::convertible_to<std::string>;
@@ -44,13 +44,13 @@ void greet(Pet& pet);
 void use_dog(Dog& d);
 void main();
 
-// 11: class Dog(Pet):
+// class Dog(Pet):
 struct Dog : Pet {
 
 
-    // 12:     def make_noise(self) -> str:
+    //     def make_noise(self) -> str:
     std::string make_noise() override {
-        // 13:         return "Woof"
+        //         return "Woof"
         return "Woof";
     }
 };

@@ -15,29 +15,29 @@ int32_t pass_in_loop();
 int32_t pass_in_elif(int32_t x);
 void test_class_with_pass();
 
-// 35: class Counter:
+// class Counter:
 struct Counter {
-    // 36:     value: Int32
+    //     value: Int32
     int32_t value;
 
-    // 38:     def __init__(self, v: Int32) -> None:
+    //     def __init__(self, v: Int32) -> None:
     Counter() = default;
     explicit Counter(int32_t v) : value(v) {}
 
-    // 41:     def do_nothing(self) -> None:
+    //     def do_nothing(self) -> None:
     void do_nothing() const {
-        // 42:         pass
+        //         pass
     }
 
-    // 44:     def maybe_increment(self, flag: Int32) -> None:
+    //     def maybe_increment(self, flag: Int32) -> None:
     void maybe_increment(int32_t flag) {
-        // 45:         if flag > 0:
+        //         if flag > 0:
         if ((flag > 0)) {
-            // 46:             self.value += 1
+            //             self.value += 1
             this->value = tpy::add_check<int32_t>(this->value, 1);
-        // 47:         else:
+        //         else:
         } else {
-            // 48:             pass
+            //             pass
         }
     }
 };

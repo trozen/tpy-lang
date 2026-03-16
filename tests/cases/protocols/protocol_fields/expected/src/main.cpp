@@ -4,36 +4,36 @@
 namespace tpy_user::main {
 
 
-// 99: def main() -> None:
+// def main() -> None:
 void main() {
-    // 100:     # Test generic function with protocol field
-    // 101:     p = Point(42)
+    //     # Test generic function with protocol field
+    //     p = Point(42)
     Point p = Point(42);
-    // 102:     print(get_value(p))
+    //     print(get_value(p))
     std::cout << get_value<Point>(p) << "\n";
-    // 104:     # Test protocol with multiple fields
-    // 105:     v = Vec2(10, 20)
+    //     # Test protocol with multiple fields
+    //     v = Vec2(10, 20)
     Vec2 v = Vec2(10, 20);
-    // 106:     print(sum_xy(v))
+    //     print(sum_xy(v))
     std::cout << sum_xy<Vec2>(v) << "\n";
-    // 108:     # Test protocol with field + method
-    // 109:     b1 = Box(5)
+    //     # Test protocol with field + method
+    //     b1 = Box(5)
     Box b1 = Box(5);
-    // 110:     b2 = Box(0)
+    //     b2 = Box(0)
     Box b2 = Box(0);
-    // 111:     print(describe(b1))
+    //     print(describe(b1))
     std::cout << describe<Box>(b1) << "\n";
-    // 112:     print(describe(b2))
+    //     print(describe(b2))
     std::cout << describe<Box>(b2) << "\n";
-    // 114:     # Test generic class with protocol field bound
-    // 115:     w = Wrapper(Point(100))
+    //     # Test generic class with protocol field bound
+    //     w = Wrapper(Point(100))
     Wrapper<Point> w = Wrapper<Point>(Point(100));
-    // 116:     print(w.get_inner_value())
+    //     print(w.get_inner_value())
     std::cout << w.get_inner_value() << "\n";
-    // 118:     # Test generic protocol with type parameter in field
-    // 119:     ih = IntHolder(77)
+    //     # Test generic protocol with type parameter in field
+    //     ih = IntHolder(77)
     IntHolder ih = IntHolder(77);
-    // 120:     print(get_item(ih))
+    //     print(get_item(ih))
     std::cout << get_item<IntHolder>(ih) << "\n";
 }
 
@@ -42,7 +42,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 123: main()
+    // main()
     main();
 }
 

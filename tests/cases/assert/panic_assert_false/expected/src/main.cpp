@@ -4,9 +4,9 @@
 namespace tpy_user::main {
 
 
-// 1: def fail_now() -> None:
+// def fail_now() -> None:
 void fail_now() {
-    // 2:     assert False, "boom"
+    //     assert False, "boom"
     tpy::tpy_panic("boom");
 }
 
@@ -15,7 +15,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 5: fail_now()
+    // fail_now()
     fail_now();
 }
 

@@ -4,30 +4,30 @@
 namespace tpy_user::main {
 
 
-// 14: def main() -> None:
+// def main() -> None:
 void main() {
-    // 15:     a = Child(1, 2, 3)
+    //     a = Child(1, 2, 3)
     Child a = Child(1, 2, 3);
-    // 16:     b = Child(1, 2, 4)
+    //     b = Child(1, 2, 4)
     Child b = Child(1, 2, 4);
-    // 17:     c = Child(2, 0, 0)
+    //     c = Child(2, 0, 0)
     Child c = Child(2, 0, 0);
-    // 18:     # z differs: 3 < 4
-    // 19:     print(a < b)
+    //     # z differs: 3 < 4
+    //     print(a < b)
     std::cout << tpy::print_bool((a < b)) << "\n";
-    // 20:     print(b < a)
+    //     print(b < a)
     std::cout << tpy::print_bool((b < a)) << "\n";
-    // 21:     # x differs: 1 < 2
-    // 22:     print(a < c)
+    //     # x differs: 1 < 2
+    //     print(a < c)
     std::cout << tpy::print_bool((a < c)) << "\n";
-    // 23:     print(c < a)
+    //     print(c < a)
     std::cout << tpy::print_bool((c < a)) << "\n";
-    // 24:     # Equal
-    // 25:     print(a <= Child(1, 2, 3))
+    //     # Equal
+    //     print(a <= Child(1, 2, 3))
     std::cout << tpy::print_bool((a <= Child(1, 2, 3))) << "\n";
-    // 26:     print(a >= Child(1, 2, 3))
+    //     print(a >= Child(1, 2, 3))
     std::cout << tpy::print_bool((a >= Child(1, 2, 3))) << "\n";
-    // 27:     print(a)
+    //     print(a)
     std::cout << a << "\n";
 }
 
@@ -36,7 +36,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 29: main()
+    // main()
     main();
 }
 

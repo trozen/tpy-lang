@@ -4,12 +4,12 @@
 namespace tpy_user::main {
 
 
-// 4: def main() -> None:
+// def main() -> None:
 void main() {
-    // 5:     # Extract keys from list of tuples (deterministic insertion order)
-    // 6:     pairs: list[tuple[str, Int32]] = [("apple", 3), ("banana", 1), ("cherry", 5)]
+    //     # Extract keys from list of tuples (deterministic insertion order)
+    //     pairs: list[tuple[str, Int32]] = [("apple", 3), ("banana", 1), ("cherry", 5)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"apple", 3}, std::tuple<std::string, int32_t>{"banana", 1}, std::tuple<std::string, int32_t>{"cherry", 5}};
-    // 7:     names: set[str] = {k for k, _ in pairs}
+    //     names: set[str] = {k for k, _ in pairs}
     tpy::ordered_set<std::string> names = [&]() {
         tpy::ordered_set<std::string> __result;
         auto& __obj_0 = pairs;
@@ -22,18 +22,18 @@ void main() {
         }
         return __result;
     }();
-    // 8:     print(len(names))
+    //     print(len(names))
     std::cout << tpy::__len__(names) << "\n";
-    // 9:     print("apple" in names)
+    //     print("apple" in names)
     std::cout << tpy::print_bool((names.contains("apple"))) << "\n";
-    // 10:     print("banana" in names)
+    //     print("banana" in names)
     std::cout << tpy::print_bool((names.contains("banana"))) << "\n";
-    // 11:     print("cherry" in names)
+    //     print("cherry" in names)
     std::cout << tpy::print_bool((names.contains("cherry"))) << "\n";
-    // 13:     # Extract values with dedup
-    // 14:     pairs2: list[tuple[str, Int32]] = [("a", 10), ("b", 20), ("c", 10)]
+    //     # Extract values with dedup
+    //     pairs2: list[tuple[str, Int32]] = [("a", 10), ("b", 20), ("c", 10)]
     std::vector<std::tuple<std::string, int32_t>> pairs2 = {std::tuple<std::string, int32_t>{"a", 10}, std::tuple<std::string, int32_t>{"b", 20}, std::tuple<std::string, int32_t>{"c", 10}};
-    // 15:     vals: set[Int32] = {v for _, v in pairs2}
+    //     vals: set[Int32] = {v for _, v in pairs2}
     tpy::ordered_set<int32_t> vals = [&]() {
         tpy::ordered_set<int32_t> __result;
         auto& __obj_1 = pairs2;
@@ -46,15 +46,15 @@ void main() {
         }
         return __result;
     }();
-    // 16:     print(len(vals))
+    //     print(len(vals))
     std::cout << tpy::__len__(vals) << "\n";
-    // 17:     for v in vals:
+    //     for v in vals:
     auto& __obj_2 = vals;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         int32_t v = *__beg_2;
-        // 18:         print(v)
+        //         print(v)
         std::cout << v << "\n";
     }
 }
@@ -64,7 +64,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 20: main()
+    // main()
     main();
 }
 

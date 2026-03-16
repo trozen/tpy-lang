@@ -3,16 +3,16 @@
 
 namespace tpy_user::main {
 
-// 5: x: Int32 = 0
+// x: Int32 = 0
 int32_t x{};
 
 // @readonly
-// 9: def ok() -> Int32:
+// def ok() -> Int32:
 int32_t ok() {
-    // 10:     global x
-    // 11:     x = 1  # tpyc: ok
+    //     global x
+    //     x = 1  # tpyc: ok
     x = 1;
-    // 12:     return x
+    //     return x
     return x;
 }
 
@@ -21,9 +21,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 5: x: Int32 = 0
+    // x: Int32 = 0
     x = 0;
-    // 15: print(ok())
+    // print(ok())
     std::cout << ok() << "\n";
 }
 

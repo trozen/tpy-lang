@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 // # Type conversions
-// 2: a = float(5)
+// a = float(5)
 double a{};
-// 3: b = float(3.14)
+// b = float(3.14)
 double b{};
-// 4: c: float = 1.0
+// c: float = 1.0
 double c{};
 
 void __tpy_init() {
@@ -16,18 +16,18 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: # Type conversions
-    // 2: a = float(5)
+    // # Type conversions
+    // a = float(5)
     a = static_cast<double>(5);
-    // 3: b = float(3.14)
+    // b = float(3.14)
     b = static_cast<double>(3.14);
-    // 4: c: float = 1.0
+    // c: float = 1.0
     c = 1.0;
-    // 5: print(a)
+    // print(a)
     std::cout << tpy::print_float(a) << "\n";
-    // 6: print(b)
+    // print(b)
     std::cout << tpy::print_float(b) << "\n";
-    // 7: print(c)
+    // print(c)
     std::cout << tpy::print_float(c) << "\n";
 }
 

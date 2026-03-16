@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # Test explicit protocol implementation
-// 24: p = Person("Alice", 30)
+// p = Person("Alice", 30)
 Person* p{};
 
 void __tpy_init() {
@@ -12,15 +12,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 23: # Test explicit protocol implementation
-    // 24: p = Person("Alice", 30)
+    // # Test explicit protocol implementation
+    // p = Person("Alice", 30)
     static Person __global_slot_1 = Person("Alice", 30);
     p = &__global_slot_1;
-    // 25: print(p.__str__())
+    // print(p.__str__())
     std::cout << p->__str__() << "\n";
-    // 26: print(p.name)
+    // print(p.name)
     std::cout << p->name << "\n";
-    // 27: print(p.age)
+    // print(p.age)
     std::cout << p->age << "\n";
 }
 

@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 7: def describe(s: Shape) -> str:
+// def describe(s: Shape) -> str:
 std::string describe(const Shape& s) {
-    // 8:     return "shape"
+    //     return "shape"
     return "shape";
 }
 
-// 11: def main() -> None:
+// def main() -> None:
 void main() {
-    // 12:     print("ok")
+    //     print("ok")
     std::cout << "ok" << "\n";
 }
 
@@ -21,9 +21,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: from shapes import Shape
+    // from shapes import Shape
     ::tpy_user::shapes::__tpy_init();
-    // 14: main()
+    // main()
     main();
 }
 

@@ -4,14 +4,14 @@
 namespace tpy_user::main {
 
 
-// 3: def main():
+// def main():
 void main() {
-    // 4:     # Just verify the alias works - don't print actual time (varies between runs)
-    // 5:     t: float = get_time()
+    //     # Just verify the alias works - don't print actual time (varies between runs)
+    //     t: float = get_time()
     double t = tpy::time_time();
-    // 6:     if t > 0.0:
+    //     if t > 0.0:
     if ((t > 0.0)) {
-        // 7:         print("time alias works")
+        //         print("time alias works")
         std::cout << "time alias works" << "\n";
     }
 }
@@ -21,9 +21,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: from time import time as get_time
+    // from time import time as get_time
     ::tpy_user::time::__tpy_init();
-    // 9: main()
+    // main()
     main();
 }
 

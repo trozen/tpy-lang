@@ -15,12 +15,12 @@ void test_value_type_no_warn();
 void test_iter_borrow_aug_assign();
 void test_reassign_borrower_clears();
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
 
-    // 6:     def __init__(self, x: Int32) -> None:
+    //     def __init__(self, x: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x) : x(x) {}
 };

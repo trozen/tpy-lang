@@ -13,12 +13,12 @@ inline constexpr std::string_view __name__ = "__main__";
 void read_holder(const NodeHolder& h);
 void main();
 
-// 5: class Node:
+// class Node:
 struct Node {
-    // 6:     value: Int32
+    //     value: Int32
     int32_t value;
 
-    // 8:     def __init__(self, v: Int32) -> None:
+    //     def __init__(self, v: Int32) -> None:
     Node() = default;
     explicit Node(int32_t v) : value(v) {}
 };
@@ -30,25 +30,25 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     return os;
 }
 
-// 12: class NodeHolder:
+// class NodeHolder:
 struct NodeHolder {
-    // 13:     _node: Ptr[Node]
+    //     _node: Ptr[Node]
     Node* _node;
 
-    // 15:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     NodeHolder() : _node(static_cast<Node*>(nullptr)) {}
 
     //     @auto_readonly
-    // 19:     def get_node(self) -> Ptr[auto_readonly[Node]]:
+    //     def get_node(self) -> Ptr[auto_readonly[Node]]:
     Node* get_node() {
-        // 20:         return self._node
+        //         return self._node
         return this->_node;
     }
 
     //     @auto_readonly
-    // 19:     def get_node(self) -> Ptr[auto_readonly[Node]]:
+    //     def get_node(self) -> Ptr[auto_readonly[Node]]:
     const Node* get_node() const {
-        // 20:         return self._node
+        //         return self._node
         return this->_node;
     }
 };

@@ -5,13 +5,13 @@ namespace tpy_user::main {
 
 
 // # dict literal with `int` (BigInt) annotation -- literal ints resolve to BigInt, not Int32
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     d: dict[str, int] = {"a": 1, "b": 2}
+    //     d: dict[str, int] = {"a": 1, "b": 2}
     tpy::ordered_map<std::string, tpy::BigInt> d = tpy::ordered_map<std::string, tpy::BigInt>({{"a", tpy::BigInt(1)}, {"b", tpy::BigInt(2)}});
-    // 4:     print(d["a"])
+    //     print(d["a"])
     std::cout << tpy::__getitem__(d, "a") << "\n";
-    // 5:     print(d)
+    //     print(d)
     std::cout << tpy::DictPrinter(d) << "\n";
 }
 
@@ -20,7 +20,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 6: main()
+    // main()
     main();
 }
 

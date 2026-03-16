@@ -4,20 +4,20 @@
 namespace tpy_user::main {
 
 
-// 5: def main() -> None:
+// def main() -> None:
 void main() {
-    // 6:     # unsafe_cast with explicit target type, source inferred from arg
-    // 7:     nums: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    //     # unsafe_cast with explicit target type, source inferred from arg
+    //     nums: list[Int32] = [Int32(1), Int32(2), Int32(3)]
     std::vector<int32_t> nums = {1, 2, 3};
-    // 8:     p: Ptr[Int32] = unsafe_ptr(nums)
+    //     p: Ptr[Int32] = unsafe_ptr(nums)
     int32_t* p = nums.data();
-    // 9:     q = unsafe_cast[UInt32](p)  # T=UInt32 explicit, U=Int32 from arg
+    //     q = unsafe_cast[UInt32](p)  # T=UInt32 explicit, U=Int32 from arg
     uint32_t* q = reinterpret_cast<uint32_t*>(p);
-    // 10:     print(unsafe_load(q, UInt32(0)))
+    //     print(unsafe_load(q, UInt32(0)))
     std::cout << q[0] << "\n";
-    // 11:     print(unsafe_load(q, UInt32(1)))
+    //     print(unsafe_load(q, UInt32(1)))
     std::cout << q[1] << "\n";
-    // 12:     print("done")
+    //     print("done")
     std::cout << "done" << "\n";
 }
 
@@ -26,8 +26,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: from tpy.unsafe import unsafe_cast, unsafe_ptr, unsafe_load
-    // 14: main()
+    // from tpy.unsafe import unsafe_cast, unsafe_ptr, unsafe_load
+    // main()
     main();
 }
 

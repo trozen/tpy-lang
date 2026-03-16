@@ -16,13 +16,13 @@ void greet(::tpy_user::pet::Pet& pet);
 void main();
 
 // # Direct inheritance (C++ struct Dog : Pet)
-// 5: class Dog(Pet):
+// class Dog(Pet):
 struct Dog : ::tpy_user::pet::Pet {
 
 
-    // 6:     def speak(self) -> str:
+    //     def speak(self) -> str:
     std::string speak() override {
-        // 7:         return "Woof"
+        //         return "Woof"
         return "Woof";
     }
 };
@@ -34,13 +34,13 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 }
 
 // # Structural conformance (no explicit inheritance)
-// 10: class Cat:
+// class Cat:
 struct Cat {
 
 
-    // 11:     def speak(self) -> str:
+    //     def speak(self) -> str:
     std::string speak() const {
-        // 12:         return "Meow"
+        //         return "Meow"
         return "Meow";
     }
 };

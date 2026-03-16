@@ -4,63 +4,63 @@
 namespace tpy_user::main {
 
 
-// 5: def test_list_view() -> None:
+// def test_list_view() -> None:
 void test_list_view() {
-    // 7:     names: list[str] = ["alice", "bob"]
+    //     names: list[str] = ["alice", "bob"]
     std::vector<std::string> names = {"alice", "bob"};
-    // 8:     x = names[Int32(0)]  # tpyc: type(StrView)
+    //     x = names[Int32(0)]  # tpyc: type(StrView)
     std::string_view x = tpy::__getitem__(names, 0);
-    // 9:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 11: def test_list_mutation_fallback() -> None:
+// def test_list_mutation_fallback() -> None:
 void test_list_mutation_fallback() {
-    // 13:     names: list[str] = ["alice", "bob"]
+    //     names: list[str] = ["alice", "bob"]
     std::vector<std::string> names = {"alice", "bob"};
-    // 14:     x = names[Int32(0)]  # tpyc: type(str)
+    //     x = names[Int32(0)]  # tpyc: type(str)
     std::string x = tpy::__getitem__(names, 0);
-    // 15:     names.append("carol")
+    //     names.append("carol")
     names.push_back("carol");
-    // 16:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 18: def test_list_reassign_fallback() -> None:
+// def test_list_reassign_fallback() -> None:
 void test_list_reassign_fallback() {
-    // 20:     names: list[str] = ["alice", "bob"]
+    //     names: list[str] = ["alice", "bob"]
     std::vector<std::string> __slot_1 = {"alice", "bob"};
     std::optional<std::vector<std::string>> __slot_2;
     std::vector<std::string>* names = &__slot_1;
-    // 21:     x = names[Int32(0)]  # tpyc: type(str)
+    //     x = names[Int32(0)]  # tpyc: type(str)
     std::string x = tpy::__getitem__((*names), 0);
-    // 22:     names = ["dave"]
+    //     names = ["dave"]
     names = &*(__slot_2 = {"dave"});
-    // 23:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 25: def test_list_subscript_write_fallback() -> None:
+// def test_list_subscript_write_fallback() -> None:
 void test_list_subscript_write_fallback() {
-    // 27:     names: list[str] = ["alice", "bob"]
+    //     names: list[str] = ["alice", "bob"]
     std::vector<std::string> names = {"alice", "bob"};
-    // 28:     x = names[Int32(0)]  # tpyc: type(str)
+    //     x = names[Int32(0)]  # tpyc: type(str)
     std::string x = tpy::__getitem__(names, 0);
-    // 29:     names[Int32(0)] = "eve"
+    //     names[Int32(0)] = "eve"
     tpy::__setitem__(names, 0, "eve");
-    // 30:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
-// 32: def test_list_pop_fallback() -> None:
+// def test_list_pop_fallback() -> None:
 void test_list_pop_fallback() {
-    // 34:     names: list[str] = ["alice", "bob"]
+    //     names: list[str] = ["alice", "bob"]
     std::vector<std::string> names = {"alice", "bob"};
-    // 35:     x = names[Int32(0)]  # tpyc: type(str)
+    //     x = names[Int32(0)]  # tpyc: type(str)
     std::string x = tpy::__getitem__(names, 0);
-    // 36:     names.pop(Int32(1))
+    //     names.pop(Int32(1))
     tpy::list_pop_at(names, 1);
-    // 37:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
@@ -69,15 +69,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 39: test_list_view()
+    // test_list_view()
     test_list_view();
-    // 40: test_list_mutation_fallback()
+    // test_list_mutation_fallback()
     test_list_mutation_fallback();
-    // 41: test_list_reassign_fallback()
+    // test_list_reassign_fallback()
     test_list_reassign_fallback();
-    // 42: test_list_subscript_write_fallback()
+    // test_list_subscript_write_fallback()
     test_list_subscript_write_fallback();
-    // 43: test_list_pop_fallback()
+    // test_list_pop_fallback()
     test_list_pop_fallback();
 }
 

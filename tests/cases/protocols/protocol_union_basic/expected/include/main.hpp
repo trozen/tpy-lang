@@ -15,34 +15,34 @@ template<typename T_items>
 tpy::BigInt get_value(const T_items& items);
 void main();
 
-// 5: def describe(items: Sized | Sequence[int]) -> None:
+// def describe(items: Sized | Sequence[int]) -> None:
 template<typename T_items>
   requires (tpy::Sequence<T_items, tpy::BigInt> || tpy::Sized<T_items>)
 void describe(const T_items& items) {
-    // 6:     if isinstance(items, Sequence):
+    //     if isinstance(items, Sequence):
     if constexpr (tpy::Sequence<T_items, tpy::BigInt>) {
-        // 7:         print(items[0])
+        //         print(items[0])
         std::cout << items[0] << "\n";
-    // 8:     elif isinstance(items, Sized):
+    //     elif isinstance(items, Sized):
     } else if constexpr (tpy::Sized<T_items>) {
-        // 9:         print(len(items))
+        //         print(len(items))
         std::cout << tpy::__len__(items) << "\n";
     }
 }
-// 11: def get_value(items: Sized | Sequence[int]) -> int:
+// def get_value(items: Sized | Sequence[int]) -> int:
 template<typename T_items>
   requires (tpy::Sequence<T_items, tpy::BigInt> || tpy::Sized<T_items>)
 tpy::BigInt get_value(const T_items& items) {
-    // 12:     if isinstance(items, Sequence):
+    //     if isinstance(items, Sequence):
     if constexpr (tpy::Sequence<T_items, tpy::BigInt>) {
-        // 13:         return items[0]
+        //         return items[0]
         return items[0];
-    // 14:     elif isinstance(items, Sized):
+    //     elif isinstance(items, Sized):
     } else if constexpr (tpy::Sized<T_items>) {
-        // 15:         return len(items)
+        //         return len(items)
         return tpy::BigInt(tpy::__len__(items));
     }
-    // 16:     return 0
+    //     return 0
     return tpy::BigInt(0);
 }
 

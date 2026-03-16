@@ -4,51 +4,51 @@
 namespace tpy_user::main {
 
 
-// 11: def test_list() -> None:
+// def test_list() -> None:
 void test_list() {
-    // 12:     data: list[Int32] = [10, 20, 30]
+    //     data: list[Int32] = [10, 20, 30]
     std::vector<int32_t> data = {10, 20, 30};
-    // 13:     print(sum_span(data))
+    //     print(sum_span(data))
     std::cout << sum_span(data) << "\n";
 }
 
-// 15: def test_array() -> None:
+// def test_array() -> None:
 void test_array() {
-    // 16:     data: Array[Int32, 3] = [1, 2, 3]
+    //     data: Array[Int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> data = {1, 2, 3};
-    // 17:     print(sum_span(data))
+    //     print(sum_span(data))
     std::cout << sum_span(data) << "\n";
 }
 
-// 19: def test_span() -> None:
+// def test_span() -> None:
 void test_span() {
-    // 20:     data: list[Int32] = [7, 8, 9]
+    //     data: list[Int32] = [7, 8, 9]
     std::vector<int32_t> data = {7, 8, 9};
-    // 21:     s: Span[Int32] = data
+    //     s: Span[Int32] = data
     std::span<int32_t> s = tpy::as_mut_span(data);
-    // 22:     print(sum_span(s))
+    //     print(sum_span(s))
     std::cout << sum_span(s) << "\n";
 }
 
-// 24: def test_ro_span() -> None:
+// def test_ro_span() -> None:
 void test_ro_span() {
-    // 25:     data: list[Int32] = [4, 5, 6]
+    //     data: list[Int32] = [4, 5, 6]
     std::vector<int32_t> data = {4, 5, 6};
-    // 26:     s: Span[readonly[Int32]] = data
+    //     s: Span[readonly[Int32]] = data
     std::span<const int32_t> s = tpy::as_span(data);
-    // 27:     print(sum_span(s))
+    //     print(sum_span(s))
     std::cout << sum_span(s) << "\n";
 }
 
-// 29: def test_arraylist() -> None:
+// def test_arraylist() -> None:
 void test_arraylist() {
-    // 30:     al = ArrayList[Int32, 4]()
+    //     al = ArrayList[Int32, 4]()
     ::tpy_user::tplib::ArrayList<int32_t, 4> al = ::tpy_user::tplib::ArrayList<int32_t, 4>();
-    // 31:     al.append(Int32(100))
+    //     al.append(Int32(100))
     al.append(100);
-    // 32:     al.append(Int32(200))
+    //     al.append(Int32(200))
     al.append(200);
-    // 33:     print(sum_span(al))
+    //     print(sum_span(al))
     std::cout << sum_span(al) << "\n";
 }
 
@@ -57,19 +57,19 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: from tplib import ArrayList
+    // from tplib import ArrayList
     ::tpy_user::tplib::__tpy_init();
-    // 35: test_list()
+    // test_list()
     test_list();
-    // 36: test_array()
+    // test_array()
     test_array();
-    // 37: test_span()
+    // test_span()
     test_span();
-    // 38: test_ro_span()
+    // test_ro_span()
     test_ro_span();
-    // 39: test_arraylist()
+    // test_arraylist()
     test_arraylist();
-    // 40: print("done")
+    // print("done")
     std::cout << "done" << "\n";
 }
 

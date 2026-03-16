@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-// 6: class Printable(Protocol):
+// class Printable(Protocol):
 template<typename T>
 concept Printable = requires(T& t) {
     { t.to_string() } -> std::convertible_to<std::string>;
@@ -19,20 +19,20 @@ template<Printable T>
 void print_item(tpy::param_val_or_ref_t<T> item);
 void main();
 
-// 9: class Point:
+// class Point:
 struct Point {
-    // 10:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 11:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 13:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    // 17:     def to_string(self) -> str:
+    //     def to_string(self) -> str:
     std::string to_string() const {
-        // 18:         return "Point"
+        //         return "Point"
         return "Point";
     }
 };
@@ -46,12 +46,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 20: def print_item[T: Printable](item: T) -> None:
+// def print_item[T: Printable](item: T) -> None:
 template<Printable T>
 void print_item(tpy::param_val_or_ref_t<T> item) {
-    // 21:     # Note: Can't call item.to_string() inside generic yet
-    // 22:     # This tests that the bound is validated during inference
-    // 23:     print("got printable")
+    //     # Note: Can't call item.to_string() inside generic yet
+    //     # This tests that the bound is validated during inference
+    //     print("got printable")
     std::cout << "got printable" << "\n";
 }
 

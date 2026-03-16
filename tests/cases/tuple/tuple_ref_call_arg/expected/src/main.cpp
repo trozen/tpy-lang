@@ -4,22 +4,22 @@
 namespace tpy_user::main {
 
 
-// 11: def show(pair: tuple[Point, Int32]) -> None:
+// def show(pair: tuple[Point, Int32]) -> None:
 void show(const std::tuple<Point&, int32_t>& pair) {
-    // 12:     print(pair[0].x, pair[0].y, pair[1])
+    //     print(pair[0].x, pair[0].y, pair[1])
     std::cout << std::get<0>(pair).x << " " << std::get<0>(pair).y << " " << std::get<1>(pair) << "\n";
 }
 
-// 14: def main() -> None:
+// def main() -> None:
 void main() {
-    // 15:     p = Point(Int32(10), Int32(20))
+    //     p = Point(Int32(10), Int32(20))
     Point p = Point(10, 20);
-    // 16:     show((p, Int32(42)))
+    //     show((p, Int32(42)))
     show(std::tuple<Point&, int32_t>{p, 42});
-    // 17:     # Mutation visible through reference
-    // 18:     p.x = Int32(99)
+    //     # Mutation visible through reference
+    //     p.x = Int32(99)
     p.x = 99;
-    // 19:     show((p, Int32(7)))
+    //     show((p, Int32(7)))
     show(std::tuple<Point&, int32_t>{p, 7});
 }
 
@@ -28,7 +28,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 21: main()
+    // main()
     main();
 }
 

@@ -4,20 +4,20 @@
 namespace tpy_user::main {
 
 
-// 10: def main() -> None:
+// def main() -> None:
 void main() {
-    // 11:     a = ArrayList[Int32, 8]()
+    //     a = ArrayList[Int32, 8]()
     ::tpy_user::tplib::array_list::ArrayList<int32_t, 8> a = ::tpy_user::tplib::array_list::ArrayList<int32_t, 8>();
-    // 12:     a.append(Int32(1))
+    //     a.append(Int32(1))
     a.append(1);
-    // 13:     a.append(Int32(2))
+    //     a.append(Int32(2))
     a.append(2);
-    // 14:     a.append(Int32(3))
+    //     a.append(Int32(3))
     a.append(3);
-    // 16:     # Direct __iter__() returns SpanIter
-    // 17:     it: SpanIter[Int32] = a.__iter__()
+    //     # Direct __iter__() returns SpanIter
+    //     it: SpanIter[Int32] = a.__iter__()
     tpy::SpanIter<int32_t> it = a.__iter__();
-    // 18:     consume(it)
+    //     consume(it)
     consume(it);
 }
 
@@ -26,10 +26,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: from tplib.array_list import ArrayList
+    // from tplib.array_list import ArrayList
     ::tpy_user::tplib::__tpy_init();
     ::tpy_user::tplib::array_list::__tpy_init();
-    // 20: main()
+    // main()
     main();
 }
 

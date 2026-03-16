@@ -4,114 +4,114 @@
 namespace tpy_user::main {
 
 
-// 5: def get_pair() -> tuple[int, int]:
+// def get_pair() -> tuple[int, int]:
 std::tuple<tpy::BigInt, tpy::BigInt> get_pair() {
-    // 6:     return (42, 100)
+    //     return (42, 100)
     return std::tuple<tpy::BigInt, tpy::BigInt>{tpy::BigInt(42), tpy::BigInt(100)};
 }
 
-// 8: def get_string_pair() -> tuple[String, String]:
+// def get_string_pair() -> tuple[String, String]:
 std::tuple<std::string, std::string> get_string_pair() {
-    // 9:     return ("hello", "world")
+    //     return ("hello", "world")
     return std::tuple<std::string, std::string>{"hello", "world"};
 }
 
-// 11: def test_rvalue_const_ref() -> None:
+// def test_rvalue_const_ref() -> None:
 void test_rvalue_const_ref() {
-    // 13:     a, b = get_pair()
+    //     a, b = get_pair()
     auto __tup_1 = get_pair();
     const tpy::BigInt& a = std::get<0>(__tup_1);
     const tpy::BigInt& b = std::get<1>(__tup_1);
-    // 14:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 15:     print(b)
+    //     print(b)
     std::cout << b << "\n";
 }
 
-// 17: def test_augassign_no_const_ref() -> None:
+// def test_augassign_no_const_ref() -> None:
 void test_augassign_no_const_ref() {
-    // 19:     a, b = get_pair()
+    //     a, b = get_pair()
     auto __tup_1 = get_pair();
     const tpy::BigInt& a = std::get<0>(__tup_1);
     tpy::BigInt b = std::get<1>(__tup_1);
-    // 20:     b += 1
+    //     b += 1
     b = (b) + (tpy::BigInt(1));
-    // 21:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 22:     print(b)
+    //     print(b)
     std::cout << b << "\n";
 }
 
-// 24: def test_reassign_no_const_ref() -> None:
+// def test_reassign_no_const_ref() -> None:
 void test_reassign_no_const_ref() {
-    // 26:     a, b = get_pair()
+    //     a, b = get_pair()
     auto __tup_1 = get_pair();
     const tpy::BigInt& a = std::get<0>(__tup_1);
     tpy::BigInt b = std::get<1>(__tup_1);
-    // 27:     b = 200
+    //     b = 200
     b = tpy::BigInt(200);
-    // 28:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 29:     print(b)
+    //     print(b)
     std::cout << b << "\n";
 }
 
-// 31: def test_lvalue_const_ref() -> None:
+// def test_lvalue_const_ref() -> None:
 void test_lvalue_const_ref() {
-    // 33:     t: tuple[int, int] = (10, 20)
+    //     t: tuple[int, int] = (10, 20)
     std::tuple<tpy::BigInt, tpy::BigInt> t = std::tuple<tpy::BigInt, tpy::BigInt>{tpy::BigInt(10), tpy::BigInt(20)};
-    // 34:     a, b = t
+    //     a, b = t
     const auto& __tup_1 = t;
     const tpy::BigInt& a = std::get<0>(__tup_1);
     const tpy::BigInt& b = std::get<1>(__tup_1);
-    // 35:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 36:     print(b)
+    //     print(b)
     std::cout << b << "\n";
 }
 
-// 38: def test_lvalue_reassigned_source() -> None:
+// def test_lvalue_reassigned_source() -> None:
 void test_lvalue_reassigned_source() {
-    // 40:     t: tuple[int, int] = (10, 20)
+    //     t: tuple[int, int] = (10, 20)
     std::tuple<tpy::BigInt, tpy::BigInt> t = std::tuple<tpy::BigInt, tpy::BigInt>{tpy::BigInt(10), tpy::BigInt(20)};
-    // 41:     a, b = t
+    //     a, b = t
     const auto& __tup_1 = t;
     tpy::BigInt a = std::get<0>(__tup_1);
     tpy::BigInt b = std::get<1>(__tup_1);
-    // 42:     t = (30, 40)
+    //     t = (30, 40)
     t = std::tuple<tpy::BigInt, tpy::BigInt>{tpy::BigInt(30), tpy::BigInt(40)};
-    // 43:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 44:     print(b)
+    //     print(b)
     std::cout << b << "\n";
 }
 
-// 46: def test_string_const_ref() -> None:
+// def test_string_const_ref() -> None:
 void test_string_const_ref() {
-    // 48:     a, b = get_string_pair()
+    //     a, b = get_string_pair()
     auto __tup_1 = get_string_pair();
     const std::string& a = std::get<0>(__tup_1);
     const std::string& b = std::get<1>(__tup_1);
-    // 49:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 50:     print(b)
+    //     print(b)
     std::cout << b << "\n";
 }
 
-// 52: def test_augassign_in_branch() -> None:
+// def test_augassign_in_branch() -> None:
 void test_augassign_in_branch() {
-    // 54:     a, b = get_pair()
+    //     a, b = get_pair()
     auto __tup_1 = get_pair();
     const tpy::BigInt& a = std::get<0>(__tup_1);
     tpy::BigInt b = std::get<1>(__tup_1);
-    // 55:     if a > 0:
+    //     if a > 0:
     if ((a > 0)) {
-        // 56:         b += 1
+        //         b += 1
         b = (b) + (tpy::BigInt(1));
     }
-    // 57:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 58:     print(b)
+    //     print(b)
     std::cout << b << "\n";
 }
 
@@ -120,19 +120,19 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 60: test_rvalue_const_ref()
+    // test_rvalue_const_ref()
     test_rvalue_const_ref();
-    // 61: test_augassign_no_const_ref()
+    // test_augassign_no_const_ref()
     test_augassign_no_const_ref();
-    // 62: test_reassign_no_const_ref()
+    // test_reassign_no_const_ref()
     test_reassign_no_const_ref();
-    // 63: test_lvalue_const_ref()
+    // test_lvalue_const_ref()
     test_lvalue_const_ref();
-    // 64: test_lvalue_reassigned_source()
+    // test_lvalue_reassigned_source()
     test_lvalue_reassigned_source();
-    // 65: test_string_const_ref()
+    // test_string_const_ref()
     test_string_const_ref();
-    // 66: test_augassign_in_branch()
+    // test_augassign_in_branch()
     test_augassign_in_branch();
 }
 

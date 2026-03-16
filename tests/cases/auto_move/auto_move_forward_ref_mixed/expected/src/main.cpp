@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 13: def main():
+// def main():
 void main() {
-    // 14:     b1 = Box()
+    //     b1 = Box()
     Box b1 = Box();
-    // 15:     b1.value = 10
+    //     b1.value = 10
     b1.value = 10;
-    // 16:     b2 = Box()
+    //     b2 = Box()
     Box b2 = Box();
-    // 17:     b2.value = 20
+    //     b2.value = 20
     b2.value = 20;
-    // 18:     mixed[Box](b1, b2)
+    //     mixed[Box](b1, b2)
     mixed<Box>(std::move(b1), b2);
-    // 19:     print("done")
+    //     print("done")
     std::cout << "done" << "\n";
 }
 

@@ -4,75 +4,75 @@
 namespace tpy_user::main {
 
 
-// 4: def test_int32_to_int64_append() -> None:
+// def test_int32_to_int64_append() -> None:
 void test_int32_to_int64_append() {
-    // 5:     xs = [Int32(1), Int32(2)]  # tpyc: type(list[Int64])
+    //     xs = [Int32(1), Int32(2)]  # tpyc: type(list[Int64])
     std::vector<int64_t> xs = {1, 2};
-    // 6:     xs.append(Int64(3))
+    //     xs.append(Int64(3))
     xs.push_back(3);
-    // 7:     v: Int64 = xs[0]
+    //     v: Int64 = xs[0]
     int64_t v = tpy::__getitem__(xs, 0);
-    // 8:     print(v)
+    //     print(v)
     std::cout << v << "\n";
-    // 9:     print(xs)
+    //     print(xs)
     std::cout << tpy::ListPrinter(xs) << "\n";
 }
 
-// 11: def test_literal_to_int64_append() -> None:
+// def test_literal_to_int64_append() -> None:
 void test_literal_to_int64_append() {
-    // 12:     xs = [1, 2]  # tpyc: type(list[Int64])
+    //     xs = [1, 2]  # tpyc: type(list[Int64])
     std::vector<int64_t> xs = {1, 2};
-    // 13:     xs.append(Int64(3))
+    //     xs.append(Int64(3))
     xs.push_back(3);
-    // 14:     v: Int64 = xs[0]
+    //     v: Int64 = xs[0]
     int64_t v = tpy::__getitem__(xs, 0);
-    // 15:     print(v)
+    //     print(v)
     std::cout << v << "\n";
-    // 16:     print(xs)
+    //     print(xs)
     std::cout << tpy::ListPrinter(xs) << "\n";
 }
 
-// 18: def test_literal_to_float_append() -> None:
+// def test_literal_to_float_append() -> None:
 void test_literal_to_float_append() {
-    // 19:     xs = [1, 2, 3]  # tpyc: type(list[float])
+    //     xs = [1, 2, 3]  # tpyc: type(list[float])
     std::vector<double> xs = {1, 2, 3};
-    // 20:     xs.append(3.14)
+    //     xs.append(3.14)
     xs.push_back(3.14);
-    // 21:     print(xs[3])
+    //     print(xs[3])
     std::cout << tpy::print_float(tpy::__getitem__(xs, 3)) << "\n";
 }
 
-// 23: def test_int32_to_int64_insert() -> None:
+// def test_int32_to_int64_insert() -> None:
 void test_int32_to_int64_insert() {
-    // 24:     xs = [Int32(1), Int32(2)]  # tpyc: type(list[Int64])
+    //     xs = [Int32(1), Int32(2)]  # tpyc: type(list[Int64])
     std::vector<int64_t> xs = {1, 2};
-    // 25:     xs.insert(0, Int64(99))
+    //     xs.insert(0, Int64(99))
     tpy::list_insert(xs, 0, 99);
-    // 26:     v: Int64 = xs[0]
+    //     v: Int64 = xs[0]
     int64_t v = tpy::__getitem__(xs, 0);
-    // 27:     print(v)
+    //     print(v)
     std::cout << v << "\n";
 }
 
-// 29: def test_same_type_no_widen() -> None:
+// def test_same_type_no_widen() -> None:
 void test_same_type_no_widen() {
-    // 30:     xs = [Int32(1), Int32(2)]  # tpyc: type(list[Int32])
+    //     xs = [Int32(1), Int32(2)]  # tpyc: type(list[Int32])
     std::vector<int32_t> xs = {1, 2};
-    // 31:     xs.append(Int32(3))
+    //     xs.append(Int32(3))
     xs.push_back(3);
-    // 32:     print(xs)
+    //     print(xs)
     std::cout << tpy::ListPrinter(xs) << "\n";
 }
 
-// 34: def test_multiple_widens() -> None:
+// def test_multiple_widens() -> None:
 void test_multiple_widens() {
-    // 35:     xs = [Int32(1)]  # tpyc: type(list[Int64])
+    //     xs = [Int32(1)]  # tpyc: type(list[Int64])
     std::vector<int64_t> xs = {1};
-    // 36:     xs.append(Int32(2))
+    //     xs.append(Int32(2))
     xs.push_back(2);
-    // 37:     xs.append(Int64(3))
+    //     xs.append(Int64(3))
     xs.push_back(3);
-    // 38:     print(xs)
+    //     print(xs)
     std::cout << tpy::ListPrinter(xs) << "\n";
 }
 
@@ -81,17 +81,17 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 40: test_int32_to_int64_append()
+    // test_int32_to_int64_append()
     test_int32_to_int64_append();
-    // 41: test_literal_to_int64_append()
+    // test_literal_to_int64_append()
     test_literal_to_int64_append();
-    // 42: test_literal_to_float_append()
+    // test_literal_to_float_append()
     test_literal_to_float_append();
-    // 43: test_int32_to_int64_insert()
+    // test_int32_to_int64_insert()
     test_int32_to_int64_insert();
-    // 44: test_same_type_no_widen()
+    // test_same_type_no_widen()
     test_same_type_no_widen();
-    // 45: test_multiple_widens()
+    // test_multiple_widens()
     test_multiple_widens();
 }
 

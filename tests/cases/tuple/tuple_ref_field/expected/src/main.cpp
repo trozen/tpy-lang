@@ -4,18 +4,18 @@
 namespace tpy_user::main {
 
 
-// 18: def main() -> None:
+// def main() -> None:
 void main() {
-    // 19:     p = Point(Int32(1), Int32(2))
+    //     p = Point(Int32(1), Int32(2))
     Point p = Point(1, 2);
-    // 20:     c = Container(p, Int32(42))
+    //     c = Container(p, Int32(42))
     Container c = Container(p, 42);
-    // 21:     print(c.data[0].x, c.data[0].y, c.data[1])
+    //     print(c.data[0].x, c.data[0].y, c.data[1])
     std::cout << std::get<0>(c.data).x << " " << std::get<0>(c.data).y << " " << std::get<1>(c.data) << "\n";
-    // 22:     # Mutation of p should NOT affect c.data (value semantics for fields)
-    // 23:     p.x = Int32(99)
+    //     # Mutation of p should NOT affect c.data (value semantics for fields)
+    //     p.x = Int32(99)
     p.x = 99;
-    // 24:     print(c.data[0].x)
+    //     print(c.data[0].x)
     std::cout << std::get<0>(c.data).x << "\n";
 }
 
@@ -24,7 +24,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 26: main()
+    // main()
     main();
 }
 

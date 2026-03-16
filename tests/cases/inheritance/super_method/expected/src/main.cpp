@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-// 32: d = Dog("Rex", "Labrador")
+// d = Dog("Rex", "Labrador")
 Dog* d{};
 
 void __tpy_init() {
@@ -11,14 +11,14 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 32: d = Dog("Rex", "Labrador")
+    // d = Dog("Rex", "Labrador")
     static Dog __global_slot_1 = Dog("Rex", "Labrador");
     d = &__global_slot_1;
-    // 33: print(d.speak())
+    // print(d.speak())
     std::cout << d->speak() << "\n";
-    // 34: print(d.full_speak())
+    // print(d.full_speak())
     std::cout << d->full_speak() << "\n";
-    // 35: print(d.describe())
+    // print(d.describe())
     std::cout << d->describe() << "\n";
 }
 

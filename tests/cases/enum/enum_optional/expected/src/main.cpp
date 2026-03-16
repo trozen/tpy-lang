@@ -46,31 +46,31 @@ tpy_user::main::Color EnumUtil<tpy_user::main::Color>::from_name(std::string_vie
 namespace tpy_user::main {
 
 
-// 9: def maybe_color(flag: bool) -> Color | None:
+// def maybe_color(flag: bool) -> Color | None:
 std::optional<Color> maybe_color(bool flag) {
-    // 10:     if flag:
+    //     if flag:
     if (flag) {
-        // 11:         return Color.Red
+        //         return Color.Red
         return Color::Red;
     }
-    // 12:     return None
+    //     return None
     return std::nullopt;
 }
 
-// 14: def main() -> None:
+// def main() -> None:
 void main() {
-    // 15:     c: Color | None = maybe_color(True)
+    //     c: Color | None = maybe_color(True)
     std::optional<Color> c = maybe_color(true);
-    // 16:     if c is not None:
+    //     if c is not None:
     if ((c.has_value())) {
-        // 17:         print(c)
+        //         print(c)
         std::cout << tpy::print_optional_val(c) << "\n";
     }
-    // 18:     c = maybe_color(False)
+    //     c = maybe_color(False)
     c = maybe_color(false);
-    // 19:     if c is None:
+    //     if c is None:
     if ((!c.has_value())) {
-        // 20:         print("no color")
+        //         print("no color")
         std::cout << "no color" << "\n";
     }
 }
@@ -80,7 +80,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 22: main()
+    // main()
     main();
 }
 

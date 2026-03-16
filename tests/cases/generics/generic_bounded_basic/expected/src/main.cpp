@@ -4,15 +4,15 @@
 namespace tpy_user::main {
 
 
-// 14: def main() -> None:
+// def main() -> None:
 void main() {
-    // 15:     # list[int] satisfies Sized, so instantiation works
-    // 16:     c = Container[list[int]]([1, 2, 3])
+    //     # list[int] satisfies Sized, so instantiation works
+    //     c = Container[list[int]]([1, 2, 3])
     Container<std::vector<tpy::BigInt>> c = Container<std::vector<tpy::BigInt>>({1, 2, 3});
-    // 17:     items = c.get_item()
+    //     items = c.get_item()
     std::vector<tpy::BigInt>& items = c.get_item();
-    // 18:     # len() works on the concrete type after retrieval
-    // 19:     print(len(items))
+    //     # len() works on the concrete type after retrieval
+    //     print(len(items))
     std::cout << tpy::__len__(items) << "\n";
 }
 

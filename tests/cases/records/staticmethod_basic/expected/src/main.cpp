@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # Call static method via instance (also valid)
-// 26: c = Counter(100)
+// c = Counter(100)
 Counter* c{};
 
 void __tpy_init() {
@@ -12,21 +12,21 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 21: # Call static method via class name
-    // 22: print(Counter.zero())
+    // # Call static method via class name
+    // print(Counter.zero())
     std::cout << Counter::zero() << "\n";
-    // 23: print(Counter.add(10, 20))
+    // print(Counter.add(10, 20))
     std::cout << Counter::add(10, 20) << "\n";
-    // 25: # Call static method via instance (also valid)
-    // 26: c = Counter(100)
+    // # Call static method via instance (also valid)
+    // c = Counter(100)
     static Counter __global_slot_1 = Counter(100);
     c = &__global_slot_1;
-    // 27: print(c.zero())
+    // print(c.zero())
     std::cout << c->zero() << "\n";
-    // 28: print(c.add(3, 4))
+    // print(c.add(3, 4))
     std::cout << c->add(3, 4) << "\n";
-    // 30: # Regular instance method still works
-    // 31: print(c.get())
+    // # Regular instance method still works
+    // print(c.get())
     std::cout << c->get() << "\n";
 }
 

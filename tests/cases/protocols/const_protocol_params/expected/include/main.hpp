@@ -5,13 +5,13 @@
 
 namespace tpy_user::main {
 
-// 8: class Measurable(Protocol):
+// class Measurable(Protocol):
 template<typename T>
 concept Measurable = requires(const T& t) {
     { t.measure() } -> std::convertible_to<int32_t>;
 };
 
-// 13: class Resizable(Protocol):
+// class Resizable(Protocol):
 template<typename T>
 concept Resizable = requires(T& t) {
     { t.measure() } -> std::convertible_to<int32_t>;
@@ -19,7 +19,7 @@ concept Resizable = requires(T& t) {
 };
 
 // @dynamic
-// 36: class Shape(Protocol):
+// class Shape(Protocol):
 template<typename T>
 concept __Shape_Concept__ = requires(const T& t) {
     { t.area() } -> std::convertible_to<int32_t>;
@@ -63,21 +63,21 @@ void copy_measure(const T_src& src, T_dst& dst);
 void print_area(const Shape& s);
 void main();
 
-// 41: class Rect:
+// class Rect:
 struct Rect {
-    // 42:     _w: Int32
+    //     _w: Int32
     int32_t _w;
-    // 43:     _h: Int32
+    //     _h: Int32
     int32_t _h;
 
-    // 45:     def __init__(self, w: Int32, h: Int32) -> None:
+    //     def __init__(self, w: Int32, h: Int32) -> None:
     Rect() = default;
     explicit Rect(int32_t w, int32_t h) : _w(w), _h(h) {}
 
     //     @readonly
-    // 50:     def area(self) -> Int32:
+    //     def area(self) -> Int32:
     int32_t area() const {
-        // 51:         return self._w * self._h
+        //         return self._w * self._h
         return (tpy::mul_check<int32_t>(this->_w, this->_h));
     }
 };
@@ -91,25 +91,25 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
     return os;
 }
 
-// 59: class Box:
+// class Box:
 struct Box {
-    // 60:     _side: Int32
+    //     _side: Int32
     int32_t _side;
 
-    // 62:     def __init__(self, side: Int32) -> None:
+    //     def __init__(self, side: Int32) -> None:
     Box() = default;
     explicit Box(int32_t side) : _side(side) {}
 
     //     @readonly
-    // 66:     def measure(self) -> Int32:
+    //     def measure(self) -> Int32:
     int32_t measure() const {
-        // 67:         return self._side
+        //         return self._side
         return this->_side;
     }
 
-    // 69:     def resize(self, v: Int32) -> None:
+    //     def resize(self, v: Int32) -> None:
     void resize(int32_t v) {
-        // 70:         self._side = v
+        //         self._side = v
         this->_side = v;
     }
 };
@@ -122,26 +122,26 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 // # Non-mutated static protocol param -> const T_p&
-// 20: def get_measure(p: Measurable) -> Int32:
+// def get_measure(p: Measurable) -> Int32:
 template<Measurable T_p>
 int32_t get_measure(const T_p& p) {
-    // 21:     return p.measure()
+    //     return p.measure()
     return p.measure();
 }
 // # Mutated static protocol param -> T_p& (resize modifies p)
-// 25: def double_resize(p: Resizable) -> Int32:
+// def double_resize(p: Resizable) -> Int32:
 template<Resizable T_p>
 int32_t double_resize(T_p& p) {
-    // 26:     p.resize(p.measure() * 2)
+    //     p.resize(p.measure() * 2)
     p.resize((tpy::mul_check<int32_t>(p.measure(), 2)));
-    // 27:     return p.measure()
+    //     return p.measure()
     return p.measure();
 }
 // # Two params: src is non-mutated (const T&), dst is mutated (T&)
-// 31: def copy_measure(src: Resizable, dst: Resizable) -> None:
+// def copy_measure(src: Resizable, dst: Resizable) -> None:
 template<Resizable T_src, Resizable T_dst>
 void copy_measure(const T_src& src, T_dst& dst) {
-    // 32:     dst.resize(src.measure())
+    //     dst.resize(src.measure())
     dst.resize(src.measure());
 }
 

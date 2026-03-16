@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-// 3: x = 2_147_483_648  # tpyc: warning(/outside default Int32 range/)
+// x = 2_147_483_648  # tpyc: warning(/outside default Int32 range/)
 tpy::BigInt x;
 
 void __tpy_init() {
@@ -11,11 +11,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: x = 2_147_483_648  # tpyc: warning(/outside default Int32 range/)
+    // x = 2_147_483_648  # tpyc: warning(/outside default Int32 range/)
     x = tpy::BigInt(static_cast<int64_t>(2147483648LL));
-    // 4: x = Int32(1)
+    // x = Int32(1)
     x = tpy::BigInt(1);
-    // 5: print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 

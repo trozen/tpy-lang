@@ -5,14 +5,14 @@ namespace tpy_user::main {
 
 
 // # Test that subscript out-of-bounds access on list panics at runtime
-// 5: def test_list_subscript_oob() -> None:
+// def test_list_subscript_oob() -> None:
 void test_list_subscript_oob() {
-    // 6:     nums: list[Int32] = [1, 2, 3]
+    //     nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    // 8:     # Access index 10 via subscript - out of bounds (only 3 elements)
-    // 9:     x: Int32 = nums[10]
+    //     # Access index 10 via subscript - out of bounds (only 3 elements)
+    //     x: Int32 = nums[10]
     int32_t x = tpy::__getitem__(nums, 10);
-    // 10:     print(x)
+    //     print(x)
     std::cout << x << "\n";
 }
 
@@ -21,7 +21,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 12: test_list_subscript_oob()
+    // test_list_subscript_oob()
     test_list_subscript_oob();
 }
 

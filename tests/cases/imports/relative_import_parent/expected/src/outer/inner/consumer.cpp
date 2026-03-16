@@ -4,9 +4,9 @@
 namespace tpy_user::outer::inner::consumer {
 
 
-// 4: def compute() -> Int32:
+// def compute() -> Int32:
 int32_t compute() {
-    // 5:     return add(Int32(100), Int32(23))
+    //     return add(Int32(100), Int32(23))
     return ::tpy_user::outer::utils::add(100, 23);
 }
 
@@ -15,7 +15,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: from ..utils import add
+    // from ..utils import add
     ::tpy_user::outer::__tpy_init();
     ::tpy_user::outer::utils::__tpy_init();
 }

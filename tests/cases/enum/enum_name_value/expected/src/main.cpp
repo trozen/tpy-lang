@@ -46,19 +46,19 @@ tpy_user::main::Color EnumUtil<tpy_user::main::Color>::from_name(std::string_vie
 namespace tpy_user::main {
 
 
-// 9: def main() -> None:
+// def main() -> None:
 void main() {
-    // 10:     c: Color = Color.Green
+    //     c: Color = Color.Green
     Color c = Color::Green;
-    // 11:     print(c.name)
+    //     print(c.name)
     std::cout << tpy::EnumUtil<Color>::name(c) << "\n";
-    // 12:     print(c.value)
+    //     print(c.value)
     std::cout << static_cast<int32_t>(c) << "\n";
-    // 13:     c = Color.Blue
+    //     c = Color.Blue
     c = Color::Blue;
-    // 14:     print(c.name)
+    //     print(c.name)
     std::cout << tpy::EnumUtil<Color>::name(c) << "\n";
-    // 15:     print(c.value)
+    //     print(c.value)
     std::cout << static_cast<int32_t>(c) << "\n";
 }
 
@@ -67,7 +67,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 17: main()
+    // main()
     main();
 }
 

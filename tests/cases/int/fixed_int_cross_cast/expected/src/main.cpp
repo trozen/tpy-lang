@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 // # Widening: signed -> larger signed
-// 5: a: Int8 = Int8(42)
+// a: Int8 = Int8(42)
 int8_t a{};
 // # Widening: unsigned -> larger unsigned
-// 11: b: UInt8 = UInt8(200)
+// b: UInt8 = UInt8(200)
 uint8_t b{};
 // # Narrowing: larger -> smaller (in range)
-// 22: c: Int32 = Int32(100)
+// c: Int32 = Int32(100)
 int32_t c{};
 // # Signed -> unsigned (in range)
-// 27: d: Int16 = Int16(255)
+// d: Int16 = Int16(255)
 int16_t d{};
 // # Negative signed -> larger signed
-// 31: e: Int8 = Int8(-42)
+// e: Int8 = Int8(-42)
 int8_t e{};
 
 void __tpy_init() {
@@ -24,51 +24,51 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: # Widening: signed -> larger signed
-    // 5: a: Int8 = Int8(42)
+    // # Widening: signed -> larger signed
+    // a: Int8 = Int8(42)
     a = 42;
-    // 6: print(Int16(a))
+    // print(Int16(a))
     std::cout << tpy::int_cast_check<int16_t>(a) << "\n";
-    // 7: print(Int32(a))
+    // print(Int32(a))
     std::cout << tpy::int_cast_check<int32_t>(a) << "\n";
-    // 8: print(Int64(a))
+    // print(Int64(a))
     std::cout << tpy::int_cast_check<int64_t>(a) << "\n";
-    // 10: # Widening: unsigned -> larger unsigned
-    // 11: b: UInt8 = UInt8(200)
+    // # Widening: unsigned -> larger unsigned
+    // b: UInt8 = UInt8(200)
     b = 200;
-    // 12: print(UInt16(b))
+    // print(UInt16(b))
     std::cout << tpy::int_cast_check<uint16_t>(b) << "\n";
-    // 13: print(UInt32(b))
+    // print(UInt32(b))
     std::cout << tpy::int_cast_check<uint32_t>(b) << "\n";
-    // 14: print(UInt64(b))
+    // print(UInt64(b))
     std::cout << tpy::int_cast_check<uint64_t>(b) << "\n";
-    // 16: # Unsigned -> signed (widening)
-    // 17: print(Int16(b))
+    // # Unsigned -> signed (widening)
+    // print(Int16(b))
     std::cout << tpy::int_cast_check<int16_t>(b) << "\n";
-    // 18: print(Int32(b))
+    // print(Int32(b))
     std::cout << tpy::int_cast_check<int32_t>(b) << "\n";
-    // 19: print(Int64(b))
+    // print(Int64(b))
     std::cout << tpy::int_cast_check<int64_t>(b) << "\n";
-    // 21: # Narrowing: larger -> smaller (in range)
-    // 22: c: Int32 = Int32(100)
+    // # Narrowing: larger -> smaller (in range)
+    // c: Int32 = Int32(100)
     c = 100;
-    // 23: print(Int8(c))
+    // print(Int8(c))
     std::cout << static_cast<int>(tpy::int_cast_check<int8_t>(c)) << "\n";
-    // 24: print(UInt8(c))
+    // print(UInt8(c))
     std::cout << static_cast<int>(tpy::int_cast_check<uint8_t>(c)) << "\n";
-    // 26: # Signed -> unsigned (in range)
-    // 27: d: Int16 = Int16(255)
+    // # Signed -> unsigned (in range)
+    // d: Int16 = Int16(255)
     d = 255;
-    // 28: print(UInt8(d))
+    // print(UInt8(d))
     std::cout << static_cast<int>(tpy::int_cast_check<uint8_t>(d)) << "\n";
-    // 30: # Negative signed -> larger signed
-    // 31: e: Int8 = Int8(-42)
+    // # Negative signed -> larger signed
+    // e: Int8 = Int8(-42)
     e = -42;
-    // 32: print(Int16(e))
+    // print(Int16(e))
     std::cout << tpy::int_cast_check<int16_t>(e) << "\n";
-    // 33: print(Int32(e))
+    // print(Int32(e))
     std::cout << tpy::int_cast_check<int32_t>(e) << "\n";
-    // 34: print(Int64(e))
+    // print(Int64(e))
     std::cout << tpy::int_cast_check<int64_t>(e) << "\n";
 }
 

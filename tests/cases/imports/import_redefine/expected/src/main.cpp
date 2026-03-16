@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # Redefine the imported MAX - this should work and be used
-// 5: MAX: Int32 = Int32(42)
+// MAX: Int32 = Int32(42)
 int32_t MAX{};
 
 void __tpy_init() {
@@ -12,13 +12,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: from utils import MAX
+    // from utils import MAX
     ::tpy_user::utils::__tpy_init();
-    // 4: # Redefine the imported MAX - this should work and be used
-    // 5: MAX: Int32 = Int32(42)
+    // # Redefine the imported MAX - this should work and be used
+    // MAX: Int32 = Int32(42)
     MAX = 42;
-    // 7: # Top-level print uses the redefined MAX
-    // 8: print(MAX)  # Should print 42
+    // # Top-level print uses the redefined MAX
+    // print(MAX)  # Should print 42
     std::cout << MAX << "\n";
 }
 

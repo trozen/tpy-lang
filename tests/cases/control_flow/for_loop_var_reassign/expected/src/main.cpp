@@ -5,16 +5,16 @@ namespace tpy_user::main {
 
 
 // # Test reassigning for-loop variable inside loop body
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     for i in range(5):
+    //     for i in range(5):
     for (int32_t i = 0; i < 5; ++i) {
-        // 4:         print(i)
+        //         print(i)
         std::cout << i << "\n";
-        // 5:         i = i + 100
+        //         i = i + 100
         i = (tpy::add_check<int32_t>(i, 100));
     }
-    // 6:     print("done")
+    //     print("done")
     std::cout << "done" << "\n";
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: main()
+    // main()
     main();
 }
 

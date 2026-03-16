@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 4: def add(a: tpy.Int32, b: tpy.Int32) -> tpy.Int32:
+// def add(a: tpy.Int32, b: tpy.Int32) -> tpy.Int32:
 int32_t add(int32_t a, int32_t b) {
-    // 5:     return a + b
+    //     return a + b
     return (tpy::add_check<int32_t>(a, b));
 }
 
-// 7: def main():
+// def main():
 void main() {
-    // 8:     x: tpy.Int32 = tpy.Int32(10)
+    //     x: tpy.Int32 = tpy.Int32(10)
     int32_t x = 10;
-    // 9:     y: tpy.Int32 = tpy.Int32(20)
+    //     y: tpy.Int32 = tpy.Int32(20)
     int32_t y = 20;
-    // 10:     print(add(x, y))
+    //     print(add(x, y))
     std::cout << add(x, y) << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 12: main()
+    // main()
     main();
 }
 

@@ -4,11 +4,11 @@
 namespace tpy_user::main {
 
 
-// 5: def show() -> None:
+// def show() -> None:
 void show() {
-    // 6:     print(lo)
+    //     print(lo)
     std::cout << ::tpy_user::config::lo << "\n";
-    // 7:     print(hi)
+    //     print(hi)
     std::cout << ::tpy_user::config::hi << "\n";
 }
 
@@ -17,13 +17,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: from config import lo, hi
+    // from config import lo, hi
     ::tpy_user::config::__tpy_init();
-    // 9: print(lo)
+    // print(lo)
     std::cout << ::tpy_user::config::lo << "\n";
-    // 10: print(hi)
+    // print(hi)
     std::cout << ::tpy_user::config::hi << "\n";
-    // 11: show()
+    // show()
     show();
 }
 

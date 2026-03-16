@@ -3,270 +3,270 @@
 
 namespace tpy_user::main {
 
-// 135: items_for_find: list[Point] = [Point(Int32(5), Int32(6))]
+// items_for_find: list[Point] = [Point(Int32(5), Int32(6))]
 std::vector<Point>* items_for_find{};
-// 136: result = find_point(items_for_find, Int32(5))
+// result = find_point(items_for_find, Int32(5))
 Point* result{};
 
-// 20: def mutate_point(p: Point) -> None:
+// def mutate_point(p: Point) -> None:
 void mutate_point(Point& p) {
-    // 21:     p.x = Int32(0)
+    //     p.x = Int32(0)
     p.x = 0;
 }
 
-// 23: def read_point(p: readonly[Point]) -> Int32:
+// def read_point(p: readonly[Point]) -> Int32:
 int32_t read_point(const Point& p) {
-    // 24:     return p.x
+    //     return p.x
     return p.x;
 }
 
-// 26: def test_read_only_loop() -> None:
+// def test_read_only_loop() -> None:
 void test_read_only_loop() {
-    // 28:     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    //     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // 29:     total: Int32 = Int32(0)
+    //     total: Int32 = Int32(0)
     int32_t total = 0;
-    // 30:     for p in items:
+    //     for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        // 31:         total = total + p.value()
+        //         total = total + p.value()
         total = (tpy::add_check<int32_t>(total, p.value()));
     }
-    // 32:     print(total)
+    //     print(total)
     std::cout << total << "\n";
 }
 
-// 34: def test_non_readonly_method_loop() -> None:
+// def test_non_readonly_method_loop() -> None:
 void test_non_readonly_method_loop() {
-    // 36:     items: list[list[Int32]] = [[Int32(1)], [Int32(2)]]
+    //     items: list[list[Int32]] = [[Int32(1)], [Int32(2)]]
     std::vector<std::vector<int32_t>> items = {{1}, {2}};
-    // 37:     for lst in items:
+    //     for lst in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& lst = *__beg_0;
-        // 38:         lst.append(Int32(99))
+        //         lst.append(Int32(99))
         lst.push_back(99);
     }
-    // 39:     print(len(items[Int32(0)]))
+    //     print(len(items[Int32(0)]))
     std::cout << tpy::__len__(tpy::__getitem__(items, 0)) << "\n";
 }
 
-// 41: def test_field_mutate_loop() -> None:
+// def test_field_mutate_loop() -> None:
 void test_field_mutate_loop() {
-    // 43:     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    //     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    // 44:     for p in items:
+    //     for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // 45:         p.x = Int32(99)
+        //         p.x = Int32(99)
         p.x = 99;
     }
-    // 46:     print(items[Int32(0)].x)
+    //     print(items[Int32(0)].x)
     std::cout << tpy::__getitem__(items, 0).x << "\n";
 }
 
-// 48: def test_nested_field_mutate_loop() -> None:
+// def test_nested_field_mutate_loop() -> None:
 void test_nested_field_mutate_loop() {
-    // 50:     items: list[Container] = [Container()]
+    //     items: list[Container] = [Container()]
     std::vector<Container> items = {Container()};
-    // 51:     for c in items:
+    //     for c in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& c = *__beg_0;
-        // 52:         c.items.append(Int32(99))
+        //         c.items.append(Int32(99))
         c.items.push_back(99);
     }
-    // 53:     print(len(items[Int32(0)].items))
+    //     print(len(items[Int32(0)].items))
     std::cout << tpy::__len__(tpy::__getitem__(items, 0).items) << "\n";
 }
 
-// 55: def test_assign_to_local_loop() -> None:
+// def test_assign_to_local_loop() -> None:
 void test_assign_to_local_loop() {
-    // 57:     items: list[Point] = [Point(Int32(1), Int32(2))]
+    //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    // 58:     saved: Point = Point(Int32(0), Int32(0))
+    //     saved: Point = Point(Int32(0), Int32(0))
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    // 59:     for p in items:
+    //     for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // 60:         saved = p
+        //         saved = p
         saved = &(p);
     }
-    // 61:     print(saved.x, saved.y)
+    //     print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 
-// 63: def find_point(items: list[Point], target: Int32) -> Point | None:
+// def find_point(items: list[Point], target: Int32) -> Point | None:
 Point* find_point(std::vector<Point>& items, int32_t target) {
-    // 65:     for p in items:
+    //     for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // 66:         if p.x == target:
+        //         if p.x == target:
         if ((p.x == target)) {
-            // 67:             return p
+            //             return p
             return &(p);
         }
     }
-    // 68:     return None
+    //     return None
     return nullptr;
 }
 
-// 70: def test_pass_to_mutating_func() -> None:
+// def test_pass_to_mutating_func() -> None:
 void test_pass_to_mutating_func() {
-    // 72:     items: list[Point] = [Point(Int32(1), Int32(2))]
+    //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    // 73:     for p in items:
+    //     for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // 74:         mutate_point(p)
+        //         mutate_point(p)
         mutate_point(p);
     }
-    // 75:     print(items[Int32(0)].x)
+    //     print(items[Int32(0)].x)
     std::cout << tpy::__getitem__(items, 0).x << "\n";
 }
 
-// 77: def test_pass_to_readonly_func() -> None:
+// def test_pass_to_readonly_func() -> None:
 void test_pass_to_readonly_func() {
-    // 79:     items: list[Point] = [Point(Int32(7), Int32(8))]
+    //     items: list[Point] = [Point(Int32(7), Int32(8))]
     std::vector<Point> items = {Point(7, 8)};
-    // 80:     total: Int32 = Int32(0)
+    //     total: Int32 = Int32(0)
     int32_t total = 0;
-    // 81:     for p in items:
+    //     for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        // 82:         total = total + read_point(p)
+        //         total = total + read_point(p)
         total = (tpy::add_check<int32_t>(total, read_point(p)));
     }
-    // 83:     print(total)
+    //     print(total)
     std::cout << total << "\n";
 }
 
-// 85: def test_ptr_from_loop_var() -> None:
+// def test_ptr_from_loop_var() -> None:
 void test_ptr_from_loop_var() {
-    // 87:     items: list[Point] = [Point(Int32(3), Int32(4))]
+    //     items: list[Point] = [Point(Int32(3), Int32(4))]
     std::vector<Point> items = {Point(3, 4)};
-    // 88:     for p in items:
+    //     for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // 89:         ptr: Ptr[Point] = Ptr(p)
+        //         ptr: Ptr[Point] = Ptr(p)
         Point* ptr = &p;
-        // 90:         ptr.x = Int32(42)
+        //         ptr.x = Int32(42)
         ptr->x = 42;
     }
-    // 91:     print(items[Int32(0)].x)
+    //     print(items[Int32(0)].x)
     std::cout << tpy::__getitem__(items, 0).x << "\n";
 }
 
-// 93: def test_value_type_loop() -> None:
+// def test_value_type_loop() -> None:
 void test_value_type_loop() {
-    // 95:     items: list[Int32] = [Int32(10), Int32(20), Int32(30)]
+    //     items: list[Int32] = [Int32(10), Int32(20), Int32(30)]
     std::vector<int32_t> items = {10, 20, 30};
-    // 96:     total: Int32 = Int32(0)
+    //     total: Int32 = Int32(0)
     int32_t total = 0;
-    // 97:     for n in items:
+    //     for n in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t n = *__beg_0;
-        // 98:         total = total + n
+        //         total = total + n
         total = (tpy::add_check<int32_t>(total, n));
     }
-    // 99:     print(total)
+    //     print(total)
     std::cout << total << "\n";
 }
 
-// 101: def test_sequential_loops_same_var() -> None:
+// def test_sequential_loops_same_var() -> None:
 void test_sequential_loops_same_var() {
-    // 103:     items: list[Point] = [Point(Int32(1), Int32(2))]
+    //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    // 104:     for p in items:
+    //     for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // 105:         p.x = Int32(99)
+        //         p.x = Int32(99)
         p.x = 99;
     }
-    // 106:     total: Int32 = Int32(0)
+    //     total: Int32 = Int32(0)
     int32_t total = 0;
-    // 107:     for p in items:
+    //     for p in items:
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& p = *__beg_1;
-        // 108:         total = total + p.value()
+        //         total = total + p.value()
         total = (tpy::add_check<int32_t>(total, p.value()));
     }
-    // 109:     print(total)
+    //     print(total)
     std::cout << total << "\n";
 }
 
-// 111: def test_bigint_const_ref() -> None:
+// def test_bigint_const_ref() -> None:
 void test_bigint_const_ref() {
-    // 113:     items: list[int] = [10, 20, 30]
+    //     items: list[int] = [10, 20, 30]
     std::vector<tpy::BigInt> items = {10, 20, 30};
-    // 114:     total: int = 0
+    //     total: int = 0
     tpy::BigInt total = tpy::BigInt(0);
-    // 115:     for x in items:
+    //     for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const tpy::BigInt& x = *__beg_0;
-        // 116:         total = total + x
+        //         total = total + x
         total = ((total) + (x));
     }
-    // 117:     print(total)
+    //     print(total)
     std::cout << total << "\n";
 }
 
-// 119: def test_bigint_mutated() -> None:
+// def test_bigint_mutated() -> None:
 void test_bigint_mutated() {
-    // 121:     items: list[int] = [10, 20, 30]
+    //     items: list[int] = [10, 20, 30]
     std::vector<tpy::BigInt> items = {10, 20, 30};
-    // 122:     total: int = 0
+    //     total: int = 0
     tpy::BigInt total = tpy::BigInt(0);
-    // 123:     for x in items:
+    //     for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         tpy::BigInt x = *__beg_0;
-        // 124:         x = x + 1
+        //         x = x + 1
         x = ((x) + (tpy::BigInt(1)));
-        // 125:         total = total + x
+        //         total = total + x
         total = ((total) + (x));
     }
-    // 126:     print(total)
+    //     print(total)
     std::cout << total << "\n";
 }
 
@@ -275,39 +275,39 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 128: test_bigint_const_ref()
+    // test_bigint_const_ref()
     test_bigint_const_ref();
-    // 129: test_bigint_mutated()
+    // test_bigint_mutated()
     test_bigint_mutated();
-    // 130: test_read_only_loop()
+    // test_read_only_loop()
     test_read_only_loop();
-    // 131: test_non_readonly_method_loop()
+    // test_non_readonly_method_loop()
     test_non_readonly_method_loop();
-    // 132: test_field_mutate_loop()
+    // test_field_mutate_loop()
     test_field_mutate_loop();
-    // 133: test_nested_field_mutate_loop()
+    // test_nested_field_mutate_loop()
     test_nested_field_mutate_loop();
-    // 134: test_assign_to_local_loop()
+    // test_assign_to_local_loop()
     test_assign_to_local_loop();
-    // 135: items_for_find: list[Point] = [Point(Int32(5), Int32(6))]
+    // items_for_find: list[Point] = [Point(Int32(5), Int32(6))]
     static std::vector<Point> __global_slot_1 = {Point(5, 6)};
     items_for_find = &__global_slot_1;
-    // 136: result = find_point(items_for_find, Int32(5))
+    // result = find_point(items_for_find, Int32(5))
     result = find_point((*items_for_find), 5);
-    // 137: if result is not None:
+    // if result is not None:
     if ((result != nullptr)) {
-        // 138:     print(result.x)
+        //     print(result.x)
         std::cout << result->x << "\n";
     }
-    // 139: test_pass_to_mutating_func()
+    // test_pass_to_mutating_func()
     test_pass_to_mutating_func();
-    // 140: test_pass_to_readonly_func()
+    // test_pass_to_readonly_func()
     test_pass_to_readonly_func();
-    // 141: test_ptr_from_loop_var()
+    // test_ptr_from_loop_var()
     test_ptr_from_loop_var();
-    // 142: test_value_type_loop()
+    // test_value_type_loop()
     test_value_type_loop();
-    // 143: test_sequential_loops_same_var()
+    // test_sequential_loops_same_var()
     test_sequential_loops_same_var();
 }
 

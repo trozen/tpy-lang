@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // # Both args are int -> Same[int]
-// 14: same = Same(1, 2)
+// same = Same(1, 2)
 Same<int32_t>* same{};
 
 void __tpy_init() {
@@ -12,13 +12,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 13: # Both args are int -> Same[int]
-    // 14: same = Same(1, 2)
+    // # Both args are int -> Same[int]
+    // same = Same(1, 2)
     static Same<int32_t> __global_slot_1 = Same<int32_t>(1, 2);
     same = &__global_slot_1;
-    // 15: print(same.a)
+    // print(same.a)
     std::cout << same->a << "\n";
-    // 16: print(same.b)
+    // print(same.b)
     std::cout << same->b << "\n";
 }
 

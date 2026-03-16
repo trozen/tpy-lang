@@ -46,22 +46,22 @@ tpy_user::main::SmallEnum EnumUtil<tpy_user::main::SmallEnum>::from_name(std::st
 namespace tpy_user::main {
 
 
-// 10: def main() -> None:
+// def main() -> None:
 void main() {
-    // 11:     print(SmallEnum.A)
+    //     print(SmallEnum.A)
     std::cout << SmallEnum::A << "\n";
-    // 12:     print(SmallEnum.C)
+    //     print(SmallEnum.C)
     std::cout << SmallEnum::C << "\n";
-    // 14:     # Arithmetic gives Int8
-    // 15:     x: Int8 = SmallEnum.B + Int8(10)
+    //     # Arithmetic gives Int8
+    //     x: Int8 = SmallEnum.B + Int8(10)
     int8_t x = (tpy::add_check<int8_t>(static_cast<int8_t>(SmallEnum::B), 10));
-    // 16:     print(x)
+    //     print(x)
     std::cout << static_cast<int>(x) << "\n";
-    // 18:     # Ordering
-    // 19:     print(SmallEnum.A < SmallEnum.C)
+    //     # Ordering
+    //     print(SmallEnum.A < SmallEnum.C)
     std::cout << tpy::print_bool((static_cast<int8_t>(SmallEnum::A) < static_cast<int8_t>(SmallEnum::C))) << "\n";
-    // 21:     # Int comparison
-    // 22:     print(SmallEnum.B == Int8(1))
+    //     # Int comparison
+    //     print(SmallEnum.B == Int8(1))
     std::cout << tpy::print_bool((static_cast<int8_t>(SmallEnum::B) == 1)) << "\n";
 }
 
@@ -70,7 +70,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 24: main()
+    // main()
     main();
 }
 

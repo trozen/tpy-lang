@@ -4,38 +4,38 @@
 namespace tpy_user::main {
 
 
-// 26: def greet_pet(pet: Pet) -> None:
+// def greet_pet(pet: Pet) -> None:
 void greet_pet(Pet& pet) {
-    // 27:     print(pet.make_noise())
+    //     print(pet.make_noise())
     std::cout << pet.make_noise() << "\n";
 }
 
-// 29: def greet_named(pet: NamedPet) -> None:
+// def greet_named(pet: NamedPet) -> None:
 void greet_named(NamedPet& pet) {
-    // 30:     print(pet.name())
+    //     print(pet.name())
     std::cout << pet.name() << "\n";
 }
 
-// 32: def main() -> None:
+// def main() -> None:
 void main() {
-    // 33:     dog = Dog()
+    //     dog = Dog()
     Dog dog = Dog();
-    // 34:     greet_pet(dog)           # Dog -> Base_NamedPet -> Base_Pet (transitive upcast)
+    //     greet_pet(dog)           # Dog -> Base_NamedPet -> Base_Pet (transitive upcast)
     greet_pet(dog);
-    // 35:     greet_named(dog)         # Dog -> Base_NamedPet (direct)
+    //     greet_named(dog)         # Dog -> Base_NamedPet (direct)
     greet_named(dog);
-    // 36:     np: NamedPet = Dog()
+    //     np: NamedPet = Dog()
     Dog __slot_1{Dog()};
     NamedPet* np = &__slot_1;
-    // 37:     greet_pet(np)            # NamedPet* -> Base_Pet& (child-to-parent base upcast)
+    //     greet_pet(np)            # NamedPet* -> Base_Pet& (child-to-parent base upcast)
     greet_pet((*np));
-    // 38:     greet_named(Parrot())    # Structural -> Adapter_NamedPet -> Base_NamedPet
+    //     greet_named(Parrot())    # Structural -> Adapter_NamedPet -> Base_NamedPet
     tpy::Adapter<NamedPet, Parrot> __tmp_1{Parrot()};
     greet_named(__tmp_1);
-    // 39:     parrot_np: NamedPet = Parrot()
+    //     parrot_np: NamedPet = Parrot()
     tpy::Adapter<NamedPet, Parrot> __slot_2{Parrot()};
     NamedPet* parrot_np = &__slot_2;
-    // 40:     greet_pet(parrot_np)     # NamedPet* -> Base_Pet& (erased, upcast)
+    //     greet_pet(parrot_np)     # NamedPet* -> Base_Pet& (erased, upcast)
     greet_pet((*parrot_np));
 }
 
@@ -44,7 +44,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 42: main()
+    // main()
     main();
 }
 

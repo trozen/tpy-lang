@@ -9,10 +9,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 1: from pkg.consumer import compute
+    // from pkg.consumer import compute
     ::tpy_user::pkg::__tpy_init();
     ::tpy_user::pkg::consumer::__tpy_init();
-    // 3: print(compute())
+    // print(compute())
     std::cout << ::tpy_user::pkg::consumer::compute() << "\n";
 }
 

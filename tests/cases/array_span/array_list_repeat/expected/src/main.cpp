@@ -4,29 +4,29 @@
 namespace tpy_user::main {
 
 
-// 4: def test_basic() -> None:
+// def test_basic() -> None:
 void test_basic() {
-    // 5:     buf: Array[Int16, 5] = [0] * 5
+    //     buf: Array[Int16, 5] = [0] * 5
     std::array<int16_t, 5> buf = tpy::from_range<std::array<int16_t, 5>>(tpy::repeat_range<int16_t>(5, {0}));
-    // 6:     print(len(buf))
+    //     print(len(buf))
     std::cout << tpy::__len__(buf) << "\n";
-    // 7:     print(buf[0], buf[4])
+    //     print(buf[0], buf[4])
     std::cout << tpy::__getitem__(buf, 0) << " " << tpy::__getitem__(buf, 4) << "\n";
 }
 
-// 9: def test_nonzero() -> None:
+// def test_nonzero() -> None:
 void test_nonzero() {
-    // 10:     arr: Array[Int32, 4] = [42] * 4
+    //     arr: Array[Int32, 4] = [42] * 4
     std::array<int32_t, 4> arr = tpy::from_range<std::array<int32_t, 4>>(tpy::repeat_range<int32_t>(4, {42}));
-    // 11:     print(arr[0], arr[1], arr[2], arr[3])
+    //     print(arr[0], arr[1], arr[2], arr[3])
     std::cout << tpy::__getitem__(arr, 0) << " " << tpy::__getitem__(arr, 1) << " " << tpy::__getitem__(arr, 2) << " " << tpy::__getitem__(arr, 3) << "\n";
 }
 
-// 13: def test_multi_element() -> None:
+// def test_multi_element() -> None:
 void test_multi_element() {
-    // 14:     arr: Array[Int32, 6] = [1, 2, 3] * 2
+    //     arr: Array[Int32, 6] = [1, 2, 3] * 2
     std::array<int32_t, 6> arr = tpy::from_range<std::array<int32_t, 6>>(tpy::repeat_range<int32_t>(2, {1, 2, 3}));
-    // 15:     print(arr[0], arr[1], arr[2], arr[3], arr[4], arr[5])
+    //     print(arr[0], arr[1], arr[2], arr[3], arr[4], arr[5])
     std::cout << tpy::__getitem__(arr, 0) << " " << tpy::__getitem__(arr, 1) << " " << tpy::__getitem__(arr, 2) << " " << tpy::__getitem__(arr, 3) << " " << tpy::__getitem__(arr, 4) << " " << tpy::__getitem__(arr, 5) << "\n";
 }
 
@@ -35,11 +35,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 17: test_basic()
+    // test_basic()
     test_basic();
-    // 18: test_nonzero()
+    // test_nonzero()
     test_nonzero();
-    // 19: test_multi_element()
+    // test_multi_element()
     test_multi_element();
 }
 

@@ -12,33 +12,33 @@ template<typename T> struct Leaf;
 extern Leaf<std::string>* leaf;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 12: class Base[T, U]:
+// class Base[T, U]:
 template<typename T, typename U>
 struct Base {
-    // 13:     first: T
+    //     first: T
     T first;
-    // 14:     second: U
+    //     second: U
     U second;
 
-    // 16:     def __init__(self, first: T, second: U) -> None:
+    //     def __init__(self, first: T, second: U) -> None:
     Base() = default;
     explicit Base(const T& first, const U& second) : first(first), second(second) {}
 
-    // 20:     def set_first(self, v: T) -> None:
+    //     def set_first(self, v: T) -> None:
     void set_first(tpy::param_val_or_ref_t<T> v) {
-        // 21:         self.first = v
+        //         self.first = v
         this->first = v;
     }
 
-    // 23:     def get_first(self) -> T:
+    //     def get_first(self) -> T:
     tpy::val_or_ref_t<T> get_first() {
-        // 24:         return self.first
+        //         return self.first
         return this->first;
     }
 
-    // 26:     def get_second(self) -> U:
+    //     def get_second(self) -> U:
     tpy::val_or_ref_t<U> get_second() {
-        // 27:         return self.second
+        //         return self.second
         return this->second;
     }
 };
@@ -53,16 +53,16 @@ inline std::ostream& operator<<(std::ostream& os, const Base<T, U>& obj) {
     return os;
 }
 
-// 30: class Middle[T](Base[T, Int32]):
+// class Middle[T](Base[T, Int32]):
 template<typename T>
 struct Middle : Base<T, int32_t> {
 
-    // 31:     def __init__(self, first: T, second: Int32) -> None:
+    //     def __init__(self, first: T, second: Int32) -> None:
     Middle() = default;
     explicit Middle(const T& first, int32_t second) {
-        // 32:         self.first = first
+        //         self.first = first
         this->first = first;
-        // 33:         self.second = second
+        //         self.second = second
         this->second = second;
     }
 };
@@ -74,24 +74,24 @@ inline std::ostream& operator<<(std::ostream& os, const Middle<T>& obj) {
     return os;
 }
 
-// 36: class Leaf[T](Middle[T]):
+// class Leaf[T](Middle[T]):
 template<typename T>
 struct Leaf : Middle<T> {
-    // 37:     extra: str
+    //     extra: str
     std::string extra;
 
-    // 39:     def __init__(self, first: T, second: Int32, extra: str) -> None:
+    //     def __init__(self, first: T, second: Int32, extra: str) -> None:
     Leaf() = default;
     explicit Leaf(const T& first, int32_t second, std::string_view extra) : extra(extra) {
-        // 40:         self.first = first
+        //         self.first = first
         this->first = first;
-        // 41:         self.second = second
+        //         self.second = second
         this->second = second;
     }
 
-    // 44:     def get_extra(self) -> str:
+    //     def get_extra(self) -> str:
     std::string get_extra() const {
-        // 45:         return self.extra
+        //         return self.extra
         return this->extra;
     }
 };

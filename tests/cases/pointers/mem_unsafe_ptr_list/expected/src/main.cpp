@@ -4,17 +4,17 @@
 namespace tpy_user::main {
 
 
-// 4: def test_list_ptr() -> None:
+// def test_list_ptr() -> None:
 void test_list_ptr() {
-    // 5:     items: list[Int32] = [Int32(10), Int32(20), Int32(30)]
+    //     items: list[Int32] = [Int32(10), Int32(20), Int32(30)]
     std::vector<int32_t> items = {10, 20, 30};
-    // 6:     p: Ptr[Int32] = unsafe_ptr(items)
+    //     p: Ptr[Int32] = unsafe_ptr(items)
     int32_t* p = items.data();
-    // 7:     print(unsafe_load(p, UInt32(0)))
+    //     print(unsafe_load(p, UInt32(0)))
     std::cout << p[0] << "\n";
-    // 8:     print(unsafe_load(p, UInt32(1)))
+    //     print(unsafe_load(p, UInt32(1)))
     std::cout << p[1] << "\n";
-    // 9:     print(unsafe_load(p, UInt32(2)))
+    //     print(unsafe_load(p, UInt32(2)))
     std::cout << p[2] << "\n";
 }
 
@@ -23,8 +23,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 2: from tpy.unsafe import unsafe_ptr, unsafe_load
-    // 11: test_list_ptr()
+    // from tpy.unsafe import unsafe_ptr, unsafe_load
+    // test_list_ptr()
     test_list_ptr();
 }
 

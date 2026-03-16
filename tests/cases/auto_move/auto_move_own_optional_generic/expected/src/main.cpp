@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 
-// 13: def main():
+// def main():
 void main() {
-    // 14:     b = Box()
+    //     b = Box()
     Box b = Box();
-    // 15:     b.value = Int32(42)
+    //     b.value = Int32(42)
     b.value = 42;
-    // 16:     print(take_optional[Box](b, Int32(99)))
+    //     print(take_optional[Box](b, Int32(99)))
     std::cout << take_optional<Box>(std::move(b), 99) << "\n";
 }
 
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 19: main()
+    // main()
     main();
 }
 

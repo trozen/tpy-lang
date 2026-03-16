@@ -14,14 +14,14 @@ void add_point(std::vector<Point>& items, const Point& p);
 void add_point_wrapper(std::vector<Point>& items, const Point& p);
 int32_t read_wrapper(const std::vector<Point>& items);
 
-// 4: class Point:
+// class Point:
 struct Point {
-    // 5:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 6:     y: Int32
+    //     y: Int32
     int32_t y;
 
-    // 7:     def __init__(self, x: Int32, y: Int32) -> None:
+    //     def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

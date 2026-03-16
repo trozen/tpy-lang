@@ -14,9 +14,9 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 5: class Inner:
+// class Inner:
 struct Inner {
-    // 6:     value: Int32
+    //     value: Int32
     int32_t value;
 
 };
@@ -28,17 +28,17 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
     return os;
 }
 
-// 9: class Holder:
+// class Holder:
 struct Holder {
-    // 10:     inner: Inner
+    //     inner: Inner
     Inner inner;
 
 
-    // 12:     def set_with_tag(self, inner: Own[Inner], tag: Int32) -> None:
+    //     def set_with_tag(self, inner: Own[Inner], tag: Int32) -> None:
     void set_with_tag(Inner&& inner, int32_t tag) {
-        // 13:         self.inner = inner
+        //         self.inner = inner
         this->inner = std::move(inner);
-        // 14:         self.inner.value = self.inner.value + tag
+        //         self.inner.value = self.inner.value + tag
         this->inner.value = (tpy::add_check<int32_t>(this->inner.value, tag));
     }
 };
@@ -50,21 +50,21 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// 17: class GenericHolder[T]:
+// class GenericHolder[T]:
 template<typename T>
 struct GenericHolder {
-    // 18:     item: T
+    //     item: T
     T item;
 
-    // 20:     def __init__(self, item: Own[T]):
+    //     def __init__(self, item: Own[T]):
     GenericHolder() = default;
     explicit GenericHolder(T&& item) : item(std::move(item)) {}
 
-    // 23:     def replace_with_flag(self, item: Own[T], flag: Int32) -> Int32:
+    //     def replace_with_flag(self, item: Own[T], flag: Int32) -> Int32:
     int32_t replace_with_flag(T&& item, int32_t flag) {
-        // 24:         self.item = item
+        //         self.item = item
         this->item = std::move(item);
-        // 25:         return flag
+        //         return flag
         return flag;
     }
 };
@@ -77,13 +77,13 @@ inline std::ostream& operator<<(std::ostream& os, const GenericHolder<T>& obj) {
     return os;
 }
 
-// 28: class GenericBox[T]:
+// class GenericBox[T]:
 template<typename T>
 struct GenericBox {
-    // 29:     item: T
+    //     item: T
     T item;
 
-    // 31:     def __init__(self, item: T):
+    //     def __init__(self, item: T):
     GenericBox() = default;
     explicit GenericBox(const T& item) : item(item) {}
 };

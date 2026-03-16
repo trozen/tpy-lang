@@ -4,40 +4,40 @@
 namespace tpy_user::main {
 
 
-// 14: def describe(a: Dog | Cat) -> Int32:
+// def describe(a: Dog | Cat) -> Int32:
 int32_t describe(const std::variant<Cat, Dog>& a) {
-    // 15:     match a:
+    //     match a:
     int32_t result;
     auto& __match_subject = a;
     switch (__match_subject.index()) {
-    // 16:         case Dog(age=x):
+    //         case Dog(age=x):
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject);
         auto& x = __case_0.age;
-        // 17:             result: Int32 = x
+        //             result: Int32 = x
         result = x;
         break;
     }
-    // 18:         case _:
+    //         case _:
     default: {
-        // 19:             result = 0
+        //             result = 0
         result = 0;
         break;
     }
     }
-    // 20:     return result
+    //     return result
     return result;
 }
 
-// 22: def main() -> None:
+// def main() -> None:
 void main() {
-    // 23:     d: Dog | Cat = Dog(5)
+    //     d: Dog | Cat = Dog(5)
     std::variant<Cat, Dog> d = Dog(5);
-    // 24:     c: Dog | Cat = Cat(3)
+    //     c: Dog | Cat = Cat(3)
     std::variant<Cat, Dog> c = Cat(3);
-    // 25:     print(describe(d))
+    //     print(describe(d))
     std::cout << describe(d) << "\n";
-    // 26:     print(describe(c))
+    //     print(describe(c))
     std::cout << describe(c) << "\n";
 }
 
@@ -46,7 +46,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 28: main()
+    // main()
     main();
 }
 

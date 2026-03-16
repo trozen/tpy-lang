@@ -9,11 +9,11 @@ struct Vec2;
 
 inline constexpr std::string_view __name__ = "shapes";
 
-// 5: class Vec2(ValueType):
+// class Vec2(ValueType):
 struct Vec2 {
-    // 6:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 7:     y: Int32
+    //     y: Int32
     int32_t y;
 
 };

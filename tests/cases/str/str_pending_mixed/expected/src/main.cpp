@@ -5,19 +5,19 @@ namespace tpy_user::main {
 
 
 // # Test mixed: some vars stay view, others promote in the same function
-// 2: def test_mixed() -> None:
+// def test_mixed() -> None:
 void test_mixed() {
-    // 3:     greeting = "hello"     # tpyc: type(StrView)
+    //     greeting = "hello"     # tpyc: type(StrView)
     std::string_view greeting = "hello";
-    // 4:     name = "world"         # tpyc: type(StrView)
+    //     name = "world"         # tpyc: type(StrView)
     std::string_view name = "world";
-    // 5:     result = str(42)       # tpyc: type(str)
+    //     result = str(42)       # tpyc: type(str)
     std::string result = tpy::fixed_to_str<int8_t>(42);
-    // 6:     print(greeting)
+    //     print(greeting)
     std::cout << greeting << "\n";
-    // 7:     print(name)
+    //     print(name)
     std::cout << name << "\n";
-    // 8:     print(result)
+    //     print(result)
     std::cout << result << "\n";
 }
 
@@ -26,7 +26,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 10: test_mixed()
+    // test_mixed()
     test_mixed();
 }
 

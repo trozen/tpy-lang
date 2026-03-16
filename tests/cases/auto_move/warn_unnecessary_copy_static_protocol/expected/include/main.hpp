@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct Point;
 
-// 9: class Holder(Protocol):
+// class Holder(Protocol):
 template<typename T>
 concept Holder = requires(T& t) {
     { t.store(std::declval<Point>()) } -> std::convertible_to<void>;
@@ -22,11 +22,11 @@ void test_static();
 void test_protocol();
 void main();
 
-// 5: class Point:
+// class Point:
 struct Point {
-    // 6:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 7:     y: Int32
+    //     y: Int32
     int32_t y;
 
 };
@@ -40,13 +40,13 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-// 12: class MyHolder:
+// class MyHolder:
 struct MyHolder {
 
 
-    // 13:     def store(self, p: Own[Point]) -> None:
+    //     def store(self, p: Own[Point]) -> None:
     void store(Point&& p) const {
-        // 14:         print(p.x)
+        //         print(p.x)
         std::cout << p.x << "\n";
     }
 };
@@ -57,14 +57,14 @@ inline std::ostream& operator<<(std::ostream& os, const MyHolder& obj) {
     return os;
 }
 
-// 16: class Factory:
+// class Factory:
 struct Factory {
 
 
     //     @staticmethod
-    // 18:     def consume(p: Own[Point]) -> Int32:
+    //     def consume(p: Own[Point]) -> Int32:
     static int32_t consume(Point&& p) {
-        // 19:         return p.x
+        //         return p.x
         return p.x;
     }
 };

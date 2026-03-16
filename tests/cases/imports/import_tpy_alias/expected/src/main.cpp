@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-// 3: x = t.Int32(42)
+// x = t.Int32(42)
 int32_t x{};
-// 4: y = t.Int32(123)
+// y = t.Int32(123)
 int32_t y{};
 
 void __tpy_init() {
@@ -13,15 +13,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 3: x = t.Int32(42)
+    // x = t.Int32(42)
     x = 42;
-    // 4: y = t.Int32(123)
+    // y = t.Int32(123)
     y = 123;
-    // 6: print(x)
+    // print(x)
     std::cout << x << "\n";
-    // 7: print(y)
+    // print(y)
     std::cout << y << "\n";
-    // 8: print(x + y)
+    // print(x + y)
     std::cout << (tpy::add_check<int32_t>(x, y)) << "\n";
 }
 

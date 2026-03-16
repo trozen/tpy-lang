@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-// 8: x = None
+// x = None
 std::optional<int32_t> x;
 
 void __tpy_init() {
@@ -11,12 +11,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 8: x = None
+    // x = None
     x = std::nullopt;
-    // 9: x = first([Int32(41), Int32(42)])
+    // x = first([Int32(41), Int32(42)])
     std::vector<int32_t> __tmp_1 = {41, 42};
     x = first<int32_t>(__tmp_1);
-    // 10: print(x)
+    // print(x)
     std::cout << tpy::print_optional_val(x) << "\n";
 }
 

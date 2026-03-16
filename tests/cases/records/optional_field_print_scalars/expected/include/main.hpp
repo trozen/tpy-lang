@@ -10,18 +10,18 @@ struct Settings;
 extern Settings* s;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 4: class Settings:
+// class Settings:
 struct Settings {
-    // 5:     count: Int32 | None
+    //     count: Int32 | None
     std::optional<int32_t> count;
-    // 6:     flag: bool | None
+    //     flag: bool | None
     std::optional<bool> flag;
-    // 7:     ratio: float | None
+    //     ratio: float | None
     std::optional<double> ratio;
-    // 8:     label: str | None
+    //     label: str | None
     std::optional<std::string> label;
 
-    // 10:     def __init__(self) -> None:
+    //     def __init__(self) -> None:
     Settings() : count(std::nullopt), flag(std::nullopt), ratio(std::nullopt), label(std::nullopt) {}
 };
 

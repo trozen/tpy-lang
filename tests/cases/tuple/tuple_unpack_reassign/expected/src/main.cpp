@@ -4,29 +4,29 @@
 namespace tpy_user::main {
 
 
-// 4: def get_pair() -> tuple[Int32, Int32]:
+// def get_pair() -> tuple[Int32, Int32]:
 std::tuple<int32_t, int32_t> get_pair() {
-    // 5:     return (Int32(10), Int32(20))
+    //     return (Int32(10), Int32(20))
     return std::tuple<int32_t, int32_t>{10, 20};
 }
 
-// 7: def main() -> None:
+// def main() -> None:
 void main() {
-    // 8:     a: Int32 = 0
+    //     a: Int32 = 0
     int32_t a = 0;
-    // 9:     b: Int32 = 0
+    //     b: Int32 = 0
     int32_t b = 0;
-    // 10:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 11:     print(b)
+    //     print(b)
     std::cout << b << "\n";
-    // 12:     a, b = get_pair()
+    //     a, b = get_pair()
     auto __tup_1 = get_pair();
     a = std::get<0>(__tup_1);
     b = std::get<1>(__tup_1);
-    // 13:     print(a)
+    //     print(a)
     std::cout << a << "\n";
-    // 14:     print(b)
+    //     print(b)
     std::cout << b << "\n";
 }
 
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 16: main()
+    // main()
     main();
 }
 

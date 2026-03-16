@@ -4,33 +4,33 @@
 namespace tpy_user::main {
 
 
-// 4: def test_reassign_renarrows(x: Int32 | None) -> Int32:
+// def test_reassign_renarrows(x: Int32 | None) -> Int32:
 int32_t test_reassign_renarrows(std::optional<int32_t> x) {
-    // 6:     x = 10
+    //     x = 10
     x = 10;
-    // 7:     return x + 1
+    //     return x + 1
     return (tpy::add_check<int32_t>((*x), 1));
 }
 
-// 9: def test_truthiness_short_circuit(a: Int32 | None, b: Int32 | None) -> Int32:
+// def test_truthiness_short_circuit(a: Int32 | None, b: Int32 | None) -> Int32:
 int32_t test_truthiness_short_circuit(std::optional<int32_t> a, std::optional<int32_t> b) {
-    // 11:     if a and b:
+    //     if a and b:
     if ((tpy::is_truthy(a) && tpy::is_truthy(b))) {
-        // 12:         return a + b
+        //         return a + b
         return (tpy::add_check<int32_t>((*a), (*b)));
     }
-    // 13:     return 0
+    //     return 0
     return 0;
 }
 
-// 15: def test_is_not_none_short_circuit(a: Int32 | None, b: Int32 | None) -> Int32:
+// def test_is_not_none_short_circuit(a: Int32 | None, b: Int32 | None) -> Int32:
 int32_t test_is_not_none_short_circuit(std::optional<int32_t> a, std::optional<int32_t> b) {
-    // 17:     if a is not None and b is not None:
+    //     if a is not None and b is not None:
     if (((a.has_value()) && (b.has_value()))) {
-        // 18:         return a + b
+        //         return a + b
         return (tpy::add_check<int32_t>((*a), (*b)));
     }
-    // 19:     return 0
+    //     return 0
     return 0;
 }
 
@@ -39,15 +39,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 21: print(test_reassign_renarrows(None))
+    // print(test_reassign_renarrows(None))
     std::cout << test_reassign_renarrows(std::nullopt) << "\n";
-    // 22: print(test_truthiness_short_circuit(3, 4))
+    // print(test_truthiness_short_circuit(3, 4))
     std::cout << test_truthiness_short_circuit(3, 4) << "\n";
-    // 23: print(test_truthiness_short_circuit(None, 4))
+    // print(test_truthiness_short_circuit(None, 4))
     std::cout << test_truthiness_short_circuit(std::nullopt, 4) << "\n";
-    // 24: print(test_is_not_none_short_circuit(3, 4))
+    // print(test_is_not_none_short_circuit(3, 4))
     std::cout << test_is_not_none_short_circuit(3, 4) << "\n";
-    // 25: print(test_is_not_none_short_circuit(None, 4))
+    // print(test_is_not_none_short_circuit(None, 4))
     std::cout << test_is_not_none_short_circuit(std::nullopt, 4) << "\n";
 }
 

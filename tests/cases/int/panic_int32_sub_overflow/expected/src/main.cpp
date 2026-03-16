@@ -3,9 +3,9 @@
 
 namespace tpy_user::main {
 
-// 4: x: Int32 = -2147483648  # INT32_MIN
+// x: Int32 = -2147483648  # INT32_MIN
 int32_t x{};
-// 5: y: Int32 = x - 1        # Should panic
+// y: Int32 = x - 1        # Should panic
 int32_t y{};
 
 void __tpy_init() {
@@ -13,11 +13,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 4: x: Int32 = -2147483648  # INT32_MIN
+    // x: Int32 = -2147483648  # INT32_MIN
     x = -2147483648;
-    // 5: y: Int32 = x - 1        # Should panic
+    // y: Int32 = x - 1        # Should panic
     y = (tpy::sub_check<int32_t>(x, 1));
-    // 6: print(y)
+    // print(y)
     std::cout << y << "\n";
 }
 

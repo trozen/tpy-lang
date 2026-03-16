@@ -11,25 +11,25 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 6: class Grid[T, N: int]:
+// class Grid[T, N: int]:
 template<typename T, std::size_t N>
 struct Grid {
-    // 7:     _value: T
+    //     _value: T
     T _value;
 
-    // 9:     def __init__(self, value: T) -> None:
+    //     def __init__(self, value: T) -> None:
     Grid() = default;
     explicit Grid(const T& value) : _value(value) {}
 
-    // 12:     def copy(self) -> Own[Grid[T, N]]:
+    //     def copy(self) -> Own[Grid[T, N]]:
     Grid<T, N> copy() const {
-        // 13:         return Grid[T, N](self._value)
+        //         return Grid[T, N](self._value)
         return Grid<T, N>(this->_value);
     }
 
-    // 15:     def with_value(self, value: T) -> Own[Grid[T, N]]:
+    //     def with_value(self, value: T) -> Own[Grid[T, N]]:
     Grid<T, N> with_value(const T& value) const {
-        // 16:         return Grid[T, N](value)
+        //         return Grid[T, N](value)
         return Grid<T, N>(value);
     }
 };

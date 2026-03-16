@@ -5,16 +5,16 @@ namespace tpy_user::main {
 
 
 // # Cross-variable different-size reassignment promotes both to list
-// 2: def main() -> None:
+// def main() -> None:
 void main() {
-    // 3:     a = [1, 2, 3]  # tpyc: type(/list/)
+    //     a = [1, 2, 3]  # tpyc: type(/list/)
     std::vector<int32_t> __slot_1 = {1, 2, 3};
     std::vector<int32_t>* a = &__slot_1;
-    // 4:     b = [4, 5]     # tpyc: type(/list/)
+    //     b = [4, 5]     # tpyc: type(/list/)
     std::vector<int32_t> b = {4, 5};
-    // 5:     a = b
+    //     a = b
     a = &(b);
-    // 6:     print(len(a))
+    //     print(len(a))
     std::cout << tpy::__len__((*a)) << "\n";
 }
 
@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 7: main()
+    // main()
     main();
 }
 

@@ -9,13 +9,13 @@ template<typename T> struct Box;
 
 inline constexpr std::string_view __name__ = "container";
 
-// 1: class Box[T]:
+// class Box[T]:
 template<typename T>
 struct Box {
-    // 2:     value: T
+    //     value: T
     T value;
 
-    // 4:     def __init__(self, value: T):
+    //     def __init__(self, value: T):
     Box() = default;
     explicit Box(const T& value) : value(value) {}
 };

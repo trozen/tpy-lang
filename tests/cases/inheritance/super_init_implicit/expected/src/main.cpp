@@ -3,7 +3,7 @@
 
 namespace tpy_user::main {
 
-// 15: c = Child(42)
+// c = Child(42)
 Child* c{};
 
 void __tpy_init() {
@@ -11,10 +11,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 15: c = Child(42)
+    // c = Child(42)
     static Child __global_slot_1 = Child(tpy::BigInt(42));
     c = &__global_slot_1;
-    // 16: print(c.value)
+    // print(c.value)
     std::cout << c->value << "\n";
 }
 

@@ -12,15 +12,15 @@ extern Same<int32_t>* same1;
 extern Same<int32_t>* same2;
 inline constexpr std::string_view __name__ = "__main__";
 
-// 5: class Same[T]:
+// class Same[T]:
 template<typename T>
 struct Same {
-    // 6:     a: T
+    //     a: T
     T a;
-    // 7:     b: T
+    //     b: T
     T b;
 
-    // 9:     def __init__(self, a: T, b: T) -> None:
+    //     def __init__(self, a: T, b: T) -> None:
     Same() = default;
     explicit Same(const T& a, const T& b) : a(a), b(b) {}
 };

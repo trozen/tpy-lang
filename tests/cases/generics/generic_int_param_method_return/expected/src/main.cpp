@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 19: def main() -> None:
+// def main() -> None:
 void main() {
-    // 20:     g = Grid[Int32, 4](10)
+    //     g = Grid[Int32, 4](10)
     Grid<int32_t, 4> g = Grid<int32_t, 4>(10);
-    // 21:     g2 = g.copy()
+    //     g2 = g.copy()
     Grid<int32_t, 4> g2 = g.copy();
-    // 22:     g3 = g.with_value(99)
+    //     g3 = g.with_value(99)
     Grid<int32_t, 4> g3 = g.with_value(99);
-    // 23:     print(g._value)
+    //     print(g._value)
     std::cout << g._value << "\n";
-    // 24:     print(g2._value)
+    //     print(g2._value)
     std::cout << g2._value << "\n";
-    // 25:     print(g3._value)
+    //     print(g3._value)
     std::cout << g3._value << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 28: main()
+    // main()
     main();
 }
 

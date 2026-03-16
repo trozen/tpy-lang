@@ -15,13 +15,13 @@ inline constexpr std::string_view __name__ = "__main__";
 
 int32_t take_ptr(void* p);
 
-// 11: class Sink:
+// class Sink:
 struct Sink {
 
 
-    // 12:     def put(self, p: Ptr[None]) -> Int32:
+    //     def put(self, p: Ptr[None]) -> Int32:
     int32_t put(void* p) const {
-        // 13:         return Int32(20)
+        //         return Int32(20)
         return 20;
     }
 };

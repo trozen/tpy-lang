@@ -13,11 +13,11 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 // @dataclass(frozen=True)
-// 6: class Point:
+// class Point:
 struct Point {
-    // 7:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 8:     y: Int32
+    //     y: Int32
     int32_t y;
 
     Point() = default;
@@ -52,11 +52,11 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 // @dataclass(frozen=True)
-// 11: class Config:
+// class Config:
 struct Config {
-    // 12:     name: str
+    //     name: str
     std::string name;
-    // 13:     value: Int32
+    //     value: Int32
     int32_t value;
 
     Config() = default;

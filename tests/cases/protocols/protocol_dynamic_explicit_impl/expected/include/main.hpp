@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 // @dynamic
-// 6: class Describable(Protocol):
+// class Describable(Protocol):
 template<typename T>
 concept __Describable_Concept__ = requires(T& t) {
     { t.describe() } -> std::convertible_to<std::string>;
@@ -46,26 +46,26 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// 12: class Item(Describable):
+// class Item(Describable):
 struct Item : Describable {
-    // 13:     _name: str
+    //     _name: str
     std::string _name;
-    // 14:     _id: Int32
+    //     _id: Int32
     int32_t _id;
 
-    // 16:     def __init__(self, name: str, id: Int32) -> None:
+    //     def __init__(self, name: str, id: Int32) -> None:
     Item() = default;
     explicit Item(std::string_view name, int32_t id) : _name(name), _id(id) {}
 
-    // 20:     def describe(self) -> str:
+    //     def describe(self) -> str:
     std::string describe() override {
-        // 21:         return self._name
+        //         return self._name
         return this->_name;
     }
 
-    // 23:     def id(self) -> Int32:
+    //     def id(self) -> Int32:
     int32_t id() override {
-        // 24:         return self._id
+        //         return self._id
         return this->_id;
     }
 };

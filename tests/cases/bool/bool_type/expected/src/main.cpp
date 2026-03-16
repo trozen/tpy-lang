@@ -4,64 +4,64 @@
 namespace tpy_user::main {
 
 
-// 3: def test_bool():
+// def test_bool():
 void test_bool() {
-    // 4:     # Boolean literals with explicit type
-    // 5:     a: bool = True
+    //     # Boolean literals with explicit type
+    //     a: bool = True
     bool a = true;
-    // 6:     b: bool = False
+    //     b: bool = False
     bool b = false;
-    // 8:     # Type inference for bool
-    // 9:     inferred_true = True
+    //     # Type inference for bool
+    //     inferred_true = True
     bool inferred_true = true;
-    // 10:     inferred_false = False
+    //     inferred_false = False
     bool inferred_false = false;
-    // 12:     # Print bools (as 0/1 in if conditions)
-    // 13:     if a:
+    //     # Print bools (as 0/1 in if conditions)
+    //     if a:
     if (a) {
-        // 14:         print(1)
+        //         print(1)
         std::cout << 1 << "\n";
-    // 15:     else:
+    //     else:
     } else {
-        // 16:         print(0)
+        //         print(0)
         std::cout << 0 << "\n";
     }
-    // 18:     if b:
+    //     if b:
     if (b) {
-        // 19:         print(1)
+        //         print(1)
         std::cout << 1 << "\n";
-    // 20:     else:
+    //     else:
     } else {
-        // 21:         print(0)
+        //         print(0)
         std::cout << 0 << "\n";
     }
-    // 23:     # Inferred bools work the same
-    // 24:     if inferred_true:
+    //     # Inferred bools work the same
+    //     if inferred_true:
     if (inferred_true) {
-        // 25:         print(1)
+        //         print(1)
         std::cout << 1 << "\n";
     }
-    // 26:     if inferred_false:
+    //     if inferred_false:
     if (inferred_false) {
-        // 27:         print(0)
+        //         print(0)
         std::cout << 0 << "\n";
     }
-    // 29:     # Boolean in while condition (inferred type)
-    // 30:     flag = True
+    //     # Boolean in while condition (inferred type)
+    //     flag = True
     bool flag = true;
-    // 31:     count: Int32 = 0
+    //     count: Int32 = 0
     int32_t count = 0;
-    // 32:     while flag:
+    //     while flag:
     while (flag) {
-        // 33:         count = count + 1
+        //         count = count + 1
         count = (tpy::add_check<int32_t>(count, 1));
-        // 34:         if count == 3:
+        //         if count == 3:
         if ((count == 3)) {
-            // 35:             flag = False
+            //             flag = False
             flag = false;
         }
     }
-    // 37:     print(count)
+    //     print(count)
     std::cout << count << "\n";
 }
 
@@ -70,7 +70,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 39: test_bool()
+    // test_bool()
     test_bool();
 }
 

@@ -5,139 +5,139 @@ namespace tpy_user::main {
 
 
 // # Direct assignment then use — OK
-// 11: def direct_assign() -> None:
+// def direct_assign() -> None:
 void direct_assign() {
-    // 12:     x: Point = Point(7, 8)
+    //     x: Point = Point(7, 8)
     Point x = Point(7, 8);
-    // 13:     print(x.x, x.y)  # tpyc: ok
+    //     print(x.x, x.y)  # tpyc: ok
     std::cout << x.x << " " << x.y << "\n";
 }
 
 // # Param usage — OK
-// 16: def param_use(p: Point) -> None:
+// def param_use(p: Point) -> None:
 void param_use(const Point& p) {
-    // 17:     print(p.x, p.y)  # tpyc: ok
+    //     print(p.x, p.y)  # tpyc: ok
     std::cout << p.x << " " << p.y << "\n";
 }
 
 // # Value type with init — OK
-// 20: def value_init() -> None:
+// def value_init() -> None:
 void value_init() {
-    // 21:     x: Int32 = 42
+    //     x: Int32 = 42
     int32_t x = 42;
-    // 22:     print(x)  # tpyc: ok
+    //     print(x)  # tpyc: ok
     std::cout << x << "\n";
 }
 
 // # Assign before if, use after — OK
-// 25: def assign_before_if(cond: bool) -> None:
+// def assign_before_if(cond: bool) -> None:
 void assign_before_if(bool cond) {
-    // 26:     x: Point = Point(1, 2)
+    //     x: Point = Point(1, 2)
     Point __slot_1 = Point(1, 2);
     std::optional<Point> __slot_2;
     Point* x = &__slot_1;
-    // 27:     if cond:
+    //     if cond:
     if (cond) {
-        // 28:         x = Point(3, 4)
+        //         x = Point(3, 4)
         x = &*(__slot_2 = Point(3, 4));
     }
-    // 29:     print(x.x, x.y)  # tpyc: ok
+    //     print(x.x, x.y)  # tpyc: ok
     std::cout << x->x << " " << x->y << "\n";
 }
 
 // # Then-branch returns — code after if only reachable from else
-// 32: def then_returns(cond: bool) -> None:
+// def then_returns(cond: bool) -> None:
 void then_returns(bool cond) {
-    // 33:     if cond:
+    //     if cond:
     if (cond) {
-        // 34:         return
+        //         return
         return;
     }
-    // 35:     x: Point = Point(5, 6)
+    //     x: Point = Point(5, 6)
     Point x = Point(5, 6);
-    // 36:     print(x.x, x.y)  # tpyc: ok
+    //     print(x.x, x.y)  # tpyc: ok
     std::cout << x.x << " " << x.y << "\n";
 }
 
 // # Both branches return — dead code after is fine
-// 39: def both_return(cond: bool) -> Int32:
+// def both_return(cond: bool) -> Int32:
 int32_t both_return(bool cond) {
-    // 40:     if cond:
+    //     if cond:
     if (cond) {
-        // 41:         x: Int32 = 1
+        //         x: Int32 = 1
         int32_t x = 1;
-        // 42:         return x
+        //         return x
         return x;
-    // 43:     else:
+    //     else:
     } else {
-        // 44:         return 0
+        //         return 0
         return 0;
     }
 }
 
 // # Both branches assign (value type) — OK after if
-// 47: def both_branches_assign(cond: bool) -> None:
+// def both_branches_assign(cond: bool) -> None:
 void both_branches_assign(bool cond) {
-    // 48:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 49:     if cond:
+    //     if cond:
     if (cond) {
-        // 50:         x = 1
+        //         x = 1
         x = 1;
-    // 51:     else:
+    //     else:
     } else {
-        // 52:         x = 2
+        //         x = 2
         x = 2;
     }
-    // 53:     print(x)  # tpyc: ok
+    //     print(x)  # tpyc: ok
     std::cout << x << "\n";
 }
 
 // # Else-branch returns, then assigns — OK after if
-// 56: def else_returns(cond: bool) -> None:
+// def else_returns(cond: bool) -> None:
 void else_returns(bool cond) {
-    // 57:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 58:     if cond:
+    //     if cond:
     if (cond) {
-        // 59:         x = 10
+        //         x = 10
         x = 10;
-    // 60:     else:
+    //     else:
     } else {
-        // 61:         return
+        //         return
         return;
     }
-    // 62:     print(x)  # tpyc: ok
+    //     print(x)  # tpyc: ok
     std::cout << x << "\n";
 }
 
 // # Bare decl then unconditional assign — OK
-// 65: def decl_then_assign() -> None:
+// def decl_then_assign() -> None:
 void decl_then_assign() {
-    // 66:     x: Int32
+    //     x: Int32
     int32_t x;
-    // 67:     x = 42
+    //     x = 42
     x = 42;
-    // 68:     print(x)  # tpyc: ok
+    //     print(x)  # tpyc: ok
     std::cout << x << "\n";
 }
 
 // # Loop var shadows assigned outer var — outer stays assigned after loop
-// 71: def loop_shadow_outer() -> None:
+// def loop_shadow_outer() -> None:
 void loop_shadow_outer() {
-    // 72:     items: list[Int32] = [10, 20, 30]
+    //     items: list[Int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    // 73:     x: Int32 = 99
+    //     x: Int32 = 99
     int32_t x = 99;
-    // 74:     for x in items:
+    //     for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        // 75:         pass
+        //         pass
     }
-    // 76:     print(x)  # tpyc: ok
+    //     print(x)  # tpyc: ok
     std::cout << x << "\n";
 }
 
@@ -146,34 +146,34 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 78: direct_assign()
+    // direct_assign()
     direct_assign();
-    // 79: param_use(Point(11, 12))
+    // param_use(Point(11, 12))
     Point __tmp_1 = Point(11, 12);
     param_use(__tmp_1);
-    // 80: value_init()
+    // value_init()
     value_init();
-    // 81: assign_before_if(True)
+    // assign_before_if(True)
     assign_before_if(true);
-    // 82: assign_before_if(False)
+    // assign_before_if(False)
     assign_before_if(false);
-    // 83: then_returns(True)
+    // then_returns(True)
     then_returns(true);
-    // 84: then_returns(False)
+    // then_returns(False)
     then_returns(false);
-    // 85: print(both_return(True))
+    // print(both_return(True))
     std::cout << both_return(true) << "\n";
-    // 86: print(both_return(False))
+    // print(both_return(False))
     std::cout << both_return(false) << "\n";
-    // 87: both_branches_assign(True)
+    // both_branches_assign(True)
     both_branches_assign(true);
-    // 88: both_branches_assign(False)
+    // both_branches_assign(False)
     both_branches_assign(false);
-    // 89: else_returns(True)
+    // else_returns(True)
     else_returns(true);
-    // 90: else_returns(False)
+    // else_returns(False)
     else_returns(false);
-    // 91: decl_then_assign()
+    // decl_then_assign()
     decl_then_assign();
 }
 

@@ -13,9 +13,9 @@ int32_t consume(Box&& b);
 Box make_box(int32_t v);
 void main();
 
-// 5: class Box:
+// class Box:
 struct Box {
-    // 6:     value: Int32
+    //     value: Int32
     int32_t value;
 
 };

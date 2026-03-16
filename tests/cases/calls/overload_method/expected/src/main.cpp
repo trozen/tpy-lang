@@ -4,19 +4,19 @@
 namespace tpy_user::main {
 
 
-// 32: def main() -> None:
+// def main() -> None:
 void main() {
-    // 33:     v = Vet()
+    //     v = Vet()
     Vet v = Vet();
-    // 34:     d = Dog("Rex")
+    //     d = Dog("Rex")
     Dog d = Dog("Rex");
-    // 35:     c = Cat(7)
+    //     c = Cat(7)
     Cat c = Cat(tpy::BigInt(7));
-    // 36:     print(v.treat(d))
+    //     print(v.treat(d))
     std::cout << v.treat(d) << "\n";
-    // 37:     print(v.treat(c))
+    //     print(v.treat(c))
     std::cout << v.treat(c) << "\n";
-    // 38:     print(v.count)
+    //     print(v.count)
     std::cout << v.count << "\n";
 }
 
@@ -25,7 +25,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // 40: main()
+    // main()
     main();
 }
 

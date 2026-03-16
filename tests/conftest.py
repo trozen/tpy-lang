@@ -23,7 +23,7 @@ from tpyc.sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLev
 from tpyc.compiler import Compiler, CompileError, BuildLayout, CppCompilerConfig
 
 # Default options for tests: emit source comments for easier debugging
-TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True)
+TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True, comment_line_numbers=False)
 
 # Shared C++ compiler config (auto-detects ccache)
 CPP_CONFIG = CppCompilerConfig.from_env()
