@@ -1,6 +1,7 @@
 # TODO
 
 ## Next
+- Protocol covariant str returns: protocol `-> str` concept uses `std::convertible_to<std::string>` which rejects `StrView` (`string_view`) and `String` (`const string&`). Should use `std::convertible_to<std::string_view>` so implementations can return any string type. This would make the "returns a copy of str field" warning actionable for protocol methods too.
 - move builtins and builtin modules to .py files
 - Union return copies non-value members: `f() -> A | B` returns `std::variant<A, B>` by value, copying record members. Python returns by reference. `std::variant<A&, B&>` is not valid C++. Params are fine (`&` for non-value unions). See `docs/UNION_TYPES_DESIGN.md` Known Semantic Gaps.
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
@@ -20,7 +21,6 @@
 
 ### Missed optimizations
 - **[LOW]** String concat chain produces N-1 intermediate allocations: `a + b + c + d` emits left-associative nested `str_concat` calls, each allocating a temporary `std::string`. A codegen optimization detecting a chain of `+` on string-view operands could emit a single `reserve` + N `append` calls.
-- **[LOW]** Method returning a `str` field copies the string: a getter like `def get_name(self) -> str: return self.name` emits `return this->name` which copies the `std::string` field. The string-view deduction system handles `str` parameters but not field reads in return position. Should return `std::string_view` pointing into the field for read-only getters.
 
 ## Safety
 - `Span[str]` subscript view: `SpanType.subscript_borrows()` is intentionally not overridden because `v = s[0]` registers `s` as the str-borrow source, but mutations to the backing container (`arr[0] = "x"` where `s = Span[str](arr)`) call `mark_str_borrowers_mutated("arr")` -- missing `s`. Fix requires `mark_str_borrowers_mutated` to chase the borrow tracker's alias chain so backing-container mutations also invalidate views borrowed through spans.

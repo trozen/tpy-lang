@@ -188,6 +188,37 @@ class StatementAnalyzer:
                 value,
             )
 
+    def _warn_str_field_return_copy(self, value: TpyExpr, expected: TpyType) -> None:
+        """Warn when a method returns self.field where field is str.
+
+        This copies the string; suggest StrView (zero-copy view) or String
+        (explicit owned) so the user makes an intentional choice.
+        Suppressed for dunder methods. Note: protocol implementations also
+        get warned -- once covariant str returns are supported in protocols,
+        users can switch to -> StrView there too (see TODO).
+        """
+        if not isinstance(expected, StrType):
+            return
+        func = self.ctx.current_function
+        if func is None or not func.is_method:
+            return
+        # Dunder methods (__str__, __repr__) have a fixed str contract
+        if func.name.startswith("__") and func.name.endswith("__"):
+            return
+        inner = value
+        while isinstance(inner, TpyCoerce):
+            inner = inner.expr
+        if not (isinstance(inner, TpyFieldAccess)
+                and isinstance(inner.obj, TpyName)
+                and inner.obj.name == "self"):
+            return
+        field_name = inner.field
+        self.ctx.warning(
+            f"returns a copy of str field 'self.{field_name}'; "
+            f"use -> StrView for zero-copy access or -> String to silence this warning",
+            value,
+        )
+
     def _check_own_lvalue_return(self, own_type: OwnType, expr: TpyExpr, context: str) -> None:
         """Check that an lvalue returned as Own[T] has explicit copy() or is auto-moved.
 
@@ -448,6 +479,8 @@ class StatementAnalyzer:
                                                       coercion_ctx=CoercionContext.RETURN, is_return=True)
                 # Track return-type context for pending list deduction
                 self.deduction.mark_list_return_context(stmt.value, expected)
+                # Warn when a method copies a str field on return
+                self._warn_str_field_return_copy(stmt.value, expected)
                 # Check for lvalue returned as Own[T] without explicit copy()
                 if isinstance(expected, OwnType):
                     if self.compat.is_copy_call(stmt.value):

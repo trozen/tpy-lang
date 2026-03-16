@@ -1,1 +1,2 @@
 main.py:58: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:63: warning: returns a copy of str field 'self.label'; use -> StrView for zero-copy access or -> String to silence this warning

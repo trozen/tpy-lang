@@ -1,0 +1,4 @@
+widget
+a useful widget
+WDG-001
+widget
