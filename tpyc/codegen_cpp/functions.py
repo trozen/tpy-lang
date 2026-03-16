@@ -259,19 +259,31 @@ class FunctionGenerator:
             return False
         return all(self.protocols.is_protocol_const(p.name) for p in info.protocols)
 
-    def _resolve_return_type(self, return_type: TpyType, *, const: bool = False) -> str:
-        """Map a return type to C++, using Base& for @dynamic protocols."""
+    def _resolve_return_type(self, return_type: TpyType, *, const: bool = False,
+                             error_return: str | None = None) -> str:
+        """Map a return type to C++, using Base& for @dynamic protocols.
+
+        If error_return is set, wraps the return type in std::expected<T, E>.
+        """
         unwrapped = unwrap_readonly(return_type)
         if is_protocol_type(unwrapped) and isinstance(unwrapped, NamedType):
             pi = self.ctx.analyzer.registry.get_protocol(unwrapped.name)
             if pi and pi.is_dynamic:
                 base = self.protocols.get_dynamic_base_name(unwrapped.name)
                 if const or isinstance(return_type, ReadonlyType):
-                    return f"const {base}&"
-                return f"{base}&"
+                    ret = f"const {base}&"
+                else:
+                    ret = f"{base}&"
+                if error_return:
+                    return f"std::expected<{ret}, {error_return}>"
+                return ret
         if const:
-            return return_type.to_cpp_return_const()
-        return return_type.to_cpp_return()
+            ret = return_type.to_cpp_return_const()
+        else:
+            ret = return_type.to_cpp_return()
+        if error_return:
+            return f"std::expected<{ret}, {error_return}>"
+        return ret
 
     def _build_const_ref_params(
         self,
@@ -396,7 +408,7 @@ class FunctionGenerator:
             out.write(self.protocols.gen_combined_template_header(
                 func.type_params, proto_params, func.type_param_bounds,
             ))
-            ret_type = self._resolve_return_type(func.return_type)
+            ret_type = self._resolve_return_type(func.return_type, error_return=func.error_return)
             params = (self.gen_params_with_protocols(func.params, func.type_params,
                                                      mutated_params=mp,
                                                      defaults=dfl, emit_defaults=True)
@@ -405,7 +417,7 @@ class FunctionGenerator:
                                            mutated_params=mp, defaults=dfl, emit_defaults=True))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params});\n")
         else:
-            ret_type = self._resolve_return_type(func.return_type)
+            ret_type = self._resolve_return_type(func.return_type, error_return=func.error_return)
             params = (self.gen_params_with_protocols(func.params,
                                                      mutated_params=mp,
                                                      defaults=dfl, emit_defaults=True)
@@ -479,7 +491,7 @@ class FunctionGenerator:
         # Non-template non-stub: already forward-declared
         if not func.is_stub:
             return False
-        ret_type = self._resolve_return_type(func.return_type)
+        ret_type = self._resolve_return_type(func.return_type, error_return=func.error_return)
         params = (self.gen_params_with_protocols(func.params, mutated_params=mp) if has_dynamic
                   else self.gen_params(func.params, func.type_params,
                                        reassigned_params=rp, mutated_params=mp))
@@ -551,7 +563,7 @@ class FunctionGenerator:
                 func.type_params, proto_params, func.type_param_bounds,
                 emit_defaults=False,
             ))
-            ret_type = self._resolve_return_type(func.return_type)
+            ret_type = self._resolve_return_type(func.return_type, error_return=func.error_return)
             params = (self.gen_params_with_protocols(func.params, func.type_params,
                                                      mutated_params=mp)
                       if has_proto_params or has_dynamic
@@ -559,7 +571,7 @@ class FunctionGenerator:
                                            reassigned_params=rp, mutated_params=mp))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params}) {{\n")
         else:
-            ret_type = self._resolve_return_type(func.return_type)
+            ret_type = self._resolve_return_type(func.return_type, error_return=func.error_return)
             params = (self.gen_params_with_protocols(func.params, mutated_params=mp) if has_dynamic
                       else self.gen_params(func.params, func.type_params,
                                            reassigned_params=rp, mutated_params=mp))
@@ -765,7 +777,8 @@ class FunctionGenerator:
             # even if the impl declares -> StrView or -> String.
             ret_type = "std::string"
         else:
-            ret_type = self._resolve_return_type(cpp_return_type, const=const)
+            ret_type = self._resolve_return_type(cpp_return_type, const=const,
+                                                  error_return=method.error_return)
         dfl = method.defaults if method.defaults else None
 
         proto_params = self.protocols.get_all_protocol_params(method.params)

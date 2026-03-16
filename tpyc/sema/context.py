@@ -359,6 +359,8 @@ class SemanticContext:
 
     # --- Control flow ---
     loop_depth: int = 0
+    # Set when inside a try/except block -- the exception type being caught
+    try_except_error_type: str | None = None
     is_top_level: bool = False
     super_init_call: TpyMethodCall | None = None
     super_del_call: TpyMethodCall | None = None

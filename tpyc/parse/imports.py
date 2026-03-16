@@ -32,13 +32,13 @@ TPY_TYPES = {
 }
 
 # Python builtins -- always available without import
-PYTHON_BUILTINS = frozenset({"int", "float", "bool", "str", "None", "tuple", "slice"})
+PYTHON_BUILTINS = frozenset({"int", "float", "bool", "str", "None", "tuple", "slice", "Exception", "BaseException"})
 
 # Names from typing that require explicit import
 TYPING_NAMES = frozenset({"Optional", "Protocol", "Self", "Sized", "Sequence", "MutableSequence", "Iterator", "Iterable", "Final", "override", "overload"})
 
 # All tpy type names (union of TPY_TYPES + decorators/modifiers)
-TPY_TYPE_NAMES = TPY_TYPES | {"Char", "readonly", "noalloc", "nocopy", "dynamic", "pure", "auto_readonly"}
+TPY_TYPE_NAMES = TPY_TYPES | {"Char", "readonly", "noalloc", "nocopy", "dynamic", "pure", "auto_readonly", "error_return"}
 
 
 class ImportProcessor:

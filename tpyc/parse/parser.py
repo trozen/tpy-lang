@@ -33,7 +33,7 @@ from .nodes import (
     TpyIfExpr,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
-    TpyPassStmt, TpyGlobal, TpyRaiseStopIteration,
+    TpyPassStmt, TpyGlobal, TpyRaiseStopIteration, TpyRaise, TpyTryExcept,
     TpyPattern, TpyWildcardPattern, TpyCapturePattern, TpyClassPattern,
     TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
     TpyMatchCase, TpyMatch,
@@ -282,11 +282,19 @@ def _collect_bitor_arms(node: ast.BinOp) -> list[ast.expr]:
     return arms
 
 
+class _NameArg:
+    """Decorator argument that is a name reference (e.g. StopIteration in @error_return(StopIteration))."""
+    __slots__ = ("name",)
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
 class Parser:
     """Parser for TurboPython source code."""
 
     FORBIDDEN_CONSTRUCTS = {
-        "try", "with", "async", "await",
+        "with", "async", "await",
         "lambda", "yield", "nonlocal",
     }
 
@@ -670,6 +678,9 @@ class Parser:
                 arg_value = self._EMPTY_CALL
             elif len(dec.args) == 1 and isinstance(dec.args[0], ast.Constant):
                 arg_value = dec.args[0].value
+            elif len(dec.args) == 1 and isinstance(dec.args[0], ast.Name):
+                # Name arg like @error_return(StopIteration) -- store as _NameArg
+                arg_value = _NameArg(dec.args[0].id)
             else:
                 arg_value = self._BAD_ARGS
 
@@ -1299,6 +1310,7 @@ class Parser:
         is_overload_stub = False
         auto_readonly = False
         auto_readonly_dec = None
+        error_return: str | None = None
         method_linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
         for dec in node.decorator_list:
@@ -1324,6 +1336,10 @@ class Parser:
                     raise ParseError("@auto_readonly does not take arguments", dec)
                 auto_readonly = True
                 auto_readonly_dec = dec
+            elif qname == "tpy.error_return":
+                if not isinstance(arg, _NameArg):
+                    raise ParseError("@error_return() requires a single error type argument, e.g. @error_return(MyError)", dec)
+                error_return = arg.name
             elif qname in self._METHOD_LINKAGE_MAP:
                 method_linkage = self._METHOD_LINKAGE_MAP[qname]
                 if isinstance(arg, str):
@@ -1449,6 +1465,7 @@ class Parser:
             type_params=method_type_params,
             type_param_bounds=method_type_param_bounds,
             defaults=defaults,
+            error_return=error_return,
             loc=self._loc(node)
         )
         return method
@@ -1497,6 +1514,7 @@ class Parser:
         readonly_opt_out = False
         is_pure = False
         is_overload_stub = False
+        error_return: str | None = None
         linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
         cpp_template: str | None = None
@@ -1518,6 +1536,10 @@ class Parser:
                 if arg is not None:
                     raise ParseError("@overload does not take arguments", dec)
                 is_overload_stub = True
+            elif qname == "tpy.error_return":
+                if not isinstance(arg, _NameArg):
+                    raise ParseError("@error_return() requires a single error type argument, e.g. @error_return(MyError)", dec)
+                error_return = arg.name
             elif qname == "tpy.extern.cpp_template":
                 if not isinstance(arg, str):
                     raise ParseError("@cpp_template() requires a string argument", dec)
@@ -1635,6 +1657,7 @@ class Parser:
             type_params=type_params,
             type_param_bounds=type_param_bounds,
             defaults=defaults,
+            error_return=error_return,
             loc=self._loc(node)
         )
 
@@ -2073,23 +2096,53 @@ class Parser:
         elif isinstance(node, ast.Match):
             return self._parse_match(node, loc)
 
+        elif isinstance(node, ast.Try):
+            return self._parse_try(node, loc)
+
         else:
             raise ParseError(f"Unsupported statement: {type(node).__name__}", node)
 
     def _parse_raise(self, node: ast.Raise, loc: SourceLocation | None) -> TpyStmt:
-        """Parse a raise statement. Only `raise StopIteration` is supported."""
+        """Parse a raise statement."""
         exc = node.exc
         if exc is None:
-            raise ParseError("'raise' requires an exception; only 'raise StopIteration' is supported", node)
-        # raise StopIteration
-        if isinstance(exc, ast.Name) and exc.id == "StopIteration":
-            return TpyRaiseStopIteration(loc=loc)
-        # raise StopIteration()
-        if isinstance(exc, ast.Call) and isinstance(exc.func, ast.Name) and exc.func.id == "StopIteration":
+            raise ParseError("'raise' requires an exception type", node)
+        # raise Name
+        if isinstance(exc, ast.Name):
+            name = exc.id
+            return TpyRaise(exception_type=name, loc=loc)
+        # raise Name()
+        if isinstance(exc, ast.Call) and isinstance(exc.func, ast.Name):
+            name = exc.func.id
             if exc.args or exc.keywords:
-                raise ParseError("'raise StopIteration' does not accept arguments", node)
-            return TpyRaiseStopIteration(loc=loc)
-        raise ParseError("Only 'raise StopIteration' is supported", node)
+                raise ParseError(f"'raise {name}' does not accept arguments", node)
+            return TpyRaise(exception_type=name, loc=loc)
+        raise ParseError("'raise' requires a simple name (e.g. 'raise MyError')", node)
+
+    def _parse_try(self, node: ast.Try, loc: SourceLocation | None) -> TpyStmt:
+        """Parse a try/except statement (limited to @error_return functions)."""
+        if node.finalbody:
+            raise ParseError("'finally' is not yet supported", node)
+        if len(node.handlers) != 1:
+            raise ParseError("only a single 'except' clause is supported", node)
+        handler = node.handlers[0]
+        if handler.name is not None:
+            raise ParseError("'except ... as' binding is not yet supported", node)
+        if handler.type is None:
+            raise ParseError("bare 'except:' is not supported; specify an error type", node)
+        if not isinstance(handler.type, ast.Name):
+            raise ParseError("'except' requires a simple name (e.g. 'except MyError')", node)
+        exception_type = handler.type.id
+        try_body = [self._parse_stmt(s) for s in node.body]
+        except_body = [self._parse_stmt(s) for s in handler.body]
+        else_body = [self._parse_stmt(s) for s in node.orelse]
+        return TpyTryExcept(
+            try_body=try_body,
+            exception_type=exception_type,
+            except_body=except_body,
+            else_body=else_body,
+            loc=loc,
+        )
 
     def _parse_delete(self, node: ast.Delete, loc: SourceLocation | None) -> TpyStmt:
         """Parse a del statement. Only subscript targets are supported."""

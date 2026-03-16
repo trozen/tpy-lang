@@ -11,7 +11,7 @@ from typing import Callable, TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, FloatLiteralType, BoolType,
     ArrayType, ListType, PendingListType, PendingDictType, PendingSetType, PendingStrType, OwnType, OptionalType,
-    NoneType, NamedType, StrType, StringType, StrViewType, STR, TupleType,
+    NoneType, NamedType, StrType, StringType, StrViewType, STR, TupleType, VoidType,
     INT32, BIGINT, FLOAT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType,
     local_var_is_movable, resolve_int_literals,
@@ -19,6 +19,7 @@ from ..typesys import (
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt, TpyRaiseStopIteration,
+    TpyRaise, TpyTryExcept,
     TpyGlobal,
     TpyImport, TpySubscript, TpySlice, TpyStrLiteral, TpyNoneLiteral, TpyName, TpyExpr, TpyFunction,
     TpyAssert, TpyBoolLiteral, TpyArrayLiteral,
@@ -151,6 +152,7 @@ class StatementGenerator:
         self.ctx.current_ns = local_ns
         self.ctx.indent_level = indent_level
         self.ctx.current_return_type = return_type
+        self.ctx.current_error_return = getattr(func, 'error_return', None)
         self.ctx.current_func_params = {pname: ptype for pname, ptype in params}
         self.ctx.current_type_param_bounds = dict(record_type_param_bounds) if record_type_param_bounds else {}
         if func.type_param_bounds:
@@ -167,6 +169,11 @@ class StatementGenerator:
                     self._reassigned_param_copies.append((pname, ptype))
 
         self._gen_buffered_body(out, body)
+
+        # Void @error_return functions need explicit success return to avoid UB
+        if self.ctx.current_error_return and isinstance(return_type, VoidType):
+            out.write(f"{self.ctx.indent()}return {{}};\n")
+
         self.ctx.emit_block_trailing_comments(out, body, self.ctx.indent())
 
         if is_method:
@@ -205,6 +212,10 @@ class StatementGenerator:
         elif isinstance(stmt, TpyMatch):
             self.ctx.emit_source_comment(out, stmt.loc, indent)
             self.match.gen_match(out, stmt, indent)
+        elif isinstance(stmt, TpyTryExcept):
+            self.ctx.emit_source_comment(out, stmt.loc, indent)
+            self._emit_branch_decls(out, stmt, indent)
+            self._gen_try_except(out, stmt, indent)
         else:
             # Simple statements - single flush point for all
             code = self._gen_simple_stmt(stmt, indent)
@@ -227,8 +238,13 @@ class StatementGenerator:
         The caller handles flushing temps before writing the returned code.
         """
         if isinstance(stmt, TpyVarDecl):
+            # Inside try/except: intercept error_return calls with goto dispatch
+            if self.ctx.try_except_label and stmt.init and self._get_error_return_fi(stmt.init):
+                return self._gen_error_return_var_decl(stmt, indent)
             return self._gen_var_decl_code(stmt, indent)
         elif isinstance(stmt, TpyAssign):
+            if self.ctx.try_except_label and self._get_error_return_fi(stmt.value):
+                return self._gen_error_return_assign(stmt, indent)
             return self._gen_assign_code(stmt, indent)
         elif isinstance(stmt, TpyAugAssign):
             return self._gen_aug_assign_code(stmt, indent)
@@ -237,6 +253,17 @@ class StatementGenerator:
         elif isinstance(stmt, TpyExprStmt):
             if isinstance(stmt.expr, TpyStrLiteral):
                 return None  # Skip docstrings
+            if self.ctx.try_except_label:
+                fi = self._get_error_return_fi(stmt.expr)
+                if fi:
+                    self.ctx.try_except_counter += 1
+                    tmp = f"__try_tmp_{self.ctx.try_except_counter}"
+                    call_cpp = self.expressions.gen_expr(stmt.expr)
+                    label = self.ctx.try_except_label
+                    return (f"{indent}{{\n"
+                            f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
+                            f"{indent}{INDENT}if (!{tmp}.has_value()) goto {label};\n"
+                            f"{indent}}}\n")
             return f"{indent}{self.expressions.gen_expr(stmt.expr)};\n"
         elif isinstance(stmt, TpyReturn):
             if stmt.value:
@@ -310,6 +337,8 @@ class StatementGenerator:
                         and ret_value.obj.name == "self"):
                     ret_expr = f"std::move({ret_expr})"
                 return f"{indent}return {ret_expr};\n"
+            if self.ctx.current_error_return:
+                return f"{indent}return {{}};\n"
             return f"{indent}return;\n"
         elif isinstance(stmt, TpyBreak):
             if self.ctx.loop_else_labels and self.ctx.loop_else_labels[-1]:
@@ -324,6 +353,13 @@ class StatementGenerator:
             return ""  # No C++ output -- just a sema directive
         elif isinstance(stmt, TpyRaiseStopIteration):
             return f"{indent}return std::nullopt;\n"
+        elif isinstance(stmt, TpyRaise):
+            # Legacy __next__ without @error_return: emit std::nullopt for
+            # the __next_opt__ -> std::optional<T> path
+            if (stmt.exception_type == "StopIteration"
+                    and not self.ctx.current_error_return):
+                return f"{indent}return std::nullopt;\n"
+            return f"{indent}return std::unexpected({stmt.exception_type}{{}});\n"
         elif isinstance(stmt, TpyImport):
             # Only emit __tpy_init() for user modules that have runtime init.
             # Skip builtins (no .cpp) and native_module (binding-only, no .cpp).
@@ -1337,8 +1373,27 @@ class StatementGenerator:
 
     def _gen_tuple_unpack(self, out: TextIO, stmt: TpyTupleUnpack, indent: str) -> None:
         """Generate tuple unpacking: auto __tup_N = expr; T a = std::get<0>(...); ..."""
-        value_expr = self.expressions.gen_expr(stmt.value)
-        self.ctx.temps.flush(out, indent)
+        # Inside try/except: intercept error_return calls with goto dispatch
+        if self.ctx.try_except_label and self._get_error_return_fi(stmt.value):
+            self.ctx.try_except_counter += 1
+            try_tmp = f"__try_tmp_{self.ctx.try_except_counter}"
+            label = self.ctx.try_except_label
+            call_cpp = self.expressions.gen_expr(stmt.value)
+            self.ctx.temps.flush(out, indent)
+            out.write(f"{indent}{{\n")
+            out.write(f"{indent}{INDENT}auto {try_tmp} = {call_cpp};\n")
+            out.write(f"{indent}{INDENT}if (!{try_tmp}.has_value()) goto {label};\n")
+            out.write(f"{indent}}}\n")
+            # Use unwrapped value for the rest of tuple unpacking
+            unwrapped_tmp = f"(*{try_tmp})"
+        else:
+            unwrapped_tmp = None
+
+        if unwrapped_tmp:
+            value_expr = unwrapped_tmp
+        else:
+            value_expr = self.expressions.gen_expr(stmt.value)
+            self.ctx.temps.flush(out, indent)
 
         self.ctx.unpack_counter += 1
         tmp = f"__tup_{self.ctx.unpack_counter}"
@@ -1350,7 +1405,7 @@ class StatementGenerator:
         # std::get on a const tuple returns const T& which can't bind
         # to T&.  Existing is_const_ref elements are unaffected -- const T&
         # binds fine from a non-const tuple.
-        if isinstance(stmt.value, TpyName) and not any(stmt.is_owned):
+        if not unwrapped_tmp and isinstance(stmt.value, TpyName) and not any(stmt.is_owned):
             const_kw = "" if any(stmt.is_ref) else "const "
             out.write(f"{indent}{const_kw}auto& {tmp} = {value_expr};\n")
         else:
@@ -1414,6 +1469,127 @@ class StatementGenerator:
                 else:
                     out.write(f"{indent}{cpp_name} = "
                               f"{get_expr};\n")
+
+    def _gen_try_except(self, out: TextIO, stmt: TpyTryExcept, indent: str) -> None:
+        """Generate a try/except block using goto-based error dispatch.
+
+        Each call to an @error_return function inside the try body emits:
+            auto __tmp = call();
+            if (!__tmp.has_value()) goto __except_N;
+            var = *__tmp;
+
+        The except body is emitted after the try body with the label.
+        """
+        self.ctx.try_except_counter += 1
+        n = self.ctx.try_except_counter
+        except_label = f"__except_{n}"
+        after_label = f"__after_try_{n}"
+
+        out.write(f"{indent}{{\n")
+
+        # Snapshot codegen scope so try body declarations don't bleed into except
+        br_snap = self.ctx.snapshot_local_scope()
+
+        # Set try context so VarDecl codegen can detect error_return calls
+        prev_label = self.ctx.try_except_label
+        self.ctx.try_except_label = except_label
+
+        # Emit try body -- error_return calls will emit goto __except_N
+        for s in stmt.try_body:
+            self.gen_stmt(out, s)
+
+        self.ctx.try_except_label = prev_label
+
+        # Emit else body (runs only if no error)
+        for s in stmt.else_body:
+            self.gen_stmt(out, s)
+
+        out.write(f"{indent}{INDENT}goto {after_label};\n")
+        out.write(f"{indent}{INDENT}{except_label}:;\n")
+
+        # Restore scope for except body (same scope as before try)
+        self.ctx.restore_local_scope(br_snap)
+
+        # Emit except body
+        for s in stmt.except_body:
+            self.gen_stmt(out, s)
+
+        out.write(f"{indent}{INDENT}{after_label}:;\n")
+        out.write(f"{indent}}}\n")
+
+    def _gen_error_return_var_decl(self, stmt: TpyVarDecl, indent: str) -> str:
+        """Generate a variable declaration where the init is an @error_return call.
+
+        Emits:
+            auto __try_tmp_N = call();
+            if (!__try_tmp_N.has_value()) goto __except_N;
+            T var = *__try_tmp_N;
+        """
+        assert stmt.init is not None
+        assert self.ctx.try_except_label is not None
+
+        self.ctx.try_except_counter += 1
+        tmp = f"__try_tmp_{self.ctx.try_except_counter}"
+        label = self.ctx.try_except_label
+
+        call_cpp = self.expressions.gen_expr(stmt.init)
+        cpp_name = escape_cpp_name(stmt.name)
+
+        fi = self._get_error_return_fi(stmt.init)
+        var_type = fi.return_type if fi else stmt.type
+
+        # Declare variable before the goto to avoid "crosses initialization" error
+        is_new_var = stmt.name not in self.ctx.declared_vars
+        if is_new_var and var_type:
+            cpp_type = var_type.to_cpp()
+            out = f"{indent}{cpp_type} {cpp_name};\n"
+            self.ctx.declared_vars.add(stmt.name)
+        else:
+            out = ""
+
+        out += f"{indent}{{\n"
+        out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
+        out += f"{indent}{INDENT}if (!{tmp}.has_value()) goto {label};\n"
+        out += f"{indent}{INDENT}{cpp_name} = *{tmp};\n"
+        out += f"{indent}}}\n"
+
+        return out
+
+    def _gen_error_return_assign(self, stmt: TpyAssign, indent: str) -> str:
+        """Generate an assignment where the RHS is an @error_return call.
+
+        Emits:
+            auto __try_tmp_N = call();
+            if (!__try_tmp_N.has_value()) goto __except_N;
+            target = *__try_tmp_N;
+        """
+        assert self.ctx.try_except_label is not None
+
+        self.ctx.try_except_counter += 1
+        tmp = f"__try_tmp_{self.ctx.try_except_counter}"
+        label = self.ctx.try_except_label
+
+        call_cpp = self.expressions.gen_expr(stmt.value)
+        target_cpp = self.expressions.gen_expr(stmt.target)
+
+        out = f"{indent}{{\n"
+        out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
+        out += f"{indent}{INDENT}if (!{tmp}.has_value()) goto {label};\n"
+        out += f"{indent}{INDENT}{target_cpp} = *{tmp};\n"
+        out += f"{indent}}}\n"
+
+        return out
+
+    def _get_error_return_fi(self, expr: TpyExpr) -> 'FunctionInfo | None':
+        """Return FunctionInfo if expr is an @error_return call, else None."""
+        if isinstance(expr, TpyCoerce):
+            return self._get_error_return_fi(expr.inner)
+        fi = None
+        if isinstance(expr, (TpyCall, TpyMethodCall)):
+            fi = getattr(expr, 'resolved_function_info', None)
+        if fi and fi.error_return_type:
+            return fi
+        return None
 
     def _gen_assert(self, out: TextIO, stmt: TpyAssert, indent: str) -> None:
         """Generate an assert statement with optional isinstance union narrowing."""

@@ -268,6 +268,7 @@ class CodeGenContext:
     in_method: bool = False
     in_consuming_method: bool = False
     current_return_type: TpyType | None = None
+    current_error_return: str | None = None
     current_func_params: dict[str, TpyType] = field(default_factory=dict)
     current_type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
     const_ref_params: set[str] = field(default_factory=set)
@@ -316,6 +317,11 @@ class CodeGenContext:
 
     # --- Tuple unpacking counter ---
     unpack_counter: int = 0
+
+    # --- try/except ---
+    try_except_counter: int = 0
+    # When set, we're inside a try body -- error_return calls should goto this label
+    try_except_label: str | None = None
 
     # --- Match/case label counter (for goto-based guard fallthrough) ---
     match_counter: int = 0
@@ -370,6 +376,7 @@ class CodeGenContext:
         self.current_ns = None
         self.indent_level = 0
         self.current_return_type = None
+        self.current_error_return = None
         self.current_func_params = {}
         self.current_type_param_bounds = {}
         self.in_method = False

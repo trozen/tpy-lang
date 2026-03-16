@@ -20,6 +20,7 @@ from ..parse import (
     TpyExpr,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert, TpyRaiseStopIteration,
+    TpyRaise, TpyTryExcept,
     TpyGlobal,
     TpyCall, TpyMethodCall, TpyArrayLiteral, TpyListComprehension, TpyDictLiteral, TpyCoerce,
     TpySubscript, TpySlice, TpyStrLiteral, TpyName, TpyTupleLiteral,
@@ -809,10 +810,15 @@ class StatementAnalyzer:
         elif isinstance(stmt, TpyGlobal):
             self._analyze_global_stmt(stmt)
         elif isinstance(stmt, TpyRaiseStopIteration):
+            # Legacy AST node -- kept for backward compat but parser no longer emits it
             func = self.ctx.current_function
             if not isinstance(func, TpyFunction) or func.name != "__next__":
                 raise self.ctx.error("'raise StopIteration' can only be used inside a __next__ method", stmt)
             self.init.mark_terminated()
+        elif isinstance(stmt, TpyRaise):
+            self._analyze_raise(stmt)
+        elif isinstance(stmt, TpyTryExcept):
+            self._analyze_try_except(stmt)
         elif isinstance(stmt, TpyMatch):
             self.match.analyze_match(stmt)
 
@@ -867,6 +873,114 @@ class StatementAnalyzer:
             name: ty for name, ty in facts.items()
             if isinstance(unwrap_readonly(self.narrowing.declared_type_for_name(name)), UnionType)
         }
+
+    def _analyze_raise(self, stmt: TpyRaise) -> None:
+        """Analyze a general raise statement (for @error_return functions).
+
+        Also accepts `raise StopIteration` inside legacy `__next__` methods
+        that don't have an explicit @error_return decorator.
+        """
+        func = self.ctx.current_function
+        if not isinstance(func, TpyFunction):
+            raise self.ctx.error(
+                f"'raise {stmt.exception_type}' can only be used inside a function", stmt)
+        # Legacy __next__ path: accept raise StopIteration without @error_return
+        if (func.error_return is None
+                and stmt.exception_type == "StopIteration"
+                and func.name == "__next__"):
+            self.init.mark_terminated()
+            return
+        if func.error_return is None:
+            raise self.ctx.error(
+                f"'raise {stmt.exception_type}' requires "
+                f"@error_return({stmt.exception_type}) on the enclosing function", stmt)
+        if func.error_return != stmt.exception_type:
+            raise self.ctx.error(
+                f"'raise {stmt.exception_type}' does not match "
+                f"@error_return({func.error_return})", stmt)
+        if not self.ctx.registry.get_record(stmt.exception_type):
+            raise self.ctx.error(
+                f"Unknown error type '{stmt.exception_type}'", stmt)
+        self.init.mark_terminated()
+
+    def _analyze_try_except(self, stmt: TpyTryExcept) -> None:
+        """Analyze a try/except statement with branch-aware flow analysis.
+
+        Models try/except as a two-branch construct:
+        - "success" path: try body + else body
+        - "error" path: except body
+        An error_return call in the try body can jump to the except path
+        at any point, so the except body sees the pre-try state.
+        """
+        scope_before = set(self.ctx.current_scope.bindings.keys())
+        before = self.init.save()
+        consumed_before = self.ctx.current_consumed_own_params.copy()
+        bindings_before = dict(self.ctx.current_scope.bindings)
+        ns_types_before = self._save_ns_var_types()
+
+        if not self.ctx.registry.get_record(stmt.exception_type):
+            raise self.ctx.error(
+                f"Unknown error type '{stmt.exception_type}'", stmt)
+
+        # Set try context so call analysis can allow error_return calls
+        prev_try_error = self.ctx.try_except_error_type
+        self.ctx.try_except_error_type = stmt.exception_type
+
+        # Analyze try body (success path)
+        for s in stmt.try_body:
+            self.analyze_stmt(s)
+
+        self.ctx.try_except_error_type = prev_try_error
+
+        # Analyze else body (only reached on success)
+        for s in stmt.else_body:
+            self.analyze_stmt(s)
+        then_state = self.init.save()
+        consumed_after_then = self.ctx.current_consumed_own_params.copy()
+        then_terminated = self.ctx.init_terminated
+        try_bindings = dict(self.ctx.current_scope.bindings)
+
+        # Restore to pre-try state for except branch
+        self.ctx.current_scope.bindings = dict(bindings_before)
+        self._restore_ns_var_types(ns_types_before)
+        self.init.restore(before)
+        self.ctx.current_consumed_own_params = consumed_before.copy()
+
+        # Analyze except body (error path)
+        for s in stmt.except_body:
+            self.analyze_stmt(s)
+        else_state = self.init.save()
+        consumed_after_else = self.ctx.current_consumed_own_params.copy()
+        else_terminated = self.ctx.init_terminated
+
+        # Merge branches
+        self.init.merge_branches(then_state, else_state)
+
+        # Merge consumed Own[T] params
+        if then_terminated and else_terminated:
+            self.ctx.current_consumed_own_params = consumed_after_then | consumed_after_else
+        elif then_terminated:
+            self.ctx.current_consumed_own_params = consumed_after_else
+        elif else_terminated:
+            self.ctx.current_consumed_own_params = consumed_after_then
+        else:
+            self.ctx.current_consumed_own_params = consumed_after_then & consumed_after_else
+
+        # Pre-declare ALL variables first declared inside try or except bodies.
+        # Unlike if/else where we only hoist variables assigned on both branches,
+        # try/except uses goto-based dispatch so ALL declarations in either body
+        # must be hoisted to avoid "goto crosses initialization" errors.
+        # Merge bindings from both branches so variables declared in either are visible.
+        all_bindings = dict(try_bindings)
+        all_bindings.update(self.ctx.current_scope.bindings)
+        branch_new = set(all_bindings.keys()) - scope_before
+        predecl = branch_new - self.ctx.global_declarations
+        if predecl:
+            self.ctx.if_branch_decls[id(stmt)] = {
+                name: all_bindings[name]
+                for name in sorted(predecl)
+                if name in all_bindings
+            }
 
     def _analyze_global_stmt(self, stmt: TpyGlobal) -> None:
         """Analyze a `global x, y` statement."""

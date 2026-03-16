@@ -478,6 +478,21 @@ class TpyRaiseStopIteration(TpyStmt):
     pass
 
 
+@dataclass
+class TpyRaise(TpyStmt):
+    """raise E -- returns error from @error_return function."""
+    exception_type: str  # e.g. "NotFound"
+
+
+@dataclass
+class TpyTryExcept(TpyStmt):
+    """try/except for @error_return functions."""
+    try_body: list[TpyStmt]
+    exception_type: str           # e.g. "StopIteration"
+    except_body: list[TpyStmt]
+    else_body: list[TpyStmt]     # may be empty
+
+
 # -- Pattern matching nodes --
 
 @dataclass
@@ -658,6 +673,7 @@ class TpyFunction:
     type_params: list[str] = field(default_factory=list)
     type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
     defaults: list['TpyExpr | None'] = field(default_factory=list)  # len == len(params); None = no default
+    error_return: str | None = None  # @error_return(E) exception type name
     loc: SourceLocation | None = None
 
     @property

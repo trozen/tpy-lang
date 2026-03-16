@@ -2505,6 +2505,7 @@ class FunctionInfo:
     cpp_template: Optional[str] = None  # For builtins: "{self}.push_back({0})"
     is_builtin_function: bool = False  # True for global builtins (len, chr, etc.)
     special_handling: bool = False  # True if sema/codegen handle specially
+    error_return_type: Optional[str] = None  # @error_return(E) exception type name
     qualified_name: str = ""  # Full dotted path, e.g. "builtins.print", "tpy.copy", "__main__.foo"
     mutated_params: Optional[frozenset[int]] = None  # Param indices proven mutated; None = unknown (conservative)
     structural_mutated_params: Optional[frozenset[int]] = None

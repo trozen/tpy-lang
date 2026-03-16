@@ -82,8 +82,14 @@
 // Math helpers for lib/stdlib/math.py @native declarations (log_base wrapper)
 #include "math_ops.hpp"
 
+// Error return types for @error_return decorator (depends on <expected>)
+#include "error_return.hpp"
+
 // Expose types in global namespace for TurboPython generated code
 using ::tpy::UninitArrayStorage;
 using ::tpy::UninitHeapStorage;
 using ::tpy::tpy_panic;
 using ::tpy::BigInt;
+using ::tpy::BaseException;
+using ::tpy::Exception;
+using ::tpy::StopIteration;

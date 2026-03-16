@@ -439,6 +439,13 @@ def pure(func):
     return func
 
 
+def error_return(exc_type):
+    """No-op in CPython -- error_return is a TPy compile-time annotation."""
+    def decorator(func):
+        return func
+    return decorator
+
+
 class auto_readonly:
     """Decorator and type modifier for @auto_readonly methods.
 

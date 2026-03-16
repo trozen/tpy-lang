@@ -1740,7 +1740,21 @@ class CallAnalyzer:
         self._check_borrow_arg_conflicts(expr)
         self._check_loop_var_arg_mutation(expr)
         self._record_mutation_call_edges(expr)
+        self._check_error_return_handled(expr, func)
         return func.return_type
+
+    def _check_error_return_handled(self, expr: TpyCall | TpyMethodCall, func: FunctionInfo) -> None:
+        """Check that calls to @error_return functions are inside matching try/except."""
+        if func.error_return_type is None:
+            return
+        ctx_error_type = self.ctx.try_except_error_type
+        if ctx_error_type == func.error_return_type:
+            return
+        raise self.ctx.error(
+            f"call to '{func.name}' may return '{func.error_return_type}' "
+            f"which must be handled with try/except",
+            expr,
+        )
 
     def _analyze_generic_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
         """Analyze a call to a generic function."""
@@ -1882,6 +1896,7 @@ class CallAnalyzer:
         self._check_borrow_arg_conflicts(expr)
         self._check_loop_var_arg_mutation(expr)
         self._record_mutation_call_edges(expr)
+        self._check_error_return_handled(expr, func)
         return resolved_return
 
     def _validate_generic_defaults(self, expr: TpyCall, func: FunctionInfo,

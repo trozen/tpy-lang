@@ -62,7 +62,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | C3 | @noalloc enforcement | L | Parsed only | [IV](#noalloc-enforcement) |
 | C4 | Effect framework (@nothrow, @pure) | M-L | Not started | [IV](#effect-system-generalized) |
 | C5 | Cyclic dependency handling | L | Not started | [V](#cyclic-dependency-handling) |
-| C6 | `@exception_result` annotation | M | Not started | [III](#exception_result-annotation) |
+| C6 | `@error_return` annotation | M | Phase 1 done | [III](#error_return-annotation) |
 
 ### Phase D: Functional + Python Compat
 
@@ -1018,38 +1018,45 @@ real-world programs. Interacts with `@noalloc` and effect system.
 
 ---
 
-### `@exception_result` Annotation
+### `@error_return` Annotation
 
 Transforms `raise X` into Result-type returns for control-flow exceptions. Distinct from
 real exceptions (C1/C2) which use stack unwinding for error handling.
 
 ```python
-@exception_result(StopIteration)
-def __next__(self) -> Int32:
-    if self.current < self.limit:
-        result = self.current
-        self.current += 1
-        return result
-    raise StopIteration
+from tpy import error_return
+
+class NotFound(Exception):
+    pass
+
+@error_return(NotFound)
+def find(items: list[Int32], target: Int32) -> Int32:
+    for i in range(len(items)):
+        if items[i] == target:
+            return i
+    raise NotFound
 ```
+
+`raise E` compiles to `return std::unexpected(E{})`. Callers must use `try/except` --
+calling without it is a compile error. Maps to `std::expected<T, E>` in C++.
 
 **Why it matters**: Some Python patterns use exceptions for normal control flow rather than
 error signaling (e.g. `StopIteration` in iterators). These are better compiled as
-`std::optional` or `std::expected` returns rather than C++ exception unwinding.
-`@exception_result` makes this transformation explicit and opt-in, separating the
+`std::expected` returns rather than C++ exception unwinding.
+`@error_return` makes this transformation explicit and opt-in, separating the
 control-flow-exception pattern from the general exception model (C1/C2).
 
-`StopIteration` is the first and most common case -- the compiler already handles it
-specially in `__next__` methods today. `@exception_result` generalizes this to any
-exception type used for control flow.
+**Current state**: Phase 1 done. Generic mechanism working: `@error_return(E)` decorator,
+`raise E` codegen (`std::unexpected`), `try/except/else` parsing and codegen (goto-based
+dispatch), caller enforcement, branch-aware flow analysis, variable hoisting.
 
-**Current state**: Not started. The `StopIteration` special case in `__next__` serves as
-the prototype for this feature.
+Remaining phases: auto-add on `__next__` (Phase 2), `__next_opt__` deprecation (Phase 3).
+See `docs/ERROR_RETURN_DESIGN.md` for full design.
 
 **Dependencies**: None for the basic annotation. Interacts with the general exception model
 (C1/C2) but can be implemented independently.
 
-**Effort**: M (annotation parsing + sema transformation + codegen)
+**Effort**: M (Phase 1 done; Phase 2-3 incremental)
 
 ---
 

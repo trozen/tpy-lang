@@ -4502,8 +4502,16 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - Emits runtime panic when condition is false
   - Contributes control-flow narrowing facts
   - Current limitation: assert message must be a string literal
-- **Open**: `try`/`except` → error codes, `std::expected`, or limited exceptions
-- **Open**: `raise` → if exception model chosen
+- **Working**: `@error_return(E)` -- zero-cost error returns via `std::expected<T, E>`
+  - Error types inherit from `Exception` for CPython compatibility (`class MyError(Exception): pass`)
+  - `Exception`/`BaseException` are registered as empty records (real C++ inheritance)
+  - Decorator on functions: `raise E` compiles to `return std::unexpected(E{})`
+  - Callers must use `try/except E` -- compile error if unhandled
+  - `try/except/else` supported
+  - Goto-based dispatch: error_return calls inside nested if/for work correctly
+  - Branch-aware flow analysis (narrowing, init tracking, variable hoisting)
+  - See `docs/ERROR_RETURN_DESIGN.md` for full design
+- **Open**: General `try`/`except` for C++ exceptions (separate from `@error_return`)
 - **Open**: Warning when exceptions are used for control flow (e.g., `try: Color(99) except ValueError` to test validity) -- prefer safe alternatives like `try_parse()`
 
 ---

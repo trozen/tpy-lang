@@ -95,6 +95,18 @@ class TypeRegistrar:
                 info = builtin_modules.builtin_type_to_record_info(qname, type_def)
                 self.ctx.registry.register_builtin_record(qname, info)
 
+        # Register Python exception base classes as empty records.
+        # These are no-op in C++ codegen but allow CPython-compatible
+        # error types: class MyError(Exception): pass
+        base_exc = RecordInfo(name="BaseException", fields=[], is_value_type=True)
+        exc = RecordInfo(name="Exception", fields=[], is_value_type=True,
+                         parent=NamedType("BaseException"))
+        stop_iter = RecordInfo(name="StopIteration", fields=[], is_value_type=True,
+                               parent=NamedType("Exception"))
+        self.ctx.registry.register_record(base_exc)
+        self.ctx.registry.register_record(exc)
+        self.ctx.registry.register_record(stop_iter)
+
     def register_builtin_functions(self) -> None:
         """Register builtin functions for unified function lookup.
 
@@ -559,6 +571,7 @@ class TypeRegistrar:
                 cpp_template=DUNDER_CPP_TEMPLATES.get(method.name),
                 type_params=list(method.type_params),
                 type_param_bounds=method_type_param_bounds,
+                error_return_type=method.error_return,
             )
             if method.is_overload_stub:
                 # Accumulate overload stubs for this method name
@@ -1322,6 +1335,7 @@ class TypeRegistrar:
             cpp_template=func.cpp_template,
             type_params=func.type_params,
             type_param_bounds=type_param_bounds,
+            error_return_type=func.error_return,
             qualified_name=f"{self.ctx.module_name}.{func.name}",
         )
 

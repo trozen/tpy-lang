@@ -7,4 +7,4 @@ class Foo:
         self.value = 0
 
     def some_method(self) -> Int32:
-        raise StopIteration  # tpyc: error(/raise StopIteration.*only.*__next__/)
+        raise StopIteration  # tpyc: error(/raise StopIteration.*requires.*error_return/)
