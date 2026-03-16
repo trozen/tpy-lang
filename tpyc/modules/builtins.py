@@ -108,6 +108,24 @@ def init_module() -> BuiltinModule:
             cpp="static_cast<int32_t>(static_cast<unsigned char>({0}))",
             is_readonly=True, is_pure=True,
         ),
+        MethodDef(
+            params=[ParamDef("s", STR)],
+            returns=INT32,
+            cpp="::tpy::ord_str({0})",
+            is_readonly=True,
+        ),
+        MethodDef(
+            params=[ParamDef("s", STRING)],
+            returns=INT32,
+            cpp="::tpy::ord_str({0})",
+            is_readonly=True,
+        ),
+        MethodDef(
+            params=[ParamDef("s", STRVIEW)],
+            returns=INT32,
+            cpp="::tpy::ord_str({0})",
+            is_readonly=True,
+        ),
     ])
 
     pow_overloads = [
@@ -845,6 +863,11 @@ def init_module() -> BuiltinModule:
                 returns=STRING,
                 cpp="::tpy::str_concat({self}, {0})",
             ),
+            MethodDef(
+                params=[ParamDef("other", CHAR)],
+                returns=STRING,
+                cpp="::tpy::str_concat({self}, ::tpy::char_to_str({0}))",
+            ),
         ],
         "__mul__": [MethodDef(
             params=[ParamDef("n", INT32)],
@@ -1108,14 +1131,39 @@ def init_module() -> BuiltinModule:
         "__hash__": [MethodDef(params=[], returns=UINT64, cpp="::tpy::__hash__({self})", is_readonly=True, is_pure=True)],
     }, extends=["Equatable"])
 
-    # Char: Single character type
+    # Char: Single character type (str-like: supports concat, repeat, len, ord)
     module.register_type(CHAR, cpp_type="char", constructors=[
         MethodDef(params=[], returns=CHAR, cpp="'\\0'"),
         MethodDef(params=[ParamDef("x", INT32)], returns=CHAR, cpp="static_cast<char>({0})"),
         MethodDef(params=[ParamDef("x", BIGINT)], returns=CHAR, cpp="static_cast<char>(({0}).to_fixed_check<int32_t>())"),
     ], methods={
         "__hash__": [MethodDef(params=[], returns=UINT64, cpp="::tpy::__hash__({self})", is_readonly=True, is_pure=True)],
-    }, extends=["Equatable"])
+        "__add__": [
+            MethodDef(params=[ParamDef("other", CHAR)], returns=STRING,
+                      cpp="::tpy::str_concat(::tpy::char_to_str({self}), ::tpy::char_to_str({0}))",
+                      is_readonly=True),
+            MethodDef(params=[ParamDef("other", STR)], returns=STRING,
+                      cpp="::tpy::str_concat(::tpy::char_to_str({self}), {0})",
+                      is_readonly=True),
+            MethodDef(params=[ParamDef("other", STRING)], returns=STRING,
+                      cpp="::tpy::str_concat(::tpy::char_to_str({self}), {0})",
+                      is_readonly=True),
+            MethodDef(params=[ParamDef("other", STRVIEW)], returns=STRING,
+                      cpp="::tpy::str_concat(::tpy::char_to_str({self}), {0})",
+                      is_readonly=True),
+        ],
+        "__mul__": [MethodDef(
+            params=[ParamDef("n", INT32)], returns=STR,
+            cpp="::tpy::str_repeat(::tpy::char_to_str({self}), {0})",
+            is_readonly=True, is_pure=True,
+        )],
+        "__rmul__": [MethodDef(
+            params=[ParamDef("n", INT32)], returns=STR,
+            cpp="::tpy::str_repeat(::tpy::char_to_str({self}), {0})",
+            is_readonly=True, is_pure=True,
+        )],
+        "__len__": [MethodDef(params=[], returns=INT32, cpp="1", is_readonly=True, is_pure=True)],
+    }, extends=["Sized", "Equatable"])
 
     # None: Void type (used for function returns)
     module.register_type(VOID, cpp_type="void", methods={})

@@ -73,6 +73,11 @@ inline int32_t __len__(const char* x) {
     return static_cast<int32_t>(std::string_view(x).size());
 }
 
+// Overload: char (Char type -- always length 1)
+inline int32_t __len__(char) {
+    return 1;
+}
+
 // Overload: ordered_map (dict)
 template<typename K, typename V>
 int32_t __len__(const ordered_map<K, V>& x) {

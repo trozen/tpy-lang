@@ -1,7 +1,7 @@
 /**
  * TurboPython Runtime - Builtin Function Helpers
  *
- * Runtime support for round(), divmod(), and related builtins.
+ * Runtime support for round(), divmod(), ord(), and related builtins.
  * Depends on: core.hpp, fixed_int.hpp, bigint.hpp
  */
 
@@ -9,10 +9,29 @@
 
 #include <cmath>
 #include <cstdint>
+#include <string_view>
 #include <tuple>
 #include <type_traits>
 
 namespace tpy {
+
+// -- ord/Char helpers --
+
+// ord(s: str) -- panics if len(s) != 1, like Python's TypeError
+inline int32_t ord_str(std::string_view s) {
+    if (s.size() != 1) {
+        tpy_panic("ord() expected a string of length 1");
+    }
+    return static_cast<int32_t>(static_cast<unsigned char>(s[0]));
+}
+
+// Char(s: str) -- extract single character, panics if len(s) != 1
+inline char char_from_str(std::string_view s) {
+    if (s.size() != 1) {
+        tpy_panic("Char() expected a string of length 1");
+    }
+    return s[0];
+}
 
 // -- round helpers --
 
