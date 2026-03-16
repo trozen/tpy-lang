@@ -89,6 +89,8 @@ class MatchAnalyzer:
 
         arm_states: list[FlowFacts] = []
         arm_bindings: list[dict[str, TpyType]] = []
+        consumed_before = self.ctx.current_consumed_own_params.copy()
+        arm_consumed: list[tuple[set[str], bool]] = []  # (consumed_set, terminated)
 
         for case in stmt.cases:
             if had_wildcard:
@@ -97,6 +99,7 @@ class MatchAnalyzer:
                 )
             # Restore state to pre-match for each arm
             self.stmts.init.restore(before)
+            self.ctx.current_consumed_own_params = consumed_before.copy()
             self.ctx.current_scope.bindings = dict(bindings_before)
             self.stmts._restore_ns_var_types(ns_types_before)
 
@@ -157,6 +160,7 @@ class MatchAnalyzer:
                 self.stmts.analyze_stmt(s)
 
             arm_states.append(self.stmts.init.save())
+            arm_consumed.append((self.ctx.current_consumed_own_params.copy(), self.ctx.init_terminated))
             arm_bindings.append(dict(self.ctx.current_scope.bindings))
 
             pat = case.pattern
@@ -193,6 +197,21 @@ class MatchAnalyzer:
 
         # Merge flow states across all arms
         self._merge_match_arms(arm_states, before)
+
+        # Merge consumed Own[T] params: intersect non-terminated arms.
+        # Terminated arms don't affect live continuation (same as if/else).
+        if arm_consumed:
+            live_sets = [s for s, terminated in arm_consumed if not terminated]
+            dead_sets = [s for s, terminated in arm_consumed if terminated]
+            if live_sets:
+                merged_consumed = live_sets[0]
+                for s in live_sets[1:]:
+                    merged_consumed = merged_consumed & s
+                self.ctx.current_consumed_own_params = merged_consumed
+            elif dead_sets:
+                self.ctx.current_consumed_own_params = set().union(*dead_sets)
+            else:
+                self.ctx.current_consumed_own_params = consumed_before
 
         # Restore scope bindings, merging types from arms
         self.ctx.current_scope.bindings = dict(bindings_before)

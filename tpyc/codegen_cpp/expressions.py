@@ -268,6 +268,18 @@ class ExpressionGenerator:
                         return f.type
         return None
 
+    def _gen_copy_expr(self, arg: TpyExpr) -> str:
+        """Generate an explicit copy of arg as an rvalue for Own[T] ownership transfer."""
+        arg_type = self.ctx.get_expr_type(arg)
+        if isinstance(arg_type, OptionalType) and arg_type.uses_pointer_repr():
+            return self.gen_expr(arg)
+        arg_expr = self.gen_expr_deref(arg)
+        # Record constructors are prvalues — already an rvalue, no copy needed
+        call_func = getattr(arg, 'func', None)
+        if call_func and self.ctx.analyzer.registry.get_record(call_func):
+            return arg_expr
+        return f"{arg_type.to_cpp()}({arg_expr})"
+
     def _maybe_move(self, expr: TpyExpr, gen_code: str) -> str:
         """Wrap in std::move() if expr is a last-use of a movable local."""
         inner = expr
@@ -1297,16 +1309,7 @@ class ExpressionGenerator:
                 module_name, func_name = self.ctx.analyzer.imported_names[expr.func]
                 # copy(x) from tpy - produce an explicit copy (rvalue) of x
                 if module_name == "tpy" and func_name == "copy":
-                    arg = expr.args[0]
-                    arg_type = self.ctx.get_expr_type(arg)
-                    # Optional non-value: keep native representation (T* or std::optional<T>)
-                    if isinstance(arg_type, OptionalType) and arg_type.uses_pointer_repr():
-                        return self.gen_expr(arg)
-                    arg_expr = self.gen_expr_deref(arg)
-                    # Record constructors are prvalues — no copy needed
-                    if isinstance(arg, TpyCall) and self.ctx.analyzer.registry.get_record(arg.func):
-                        return arg_expr
-                    return f"{arg_type.to_cpp()}({arg_expr})"
+                    return self._gen_copy_expr(expr.args[0])
                 # Check for module function
                 module_info = self.ctx.analyzer.registry.get_module(module_name)
                 if module_info and func_name in module_info.functions:
@@ -1530,12 +1533,23 @@ class ExpressionGenerator:
 
     def _gen_method_call(self, expr: TpyMethodCall) -> str:
         """Generate method call code."""
-        # Skip upfront arg generation for cpp_template methods: those are handled by
-        # gen_method_from_function_info which regenerates args itself.
-        # Building gen_args here AND there would create duplicate TempState entries.
-        _temps_before = len(self.ctx.temps._pending)
-        _counter_before = self.ctx.temps._counter
-        if expr.resolved_function_info and not expr.resolved_function_info.cpp_template:
+        # Skip upfront arg generation when a later path will regenerate args:
+        # - cpp_template methods: handled by gen_method_from_function_info
+        # - user-record methods with known method: handled by TypeParamRef temp path
+        # Running the first-pass AND a later path creates duplicate TempState entries.
+        _skip_first_pass = (expr.resolved_function_info is not None
+                            and expr.resolved_function_info.cpp_template is not None)
+        if not _skip_first_pass:
+            # self.method() returns early before the user-record TypeParamRef path,
+            # so it needs the first-pass args with full protocol/covariant handling.
+            _is_self_call = isinstance(expr.obj, TpyName) and expr.obj.name == "self"
+            if not _is_self_call:
+                _obj_type = self.types.get_resolved_type(expr.obj)
+                if isinstance(_obj_type, NamedType) and _obj_type.is_user_record:
+                    _ri = self.ctx.analyzer.registry.get_record_for_type(_obj_type)
+                    if _ri and _ri.get_method(expr.method):
+                        _skip_first_pass = True
+        if not _skip_first_pass and expr.resolved_function_info:
             params = expr.resolved_function_info.params
             gen_args = []
             for i, arg in enumerate(expr.args):
@@ -1566,7 +1580,6 @@ class ExpressionGenerator:
             args = ", ".join(gen_args)
         else:
             args = ", ".join(self.gen_expr_deref(a) for a in expr.args)
-        _temps_after_first_pass = len(self.ctx.temps._pending)
 
         # Handle user module function calls: module.func() -> ::tpy_user::module::func()
         if expr.user_module_call is not None:
@@ -1605,16 +1618,7 @@ class ExpressionGenerator:
                 return f"::tpy::EnumUtil<{cpp_type}>::try_parse({arg})"
             # copy() from tpy -- produce an explicit copy (rvalue) of the argument
             if module_name == "tpy" and expr.method == "copy":
-                arg = expr.args[0]
-                arg_type = self.ctx.get_expr_type(arg)
-                if isinstance(arg_type, OptionalType) and arg_type.uses_pointer_repr():
-                    return self.gen_expr(arg)
-                arg_expr = self.gen_expr_deref(arg)
-                # Record constructors are prvalues — no copy wrapping needed
-                call_func = getattr(arg, 'func', None)
-                if call_func and self.ctx.analyzer.registry.get_record(call_func):
-                    return arg_expr
-                return f"{arg_type.to_cpp()}({arg_expr})"
+                return self._gen_copy_expr(expr.args[0])
             # Special-handling functions with cpp_template resolved by sema
             fi = expr.resolved_function_info
             if fi and fi.special_handling and fi.cpp_template:
@@ -1749,9 +1753,6 @@ class ExpressionGenerator:
             if record_info:
                 method_info = record_info.get_method(expr.method)
                 if method_info:
-                    # Discard first-pass temps — we're regenerating args below
-                    del self.ctx.temps._pending[_temps_before:_temps_after_first_pass]
-                    self.ctx.temps._counter = _counter_before
                     # Build type substitution: {"T": Int32} for Box[Int32]
                     # Also include method-level type args (e.g. U -> Int32 for transform[U])
                     # so TypeParamRef params resolve to concrete types for temp decisions.
