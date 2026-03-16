@@ -34,6 +34,64 @@ int32_t copy_store(Box&& b) {
     return h.item.value;
 }
 
+// # Warning: conditional consumption -- only consumed on one branch
+// def partial_consume(b: Own[Box], cond: bool) -> Int32:  # tpyc: warning(/never consumed/)
+int32_t partial_consume(Box&& b, bool cond) {
+    //     if cond:
+    if (cond) {
+        //         h = Holder(b)
+        Holder h = Holder(std::move(b));
+        //         return h.item.value
+        return h.item.value;
+    }
+    //     return b.value
+    return b.value;
+}
+
+// # No warning: consumed on both branches
+// def both_branches(b: Own[Box], cond: bool) -> Int32:
+int32_t both_branches(Box&& b, bool cond) {
+    //     if cond:
+    if (cond) {
+        //         h = Holder(b)
+        Holder h = Holder(std::move(b));
+        //         return h.item.value
+        return h.item.value;
+    //     else:
+    } else {
+        //         return forward(b)
+        return forward(std::move(b));
+    }
+}
+
+// # No warning: consumed after early return
+// def early_return(b: Own[Box], cond: bool) -> Int32:
+int32_t early_return(Box&& b, bool cond) {
+    //     if cond:
+    if (cond) {
+        //         return 0
+        return 0;
+    }
+    //     return forward(b)
+    return forward(std::move(b));
+}
+
+// # Warning: consumed inside loop that might not execute
+// def loop_consume(b: Own[Box], items: list[Int32]) -> Int32:  # tpyc: warning(/never consumed/)
+int32_t loop_consume(Box&& b, const std::vector<int32_t>& items) {
+    //     for item in items:
+    auto& __obj_0 = items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t item = *__beg_0;
+        //         return forward(b)
+        return forward(std::move(b));
+    }
+    //     return b.value
+    return b.value;
+}
+
 // def main() -> None:
 void main() {
     //     print(borrow_only(Box(1)))
@@ -46,6 +104,15 @@ void main() {
     std::cout << copy_store(Box(4)) << "\n";
     //     print(Holder(Box(5)).item.value)
     std::cout << Holder(Box(5)).item.value << "\n";
+    //     print(partial_consume(Box(6), True))
+    std::cout << partial_consume(Box(6), true) << "\n";
+    //     print(both_branches(Box(7), False))
+    std::cout << both_branches(Box(7), false) << "\n";
+    //     print(early_return(Box(8), False))
+    std::cout << early_return(Box(8), false) << "\n";
+    //     print(loop_consume(Box(9), [1]))
+    std::vector<int32_t> __tmp_1 = {1};
+    std::cout << loop_consume(Box(9), __tmp_1) << "\n";
 }
 
 void __tpy_init() {

@@ -1,1 +1,0 @@
-main.py:9: warning: Own[T] param 'item' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

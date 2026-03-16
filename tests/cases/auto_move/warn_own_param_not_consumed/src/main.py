@@ -33,11 +33,42 @@ def copy_store(b: Own[Box]) -> Int32:
 def value_type_borrow[T: ValueType](x: Own[T]) -> T:  # tpyc: ok
     return x
 
+# Warning: conditional consumption -- only consumed on one branch
+def partial_consume(b: Own[Box], cond: bool) -> Int32:  # tpyc: warning(/never consumed/)
+    if cond:
+        h = Holder(b)
+        return h.item.value
+    return b.value
+
+# No warning: consumed on both branches
+def both_branches(b: Own[Box], cond: bool) -> Int32:
+    if cond:
+        h = Holder(b)
+        return h.item.value
+    else:
+        return forward(b)
+
+# No warning: consumed after early return
+def early_return(b: Own[Box], cond: bool) -> Int32:
+    if cond:
+        return 0
+    return forward(b)
+
+# Warning: consumed inside loop that might not execute
+def loop_consume(b: Own[Box], items: list[Int32]) -> Int32:  # tpyc: warning(/never consumed/)
+    for item in items:
+        return forward(b)
+    return b.value
+
 def main() -> None:
     print(borrow_only(Box(1)))
     print(forward(Box(2)))
     print(passthrough(Box(3)).value)
     print(copy_store(Box(4)))
     print(Holder(Box(5)).item.value)
+    print(partial_consume(Box(6), True))
+    print(both_branches(Box(7), False))
+    print(early_return(Box(8), False))
+    print(loop_consume(Box(9), [1]))
 
 main()

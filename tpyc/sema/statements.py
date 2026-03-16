@@ -508,6 +508,7 @@ class StatementAnalyzer:
             scope_before = set(self.ctx.current_scope.bindings.keys())
             assigned_before = frozenset(self.ctx.definitely_assigned)
             before = self.init.save()
+            consumed_before = self.ctx.current_consumed_own_params.copy()
             # Save binding types for ReadonlyType merge after branches
             bindings_before = dict(self.ctx.current_scope.bindings)
             ns_types_before = self._save_ns_var_types()
@@ -517,19 +518,33 @@ class StatementAnalyzer:
             for s in stmt.then_body:
                 self.analyze_stmt(s)
             then_state = self.init.save()
+            consumed_after_then = self.ctx.current_consumed_own_params.copy()
+            then_terminated = self.ctx.init_terminated
             bindings_after_then = dict(self.ctx.current_scope.bindings)
             # Restore bindings for else branch
             self.ctx.current_scope.bindings.update(bindings_before)
             self._restore_ns_var_types(ns_types_before)
             self.init.restore(before)
+            self.ctx.current_consumed_own_params = consumed_before.copy()
             self.ctx.narrowed_types.update(else_type_facts)
             self.ctx.non_null_ptr_vars |= ptr_nn_else
             self._apply_range_facts(range_false)
             for s in stmt.else_body:
                 self.analyze_stmt(s)
             else_state = self.init.save()
+            consumed_after_else = self.ctx.current_consumed_own_params.copy()
+            else_terminated = self.ctx.init_terminated
             bindings_after_else = dict(self.ctx.current_scope.bindings)
             self.init.merge_branches(then_state, else_state)
+            # Merge consumed Own[T] params: must be consumed on ALL non-terminated paths
+            if then_terminated and else_terminated:
+                self.ctx.current_consumed_own_params = consumed_after_then | consumed_after_else
+            elif then_terminated:
+                self.ctx.current_consumed_own_params = consumed_after_else
+            elif else_terminated:
+                self.ctx.current_consumed_own_params = consumed_after_then
+            else:
+                self.ctx.current_consumed_own_params = consumed_after_then & consumed_after_else
             # Merge ReadonlyType: if readonly on EITHER branch, keep readonly
             for name in set(bindings_after_then) | set(bindings_after_else):
                 then_type = bindings_after_then.get(name)
@@ -572,6 +587,7 @@ class StatementAnalyzer:
             range_true, _ = self.narrowing.condition_range_facts(stmt.condition)
             stmt.then_type_facts = self._filter_union_codegen_facts(then_type_facts)
             before = self.init.save()
+            consumed_before_loop = self.ctx.current_consumed_own_params.copy()
             # Save namespace types -- loop_scope() restores scope bindings
             # automatically, but namespace mutations inside the loop persist.
             ns_types_before_while = self._save_ns_var_types()
@@ -589,6 +605,8 @@ class StatementAnalyzer:
             # Vars reassigned from unknown inside the body lose non-null provenance
             body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
             self.init.restore(before)
+            # Loop might not execute — consumption inside is not definite
+            self.ctx.current_consumed_own_params = consumed_before_loop
             self.ctx.non_null_ptr_vars &= body_end_nn_ptr
             # Restore namespace to pre-loop state (scope was already restored
             # by loop_scope context manager)
@@ -603,6 +621,7 @@ class StatementAnalyzer:
                 stmt.enum_iterable = enum_type
                 elem_type = enum_type
                 before = self.init.save()
+                consumed_before_loop = self.ctx.current_consumed_own_params.copy()
                 ns_types_before_foreach = self._save_ns_var_types()
                 with self.scopes.loop_scope() as inner_scope:
                     self.init.apply_loop_entry_facts(before)
@@ -611,6 +630,7 @@ class StatementAnalyzer:
                             self.analyze_stmt(s)
                 body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
                 self.init.restore(before)
+                self.ctx.current_consumed_own_params = consumed_before_loop
                 self.ctx.non_null_ptr_vars &= body_end_nn_ptr
                 self._restore_ns_var_types(ns_types_before_foreach)
                 self._sync_promoted_var_types()
@@ -639,6 +659,7 @@ class StatementAnalyzer:
                 is_iter_based = builtin_modules.get_iter_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
                 is_protocol_iter = is_protocol_type(resolved_for_iter) and resolved_for_iter.qualified_name() in ("typing.Iterator", "typing.Iterable")
                 before = self.init.save()
+                consumed_before_loop = self.ctx.current_consumed_own_params.copy()
                 ns_types_before_foreach = self._save_ns_var_types()
                 with self.scopes.loop_scope() as inner_scope:
                     self.init.apply_loop_entry_facts(before)
@@ -729,6 +750,8 @@ class StatementAnalyzer:
                     stmt.const_loop_var = True
                 body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
                 self.init.restore(before)
+                # Loop might not execute — consumption inside is not definite
+                self.ctx.current_consumed_own_params = consumed_before_loop
                 self.ctx.non_null_ptr_vars &= body_end_nn_ptr
                 self._restore_ns_var_types(ns_types_before_foreach)
                 self._sync_promoted_var_types()

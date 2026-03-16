@@ -16,6 +16,10 @@ Box passthrough(Box&& b);
 int32_t copy_store(Box&& b);
 template<::tpy::ValueType T>
 ::tpy::val_or_ref_t<T> value_type_borrow(std::type_identity_t<T>&& x);
+int32_t partial_consume(Box&& b, bool cond);
+int32_t both_branches(Box&& b, bool cond);
+int32_t early_return(Box&& b, bool cond);
+int32_t loop_consume(Box&& b, const std::vector<int32_t>& items);
 void main();
 
 // class Box:

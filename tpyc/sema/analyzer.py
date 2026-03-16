@@ -636,6 +636,10 @@ class SemanticAnalyzer:
                 continue
             if pname in self.ctx.current_consumed_own_params:
                 continue
+            # Optional[Own[T]]: None branch has nothing to consume, making
+            # flow-sensitive intersection unreliable
+            if isinstance(unwrap_readonly(ptype), OptionalType):
+                continue
             # Value types: copy == move, no semantic difference
             if own.wrapped.is_value_type():
                 continue
