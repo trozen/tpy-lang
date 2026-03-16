@@ -24,8 +24,9 @@
 
 namespace tpy {
 
-// Forward declaration for nested container printing (defined in ordered_set.hpp)
+// Forward declarations for nested container printing
 template<typename T> class ordered_set;
+template<typename K, typename V> class ordered_map;
 
 // --- Collection printing (Python-style: [a, b, c]) ---
 
@@ -48,6 +49,10 @@ void print_element(std::ostream& os, const std::tuple<Ts...>& t);
 // Forward declare ordered_set overload (defined in set_ops.hpp)
 template <typename T>
 void print_element(std::ostream& os, const ordered_set<T>& elem);
+
+// Forward declare ordered_map overload (defined in dict_ops.hpp)
+template <typename K, typename V>
+void print_element(std::ostream& os, const ordered_map<K, V>& elem);
 
 template <typename T>
 void print_element(std::ostream& os, const T& elem) {

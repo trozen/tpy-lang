@@ -204,6 +204,20 @@ std::ostream& operator<<(std::ostream& os, const DictPrinter<K, V>& p) {
     return os;
 }
 
+// Nested container support
+namespace detail {
+template<typename K, typename V>
+void print_element(std::ostream& os, const ordered_map<K, V>& elem) {
+    os << DictPrinter<K, V>(elem);
+}
+}  // namespace detail
+
+// ValuePrinter specialization so dicts inside generic containers print correctly
+template<typename K, typename V>
+std::ostream& operator<<(std::ostream& os, const ValuePrinter<ordered_map<K, V>>& p) {
+    return os << DictPrinter<K, V>(p.value);
+}
+
 template<typename K, typename V>
 std::string dict_to_str(const ordered_map<K, V>& m) {
     std::ostringstream oss;

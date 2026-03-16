@@ -10,7 +10,6 @@
 ## Fuzzy Testing Findings (2026-03-12)
 
 ### Compilation errors (valid Python that fails to build)
-- **[LOW]** Nested `dict[K, dict[...]]` printing fails: `DictPrinter` has no `operator<<` for `ordered_map` as a value type, so printing a dict whose values are themselves dicts fails at C++ build time. Fix: add recursive printing support in `dict_ops.hpp`/`printing.hpp`.
 
 ### Quality / optimization (correct output, but suboptimal codegen)
 - **[LOW]** None-seeded variable assigned in all branches stays `Optional[T]`: when `x = None` is followed by assignment in both the `if` and `else` branches (so every path guarantees a value), `x` is still typed `std::optional<T>` after the if/else block. Post-dominance analysis could demote it to `T` and skip the optional wrapper. Not a correctness issue -- output is identical -- but adds unnecessary runtime cost and less readable C++.
