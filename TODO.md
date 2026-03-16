@@ -1,7 +1,6 @@
 # TODO
 
 ## Next
-- Protocol covariant str returns: protocol `-> str` concept uses `std::convertible_to<std::string>` which rejects `StrView` (`string_view`) and `String` (`const string&`). Should use `std::convertible_to<std::string_view>` so implementations can return any string type. This would make the "returns a copy of str field" warning actionable for protocol methods too.
 - move builtins and builtin modules to .py files
 - Union return copies non-value members: `f() -> A | B` returns `std::variant<A, B>` by value, copying record members. Python returns by reference. `std::variant<A&, B&>` is not valid C++. Params are fine (`&` for non-value unions). See `docs/UNION_TYPES_DESIGN.md` Known Semantic Gaps.
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?

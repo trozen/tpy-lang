@@ -9,14 +9,14 @@ namespace tpy_user::main {
 // class Stringable(Protocol):
 template<typename T>
 concept Stringable = requires(T& t) {
-    { t.to_str() } -> std::convertible_to<std::string>;
+    { t.to_str() } -> std::convertible_to<std::string_view>;
 };
 
 // # Test 7: Protocol with multiple methods
 // class MultiMethod(Protocol):
 template<typename T>
 concept MultiMethod = requires(T& t) {
-    { t.get_name() } -> std::convertible_to<std::string>;
+    { t.get_name() } -> std::convertible_to<std::string_view>;
     { t.get_value() } -> std::convertible_to<int32_t>;
 };
 

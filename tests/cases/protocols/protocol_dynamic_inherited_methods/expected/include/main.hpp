@@ -8,14 +8,14 @@ namespace tpy_user::main {
 // class HasName(Protocol):
 template<typename T>
 concept HasName = requires(T& t) {
-    { t.name() } -> std::convertible_to<std::string>;
+    { t.name() } -> std::convertible_to<std::string_view>;
 };
 
 // @dynamic
 // class DynNamed(HasName, Protocol):
 template<typename T>
 concept __DynNamed_Concept__ = requires(T& t) {
-    { t.name() } -> std::convertible_to<std::string>;
+    { t.name() } -> std::convertible_to<std::string_view>;
 };
 
 struct DynNamed {
@@ -30,14 +30,14 @@ struct tpy::Adapter<tpy_user::main::DynNamed, T> : tpy_user::main::DynNamed {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string name() override { return inner.name(); }
+    std::string name() override { return std::string(inner.name()); }
 };
 
 template<tpy_user::main::__DynNamed_Concept__ T>
 struct tpy::RefAdapter<tpy_user::main::DynNamed, T> : tpy_user::main::DynNamed {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string name() override { return inner.name(); }
+    std::string name() override { return std::string(inner.name()); }
 };
 
 namespace tpy_user::main {

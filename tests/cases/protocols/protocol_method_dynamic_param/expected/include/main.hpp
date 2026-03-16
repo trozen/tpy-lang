@@ -9,7 +9,7 @@ namespace tpy_user::main {
 // class Speaker(Protocol):
 template<typename T>
 concept __Speaker_Concept__ = requires(T& t) {
-    { t.speak() } -> std::convertible_to<std::string>;
+    { t.speak() } -> std::convertible_to<std::string_view>;
 };
 
 struct Speaker {
@@ -24,14 +24,14 @@ struct tpy::Adapter<tpy_user::main::Speaker, T> : tpy_user::main::Speaker {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string speak() override { return inner.speak(); }
+    std::string speak() override { return std::string(inner.speak()); }
 };
 
 template<tpy_user::main::__Speaker_Concept__ T>
 struct tpy::RefAdapter<tpy_user::main::Speaker, T> : tpy_user::main::Speaker {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string speak() override { return inner.speak(); }
+    std::string speak() override { return std::string(inner.speak()); }
 };
 
 namespace tpy_user::main {

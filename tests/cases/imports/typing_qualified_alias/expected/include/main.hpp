@@ -8,7 +8,7 @@ namespace tpy_user::main {
 // class Greetable(t.Protocol):
 template<typename T>
 concept Greetable = requires(T& t) {
-    { t.greet() } -> std::convertible_to<std::string>;
+    { t.greet() } -> std::convertible_to<std::string_view>;
 };
 
 struct Person;

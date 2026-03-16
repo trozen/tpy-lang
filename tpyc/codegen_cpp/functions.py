@@ -760,6 +760,10 @@ class FunctionGenerator:
         is_inplace_dunder = method.name in CONST_PARAMS_METHODS
         if is_inplace_dunder:
             ret_type = f"{escape_cpp_name(record_name)}&"
+        elif override and is_any_str_type(cpp_return_type):
+            # @dynamic protocol virtual returns std::string; override must match
+            # even if the impl declares -> StrView or -> String.
+            ret_type = "std::string"
         else:
             ret_type = self._resolve_return_type(cpp_return_type, const=const)
         dfl = method.defaults if method.defaults else None

@@ -9,7 +9,7 @@ namespace tpy_user::main {
 // class Pet(Protocol):
 template<typename T>
 concept __Pet_Concept__ = requires(T& t) {
-    { t.name() } -> std::convertible_to<std::string>;
+    { t.name() } -> std::convertible_to<std::string_view>;
 };
 
 struct Pet {
@@ -24,14 +24,14 @@ struct tpy::Adapter<tpy_user::main::Pet, T> : tpy_user::main::Pet {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string name() override { return inner.name(); }
+    std::string name() override { return std::string(inner.name()); }
 };
 
 template<tpy_user::main::__Pet_Concept__ T>
 struct tpy::RefAdapter<tpy_user::main::Pet, T> : tpy_user::main::Pet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string name() override { return inner.name(); }
+    std::string name() override { return std::string(inner.name()); }
 };
 
 namespace tpy_user::main {

@@ -10,8 +10,8 @@ namespace tpy_user::main {
 // class NamedPet(Pet, Protocol):
 template<typename T>
 concept __NamedPet_Concept__ = requires(T& t) {
-    { t.name() } -> std::convertible_to<std::string>;
-    { t.speak() } -> std::convertible_to<std::string>;
+    { t.name() } -> std::convertible_to<std::string_view>;
+    { t.speak() } -> std::convertible_to<std::string_view>;
 };
 
 struct NamedPet : ::tpy_user::pet::Pet {
@@ -26,16 +26,16 @@ struct tpy::Adapter<tpy_user::main::NamedPet, T> : tpy_user::main::NamedPet {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string name() override { return inner.name(); }
-    std::string speak() override { return inner.speak(); }
+    std::string name() override { return std::string(inner.name()); }
+    std::string speak() override { return std::string(inner.speak()); }
 };
 
 template<tpy_user::main::__NamedPet_Concept__ T>
 struct tpy::RefAdapter<tpy_user::main::NamedPet, T> : tpy_user::main::NamedPet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string name() override { return inner.name(); }
-    std::string speak() override { return inner.speak(); }
+    std::string name() override { return std::string(inner.name()); }
+    std::string speak() override { return std::string(inner.speak()); }
 };
 
 namespace tpy_user::main {

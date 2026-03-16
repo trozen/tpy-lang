@@ -11,7 +11,7 @@ namespace tpy_user::main {
 // class Animal(Protocol):
 template<typename T>
 concept __Animal_Concept__ = requires(T& t) {
-    { t.name() } -> std::convertible_to<std::string>;
+    { t.name() } -> std::convertible_to<std::string_view>;
 };
 
 struct Animal {
@@ -26,14 +26,14 @@ struct tpy::Adapter<tpy_user::main::Animal, T> : tpy_user::main::Animal {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string name() override { return inner.name(); }
+    std::string name() override { return std::string(inner.name()); }
 };
 
 template<tpy_user::main::__Animal_Concept__ T>
 struct tpy::RefAdapter<tpy_user::main::Animal, T> : tpy_user::main::Animal {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string name() override { return inner.name(); }
+    std::string name() override { return std::string(inner.name()); }
 };
 
 namespace tpy_user::main {

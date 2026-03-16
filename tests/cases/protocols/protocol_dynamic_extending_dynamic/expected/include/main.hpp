@@ -9,7 +9,7 @@ namespace tpy_user::main {
 // class Pet(Protocol):
 template<typename T>
 concept __Pet_Concept__ = requires(T& t) {
-    { t.make_noise() } -> std::convertible_to<std::string>;
+    { t.make_noise() } -> std::convertible_to<std::string_view>;
 };
 
 struct Pet {
@@ -21,8 +21,8 @@ struct Pet {
 // class NamedPet(Pet, Protocol):
 template<typename T>
 concept __NamedPet_Concept__ = requires(T& t) {
-    { t.name() } -> std::convertible_to<std::string>;
-    { t.make_noise() } -> std::convertible_to<std::string>;
+    { t.name() } -> std::convertible_to<std::string_view>;
+    { t.make_noise() } -> std::convertible_to<std::string_view>;
 };
 
 struct NamedPet : Pet {
@@ -37,14 +37,14 @@ struct tpy::Adapter<tpy_user::main::Pet, T> : tpy_user::main::Pet {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string make_noise() override { return inner.make_noise(); }
+    std::string make_noise() override { return std::string(inner.make_noise()); }
 };
 
 template<tpy_user::main::__Pet_Concept__ T>
 struct tpy::RefAdapter<tpy_user::main::Pet, T> : tpy_user::main::Pet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string make_noise() override { return inner.make_noise(); }
+    std::string make_noise() override { return std::string(inner.make_noise()); }
 };
 
 template<tpy_user::main::__NamedPet_Concept__ T>
@@ -52,16 +52,16 @@ struct tpy::Adapter<tpy_user::main::NamedPet, T> : tpy_user::main::NamedPet {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string name() override { return inner.name(); }
-    std::string make_noise() override { return inner.make_noise(); }
+    std::string name() override { return std::string(inner.name()); }
+    std::string make_noise() override { return std::string(inner.make_noise()); }
 };
 
 template<tpy_user::main::__NamedPet_Concept__ T>
 struct tpy::RefAdapter<tpy_user::main::NamedPet, T> : tpy_user::main::NamedPet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string name() override { return inner.name(); }
-    std::string make_noise() override { return inner.make_noise(); }
+    std::string name() override { return std::string(inner.name()); }
+    std::string make_noise() override { return std::string(inner.make_noise()); }
 };
 
 namespace tpy_user::main {

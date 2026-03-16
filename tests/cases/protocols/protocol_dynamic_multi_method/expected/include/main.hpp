@@ -10,7 +10,7 @@ namespace tpy_user::main {
 template<typename T>
 concept __Shape_Concept__ = requires(T& t) {
     { t.area() } -> std::convertible_to<double>;
-    { t.name() } -> std::convertible_to<std::string>;
+    { t.name() } -> std::convertible_to<std::string_view>;
     { t.scale(std::declval<double>()) } -> std::convertible_to<void>;
 };
 
@@ -29,7 +29,7 @@ struct tpy::Adapter<tpy_user::main::Shape, T> : tpy_user::main::Shape {
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     double area() override { return inner.area(); }
-    std::string name() override { return inner.name(); }
+    std::string name() override { return std::string(inner.name()); }
     void scale(double factor) override { inner.scale(factor); }
 };
 
@@ -38,7 +38,7 @@ struct tpy::RefAdapter<tpy_user::main::Shape, T> : tpy_user::main::Shape {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
     double area() override { return inner.area(); }
-    std::string name() override { return inner.name(); }
+    std::string name() override { return std::string(inner.name()); }
     void scale(double factor) override { inner.scale(factor); }
 };
 

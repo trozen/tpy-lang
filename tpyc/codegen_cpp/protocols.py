@@ -10,7 +10,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, TypeParamKind, ReadonlyType, VoidType, OptionalType,
-    UnionType, MethodSignature, is_protocol_type, unwrap_readonly,
+    UnionType, StrType, MethodSignature, is_protocol_type, unwrap_readonly,
     is_protocol_union, protocol_union_protocols, protocol_union_has_none,
 )
 from ..parse import TpyProtocol, TpyRecord
@@ -405,11 +405,22 @@ class ProtocolGenerator:
             """Convert type to C++, substituting protocol type params."""
             return subst_type(typ).to_cpp()
 
+        def concept_type_cpp(typ: TpyType) -> str:
+            """C++ type for concept constraint, with covariant str handling.
+
+            Protocol -> str uses string_view so implementations can return
+            any string type (str, StrView, String).
+            """
+            resolved = subst_type(typ)
+            if isinstance(resolved, StrType):
+                return "std::string_view"
+            return resolved.to_cpp()
+
         for method_sig in all_methods:
             # Generate requirement for each method
             # SelfType.to_cpp() returns "T", so this handles Self -> T substitution
             # Protocol type params (e.g., T in Container[T]) are mapped to _T0, _T1, etc.
-            ret_cpp = subst_to_cpp(method_sig.return_type)
+            ret_cpp = concept_type_cpp(method_sig.return_type)
 
             # For dunder methods that have ::tpy:: free function equivalents, use those
             # This allows std types (vector, string, etc.) to satisfy the protocol
@@ -435,7 +446,7 @@ class ProtocolGenerator:
         # Collect all fields including inherited ones
         all_fields = self.collect_concept_fields(protocol.name)
         for field_name, field_type in all_fields:
-            field_cpp = subst_to_cpp(field_type)
+            field_cpp = concept_type_cpp(field_type)
             out.write(f"{INDENT}{{ t.{field_name} }} -> std::convertible_to<{field_cpp}>;\n")
 
         out.write("};\n")
@@ -523,6 +534,10 @@ class ProtocolGenerator:
             is_void = isinstance(method_sig.return_type, VoidType)
             ret_kw = "" if is_void else "return "
             call_expr = self._dynamic_forward_call(method_sig)
+            # Covariant str: inner may return string_view but vtable returns string;
+            # explicit construction handles the conversion.
+            if isinstance(method_sig.return_type, StrType):
+                call_expr = f"std::string({call_expr})"
             out.write(f"{INDENT}{ret_cpp} {method_sig.name}({params_cpp}){const_qual} override {{ {ret_kw}{call_expr}; }}\n")
 
     def _is_readonly_method(self, method_sig: MethodSignature, protocol_info: 'ProtocolInfo') -> bool:

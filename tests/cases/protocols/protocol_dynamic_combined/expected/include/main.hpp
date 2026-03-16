@@ -9,7 +9,7 @@ namespace tpy_user::main {
 // class Describable(Protocol):
 template<typename T>
 concept __Describable_Concept__ = requires(T& t) {
-    { t.describe() } -> std::convertible_to<std::string>;
+    { t.describe() } -> std::convertible_to<std::string_view>;
 };
 
 struct Describable {
@@ -21,7 +21,7 @@ struct Describable {
 // class Noise(Protocol):
 template<typename T>
 concept __Noise_Concept__ = requires(T& t) {
-    { t.make_noise() } -> std::convertible_to<std::string>;
+    { t.make_noise() } -> std::convertible_to<std::string_view>;
 };
 
 struct Noise {
@@ -36,14 +36,14 @@ struct tpy::Adapter<tpy_user::main::Describable, T> : tpy_user::main::Describabl
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string describe() override { return inner.describe(); }
+    std::string describe() override { return std::string(inner.describe()); }
 };
 
 template<tpy_user::main::__Describable_Concept__ T>
 struct tpy::RefAdapter<tpy_user::main::Describable, T> : tpy_user::main::Describable {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string describe() override { return inner.describe(); }
+    std::string describe() override { return std::string(inner.describe()); }
 };
 
 template<tpy_user::main::__Noise_Concept__ T>
@@ -51,14 +51,14 @@ struct tpy::Adapter<tpy_user::main::Noise, T> : tpy_user::main::Noise {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string make_noise() override { return inner.make_noise(); }
+    std::string make_noise() override { return std::string(inner.make_noise()); }
 };
 
 template<tpy_user::main::__Noise_Concept__ T>
 struct tpy::RefAdapter<tpy_user::main::Noise, T> : tpy_user::main::Noise {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string make_noise() override { return inner.make_noise(); }
+    std::string make_noise() override { return std::string(inner.make_noise()); }
 };
 
 namespace tpy_user::main {

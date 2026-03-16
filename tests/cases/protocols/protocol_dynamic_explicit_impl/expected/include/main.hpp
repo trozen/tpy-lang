@@ -9,7 +9,7 @@ namespace tpy_user::main {
 // class Describable(Protocol):
 template<typename T>
 concept __Describable_Concept__ = requires(T& t) {
-    { t.describe() } -> std::convertible_to<std::string>;
+    { t.describe() } -> std::convertible_to<std::string_view>;
     { t.id() } -> std::convertible_to<int32_t>;
 };
 
@@ -26,7 +26,7 @@ struct tpy::Adapter<tpy_user::main::Describable, T> : tpy_user::main::Describabl
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string describe() override { return inner.describe(); }
+    std::string describe() override { return std::string(inner.describe()); }
     int32_t id() override { return inner.id(); }
 };
 
@@ -34,7 +34,7 @@ template<tpy_user::main::__Describable_Concept__ T>
 struct tpy::RefAdapter<tpy_user::main::Describable, T> : tpy_user::main::Describable {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string describe() override { return inner.describe(); }
+    std::string describe() override { return std::string(inner.describe()); }
     int32_t id() override { return inner.id(); }
 };
 

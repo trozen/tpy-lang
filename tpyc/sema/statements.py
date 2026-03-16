@@ -193,9 +193,7 @@ class StatementAnalyzer:
 
         This copies the string; suggest StrView (zero-copy view) or String
         (explicit owned) so the user makes an intentional choice.
-        Suppressed for dunder methods. Note: protocol implementations also
-        get warned -- once covariant str returns are supported in protocols,
-        users can switch to -> StrView there too (see TODO).
+        Suppressed for dunder methods (__str__, __repr__).
         """
         if not isinstance(expected, StrType):
             return

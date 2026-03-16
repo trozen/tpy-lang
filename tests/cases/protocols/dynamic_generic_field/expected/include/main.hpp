@@ -9,7 +9,7 @@ namespace tpy_user::main {
 // class Greeter(Protocol):
 template<typename T>
 concept __Greeter_Concept__ = requires(T& t) {
-    { t.greet() } -> std::convertible_to<std::string>;
+    { t.greet() } -> std::convertible_to<std::string_view>;
 };
 
 struct Greeter {
@@ -24,14 +24,14 @@ struct tpy::Adapter<tpy_user::main::Greeter, T> : tpy_user::main::Greeter {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string greet() override { return inner.greet(); }
+    std::string greet() override { return std::string(inner.greet()); }
 };
 
 template<tpy_user::main::__Greeter_Concept__ T>
 struct tpy::RefAdapter<tpy_user::main::Greeter, T> : tpy_user::main::Greeter {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
-    std::string greet() override { return inner.greet(); }
+    std::string greet() override { return std::string(inner.greet()); }
 };
 
 namespace tpy_user::main {

@@ -8,13 +8,13 @@ namespace tpy_user::main {
 // class Printable(Protocol):
 template<typename T>
 concept Printable = requires(T& t) {
-    { t.to_str() } -> std::convertible_to<std::string>;
+    { t.to_str() } -> std::convertible_to<std::string_view>;
 };
 
 // class PrintableAndSized(Printable, Sized, Protocol):
 template<typename T>
 concept PrintableAndSized = requires(T& t) {
-    { t.to_str() } -> std::convertible_to<std::string>;
+    { t.to_str() } -> std::convertible_to<std::string_view>;
     { ::tpy::__len__(t) } -> std::convertible_to<int32_t>;
 };
 

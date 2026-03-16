@@ -8,7 +8,7 @@ namespace tpy_user::main {
 // class Printable(Protocol):
 template<typename T>
 concept Printable = requires(T& t) {
-    { t.to_string() } -> std::convertible_to<std::string>;
+    { t.to_string() } -> std::convertible_to<std::string_view>;
 };
 
 struct Point;

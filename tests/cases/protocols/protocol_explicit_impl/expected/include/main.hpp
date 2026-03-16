@@ -9,7 +9,7 @@ namespace tpy_user::main {
 // class Printable(Protocol):
 template<typename T>
 concept Printable = requires(const T& t) {
-    { t.__str__() } -> std::convertible_to<std::string>;
+    { t.__str__() } -> std::convertible_to<std::string_view>;
 };
 
 struct Person;

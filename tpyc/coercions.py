@@ -250,6 +250,7 @@ COERCIONS: list[Coercion] = [
         name="string_to_str",
         from_type=StringType,
         to_type=StrType,
+        protocol_safe=True,
     ),
     Coercion(
         name="str_to_string",
