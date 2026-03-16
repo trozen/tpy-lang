@@ -2063,6 +2063,48 @@ class StatementGenerator:
 
         self._gen_loop_body(out, stmt, indent, elem_type)
 
+    def _gen_error_return_next_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
+                                     iterable_expr: str, elem_type: TpyType) -> None:
+        """Generate direct loop for iterators with @error_return(StopIteration) __next__.
+
+        Produces:
+            auto& __iter_N = <expr>;              // capture iterator
+            for (;;) {
+                auto __r_N = __iter_N.__next__();
+                if (!__r_N.has_value()) break;
+                T x = *__r_N;
+                // body
+            }
+        """
+        n = self.ctx.iter_counter
+        self.ctx.iter_counter += 1
+        iter_name = f"__iter_{n}"
+        r_name = f"__r_{n}"
+        cpp_var = escape_cpp_name(stmt.var)
+
+        src_binding = "auto&" if self._is_lvalue_iterable(stmt.iterable) else "auto"
+        self.ctx.temps.flush(out, indent)
+        out.write(f"{indent}{src_binding} {iter_name} = {iterable_expr};\n")
+        out.write(f"{indent}for (;;) {{\n")
+        inner_indent = indent + INDENT
+        out.write(f"{inner_indent}auto {r_name} = {iter_name}.__next__();\n")
+        out.write(f"{inner_indent}if (!{r_name}.has_value()) break;\n")
+
+        if stmt.const_loop_var and elem_type and elem_type.is_value_type():
+            cpp_elem = elem_type.to_cpp()
+            out.write(f"{inner_indent}const {cpp_elem}& {cpp_var} = *{r_name};\n")
+        elif stmt.const_loop_var:
+            out.write(f"{inner_indent}const auto& {cpp_var} = *{r_name};\n")
+        elif elem_type and elem_type.is_value_type():
+            cpp_elem = elem_type.to_cpp()
+            out.write(f"{inner_indent}{cpp_elem} {cpp_var} = *{r_name};\n")
+        elif elem_type:
+            out.write(f"{inner_indent}auto&& {cpp_var} = *{r_name};\n")
+        else:
+            out.write(f"{inner_indent}auto {cpp_var} = *{r_name};\n")
+
+        self._gen_loop_body(out, stmt, indent, elem_type)
+
     def _gen_adapted_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
                           iterable_expr: str, elem_type: TpyType,
                           adapter: str, iter_call_expr: str = "",
@@ -2356,7 +2398,8 @@ class StatementGenerator:
             self._gen_begin_end_loop(out, stmt, indent, iterable, enum_type)
             return
 
-        from tpyc.modules import get_native_iterator_element_type, get_iter_info
+        from tpyc.modules import (get_native_iterator_element_type, get_iter_info,
+                                   get_error_return_next_element_type)
         iterable_type = self.types.get_resolved_type(stmt.iterable)
 
         # Resolve sema-stored elem_type (handles PendingStrType -> concrete)
@@ -2401,6 +2444,13 @@ class StatementGenerator:
             if elem_type:
                 self._gen_begin_end_loop(out, stmt, indent, iterable, elem_type, is_lvalue=False)
                 return
+
+        # Check for error_return __next__ iterators -- direct loop (no iter_adapt)
+        er_elem = get_error_return_next_element_type(iterable_type, registry=self.ctx.analyzer.registry)
+        if er_elem is not None:
+            iterable = self.expressions.gen_expr_deref(stmt.iterable)
+            self._gen_error_return_next_loop(out, stmt, indent, iterable, sema_elem or er_elem)
+            return
 
         # Check for OptIterator types -- wrap with iter_adapt
         iter_elem = get_native_iterator_element_type(iterable_type, registry=self.ctx.analyzer.registry)

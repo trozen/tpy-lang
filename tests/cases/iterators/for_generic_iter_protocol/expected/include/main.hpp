@@ -31,7 +31,7 @@ struct StorageIter {
     auto& __iter__() { return *this; }
 
     //     def __next__(self) -> Own[T]:
-    std::optional<T> __next_opt__() {
+    std::expected<T, StopIteration> __next__() {
         //         if self._index < self._size:
         if ((this->_index < this->_size)) {
             //             val = self._storage.load(UInt32(self._index))
@@ -42,11 +42,13 @@ struct StorageIter {
             return val;
         }
         //         raise StopIteration
-        return std::nullopt;
+        return std::unexpected(StopIteration{});
     }
 
-    T __next__() {
-        ::tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
+    std::optional<T> __next_opt__() {
+        auto __r = __next__();
+        if (__r.has_value()) return *__r;
+        return std::nullopt;
     }
 };
 

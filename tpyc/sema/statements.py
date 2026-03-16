@@ -875,21 +875,11 @@ class StatementAnalyzer:
         }
 
     def _analyze_raise(self, stmt: TpyRaise) -> None:
-        """Analyze a general raise statement (for @error_return functions).
-
-        Also accepts `raise StopIteration` inside legacy `__next__` methods
-        that don't have an explicit @error_return decorator.
-        """
+        """Analyze a general raise statement (for @error_return functions)."""
         func = self.ctx.current_function
         if not isinstance(func, TpyFunction):
             raise self.ctx.error(
                 f"'raise {stmt.exception_type}' can only be used inside a function", stmt)
-        # Legacy __next__ path: accept raise StopIteration without @error_return
-        if (func.error_return is None
-                and stmt.exception_type == "StopIteration"
-                and func.name == "__next__"):
-            self.init.mark_terminated()
-            return
         if func.error_return is None:
             raise self.ctx.error(
                 f"'raise {stmt.exception_type}' requires "

@@ -5,7 +5,7 @@
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Generic mechanism: `@error_return(E)` decorator, `raise E` codegen (`std::unexpected`), `try/except` parsing + caller enforcement, `std::expected<T, E>` return + unwrap, `try/except/else` | Done |
-| 2 | Iterator migration: auto-add `@error_return(StopIteration)` on `__next__`, `StopIteration` built-in type, for-loop codegen using `std::expected` directly | Not started |
+| 2 | Iterator migration: auto-add `@error_return(StopIteration)` on `__next__`, `StopIteration` built-in type, for-loop codegen using `std::expected` directly | Done |
 | 3 | Cleanup: deprecate `__next_opt__`, migrate internal iterators (Range, SpanIter), remove `iter_adapt`/panic stub/synthesis, `try_next()` migration | Not started |
 
 ### Future Extensions

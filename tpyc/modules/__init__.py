@@ -792,6 +792,51 @@ def _find_record_next_element(
     return None
 
 
+def get_error_return_next_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
+    """If type has __next__() with @error_return(StopIteration), return element type T."""
+    from tpyc.typesys import NamedType, OwnType, TypeParamRef
+
+    if not isinstance(tpy_type, NamedType) or not tpy_type.is_user_record:
+        return None
+    return _find_error_return_next_element(tpy_type.name, tpy_type.type_args, registry)
+
+
+def _find_error_return_next_element(
+    record_name: str, type_args: "list[TpyType] | None", registry: "TypeRegistry",
+) -> "TpyType | None":
+    """Walk a record's method table (and parent chain) looking for __next__() with error_return."""
+    from tpyc.typesys import NamedType, OwnType, TypeParamRef
+
+    record = registry.find_record(record_name)
+    if record is None:
+        return None
+
+    type_subst: dict[str, "TpyType"] = {}
+    if record.type_params and type_args:
+        type_subst = dict(zip(record.type_params, type_args))
+
+    for method in record.get_method_overloads("__next__"):
+        if method.error_return_type == "StopIteration" and len(method.params) == 0:
+            inner = method.return_type
+            if isinstance(inner, OwnType):
+                inner = inner.wrapped
+            if isinstance(inner, TypeParamRef) and inner.name in type_subst:
+                return type_subst[inner.name]
+            return inner
+
+    # Walk parent chain
+    if record.parent and isinstance(record.parent, NamedType) and record.parent.is_user_record:
+        parent_args = list(record.parent.type_args) if record.parent.type_args else None
+        if type_subst and parent_args:
+            parent_args = [
+                type_subst[a.name] if isinstance(a, TypeParamRef) and a.name in type_subst else a
+                for a in parent_args
+            ]
+        return _find_error_return_next_element(record.parent.name, parent_args, registry)
+
+    return None
+
+
 @dataclass
 class IterInfo:
     """Result of checking __iter__() on a type."""

@@ -1445,6 +1445,10 @@ class Parser:
         else:
             body = [self._parse_stmt(stmt) for stmt in node.body]
 
+        # __next__ methods implicitly get @error_return(StopIteration)
+        if node.name == "__next__" and error_return is None:
+            error_return = "StopIteration"
+
         method = TpyFunction(
             name=node.name,
             params=params,

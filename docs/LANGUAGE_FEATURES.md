@@ -2299,15 +2299,19 @@ tpy::range_check_overflow<int32_t>(0, 100, 3);
 for (int32_t i = 0; i < 100; i += 3) { ... }
 ```
 
-Step ±1 uses `++i`/`--i` with no overflow check. Other steps use an upfront `range_check_overflow` that verifies the final increment won't overflow, then uses unchecked `i += step` in the hot loop. Variable steps use a ternary condition (`step > 0 ? i < stop : i > stop`). Generic `OptIterator[T]` parameters (not `range()` calls) still use the while-loop path:
+Step ±1 uses `++i`/`--i` with no overflow check. Other steps use an upfront `range_check_overflow` that verifies the final increment won't overflow, then uses unchecked `i += step` in the hot loop. Variable steps use a ternary condition (`step > 0 ? i < stop : i > stop`). User-defined iterators with `__next__` + `@error_return(StopIteration)` use a direct loop:
 
 ```cpp
-auto& __iter_0 = it;  // reference for variable (preserves consumption)
-while (auto __opt_0 = __iter_0.__next_opt__()) {
-    int32_t x = *__opt_0;
+auto& __iter_0 = it;
+for (;;) {
+    auto __r_0 = __iter_0.__next__();  // std::expected<T, StopIteration>
+    if (!__r_0.has_value()) break;
+    int32_t x = *__r_0;
     // body
 }
 ```
+
+Generic `OptIterator[T]` parameters and legacy `__next_opt__` iterators use `iter_adapt` (begin/end wrapper over `__next_opt__`).
 
 **Key characteristics**:
 - **Structural protocol**: Any type with `__next_opt__() -> T | None` automatically conforms
@@ -2322,7 +2326,7 @@ while (auto __opt_0 = __iter_0.__next_opt__()) {
 | 2. Counter-loop optimization | **Working** | `for i in range(...)` → C-style `for (int32_t i = ...)` |
 | 3. Range as NativeIterable | **Working** | `Range[T]` is an immutable container with `begin()`/`end()`, supports `list(range(...))` |
 | 4. Structural OptIterator | **Working** | Check `__next_opt__() -> Optional[T]` method for protocol conformance |
-| 5. User-defined iterators | **Working** | `__iter__`/`__next__` compiled to `__next_opt__` under the hood |
+| 5. User-defined iterators | **Working** | `__iter__`/`__next__` via `@error_return(StopIteration)` -> `std::expected`, with `__next_opt__` compat wrapper |
 | 6. Iterator[T]/Iterable[T] | **Working** | Built-in protocols from `typing`, for-loop support, `iter()`, `try_next()` builtins |
 | 7. `__span__` protocol | **Working** | `__span__() -> Span[T]` for implicit Span coercion; iteration requires `__iter__()` |
 | 7b. `ReadOnlySpanLike[T]` protocol | **Working** | Readonly protocol for types with `__span__()`, for-loop and ReadOnlySpan coercion |
@@ -2334,9 +2338,10 @@ See [docs/ITERATOR_DESIGN.md](ITERATOR_DESIGN.md) for the full iterator design d
 
 #### Working: User-Defined Iterators (`__iter__`/`__next__`)
 
-Two patterns for user-defined iterators, both producing `__next_opt__() -> std::optional<T>` in C++:
+Two patterns for user-defined iterators:
 
-**Pattern 1: Python-compatible** — `__next__(self) -> T` + `raise StopIteration` (runs in both tpyc and CPython):
+**Pattern 1: Python-compatible** — `__next__(self) -> T` + `raise StopIteration` (runs in both tpyc and CPython).
+The compiler auto-applies `@error_return(StopIteration)`, producing `std::expected<T, StopIteration>` in C++. A compatibility `__next_opt__()` wrapper is also emitted for `iter_adapt`/`try_next()` backward compat:
 
 ```python
 from __future__ import annotations
@@ -2364,7 +2369,7 @@ for x in Counter(5):
     print(x)
 ```
 
-**Pattern 2: TurboPython-specific** — `__next_opt__(self) -> T | None`:
+**Pattern 2: TurboPython-specific** — `__next_opt__(self) -> T | None` (produces `std::optional<T>` directly):
 
 ```python
 class Counter:
@@ -2390,8 +2395,8 @@ class NumberRange:
 ```
 
 **Rules**:
-- Direct `obj.__next__()` calls are forbidden -- use a for-loop or call `obj.__next_opt__()` instead
-- `raise StopIteration` is only allowed inside `__next__` methods
+- Direct `obj.__next__()` calls require `try/except StopIteration` (compile error if unhandled, since `__next__` is `@error_return(StopIteration)`)
+- `raise StopIteration` is only allowed inside `__next__` methods (or functions with `@error_return(StopIteration)`)
 - The `next()` builtin is not yet supported
 
 #### Working: `Iterator[T]` and `Iterable[T]` Protocols
@@ -2548,7 +2553,7 @@ def sum_generic[T: Iterable[Int32]](items: T) -> Int32:
     return total
 ```
 
-**For-loop support**: `for x in expr` works when `expr` has type `Iterator[T]` (uses while-loop via `__next_opt__`) or `Iterable[T]` (calls `__iter__()` first, then iterates the resulting iterator).
+**For-loop support**: `for x in expr` works when `expr` has type `Iterator[T]` (uses `iter_adapt` via `__next_opt__`) or `Iterable[T]` (calls `__iter__()` first, then iterates the resulting iterator). User-defined iterators with `__next__` use the direct `std::expected` loop path.
 
 #### Working: Span coercion via `ReadOnlySpanLike[T]`
 
@@ -4510,6 +4515,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - `try/except/else` supported
   - Goto-based dispatch: error_return calls inside nested if/for work correctly
   - Branch-aware flow analysis (narrowing, init tracking, variable hoisting)
+  - `__next__` methods auto-apply `@error_return(StopIteration)` -- for-loops use direct `std::expected` check
   - See `docs/ERROR_RETURN_DESIGN.md` for full design
 - **Open**: General `try`/`except` for C++ exceptions (separate from `@error_return`)
 - **Open**: Warning when exceptions are used for control flow (e.g., `try: Color(99) except ValueError` to test validity) -- prefer safe alternatives like `try_parse()`

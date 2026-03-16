@@ -1,3 +1,4 @@
+# Calling __next__() without try/except is a compile error
 from tpy import Int32
 
 class Counter:
@@ -16,4 +17,4 @@ class Counter:
         raise StopIteration
 
 c = Counter(5)
-c.__next__()
+c.__next__()  # tpyc: error(/must be handled with try/except/)

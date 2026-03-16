@@ -218,6 +218,7 @@ class MethodAnalyzer:
             self.calls._check_borrow_arg_conflicts(expr)
             self.calls._check_loop_var_arg_mutation(expr)
             self.calls._record_mutation_call_edges(expr)
+            self.calls._check_error_return_handled(expr, resolved)
         return resolved.return_type
 
     @staticmethod

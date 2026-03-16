@@ -8,12 +8,11 @@ namespace tpy_user::main {
 void main() {
     //     # Auto-synthesized __iter__ enables for-loop
     //     for x in SimpleIter(4):
-    auto __src_0 = SimpleIter(4);
-    auto __obj_0 = ::tpy::iter_adapt(__src_0);
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        int32_t x = *__beg_0;
+    auto __iter_0 = SimpleIter(4);
+    for (;;) {
+        auto __r_0 = __iter_0.__next__();
+        if (!__r_0.has_value()) break;
+        int32_t x = *__r_0;
         //         print(x)
         std::cout << x << "\n";
     }

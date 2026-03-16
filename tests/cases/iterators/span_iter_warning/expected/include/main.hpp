@@ -24,7 +24,7 @@ struct MyIter {
     auto& __iter__() { return *this; }
 
     //     def __next__(self) -> Int32:
-    std::optional<int32_t> __next_opt__() {
+    std::expected<int32_t, StopIteration> __next__() {
         //         if self._val > 0:
         if ((this->_val > 0)) {
             //             result = self._val
@@ -35,11 +35,13 @@ struct MyIter {
             return result;
         }
         //         raise StopIteration
-        return std::nullopt;
+        return std::unexpected(StopIteration{});
     }
 
-    int32_t __next__() {
-        ::tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
+    std::optional<int32_t> __next_opt__() {
+        auto __r = __next__();
+        if (__r.has_value()) return *__r;
+        return std::nullopt;
     }
 };
 
