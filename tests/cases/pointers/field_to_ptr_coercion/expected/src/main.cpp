@@ -7,13 +7,13 @@ namespace tpy_user::main {
 // def modify_inner(p: Ptr[Inner]) -> None:
 void modify_inner(Inner* p) {
     //     p.x = 999
-    tpy::deref_check(p).x = 999;
+    ::tpy::deref_check(p).x = 999;
 }
 
 // def read_inner(p: Ptr[readonly[Inner]]) -> Int32:
 int32_t read_inner(const Inner* p) {
     //     return p.x
-    return tpy::deref_check(p).x;
+    return ::tpy::deref_check(p).x;
 }
 
 // def test_field_to_ptr() -> None:
@@ -44,9 +44,9 @@ void test_subscript_to_ptr() {
     std::array<Inner, 3> arr = {Inner(1), Inner(2), Inner(3)};
     //     # arr[i] -> Ptr coercion
     //     modify_inner(arr[1])
-    modify_inner(&tpy::__getitem__(arr, 1));
+    modify_inner(&::tpy::__getitem__(arr, 1));
     //     print(arr[1].x)
-    std::cout << tpy::__getitem__(arr, 1).x << "\n";
+    std::cout << ::tpy::__getitem__(arr, 1).x << "\n";
 }
 
 void __tpy_init() {
@@ -72,7 +72,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

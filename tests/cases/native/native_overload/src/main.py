@@ -7,7 +7,7 @@ from tpy.extern import native
 def log(x: float) -> float: ...
 
 @overload
-@native("::tpy::math::log_base")
+@native("tpy::math::log_base")
 def log(x: float, base: float) -> float: ...
 
 def main() -> None:

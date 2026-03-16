@@ -11,16 +11,16 @@ void test_list_negative_indexing() {
     std::vector<int32_t> nums = {10, 20, 30, 40, 50};
     //     # Last element
     //     print(nums[-1])
-    std::cout << tpy::__getitem__(nums, -1) << "\n";
+    std::cout << ::tpy::__getitem__(nums, -1) << "\n";
     //     # Second to last
     //     print(nums[-2])
-    std::cout << tpy::__getitem__(nums, -2) << "\n";
+    std::cout << ::tpy::__getitem__(nums, -2) << "\n";
     //     # Third to last
     //     print(nums[-3])
-    std::cout << tpy::__getitem__(nums, -3) << "\n";
+    std::cout << ::tpy::__getitem__(nums, -3) << "\n";
     //     # First element via negative (should be same as nums[0])
     //     print(nums[-5])
-    std::cout << tpy::__getitem__(nums, -5) << "\n";
+    std::cout << ::tpy::__getitem__(nums, -5) << "\n";
 }
 
 // def test_array_negative_indexing() -> None:
@@ -28,11 +28,11 @@ void test_array_negative_indexing() {
     //     arr: Array[Int32, 4] = [100, 200, 300, 400]
     std::array<int32_t, 4> arr = {100, 200, 300, 400};
     //     print(arr[-1])
-    std::cout << tpy::__getitem__(arr, -1) << "\n";
+    std::cout << ::tpy::__getitem__(arr, -1) << "\n";
     //     print(arr[-2])
-    std::cout << tpy::__getitem__(arr, -2) << "\n";
+    std::cout << ::tpy::__getitem__(arr, -2) << "\n";
     //     print(arr[-4])
-    std::cout << tpy::__getitem__(arr, -4) << "\n";
+    std::cout << ::tpy::__getitem__(arr, -4) << "\n";
 }
 
 // def test_string_negative_indexing() -> None:
@@ -41,13 +41,13 @@ void test_string_negative_indexing() {
     std::string_view text = "hello";
     //     # Last character
     //     print(text[-1])
-    std::cout << tpy::__getitem__(text, -1) << "\n";
+    std::cout << ::tpy::__getitem__(text, -1) << "\n";
     //     # Second to last
     //     print(text[-2])
-    std::cout << tpy::__getitem__(text, -2) << "\n";
+    std::cout << ::tpy::__getitem__(text, -2) << "\n";
     //     # First character via negative
     //     print(text[-5])
-    std::cout << tpy::__getitem__(text, -5) << "\n";
+    std::cout << ::tpy::__getitem__(text, -5) << "\n";
 }
 
 // def test_negative_index_assignment() -> None:
@@ -56,19 +56,19 @@ void test_negative_index_assignment() {
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     //     # Modify last element
     //     nums[-1] = 50
-    tpy::__setitem__(nums, -1, 50);
+    ::tpy::__setitem__(nums, -1, 50);
     //     print(nums[-1])
-    std::cout << tpy::__getitem__(nums, -1) << "\n";
+    std::cout << ::tpy::__getitem__(nums, -1) << "\n";
     //     # Modify second to last
     //     nums[-2] = 40
-    tpy::__setitem__(nums, -2, 40);
+    ::tpy::__setitem__(nums, -2, 40);
     //     print(nums[-2])
-    std::cout << tpy::__getitem__(nums, -2) << "\n";
+    std::cout << ::tpy::__getitem__(nums, -2) << "\n";
     //     # Verify list contents
     //     print(nums[3])
-    std::cout << tpy::__getitem__(nums, 3) << "\n";
+    std::cout << ::tpy::__getitem__(nums, 3) << "\n";
     //     print(nums[4])
-    std::cout << tpy::__getitem__(nums, 4) << "\n";
+    std::cout << ::tpy::__getitem__(nums, 4) << "\n";
 }
 
 // def test_negative_index_in_expression() -> None:
@@ -77,12 +77,12 @@ void test_negative_index_in_expression() {
     std::vector<int32_t> nums = {5, 10, 15, 20};
     //     # Arithmetic with negative indexed values
     //     total: Int32 = nums[-1] + nums[-2]
-    int32_t total = (tpy::add_check<int32_t>(tpy::__getitem__(nums, -1), tpy::__getitem__(nums, -2)));
+    int32_t total = (::tpy::add_check<int32_t>(::tpy::__getitem__(nums, -1), ::tpy::__getitem__(nums, -2)));
     //     print(total)
     std::cout << total << "\n";
     //     # Comparison with negative indexed values
     //     if nums[-1] > nums[-2]:
-    if ((tpy::__getitem__(nums, -1) > tpy::__getitem__(nums, -2))) {
+    if ((::tpy::__getitem__(nums, -1) > ::tpy::__getitem__(nums, -2))) {
         //         print("last > second_last")
         std::cout << "last > second_last" << "\n";
     //     else:
@@ -97,17 +97,17 @@ void test_array_negative_assignment() {
     //     arr: Array[Int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> arr = {1, 2, 3};
     //     arr[-1] = 30
-    tpy::__setitem__(arr, -1, 30);
+    ::tpy::__setitem__(arr, -1, 30);
     //     arr[-2] = 20
-    tpy::__setitem__(arr, -2, 20);
+    ::tpy::__setitem__(arr, -2, 20);
     //     arr[-3] = 10
-    tpy::__setitem__(arr, -3, 10);
+    ::tpy::__setitem__(arr, -3, 10);
     //     print(arr[0])
-    std::cout << tpy::__getitem__(arr, 0) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 0) << "\n";
     //     print(arr[1])
-    std::cout << tpy::__getitem__(arr, 1) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 1) << "\n";
     //     print(arr[2])
-    std::cout << tpy::__getitem__(arr, 2) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 2) << "\n";
 }
 
 void __tpy_init() {
@@ -145,7 +145,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -9,7 +9,7 @@ namespace tpy_user::main {
 // # Test 1: Int32 returned where stub says -> int, union has float first
 // @overload
 // def get_val(obj: A) -> int: ...  # tpyc: ok
-tpy::BigInt get_val(const A& obj) {
+::tpy::BigInt get_val(const A& obj) {
     //     if isinstance(obj, A):
     //         return obj.x  # Int32, stub -> int (not float)
     return obj.x;
@@ -29,7 +29,7 @@ double get_val(const B& obj) {
 // # Test 2: Int64 returned where stub says -> int, union has float first
 // @overload
 // def get_big(obj: C) -> int: ...  # tpyc: ok
-tpy::BigInt get_big(const C& obj) {
+::tpy::BigInt get_big(const C& obj) {
     //     if isinstance(obj, C):
     //         return obj.z  # Int64, stub -> int (not float)
     return obj.z;
@@ -77,7 +77,7 @@ double get_cast(const A& obj) {
 
 // @overload
 // def get_cast(obj: C) -> int: ...  # tpyc: ok
-tpy::BigInt get_cast(const C& obj) {
+::tpy::BigInt get_cast(const C& obj) {
     //     if isinstance(obj, A):
     //         return obj.z
     return obj.z;
@@ -95,18 +95,18 @@ void main() {
     //     print(get_val(a))
     std::cout << get_val(a) << "\n";
     //     print(get_val(b))
-    std::cout << tpy::print_float(get_val(b)) << "\n";
+    std::cout << ::tpy::print_float(get_val(b)) << "\n";
     //     print(get_big(c))
     std::cout << get_big(c) << "\n";
     //     print(get_big(b))
-    std::cout << tpy::print_float(get_big(b)) << "\n";
+    std::cout << ::tpy::print_float(get_big(b)) << "\n";
     //     print(get_wide(a))
     std::cout << get_wide(a) << "\n";
     //     print(get_wide(b))
-    std::cout << tpy::print_float(get_wide(b)) << "\n";
+    std::cout << ::tpy::print_float(get_wide(b)) << "\n";
     //     # int() normalizes output: TPy returns float (via stub), CPython returns Int32
     //     print(int(get_cast(a)))
-    std::cout << tpy::BigInt::from_float(get_cast(a)) << "\n";
+    std::cout << ::tpy::BigInt::from_float(get_cast(a)) << "\n";
     //     print(get_cast(c))
     std::cout << get_cast(c) << "\n";
 }
@@ -123,7 +123,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

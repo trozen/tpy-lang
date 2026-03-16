@@ -8,13 +8,13 @@ namespace tpy_user::main {
 int32_t a{};
 // # One below Int32 min -- should promote to BigInt with warning
 // b = -2147483649  # tpyc: warning(/outside default Int32 range/)
-tpy::BigInt b;
+::tpy::BigInt b;
 // # Exactly Int32 max -- should stay Int32
 // c = 2147483647
 int32_t c{};
 // # One above Int32 max -- should promote to BigInt with warning
 // d = 2147483648  # tpyc: warning(/outside default Int32 range/)
-tpy::BigInt d;
+::tpy::BigInt d;
 
 void __tpy_init() {
     static bool initialized = false;
@@ -28,7 +28,7 @@ void __tpy_init() {
     std::cout << a << "\n";
     // # One below Int32 min -- should promote to BigInt with warning
     // b = -2147483649  # tpyc: warning(/outside default Int32 range/)
-    b = tpy::BigInt(static_cast<int64_t>(-2147483649LL));
+    b = ::tpy::BigInt(static_cast<int64_t>(-2147483649LL));
     // print(b)
     std::cout << b << "\n";
     // # Exactly Int32 max -- should stay Int32
@@ -38,7 +38,7 @@ void __tpy_init() {
     std::cout << c << "\n";
     // # One above Int32 max -- should promote to BigInt with warning
     // d = 2147483648  # tpyc: warning(/outside default Int32 range/)
-    d = tpy::BigInt(static_cast<int64_t>(2147483648LL));
+    d = ::tpy::BigInt(static_cast<int64_t>(2147483648LL));
     // print(d)
     std::cout << d << "\n";
 }
@@ -46,7 +46,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -7,9 +7,9 @@ namespace tpy_user::main {
 // def show_span(s: Span[Int32]) -> None:
 void show_span(std::span<int32_t> s) {
     //     print(str(s))
-    std::cout << tpy::list_to_str(s) << "\n";
+    std::cout << ::tpy::list_to_str(s) << "\n";
     //     print(f"span={s}")
-    std::cout << std::format("span={}", tpy::list_to_str(s)) << "\n";
+    std::cout << std::format("span={}", ::tpy::list_to_str(s)) << "\n";
 }
 
 // def main() -> None:
@@ -17,15 +17,15 @@ void main() {
     //     a: Array[Int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> a = {10, 20, 30};
     //     print(str(a))
-    std::cout << tpy::list_to_str(a) << "\n";
+    std::cout << ::tpy::list_to_str(a) << "\n";
     //     print(repr(a))
-    std::cout << tpy::list_to_str(a) << "\n";
+    std::cout << ::tpy::list_to_str(a) << "\n";
     //     print(f"{a}")
-    std::cout << std::format("{}", tpy::list_to_str(a)) << "\n";
+    std::cout << std::format("{}", ::tpy::list_to_str(a)) << "\n";
     //     print(f"array={a!r}")
-    std::cout << std::format("array={}", tpy::list_to_str(a)) << "\n";
+    std::cout << std::format("array={}", ::tpy::list_to_str(a)) << "\n";
     //     show_span(a)
-    show_span(tpy::as_mut_span(a));
+    show_span(::tpy::as_mut_span(a));
 }
 
 void __tpy_init() {
@@ -40,7 +40,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

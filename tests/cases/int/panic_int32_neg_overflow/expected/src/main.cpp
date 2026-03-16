@@ -16,7 +16,7 @@ void __tpy_init() {
     // x: Int32 = -2147483648  # INT32_MIN
     x = -2147483648;
     // y: Int32 = -x           # -INT32_MIN overflows, should panic
-    y = tpy::neg_check<int32_t>(x);
+    y = ::tpy::neg_check<int32_t>(x);
     // print(y)
     std::cout << y << "\n";
 }
@@ -24,7 +24,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

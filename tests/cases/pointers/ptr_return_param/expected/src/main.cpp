@@ -27,11 +27,11 @@ void main() {
     //     p1: Ptr[Point] = addr_param(local)
     Point* p1 = addr_param(local);
     //     print(p1.x)
-    std::cout << tpy::deref_check(p1).x << "\n";
+    std::cout << ::tpy::deref_check(p1).x << "\n";
     //     p2: Ptr[Point] = addr_global()
     Point* p2 = addr_global();
     //     print(p2.y)
-    std::cout << tpy::deref_check(p2).y << "\n";
+    std::cout << ::tpy::deref_check(p2).y << "\n";
 }
 
 void __tpy_init() {
@@ -49,7 +49,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

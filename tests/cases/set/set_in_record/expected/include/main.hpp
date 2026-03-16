@@ -17,10 +17,10 @@ struct TaggedItem {
     //     name: str
     std::string name;
     //     tags: set[str]
-    tpy::ordered_set<std::string> tags;
+    ::tpy::ordered_set<std::string> tags;
 
     TaggedItem() = default;
-    explicit TaggedItem(std::string_view name, tpy::ordered_set<std::string>&& tags) : name(name), tags(std::move(tags)) {}
+    explicit TaggedItem(std::string_view name, ::tpy::ordered_set<std::string>&& tags) : name(name), tags(std::move(tags)) {}
 
     bool __eq__(const TaggedItem& other) const {
         return ((this->name == other.name) && (this->tags == other.tags));
@@ -35,7 +35,7 @@ struct TaggedItem {
         __os << "TaggedItem("
            << "name=" << "'" << this->name << "'"
            << ", "
-           << "tags=" << tpy::SetPrinter(this->tags)
+           << "tags=" << ::tpy::SetPrinter(this->tags)
            << ")";
         return __os.str();
     }

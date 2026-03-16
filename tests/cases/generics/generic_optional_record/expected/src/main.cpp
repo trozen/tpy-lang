@@ -16,7 +16,7 @@ void accept_opt(Point* p) {
 // def main() -> None:
 void main() {
     //     c = Container[Point](Point(1, 2))
-    Container<Point> c = Container<Point>(Point(tpy::BigInt(1), tpy::BigInt(2)));
+    Container<Point> c = Container<Point>(Point(::tpy::BigInt(1), ::tpy::BigInt(2)));
     //     p = c.get()
     Point* p = c.get();
     //     # Field access on narrowed std::optional
@@ -37,13 +37,13 @@ void main() {
     accept_opt(p2);
     //     # Also test with value type (should still work)
     //     c2 = Container[int](42)
-    Container<tpy::BigInt> c2 = Container<tpy::BigInt>(42);
+    Container<::tpy::BigInt> c2 = Container<::tpy::BigInt>(42);
     //     v = c2.get()
-    tpy::BigInt* v = c2.get();
+    ::tpy::BigInt* v = c2.get();
     //     if v is not None:
     if ((v != nullptr)) {
         //         print(v)
-        std::cout << tpy::print_optional(v) << "\n";
+        std::cout << ::tpy::print_optional(v) << "\n";
     }
 }
 
@@ -59,7 +59,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -7,9 +7,9 @@ namespace tpy_user::main {
 // def bump_positive(n: Int32) -> Int32:
 int32_t bump_positive(int32_t n) {
     //     assert n > 0, "n must be positive"
-    if (!((n > 0))) tpy::tpy_panic("n must be positive");
+    if (!((n > 0))) ::tpy::tpy_panic("n must be positive");
     //     return n + 1
-    return (tpy::add_check<int32_t>(n, 1));
+    return (::tpy::add_check<int32_t>(n, 1));
 }
 
 void __tpy_init() {
@@ -24,7 +24,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

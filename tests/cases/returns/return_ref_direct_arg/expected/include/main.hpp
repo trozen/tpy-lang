@@ -18,11 +18,11 @@ void test();
 // class Point:
 struct Point {
     //     x: int
-    tpy::BigInt x;
+    ::tpy::BigInt x;
 
     //     def __init__(self, x: int) -> None:
     Point() = default;
-    explicit Point(const tpy::BigInt& x) : x(x) {}
+    explicit Point(const ::tpy::BigInt& x) : x(x) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -38,7 +38,7 @@ struct Holder {
     Point inner;
 
     //     def __init__(self) -> None:
-    Holder() : inner(Point(tpy::BigInt(5))) {}
+    Holder() : inner(Point(::tpy::BigInt(5))) {}
 
     //     def get(self) -> Point:
     Point& get() {

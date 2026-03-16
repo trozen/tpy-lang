@@ -55,13 +55,13 @@ struct Container {
     //     def first(self) -> Point:
     Point& first() {
         //         return self._items[0]  # tpyc: ok (borrows from self)
-        return tpy::__getitem__(this->_items, 0);
+        return ::tpy::__getitem__(this->_items, 0);
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     os << "Container("
-       << "_items=" << tpy::ListPrinter(obj._items)
+       << "_items=" << ::tpy::ListPrinter(obj._items)
        << ")";
     return os;
 }

@@ -24,7 +24,7 @@ struct Tag {
     //     def __repr__(self) -> str:
     std::string __repr__() const {
         //         return "Tag(" + self.label + ")"
-        return (tpy::str_concat((tpy::str_concat("Tag(", this->label)), ")"));
+        return (::tpy::str_concat((::tpy::str_concat("Tag(", this->label)), ")"));
     }
 };
 

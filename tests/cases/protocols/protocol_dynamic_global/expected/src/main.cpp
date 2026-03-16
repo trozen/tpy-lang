@@ -16,8 +16,8 @@ void __tpy_init() {
     initialized = true;
 
   static std::optional<Dog> __global_slot_1;
-  static std::optional<tpy::Adapter<Pet, Cat>> __global_slot_2;
-  static std::optional<tpy::Adapter<Pet, Parrot>> __global_slot_3;
+  static std::optional<::tpy::Adapter<Pet, Cat>> __global_slot_2;
+  static std::optional<::tpy::Adapter<Pet, Parrot>> __global_slot_3;
   static std::optional<Dog> __global_slot_4;
     // # Global init + reassign
     // pet: Pet = Dog()
@@ -48,7 +48,7 @@ void __tpy_init() {
         __global_slot_4.emplace(Dog());
         pet = &*__global_slot_4;
         //     i = i + 1
-        i = (tpy::add_check<int32_t>(i, 1));
+        i = (::tpy::add_check<int32_t>(i, 1));
     }
     // print(pet.name())
     std::cout << pet->name() << "\n";
@@ -57,7 +57,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

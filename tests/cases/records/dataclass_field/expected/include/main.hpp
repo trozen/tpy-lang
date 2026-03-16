@@ -57,10 +57,10 @@ struct Config {
     //     tags: list[str] = field(default_factory=list)
     std::vector<std::string> tags = {};
     //     lookup: dict[str, Int32] = field(default_factory=dict)
-    tpy::ordered_map<std::string, int32_t> lookup = {};
+    ::tpy::ordered_map<std::string, int32_t> lookup = {};
 
     Config() = default;
-    explicit Config(std::string_view name, int32_t value = 42, std::vector<std::string>&& tags = {}, tpy::ordered_map<std::string, int32_t>&& lookup = {}) : name(name), value(value), tags(std::move(tags)), lookup(std::move(lookup)) {}
+    explicit Config(std::string_view name, int32_t value = 42, std::vector<std::string>&& tags = {}, ::tpy::ordered_map<std::string, int32_t>&& lookup = {}) : name(name), value(value), tags(std::move(tags)), lookup(std::move(lookup)) {}
 
     bool __eq__(const Config& other) const {
         return ((((this->name == other.name) && (this->value == other.value)) && (this->tags == other.tags)) && (this->lookup == other.lookup));
@@ -77,9 +77,9 @@ struct Config {
            << ", "
            << "value=" << this->value
            << ", "
-           << "tags=" << tpy::ListPrinter(this->tags)
+           << "tags=" << ::tpy::ListPrinter(this->tags)
            << ", "
-           << "lookup=" << tpy::DictPrinter(this->lookup)
+           << "lookup=" << ::tpy::DictPrinter(this->lookup)
            << ")";
         return __os.str();
     }

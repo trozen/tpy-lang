@@ -9,7 +9,7 @@ void test_array_subscript_view() {
     //     arr: Array[str, 3] = ["hello", "world", "test"]
     std::array<std::string, 3> arr = {"hello", "world", "test"};
     //     s = arr[Int32(0)]  # tpyc: type(StrView)
-    std::string_view s = tpy::__getitem__(arr, 0);
+    std::string_view s = ::tpy::__getitem__(arr, 0);
     //     print(s)
     std::cout << s << "\n";
 }
@@ -19,9 +19,9 @@ void test_array_subscript_mutated() {
     //     arr: Array[str, 2] = ["old", "value"]
     std::array<std::string, 2> arr = {"old", "value"};
     //     s = arr[Int32(0)]  # tpyc: type(str)
-    std::string s = tpy::__getitem__(arr, 0);
+    std::string s = ::tpy::__getitem__(arr, 0);
     //     arr[Int32(0)] = "new"
-    tpy::__setitem__(arr, 0, "new");
+    ::tpy::__setitem__(arr, 0, "new");
     //     print(s)
     std::cout << s << "\n";
 }
@@ -101,7 +101,7 @@ void test_field_aug_assign_mutates() {
 // def test_array_passed_to_func(arr: Array[str, 2]) -> None:
 void test_array_passed_to_func(std::array<std::string, 2>& arr) {
     //     s = arr[Int32(0)]  # tpyc: type(str)
-    std::string s = tpy::__getitem__(arr, 0);
+    std::string s = ::tpy::__getitem__(arr, 0);
     //     mutate_array(arr)
     mutate_array(arr);
     //     print(s)
@@ -111,7 +111,7 @@ void test_array_passed_to_func(std::array<std::string, 2>& arr) {
 // def mutate_array(arr: Array[str, 2]) -> None:
 void mutate_array(std::array<std::string, 2>& arr) {
     //     arr[Int32(0)] = "mutated"
-    tpy::__setitem__(arr, 0, "mutated");
+    ::tpy::__setitem__(arr, 0, "mutated");
 }
 
 // def test_multiple_views_one_source() -> None:
@@ -161,7 +161,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

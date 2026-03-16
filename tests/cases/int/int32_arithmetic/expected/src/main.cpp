@@ -12,19 +12,19 @@ void test_binary_ops() {
     int32_t b = 7;
     //     # Addition
     //     print(a + b)  # 27
-    std::cout << (tpy::add_check<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(a, b)) << "\n";
     //     # Subtraction
     //     print(a - b)  # 13
-    std::cout << (tpy::sub_check<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::sub_check<int32_t>(a, b)) << "\n";
     //     # Multiplication
     //     print(a * b)  # 140
-    std::cout << (tpy::mul_check<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::mul_check<int32_t>(a, b)) << "\n";
     //     # Division (floor)
     //     print(a // b)  # 2
-    std::cout << (tpy::div_floor<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::div_floor<int32_t>(a, b)) << "\n";
     //     # Modulo
     //     print(a % b)  # 6
-    std::cout << (tpy::mod_floor<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::mod_floor<int32_t>(a, b)) << "\n";
 }
 
 // def test_unary_neg():
@@ -32,11 +32,11 @@ void test_unary_neg() {
     //     x: Int32 = 42
     int32_t x = 42;
     //     print(-x)  # -42
-    std::cout << tpy::neg_check<int32_t>(x) << "\n";
+    std::cout << ::tpy::neg_check<int32_t>(x) << "\n";
     //     y: Int32 = -100
     int32_t y = -100;
     //     print(-y)  # 100
-    std::cout << tpy::neg_check<int32_t>(y) << "\n";
+    std::cout << ::tpy::neg_check<int32_t>(y) << "\n";
 }
 
 // def test_mixed_literals():
@@ -45,13 +45,13 @@ void test_mixed_literals() {
     int32_t x = 10;
     //     # Int32 + literal
     //     print(x + 5)  # 15
-    std::cout << (tpy::add_check<int32_t>(x, 5)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(x, 5)) << "\n";
     //     # literal + Int32 (less common but should work)
     //     print(5 + x)  # 15
-    std::cout << (tpy::add_check<int32_t>(5, x)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(5, x)) << "\n";
     //     # Chained operations
     //     print(x * 2 + 3)  # 23
-    std::cout << (tpy::add_check<int32_t>((tpy::mul_check<int32_t>(x, 2)), 3)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(x, 2)), 3)) << "\n";
 }
 
 // def test_negative_division():
@@ -62,10 +62,10 @@ void test_negative_division() {
     int32_t b = 5;
     //     # Python floor division: -17 // 5 = -4 (not -3)
     //     print(a // b)  # -4
-    std::cout << (tpy::div_floor<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::div_floor<int32_t>(a, b)) << "\n";
     //     # Python modulo: -17 % 5 = 3 (not -2)
     //     print(a % b)  # 3
-    std::cout << (tpy::mod_floor<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::mod_floor<int32_t>(a, b)) << "\n";
 }
 
 void __tpy_init() {
@@ -86,7 +86,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

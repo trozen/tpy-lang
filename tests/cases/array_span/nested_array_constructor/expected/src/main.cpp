@@ -7,14 +7,14 @@ namespace tpy_user::main {
 // def take_span_nested(s: Span[Array[Int32, 2]]) -> Int32:
 int32_t take_span_nested(std::span<std::array<int32_t, 2>> s) {
     //     return s[0][0] + s[1][1]
-    return (tpy::add_check<int32_t>(tpy::__getitem__(tpy::__getitem__(s, 0), 0), tpy::__getitem__(tpy::__getitem__(s, 1), 1)));
+    return (::tpy::add_check<int32_t>(::tpy::__getitem__(::tpy::__getitem__(s, 0), 0), ::tpy::__getitem__(::tpy::__getitem__(s, 1), 1)));
 }
 
 // def main() -> None:
 void main() {
     //     # Inline nested array constructor passed to Span parameter
     //     result: Int32 = take_span_nested(Array[Array[Int32, 2], 2]([[1, 2], [3, 4]]))
-    int32_t result = take_span_nested(tpy::as_mut_span(std::array<std::array<int32_t, 2>, 2>({{{1, 2}, {3, 4}}})));
+    int32_t result = take_span_nested(::tpy::as_mut_span(std::array<std::array<int32_t, 2>, 2>({{{1, 2}, {3, 4}}})));
     //     print(result)  # 1 + 4 = 5
     std::cout << result << "\n";
 }
@@ -31,7 +31,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

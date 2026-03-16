@@ -6,7 +6,7 @@
 namespace tpy_user::constants {
 
 inline constexpr std::string_view __name__ = "constants";
-extern const tpy::BigInt BIG_VALUE;
+extern const ::tpy::BigInt BIG_VALUE;
 
 void __tpy_init();
 } // namespace tpy_user::constants

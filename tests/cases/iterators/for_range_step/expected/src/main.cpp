@@ -16,11 +16,11 @@ int32_t sum_range_step(int32_t start, int32_t stop, int32_t step) {
     int32_t __start_0 = start;
     int32_t __stop_0 = stop;
     int32_t __step_0 = step;
-    if (__step_0 == 0) tpy::tpy_panic("range() arg 3 must not be zero");
-    tpy::range_check_overflow<int32_t>(__start_0, __stop_0, __step_0);
+    if (__step_0 == 0) ::tpy::tpy_panic("range() arg 3 must not be zero");
+    ::tpy::range_check_overflow<int32_t>(__start_0, __stop_0, __step_0);
     for (int32_t i = __start_0; __step_0 > 0 ? i < __stop_0 : i > __stop_0; i += __step_0) {
         //         total += i
-        total = tpy::add_check<int32_t>(total, i);
+        total = ::tpy::add_check<int32_t>(total, i);
     }
     //     return total
     return total;
@@ -45,14 +45,14 @@ void __tpy_init() {
     }
     // # range(start, stop, step) - step of 2
     // for i in range(0, 10, 2):
-    tpy::range_check_overflow<int32_t>(0, 10, 2);
+    ::tpy::range_check_overflow<int32_t>(0, 10, 2);
     for (int32_t i = 0; i < 10; i += 2) {
         //     print(i)
         std::cout << i << "\n";
     }
     // # range(start, stop, step) - negative step (countdown)
     // for i in range(10, 0, -2):
-    tpy::range_check_overflow<int32_t>(10, 0, -2);
+    ::tpy::range_check_overflow<int32_t>(10, 0, -2);
     for (int32_t i = 10; i > 0; i += -2) {
         //     print(i)
         std::cout << i << "\n";
@@ -73,7 +73,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

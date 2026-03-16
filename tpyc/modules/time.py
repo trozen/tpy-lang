@@ -19,7 +19,7 @@ def init_module() -> BuiltinModule:
         MethodDef(
             params=[],
             returns=FLOAT,
-            cpp="tpy::time_time()",
+            cpp="::tpy::time_time()",
         ),
     ])
 
@@ -28,7 +28,7 @@ def init_module() -> BuiltinModule:
         MethodDef(
             params=[ParamDef("seconds", FLOAT)],
             returns=VOID,
-            cpp="tpy::time_sleep({0})",
+            cpp="::tpy::time_sleep({0})",
         ),
     ])
 

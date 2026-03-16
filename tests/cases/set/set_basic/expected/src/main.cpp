@@ -7,21 +7,21 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     s: set[Int32] = {1, 2, 3}
-    tpy::ordered_set<int32_t> s = tpy::ordered_set<int32_t>({1, 2, 3});
+    ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2, 3});
     //     print(s)
-    std::cout << tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n";
     //     print(len(s))
-    std::cout << tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n";
     //     s.add(4)
     s.insert(4);
     //     print(s)
-    std::cout << tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n";
     //     s.add(2)  # duplicate, no effect
     s.insert(2);
     //     print(s)
-    std::cout << tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n";
     //     print(len(s))
-    std::cout << tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n";
 }
 
 void __tpy_init() {
@@ -36,7 +36,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

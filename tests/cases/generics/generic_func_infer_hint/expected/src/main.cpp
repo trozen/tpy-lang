@@ -10,9 +10,9 @@ std::vector<int32_t>* nums32{};
 int32_t result{};
 // # Type inferred from list[int]
 // nums: list[int] = [10, 20, 30]
-std::vector<tpy::BigInt>* nums{};
+std::vector<::tpy::BigInt>* nums{};
 // result2: int = first(nums)
-tpy::BigInt result2;
+::tpy::BigInt result2;
 
 void __tpy_init() {
     static bool initialized = false;
@@ -29,10 +29,10 @@ void __tpy_init() {
     std::cout << result << "\n";
     // # Type inferred from list[int]
     // nums: list[int] = [10, 20, 30]
-    static std::vector<tpy::BigInt> __global_slot_2 = {10, 20, 30};
+    static std::vector<::tpy::BigInt> __global_slot_2 = {10, 20, 30};
     nums = &__global_slot_2;
     // result2: int = first(nums)
-    result2 = first<tpy::BigInt>((*nums));
+    result2 = first<::tpy::BigInt>((*nums));
     // print(result2)
     std::cout << result2 << "\n";
 }
@@ -40,7 +40,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

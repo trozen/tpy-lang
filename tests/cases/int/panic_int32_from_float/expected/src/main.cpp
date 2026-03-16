@@ -14,7 +14,7 @@ void __tpy_init() {
 
     // # Float value exceeds Int32 range
     // x: Int32 = Int32(3000000000.0)
-    x = tpy::from_float_check<int32_t>(3000000000.0);
+    x = ::tpy::from_float_check<int32_t>(3000000000.0);
     // print(x)
     std::cout << x << "\n";
 }
@@ -22,7 +22,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

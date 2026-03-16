@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // def test_and_rhs(v: A | B) -> int:
-tpy::BigInt test_and_rhs(const std::variant<A, B>& v) {
+::tpy::BigInt test_and_rhs(const std::variant<A, B>& v) {
     //     if isinstance(v, A) and v.x > 0:
     if ((std::holds_alternative<A>(v) && (std::get<A>(v).x > 0))) {
         auto& __v = std::get<A>(v);
@@ -13,11 +13,11 @@ tpy::BigInt test_and_rhs(const std::variant<A, B>& v) {
         return __v.x;
     }
     //     return -1
-    return tpy::BigInt(-1);
+    return ::tpy::BigInt(-1);
 }
 
 // def test_and_true(v: A | B) -> int:
-tpy::BigInt test_and_true(const std::variant<A, B>& v) {
+::tpy::BigInt test_and_true(const std::variant<A, B>& v) {
     //     if isinstance(v, A) and True:
     if ((std::holds_alternative<A>(v) && true)) {
         auto& __v = std::get<A>(v);
@@ -25,7 +25,7 @@ tpy::BigInt test_and_true(const std::variant<A, B>& v) {
         return __v.x;
     }
     //     return -1
-    return tpy::BigInt(-1);
+    return ::tpy::BigInt(-1);
 }
 
 // def test_or_rhs(v: A | B) -> bool:
@@ -35,7 +35,7 @@ bool test_or_rhs(const std::variant<A, B>& v) {
 }
 
 // def test_negation(v: A | B) -> int:
-tpy::BigInt test_negation(const std::variant<A, B>& v) {
+::tpy::BigInt test_negation(const std::variant<A, B>& v) {
     //     if not isinstance(v, A):
     if ((!(std::holds_alternative<A>(v)))) {
         auto& __v = std::get<B>(v);
@@ -50,7 +50,7 @@ tpy::BigInt test_negation(const std::variant<A, B>& v) {
 }
 
 // def test_multi_var(a: A | B, b: A | B) -> int:
-tpy::BigInt test_multi_var(const std::variant<A, B>& a, const std::variant<A, B>& b) {
+::tpy::BigInt test_multi_var(const std::variant<A, B>& a, const std::variant<A, B>& b) {
     //     if isinstance(a, A) and isinstance(b, B):
     if ((std::holds_alternative<A>(a) && std::holds_alternative<B>(b))) {
         auto& __a = std::get<A>(a);
@@ -59,52 +59,52 @@ tpy::BigInt test_multi_var(const std::variant<A, B>& a, const std::variant<A, B>
         return ((__a.x) + (__b.y));
     }
     //     return 0
-    return tpy::BigInt(0);
+    return ::tpy::BigInt(0);
 }
 
 // def main() -> None:
 void main() {
     //     print(test_and_rhs(A(42)))
-    std::variant<A, B> __tmp_1 = A(tpy::BigInt(42));
+    std::variant<A, B> __tmp_1 = A(::tpy::BigInt(42));
     std::cout << test_and_rhs(__tmp_1) << "\n";
     //     print(test_and_rhs(A(-1)))
-    std::variant<A, B> __tmp_2 = A(tpy::BigInt(-1));
+    std::variant<A, B> __tmp_2 = A(::tpy::BigInt(-1));
     std::cout << test_and_rhs(__tmp_2) << "\n";
     //     print(test_and_rhs(B(99)))
-    std::variant<A, B> __tmp_3 = B(tpy::BigInt(99));
+    std::variant<A, B> __tmp_3 = B(::tpy::BigInt(99));
     std::cout << test_and_rhs(__tmp_3) << "\n";
     //     print(test_and_true(A(5)))
-    std::variant<A, B> __tmp_4 = A(tpy::BigInt(5));
+    std::variant<A, B> __tmp_4 = A(::tpy::BigInt(5));
     std::cout << test_and_true(__tmp_4) << "\n";
     //     print(test_and_true(B(5)))
-    std::variant<A, B> __tmp_5 = B(tpy::BigInt(5));
+    std::variant<A, B> __tmp_5 = B(::tpy::BigInt(5));
     std::cout << test_and_true(__tmp_5) << "\n";
     //     print(test_or_rhs(A(1)))
-    std::variant<A, B> __tmp_6 = A(tpy::BigInt(1));
-    std::cout << tpy::print_bool(test_or_rhs(__tmp_6)) << "\n";
+    std::variant<A, B> __tmp_6 = A(::tpy::BigInt(1));
+    std::cout << ::tpy::print_bool(test_or_rhs(__tmp_6)) << "\n";
     //     print(test_or_rhs(B(5)))
-    std::variant<A, B> __tmp_7 = B(tpy::BigInt(5));
-    std::cout << tpy::print_bool(test_or_rhs(__tmp_7)) << "\n";
+    std::variant<A, B> __tmp_7 = B(::tpy::BigInt(5));
+    std::cout << ::tpy::print_bool(test_or_rhs(__tmp_7)) << "\n";
     //     print(test_or_rhs(B(-1)))
-    std::variant<A, B> __tmp_8 = B(tpy::BigInt(-1));
-    std::cout << tpy::print_bool(test_or_rhs(__tmp_8)) << "\n";
+    std::variant<A, B> __tmp_8 = B(::tpy::BigInt(-1));
+    std::cout << ::tpy::print_bool(test_or_rhs(__tmp_8)) << "\n";
     //     print(test_negation(A(1)))
-    std::variant<A, B> __tmp_9 = A(tpy::BigInt(1));
+    std::variant<A, B> __tmp_9 = A(::tpy::BigInt(1));
     std::cout << test_negation(__tmp_9) << "\n";
     //     print(test_negation(B(2)))
-    std::variant<A, B> __tmp_10 = B(tpy::BigInt(2));
+    std::variant<A, B> __tmp_10 = B(::tpy::BigInt(2));
     std::cout << test_negation(__tmp_10) << "\n";
     //     print(test_multi_var(A(10), B(20)))
-    std::variant<A, B> __tmp_11 = A(tpy::BigInt(10));
-    std::variant<A, B> __tmp_12 = B(tpy::BigInt(20));
+    std::variant<A, B> __tmp_11 = A(::tpy::BigInt(10));
+    std::variant<A, B> __tmp_12 = B(::tpy::BigInt(20));
     std::cout << test_multi_var(__tmp_11, __tmp_12) << "\n";
     //     print(test_multi_var(A(10), A(5)))
-    std::variant<A, B> __tmp_13 = A(tpy::BigInt(10));
-    std::variant<A, B> __tmp_14 = A(tpy::BigInt(5));
+    std::variant<A, B> __tmp_13 = A(::tpy::BigInt(10));
+    std::variant<A, B> __tmp_14 = A(::tpy::BigInt(5));
     std::cout << test_multi_var(__tmp_13, __tmp_14) << "\n";
     //     print(test_multi_var(B(1), B(2)))
-    std::variant<A, B> __tmp_15 = B(tpy::BigInt(1));
-    std::variant<A, B> __tmp_16 = B(tpy::BigInt(2));
+    std::variant<A, B> __tmp_15 = B(::tpy::BigInt(1));
+    std::variant<A, B> __tmp_16 = B(::tpy::BigInt(2));
     std::cout << test_multi_var(__tmp_15, __tmp_16) << "\n";
 }
 
@@ -120,7 +120,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -31,7 +31,7 @@ std::string with_capture(std::optional<int32_t> x, bool flag) {
     } else if (__match_subject.has_value()) {
         auto& v = (*__match_subject);
         //             return str(v)
-        return tpy::fixed_to_str<int32_t>(v);
+        return ::tpy::fixed_to_str<int32_t>(v);
     }
 }
 
@@ -65,7 +65,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

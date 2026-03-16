@@ -11,11 +11,11 @@ void test_int32_to_int64_append() {
     //     xs.append(Int64(3))
     xs.push_back(3);
     //     v: Int64 = xs[0]
-    int64_t v = tpy::__getitem__(xs, 0);
+    int64_t v = ::tpy::__getitem__(xs, 0);
     //     print(v)
     std::cout << v << "\n";
     //     print(xs)
-    std::cout << tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_literal_to_int64_append() -> None:
@@ -25,11 +25,11 @@ void test_literal_to_int64_append() {
     //     xs.append(Int64(3))
     xs.push_back(3);
     //     v: Int64 = xs[0]
-    int64_t v = tpy::__getitem__(xs, 0);
+    int64_t v = ::tpy::__getitem__(xs, 0);
     //     print(v)
     std::cout << v << "\n";
     //     print(xs)
-    std::cout << tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_literal_to_float_append() -> None:
@@ -39,7 +39,7 @@ void test_literal_to_float_append() {
     //     xs.append(3.14)
     xs.push_back(3.14);
     //     print(xs[3])
-    std::cout << tpy::print_float(tpy::__getitem__(xs, 3)) << "\n";
+    std::cout << ::tpy::print_float(::tpy::__getitem__(xs, 3)) << "\n";
 }
 
 // def test_int32_to_int64_insert() -> None:
@@ -47,9 +47,9 @@ void test_int32_to_int64_insert() {
     //     xs = [Int32(1), Int32(2)]  # tpyc: type(list[Int64])
     std::vector<int64_t> xs = {1, 2};
     //     xs.insert(0, Int64(99))
-    tpy::list_insert(xs, 0, 99);
+    ::tpy::list_insert(xs, 0, 99);
     //     v: Int64 = xs[0]
-    int64_t v = tpy::__getitem__(xs, 0);
+    int64_t v = ::tpy::__getitem__(xs, 0);
     //     print(v)
     std::cout << v << "\n";
 }
@@ -61,7 +61,7 @@ void test_same_type_no_widen() {
     //     xs.append(Int32(3))
     xs.push_back(3);
     //     print(xs)
-    std::cout << tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_multiple_widens() -> None:
@@ -73,7 +73,7 @@ void test_multiple_widens() {
     //     xs.append(Int64(3))
     xs.push_back(3);
     //     print(xs)
-    std::cout << tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 void __tpy_init() {
@@ -98,7 +98,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

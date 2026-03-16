@@ -43,7 +43,7 @@ struct Builder {
     //     def with_offset(self, other: Self) -> Int32:
     int32_t with_offset(const Builder& other) const {
         //         return self.value + other.value
-        return (tpy::add_check<int32_t>(this->value, other.value));
+        return (::tpy::add_check<int32_t>(this->value, other.value));
     }
 
     //     @auto_readonly
@@ -93,7 +93,7 @@ struct Stack {
     explicit Stack(std::string_view label) : items(std::vector<T>{}), label(label) {}
 
     //     def push(self, item: T) -> Self:
-    Stack<T>& push(tpy::param_val_or_ref_t<T> item) {
+    Stack<T>& push(::tpy::param_val_or_ref_t<T> item) {
         //         self.items.append(item)
         auto __tmp_1 = item;
         this->items.push_back(std::move(__tmp_1));
@@ -112,7 +112,7 @@ struct Stack {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Stack<T>& obj) {
     os << "Stack("
-       << "items=" << tpy::ListPrinter(obj.items)
+       << "items=" << ::tpy::ListPrinter(obj.items)
        << ", "
        << "label=" << "'" << obj.label << "'"
        << ")";

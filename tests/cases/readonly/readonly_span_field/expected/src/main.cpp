@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def read_box(b: readonly[Box]) -> Int32:
 int32_t read_box(const Box& b) {
     //     return b.items[0]
-    return tpy::__getitem__(b.items, 0);
+    return ::tpy::__getitem__(b.items, 0);
 }
 
 // def main() -> None:
@@ -15,7 +15,7 @@ void main() {
     //     arr: Array[Int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
     //     b = Box(arr)
-    Box b = Box(tpy::as_mut_span(arr));
+    Box b = Box(::tpy::as_mut_span(arr));
     //     print(read_box(b))  # 10
     std::cout << read_box(b) << "\n";
 }
@@ -32,7 +32,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

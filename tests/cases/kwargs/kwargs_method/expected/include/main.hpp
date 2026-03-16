@@ -21,9 +21,9 @@ struct Formatter {
     Formatter() : prefix(">") {}
 
     //     def format(self, text: str, width: int = 0, fill: str = " ") -> str:
-    std::string format(std::string_view text, const tpy::BigInt& width = 0, std::string_view fill = " ") const {
+    std::string format(std::string_view text, const ::tpy::BigInt& width = 0, std::string_view fill = " ") const {
         //         result = self.prefix + text
-        std::string result = (tpy::str_concat(this->prefix, text));
+        std::string result = (::tpy::str_concat(this->prefix, text));
         //         return result
         return result;
     }

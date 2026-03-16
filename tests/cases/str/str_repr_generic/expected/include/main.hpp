@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 struct Pair;
-template<tpy::Stringable T> struct Wrapper;
+template<::tpy::Stringable T> struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 }
 
 // class Wrapper[T: Stringable]:
-template<tpy::Stringable T>
+template<::tpy::Stringable T>
 struct Wrapper {
     //     value: T
     T value;
@@ -48,13 +48,13 @@ struct Wrapper {
     //     def __str__(self) -> str:
     std::string __str__() const {
         //         return f"Wrapper({self.value})"
-        return std::format("Wrapper({})", tpy::__str__(this->value));
+        return std::format("Wrapper({})", ::tpy::__str__(this->value));
     }
 
     //     def __repr__(self) -> str:
     std::string __repr__() const {
         //         return f"Wrapper(value={self.value})"
-        return std::format("Wrapper(value={})", tpy::__str__(this->value));
+        return std::format("Wrapper(value={})", ::tpy::__str__(this->value));
     }
 };
 

@@ -25,15 +25,15 @@ struct Rect {
     //     def area(self) -> Int32:
     int32_t area() const {
         //         return self.width * self.height
-        return (tpy::mul_check<int32_t>(this->width, this->height));
+        return (::tpy::mul_check<int32_t>(this->width, this->height));
     }
 
     //     def scale(self, factor: Int32) -> None:
     void scale(int32_t factor) {
         //         self.width = self.width * factor
-        this->width = (tpy::mul_check<int32_t>(this->width, factor));
+        this->width = (::tpy::mul_check<int32_t>(this->width, factor));
         //         self.height = self.height * factor
-        this->height = (tpy::mul_check<int32_t>(this->height, factor));
+        this->height = (::tpy::mul_check<int32_t>(this->height, factor));
     }
 
     bool __eq__(const Rect& other) const {

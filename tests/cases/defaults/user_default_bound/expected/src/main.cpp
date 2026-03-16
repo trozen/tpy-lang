@@ -13,11 +13,11 @@ void main() {
     //     s = create_default[str]()
     std::string s = create_default<std::string>();
     //     print(len(s))
-    std::cout << tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n";
     //     nums = fill[Int32](3)
     std::vector<int32_t> nums = fill<int32_t>(3);
     //     print(len(nums))
-    std::cout << tpy::__len__(nums) << "\n";
+    std::cout << ::tpy::__len__(nums) << "\n";
     //     for v in nums:
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
@@ -41,7 +41,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

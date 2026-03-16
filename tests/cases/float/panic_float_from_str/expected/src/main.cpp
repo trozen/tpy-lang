@@ -14,15 +14,15 @@ void __tpy_init() {
 
     // # Invalid string for float parsing
     // x: float = float("not_a_number")
-    x = tpy::float_from_str("not_a_number");
+    x = ::tpy::float_from_str("not_a_number");
     // print(x)
-    std::cout << tpy::print_float(x) << "\n";
+    std::cout << ::tpy::print_float(x) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

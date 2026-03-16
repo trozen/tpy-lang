@@ -87,7 +87,7 @@ namespace tpy_user::main {
 // def print_colors() -> None:
 void print_colors() {
     //     for c in Color:
-    auto& __obj_0 = tpy::EnumUtil<Color>::members;
+    auto& __obj_0 = ::tpy::EnumUtil<Color>::members;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -102,13 +102,13 @@ void count_members() {
     //     count: Int32 = 0
     int32_t count = 0;
     //     for s in Status:
-    auto& __obj_0 = tpy::EnumUtil<Status>::members;
+    auto& __obj_0 = ::tpy::EnumUtil<Status>::members;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         Status s = *__beg_0;
         //         count += 1
-        count = tpy::add_check<int32_t>(count, 1);
+        count = ::tpy::add_check<int32_t>(count, 1);
     }
     //     print(count)
     std::cout << count << "\n";
@@ -134,7 +134,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

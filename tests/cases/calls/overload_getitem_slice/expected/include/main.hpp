@@ -24,12 +24,12 @@ struct MyList {
     int32_t __getitem__(int32_t index) const {
         //         if isinstance(index, slice):
         //             return self._data[index]
-        return tpy::__getitem__(this->_data, index);
+        return ::tpy::__getitem__(this->_data, index);
     }
 
     //     @overload
     //     def __getitem__(self, index: slice) -> Span[readonly[Int32]]: ...  # tpyc: ok
-    std::span<const int32_t> __getitem__(tpy::Slice index) const {
+    std::span<const int32_t> __getitem__(::tpy::Slice index) const {
         //         if isinstance(index, slice):
         //             s_start = index.start
         std::optional<int32_t> s_start = index.start;
@@ -38,23 +38,23 @@ struct MyList {
         //             start: Int32 = s_start if s_start is not None else Int32(0)
         int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
         //             stop: Int32 = s_stop if s_stop is not None else Int32(len(self._data))
-        int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (tpy::__len__(this->_data)));
+        int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
         //             return self._data[start:stop]
-        return tpy::list_slice(this->_data, start, stop);
+        return ::tpy::list_slice(this->_data, start, stop);
     }
 
     int32_t operator[](int32_t index) const {
         return __getitem__(index);
     }
 
-    std::span<const int32_t> operator[](tpy::Slice index) const {
+    std::span<const int32_t> operator[](::tpy::Slice index) const {
         return __getitem__(index);
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyList& obj) {
     os << "MyList("
-       << "_data=" << tpy::ListPrinter(obj._data)
+       << "_data=" << ::tpy::ListPrinter(obj._data)
        << ")";
     return os;
 }

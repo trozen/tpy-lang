@@ -18,37 +18,37 @@ void __tpy_init() {
     // p: Ptr[Int32] = None  # tpyc: ok
     p = nullptr;
     // print(p is None)
-    std::cout << tpy::print_bool((p == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
     // x: Int32 = Int32(7)
     x = 7;
     // p = Ptr(x)
     p = &x;
     // print(p is None)
-    std::cout << tpy::print_bool((p == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
     // print(p is not None)
-    std::cout << tpy::print_bool((p != nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((p != nullptr)) << "\n";
     // p = None  # tpyc: ok
     p = nullptr;
     // print(p is None)
-    std::cout << tpy::print_bool((p == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
     // cp: Ptr[readonly[Int32]] = None  # tpyc: ok
     cp = nullptr;
     // print(cp is None)
-    std::cout << tpy::print_bool((cp == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((cp == nullptr)) << "\n";
     // cp = Ptr(x)
     cp = &x;
     // print(cp is None)
-    std::cout << tpy::print_bool((cp == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((cp == nullptr)) << "\n";
     // print(cp is not None)
-    std::cout << tpy::print_bool((cp != nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((cp != nullptr)) << "\n";
     // cp = None  # tpyc: ok
     cp = nullptr;
     // print(cp is None)
-    std::cout << tpy::print_bool((cp == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((cp == nullptr)) << "\n";
     // if p is not None:
     if ((p != nullptr)) {
         //     print(p.__deref__())
-        std::cout << tpy::deref_check(p) << "\n";
+        std::cout << ::tpy::deref_check(p) << "\n";
     // else:
     } else {
         //     print(Int32(0))
@@ -59,7 +59,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

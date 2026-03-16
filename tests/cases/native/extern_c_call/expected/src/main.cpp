@@ -9,7 +9,7 @@ namespace tpy_user::main {
 // def helper_add(x: Int32) -> Int32:
 extern "C" int32_t Helper_Add(int32_t x) {
     //     return x + Int32(1)
-    return (tpy::add_check<int32_t>(x, 1));
+    return (::tpy::add_check<int32_t>(x, 1));
 }
 
 // # Export that calls the renamed function above.
@@ -34,7 +34,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

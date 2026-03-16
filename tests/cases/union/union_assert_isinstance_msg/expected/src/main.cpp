@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def get_radius(s: Circle | Rect) -> Int32:
 int32_t get_radius(const std::variant<Circle, Rect>& s) {
     //     assert isinstance(s, Circle), "expected a Circle"
-    if (!(std::holds_alternative<Circle>(s))) tpy::tpy_panic("expected a Circle");
+    if (!(std::holds_alternative<Circle>(s))) ::tpy::tpy_panic("expected a Circle");
     auto& __s = std::get<Circle>(s);
     //     return s.radius
     return __s.radius;
@@ -33,7 +33,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

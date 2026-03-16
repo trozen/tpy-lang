@@ -16,7 +16,7 @@ int32_t test_no_mutation() {
     //     local = [1, 2, 3]
     std::array<int32_t, 3> local = {1, 2, 3};
     //     return local[0]
-    return tpy::__getitem__(local, 0);
+    return ::tpy::__getitem__(local, 0);
 }
 
 // # Local with mutation -> vector (ListType)
@@ -27,7 +27,7 @@ int32_t test_mutation() {
     //     items.append(4)
     items.push_back(4);
     //     return len(items)
-    return tpy::__len__(items);
+    return ::tpy::__len__(items);
 }
 
 // # Passed to list param -> vector (ListType)
@@ -49,7 +49,7 @@ void test_list_param() {
 // def takes_span(x: Span[Int32]) -> Int32:
 int32_t takes_span(std::span<int32_t> x) {
     //     return x[0]
-    return tpy::__getitem__(x, 0);
+    return ::tpy::__getitem__(x, 0);
 }
 
 // def test_span_param() -> Int32:
@@ -57,7 +57,7 @@ int32_t test_span_param() {
     //     data = [10, 20, 30]
     std::array<int32_t, 3> data = {10, 20, 30};
     //     return takes_span(data)
-    return takes_span(tpy::as_mut_span(data));
+    return takes_span(::tpy::as_mut_span(data));
 }
 
 void __tpy_init() {
@@ -75,10 +75,10 @@ void __tpy_init() {
     global_inferred = &__global_slot_2;
     // # Test global list with annotation
     // print(global_list[0])  # 1
-    std::cout << tpy::__getitem__((*global_list), 0) << "\n";
+    std::cout << ::tpy::__getitem__((*global_list), 0) << "\n";
     // # Test global list without annotation
     // print(global_inferred[1])  # 20
-    std::cout << tpy::__getitem__((*global_inferred), 1) << "\n";
+    std::cout << ::tpy::__getitem__((*global_inferred), 1) << "\n";
     // # Test no mutation (uses array)
     // print(test_no_mutation())  # 1
     std::cout << test_no_mutation() << "\n";
@@ -96,7 +96,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -7,13 +7,13 @@ namespace tpy_user::main {
 // def read_point(p: Ptr[readonly[Point]]) -> Int32:
 int32_t read_point(const Point* p) {
     //     return p.x + p.y
-    return (tpy::add_check<int32_t>(tpy::deref_check(p).x, tpy::deref_check(p).y));
+    return (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, ::tpy::deref_check(p).y));
 }
 
 // def modify_via_ptr(p: Ptr[Point], new_x: Int32) -> None:
 void modify_via_ptr(Point* p, int32_t new_x) {
     //     p.x = new_x
-    tpy::deref_check(p).x = new_x;
+    ::tpy::deref_check(p).x = new_x;
 }
 
 // def test_ptr_to_const_ptr() -> None:
@@ -25,9 +25,9 @@ void test_ptr_to_const_ptr() {
     Point* mp = &pt;
     //     # Read via mutable pointer
     //     print(mp.x)
-    std::cout << tpy::deref_check(mp).x << "\n";
+    std::cout << ::tpy::deref_check(mp).x << "\n";
     //     print(mp.y)
-    std::cout << tpy::deref_check(mp).y << "\n";
+    std::cout << ::tpy::deref_check(mp).y << "\n";
     //     # Modify through mutable pointer
     //     modify_via_ptr(mp, 100)
     modify_via_ptr(mp, 100);
@@ -52,12 +52,12 @@ void test_const_ptr_preserves_value() {
     //     cp: Ptr[readonly[Point]] = mp
     const Point* cp = mp;
     //     print(cp.x)
-    std::cout << tpy::deref_check(cp).x << "\n";
+    std::cout << ::tpy::deref_check(cp).x << "\n";
     //     # Modify original via mutable pointer
     //     mp.x = 999
-    tpy::deref_check(mp).x = 999;
+    ::tpy::deref_check(mp).x = 999;
     //     print(cp.x)
-    std::cout << tpy::deref_check(cp).x << "\n";
+    std::cout << ::tpy::deref_check(cp).x << "\n";
 }
 
 void __tpy_init() {
@@ -79,7 +79,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

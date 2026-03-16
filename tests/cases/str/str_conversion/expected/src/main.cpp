@@ -24,38 +24,38 @@ void __tpy_init() {
     std::cout << std::string("hello") << "\n";
     // # From bool (static strings - safe)
     // print(str(True))   # True
-    std::cout << std::string(tpy::bool_to_str(true)) << "\n";
+    std::cout << std::string(::tpy::bool_to_str(true)) << "\n";
     // print(str(False))  # False
-    std::cout << std::string(tpy::bool_to_str(false)) << "\n";
+    std::cout << std::string(::tpy::bool_to_str(false)) << "\n";
     // # From Char (static lookup - safe)
     // c: Char = "A"
     c = 'A';
     // print(str(c))  # A
-    std::cout << std::string(tpy::char_to_str(c)) << "\n";
+    std::cout << std::string(::tpy::char_to_str(c)) << "\n";
     // # From Int32 (inline usage - safe)
     // print(str(Int32(42)))    # 42
-    std::cout << tpy::fixed_to_str<int32_t>(42) << "\n";
+    std::cout << ::tpy::fixed_to_str<int32_t>(42) << "\n";
     // print(str(Int32(-123)))  # -123
-    std::cout << tpy::fixed_to_str<int32_t>(-123) << "\n";
+    std::cout << ::tpy::fixed_to_str<int32_t>(-123) << "\n";
     // print(str(Int32(0)))     # 0
-    std::cout << tpy::fixed_to_str<int32_t>(0) << "\n";
+    std::cout << ::tpy::fixed_to_str<int32_t>(0) << "\n";
     // # From int/BigInt (inline usage - safe)
     // print(str(12345))         # 12345
-    std::cout << tpy::fixed_to_str<int16_t>(12345) << "\n";
+    std::cout << ::tpy::fixed_to_str<int16_t>(12345) << "\n";
     // print(str(-99999))        # -99999
-    std::cout << tpy::fixed_to_str<int32_t>(-99999) << "\n";
+    std::cout << ::tpy::fixed_to_str<int32_t>(-99999) << "\n";
     // # From float (inline usage - safe)
     // # Note: exact output format may vary
     // x: float = 3.14
     x = 3.14;
     // print(str(x))  # 3.140000
-    std::cout << tpy::float_to_str(x) << "\n";
+    std::cout << ::tpy::float_to_str(x) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -10,7 +10,7 @@ template<typename T> struct Box;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-Box<T> wrap(tpy::param_val_or_ref_t<T> v);
+Box<T> wrap(::tpy::param_val_or_ref_t<T> v);
 void sink(Box<int32_t>&& b);
 void take_two(Box<int32_t>&& a, Box<int32_t>&& b);
 void main();
@@ -29,14 +29,14 @@ struct Box {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     os << "Box("
-       << "val=" << tpy::ValuePrinter(obj.val)
+       << "val=" << ::tpy::ValuePrinter(obj.val)
        << ")";
     return os;
 }
 
 // def wrap[T](v: T) -> Own[Box[T]]:
 template<typename T>
-Box<T> wrap(tpy::param_val_or_ref_t<T> v) {
+Box<T> wrap(::tpy::param_val_or_ref_t<T> v) {
     //     return Box[T](v)
     auto __tmp_1 = v;
     return Box<T>(std::move(__tmp_1));

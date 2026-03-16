@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // result = test_return_context()
-std::vector<tpy::BigInt>* result{};
+std::vector<::tpy::BigInt>* result{};
 
 // def test_append() -> None:
 void test_append() {
@@ -13,7 +13,7 @@ void test_append() {
     //     xs.append(42)
     xs.push_back(42);
     //     print(xs)
-    std::cout << tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_list_ctor() -> None:
@@ -23,7 +23,7 @@ void test_list_ctor() {
     //     xs.append(42)
     xs.push_back(42);
     //     print(xs)
-    std::cout << tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_insert() -> None:
@@ -31,9 +31,9 @@ void test_insert() {
     //     xs = []  # tpyc: type(list[Int32])
     std::vector<int32_t> xs = std::vector<int32_t>{};
     //     xs.insert(0, 99)
-    tpy::list_insert(xs, 0, 99);
+    ::tpy::list_insert(xs, 0, 99);
     //     print(xs)
-    std::cout << tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_multiple_append() -> None:
@@ -47,7 +47,7 @@ void test_multiple_append() {
     //     xs.append(3)
     xs.push_back(3);
     //     print(xs)
-    std::cout << tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_numeric_widen() -> None:
@@ -59,13 +59,13 @@ void test_numeric_widen() {
     //     xs.append(Int64(2))
     xs.push_back(2);
     //     print(xs)
-    std::cout << tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_return_context() -> Own[list[int]]:
-std::vector<tpy::BigInt> test_return_context() {
+std::vector<::tpy::BigInt> test_return_context() {
     //     xs = []  # tpyc: type(list[int])
-    std::vector<tpy::BigInt> xs = std::vector<tpy::BigInt>{};
+    std::vector<::tpy::BigInt> xs = std::vector<::tpy::BigInt>{};
     //     xs.append(1)
     xs.push_back(1);
     //     return xs
@@ -73,13 +73,13 @@ std::vector<tpy::BigInt> test_return_context() {
 }
 
 // def takes_list(items: list[int]) -> None:
-void takes_list(const std::vector<tpy::BigInt>& items) {
+void takes_list(const std::vector<::tpy::BigInt>& items) {
     //     for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        const tpy::BigInt& x = *__beg_0;
+        const ::tpy::BigInt& x = *__beg_0;
         //         print(x)
         std::cout << x << "\n";
     }
@@ -88,7 +88,7 @@ void takes_list(const std::vector<tpy::BigInt>& items) {
 // def test_param_context() -> None:
 void test_param_context() {
     //     xs = []  # tpyc: type(list[int])
-    std::vector<tpy::BigInt> xs = std::vector<tpy::BigInt>{};
+    std::vector<::tpy::BigInt> xs = std::vector<::tpy::BigInt>{};
     //     xs.append(10)
     xs.push_back(10);
     //     takes_list(xs)
@@ -98,7 +98,7 @@ void test_param_context() {
 // def test_param_overrides_inferred() -> None:
 void test_param_overrides_inferred() {
     //     xs = []  # tpyc: type(list[int])
-    std::vector<tpy::BigInt> xs = std::vector<tpy::BigInt>{};
+    std::vector<::tpy::BigInt> xs = std::vector<::tpy::BigInt>{};
     //     xs.append(Int32(1))
     xs.push_back(1);
     //     takes_list(xs)
@@ -114,9 +114,9 @@ void test_alias_inference() {
     //     ys.append(42)
     ys.push_back(42);
     //     print(xs)
-    std::cout << tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n";
     //     print(ys)
-    std::cout << tpy::ListPrinter(ys) << "\n";
+    std::cout << ::tpy::ListPrinter(ys) << "\n";
 }
 
 void __tpy_init() {
@@ -135,10 +135,10 @@ void __tpy_init() {
     // test_numeric_widen()
     test_numeric_widen();
     // result = test_return_context()
-    static std::vector<tpy::BigInt> __global_slot_1 = test_return_context();
+    static std::vector<::tpy::BigInt> __global_slot_1 = test_return_context();
     result = &__global_slot_1;
     // print(result)
-    std::cout << tpy::ListPrinter((*result)) << "\n";
+    std::cout << ::tpy::ListPrinter((*result)) << "\n";
     // test_param_context()
     test_param_context();
     // test_param_overrides_inferred()
@@ -150,7 +150,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

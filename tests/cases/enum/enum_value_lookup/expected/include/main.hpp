@@ -25,13 +25,13 @@ struct tpy::EnumUtil<tpy_user::main::Color> {
 namespace tpy_user::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << tpy::EnumUtil<Color>::name(__e);
+    return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
 }
 
 inline constexpr std::string_view __name__ = "__main__";
 
 Color lookup(int32_t v);
-Color from_int(const tpy::BigInt& v);
+Color from_int(const ::tpy::BigInt& v);
 void main();
 
 void __tpy_init();

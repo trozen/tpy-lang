@@ -19,9 +19,9 @@ void main() {
         y = std::get<1>(__tup_2);
     }
     //     print(x)
-    std::cout << tpy::print_float(x) << "\n";
+    std::cout << ::tpy::print_float(x) << "\n";
     //     print(y)
-    std::cout << tpy::print_float(y) << "\n";
+    std::cout << ::tpy::print_float(y) << "\n";
 }
 
 void __tpy_init() {
@@ -36,7 +36,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -43,7 +43,7 @@ struct CachingContainer {
 
     size_t size() const {
         auto len = __len__();
-        if (len < 0) tpy::tpy_panic("__len__ returned negative value");
+        if (len < 0) ::tpy::tpy_panic("__len__ returned negative value");
         return static_cast<size_t>(len);
     }
 };

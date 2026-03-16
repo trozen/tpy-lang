@@ -10,23 +10,23 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-tpy::BigInt get_value(const Outer& o);
-tpy::BigInt get_value_truthy(const Outer& o);
+::tpy::BigInt get_value(const Outer& o);
+::tpy::BigInt get_value_truthy(const Outer& o);
 void main();
 
 // class Inner:
 struct Inner {
     //     value: Optional[int]
-    std::optional<tpy::BigInt> value;
+    std::optional<::tpy::BigInt> value;
 
     //     def __init__(self, value: Optional[int]) -> None:
     Inner() = default;
-    explicit Inner(std::optional<tpy::BigInt> value) : value(value) {}
+    explicit Inner(std::optional<::tpy::BigInt> value) : value(value) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
     os << "Inner("
-       << "value=" << tpy::print_optional_val(obj.value)
+       << "value=" << ::tpy::print_optional_val(obj.value)
        << ")";
     return os;
 }

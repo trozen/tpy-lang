@@ -13,7 +13,7 @@ void main() {
     //     print(p.x, p.y)
     std::cout << p.x << " " << p.y << "\n";
     //     print(repr(p))
-    std::cout << std::string(tpy::__repr__(p)) << "\n";
+    std::cout << std::string(::tpy::__repr__(p)) << "\n";
     //     p2 = Point(x=10, y=20)
     Point p2 = Point(10, 20);
     //     print(p2)
@@ -32,7 +32,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

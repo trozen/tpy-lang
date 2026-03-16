@@ -8,7 +8,7 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-tpy::BigInt time();
+::tpy::BigInt time();
 
 void __tpy_init();
 } // namespace tpy_user::main

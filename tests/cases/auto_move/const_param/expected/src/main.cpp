@@ -31,7 +31,7 @@ Point* take_ptr(Point& p) {
 // def take_elem_ptr(items: list[Point], i: Int32) -> Ptr[Point]:
 Point* take_elem_ptr(std::vector<Point>& items, int32_t i) {
     //     return Ptr(items[i])
-    return &tpy::__getitem__(items, i);
+    return &::tpy::__getitem__(items, i);
 }
 
 // # Optional[Point] coercion: &(p) taken -- must stay Point&
@@ -53,7 +53,7 @@ int32_t sum_list(const std::vector<int32_t>& items) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         total += x
-        total = tpy::add_check<int32_t>(total, x);
+        total = ::tpy::add_check<int32_t>(total, x);
     }
     //     return total
     return total;
@@ -89,7 +89,7 @@ void main() {
     //     ptr = take_elem_ptr(pts, Int32(0))
     Point* ptr = take_elem_ptr(pts, 0);
     //     print(ptr.__deref__().x)
-    std::cout << tpy::deref_check(ptr).x << "\n";
+    std::cout << ::tpy::deref_check(ptr).x << "\n";
     //     nums: list[Int32] = [Int32(10), Int32(20)]
     std::vector<int32_t> nums = {10, 20};
     //     print(sum_list(nums))
@@ -116,7 +116,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

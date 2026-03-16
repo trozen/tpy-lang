@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<tpy::Iterable<int32_t> T_items>
+template<::tpy::Iterable<int32_t> T_items>
 void consume(T_items& items);
 void test_lazy_variable_count();
 void test_lazy_for_loop();
@@ -15,19 +15,19 @@ void test_direct_iterable_arg();
 void test_print_lazy_repeat();
 
 // def consume(items: Iterable[Int32]) -> None:
-template<tpy::Iterable<int32_t> T_items>
+template<::tpy::Iterable<int32_t> T_items>
 void consume(T_items& items) {
     //     total: Int32 = 0
     int32_t total = 0;
     //     for v in items:
     auto& __src_0 = items;
-    auto __obj_0 = tpy::iter_for_loop(__src_0);
+    auto __obj_0 = ::tpy::iter_for_loop(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
         //         total += v
-        total = tpy::add_check<int32_t>(total, v);
+        total = ::tpy::add_check<int32_t>(total, v);
     }
     //     print(total)
     std::cout << total << "\n";

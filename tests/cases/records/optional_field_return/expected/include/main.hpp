@@ -44,7 +44,7 @@ struct Box {
     //     def get_item(self) -> Point | None:
     Point* get_item() {
         //         return self.item
-        return tpy::optional_to_ptr(this->item);
+        return ::tpy::optional_to_ptr(this->item);
     }
 
     //     def has_item(self) -> bool:
@@ -56,7 +56,7 @@ struct Box {
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     os << "Box("
-       << "item=" << tpy::print_optional_val(obj.item)
+       << "item=" << ::tpy::print_optional_val(obj.item)
        << ")";
     return os;
 }

@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 struct Vec2;
-template<tpy::ValueType T> struct Pair;
+template<::tpy::ValueType T> struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -32,7 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
 }
 
 // class Pair[T: ValueType](ValueType):
-template<tpy::ValueType T>
+template<::tpy::ValueType T>
 struct Pair {
     //     first: T
     T first;
@@ -44,9 +44,9 @@ struct Pair {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
     os << "Pair("
-       << "first=" << tpy::ValuePrinter(obj.first)
+       << "first=" << ::tpy::ValuePrinter(obj.first)
        << ", "
-       << "second=" << tpy::ValuePrinter(obj.second)
+       << "second=" << ::tpy::ValuePrinter(obj.second)
        << ")";
     return os;
 }

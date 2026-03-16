@@ -6,7 +6,7 @@ namespace tpy_user::main {
 
 // # --- BigInt expression -> Int32 ---
 // def return_expr_as_int32(a: int, b: int) -> Int32:
-int32_t return_expr_as_int32(const tpy::BigInt& a, const tpy::BigInt& b) {
+int32_t return_expr_as_int32(const ::tpy::BigInt& a, const ::tpy::BigInt& b) {
     //     return a + b  # Expression result (BigInt) -> Int32
     return (((a) + (b))).to_fixed_check<int32_t>();
 }
@@ -14,7 +14,7 @@ int32_t return_expr_as_int32(const tpy::BigInt& a, const tpy::BigInt& b) {
 // def take_int32(n: Int32) -> Int32:
 int32_t take_int32(int32_t n) {
     //     return n * 2
-    return (tpy::mul_check<int32_t>(n, 2));
+    return (::tpy::mul_check<int32_t>(n, 2));
 }
 
 // def test_bigint_expr_to_int32() -> None:
@@ -22,9 +22,9 @@ void test_bigint_expr_to_int32() {
     //     print("BigInt expressions -> Int32:")
     std::cout << "BigInt expressions -> Int32:" << "\n";
     //     a: int = 10
-    tpy::BigInt a = tpy::BigInt(10);
+    ::tpy::BigInt a = ::tpy::BigInt(10);
     //     b: int = 20
-    tpy::BigInt b = tpy::BigInt(20);
+    ::tpy::BigInt b = ::tpy::BigInt(20);
     //     # Binary op result in return
     //     result: Int32 = return_expr_as_int32(a, b)
     int32_t result = return_expr_as_int32(a, b);
@@ -35,7 +35,7 @@ void test_bigint_expr_to_int32() {
     std::cout << take_int32((((a) + (b))).to_fixed_check<int32_t>()) << "\n";
     //     # Binary op result in variable declaration
     //     sum_val: Int32 = a + b + 5
-    int32_t sum_val = (((((a) + (b))) + (tpy::BigInt(5)))).to_fixed_check<int32_t>();
+    int32_t sum_val = (((((a) + (b))) + (::tpy::BigInt(5)))).to_fixed_check<int32_t>();
     //     print(sum_val)  # 35
     std::cout << sum_val << "\n";
     //     # Binary op result in assignment
@@ -45,7 +45,7 @@ void test_bigint_expr_to_int32() {
     std::cout << sum_val << "\n";
     //     # Method call result -> Int32
     //     c: Counter = Counter(100)
-    Counter c = Counter(tpy::BigInt(100));
+    Counter c = Counter(::tpy::BigInt(100));
     //     val: Int32 = c.get()
     int32_t val = (c.get()).to_fixed_check<int32_t>();
     //     print(val)  # 100
@@ -61,13 +61,13 @@ void test_bigint_expr_to_int32() {
 // def modify_via_ptr(p: Ptr[Point]) -> None:
 void modify_via_ptr(Point* p) {
     //     p.x = p.x + 100
-    tpy::deref_check(p).x = (tpy::add_check<int32_t>(tpy::deref_check(p).x, 100));
+    ::tpy::deref_check(p).x = (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, 100));
 }
 
 // def read_via_const_ptr(p: Ptr[readonly[Point]]) -> Int32:
 int32_t read_via_const_ptr(const Point* p) {
     //     return p.x + p.y
-    return (tpy::add_check<int32_t>(tpy::deref_check(p).x, tpy::deref_check(p).y));
+    return (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, ::tpy::deref_check(p).y));
 }
 
 // def test_field_access_to_ptr() -> None:
@@ -108,19 +108,19 @@ void test_literal_expr_to_int32() {
     std::cout << "Literal expressions -> Int32:" << "\n";
     //     # Literal arithmetic assigned to Int32 (should use Int32 ops)
     //     x: Int32 = 10 + 20 + 30
-    int32_t x = tpy::add_check<int32_t>(tpy::add_check<int32_t>(10, 20), 30);
+    int32_t x = ::tpy::add_check<int32_t>(::tpy::add_check<int32_t>(10, 20), 30);
     //     print(x)  # 60
     std::cout << x << "\n";
     //     # Nested literal expression
     //     y: Int32 = (5 + 5) * (2 + 3)
-    int32_t y = tpy::mul_check<int32_t>(tpy::add_check<int32_t>(5, 5), tpy::add_check<int32_t>(2, 3));
+    int32_t y = ::tpy::mul_check<int32_t>(::tpy::add_check<int32_t>(5, 5), ::tpy::add_check<int32_t>(2, 3));
     //     print(y)  # 50
     std::cout << y << "\n";
     //     # Mixed literal and variable
     //     aa: Int32 = 100
     int32_t aa = 100;
     //     bb: Int32 = aa + 50  # Int32 + literal -> Int32
-    int32_t bb = (tpy::add_check<int32_t>(aa, 50));
+    int32_t bb = (::tpy::add_check<int32_t>(aa, 50));
     //     print(bb)  # 150
     std::cout << bb << "\n";
 }
@@ -144,7 +144,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

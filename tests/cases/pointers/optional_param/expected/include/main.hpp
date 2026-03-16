@@ -28,7 +28,7 @@ struct Point {
     //     def mag(self) -> Int32:
     int32_t mag() const {
         //         return self.x + self.y
-        return (tpy::add_check<int32_t>(this->x, this->y));
+        return (::tpy::add_check<int32_t>(this->x, this->y));
     }
 };
 

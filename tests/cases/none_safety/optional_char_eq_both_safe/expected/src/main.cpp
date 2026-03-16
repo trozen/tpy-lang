@@ -36,21 +36,21 @@ void __tpy_init() {
     // n: Char | None = None
     n = std::nullopt;
     // print(eq_both(sx, sx))
-    std::cout << tpy::print_bool(eq_both(sx, sx)) << "\n";
+    std::cout << ::tpy::print_bool(eq_both(sx, sx)) << "\n";
     // print(eq_both(sx, sy))
-    std::cout << tpy::print_bool(eq_both(sx, sy)) << "\n";
+    std::cout << ::tpy::print_bool(eq_both(sx, sy)) << "\n";
     // print(eq_both(n, sx))
-    std::cout << tpy::print_bool(eq_both(n, sx)) << "\n";
+    std::cout << ::tpy::print_bool(eq_both(n, sx)) << "\n";
     // print(eq_both(sx, n))
-    std::cout << tpy::print_bool(eq_both(sx, n)) << "\n";
+    std::cout << ::tpy::print_bool(eq_both(sx, n)) << "\n";
     // print(eq_both(n, n))
-    std::cout << tpy::print_bool(eq_both(n, n)) << "\n";
+    std::cout << ::tpy::print_bool(eq_both(n, n)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

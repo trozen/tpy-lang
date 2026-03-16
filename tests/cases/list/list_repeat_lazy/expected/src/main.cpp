@@ -9,9 +9,9 @@ void test_lazy_variable_count() {
     //     n: Int32 = 5
     int32_t n = 5;
     //     x = [7] * n  # tpyc: type(/repeat\[/)
-    tpy::repeat_range<int32_t> x = tpy::repeat_range<int32_t>(n, {7});
+    ::tpy::repeat_range<int32_t> x = ::tpy::repeat_range<int32_t>(n, {7});
     //     print(len(x))
-    std::cout << tpy::__len__(x) << "\n";
+    std::cout << ::tpy::__len__(x) << "\n";
     //     consume(x)
     consume(x);
 }
@@ -21,7 +21,7 @@ void test_lazy_for_loop() {
     //     n: Int32 = 3
     int32_t n = 3;
     //     r = [10] * n  # tpyc: type(/repeat\[/)
-    tpy::repeat_range<int32_t> r = tpy::repeat_range<int32_t>(n, {10});
+    ::tpy::repeat_range<int32_t> r = ::tpy::repeat_range<int32_t>(n, {10});
     //     for v in r:
     auto& __obj_0 = r;
     auto __beg_0 = __obj_0.begin();
@@ -37,7 +37,7 @@ void test_lazy_for_loop() {
 void test_direct_iterable_arg() {
     //     # Pass repeat literal directly to Iterable param
     //     consume([3] * 4)
-    auto __tmp_1 = tpy::from_range<std::array<int32_t, 4>>(tpy::repeat_range<int32_t>(4, {3}));
+    auto __tmp_1 = ::tpy::from_range<std::array<int32_t, 4>>(::tpy::repeat_range<int32_t>(4, {3}));
     consume(__tmp_1);
 }
 
@@ -47,9 +47,9 @@ void test_print_lazy_repeat() {
     //     n: Int32 = 4
     int32_t n = 4;
     //     r = [5] * n  # tpyc: type(/repeat\[/)
-    tpy::repeat_range<int32_t> r = tpy::repeat_range<int32_t>(n, {5});
+    ::tpy::repeat_range<int32_t> r = ::tpy::repeat_range<int32_t>(n, {5});
     //     print(r)
-    std::cout << tpy::ListPrinter(r) << "\n";
+    std::cout << ::tpy::ListPrinter(r) << "\n";
 }
 
 void __tpy_init() {
@@ -70,7 +70,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

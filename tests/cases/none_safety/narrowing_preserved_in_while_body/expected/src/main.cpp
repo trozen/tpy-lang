@@ -15,9 +15,9 @@ int32_t simple_while(std::optional<int32_t> x, int32_t n) {
         //         while i < n:
         while ((i < n)) {
             //             total = total + x  # tpyc: ok
-            total = (tpy::add_check<int32_t>(total, (*x)));
+            total = (::tpy::add_check<int32_t>(total, (*x)));
             //             i = i + 1
-            i = (tpy::add_check<int32_t>(i, 1));
+            i = (::tpy::add_check<int32_t>(i, 1));
         }
     }
     //     return total
@@ -37,9 +37,9 @@ int32_t multiple_optionals(std::optional<int32_t> a, std::optional<int32_t> b, i
             //             while i < n:
             while ((i < n)) {
                 //                 total = total + a + b  # tpyc: ok
-                total = (tpy::add_check<int32_t>((tpy::add_check<int32_t>(total, (*a))), (*b)));
+                total = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(total, (*a))), (*b)));
                 //                 i = i + 1
-                i = (tpy::add_check<int32_t>(i, 1));
+                i = (::tpy::add_check<int32_t>(i, 1));
             }
         }
     }
@@ -56,16 +56,16 @@ int32_t outer_if_inner_while_narrowing(std::optional<int32_t> x, const std::vect
         //         i: Int32 = 0
         int32_t i = 0;
         //         while i < len(items):
-        while ((i < tpy::__len__(items))) {
+        while ((i < ::tpy::__len__(items))) {
             //             y: Int32 | None = items[i]
             std::optional<int32_t> y = items[i];
             //             if y is not None:
             if ((y.has_value())) {
                 //                 total = total + x + y  # tpyc: ok
-                total = (tpy::add_check<int32_t>((tpy::add_check<int32_t>(total, (*x))), (*y)));
+                total = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(total, (*x))), (*y)));
             }
             //             i = i + 1
-            i = (tpy::add_check<int32_t>(i, 1));
+            i = (::tpy::add_check<int32_t>(i, 1));
         }
     }
     //     return total
@@ -85,7 +85,7 @@ int32_t for_loop_variant(std::optional<int32_t> x, const std::vector<int32_t>& i
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t item = *__beg_0;
             //             total = total + item + x  # tpyc: ok
-            total = (tpy::add_check<int32_t>((tpy::add_check<int32_t>(total, item)), (*x)));
+            total = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(total, item)), (*x)));
         }
     }
     //     return total
@@ -130,7 +130,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

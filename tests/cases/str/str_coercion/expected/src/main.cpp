@@ -52,7 +52,7 @@ void main() {
     //     c: Char = "X"
     char c = 'X';
     //     take_str(c)  # X
-    take_str(std::string(tpy::char_to_str(c)));
+    take_str(std::string(::tpy::char_to_str(c)));
     //     # Char -> String
     //     take_string(c)  # X
     take_string(std::string(1, c));
@@ -70,7 +70,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -50,7 +50,7 @@ struct Resource {
     //     def __copy__(self) -> Own[Resource]:
     Resource __copy__() const {
         //         return Resource(self.id + 100)
-        return Resource((tpy::add_check<int32_t>(this->id, 100)));
+        return Resource((::tpy::add_check<int32_t>(this->id, 100)));
     }
 };
 

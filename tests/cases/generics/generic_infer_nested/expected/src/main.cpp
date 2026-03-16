@@ -5,9 +5,9 @@ namespace tpy_user::main {
 
 // # Separate lines: Inner[int] explicit, then Outer inferred
 // inner = Inner[int](42)
-Inner<tpy::BigInt>* inner{};
+Inner<::tpy::BigInt>* inner{};
 // outer = Outer(inner)
-Outer<Inner<tpy::BigInt>>* outer{};
+Outer<Inner<::tpy::BigInt>>* outer{};
 // # Inline nested inference: Outer(Inner(42)) -> Outer[Inner[int]]
 // outer2 = Outer(Inner(42))
 Outer<Inner<int32_t>>* outer2{};
@@ -19,10 +19,10 @@ void __tpy_init() {
 
     // # Separate lines: Inner[int] explicit, then Outer inferred
     // inner = Inner[int](42)
-    static Inner<tpy::BigInt> __global_slot_1 = Inner<tpy::BigInt>(tpy::BigInt(42));
+    static Inner<::tpy::BigInt> __global_slot_1 = Inner<::tpy::BigInt>(::tpy::BigInt(42));
     inner = &__global_slot_1;
     // outer = Outer(inner)
-    static Outer<Inner<tpy::BigInt>> __global_slot_2 = Outer<Inner<tpy::BigInt>>((*inner));
+    static Outer<Inner<::tpy::BigInt>> __global_slot_2 = Outer<Inner<::tpy::BigInt>>((*inner));
     outer = &__global_slot_2;
     // print(outer.inner.value)
     std::cout << outer->inner.value << "\n";
@@ -37,7 +37,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

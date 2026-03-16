@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-template<tpy::Comparable T> struct SortedPair;
+template<::tpy::Comparable T> struct SortedPair;
 
 // # Protocol that references the bounded generic record
 // class PairFactory(Protocol):
@@ -19,12 +19,12 @@ struct DefaultPairFactory;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<PairFactory T>
-SortedPair<int32_t> create_pair(tpy::param_val_or_ref_t<T> factory, int32_t a, int32_t b);
+SortedPair<int32_t> create_pair(::tpy::param_val_or_ref_t<T> factory, int32_t a, int32_t b);
 void main();
 
 // # A generic record with a bounded type parameter
 // class SortedPair[T: Comparable]:
-template<tpy::Comparable T>
+template<::tpy::Comparable T>
 struct SortedPair {
     //     first: T
     T first;
@@ -53,9 +53,9 @@ struct SortedPair {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const SortedPair<T>& obj) {
     os << "SortedPair("
-       << "first=" << tpy::ValuePrinter(obj.first)
+       << "first=" << ::tpy::ValuePrinter(obj.first)
        << ", "
-       << "second=" << tpy::ValuePrinter(obj.second)
+       << "second=" << ::tpy::ValuePrinter(obj.second)
        << ")";
     return os;
 }
@@ -79,7 +79,7 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultPairFactory& obj)
 
 // def create_pair[T: PairFactory](factory: T, a: Int32, b: Int32) -> Own[SortedPair[Int32]]:
 template<PairFactory T>
-SortedPair<int32_t> create_pair(tpy::param_val_or_ref_t<T> factory, int32_t a, int32_t b) {
+SortedPair<int32_t> create_pair(::tpy::param_val_or_ref_t<T> factory, int32_t a, int32_t b) {
     //     return factory.make_pair(a, b)
     return factory.make_pair(a, b);
 }

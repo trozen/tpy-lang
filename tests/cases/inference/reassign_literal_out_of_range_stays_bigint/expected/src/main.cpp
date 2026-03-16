@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // x = 2_147_483_648  # tpyc: warning(/outside default Int32 range/)
-tpy::BigInt x;
+::tpy::BigInt x;
 
 void __tpy_init() {
     static bool initialized = false;
@@ -12,9 +12,9 @@ void __tpy_init() {
     initialized = true;
 
     // x = 2_147_483_648  # tpyc: warning(/outside default Int32 range/)
-    x = tpy::BigInt(static_cast<int64_t>(2147483648LL));
+    x = ::tpy::BigInt(static_cast<int64_t>(2147483648LL));
     // x = Int32(1)
-    x = tpy::BigInt(1);
+    x = ::tpy::BigInt(1);
     // print(x)
     std::cout << x << "\n";
 }
@@ -22,7 +22,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

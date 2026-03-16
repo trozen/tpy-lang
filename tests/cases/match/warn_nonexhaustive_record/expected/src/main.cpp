@@ -51,19 +51,19 @@ std::string describe_exhaustive(const Point& p) {
 // def main() -> None:
 void main() {
     //     print(describe_guarded(Point(1, 2)))
-    Point __tmp_1 = Point(tpy::BigInt(1), tpy::BigInt(2));
+    Point __tmp_1 = Point(::tpy::BigInt(1), ::tpy::BigInt(2));
     std::cout << describe_guarded(__tmp_1) << "\n";
     //     print(describe_guarded(Point(-1, 2)))
-    Point __tmp_2 = Point(tpy::BigInt(-1), tpy::BigInt(2));
+    Point __tmp_2 = Point(::tpy::BigInt(-1), ::tpy::BigInt(2));
     std::cout << describe_guarded(__tmp_2) << "\n";
     //     print(describe_literal(Point(0, 5)))
-    Point __tmp_3 = Point(tpy::BigInt(0), tpy::BigInt(5));
+    Point __tmp_3 = Point(::tpy::BigInt(0), ::tpy::BigInt(5));
     std::cout << describe_literal(__tmp_3) << "\n";
     //     print(describe_literal(Point(1, 5)))
-    Point __tmp_4 = Point(tpy::BigInt(1), tpy::BigInt(5));
+    Point __tmp_4 = Point(::tpy::BigInt(1), ::tpy::BigInt(5));
     std::cout << describe_literal(__tmp_4) << "\n";
     //     print(describe_exhaustive(Point(3, 4)))
-    Point __tmp_5 = Point(tpy::BigInt(3), tpy::BigInt(4));
+    Point __tmp_5 = Point(::tpy::BigInt(3), ::tpy::BigInt(4));
     std::cout << describe_exhaustive(__tmp_5) << "\n";
 }
 
@@ -79,7 +79,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -25,7 +25,7 @@ struct tpy::EnumUtil<tpy_user::main::Status> {
 namespace tpy_user::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Status __e) {
-    return __os << "Status." << tpy::EnumUtil<Status>::name(__e);
+    return __os << "Status." << ::tpy::EnumUtil<Status>::name(__e);
 }
 
 inline constexpr std::string_view __name__ = "__main__";

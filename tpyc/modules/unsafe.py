@@ -186,12 +186,12 @@ def init_module() -> BuiltinModule:
     ])
 
     # unsafe_drop: call destructor on an object at a pointer location
-    # Uses tpy::destroy_at which is a no-op for trivially destructible types
+    # Uses ::tpy::destroy_at which is a no-op for trivially destructible types
     module.function("unsafe_drop", type_params=["T"], overloads=[
         MethodDef(
             params=[ParamDef("p", PtrType(T))],
             returns=VOID,
-            cpp="tpy::destroy_at({0})",
+            cpp="::tpy::destroy_at({0})",
         ),
     ])
 

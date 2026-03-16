@@ -98,7 +98,7 @@ struct GenericHolder {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GenericHolder<T>& obj) {
     os << "GenericHolder("
-       << "item=" << tpy::ValuePrinter(obj.item)
+       << "item=" << ::tpy::ValuePrinter(obj.item)
        << ")";
     return os;
 }
@@ -113,14 +113,14 @@ struct GenericNotLastUse {
     GenericNotLastUse() = default;
     explicit GenericNotLastUse(T&& item) : item(item) {
         //         print(item)
-        std::cout << tpy::ValuePrinter(item) << "\n";
+        std::cout << ::tpy::ValuePrinter(item) << "\n";
     }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GenericNotLastUse<T>& obj) {
     os << "GenericNotLastUse("
-       << "item=" << tpy::ValuePrinter(obj.item)
+       << "item=" << ::tpy::ValuePrinter(obj.item)
        << ")";
     return os;
 }
@@ -148,7 +148,7 @@ struct OptHolder {
 
 inline std::ostream& operator<<(std::ostream& os, const OptHolder& obj) {
     os << "OptHolder("
-       << "inner=" << tpy::print_optional_val(obj.inner)
+       << "inner=" << ::tpy::print_optional_val(obj.inner)
        << ")";
     return os;
 }

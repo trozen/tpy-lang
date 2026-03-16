@@ -8,42 +8,42 @@ namespace tpy_user::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T_items>
-  requires (tpy::Sequence<T_items, tpy::BigInt> || tpy::Sized<T_items>)
+  requires (::tpy::Sequence<T_items, ::tpy::BigInt> || ::tpy::Sized<T_items>)
 void describe(const T_items& items);
 template<typename T_items>
-  requires (tpy::Sequence<T_items, tpy::BigInt> || tpy::Sized<T_items>)
-tpy::BigInt get_value(const T_items& items);
+  requires (::tpy::Sequence<T_items, ::tpy::BigInt> || ::tpy::Sized<T_items>)
+::tpy::BigInt get_value(const T_items& items);
 void main();
 
 // def describe(items: Sized | Sequence[int]) -> None:
 template<typename T_items>
-  requires (tpy::Sequence<T_items, tpy::BigInt> || tpy::Sized<T_items>)
+  requires (::tpy::Sequence<T_items, ::tpy::BigInt> || ::tpy::Sized<T_items>)
 void describe(const T_items& items) {
     //     if isinstance(items, Sequence):
-    if constexpr (tpy::Sequence<T_items, tpy::BigInt>) {
+    if constexpr (::tpy::Sequence<T_items, ::tpy::BigInt>) {
         //         print(items[0])
         std::cout << items[0] << "\n";
     //     elif isinstance(items, Sized):
-    } else if constexpr (tpy::Sized<T_items>) {
+    } else if constexpr (::tpy::Sized<T_items>) {
         //         print(len(items))
-        std::cout << tpy::__len__(items) << "\n";
+        std::cout << ::tpy::__len__(items) << "\n";
     }
 }
 // def get_value(items: Sized | Sequence[int]) -> int:
 template<typename T_items>
-  requires (tpy::Sequence<T_items, tpy::BigInt> || tpy::Sized<T_items>)
-tpy::BigInt get_value(const T_items& items) {
+  requires (::tpy::Sequence<T_items, ::tpy::BigInt> || ::tpy::Sized<T_items>)
+::tpy::BigInt get_value(const T_items& items) {
     //     if isinstance(items, Sequence):
-    if constexpr (tpy::Sequence<T_items, tpy::BigInt>) {
+    if constexpr (::tpy::Sequence<T_items, ::tpy::BigInt>) {
         //         return items[0]
         return items[0];
     //     elif isinstance(items, Sized):
-    } else if constexpr (tpy::Sized<T_items>) {
+    } else if constexpr (::tpy::Sized<T_items>) {
         //         return len(items)
-        return tpy::BigInt(tpy::__len__(items));
+        return ::tpy::BigInt(::tpy::__len__(items));
     }
     //     return 0
-    return tpy::BigInt(0);
+    return ::tpy::BigInt(0);
 }
 
 void __tpy_init();

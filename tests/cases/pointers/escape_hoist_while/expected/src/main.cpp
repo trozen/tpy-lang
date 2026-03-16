@@ -19,7 +19,7 @@ void while_escape() {
         //         saved = p  # tpyc: warning(/hoisted to function scope/)
         saved = p;
         //         i = i + 1
-        i = (tpy::add_check<int32_t>(i, 1));
+        i = (::tpy::add_check<int32_t>(i, 1));
     }
     //     print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
@@ -37,7 +37,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

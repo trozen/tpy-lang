@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::tuple<tpy::BigInt, std::string> pick(bool flag);
+std::tuple<::tpy::BigInt, std::string> pick(bool flag);
 
 void __tpy_init();
 } // namespace tpy_user::main

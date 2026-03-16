@@ -85,7 +85,7 @@ struct Bar {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Bar<T>& obj) {
     os << "Bar("
-       << "factory=" << tpy::ValuePrinter(obj.factory)
+       << "factory=" << ::tpy::ValuePrinter(obj.factory)
        << ")";
     return os;
 }

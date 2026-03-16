@@ -46,14 +46,14 @@ struct Box {
 
     //     @auto_readonly
     //     def __deref__(self) -> T:
-    tpy::val_or_ref_t<T> __deref__() {
+    ::tpy::val_or_ref_t<T> __deref__() {
         //         return self._value
         return this->_value;
     }
 
     //     @auto_readonly
     //     def __deref__(self) -> T:
-    tpy::val_or_cref_t<T> __deref__() const {
+    ::tpy::val_or_cref_t<T> __deref__() const {
         //         return self._value
         return this->_value;
     }
@@ -66,7 +66,7 @@ struct Box {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     os << "Box("
-       << "_value=" << tpy::ValuePrinter(obj._value)
+       << "_value=" << ::tpy::ValuePrinter(obj._value)
        << ")";
     return os;
 }

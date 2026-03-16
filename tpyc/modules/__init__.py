@@ -76,7 +76,7 @@ class ProtocolDef:
     """
     name: str
     methods: dict[str, MethodDef]  # method_name -> signature
-    cpp_concept: str  # C++ concept name (e.g., "tpy::Sized")
+    cpp_concept: str  # C++ concept name (e.g., "::tpy::Sized")
     type_params: list[str] = field(default_factory=list)
     is_readonly: bool = False  # All methods are read-only (safe for readonly[T] args)
 

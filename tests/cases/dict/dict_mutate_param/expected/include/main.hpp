@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void insert(tpy::ordered_map<std::string, int32_t>& d, std::string_view key, int32_t val);
+void insert(::tpy::ordered_map<std::string, int32_t>& d, std::string_view key, int32_t val);
 void main();
 
 void __tpy_init();

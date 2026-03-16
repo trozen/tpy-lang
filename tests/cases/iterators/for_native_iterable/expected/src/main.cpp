@@ -32,9 +32,9 @@ void main() {
     std::cout << nested_iteration(a, b) << "\n";
     //     # Test "in" operator with NativeIterable
     //     print(contains_value(nums, 2))   # True
-    std::cout << tpy::print_bool(contains_value(nums, 2)) << "\n";
+    std::cout << ::tpy::print_bool(contains_value(nums, 2)) << "\n";
     //     print(contains_value(nums, 99))  # False
-    std::cout << tpy::print_bool(contains_value(nums, 99)) << "\n";
+    std::cout << ::tpy::print_bool(contains_value(nums, 99)) << "\n";
 }
 
 void __tpy_init() {
@@ -49,7 +49,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

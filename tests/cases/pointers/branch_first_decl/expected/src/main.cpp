@@ -59,7 +59,7 @@ int32_t multi_var(bool cond) {
         b = 4;
     }
     //     return a + b
-    return (tpy::add_check<int32_t>(a, b));
+    return (::tpy::add_check<int32_t>(a, b));
 }
 
 // # Non-value type with rvalue init (needs rebind slot)
@@ -94,7 +94,7 @@ void reassign_after(bool cond) {
         x = 20;
     }
     //     x = x + 1
-    x = (tpy::add_check<int32_t>(x, 1));
+    x = (::tpy::add_check<int32_t>(x, 1));
     //     print(x)
     std::cout << x << "\n";
 }
@@ -116,7 +116,7 @@ int32_t nested_if(bool a, bool b) {
             x = 2;
         }
         //         y: Int32 = x + 10
-        y = (tpy::add_check<int32_t>(x, 10));
+        y = (::tpy::add_check<int32_t>(x, 10));
     //     else:
     } else {
         //         y = 99
@@ -133,11 +133,11 @@ void param_branch(std::vector<Point>& points, bool cond) {
     Point* p;
     if (cond) {
         //         p = points[0]
-        p = &(tpy::__getitem__(points, 0));
+        p = &(::tpy::__getitem__(points, 0));
     //     else:
     } else {
         //         p = points[1]
-        p = &(tpy::__getitem__(points, 1));
+        p = &(::tpy::__getitem__(points, 1));
     }
     //     print(p.x, p.y)
     std::cout << p->x << " " << p->y << "\n";
@@ -151,7 +151,7 @@ void mixed_init(std::vector<Point>& points, bool cond) {
     Point* p;
     if (cond) {
         //         p = points[0]
-        p = &(tpy::__getitem__(points, 0));
+        p = &(::tpy::__getitem__(points, 0));
     //     else:
     } else {
         //         p = Point(70, 80)
@@ -208,7 +208,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

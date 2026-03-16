@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-tpy::ordered_set<std::string> in_set();
-tpy::ordered_set<std::string> in_set_comp();
+::tpy::ordered_set<std::string> in_set();
+::tpy::ordered_set<std::string> in_set_comp();
 
 void __tpy_init();
 } // namespace tpy_user::main

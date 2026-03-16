@@ -77,12 +77,12 @@ void test_span_membership() {
     //     nums: Array[Int32, 5] = [100, 200, 300, 400, 500]
     std::array<int32_t, 5> nums = {100, 200, 300, 400, 500};
     //     if check_span_contains(nums, 300):
-    if (check_span_contains(tpy::as_mut_span(nums), 300)) {
+    if (check_span_contains(::tpy::as_mut_span(nums), 300)) {
         //         print("300 in span: yes")
         std::cout << "300 in span: yes" << "\n";
     }
     //     if check_span_contains(nums, 999):
-    if (check_span_contains(tpy::as_mut_span(nums), 999)) {
+    if (check_span_contains(::tpy::as_mut_span(nums), 999)) {
         //         print("999 in span: yes")
         std::cout << "999 in span: yes" << "\n";
     //     else:
@@ -210,7 +210,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

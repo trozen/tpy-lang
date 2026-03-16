@@ -9,9 +9,9 @@ void read_vec(const Vec<int32_t>& v) {
     //     s = v.data()  # tpyc: type(Span[readonly[Int32]])
     std::span<const int32_t> s = v.data();
     //     print(s[Int32(0)])
-    std::cout << tpy::__getitem__(s, 0) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n";
     //     print(s[Int32(1)])
-    std::cout << tpy::__getitem__(s, 1) << "\n";
+    std::cout << ::tpy::__getitem__(s, 1) << "\n";
 }
 
 // def main() -> None:
@@ -25,7 +25,7 @@ void main() {
     //     s = v.data()  # tpyc: type(Span[Int32])
     std::span<int32_t> s = v.data();
     //     print(s[Int32(0)])
-    std::cout << tpy::__getitem__(s, 0) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n";
     //     read_vec(v)
     read_vec(v);
 }
@@ -42,7 +42,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

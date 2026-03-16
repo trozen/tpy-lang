@@ -17,11 +17,11 @@ void main() {
     //     box_bool: Box[bool] = Box[bool](True)
     Box<bool> box_bool = Box<bool>(true);
     //     print(box_bool.get())
-    std::cout << tpy::print_bool(box_bool.get()) << "\n";
+    std::cout << ::tpy::print_bool(box_bool.get()) << "\n";
     //     box_bool.set(False)
     box_bool.set(false);
     //     print(box_bool.get())
-    std::cout << tpy::print_bool(box_bool.get()) << "\n";
+    std::cout << ::tpy::print_bool(box_bool.get()) << "\n";
     //     ring: Ring[Int32] = Ring[Int32](0)
     Ring<int32_t> ring = Ring<int32_t>(0);
     //     ring.put(10)
@@ -50,7 +50,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -22,7 +22,7 @@ struct Counter {
     //     def increment(self, amount: Int32 = Int32(1)) -> None:
     void increment(int32_t amount = 1) {
         //         self.count = self.count + amount
-        this->count = (tpy::add_check<int32_t>(this->count, amount));
+        this->count = (::tpy::add_check<int32_t>(this->count, amount));
     }
 
     //     def display(self, prefix: str = "count") -> None:

@@ -5,15 +5,15 @@ namespace tpy_user::main {
 
 // # Global empty list
 // global_list: list[int] = []
-std::vector<tpy::BigInt>* global_list{};
+std::vector<::tpy::BigInt>* global_list{};
 // # Global with list() constructor
 // global_list2: list[Int32] = list()
 std::vector<int32_t>* global_list2{};
 
 // def test_empty_list() -> int:
-tpy::BigInt test_empty_list() {
+::tpy::BigInt test_empty_list() {
     //     items: list[int] = []
-    std::vector<tpy::BigInt> items = std::vector<tpy::BigInt>{};
+    std::vector<::tpy::BigInt> items = std::vector<::tpy::BigInt>{};
     //     items.append(1)
     items.push_back(1);
     //     items.append(2)
@@ -21,7 +21,7 @@ tpy::BigInt test_empty_list() {
     //     items.append(3)
     items.push_back(3);
     //     return len(items)
-    return tpy::BigInt(tpy::__len__(items));
+    return ::tpy::BigInt(::tpy::__len__(items));
 }
 
 // def test_empty_list_int32() -> Int32:
@@ -33,19 +33,19 @@ int32_t test_empty_list_int32() {
     //     nums.append(Int32(20))
     nums.push_back(20);
     //     return nums[0] + nums[1]
-    return (tpy::add_check<int32_t>(tpy::__getitem__(nums, 0), tpy::__getitem__(nums, 1)));
+    return (::tpy::add_check<int32_t>(::tpy::__getitem__(nums, 0), ::tpy::__getitem__(nums, 1)));
 }
 
 // def test_list_constructor() -> int:
-tpy::BigInt test_list_constructor() {
+::tpy::BigInt test_list_constructor() {
     //     items: list[int] = list()
-    std::vector<tpy::BigInt> items = std::vector<tpy::BigInt>();
+    std::vector<::tpy::BigInt> items = std::vector<::tpy::BigInt>();
     //     items.append(5)
     items.push_back(5);
     //     items.append(6)
     items.push_back(6);
     //     return len(items)
-    return tpy::BigInt(tpy::__len__(items));
+    return ::tpy::BigInt(::tpy::__len__(items));
 }
 
 // def test_list_constructor_int32() -> Int32:
@@ -55,7 +55,7 @@ int32_t test_list_constructor_int32() {
     //     nums.append(Int32(100))
     nums.push_back(100);
     //     return nums[0]
-    return tpy::__getitem__(nums, 0);
+    return ::tpy::__getitem__(nums, 0);
 }
 
 void __tpy_init() {
@@ -65,7 +65,7 @@ void __tpy_init() {
 
     // # Global empty list
     // global_list: list[int] = []
-    static std::vector<tpy::BigInt> __global_slot_1 = std::vector<tpy::BigInt>{};
+    static std::vector<::tpy::BigInt> __global_slot_1 = std::vector<::tpy::BigInt>{};
     global_list = &__global_slot_1;
     // # Global with list() constructor
     // global_list2: list[Int32] = list()
@@ -82,17 +82,17 @@ void __tpy_init() {
     // global_list.append(100)
     (*global_list).push_back(100);
     // print(len(global_list))
-    std::cout << tpy::__len__((*global_list)) << "\n";
+    std::cout << ::tpy::__len__((*global_list)) << "\n";
     // global_list2.append(Int32(50))
     (*global_list2).push_back(50);
     // print(len(global_list2))
-    std::cout << tpy::__len__((*global_list2)) << "\n";
+    std::cout << ::tpy::__len__((*global_list2)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

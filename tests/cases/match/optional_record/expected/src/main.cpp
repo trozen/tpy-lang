@@ -61,7 +61,7 @@ std::string check_point(Point* p) {
             auto& x = __match_inner.x;
             auto& y = __match_inner.y;
             //             return str(x) + "," + str(y)
-            return (tpy::str_concat((tpy::str_concat(tpy::fixed_to_str<int32_t>(x), ",")), tpy::fixed_to_str<int32_t>(y)));
+            return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(x), ",")), ::tpy::fixed_to_str<int32_t>(y)));
         }
     }
     //     return ""
@@ -127,7 +127,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

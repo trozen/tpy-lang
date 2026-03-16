@@ -46,7 +46,7 @@ struct Wrapper {
     }
 
     //     def get(self) -> T:
-    tpy::val_or_cref_t<T> get() const {
+    ::tpy::val_or_cref_t<T> get() const {
         //         return self._storage.load0()
         return this->_storage.load0();
     }

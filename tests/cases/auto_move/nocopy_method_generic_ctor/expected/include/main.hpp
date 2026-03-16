@@ -80,7 +80,7 @@ struct GenericHolder {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GenericHolder<T>& obj) {
     os << "GenericHolder("
-       << "item=" << tpy::ValuePrinter(obj.item)
+       << "item=" << ::tpy::ValuePrinter(obj.item)
        << ")";
     return os;
 }

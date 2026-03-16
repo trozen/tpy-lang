@@ -7,16 +7,16 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<tpy::NativeIterable<char> T_text>
+template<::tpy::NativeIterable<char> T_text>
 int32_t count_chars(T_text& text);
-template<tpy::NativeIterable<char> T_text>
+template<::tpy::NativeIterable<char> T_text>
 char first_char(T_text& text);
-template<tpy::NativeIterable<int32_t> T_items>
+template<::tpy::NativeIterable<int32_t> T_items>
 int32_t sum_span(T_items& items);
 void main();
 
 // def count_chars(text: NativeIterable[Char]) -> Int32:
-template<tpy::NativeIterable<char> T_text>
+template<::tpy::NativeIterable<char> T_text>
 int32_t count_chars(T_text& text) {
     //     count: Int32 = 0
     int32_t count = 0;
@@ -27,13 +27,13 @@ int32_t count_chars(T_text& text) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         char c = *__beg_0;
         //         count += 1
-        count = tpy::add_check<int32_t>(count, 1);
+        count = ::tpy::add_check<int32_t>(count, 1);
     }
     //     return count
     return count;
 }
 // def first_char(text: NativeIterable[Char]) -> Char:
-template<tpy::NativeIterable<char> T_text>
+template<::tpy::NativeIterable<char> T_text>
 char first_char(T_text& text) {
     //     for c in text:
     auto& __obj_0 = text;
@@ -48,7 +48,7 @@ char first_char(T_text& text) {
     return static_cast<char>(0);
 }
 // def sum_span(items: NativeIterable[Int32]) -> Int32:
-template<tpy::NativeIterable<int32_t> T_items>
+template<::tpy::NativeIterable<int32_t> T_items>
 int32_t sum_span(T_items& items) {
     //     total: Int32 = 0
     int32_t total = 0;
@@ -59,7 +59,7 @@ int32_t sum_span(T_items& items) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         total += x
-        total = tpy::add_check<int32_t>(total, x);
+        total = ::tpy::add_check<int32_t>(total, x);
     }
     //     return total
     return total;

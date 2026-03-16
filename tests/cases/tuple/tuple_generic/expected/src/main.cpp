@@ -17,7 +17,7 @@ void main() {
     //     swapped = swap(pair)
     std::tuple<std::string, int32_t> swapped = swap<int32_t, std::string>(pair);
     //     print(swapped)
-    std::cout << tpy::TuplePrinter(swapped) << "\n";
+    std::cout << ::tpy::TuplePrinter(swapped) << "\n";
     //     # Generic swap with record type (non-value) -- verify reference semantics
     //     pt = Point(Int32(1), Int32(2))
     Point pt = Point(1, 2);
@@ -47,7 +47,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

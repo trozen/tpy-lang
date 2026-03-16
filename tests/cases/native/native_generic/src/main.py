@@ -2,7 +2,7 @@
 from tpy.extern import native, cpp_template
 from tpy import Int32, Ptr, UInt32
 
-@native("::tpy::__len__")
+@native("tpy::__len__")
 def my_len[T](x: T) -> Int32: ...
 
 @cpp_template("{0}[{1}]")

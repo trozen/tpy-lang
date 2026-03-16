@@ -11,7 +11,7 @@ void main() {
     //     print(my_len(items))
     std::cout << ::tpy::__len__(items) << "\n";
     //     p = Ptr[Int32](items[0])
-    int32_t* p = &tpy::__getitem__(items, 0);
+    int32_t* p = &::tpy::__getitem__(items, 0);
     //     print(load(p, UInt32(2)))
     std::cout << p[2] << "\n";
 }
@@ -30,7 +30,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -15,7 +15,7 @@ void print_point(const Point& p) {
 // def get_sum(p: Point) -> Int32:
 int32_t get_sum(const Point& p) {
     //     return p.x + p.y
-    return (tpy::add_check<int32_t>(p.x, p.y));
+    return (::tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // def modify_point(p: Point) -> None:
@@ -28,7 +28,7 @@ void modify_point(Point& p) {
 Point& deref_and_return(Point* ptr) {
     //     # Ptr -> Point coercion in return statement
     //     return ptr
-    return tpy::deref_check(ptr);
+    return ::tpy::deref_check(ptr);
 }
 
 // def test_ptr_to_value() -> None:
@@ -39,14 +39,14 @@ void test_ptr_to_value() {
     Point* ptr = &pt;
     //     # Ptr[Point] -> Point coercion in function call
     //     print_point(ptr)
-    print_point(tpy::deref_check(ptr));
+    print_point(::tpy::deref_check(ptr));
     //     result: Int32 = get_sum(ptr)
-    int32_t result = get_sum(tpy::deref_check(ptr));
+    int32_t result = get_sum(::tpy::deref_check(ptr));
     //     print(result)
     std::cout << result << "\n";
     //     # Modification through coerced pointer affects original
     //     modify_point(ptr)
-    modify_point(tpy::deref_check(ptr));
+    modify_point(::tpy::deref_check(ptr));
     //     print(pt.x)
     std::cout << pt.x << "\n";
 }
@@ -59,7 +59,7 @@ void test_ptr_to_value_assign() {
     Point* ptr = &pt;
     //     # Ptr[Point] -> Point coercion in assignment
     //     p2: Point = ptr
-    Point& p2 = tpy::deref_check(ptr);
+    Point& p2 = ::tpy::deref_check(ptr);
     //     print(p2.x)
     std::cout << p2.x << "\n";
     //     print(p2.y)
@@ -102,7 +102,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

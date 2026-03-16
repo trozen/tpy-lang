@@ -42,7 +42,7 @@ struct Person {
     //     def greeting(self) -> str:
     std::string greeting() const {
         //         return "Hi, " + self.name
-        return (tpy::str_concat("Hi, ", this->name));
+        return (::tpy::str_concat("Hi, ", this->name));
     }
 };
 

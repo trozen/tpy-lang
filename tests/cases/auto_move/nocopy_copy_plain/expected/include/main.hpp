@@ -31,7 +31,7 @@ struct Counter {
     //     def __copy__(self) -> Own[Counter]:
     Counter __copy__() const {
         //         return Counter(self.count * 2)
-        return Counter((tpy::mul_check<int32_t>(this->count, 2)));
+        return Counter((::tpy::mul_check<int32_t>(this->count, 2)));
     }
 };
 

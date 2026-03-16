@@ -5,10 +5,10 @@
 
 namespace tpy_user::main {
 
-extern tpy::BigInt x;
+extern ::tpy::BigInt x;
 inline constexpr std::string_view __name__ = "__main__";
 
-void update(const tpy::BigInt& val);
+void update(const ::tpy::BigInt& val);
 
 void __tpy_init();
 } // namespace tpy_user::main

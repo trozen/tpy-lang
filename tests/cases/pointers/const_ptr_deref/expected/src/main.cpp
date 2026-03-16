@@ -11,15 +11,15 @@ void main() {
     //     cp: Ptr[readonly[Int32]] = Ptr(x)
     const int32_t* cp = &x;
     //     print(cp.__deref__())
-    std::cout << tpy::deref_check(cp) << "\n";
+    std::cout << ::tpy::deref_check(cp) << "\n";
     //     pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
     //     cpp: Ptr[readonly[Point]] = Ptr(pt)
     const Point* cpp = &pt;
     //     print(cpp.__deref__().x)
-    std::cout << tpy::deref_check(cpp).x << "\n";
+    std::cout << ::tpy::deref_check(cpp).x << "\n";
     //     print(cpp.__deref__().y)
-    std::cout << tpy::deref_check(cpp).y << "\n";
+    std::cout << ::tpy::deref_check(cpp).y << "\n";
     //     # Field access through Ptr[readonly[Point]] auto-deref
     //     print(cpp.x)
     std::cout << cpp->x << "\n";
@@ -39,7 +39,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

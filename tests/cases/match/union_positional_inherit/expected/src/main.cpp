@@ -16,7 +16,7 @@ void describe(const std::variant<Child, Other>& s) {
         auto& b = __case_0.y;
         auto& c = __case_0.z;
         //             print(a + b + c)
-        std::cout << tpy::print_float(((((a) + (b))) + (c))) << "\n";
+        std::cout << ::tpy::print_float(((((a) + (b))) + (c))) << "\n";
         break;
     }
     //         case Other(v):
@@ -24,7 +24,7 @@ void describe(const std::variant<Child, Other>& s) {
         auto& __case_1 = std::get<1>(__match_subject);
         auto& v = __case_1.v;
         //             print(v)
-        std::cout << tpy::print_float(v) << "\n";
+        std::cout << ::tpy::print_float(v) << "\n";
         break;
     }
     }
@@ -54,7 +54,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

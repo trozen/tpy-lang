@@ -9,7 +9,7 @@ namespace tpy_user::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t sum_span(std::span<int32_t> values);
-tpy::BigInt sum_span_bigint(std::span<tpy::BigInt> values);
+::tpy::BigInt sum_span_bigint(std::span<::tpy::BigInt> values);
 void main();
 
 void __tpy_init();

@@ -11,7 +11,7 @@ void __tpy_init() {
 
     // # Exit value would be 2147483648 (INT32_MAX + 1) — must panic
     // for i in range(Int32(2147483646), Int32(2147483647), Int32(2)):
-    tpy::range_check_overflow<int32_t>(2147483646, 2147483647, 2);
+    ::tpy::range_check_overflow<int32_t>(2147483646, 2147483647, 2);
     for (int32_t i = 2147483646; i < 2147483647; i += 2) {
         //     print(i)
         std::cout << i << "\n";
@@ -21,7 +21,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

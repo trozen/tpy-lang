@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     x: Int64 = Int64(1) << Int64(63)
-    int64_t x = (tpy::lshift_check<int64_t>(1, 63));
+    int64_t x = (::tpy::lshift_check<int64_t>(1, 63));
     //     print(x)
     std::cout << x << "\n";
 }
@@ -24,7 +24,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

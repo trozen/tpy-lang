@@ -7,23 +7,23 @@ namespace tpy_user::main {
 // def test_methods(s: StrView) -> None:
 void test_methods(std::string_view s) {
     //     print("strip:", s.strip())
-    std::cout << "strip:" << " " << tpy::str_strip(s) << "\n";
+    std::cout << "strip:" << " " << ::tpy::str_strip(s) << "\n";
     //     print("upper:", s.upper())
-    std::cout << "upper:" << " " << tpy::str_upper(s) << "\n";
+    std::cout << "upper:" << " " << ::tpy::str_upper(s) << "\n";
     //     print("lower:", s.lower())
-    std::cout << "lower:" << " " << tpy::str_lower(s) << "\n";
+    std::cout << "lower:" << " " << ::tpy::str_lower(s) << "\n";
     //     print("find:", s.find("ll"))
-    std::cout << "find:" << " " << tpy::str_find(s, "ll") << "\n";
+    std::cout << "find:" << " " << ::tpy::str_find(s, "ll") << "\n";
     //     print("startswith:", s.startswith("he"))
-    std::cout << "startswith:" << " " << tpy::print_bool(tpy::str_startswith(s, "he")) << "\n";
+    std::cout << "startswith:" << " " << ::tpy::print_bool(::tpy::str_startswith(s, "he")) << "\n";
     //     print("endswith:", s.endswith("lo"))
-    std::cout << "endswith:" << " " << tpy::print_bool(tpy::str_endswith(s, "lo")) << "\n";
+    std::cout << "endswith:" << " " << ::tpy::print_bool(::tpy::str_endswith(s, "lo")) << "\n";
     //     print("count:", s.count("l"))
-    std::cout << "count:" << " " << tpy::str_count(s, "l") << "\n";
+    std::cout << "count:" << " " << ::tpy::str_count(s, "l") << "\n";
     //     print("replace:", s.replace("l", "r"))
-    std::cout << "replace:" << " " << tpy::str_replace(s, "l", "r") << "\n";
+    std::cout << "replace:" << " " << ::tpy::str_replace(s, "l", "r") << "\n";
     //     print("isalpha:", s.isalpha())
-    std::cout << "isalpha:" << " " << tpy::print_bool(tpy::str_isalpha(s)) << "\n";
+    std::cout << "isalpha:" << " " << ::tpy::print_bool(::tpy::str_isalpha(s)) << "\n";
 }
 
 // def main() -> None:
@@ -46,7 +46,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

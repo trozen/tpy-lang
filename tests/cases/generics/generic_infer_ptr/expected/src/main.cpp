@@ -42,7 +42,7 @@ void __tpy_init() {
     static PtrHolder<Point> __global_slot_2 = PtrHolder<Point>(ptr);
     holder = &__global_slot_2;
     // holder.ptr.x = 100
-    tpy::deref_check(holder->ptr).x = 100;
+    ::tpy::deref_check(holder->ptr).x = 100;
     // print(pt.x)
     std::cout << pt->x << "\n";
     // # Inference from Ptr[readonly[Point]] -> ReadOnlyPtrHolder[Point]
@@ -50,19 +50,19 @@ void __tpy_init() {
     static ReadOnlyPtrHolder<Point> __global_slot_3 = ReadOnlyPtrHolder<Point>(cptr);
     const_holder = &__global_slot_3;
     // print(const_holder.ptr.y)
-    std::cout << tpy::deref_check(const_holder->ptr).y << "\n";
+    std::cout << ::tpy::deref_check(const_holder->ptr).y << "\n";
     // # Inference from Ptr[Point] -> ReadOnlyPtrHolder[Point] (Ptr coerces to Ptr[readonly[...]])
     // const_holder2 = ReadOnlyPtrHolder(ptr)
     static ReadOnlyPtrHolder<Point> __global_slot_4 = ReadOnlyPtrHolder<Point>(ptr);
     const_holder2 = &__global_slot_4;
     // print(const_holder2.ptr.x)
-    std::cout << tpy::deref_check(const_holder2->ptr).x << "\n";
+    std::cout << ::tpy::deref_check(const_holder2->ptr).x << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -19,7 +19,7 @@ int32_t test() {
     //     q = g
     q = g;
     //     assert q is not None
-    if (!((q != nullptr))) tpy::tpy_panic("assertion failed");
+    if (!((q != nullptr))) ::tpy::tpy_panic("assertion failed");
     //     return consume(q)  # tpyc: warning(/copies.*into owned storage/)
     auto __tmp_1 = (*q);
     return consume(std::move(__tmp_1));
@@ -40,7 +40,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

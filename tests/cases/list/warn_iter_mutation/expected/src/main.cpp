@@ -31,7 +31,7 @@ void test_pop() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         items.pop()  # tpyc: warning(/Mutation of 'items'.*'pop'/)
-        tpy::pop_back(items);
+        ::tpy::pop_back(items);
     }
 }
 
@@ -46,7 +46,7 @@ void test_insert() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         items.insert(Int32(0), Int32(9))  # tpyc: warning(/Mutation of 'items'.*'insert'/)
-        tpy::list_insert(items, 0, 9);
+        ::tpy::list_insert(items, 0, 9);
     }
 }
 
@@ -61,7 +61,7 @@ void test_remove() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         items.remove(Int32(1))  # tpyc: warning(/Mutation of 'items'.*'remove'/)
-        tpy::list_remove(items, 1);
+        ::tpy::list_remove(items, 1);
     }
 }
 
@@ -93,7 +93,7 @@ void test_extend() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         items.extend(other)  # tpyc: warning(/Mutation of 'items'.*'extend'/)
-        tpy::list_extend(items, other);
+        ::tpy::list_extend(items, other);
     }
 }
 
@@ -108,7 +108,7 @@ void test_reverse() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         items.reverse()  # tpyc: warning(/Mutation of 'items'.*'reverse'/)
-        tpy::list_reverse(items);
+        ::tpy::list_reverse(items);
     }
 }
 
@@ -138,7 +138,7 @@ void test_del() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         del items[Int32(0)]  # tpyc: warning(/Mutation of 'items'.*'del'/)
-        tpy::__delitem__(items, 0);
+        ::tpy::__delitem__(items, 0);
     }
 }
 
@@ -200,7 +200,7 @@ void test_subscript_assign_ok() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         items[Int32(0)] = Int32(9)  # tpyc: ok
-        tpy::__setitem__(items, 0, 9);
+        ::tpy::__setitem__(items, 0, 9);
     }
 }
 
@@ -233,11 +233,11 @@ void test_read_only_ok() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         total += x        # tpyc: ok
-        total = tpy::add_check<int32_t>(total, x);
+        total = ::tpy::add_check<int32_t>(total, x);
         //         _ = len(items)    # tpyc: ok
-        int32_t _ = tpy::__len__(items);
+        int32_t _ = ::tpy::__len__(items);
         //         _ = items[Int32(0)]  # tpyc: ok
-        _ = tpy::__getitem__(items, 0);
+        _ = ::tpy::__getitem__(items, 0);
     }
 }
 
@@ -251,7 +251,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

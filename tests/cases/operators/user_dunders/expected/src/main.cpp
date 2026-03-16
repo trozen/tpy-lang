@@ -27,15 +27,15 @@ void test_contains() {
     //     v = Vec2(Int32(10), Int32(20))
     Vec2 v = Vec2(10, 20);
     //     print(Int32(10) in v)
-    std::cout << tpy::print_bool((v.__contains__(10))) << "\n";
+    std::cout << ::tpy::print_bool((v.__contains__(10))) << "\n";
     //     print(Int32(20) in v)
-    std::cout << tpy::print_bool((v.__contains__(20))) << "\n";
+    std::cout << ::tpy::print_bool((v.__contains__(20))) << "\n";
     //     print(Int32(99) in v)
-    std::cout << tpy::print_bool((v.__contains__(99))) << "\n";
+    std::cout << ::tpy::print_bool((v.__contains__(99))) << "\n";
     //     print(Int32(99) not in v)
-    std::cout << tpy::print_bool((!(v.__contains__(99)))) << "\n";
+    std::cout << ::tpy::print_bool((!(v.__contains__(99)))) << "\n";
     //     print(Int32(10) not in v)
-    std::cout << tpy::print_bool((!(v.__contains__(10)))) << "\n";
+    std::cout << ::tpy::print_bool((!(v.__contains__(10)))) << "\n";
 }
 
 // def test_sub_mul() -> None:
@@ -87,9 +87,9 @@ void test_hash() {
     //     v = Vec2(Int32(1), Int32(2))
     Vec2 v = Vec2(1, 2);
     //     h = hash(v)
-    uint64_t h = tpy::__hash__(v);
+    uint64_t h = ::tpy::__hash__(v);
     //     print(h > 0)
-    std::cout << tpy::print_bool((h > 0)) << "\n";
+    std::cout << ::tpy::print_bool((h > 0)) << "\n";
 }
 
 // def test_len() -> None:
@@ -97,7 +97,7 @@ void test_len() {
     //     v = Vec2(Int32(1), Int32(2))
     Vec2 v = Vec2(1, 2);
     //     print(len(v))
-    std::cout << tpy::__len__(v) << "\n";
+    std::cout << ::tpy::__len__(v) << "\n";
 }
 
 // def test_eq() -> None:
@@ -109,11 +109,11 @@ void test_eq() {
     //     c = Vec2(Int32(3), Int32(4))
     Vec2 c = Vec2(3, 4);
     //     print(a == b)
-    std::cout << tpy::print_bool((a == b)) << "\n";
+    std::cout << ::tpy::print_bool((a == b)) << "\n";
     //     print(a == c)
-    std::cout << tpy::print_bool((a == c)) << "\n";
+    std::cout << ::tpy::print_bool((a == c)) << "\n";
     //     print(a != c)
-    std::cout << tpy::print_bool((a != c)) << "\n";
+    std::cout << ::tpy::print_bool((a != c)) << "\n";
 }
 
 // def test_explicit_ne() -> None:
@@ -125,9 +125,9 @@ void test_explicit_ne() {
     //     c = Tag(Int32(2))
     Tag c = Tag(2);
     //     print(a != b)
-    std::cout << tpy::print_bool((a != b)) << "\n";
+    std::cout << ::tpy::print_bool((a != b)) << "\n";
     //     print(a != c)
-    std::cout << tpy::print_bool((a != c)) << "\n";
+    std::cout << ::tpy::print_bool((a != c)) << "\n";
 }
 
 // def test_inherited_eq() -> None:
@@ -139,9 +139,9 @@ void test_inherited_eq() {
     //     c = Child(Int32(3), Int32(4))
     Child c = Child(3, 4);
     //     print(a == b)
-    std::cout << tpy::print_bool((a == b)) << "\n";
+    std::cout << ::tpy::print_bool((a == b)) << "\n";
     //     print(a == c)
-    std::cout << tpy::print_bool((a == c)) << "\n";
+    std::cout << ::tpy::print_bool((a == c)) << "\n";
 }
 
 // def test_comparisons() -> None:
@@ -153,17 +153,17 @@ void test_comparisons() {
     //     c = Score(Int32(10))
     Score c = Score(10);
     //     print(a < b)
-    std::cout << tpy::print_bool((a < b)) << "\n";
+    std::cout << ::tpy::print_bool((a < b)) << "\n";
     //     print(a > b)
-    std::cout << tpy::print_bool((a > b)) << "\n";
+    std::cout << ::tpy::print_bool((a > b)) << "\n";
     //     print(a <= c)
-    std::cout << tpy::print_bool((a <= c)) << "\n";
+    std::cout << ::tpy::print_bool((a <= c)) << "\n";
     //     print(a >= c)
-    std::cout << tpy::print_bool((a >= c)) << "\n";
+    std::cout << ::tpy::print_bool((a >= c)) << "\n";
     //     print(b > a)
-    std::cout << tpy::print_bool((b > a)) << "\n";
+    std::cout << ::tpy::print_bool((b > a)) << "\n";
     //     print(b <= a)
-    std::cout << tpy::print_bool((b <= a)) << "\n";
+    std::cout << ::tpy::print_bool((b <= a)) << "\n";
 }
 
 // def test_invert() -> None:
@@ -191,7 +191,7 @@ void test_builtin_pos() {
     //     y: float = -3.14
     double y = -(3.14);
     //     print(+y)
-    std::cout << tpy::print_float(+(y)) << "\n";
+    std::cout << ::tpy::print_float(+(y)) << "\n";
 }
 
 // def main() -> None:
@@ -236,7 +236,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

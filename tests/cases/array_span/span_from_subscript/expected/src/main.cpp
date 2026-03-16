@@ -9,11 +9,11 @@ void main() {
     //     matrix: Array[Array[Int32, 2], 2] = [[1, 2], [3, 4]]
     std::array<std::array<int32_t, 2>, 2> matrix = {{{1, 2}, {3, 4}}};
     //     s: Span[Int32] = matrix[1]
-    std::span<int32_t> s = tpy::as_mut_span(tpy::__getitem__(matrix, 1));
+    std::span<int32_t> s = ::tpy::as_mut_span(::tpy::__getitem__(matrix, 1));
     //     print(s[0])
-    std::cout << tpy::__getitem__(s, 0) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n";
     //     print(s[1])
-    std::cout << tpy::__getitem__(s, 1) << "\n";
+    std::cout << ::tpy::__getitem__(s, 1) << "\n";
 }
 
 void __tpy_init() {
@@ -28,7 +28,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

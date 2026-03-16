@@ -24,7 +24,7 @@ struct Container {
     //     def __repr__(self) -> str:
     std::string __repr__() const {
         //         return "Container(value=" + str(self.value) + ")"
-        return (tpy::str_concat((tpy::str_concat("Container(value=", tpy::fixed_to_str<int32_t>(this->value))), ")"));
+        return (::tpy::str_concat((::tpy::str_concat("Container(value=", ::tpy::fixed_to_str<int32_t>(this->value))), ")"));
     }
 };
 

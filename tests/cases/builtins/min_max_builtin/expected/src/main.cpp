@@ -15,9 +15,9 @@ int32_t x{};
 int32_t y{};
 // # Use int() for large values to avoid literal issues
 // big1 = int(-1000000)
-tpy::BigInt big1;
+::tpy::BigInt big1;
 // big2 = int(1000000)
-tpy::BigInt big2;
+::tpy::BigInt big2;
 // # Test min/max with float
 // f1: float = 3.14
 double f1{};
@@ -60,9 +60,9 @@ void __tpy_init() {
     std::cout << std::max(x, y) << "\n";
     // # Use int() for large values to avoid literal issues
     // big1 = int(-1000000)
-    big1 = tpy::BigInt(static_cast<int64_t>(-1000000));
+    big1 = ::tpy::BigInt(static_cast<int64_t>(-1000000));
     // big2 = int(1000000)
-    big2 = tpy::BigInt(static_cast<int64_t>(1000000));
+    big2 = ::tpy::BigInt(static_cast<int64_t>(1000000));
     // print(min(big1, big2))
     std::cout << ((big1) < (big2) ? (big1) : (big2)) << "\n";
     // print(max(big1, big2))
@@ -73,9 +73,9 @@ void __tpy_init() {
     // f2: float = 2.71
     f2 = 2.71;
     // print(min(f1, f2))
-    std::cout << tpy::print_float(std::fmin(f1, f2)) << "\n";
+    std::cout << ::tpy::print_float(std::fmin(f1, f2)) << "\n";
     // print(max(f1, f2))
-    std::cout << tpy::print_float(std::fmax(f1, f2)) << "\n";
+    std::cout << ::tpy::print_float(std::fmax(f1, f2)) << "\n";
     // # Test 3-argument min/max
     // c: Int32 = 5
     c = 5;
@@ -92,15 +92,15 @@ void __tpy_init() {
     // f3: float = 1.0
     f3 = 1.0;
     // print(min(f1, f2, f3))
-    std::cout << tpy::print_float(std::fmin(std::fmin(f1, f2), f3)) << "\n";
+    std::cout << ::tpy::print_float(std::fmin(std::fmin(f1, f2), f3)) << "\n";
     // print(max(f1, f2, f3))
-    std::cout << tpy::print_float(std::fmax(std::fmax(f1, f2), f3)) << "\n";
+    std::cout << ::tpy::print_float(std::fmax(std::fmax(f1, f2), f3)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

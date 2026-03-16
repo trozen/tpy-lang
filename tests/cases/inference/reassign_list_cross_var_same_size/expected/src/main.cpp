@@ -17,7 +17,7 @@ void main() {
     //     a.append(7)
     (*a).push_back(7);
     //     print(len(b))
-    std::cout << tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n";
 }
 
 void __tpy_init() {
@@ -32,7 +32,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

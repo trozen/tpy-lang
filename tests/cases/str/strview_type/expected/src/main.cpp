@@ -11,7 +11,7 @@ void test_strview_basic() {
     //     print(s)  # hello
     std::cout << s << "\n";
     //     print(len(s))  # 5
-    std::cout << tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n";
 }
 
 // def test_strview_getitem() -> None:
@@ -19,9 +19,9 @@ void test_strview_getitem() {
     //     s: StrView = StrView("abc")
     std::string_view s = std::string_view("abc");
     //     print(s[0])  # a
-    std::cout << tpy::__getitem__(s, 0) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n";
     //     print(s[-1])  # c
-    std::cout << tpy::__getitem__(s, -1) << "\n";
+    std::cout << ::tpy::__getitem__(s, -1) << "\n";
 }
 
 void __tpy_init() {
@@ -38,7 +38,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

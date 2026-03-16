@@ -25,7 +25,7 @@ struct Container {
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Container<T, N>& obj) {
     os << "Container("
-       << "value=" << tpy::ValuePrinter(obj.value)
+       << "value=" << ::tpy::ValuePrinter(obj.value)
        << ")";
     return os;
 }

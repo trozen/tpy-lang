@@ -17,9 +17,9 @@ void test_extend_ref_type_warns() {
     //     b: list[Node] = [Node(Int32(1))]
     std::vector<Node> b = {Node(1)};
     //     a.extend(b)  # tpyc: warning(/copies Node elements/)
-    tpy::list_extend(a, b);
+    ::tpy::list_extend(a, b);
     //     print(len(b))
-    std::cout << tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n";
 }
 
 // def test_extend_value_type_no_warn() -> None:
@@ -29,9 +29,9 @@ void test_extend_value_type_no_warn() {
     //     b: list[Int32] = [Int32(1)]
     std::vector<int32_t> b = {1};
     //     a.extend(b)  # tpyc: ok
-    tpy::list_extend(a, b);
+    ::tpy::list_extend(a, b);
     //     print(len(a))
-    std::cout << tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n";
 }
 
 // def test_extend_copy_no_warn() -> None:
@@ -41,9 +41,9 @@ void test_extend_copy_no_warn() {
     //     b: list[Node] = [Node(Int32(1))]
     std::vector<Node> b = {Node(1)};
     //     a.extend(copy(b))  # tpyc: ok
-    tpy::list_extend(a, std::vector<Node>(b));
+    ::tpy::list_extend(a, std::vector<Node>(b));
     //     print(len(b))
-    std::cout << tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n";
 }
 
 // def test_extend_last_use_no_warn() -> None:
@@ -53,9 +53,9 @@ void test_extend_last_use_no_warn() {
     //     b: list[Node] = [Node(Int32(1))]
     std::vector<Node> b = {Node(1)};
     //     a.extend(b)  # tpyc: ok -- b's last use
-    tpy::list_extend(a, b);
+    ::tpy::list_extend(a, b);
     //     print(len(a))
-    std::cout << tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n";
 }
 
 // def test_extend_rvalue_no_warn() -> None:
@@ -63,11 +63,11 @@ void test_extend_rvalue_no_warn() {
     //     a: list[Node] = []
     std::vector<Node> a = std::vector<Node>{};
     //     a.extend(make_nodes())  # tpyc: ok
-    tpy::list_extend(a, make_nodes());
+    ::tpy::list_extend(a, make_nodes());
     //     a.extend([Node(Int32(2))])  # tpyc: ok
-    tpy::list_extend(a, {Node(2)});
+    ::tpy::list_extend(a, {Node(2)});
     //     print(len(a))
-    std::cout << tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n";
 }
 
 void __tpy_init() {
@@ -90,7 +90,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

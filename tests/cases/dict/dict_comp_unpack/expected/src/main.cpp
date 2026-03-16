@@ -8,18 +8,18 @@ namespace tpy_user::main {
 void main() {
     //     # Unpack from dict.items()
     //     prices: dict[str, Int32] = {"apple": 3, "banana": 1, "cherry": 5}
-    tpy::ordered_map<std::string, int32_t> prices = tpy::ordered_map<std::string, int32_t>({{"apple", 3}, {"banana", 1}, {"cherry", 5}});
+    ::tpy::ordered_map<std::string, int32_t> prices = ::tpy::ordered_map<std::string, int32_t>({{"apple", 3}, {"banana", 1}, {"cherry", 5}});
     //     doubled: dict[str, Int32] = {k: v * 2 for k, v in prices.items()}
-    tpy::ordered_map<std::string, int32_t> doubled = [&]() {
-        tpy::ordered_map<std::string, int32_t> __result;
-        auto __obj_0 = tpy::dict_items(prices);
+    ::tpy::ordered_map<std::string, int32_t> doubled = [&]() {
+        ::tpy::ordered_map<std::string, int32_t> __result;
+        auto __obj_0 = ::tpy::dict_items(prices);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& __tup_1 = *__beg_0;
             std::string k = std::get<0>(__tup_1);
             int32_t v = std::get<1>(__tup_1);
-            __result.insert_or_assign(k, (tpy::mul_check<int32_t>(v, 2)));
+            __result.insert_or_assign(k, (::tpy::mul_check<int32_t>(v, 2)));
         }
         return __result;
     }();
@@ -30,14 +30,14 @@ void main() {
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string_view k = *__beg_1;
         //         print(k, doubled[k])
-        std::cout << k << " " << tpy::__getitem__(doubled, k) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(doubled, k) << "\n";
     }
     //     # Unpack from list of tuples
     //     pairs: list[tuple[str, Int32]] = [("x", 10), ("y", 20), ("z", 30)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"x", 10}, std::tuple<std::string, int32_t>{"y", 20}, std::tuple<std::string, int32_t>{"z", 30}};
     //     result: dict[str, Int32] = {k: v for k, v in pairs}
-    tpy::ordered_map<std::string, int32_t> result = [&]() {
-        tpy::ordered_map<std::string, int32_t> __result;
+    ::tpy::ordered_map<std::string, int32_t> result = [&]() {
+        ::tpy::ordered_map<std::string, int32_t> __result;
         auto& __obj_2 = pairs;
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
@@ -50,16 +50,16 @@ void main() {
         return __result;
     }();
     //     print(result["x"])
-    std::cout << tpy::__getitem__(result, "x") << "\n";
+    std::cout << ::tpy::__getitem__(result, "x") << "\n";
     //     print(result["y"])
-    std::cout << tpy::__getitem__(result, "y") << "\n";
+    std::cout << ::tpy::__getitem__(result, "y") << "\n";
     //     print(result["z"])
-    std::cout << tpy::__getitem__(result, "z") << "\n";
+    std::cout << ::tpy::__getitem__(result, "z") << "\n";
     //     # Swap keys and values (Int32 -> str)
     //     swapped: dict[Int32, str] = {v: k for k, v in prices.items()}
-    tpy::ordered_map<int32_t, std::string> swapped = [&]() {
-        tpy::ordered_map<int32_t, std::string> __result;
-        auto __obj_3 = tpy::dict_items(prices);
+    ::tpy::ordered_map<int32_t, std::string> swapped = [&]() {
+        ::tpy::ordered_map<int32_t, std::string> __result;
+        auto __obj_3 = ::tpy::dict_items(prices);
         auto __beg_3 = __obj_3.begin();
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
@@ -71,11 +71,11 @@ void main() {
         return __result;
     }();
     //     print(swapped[3])
-    std::cout << tpy::__getitem__(swapped, 3) << "\n";
+    std::cout << ::tpy::__getitem__(swapped, 3) << "\n";
     //     print(swapped[1])
-    std::cout << tpy::__getitem__(swapped, 1) << "\n";
+    std::cout << ::tpy::__getitem__(swapped, 1) << "\n";
     //     print(swapped[5])
-    std::cout << tpy::__getitem__(swapped, 5) << "\n";
+    std::cout << ::tpy::__getitem__(swapped, 5) << "\n";
 }
 
 void __tpy_init() {
@@ -90,7 +90,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

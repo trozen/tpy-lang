@@ -5,11 +5,11 @@ namespace tpy_user::main {
 
 
 // def takes_list(x: list[int]) -> None:
-void takes_list(std::vector<tpy::BigInt>& x) {
+void takes_list(std::vector<::tpy::BigInt>& x) {
     //     x.append(42)
     x.push_back(42);
     //     print(len(x))
-    std::cout << tpy::__len__(x) << "\n";
+    std::cout << ::tpy::__len__(x) << "\n";
 }
 
 // def takes_list_int32(x: list[Int32]) -> None:
@@ -17,13 +17,13 @@ void takes_list_int32(std::vector<int32_t>& x) {
     //     x.append(Int32(99))
     x.push_back(99);
     //     print(len(x))
-    std::cout << tpy::__len__(x) << "\n";
+    std::cout << ::tpy::__len__(x) << "\n";
 }
 
 // def takes_array(x: Array[Int32, 3]) -> None:
 void takes_array(const std::array<int32_t, 3>& x) {
     //     print(x[0])
-    std::cout << tpy::__getitem__(x, 0) << "\n";
+    std::cout << ::tpy::__getitem__(x, 0) << "\n";
 }
 
 void __tpy_init() {
@@ -33,21 +33,21 @@ void __tpy_init() {
 
     // # Empty list literals
     // takes_list([])
-    std::vector<tpy::BigInt> __tmp_1 = std::vector<tpy::BigInt>{};
+    std::vector<::tpy::BigInt> __tmp_1 = std::vector<::tpy::BigInt>{};
     takes_list(__tmp_1);
     // takes_list_int32([])
     std::vector<int32_t> __tmp_2 = std::vector<int32_t>{};
     takes_list_int32(__tmp_2);
     // # Empty list constructors
     // takes_list(list())
-    std::vector<tpy::BigInt> __tmp_3 = std::vector<tpy::BigInt>();
+    std::vector<::tpy::BigInt> __tmp_3 = std::vector<::tpy::BigInt>();
     takes_list(__tmp_3);
     // takes_list_int32(list())
     std::vector<int32_t> __tmp_4 = std::vector<int32_t>();
     takes_list_int32(__tmp_4);
     // # Non-empty list literals
     // takes_list([1, 2, 3])
-    std::vector<tpy::BigInt> __tmp_5 = {1, 2, 3};
+    std::vector<::tpy::BigInt> __tmp_5 = {1, 2, 3};
     takes_list(__tmp_5);
     // # Array literals
     // takes_array([Int32(10), Int32(20), Int32(30)])
@@ -58,7 +58,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

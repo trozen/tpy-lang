@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-tpy::BigInt gcd(const tpy::BigInt& __param_a, const tpy::BigInt& __param_b);
-std::string repeat_str(std::string_view s, const tpy::BigInt& n);
+::tpy::BigInt gcd(const ::tpy::BigInt& __param_a, const ::tpy::BigInt& __param_b);
+std::string repeat_str(std::string_view s, const ::tpy::BigInt& n);
 void main();
 
 void __tpy_init();

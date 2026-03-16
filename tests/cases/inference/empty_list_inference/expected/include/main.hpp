@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-extern std::vector<tpy::BigInt>* result;
+extern std::vector<::tpy::BigInt>* result;
 inline constexpr std::string_view __name__ = "__main__";
 
 void test_append();
@@ -13,8 +13,8 @@ void test_list_ctor();
 void test_insert();
 void test_multiple_append();
 void test_numeric_widen();
-std::vector<tpy::BigInt> test_return_context();
-void takes_list(const std::vector<tpy::BigInt>& items);
+std::vector<::tpy::BigInt> test_return_context();
+void takes_list(const std::vector<::tpy::BigInt>& items);
 void test_param_context();
 void test_param_overrides_inferred();
 void test_alias_inference();

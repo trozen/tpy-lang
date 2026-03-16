@@ -13,7 +13,7 @@ void test_if_not_zero_floordiv() {
     //     if b != 0:
     if ((b != 0)) {
         //         x = a // b  # tpyc: div_safe(b)
-        int32_t x = (tpy::div_floor<int32_t>(a, b));
+        int32_t x = (::tpy::div_floor<int32_t>(a, b));
         //         print(x)
         std::cout << x << "\n";
     }
@@ -28,7 +28,7 @@ void test_if_not_zero_mod() {
     //     if b != 0:
     if ((b != 0)) {
         //         x = a % b  # tpyc: div_safe(b)
-        int32_t x = (tpy::mod_floor<int32_t>(a, b));
+        int32_t x = (::tpy::mod_floor<int32_t>(a, b));
         //         print(x)
         std::cout << x << "\n";
     }
@@ -41,7 +41,7 @@ void test_no_elision_unchecked() {
     //     b: Int32 = Int32(3)
     int32_t b = 3;
     //     x = a // b  # tpyc: div_checked(b)
-    int32_t x = (tpy::div_check<int32_t>(a, b));
+    int32_t x = (::tpy::div_check<int32_t>(a, b));
     //     print(x)
     std::cout << x << "\n";
 }
@@ -53,11 +53,11 @@ void test_assert_not_zero() {
     //     b: Int32 = 5
     int32_t b = 5;
     //     assert b != 0
-    if (!((b != 0))) tpy::tpy_panic("assertion failed");
+    if (!((b != 0))) ::tpy::tpy_panic("assertion failed");
     //     x = a // b  # tpyc: div_safe(b)
-    int32_t x = (tpy::div_floor<int32_t>(a, b));
+    int32_t x = (::tpy::div_floor<int32_t>(a, b));
     //     y = a % b  # tpyc: div_safe(b)
-    int32_t y = (tpy::mod_floor<int32_t>(a, b));
+    int32_t y = (::tpy::mod_floor<int32_t>(a, b));
     //     print(x)
     std::cout << x << "\n";
     //     print(y)
@@ -71,9 +71,9 @@ void test_assert_positive() {
     //     b: Int32 = 7
     int32_t b = 7;
     //     assert b > 0
-    if (!((b > 0))) tpy::tpy_panic("assertion failed");
+    if (!((b > 0))) ::tpy::tpy_panic("assertion failed");
     //     x = a // b  # tpyc: div_safe(b)
-    int32_t x = (tpy::div_floor<int32_t>(a, b));
+    int32_t x = (::tpy::div_floor<int32_t>(a, b));
     //     print(x)
     std::cout << x << "\n";
 }
@@ -85,11 +85,11 @@ void test_no_elision_after_reassign() {
     //     b: Int32 = 3
     int32_t b = 3;
     //     assert b != 0
-    if (!((b != 0))) tpy::tpy_panic("assertion failed");
+    if (!((b != 0))) ::tpy::tpy_panic("assertion failed");
     //     b = a  # reassignment clears range fact
     b = a;
     //     x = a // b  # tpyc: div_checked(b)
-    int32_t x = (tpy::div_check<int32_t>(a, b));
+    int32_t x = (::tpy::div_check<int32_t>(a, b));
     //     print(x)
     std::cout << x << "\n";
 }
@@ -107,7 +107,7 @@ void test_else_of_eq_zero() {
     //     else:
     } else {
         //         x = a // b  # tpyc: div_safe(b)
-        int32_t x = (tpy::div_floor<int32_t>(a, b));
+        int32_t x = (::tpy::div_floor<int32_t>(a, b));
         //         print(x)
         std::cout << x << "\n";
     }
@@ -118,9 +118,9 @@ void test_literal_divisor() {
     //     a: Int32 = 10
     int32_t a = 10;
     //     x = a // 3
-    int32_t x = (tpy::div_floor<int32_t>(a, 3));
+    int32_t x = (::tpy::div_floor<int32_t>(a, 3));
     //     y = a % 5
-    int32_t y = (tpy::mod_floor<int32_t>(a, 5));
+    int32_t y = (::tpy::mod_floor<int32_t>(a, 5));
     //     print(x)
     std::cout << x << "\n";
     //     print(y)
@@ -134,7 +134,7 @@ void test_literal_named_divisor() {
     //     b: Int32 = 3
     int32_t b = 3;
     //     x = a // b  # tpyc: div_safe(b)
-    int32_t x = (tpy::div_floor<int32_t>(a, b));
+    int32_t x = (::tpy::div_floor<int32_t>(a, b));
     //     print(x)
     std::cout << x << "\n";
 }
@@ -167,7 +167,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

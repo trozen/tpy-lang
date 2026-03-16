@@ -14,12 +14,12 @@ void __tpy_init() {
     // g: Point | None = None
     g = nullptr;
     // print(g is None)
-    std::cout << tpy::print_bool((g == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((g == nullptr)) << "\n";
     // g = Point(3, 4)
     static Point __global_slot_1 = Point(3, 4);
     g = &__global_slot_1;
     // print(g is None)
-    std::cout << tpy::print_bool((g == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((g == nullptr)) << "\n";
     // print(g.x)
     std::cout << g->x << "\n";
     // print(g.mag())
@@ -29,7 +29,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

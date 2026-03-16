@@ -49,7 +49,7 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     c: Color = Color(99)
-    Color c = tpy::EnumUtil<Color>::from_value(99);
+    Color c = ::tpy::EnumUtil<Color>::from_value(99);
     //     print(c)
     std::cout << c << "\n";
 }
@@ -66,7 +66,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

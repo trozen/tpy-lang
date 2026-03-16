@@ -45,7 +45,7 @@ void __tpy_init() {
     static std::vector<int32_t> __global_slot_2 = {1, 2, 3};
     nums2 = &__global_slot_2;
     // print(len(nums2))
-    std::cout << tpy::__len__((*nums2)) << "\n";
+    std::cout << ::tpy::__len__((*nums2)) << "\n";
     // # Test 3: list constructor in same file
     // items = list[Int32]()
     static std::vector<int32_t> __global_slot_3 = std::vector<int32_t>();
@@ -53,7 +53,7 @@ void __tpy_init() {
     // items.append(100)
     (*items).push_back(100);
     // print(len(items))
-    std::cout << tpy::__len__((*items)) << "\n";
+    std::cout << ::tpy::__len__((*items)) << "\n";
     // # Test 4: Same generic function with different types
     // strs = ["hello", "world"]
     static std::vector<std::string> __global_slot_4 = {"hello", "world"};
@@ -80,7 +80,7 @@ void __tpy_init() {
     // # Test 7: Generic function in expression context
     // result = First([5, 6, 7]) + 10
     std::vector<int32_t> __tmp_3 = {5, 6, 7};
-    result = (tpy::add_check<int32_t>(First<int32_t>(__tmp_3), 10));
+    result = (::tpy::add_check<int32_t>(First<int32_t>(__tmp_3), 10));
     // print(result)
     std::cout << result << "\n";
 }
@@ -88,7 +88,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

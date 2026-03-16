@@ -13,7 +13,7 @@ void main() {
     //     xs.append(Rect(Int32(2)))
     xs.push_back(::tpy_user::shapes::Rect(2));
     //     print(len(xs))
-    std::cout << tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n";
 }
 
 void __tpy_init() {
@@ -30,7 +30,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

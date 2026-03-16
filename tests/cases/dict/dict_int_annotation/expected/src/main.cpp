@@ -8,11 +8,11 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     d: dict[str, int] = {"a": 1, "b": 2}
-    tpy::ordered_map<std::string, tpy::BigInt> d = tpy::ordered_map<std::string, tpy::BigInt>({{"a", tpy::BigInt(1)}, {"b", tpy::BigInt(2)}});
+    ::tpy::ordered_map<std::string, ::tpy::BigInt> d = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}, {"b", ::tpy::BigInt(2)}});
     //     print(d["a"])
-    std::cout << tpy::__getitem__(d, "a") << "\n";
+    std::cout << ::tpy::__getitem__(d, "a") << "\n";
     //     print(d)
-    std::cout << tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
 void __tpy_init() {
@@ -27,7 +27,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -16,7 +16,7 @@ void __tpy_init() {
     // x: Int32 = 2
     x = 2;
     // y: Int32 = x ** 31  # Should panic - 2^31 overflows Int32
-    y = (tpy::pow_check<int32_t>(x, 31));
+    y = (::tpy::pow_check<int32_t>(x, 31));
     // print(y)
     std::cout << y << "\n";
 }
@@ -24,7 +24,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

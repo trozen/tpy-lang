@@ -7,31 +7,31 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<tpy::Iterable<int32_t> T_items>
+template<::tpy::Iterable<int32_t> T_items>
 void extend_from(std::vector<int32_t>& target, T_items& items);
-template<tpy::Iterable<std::string> T_items>
+template<::tpy::Iterable<std::string> T_items>
 std::string join_from(std::string_view sep, const T_items& items);
-template<tpy::Iterable<int32_t> T_items>
+template<::tpy::Iterable<int32_t> T_items>
 std::vector<int32_t> list_from(const T_items& items);
 void main();
 
 // def extend_from(target: list[Int32], items: Iterable[Int32]) -> None:
-template<tpy::Iterable<int32_t> T_items>
+template<::tpy::Iterable<int32_t> T_items>
 void extend_from(std::vector<int32_t>& target, T_items& items) {
     //     target.extend(items)
-    tpy::list_extend(target, items);
+    ::tpy::list_extend(target, items);
 }
 // def join_from(sep: str, items: Iterable[str]) -> str:
-template<tpy::Iterable<std::string> T_items>
+template<::tpy::Iterable<std::string> T_items>
 std::string join_from(std::string_view sep, const T_items& items) {
     //     return sep.join(items)
-    return tpy::str_join(sep, items);
+    return ::tpy::str_join(sep, items);
 }
 // def list_from(items: Iterable[Int32]) -> Own[list[Int32]]:
-template<tpy::Iterable<int32_t> T_items>
+template<::tpy::Iterable<int32_t> T_items>
 std::vector<int32_t> list_from(const T_items& items) {
     //     return list(items)
-    return tpy::from_range<std::vector<int32_t>>(items);
+    return ::tpy::from_range<std::vector<int32_t>>(items);
 }
 
 void __tpy_init();

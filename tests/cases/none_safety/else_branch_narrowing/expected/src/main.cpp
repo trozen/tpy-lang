@@ -13,7 +13,7 @@ int32_t describe(std::optional<int32_t> x) {
     //     else:
     } else {
         //         return x + 1
-        return (tpy::add_check<int32_t>((*x), 1));
+        return (::tpy::add_check<int32_t>((*x), 1));
     }
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -17,11 +17,11 @@ void main();
 // class A:
 struct A {
     //     x: int
-    tpy::BigInt x;
+    ::tpy::BigInt x;
 
     //     def __init__(self, x: int) -> None:
     A() = default;
-    explicit A(const tpy::BigInt& x) : x(x) {}
+    explicit A(const ::tpy::BigInt& x) : x(x) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {

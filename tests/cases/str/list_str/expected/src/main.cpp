@@ -10,17 +10,17 @@ void main() {
     //     words: list[str] = ["hello", "world", "foo"]
     std::vector<std::string> words = {"hello", "world", "foo"};
     //     print(len(words))
-    std::cout << tpy::__len__(words) << "\n";
+    std::cout << ::tpy::__len__(words) << "\n";
     //     print(words[0])
-    std::cout << tpy::__getitem__(words, 0) << "\n";
+    std::cout << ::tpy::__getitem__(words, 0) << "\n";
     //     print(words[1])
-    std::cout << tpy::__getitem__(words, 1) << "\n";
+    std::cout << ::tpy::__getitem__(words, 1) << "\n";
     //     words.append("bar")
     words.push_back("bar");
     //     print(len(words))
-    std::cout << tpy::__len__(words) << "\n";
+    std::cout << ::tpy::__len__(words) << "\n";
     //     print(words[3])
-    std::cout << tpy::__getitem__(words, 3) << "\n";
+    std::cout << ::tpy::__getitem__(words, 3) << "\n";
     //     # Iterate over list of strings
     //     for w in words:
     auto& __obj_0 = words;
@@ -45,7 +45,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

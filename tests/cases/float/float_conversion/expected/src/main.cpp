@@ -24,17 +24,17 @@ void __tpy_init() {
     // c: float = 1.0
     c = 1.0;
     // print(a)
-    std::cout << tpy::print_float(a) << "\n";
+    std::cout << ::tpy::print_float(a) << "\n";
     // print(b)
-    std::cout << tpy::print_float(b) << "\n";
+    std::cout << ::tpy::print_float(b) << "\n";
     // print(c)
-    std::cout << tpy::print_float(c) << "\n";
+    std::cout << ::tpy::print_float(c) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -17,13 +17,13 @@ void __tpy_init() {
     std::vector<int32_t> __tmp_1 = {41, 42};
     x = first<int32_t>(__tmp_1);
     // print(x)
-    std::cout << tpy::print_optional_val(x) << "\n";
+    std::cout << ::tpy::print_optional_val(x) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

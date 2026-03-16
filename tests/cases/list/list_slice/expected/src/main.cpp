@@ -9,53 +9,53 @@ std::vector<int32_t>* span_src{};
 // def test_basic() -> None:
 void test_basic() {
     //     items: list[int] = [10, 20, 30, 40, 50]
-    std::vector<tpy::BigInt> items = {10, 20, 30, 40, 50};
+    std::vector<::tpy::BigInt> items = {10, 20, 30, 40, 50};
     //     print(items[1:3])
-    std::cout << tpy::ListPrinter(tpy::list_slice(items, 1, 3)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, 1, 3)) << "\n";
     //     print(items[:3])
-    std::cout << tpy::ListPrinter(tpy::list_slice(items, 0, 3)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, 0, 3)) << "\n";
     //     print(items[2:])
-    std::cout << tpy::ListPrinter(tpy::list_slice(items, 2, tpy::SLICE_END)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, 2, ::tpy::SLICE_END)) << "\n";
     //     print(items[:])
-    std::cout << tpy::ListPrinter(tpy::list_slice(items, 0, tpy::SLICE_END)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, 0, ::tpy::SLICE_END)) << "\n";
 }
 
 // def test_negative() -> None:
 void test_negative() {
     //     items: list[int] = [10, 20, 30, 40, 50]
-    std::vector<tpy::BigInt> items = {10, 20, 30, 40, 50};
+    std::vector<::tpy::BigInt> items = {10, 20, 30, 40, 50};
     //     print(items[-2:])
-    std::cout << tpy::ListPrinter(tpy::list_slice(items, -2, tpy::SLICE_END)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, -2, ::tpy::SLICE_END)) << "\n";
     //     print(items[:-2])
-    std::cout << tpy::ListPrinter(tpy::list_slice(items, 0, -2)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, 0, -2)) << "\n";
     //     print(items[-4:-1])
-    std::cout << tpy::ListPrinter(tpy::list_slice(items, -4, -1)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, -4, -1)) << "\n";
 }
 
 // def test_clamping() -> None:
 void test_clamping() {
     //     items: list[int] = [10, 20, 30]
-    std::vector<tpy::BigInt> items = {10, 20, 30};
+    std::vector<::tpy::BigInt> items = {10, 20, 30};
     //     print(items[0:100])
-    std::cout << tpy::ListPrinter(tpy::list_slice(items, 0, 100)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, 0, 100)) << "\n";
     //     print(items[-100:2])
-    std::cout << tpy::ListPrinter(tpy::list_slice(items, -100, 2)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, -100, 2)) << "\n";
     //     print(items[-100:100])
-    std::cout << tpy::ListPrinter(tpy::list_slice(items, -100, 100)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, -100, 100)) << "\n";
     //     print(items[10:20])
-    std::cout << tpy::ListPrinter(tpy::list_slice(items, 10, 20)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, 10, 20)) << "\n";
 }
 
 // def test_empty() -> None:
 void test_empty() {
     //     items: list[int] = [10, 20, 30]
-    std::vector<tpy::BigInt> items = {10, 20, 30};
+    std::vector<::tpy::BigInt> items = {10, 20, 30};
     //     print(items[2:1])
-    std::cout << tpy::ListPrinter(tpy::list_slice(items, 2, 1)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, 2, 1)) << "\n";
     //     print(items[5:5])
-    std::cout << tpy::ListPrinter(tpy::list_slice(items, 5, 5)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, 5, 5)) << "\n";
     //     print(len(items[1:1]))
-    std::cout << tpy::__len__(tpy::list_slice(items, 1, 1)) << "\n";
+    std::cout << ::tpy::__len__(::tpy::list_slice(items, 1, 1)) << "\n";
 }
 
 // def test_type_inference() -> None:
@@ -63,9 +63,9 @@ void test_type_inference() {
     //     items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
     //     sub = items[0:2]  # tpyc: type(Span[Int32])
-    std::span<int32_t> sub = tpy::list_slice(items, 0, 2);
+    std::span<int32_t> sub = ::tpy::list_slice(items, 0, 2);
     //     print(sub)
-    std::cout << tpy::ListPrinter(sub) << "\n";
+    std::cout << ::tpy::ListPrinter(sub) << "\n";
 }
 
 // def test_array() -> None:
@@ -73,44 +73,44 @@ void test_array() {
     //     arr: Array[Int32, 5] = [Int32(1), Int32(2), Int32(3), Int32(4), Int32(5)]
     std::array<int32_t, 5> arr = {1, 2, 3, 4, 5};
     //     sub = arr[1:4]  # tpyc: type(Span[Int32])
-    std::span<int32_t> sub = tpy::list_slice(arr, 1, 4);
+    std::span<int32_t> sub = ::tpy::list_slice(arr, 1, 4);
     //     print(sub)
-    std::cout << tpy::ListPrinter(sub) << "\n";
+    std::cout << ::tpy::ListPrinter(sub) << "\n";
 }
 
 // def test_span(s: Span[Int32]) -> None:
 void test_span(std::span<int32_t> s) {
     //     sub = s[1:3]  # tpyc: type(Span[Int32])
-    std::span<int32_t> sub = tpy::list_slice(s, 1, 3);
+    std::span<int32_t> sub = ::tpy::list_slice(s, 1, 3);
     //     print(sub)
-    std::cout << tpy::ListPrinter(sub) << "\n";
+    std::cout << ::tpy::ListPrinter(sub) << "\n";
 }
 
 // @readonly
 // def test_readonly_list(items: list[Int32]) -> None:
 void test_readonly_list(const std::vector<int32_t>& items) {
     //     sub = items[0:2]  # tpyc: type(Span[readonly[Int32]])
-    std::span<const int32_t> sub = tpy::list_slice(items, 0, 2);
+    std::span<const int32_t> sub = ::tpy::list_slice(items, 0, 2);
     //     print(sub)
-    std::cout << tpy::ListPrinter(sub) << "\n";
+    std::cout << ::tpy::ListPrinter(sub) << "\n";
 }
 
 // def test_readonly_span_param(s: Span[readonly[Int32]]) -> None:
 void test_readonly_span_param(std::span<const int32_t> s) {
     //     sub = s[0:2]  # tpyc: type(Span[readonly[Int32]])
-    std::span<const int32_t> sub = tpy::list_slice(s, 0, 2);
+    std::span<const int32_t> sub = ::tpy::list_slice(s, 0, 2);
     //     print(sub)
-    std::cout << tpy::ListPrinter(sub) << "\n";
+    std::cout << ::tpy::ListPrinter(sub) << "\n";
 }
 
 // def test_single_element() -> None:
 void test_single_element() {
     //     items: list[int] = [10, 20, 30]
-    std::vector<tpy::BigInt> items = {10, 20, 30};
+    std::vector<::tpy::BigInt> items = {10, 20, 30};
     //     print(items[0:1])
-    std::cout << tpy::ListPrinter(tpy::list_slice(items, 0, 1)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, 0, 1)) << "\n";
     //     print(items[-1:])
-    std::cout << tpy::ListPrinter(tpy::list_slice(items, -1, tpy::SLICE_END)) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::list_slice(items, -1, ::tpy::SLICE_END)) << "\n";
 }
 
 void __tpy_init() {
@@ -146,7 +146,7 @@ void __tpy_init() {
     static std::vector<int32_t> __global_slot_1 = {10, 20, 30, 40};
     span_src = &__global_slot_1;
     // test_span(span_src)
-    test_span(tpy::as_mut_span((*span_src)));
+    test_span(::tpy::as_mut_span((*span_src)));
     // print("---")
     std::cout << "---" << "\n";
     // test_readonly_list([Int32(10), Int32(20), Int32(30)])
@@ -155,7 +155,7 @@ void __tpy_init() {
     // print("---")
     std::cout << "---" << "\n";
     // test_readonly_span_param([Int32(10), Int32(20), Int32(30), Int32(40)])
-    test_readonly_span_param(tpy::as_span(std::array<int32_t, 4>{10, 20, 30, 40}));
+    test_readonly_span_param(::tpy::as_span(std::array<int32_t, 4>{10, 20, 30, 40}));
     // print("---")
     std::cout << "---" << "\n";
     // test_single_element()
@@ -165,7 +165,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

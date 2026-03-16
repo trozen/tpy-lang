@@ -8,9 +8,9 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     d: dict[str, int] = {}
-    tpy::ordered_map<std::string, tpy::BigInt> d = tpy::ordered_map<std::string, tpy::BigInt>();
+    ::tpy::ordered_map<std::string, ::tpy::BigInt> d = ::tpy::ordered_map<std::string, ::tpy::BigInt>();
     //     for k in d.keys():
-    auto __obj_0 = tpy::dict_keys(d);
+    auto __obj_0 = ::tpy::dict_keys(d);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -19,33 +19,33 @@ void main() {
         std::cout << k << "\n";
     }
     //     for v in d.values():
-    auto __obj_1 = tpy::dict_values(d);
+    auto __obj_1 = ::tpy::dict_values(d);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        const tpy::BigInt& v = *__beg_1;
+        const ::tpy::BigInt& v = *__beg_1;
         //         print(v)
         std::cout << v << "\n";
     }
     //     for k, v in d.items():
-    auto __obj_2 = tpy::dict_items(d);
+    auto __obj_2 = ::tpy::dict_items(d);
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
-        const std::tuple<std::string, tpy::BigInt>& __for_tup_0 = *__beg_2;
+        const std::tuple<std::string, ::tpy::BigInt>& __for_tup_0 = *__beg_2;
         //     for k, v in d.items():
         const auto& __tup_1 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_1);
-        tpy::BigInt v = std::get<1>(__tup_1);
+        ::tpy::BigInt v = std::get<1>(__tup_1);
         //         print(k, v)
         std::cout << k << " " << v << "\n";
     }
     //     print(len(d.keys()))
-    std::cout << tpy::__len__(tpy::dict_keys(d)) << "\n";
+    std::cout << ::tpy::__len__(::tpy::dict_keys(d)) << "\n";
     //     print(len(d.values()))
-    std::cout << tpy::__len__(tpy::dict_values(d)) << "\n";
+    std::cout << ::tpy::__len__(::tpy::dict_values(d)) << "\n";
     //     print(len(d.items()))
-    std::cout << tpy::__len__(tpy::dict_items(d)) << "\n";
+    std::cout << ::tpy::__len__(::tpy::dict_items(d)) << "\n";
 }
 
 void __tpy_init() {
@@ -60,7 +60,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

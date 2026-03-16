@@ -8,29 +8,29 @@ namespace tpy_user::main {
 void main() {
     //     # Int32 pow
     //     a: Int32 = pow(Int32(2), Int32(10))
-    int32_t a = tpy::pow_check<int32_t>(2, 10);
+    int32_t a = ::tpy::pow_check<int32_t>(2, 10);
     //     print(a)
     std::cout << a << "\n";
     //     print(pow(Int32(3), Int32(0)))
-    std::cout << tpy::pow_check<int32_t>(3, 0) << "\n";
+    std::cout << ::tpy::pow_check<int32_t>(3, 0) << "\n";
     //     print(pow(Int32(-2), Int32(3)))
-    std::cout << tpy::pow_check<int32_t>(-2, 3) << "\n";
+    std::cout << ::tpy::pow_check<int32_t>(-2, 3) << "\n";
     //     # BigInt pow
     //     b = pow(int(2), int(30))
-    tpy::BigInt b = (tpy::BigInt(static_cast<int64_t>(2))).pow(tpy::BigInt(static_cast<int64_t>(30)));
+    ::tpy::BigInt b = (::tpy::BigInt(static_cast<int64_t>(2))).pow(::tpy::BigInt(static_cast<int64_t>(30)));
     //     print(b)
     std::cout << b << "\n";
     //     c = pow(int(10), int(3))
-    tpy::BigInt c = (tpy::BigInt(static_cast<int64_t>(10))).pow(tpy::BigInt(static_cast<int64_t>(3)));
+    ::tpy::BigInt c = (::tpy::BigInt(static_cast<int64_t>(10))).pow(::tpy::BigInt(static_cast<int64_t>(3)));
     //     print(c)
     std::cout << c << "\n";
     //     # float pow
     //     d: float = pow(2.0, 0.5)
     double d = std::pow(2.0, 0.5);
     //     print(d)
-    std::cout << tpy::print_float(d) << "\n";
+    std::cout << ::tpy::print_float(d) << "\n";
     //     print(pow(3.0, 2.0))
-    std::cout << tpy::print_float(std::pow(3.0, 2.0)) << "\n";
+    std::cout << ::tpy::print_float(std::pow(3.0, 2.0)) << "\n";
 }
 
 void __tpy_init() {
@@ -45,7 +45,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

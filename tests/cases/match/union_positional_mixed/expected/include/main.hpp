@@ -37,11 +37,11 @@ struct Point {
     std::string __repr__() const {
         std::ostringstream __os;
         __os << "Point("
-           << "x=" << tpy::print_float(this->x)
+           << "x=" << ::tpy::print_float(this->x)
            << ", "
-           << "y=" << tpy::print_float(this->y)
+           << "y=" << ::tpy::print_float(this->y)
            << ", "
-           << "z=" << tpy::print_float(this->z)
+           << "z=" << ::tpy::print_float(this->z)
            << ")";
         return __os.str();
     }

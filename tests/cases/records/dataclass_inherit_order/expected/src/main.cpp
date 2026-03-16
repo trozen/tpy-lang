@@ -14,19 +14,19 @@ void main() {
     Child c = Child(2, 0, 0);
     //     # z differs: 3 < 4
     //     print(a < b)
-    std::cout << tpy::print_bool((a < b)) << "\n";
+    std::cout << ::tpy::print_bool((a < b)) << "\n";
     //     print(b < a)
-    std::cout << tpy::print_bool((b < a)) << "\n";
+    std::cout << ::tpy::print_bool((b < a)) << "\n";
     //     # x differs: 1 < 2
     //     print(a < c)
-    std::cout << tpy::print_bool((a < c)) << "\n";
+    std::cout << ::tpy::print_bool((a < c)) << "\n";
     //     print(c < a)
-    std::cout << tpy::print_bool((c < a)) << "\n";
+    std::cout << ::tpy::print_bool((c < a)) << "\n";
     //     # Equal
     //     print(a <= Child(1, 2, 3))
-    std::cout << tpy::print_bool((a <= Child(1, 2, 3))) << "\n";
+    std::cout << ::tpy::print_bool((a <= Child(1, 2, 3))) << "\n";
     //     print(a >= Child(1, 2, 3))
-    std::cout << tpy::print_bool((a >= Child(1, 2, 3))) << "\n";
+    std::cout << ::tpy::print_bool((a >= Child(1, 2, 3))) << "\n";
     //     print(a)
     std::cout << a << "\n";
 }
@@ -43,7 +43,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

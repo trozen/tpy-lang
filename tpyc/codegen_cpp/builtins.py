@@ -247,41 +247,41 @@ class BuiltinGenerator:
                 # BigInt has operator<< for std::ostream, no .to_string() needed
                 parts.append(self._gen_expr_deref(arg))
             elif isinstance(arg_type, FloatType):
-                parts.append(f'tpy::print_float({self._gen_expr_deref(arg)})')
+                parts.append(f'::tpy::print_float({self._gen_expr_deref(arg)})')
             elif isinstance(arg_type, Float32Type):
-                parts.append(f'tpy::print_float(static_cast<double>({self._gen_expr_deref(arg)}))')
+                parts.append(f'::tpy::print_float(static_cast<double>({self._gen_expr_deref(arg)}))')
             elif isinstance(arg_type, BoolType):
-                # Bool uses Python-style formatting via tpy::print_bool
-                parts.append(f'tpy::print_bool({self._gen_expr_deref(arg)})')
+                # Bool uses Python-style formatting via ::tpy::print_bool
+                parts.append(f'::tpy::print_bool({self._gen_expr_deref(arg)})')
             elif isinstance(arg_type, OptionalType) and arg_type.uses_pointer_repr():
                 if isinstance(arg, TpyFieldAccess):
                     # Field access produces std::optional<T> -- use print_optional_val
-                    parts.append(f'tpy::print_optional_val({self._gen_expr(arg)})')
+                    parts.append(f'::tpy::print_optional_val({self._gen_expr(arg)})')
                 else:
                     # Pointer-local/function return produces T* -- use print_optional
-                    parts.append(f'tpy::print_optional({self._gen_expr(arg)})')
+                    parts.append(f'::tpy::print_optional({self._gen_expr(arg)})')
             elif isinstance(arg_type, OptionalType) and not arg_type.uses_pointer_repr():
                 # Optional value-type: use print_optional_val with inner-type-aware formatting
                 inner = arg_type.inner
                 gen = self._gen_expr_deref(arg)
                 inner_cpp = inner.to_cpp()
                 if isinstance(inner, BoolType):
-                    parts.append(f'tpy::print_optional_val<tpy::print_bool, {inner_cpp}>({gen})')
+                    parts.append(f'::tpy::print_optional_val<::tpy::print_bool, {inner_cpp}>({gen})')
                 elif isinstance(inner, (FloatType, Float32Type)):
-                    parts.append(f'tpy::print_optional_val<tpy::print_float, {inner_cpp}>({gen})')
+                    parts.append(f'::tpy::print_optional_val<::tpy::print_float, {inner_cpp}>({gen})')
                 else:
-                    parts.append(f'tpy::print_optional_val({gen})')
+                    parts.append(f'::tpy::print_optional_val({gen})')
             elif isinstance(arg_type, TupleType):
-                parts.append(f'tpy::TuplePrinter({self._gen_expr_deref(arg)})')
+                parts.append(f'::tpy::TuplePrinter({self._gen_expr_deref(arg)})')
             elif is_any_str_type(arg_type):
                 # Strings print as-is (not using ListPrinter)
                 parts.append(self._gen_expr_deref(arg))
             elif isinstance(arg_type, DictType):
                 # Dict uses DictPrinter for {k: v, ...} formatting
-                parts.append(f'tpy::DictPrinter({self._gen_expr_deref(arg)})')
+                parts.append(f'::tpy::DictPrinter({self._gen_expr_deref(arg)})')
             elif isinstance(arg_type, SetType):
                 # Set uses SetPrinter for {a, b, c} or set() formatting
-                parts.append(f'tpy::SetPrinter({self._gen_expr_deref(arg)})')
+                parts.append(f'::tpy::SetPrinter({self._gen_expr_deref(arg)})')
             elif isinstance(arg_type, (DictKeysViewType, DictValuesViewType, DictItemsViewType)):
                 # Dict views use their own operator<< for printing
                 parts.append(self._gen_expr_deref(arg))
@@ -290,12 +290,12 @@ class BuiltinGenerator:
                 if isinstance(arg, TpyArrayLiteral):
                     # Array literals need explicit type for ListPrinter CTAD
                     cpp_type = arg_type.to_cpp()
-                    parts.append(f'tpy::ListPrinter({cpp_type}{self._gen_expr(arg)})')
+                    parts.append(f'::tpy::ListPrinter({cpp_type}{self._gen_expr(arg)})')
                 else:
-                    parts.append(f'tpy::ListPrinter({self._gen_expr_deref(arg)})')
+                    parts.append(f'::tpy::ListPrinter({self._gen_expr_deref(arg)})')
             elif isinstance(arg_type, TypeParamRef):
                 # Generic type parameter -- use ValuePrinter for runtime dispatch
-                parts.append(f'tpy::ValuePrinter({self._gen_expr_deref(arg)})')
+                parts.append(f'::tpy::ValuePrinter({self._gen_expr_deref(arg)})')
             else:
                 # FixedInt, Char, Bool, literals, etc. - direct output
                 expr_code = self._gen_expr_deref(arg)

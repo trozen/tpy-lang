@@ -10,12 +10,12 @@ void check(const std::variant<Circle, Rect>& s) {
     if (std::holds_alternative<Circle>(s)) {
         auto& __s = std::get<Circle>(s);
         //         print(s.radius)
-        std::cout << tpy::print_float(__s.radius) << "\n";
+        std::cout << ::tpy::print_float(__s.radius) << "\n";
     //     else:
     } else {
         auto& __s = std::get<Rect>(s);
         //         print(s.width)
-        std::cout << tpy::print_float(__s.width) << "\n";
+        std::cout << ::tpy::print_float(__s.width) << "\n";
     }
 }
 
@@ -26,14 +26,14 @@ void main() {
     std::optional<std::variant<Circle, Rect>> __slot_2;
     std::variant<Circle, Rect>* s = &__slot_1;
     //     print(s.radius)
-    std::cout << tpy::print_float(std::get<Circle>((*s)).radius) << "\n";
+    std::cout << ::tpy::print_float(std::get<Circle>((*s)).radius) << "\n";
     //     s = Rect(3.0, 4.0)
     s = &*(__slot_2 = Rect(3.0, 4.0));
     //     if isinstance(s, Rect):
     if (std::holds_alternative<Rect>((*s))) {
         auto& __s = std::get<Rect>((*s));
         //         print(s.width)
-        std::cout << tpy::print_float(__s.width) << "\n";
+        std::cout << ::tpy::print_float(__s.width) << "\n";
     }
 }
 
@@ -49,7 +49,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

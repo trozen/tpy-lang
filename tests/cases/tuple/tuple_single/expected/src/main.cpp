@@ -9,13 +9,13 @@ void main() {
     //     single = (Int32(42),)
     std::tuple<int32_t> single = std::tuple<int32_t>{42};
     //     print(single)
-    std::cout << tpy::TuplePrinter(single) << "\n";
+    std::cout << ::tpy::TuplePrinter(single) << "\n";
     //     print(single[0])
     std::cout << std::get<0>(single) << "\n";
     //     single_str = ("only",)
     std::tuple<std::string> single_str = std::tuple<std::string>{"only"};
     //     print(single_str)
-    std::cout << tpy::TuplePrinter(single_str) << "\n";
+    std::cout << ::tpy::TuplePrinter(single_str) << "\n";
 }
 
 void __tpy_init() {
@@ -30,7 +30,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

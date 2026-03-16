@@ -5,7 +5,7 @@
 
 namespace tpy_user::main {
 
-extern tpy::BigInt x;
+extern ::tpy::BigInt x;
 inline constexpr std::string_view __name__ = "__main__";
 
 void increment();

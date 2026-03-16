@@ -157,7 +157,7 @@ class FunctionGenerator:
                     and not (reassigned_params and pname in reassigned_params)):
                 # Param is provably not mutated and not rebound -- safe to bind as const T&.
                 # Only applies when is_ref_param() is True (T& -> const T&).
-                # TypeParamRef excluded: its to_cpp_param() uses tpy::param_val_or_ref_t<T>
+                # TypeParamRef excluded: its to_cpp_param() uses ::tpy::param_val_or_ref_t<T>
                 # (trait-based), not T& directly; to_cpp_const_param() gives const T& which
                 # differs in ABI for value-type instantiations.
                 # Guard on reassigned_params: rebinding (param = x) would generate p = x
@@ -746,7 +746,7 @@ class FunctionGenerator:
         if is_dunder_next:
             orig_ret = method.return_type.to_cpp_return()
             out.write(f"\n{INDENT}{orig_ret} __next__() {{\n")
-            out.write(f'{INDENT}{INDENT}tpy::tpy_panic("__next__() is not directly callable; use a for-loop");\n')
+            out.write(f'{INDENT}{INDENT}::tpy::tpy_panic("__next__() is not directly callable; use a for-loop");\n')
             out.write(f"{INDENT}}}\n")
 
     def _gen_method_overload(
@@ -920,7 +920,7 @@ class FunctionGenerator:
         """Generate a Final global declaration in header file.
 
         Constexpr-eligible types: inline constexpr T NAME = VALUE;
-        BigInt: extern const tpy::BigInt NAME;
+        BigInt: extern const ::tpy::BigInt NAME;
 
         Special case: Final[str] uses std::string_view (string literals have
         static lifetime, constexpr requires literal type).
@@ -1011,12 +1011,12 @@ class FunctionGenerator:
         """Generate C++ main() that calls module init.
 
         The namespace is closed before main() so main is in global namespace.
-        Accepts argc/argv and initializes tpy::sys_argv for sys.argv support.
+        Accepts argc/argv and initializes ::tpy::sys_argv for sys.argv support.
         """
         ns = module_to_cpp_namespace(self.ctx.module_name)
         out.write(f"}} // namespace {ns}\n\n")
         out.write("int main(int argc, char* argv[]) {\n")
-        out.write(f"{INDENT}tpy::init_sys_argv(argc, argv);\n")
+        out.write(f"{INDENT}::tpy::init_sys_argv(argc, argv);\n")
         out.write(f"{INDENT}{ns}::__tpy_init();\n")
         out.write(f"{INDENT}return 0;\n")
         out.write("}\n")

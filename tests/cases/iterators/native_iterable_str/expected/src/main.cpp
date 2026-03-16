@@ -22,7 +22,7 @@ void main() {
     //     nums: list[Int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
     //     sp: Span[Int32] = nums
-    std::span<int32_t> sp = tpy::as_mut_span(nums);
+    std::span<int32_t> sp = ::tpy::as_mut_span(nums);
     //     print(sum_span(sp))  # 60
     std::cout << sum_span(sp) << "\n";
 }
@@ -39,7 +39,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

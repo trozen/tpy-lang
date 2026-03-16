@@ -11,7 +11,7 @@ void main() {
     //     for x in d:
     auto& __src_0 = d;
     auto __iter_0 = __src_0.__iter__();
-    auto __obj_0 = tpy::iter_adapt(__iter_0);
+    auto __obj_0 = ::tpy::iter_adapt(__iter_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -33,7 +33,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

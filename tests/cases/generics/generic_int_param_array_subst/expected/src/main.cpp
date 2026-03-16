@@ -9,11 +9,11 @@ std::array<int32_t, 3>* arr_global{};
 // def use_array(arr: Array[Int32, 3]) -> None:
 void use_array(const std::array<int32_t, 3>& arr) {
     //     print(arr[0])
-    std::cout << tpy::__getitem__(arr, 0) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 0) << "\n";
     //     print(arr[1])
-    std::cout << tpy::__getitem__(arr, 1) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 1) << "\n";
     //     print(arr[2])
-    std::cout << tpy::__getitem__(arr, 2) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 2) << "\n";
 }
 
 // def get_global_array() -> Array[Int32, 3]:
@@ -57,7 +57,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

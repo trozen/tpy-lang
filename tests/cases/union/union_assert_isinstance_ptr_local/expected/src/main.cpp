@@ -13,7 +13,7 @@ int32_t process(bool flag) {
     //     v = Rect(Int32(3))  # reassignment makes v a pointer-local
     v = &*(__slot_2 = Rect(3));
     //     assert isinstance(v, Rect)
-    if (!(std::holds_alternative<Rect>((*v)))) tpy::tpy_panic("assertion failed");
+    if (!(std::holds_alternative<Rect>((*v)))) ::tpy::tpy_panic("assertion failed");
     auto& __v = std::get<Rect>((*v));
     //     return v.width
     return __v.width;
@@ -37,7 +37,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

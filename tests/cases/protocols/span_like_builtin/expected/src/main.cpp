@@ -25,7 +25,7 @@ void test_span() {
     //     data: list[Int32] = [7, 8, 9]
     std::vector<int32_t> data = {7, 8, 9};
     //     s: Span[Int32] = data
-    std::span<int32_t> s = tpy::as_mut_span(data);
+    std::span<int32_t> s = ::tpy::as_mut_span(data);
     //     print(sum_span(s))
     std::cout << sum_span(s) << "\n";
 }
@@ -35,7 +35,7 @@ void test_ro_span() {
     //     data: list[Int32] = [4, 5, 6]
     std::vector<int32_t> data = {4, 5, 6};
     //     s: Span[readonly[Int32]] = data
-    std::span<const int32_t> s = tpy::as_span(data);
+    std::span<const int32_t> s = ::tpy::as_span(data);
     //     print(sum_span(s))
     std::cout << sum_span(s) << "\n";
 }
@@ -76,7 +76,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

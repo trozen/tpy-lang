@@ -10,18 +10,18 @@ void main() {
     Point p = Point(1, 2);
     //     # hash() works
     //     print(hash(p) == hash(Point(1, 2)))
-    std::cout << tpy::print_bool((tpy::__hash__(p) == tpy::__hash__(Point(1, 2)))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__hash__(p) == ::tpy::__hash__(Point(1, 2)))) << "\n";
     //     print(hash(p) == hash(Point(3, 4)))
-    std::cout << tpy::print_bool((tpy::__hash__(p) == tpy::__hash__(Point(3, 4)))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__hash__(p) == ::tpy::__hash__(Point(3, 4)))) << "\n";
     //     # dict key usage
     //     d: dict[Point, str] = {Point(1, 2): "a", Point(3, 4): "b"}
-    tpy::ordered_map<Point, std::string> d = tpy::ordered_map<Point, std::string>({{Point(1, 2), "a"}, {Point(3, 4), "b"}});
+    ::tpy::ordered_map<Point, std::string> d = ::tpy::ordered_map<Point, std::string>({{Point(1, 2), "a"}, {Point(3, 4), "b"}});
     //     print(d[Point(1, 2)])
-    std::cout << tpy::__getitem__(d, Point(1, 2)) << "\n";
+    std::cout << ::tpy::__getitem__(d, Point(1, 2)) << "\n";
     //     print(d[Point(3, 4)])
-    std::cout << tpy::__getitem__(d, Point(3, 4)) << "\n";
+    std::cout << ::tpy::__getitem__(d, Point(3, 4)) << "\n";
     //     print(len(d))
-    std::cout << tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n";
 }
 
 void __tpy_init() {
@@ -36,7 +36,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

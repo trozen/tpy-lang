@@ -13,13 +13,13 @@ inline constexpr std::string_view __name__ = "__main__";
 template<typename T>
 void sink(std::type_identity_t<T>&& x);
 template<typename T>
-tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x);
+::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x);
 template<typename T>
 void wrapper(std::type_identity_t<T>&& x);
 template<typename T>
 std::vector<T>& wrap_list(std::vector<T>& items);
 template<typename A, typename B>
-tpy::val_or_ref_t<A> multi(tpy::param_val_or_ref_t<A> a, tpy::param_val_or_ref_t<B> b);
+::tpy::val_or_ref_t<A> multi(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t<B> b);
 void main();
 
 // class Box:
@@ -45,7 +45,7 @@ struct Container {
 
 
     //     def forward_val(self) -> T:
-    tpy::val_or_cref_t<T> forward_val() const {
+    ::tpy::val_or_cref_t<T> forward_val() const {
         //         return identity[T](self.val)  # tpyc: ok
         return identity<T>(this->val);
     }
@@ -54,7 +54,7 @@ struct Container {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     os << "Container("
-       << "val=" << tpy::ValuePrinter(obj.val)
+       << "val=" << ::tpy::ValuePrinter(obj.val)
        << ")";
     return os;
 }
@@ -66,7 +66,7 @@ void sink(std::type_identity_t<T>&& x) {
 }
 // def identity[T](x: T) -> T:
 template<typename T>
-tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x) {
+::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
     //     return x
     return x;
 }
@@ -87,7 +87,7 @@ std::vector<T>& wrap_list(std::vector<T>& items) {
 // # Multi-param forward
 // def multi[A, B](a: A, b: B) -> A:
 template<typename A, typename B>
-tpy::val_or_ref_t<A> multi(tpy::param_val_or_ref_t<A> a, tpy::param_val_or_ref_t<B> b) {
+::tpy::val_or_ref_t<A> multi(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t<B> b) {
     //     return identity[A](a)  # tpyc: ok
     return identity<A>(a);
 }

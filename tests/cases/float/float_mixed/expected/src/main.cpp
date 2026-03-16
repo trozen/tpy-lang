@@ -18,23 +18,23 @@ void __tpy_init() {
 
     // # Mixed int/float operations (auto-promotion to float)
     // a = 1 + 2.0
-    a = (static_cast<double>(tpy::BigInt(1)) + (2.0));
+    a = (static_cast<double>(::tpy::BigInt(1)) + (2.0));
     // b = 3.14 * 2
-    b = ((3.14) * static_cast<double>(tpy::BigInt(2)));
+    b = ((3.14) * static_cast<double>(::tpy::BigInt(2)));
     // c = 10 - 1.5
-    c = (static_cast<double>(tpy::BigInt(10)) - (1.5));
+    c = (static_cast<double>(::tpy::BigInt(10)) - (1.5));
     // print(a)
-    std::cout << tpy::print_float(a) << "\n";
+    std::cout << ::tpy::print_float(a) << "\n";
     // print(b)
-    std::cout << tpy::print_float(b) << "\n";
+    std::cout << ::tpy::print_float(b) << "\n";
     // print(c)
-    std::cout << tpy::print_float(c) << "\n";
+    std::cout << ::tpy::print_float(c) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -8,21 +8,21 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     d = {"x": 1, "y": 2, "z": 3}
-    tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"x", 1}, {"y", 2}, {"z", 3}});
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 1}, {"y", 2}, {"z", 3}});
     //     print(d)
-    std::cout << tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n";
     //     print(d["x"])
-    std::cout << tpy::__getitem__(d, "x") << "\n";
+    std::cout << ::tpy::__getitem__(d, "x") << "\n";
     //     print(d["y"])
-    std::cout << tpy::__getitem__(d, "y") << "\n";
+    std::cout << ::tpy::__getitem__(d, "y") << "\n";
     //     print(len(d))
-    std::cout << tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n";
     //     d["w"] = 4
-    tpy::__setitem__(d, "w", 4);
+    ::tpy::__setitem__(d, "w", 4);
     //     print(d["w"])
-    std::cout << tpy::__getitem__(d, "w") << "\n";
+    std::cout << ::tpy::__getitem__(d, "w") << "\n";
     //     print(len(d))
-    std::cout << tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n";
 }
 
 void __tpy_init() {
@@ -37,7 +37,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

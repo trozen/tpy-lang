@@ -21,7 +21,7 @@ def init_module() -> BuiltinModule:
     module.type("Enum", cpp_type="/* enum class */",
         methods={
             "name": [MethodDef(params=[], returns=STRVIEW,
-                               cpp="tpy::EnumUtil<{self_type}>::name({self})")],
+                               cpp="::tpy::EnumUtil<{self_type}>::name({self})")],
         },
     )
 
@@ -30,7 +30,7 @@ def init_module() -> BuiltinModule:
         extends=["Enum"],
         methods={
             "name": [MethodDef(params=[], returns=STRVIEW,
-                               cpp="tpy::EnumUtil<{self_type}>::name({self})")],
+                               cpp="::tpy::EnumUtil<{self_type}>::name({self})")],
         },
     )
 

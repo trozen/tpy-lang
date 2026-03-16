@@ -23,7 +23,7 @@ void main() {
     //     t = Tally()
     Tally t = Tally();
     //     bump(t)
-    tpy::RefAdapter<Counter, Tally> __tmp_1{t};
+    ::tpy::RefAdapter<Counter, Tally> __tmp_1{t};
     bump(__tmp_1);
     //     print(t.value())       # 1
     std::cout << t.value() << "\n";
@@ -39,7 +39,7 @@ void main() {
     std::cout << c->value() << "\n";
     //     # 4. Local owning, structural: same behavior
     //     c2: Counter = Tally()
-    tpy::Adapter<Counter, Tally> __slot_2{Tally()};
+    ::tpy::Adapter<Counter, Tally> __slot_2{Tally()};
     Counter* c2 = &__slot_2;
     //     c2.increment()
     c2->increment();
@@ -59,7 +59,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

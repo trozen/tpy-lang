@@ -9,10 +9,10 @@ struct MyInt;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<tpy::Comparable T>
-bool is_less(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b);
-template<tpy::Comparable T>
-tpy::val_or_ref_t<T> find_min(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b);
+template<::tpy::Comparable T>
+bool is_less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+template<::tpy::Comparable T>
+::tpy::val_or_ref_t<T> find_min(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 void main();
 
 // class MyInt:
@@ -53,14 +53,14 @@ inline std::ostream& operator<<(std::ostream& os, const MyInt& obj) {
 }
 
 // def is_less[T: Comparable](a: T, b: T) -> bool:
-template<tpy::Comparable T>
-bool is_less(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
+template<::tpy::Comparable T>
+bool is_less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     //     return a < b
     return (a < b);
 }
 // def find_min[T: Comparable](a: T, b: T) -> T:
-template<tpy::Comparable T>
-tpy::val_or_ref_t<T> find_min(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
+template<::tpy::Comparable T>
+::tpy::val_or_ref_t<T> find_min(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     //     if a < b:
     if ((a < b)) {
         //         return a

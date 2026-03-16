@@ -8,7 +8,7 @@ namespace tpy_user::main {
 extern int32_t neg;
 inline constexpr std::string_view __name__ = "__main__";
 
-tpy::BigInt factorial(const tpy::BigInt& n);
+::tpy::BigInt factorial(const ::tpy::BigInt& n);
 void test_arithmetic();
 void test_comparison();
 

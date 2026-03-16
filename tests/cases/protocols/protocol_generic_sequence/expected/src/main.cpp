@@ -29,9 +29,9 @@ void main() {
     std::cout << sum_all(arr) << "\n";
     //     # Test with Span[Int32]
     //     print(use_span(arr))   # 60 (Span from Array)
-    std::cout << use_span(tpy::as_mut_span(arr)) << "\n";
+    std::cout << use_span(::tpy::as_mut_span(arr)) << "\n";
     //     print(use_span(nums))  # 15 (Span from list)
-    std::cout << use_span(tpy::as_mut_span(nums)) << "\n";
+    std::cout << use_span(::tpy::as_mut_span(nums)) << "\n";
     //     # Test with ArrayList[Int32, N] (user/library type)
     //     al = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> al = ::tpy_user::tplib::ArrayList<int32_t, 8>();
@@ -61,7 +61,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

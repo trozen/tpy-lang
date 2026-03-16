@@ -14,9 +14,9 @@ Point* get_ptr(Point* p) {
 // def read_via_param(p: Ptr[Point]) -> None:
 void read_via_param(Point* p) {
     //     print(p.x)
-    std::cout << tpy::deref_check(p).x << "\n";
+    std::cout << ::tpy::deref_check(p).x << "\n";
     //     print(p.sum())
-    std::cout << tpy::deref_check(p).sum() << "\n";
+    std::cout << ::tpy::deref_check(p).sum() << "\n";
 }
 
 // def main() -> None:
@@ -51,12 +51,12 @@ void main() {
     //     r: Ptr[Point] = get_ptr(p)
     Point* r = get_ptr(p);
     //     print(r.x)
-    std::cout << tpy::deref_check(r).x << "\n";
+    std::cout << ::tpy::deref_check(r).x << "\n";
     //     # Reassignment from unknown clears provenance
     //     p = get_ptr(q)
     p = get_ptr(q);
     //     print(p.x)
-    std::cout << tpy::deref_check(p).x << "\n";
+    std::cout << ::tpy::deref_check(p).x << "\n";
     //     # Re-establish provenance
     //     pt2: Point = Point(Int32(30), Int32(40))
     Point pt2 = Point(30, 40);
@@ -81,7 +81,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

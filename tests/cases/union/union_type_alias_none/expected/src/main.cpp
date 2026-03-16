@@ -18,7 +18,7 @@ std::string describe(const MaybeShape& s) {
         return "circle";
     }
     //     assert isinstance(s, Rect)
-    if (!(std::holds_alternative<Rect>(s))) tpy::tpy_panic("assertion failed");
+    if (!(std::holds_alternative<Rect>(s))) ::tpy::tpy_panic("assertion failed");
     auto& __s = std::get<Rect>(s);
     //     return "rect"
     return "rect";
@@ -48,7 +48,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

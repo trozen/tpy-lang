@@ -8,9 +8,9 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     d = {"x": 10, "y": 20, "z": 30}
-    tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}, {"z", 30}});
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}, {"z", 30}});
     //     for v in d.values():
-    auto __obj_0 = tpy::dict_values(d);
+    auto __obj_0 = ::tpy::dict_values(d);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -19,11 +19,11 @@ void main() {
         std::cout << v << "\n";
     }
     //     print(len(d.values()))
-    std::cout << tpy::__len__(tpy::dict_values(d)) << "\n";
+    std::cout << ::tpy::__len__(::tpy::dict_values(d)) << "\n";
     //     print(20 in d.values())
-    std::cout << tpy::print_bool((std::find(tpy::dict_values(d).begin(), tpy::dict_values(d).end(), 20) != tpy::dict_values(d).end())) << "\n";
+    std::cout << ::tpy::print_bool((std::find(::tpy::dict_values(d).begin(), ::tpy::dict_values(d).end(), 20) != ::tpy::dict_values(d).end())) << "\n";
     //     print(99 in d.values())
-    std::cout << tpy::print_bool((std::find(tpy::dict_values(d).begin(), tpy::dict_values(d).end(), 99) != tpy::dict_values(d).end())) << "\n";
+    std::cout << ::tpy::print_bool((std::find(::tpy::dict_values(d).begin(), ::tpy::dict_values(d).end(), 99) != ::tpy::dict_values(d).end())) << "\n";
 }
 
 void __tpy_init() {
@@ -38,7 +38,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

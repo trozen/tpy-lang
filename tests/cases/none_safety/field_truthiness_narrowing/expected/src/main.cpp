@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def get_name(cfg: Config) -> str:
 std::string get_name(const Config& cfg) {
     //     if cfg.name:
-    if (tpy::is_truthy(cfg.name)) {
+    if (::tpy::is_truthy(cfg.name)) {
         //         return cfg.name  # tpyc: ok
         return (*cfg.name);
     }
@@ -16,20 +16,20 @@ std::string get_name(const Config& cfg) {
 }
 
 // def get_port(cfg: Config) -> int:
-tpy::BigInt get_port(const Config& cfg) {
+::tpy::BigInt get_port(const Config& cfg) {
     //     if cfg.port:
-    if (tpy::is_truthy(cfg.port)) {
+    if (::tpy::is_truthy(cfg.port)) {
         //         return cfg.port  # tpyc: ok
         return (*cfg.port);
     }
     //     return 0
-    return tpy::BigInt(0);
+    return ::tpy::BigInt(0);
 }
 
 // def test_negated(cfg: Config) -> str:
 std::string test_negated(const Config& cfg) {
     //     if not cfg.name:
-    if ((!(tpy::is_truthy(cfg.name)))) {
+    if ((!(::tpy::is_truthy(cfg.name)))) {
         //         return "missing"
         return "missing";
     }
@@ -69,7 +69,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -16,7 +16,7 @@ int32_t use_after_continue_merge(bool flag, std::optional<int32_t> x) {
             continue;
         }
         //         x = x + 1  # tpyc: ok
-        x = (tpy::add_check<int32_t>((*x), 1));
+        x = (::tpy::add_check<int32_t>((*x), 1));
         //         flag = False
         flag = false;
     }
@@ -38,7 +38,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -21,9 +21,9 @@ void main() {
     //     y: Int64 = Int64(2000000000)
     int64_t y = 2000000000;
     //     print(x + y)
-    std::cout << (tpy::add_check<int64_t>(x, y)) << "\n";
+    std::cout << (::tpy::add_check<int64_t>(x, y)) << "\n";
     //     print(x * Int64(3))
-    std::cout << (tpy::mul_check<int64_t>(x, 3)) << "\n";
+    std::cout << (::tpy::mul_check<int64_t>(x, 3)) << "\n";
     //     # UInt64 constructors
     //     c: UInt64 = UInt64(0)
     uint64_t c = 0;
@@ -39,12 +39,12 @@ void main() {
     //     v: UInt64 = UInt64(5000000000)
     uint64_t v = 5000000000;
     //     print(u + v)
-    std::cout << (tpy::add_check<uint64_t>(u, v)) << "\n";
+    std::cout << (::tpy::add_check<uint64_t>(u, v)) << "\n";
     //     print(u - v)
-    std::cout << (tpy::sub_check<uint64_t>(u, v)) << "\n";
+    std::cout << (::tpy::sub_check<uint64_t>(u, v)) << "\n";
     //     # Conversion to BigInt
     //     big: int = int(a)
-    tpy::BigInt big = tpy::BigInt(static_cast<int64_t>(a));
+    ::tpy::BigInt big = ::tpy::BigInt(static_cast<int64_t>(a));
     //     print(big)
     std::cout << big << "\n";
 }
@@ -61,7 +61,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

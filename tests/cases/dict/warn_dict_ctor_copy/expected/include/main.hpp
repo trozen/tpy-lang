@@ -46,25 +46,25 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 template<typename K, typename V>
 void test_dict_ctor_generic_warns(const std::vector<std::tuple<K, V>>& pairs) {
     //     d = dict(pairs)  # tpyc: warning(/may copy tuple\[K, V\] elements/)
-    tpy::ordered_map<K, V> d = tpy::dict_from_pairs<K, V>(pairs);
+    ::tpy::ordered_map<K, V> d = ::tpy::dict_from_pairs<K, V>(pairs);
     //     print(len(pairs))
-    std::cout << tpy::__len__(pairs) << "\n";
+    std::cout << ::tpy::__len__(pairs) << "\n";
 }
 // def test_dict_ctor_partial_generic_warns[V](pairs: list[tuple[str, V]]) -> None:
 template<typename V>
 void test_dict_ctor_partial_generic_warns(const std::vector<std::tuple<std::string, V>>& pairs) {
     //     d = dict(pairs)  # tpyc: warning(/may copy tuple\[str, V\] elements/)
-    tpy::ordered_map<std::string, V> d = tpy::dict_from_pairs<std::string, V>(pairs);
+    ::tpy::ordered_map<std::string, V> d = ::tpy::dict_from_pairs<std::string, V>(pairs);
     //     print(len(pairs))
-    std::cout << tpy::__len__(pairs) << "\n";
+    std::cout << ::tpy::__len__(pairs) << "\n";
 }
 // def test_dict_ctor_nested_generic_warns[K, V](pairs: list[tuple[K, tuple[str, V]]]) -> None:
 template<typename K, typename V>
 void test_dict_ctor_nested_generic_warns(const std::vector<std::tuple<K, std::tuple<std::string, V>>>& pairs) {
     //     d = dict(pairs)  # tpyc: warning(/may copy tuple\[K, tuple\[str, V\]\] elements/)
-    tpy::ordered_map<K, std::tuple<std::string, V>> d = tpy::dict_from_pairs<K, std::tuple<std::string, V>>(pairs);
+    ::tpy::ordered_map<K, std::tuple<std::string, V>> d = ::tpy::dict_from_pairs<K, std::tuple<std::string, V>>(pairs);
     //     print(len(pairs))
-    std::cout << tpy::__len__(pairs) << "\n";
+    std::cout << ::tpy::__len__(pairs) << "\n";
 }
 
 void __tpy_init();

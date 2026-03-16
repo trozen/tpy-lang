@@ -9,9 +9,9 @@ void main() {
     //     w = Wrapper[Int32](Int32(5))
     Wrapper<int32_t> w = Wrapper<int32_t>(5);
     //     print(w.is_less(1, 2))
-    std::cout << tpy::print_bool(w.is_less<int32_t>(1, 2)) << "\n";
+    std::cout << ::tpy::print_bool(w.is_less<int32_t>(1, 2)) << "\n";
     //     print(w.is_less(10, 3))
-    std::cout << tpy::print_bool(w.is_less<int32_t>(10, 3)) << "\n";
+    std::cout << ::tpy::print_bool(w.is_less<int32_t>(10, 3)) << "\n";
 }
 
 void __tpy_init() {
@@ -26,7 +26,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

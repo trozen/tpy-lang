@@ -15,11 +15,11 @@ void main();
 // class Container:
 struct Container {
     //     count: int
-    tpy::BigInt count;
+    ::tpy::BigInt count;
 
     //     def __init__(self, count: int) -> None:
     Container() = default;
-    explicit Container(const tpy::BigInt& count) : count(count) {}
+    explicit Container(const ::tpy::BigInt& count) : count(count) {}
 
     //     def __bool__(self) -> bool:
     bool __bool__() const {

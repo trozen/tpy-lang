@@ -25,19 +25,19 @@ struct Base {
     explicit Base(const T& first, const U& second) : first(first), second(second) {}
 
     //     def set_first(self, v: T) -> None:
-    void set_first(tpy::param_val_or_ref_t<T> v) {
+    void set_first(::tpy::param_val_or_ref_t<T> v) {
         //         self.first = v
         this->first = v;
     }
 
     //     def get_first(self) -> T:
-    tpy::val_or_ref_t<T> get_first() {
+    ::tpy::val_or_ref_t<T> get_first() {
         //         return self.first
         return this->first;
     }
 
     //     def get_second(self) -> U:
-    tpy::val_or_ref_t<U> get_second() {
+    ::tpy::val_or_ref_t<U> get_second() {
         //         return self.second
         return this->second;
     }
@@ -46,9 +46,9 @@ struct Base {
 template<typename T, typename U>
 inline std::ostream& operator<<(std::ostream& os, const Base<T, U>& obj) {
     os << "Base("
-       << "first=" << tpy::ValuePrinter(obj.first)
+       << "first=" << ::tpy::ValuePrinter(obj.first)
        << ", "
-       << "second=" << tpy::ValuePrinter(obj.second)
+       << "second=" << ::tpy::ValuePrinter(obj.second)
        << ")";
     return os;
 }

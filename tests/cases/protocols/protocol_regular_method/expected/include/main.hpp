@@ -31,7 +31,7 @@ struct Value {
     //     def duplicate(self) -> Own[Value]:
     Value duplicate() const {
         //         return Value(self.x * 2)
-        return Value((tpy::mul_check<int32_t>(this->x, 2)));
+        return Value((::tpy::mul_check<int32_t>(this->x, 2)));
     }
 };
 

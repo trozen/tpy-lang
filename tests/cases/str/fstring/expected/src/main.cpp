@@ -19,7 +19,7 @@ void test_basic() {
 // def test_types() -> None:
 void test_types() {
     //     x: int = 42
-    tpy::BigInt x = tpy::BigInt(42);
+    ::tpy::BigInt x = ::tpy::BigInt(42);
     //     pi: float = 3.14159
     double pi = 3.14159;
     //     flag: bool = True
@@ -29,9 +29,9 @@ void test_types() {
     //     print(f"int={x}")
     std::cout << std::format("int={}", (x).to_string()) << "\n";
     //     print(f"float={pi}")
-    std::cout << std::format("float={}", tpy::float_to_str(pi)) << "\n";
+    std::cout << std::format("float={}", ::tpy::float_to_str(pi)) << "\n";
     //     print(f"bool={flag}")
-    std::cout << std::format("bool={}", tpy::bool_to_str(flag)) << "\n";
+    std::cout << std::format("bool={}", ::tpy::bool_to_str(flag)) << "\n";
     //     print(f"str={ch}")
     std::cout << std::format("str={}", ch) << "\n";
 }
@@ -39,13 +39,13 @@ void test_types() {
 // def test_expressions() -> None:
 void test_expressions() {
     //     a: int = 10
-    tpy::BigInt a = tpy::BigInt(10);
+    ::tpy::BigInt a = ::tpy::BigInt(10);
     //     b: int = 20
-    tpy::BigInt b = tpy::BigInt(20);
+    ::tpy::BigInt b = ::tpy::BigInt(20);
     //     print(f"{a} + {b} = {a + b}")
     std::cout << std::format("{} + {} = {}", (a).to_string(), (b).to_string(), (((a) + (b))).to_string()) << "\n";
     //     print(f"len({'hello'}) = {len('hello')}")
-    std::cout << std::format("len({}) = {}", "hello", tpy::__len__("hello")) << "\n";
+    std::cout << std::format("len({}) = {}", "hello", ::tpy::__len__("hello")) << "\n";
 }
 
 // def test_format_spec() -> None:
@@ -70,7 +70,7 @@ void test_format_spec() {
 // def test_braces() -> None:
 void test_braces() {
     //     x: int = 42
-    tpy::BigInt x = tpy::BigInt(42);
+    ::tpy::BigInt x = ::tpy::BigInt(42);
     //     print(f"{{{x}}}")
     std::cout << std::format("{{{}}}", (x).to_string()) << "\n";
     //     # Pure-literal braces (no interpolation)
@@ -83,19 +83,19 @@ void test_multiple() {
     //     a: str = "hello"
     std::string_view a = "hello";
     //     b: int = 42
-    tpy::BigInt b = tpy::BigInt(42);
+    ::tpy::BigInt b = ::tpy::BigInt(42);
     //     c: bool = False
     bool c = false;
     //     print(f"{a} {b} {c}")
-    std::cout << std::format("{} {} {}", a, (b).to_string(), tpy::bool_to_str(c)) << "\n";
+    std::cout << std::format("{} {} {}", a, (b).to_string(), ::tpy::bool_to_str(c)) << "\n";
 }
 
 // def test_adjacent() -> None:
 void test_adjacent() {
     //     a: int = 1
-    tpy::BigInt a = tpy::BigInt(1);
+    ::tpy::BigInt a = ::tpy::BigInt(1);
     //     b: int = 2
-    tpy::BigInt b = tpy::BigInt(2);
+    ::tpy::BigInt b = ::tpy::BigInt(2);
     //     print(f"{a}{b}")
     std::cout << std::format("{}{}", (a).to_string(), (b).to_string()) << "\n";
 }
@@ -103,7 +103,7 @@ void test_adjacent() {
 // def test_fstring_var() -> None:
 void test_fstring_var() {
     //     x: int = 99
-    tpy::BigInt x = tpy::BigInt(99);
+    ::tpy::BigInt x = ::tpy::BigInt(99);
     //     s: str = f"value={x}"
     std::string s = std::format("value={}", (x).to_string());
     //     print(s)
@@ -115,7 +115,7 @@ void test_fstring_var() {
 // def test_str_conversion() -> None:
 void test_str_conversion() {
     //     x: int = 42
-    tpy::BigInt x = tpy::BigInt(42);
+    ::tpy::BigInt x = ::tpy::BigInt(42);
     //     print(f"{x!s}")
     std::cout << std::format("{}", (x).to_string()) << "\n";
 }
@@ -125,7 +125,7 @@ void test_bool_format() {
     //     flag: bool = True
     bool flag = true;
     //     print(f"{flag}")
-    std::cout << std::format("{}", tpy::bool_to_str(flag)) << "\n";
+    std::cout << std::format("{}", ::tpy::bool_to_str(flag)) << "\n";
     //     print(f"{flag:>10}")
     std::cout << std::format("{:>10}", static_cast<int>(flag)) << "\n";
     //     print(f"{flag:d}")
@@ -133,7 +133,7 @@ void test_bool_format() {
     //     off: bool = False
     bool off = false;
     //     print(f"{off}")
-    std::cout << std::format("{}", tpy::bool_to_str(off)) << "\n";
+    std::cout << std::format("{}", ::tpy::bool_to_str(off)) << "\n";
     //     print(f"{off:>10}")
     std::cout << std::format("{:>10}", static_cast<int>(off)) << "\n";
 }
@@ -168,7 +168,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

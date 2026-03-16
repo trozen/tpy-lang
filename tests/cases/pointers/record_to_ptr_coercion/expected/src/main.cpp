@@ -7,13 +7,13 @@ namespace tpy_user::main {
 // def modify_point(p: Ptr[Point]) -> None:
 void modify_point(Point* p) {
     //     p.x = 999
-    tpy::deref_check(p).x = 999;
+    ::tpy::deref_check(p).x = 999;
 }
 
 // def read_point(p: Ptr[readonly[Point]]) -> Int32:
 int32_t read_point(const Point* p) {
     //     return p.x
-    return tpy::deref_check(p).x;
+    return ::tpy::deref_check(p).x;
 }
 
 // def test_coercion() -> None:
@@ -52,7 +52,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

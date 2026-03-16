@@ -12,23 +12,23 @@ void main() {
     Stack s2 = Stack(0);
     //     # bool() with __len__ fallback
     //     print(bool(s1))  # True
-    std::cout << tpy::print_bool((tpy::__len__(s1) != 0)) << "\n";
+    std::cout << ::tpy::print_bool((tpy::__len__(s1) != 0)) << "\n";
     //     print(bool(s2))  # False
-    std::cout << tpy::print_bool((tpy::__len__(s2) != 0)) << "\n";
+    std::cout << ::tpy::print_bool((tpy::__len__(s2) != 0)) << "\n";
     //     # if with __len__ fallback
     //     if s1:
-    if ((tpy::__len__(s1) != 0)) {
+    if ((::tpy::__len__(s1) != 0)) {
         //         print("s1 truthy")
         std::cout << "s1 truthy" << "\n";
     }
     //     if s2:
-    if ((tpy::__len__(s2) != 0)) {
+    if ((::tpy::__len__(s2) != 0)) {
         //         print("s2 truthy")
         std::cout << "s2 truthy" << "\n";
     }
     //     # not with __len__ fallback
     //     if not s2:
-    if ((!((tpy::__len__(s2) != 0)))) {
+    if ((!((::tpy::__len__(s2) != 0)))) {
         //         print("s2 falsy")
         std::cout << "s2 falsy" << "\n";
     }
@@ -46,7 +46,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

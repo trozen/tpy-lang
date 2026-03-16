@@ -10,22 +10,22 @@ struct B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-tpy::BigInt test_and_rhs(const std::variant<A, B>& v);
-tpy::BigInt test_and_true(const std::variant<A, B>& v);
+::tpy::BigInt test_and_rhs(const std::variant<A, B>& v);
+::tpy::BigInt test_and_true(const std::variant<A, B>& v);
 bool test_or_rhs(const std::variant<A, B>& v);
-tpy::BigInt test_negation(const std::variant<A, B>& v);
-tpy::BigInt test_multi_var(const std::variant<A, B>& a, const std::variant<A, B>& b);
+::tpy::BigInt test_negation(const std::variant<A, B>& v);
+::tpy::BigInt test_multi_var(const std::variant<A, B>& a, const std::variant<A, B>& b);
 void main();
 
 // # isinstance in compound conditions: and/or, negation, multi-variable
 // class A:
 struct A {
     //     x: int
-    tpy::BigInt x;
+    ::tpy::BigInt x;
 
     //     def __init__(self, x: int) -> None:
     A() = default;
-    explicit A(const tpy::BigInt& x) : x(x) {}
+    explicit A(const ::tpy::BigInt& x) : x(x) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const A& obj) {
@@ -38,11 +38,11 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 // class B:
 struct B {
     //     y: int
-    tpy::BigInt y;
+    ::tpy::BigInt y;
 
     //     def __init__(self, y: int) -> None:
     B() = default;
-    explicit B(const tpy::BigInt& y) : y(y) {}
+    explicit B(const ::tpy::BigInt& y) : y(y) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {

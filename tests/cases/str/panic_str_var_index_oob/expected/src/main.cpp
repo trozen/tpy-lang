@@ -11,7 +11,7 @@ void main() {
     //     i: Int32 = -10
     int32_t i = -10;
     //     print(s[i])
-    std::cout << tpy::__getitem__(s, i) << "\n";
+    std::cout << ::tpy::__getitem__(s, i) << "\n";
 }
 
 void __tpy_init() {
@@ -26,7 +26,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

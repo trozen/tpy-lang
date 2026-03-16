@@ -33,9 +33,9 @@ struct StorageIter {
         //         if self._index < self._size:
         if ((this->_index < this->_size)) {
             //             val = self._storage.load(UInt32(self._index))
-            T val = (*this->_storage).load(tpy::int_cast_check<uint32_t>(this->_index));
+            T val = (*this->_storage).load(::tpy::int_cast_check<uint32_t>(this->_index));
             //             self._index += 1
-            this->_index = tpy::add_check<int32_t>(this->_index, 1);
+            this->_index = ::tpy::add_check<int32_t>(this->_index, 1);
             //             return val
             return val;
         }
@@ -44,7 +44,7 @@ struct StorageIter {
     }
 
     T __next__() {
-        tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
+        ::tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
     }
 };
 
@@ -99,9 +99,9 @@ struct SimpleList {
     //     def add(self, value: Own[T]) -> None:
     void add(T&& value) {
         //         self._storage.init(UInt32(self._size), value)
-        this->_storage.init(tpy::int_cast_check<uint32_t>(this->_size), std::move(value));
+        this->_storage.init(::tpy::int_cast_check<uint32_t>(this->_size), std::move(value));
         //         self._size += 1
-        this->_size = tpy::add_check<int32_t>(this->_size, 1);
+        this->_size = ::tpy::add_check<int32_t>(this->_size, 1);
     }
 
     //     def __iter__(self) -> Own[StorageIter[T, N]]:

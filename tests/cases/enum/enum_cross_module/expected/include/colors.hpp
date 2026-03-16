@@ -25,7 +25,7 @@ struct tpy::EnumUtil<tpy_user::colors::Color> {
 namespace tpy_user::colors {
 
 inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << tpy::EnumUtil<Color>::name(__e);
+    return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
 }
 
 inline constexpr std::string_view __name__ = "colors";

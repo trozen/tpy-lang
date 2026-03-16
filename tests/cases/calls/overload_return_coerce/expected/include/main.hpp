@@ -11,14 +11,14 @@ struct C;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-tpy::BigInt get_val(const A& obj);
+::tpy::BigInt get_val(const A& obj);
 double get_val(const B& obj);
-tpy::BigInt get_big(const C& obj);
+::tpy::BigInt get_big(const C& obj);
 double get_big(const B& obj);
 int64_t get_wide(const A& obj);
 double get_wide(const B& obj);
 double get_cast(const A& obj);
-tpy::BigInt get_cast(const C& obj);
+::tpy::BigInt get_cast(const C& obj);
 void main();
 
 // class A:
@@ -50,7 +50,7 @@ struct B {
 
 inline std::ostream& operator<<(std::ostream& os, const B& obj) {
     os << "B("
-       << "y=" << tpy::print_float(obj.y)
+       << "y=" << ::tpy::print_float(obj.y)
        << ")";
     return os;
 }

@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def twice(x: Int32) -> Int32:
 int32_t twice(int32_t x) {
     //     return x * 2
-    return (tpy::mul_check<int32_t>(x, 2));
+    return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // def main():
@@ -32,7 +32,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

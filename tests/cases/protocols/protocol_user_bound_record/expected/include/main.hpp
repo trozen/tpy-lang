@@ -50,7 +50,7 @@ struct DefaultFactory;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<ContainerFactory F>
-Container<Message> create_container(tpy::param_val_or_ref_t<F> factory, std::string_view text);
+Container<Message> create_container(::tpy::param_val_or_ref_t<F> factory, std::string_view text);
 void main();
 
 // # Record with user-defined protocol bound
@@ -74,7 +74,7 @@ struct Container {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     os << "Container("
-       << "value=" << tpy::ValuePrinter(obj.value)
+       << "value=" << ::tpy::ValuePrinter(obj.value)
        << ")";
     return os;
 }
@@ -100,7 +100,7 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultFactory& obj) {
 // # Generic function using the factory protocol
 // def create_container[F: ContainerFactory](factory: F, text: str) -> Own[Container[Message]]:
 template<ContainerFactory F>
-Container<Message> create_container(tpy::param_val_or_ref_t<F> factory, std::string_view text) {
+Container<Message> create_container(::tpy::param_val_or_ref_t<F> factory, std::string_view text) {
     //     return factory.make(text)
     return factory.make(text);
 }

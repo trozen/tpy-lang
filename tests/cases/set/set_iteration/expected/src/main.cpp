@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     s: set[Int32] = {10, 20, 30}
-    tpy::ordered_set<int32_t> s = tpy::ordered_set<int32_t>({10, 20, 30});
+    ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({10, 20, 30});
     //     for x in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
@@ -19,14 +19,14 @@ void main() {
     }
     //     # Truthiness
     //     empty: set[Int32] = set()
-    tpy::ordered_set<int32_t> empty = tpy::ordered_set<int32_t>();
+    ::tpy::ordered_set<int32_t> empty = ::tpy::ordered_set<int32_t>();
     //     if s:
-    if ((tpy::__len__(s) != 0)) {
+    if ((::tpy::__len__(s) != 0)) {
         //         print("non-empty")
         std::cout << "non-empty" << "\n";
     }
     //     if not empty:
-    if ((!((tpy::__len__(empty) != 0)))) {
+    if ((!((::tpy::__len__(empty) != 0)))) {
         //         print("empty is falsy")
         std::cout << "empty is falsy" << "\n";
     }
@@ -44,7 +44,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -25,33 +25,33 @@ void __tpy_init() {
     // x: Int32 = 2
     x = 2;
     // print(x ** 10)  # 1024
-    std::cout << (tpy::pow_check<int32_t>(x, 10)) << "\n";
+    std::cout << (::tpy::pow_check<int32_t>(x, 10)) << "\n";
     // # Power with literal exponent
     // y: Int32 = 3
     y = 3;
     // print(y ** 4)   # 81
-    std::cout << (tpy::pow_check<int32_t>(y, 4)) << "\n";
+    std::cout << (::tpy::pow_check<int32_t>(y, 4)) << "\n";
     // # Power of 0
     // z: Int32 = 5
     z = 5;
     // print(z ** 0)   # 1
-    std::cout << (tpy::pow_check<int32_t>(z, 0)) << "\n";
+    std::cout << (::tpy::pow_check<int32_t>(z, 0)) << "\n";
     // # Power of 1
     // print(x ** 1)   # 2
-    std::cout << (tpy::pow_check<int32_t>(x, 1)) << "\n";
+    std::cout << (::tpy::pow_check<int32_t>(x, 1)) << "\n";
     // # Negative base
     // n: Int32 = -2
     n = -2;
     // print(n ** 3)   # -8
-    std::cout << (tpy::pow_check<int32_t>(n, 3)) << "\n";
+    std::cout << (::tpy::pow_check<int32_t>(n, 3)) << "\n";
     // print(n ** 4)   # 16
-    std::cout << (tpy::pow_check<int32_t>(n, 4)) << "\n";
+    std::cout << (::tpy::pow_check<int32_t>(n, 4)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

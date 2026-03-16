@@ -7,15 +7,15 @@ namespace tpy_user::main {
 // # Literal-seeded variable promoted to BigInt inside a loop should
 // # keep BigInt for operations after the loop exits.
 // def get_big() -> int:
-tpy::BigInt get_big() {
+::tpy::BigInt get_big() {
     //     return 42
-    return tpy::BigInt(42);
+    return ::tpy::BigInt(42);
 }
 
 // def test_after_while() -> None:
 void test_after_while() {
     //     x = 0
-    tpy::BigInt x = tpy::BigInt(0);
+    ::tpy::BigInt x = ::tpy::BigInt(0);
     //     while x < 1:
     while ((x < 1)) {
         //         if True:
@@ -24,10 +24,10 @@ void test_after_while() {
             x = get_big();
         }
         //         x += 1
-        x = (x) + (tpy::BigInt(1));
+        x = (x) + (::tpy::BigInt(1));
     }
     //     y: int = x + 1
-    tpy::BigInt y = ((x) + (tpy::BigInt(1)));
+    ::tpy::BigInt y = ((x) + (::tpy::BigInt(1)));
     //     print(y)
     std::cout << y << "\n";
 }
@@ -35,7 +35,7 @@ void test_after_while() {
 // def test_after_for() -> None:
 void test_after_for() {
     //     x = 0
-    tpy::BigInt x = tpy::BigInt(0);
+    ::tpy::BigInt x = ::tpy::BigInt(0);
     //     for i in range(0, 3):
     for (int32_t i = 0; i < 3; ++i) {
         //         if True:
@@ -45,7 +45,7 @@ void test_after_for() {
         }
     }
     //     y: int = x + 1
-    tpy::BigInt y = ((x) + (tpy::BigInt(1)));
+    ::tpy::BigInt y = ((x) + (::tpy::BigInt(1)));
     //     print(y)
     std::cout << y << "\n";
 }
@@ -64,7 +64,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

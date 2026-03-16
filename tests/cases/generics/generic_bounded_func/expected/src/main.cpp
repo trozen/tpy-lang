@@ -11,13 +11,13 @@ void main() {
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
     std::vector<int32_t>& items = identity<std::vector<int32_t>>(__tmp_1);
     //     print(len(items))  # Should print 3
-    std::cout << tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n";
     //     # str satisfies Sized too
     //     s = identity("hello")
     std::string_view __tmp_2 = "hello";
     std::string_view s = identity<std::string_view>(__tmp_2);
     //     print(len(s))  # Should print 5
-    std::cout << tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n";
 }
 
 void __tpy_init() {
@@ -30,7 +30,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

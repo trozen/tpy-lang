@@ -20,9 +20,9 @@ int32_t y{};
 int32_t z{};
 // # Large BigInt bitwise
 // big1 = (1 << 100) | (1 << 50)  # tpyc: warning(/outside default Int32 range/)
-tpy::BigInt big1;
+::tpy::BigInt big1;
 // big2 = (1 << 100) | (1 << 25)  # tpyc: warning(/outside default Int32 range/)
-tpy::BigInt big2;
+::tpy::BigInt big2;
 
 void __tpy_init() {
     static bool initialized = false;
@@ -55,7 +55,7 @@ void __tpy_init() {
     std::cout << 8 << "\n";
     // # Large shift (Python semantics - arbitrary precision)
     // print(1 << 100)    # 1267650600228229401496703205376
-    std::cout << tpy::BigInt::from_str("1267650600228229401496703205376") << "\n";
+    std::cout << ::tpy::BigInt::from_str("1267650600228229401496703205376") << "\n";
     // print((1 << 100) >> 90)  # 1024
     std::cout << 1024 << "\n";
     // # BigInt bitwise operators
@@ -80,21 +80,21 @@ void __tpy_init() {
     std::cout << static_cast<int32_t>(~(z)) << "\n";
     // # Large BigInt bitwise
     // big1 = (1 << 100) | (1 << 50)  # tpyc: warning(/outside default Int32 range/)
-    big1 = ((((tpy::BigInt(1)) << (tpy::BigInt(100)))) | (((tpy::BigInt(1)) << (tpy::BigInt(50)))));
+    big1 = ((((::tpy::BigInt(1)) << (::tpy::BigInt(100)))) | (((::tpy::BigInt(1)) << (::tpy::BigInt(50)))));
     // big2 = (1 << 100) | (1 << 25)  # tpyc: warning(/outside default Int32 range/)
-    big2 = ((((tpy::BigInt(1)) << (tpy::BigInt(100)))) | ((tpy::lshift_check<int32_t>(1, 25))));
+    big2 = ((((::tpy::BigInt(1)) << (::tpy::BigInt(100)))) | ((::tpy::lshift_check<int32_t>(1, 25))));
     // print((big1 & big2) >> 100)         # 1 - only bit 100 in common
-    std::cout << ((((big1) & (big2))) >> (tpy::BigInt(100))) << "\n";
+    std::cout << ((((big1) & (big2))) >> (::tpy::BigInt(100))) << "\n";
     // print((big1 | big2) >> 100)         # 1 - bit 100 is set
-    std::cout << ((((big1) | (big2))) >> (tpy::BigInt(100))) << "\n";
+    std::cout << ((((big1) | (big2))) >> (::tpy::BigInt(100))) << "\n";
     // print((big1 ^ big2) >> 50)          # 1 - bit 50 differs (in big1 only)
-    std::cout << ((((big1) ^ (big2))) >> (tpy::BigInt(50))) << "\n";
+    std::cout << ((((big1) ^ (big2))) >> (::tpy::BigInt(50))) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -11,7 +11,7 @@ void test_str_concat() {
     //     b: str = " world"
     std::string_view b = " world";
     //     c: String = a + b
-    std::string c = (tpy::str_concat(a, b));
+    std::string c = (::tpy::str_concat(a, b));
     //     print(c)  # hello world
     std::cout << c << "\n";
 }
@@ -29,7 +29,7 @@ void test_str_plus_eq() {
 // def test_str_multiconcat() -> None:
 void test_str_multiconcat() {
     //     s: String = String("a") + "b" + "c"
-    std::string s = (tpy::str_concat((tpy::str_concat(std::string("a"), "b")), "c"));
+    std::string s = (::tpy::str_concat((::tpy::str_concat(std::string("a"), "b")), "c"));
     //     print(s)  # abc
     std::cout << s << "\n";
 }
@@ -37,7 +37,7 @@ void test_str_multiconcat() {
 // def test_literal_concat() -> None:
 void test_literal_concat() {
     //     s: String = "foo" + "bar"
-    std::string s = (tpy::str_concat("foo", "bar"));
+    std::string s = (::tpy::str_concat("foo", "bar"));
     //     print(s)  # foobar
     std::cout << s << "\n";
 }
@@ -50,10 +50,10 @@ void test_cross_type_concat() {
     std::string b = std::string(" world");
     //     # str + String
     //     print(a + b)  # hello world
-    std::cout << (tpy::str_concat(a, b)) << "\n";
+    std::cout << (::tpy::str_concat(a, b)) << "\n";
     //     # String + str
     //     print(b + a)  #  worldhello
-    std::cout << (tpy::str_concat(b, a)) << "\n";
+    std::cout << (::tpy::str_concat(b, a)) << "\n";
     //     # str += with str target
     //     a += " end"
     a += " end";
@@ -81,7 +81,7 @@ void test_reassign_concat() {
     //     n: Int32 = 42
     int32_t n = 42;
     //     a = a + str(n)
-    a += tpy::fixed_to_str<int32_t>(n);
+    a += ::tpy::fixed_to_str<int32_t>(n);
     //     print(a)  # ab42
     std::cout << a << "\n";
 }
@@ -95,9 +95,9 @@ void test_loop_concat() {
     //     while i < 5:
     while ((i < 5)) {
         //         s += str(i)
-        s += tpy::fixed_to_str<int32_t>(i);
+        s += ::tpy::fixed_to_str<int32_t>(i);
         //         i += 1
-        i = tpy::add_check<int32_t>(i, 1);
+        i = ::tpy::add_check<int32_t>(i, 1);
     }
     //     print(s)  # 01234
     std::cout << s << "\n";
@@ -127,7 +127,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

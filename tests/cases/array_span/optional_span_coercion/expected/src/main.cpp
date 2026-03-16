@@ -15,11 +15,11 @@ void main() {
     //     arr: list[Int32] = [10, 20, 30]
     std::vector<int32_t> arr = {10, 20, 30};
     //     print(has_values(arr))
-    std::cout << tpy::print_bool(has_values(tpy::as_span(arr))) << "\n";
+    std::cout << ::tpy::print_bool(has_values(::tpy::as_span(arr))) << "\n";
     //     print(has_values(None))
-    std::cout << tpy::print_bool(has_values(std::nullopt)) << "\n";
+    std::cout << ::tpy::print_bool(has_values(std::nullopt)) << "\n";
     //     print(has_values([42, 99]))
-    std::cout << tpy::print_bool(has_values(tpy::as_span(std::array<int32_t, 2>{42, 99}))) << "\n";
+    std::cout << ::tpy::print_bool(has_values(::tpy::as_span(std::array<int32_t, 2>{42, 99}))) << "\n";
 }
 
 void __tpy_init() {
@@ -34,7 +34,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

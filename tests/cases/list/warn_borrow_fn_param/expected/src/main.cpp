@@ -14,20 +14,20 @@ void mutate_list(std::vector<Point>& items) {
 // def read_list(items: list[Point]) -> Int32:
 int32_t read_list(const std::vector<Point>& items) {
     //     return Int32(len(items))
-    return tpy::__len__(items);
+    return ::tpy::__len__(items);
 }
 
 // @pure
 // def count_list(items: list[Point]) -> Int32:
 int32_t count_list(const std::vector<Point>& items) {
     //     return Int32(len(items))
-    return tpy::__len__(items);
+    return ::tpy::__len__(items);
 }
 
 // def safe_read(items: readonly[list[Point]]) -> Int32:
 int32_t safe_read(const std::vector<Point>& items) {
     //     return Int32(len(items))
-    return tpy::__len__(items);
+    return ::tpy::__len__(items);
 }
 
 // def test_pass_borrowed_to_mutating_func() -> None:
@@ -35,11 +35,11 @@ void test_pass_borrowed_to_mutating_func() {
     //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
     //     v = items[Int32(0)]
-    Point& v = tpy::__getitem__(items, 0);
+    Point& v = ::tpy::__getitem__(items, 0);
     //     mutate_list(items)  # tpyc: warning(/Passing borrowed container 'items'/)
     mutate_list(items);
     //     print(len(items))
-    std::cout << tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_pass_borrowed_to_readonly_func() -> None:
@@ -47,7 +47,7 @@ void test_pass_borrowed_to_readonly_func() {
     //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
     //     v = items[Int32(0)]
-    Point& v = tpy::__getitem__(items, 0);
+    Point& v = ::tpy::__getitem__(items, 0);
     //     read_list(items)  # tpyc: ok
     read_list(items);
     //     print(v.x)
@@ -59,7 +59,7 @@ void test_pass_borrowed_to_pure_func() {
     //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
     //     v = items[Int32(0)]
-    Point& v = tpy::__getitem__(items, 0);
+    Point& v = ::tpy::__getitem__(items, 0);
     //     count_list(items)  # tpyc: ok
     count_list(items);
     //     print(v.x)
@@ -71,7 +71,7 @@ void test_pass_borrowed_to_readonly_param() {
     //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
     //     v = items[Int32(0)]
-    Point& v = tpy::__getitem__(items, 0);
+    Point& v = ::tpy::__getitem__(items, 0);
     //     safe_read(items)  # tpyc: ok
     safe_read(items);
     //     print(v.x)
@@ -85,7 +85,7 @@ void test_no_borrow_no_warn() {
     //     mutate_list(items)  # tpyc: ok
     mutate_list(items);
     //     print(len(items))
-    std::cout << tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_builtin_pure_no_warn() -> None:
@@ -93,9 +93,9 @@ void test_builtin_pure_no_warn() {
     //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
     //     v = items[Int32(0)]
-    Point& v = tpy::__getitem__(items, 0);
+    Point& v = ::tpy::__getitem__(items, 0);
     //     print(len(items))  # tpyc: ok
-    std::cout << tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n";
     //     print(v.x)
     std::cout << v.x << "\n";
 }
@@ -122,7 +122,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

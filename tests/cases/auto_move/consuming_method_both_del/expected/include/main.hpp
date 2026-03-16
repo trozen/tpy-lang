@@ -45,7 +45,7 @@ struct Base {
         //         print("Base.del")
         std::cout << "Base.del" << "\n";
         //         unsafe_drop(self._ptr)
-        tpy::destroy_at(this->_ptr);
+        ::tpy::destroy_at(this->_ptr);
         //         unsafe_free(self._ptr)
         ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
     }

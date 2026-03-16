@@ -9,17 +9,17 @@ void test_list_aug_assign() {
     //     nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
     //     nums[0] += 10
-    tpy::__setitem__(nums, 0, tpy::add_check<int32_t>(tpy::__getitem__(nums, 0), 10));
+    ::tpy::__setitem__(nums, 0, ::tpy::add_check<int32_t>(::tpy::__getitem__(nums, 0), 10));
     //     print(nums[0])  # 11
-    std::cout << tpy::__getitem__(nums, 0) << "\n";
+    std::cout << ::tpy::__getitem__(nums, 0) << "\n";
     //     nums[1] *= 5
-    tpy::__setitem__(nums, 1, tpy::mul_check<int32_t>(tpy::__getitem__(nums, 1), 5));
+    ::tpy::__setitem__(nums, 1, ::tpy::mul_check<int32_t>(::tpy::__getitem__(nums, 1), 5));
     //     print(nums[1])  # 10
-    std::cout << tpy::__getitem__(nums, 1) << "\n";
+    std::cout << ::tpy::__getitem__(nums, 1) << "\n";
     //     nums[2] -= 1
-    tpy::__setitem__(nums, 2, tpy::sub_check<int32_t>(tpy::__getitem__(nums, 2), 1));
+    ::tpy::__setitem__(nums, 2, ::tpy::sub_check<int32_t>(::tpy::__getitem__(nums, 2), 1));
     //     print(nums[2])  # 2
-    std::cout << tpy::__getitem__(nums, 2) << "\n";
+    std::cout << ::tpy::__getitem__(nums, 2) << "\n";
 }
 
 // def test_arraylist_aug_assign() -> None:
@@ -31,11 +31,11 @@ void test_arraylist_aug_assign() {
     //     items.append(200)
     items.append(200);
     //     items[0] += 5
-    tpy::__setitem__(items, 0, tpy::add_check<int32_t>(items[0], 5));
+    ::tpy::__setitem__(items, 0, ::tpy::add_check<int32_t>(items[0], 5));
     //     print(items[0])  # 105
     std::cout << items[0] << "\n";
     //     items[1] -= 50
-    tpy::__setitem__(items, 1, tpy::sub_check<int32_t>(items[1], 50));
+    ::tpy::__setitem__(items, 1, ::tpy::sub_check<int32_t>(items[1], 50));
     //     print(items[1])  # 150
     std::cout << items[1] << "\n";
 }
@@ -45,13 +45,13 @@ void test_negative_index_aug_assign() {
     //     nums: list[Int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
     //     nums[-1] += 5
-    tpy::__setitem__(nums, -1, tpy::add_check<int32_t>(tpy::__getitem__(nums, -1), 5));
+    ::tpy::__setitem__(nums, -1, ::tpy::add_check<int32_t>(::tpy::__getitem__(nums, -1), 5));
     //     print(nums[-1])  # 35
-    std::cout << tpy::__getitem__(nums, -1) << "\n";
+    std::cout << ::tpy::__getitem__(nums, -1) << "\n";
     //     nums[-2] *= 2
-    tpy::__setitem__(nums, -2, tpy::mul_check<int32_t>(tpy::__getitem__(nums, -2), 2));
+    ::tpy::__setitem__(nums, -2, ::tpy::mul_check<int32_t>(::tpy::__getitem__(nums, -2), 2));
     //     print(nums[-2])  # 40
-    std::cout << tpy::__getitem__(nums, -2) << "\n";
+    std::cout << ::tpy::__getitem__(nums, -2) << "\n";
 }
 
 // def test_array_aug_assign() -> None:
@@ -59,13 +59,13 @@ void test_array_aug_assign() {
     //     arr: Array[Int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
     //     arr[0] += 5
-    tpy::__setitem__(arr, 0, tpy::add_check<int32_t>(tpy::__getitem__(arr, 0), 5));
+    ::tpy::__setitem__(arr, 0, ::tpy::add_check<int32_t>(::tpy::__getitem__(arr, 0), 5));
     //     print(arr[0])  # 15
-    std::cout << tpy::__getitem__(arr, 0) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 0) << "\n";
     //     arr[-1] *= 2
-    tpy::__setitem__(arr, -1, tpy::mul_check<int32_t>(tpy::__getitem__(arr, -1), 2));
+    ::tpy::__setitem__(arr, -1, ::tpy::mul_check<int32_t>(::tpy::__getitem__(arr, -1), 2));
     //     print(arr[-1])  # 60
-    std::cout << tpy::__getitem__(arr, -1) << "\n";
+    std::cout << ::tpy::__getitem__(arr, -1) << "\n";
 }
 
 void __tpy_init() {
@@ -88,7 +88,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

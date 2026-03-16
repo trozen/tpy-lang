@@ -42,7 +42,7 @@ void main() {
     //     # Then-branch: unknown. Else-branch (implicit): still non-null.
     //     # Intersection → cleared.
     //     print(q.x)  # tpyc: ok
-    std::cout << tpy::deref_check(q).x << "\n";
+    std::cout << ::tpy::deref_check(q).x << "\n";
     //     # --- Loop: non-null before loop, not reassigned inside → preserved ---
     //     r: Ptr[Point] = Ptr(a)
     Point* r = &a;
@@ -53,7 +53,7 @@ void main() {
         //         print(r.x)  # tpyc: ok
         std::cout << r->x << "\n";
         //         i = i + Int32(1)
-        i = (tpy::add_check<int32_t>(i, 1));
+        i = (::tpy::add_check<int32_t>(i, 1));
     }
     //     # --- Loop: reassigned from unknown inside → cleared ---
     //     s: Ptr[Point] = Ptr(a)
@@ -67,11 +67,11 @@ void main() {
         //         s = get_ptr(s)
         s = get_ptr(s);
         //         j = j + Int32(1)
-        j = (tpy::add_check<int32_t>(j, 1));
+        j = (::tpy::add_check<int32_t>(j, 1));
     }
     //     # After loop: s was reassigned from unknown inside body
     //     print(s.x)  # tpyc: ok
-    std::cout << tpy::deref_check(s).x << "\n";
+    std::cout << ::tpy::deref_check(s).x << "\n";
 }
 
 void __tpy_init() {
@@ -86,7 +86,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

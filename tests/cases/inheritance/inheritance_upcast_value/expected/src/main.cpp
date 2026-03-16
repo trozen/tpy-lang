@@ -27,7 +27,7 @@ void main() {
     greet(__tmp_1);
     //     # Multi-level upcast (grandchild -> grandparent)
     //     p: Puppy = Puppy("Tiny", "Corgi", 8)
-    Puppy p = Puppy("Tiny", "Corgi", tpy::BigInt(8));
+    Puppy p = Puppy("Tiny", "Corgi", ::tpy::BigInt(8));
     //     greet(p)
     greet(p);
     //     a2: Animal = p
@@ -48,7 +48,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

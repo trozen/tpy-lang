@@ -5,13 +5,13 @@
 
 namespace tpy_user::main {
 
-extern std::vector<tpy::BigInt>* global_list;
+extern std::vector<::tpy::BigInt>* global_list;
 extern std::vector<int32_t>* global_list2;
 inline constexpr std::string_view __name__ = "__main__";
 
-tpy::BigInt test_empty_list();
+::tpy::BigInt test_empty_list();
 int32_t test_empty_list_int32();
-tpy::BigInt test_list_constructor();
+::tpy::BigInt test_list_constructor();
 int32_t test_list_constructor_int32();
 
 void __tpy_init();

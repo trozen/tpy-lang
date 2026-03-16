@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def invert(x: bool | None) -> bool:
 bool invert(std::optional<bool> x) {
     //     if not x:  # tpyc: warning(/Truthiness check on optional value/)  # tpyc: warning(/variable 'x'/)
-    if ((!(tpy::is_truthy(x)))) {
+    if ((!(::tpy::is_truthy(x)))) {
         //         return True
         return true;
     }
@@ -21,17 +21,17 @@ void __tpy_init() {
     initialized = true;
 
     // print(invert(True))
-    std::cout << tpy::print_bool(invert(true)) << "\n";
+    std::cout << ::tpy::print_bool(invert(true)) << "\n";
     // print(invert(False))
-    std::cout << tpy::print_bool(invert(false)) << "\n";
+    std::cout << ::tpy::print_bool(invert(false)) << "\n";
     // print(invert(None))
-    std::cout << tpy::print_bool(invert(std::nullopt)) << "\n";
+    std::cout << ::tpy::print_bool(invert(std::nullopt)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

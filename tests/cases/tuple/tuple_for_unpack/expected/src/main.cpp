@@ -36,7 +36,7 @@ void main() {
         int32_t n = std::get<0>(__tup_2);
         bool flag = std::get<1>(__tup_2);
         //         print(n, flag)
-        std::cout << n << " " << tpy::print_bool(flag) << "\n";
+        std::cout << n << " " << ::tpy::print_bool(flag) << "\n";
     }
     //     # Tuple of two strings, fully inferred
     //     names = [("Alice", "A"), ("Bob", "B")]
@@ -68,7 +68,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -13,12 +13,12 @@ void main() {
         const int32_t __stop_0 = 5;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t x = 0; x < __stop_0; ++x) {
-            __result.push_back((tpy::mul_check<int32_t>(x, x)));
+            __result.push_back((::tpy::mul_check<int32_t>(x, x)));
         }
         return __result;
     }();
     //     print(squares)
-    std::cout << tpy::ListPrinter(squares) << "\n";
+    std::cout << ::tpy::ListPrinter(squares) << "\n";
     //     # Identity comprehension from list
     //     items: list[Int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
@@ -36,7 +36,7 @@ void main() {
         return __result;
     }();
     //     print(copy)
-    std::cout << tpy::ListPrinter(copy) << "\n";
+    std::cout << ::tpy::ListPrinter(copy) << "\n";
     //     # Two-arg range (non-literal stop to stay on list path)
     //     stop: Int32 = 7
     int32_t stop = 7;
@@ -52,7 +52,7 @@ void main() {
         return __result;
     }();
     //     print(shifted)
-    std::cout << tpy::ListPrinter(shifted) << "\n";
+    std::cout << ::tpy::ListPrinter(shifted) << "\n";
     //     # Record field access
     //     points: list[Point] = [Point(1, 2), Point(3, 4), Point(5, 6)]
     std::vector<Point> points = {Point(1, 2), Point(3, 4), Point(5, 6)};
@@ -70,15 +70,15 @@ void main() {
         return __result;
     }();
     //     print(xs)
-    std::cout << tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n";
     //     # Comprehension as function argument
     //     print([x + 1 for x in range(3)])
-    std::cout << tpy::ListPrinter([&]() {
+    std::cout << ::tpy::ListPrinter([&]() {
         std::vector<int32_t> __result;
         const int32_t __stop_5 = 3;
         if (__stop_5 > 0) __result.reserve(static_cast<size_t>(__stop_5));
         for (int32_t x = 0; x < __stop_5; ++x) {
-            __result.push_back((tpy::add_check<int32_t>(x, 1)));
+            __result.push_back((::tpy::add_check<int32_t>(x, 1)));
         }
         return __result;
     }()) << "\n";
@@ -94,22 +94,22 @@ void main() {
         auto __end_6 = __obj_6.end();
         for (; __beg_6 != __end_6; ++__beg_6) {
             std::string w = *__beg_6;
-            __result.push_back(tpy::fixed_to_str<int32_t>(tpy::__len__(w)));
+            __result.push_back(::tpy::fixed_to_str<int32_t>(::tpy::__len__(w)));
         }
         return __result;
     }();
     //     print(upper)
-    std::cout << tpy::ListPrinter(upper) << "\n";
+    std::cout << ::tpy::ListPrinter(upper) << "\n";
     //     # Comprehension as return value
     //     print(make_list(4))
-    std::cout << tpy::ListPrinter(make_list(4)) << "\n";
+    std::cout << ::tpy::ListPrinter(make_list(4)) << "\n";
     //     # Three-arg range (non-literal step to stay on list path)
     //     step: Int32 = 3
     int32_t step = 3;
     //     stepped = [x for x in range(0, 10, step)]
     std::vector<int32_t> stepped = [&]() {
         std::vector<int32_t> __result;
-        auto __obj_7 = tpy::Range<int32_t>(0, 10, step);
+        auto __obj_7 = ::tpy::Range<int32_t>(0, 10, step);
         auto __beg_7 = __obj_7.begin();
         auto __end_7 = __obj_7.end();
         for (; __beg_7 != __end_7; ++__beg_7) {
@@ -119,7 +119,7 @@ void main() {
         return __result;
     }();
     //     print(stepped)
-    std::cout << tpy::ListPrinter(stepped) << "\n";
+    std::cout << ::tpy::ListPrinter(stepped) << "\n";
 }
 
 // def make_list(n: Int32) -> Own[list[Int32]]:
@@ -130,7 +130,7 @@ std::vector<int32_t> make_list(int32_t n) {
         const int32_t __stop_0 = n;
         if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
         for (int32_t x = 0; x < __stop_0; ++x) {
-            __result.push_back((tpy::mul_check<int32_t>(x, 10)));
+            __result.push_back((::tpy::mul_check<int32_t>(x, 10)));
         }
         return __result;
     }();
@@ -148,7 +148,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

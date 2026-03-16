@@ -35,22 +35,22 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<tpy::Sized T>
-int32_t get_length(tpy::param_val_or_ref_t<T> item);
+template<::tpy::Sized T>
+int32_t get_length(::tpy::param_val_or_ref_t<T> item);
 template<Stringable T>
-std::string stringify(tpy::param_val_or_ref_t<T> item);
-template<tpy::Sized T, Stringable U>
-int32_t process_both(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<U> b);
+std::string stringify(::tpy::param_val_or_ref_t<T> item);
+template<::tpy::Sized T, Stringable U>
+int32_t process_both(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b);
 template<MultiMethod T>
-void use_multi(tpy::param_val_or_ref_t<T> item);
-template<tpy::Sized T>
-int32_t inner_len(tpy::param_val_or_ref_t<T> x);
-template<tpy::Sized T>
-int32_t outer_len(tpy::param_val_or_ref_t<T> x);
+void use_multi(::tpy::param_val_or_ref_t<T> item);
+template<::tpy::Sized T>
+int32_t inner_len(::tpy::param_val_or_ref_t<T> x);
+template<::tpy::Sized T>
+int32_t outer_len(::tpy::param_val_or_ref_t<T> x);
 template<Clonable T>
-T clone_it(tpy::param_val_or_ref_t<T> item);
-template<tpy::Comparable T>
-bool is_less(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b);
+T clone_it(::tpy::param_val_or_ref_t<T> item);
+template<::tpy::Comparable T>
+bool is_less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 void main();
 
 // # Test 4: Generic class with bounded type parameter
@@ -98,7 +98,7 @@ struct MyValue {
 
     size_t size() const {
         auto len = __len__();
-        if (len < 0) tpy::tpy_panic("__len__ returned negative value");
+        if (len < 0) ::tpy::tpy_panic("__len__ returned negative value");
         return static_cast<size_t>(len);
     }
 };
@@ -198,30 +198,30 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // # Test 1: Builtin protocol (Sized) method call inside generic function
 // def get_length[T: Sized](item: T) -> Int32:
-template<tpy::Sized T>
-int32_t get_length(tpy::param_val_or_ref_t<T> item) {
+template<::tpy::Sized T>
+int32_t get_length(::tpy::param_val_or_ref_t<T> item) {
     //     return len(item)
-    return tpy::__len__(item);
+    return ::tpy::__len__(item);
 }
 // # Test 3: Generic function with user protocol bound
 // def stringify[T: Stringable](item: T) -> str:
 template<Stringable T>
-std::string stringify(tpy::param_val_or_ref_t<T> item) {
+std::string stringify(::tpy::param_val_or_ref_t<T> item) {
     //     return item.to_str()
     return item.to_str();
 }
 // # Test 6: Multiple type params with different bounds
 // def process_both[T: Sized, U: Stringable](a: T, b: U) -> Int32:
-template<tpy::Sized T, Stringable U>
-int32_t process_both(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<U> b) {
+template<::tpy::Sized T, Stringable U>
+int32_t process_both(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
     //     print(b.to_str())
     std::cout << b.to_str() << "\n";
     //     return len(a)
-    return tpy::__len__(a);
+    return ::tpy::__len__(a);
 }
 // def use_multi[T: MultiMethod](item: T) -> None:
 template<MultiMethod T>
-void use_multi(tpy::param_val_or_ref_t<T> item) {
+void use_multi(::tpy::param_val_or_ref_t<T> item) {
     //     print(item.get_name())
     std::cout << item.get_name() << "\n";
     //     print(item.get_value())
@@ -229,27 +229,27 @@ void use_multi(tpy::param_val_or_ref_t<T> item) {
 }
 // # Test 8: Nested bounded calls (passing bounded param to another bounded function)
 // def inner_len[T: Sized](x: T) -> Int32:
-template<tpy::Sized T>
-int32_t inner_len(tpy::param_val_or_ref_t<T> x) {
+template<::tpy::Sized T>
+int32_t inner_len(::tpy::param_val_or_ref_t<T> x) {
     //     return len(x)
-    return tpy::__len__(x);
+    return ::tpy::__len__(x);
 }
 // def outer_len[T: Sized](x: T) -> Int32:
-template<tpy::Sized T>
-int32_t outer_len(tpy::param_val_or_ref_t<T> x) {
+template<::tpy::Sized T>
+int32_t outer_len(::tpy::param_val_or_ref_t<T> x) {
     //     return inner_len(x)
     return inner_len<T>(x);
 }
 // def clone_it[T: Clonable](item: T) -> Own[T]:
 template<Clonable T>
-T clone_it(tpy::param_val_or_ref_t<T> item) {
+T clone_it(::tpy::param_val_or_ref_t<T> item) {
     //     return item.clone()  # Return type should be Own[T], not Own[Clonable]
     return item.clone();
 }
 // # Test 10: Builtin protocol with Self (Comparable has __lt__(Self) -> bool)
 // def is_less[T: Comparable](a: T, b: T) -> bool:
-template<tpy::Comparable T>
-bool is_less(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
+template<::tpy::Comparable T>
+bool is_less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     //     return a < b  # Uses __lt__ which takes Self parameter
     return (a < b);
 }

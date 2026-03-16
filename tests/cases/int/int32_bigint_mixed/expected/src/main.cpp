@@ -11,7 +11,7 @@ void test_int32_plus_bigint() {
     //     y = 10  # default int (Int32)
     int32_t y = 10;
     //     z = x + y  # Should be BigInt(15)
-    int32_t z = (tpy::add_check<int32_t>(x, y));
+    int32_t z = (::tpy::add_check<int32_t>(x, y));
     //     print(z)
     std::cout << z << "\n";
 }
@@ -23,7 +23,7 @@ void test_bigint_plus_int32() {
     //     y: Int32 = 5
     int32_t y = 5;
     //     z = x + y  # Should be BigInt(15)
-    int32_t z = (tpy::add_check<int32_t>(x, y));
+    int32_t z = (::tpy::add_check<int32_t>(x, y));
     //     print(z)
     std::cout << z << "\n";
 }
@@ -35,13 +35,13 @@ void test_mixed_arithmetic() {
     //     b = 3  # default int (Int32)
     int32_t b = 3;
     //     print(a - b)   # 17
-    std::cout << (tpy::sub_check<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::sub_check<int32_t>(a, b)) << "\n";
     //     print(a * b)   # 60
-    std::cout << (tpy::mul_check<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::mul_check<int32_t>(a, b)) << "\n";
     //     print(a // b)  # 6
-    std::cout << (tpy::div_floor<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::div_floor<int32_t>(a, b)) << "\n";
     //     print(a % b)   # 2
-    std::cout << (tpy::mod_floor<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::mod_floor<int32_t>(a, b)) << "\n";
 }
 
 // def test_large_bigint():
@@ -49,9 +49,9 @@ void test_large_bigint() {
     //     x: Int32 = 5
     int32_t x = 5;
     //     y = 10 ** 20  # tpyc: warning(/outside default Int32 range/)
-    tpy::BigInt y = ((tpy::BigInt(10)).pow(tpy::BigInt(20)));
+    ::tpy::BigInt y = ((::tpy::BigInt(10)).pow(::tpy::BigInt(20)));
     //     z = x + y     # Must promote to BigInt, not panic
-    tpy::BigInt z = ((tpy::BigInt(x)) + (y));
+    ::tpy::BigInt z = ((::tpy::BigInt(x)) + (y));
     //     print(z)
     std::cout << z << "\n";
 }
@@ -63,23 +63,23 @@ void test_augmented_assign_mixed() {
     //     b = 7  # default int (Int32)
     int32_t b = 7;
     //     x += b
-    x = tpy::add_check<int32_t>(x, b);
+    x = ::tpy::add_check<int32_t>(x, b);
     //     print(x)  # 107
     std::cout << x << "\n";
     //     x -= b
-    x = tpy::sub_check<int32_t>(x, b);
+    x = ::tpy::sub_check<int32_t>(x, b);
     //     print(x)  # 100
     std::cout << x << "\n";
     //     x *= b
-    x = tpy::mul_check<int32_t>(x, b);
+    x = ::tpy::mul_check<int32_t>(x, b);
     //     print(x)  # 700
     std::cout << x << "\n";
     //     x //= b
-    x = tpy::div_check<int32_t>(x, b);
+    x = ::tpy::div_check<int32_t>(x, b);
     //     print(x)  # 100
     std::cout << x << "\n";
     //     x %= b
-    x = tpy::mod_check<int32_t>(x, b);
+    x = ::tpy::mod_check<int32_t>(x, b);
     //     print(x)  # 2
     std::cout << x << "\n";
 }
@@ -87,18 +87,18 @@ void test_augmented_assign_mixed() {
 // def test_nested_literal_binop():
 void test_nested_literal_binop() {
     //     x: Int32 = 1 + (2 + 3)
-    int32_t x = tpy::add_check<int32_t>(1, tpy::add_check<int32_t>(2, 3));
+    int32_t x = ::tpy::add_check<int32_t>(1, ::tpy::add_check<int32_t>(2, 3));
     //     print(x)  # 6
     std::cout << x << "\n";
     //     y: Int32 = (1 + 2) * (3 + 4)
-    int32_t y = tpy::mul_check<int32_t>(tpy::add_check<int32_t>(1, 2), tpy::add_check<int32_t>(3, 4));
+    int32_t y = ::tpy::mul_check<int32_t>(::tpy::add_check<int32_t>(1, 2), ::tpy::add_check<int32_t>(3, 4));
     //     print(y)  # 21
     std::cout << y << "\n";
     //     # Assignment to existing Int32 variable
     //     z: Int32 = 0
     int32_t z = 0;
     //     z = 10 + (20 + 30)
-    z = tpy::add_check<int32_t>(10, tpy::add_check<int32_t>(20, 30));
+    z = ::tpy::add_check<int32_t>(10, ::tpy::add_check<int32_t>(20, 30));
     //     print(z)  # 60
     std::cout << z << "\n";
 }
@@ -125,7 +125,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

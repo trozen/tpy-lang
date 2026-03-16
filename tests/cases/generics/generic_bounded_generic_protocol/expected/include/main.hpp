@@ -53,7 +53,7 @@ struct Holder {
     explicit Holder(const V& item) : item(item) {}
 
     //     def get_item(self) -> V:
-    tpy::val_or_ref_t<V> get_item() {
+    ::tpy::val_or_ref_t<V> get_item() {
         //         return self.item
         return this->item;
     }
@@ -62,7 +62,7 @@ struct Holder {
 template<typename V>
 inline std::ostream& operator<<(std::ostream& os, const Holder<V>& obj) {
     os << "Holder("
-       << "item=" << tpy::ValuePrinter(obj.item)
+       << "item=" << ::tpy::ValuePrinter(obj.item)
        << ")";
     return os;
 }

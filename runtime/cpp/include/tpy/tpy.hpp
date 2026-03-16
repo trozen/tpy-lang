@@ -83,7 +83,7 @@
 #include "math_ops.hpp"
 
 // Expose types in global namespace for TurboPython generated code
-using tpy::UninitArrayStorage;
-using tpy::UninitHeapStorage;
-using tpy::tpy_panic;
-using tpy::BigInt;
+using ::tpy::UninitArrayStorage;
+using ::tpy::UninitHeapStorage;
+using ::tpy::tpy_panic;
+using ::tpy::BigInt;

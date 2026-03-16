@@ -51,13 +51,13 @@ void main() {
     //     c: Color = Color.Green
     Color c = Color::Green;
     //     print(c.name)
-    std::cout << tpy::EnumUtil<Color>::name(c) << "\n";
+    std::cout << ::tpy::EnumUtil<Color>::name(c) << "\n";
     //     print(c.value)
     std::cout << static_cast<int32_t>(c) << "\n";
     //     c = Color.Blue
     c = Color::Blue;
     //     print(c.name)
-    std::cout << tpy::EnumUtil<Color>::name(c) << "\n";
+    std::cout << ::tpy::EnumUtil<Color>::name(c) << "\n";
     //     print(c.value)
     std::cout << static_cast<int32_t>(c) << "\n";
 }
@@ -74,7 +74,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

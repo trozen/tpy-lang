@@ -5,21 +5,21 @@
 
 namespace tpy_user::main {
 
-extern tpy::BigInt B;
-extern tpy::BigInt SMALL_MAX;
-extern tpy::BigInt SMALL_MIN;
-extern tpy::BigInt BIG_POS;
-extern tpy::BigInt BIG_NEG;
-extern tpy::BigInt WIDE_POS;
-extern tpy::BigInt WIDE_NEG;
-extern tpy::BigInt ONE_BIG;
-extern tpy::BigInt shift_count;
-extern tpy::BigInt in_i32_max;
-extern tpy::BigInt in_i32_min;
-extern tpy::BigInt in_i64_from_big;
+extern ::tpy::BigInt B;
+extern ::tpy::BigInt SMALL_MAX;
+extern ::tpy::BigInt SMALL_MIN;
+extern ::tpy::BigInt BIG_POS;
+extern ::tpy::BigInt BIG_NEG;
+extern ::tpy::BigInt WIDE_POS;
+extern ::tpy::BigInt WIDE_NEG;
+extern ::tpy::BigInt ONE_BIG;
+extern ::tpy::BigInt shift_count;
+extern ::tpy::BigInt in_i32_max;
+extern ::tpy::BigInt in_i32_min;
+extern ::tpy::BigInt in_i64_from_big;
 inline constexpr std::string_view __name__ = "__main__";
 
-void probe(std::string_view label, const tpy::BigInt& a, const tpy::BigInt& b, int32_t shift);
+void probe(std::string_view label, const ::tpy::BigInt& a, const ::tpy::BigInt& b, int32_t shift);
 
 void __tpy_init();
 } // namespace tpy_user::main

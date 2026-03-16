@@ -30,10 +30,10 @@ void main() {
     //     greet_pet(np)            # NamedPet* -> Base_Pet& (child-to-parent base upcast)
     greet_pet((*np));
     //     greet_named(Parrot())    # Structural -> Adapter_NamedPet -> Base_NamedPet
-    tpy::Adapter<NamedPet, Parrot> __tmp_1{Parrot()};
+    ::tpy::Adapter<NamedPet, Parrot> __tmp_1{Parrot()};
     greet_named(__tmp_1);
     //     parrot_np: NamedPet = Parrot()
-    tpy::Adapter<NamedPet, Parrot> __slot_2{Parrot()};
+    ::tpy::Adapter<NamedPet, Parrot> __slot_2{Parrot()};
     NamedPet* parrot_np = &__slot_2;
     //     greet_pet(parrot_np)     # NamedPet* -> Base_Pet& (erased, upcast)
     greet_pet((*parrot_np));
@@ -51,7 +51,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

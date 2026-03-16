@@ -17,11 +17,11 @@ std::vector<int32_t>* nums{};
 // def span_ops(sp: Span[Int32]) -> None:
 void span_ops(std::span<int32_t> sp) {
     //     print(len(sp))
-    std::cout << tpy::__len__(sp) << "\n";
+    std::cout << ::tpy::__len__(sp) << "\n";
     //     print(sp[0])
-    std::cout << tpy::__getitem__(sp, 0) << "\n";
+    std::cout << ::tpy::__getitem__(sp, 0) << "\n";
     //     print(sp[1])
-    std::cout << tpy::__getitem__(sp, 1) << "\n";
+    std::cout << ::tpy::__getitem__(sp, 1) << "\n";
 }
 
 void __tpy_init() {
@@ -42,7 +42,7 @@ void __tpy_init() {
     // al.append(30)
     al->append(30);
     // print(len(al))
-    std::cout << tpy::__len__((*al)) << "\n";
+    std::cout << ::tpy::__len__((*al)) << "\n";
     // print(al[0])
     std::cout << (*al)[0] << "\n";
     // print(al[2])
@@ -52,17 +52,17 @@ void __tpy_init() {
     static std::array<int32_t, 3> __global_slot_2 = {100, 200, 300};
     arr = &__global_slot_2;
     // print(len(arr))
-    std::cout << tpy::__len__((*arr)) << "\n";
+    std::cout << ::tpy::__len__((*arr)) << "\n";
     // print(arr[0])
-    std::cout << tpy::__getitem__((*arr), 0) << "\n";
+    std::cout << ::tpy::__getitem__((*arr), 0) << "\n";
     // print(arr[2])
-    std::cout << tpy::__getitem__((*arr), 2) << "\n";
+    std::cout << ::tpy::__getitem__((*arr), 2) << "\n";
     // arr[1] = 250
-    tpy::__setitem__((*arr), 1, 250);
+    ::tpy::__setitem__((*arr), 1, 250);
     // print(arr[1])
-    std::cout << tpy::__getitem__((*arr), 1) << "\n";
+    std::cout << ::tpy::__getitem__((*arr), 1) << "\n";
     // span_ops(arr)
-    span_ops(tpy::as_mut_span((*arr)));
+    span_ops(::tpy::as_mut_span((*arr)));
     // # list methods
     // nums: list[Int32] = [1, 2, 3]
     static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
@@ -70,21 +70,21 @@ void __tpy_init() {
     // nums.append(4)
     (*nums).push_back(4);
     // print(len(nums))
-    std::cout << tpy::__len__((*nums)) << "\n";
+    std::cout << ::tpy::__len__((*nums)) << "\n";
     // print(nums[0])
-    std::cout << tpy::__getitem__((*nums), 0) << "\n";
+    std::cout << ::tpy::__getitem__((*nums), 0) << "\n";
     // print(nums[3])
-    std::cout << tpy::__getitem__((*nums), 3) << "\n";
+    std::cout << ::tpy::__getitem__((*nums), 3) << "\n";
     // nums.pop()
-    tpy::pop_back((*nums));
+    ::tpy::pop_back((*nums));
     // print(len(nums))
-    std::cout << tpy::__len__((*nums)) << "\n";
+    std::cout << ::tpy::__len__((*nums)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

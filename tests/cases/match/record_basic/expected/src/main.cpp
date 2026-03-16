@@ -16,18 +16,18 @@ std::string describe(const Point& p) {
     } else if (__match_subject.y == 0) {
         auto& x = __match_subject.x;
         //             return "x-axis: " + str(x)
-        return (tpy::str_concat("x-axis: ", tpy::fixed_to_str<int32_t>(x)));
+        return (::tpy::str_concat("x-axis: ", ::tpy::fixed_to_str<int32_t>(x)));
     //         case Point(x=0, y=y):
     } else if (__match_subject.x == 0) {
         auto& y = __match_subject.y;
         //             return "y-axis: " + str(y)
-        return (tpy::str_concat("y-axis: ", tpy::fixed_to_str<int32_t>(y)));
+        return (::tpy::str_concat("y-axis: ", ::tpy::fixed_to_str<int32_t>(y)));
     //         case Point(x=x, y=y):
     } else {
         auto& x = __match_subject.x;
         auto& y = __match_subject.y;
         //             return "(" + str(x) + ", " + str(y) + ")"
-        return (tpy::str_concat((tpy::str_concat((tpy::str_concat((tpy::str_concat("(", tpy::fixed_to_str<int32_t>(x))), ", ")), tpy::fixed_to_str<int32_t>(y))), ")"));
+        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", ::tpy::fixed_to_str<int32_t>(x))), ", ")), ::tpy::fixed_to_str<int32_t>(y))), ")"));
     }
     //     return ""
     return "";
@@ -79,7 +79,7 @@ std::string with_capture(const Point& p) {
     {
         auto& q = __match_subject;
         //             return "point: " + str(q.x) + ", " + str(q.y)
-        return (tpy::str_concat((tpy::str_concat((tpy::str_concat("point: ", tpy::fixed_to_str<int32_t>(q.x))), ", ")), tpy::fixed_to_str<int32_t>(q.y)));
+        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("point: ", ::tpy::fixed_to_str<int32_t>(q.x))), ", ")), ::tpy::fixed_to_str<int32_t>(q.y)));
     }
     //     return ""
     return "";
@@ -131,7 +131,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

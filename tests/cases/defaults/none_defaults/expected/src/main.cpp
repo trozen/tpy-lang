@@ -31,7 +31,7 @@ void main() {
     //     if r1 is not None:
     if ((r1.has_value())) {
         //         print(r1)
-        std::cout << tpy::print_optional_val(r1) << "\n";
+        std::cout << ::tpy::print_optional_val(r1) << "\n";
     }
     //     r2 = find(items, Int32(99))
     std::optional<int32_t> r2 = find(items, 99);
@@ -45,7 +45,7 @@ void main() {
     //     if r3 is not None:
     if ((r3.has_value())) {
         //         print(r3)
-        std::cout << tpy::print_optional_val(r3) << "\n";
+        std::cout << ::tpy::print_optional_val(r3) << "\n";
     }
 }
 
@@ -61,7 +61,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

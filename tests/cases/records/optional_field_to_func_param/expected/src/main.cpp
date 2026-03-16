@@ -30,17 +30,17 @@ void __tpy_init() {
     static Holder __global_slot_1 = Holder();
     h = &__global_slot_1;
     // describe(h.value)
-    describe(tpy::optional_to_ptr(h->value));
+    describe(::tpy::optional_to_ptr(h->value));
     // h.value = Point(5, 6)
     h->value = Point(5, 6);
     // describe(h.value)
-    describe(tpy::optional_to_ptr(h->value));
+    describe(::tpy::optional_to_ptr(h->value));
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

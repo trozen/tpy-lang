@@ -19,7 +19,7 @@ void test_list_view() {
     //     items: list[str] = ["alpha", "beta"]
     std::vector<std::string> items = {"alpha", "beta"};
     //     s = items[0]  # tpyc: type(StrView)
-    std::string_view s = tpy::__getitem__(items, 0);
+    std::string_view s = ::tpy::__getitem__(items, 0);
     //     print(s)
     std::cout << s << "\n";
 }
@@ -52,7 +52,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

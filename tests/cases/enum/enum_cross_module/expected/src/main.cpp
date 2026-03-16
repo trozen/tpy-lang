@@ -11,17 +11,17 @@ void main() {
     //     print(c)
     std::cout << c << "\n";
     //     print(c.name)
-    std::cout << tpy::EnumUtil<::tpy_user::colors::Color>::name(c) << "\n";
+    std::cout << ::tpy::EnumUtil<::tpy_user::colors::Color>::name(c) << "\n";
     //     print(color_value(c))
     std::cout << ::tpy_user::colors::color_value(c) << "\n";
     //     g = Color.Green
     ::tpy_user::colors::Color g = ::tpy_user::colors::Color::Green;
     //     print(c == g)
-    std::cout << tpy::print_bool((c == g)) << "\n";
+    std::cout << ::tpy::print_bool((c == g)) << "\n";
     //     print(c != g)
-    std::cout << tpy::print_bool((c != g)) << "\n";
+    std::cout << ::tpy::print_bool((c != g)) << "\n";
     //     print(c == Color.Red)
-    std::cout << tpy::print_bool((c == ::tpy_user::colors::Color::Red)) << "\n";
+    std::cout << ::tpy::print_bool((c == ::tpy_user::colors::Color::Red)) << "\n";
 }
 
 void __tpy_init() {
@@ -39,7 +39,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

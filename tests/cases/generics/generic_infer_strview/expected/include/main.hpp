@@ -8,9 +8,9 @@ namespace tpy_user::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x);
+::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x);
 template<typename T>
-tpy::val_or_ref_t<T> first(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b);
+::tpy::val_or_ref_t<T> first(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 void test_literal_infer_strview();
 void test_explicit_no_downgrade();
 std::string make_str();
@@ -19,13 +19,13 @@ void test_non_literal_no_downgrade();
 // # Test that generic inference prefers StrView for string literal arguments.
 // def identity[T](x: T) -> T:
 template<typename T>
-tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x) {
+::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
     //     return x
     return x;
 }
 // def first[T](a: T, b: T) -> T:
 template<typename T>
-tpy::val_or_ref_t<T> first(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
+::tpy::val_or_ref_t<T> first(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     //     return a
     return a;
 }

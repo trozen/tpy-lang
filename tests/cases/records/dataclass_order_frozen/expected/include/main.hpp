@@ -33,7 +33,7 @@ struct Version {
     }
 
     uint64_t __hash__() const {
-        return tpy::hash_combine(0, this->major, this->minor, this->patch);
+        return ::tpy::hash_combine(0, this->major, this->minor, this->patch);
     }
 
     friend auto operator<=>(const Version& lhs, const Version& rhs) {

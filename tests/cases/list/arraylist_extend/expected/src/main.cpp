@@ -24,7 +24,7 @@ void main() {
     //     a.extend(b)
     a.extend(b);
     //     print(len(a))       # 5
-    std::cout << tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n";
     //     for x in a:
     auto& __src_0 = a;
     auto __obj_0 = __src_0.__iter__();
@@ -41,11 +41,11 @@ void main() {
     //     arr: Array[Int32, 3] = [100, 200, 300]
     std::array<int32_t, 3> arr = {100, 200, 300};
     //     s: Span[Int32] = arr
-    std::span<int32_t> s = tpy::as_mut_span(arr);
+    std::span<int32_t> s = ::tpy::as_mut_span(arr);
     //     c.extend(s)
     c.extend(s);
     //     print(len(c))       # 3
-    std::cout << tpy::__len__(c) << "\n";
+    std::cout << ::tpy::__len__(c) << "\n";
     //     print(c[0])         # 100
     std::cout << c[0] << "\n";
     //     print(c[2])         # 300
@@ -66,7 +66,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

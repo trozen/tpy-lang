@@ -10,14 +10,14 @@ void main() {
     //     c = Counter(4)
     Counter c = Counter(4);
     //     it = iter(c)
-    auto it = tpy::__iter__(c);
+    auto it = ::tpy::__iter__(c);
     //     # try_next() returns next value or None
     //     v = try_next(it)
     std::optional<int32_t> v = it.__next_opt__();
     //     while v is not None:
     while ((v.has_value())) {
         //         print(v)
-        std::cout << tpy::print_optional_val(v) << "\n";
+        std::cout << ::tpy::print_optional_val(v) << "\n";
         //         v = try_next(it)
         v = it.__next_opt__();
     }
@@ -43,7 +43,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

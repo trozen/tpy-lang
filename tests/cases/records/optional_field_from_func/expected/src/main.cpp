@@ -42,23 +42,23 @@ void __tpy_init() {
     static Holder __global_slot_2 = Holder();
     h = &__global_slot_2;
     // h.value = copy(find(pts, 2))
-    h->value = tpy::ptr_to_optional(find((*pts), 2));
+    h->value = ::tpy::ptr_to_optional(find((*pts), 2));
     // print(h.value is None)
-    std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n";
     // print(h.value.x)
-    std::cout << tpy::deref_optional_check(h->value).x << "\n";
+    std::cout << ::tpy::deref_optional_check(h->value).x << "\n";
     // print(h.value.y)
-    std::cout << tpy::deref_optional_check(h->value).y << "\n";
+    std::cout << ::tpy::deref_optional_check(h->value).y << "\n";
     // h.value = copy(find(pts, 99))
-    h->value = tpy::ptr_to_optional(find((*pts), 99));
+    h->value = ::tpy::ptr_to_optional(find((*pts), 99));
     // print(h.value is None)
-    std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

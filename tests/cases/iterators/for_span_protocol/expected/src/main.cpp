@@ -50,7 +50,7 @@ void test_iterate_twice() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         total += x
-        total = tpy::add_check<int32_t>(total, x);
+        total = ::tpy::add_check<int32_t>(total, x);
     }
     //     for x in buf:
     auto& __src_1 = buf;
@@ -60,7 +60,7 @@ void test_iterate_twice() {
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
         //         total += x
-        total = tpy::add_check<int32_t>(total, x);
+        total = ::tpy::add_check<int32_t>(total, x);
     }
     //     print(total)
     std::cout << total << "\n";
@@ -78,7 +78,7 @@ void test_readonly_param(const MutBuffer& buf) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         total += x
-        total = tpy::add_check<int32_t>(total, x);
+        total = ::tpy::add_check<int32_t>(total, x);
     }
     //     print(total)
     std::cout << total << "\n";
@@ -97,7 +97,7 @@ void test_rvalue_span() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         total += x
-        total = tpy::add_check<int32_t>(total, x);
+        total = ::tpy::add_check<int32_t>(total, x);
     }
     //     print(total)
     std::cout << total << "\n";
@@ -125,7 +125,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

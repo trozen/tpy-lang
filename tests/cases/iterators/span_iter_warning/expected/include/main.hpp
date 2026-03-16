@@ -30,7 +30,7 @@ struct MyIter {
             //             result = self._val
             int32_t result = this->_val;
             //             self._val -= 1
-            this->_val = tpy::sub_check<int32_t>(this->_val, 1);
+            this->_val = ::tpy::sub_check<int32_t>(this->_val, 1);
             //             return result
             return result;
         }
@@ -39,7 +39,7 @@ struct MyIter {
     }
 
     int32_t __next__() {
-        tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
+        ::tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
     }
 };
 
@@ -62,14 +62,14 @@ struct Dual {
     //     def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<int32_t> __span__() {
         //         return self._data
-        return tpy::as_mut_span(this->_data);
+        return ::tpy::as_mut_span(this->_data);
     }
 
     //     @auto_readonly
     //     def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> __span__() const {
         //         return self._data
-        return tpy::as_span(this->_data);
+        return ::tpy::as_span(this->_data);
     }
 
     //     def __iter__(self) -> Own[MyIter]:
@@ -81,7 +81,7 @@ struct Dual {
 
 inline std::ostream& operator<<(std::ostream& os, const Dual& obj) {
     os << "Dual("
-       << "_data=" << tpy::ListPrinter(obj._data)
+       << "_data=" << ::tpy::ListPrinter(obj._data)
        << ")";
     return os;
 }

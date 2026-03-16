@@ -25,19 +25,19 @@ struct Pair {
     }
 
     //     def set_a(self, val: T) -> None:
-    void set_a(tpy::param_val_or_ref_t<T> val) {
+    void set_a(::tpy::param_val_or_ref_t<T> val) {
         //         self.a = val
         this->a = val;
     }
 
     //     def set_b(self, val: U) -> None:
-    void set_b(tpy::param_val_or_ref_t<U> val) {
+    void set_b(::tpy::param_val_or_ref_t<U> val) {
         //         self.b = val
         this->b = val;
     }
 
     //     def set_both(self, a: T, b: U) -> None:
-    void set_both(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<U> b) {
+    void set_both(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
         //         self.a = a
         this->a = a;
         //         self.b = b
@@ -45,13 +45,13 @@ struct Pair {
     }
 
     //     def get_a(self) -> T:
-    tpy::val_or_ref_t<T> get_a() {
+    ::tpy::val_or_ref_t<T> get_a() {
         //         return self.a
         return this->a;
     }
 
     //     def get_b(self) -> U:
-    tpy::val_or_ref_t<U> get_b() {
+    ::tpy::val_or_ref_t<U> get_b() {
         //         return self.b
         return this->b;
     }
@@ -60,9 +60,9 @@ struct Pair {
 template<typename T, typename U>
 inline std::ostream& operator<<(std::ostream& os, const Pair<T, U>& obj) {
     os << "Pair("
-       << "a=" << tpy::ValuePrinter(obj.a)
+       << "a=" << ::tpy::ValuePrinter(obj.a)
        << ", "
-       << "b=" << tpy::ValuePrinter(obj.b)
+       << "b=" << ::tpy::ValuePrinter(obj.b)
        << ")";
     return os;
 }

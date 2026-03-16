@@ -10,7 +10,7 @@ std::string s;
 char c{};
 // # Containers
 // items: list[int] = [1, 2, 3]
-std::vector<tpy::BigInt>* items{};
+std::vector<::tpy::BigInt>* items{};
 // arr: Array[Int32, 3] = [10, 20, 30]
 std::array<int32_t, 3>* arr{};
 // al = ArrayList[Int32, 4]()
@@ -26,7 +26,7 @@ std::optional<double> z;
 // def print_range() -> None:
 void print_range() {
     //     r = range(3)
-    tpy::Range<int32_t> r = tpy::Range<int32_t>(3);
+    ::tpy::Range<int32_t> r = ::tpy::Range<int32_t>(3);
     //     print(r)
     std::cout << r << "\n";
 }
@@ -47,11 +47,11 @@ void __tpy_init() {
     // print(Int32(7))
     std::cout << 7 << "\n";
     // print(3.14)
-    std::cout << tpy::print_float(3.14) << "\n";
+    std::cout << ::tpy::print_float(3.14) << "\n";
     // print(True)
-    std::cout << tpy::print_bool(true) << "\n";
+    std::cout << ::tpy::print_bool(true) << "\n";
     // print(False)
-    std::cout << tpy::print_bool(false) << "\n";
+    std::cout << ::tpy::print_bool(false) << "\n";
     // # String literal and variable
     // print("hello")
     std::cout << "hello" << "\n";
@@ -66,15 +66,15 @@ void __tpy_init() {
     std::cout << c << "\n";
     // # Containers
     // items: list[int] = [1, 2, 3]
-    static std::vector<tpy::BigInt> __global_slot_1 = {1, 2, 3};
+    static std::vector<::tpy::BigInt> __global_slot_1 = {1, 2, 3};
     items = &__global_slot_1;
     // print(items)
-    std::cout << tpy::ListPrinter((*items)) << "\n";
+    std::cout << ::tpy::ListPrinter((*items)) << "\n";
     // arr: Array[Int32, 3] = [10, 20, 30]
     static std::array<int32_t, 3> __global_slot_2 = {10, 20, 30};
     arr = &__global_slot_2;
     // print(arr)
-    std::cout << tpy::ListPrinter((*arr)) << "\n";
+    std::cout << ::tpy::ListPrinter((*arr)) << "\n";
     // al = ArrayList[Int32, 4]()
     static ::tpy_user::tplib::ArrayList<int32_t, 4> __global_slot_3 = ::tpy_user::tplib::ArrayList<int32_t, 4>();
     al = &__global_slot_3;
@@ -86,39 +86,39 @@ void __tpy_init() {
     std::cout << (*al) << "\n";
     // # Range (has its own operator<<, not ListPrinter)
     // print(range(5))
-    std::cout << tpy::Range<int32_t>(5) << "\n";
+    std::cout << ::tpy::Range<int32_t>(5) << "\n";
     // print(range(2, 7))
-    std::cout << tpy::Range<int32_t>(2, 7) << "\n";
+    std::cout << ::tpy::Range<int32_t>(2, 7) << "\n";
     // print(range(0, 10, 3))
-    std::cout << tpy::Range<int32_t>(0, 10, 3) << "\n";
+    std::cout << ::tpy::Range<int32_t>(0, 10, 3) << "\n";
     // print_range()
     print_range();
     // # Multiple args
     // print("x:", 42, True, 3.14)
-    std::cout << "x:" << " " << 42 << " " << tpy::print_bool(true) << " " << tpy::print_float(3.14) << "\n";
+    std::cout << "x:" << " " << 42 << " " << ::tpy::print_bool(true) << " " << ::tpy::print_float(3.14) << "\n";
     // # Optional values
     // x: Int32 | None = Int32(10)
     x = 10;
     // print(x)
-    std::cout << tpy::print_optional_val(x) << "\n";
+    std::cout << ::tpy::print_optional_val(x) << "\n";
     // x = None
     x = std::nullopt;
     // print(x)
-    std::cout << tpy::print_optional_val(x) << "\n";
+    std::cout << ::tpy::print_optional_val(x) << "\n";
     // y: bool | None = True
     y = true;
     // print(y)
-    std::cout << tpy::print_optional_val<tpy::print_bool, bool>(y) << "\n";
+    std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(y) << "\n";
     // z: float | None = 2.5
     z = 2.5;
     // print(z)
-    std::cout << tpy::print_optional_val<tpy::print_float, double>(z) << "\n";
+    std::cout << ::tpy::print_optional_val<::tpy::print_float, double>(z) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -7,9 +7,9 @@ namespace tpy_user::main {
 // def check_truthy(s: Optional[str]) -> None:
 void check_truthy(std::optional<std::string_view> s) {
     //     if s:
-    if (tpy::is_truthy(s)) {
+    if (::tpy::is_truthy(s)) {
         //         print(s)
-        std::cout << tpy::print_optional_val(s) << "\n";
+        std::cout << ::tpy::print_optional_val(s) << "\n";
     //     else:
     } else {
         //         print("falsy")
@@ -22,7 +22,7 @@ void check_none(std::optional<std::string_view> s) {
     //     if s is not None:
     if ((s.has_value())) {
         //         print(s)
-        std::cout << tpy::print_optional_val(s) << "\n";
+        std::cout << ::tpy::print_optional_val(s) << "\n";
     //     else:
     } else {
         //         print("none")
@@ -56,7 +56,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

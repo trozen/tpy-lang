@@ -27,7 +27,7 @@ struct WithArray {
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const WithArray<T, N>& obj) {
     os << "WithArray("
-       << "data=" << tpy::ListPrinter(obj.data)
+       << "data=" << ::tpy::ListPrinter(obj.data)
        << ")";
     return os;
 }
@@ -45,7 +45,7 @@ struct WithList {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const WithList<T>& obj) {
     os << "WithList("
-       << "items=" << tpy::ListPrinter(obj.items)
+       << "items=" << ::tpy::ListPrinter(obj.items)
        << ")";
     return os;
 }
@@ -54,16 +54,16 @@ inline std::ostream& operator<<(std::ostream& os, const WithList<T>& obj) {
 template<typename K, typename V>
 struct WithDict {
     //     data: dict[K, V]
-    tpy::ordered_map<K, V> data;
+    ::tpy::ordered_map<K, V> data;
 
     //     def __init__(self):
-    WithDict() : data(tpy::ordered_map<K, V>()) {}
+    WithDict() : data(::tpy::ordered_map<K, V>()) {}
 };
 
 template<typename K, typename V>
 inline std::ostream& operator<<(std::ostream& os, const WithDict<K, V>& obj) {
     os << "WithDict("
-       << "data=" << tpy::DictPrinter(obj.data)
+       << "data=" << ::tpy::DictPrinter(obj.data)
        << ")";
     return os;
 }
@@ -103,7 +103,7 @@ struct WithHeapStorage {
     }
 
     //     def get(self) -> T:
-    tpy::val_or_cref_t<T> get() const {
+    ::tpy::val_or_cref_t<T> get() const {
         //         return self._storage.load0()
         return this->_storage.load0();
     }

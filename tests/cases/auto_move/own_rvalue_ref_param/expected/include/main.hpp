@@ -50,7 +50,7 @@ struct Container {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     os << "Container("
-       << "items=" << tpy::ListPrinter(obj.items)
+       << "items=" << ::tpy::ListPrinter(obj.items)
        << ")";
     return os;
 }

@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-tpy::BigInt factorial(const tpy::BigInt& n);
+::tpy::BigInt factorial(const ::tpy::BigInt& n);
 
 void __tpy_init();
 } // namespace tpy_user::main

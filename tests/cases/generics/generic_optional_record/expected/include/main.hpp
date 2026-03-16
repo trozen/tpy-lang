@@ -16,16 +16,16 @@ void main();
 // class Point:
 struct Point {
     //     x: int
-    tpy::BigInt x;
+    ::tpy::BigInt x;
     //     y: int
-    tpy::BigInt y;
+    ::tpy::BigInt y;
 
     //     def __init__(self, x: int, y: int) -> None:
     Point() = default;
-    explicit Point(const tpy::BigInt& x, const tpy::BigInt& y) : x(x), y(y) {}
+    explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 
     //     def sum(self) -> int:
-    tpy::BigInt sum() const {
+    ::tpy::BigInt sum() const {
         //         return self.x + self.y
         return ((this->x) + (this->y));
     }
@@ -67,9 +67,9 @@ struct Container {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     os << "Container("
-       << "_value=" << tpy::ValuePrinter(obj._value)
+       << "_value=" << ::tpy::ValuePrinter(obj._value)
        << ", "
-       << "_has=" << tpy::print_bool(obj._has)
+       << "_has=" << ::tpy::print_bool(obj._has)
        << ")";
     return os;
 }

@@ -24,13 +24,13 @@ struct Counter {
     //     def increment(self) -> None:
     void increment() {
         //         self.value = self.value + 1
-        this->value = (tpy::add_check<int32_t>(this->value, 1));
+        this->value = (::tpy::add_check<int32_t>(this->value, 1));
     }
 
     //     def add(self, n: Int32) -> None:
     void add(int32_t n) {
         //         self.value = self.value + n
-        this->value = (tpy::add_check<int32_t>(this->value, n));
+        this->value = (::tpy::add_check<int32_t>(this->value, n));
     }
 
     //     def get(self) -> Int32:

@@ -13,7 +13,7 @@ void main() {
     //     if v is not None:
     if ((v.has_value())) {
         //         print("got:", v)
-        std::cout << "got:" << " " << tpy::print_optional_val(v) << "\n";
+        std::cout << "got:" << " " << ::tpy::print_optional_val(v) << "\n";
     }
     //     b.clear()
     b.clear();
@@ -31,7 +31,7 @@ void main() {
     //     if v3 is not None:
     if ((v3.has_value())) {
         //         print("bool:", v3)
-        std::cout << "bool:" << " " << tpy::print_optional_val<tpy::print_bool, bool>(v3) << "\n";
+        std::cout << "bool:" << " " << ::tpy::print_optional_val<::tpy::print_bool, bool>(v3) << "\n";
     }
 }
 
@@ -47,7 +47,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

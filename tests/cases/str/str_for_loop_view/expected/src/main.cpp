@@ -21,7 +21,7 @@ void main() {
     }
     //     # Dict key iteration -> string_view
     //     d: dict[str, int] = {"a": 1, "b": 2}
-    tpy::ordered_map<std::string, tpy::BigInt> d = tpy::ordered_map<std::string, tpy::BigInt>({{"a", tpy::BigInt(1)}, {"b", tpy::BigInt(2)}});
+    ::tpy::ordered_map<std::string, ::tpy::BigInt> d = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}, {"b", ::tpy::BigInt(2)}});
     //     for k in d:
     auto& __obj_1 = d;
     auto __beg_1 = __obj_1.begin();
@@ -33,16 +33,16 @@ void main() {
     }
     //     # Dict items -> tuple unpack, str key is string_view
     //     for k, v in d.items():
-    auto __obj_2 = tpy::dict_items(d);
+    auto __obj_2 = ::tpy::dict_items(d);
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
-        const std::tuple<std::string, tpy::BigInt>& __for_tup_0 = *__beg_2;
+        const std::tuple<std::string, ::tpy::BigInt>& __for_tup_0 = *__beg_2;
         //     # Dict items -> tuple unpack, str key is string_view
         //     for k, v in d.items():
         const auto& __tup_1 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_1);
-        const tpy::BigInt& v = std::get<1>(__tup_1);
+        const ::tpy::BigInt& v = std::get<1>(__tup_1);
         //         print(k, v)
         std::cout << k << " " << v << "\n";
     }
@@ -60,7 +60,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -15,11 +15,11 @@ void main();
 // class time:
 struct time {
     //     value: int
-    tpy::BigInt value;
+    ::tpy::BigInt value;
 
     //     def __init__(self, v: int):
     time() = default;
-    explicit time(const tpy::BigInt& v) : value(v) {}
+    explicit time(const ::tpy::BigInt& v) : value(v) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const time& obj) {

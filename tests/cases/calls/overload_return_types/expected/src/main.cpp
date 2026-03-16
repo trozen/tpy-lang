@@ -16,7 +16,7 @@ std::string get_value(const Dog& animal) {
 
 // @overload
 // def get_value(animal: Cat) -> int: ...  # tpyc: ok
-tpy::BigInt get_value(const Cat& animal) {
+::tpy::BigInt get_value(const Cat& animal) {
     //     if isinstance(animal, Dog):
     //         return animal.lives
     return animal.lives;
@@ -26,13 +26,13 @@ tpy::BigInt get_value(const Cat& animal) {
 // def use_dog_result(name: str) -> None:
 void use_dog_result(std::string_view name) {
     //     print("Dog name: " + name)
-    std::cout << (tpy::str_concat("Dog name: ", name)) << "\n";
+    std::cout << (::tpy::str_concat("Dog name: ", name)) << "\n";
 }
 
 // def use_cat_result(lives: int) -> None:
-void use_cat_result(const tpy::BigInt& lives) {
+void use_cat_result(const ::tpy::BigInt& lives) {
     //     print("Cat lives: " + str(lives))
-    std::cout << (tpy::str_concat("Cat lives: ", (lives).to_string())) << "\n";
+    std::cout << (::tpy::str_concat("Cat lives: ", (lives).to_string())) << "\n";
 }
 
 // def main() -> None:
@@ -40,11 +40,11 @@ void main() {
     //     d = Dog("Rex")
     Dog d = Dog("Rex");
     //     c = Cat(9)
-    Cat c = Cat(tpy::BigInt(9));
+    Cat c = Cat(::tpy::BigInt(9));
     //     dog_val = get_value(d)  # tpyc: type(str)
     std::string dog_val = get_value(d);
     //     cat_val = get_value(c)  # tpyc: type(int)
-    tpy::BigInt cat_val = get_value(c);
+    ::tpy::BigInt cat_val = get_value(c);
     //     use_dog_result(dog_val)
     use_dog_result(dog_val);
     //     use_cat_result(cat_val)
@@ -63,7 +63,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -10,12 +10,12 @@ void main() {
     std::array<int32_t, 3> a = {10, 20, 30};
     //     # iter() on mutable Span
     //     s: Span[Int32] = a
-    std::span<int32_t> s = tpy::as_mut_span(a);
+    std::span<int32_t> s = ::tpy::as_mut_span(a);
     //     it = iter(s)
-    auto it = tpy::__iter__(s);
+    auto it = ::tpy::__iter__(s);
     //     for x in it:
     auto& __src_0 = it;
-    auto __obj_0 = tpy::iter_adapt(__src_0);
+    auto __obj_0 = ::tpy::iter_adapt(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -25,12 +25,12 @@ void main() {
     }
     //     # iter() on Span[readonly[T]]
     //     ro: Span[readonly[Int32]] = a
-    std::span<const int32_t> ro = tpy::as_span(a);
+    std::span<const int32_t> ro = ::tpy::as_span(a);
     //     it2 = iter(ro)
-    auto it2 = tpy::__iter__(ro);
+    auto it2 = ::tpy::__iter__(ro);
     //     for x in it2:
     auto& __src_1 = it2;
-    auto __obj_1 = tpy::iter_adapt(__src_1);
+    auto __obj_1 = ::tpy::iter_adapt(__src_1);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
@@ -40,11 +40,11 @@ void main() {
     }
     //     # Pass iter(span) to Iterator[T] param
     //     consume(iter(s))
-    auto __tmp_1 = tpy::__iter__(s);
+    auto __tmp_1 = ::tpy::__iter__(s);
     consume(__tmp_1);
     //     # print(iter(span)) -- should print <iterator>
     //     print(iter(s))
-    std::cout << tpy::__iter__(s) << "\n";
+    std::cout << ::tpy::__iter__(s) << "\n";
 }
 
 void __tpy_init() {
@@ -59,7 +59,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

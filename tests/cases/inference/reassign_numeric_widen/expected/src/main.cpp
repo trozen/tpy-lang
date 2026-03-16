@@ -21,7 +21,7 @@ void test_float_absorbs_int() {
     //     b = 1.5  # tpyc: type(float)
     b = 1.5;
     //     print(b)
-    std::cout << tpy::print_float(b) << "\n";
+    std::cout << ::tpy::print_float(b) << "\n";
 }
 
 // def test_float_stays_float() -> None:
@@ -31,15 +31,15 @@ void test_float_stays_float() {
     //     c = Int32(1)  # tpyc: type(float)
     c = static_cast<double>(1);
     //     print(c)
-    std::cout << tpy::print_float(c) << "\n";
+    std::cout << ::tpy::print_float(c) << "\n";
 }
 
 // def test_bigint_absorbs_fixedint() -> None:
 void test_bigint_absorbs_fixedint() {
     //     d = Int32(1)  # tpyc: type(int)
-    tpy::BigInt d = 1;
+    ::tpy::BigInt d = 1;
     //     d = int(2)  # tpyc: type(int)
-    d = tpy::BigInt(static_cast<int64_t>(2));
+    d = ::tpy::BigInt(static_cast<int64_t>(2));
     //     print(d)
     std::cout << d << "\n";
 }
@@ -86,7 +86,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

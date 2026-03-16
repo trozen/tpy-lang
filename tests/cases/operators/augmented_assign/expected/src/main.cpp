@@ -10,27 +10,27 @@ void test_aug_assign() {
     int32_t x = 10;
     //     # Addition
     //     x += 5
-    x = tpy::add_check<int32_t>(x, 5);
+    x = ::tpy::add_check<int32_t>(x, 5);
     //     print(x)  # 15
     std::cout << x << "\n";
     //     # Subtraction
     //     x -= 3
-    x = tpy::sub_check<int32_t>(x, 3);
+    x = ::tpy::sub_check<int32_t>(x, 3);
     //     print(x)  # 12
     std::cout << x << "\n";
     //     # Multiplication
     //     x *= 2
-    x = tpy::mul_check<int32_t>(x, 2);
+    x = ::tpy::mul_check<int32_t>(x, 2);
     //     print(x)  # 24
     std::cout << x << "\n";
     //     # Division (floor division for integer semantics)
     //     x //= 4
-    x = tpy::div_check<int32_t>(x, 4);
+    x = ::tpy::div_check<int32_t>(x, 4);
     //     print(x)  # 6
     std::cout << x << "\n";
     //     # Modulo
     //     x %= 4
-    x = tpy::mod_check<int32_t>(x, 4);
+    x = ::tpy::mod_check<int32_t>(x, 4);
     //     print(x)  # 2
     std::cout << x << "\n";
     //     # Bitwise AND
@@ -58,14 +58,14 @@ void test_aug_assign() {
     //     x = 1
     x = 1;
     //     x <<= 4
-    x = tpy::lshift_check<int32_t>(x, 4);
+    x = ::tpy::lshift_check<int32_t>(x, 4);
     //     print(x)  # 16
     std::cout << x << "\n";
     //     # Right shift
     //     x = 32
     x = 32;
     //     x >>= 2
-    x = tpy::rshift_check<int32_t>(x, 2);
+    x = ::tpy::rshift_check<int32_t>(x, 2);
     //     print(x)  # 8
     std::cout << x << "\n";
 }
@@ -82,7 +82,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

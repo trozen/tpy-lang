@@ -21,13 +21,13 @@ void test_init_from_temp() {
     //     # Field access on Own[Holder] return (temporary) — must not dangle
     //     v: Point | None = make_holder(p).value
     std::optional<Point> __slot_1 = make_holder(p).value;
-    Point* v = tpy::optional_to_ptr(__slot_1);
+    Point* v = ::tpy::optional_to_ptr(__slot_1);
     //     print(v is not None)
-    std::cout << tpy::print_bool((v != nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((v != nullptr)) << "\n";
     //     print(v.x)
-    std::cout << tpy::deref_check(v).x << "\n";
+    std::cout << ::tpy::deref_check(v).x << "\n";
     //     print(v.y)
-    std::cout << tpy::deref_check(v).y << "\n";
+    std::cout << ::tpy::deref_check(v).y << "\n";
 }
 
 // def test_rebind_from_temp() -> None:
@@ -39,11 +39,11 @@ void test_rebind_from_temp() {
     Point p = Point(3, 4);
     //     # Rebind pointer-local from field of temporary
     //     v = make_holder(p).value
-    v = tpy::optional_to_ptr(__slot_1 = make_holder(p).value);
+    v = ::tpy::optional_to_ptr(__slot_1 = make_holder(p).value);
     //     print(v is not None)
-    std::cout << tpy::print_bool((v != nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((v != nullptr)) << "\n";
     //     print(v.x)
-    std::cout << tpy::deref_check(v).x << "\n";
+    std::cout << ::tpy::deref_check(v).x << "\n";
 }
 
 // def test_rebind_in_block() -> None:
@@ -57,15 +57,15 @@ void test_rebind_in_block() {
     //     if True:
     if (true) {
         //         v = make_holder(p).value
-        v = tpy::optional_to_ptr(__slot_1 = make_holder(p).value);
+        v = ::tpy::optional_to_ptr(__slot_1 = make_holder(p).value);
     }
     //     # v must still be valid here (slot hoisted to function scope)
     //     print(v is not None)
-    std::cout << tpy::print_bool((v != nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((v != nullptr)) << "\n";
     //     print(v.x)
-    std::cout << tpy::deref_check(v).x << "\n";
+    std::cout << ::tpy::deref_check(v).x << "\n";
     //     print(v.y)
-    std::cout << tpy::deref_check(v).y << "\n";
+    std::cout << ::tpy::deref_check(v).y << "\n";
 }
 
 void __tpy_init() {
@@ -84,7 +84,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

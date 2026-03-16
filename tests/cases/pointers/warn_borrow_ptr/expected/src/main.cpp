@@ -21,11 +21,11 @@ void test_ptr_borrow_append() {
     //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
     //     ptr = Ptr(items[Int32(0)])
-    Point* ptr = &tpy::__getitem__(items, 0);
+    Point* ptr = &::tpy::__getitem__(items, 0);
     //     items.append(Point(Int32(3), Int32(4)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     items.push_back(Point(3, 4));
     //     print(len(items))
-    std::cout << tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_ptr_borrow_subscript_assign() -> None:
@@ -33,11 +33,11 @@ void test_ptr_borrow_subscript_assign() {
     //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
     //     ptr = Ptr(items[Int32(0)])
-    Point* ptr = &tpy::__getitem__(items, 0);
+    Point* ptr = &::tpy::__getitem__(items, 0);
     //     items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: ok
-    tpy::__setitem__(items, 0, Point(9, 9));
+    ::tpy::__setitem__(items, 0, Point(9, 9));
     //     print(items[Int32(0)].x)
-    std::cout << tpy::__getitem__(items, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).x << "\n";
 }
 
 // def test_ptr_reassign_clears() -> None:
@@ -74,7 +74,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

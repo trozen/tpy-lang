@@ -9,9 +9,9 @@ struct Buffer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<tpy::ReadOnlySpanLike<int32_t> T_x>
+template<::tpy::ReadOnlySpanLike<int32_t> T_x>
 int32_t span_len(const T_x& x);
-template<tpy::ReadOnlySpanLike<int32_t> T_x>
+template<::tpy::ReadOnlySpanLike<int32_t> T_x>
 int32_t span_sum(const T_x& x);
 void main();
 
@@ -27,43 +27,43 @@ struct Buffer {
     //     def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<int32_t> __span__() {
         //         return self._data
-        return tpy::as_mut_span(this->_data);
+        return ::tpy::as_mut_span(this->_data);
     }
 
     //     @auto_readonly
     //     def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> __span__() const {
         //         return self._data
-        return tpy::as_span(this->_data);
+        return ::tpy::as_span(this->_data);
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
     os << "Buffer("
-       << "_data=" << tpy::ListPrinter(obj._data)
+       << "_data=" << ::tpy::ListPrinter(obj._data)
        << ")";
     return os;
 }
 
 // def span_len(x: ReadOnlySpanLike[Int32]) -> Int32:
-template<tpy::ReadOnlySpanLike<int32_t> T_x>
+template<::tpy::ReadOnlySpanLike<int32_t> T_x>
 int32_t span_len(const T_x& x) {
     //     return len(span(x))
-    return tpy::__len__(tpy::as_span(x));
+    return ::tpy::__len__(::tpy::as_span(x));
 }
 // def span_sum(x: ReadOnlySpanLike[Int32]) -> Int32:
-template<tpy::ReadOnlySpanLike<int32_t> T_x>
+template<::tpy::ReadOnlySpanLike<int32_t> T_x>
 int32_t span_sum(const T_x& x) {
     //     total: Int32 = 0
     int32_t total = 0;
     //     for v in span(x):
-    auto __obj_0 = tpy::as_span(x);
+    auto __obj_0 = ::tpy::as_span(x);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
         //         total += v
-        total = tpy::add_check<int32_t>(total, v);
+        total = ::tpy::add_check<int32_t>(total, v);
     }
     //     return total
     return total;

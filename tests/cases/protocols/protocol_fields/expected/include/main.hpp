@@ -44,13 +44,13 @@ template<HasValue T> struct Wrapper;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<HasValue T>
-int32_t get_value(tpy::param_val_or_ref_t<T> item);
+int32_t get_value(::tpy::param_val_or_ref_t<T> item);
 template<HasXY T>
-int32_t sum_xy(tpy::param_val_or_ref_t<T> item);
+int32_t sum_xy(::tpy::param_val_or_ref_t<T> item);
 template<Container T>
-int32_t describe(tpy::param_val_or_ref_t<T> item);
+int32_t describe(::tpy::param_val_or_ref_t<T> item);
 template<Holder<int32_t> T>
-int32_t get_item(tpy::param_val_or_ref_t<T> holder);
+int32_t get_item(::tpy::param_val_or_ref_t<T> holder);
 void main();
 
 // # Record conforming to HasValue
@@ -156,7 +156,7 @@ struct Wrapper {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
     os << "Wrapper("
-       << "inner=" << tpy::ValuePrinter(obj.inner)
+       << "inner=" << ::tpy::ValuePrinter(obj.inner)
        << ")";
     return os;
 }
@@ -164,21 +164,21 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
 // # Function using protocol field
 // def get_value[T: HasValue](item: T) -> Int32:
 template<HasValue T>
-int32_t get_value(tpy::param_val_or_ref_t<T> item) {
+int32_t get_value(::tpy::param_val_or_ref_t<T> item) {
     //     return item.value
     return item.value;
 }
 // # Function using protocol with multiple fields
 // def sum_xy[T: HasXY](item: T) -> Int32:
 template<HasXY T>
-int32_t sum_xy(tpy::param_val_or_ref_t<T> item) {
+int32_t sum_xy(::tpy::param_val_or_ref_t<T> item) {
     //     return item.x + item.y
-    return (tpy::add_check<int32_t>(item.x, item.y));
+    return (::tpy::add_check<int32_t>(item.x, item.y));
 }
 // # Function using protocol with field and method
 // def describe[T: Container](item: T) -> Int32:
 template<Container T>
-int32_t describe(tpy::param_val_or_ref_t<T> item) {
+int32_t describe(::tpy::param_val_or_ref_t<T> item) {
     //     if item.is_empty():
     if (item.is_empty()) {
         //         return 0
@@ -190,7 +190,7 @@ int32_t describe(tpy::param_val_or_ref_t<T> item) {
 // # Function using generic protocol with field
 // def get_item[T: Holder[Int32]](holder: T) -> Int32:
 template<Holder<int32_t> T>
-int32_t get_item(tpy::param_val_or_ref_t<T> holder) {
+int32_t get_item(::tpy::param_val_or_ref_t<T> holder) {
     //     return holder.item
     return holder.item;
 }

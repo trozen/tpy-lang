@@ -39,9 +39,9 @@ void __tpy_init() {
     (*points).push_back(Point(3, 4));
     // # Print Optional from function return
     // print(find(points, 3))
-    std::cout << tpy::print_optional(find((*points), 3)) << "\n";
+    std::cout << ::tpy::print_optional(find((*points), 3)) << "\n";
     // print(find(points, 99))
-    std::cout << tpy::print_optional(find((*points), 99)) << "\n";
+    std::cout << ::tpy::print_optional(find((*points), 99)) << "\n";
     // # Print None literal
     // print(None)
     std::cout << "None" << "\n";
@@ -49,18 +49,18 @@ void __tpy_init() {
     // p: Point | None = None
     p = nullptr;
     // print(p)
-    std::cout << tpy::print_optional(p) << "\n";
+    std::cout << ::tpy::print_optional(p) << "\n";
     // p = Point(1, 2)
     static Point __global_slot_2 = Point(1, 2);
     p = &__global_slot_2;
     // print(p)
-    std::cout << tpy::print_optional(p) << "\n";
+    std::cout << ::tpy::print_optional(p) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -18,7 +18,7 @@ struct DefaultFactory;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<PointFactory T>
-Point make_point(tpy::param_val_or_ref_t<T> factory, int32_t x, int32_t y);
+Point make_point(::tpy::param_val_or_ref_t<T> factory, int32_t x, int32_t y);
 void main();
 
 // class Point:
@@ -61,7 +61,7 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultFactory& obj) {
 
 // def make_point[T: PointFactory](factory: T, x: Int32, y: Int32) -> Own[Point]:
 template<PointFactory T>
-Point make_point(tpy::param_val_or_ref_t<T> factory, int32_t x, int32_t y) {
+Point make_point(::tpy::param_val_or_ref_t<T> factory, int32_t x, int32_t y) {
     //     return factory.create_point(x, y)
     return factory.create_point(x, y);
 }

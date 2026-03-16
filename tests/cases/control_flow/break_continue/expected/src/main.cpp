@@ -17,7 +17,7 @@ void test_break() {
             break;
         }
         //         i += 1
-        i = tpy::add_check<int32_t>(i, 1);
+        i = ::tpy::add_check<int32_t>(i, 1);
     }
     //     print(i)  # 5
     std::cout << i << "\n";
@@ -31,12 +31,12 @@ void test_continue() {
     //     for i in range(10):
     for (int32_t i = 0; i < 10; ++i) {
         //         if i % 2 == 0:
-        if (((tpy::mod_floor<int32_t>(i, 2)) == 0)) {
+        if (((::tpy::mod_floor<int32_t>(i, 2)) == 0)) {
             //             continue
             continue;
         }
         //         total += i
-        total = tpy::add_check<int32_t>(total, i);
+        total = ::tpy::add_check<int32_t>(total, i);
     }
     //     print(total)  # 1 + 3 + 5 + 7 + 9 = 25
     std::cout << total << "\n";
@@ -57,7 +57,7 @@ void test_nested_break() {
                 break;
             }
             //             count += 1
-            count = tpy::add_check<int32_t>(count, 1);
+            count = ::tpy::add_check<int32_t>(count, 1);
         }
     }
     //     print(count)  # 2 * 3 = 6 (j goes 0, 1 then breaks, 3 times)
@@ -79,7 +79,7 @@ void test_nested_continue() {
                 continue;
             }
             //             count += 1
-            count = tpy::add_check<int32_t>(count, 1);
+            count = ::tpy::add_check<int32_t>(count, 1);
         }
     }
     //     print(count)  # 3 * 3 = 9 (j skips 1, so 0, 2, 3 for each i)
@@ -104,7 +104,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

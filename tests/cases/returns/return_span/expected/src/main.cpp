@@ -8,7 +8,7 @@ namespace tpy_user::main {
 // def get_span(arr: Array[Int32, 4]) -> Span[Int32]:
 std::span<int32_t> get_span(std::array<int32_t, 4>& arr) {
     //     return arr  # tpyc: ok
-    return tpy::as_mut_span(arr);
+    return ::tpy::as_mut_span(arr);
 }
 
 // def main():
@@ -18,9 +18,9 @@ void main() {
     //     s: Span[Int32] = get_span(nums)
     std::span<int32_t> s = get_span(nums);
     //     print(s[0])
-    std::cout << tpy::__getitem__(s, 0) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n";
     //     print(s[3])
-    std::cout << tpy::__getitem__(s, 3) << "\n";
+    std::cout << ::tpy::__getitem__(s, 3) << "\n";
 }
 
 void __tpy_init() {
@@ -35,7 +35,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

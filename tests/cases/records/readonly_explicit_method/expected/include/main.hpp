@@ -31,7 +31,7 @@ struct Counter {
     //     def doubled(self) -> Int32:
     int32_t doubled() const {
         //         return self.value + self.value
-        return (tpy::add_check<int32_t>(this->value, this->value));
+        return (::tpy::add_check<int32_t>(this->value, this->value));
     }
 };
 

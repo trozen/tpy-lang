@@ -31,13 +31,13 @@ struct Container {
     //     def count(self) -> Int32:
     int32_t count() const {
         //         return Int32(len(self._items))
-        return tpy::__len__(this->_items);
+        return ::tpy::__len__(this->_items);
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     os << "Container("
-       << "_items=" << tpy::ListPrinter(obj._items)
+       << "_items=" << ::tpy::ListPrinter(obj._items)
        << ")";
     return os;
 }

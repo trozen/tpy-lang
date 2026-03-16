@@ -32,7 +32,7 @@ struct CounterIter {
             //             result = self.current
             int32_t result = this->current;
             //             self.current += 1
-            this->current = tpy::add_check<int32_t>(this->current, 1);
+            this->current = ::tpy::add_check<int32_t>(this->current, 1);
             //             return result
             return result;
         }
@@ -41,7 +41,7 @@ struct CounterIter {
     }
 
     int32_t __next__() {
-        tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
+        ::tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
     }
 };
 

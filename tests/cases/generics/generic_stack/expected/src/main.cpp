@@ -9,7 +9,7 @@ void main() {
     //     stack: Stack[Int32] = Stack[Int32]()
     Stack<int32_t> stack = Stack<int32_t>();
     //     print(stack.is_empty())  # True
-    std::cout << tpy::print_bool(stack.is_empty()) << "\n";
+    std::cout << ::tpy::print_bool(stack.is_empty()) << "\n";
     //     stack.push(10)
     stack.push(10);
     //     stack.push(20)
@@ -17,7 +17,7 @@ void main() {
     //     stack.push(30)
     stack.push(30);
     //     print(stack.is_empty())  # False
-    std::cout << tpy::print_bool(stack.is_empty()) << "\n";
+    std::cout << ::tpy::print_bool(stack.is_empty()) << "\n";
     //     print(stack.pop())  # 30
     std::cout << stack.pop() << "\n";
     //     print(stack.pop())  # 20
@@ -25,7 +25,7 @@ void main() {
     //     print(stack.pop())  # 10
     std::cout << stack.pop() << "\n";
     //     print(stack.is_empty())  # True
-    std::cout << tpy::print_bool(stack.is_empty()) << "\n";
+    std::cout << ::tpy::print_bool(stack.is_empty()) << "\n";
 }
 
 void __tpy_init() {
@@ -40,7 +40,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

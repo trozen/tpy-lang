@@ -7,11 +7,11 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-tpy::ordered_map<std::string, std::string> in_dict_value();
-tpy::ordered_map<std::string, tpy::BigInt> in_dict_key();
-tpy::ordered_map<std::string, std::string> in_dict_var();
-tpy::ordered_map<std::string, std::string> in_dict_literal();
-tpy::ordered_map<std::string, std::string> in_dict_comp();
+::tpy::ordered_map<std::string, std::string> in_dict_value();
+::tpy::ordered_map<std::string, ::tpy::BigInt> in_dict_key();
+::tpy::ordered_map<std::string, std::string> in_dict_var();
+::tpy::ordered_map<std::string, std::string> in_dict_literal();
+::tpy::ordered_map<std::string, std::string> in_dict_comp();
 
 void __tpy_init();
 } // namespace tpy_user::main

@@ -49,28 +49,28 @@ namespace tpy_user::main {
 // def lookup(v: Int32) -> Color:
 Color lookup(int32_t v) {
     //     return Color(v)
-    return tpy::EnumUtil<Color>::from_value(v);
+    return ::tpy::EnumUtil<Color>::from_value(v);
 }
 
 // def from_int(v: int) -> Color:
-Color from_int(const tpy::BigInt& v) {
+Color from_int(const ::tpy::BigInt& v) {
     //     return Color(v)
-    return tpy::EnumUtil<Color>::from_value((v).to_fixed_check<int32_t>());
+    return ::tpy::EnumUtil<Color>::from_value((v).to_fixed_check<int32_t>());
 }
 
 // def main() -> None:
 void main() {
     //     print(Color(0))
-    std::cout << tpy::EnumUtil<Color>::from_value(0) << "\n";
+    std::cout << ::tpy::EnumUtil<Color>::from_value(0) << "\n";
     //     print(Color(1))
-    std::cout << tpy::EnumUtil<Color>::from_value(1) << "\n";
+    std::cout << ::tpy::EnumUtil<Color>::from_value(1) << "\n";
     //     print(Color(2))
-    std::cout << tpy::EnumUtil<Color>::from_value(2) << "\n";
+    std::cout << ::tpy::EnumUtil<Color>::from_value(2) << "\n";
     //     print(lookup(1))
     std::cout << lookup(1) << "\n";
     //     # BigInt (int) coerces to underlying type
     //     print(from_int(2))
-    std::cout << from_int(tpy::BigInt(2)) << "\n";
+    std::cout << from_int(::tpy::BigInt(2)) << "\n";
 }
 
 void __tpy_init() {
@@ -85,7 +85,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

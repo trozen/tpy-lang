@@ -16,17 +16,17 @@ void __tpy_init() {
     initialized = true;
 
     // print(ne_check(5, 5))
-    std::cout << tpy::print_bool(ne_check(5, 5)) << "\n";
+    std::cout << ::tpy::print_bool(ne_check(5, 5)) << "\n";
     // print(ne_check(3, 5))
-    std::cout << tpy::print_bool(ne_check(3, 5)) << "\n";
+    std::cout << ::tpy::print_bool(ne_check(3, 5)) << "\n";
     // print(ne_check(None, 5))
-    std::cout << tpy::print_bool(ne_check(std::nullopt, 5)) << "\n";
+    std::cout << ::tpy::print_bool(ne_check(std::nullopt, 5)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

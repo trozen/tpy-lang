@@ -54,15 +54,15 @@ void main() {
     std::cout << SmallEnum::C << "\n";
     //     # Arithmetic gives Int8
     //     x: Int8 = SmallEnum.B + Int8(10)
-    int8_t x = (tpy::add_check<int8_t>(static_cast<int8_t>(SmallEnum::B), 10));
+    int8_t x = (::tpy::add_check<int8_t>(static_cast<int8_t>(SmallEnum::B), 10));
     //     print(x)
     std::cout << static_cast<int>(x) << "\n";
     //     # Ordering
     //     print(SmallEnum.A < SmallEnum.C)
-    std::cout << tpy::print_bool((static_cast<int8_t>(SmallEnum::A) < static_cast<int8_t>(SmallEnum::C))) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<int8_t>(SmallEnum::A) < static_cast<int8_t>(SmallEnum::C))) << "\n";
     //     # Int comparison
     //     print(SmallEnum.B == Int8(1))
-    std::cout << tpy::print_bool((static_cast<int8_t>(SmallEnum::B) == 1)) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<int8_t>(SmallEnum::B) == 1)) << "\n";
 }
 
 void __tpy_init() {
@@ -77,7 +77,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

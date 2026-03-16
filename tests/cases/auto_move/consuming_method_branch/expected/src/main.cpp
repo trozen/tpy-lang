@@ -7,11 +7,11 @@ namespace tpy_user::main {
 // def test_branch(flag: bool) -> None:
 void test_branch(bool flag) {
     //     w = Wrapper(42)
-    Wrapper w = Wrapper(tpy::BigInt(42));
+    Wrapper w = Wrapper(::tpy::BigInt(42));
     //     if flag:
     if (flag) {
         //         result = w.take()
-        tpy::BigInt result = std::move(w).take();
+        ::tpy::BigInt result = std::move(w).take();
         //         print(result)
         std::cout << result << "\n";
     //     else:
@@ -35,7 +35,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

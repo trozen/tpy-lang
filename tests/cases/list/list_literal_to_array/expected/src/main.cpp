@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def sum_array(arr: Array[Int32, 3]) -> Int32:
 int32_t sum_array(const std::array<int32_t, 3>& arr) {
     //     return arr[0] + arr[1] + arr[2]
-    return (tpy::add_check<int32_t>((tpy::add_check<int32_t>(tpy::__getitem__(arr, 0), tpy::__getitem__(arr, 1))), tpy::__getitem__(arr, 2)));
+    return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(::tpy::__getitem__(arr, 0), ::tpy::__getitem__(arr, 1))), ::tpy::__getitem__(arr, 2)));
 }
 
 // def main():
@@ -45,7 +45,7 @@ void main() {
     std::array<int32_t, 3> __tmp_4 = {1, 0, 0};
     while ((sum_array(__tmp_4) > count)) {
         //         count = count + 1
-        count = (tpy::add_check<int32_t>(count, 1));
+        count = (::tpy::add_check<int32_t>(count, 1));
     }
     //     print(count)  # 1
     std::cout << count << "\n";
@@ -63,7 +63,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

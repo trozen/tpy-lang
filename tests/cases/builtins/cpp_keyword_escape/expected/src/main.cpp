@@ -22,7 +22,7 @@ void test_local_keywords() {
     //     new: Int32 = 20
     int32_t new_ = 20;
     //     result: Int32 = delete + new
-    int32_t result = (tpy::add_check<int32_t>(delete_, new_));
+    int32_t result = (::tpy::add_check<int32_t>(delete_, new_));
     //     print(result)
     std::cout << result << "\n";
 }
@@ -40,7 +40,7 @@ void test_for_loop_keyword() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t operator_ = *__beg_0;
         //         total = total + operator
-        total = (tpy::add_check<int32_t>(total, operator_));
+        total = (::tpy::add_check<int32_t>(total, operator_));
     }
     //     print(total)
     std::cout << total << "\n";
@@ -49,7 +49,7 @@ void test_for_loop_keyword() {
 // def delete(x: Int32) -> Int32:
 int32_t delete_(int32_t x) {
     //     return x * 2
-    return (tpy::mul_check<int32_t>(x, 2));
+    return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // def main() -> None:
@@ -78,7 +78,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

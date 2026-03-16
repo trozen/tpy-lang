@@ -11,7 +11,7 @@ void test_out_of_bounds() {
     std::vector<int32_t> items = {10, 20, 30};
     //     # Access index 10 which is out of bounds (only 3 elements)
     //     x: Int32 = items[10]
-    int32_t x = tpy::__getitem__(items, 10);
+    int32_t x = ::tpy::__getitem__(items, 10);
     //     print(x)
     std::cout << x << "\n";
 }
@@ -28,7 +28,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

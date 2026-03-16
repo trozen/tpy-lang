@@ -64,7 +64,7 @@ struct Circle : Shape {
 
 inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
     os << "Circle("
-       << "_r=" << tpy::print_float(obj._r)
+       << "_r=" << ::tpy::print_float(obj._r)
        << ")";
     return os;
 }
@@ -87,7 +87,7 @@ struct Square : Shape {
 
 inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
     os << "Square("
-       << "_s=" << tpy::print_float(obj._s)
+       << "_s=" << ::tpy::print_float(obj._s)
        << ")";
     return os;
 }

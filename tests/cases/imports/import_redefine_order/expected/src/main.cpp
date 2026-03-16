@@ -8,7 +8,7 @@ namespace tpy_user::main {
 int32_t MAX{};
 // # Redefine MIN with different type (int/BigInt)
 // MIN: int = 99
-tpy::BigInt MIN;
+::tpy::BigInt MIN;
 
 void __tpy_init() {
     static bool initialized = false;
@@ -27,7 +27,7 @@ void __tpy_init() {
     MAX = 42;
     // # Redefine MIN with different type (int/BigInt)
     // MIN: int = 99
-    MIN = tpy::BigInt(99);
+    MIN = ::tpy::BigInt(99);
     // # Use local values
     // print(MAX)  # 42
     std::cout << MAX << "\n";
@@ -38,7 +38,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

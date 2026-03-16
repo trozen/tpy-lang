@@ -11,10 +11,10 @@ void test_for_range_len_array() {
     //     total: Int32 = 0
     int32_t total = 0;
     //     for i in range(len(arr)):
-    int32_t __stop_0 = tpy::__len__(arr);
+    int32_t __stop_0 = ::tpy::__len__(arr);
     for (int32_t i = 0; i < __stop_0; ++i) {
         //         total += arr[i]  # tpyc: bounds_safe(arr)
-        total = tpy::add_check<int32_t>(total, arr[i]);
+        total = ::tpy::add_check<int32_t>(total, arr[i]);
     }
     //     print(total)
     std::cout << total << "\n";
@@ -27,10 +27,10 @@ void test_for_range_len_list() {
     //     total: Int32 = 0
     int32_t total = 0;
     //     for i in range(len(lst)):
-    int32_t __stop_0 = tpy::__len__(lst);
+    int32_t __stop_0 = ::tpy::__len__(lst);
     for (int32_t i = 0; i < __stop_0; ++i) {
         //         total += lst[i]  # tpyc: bounds_safe(lst)
-        total = tpy::add_check<int32_t>(total, lst[i]);
+        total = ::tpy::add_check<int32_t>(total, lst[i]);
     }
     //     print(total)
     std::cout << total << "\n";
@@ -43,7 +43,7 @@ void test_no_elision_unknown_index() {
     //     i: Int32 = 0
     int32_t i = 0;
     //     print(arr[i])  # tpyc: bounds_checked(arr)
-    std::cout << tpy::__getitem__(arr, i) << "\n";
+    std::cout << ::tpy::__getitem__(arr, i) << "\n";
 }
 
 // def test_no_elision_different_container() -> None:
@@ -53,10 +53,10 @@ void test_no_elision_different_container() {
     //     b: Array[Int32, 3] = [4, 5, 6]
     std::array<int32_t, 3> b = {4, 5, 6};
     //     for i in range(len(a)):
-    int32_t __stop_0 = tpy::__len__(a);
+    int32_t __stop_0 = ::tpy::__len__(a);
     for (int32_t i = 0; i < __stop_0; ++i) {
         //         print(b[i])  # tpyc: bounds_checked(b)
-        std::cout << tpy::__getitem__(b, i) << "\n";
+        std::cout << ::tpy::__getitem__(b, i) << "\n";
     }
 }
 
@@ -67,7 +67,7 @@ void test_assert_non_negative_only() {
     //     i: Int32 = 1
     int32_t i = 1;
     //     x = arr[i]  # tpyc: bounds_checked(arr)
-    int32_t x = tpy::__getitem__(arr, i);
+    int32_t x = ::tpy::__getitem__(arr, i);
     //     print(x)
     std::cout << x << "\n";
 }
@@ -81,7 +81,7 @@ void test_for_range_literal() {
     //     for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
         //         total += arr[i]  # tpyc: bounds_checked(arr)
-        total = tpy::add_check<int32_t>(total, tpy::__getitem__(arr, i));
+        total = ::tpy::add_check<int32_t>(total, ::tpy::__getitem__(arr, i));
     }
     //     print(total)
     std::cout << total << "\n";
@@ -92,13 +92,13 @@ void test_write_subscript_elision() {
     //     arr: Array[Int32, 5] = [0, 0, 0, 0, 0]
     std::array<int32_t, 5> arr = {0, 0, 0, 0, 0};
     //     for i in range(len(arr)):
-    int32_t __stop_0 = tpy::__len__(arr);
+    int32_t __stop_0 = ::tpy::__len__(arr);
     for (int32_t i = 0; i < __stop_0; ++i) {
         //         arr[i] = i * 10  # tpyc: bounds_safe(arr)
-        arr[i] = (tpy::mul_check<int32_t>(i, 10));
+        arr[i] = (::tpy::mul_check<int32_t>(i, 10));
     }
     //     for i in range(len(arr)):
-    int32_t __stop_1 = tpy::__len__(arr);
+    int32_t __stop_1 = ::tpy::__len__(arr);
     for (int32_t i = 0; i < __stop_1; ++i) {
         //         print(arr[i])  # tpyc: bounds_safe(arr)
         std::cout << arr[i] << "\n";
@@ -112,17 +112,17 @@ void test_no_elision_after_method_call() {
     //     total: Int32 = 0
     int32_t total = 0;
     //     for i in range(len(lst)):
-    int32_t __stop_0 = tpy::__len__(lst);
+    int32_t __stop_0 = ::tpy::__len__(lst);
     for (int32_t i = 0; i < __stop_0; ++i) {
         //         total += lst[i]  # tpyc: bounds_safe(lst)
-        total = tpy::add_check<int32_t>(total, lst[i]);
+        total = ::tpy::add_check<int32_t>(total, lst[i]);
     }
     //     lst.pop()
-    tpy::pop_back(lst);
+    ::tpy::pop_back(lst);
     //     i2: Int32 = 0
     int32_t i2 = 0;
     //     print(lst[i2])  # tpyc: bounds_checked(lst)
-    std::cout << tpy::__getitem__(lst, i2) << "\n";
+    std::cout << ::tpy::__getitem__(lst, i2) << "\n";
     //     print(total)
     std::cout << total << "\n";
 }
@@ -153,7 +153,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

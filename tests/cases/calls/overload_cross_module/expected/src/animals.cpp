@@ -11,7 +11,7 @@ namespace tpy_user::animals {
 std::string describe(const Dog& animal) {
     //     if isinstance(animal, Dog):
     //         return "Dog: " + animal.name
-    return (tpy::str_concat("Dog: ", animal.name));
+    return (::tpy::str_concat("Dog: ", animal.name));
 }
 
 // @overload
@@ -19,7 +19,7 @@ std::string describe(const Dog& animal) {
 std::string describe(const Cat& animal) {
     //     if isinstance(animal, Dog):
     //         return "Cat: " + str(animal.lives)
-    return (tpy::str_concat("Cat: ", (animal.lives).to_string()));
+    return (::tpy::str_concat("Cat: ", (animal.lives).to_string()));
 }
 
 

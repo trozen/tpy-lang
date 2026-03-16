@@ -32,7 +32,7 @@ struct Vec2 {
     }
 
     uint64_t __hash__() const {
-        return tpy::hash_combine(0, this->x, this->y);
+        return ::tpy::hash_combine(0, this->x, this->y);
     }
 
     std::string __repr__() const {
@@ -69,7 +69,7 @@ struct Vec3 : Vec2 {
     }
 
     uint64_t __hash__() const {
-        return tpy::hash_combine(0, this->x, this->y, this->z);
+        return ::tpy::hash_combine(0, this->x, this->y, this->z);
     }
 
     std::string __repr__() const {

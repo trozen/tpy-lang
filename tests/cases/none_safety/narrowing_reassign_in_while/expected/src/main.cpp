@@ -17,9 +17,9 @@ int32_t narrowing_cleared_on_reassign(std::optional<int32_t> x, std::optional<in
             //             x = other
             x = other;
             //             total = total + x  # tpyc: warning(/Potential None access/)
-            total = (tpy::add_check<int32_t>(total, tpy::deref_optional_check(x)));
+            total = (::tpy::add_check<int32_t>(total, ::tpy::deref_optional_check(x)));
             //             i = i + 1
-            i = (tpy::add_check<int32_t>(i, 1));
+            i = (::tpy::add_check<int32_t>(i, 1));
         }
     }
     //     return total
@@ -40,7 +40,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

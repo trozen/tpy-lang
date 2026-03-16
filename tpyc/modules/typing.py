@@ -20,8 +20,8 @@ def init_module() -> BuiltinModule:
     # Sized protocol: types that support len()
     # The cpp template is used for calling __len__ on protocol-typed variables
     module.protocol("Sized",
-        methods={"__len__": MethodDef(params=[], returns=INT32, cpp="tpy::__len__({self})")},
-        cpp_concept="tpy::Sized",
+        methods={"__len__": MethodDef(params=[], returns=INT32, cpp="::tpy::__len__({self})")},
+        cpp_concept="::tpy::Sized",
         is_readonly=True,
     )
 
@@ -30,10 +30,10 @@ def init_module() -> BuiltinModule:
     module.protocol("Sequence",
         type_params=["T"],
         methods={
-            "__len__": MethodDef(params=[], returns=INT32, cpp="tpy::__len__({self})"),
-            "__getitem__": MethodDef(params=[ParamDef("index", INT32)], returns=T, cpp="tpy::__getitem__({self}, {0})"),
+            "__len__": MethodDef(params=[], returns=INT32, cpp="::tpy::__len__({self})"),
+            "__getitem__": MethodDef(params=[ParamDef("index", INT32)], returns=T, cpp="::tpy::__getitem__({self}, {0})"),
         },
-        cpp_concept="tpy::Sequence",
+        cpp_concept="::tpy::Sequence",
         is_readonly=True,
     )
 
@@ -42,11 +42,11 @@ def init_module() -> BuiltinModule:
     module.protocol("MutableSequence",
         type_params=["T"],
         methods={
-            "__len__": MethodDef(params=[], returns=INT32, cpp="tpy::__len__({self})"),
-            "__getitem__": MethodDef(params=[ParamDef("index", INT32)], returns=T, cpp="tpy::__getitem__({self}, {0})"),
-            "__setitem__": MethodDef(params=[ParamDef("index", INT32), ParamDef("value", T)], returns=VOID, cpp="tpy::__setitem__({self}, {0}, {1})"),
+            "__len__": MethodDef(params=[], returns=INT32, cpp="::tpy::__len__({self})"),
+            "__getitem__": MethodDef(params=[ParamDef("index", INT32)], returns=T, cpp="::tpy::__getitem__({self}, {0})"),
+            "__setitem__": MethodDef(params=[ParamDef("index", INT32), ParamDef("value", T)], returns=VOID, cpp="::tpy::__setitem__({self}, {0}, {1})"),
         },
-        cpp_concept="tpy::MutableSequence",
+        cpp_concept="::tpy::MutableSequence",
     )
 
     # Iterator[T] -- Python-compatible iterator protocol
@@ -58,7 +58,7 @@ def init_module() -> BuiltinModule:
             "__next__": MethodDef(params=[], returns=T, cpp="{self}.__next_opt__()"),
             "__iter__": MethodDef(params=[], returns=SELF, cpp="{self}.__iter__()"),
         },
-        cpp_concept="tpy::Iterator",
+        cpp_concept="::tpy::Iterator",
     )
 
     # Iterable[T] -- types with __iter__() returning an Iterator[T]
@@ -66,9 +66,9 @@ def init_module() -> BuiltinModule:
         type_params=["T"],
         methods={
             "__iter__": MethodDef(params=[], returns=NamedType("Iterator", (T,), is_protocol=True),
-                                  cpp="tpy::__iter__({self})"),
+                                  cpp="::tpy::__iter__({self})"),
         },
-        cpp_concept="tpy::Iterable",
+        cpp_concept="::tpy::Iterable",
     )
 
     # Protocol is recognized by the parser as the base class for user-defined protocols

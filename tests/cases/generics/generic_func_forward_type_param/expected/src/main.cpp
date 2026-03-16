@@ -17,7 +17,7 @@ void main() {
     //     result = wrap_list[Int32](nums)
     std::vector<int32_t>& result = wrap_list<int32_t>(nums);
     //     print(result)
-    std::cout << tpy::ListPrinter(result) << "\n";
+    std::cout << ::tpy::ListPrinter(result) << "\n";
     //     print(multi[Int32, Int32](10, 20))
     int32_t __tmp_1 = 10;
     int32_t __tmp_2 = 20;
@@ -36,7 +36,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

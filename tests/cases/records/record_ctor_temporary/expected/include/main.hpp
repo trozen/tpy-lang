@@ -27,11 +27,11 @@ struct Numbers {
         //         i: Int32 = 0
         int32_t i = 0;
         //         while i < len(self.data):
-        while ((i < tpy::__len__(this->data))) {
+        while ((i < ::tpy::__len__(this->data))) {
             //             total += self.data[i]
-            total = tpy::add_check<int32_t>(total, tpy::__getitem__(this->data, i));
+            total = ::tpy::add_check<int32_t>(total, ::tpy::__getitem__(this->data, i));
             //             i += 1
-            i = tpy::add_check<int32_t>(i, 1);
+            i = ::tpy::add_check<int32_t>(i, 1);
         }
         //         return total
         return total;
@@ -40,7 +40,7 @@ struct Numbers {
 
 inline std::ostream& operator<<(std::ostream& os, const Numbers& obj) {
     os << "Numbers("
-       << "data=" << tpy::ListPrinter(obj.data)
+       << "data=" << ::tpy::ListPrinter(obj.data)
        << ")";
     return os;
 }

@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string point_str(const tpy::BigInt& x, const tpy::BigInt& y, const tpy::BigInt& z);
+std::string point_str(const ::tpy::BigInt& x, const ::tpy::BigInt& y, const ::tpy::BigInt& z);
 void main();
 
 void __tpy_init();

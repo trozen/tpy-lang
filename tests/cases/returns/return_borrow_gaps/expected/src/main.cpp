@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def get_first(items: list[Point]) -> Point:
 Point& get_first(std::vector<Point>& items) {
     //     return items[0]  # return_borrows_from = {0}
-    return tpy::__getitem__(items, 0);
+    return ::tpy::__getitem__(items, 0);
 }
 
 // def get_list(items: list[Point]) -> list[Point]:
@@ -30,7 +30,7 @@ void test_reassign_then_mutate_warns() {
     //     items.append(Point(5, 6))   # tpyc: warning(/Mutation of 'items' while borrowed/)
     items.push_back(Point(5, 6));
     //     print(len(items))           # 3 (don't dereference x after potential realloc)
-    std::cout << tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_reassign_no_mutation_ok() -> None:
@@ -84,7 +84,7 @@ void test_for_call_iterable_warns() {
         break;
     }
     //     print(len(items))           # 3
-    std::cout << tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_for_call_iterable_readonly_ok() -> None:
@@ -100,7 +100,7 @@ void test_for_call_iterable_readonly_ok() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
         //         total = total + p.x
-        total = (tpy::add_check<int32_t>(total, p.x));
+        total = (::tpy::add_check<int32_t>(total, p.x));
     }
     //     print(total)                # 4 (1+3)
     std::cout << total << "\n";
@@ -122,7 +122,7 @@ void test_transitive_return_warns() {
     //     items.append(Point(5, 6))   # tpyc: warning(/Mutation of 'items' while borrowed/)
     items.push_back(Point(5, 6));
     //     print(len(items))           # 3
-    std::cout << tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_transitive_return_no_mutation_ok() -> None:
@@ -165,7 +165,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

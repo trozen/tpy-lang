@@ -12,7 +12,7 @@ void greet(std::string_view name, std::string_view greeting, std::string_view pu
 }
 
 // def compute(a: int, b: int, c: int) -> int:
-tpy::BigInt compute(const tpy::BigInt& a, const tpy::BigInt& b, const tpy::BigInt& c) {
+::tpy::BigInt compute(const ::tpy::BigInt& a, const ::tpy::BigInt& b, const ::tpy::BigInt& c) {
     //     return a + b + c
     return ((((a) + (b))) + (c));
 }
@@ -24,7 +24,7 @@ void main() {
     //     greet("Bob", punctuation=".")
     greet("Bob", "Hello", ".");
     //     print(compute(1, 2, c=3))
-    std::cout << compute(tpy::BigInt(1), tpy::BigInt(2), tpy::BigInt(3)) << "\n";
+    std::cout << compute(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)) << "\n";
 }
 
 void __tpy_init() {
@@ -39,7 +39,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

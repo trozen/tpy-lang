@@ -23,22 +23,22 @@ struct Buffer {
     }
 
     //     def set(self, idx: Int32, val: T) -> None:
-    void set(int32_t idx, tpy::param_val_or_ref_t<T> val) {
+    void set(int32_t idx, ::tpy::param_val_or_ref_t<T> val) {
         //         self.data[idx] = val
-        tpy::__setitem__(this->data, idx, val);
+        ::tpy::__setitem__(this->data, idx, val);
     }
 
     //     def get(self, idx: Int32) -> T:
-    tpy::val_or_ref_t<T> get(int32_t idx) {
+    ::tpy::val_or_ref_t<T> get(int32_t idx) {
         //         return self.data[idx]
-        return tpy::__getitem__(this->data, idx);
+        return ::tpy::__getitem__(this->data, idx);
     }
 };
 
 template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Buffer<T, N>& obj) {
     os << "Buffer("
-       << "data=" << tpy::ListPrinter(obj.data)
+       << "data=" << ::tpy::ListPrinter(obj.data)
        << ")";
     return os;
 }

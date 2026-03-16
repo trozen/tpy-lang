@@ -9,7 +9,7 @@ void main() {
     //     d = Dog("Rex")
     ::tpy_user::animals::Dog d = ::tpy_user::animals::Dog("Rex");
     //     c = Cat(9)
-    ::tpy_user::animals::Cat c = ::tpy_user::animals::Cat(tpy::BigInt(9));
+    ::tpy_user::animals::Cat c = ::tpy_user::animals::Cat(::tpy::BigInt(9));
     //     print(describe(d))
     std::cout << ::tpy_user::animals::describe(d) << "\n";
     //     print(describe(c))
@@ -31,7 +31,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

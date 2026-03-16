@@ -7,11 +7,11 @@ namespace tpy_user::main {
 
 struct Node;
 
-extern tpy::ordered_map<std::string, Node>* g_a;
-extern tpy::ordered_map<std::string, Node>* g_b;
+extern ::tpy::ordered_map<std::string, Node>* g_a;
+extern ::tpy::ordered_map<std::string, Node>* g_b;
 inline constexpr std::string_view __name__ = "__main__";
 
-tpy::ordered_map<std::string, Node> make_dict();
+::tpy::ordered_map<std::string, Node> make_dict();
 void test_warn_update_not_last_use();
 void test_no_warn_update_last_use();
 void test_no_warn_update_explicit_copy();
@@ -20,7 +20,7 @@ void test_no_warn_update_value_types();
 void test_warn_ior_not_last_use();
 void test_no_warn_ior_last_use();
 template<typename V>
-void test_warn_update_generic(tpy::ordered_map<std::string, V>& a, tpy::ordered_map<std::string, V>& b);
+void test_warn_update_generic(::tpy::ordered_map<std::string, V>& a, ::tpy::ordered_map<std::string, V>& b);
 
 // class Node:
 struct Node {
@@ -41,11 +41,11 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 // def test_warn_update_generic[V](a: dict[str, V], b: dict[str, V]) -> None:
 template<typename V>
-void test_warn_update_generic(tpy::ordered_map<std::string, V>& a, tpy::ordered_map<std::string, V>& b) {
+void test_warn_update_generic(::tpy::ordered_map<std::string, V>& a, ::tpy::ordered_map<std::string, V>& b) {
     //     a.update(b)  # tpyc: warning(/may copy V elements/)
-    tpy::dict_update(a, b);
+    ::tpy::dict_update(a, b);
     //     print(len(b))
-    std::cout << tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n";
 }
 
 void __tpy_init();

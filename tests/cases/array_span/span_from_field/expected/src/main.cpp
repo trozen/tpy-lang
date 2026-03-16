@@ -11,11 +11,11 @@ void main() {
     //     box: Box = Box(arr)
     Box box = Box(arr);
     //     s: Span[Int32] = box.items
-    std::span<int32_t> s = tpy::as_mut_span(box.items);
+    std::span<int32_t> s = ::tpy::as_mut_span(box.items);
     //     print(s[0])
-    std::cout << tpy::__getitem__(s, 0) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n";
     //     print(s[2])
-    std::cout << tpy::__getitem__(s, 2) << "\n";
+    std::cout << ::tpy::__getitem__(s, 2) << "\n";
 }
 
 void __tpy_init() {
@@ -30,7 +30,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -15,13 +15,13 @@ void test_alias_append() {
     //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
     //     v = items[Int32(0)]
-    Point& v = tpy::__getitem__(items, 0);
+    Point& v = ::tpy::__getitem__(items, 0);
     //     alias = items
     std::vector<Point>& alias = items;
     //     alias.append(Point(Int32(5), Int32(6)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     alias.push_back(Point(5, 6));
     //     print(len(items))
-    std::cout << tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_alias_subscript_assign() -> None:
@@ -29,13 +29,13 @@ void test_alias_subscript_assign() {
     //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
     //     v = items[Int32(0)]
-    Point& v = tpy::__getitem__(items, 0);
+    Point& v = ::tpy::__getitem__(items, 0);
     //     alias = items
     std::vector<Point>& alias = items;
     //     alias[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: ok
-    tpy::__setitem__(alias, 0, Point(9, 9));
+    ::tpy::__setitem__(alias, 0, Point(9, 9));
     //     print(items[Int32(0)].x)
-    std::cout << tpy::__getitem__(items, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).x << "\n";
 }
 
 // def test_alias_del() -> None:
@@ -43,13 +43,13 @@ void test_alias_del() {
     //     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     //     v = items[Int32(0)]
-    Point& v = tpy::__getitem__(items, 0);
+    Point& v = ::tpy::__getitem__(items, 0);
     //     alias = items
     std::vector<Point>& alias = items;
     //     del alias[Int32(1)]  # tpyc: warning(/Mutation of 'items'.*'del'/)
-    tpy::__delitem__(alias, 1);
+    ::tpy::__delitem__(alias, 1);
     //     print(len(items))
-    std::cout << tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_alias_pass_to_func() -> None:
@@ -57,13 +57,13 @@ void test_alias_pass_to_func() {
     //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
     //     v = items[Int32(0)]
-    Point& v = tpy::__getitem__(items, 0);
+    Point& v = ::tpy::__getitem__(items, 0);
     //     alias = items
     std::vector<Point>& alias = items;
     //     mutate_list(alias)  # tpyc: warning(/Passing borrowed container 'items'/)
     mutate_list(alias);
     //     print(len(items))
-    std::cout << tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_alias_aug_assign() -> None:
@@ -71,13 +71,13 @@ void test_alias_aug_assign() {
     //     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     //     v = items[Int32(0)]
-    Point& v = tpy::__getitem__(items, 0);
+    Point& v = ::tpy::__getitem__(items, 0);
     //     alias = items
     std::vector<Point>& alias = items;
     //     alias += [Point(Int32(5), Int32(6))]  # tpyc: warning(/Mutation of 'items'.*'\+='/)
-    tpy::list_extend(alias, std::vector<Point>{Point(5, 6)});
+    ::tpy::list_extend(alias, std::vector<Point>{Point(5, 6)});
     //     print(len(items))
-    std::cout << tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_alias_no_element_borrow() -> None:
@@ -89,7 +89,7 @@ void test_alias_no_element_borrow() {
     //     alias.append(Point(Int32(3), Int32(4)))  # tpyc: ok
     alias.push_back(Point(3, 4));
     //     print(len(items))
-    std::cout << tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_direct_still_works() -> None:
@@ -97,11 +97,11 @@ void test_direct_still_works() {
     //     items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
     //     v = items[Int32(0)]
-    Point& v = tpy::__getitem__(items, 0);
+    Point& v = ::tpy::__getitem__(items, 0);
     //     items.append(Point(Int32(5), Int32(6)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     items.push_back(Point(5, 6));
     //     print(len(items))
-    std::cout << tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n";
 }
 
 void __tpy_init() {
@@ -128,7 +128,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

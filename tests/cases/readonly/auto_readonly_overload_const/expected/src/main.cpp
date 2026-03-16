@@ -9,13 +9,13 @@ void read_container(const Container<int32_t>& c) {
     //     x = c[Int32(0)]    # tpyc: type(Int32)
     int32_t x = c[0];
     //     s = c[Int32(0):Int32(2)]  # tpyc: type(Span[readonly[Int32]])
-    std::span<const int32_t> s = c.__getitem__(tpy::Slice{0, 2});
+    std::span<const int32_t> s = c.__getitem__(::tpy::Slice{0, 2});
     //     print(x)
     std::cout << x << "\n";
     //     print(s[Int32(0)])
-    std::cout << tpy::__getitem__(s, 0) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n";
     //     print(s[Int32(1)])
-    std::cout << tpy::__getitem__(s, 1) << "\n";
+    std::cout << ::tpy::__getitem__(s, 1) << "\n";
 }
 
 // def main() -> None:
@@ -31,11 +31,11 @@ void main() {
     //     x = c[Int32(1)]    # tpyc: type(Int32)
     int32_t x = c[1];
     //     s = c[Int32(0):Int32(2)]  # tpyc: type(Span[Int32])
-    std::span<int32_t> s = c.__getitem__(tpy::Slice{0, 2});
+    std::span<int32_t> s = c.__getitem__(::tpy::Slice{0, 2});
     //     print(x)
     std::cout << x << "\n";
     //     print(s[Int32(0)])
-    std::cout << tpy::__getitem__(s, 0) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n";
     //     read_container(c)
     read_container(c);
 }
@@ -52,7 +52,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -26,7 +26,7 @@ void test_value_types() {
     //     int_list: list[Int32] = [5, 6, 7]
     std::vector<int32_t> int_list = {5, 6, 7};
     //     v: Int32 = int_list[1]  # get_value for Int32 element
-    int32_t v = tpy::__getitem__(int_list, 1);
+    int32_t v = ::tpy::__getitem__(int_list, 1);
     //     print(v)  # 6
     std::cout << v << "\n";
 }
@@ -52,9 +52,9 @@ void test_object_types() {
     //     obj_list: list[Point] = [Point(10, 20)]
     std::vector<Point> obj_list = {Point(10, 20)};
     //     obj_list[0].y = 200  # get_ref for Point element
-    tpy::__getitem__(obj_list, 0).y = 200;
+    ::tpy::__getitem__(obj_list, 0).y = 200;
     //     print(obj_list[0].y)  # 200
-    std::cout << tpy::__getitem__(obj_list, 0).y << "\n";
+    std::cout << ::tpy::__getitem__(obj_list, 0).y << "\n";
 }
 
 void __tpy_init() {
@@ -73,7 +73,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

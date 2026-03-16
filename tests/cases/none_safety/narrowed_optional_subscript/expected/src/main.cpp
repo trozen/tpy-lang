@@ -9,11 +9,11 @@ void check(std::optional<std::string_view> s) {
     //     if s is not None:
     if ((s.has_value())) {
         //         print(s[0])
-        std::cout << tpy::__getitem__((*s), 0) << "\n";
+        std::cout << ::tpy::__getitem__((*s), 0) << "\n";
         //         print(s[1:4])
-        std::cout << tpy::str_slice((*s), 1, 4) << "\n";
+        std::cout << ::tpy::str_slice((*s), 1, 4) << "\n";
         //         print(len(s))
-        std::cout << tpy::__len__((*s)) << "\n";
+        std::cout << ::tpy::__len__((*s)) << "\n";
     //     else:
     } else {
         //         print("none")
@@ -43,7 +43,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

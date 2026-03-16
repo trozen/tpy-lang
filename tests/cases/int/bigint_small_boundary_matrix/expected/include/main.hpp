@@ -5,14 +5,14 @@
 
 namespace tpy_user::main {
 
-extern tpy::BigInt B;
-extern tpy::BigInt SMALL_MAX;
-extern tpy::BigInt SMALL_MIN;
-extern tpy::BigInt BIG_POS;
-extern tpy::BigInt BIG_NEG;
+extern ::tpy::BigInt B;
+extern ::tpy::BigInt SMALL_MAX;
+extern ::tpy::BigInt SMALL_MIN;
+extern ::tpy::BigInt BIG_POS;
+extern ::tpy::BigInt BIG_NEG;
 inline constexpr std::string_view __name__ = "__main__";
 
-void show_mul(std::string_view label, const tpy::BigInt& a, const tpy::BigInt& b);
+void show_mul(std::string_view label, const ::tpy::BigInt& a, const ::tpy::BigInt& b);
 
 void __tpy_init();
 } // namespace tpy_user::main

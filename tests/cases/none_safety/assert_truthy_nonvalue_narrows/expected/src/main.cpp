@@ -9,7 +9,7 @@ Point* pt{};
 // def get_x(p: Point | None) -> Int32:
 int32_t get_x(Point* p) {
     //     assert p  # tpyc: ok
-    if (!(p)) tpy::tpy_panic("assertion failed");
+    if (!(p)) ::tpy::tpy_panic("assertion failed");
     //     return p.x  # tpyc: ok
     return p->x;
 }
@@ -29,7 +29,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

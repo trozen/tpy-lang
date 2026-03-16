@@ -18,23 +18,23 @@ void main() {
     std::cout << c << "\n";
     //     # Equality compares all fields (parent + child)
     //     print(c == Child(1, 2, 3))
-    std::cout << tpy::print_bool((c == Child(1, 2, 3))) << "\n";
+    std::cout << ::tpy::print_bool((c == Child(1, 2, 3))) << "\n";
     //     print(c == Child(1, 2, 4))
-    std::cout << tpy::print_bool((c == Child(1, 2, 4))) << "\n";
+    std::cout << ::tpy::print_bool((c == Child(1, 2, 4))) << "\n";
     //     print(c == Child(9, 9, 3))
-    std::cout << tpy::print_bool((c == Child(9, 9, 3))) << "\n";
+    std::cout << ::tpy::print_bool((c == Child(9, 9, 3))) << "\n";
     //     # Keyword args
     //     c2 = Child(x=1, y=2, z=3)
     Child c2 = Child(1, 2, 3);
     //     print(c == c2)
-    std::cout << tpy::print_bool((c == c2)) << "\n";
+    std::cout << ::tpy::print_bool((c == c2)) << "\n";
     //     # Parent works independently
     //     b = Base(1, 2)
     Base b = Base(1, 2);
     //     print(b)
     std::cout << b << "\n";
     //     print(b == Base(1, 2))
-    std::cout << tpy::print_bool((b == Base(1, 2))) << "\n";
+    std::cout << ::tpy::print_bool((b == Base(1, 2))) << "\n";
 }
 
 void __tpy_init() {
@@ -49,7 +49,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

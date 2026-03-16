@@ -120,7 +120,7 @@ COERCIONS: list[Coercion] = [
         from_type=TypeParamRef,
         to_type=BigIntType,
         type_match=_int_type_param_match,
-        codegen=lambda e, _a, _b, _c: f"tpy::BigInt(static_cast<int64_t>({e}))",
+        codegen=lambda e, _a, _b, _c: f"::tpy::BigInt(static_cast<int64_t>({e}))",
     ),
 
     # Integer literal to any fixed-width integer (range-checked)
@@ -145,7 +145,7 @@ COERCIONS: list[Coercion] = [
         name="fixed_int_to_bigint",
         from_type=FixedIntType,
         to_type=BigIntType,
-        codegen=lambda e, _a, _b, _c: f"tpy::BigInt({e})",
+        codegen=lambda e, _a, _b, _c: f"::tpy::BigInt({e})",
     ),
     # BigInt to fixed-width integer (narrowing, runtime checked)
     Coercion(
@@ -228,7 +228,7 @@ COERCIONS: list[Coercion] = [
         name="char_to_str",
         from_type=CharType,
         to_type=StrType,
-        codegen=lambda e, _a, _b, _c: f"std::string(tpy::char_to_str({e}))",
+        codegen=lambda e, _a, _b, _c: f"std::string(::tpy::char_to_str({e}))",
     ),
     # Char to String coercion
     Coercion(
@@ -242,7 +242,7 @@ COERCIONS: list[Coercion] = [
         name="char_to_strview",
         from_type=CharType,
         to_type=StrViewType,
-        codegen=lambda e, _a, _b, _c: f"tpy::char_to_str({e})",
+        codegen=lambda e, _a, _b, _c: f"::tpy::char_to_str({e})",
     ),
 
     # String <-> StrType identity coercions (both map to std::string)
@@ -373,7 +373,7 @@ def is_protocol_safe_coercion(actual: TpyType, expected: TpyType) -> bool:
 
 def _deref_codegen(e: str, actual: TpyType, _expected: TpyType, _ctx: str) -> str:
     if isinstance(actual, PtrType):
-        return f"tpy::deref_check({e})"
+        return f"::tpy::deref_check({e})"
     return f"{e}.__deref__()"
 
 

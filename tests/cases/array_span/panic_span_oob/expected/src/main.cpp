@@ -9,9 +9,9 @@ void main() {
     //     arr: Array[Int32, 2] = [10, 20]
     std::array<int32_t, 2> arr = {10, 20};
     //     s: Span[Int32] = arr
-    std::span<int32_t> s = tpy::as_mut_span(arr);
+    std::span<int32_t> s = ::tpy::as_mut_span(arr);
     //     print(s[5])
-    std::cout << tpy::__getitem__(s, 5) << "\n";
+    std::cout << ::tpy::__getitem__(s, 5) << "\n";
 }
 
 void __tpy_init() {
@@ -26,7 +26,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -43,7 +43,7 @@ struct Point {
     //     def value(self) -> Int32:
     int32_t value() const {
         //         return self.x + self.y
-        return (tpy::add_check<int32_t>(this->x, this->y));
+        return (::tpy::add_check<int32_t>(this->x, this->y));
     }
 };
 
@@ -67,7 +67,7 @@ struct Container {
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     os << "Container("
-       << "items=" << tpy::ListPrinter(obj.items)
+       << "items=" << ::tpy::ListPrinter(obj.items)
        << ")";
     return os;
 }

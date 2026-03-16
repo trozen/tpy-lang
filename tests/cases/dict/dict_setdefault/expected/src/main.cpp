@@ -7,15 +7,15 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     d: dict[str, Int32] = {"a": 1, "b": 2}
-    tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
     //     print(d.setdefault("a", 99))   # 1 (exists)
-    std::cout << tpy::dict_setdefault(d, "a", 99) << "\n";
+    std::cout << ::tpy::dict_setdefault(d, "a", 99) << "\n";
     //     print(d.setdefault("c", 42))   # 42 (inserted)
-    std::cout << tpy::dict_setdefault(d, "c", 42) << "\n";
+    std::cout << ::tpy::dict_setdefault(d, "c", 42) << "\n";
     //     print(d["c"])                    # 42
-    std::cout << tpy::__getitem__(d, "c") << "\n";
+    std::cout << ::tpy::__getitem__(d, "c") << "\n";
     //     print(len(d))                    # 3
-    std::cout << tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n";
 }
 
 void __tpy_init() {
@@ -30,7 +30,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

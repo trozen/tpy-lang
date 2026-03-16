@@ -8,7 +8,7 @@ namespace tpy_user::main {
 // def read_box(b: Box, offset: Int32) -> Int32:
 int32_t read_box(const Box& b, int32_t offset) {
     //     return b.value + offset
-    return (tpy::add_check<int32_t>(b.value, offset));
+    return (::tpy::add_check<int32_t>(b.value, offset));
 }
 
 // @readonly
@@ -23,7 +23,7 @@ int32_t sum_list(const std::vector<int32_t>& items) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         total = total + x
-        total = (tpy::add_check<int32_t>(total, x));
+        total = (::tpy::add_check<int32_t>(total, x));
     }
     //     return total
     return total;
@@ -55,7 +55,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

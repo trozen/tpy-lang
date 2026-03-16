@@ -67,7 +67,7 @@ struct Counter {
     //     def increment(self) -> None:        # mutates self -- must NOT be const
     void increment() {
         //         self.count += 1
-        this->count = tpy::add_check<int32_t>(this->count, 1);
+        this->count = ::tpy::add_check<int32_t>(this->count, 1);
     }
 
     //     def increment_twice(self) -> None:  # delegates to self.increment() -- must NOT be const
@@ -122,13 +122,13 @@ struct Box {
     //     def size(self) -> Int32:           # only reads -- inferred const
     int32_t size() const {
         //         return len(self.items)
-        return tpy::__len__(this->items);
+        return ::tpy::__len__(this->items);
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     os << "Box("
-       << "items=" << tpy::ListPrinter(obj.items)
+       << "items=" << ::tpy::ListPrinter(obj.items)
        << ")";
     return os;
 }
@@ -163,13 +163,13 @@ struct SortableBox {
     //     def get_first(self) -> Int32:                  # only reads -- inferred const
     int32_t get_first() const {
         //         return self.items[0]
-        return tpy::__getitem__(this->items, 0);
+        return ::tpy::__getitem__(this->items, 0);
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const SortableBox& obj) {
     os << "SortableBox("
-       << "items=" << tpy::ListPrinter(obj.items)
+       << "items=" << ::tpy::ListPrinter(obj.items)
        << ")";
     return os;
 }

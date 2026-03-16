@@ -15,7 +15,7 @@ std::string describe(const std::variant<Cat, Dog>& a) {
         auto& __case_0 = std::get<1>(__match_subject);
         n = __case_0.name;
         //             n = "dog:" + n
-        n = (tpy::str_concat("dog:", n));
+        n = (::tpy::str_concat("dog:", n));
         break;
     }
     //         case Cat(name=n):
@@ -23,7 +23,7 @@ std::string describe(const std::variant<Cat, Dog>& a) {
         auto& __case_1 = std::get<0>(__match_subject);
         n = __case_1.name;
         //             n = "cat:" + n
-        n = (tpy::str_concat("cat:", n));
+        n = (::tpy::str_concat("cat:", n));
         break;
     }
     }
@@ -55,7 +55,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

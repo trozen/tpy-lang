@@ -45,21 +45,21 @@ struct PointList {
     //     def __len__(self) -> Int32:
     int32_t __len__() const {
         //         return len(self.data)
-        return tpy::__len__(this->data);
+        return ::tpy::__len__(this->data);
     }
 
     //     @auto_readonly
     //     def __getitem__(self, index: Int32) -> Point:
     Point& __getitem__(int32_t index) {
         //         return self.data[index]
-        return tpy::__getitem__(this->data, index);
+        return ::tpy::__getitem__(this->data, index);
     }
 
     //     @auto_readonly
     //     def __getitem__(self, index: Int32) -> Point:
     const Point& __getitem__(int32_t index) const {
         //         return self.data[index]
-        return tpy::__getitem__(this->data, index);
+        return ::tpy::__getitem__(this->data, index);
     }
 
     const Point& operator[](int32_t index) const {
@@ -72,14 +72,14 @@ struct PointList {
 
     size_t size() const {
         auto len = __len__();
-        if (len < 0) tpy::tpy_panic("__len__ returned negative value");
+        if (len < 0) ::tpy::tpy_panic("__len__ returned negative value");
         return static_cast<size_t>(len);
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const PointList& obj) {
     os << "PointList("
-       << "data=" << tpy::ListPrinter(obj.data)
+       << "data=" << ::tpy::ListPrinter(obj.data)
        << ")";
     return os;
 }

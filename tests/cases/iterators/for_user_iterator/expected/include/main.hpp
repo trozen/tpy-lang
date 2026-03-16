@@ -9,7 +9,7 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<tpy::OptIterator<int32_t> T_it>
+template<::tpy::OptIterator<int32_t> T_it>
 int32_t sum_iter(T_it& it);
 
 // class Counter:
@@ -30,7 +30,7 @@ struct Counter {
             //             result = self.current
             int32_t result = this->current;
             //             self.current += 1
-            this->current = tpy::add_check<int32_t>(this->current, 1);
+            this->current = ::tpy::add_check<int32_t>(this->current, 1);
             //             return result
             return result;
         }
@@ -50,19 +50,19 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // # 2. Pass to function taking OptIterator[Int32] (structural conformance)
 // def sum_iter(it: OptIterator[Int32]) -> Int32:
-template<tpy::OptIterator<int32_t> T_it>
+template<::tpy::OptIterator<int32_t> T_it>
 int32_t sum_iter(T_it& it) {
     //     total: Int32 = 0
     int32_t total = 0;
     //     for x in it:
     auto& __src_0 = it;
-    auto __obj_0 = tpy::iter_adapt(__src_0);
+    auto __obj_0 = ::tpy::iter_adapt(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         total += x
-        total = tpy::add_check<int32_t>(total, x);
+        total = ::tpy::add_check<int32_t>(total, x);
     }
     //     return total
     return total;

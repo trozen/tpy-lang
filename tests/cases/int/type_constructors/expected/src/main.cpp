@@ -12,18 +12,18 @@ void __tpy_init() {
     // # --- Int32 constructors ---
     // # Int32(float): truncate toward zero
     // print(Int32(3.7))    # 3
-    std::cout << tpy::from_float_check<int32_t>(3.7) << "\n";
+    std::cout << ::tpy::from_float_check<int32_t>(3.7) << "\n";
     // print(Int32(-3.7))   # -3
-    std::cout << tpy::from_float_check<int32_t>(-(3.7)) << "\n";
+    std::cout << ::tpy::from_float_check<int32_t>(-(3.7)) << "\n";
     // print(Int32(0.0))    # 0
-    std::cout << tpy::from_float_check<int32_t>(0.0) << "\n";
+    std::cout << ::tpy::from_float_check<int32_t>(0.0) << "\n";
     // # Int32(str): parse
     // print(Int32("42"))    # 42
-    std::cout << tpy::from_str_check<int32_t>("42") << "\n";
+    std::cout << ::tpy::from_str_check<int32_t>("42") << "\n";
     // print(Int32("-100"))  # -100
-    std::cout << tpy::from_str_check<int32_t>("-100") << "\n";
+    std::cout << ::tpy::from_str_check<int32_t>("-100") << "\n";
     // print(Int32(" 7 "))   # 7 (whitespace stripped)
-    std::cout << tpy::from_str_check<int32_t>(" 7 ") << "\n";
+    std::cout << ::tpy::from_str_check<int32_t>(" 7 ") << "\n";
     // # Int32(bool)
     // print(Int32(True))    # 1
     std::cout << static_cast<int32_t>(true) << "\n";
@@ -32,54 +32,54 @@ void __tpy_init() {
     // # --- int constructors ---
     // # int(bool)
     // print(int(True))      # 1
-    std::cout << tpy::BigInt(static_cast<int32_t>(true)) << "\n";
+    std::cout << ::tpy::BigInt(static_cast<int32_t>(true)) << "\n";
     // print(int(False))     # 0
-    std::cout << tpy::BigInt(static_cast<int32_t>(false)) << "\n";
+    std::cout << ::tpy::BigInt(static_cast<int32_t>(false)) << "\n";
     // # int(Char)
     // print(int(chr(65)))   # 65 (ASCII 'A')
-    std::cout << tpy::BigInt(static_cast<int32_t>(static_cast<char>(65))) << "\n";
+    std::cout << ::tpy::BigInt(static_cast<int32_t>(static_cast<char>(65))) << "\n";
     // print(int(chr(0)))    # 0
-    std::cout << tpy::BigInt(static_cast<int32_t>(static_cast<char>(0))) << "\n";
+    std::cout << ::tpy::BigInt(static_cast<int32_t>(static_cast<char>(0))) << "\n";
     // # --- float constructors ---
     // # float(bool)
     // print(float(True))    # 1.0
-    std::cout << tpy::print_float(static_cast<double>(true)) << "\n";
+    std::cout << ::tpy::print_float(static_cast<double>(true)) << "\n";
     // print(float(False))   # 0.0
-    std::cout << tpy::print_float(static_cast<double>(false)) << "\n";
+    std::cout << ::tpy::print_float(static_cast<double>(false)) << "\n";
     // # float(str)
     // print(float("3.14"))   # 3.14
-    std::cout << tpy::print_float(tpy::float_from_str("3.14")) << "\n";
+    std::cout << ::tpy::print_float(::tpy::float_from_str("3.14")) << "\n";
     // print(float("-0.5"))   # -0.5
-    std::cout << tpy::print_float(tpy::float_from_str("-0.5")) << "\n";
+    std::cout << ::tpy::print_float(::tpy::float_from_str("-0.5")) << "\n";
     // print(float(" 42 "))   # 42.0
-    std::cout << tpy::print_float(tpy::float_from_str(" 42 ")) << "\n";
+    std::cout << ::tpy::print_float(::tpy::float_from_str(" 42 ")) << "\n";
     // print(float("1e3"))    # 1000.0
-    std::cout << tpy::print_float(tpy::float_from_str("1e3")) << "\n";
+    std::cout << ::tpy::print_float(::tpy::float_from_str("1e3")) << "\n";
     // print(float("inf"))    # inf
-    std::cout << tpy::print_float(tpy::float_from_str("inf")) << "\n";
+    std::cout << ::tpy::print_float(::tpy::float_from_str("inf")) << "\n";
     // print(float("-inf"))   # -inf
-    std::cout << tpy::print_float(tpy::float_from_str("-inf")) << "\n";
+    std::cout << ::tpy::print_float(::tpy::float_from_str("-inf")) << "\n";
     // # --- bool constructors ---
     // # bool(float)
     // print(bool(0.0))      # False
-    std::cout << tpy::print_bool((0.0 != 0.0)) << "\n";
+    std::cout << ::tpy::print_bool((0.0 != 0.0)) << "\n";
     // print(bool(1.5))      # True
-    std::cout << tpy::print_bool((1.5 != 0.0)) << "\n";
+    std::cout << ::tpy::print_bool((1.5 != 0.0)) << "\n";
     // print(bool(-0.1))     # True
-    std::cout << tpy::print_bool((-(0.1) != 0.0)) << "\n";
+    std::cout << ::tpy::print_bool((-(0.1) != 0.0)) << "\n";
     // # bool(str)
     // print(bool(""))        # False
-    std::cout << tpy::print_bool((std::string_view("").size() != 0)) << "\n";
+    std::cout << ::tpy::print_bool((std::string_view("").size() != 0)) << "\n";
     // print(bool("hello"))   # True
-    std::cout << tpy::print_bool((std::string_view("hello").size() != 0)) << "\n";
+    std::cout << ::tpy::print_bool((std::string_view("hello").size() != 0)) << "\n";
     // print(bool(" "))       # True (non-empty)
-    std::cout << tpy::print_bool((std::string_view(" ").size() != 0)) << "\n";
+    std::cout << ::tpy::print_bool((std::string_view(" ").size() != 0)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

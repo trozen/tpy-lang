@@ -18,13 +18,13 @@ void main();
 // class Point:
 struct Point {
     //     x: int
-    tpy::BigInt x;
+    ::tpy::BigInt x;
     //     y: int
-    tpy::BigInt y;
+    ::tpy::BigInt y;
 
     //     def __init__(self, x: int, y: int) -> None:
     Point() = default;
-    explicit Point(const tpy::BigInt& x, const tpy::BigInt& y) : x(x), y(y) {}
+    explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {

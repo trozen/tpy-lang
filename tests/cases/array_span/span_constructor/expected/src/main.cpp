@@ -10,26 +10,26 @@ void main() {
     std::array<int32_t, 3> arr = std::array<int32_t, 3>({10, 20, 30});
     //     # Mutable span from Ptr
     //     p = Ptr(arr[0])
-    int32_t* p = &tpy::__getitem__(arr, 0);
+    int32_t* p = &::tpy::__getitem__(arr, 0);
     //     s = Span(p, 3)
     std::span<int32_t> s = std::span<int32_t>(p, static_cast<size_t>(3));
     //     print(s[0])
-    std::cout << tpy::__getitem__(s, 0) << "\n";
+    std::cout << ::tpy::__getitem__(s, 0) << "\n";
     //     print(s[1])
-    std::cout << tpy::__getitem__(s, 1) << "\n";
+    std::cout << ::tpy::__getitem__(s, 1) << "\n";
     //     print(s[2])
-    std::cout << tpy::__getitem__(s, 2) << "\n";
+    std::cout << ::tpy::__getitem__(s, 2) << "\n";
     //     # Read-only span from Ptr[readonly[...]]
     //     rp: Ptr[readonly[Int32]] = Ptr(arr[0])
-    const int32_t* rp = &tpy::__getitem__(arr, 0);
+    const int32_t* rp = &::tpy::__getitem__(arr, 0);
     //     rs = Span(rp, 3)
     std::span<const int32_t> rs = std::span<const int32_t>(rp, static_cast<size_t>(3));
     //     print(rs[0])
-    std::cout << tpy::__getitem__(rs, 0) << "\n";
+    std::cout << ::tpy::__getitem__(rs, 0) << "\n";
     //     print(rs[1])
-    std::cout << tpy::__getitem__(rs, 1) << "\n";
+    std::cout << ::tpy::__getitem__(rs, 1) << "\n";
     //     print(rs[2])
-    std::cout << tpy::__getitem__(rs, 2) << "\n";
+    std::cout << ::tpy::__getitem__(rs, 2) << "\n";
 }
 
 void __tpy_init() {
@@ -44,7 +44,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

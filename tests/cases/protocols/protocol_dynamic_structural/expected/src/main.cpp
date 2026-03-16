@@ -13,15 +13,15 @@ void greet(Pet& pet) {
 // def main() -> None:
 void main() {
     //     greet(Parrot())       # rvalue: owning adapter
-    tpy::Adapter<Pet, Parrot> __tmp_1{Parrot()};
+    ::tpy::Adapter<Pet, Parrot> __tmp_1{Parrot()};
     greet(__tmp_1);
     //     p = Parrot()
     Parrot p = Parrot();
     //     greet(p)              # lvalue: ref adapter (zero-copy)
-    tpy::RefAdapter<Pet, Parrot> __tmp_2{p};
+    ::tpy::RefAdapter<Pet, Parrot> __tmp_2{p};
     greet(__tmp_2);
     //     pet: Pet = Parrot()   # local: owning adapter (owns inner value)
-    tpy::Adapter<Pet, Parrot> __slot_1{Parrot()};
+    ::tpy::Adapter<Pet, Parrot> __slot_1{Parrot()};
     Pet* pet = &__slot_1;
     //     print(pet.make_noise())
     std::cout << pet->make_noise() << "\n";
@@ -39,7 +39,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

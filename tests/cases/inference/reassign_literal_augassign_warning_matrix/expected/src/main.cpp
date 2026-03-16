@@ -15,25 +15,25 @@ void main() {
     //     x = 0
     int32_t x = 0;
     //     x += Int32(5)  # tpyc: ok
-    x = tpy::add_check<int32_t>(x, 5);
+    x = ::tpy::add_check<int32_t>(x, 5);
     //     print(x)
     std::cout << x << "\n";
     //     y = 0
     int32_t y = 0;
     //     y += ret_i32()  # tpyc: ok
-    y = tpy::add_check<int32_t>(y, ret_i32());
+    y = ::tpy::add_check<int32_t>(y, ret_i32());
     //     print(y)
     std::cout << y << "\n";
     //     z: int = 0
-    tpy::BigInt z = tpy::BigInt(0);
+    ::tpy::BigInt z = ::tpy::BigInt(0);
     //     z += Int32(5)  # tpyc: ok
-    z = (z) + (tpy::BigInt(5));
+    z = (z) + (::tpy::BigInt(5));
     //     print(z)
     std::cout << z << "\n";
     //     w = int(0)
-    tpy::BigInt w = tpy::BigInt(static_cast<int64_t>(0));
+    ::tpy::BigInt w = ::tpy::BigInt(static_cast<int64_t>(0));
     //     w += Int32(5)  # tpyc: ok
-    w = (w) + (tpy::BigInt(5));
+    w = (w) + (::tpy::BigInt(5));
     //     print(w)
     std::cout << w << "\n";
 }
@@ -50,7 +50,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

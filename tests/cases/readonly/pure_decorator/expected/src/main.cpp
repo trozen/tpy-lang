@@ -8,14 +8,14 @@ namespace tpy_user::main {
 // def add_values(a: Int32, b: Int32) -> Int32:
 int32_t add_values(int32_t a, int32_t b) {
     //     return a + b
-    return (tpy::add_check<int32_t>(a, b));
+    return (::tpy::add_check<int32_t>(a, b));
 }
 
 // @pure
 // def compute(p: Point) -> Int32:
 int32_t compute(const Point& p) {
     //     return p.magnitude_sq() + add_values(p.x, p.y)
-    return (tpy::add_check<int32_t>(p.magnitude_sq(), add_values(p.x, p.y)));
+    return (::tpy::add_check<int32_t>(p.magnitude_sq(), add_values(p.x, p.y)));
 }
 
 // def use_readonly(p: readonly[Point]) -> None:
@@ -55,7 +55,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

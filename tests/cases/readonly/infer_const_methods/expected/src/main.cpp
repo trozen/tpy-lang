@@ -21,7 +21,7 @@ void main() {
     //     print(c.get())
     std::cout << c.get() << "\n";
     //     print(c.is_zero())
-    std::cout << tpy::print_bool(c.is_zero()) << "\n";
+    std::cout << ::tpy::print_bool(c.is_zero()) << "\n";
     //     b = Box()
     Box b = Box();
     //     b.push(1)
@@ -55,7 +55,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

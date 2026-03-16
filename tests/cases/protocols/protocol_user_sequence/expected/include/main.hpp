@@ -9,9 +9,9 @@ struct IntWrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<tpy::Sequence<int32_t> T_s>
+template<::tpy::Sequence<int32_t> T_s>
 int32_t sum_seq(const T_s& s);
-template<tpy::Sequence<int32_t> T_s>
+template<::tpy::Sequence<int32_t> T_s>
 int32_t first(const T_s& s);
 void main();
 
@@ -27,13 +27,13 @@ struct IntWrapper {
     //     def __len__(self) -> Int32:
     int32_t __len__() const {
         //         return len(self.data)
-        return tpy::__len__(this->data);
+        return ::tpy::__len__(this->data);
     }
 
     //     def __getitem__(self, index: Int32) -> Int32:
     int32_t __getitem__(int32_t index) const {
         //         return self.data[index]
-        return tpy::__getitem__(this->data, index);
+        return ::tpy::__getitem__(this->data, index);
     }
 
     int32_t operator[](int32_t index) const {
@@ -42,40 +42,40 @@ struct IntWrapper {
 
     size_t size() const {
         auto len = __len__();
-        if (len < 0) tpy::tpy_panic("__len__ returned negative value");
+        if (len < 0) ::tpy::tpy_panic("__len__ returned negative value");
         return static_cast<size_t>(len);
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const IntWrapper& obj) {
     os << "IntWrapper("
-       << "data=" << tpy::ListPrinter(obj.data)
+       << "data=" << ::tpy::ListPrinter(obj.data)
        << ")";
     return os;
 }
 
 // def sum_seq(s: Sequence[Int32]) -> Int32:
-template<tpy::Sequence<int32_t> T_s>
+template<::tpy::Sequence<int32_t> T_s>
 int32_t sum_seq(const T_s& s) {
     //     total: Int32 = 0
     int32_t total = 0;
     //     i: Int32 = 0
     int32_t i = 0;
     //     while i < len(s):
-    while ((i < tpy::__len__(s))) {
+    while ((i < ::tpy::__len__(s))) {
         //         total += s[i]
-        total = tpy::add_check<int32_t>(total, s[i]);
+        total = ::tpy::add_check<int32_t>(total, s[i]);
         //         i += 1
-        i = tpy::add_check<int32_t>(i, 1);
+        i = ::tpy::add_check<int32_t>(i, 1);
     }
     //     return total
     return total;
 }
 // def first(s: Sequence[Int32]) -> Int32:
-template<tpy::Sequence<int32_t> T_s>
+template<::tpy::Sequence<int32_t> T_s>
 int32_t first(const T_s& s) {
     //     return s[0]
-    return tpy::__getitem__(s, 0);
+    return ::tpy::__getitem__(s, 0);
 }
 
 void __tpy_init();

@@ -9,15 +9,15 @@ void main() {
     //     wp: Wrapper[Pair] = Wrapper(Pair(1, 2))
     Wrapper<Pair> wp = Wrapper<Pair>(Pair(1, 2));
     //     print(str(wp))
-    std::cout << std::string(tpy::__str__(wp)) << "\n";
+    std::cout << std::string(::tpy::__str__(wp)) << "\n";
     //     print(repr(wp))
-    std::cout << std::string(tpy::__repr__(wp)) << "\n";
+    std::cout << std::string(::tpy::__repr__(wp)) << "\n";
     //     print(wp)
     std::cout << wp << "\n";
     //     print(f"val = {wp}")
-    std::cout << std::format("val = {}", tpy::__str__(wp)) << "\n";
+    std::cout << std::format("val = {}", ::tpy::__str__(wp)) << "\n";
     //     print(f"debug: {wp!r}")
-    std::cout << std::format("debug: {}", tpy::__repr__(wp)) << "\n";
+    std::cout << std::format("debug: {}", ::tpy::__repr__(wp)) << "\n";
 }
 
 void __tpy_init() {
@@ -32,7 +32,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

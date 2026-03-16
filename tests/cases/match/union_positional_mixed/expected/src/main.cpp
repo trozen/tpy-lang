@@ -16,7 +16,7 @@ void describe(const std::variant<Label, Point>& s) {
         auto& py = __case_0.y;
         auto& pz = __case_0.z;
         //             print(px + py + pz)
-        std::cout << tpy::print_float(((((px) + (py))) + (pz))) << "\n";
+        std::cout << ::tpy::print_float(((((px) + (py))) + (pz))) << "\n";
         break;
     }
     //         case Label(t):
@@ -54,7 +54,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

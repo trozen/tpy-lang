@@ -12,7 +12,7 @@ void test_mixed() {
     //     name = "world"         # tpyc: type(StrView)
     std::string_view name = "world";
     //     result = str(42)       # tpyc: type(str)
-    std::string result = tpy::fixed_to_str<int8_t>(42);
+    std::string result = ::tpy::fixed_to_str<int8_t>(42);
     //     print(greeting)
     std::cout << greeting << "\n";
     //     print(name)
@@ -33,7 +33,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

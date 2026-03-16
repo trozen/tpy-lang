@@ -16,21 +16,21 @@ void __tpy_init() {
     initialized = true;
 
     // print(eq_both(5, 5))
-    std::cout << tpy::print_bool(eq_both(5, 5)) << "\n";
+    std::cout << ::tpy::print_bool(eq_both(5, 5)) << "\n";
     // print(eq_both(5, 3))
-    std::cout << tpy::print_bool(eq_both(5, 3)) << "\n";
+    std::cout << ::tpy::print_bool(eq_both(5, 3)) << "\n";
     // print(eq_both(None, 5))
-    std::cout << tpy::print_bool(eq_both(std::nullopt, 5)) << "\n";
+    std::cout << ::tpy::print_bool(eq_both(std::nullopt, 5)) << "\n";
     // print(eq_both(5, None))
-    std::cout << tpy::print_bool(eq_both(5, std::nullopt)) << "\n";
+    std::cout << ::tpy::print_bool(eq_both(5, std::nullopt)) << "\n";
     // print(eq_both(None, None))
-    std::cout << tpy::print_bool(eq_both(std::nullopt, std::nullopt)) << "\n";
+    std::cout << ::tpy::print_bool(eq_both(std::nullopt, std::nullopt)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

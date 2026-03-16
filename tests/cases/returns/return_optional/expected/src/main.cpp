@@ -50,13 +50,13 @@ void __tpy_init() {
     // result = find(points, 99)
     result = find((*points), 99);
     // print(result is None)
-    std::cout << tpy::print_bool((result == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((result == nullptr)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

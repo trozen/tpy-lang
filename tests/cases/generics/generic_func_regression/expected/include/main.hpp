@@ -19,9 +19,9 @@ extern int32_t result;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-tpy::val_or_ref_t<T> First(std::vector<T>& items);
+::tpy::val_or_ref_t<T> First(std::vector<T>& items);
 template<typename T>
-tpy::val_or_ref_t<T> get_item(std::vector<T>& items, int32_t idx);
+::tpy::val_or_ref_t<T> get_item(std::vector<T>& items, int32_t idx);
 
 // # Generic function with record type
 // class Point:
@@ -48,15 +48,15 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // # Uppercase generic function (tests routing: function vs type)
 // def First[T](items: list[T]) -> T:
 template<typename T>
-tpy::val_or_ref_t<T> First(std::vector<T>& items) {
+::tpy::val_or_ref_t<T> First(std::vector<T>& items) {
     //     return items[0]
-    return tpy::__getitem__(items, 0);
+    return ::tpy::__getitem__(items, 0);
 }
 // def get_item[T](items: list[T], idx: Int32) -> T:
 template<typename T>
-tpy::val_or_ref_t<T> get_item(std::vector<T>& items, int32_t idx) {
+::tpy::val_or_ref_t<T> get_item(std::vector<T>& items, int32_t idx) {
     //     return items[idx]
-    return tpy::__getitem__(items, idx);
+    return ::tpy::__getitem__(items, idx);
 }
 
 void __tpy_init();

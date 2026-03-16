@@ -33,12 +33,12 @@ void __tpy_init() {
     (*ml).push_back(40);
     // # Test pop() with no args - should remove and return last element
     // last: Int32 = ml.pop()
-    last = tpy::pop_back((*ml));
+    last = ::tpy::pop_back((*ml));
     // print(last)  # 40
     std::cout << last << "\n";
     // # Test pop(index) - should remove and return element at index
     // first: Int32 = ml.pop(0)
-    first = tpy::list_pop_at((*ml), 0);
+    first = ::tpy::list_pop_at((*ml), 0);
     // print(first)  # 10
     std::cout << first << "\n";
     // # Remaining elements should be [20, 30]
@@ -47,23 +47,23 @@ void __tpy_init() {
     // print(ml[1])  # 30
     std::cout << (*ml)[1] << "\n";
     // print(len(ml))  # 2
-    std::cout << tpy::__len__((*ml)) << "\n";
+    std::cout << ::tpy::__len__((*ml)) << "\n";
     // # Also test that regular list pop overloads work (sanity check)
     // items: list[Int32] = [1, 2, 3, 4, 5]
     static std::vector<int32_t> __global_slot_2 = {1, 2, 3, 4, 5};
     items = &__global_slot_2;
     // print(items.pop())  # 5 - pop last
-    std::cout << tpy::pop_back((*items)) << "\n";
+    std::cout << ::tpy::pop_back((*items)) << "\n";
     // print(items.pop(0))  # 1 - pop first
-    std::cout << tpy::list_pop_at((*items), 0) << "\n";
+    std::cout << ::tpy::list_pop_at((*items), 0) << "\n";
     // print(len(items))  # 3
-    std::cout << tpy::__len__((*items)) << "\n";
+    std::cout << ::tpy::__len__((*items)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

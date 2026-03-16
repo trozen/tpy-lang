@@ -25,11 +25,11 @@ void __tpy_init() {
     std::cout << 27 << "\n";
     // # Large exponents (arbitrary precision)
     // print(2 ** 32)   # 4294967296
-    std::cout << tpy::BigInt(static_cast<int64_t>(4294967296LL)) << "\n";
+    std::cout << ::tpy::BigInt(static_cast<int64_t>(4294967296LL)) << "\n";
     // print(2 ** 64)   # 18446744073709551616
-    std::cout << tpy::BigInt::from_str("18446744073709551616") << "\n";
+    std::cout << ::tpy::BigInt::from_str("18446744073709551616") << "\n";
     // print(10 ** 20)  # 100000000000000000000
-    std::cout << tpy::BigInt::from_str("100000000000000000000") << "\n";
+    std::cout << ::tpy::BigInt::from_str("100000000000000000000") << "\n";
     // # Negative base with even/odd exponents
     // print((-2) ** 3)  # -8
     std::cout << -8 << "\n";
@@ -46,13 +46,13 @@ void __tpy_init() {
     // y = 3
     y = 3;
     // print(x ** y)  # 125
-    std::cout << (tpy::pow_check<int32_t>(x, y)) << "\n";
+    std::cout << (::tpy::pow_check<int32_t>(x, y)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

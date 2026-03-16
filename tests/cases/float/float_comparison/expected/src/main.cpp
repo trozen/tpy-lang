@@ -16,23 +16,23 @@ void __tpy_init() {
     // x = 3.14
     x = 3.14;
     // print(x > 3.0)
-    std::cout << tpy::print_bool((x > 3.0)) << "\n";
+    std::cout << ::tpy::print_bool((x > 3.0)) << "\n";
     // print(x == 3.14)
-    std::cout << tpy::print_bool((x == 3.14)) << "\n";
+    std::cout << ::tpy::print_bool((x == 3.14)) << "\n";
     // print(x < 4.0)
-    std::cout << tpy::print_bool((x < 4.0)) << "\n";
+    std::cout << ::tpy::print_bool((x < 4.0)) << "\n";
     // print(x >= 3.14)
-    std::cout << tpy::print_bool((x >= 3.14)) << "\n";
+    std::cout << ::tpy::print_bool((x >= 3.14)) << "\n";
     // print(x <= 3.14)
-    std::cout << tpy::print_bool((x <= 3.14)) << "\n";
+    std::cout << ::tpy::print_bool((x <= 3.14)) << "\n";
     // print(x != 0.0)
-    std::cout << tpy::print_bool((x != 0.0)) << "\n";
+    std::cout << ::tpy::print_bool((x != 0.0)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

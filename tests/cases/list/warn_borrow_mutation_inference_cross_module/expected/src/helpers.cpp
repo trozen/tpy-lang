@@ -15,7 +15,7 @@ int32_t sum_points(const std::vector<Point>& items) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
         //         total += p.x
-        total = tpy::add_check<int32_t>(total, p.x);
+        total = ::tpy::add_check<int32_t>(total, p.x);
     }
     //     return total
     return total;

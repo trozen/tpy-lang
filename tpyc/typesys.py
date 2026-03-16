@@ -494,10 +494,10 @@ class Float32Type(TpyType):
 
 @dataclass(frozen=True)
 class BigIntType(TpyType):
-    """Arbitrary precision integer: int -> tpy::BigInt"""
+    """Arbitrary precision integer: int -> ::tpy::BigInt"""
 
     def to_cpp(self) -> str:
-        return "tpy::BigInt"
+        return "::tpy::BigInt"
 
     def __str__(self) -> str:
         return "int"
@@ -581,11 +581,11 @@ class IntEnumType(EnumType):
 
 @dataclass(frozen=True)
 class RangeType(TpyType):
-    """Range type: range() -> tpy::Range<T> (lazy iterator over T)."""
+    """Range type: range() -> ::tpy::Range<T> (lazy iterator over T)."""
     elem: "TpyType"
 
     def to_cpp(self) -> str:
-        return f"tpy::Range<{self.elem.to_cpp()}>"
+        return f"::tpy::Range<{self.elem.to_cpp()}>"
 
     def __str__(self) -> str:
         return f"Range[{self.elem}]"
@@ -605,7 +605,7 @@ class SliceType(TpyType):
     """Slice type: slice(start, stop) for subscript ranges."""
 
     def to_cpp(self) -> str:
-        return "tpy::Slice"
+        return "::tpy::Slice"
 
     def __str__(self) -> str:
         return "slice"
@@ -682,14 +682,14 @@ class TypeParamRef(TpyType):
     is substituted with the actual type.
 
     For TYPE kind (default):
-    - C++ Code Generation Semantics (using tpy::is_value_type trait):
-      - Parameters: Use `tpy::param_val_or_ref_t<T>` which resolves to:
+    - C++ Code Generation Semantics (using ::tpy::is_value_type trait):
+      - Parameters: Use `::tpy::param_val_or_ref_t<T>` which resolves to:
         - `const T&` for value types (immutable, compiler optimizes small types)
         - `T&` for object types (allows mutation per Python semantics)
-      - Returns: Use `tpy::val_or_ref_t<T>` which resolves to:
+      - Returns: Use `::tpy::val_or_ref_t<T>` which resolves to:
         - `T` for value types (return by value)
         - `T&` for object types (mutable reference, Python semantics)
-      - Const returns: Use `tpy::val_or_cref_t<T>` which resolves to:
+      - Const returns: Use `::tpy::val_or_cref_t<T>` which resolves to:
         - `T` for value types
         - `const T&` for object types
 
@@ -726,7 +726,7 @@ class TypeParamRef(TpyType):
             # INT params are passed by value (they're std::size_t)
             return f"std::size_t {name}"
         # Use trait-based param type: const T& for value types, T& for object types
-        return f"tpy::param_val_or_ref_t<{self.name}> {name}"
+        return f"::tpy::param_val_or_ref_t<{self.name}> {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
         if self.kind == TypeParamKind.INT:
@@ -737,13 +737,13 @@ class TypeParamRef(TpyType):
         if self.kind == TypeParamKind.INT:
             return "std::size_t"
         # Use trait-based return type: T for value types, T& for object types
-        return f"tpy::val_or_ref_t<{self.name}>"
+        return f"::tpy::val_or_ref_t<{self.name}>"
 
     def to_cpp_return_const(self) -> str:
         if self.kind == TypeParamKind.INT:
             return "std::size_t"
         # Use trait-based return type: T for value types, const T& for object types
-        return f"tpy::val_or_cref_t<{self.name}>"
+        return f"::tpy::val_or_cref_t<{self.name}>"
 
 
 @dataclass(frozen=True)
@@ -1696,8 +1696,8 @@ class SpanType(NamedType):
 class SpanIterType(NamedType):
     """Iterator over a contiguous span.
 
-    SpanIter[T] -> tpy::SpanIter<T> (mutable elements T&)
-    SpanIter[readonly[T]] -> tpy::SpanIter<const T> (const elements)
+    SpanIter[T] -> ::tpy::SpanIter<T> (mutable elements T&)
+    SpanIter[readonly[T]] -> ::tpy::SpanIter<const T> (const elements)
 
     Const-ness follows the same pattern as SpanType: ReadonlyType in the
     element encodes the const variant. SpanIter<T> holds span<T> internally.
@@ -1722,8 +1722,8 @@ class SpanIterType(NamedType):
 
     def to_cpp(self) -> str:
         if self.is_readonly:
-            return f"tpy::SpanIter<const {self.inner_element_type.to_cpp()}>"
-        return f"tpy::SpanIter<{self.element_type.to_cpp()}>"
+            return f"::tpy::SpanIter<const {self.inner_element_type.to_cpp()}>"
+        return f"::tpy::SpanIter<{self.element_type.to_cpp()}>"
 
     def __str__(self) -> str:
         return f"SpanIter[{self.element_type}]"
@@ -1796,7 +1796,7 @@ class ListType(NamedType):
 
 
 class DictType(NamedType):
-    """Dict type: dict[K, V] -> tpy::ordered_map<K, V>"""
+    """Dict type: dict[K, V] -> ::tpy::ordered_map<K, V>"""
 
     def __init__(self, key_type: TpyType, value_type: TpyType):
         NamedType.__init__(self, name="dict", type_args=(key_type, value_type),
@@ -1811,7 +1811,7 @@ class DictType(NamedType):
         return self.type_args[1]
 
     def to_cpp(self) -> str:
-        return f"tpy::ordered_map<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
+        return f"::tpy::ordered_map<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
 
     def __str__(self) -> str:
         return f"dict[{self.key_type}, {self.value_type}]"
@@ -1845,7 +1845,7 @@ class DictType(NamedType):
 
 
 class SetType(NamedType):
-    """Set type: set[T] -> tpy::ordered_set<T>"""
+    """Set type: set[T] -> ::tpy::ordered_set<T>"""
 
     def __init__(self, element_type: TpyType):
         NamedType.__init__(self, name="set", type_args=(element_type,),
@@ -1856,7 +1856,7 @@ class SetType(NamedType):
         return self.type_args[0]
 
     def to_cpp(self) -> str:
-        return f"tpy::ordered_set<{self.element_type.to_cpp()}>"
+        return f"::tpy::ordered_set<{self.element_type.to_cpp()}>"
 
     def __str__(self) -> str:
         return f"set[{self.element_type}]"
@@ -1884,7 +1884,7 @@ class SetType(NamedType):
 
 
 class DictKeysViewType(NamedType):
-    """Dict keys view: d.keys() -> tpy::dict_keys_view<K, V>"""
+    """Dict keys view: d.keys() -> ::tpy::dict_keys_view<K, V>"""
 
     def __init__(self, key_type: TpyType, value_type: TpyType):
         NamedType.__init__(self, name="dict_keys", type_args=(key_type, value_type),
@@ -1899,7 +1899,7 @@ class DictKeysViewType(NamedType):
         return self.type_args[1]
 
     def to_cpp(self) -> str:
-        return f"tpy::dict_keys_view<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
+        return f"::tpy::dict_keys_view<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
 
     def get_iteration_element_type(self) -> Optional[TpyType]:
         return self.key_type
@@ -1924,7 +1924,7 @@ class DictKeysViewType(NamedType):
 
 
 class DictValuesViewType(NamedType):
-    """Dict values view: d.values() -> tpy::dict_values_view<K, V>"""
+    """Dict values view: d.values() -> ::tpy::dict_values_view<K, V>"""
 
     def __init__(self, key_type: TpyType, value_type: TpyType):
         NamedType.__init__(self, name="dict_values", type_args=(key_type, value_type),
@@ -1939,7 +1939,7 @@ class DictValuesViewType(NamedType):
         return self.type_args[1]
 
     def to_cpp(self) -> str:
-        return f"tpy::dict_values_view<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
+        return f"::tpy::dict_values_view<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
 
     def get_iteration_element_type(self) -> Optional[TpyType]:
         return self.value_type
@@ -1964,7 +1964,7 @@ class DictValuesViewType(NamedType):
 
 
 class DictItemsViewType(NamedType):
-    """Dict items view: d.items() -> tpy::dict_items_view<K, V>"""
+    """Dict items view: d.items() -> ::tpy::dict_items_view<K, V>"""
 
     def __init__(self, key_type: TpyType, value_type: TpyType):
         NamedType.__init__(self, name="dict_items", type_args=(key_type, value_type),
@@ -1979,7 +1979,7 @@ class DictItemsViewType(NamedType):
         return self.type_args[1]
 
     def to_cpp(self) -> str:
-        return f"tpy::dict_items_view<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
+        return f"::tpy::dict_items_view<{self.key_type.to_cpp()}, {self.value_type.to_cpp()}>"
 
     def get_iteration_element_type(self) -> Optional[TpyType]:
         return TupleType((self.key_type, self.value_type))
@@ -2059,7 +2059,7 @@ class ListRepeatType(TpyType):
     element_type: TpyType
 
     def to_cpp(self) -> str:
-        return f"tpy::repeat_range<{self.element_type.to_cpp()}>"
+        return f"::tpy::repeat_range<{self.element_type.to_cpp()}>"
 
     def get_element_type(self) -> Optional[TpyType]:
         return self.element_type
@@ -2076,7 +2076,7 @@ class GenExprType(TpyType):
     """Generator expression type -- lazy iterable producing T.
 
     Internal type, not user-facing. Satisfies Iterable[T].
-    C++ representation is tpy::generator_wrapper<T, lambda> (auto-deduced).
+    C++ representation is ::tpy::generator_wrapper<T, lambda> (auto-deduced).
     """
     element_type: TpyType
 
@@ -2341,13 +2341,13 @@ def protocol_union_has_none(typ: UnionType) -> bool:
 def container_to_str_template(typ: TpyType) -> str | None:
     """Return the C++ to_str template for a container type, or None."""
     if isinstance(typ, TupleType):
-        return "tpy::tuple_to_str({0})"
+        return "::tpy::tuple_to_str({0})"
     if isinstance(typ, (ListType, ArrayType, SpanType)):
-        return "tpy::list_to_str({0})"
+        return "::tpy::list_to_str({0})"
     if isinstance(typ, DictType):
-        return "tpy::dict_to_str({0})"
+        return "::tpy::dict_to_str({0})"
     if isinstance(typ, SetType):
-        return "tpy::set_to_str({0})"
+        return "::tpy::set_to_str({0})"
     return None
 
 
@@ -2576,7 +2576,7 @@ class ResolvedBinop:
     Stores all info needed by codegen to generate the operation.
     """
     method: FunctionInfo
-    left_wrapper: str   # cpp template for left, e.g., "tpy::BigInt({expr})" or "{expr}"
+    left_wrapper: str   # cpp template for left, e.g., "::tpy::BigInt({expr})" or "{expr}"
     right_wrapper: str  # cpp template for right
     is_reverse: bool = False  # True if using reverse operator (swap {self} and {0})
     receiver_type: 'TpyType | None' = None  # Type of the receiver ({self})
@@ -2625,7 +2625,7 @@ class ProtocolInfo:
     - type_params stores the type parameter names (e.g., ["T"])
 
     For builtin protocols:
-    - cpp_concept stores the C++ concept name (e.g., "tpy::Sized")
+    - cpp_concept stores the C++ concept name (e.g., "::tpy::Sized")
     - is_marker indicates protocols with no methods (require explicit extends)
 
     For protocol inheritance:

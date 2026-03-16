@@ -15,9 +15,9 @@ void test_contains() {
     //     a.append(30)
     a.append(30);
     //     print(20 in a)
-    std::cout << tpy::print_bool((a.__contains__(20))) << "\n";
+    std::cout << ::tpy::print_bool((a.__contains__(20))) << "\n";
     //     print(99 in a)
-    std::cout << tpy::print_bool((a.__contains__(99))) << "\n";
+    std::cout << ::tpy::print_bool((a.__contains__(99))) << "\n";
 }
 
 // def test_eq() -> None:
@@ -35,11 +35,11 @@ void test_eq() {
     //     b.append(2)
     b.append(2);
     //     print(a == b)
-    std::cout << tpy::print_bool((a == b)) << "\n";
+    std::cout << ::tpy::print_bool((a == b)) << "\n";
     //     b.append(3)
     b.append(3);
     //     print(a == b)
-    std::cout << tpy::print_bool((a == b)) << "\n";
+    std::cout << ::tpy::print_bool((a == b)) << "\n";
 }
 
 // def test_repr() -> None:
@@ -51,7 +51,7 @@ void test_repr() {
     //     a.append(20)
     a.append(20);
     //     print(repr(a))
-    std::cout << std::string(tpy::__repr__(a)) << "\n";
+    std::cout << std::string(::tpy::__repr__(a)) << "\n";
 }
 
 // def test_swap() -> None:
@@ -87,7 +87,7 @@ void test_truncate() {
     //     print(a)
     std::cout << a << "\n";
     //     print(len(a))
-    std::cout << tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n";
 }
 
 // def test_index() -> None:
@@ -265,7 +265,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

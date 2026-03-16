@@ -10,7 +10,7 @@ struct Point;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-void store_at(T* p, uint32_t idx, tpy::param_val_or_ref_t<T> val);
+void store_at(T* p, uint32_t idx, ::tpy::param_val_or_ref_t<T> val);
 void main();
 
 // class Point:
@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // def store_at[T](p: Ptr[T], idx: UInt32, val: T) -> None:
 template<typename T>
-void store_at(T* p, uint32_t idx, tpy::param_val_or_ref_t<T> val) {
+void store_at(T* p, uint32_t idx, ::tpy::param_val_or_ref_t<T> val) {
     //     unsafe_store(p, idx, val)
     p[idx] = val;
 }

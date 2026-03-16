@@ -8,35 +8,35 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     d = {"a": 10, "b": 20, "c": 30}
-    tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"a", 10}, {"b", 20}, {"c", 30}});
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 10}, {"b", 20}, {"c", 30}});
     //     # get returns Optional
     //     v = d.get("a")
-    int32_t* v = tpy::dict_get(d, "a");
+    int32_t* v = ::tpy::dict_get(d, "a");
     //     print(v)
-    std::cout << tpy::print_optional(v) << "\n";
+    std::cout << ::tpy::print_optional(v) << "\n";
     //     v2 = d.get("missing")
-    int32_t* v2 = tpy::dict_get(d, "missing");
+    int32_t* v2 = ::tpy::dict_get(d, "missing");
     //     print(v2)
-    std::cout << tpy::print_optional(v2) << "\n";
+    std::cout << ::tpy::print_optional(v2) << "\n";
     //     # pop removes and returns
     //     p = d.pop("c")
-    int32_t p = tpy::dict_pop(d, "c");
+    int32_t p = ::tpy::dict_pop(d, "c");
     //     print(p)
     std::cout << p << "\n";
     //     print(len(d))
-    std::cout << tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n";
     //     # pop with default
     //     p2 = d.pop("missing", 99)
-    int32_t p2 = tpy::dict_pop_default(d, "missing", 99);
+    int32_t p2 = ::tpy::dict_pop_default(d, "missing", 99);
     //     print(p2)
     std::cout << p2 << "\n";
     //     # clear
     //     d.clear()
     d.clear();
     //     print(len(d))
-    std::cout << tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n";
     //     print(d)
-    std::cout << tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
 void __tpy_init() {
@@ -51,7 +51,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

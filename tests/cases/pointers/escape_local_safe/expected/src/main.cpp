@@ -67,7 +67,7 @@ void value_type_ok() {
     //     for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
         //         n: Int32 = i * 10
-        int32_t n = (tpy::mul_check<int32_t>(i, 10));
+        int32_t n = (::tpy::mul_check<int32_t>(i, 10));
         //         saved = n  # tpyc: ok
         saved = n;
     }
@@ -181,7 +181,7 @@ void lvalue_init_rvalue_rebind() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4), Point(5, 6)};
     //     best: Point = items[0]
     std::optional<Point> __slot_1;
-    Point* best = &(tpy::__getitem__(items, 0));
+    Point* best = &(::tpy::__getitem__(items, 0));
     //     for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
@@ -286,7 +286,7 @@ void while_rvalue_rebind() {
         //         p = Point(i, i)
         p = &*(__slot_2 = Point(i, i));
         //         i = i + 1
-        i = (tpy::add_check<int32_t>(i, 1));
+        i = (::tpy::add_check<int32_t>(i, 1));
     }
     //     print(p.x, p.y)
     std::cout << p->x << " " << p->y << "\n";
@@ -329,7 +329,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

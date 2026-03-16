@@ -13,7 +13,7 @@ void main() {
     std::cout << c.count << "\n";
     //     # Constructor with concrete arg
     //     nums: list[int] = [1, 2, 3]
-    std::vector<tpy::BigInt> nums = {1, 2, 3};
+    std::vector<::tpy::BigInt> nums = {1, 2, 3};
     //     c2 = Container(nums)
     Container c2 = Container(&(nums));
     //     print(c2.count)
@@ -25,7 +25,7 @@ void main() {
     std::cout << c3.count << "\n";
     //     # Method: required + optional protocol, both provided
     //     more: list[int] = [10, 20]
-    std::vector<tpy::BigInt> more = {10, 20};
+    std::vector<::tpy::BigInt> more = {10, 20};
     //     c2.update(nums, more)
     c2.update(nums, &(more));
     //     print(c2.count)
@@ -66,15 +66,15 @@ void main() {
     std::cout << mc3.count << "\n";
     //     # Generic class with Optional[Protocol] constructor
     //     gc = GenericContainer[int](nums)
-    GenericContainer<tpy::BigInt> gc = GenericContainer<tpy::BigInt>(&(nums));
+    GenericContainer<::tpy::BigInt> gc = GenericContainer<::tpy::BigInt>(&(nums));
     //     print(gc.count)
     std::cout << gc.count << "\n";
     //     gc2 = GenericContainer[int]()
-    GenericContainer<tpy::BigInt> gc2 = GenericContainer<tpy::BigInt>();
+    GenericContainer<::tpy::BigInt> gc2 = GenericContainer<::tpy::BigInt>();
     //     print(gc2.count)
     std::cout << gc2.count << "\n";
     //     gc3 = GenericContainer[int](None)
-    GenericContainer<tpy::BigInt> gc3 = GenericContainer<tpy::BigInt>(static_cast<std::nullptr_t*>(nullptr));
+    GenericContainer<::tpy::BigInt> gc3 = GenericContainer<::tpy::BigInt>(static_cast<std::nullptr_t*>(nullptr));
     //     print(gc3.count)
     std::cout << gc3.count << "\n";
     //     # Generic Optional[Sequence[int]]
@@ -98,7 +98,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

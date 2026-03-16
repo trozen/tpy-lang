@@ -8,17 +8,17 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     d: dict[int, str] = {1: "one", 2: "two", 3: "three"}
-    tpy::ordered_map<tpy::BigInt, std::string> d = tpy::ordered_map<tpy::BigInt, std::string>({{tpy::BigInt(1), "one"}, {tpy::BigInt(2), "two"}, {tpy::BigInt(3), "three"}});
+    ::tpy::ordered_map<::tpy::BigInt, std::string> d = ::tpy::ordered_map<::tpy::BigInt, std::string>({{::tpy::BigInt(1), "one"}, {::tpy::BigInt(2), "two"}, {::tpy::BigInt(3), "three"}});
     //     print(d[1])
-    std::cout << tpy::__getitem__(d, 1) << "\n";
+    std::cout << ::tpy::__getitem__(d, 1) << "\n";
     //     print(d[2])
-    std::cout << tpy::__getitem__(d, 2) << "\n";
+    std::cout << ::tpy::__getitem__(d, 2) << "\n";
     //     print(1 in d)
-    std::cout << tpy::print_bool((d.contains(1))) << "\n";
+    std::cout << ::tpy::print_bool((d.contains(1))) << "\n";
     //     print(99 in d)
-    std::cout << tpy::print_bool((d.contains(99))) << "\n";
+    std::cout << ::tpy::print_bool((d.contains(99))) << "\n";
     //     print(len(d))
-    std::cout << tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n";
 }
 
 void __tpy_init() {
@@ -33,7 +33,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

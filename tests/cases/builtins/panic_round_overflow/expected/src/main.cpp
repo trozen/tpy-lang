@@ -9,7 +9,7 @@ void main() {
     //     x: Int32 = Int32(2147483647)
     int32_t x = 2147483647;
     //     print(round(x, Int32(-1)))
-    std::cout << tpy::round_fixed<int32_t>(x, -1) << "\n";
+    std::cout << ::tpy::round_fixed<int32_t>(x, -1) << "\n";
 }
 
 void __tpy_init() {
@@ -24,7 +24,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

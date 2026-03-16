@@ -7,23 +7,23 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<tpy::Sequence<char> T_s>
+template<::tpy::Sequence<char> T_s>
 char first_char(const T_s& s);
-template<tpy::Sequence<char> T_s>
+template<::tpy::Sequence<char> T_s>
 int32_t count_chars(const T_s& s);
 void main();
 
 // def first_char(s: Sequence[Char]) -> Char:
-template<tpy::Sequence<char> T_s>
+template<::tpy::Sequence<char> T_s>
 char first_char(const T_s& s) {
     //     return s[0]
-    return tpy::__getitem__(s, 0);
+    return ::tpy::__getitem__(s, 0);
 }
 // def count_chars(s: Sequence[Char]) -> Int32:
-template<tpy::Sequence<char> T_s>
+template<::tpy::Sequence<char> T_s>
 int32_t count_chars(const T_s& s) {
     //     return len(s)
-    return tpy::__len__(s);
+    return ::tpy::__len__(s);
 }
 
 void __tpy_init();

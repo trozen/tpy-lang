@@ -8,31 +8,31 @@ namespace tpy_user::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || tpy::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sized<T_items>)
 int32_t count_if_sized(const T_items* items = nullptr);
 template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || tpy::ReadOnlySpanLike<T_items, int32_t>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::ReadOnlySpanLike<T_items, int32_t>)
 int32_t sum_span(const T_items* items = nullptr);
 template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || tpy::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sized<T_items>)
 int32_t check_not(const T_items* items = nullptr);
 void main();
 
 // def count_if_sized(items: Sized | None = None) -> Int32:
 template<typename T_items>
-  requires (std::same_as<T_items, std::nullptr_t> || tpy::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sized<T_items>)
 int32_t count_if_sized(const T_items* items) {
     //     if isinstance(items, Sized):
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
         //         return len(items)
-        return tpy::__len__((*items));
+        return ::tpy::__len__((*items));
     }
     //     return -1
     return -1;
 }
 // def sum_span(items: ReadOnlySpanLike[Int32] | None = None) -> Int32:
 template<typename T_items>
-  requires (std::same_as<T_items, std::nullptr_t> || tpy::ReadOnlySpanLike<T_items, int32_t>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::ReadOnlySpanLike<T_items, int32_t>)
 int32_t sum_span(const T_items* items) {
     //     if isinstance(items, ReadOnlySpanLike):
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
@@ -45,7 +45,7 @@ int32_t sum_span(const T_items* items) {
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
             //             total += x
-            total = tpy::add_check<int32_t>(total, x);
+            total = ::tpy::add_check<int32_t>(total, x);
         }
         //         return total
         return total;
@@ -55,7 +55,7 @@ int32_t sum_span(const T_items* items) {
 }
 // def check_not(items: Sized | None = None) -> Int32:
 template<typename T_items>
-  requires (std::same_as<T_items, std::nullptr_t> || tpy::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sized<T_items>)
 int32_t check_not(const T_items* items) {
     //     if not isinstance(items, Sized):
     if constexpr (std::same_as<T_items, std::nullptr_t>) {
@@ -63,7 +63,7 @@ int32_t check_not(const T_items* items) {
         return -1;
     }
     //     return len(items)
-    return tpy::__len__((*items));
+    return ::tpy::__len__((*items));
 }
 
 void __tpy_init();

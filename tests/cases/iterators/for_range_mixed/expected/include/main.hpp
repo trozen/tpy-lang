@@ -6,10 +6,10 @@
 namespace tpy_user::main {
 
 extern int32_t start;
-extern tpy::BigInt big_end;
+extern ::tpy::BigInt big_end;
 extern int32_t count;
 extern int32_t end;
-extern tpy::BigInt big_start;
+extern ::tpy::BigInt big_start;
 inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();

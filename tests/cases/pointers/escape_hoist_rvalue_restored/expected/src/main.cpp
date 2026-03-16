@@ -20,9 +20,9 @@ void rvalue_restored() {
         //         p: Point = Point(0, 0)
         Point* p = &*(__slot_2 = Point(0, 0));
         //         p = items[0]
-        p = &(tpy::__getitem__(items, 0));
+        p = &(::tpy::__getitem__(items, 0));
         //         p = Point(i, i + 10)
-        p = &*(__slot_3 = Point(i, (tpy::add_check<int32_t>(i, 10))));
+        p = &*(__slot_3 = Point(i, (::tpy::add_check<int32_t>(i, 10))));
         //         saved = p  # tpyc: warning(/hoisted to function scope/)
         saved = p;
     }
@@ -42,7 +42,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

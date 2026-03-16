@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def get_thing(sec: Ptr[SectorT]) -> Ptr[ThingT]:
 thing_t* get_thing(sector_t* sec) {
     //     return unsafe_cast[ThingT](sec.thinglist)
-    return reinterpret_cast<thing_t*>(tpy::deref_check(sec).thinglist);
+    return reinterpret_cast<thing_t*>(::tpy::deref_check(sec).thinglist);
 }
 
 // def main() -> None:
@@ -19,7 +19,7 @@ void main() {
     //     p: Ptr[ThingT] = get_thing(Ptr(sec))
     thing_t* p = get_thing(&sec);
     //     print(p.id)
-    std::cout << tpy::deref_check(p).id << "\n";
+    std::cout << ::tpy::deref_check(p).id << "\n";
 }
 
 void __tpy_init() {
@@ -37,7 +37,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

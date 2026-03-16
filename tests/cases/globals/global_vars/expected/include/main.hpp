@@ -67,7 +67,7 @@ struct Counter {
     int32_t add(int32_t a) const {
         //         # 'a' param shadows global 'a' above - should NOT deref
         //         return self.val + a
-        return (tpy::add_check<int32_t>(this->val, a));
+        return (::tpy::add_check<int32_t>(this->val, a));
     }
 };
 

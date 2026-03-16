@@ -27,13 +27,13 @@ void test() {
     //     h2.value = maybe_make(3)   # tpyc: ok
     h2.value = maybe_make(3);
     //     print(h2.value is None)
-    std::cout << tpy::print_bool((!h2.value.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!h2.value.has_value())) << "\n";
     //     print(h2.value.x)
-    std::cout << tpy::deref_optional_check(h2.value).x << "\n";
+    std::cout << ::tpy::deref_optional_check(h2.value).x << "\n";
     //     h2.value = maybe_make(-1)  # tpyc: ok
     h2.value = maybe_make(-1);
     //     print(h2.value is None)
-    std::cout << tpy::print_bool((!h2.value.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!h2.value.has_value())) << "\n";
 }
 
 void __tpy_init() {
@@ -48,15 +48,15 @@ void __tpy_init() {
     // h.value = maybe_make(5)   # tpyc: ok
     h->value = maybe_make(5);
     // print(h.value is None)
-    std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n";
     // print(h.value.x)
-    std::cout << tpy::deref_optional_check(h->value).x << "\n";
+    std::cout << ::tpy::deref_optional_check(h->value).x << "\n";
     // print(h.value.y)
-    std::cout << tpy::deref_optional_check(h->value).y << "\n";
+    std::cout << ::tpy::deref_optional_check(h->value).y << "\n";
     // h.value = maybe_make(-1)  # tpyc: ok
     h->value = maybe_make(-1);
     // print(h.value is None)
-    std::cout << tpy::print_bool((!h->value.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n";
     // test()
     test();
 }
@@ -64,7 +64,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -60,9 +60,9 @@ struct Container {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     os << "Container("
-       << "_value=" << tpy::ValuePrinter(obj._value)
+       << "_value=" << ::tpy::ValuePrinter(obj._value)
        << ", "
-       << "_has=" << tpy::print_bool(obj._has)
+       << "_has=" << ::tpy::print_bool(obj._has)
        << ")";
     return os;
 }

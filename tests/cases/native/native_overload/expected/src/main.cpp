@@ -9,9 +9,9 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     print(log(1.0))
-    std::cout << tpy::print_float(::std::log(1.0)) << "\n";
+    std::cout << ::tpy::print_float(::std::log(1.0)) << "\n";
     //     print(log(8.0, 2.0))
-    std::cout << tpy::print_float(::tpy::math::log_base(8.0, 2.0)) << "\n";
+    std::cout << ::tpy::print_float(::tpy::math::log_base(8.0, 2.0)) << "\n";
 }
 
 void __tpy_init() {
@@ -27,7 +27,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

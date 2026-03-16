@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def test() -> None:
 void test() {
     //     b = Box[Point](Point(1))
-    ::tpy_user::tplib::Box<Point> b = ::tpy_user::tplib::Box<Point>(Point(tpy::BigInt(1)));
+    ::tpy_user::tplib::Box<Point> b = ::tpy_user::tplib::Box<Point>(Point(::tpy::BigInt(1)));
     //     process(b)
     process<Point>(b);
     //     print(b.get().x)  # 11: mutation in process() was visible, so item was a ref not a copy
@@ -28,7 +28,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

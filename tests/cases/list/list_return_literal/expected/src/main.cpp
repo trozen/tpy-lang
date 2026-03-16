@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def make_list(x: Int32) -> Own[list[Int32]]:
 std::vector<int32_t> make_list(int32_t x) {
     //     return [x, x + 1, x + 2]
-    return {x, (tpy::add_check<int32_t>(x, 1)), (tpy::add_check<int32_t>(x, 2))};
+    return {x, (::tpy::add_check<int32_t>(x, 1)), (::tpy::add_check<int32_t>(x, 2))};
 }
 
 // def main():
@@ -18,9 +18,9 @@ void main() {
     //     a.append(99)
     a.push_back(99);
     //     print(len(a))
-    std::cout << tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n";
     //     print(a[0])
-    std::cout << tpy::__getitem__(a, 0) << "\n";
+    std::cout << ::tpy::__getitem__(a, 0) << "\n";
     //     # Single-element list from generic function (T inferred from arg)
     //     b: list[Int32] = make_single(42)
     int32_t __tmp_1 = 42;
@@ -64,7 +64,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

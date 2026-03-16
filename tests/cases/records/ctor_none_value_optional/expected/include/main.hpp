@@ -23,7 +23,7 @@ struct Holder {
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     os << "Holder("
-       << "value=" << tpy::print_optional_val(obj.value)
+       << "value=" << ::tpy::print_optional_val(obj.value)
        << ")";
     return os;
 }

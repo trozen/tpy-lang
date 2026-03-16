@@ -16,17 +16,17 @@ void __tpy_init() {
     initialized = true;
 
     // print(eq_check(5, 5))
-    std::cout << tpy::print_bool(eq_check(5, 5)) << "\n";
+    std::cout << ::tpy::print_bool(eq_check(5, 5)) << "\n";
     // print(eq_check(3, 5))
-    std::cout << tpy::print_bool(eq_check(3, 5)) << "\n";
+    std::cout << ::tpy::print_bool(eq_check(3, 5)) << "\n";
     // print(eq_check(None, 5))
-    std::cout << tpy::print_bool(eq_check(std::nullopt, 5)) << "\n";
+    std::cout << ::tpy::print_bool(eq_check(std::nullopt, 5)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

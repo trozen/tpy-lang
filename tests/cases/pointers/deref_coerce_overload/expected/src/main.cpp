@@ -24,7 +24,7 @@ void test() {
     Point* p = &pt;
     //     # Overload resolution should pick describe(Point) via Ptr[T] -> T deref coercion
     //     describe(p)
-    describe(tpy::deref_check(p));
+    describe(::tpy::deref_check(p));
 }
 
 void __tpy_init() {
@@ -39,7 +39,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

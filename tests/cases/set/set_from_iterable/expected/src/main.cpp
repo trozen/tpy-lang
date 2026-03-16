@@ -9,11 +9,11 @@ void main() {
     //     items: list[Int32] = [10, 20, 30, 20, 10]
     std::vector<int32_t> items = {10, 20, 30, 20, 10};
     //     s: set[Int32] = set(items)
-    tpy::ordered_set<int32_t> s = tpy::set_from_range<int32_t>(items);
+    ::tpy::ordered_set<int32_t> s = ::tpy::set_from_range<int32_t>(items);
     //     print(s)
-    std::cout << tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n";
     //     print(len(s))
-    std::cout << tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n";
 }
 
 void __tpy_init() {
@@ -28,7 +28,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

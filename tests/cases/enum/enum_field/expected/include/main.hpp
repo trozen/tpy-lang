@@ -25,7 +25,7 @@ struct tpy::EnumUtil<tpy_user::main::Color> {
 namespace tpy_user::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Color __e) {
-    return __os << "Color." << tpy::EnumUtil<Color>::name(__e);
+    return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
 }
 
 struct Pixel;
@@ -37,15 +37,15 @@ void main();
 // class Pixel:
 struct Pixel {
     //     x: int
-    tpy::BigInt x;
+    ::tpy::BigInt x;
     //     y: int
-    tpy::BigInt y;
+    ::tpy::BigInt y;
     //     color: Color
     Color color;
 
     //     def __init__(self, x: int, y: int, color: Color) -> None:
     Pixel() = default;
-    explicit Pixel(const tpy::BigInt& x, const tpy::BigInt& y, Color color) : x(x), y(y), color(color) {}
+    explicit Pixel(const ::tpy::BigInt& x, const ::tpy::BigInt& y, Color color) : x(x), y(y), color(color) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pixel& obj) {

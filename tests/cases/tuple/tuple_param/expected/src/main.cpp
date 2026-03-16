@@ -15,7 +15,7 @@ void print_pair(const std::tuple<int32_t, std::string>& p) {
 // def sum_triple(t: tuple[Int32, Int32, Int32]) -> Int32:
 int32_t sum_triple(const std::tuple<int32_t, int32_t, int32_t>& t) {
     //     return t[0] + t[1] + t[2]
-    return (tpy::add_check<int32_t>((tpy::add_check<int32_t>(std::get<0>(t), std::get<1>(t))), std::get<2>(t)));
+    return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(std::get<0>(t), std::get<1>(t))), std::get<2>(t)));
 }
 
 // def main() -> None:
@@ -44,7 +44,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

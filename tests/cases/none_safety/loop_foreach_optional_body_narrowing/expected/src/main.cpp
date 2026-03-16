@@ -22,7 +22,7 @@ int32_t sum_non_none(const std::vector<std::optional<int32_t>>& items) {
             continue;
         }
         //         total = total + item  # tpyc: ok
-        total = (tpy::add_check<int32_t>(total, (*item)));
+        total = (::tpy::add_check<int32_t>(total, (*item)));
     }
     //     return total
     return total;
@@ -47,7 +47,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

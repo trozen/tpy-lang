@@ -48,9 +48,9 @@ void main() {
     //     c.push(b4)
     c.push(std::move(b4));
     //     print(c.items[0].value)
-    std::cout << tpy::__getitem__(c.items, 0).value << "\n";
+    std::cout << ::tpy::__getitem__(c.items, 0).value << "\n";
     //     print(c.items[1].value)
-    std::cout << tpy::__getitem__(c.items, 1).value << "\n";
+    std::cout << ::tpy::__getitem__(c.items, 1).value << "\n";
 }
 
 void __tpy_init() {
@@ -65,7 +65,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

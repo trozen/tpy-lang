@@ -9,12 +9,12 @@ void main() {
     //     t: tuple[Int32, Int32] = (Int32(10), Int32(20))
     std::tuple<int32_t, int32_t> t = std::tuple<int32_t, int32_t>{10, 20};
     //     print(t)
-    std::cout << tpy::TuplePrinter(t) << "\n";
+    std::cout << ::tpy::TuplePrinter(t) << "\n";
     //     # Single-element tuple (trailing comma)
     //     s: tuple[Int32] = (Int32(42),)
     std::tuple<int32_t> s = std::tuple<int32_t>{42};
     //     print(s)
-    std::cout << tpy::TuplePrinter(s) << "\n";
+    std::cout << ::tpy::TuplePrinter(s) << "\n";
     //     # Record with tuple field
     //     p = Pair(Int32(1), "hello")
     Pair p = Pair(1, "hello");
@@ -24,7 +24,7 @@ void main() {
     //     n: tuple[tuple[Int32, Int32], str] = ((Int32(3), Int32(4)), "xy")
     std::tuple<std::tuple<int32_t, int32_t>, std::string> n = std::tuple<std::tuple<int32_t, int32_t>, std::string>{std::tuple<int32_t, int32_t>{3, 4}, "xy"};
     //     print(n)
-    std::cout << tpy::TuplePrinter(n) << "\n";
+    std::cout << ::tpy::TuplePrinter(n) << "\n";
 }
 
 void __tpy_init() {
@@ -39,7 +39,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

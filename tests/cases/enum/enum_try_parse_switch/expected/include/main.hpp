@@ -28,7 +28,7 @@ struct tpy::EnumUtil<tpy_user::main::Direction> {
 namespace tpy_user::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Direction __e) {
-    return __os << "Direction." << tpy::EnumUtil<Direction>::name(__e);
+    return __os << "Direction." << ::tpy::EnumUtil<Direction>::name(__e);
 }
 
 inline constexpr std::string_view __name__ = "__main__";

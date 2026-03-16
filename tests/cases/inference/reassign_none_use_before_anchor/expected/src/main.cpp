@@ -14,7 +14,7 @@ void __tpy_init() {
     // x = None
     x = nullptr;
     // print(x)
-    std::cout << tpy::print_optional(x) << "\n";
+    std::cout << ::tpy::print_optional(x) << "\n";
     // x = Point(Int32(7))
     static Point __global_slot_1 = Point(7);
     x = &__global_slot_1;
@@ -25,7 +25,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

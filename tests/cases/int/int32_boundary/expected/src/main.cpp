@@ -21,24 +21,24 @@ void __tpy_init() {
     // print(x)
     std::cout << x << "\n";
     // print(x - 1)
-    std::cout << (tpy::sub_check<int32_t>(x, 1)) << "\n";
+    std::cout << (::tpy::sub_check<int32_t>(x, 1)) << "\n";
     // print(x // 2)
-    std::cout << (tpy::div_floor<int32_t>(x, 2)) << "\n";
+    std::cout << (::tpy::div_floor<int32_t>(x, 2)) << "\n";
     // # INT32_MIN operations that don't overflow
     // y: Int32 = -2147483648
     y = -2147483648;
     // print(y)
     std::cout << y << "\n";
     // print(y + 1)
-    std::cout << (tpy::add_check<int32_t>(y, 1)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(y, 1)) << "\n";
     // print(y // 2)
-    std::cout << (tpy::div_floor<int32_t>(y, 2)) << "\n";
+    std::cout << (::tpy::div_floor<int32_t>(y, 2)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

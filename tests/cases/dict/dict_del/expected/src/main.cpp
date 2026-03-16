@@ -7,40 +7,40 @@ namespace tpy_user::main {
 // def test_basic() -> None:
 void test_basic() {
     //     d = {"a": Int32(1), "b": Int32(2), "c": Int32(3)}
-    tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
     //     print(len(d))
-    std::cout << tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n";
     //     del d["b"]
-    tpy::__delitem__(d, "b");
+    ::tpy::__delitem__(d, "b");
     //     print(len(d))
-    std::cout << tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n";
     //     print(d)
-    std::cout << tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
 // def test_multi_target() -> None:
 void test_multi_target() {
     //     d = {"x": Int32(10), "y": Int32(20), "z": Int32(30)}
-    tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}, {"z", 30}});
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}, {"z", 30}});
     //     del d["x"], d["z"]
-    tpy::__delitem__(d, "x");
-    tpy::__delitem__(d, "z");
+    ::tpy::__delitem__(d, "x");
+    ::tpy::__delitem__(d, "z");
     //     print(d)
-    std::cout << tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n";
     //     print(len(d))
-    std::cout << tpy::__len__(d) << "\n";
+    std::cout << ::tpy::__len__(d) << "\n";
 }
 
 // def test_del_then_insert() -> None:
 void test_del_then_insert() {
     //     d = {"a": Int32(1), "b": Int32(2)}
-    tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
     //     del d["a"]
-    tpy::__delitem__(d, "a");
+    ::tpy::__delitem__(d, "a");
     //     d["c"] = Int32(3)
-    tpy::__setitem__(d, "c", 3);
+    ::tpy::__setitem__(d, "c", 3);
     //     print(d)
-    std::cout << tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
 void __tpy_init() {
@@ -59,7 +59,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

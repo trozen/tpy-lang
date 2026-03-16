@@ -8,70 +8,70 @@ namespace tpy_user::main {
 void main() {
     //     # Whole numbers should show .0
     //     print(1.0)
-    std::cout << tpy::print_float(1.0) << "\n";
+    std::cout << ::tpy::print_float(1.0) << "\n";
     //     print(5.0)
-    std::cout << tpy::print_float(5.0) << "\n";
+    std::cout << ::tpy::print_float(5.0) << "\n";
     //     print(100.0)
-    std::cout << tpy::print_float(100.0) << "\n";
+    std::cout << ::tpy::print_float(100.0) << "\n";
     //     print(-42.0)
-    std::cout << tpy::print_float(-(42.0)) << "\n";
+    std::cout << ::tpy::print_float(-(42.0)) << "\n";
     //     # Simple decimals
     //     print(0.5)
-    std::cout << tpy::print_float(0.5) << "\n";
+    std::cout << ::tpy::print_float(0.5) << "\n";
     //     print(3.14)
-    std::cout << tpy::print_float(3.14) << "\n";
+    std::cout << ::tpy::print_float(3.14) << "\n";
     //     print(-2.5)
-    std::cout << tpy::print_float(-(2.5)) << "\n";
+    std::cout << ::tpy::print_float(-(2.5)) << "\n";
     //     # The classic 0.1 representation
     //     print(0.1)
-    std::cout << tpy::print_float(0.1) << "\n";
+    std::cout << ::tpy::print_float(0.1) << "\n";
     //     print(0.2)
-    std::cout << tpy::print_float(0.2) << "\n";
+    std::cout << ::tpy::print_float(0.2) << "\n";
     //     print(0.3)
-    std::cout << tpy::print_float(0.3) << "\n";
+    std::cout << ::tpy::print_float(0.3) << "\n";
     //     # High precision values
     //     print(3.14159265358979)
-    std::cout << tpy::print_float(3.14159265358979) << "\n";
+    std::cout << ::tpy::print_float(3.14159265358979) << "\n";
     //     print(2.718281828459045)
-    std::cout << tpy::print_float(2.718281828459045) << "\n";
+    std::cout << ::tpy::print_float(2.718281828459045) << "\n";
     //     # Large numbers (should not use scientific notation)
     //     print(123456789.0)
-    std::cout << tpy::print_float(123456789.0) << "\n";
+    std::cout << ::tpy::print_float(123456789.0) << "\n";
     //     print(123456789.123456)
-    std::cout << tpy::print_float(123456789.123456) << "\n";
+    std::cout << ::tpy::print_float(123456789.123456) << "\n";
     //     print(9999999999.999999)
-    std::cout << tpy::print_float(9999999999.999998) << "\n";
+    std::cout << ::tpy::print_float(9999999999.999998) << "\n";
     //     # Small decimals
     //     print(0.000123)
-    std::cout << tpy::print_float(0.000123) << "\n";
+    std::cout << ::tpy::print_float(0.000123) << "\n";
     //     print(0.0001)
-    std::cout << tpy::print_float(0.0001) << "\n";
+    std::cout << ::tpy::print_float(0.0001) << "\n";
     //     print(0.00001)
-    std::cout << tpy::print_float(1e-05) << "\n";
+    std::cout << ::tpy::print_float(1e-05) << "\n";
     //     # Negative small decimals
     //     print(-0.000123)
-    std::cout << tpy::print_float(-(0.000123)) << "\n";
+    std::cout << ::tpy::print_float(-(0.000123)) << "\n";
     //     print(-0.00001)
-    std::cout << tpy::print_float(-(1e-05)) << "\n";
+    std::cout << ::tpy::print_float(-(1e-05)) << "\n";
     //     # Trailing zeros should be trimmed (but keep at least .X)
     //     x = 1.10
     double x = 1.1;
     //     print(x)
-    std::cout << tpy::print_float(x) << "\n";
+    std::cout << ::tpy::print_float(x) << "\n";
     //     y = 2.500
     double y = 2.5;
     //     print(y)
-    std::cout << tpy::print_float(y) << "\n";
+    std::cout << ::tpy::print_float(y) << "\n";
     //     # Very small numbers
     //     print(0.000000001)
-    std::cout << tpy::print_float(1e-09) << "\n";
+    std::cout << ::tpy::print_float(1e-09) << "\n";
     //     print(0.0000000001)
-    std::cout << tpy::print_float(1e-10) << "\n";
+    std::cout << ::tpy::print_float(1e-10) << "\n";
     //     # Numbers close to integers
     //     print(1.0000000001)
-    std::cout << tpy::print_float(1.0000000001) << "\n";
+    std::cout << ::tpy::print_float(1.0000000001) << "\n";
     //     print(0.9999999999)
-    std::cout << tpy::print_float(0.9999999999) << "\n";
+    std::cout << ::tpy::print_float(0.9999999999) << "\n";
 }
 
 void __tpy_init() {
@@ -86,7 +86,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

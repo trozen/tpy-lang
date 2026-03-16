@@ -35,14 +35,14 @@ void __tpy_init() {
     std::cout << static_cast<int32_t>((*items).size()) << "\n";
     // # Explicit __getitem__
     // print(items.__getitem__(Int32(0)))  # 10
-    std::cout << tpy::__getitem__((*items), 0) << "\n";
+    std::cout << ::tpy::__getitem__((*items), 0) << "\n";
     // print(items.__getitem__(Int32(1)))  # 20
-    std::cout << tpy::__getitem__((*items), 1) << "\n";
+    std::cout << ::tpy::__getitem__((*items), 1) << "\n";
     // # Explicit __setitem__
     // items.__setitem__(Int32(1), Int32(99))
-    tpy::__setitem__((*items), 1, 99);
+    ::tpy::__setitem__((*items), 1, 99);
     // print(items.__getitem__(Int32(1)))  # 99
-    std::cout << tpy::__getitem__((*items), 1) << "\n";
+    std::cout << ::tpy::__getitem__((*items), 1) << "\n";
     // # Test ArrayList dunders (user/library type)
     // al = ArrayList[Int32, 10]()
     static ::tpy_user::tplib::ArrayList<int32_t, 10> __global_slot_2 = ::tpy_user::tplib::ArrayList<int32_t, 10>();
@@ -71,15 +71,15 @@ void __tpy_init() {
     std::cout << static_cast<int32_t>((*arr).size()) << "\n";
     // # Explicit __getitem__
     // print(arr.__getitem__(Int32(0)))  # 1
-    std::cout << tpy::__getitem__((*arr), 0) << "\n";
+    std::cout << ::tpy::__getitem__((*arr), 0) << "\n";
     // print(arr.__getitem__(Int32(2)))  # 3
-    std::cout << tpy::__getitem__((*arr), 2) << "\n";
+    std::cout << ::tpy::__getitem__((*arr), 2) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

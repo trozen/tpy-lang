@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // # Python int (BigInt) with default parameter values
 // def add(a: int, b: int = 0) -> int:
-tpy::BigInt add(const tpy::BigInt& a, const tpy::BigInt& b) {
+::tpy::BigInt add(const ::tpy::BigInt& a, const ::tpy::BigInt& b) {
     //     return a + b
     return ((a) + (b));
 }
 
 // def scale(value: int, factor: int = 1) -> int:
-tpy::BigInt scale(const tpy::BigInt& value, const tpy::BigInt& factor) {
+::tpy::BigInt scale(const ::tpy::BigInt& value, const ::tpy::BigInt& factor) {
     //     return value * factor
     return ((value) * (factor));
 }
@@ -20,13 +20,13 @@ tpy::BigInt scale(const tpy::BigInt& value, const tpy::BigInt& factor) {
 // def main() -> None:
 void main() {
     //     print(add(5))
-    std::cout << add(tpy::BigInt(5)) << "\n";
+    std::cout << add(::tpy::BigInt(5)) << "\n";
     //     print(add(5, 3))
-    std::cout << add(tpy::BigInt(5), tpy::BigInt(3)) << "\n";
+    std::cout << add(::tpy::BigInt(5), ::tpy::BigInt(3)) << "\n";
     //     print(scale(10))
-    std::cout << scale(tpy::BigInt(10)) << "\n";
+    std::cout << scale(::tpy::BigInt(10)) << "\n";
     //     print(scale(10, 4))
-    std::cout << scale(tpy::BigInt(10), tpy::BigInt(4)) << "\n";
+    std::cout << scale(::tpy::BigInt(10), ::tpy::BigInt(4)) << "\n";
 }
 
 void __tpy_init() {
@@ -41,7 +41,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

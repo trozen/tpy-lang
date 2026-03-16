@@ -30,9 +30,9 @@ void main() {
     }
     //     # Also test via dict.get()
     //     d: dict[str, Point] = {"a": Point(3, 4)}
-    tpy::ordered_map<std::string, Point> d = tpy::ordered_map<std::string, Point>({{"a", Point(3, 4)}});
+    ::tpy::ordered_map<std::string, Point> d = ::tpy::ordered_map<std::string, Point>({{"a", Point(3, 4)}});
     //     dp = d.get("a")
-    Point* dp = tpy::dict_get(d, "a");
+    Point* dp = ::tpy::dict_get(d, "a");
     //     if dp is not None:
     if ((dp != nullptr)) {
         //         dp.x = 30
@@ -41,7 +41,7 @@ void main() {
         dp->y = 40;
     }
     //     dp2 = d.get("a")
-    Point* dp2 = tpy::dict_get(d, "a");
+    Point* dp2 = ::tpy::dict_get(d, "a");
     //     if dp2 is not None:
     if ((dp2 != nullptr)) {
         //         print(dp2.x, dp2.y)
@@ -61,7 +61,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

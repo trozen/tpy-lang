@@ -18,7 +18,7 @@ int32_t sum_items(const std::vector<int32_t>& items, std::optional<int32_t> bonu
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t item = *__beg_0;
             //             total = total + item + bonus
-            total = (tpy::add_check<int32_t>((tpy::add_check<int32_t>(total, item)), (*bonus)));
+            total = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(total, item)), (*bonus)));
         }
         //         return total
         return total;
@@ -30,7 +30,7 @@ int32_t sum_items(const std::vector<int32_t>& items, std::optional<int32_t> bonu
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t item = *__beg_1;
         //         total = total + item
-        total = (tpy::add_check<int32_t>(total, item));
+        total = (::tpy::add_check<int32_t>(total, item));
     }
     //     return total
     return total;
@@ -39,7 +39,7 @@ int32_t sum_items(const std::vector<int32_t>& items, std::optional<int32_t> bonu
 // def assert_then_loop(x: Int32 | None, items: list[Int32]) -> Int32:
 int32_t assert_then_loop(std::optional<int32_t> x, const std::vector<int32_t>& items) {
     //     assert x is not None
-    if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
+    if (!((x.has_value()))) ::tpy::tpy_panic("assertion failed");
     //     total: Int32 = 0
     int32_t total = 0;
     //     for item in items:
@@ -49,7 +49,7 @@ int32_t assert_then_loop(std::optional<int32_t> x, const std::vector<int32_t>& i
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t item = *__beg_0;
         //         total = total + item + x
-        total = (tpy::add_check<int32_t>((tpy::add_check<int32_t>(total, item)), (*x)));
+        total = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(total, item)), (*x)));
     }
     //     return total
     return total;
@@ -74,7 +74,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -17,9 +17,9 @@ void test_iadd_ref_type_warns() {
     //     b: list[Node] = [Node(Int32(1))]
     std::vector<Node> b = {Node(1)};
     //     a += b  # tpyc: warning(/copies Node elements/)
-    tpy::list_extend(a, b);
+    ::tpy::list_extend(a, b);
     //     print(len(b))  # keep b live so auto-move doesn't suppress the warning
-    std::cout << tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n";
 }
 
 // def test_iadd_value_type_no_warn() -> None:
@@ -29,9 +29,9 @@ void test_iadd_value_type_no_warn() {
     //     b: list[Int32] = [Int32(1), Int32(2)]
     std::vector<int32_t> b = {1, 2};
     //     a += b  # tpyc: ok
-    tpy::list_extend(a, b);
+    ::tpy::list_extend(a, b);
     //     print(len(a))
-    std::cout << tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n";
 }
 
 // def test_iadd_copy_no_warn() -> None:
@@ -41,9 +41,9 @@ void test_iadd_copy_no_warn() {
     //     b: list[Node] = [Node(Int32(1))]
     std::vector<Node> b = {Node(1)};
     //     a += copy(b)  # tpyc: ok
-    tpy::list_extend(a, std::vector<Node>(b));
+    ::tpy::list_extend(a, std::vector<Node>(b));
     //     print(len(b))
-    std::cout << tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n";
 }
 
 // def test_iadd_last_use_no_warn() -> None:
@@ -53,9 +53,9 @@ void test_iadd_last_use_no_warn() {
     //     b: list[Node] = [Node(Int32(1))]
     std::vector<Node> b = {Node(1)};
     //     a += b  # tpyc: ok -- b's last use, auto-moved
-    tpy::list_extend(a, b);
+    ::tpy::list_extend(a, b);
     //     print(len(a))
-    std::cout << tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n";
 }
 
 // def test_iadd_rvalue_no_warn() -> None:
@@ -63,11 +63,11 @@ void test_iadd_rvalue_no_warn() {
     //     a: list[Node] = []
     std::vector<Node> a = std::vector<Node>{};
     //     a += make_nodes()  # tpyc: ok -- rvalue, not a live lvalue
-    tpy::list_extend(a, make_nodes());
+    ::tpy::list_extend(a, make_nodes());
     //     a += [Node(Int32(2))]  # tpyc: ok -- inline literal
-    tpy::list_extend(a, std::vector<Node>{Node(2)});
+    ::tpy::list_extend(a, std::vector<Node>{Node(2)});
     //     print(len(a))
-    std::cout << tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n";
 }
 
 // def test_iadd_range_no_warn() -> None:
@@ -75,9 +75,9 @@ void test_iadd_range_no_warn() {
     //     a: list[Int32] = []
     std::vector<int32_t> a = std::vector<int32_t>{};
     //     a += range(Int32(5))  # tpyc: ok
-    tpy::list_extend(a, tpy::Range<int32_t>(5));
+    ::tpy::list_extend(a, ::tpy::Range<int32_t>(5));
     //     print(len(a))
-    std::cout << tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n";
 }
 
 // def test_iadd_span_warns() -> None:
@@ -87,11 +87,11 @@ void test_iadd_span_warns() {
     //     b: list[Node] = [Node(Int32(1)), Node(Int32(2))]
     std::vector<Node> b = {Node(1), Node(2)};
     //     s: Span[Node] = b
-    std::span<Node> s = tpy::as_mut_span(b);
+    std::span<Node> s = ::tpy::as_mut_span(b);
     //     a += s  # tpyc: warning(/copies Node elements/)
-    tpy::list_extend(a, s);
+    ::tpy::list_extend(a, s);
     //     print(len(b))
-    std::cout << tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n";
 }
 
 void __tpy_init() {
@@ -122,7 +122,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

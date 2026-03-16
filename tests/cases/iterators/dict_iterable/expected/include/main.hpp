@@ -7,20 +7,20 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<tpy::Iterable<std::string> T_items>
+template<::tpy::Iterable<std::string> T_items>
 void collect_items(T_items& items);
-template<tpy::Iterable<int32_t> T_items>
+template<::tpy::Iterable<int32_t> T_items>
 void collect_ints(T_items& items);
-template<tpy::Iterable<std::tuple<std::string, int32_t>> T_items>
+template<::tpy::Iterable<std::tuple<std::string, int32_t>> T_items>
 void collect_pairs(T_items& items);
 void main();
 
 // def collect_items(items: Iterable[str]) -> None:
-template<tpy::Iterable<std::string> T_items>
+template<::tpy::Iterable<std::string> T_items>
 void collect_items(T_items& items) {
     //     for x in items:
     auto& __src_0 = items;
-    auto __obj_0 = tpy::iter_for_loop(__src_0);
+    auto __obj_0 = ::tpy::iter_for_loop(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -30,11 +30,11 @@ void collect_items(T_items& items) {
     }
 }
 // def collect_ints(items: Iterable[Int32]) -> None:
-template<tpy::Iterable<int32_t> T_items>
+template<::tpy::Iterable<int32_t> T_items>
 void collect_ints(T_items& items) {
     //     for x in items:
     auto& __src_0 = items;
-    auto __obj_0 = tpy::iter_for_loop(__src_0);
+    auto __obj_0 = ::tpy::iter_for_loop(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -44,11 +44,11 @@ void collect_ints(T_items& items) {
     }
 }
 // def collect_pairs(items: Iterable[tuple[str, Int32]]) -> None:
-template<tpy::Iterable<std::tuple<std::string, int32_t>> T_items>
+template<::tpy::Iterable<std::tuple<std::string, int32_t>> T_items>
 void collect_pairs(T_items& items) {
     //     for pair in items:
     auto& __src_0 = items;
-    auto __obj_0 = tpy::iter_for_loop(__src_0);
+    auto __obj_0 = ::tpy::iter_for_loop(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {

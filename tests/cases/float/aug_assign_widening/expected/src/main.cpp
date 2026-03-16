@@ -64,21 +64,21 @@ void __tpy_init() {
     initialized = true;
 
     // print(bigint_widen())
-    std::cout << tpy::print_float(bigint_widen()) << "\n";
+    std::cout << ::tpy::print_float(bigint_widen()) << "\n";
     // print(int32_literal_widen())
-    std::cout << tpy::print_float(int32_literal_widen()) << "\n";
+    std::cout << ::tpy::print_float(int32_literal_widen()) << "\n";
     // print(chain_widen())
-    std::cout << tpy::print_float(chain_widen()) << "\n";
+    std::cout << ::tpy::print_float(chain_widen()) << "\n";
     // print(use_after_widen())
-    std::cout << tpy::print_float(use_after_widen()) << "\n";
+    std::cout << ::tpy::print_float(use_after_widen()) << "\n";
     // print(float32_stays())
-    std::cout << tpy::print_float(static_cast<double>(float32_stays())) << "\n";
+    std::cout << ::tpy::print_float(static_cast<double>(float32_stays())) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

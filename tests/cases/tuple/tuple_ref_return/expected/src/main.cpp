@@ -19,7 +19,7 @@ void main() {
     //     print(result[0])
     std::cout << std::get<0>(result) << "\n";
     //     print(result[1])
-    std::cout << tpy::print_bool(std::get<1>(result)) << "\n";
+    std::cout << ::tpy::print_bool(std::get<1>(result)) << "\n";
     //     # Mutation through reference is visible
     //     p.x = Int32(42)
     p.x = 42;
@@ -39,7 +39,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

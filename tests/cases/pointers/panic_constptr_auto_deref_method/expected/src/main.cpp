@@ -9,7 +9,7 @@ void main() {
     //     p: Ptr[readonly[Counter]] = Ptr[readonly[Counter]]()
     const Counter* p = static_cast<const Counter*>(nullptr);
     //     print(p.__len__())
-    std::cout << tpy::deref_check(p).__len__() << "\n";
+    std::cout << ::tpy::deref_check(p).__len__() << "\n";
 }
 
 void __tpy_init() {
@@ -24,7 +24,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -25,7 +25,7 @@ struct Box {
 
 inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     os << "Box("
-       << "value=" << tpy::print_optional_val(obj.value)
+       << "value=" << ::tpy::print_optional_val(obj.value)
        << ")";
     return os;
 }

@@ -8,13 +8,13 @@ namespace tpy_user::main {
 // class Measurable(Protocol):
 template<typename T>
 concept Measurable = requires(T& t) {
-    { t.measure() } -> std::convertible_to<tpy::BigInt>;
+    { t.measure() } -> std::convertible_to<::tpy::BigInt>;
 };
 
 // class Walkable(Protocol):
 template<typename T>
 concept Walkable = requires(T& t) {
-    { t.walk() } -> std::convertible_to<tpy::BigInt>;
+    { t.walk() } -> std::convertible_to<::tpy::BigInt>;
 };
 
 struct Processor;
@@ -28,10 +28,10 @@ void main();
 // class Processor:
 struct Processor {
     //     count: int
-    tpy::BigInt count;
+    ::tpy::BigInt count;
 
     //     def __init__(self) -> None:
-    Processor() : count(tpy::BigInt(0)) {}
+    Processor() : count(::tpy::BigInt(0)) {}
 
     //     def process(self, items: Measurable | Walkable) -> None:
     template<typename T_items>
@@ -61,9 +61,9 @@ struct Ruler {
 
 
     //     def measure(self) -> int:
-    tpy::BigInt measure() const {
+    ::tpy::BigInt measure() const {
         //         return 5
-        return tpy::BigInt(5);
+        return ::tpy::BigInt(5);
     }
 };
 
@@ -78,9 +78,9 @@ struct Walker {
 
 
     //     def walk(self) -> int:
-    tpy::BigInt walk() const {
+    ::tpy::BigInt walk() const {
         //         return 99
-        return tpy::BigInt(99);
+        return ::tpy::BigInt(99);
     }
 };
 

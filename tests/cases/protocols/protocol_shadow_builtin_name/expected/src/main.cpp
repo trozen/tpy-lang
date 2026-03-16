@@ -55,9 +55,9 @@ void main() {
     std::cout << use_user_comparable(w) << "\n";
     //     # Builtin Comparable still works (IntEnum comparison)
     //     print(Priority.LOW < Priority.HIGH)
-    std::cout << tpy::print_bool((static_cast<int32_t>(Priority::LOW) < static_cast<int32_t>(Priority::HIGH))) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::LOW) < static_cast<int32_t>(Priority::HIGH))) << "\n";
     //     print(Priority.HIGH < Priority.LOW)
-    std::cout << tpy::print_bool((static_cast<int32_t>(Priority::HIGH) < static_cast<int32_t>(Priority::LOW))) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::HIGH) < static_cast<int32_t>(Priority::LOW))) << "\n";
 }
 
 void __tpy_init() {
@@ -72,7 +72,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

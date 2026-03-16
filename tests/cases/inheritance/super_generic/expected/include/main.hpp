@@ -22,7 +22,7 @@ struct Container {
     explicit Container(const T& value) : value(value) {}
 
     //     def get(self) -> T:
-    tpy::val_or_ref_t<T> get() {
+    ::tpy::val_or_ref_t<T> get() {
         //         return self.value
         return this->value;
     }
@@ -31,7 +31,7 @@ struct Container {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     os << "Container("
-       << "value=" << tpy::ValuePrinter(obj.value)
+       << "value=" << ::tpy::ValuePrinter(obj.value)
        << ")";
     return os;
 }

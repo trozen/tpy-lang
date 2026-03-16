@@ -15,16 +15,16 @@ void main();
 // class Config:
 struct Config {
     //     port: Optional[int]
-    std::optional<tpy::BigInt> port;
+    std::optional<::tpy::BigInt> port;
 
     //     def __init__(self, port: Optional[int]) -> None:
     Config() = default;
-    explicit Config(std::optional<tpy::BigInt> port) : port(port) {}
+    explicit Config(std::optional<::tpy::BigInt> port) : port(port) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     os << "Config("
-       << "port=" << tpy::print_optional_val(obj.port)
+       << "port=" << ::tpy::print_optional_val(obj.port)
        << ")";
     return os;
 }

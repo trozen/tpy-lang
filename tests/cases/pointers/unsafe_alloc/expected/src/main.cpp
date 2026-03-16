@@ -12,11 +12,11 @@ void test_single() {
     //     unsafe_init(p, Point(10, 20))
     ::new(static_cast<void*>(p)) Point(std::move(Point(10, 20)));
     //     print(p.x)
-    std::cout << tpy::deref_check(p).x << "\n";
+    std::cout << ::tpy::deref_check(p).x << "\n";
     //     print(p.y)
-    std::cout << tpy::deref_check(p).y << "\n";
+    std::cout << ::tpy::deref_check(p).y << "\n";
     //     unsafe_drop(p)
-    tpy::destroy_at(p);
+    ::tpy::destroy_at(p);
     //     unsafe_free(p)
     ::operator delete(p, std::align_val_t(alignof(Point)));
 }
@@ -29,13 +29,13 @@ void test_mutate() {
     //     unsafe_init(p, Point(1, 2))
     ::new(static_cast<void*>(p)) Point(std::move(Point(1, 2)));
     //     p.x = Int32(100)
-    tpy::deref_check(p).x = 100;
+    ::tpy::deref_check(p).x = 100;
     //     p.y = Int32(200)
-    tpy::deref_check(p).y = 200;
+    ::tpy::deref_check(p).y = 200;
     //     print(p.x, p.y)
-    std::cout << tpy::deref_check(p).x << " " << tpy::deref_check(p).y << "\n";
+    std::cout << ::tpy::deref_check(p).x << " " << ::tpy::deref_check(p).y << "\n";
     //     unsafe_drop(p)
-    tpy::destroy_at(p);
+    ::tpy::destroy_at(p);
     //     unsafe_free(p)
     ::operator delete(p, std::align_val_t(alignof(Point)));
 }
@@ -62,11 +62,11 @@ void test_alloc_n() {
     //     print(unsafe_load(p, UInt32(2)).x, unsafe_load(p, UInt32(2)).y)
     std::cout << p[2].x << " " << p[2].y << "\n";
     //     unsafe_drop(p)
-    tpy::destroy_at(p);
+    ::tpy::destroy_at(p);
     //     unsafe_drop(p1)
-    tpy::destroy_at(p1);
+    ::tpy::destroy_at(p1);
     //     unsafe_drop(p2)
-    tpy::destroy_at(p2);
+    ::tpy::destroy_at(p2);
     //     unsafe_free(p)
     ::operator delete(p, std::align_val_t(alignof(Point)));
 }
@@ -81,7 +81,7 @@ void test_explicit_type_arg() {
     //     print(unsafe_load(p, UInt32(0)))
     std::cout << p[0] << "\n";
     //     unsafe_drop(p)
-    tpy::destroy_at(p);
+    ::tpy::destroy_at(p);
     //     unsafe_free(p)
     ::operator delete(p, std::align_val_t(alignof(int32_t)));
 }
@@ -104,11 +104,11 @@ void test_alloc_n_value_type() {
     //     print(unsafe_load(p, UInt32(2)))
     std::cout << p[2] << "\n";
     //     unsafe_drop(p)
-    tpy::destroy_at(p);
+    ::tpy::destroy_at(p);
     //     unsafe_drop(unsafe_ptr_add(p, 1))
-    tpy::destroy_at((p + 1));
+    ::tpy::destroy_at((p + 1));
     //     unsafe_drop(unsafe_ptr_add(p, 2))
-    tpy::destroy_at((p + 2));
+    ::tpy::destroy_at((p + 2));
     //     unsafe_free(p)
     ::operator delete(p, std::align_val_t(alignof(int32_t)));
 }
@@ -134,7 +134,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -60,14 +60,14 @@ std::string find(const std::variant<Bird, Cat, Dog>& a) {
         auto& __case_1_0 = std::get<Dog>(__match_subject);
         auto& n = __case_1_0.name;
         //             return "other pet: " + n
-        return (tpy::str_concat("other pet: ", n));
+        return (::tpy::str_concat("other pet: ", n));
         goto __match_end_2;
     }
     if (std::holds_alternative<Cat>(__match_subject)) {
         auto& __case_1_1 = std::get<Cat>(__match_subject);
         auto& n = __case_1_1.name;
         //             return "other pet: " + n
-        return (tpy::str_concat("other pet: ", n));
+        return (::tpy::str_concat("other pet: ", n));
         goto __match_end_2;
     }
     //         case Bird(name=n):
@@ -75,7 +75,7 @@ std::string find(const std::variant<Bird, Cat, Dog>& a) {
         auto& __case_2 = std::get<Bird>(__match_subject);
         auto& n = __case_2.name;
         //             return "bird: " + n
-        return (tpy::str_concat("bird: ", n));
+        return (::tpy::str_concat("bird: ", n));
         goto __match_end_2;
     }
 __match_end_2:;
@@ -119,7 +119,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

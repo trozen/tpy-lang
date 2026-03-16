@@ -49,20 +49,20 @@ void __tpy_init() {
     }
     // # Large step that overshoots
     // for i in range(0, 10, 100):
-    tpy::range_check_overflow<int32_t>(0, 10, 100);
+    ::tpy::range_check_overflow<int32_t>(0, 10, 100);
     for (int32_t i = 0; i < 10; i += 100) {
         //     print(i)
         std::cout << i << "\n";
     }
     // for i in range(10, 0, -100):
-    tpy::range_check_overflow<int32_t>(10, 0, -100);
+    ::tpy::range_check_overflow<int32_t>(10, 0, -100);
     for (int32_t i = 10; i > 0; i += -100) {
         //     print(i)
         std::cout << i << "\n";
     }
     // # Compound expression -- constant-folded to Int32
     // for i in range(1 + 2):
-    int32_t __stop_9 = tpy::add_check<int32_t>(1, 2);
+    int32_t __stop_9 = ::tpy::add_check<int32_t>(1, 2);
     for (int32_t i = 0; i < __stop_9; ++i) {
         //     print(i)
         std::cout << i << "\n";
@@ -74,7 +74,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

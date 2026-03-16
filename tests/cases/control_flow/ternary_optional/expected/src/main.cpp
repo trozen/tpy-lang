@@ -5,10 +5,10 @@ namespace tpy_user::main {
 
 
 // def safe_len(s: Optional[str]) -> int:
-tpy::BigInt safe_len(std::optional<std::string_view> s) {
+::tpy::BigInt safe_len(std::optional<std::string_view> s) {
     //     # Optional narrowing: s is narrowed to str in the then-branch
     //     return len(s) if s is not None else 0
-    return tpy::BigInt((((s.has_value())) ? (tpy::__len__((*s))) : (0)));
+    return ::tpy::BigInt((((s.has_value())) ? (::tpy::__len__((*s))) : (0)));
 }
 
 // def value_or_none(flag: bool) -> Optional[str]:
@@ -36,7 +36,7 @@ std::string with_default(std::optional<std::string_view> val) {
 std::string truthy_narrowing(std::optional<std::string_view> s) {
     //     # Truthy condition narrows Optional[str] to str in then-branch
     //     return s if s else "empty"
-    return std::string(((tpy::is_truthy(s)) ? ((*s)) : ("empty")));
+    return std::string(((::tpy::is_truthy(s)) ? ((*s)) : ("empty")));
 }
 
 // def main() -> None:
@@ -48,19 +48,19 @@ void main() {
     //     r1 = value_or_none(True)
     std::optional<std::string> r1 = value_or_none(true);
     //     print(r1)
-    std::cout << tpy::print_optional_val(r1) << "\n";
+    std::cout << ::tpy::print_optional_val(r1) << "\n";
     //     r1 = value_or_none(False)
     r1 = value_or_none(false);
     //     print(r1)
-    std::cout << tpy::print_optional_val(r1) << "\n";
+    std::cout << ::tpy::print_optional_val(r1) << "\n";
     //     r2 = none_or_value(True)
     std::optional<std::string> r2 = none_or_value(true);
     //     print(r2)
-    std::cout << tpy::print_optional_val(r2) << "\n";
+    std::cout << ::tpy::print_optional_val(r2) << "\n";
     //     r2 = none_or_value(False)
     r2 = none_or_value(false);
     //     print(r2)
-    std::cout << tpy::print_optional_val(r2) << "\n";
+    std::cout << ::tpy::print_optional_val(r2) << "\n";
     //     print(with_default("custom"))
     std::cout << with_default("custom") << "\n";
     //     print(with_default(None))
@@ -75,11 +75,11 @@ void main() {
     //     s: Optional[str] = "world"
     std::optional<std::string> s = "world";
     //     print(s if s else "empty")
-    std::cout << ((tpy::is_truthy(s)) ? ((*s)) : ("empty")) << "\n";
+    std::cout << ((::tpy::is_truthy(s)) ? ((*s)) : ("empty")) << "\n";
     //     s = None
     s = std::nullopt;
     //     print(s if s else "empty")
-    std::cout << ((tpy::is_truthy(s)) ? ((*s)) : ("empty")) << "\n";
+    std::cout << ((::tpy::is_truthy(s)) ? ((*s)) : ("empty")) << "\n";
 }
 
 void __tpy_init() {
@@ -94,7 +94,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

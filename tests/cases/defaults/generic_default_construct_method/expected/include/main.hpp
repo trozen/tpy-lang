@@ -22,7 +22,7 @@ struct Container {
     explicit Container(const T& val) : val(val) {}
 
     //     def get_or_default(self, fallback: T = T()) -> T:
-    tpy::val_or_cref_t<T> get_or_default(const T& fallback = T{}) const {
+    ::tpy::val_or_cref_t<T> get_or_default(const T& fallback = T{}) const {
         //         return fallback
         return fallback;
     }
@@ -31,7 +31,7 @@ struct Container {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     os << "Container("
-       << "val=" << tpy::ValuePrinter(obj.val)
+       << "val=" << ::tpy::ValuePrinter(obj.val)
        << ")";
     return os;
 }

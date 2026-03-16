@@ -29,15 +29,15 @@ void main() {
     //     c: Circle | Rect | Triangle = Circle(5.0)
     std::variant<Circle, Rect, Triangle> c = Circle(5.0);
     //     print(area(c))
-    std::cout << tpy::print_float(area(c)) << "\n";
+    std::cout << ::tpy::print_float(area(c)) << "\n";
     //     r: Circle | Rect | Triangle = Rect(3.0, 4.0)
     std::variant<Circle, Rect, Triangle> r = Rect(3.0, 4.0);
     //     print(area(r))
-    std::cout << tpy::print_float(area(r)) << "\n";
+    std::cout << ::tpy::print_float(area(r)) << "\n";
     //     t: Circle | Rect | Triangle = Triangle(6.0, 8.0)
     std::variant<Circle, Rect, Triangle> t = Triangle(6.0, 8.0);
     //     print(area(t))
-    std::cout << tpy::print_float(area(t)) << "\n";
+    std::cout << ::tpy::print_float(area(t)) << "\n";
 }
 
 void __tpy_init() {
@@ -52,7 +52,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

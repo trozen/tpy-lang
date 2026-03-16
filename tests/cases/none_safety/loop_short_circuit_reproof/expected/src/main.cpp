@@ -9,7 +9,7 @@ int32_t shrink(std::optional<int32_t> x) {
     //     while x is not None and x > 0:
     while (((x.has_value()) && ((*x) > 0))) {
         //         x = x - 1  # tpyc: ok
-        x = (tpy::sub_check<int32_t>((*x), 1));
+        x = (::tpy::sub_check<int32_t>((*x), 1));
     }
     //     return 0
     return 0;
@@ -31,7 +31,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

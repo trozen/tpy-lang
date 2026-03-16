@@ -8,9 +8,9 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     d = {"x": 1}
-    tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"x", 1}});
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 1}});
     //     d.pop("missing")
-    tpy::dict_pop(d, "missing");
+    ::tpy::dict_pop(d, "missing");
 }
 
 void __tpy_init() {
@@ -25,7 +25,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

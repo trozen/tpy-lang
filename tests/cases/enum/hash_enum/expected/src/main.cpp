@@ -84,14 +84,14 @@ namespace tpy_user::main {
 void main() {
     //     # Same member produces same hash
     //     print(hash(Color.Red) == hash(Color.Red))
-    std::cout << tpy::print_bool((tpy::__hash__(Color::Red) == tpy::__hash__(Color::Red))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__hash__(Color::Red) == ::tpy::__hash__(Color::Red))) << "\n";
     //     print(hash(Priority.Low) == hash(Priority.Low))
-    std::cout << tpy::print_bool((tpy::__hash__(Priority::Low) == tpy::__hash__(Priority::Low))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__hash__(Priority::Low) == ::tpy::__hash__(Priority::Low))) << "\n";
     //     # Different members produce different hashes
     //     print(hash(Color.Red) != hash(Color.Green))
-    std::cout << tpy::print_bool((tpy::__hash__(Color::Red) != tpy::__hash__(Color::Green))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__hash__(Color::Red) != ::tpy::__hash__(Color::Green))) << "\n";
     //     print(hash(Priority.Low) != hash(Priority.High))
-    std::cout << tpy::print_bool((tpy::__hash__(Priority::Low) != tpy::__hash__(Priority::High))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__hash__(Priority::Low) != ::tpy::__hash__(Priority::High))) << "\n";
     //     print("ok")
     std::cout << "ok" << "\n";
 }
@@ -108,7 +108,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

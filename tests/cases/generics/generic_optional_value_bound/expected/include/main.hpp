@@ -5,14 +5,14 @@
 
 namespace tpy_user::main {
 
-template<tpy::ValueType T> struct Box;
+template<::tpy::ValueType T> struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
 // class Box[T: ValueType]:
-template<tpy::ValueType T>
+template<::tpy::ValueType T>
 struct Box {
     //     _value: T
     T _value;
@@ -44,9 +44,9 @@ struct Box {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     os << "Box("
-       << "_value=" << tpy::ValuePrinter(obj._value)
+       << "_value=" << ::tpy::ValuePrinter(obj._value)
        << ", "
-       << "_has=" << tpy::print_bool(obj._has)
+       << "_has=" << ::tpy::print_bool(obj._has)
        << ")";
     return os;
 }

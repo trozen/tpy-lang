@@ -8,13 +8,13 @@ namespace tpy_user::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-tpy::val_or_ref_t<T> first(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b);
+::tpy::val_or_ref_t<T> first(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 void main();
 
 // # Keyword arguments with generic functions
 // def first[T](a: T, b: T) -> T:
 template<typename T>
-tpy::val_or_ref_t<T> first(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
+::tpy::val_or_ref_t<T> first(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     //     return a
     return a;
 }

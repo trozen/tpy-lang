@@ -51,13 +51,13 @@ void main() {
     //     c: Color = Color.Red
     Color c = Color::Red;
     //     print(not c)
-    std::cout << tpy::print_bool((!(true))) << "\n";
+    std::cout << ::tpy::print_bool((!(true))) << "\n";
     //     print(not Color.Green)
-    std::cout << tpy::print_bool((!(true))) << "\n";
+    std::cout << ::tpy::print_bool((!(true))) << "\n";
     //     x: bool = not Color.Blue
     bool x = (!(true));
     //     print(x)
-    std::cout << tpy::print_bool(x) << "\n";
+    std::cout << ::tpy::print_bool(x) << "\n";
 }
 
 void __tpy_init() {
@@ -72,7 +72,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

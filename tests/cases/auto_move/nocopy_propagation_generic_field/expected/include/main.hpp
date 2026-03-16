@@ -52,7 +52,7 @@ struct Handles {
 
 inline std::ostream& operator<<(std::ostream& os, const Handles& obj) {
     os << "Handles("
-       << "items=" << tpy::ListPrinter(obj.items)
+       << "items=" << ::tpy::ListPrinter(obj.items)
        << ")";
     return os;
 }

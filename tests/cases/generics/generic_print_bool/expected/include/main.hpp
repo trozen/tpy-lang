@@ -8,15 +8,15 @@ namespace tpy_user::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-void show(tpy::param_val_or_ref_t<T> x);
+void show(::tpy::param_val_or_ref_t<T> x);
 void main();
 
 // # Generic function print should display bool as True/False, not 1/0
 // def show[T](x: T) -> None:
 template<typename T>
-void show(tpy::param_val_or_ref_t<T> x) {
+void show(::tpy::param_val_or_ref_t<T> x) {
     //     print(x)
-    std::cout << tpy::ValuePrinter(x) << "\n";
+    std::cout << ::tpy::ValuePrinter(x) << "\n";
 }
 
 void __tpy_init();

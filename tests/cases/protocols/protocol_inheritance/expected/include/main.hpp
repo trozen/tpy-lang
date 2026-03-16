@@ -15,7 +15,7 @@ concept Printable = requires(T& t) {
 template<typename T>
 concept PrintableAndSized = requires(T& t) {
     { t.to_str() } -> std::convertible_to<std::string>;
-    { tpy::__len__(t) } -> std::convertible_to<int32_t>;
+    { ::tpy::__len__(t) } -> std::convertible_to<int32_t>;
 };
 
 struct Message;
@@ -48,7 +48,7 @@ struct Message {
 
     size_t size() const {
         auto len = __len__();
-        if (len < 0) tpy::tpy_panic("__len__ returned negative value");
+        if (len < 0) ::tpy::tpy_panic("__len__ returned negative value");
         return static_cast<size_t>(len);
     }
 };
@@ -75,14 +75,14 @@ struct Container {
         //         print(self.value.to_str())
         std::cout << this->value.to_str() << "\n";
         //         print(len(self.value))
-        std::cout << tpy::__len__(this->value) << "\n";
+        std::cout << ::tpy::__len__(this->value) << "\n";
     }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     os << "Container("
-       << "value=" << tpy::ValuePrinter(obj.value)
+       << "value=" << ::tpy::ValuePrinter(obj.value)
        << ")";
     return os;
 }

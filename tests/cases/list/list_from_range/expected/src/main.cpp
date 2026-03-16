@@ -14,21 +14,21 @@ void __tpy_init() {
     initialized = true;
 
     // nums = list(range(5))
-    static std::vector<int32_t> __global_slot_1 = tpy::from_range<std::vector<int32_t>>(tpy::Range<int32_t>(5));
+    static std::vector<int32_t> __global_slot_1 = ::tpy::from_range<std::vector<int32_t>>(::tpy::Range<int32_t>(5));
     nums = &__global_slot_1;
     // print(nums)
-    std::cout << tpy::ListPrinter((*nums)) << "\n";
+    std::cout << ::tpy::ListPrinter((*nums)) << "\n";
     // nums2 = list(range(2, 7))
-    static std::vector<int32_t> __global_slot_2 = tpy::from_range<std::vector<int32_t>>(tpy::Range<int32_t>(2, 7));
+    static std::vector<int32_t> __global_slot_2 = ::tpy::from_range<std::vector<int32_t>>(::tpy::Range<int32_t>(2, 7));
     nums2 = &__global_slot_2;
     // print(nums2)
-    std::cout << tpy::ListPrinter((*nums2)) << "\n";
+    std::cout << ::tpy::ListPrinter((*nums2)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -7,21 +7,21 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     d: dict[str, Int32] = {"a": 1, "b": 2, "c": 3}
-    tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
     //     keys = list(d.keys())
-    std::vector<std::string> keys = tpy::from_range<std::vector<std::string>>(tpy::dict_keys(d));
+    std::vector<std::string> keys = ::tpy::from_range<std::vector<std::string>>(::tpy::dict_keys(d));
     //     print(keys)
-    std::cout << tpy::ListPrinter(keys) << "\n";
+    std::cout << ::tpy::ListPrinter(keys) << "\n";
     //     vals = list(d.values())
-    std::vector<int32_t> vals = tpy::from_range<std::vector<int32_t>>(tpy::dict_values(d));
+    std::vector<int32_t> vals = ::tpy::from_range<std::vector<int32_t>>(::tpy::dict_values(d));
     //     print(vals)
-    std::cout << tpy::ListPrinter(vals) << "\n";
+    std::cout << ::tpy::ListPrinter(vals) << "\n";
     //     items = list(d.items())
-    std::vector<std::tuple<std::string, int32_t>> items = tpy::from_range<std::vector<std::tuple<std::string, int32_t>>>(tpy::dict_items(d));
+    std::vector<std::tuple<std::string, int32_t>> items = ::tpy::from_range<std::vector<std::tuple<std::string, int32_t>>>(::tpy::dict_items(d));
     //     print(len(items))
-    std::cout << tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n";
     //     k, v = items[0]
-    auto __tup_1 = tpy::__getitem__(items, 0);
+    auto __tup_1 = ::tpy::__getitem__(items, 0);
     std::string_view k = std::get<0>(__tup_1);
     int32_t v = std::get<1>(__tup_1);
     //     print(k, v)
@@ -40,7 +40,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

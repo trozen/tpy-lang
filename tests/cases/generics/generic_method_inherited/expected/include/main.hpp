@@ -24,7 +24,7 @@ struct Base {
 
     //     def transform[U](self, other: U) -> U:
     template<typename U>
-    tpy::val_or_cref_t<U> transform(const U& other) const {
+    ::tpy::val_or_cref_t<U> transform(const U& other) const {
         //         return other
         return other;
     }
@@ -33,7 +33,7 @@ struct Base {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Base<T>& obj) {
     os << "Base("
-       << "val=" << tpy::ValuePrinter(obj.val)
+       << "val=" << ::tpy::ValuePrinter(obj.val)
        << ")";
     return os;
 }

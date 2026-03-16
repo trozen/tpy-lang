@@ -30,7 +30,7 @@ struct MyNumber {
     //     def add(self, x: Int32) -> Int32:
     int32_t add(int32_t x) const {
         //         return self.value + x
-        return (tpy::add_check<int32_t>(this->value, x));
+        return (::tpy::add_check<int32_t>(this->value, x));
     }
 };
 
@@ -52,7 +52,7 @@ struct Holder {
     explicit Holder(const T& item) : item(item) {}
 
     //     def get_item(self) -> T:
-    tpy::val_or_ref_t<T> get_item() {
+    ::tpy::val_or_ref_t<T> get_item() {
         //         return self.item
         return this->item;
     }
@@ -61,7 +61,7 @@ struct Holder {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
     os << "Holder("
-       << "item=" << tpy::ValuePrinter(obj.item)
+       << "item=" << ::tpy::ValuePrinter(obj.item)
        << ")";
     return os;
 }

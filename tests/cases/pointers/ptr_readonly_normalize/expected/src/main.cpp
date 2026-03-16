@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def read_via_ptr(p: Ptr[readonly[Data]]) -> Int32:
 int32_t read_via_ptr(const Data* p) {
     //     return p.__deref__().value
-    return tpy::deref_check(p).value;
+    return ::tpy::deref_check(p).value;
 }
 
 // def main() -> None:
@@ -32,7 +32,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -23,7 +23,7 @@ struct Processor {
 
     //     def wrap[U](self, x: U) -> U:
     template<typename U>
-    tpy::val_or_cref_t<U> wrap(const U& x) const {
+    ::tpy::val_or_cref_t<U> wrap(const U& x) const {
         //         return x
         return x;
     }
@@ -38,7 +38,7 @@ struct Processor {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Processor<T>& obj) {
     os << "Processor("
-       << "val=" << tpy::ValuePrinter(obj.val)
+       << "val=" << ::tpy::ValuePrinter(obj.val)
        << ")";
     return os;
 }

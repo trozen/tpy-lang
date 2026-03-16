@@ -26,7 +26,7 @@ void main() {
     std::cout << dog->speak() << "\n";
     //     # Local variable with structural conformance
     //     cat: Pet = Cat()
-    tpy::Adapter<::tpy_user::pet::Pet, Cat> __slot_2{Cat()};
+    ::tpy::Adapter<::tpy_user::pet::Pet, Cat> __slot_2{Cat()};
     ::tpy_user::pet::Pet* cat = &__slot_2;
     //     print(cat.speak())
     std::cout << cat->speak() << "\n";
@@ -35,7 +35,7 @@ void main() {
     Dog __tmp_1{Dog()};
     greet(__tmp_1);
     //     greet(Cat())
-    tpy::Adapter<::tpy_user::pet::Pet, Cat> __tmp_2{Cat()};
+    ::tpy::Adapter<::tpy_user::pet::Pet, Cat> __tmp_2{Cat()};
     greet(__tmp_2);
     //     # Return type
     //     p = echo(dog)
@@ -59,7 +59,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

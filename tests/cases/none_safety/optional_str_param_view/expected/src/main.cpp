@@ -17,7 +17,7 @@ void assign_local(std::optional<std::string_view> s) {
     //     if local is not None:
     if ((local.has_value())) {
         //         print(local)
-        std::cout << tpy::print_optional_val(local) << "\n";
+        std::cout << ::tpy::print_optional_val(local) << "\n";
     //     else:
     } else {
         //         print("none")
@@ -58,9 +58,9 @@ std::optional<std::string> normalize(std::optional<std::string_view> __param_s) 
 // def main() -> None:
 void main() {
     //     print(pass_through("hello"))
-    std::cout << tpy::print_optional_val(pass_through("hello")) << "\n";
+    std::cout << ::tpy::print_optional_val(pass_through("hello")) << "\n";
     //     print(pass_through(None))
-    std::cout << tpy::print_optional_val(pass_through(std::nullopt)) << "\n";
+    std::cout << ::tpy::print_optional_val(pass_through(std::nullopt)) << "\n";
     //     assign_local("world")
     assign_local("world");
     //     assign_local(None)
@@ -78,11 +78,11 @@ void main() {
     //     append_to_list(items, "b")
     append_to_list(items, "b");
     //     print(len(items))
-    std::cout << tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n";
     //     print(normalize("hello"))
-    std::cout << tpy::print_optional_val(normalize("hello")) << "\n";
+    std::cout << ::tpy::print_optional_val(normalize("hello")) << "\n";
     //     print(normalize(None))
-    std::cout << tpy::print_optional_val(normalize(std::nullopt)) << "\n";
+    std::cout << ::tpy::print_optional_val(normalize(std::nullopt)) << "\n";
 }
 
 void __tpy_init() {
@@ -97,7 +97,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

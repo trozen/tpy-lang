@@ -24,7 +24,7 @@ void main() {
     //     c: Circle | Rect = Circle(5.0)
     std::variant<Circle, Rect> c = Circle(5.0);
     //     print(c.radius)
-    std::cout << tpy::print_float(std::get<Circle>(c).radius) << "\n";
+    std::cout << ::tpy::print_float(std::get<Circle>(c).radius) << "\n";
     //     if isinstance(c, Circle):
     if (std::holds_alternative<Circle>(c)) {
         auto& __c = std::get<Circle>(c);
@@ -52,7 +52,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

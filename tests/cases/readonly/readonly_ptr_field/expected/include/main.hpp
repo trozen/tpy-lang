@@ -42,7 +42,7 @@ struct Container {
     //     def read_value(self) -> Int32:
     int32_t read_value() const {
         //         return self.ptr.__deref__().value
-        return tpy::deref_check(this->ptr).value;
+        return ::tpy::deref_check(this->ptr).value;
     }
 };
 

@@ -14,7 +14,7 @@ void main() {
     //     extend_from(nums, more)
     extend_from(nums, more);
     //     print(nums)
-    std::cout << tpy::ListPrinter(nums) << "\n";
+    std::cout << ::tpy::ListPrinter(nums) << "\n";
     //     # list.extend with list literal
     //     nums2: list[Int32] = [10]
     std::vector<int32_t> nums2 = {10};
@@ -22,7 +22,7 @@ void main() {
     auto __tmp_1 = {20, 30};
     extend_from(nums2, __tmp_1);
     //     print(nums2)
-    std::cout << tpy::ListPrinter(nums2) << "\n";
+    std::cout << ::tpy::ListPrinter(nums2) << "\n";
     //     # list.extend with another list via Iterable
     //     target: list[Int32] = [100]
     std::vector<int32_t> target = {100};
@@ -31,7 +31,7 @@ void main() {
     //     extend_from(target, vals)
     extend_from(target, vals);
     //     print(target)
-    std::cout << tpy::ListPrinter(target) << "\n";
+    std::cout << ::tpy::ListPrinter(target) << "\n";
     //     # str.join with Iterable param
     //     words: list[str] = ["a", "b", "c"]
     std::vector<std::string> words = {"a", "b", "c"};
@@ -43,16 +43,16 @@ void main() {
     //     result = list_from(src)
     std::vector<int32_t> result = list_from(src);
     //     print(result)
-    std::cout << tpy::ListPrinter(result) << "\n";
+    std::cout << ::tpy::ListPrinter(result) << "\n";
     //     # Direct calls (not through Iterable param)
     //     direct: list[Int32] = [1]
     std::vector<int32_t> direct = {1};
     //     direct.extend([2, 3])
-    tpy::list_extend(direct, {2, 3});
+    ::tpy::list_extend(direct, {2, 3});
     //     print(direct)
-    std::cout << tpy::ListPrinter(direct) << "\n";
+    std::cout << ::tpy::ListPrinter(direct) << "\n";
     //     print(",".join(["x", "y"]))
-    std::cout << tpy::str_join(",", {"x", "y"}) << "\n";
+    std::cout << ::tpy::str_join(",", {"x", "y"}) << "\n";
 }
 
 void __tpy_init() {
@@ -67,7 +67,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

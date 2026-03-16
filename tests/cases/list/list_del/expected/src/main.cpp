@@ -9,13 +9,13 @@ void test_basic() {
     //     items: list[Int32] = [10, 20, 30, 40, 50]
     std::vector<int32_t> items = {10, 20, 30, 40, 50};
     //     print(items)
-    std::cout << tpy::ListPrinter(items) << "\n";
+    std::cout << ::tpy::ListPrinter(items) << "\n";
     //     del items[1]
-    tpy::__delitem__(items, 1);
+    ::tpy::__delitem__(items, 1);
     //     print(items)
-    std::cout << tpy::ListPrinter(items) << "\n";
+    std::cout << ::tpy::ListPrinter(items) << "\n";
     //     print(len(items))
-    std::cout << tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_negative_index() -> None:
@@ -23,9 +23,9 @@ void test_negative_index() {
     //     items: list[Int32] = [1, 2, 3, 4]
     std::vector<int32_t> items = {1, 2, 3, 4};
     //     del items[-1]
-    tpy::__delitem__(items, -1);
+    ::tpy::__delitem__(items, -1);
     //     print(items)
-    std::cout << tpy::ListPrinter(items) << "\n";
+    std::cout << ::tpy::ListPrinter(items) << "\n";
 }
 
 // def test_first_element() -> None:
@@ -33,9 +33,9 @@ void test_first_element() {
     //     items: list[Int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
     //     del items[0]
-    tpy::__delitem__(items, 0);
+    ::tpy::__delitem__(items, 0);
     //     print(items)
-    std::cout << tpy::ListPrinter(items) << "\n";
+    std::cout << ::tpy::ListPrinter(items) << "\n";
 }
 
 void __tpy_init() {
@@ -54,7 +54,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

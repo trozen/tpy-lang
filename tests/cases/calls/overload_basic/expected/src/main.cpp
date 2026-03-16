@@ -11,7 +11,7 @@ namespace tpy_user::main {
 std::string describe(const Dog& animal) {
     //     if isinstance(animal, Dog):
     //         return "Dog: " + animal.name
-    return (tpy::str_concat("Dog: ", animal.name));
+    return (::tpy::str_concat("Dog: ", animal.name));
 }
 
 // @overload
@@ -19,7 +19,7 @@ std::string describe(const Dog& animal) {
 std::string describe(const Cat& animal) {
     //     if isinstance(animal, Dog):
     //         return "Cat with " + str(animal.lives) + " lives"
-    return (tpy::str_concat((tpy::str_concat("Cat with ", (animal.lives).to_string())), " lives"));
+    return (::tpy::str_concat((::tpy::str_concat("Cat with ", (animal.lives).to_string())), " lives"));
 }
 
 
@@ -28,7 +28,7 @@ void main() {
     //     d = Dog("Rex")
     Dog d = Dog("Rex");
     //     c = Cat(9)
-    Cat c = Cat(tpy::BigInt(9));
+    Cat c = Cat(::tpy::BigInt(9));
     //     print(describe(d))
     std::cout << describe(d) << "\n";
     //     print(describe(c))
@@ -47,7 +47,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

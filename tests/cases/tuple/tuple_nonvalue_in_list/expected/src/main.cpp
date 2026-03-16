@@ -15,7 +15,7 @@ void main() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::tuple<std::string, Point> item = *__beg_0;
         //         print(item)
-        std::cout << tpy::TuplePrinter(item) << "\n";
+        std::cout << ::tpy::TuplePrinter(item) << "\n";
     }
 }
 
@@ -31,7 +31,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

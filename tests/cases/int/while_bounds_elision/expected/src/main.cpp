@@ -11,11 +11,11 @@ void test_while_basic() {
     //     i: Int32 = 0
     int32_t i = 0;
     //     while i < len(arr):
-    while ((i < tpy::__len__(arr))) {
+    while ((i < ::tpy::__len__(arr))) {
         //         print(arr[i])  # tpyc: bounds_safe(arr)
         std::cout << arr[i] << "\n";
         //         i += 1
-        i = tpy::add_check<int32_t>(i, 1);
+        i = ::tpy::add_check<int32_t>(i, 1);
     }
 }
 
@@ -26,11 +26,11 @@ void test_while_increment_before_access() {
     //     i: Int32 = 0
     int32_t i = 0;
     //     while i < len(arr) - 1:
-    while ((i < (tpy::sub_check<int32_t>(tpy::__len__(arr), 1)))) {
+    while ((i < (::tpy::sub_check<int32_t>(::tpy::__len__(arr), 1)))) {
         //         i += 1
-        i = tpy::add_check<int32_t>(i, 1);
+        i = ::tpy::add_check<int32_t>(i, 1);
         //         print(arr[i])  # tpyc: bounds_checked(arr)
-        std::cout << tpy::__getitem__(arr, i) << "\n";
+        std::cout << ::tpy::__getitem__(arr, i) << "\n";
     }
 }
 
@@ -41,11 +41,11 @@ void test_while_no_literal_init() {
     //     i: Int32 = Int32(0)
     int32_t i = 0;
     //     while i < len(arr):
-    while ((i < tpy::__len__(arr))) {
+    while ((i < ::tpy::__len__(arr))) {
         //         print(arr[i])  # tpyc: bounds_checked(arr)
-        std::cout << tpy::__getitem__(arr, i) << "\n";
+        std::cout << ::tpy::__getitem__(arr, i) << "\n";
         //         i += 1
-        i = tpy::add_check<int32_t>(i, 1);
+        i = ::tpy::add_check<int32_t>(i, 1);
     }
 }
 
@@ -56,13 +56,13 @@ void test_while_negative_init() {
     //     i: Int32 = -1
     int32_t i = -1;
     //     i += 1
-    i = tpy::add_check<int32_t>(i, 1);
+    i = ::tpy::add_check<int32_t>(i, 1);
     //     while i < len(arr):
-    while ((i < tpy::__len__(arr))) {
+    while ((i < ::tpy::__len__(arr))) {
         //         print(arr[i])  # tpyc: bounds_checked(arr)
-        std::cout << tpy::__getitem__(arr, i) << "\n";
+        std::cout << ::tpy::__getitem__(arr, i) << "\n";
         //         i += 1
-        i = tpy::add_check<int32_t>(i, 1);
+        i = ::tpy::add_check<int32_t>(i, 1);
     }
 }
 
@@ -73,11 +73,11 @@ void test_while_list() {
     //     i: Int32 = 0
     int32_t i = 0;
     //     while i < len(lst):
-    while ((i < tpy::__len__(lst))) {
+    while ((i < ::tpy::__len__(lst))) {
         //         print(lst[i])  # tpyc: bounds_safe(lst)
         std::cout << lst[i] << "\n";
         //         i += 1
-        i = tpy::add_check<int32_t>(i, 1);
+        i = ::tpy::add_check<int32_t>(i, 1);
     }
 }
 
@@ -86,13 +86,13 @@ void test_while_bigint_index() {
     //     lst: list[Int32] = [1, 2, 3]
     std::vector<int32_t> lst = {1, 2, 3};
     //     i: int = 0
-    tpy::BigInt i = tpy::BigInt(0);
+    ::tpy::BigInt i = ::tpy::BigInt(0);
     //     while i < len(lst):
-    while ((i < tpy::__len__(lst))) {
+    while ((i < ::tpy::__len__(lst))) {
         //         print(lst[i])  # tpyc: bounds_safe(lst)
         std::cout << lst[i.to_fixed_check<int32_t>()] << "\n";
         //         i += 1
-        i = (i) + (tpy::BigInt(1));
+        i = (i) + (::tpy::BigInt(1));
     }
 }
 
@@ -103,16 +103,16 @@ void test_while_post_loop_not_safe() {
     //     i: Int32 = 0
     int32_t i = 0;
     //     while i < len(arr):
-    while ((i < tpy::__len__(arr))) {
+    while ((i < ::tpy::__len__(arr))) {
         //         print(arr[i])  # tpyc: bounds_safe(arr)
         std::cout << arr[i] << "\n";
         //         i += 1
-        i = tpy::add_check<int32_t>(i, 1);
+        i = ::tpy::add_check<int32_t>(i, 1);
     }
     //     i = 0
     i = 0;
     //     print(arr[i])  # tpyc: bounds_checked(arr)
-    std::cout << tpy::__getitem__(arr, i) << "\n";
+    std::cout << ::tpy::__getitem__(arr, i) << "\n";
 }
 
 void __tpy_init() {
@@ -139,7 +139,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

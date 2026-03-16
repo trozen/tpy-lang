@@ -18,11 +18,11 @@ struct StrBox;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<Container<int32_t> C>
-int32_t extract(tpy::param_val_or_ref_t<C> c);
+int32_t extract(::tpy::param_val_or_ref_t<C> c);
 template<Container<int32_t> C>
-void update(tpy::param_val_or_ref_t<C> c, int32_t v);
+void update(::tpy::param_val_or_ref_t<C> c, int32_t v);
 template<Container<std::string> C>
-std::string extract_str(tpy::param_val_or_ref_t<C> c);
+std::string extract_str(::tpy::param_val_or_ref_t<C> c);
 void main();
 
 // class IntBox:
@@ -85,19 +85,19 @@ inline std::ostream& operator<<(std::ostream& os, const StrBox& obj) {
 
 // def extract[C: Container[Int32]](c: C) -> Int32:
 template<Container<int32_t> C>
-int32_t extract(tpy::param_val_or_ref_t<C> c) {
+int32_t extract(::tpy::param_val_or_ref_t<C> c) {
     //     return c.get()
     return c.get();
 }
 // def update[C: Container[Int32]](c: C, v: Int32) -> None:
 template<Container<int32_t> C>
-void update(tpy::param_val_or_ref_t<C> c, int32_t v) {
+void update(::tpy::param_val_or_ref_t<C> c, int32_t v) {
     //     c.set(v)
     c.set(v);
 }
 // def extract_str[C: Container[str]](c: C) -> str:
 template<Container<std::string> C>
-std::string extract_str(tpy::param_val_or_ref_t<C> c) {
+std::string extract_str(::tpy::param_val_or_ref_t<C> c) {
     //     return c.get()
     return c.get();
 }

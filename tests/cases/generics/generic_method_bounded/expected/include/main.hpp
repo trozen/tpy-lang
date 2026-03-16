@@ -22,7 +22,7 @@ struct Wrapper {
     explicit Wrapper(const T& val) : val(val) {}
 
     //     def is_less[U: Comparable](self, a: U, b: U) -> bool:
-    template<tpy::Comparable U>
+    template<::tpy::Comparable U>
     bool is_less(const U& a, const U& b) const {
         //         return a < b
         return (a < b);
@@ -32,7 +32,7 @@ struct Wrapper {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
     os << "Wrapper("
-       << "val=" << tpy::ValuePrinter(obj.val)
+       << "val=" << ::tpy::ValuePrinter(obj.val)
        << ")";
     return os;
 }

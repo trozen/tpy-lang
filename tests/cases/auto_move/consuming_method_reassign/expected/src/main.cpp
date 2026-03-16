@@ -7,15 +7,15 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     w = Wrapper(42)
-    Wrapper __slot_1 = Wrapper(tpy::BigInt(42));
+    Wrapper __slot_1 = Wrapper(::tpy::BigInt(42));
     std::optional<Wrapper> __slot_2;
     Wrapper* w = &__slot_1;
     //     r1 = w.take()
-    tpy::BigInt r1 = std::move(*w).take();
+    ::tpy::BigInt r1 = std::move(*w).take();
     //     w = Wrapper(99)
-    w = &*(__slot_2 = Wrapper(tpy::BigInt(99)));
+    w = &*(__slot_2 = Wrapper(::tpy::BigInt(99)));
     //     r2 = w.take()
-    tpy::BigInt r2 = std::move(*w).take();
+    ::tpy::BigInt r2 = std::move(*w).take();
     //     print(r1)
     std::cout << r1 << "\n";
     //     print(r2)
@@ -34,7 +34,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

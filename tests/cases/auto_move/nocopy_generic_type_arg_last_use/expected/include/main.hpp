@@ -50,7 +50,7 @@ struct Holder {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
     os << "Holder("
-       << "item=" << tpy::ValuePrinter(obj.item)
+       << "item=" << ::tpy::ValuePrinter(obj.item)
        << ")";
     return os;
 }

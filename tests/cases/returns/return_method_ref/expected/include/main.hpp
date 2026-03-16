@@ -15,16 +15,16 @@ void test();
 // class Inner:
 struct Inner {
     //     val: int
-    tpy::BigInt val;
+    ::tpy::BigInt val;
 
     //     def __init__(self, val: int) -> None:
     Inner() = default;
-    explicit Inner(const tpy::BigInt& val) : val(val) {}
+    explicit Inner(const ::tpy::BigInt& val) : val(val) {}
 
     //     def mutate(self) -> None:
     void mutate() {
         //         self.val += 10
-        this->val = (this->val) + (tpy::BigInt(10));
+        this->val = (this->val) + (::tpy::BigInt(10));
     }
 };
 
@@ -41,7 +41,7 @@ struct Holder {
     Inner inner;
 
     //     def __init__(self) -> None:
-    Holder() : inner(Inner(tpy::BigInt(1))) {}
+    Holder() : inner(Inner(::tpy::BigInt(1))) {}
 
     //     def get(self) -> Inner:
     Inner& get() {

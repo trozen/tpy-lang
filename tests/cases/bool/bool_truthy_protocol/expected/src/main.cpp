@@ -7,13 +7,13 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     b1 = Box(42)
-    Box b1 = Box(tpy::BigInt(42));
+    Box b1 = Box(::tpy::BigInt(42));
     //     b2 = Box(0)
-    Box b2 = Box(tpy::BigInt(0));
+    Box b2 = Box(::tpy::BigInt(0));
     //     print(check(b1))  # True
-    std::cout << tpy::print_bool(check<Box>(b1)) << "\n";
+    std::cout << ::tpy::print_bool(check<Box>(b1)) << "\n";
     //     print(check(b2))  # False
-    std::cout << tpy::print_bool(check<Box>(b2)) << "\n";
+    std::cout << ::tpy::print_bool(check<Box>(b2)) << "\n";
 }
 
 void __tpy_init() {
@@ -28,7 +28,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

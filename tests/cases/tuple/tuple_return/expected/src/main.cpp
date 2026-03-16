@@ -21,7 +21,7 @@ void main() {
     //     pair = get_pair()
     std::tuple<int32_t, std::string> pair = get_pair();
     //     print(pair)
-    std::cout << tpy::TuplePrinter(pair) << "\n";
+    std::cout << ::tpy::TuplePrinter(pair) << "\n";
     //     print(pair[0])
     std::cout << std::get<0>(pair) << "\n";
     //     print(pair[1])
@@ -29,9 +29,9 @@ void main() {
     //     triple = get_triple()
     std::tuple<bool, int32_t, std::string> triple = get_triple();
     //     print(triple)
-    std::cout << tpy::TuplePrinter(triple) << "\n";
+    std::cout << ::tpy::TuplePrinter(triple) << "\n";
     //     print(triple[0])
-    std::cout << tpy::print_bool(std::get<0>(triple)) << "\n";
+    std::cout << ::tpy::print_bool(std::get<0>(triple)) << "\n";
     //     print(triple[1])
     std::cout << std::get<1>(triple) << "\n";
     //     print(triple[2])
@@ -50,7 +50,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

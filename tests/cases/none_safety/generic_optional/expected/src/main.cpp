@@ -21,7 +21,7 @@ void main() {
     //     if v is not None:
     if ((v != nullptr)) {
         //         print("got:", v)
-        std::cout << "got:" << " " << tpy::print_optional(v) << "\n";
+        std::cout << "got:" << " " << ::tpy::print_optional(v) << "\n";
     //     else:
     } else {
         //         print("got: None")
@@ -34,7 +34,7 @@ void main() {
     //     if v2 is not None:
     if ((v2 != nullptr)) {
         //         print("after set:", v2)
-        std::cout << "after set:" << " " << tpy::print_optional(v2) << "\n";
+        std::cout << "after set:" << " " << ::tpy::print_optional(v2) << "\n";
     //     else:
     } else {
         //         print("after set: None")
@@ -48,7 +48,7 @@ void main() {
     //     if v3 is not None:
     if ((v3 != nullptr)) {
         //         print("restored:", v3)
-        std::cout << "restored:" << " " << tpy::print_optional(v3) << "\n";
+        std::cout << "restored:" << " " << ::tpy::print_optional(v3) << "\n";
     }
     //     # None-initialized container
     //     c2 = Container[Int32](None)
@@ -66,7 +66,7 @@ void main() {
     //     if r is not None:
     if ((r.has_value())) {
         //         print("maybe:", r)
-        std::cout << "maybe:" << " " << tpy::print_optional_val(r) << "\n";
+        std::cout << "maybe:" << " " << ::tpy::print_optional_val(r) << "\n";
     }
     //     r2 = maybe_val(None)
     std::optional<int32_t> r2 = maybe_val(std::nullopt);
@@ -91,7 +91,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

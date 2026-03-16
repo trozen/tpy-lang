@@ -10,9 +10,9 @@ void greet(std::optional<std::string_view> name) {
     //     if name is not None:
     if ((name.has_value())) {
         //         print(name.upper())
-        std::cout << tpy::str_upper((*name)) << "\n";
+        std::cout << ::tpy::str_upper((*name)) << "\n";
         //         print(name.startswith("A"))
-        std::cout << tpy::print_bool(tpy::str_startswith((*name), "A")) << "\n";
+        std::cout << ::tpy::print_bool(::tpy::str_startswith((*name), "A")) << "\n";
     //     else:
     } else {
         //         print("no name")
@@ -40,7 +40,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

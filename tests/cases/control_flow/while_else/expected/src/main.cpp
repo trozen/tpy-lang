@@ -13,7 +13,7 @@ void no_break() {
         //         print(i)
         std::cout << i << "\n";
         //         i += Int32(1)
-        i = tpy::add_check<int32_t>(i, 1);
+        i = ::tpy::add_check<int32_t>(i, 1);
     }
     //     else:
     {
@@ -37,7 +37,7 @@ void with_break() {
             goto __after_else_0;
         }
         //         i += Int32(1)
-        i = tpy::add_check<int32_t>(i, 1);
+        i = ::tpy::add_check<int32_t>(i, 1);
     }
     //     else:
     {
@@ -63,7 +63,7 @@ void nested_inner_else() {
                 goto __after_else_0;
             }
             //             j += Int32(1)
-            j = tpy::add_check<int32_t>(j, 1);
+            j = ::tpy::add_check<int32_t>(j, 1);
         }
         //         else:
         {
@@ -72,7 +72,7 @@ void nested_inner_else() {
         }
         __after_else_0:;
         //         i += Int32(1)
-        i = tpy::add_check<int32_t>(i, 1);
+        i = ::tpy::add_check<int32_t>(i, 1);
     }
 }
 
@@ -92,10 +92,10 @@ void nested_outer_else() {
                 break;
             }
             //             j += Int32(1)
-            j = tpy::add_check<int32_t>(j, 1);
+            j = ::tpy::add_check<int32_t>(j, 1);
         }
         //         i += Int32(1)
-        i = tpy::add_check<int32_t>(i, 1);
+        i = ::tpy::add_check<int32_t>(i, 1);
     }
     //     else:
     {
@@ -132,7 +132,7 @@ void var_decl_in_else() {
             goto __after_else_0;
         }
         //         i += Int32(1)
-        i = tpy::add_check<int32_t>(i, 1);
+        i = ::tpy::add_check<int32_t>(i, 1);
     }
     //     else:
     {
@@ -172,7 +172,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

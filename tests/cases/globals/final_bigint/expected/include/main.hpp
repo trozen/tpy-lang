@@ -6,7 +6,7 @@
 namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
-extern const tpy::BigInt BIG_VALUE;
+extern const ::tpy::BigInt BIG_VALUE;
 
 void main();
 

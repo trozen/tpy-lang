@@ -36,7 +36,7 @@ struct IntListHolder {
 
 inline std::ostream& operator<<(std::ostream& os, const IntListHolder& obj) {
     os << "IntListHolder("
-       << "data=" << tpy::ListPrinter(obj.data)
+       << "data=" << ::tpy::ListPrinter(obj.data)
        << ")";
     return os;
 }
@@ -53,7 +53,7 @@ struct Wrapper {
     explicit Wrapper(const V& holder) : holder(holder) {}
 
     //     def get_holder(self) -> V:
-    tpy::val_or_ref_t<V> get_holder() {
+    ::tpy::val_or_ref_t<V> get_holder() {
         //         return self.holder
         return this->holder;
     }
@@ -62,7 +62,7 @@ struct Wrapper {
 template<typename V>
 inline std::ostream& operator<<(std::ostream& os, const Wrapper<V>& obj) {
     os << "Wrapper("
-       << "holder=" << tpy::ValuePrinter(obj.holder)
+       << "holder=" << ::tpy::ValuePrinter(obj.holder)
        << ")";
     return os;
 }

@@ -10,8 +10,8 @@ void main() {
     //     pairs: list[tuple[str, Int32]] = [("apple", 3), ("banana", 1), ("cherry", 5)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"apple", 3}, std::tuple<std::string, int32_t>{"banana", 1}, std::tuple<std::string, int32_t>{"cherry", 5}};
     //     names: set[str] = {k for k, _ in pairs}
-    tpy::ordered_set<std::string> names = [&]() {
-        tpy::ordered_set<std::string> __result;
+    ::tpy::ordered_set<std::string> names = [&]() {
+        ::tpy::ordered_set<std::string> __result;
         auto& __obj_0 = pairs;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
@@ -23,19 +23,19 @@ void main() {
         return __result;
     }();
     //     print(len(names))
-    std::cout << tpy::__len__(names) << "\n";
+    std::cout << ::tpy::__len__(names) << "\n";
     //     print("apple" in names)
-    std::cout << tpy::print_bool((names.contains("apple"))) << "\n";
+    std::cout << ::tpy::print_bool((names.contains("apple"))) << "\n";
     //     print("banana" in names)
-    std::cout << tpy::print_bool((names.contains("banana"))) << "\n";
+    std::cout << ::tpy::print_bool((names.contains("banana"))) << "\n";
     //     print("cherry" in names)
-    std::cout << tpy::print_bool((names.contains("cherry"))) << "\n";
+    std::cout << ::tpy::print_bool((names.contains("cherry"))) << "\n";
     //     # Extract values with dedup
     //     pairs2: list[tuple[str, Int32]] = [("a", 10), ("b", 20), ("c", 10)]
     std::vector<std::tuple<std::string, int32_t>> pairs2 = {std::tuple<std::string, int32_t>{"a", 10}, std::tuple<std::string, int32_t>{"b", 20}, std::tuple<std::string, int32_t>{"c", 10}};
     //     vals: set[Int32] = {v for _, v in pairs2}
-    tpy::ordered_set<int32_t> vals = [&]() {
-        tpy::ordered_set<int32_t> __result;
+    ::tpy::ordered_set<int32_t> vals = [&]() {
+        ::tpy::ordered_set<int32_t> __result;
         auto& __obj_1 = pairs2;
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
@@ -47,7 +47,7 @@ void main() {
         return __result;
     }();
     //     print(len(vals))
-    std::cout << tpy::__len__(vals) << "\n";
+    std::cout << ::tpy::__len__(vals) << "\n";
     //     for v in vals:
     auto& __obj_2 = vals;
     auto __beg_2 = __obj_2.begin();
@@ -71,7 +71,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -13,7 +13,7 @@ void bump() {
     //     global counter
     //     global flag
     //     counter = counter + Int32(1)
-    counter = (tpy::add_check<int32_t>(counter, 1));
+    counter = (::tpy::add_check<int32_t>(counter, 1));
     //     flag = True
     flag = true;
 }
@@ -36,13 +36,13 @@ void __tpy_init() {
     // print(counter)
     std::cout << counter << "\n";
     // print(flag)
-    std::cout << tpy::print_bool(flag) << "\n";
+    std::cout << ::tpy::print_bool(flag) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -10,15 +10,15 @@ void test_basic() {
     //     s: str = "hello world"
     std::string_view s = "hello world";
     //     print(s[0:5])
-    std::cout << tpy::str_slice(s, 0, 5) << "\n";
+    std::cout << ::tpy::str_slice(s, 0, 5) << "\n";
     //     print(s[6:11])
-    std::cout << tpy::str_slice(s, 6, 11) << "\n";
+    std::cout << ::tpy::str_slice(s, 6, 11) << "\n";
     //     print(s[6:])
-    std::cout << tpy::str_slice(s, 6, tpy::SLICE_END) << "\n";
+    std::cout << ::tpy::str_slice(s, 6, ::tpy::SLICE_END) << "\n";
     //     print(s[:5])
-    std::cout << tpy::str_slice(s, 0, 5) << "\n";
+    std::cout << ::tpy::str_slice(s, 0, 5) << "\n";
     //     print(s[:])
-    std::cout << tpy::str_slice(s, 0, tpy::SLICE_END) << "\n";
+    std::cout << ::tpy::str_slice(s, 0, ::tpy::SLICE_END) << "\n";
 }
 
 // def test_negative() -> None:
@@ -26,13 +26,13 @@ void test_negative() {
     //     s: str = "abcdef"
     std::string_view s = "abcdef";
     //     print(s[-3:])
-    std::cout << tpy::str_slice(s, -3, tpy::SLICE_END) << "\n";
+    std::cout << ::tpy::str_slice(s, -3, ::tpy::SLICE_END) << "\n";
     //     print(s[:-2])
-    std::cout << tpy::str_slice(s, 0, -2) << "\n";
+    std::cout << ::tpy::str_slice(s, 0, -2) << "\n";
     //     print(s[-4:-1])
-    std::cout << tpy::str_slice(s, -4, -1) << "\n";
+    std::cout << ::tpy::str_slice(s, -4, -1) << "\n";
     //     print(s[-6:])
-    std::cout << tpy::str_slice(s, -6, tpy::SLICE_END) << "\n";
+    std::cout << ::tpy::str_slice(s, -6, ::tpy::SLICE_END) << "\n";
 }
 
 // def test_clamping() -> None:
@@ -40,13 +40,13 @@ void test_clamping() {
     //     s: str = "hello"
     std::string_view s = "hello";
     //     print(s[0:100])
-    std::cout << tpy::str_slice(s, 0, 100) << "\n";
+    std::cout << ::tpy::str_slice(s, 0, 100) << "\n";
     //     print(s[-100:3])
-    std::cout << tpy::str_slice(s, -100, 3) << "\n";
+    std::cout << ::tpy::str_slice(s, -100, 3) << "\n";
     //     print(s[-100:100])
-    std::cout << tpy::str_slice(s, -100, 100) << "\n";
+    std::cout << ::tpy::str_slice(s, -100, 100) << "\n";
     //     print(s[10:20])
-    std::cout << tpy::str_slice(s, 10, 20) << "\n";
+    std::cout << ::tpy::str_slice(s, 10, 20) << "\n";
 }
 
 // def test_empty() -> None:
@@ -54,17 +54,17 @@ void test_empty() {
     //     s: str = "hello"
     std::string_view s = "hello";
     //     print(len(s[3:1]))
-    std::cout << tpy::__len__(tpy::str_slice(s, 3, 1)) << "\n";
+    std::cout << ::tpy::__len__(::tpy::str_slice(s, 3, 1)) << "\n";
     //     print(len(s[5:5]))
-    std::cout << tpy::__len__(tpy::str_slice(s, 5, 5)) << "\n";
+    std::cout << ::tpy::__len__(::tpy::str_slice(s, 5, 5)) << "\n";
     //     print(len(s[2:2]))
-    std::cout << tpy::__len__(tpy::str_slice(s, 2, 2)) << "\n";
+    std::cout << ::tpy::__len__(::tpy::str_slice(s, 2, 2)) << "\n";
 }
 
 // def test_param(s: str) -> None:
 void test_param(std::string_view s) {
     //     r = s[1:4]  # tpyc: type(StrView)
-    std::string_view r = tpy::str_slice(s, 1, 4);
+    std::string_view r = ::tpy::str_slice(s, 1, 4);
     //     print(r)
     std::cout << r << "\n";
 }
@@ -74,7 +74,7 @@ void test_local_type() {
     //     s: str = "abcdef"
     std::string_view s = "abcdef";
     //     r = s[1:3]  # tpyc: type(StrView)
-    std::string_view r = tpy::str_slice(s, 1, 3);
+    std::string_view r = ::tpy::str_slice(s, 1, 3);
     //     print(r)
     std::cout << r << "\n";
 }
@@ -84,9 +84,9 @@ void test_single_char() {
     //     s: str = "hello"
     std::string_view s = "hello";
     //     print(s[0:1])
-    std::cout << tpy::str_slice(s, 0, 1) << "\n";
+    std::cout << ::tpy::str_slice(s, 0, 1) << "\n";
     //     print(s[-1:])
-    std::cout << tpy::str_slice(s, -1, tpy::SLICE_END) << "\n";
+    std::cout << ::tpy::str_slice(s, -1, ::tpy::SLICE_END) << "\n";
 }
 
 void __tpy_init() {
@@ -125,7 +125,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

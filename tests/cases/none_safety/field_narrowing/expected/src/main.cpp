@@ -9,7 +9,7 @@ void show_port(const Config& cfg) {
     //     if cfg.port is not None:
     if ((cfg.port.has_value())) {
         //         p: int = cfg.port
-        tpy::BigInt p = (*cfg.port);
+        ::tpy::BigInt p = (*cfg.port);
         //         print(p)
         std::cout << p << "\n";
     //     else:
@@ -41,7 +41,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

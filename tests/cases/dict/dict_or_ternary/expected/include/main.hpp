@@ -5,20 +5,20 @@
 
 namespace tpy_user::main {
 
-extern tpy::ordered_map<std::string, int32_t>* d1;
-extern tpy::ordered_map<std::string, int32_t>* d2;
-extern tpy::ordered_map<std::string, int32_t>* ta1;
-extern tpy::ordered_map<std::string, int32_t>* tb1;
-extern tpy::ordered_map<std::string, int32_t>* ta2;
-extern tpy::ordered_map<std::string, int32_t>* tb2;
+extern ::tpy::ordered_map<std::string, int32_t>* d1;
+extern ::tpy::ordered_map<std::string, int32_t>* d2;
+extern ::tpy::ordered_map<std::string, int32_t>* ta1;
+extern ::tpy::ordered_map<std::string, int32_t>* tb1;
+extern ::tpy::ordered_map<std::string, int32_t>* ta2;
+extern ::tpy::ordered_map<std::string, int32_t>* tb2;
 inline constexpr std::string_view __name__ = "__main__";
 
-void test_or(tpy::ordered_map<std::string, int32_t>& a, tpy::ordered_map<std::string, int32_t>& b);
-void test_and(tpy::ordered_map<std::string, int32_t>& a, tpy::ordered_map<std::string, int32_t>& b);
-void test_ternary(tpy::ordered_map<std::string, int32_t>& a, tpy::ordered_map<std::string, int32_t>& b, bool cond);
+void test_or(::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_map<std::string, int32_t>& b);
+void test_and(::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_map<std::string, int32_t>& b);
+void test_ternary(::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_map<std::string, int32_t>& b, bool cond);
 void test_literal_or();
 void test_literal_ternary(bool cond);
-void test_ternary_alias(tpy::ordered_map<std::string, int32_t>& a, tpy::ordered_map<std::string, int32_t>& b, bool cond);
+void test_ternary_alias(::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_map<std::string, int32_t>& b, bool cond);
 
 void __tpy_init();
 } // namespace tpy_user::main

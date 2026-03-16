@@ -33,7 +33,7 @@ struct Circle {
     std::string __repr__() const {
         std::ostringstream __os;
         __os << "Circle("
-           << "radius=" << tpy::print_float(this->radius)
+           << "radius=" << ::tpy::print_float(this->radius)
            << ")";
         return __os.str();
     }
@@ -66,9 +66,9 @@ struct Rect {
     std::string __repr__() const {
         std::ostringstream __os;
         __os << "Rect("
-           << "width=" << tpy::print_float(this->width)
+           << "width=" << ::tpy::print_float(this->width)
            << ", "
-           << "height=" << tpy::print_float(this->height)
+           << "height=" << ::tpy::print_float(this->height)
            << ")";
         return __os.str();
     }

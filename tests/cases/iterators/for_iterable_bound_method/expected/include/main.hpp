@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 struct RangeIter;
 struct MyRange;
-template<tpy::Iterable<int32_t> T> struct Summer;
+template<::tpy::Iterable<int32_t> T> struct Summer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -33,7 +33,7 @@ struct RangeIter {
             //             result = self.current
             int32_t result = this->current;
             //             self.current += 1
-            this->current = tpy::add_check<int32_t>(this->current, 1);
+            this->current = ::tpy::add_check<int32_t>(this->current, 1);
             //             return result
             return result;
         }
@@ -42,7 +42,7 @@ struct RangeIter {
     }
 
     int32_t __next__() {
-        tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
+        ::tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
     }
 };
 
@@ -83,7 +83,7 @@ inline std::ostream& operator<<(std::ostream& os, const MyRange& obj) {
 }
 
 // class Summer[T: Iterable[Int32]]:
-template<tpy::Iterable<int32_t> T>
+template<::tpy::Iterable<int32_t> T>
 struct Summer {
     //     items: T
     T items;
@@ -98,13 +98,13 @@ struct Summer {
         int32_t result = 0;
         //         for x in self.items:
         auto& __src_0 = this->items;
-        auto __obj_0 = tpy::iter_for_loop(__src_0);
+        auto __obj_0 = ::tpy::iter_for_loop(__src_0);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
             //             result += x
-            result = tpy::add_check<int32_t>(result, x);
+            result = ::tpy::add_check<int32_t>(result, x);
         }
         //         return result
         return result;
@@ -114,7 +114,7 @@ struct Summer {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Summer<T>& obj) {
     os << "Summer("
-       << "items=" << tpy::ValuePrinter(obj.items)
+       << "items=" << ::tpy::ValuePrinter(obj.items)
        << ")";
     return os;
 }

@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def main():
 void main() {
     //     t = time(99)
-    time t = time(tpy::BigInt(99));
+    time t = time(::tpy::BigInt(99));
     //     print(t.value)
     std::cout << t.value << "\n";
 }
@@ -24,7 +24,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

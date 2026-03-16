@@ -6,14 +6,14 @@ namespace tpy_user::main {
 
 // # Test truthiness for built-in container types (list, str) in if/not/and/or
 // def check_list(items: list[int], empty: list[int]) -> None:
-void check_list(const std::vector<tpy::BigInt>& items, const std::vector<tpy::BigInt>& empty) {
+void check_list(const std::vector<::tpy::BigInt>& items, const std::vector<::tpy::BigInt>& empty) {
     //     if items:
-    if ((tpy::__len__(items) != 0)) {
+    if ((::tpy::__len__(items) != 0)) {
         //         print("list truthy")
         std::cout << "list truthy" << "\n";
     }
     //     if not empty:
-    if ((!((tpy::__len__(empty) != 0)))) {
+    if ((!((::tpy::__len__(empty) != 0)))) {
         //         print("list falsy")
         std::cout << "list falsy" << "\n";
     }
@@ -34,9 +34,9 @@ void check_str(std::string_view s, std::string_view e) {
 }
 
 // def check_and_or(items: list[int], empty: list[int]) -> None:
-void check_and_or(const std::vector<tpy::BigInt>& items, const std::vector<tpy::BigInt>& empty) {
+void check_and_or(const std::vector<::tpy::BigInt>& items, const std::vector<::tpy::BigInt>& empty) {
     //     if items and not empty:
-    if (((tpy::__len__(items) != 0) && (!((tpy::__len__(empty) != 0))))) {
+    if (((::tpy::__len__(items) != 0) && (!((::tpy::__len__(empty) != 0))))) {
         //         print("and/or works")
         std::cout << "and/or works" << "\n";
     }
@@ -45,14 +45,14 @@ void check_and_or(const std::vector<tpy::BigInt>& items, const std::vector<tpy::
 // def main() -> None:
 void main() {
     //     check_list([1, 2, 3], [])
-    std::vector<tpy::BigInt> __tmp_1 = {1, 2, 3};
-    std::vector<tpy::BigInt> __tmp_2 = std::vector<tpy::BigInt>{};
+    std::vector<::tpy::BigInt> __tmp_1 = {1, 2, 3};
+    std::vector<::tpy::BigInt> __tmp_2 = std::vector<::tpy::BigInt>{};
     check_list(__tmp_1, __tmp_2);
     //     check_str("hello", "")
     check_str("hello", "");
     //     check_and_or([1], [])
-    std::vector<tpy::BigInt> __tmp_3 = {1};
-    std::vector<tpy::BigInt> __tmp_4 = std::vector<tpy::BigInt>{};
+    std::vector<::tpy::BigInt> __tmp_3 = {1};
+    std::vector<::tpy::BigInt> __tmp_4 = std::vector<::tpy::BigInt>{};
     check_and_or(__tmp_3, __tmp_4);
 }
 
@@ -68,7 +68,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

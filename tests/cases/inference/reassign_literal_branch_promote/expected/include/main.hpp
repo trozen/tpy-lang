@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-tpy::BigInt get_big();
+::tpy::BigInt get_big();
 void test_augassign();
 void test_binop();
 void test_elif_chain();

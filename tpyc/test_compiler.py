@@ -67,7 +67,7 @@ class TestCompilerFromSource:
         compiler = Compiler.from_source(source, default_int="Int32")
         modules = compiler.compile()
         hpp, _ = compiler.generate_code_to_strings(modules[0])
-        assert "extern tpy::BigInt x;" in hpp
+        assert "extern ::tpy::BigInt x;" in hpp
 
     def test_invalid_default_int_setting_rejected(self):
         with pytest.raises(ValueError, match="Unsupported default int type"):

@@ -9,27 +9,27 @@ Holder* h{};
 // def test(h: Holder) -> None:
 void test(Holder& h) {
     //     p: Point | None = h.value
-    Point* p = tpy::optional_to_ptr(h.value);
+    Point* p = ::tpy::optional_to_ptr(h.value);
     //     print(p is None)
-    std::cout << tpy::print_bool((p == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
     //     h.value = copy(Point(1, 2))
     h.value = Point(1, 2);
     //     p = h.value
-    p = tpy::optional_to_ptr(h.value);
+    p = ::tpy::optional_to_ptr(h.value);
     //     print(p is None)
-    std::cout << tpy::print_bool((p == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
     //     print(p.x)
-    std::cout << tpy::deref_check(p).x << "\n";
+    std::cout << ::tpy::deref_check(p).x << "\n";
     //     p = None
     p = nullptr;
     //     print(p is None)
-    std::cout << tpy::print_bool((p == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
     //     h.value = copy(Point(3, 4))
     h.value = Point(3, 4);
     //     p = h.value
-    p = tpy::optional_to_ptr(h.value);
+    p = ::tpy::optional_to_ptr(h.value);
     //     print(p.y)
-    std::cout << tpy::deref_check(p).y << "\n";
+    std::cout << ::tpy::deref_check(p).y << "\n";
 }
 
 void __tpy_init() {
@@ -47,7 +47,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

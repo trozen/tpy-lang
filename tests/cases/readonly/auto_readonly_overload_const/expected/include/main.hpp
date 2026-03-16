@@ -22,7 +22,7 @@ struct Container {
     Container() : _data(std::vector<T>{}) {}
 
     //     def add(self, item: T) -> None:
-    void add(tpy::param_val_or_ref_t<T> item) {
+    void add(::tpy::param_val_or_ref_t<T> item) {
         //         self._data.append(item)
         auto __tmp_1 = item;
         this->_data.push_back(std::move(__tmp_1));
@@ -31,25 +31,25 @@ struct Container {
     //     @overload
     //     @auto_readonly
     //     def __getitem__(self, index: Int32) -> T: ...
-    tpy::val_or_ref_t<T> __getitem__(int32_t index) {
+    ::tpy::val_or_ref_t<T> __getitem__(int32_t index) {
         //         if isinstance(index, slice):
         //             return self._data[index]
-        return tpy::__getitem__(this->_data, index);
+        return ::tpy::__getitem__(this->_data, index);
     }
 
     //     @overload
     //     @auto_readonly
     //     def __getitem__(self, index: Int32) -> T: ...
-    tpy::val_or_cref_t<T> __getitem__(int32_t index) const {
+    ::tpy::val_or_cref_t<T> __getitem__(int32_t index) const {
         //         if isinstance(index, slice):
         //             return self._data[index]
-        return tpy::__getitem__(this->_data, index);
+        return ::tpy::__getitem__(this->_data, index);
     }
 
     //     @overload
     //     @auto_readonly
     //     def __getitem__(self, index: slice) -> Span[auto_readonly[T]]: ...
-    std::span<T> __getitem__(tpy::Slice index) {
+    std::span<T> __getitem__(::tpy::Slice index) {
         //         if isinstance(index, slice):
         //             s_start = index.start
         std::optional<int32_t> s_start = index.start;
@@ -58,15 +58,15 @@ struct Container {
         //             start: Int32 = s_start if s_start is not None else Int32(0)
         int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
         //             stop: Int32 = s_stop if s_stop is not None else Int32(len(self._data))
-        int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (tpy::__len__(this->_data)));
+        int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
         //             return self._data[start:stop]
-        return tpy::list_slice(this->_data, start, stop);
+        return ::tpy::list_slice(this->_data, start, stop);
     }
 
     //     @overload
     //     @auto_readonly
     //     def __getitem__(self, index: slice) -> Span[auto_readonly[T]]: ...
-    std::span<const T> __getitem__(tpy::Slice index) const {
+    std::span<const T> __getitem__(::tpy::Slice index) const {
         //         if isinstance(index, slice):
         //             s_start = index.start
         std::optional<int32_t> s_start = index.start;
@@ -75,20 +75,20 @@ struct Container {
         //             start: Int32 = s_start if s_start is not None else Int32(0)
         int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
         //             stop: Int32 = s_stop if s_stop is not None else Int32(len(self._data))
-        int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (tpy::__len__(this->_data)));
+        int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
         //             return self._data[start:stop]
-        return tpy::list_slice(this->_data, start, stop);
+        return ::tpy::list_slice(this->_data, start, stop);
     }
 
-    tpy::val_or_cref_t<T> operator[](int32_t index) const {
+    ::tpy::val_or_cref_t<T> operator[](int32_t index) const {
         return __getitem__(index);
     }
 
-    tpy::val_or_ref_t<T> operator[](int32_t index) {
+    ::tpy::val_or_ref_t<T> operator[](int32_t index) {
         return __getitem__(index);
     }
 
-    std::span<const T> operator[](tpy::Slice index) const {
+    std::span<const T> operator[](::tpy::Slice index) const {
         return __getitem__(index);
     }
 };
@@ -96,7 +96,7 @@ struct Container {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     os << "Container("
-       << "_data=" << tpy::ListPrinter(obj._data)
+       << "_data=" << ::tpy::ListPrinter(obj._data)
        << ")";
     return os;
 }

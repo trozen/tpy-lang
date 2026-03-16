@@ -9,18 +9,18 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<tpy::Truthy T>
-bool check(tpy::param_val_or_ref_t<T> x);
+template<::tpy::Truthy T>
+bool check(::tpy::param_val_or_ref_t<T> x);
 void main();
 
 // class Box:
 struct Box {
     //     value: int
-    tpy::BigInt value;
+    ::tpy::BigInt value;
 
     //     def __init__(self, value: int) -> None:
     Box() = default;
-    explicit Box(const tpy::BigInt& value) : value(value) {}
+    explicit Box(const ::tpy::BigInt& value) : value(value) {}
 
     //     def __bool__(self) -> bool:
     bool __bool__() const {
@@ -37,10 +37,10 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 // def check[T: Truthy](x: T) -> bool:
-template<tpy::Truthy T>
-bool check(tpy::param_val_or_ref_t<T> x) {
+template<::tpy::Truthy T>
+bool check(::tpy::param_val_or_ref_t<T> x) {
     //     return bool(x)
-    return tpy::__bool__(x);
+    return ::tpy::__bool__(x);
 }
 
 void __tpy_init();

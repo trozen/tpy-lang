@@ -23,15 +23,15 @@ struct Container {
     Container() : count(0) {}
 
     //     def set(self, val: T) -> None:
-    void set(tpy::param_val_or_ref_t<T> val) {
+    void set(::tpy::param_val_or_ref_t<T> val) {
         //         self.val = val
         this->val = val;
         //         self.count = self.count + Int32(1)
-        this->count = (tpy::add_check<int32_t>(this->count, 1));
+        this->count = (::tpy::add_check<int32_t>(this->count, 1));
     }
 
     //     def get(self) -> T:
-    tpy::val_or_ref_t<T> get() {
+    ::tpy::val_or_ref_t<T> get() {
         //         return self.val
         return this->val;
     }
@@ -48,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     os << "Container("
        << "count=" << obj.count
        << ", "
-       << "val=" << tpy::ValuePrinter(obj.val)
+       << "val=" << ::tpy::ValuePrinter(obj.val)
        << ")";
     return os;
 }

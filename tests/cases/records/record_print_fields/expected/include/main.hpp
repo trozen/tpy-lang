@@ -20,26 +20,26 @@ struct Config {
     //     items: list[Int32]
     std::vector<int32_t> items;
     //     tags: dict[str, Int32]
-    tpy::ordered_map<std::string, int32_t> tags;
+    ::tpy::ordered_map<std::string, int32_t> tags;
     //     pair: tuple[Int32, str]
     std::tuple<int32_t, std::string> pair;
 
     //     def __init__(self, flag: bool, ratio: float, items: list[Int32],
     Config() = default;
-    explicit Config(bool flag, double ratio, const std::vector<int32_t>& items, const tpy::ordered_map<std::string, int32_t>& tags, const std::tuple<int32_t, std::string>& pair) : flag(flag), ratio(ratio), items(items), tags(tags), pair(pair) {}
+    explicit Config(bool flag, double ratio, const std::vector<int32_t>& items, const ::tpy::ordered_map<std::string, int32_t>& tags, const std::tuple<int32_t, std::string>& pair) : flag(flag), ratio(ratio), items(items), tags(tags), pair(pair) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     os << "Config("
-       << "flag=" << tpy::print_bool(obj.flag)
+       << "flag=" << ::tpy::print_bool(obj.flag)
        << ", "
-       << "ratio=" << tpy::print_float(obj.ratio)
+       << "ratio=" << ::tpy::print_float(obj.ratio)
        << ", "
-       << "items=" << tpy::ListPrinter(obj.items)
+       << "items=" << ::tpy::ListPrinter(obj.items)
        << ", "
-       << "tags=" << tpy::DictPrinter(obj.tags)
+       << "tags=" << ::tpy::DictPrinter(obj.tags)
        << ", "
-       << "pair=" << tpy::TuplePrinter(obj.pair)
+       << "pair=" << ::tpy::TuplePrinter(obj.pair)
        << ")";
     return os;
 }

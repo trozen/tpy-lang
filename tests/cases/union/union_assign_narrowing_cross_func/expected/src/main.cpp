@@ -9,13 +9,13 @@ void f() {
     //     a: A | B = A(1.0)
     std::variant<A, B> a = A(1.0);
     //     print(a.x)
-    std::cout << tpy::print_float(std::get<A>(a).x) << "\n";
+    std::cout << ::tpy::print_float(std::get<A>(a).x) << "\n";
 }
 
 // def g(a: C) -> None:
 void g(const C& a) {
     //     print(a.x)
-    std::cout << tpy::print_float(a.x) << "\n";
+    std::cout << ::tpy::print_float(a.x) << "\n";
 }
 
 // def main() -> None:
@@ -39,7 +39,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

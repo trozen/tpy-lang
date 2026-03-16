@@ -20,7 +20,7 @@ int32_t read_only_point(const Point& p) {
 // def read_elem_ref(items: list[Point]) -> Int32:
 int32_t read_elem_ref(const std::vector<Point>& items) {
     //     v = items[Int32(0)]
-    const Point& v = tpy::__getitem__(items, 0);
+    const Point& v = ::tpy::__getitem__(items, 0);
     //     return v.x
     return v.x;
 }
@@ -28,7 +28,7 @@ int32_t read_elem_ref(const std::vector<Point>& items) {
 // def read_via_alias(items: list[Point]) -> Int32:
 int32_t read_via_alias(const std::vector<Point>& items) {
     //     v = items[Int32(0)]
-    const Point& v = tpy::__getitem__(items, 0);
+    const Point& v = ::tpy::__getitem__(items, 0);
     //     w = v
     const Point& w = v;
     //     return w.x
@@ -38,7 +38,7 @@ int32_t read_via_alias(const std::vector<Point>& items) {
 // def read_via_deep_alias(items: list[Point]) -> Int32:
 int32_t read_via_deep_alias(const std::vector<Point>& items) {
     //     v = items[Int32(0)]
-    const Point& v = tpy::__getitem__(items, 0);
+    const Point& v = ::tpy::__getitem__(items, 0);
     //     w = v
     const Point& w = v;
     //     x = w
@@ -50,7 +50,7 @@ int32_t read_via_deep_alias(const std::vector<Point>& items) {
 // def read_via_read_only_call(items: list[Point]) -> Int32:
 int32_t read_via_read_only_call(const std::vector<Point>& items) {
     //     v = items[Int32(0)]
-    const Point& v = tpy::__getitem__(items, 0);
+    const Point& v = ::tpy::__getitem__(items, 0);
     //     return read_only_point(v)
     return read_only_point(v);
 }
@@ -59,7 +59,7 @@ int32_t read_via_read_only_call(const std::vector<Point>& items) {
 // def write_elem_ref(items: list[Point], val: Int32) -> None:
 void write_elem_ref(std::vector<Point>& items, int32_t val) {
     //     v = items[Int32(0)]
-    Point& v = tpy::__getitem__(items, 0);
+    Point& v = ::tpy::__getitem__(items, 0);
     //     v.x = val
     v.x = val;
 }
@@ -67,7 +67,7 @@ void write_elem_ref(std::vector<Point>& items, int32_t val) {
 // def write_via_mutating_call(items: list[Point], val: Int32) -> None:
 void write_via_mutating_call(std::vector<Point>& items, int32_t val) {
     //     v = items[Int32(0)]
-    Point& v = tpy::__getitem__(items, 0);
+    Point& v = ::tpy::__getitem__(items, 0);
     //     mutate_point(v, val)
     mutate_point(v, val);
 }
@@ -75,7 +75,7 @@ void write_via_mutating_call(std::vector<Point>& items, int32_t val) {
 // def write_via_alias(items: list[Point], val: Int32) -> None:
 void write_via_alias(std::vector<Point>& items, int32_t val) {
     //     v = items[Int32(0)]
-    Point& v = tpy::__getitem__(items, 0);
+    Point& v = ::tpy::__getitem__(items, 0);
     //     w = v
     Point& w = v;
     //     w.x = val
@@ -86,17 +86,17 @@ void write_via_alias(std::vector<Point>& items, int32_t val) {
 // def read_nested(matrix: list[list[Int32]]) -> Int32:
 int32_t read_nested(const std::vector<std::vector<int32_t>>& matrix) {
     //     row = matrix[Int32(0)]
-    const std::vector<int32_t>& row = tpy::__getitem__(matrix, 0);
+    const std::vector<int32_t>& row = ::tpy::__getitem__(matrix, 0);
     //     return row[Int32(0)]
-    return tpy::__getitem__(row, 0);
+    return ::tpy::__getitem__(row, 0);
 }
 
 // def write_nested(matrix: list[list[Int32]], val: Int32) -> None:
 void write_nested(std::vector<std::vector<int32_t>>& matrix, int32_t val) {
     //     row = matrix[Int32(0)]
-    std::vector<int32_t>& row = tpy::__getitem__(matrix, 0);
+    std::vector<int32_t>& row = ::tpy::__getitem__(matrix, 0);
     //     row[Int32(0)] = val
-    tpy::__setitem__(row, 0, val);
+    ::tpy::__setitem__(row, 0, val);
 }
 
 // def main() -> None:
@@ -114,15 +114,15 @@ void main() {
     //     write_elem_ref(pts, Int32(99))
     write_elem_ref(pts, 99);
     //     print(pts[Int32(0)].x)
-    std::cout << tpy::__getitem__(pts, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
     //     write_via_mutating_call(pts, Int32(77))
     write_via_mutating_call(pts, 77);
     //     print(pts[Int32(0)].x)
-    std::cout << tpy::__getitem__(pts, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
     //     write_via_alias(pts, Int32(55))
     write_via_alias(pts, 55);
     //     print(pts[Int32(0)].x)
-    std::cout << tpy::__getitem__(pts, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
     //     matrix: list[list[Int32]] = [[Int32(1), Int32(2)], [Int32(3), Int32(4)]]
     std::vector<std::vector<int32_t>> matrix = {{1, 2}, {3, 4}};
     //     print(read_nested(matrix))
@@ -130,7 +130,7 @@ void main() {
     //     write_nested(matrix, Int32(9))
     write_nested(matrix, 9);
     //     print(matrix[Int32(0)][Int32(0)])
-    std::cout << tpy::__getitem__(tpy::__getitem__(matrix, 0), 0) << "\n";
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__(matrix, 0), 0) << "\n";
 }
 
 void __tpy_init() {
@@ -145,7 +145,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

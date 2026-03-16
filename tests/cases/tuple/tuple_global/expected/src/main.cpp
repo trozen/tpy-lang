@@ -11,13 +11,13 @@ std::tuple<int32_t, bool> t2;
 // def main() -> None:
 void main() {
     //     print(t1)
-    std::cout << tpy::TuplePrinter(t1) << "\n";
+    std::cout << ::tpy::TuplePrinter(t1) << "\n";
     //     print(t2)
-    std::cout << tpy::TuplePrinter(t2) << "\n";
+    std::cout << ::tpy::TuplePrinter(t2) << "\n";
     //     print(t1[0])
     std::cout << std::get<0>(t1) << "\n";
     //     print(t2[1])
-    std::cout << tpy::print_bool(std::get<1>(t2)) << "\n";
+    std::cout << ::tpy::print_bool(std::get<1>(t2)) << "\n";
 }
 
 void __tpy_init() {
@@ -36,7 +36,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

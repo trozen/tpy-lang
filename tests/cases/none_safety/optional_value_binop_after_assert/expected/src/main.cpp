@@ -7,9 +7,9 @@ namespace tpy_user::main {
 // def add_one(x: Int32 | None) -> Int32:
 int32_t add_one(std::optional<int32_t> x) {
     //     assert x is not None
-    if (!((x.has_value()))) tpy::tpy_panic("assertion failed");
+    if (!((x.has_value()))) ::tpy::tpy_panic("assertion failed");
     //     return x + 1
-    return (tpy::add_check<int32_t>((*x), 1));
+    return (::tpy::add_check<int32_t>((*x), 1));
 }
 
 void __tpy_init() {
@@ -24,7 +24,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

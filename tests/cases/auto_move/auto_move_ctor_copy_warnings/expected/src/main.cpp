@@ -21,13 +21,13 @@ void test_nested_field_copy(Outer& o, Inner&& inner) {
 // def test_subscript_move(xs: list[Inner], inner: Own[Inner]) -> None:
 void test_subscript_move(std::vector<Inner>& xs, Inner&& inner) {
     //     xs[0] = inner  # tpyc: ok (subscript assign, last use -- auto-moved)
-    tpy::__setitem__(xs, 0, std::move(inner));
+    ::tpy::__setitem__(xs, 0, std::move(inner));
 }
 
 // def test_subscript_copy(xs: list[Inner], inner: Own[Inner]) -> None:
 void test_subscript_copy(std::vector<Inner>& xs, Inner&& inner) {
     //     xs[0] = inner  # tpyc: warning(/copies.*container/)
-    tpy::__setitem__(xs, 0, inner);
+    ::tpy::__setitem__(xs, 0, inner);
     //     print(inner.value)
     std::cout << inner.value << "\n";
 }
@@ -85,7 +85,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

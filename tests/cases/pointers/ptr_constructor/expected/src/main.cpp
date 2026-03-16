@@ -7,17 +7,17 @@ namespace tpy_user::main {
 // def read_via_ptr(p: Ptr[Point]) -> None:
 void read_via_ptr(Point* p) {
     //     print(p.x)
-    std::cout << tpy::deref_check(p).x << "\n";
+    std::cout << ::tpy::deref_check(p).x << "\n";
     //     print(p.y)
-    std::cout << tpy::deref_check(p).y << "\n";
+    std::cout << ::tpy::deref_check(p).y << "\n";
 }
 
 // def read_via_constptr(p: Ptr[readonly[Point]]) -> None:
 void read_via_constptr(const Point* p) {
     //     print(p.x)
-    std::cout << tpy::deref_check(p).x << "\n";
+    std::cout << ::tpy::deref_check(p).x << "\n";
     //     print(p.y)
-    std::cout << tpy::deref_check(p).y << "\n";
+    std::cout << ::tpy::deref_check(p).y << "\n";
 }
 
 // def test_null_constructors() -> None:
@@ -108,7 +108,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

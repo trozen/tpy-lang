@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     nums: list[int] = [10, 20, 30]
-    std::vector<tpy::BigInt> nums = {10, 20, 30};
+    std::vector<::tpy::BigInt> nums = {10, 20, 30};
     //     # list satisfies both Sized and Sequence[int]; Sequence branch fires first
     //     describe(nums)
     describe(nums);
@@ -27,7 +27,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

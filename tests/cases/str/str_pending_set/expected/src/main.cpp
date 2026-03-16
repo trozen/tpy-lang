@@ -5,20 +5,20 @@ namespace tpy_user::main {
 
 
 // def in_set() -> Own[set[str]]:
-tpy::ordered_set<std::string> in_set() {
+::tpy::ordered_set<std::string> in_set() {
     //     label: str = "x"
     std::string_view label = "x";
     //     return {label}
-    return tpy::ordered_set<std::string>({std::string(label)});
+    return ::tpy::ordered_set<std::string>({std::string(label)});
 }
 
 // def in_set_comp() -> Own[set[str]]:
-tpy::ordered_set<std::string> in_set_comp() {
+::tpy::ordered_set<std::string> in_set_comp() {
     //     label: str = "x"
     std::string_view label = "x";
     //     return {label for _ in range(3)}
     return [&]() {
-        tpy::ordered_set<std::string> __result;
+        ::tpy::ordered_set<std::string> __result;
         const int32_t __stop_0 = 3;
         for (int32_t _ = 0; _ < __stop_0; ++_) {
             __result.insert(std::string(label));
@@ -33,15 +33,15 @@ void __tpy_init() {
     initialized = true;
 
     // print(in_set())
-    std::cout << tpy::SetPrinter(in_set()) << "\n";
+    std::cout << ::tpy::SetPrinter(in_set()) << "\n";
     // print(in_set_comp())
-    std::cout << tpy::SetPrinter(in_set_comp()) << "\n";
+    std::cout << ::tpy::SetPrinter(in_set_comp()) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

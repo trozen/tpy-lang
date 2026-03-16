@@ -4,10 +4,10 @@
 namespace tpy_user::main {
 
 // x: int = 0
-tpy::BigInt x;
+::tpy::BigInt x;
 
 // def update(val: int) -> None:
-void update(const tpy::BigInt& val) {
+void update(const ::tpy::BigInt& val) {
     //     global x
     //     if val > 0:
     if ((val > 0)) {
@@ -26,13 +26,13 @@ void __tpy_init() {
     initialized = true;
 
     // x: int = 0
-    x = tpy::BigInt(0);
+    x = ::tpy::BigInt(0);
     // update(42)
-    update(tpy::BigInt(42));
+    update(::tpy::BigInt(42));
     // print(x)
     std::cout << x << "\n";
     // update(-1)
-    update(tpy::BigInt(-1));
+    update(::tpy::BigInt(-1));
     // print(x)
     std::cout << x << "\n";
 }
@@ -40,7 +40,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

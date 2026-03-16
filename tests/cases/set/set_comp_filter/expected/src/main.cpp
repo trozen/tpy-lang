@@ -8,11 +8,11 @@ namespace tpy_user::main {
 void main() {
     //     # Single condition -- integer sets have deterministic order
     //     evens: set[Int32] = {x for x in range(10) if x % 2 == 0}
-    tpy::ordered_set<int32_t> evens = [&]() {
-        tpy::ordered_set<int32_t> __result;
+    ::tpy::ordered_set<int32_t> evens = [&]() {
+        ::tpy::ordered_set<int32_t> __result;
         const int32_t __stop_0 = 10;
         for (int32_t x = 0; x < __stop_0; ++x) {
-            if (((tpy::mod_floor<int32_t>(x, 2)) == 0)) {
+            if (((::tpy::mod_floor<int32_t>(x, 2)) == 0)) {
                 __result.insert(x);
             }
         }
@@ -31,25 +31,25 @@ void main() {
     //     words: list[str] = ["hello", "hi", "world", "hey", "wow"]
     std::vector<std::string> words = {"hello", "hi", "world", "hey", "wow"};
     //     long_words: set[str] = {w for w in words if len(w) > 2}
-    tpy::ordered_set<std::string> long_words = [&]() {
-        tpy::ordered_set<std::string> __result;
+    ::tpy::ordered_set<std::string> long_words = [&]() {
+        ::tpy::ordered_set<std::string> __result;
         auto& __obj_2 = words;
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
             std::string w = *__beg_2;
-            if ((tpy::__len__(w) > 2)) {
+            if ((::tpy::__len__(w) > 2)) {
                 __result.insert(w);
             }
         }
         return __result;
     }();
     //     print(len(long_words))
-    std::cout << tpy::__len__(long_words) << "\n";
+    std::cout << ::tpy::__len__(long_words) << "\n";
     //     print("hello" in long_words)
-    std::cout << tpy::print_bool((long_words.contains("hello"))) << "\n";
+    std::cout << ::tpy::print_bool((long_words.contains("hello"))) << "\n";
     //     print("hi" in long_words)
-    std::cout << tpy::print_bool((long_words.contains("hi"))) << "\n";
+    std::cout << ::tpy::print_bool((long_words.contains("hi"))) << "\n";
 }
 
 void __tpy_init() {
@@ -64,7 +64,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

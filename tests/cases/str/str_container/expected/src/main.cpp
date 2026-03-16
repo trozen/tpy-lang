@@ -9,50 +9,50 @@ namespace tpy_user::main {
 void main() {
     //     # Tuple
     //     t: tuple[int, str] = (1, "hello")
-    std::tuple<tpy::BigInt, std::string> t = std::tuple<tpy::BigInt, std::string>{tpy::BigInt(1), "hello"};
+    std::tuple<::tpy::BigInt, std::string> t = std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(1), "hello"};
     //     print(str(t))
-    std::cout << tpy::tuple_to_str(t) << "\n";
+    std::cout << ::tpy::tuple_to_str(t) << "\n";
     //     print(repr(t))
-    std::cout << tpy::tuple_to_str(t) << "\n";
+    std::cout << ::tpy::tuple_to_str(t) << "\n";
     //     print(f"{t}")
-    std::cout << std::format("{}", tpy::tuple_to_str(t)) << "\n";
+    std::cout << std::format("{}", ::tpy::tuple_to_str(t)) << "\n";
     //     print(f"{t!s}")
-    std::cout << std::format("{}", tpy::tuple_to_str(t)) << "\n";
+    std::cout << std::format("{}", ::tpy::tuple_to_str(t)) << "\n";
     //     print(f"{t!r}")
-    std::cout << std::format("{}", tpy::tuple_to_str(t)) << "\n";
+    std::cout << std::format("{}", ::tpy::tuple_to_str(t)) << "\n";
     //     # Single-element tuple
     //     t1: tuple[int] = (42,)
-    std::tuple<tpy::BigInt> t1 = std::tuple<tpy::BigInt>{tpy::BigInt(42)};
+    std::tuple<::tpy::BigInt> t1 = std::tuple<::tpy::BigInt>{::tpy::BigInt(42)};
     //     print(str(t1))
-    std::cout << tpy::tuple_to_str(t1) << "\n";
+    std::cout << ::tpy::tuple_to_str(t1) << "\n";
     //     # List
     //     xs: list[int] = [1, 2, 3]
-    std::vector<tpy::BigInt> xs = {1, 2, 3};
+    std::vector<::tpy::BigInt> xs = {1, 2, 3};
     //     print(str(xs))
-    std::cout << tpy::list_to_str(xs) << "\n";
+    std::cout << ::tpy::list_to_str(xs) << "\n";
     //     print(repr(xs))
-    std::cout << tpy::list_to_str(xs) << "\n";
+    std::cout << ::tpy::list_to_str(xs) << "\n";
     //     print(f"{xs}")
-    std::cout << std::format("{}", tpy::list_to_str(xs)) << "\n";
+    std::cout << std::format("{}", ::tpy::list_to_str(xs)) << "\n";
     //     # Dict
     //     d: dict[str, int] = {"a": 1, "b": 2}
-    tpy::ordered_map<std::string, tpy::BigInt> d = tpy::ordered_map<std::string, tpy::BigInt>({{"a", tpy::BigInt(1)}, {"b", tpy::BigInt(2)}});
+    ::tpy::ordered_map<std::string, ::tpy::BigInt> d = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}, {"b", ::tpy::BigInt(2)}});
     //     print(str(d))
-    std::cout << tpy::dict_to_str(d) << "\n";
+    std::cout << ::tpy::dict_to_str(d) << "\n";
     //     print(repr(d))
-    std::cout << tpy::dict_to_str(d) << "\n";
+    std::cout << ::tpy::dict_to_str(d) << "\n";
     //     print(f"{d}")
-    std::cout << std::format("{}", tpy::dict_to_str(d)) << "\n";
+    std::cout << std::format("{}", ::tpy::dict_to_str(d)) << "\n";
     //     # Nested containers
     //     nested: list[tuple[int, str]] = [(1, "a"), (2, "b")]
-    std::vector<std::tuple<tpy::BigInt, std::string>> nested = {std::tuple<tpy::BigInt, std::string>{tpy::BigInt(1), "a"}, std::tuple<tpy::BigInt, std::string>{tpy::BigInt(2), "b"}};
+    std::vector<std::tuple<::tpy::BigInt, std::string>> nested = {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(1), "a"}, std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(2), "b"}};
     //     print(str(nested))
-    std::cout << tpy::list_to_str(nested) << "\n";
+    std::cout << ::tpy::list_to_str(nested) << "\n";
     //     # Container in f-string with other parts
     //     nums: list[int] = [10, 20]
-    std::vector<tpy::BigInt> nums = {10, 20};
+    std::vector<::tpy::BigInt> nums = {10, 20};
     //     print(f"nums={nums}")
-    std::cout << std::format("nums={}", tpy::list_to_str(nums)) << "\n";
+    std::cout << std::format("nums={}", ::tpy::list_to_str(nums)) << "\n";
 }
 
 void __tpy_init() {
@@ -67,7 +67,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

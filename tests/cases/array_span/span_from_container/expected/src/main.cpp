@@ -11,27 +11,27 @@ void main() {
     //     ros: Span[readonly[Int32]] = Span[readonly[Int32]](lst)
     std::span<const int32_t> ros = std::span<const int32_t>(lst);
     //     print(len(ros))
-    std::cout << tpy::__len__(ros) << "\n";
+    std::cout << ::tpy::__len__(ros) << "\n";
     //     print(ros[0])
-    std::cout << tpy::__getitem__(ros, 0) << "\n";
+    std::cout << ::tpy::__getitem__(ros, 0) << "\n";
     //     arr: Array[Int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> arr = {1, 2, 3};
     //     s: Span[Int32] = Span[Int32](arr)
     std::span<int32_t> s = std::span<int32_t>(arr);
     //     print(len(s))
-    std::cout << tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n";
     //     s[0] = 99
-    tpy::__setitem__(s, 0, 99);
+    ::tpy::__setitem__(s, 0, 99);
     //     print(arr[0])
-    std::cout << tpy::__getitem__(arr, 0) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 0) << "\n";
     //     lst2: list[Int32] = [5, 6]
     std::vector<int32_t> lst2 = {5, 6};
     //     ros2: Span[readonly[Int32]] = Span[readonly[Int32]](lst2)
     std::span<const int32_t> ros2 = std::span<const int32_t>(lst2);
     //     print(len(ros2))
-    std::cout << tpy::__len__(ros2) << "\n";
+    std::cout << ::tpy::__len__(ros2) << "\n";
     //     print(ros2[0])
-    std::cout << tpy::__getitem__(ros2, 0) << "\n";
+    std::cout << ::tpy::__getitem__(ros2, 0) << "\n";
 }
 
 void __tpy_init() {
@@ -46,7 +46,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

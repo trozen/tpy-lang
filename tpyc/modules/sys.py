@@ -15,7 +15,7 @@ def init_module() -> BuiltinModule:
     module = BuiltinModule(NAME)
 
     # sys.argv - command line arguments
-    # Accessed as tpy::sys_argv in C++ (a vector<string_view>)
-    module.variable("argv", ListType(STR), "tpy::sys_argv")
+    # Accessed as ::tpy::sys_argv in C++ (a vector<string_view>)
+    module.variable("argv", ListType(STR), "::tpy::sys_argv")
 
     return module

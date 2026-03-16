@@ -42,25 +42,25 @@ struct Vec2 {
     //     def __add__(self, other: Vec2) -> Own[Vec2]:
     Vec2 __add__(const Vec2& other) const {
         //         return Vec2(self.x + other.x, self.y + other.y)
-        return Vec2((tpy::add_check<int32_t>(this->x, other.x)), (tpy::add_check<int32_t>(this->y, other.y)));
+        return Vec2((::tpy::add_check<int32_t>(this->x, other.x)), (::tpy::add_check<int32_t>(this->y, other.y)));
     }
 
     //     def __sub__(self, other: Vec2) -> Own[Vec2]:
     Vec2 __sub__(const Vec2& other) const {
         //         return Vec2(self.x - other.x, self.y - other.y)
-        return Vec2((tpy::sub_check<int32_t>(this->x, other.x)), (tpy::sub_check<int32_t>(this->y, other.y)));
+        return Vec2((::tpy::sub_check<int32_t>(this->x, other.x)), (::tpy::sub_check<int32_t>(this->y, other.y)));
     }
 
     //     def __mul__(self, scalar: Int32) -> Own[Vec2]:
     Vec2 __mul__(int32_t scalar) const {
         //         return Vec2(self.x * scalar, self.y * scalar)
-        return Vec2((tpy::mul_check<int32_t>(this->x, scalar)), (tpy::mul_check<int32_t>(this->y, scalar)));
+        return Vec2((::tpy::mul_check<int32_t>(this->x, scalar)), (::tpy::mul_check<int32_t>(this->y, scalar)));
     }
 
     //     def __neg__(self) -> Own[Vec2]:
     Vec2 __neg__() const {
         //         return Vec2(-self.x, -self.y)
-        return Vec2(tpy::neg_check<int32_t>(this->x), tpy::neg_check<int32_t>(this->y));
+        return Vec2(::tpy::neg_check<int32_t>(this->x), ::tpy::neg_check<int32_t>(this->y));
     }
 
     //     def __pos__(self) -> Own[Vec2]:
@@ -78,7 +78,7 @@ struct Vec2 {
     //     def __hash__(self) -> UInt64:
     uint64_t __hash__() const {
         //         return UInt64(self.x * 31 + self.y)
-        return tpy::int_cast_check<uint64_t>((tpy::add_check<int32_t>((tpy::mul_check<int32_t>(this->x, 31)), this->y)));
+        return ::tpy::int_cast_check<uint64_t>((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(this->x, 31)), this->y)));
     }
 
     //     def __len__(self) -> Int32:
@@ -96,9 +96,9 @@ struct Vec2 {
     //     def __iadd__(self, other: Vec2) -> Vec2:
     Vec2& __iadd__(const Vec2& other) {
         //         self.x += other.x
-        this->x = tpy::add_check<int32_t>(this->x, other.x);
+        this->x = ::tpy::add_check<int32_t>(this->x, other.x);
         //         self.y += other.y
-        this->y = tpy::add_check<int32_t>(this->y, other.y);
+        this->y = ::tpy::add_check<int32_t>(this->y, other.y);
         //         return self
         return (*this);
     }
@@ -106,9 +106,9 @@ struct Vec2 {
     //     def __isub__(self, other: Vec2) -> Vec2:
     Vec2& __isub__(const Vec2& other) {
         //         self.x -= other.x
-        this->x = tpy::sub_check<int32_t>(this->x, other.x);
+        this->x = ::tpy::sub_check<int32_t>(this->x, other.x);
         //         self.y -= other.y
-        this->y = tpy::sub_check<int32_t>(this->y, other.y);
+        this->y = ::tpy::sub_check<int32_t>(this->y, other.y);
         //         return self
         return (*this);
     }
@@ -131,7 +131,7 @@ struct Vec2 {
 
     size_t size() const {
         auto len = __len__();
-        if (len < 0) tpy::tpy_panic("__len__ returned negative value");
+        if (len < 0) ::tpy::tpy_panic("__len__ returned negative value");
         return static_cast<size_t>(len);
     }
 

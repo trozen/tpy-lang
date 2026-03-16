@@ -9,10 +9,10 @@ int32_t sum_span(std::span<const int32_t> s) {
     //     total: Int32 = 0
     int32_t total = 0;
     //     for i in range(len(s)):
-    int32_t __stop_0 = tpy::__len__(s);
+    int32_t __stop_0 = ::tpy::__len__(s);
     for (int32_t i = 0; i < __stop_0; ++i) {
         //         total += s[i]
-        total = tpy::add_check<int32_t>(total, s[i]);
+        total = ::tpy::add_check<int32_t>(total, s[i]);
     }
     //     return total
     return total;
@@ -24,7 +24,7 @@ void main() {
     std::array<int32_t, 3> arr = std::array<int32_t, 3>({10, 20, 30});
     //     # Array coerces to Span, then Span coerces to Span[readonly[...]]
     //     result = sum_span(arr)
-    int32_t result = sum_span(tpy::as_span(arr));
+    int32_t result = sum_span(::tpy::as_span(arr));
     //     print(result)
     std::cout << result << "\n";
 }
@@ -41,7 +41,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -11,7 +11,7 @@ std::vector<Point>* points{};
 // def use_without_check(p: Point | None) -> Int32:
 int32_t use_without_check(Point* p) {
     //     return p.mag()  # tpyc: warning(/Potential None access on optional value/)
-    return tpy::deref_check(p).mag();
+    return ::tpy::deref_check(p).mag();
 }
 
 // def find(pts: list[Point], target: Int32) -> Point | None:
@@ -50,7 +50,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

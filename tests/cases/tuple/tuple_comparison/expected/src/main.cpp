@@ -13,13 +13,13 @@ void main() {
     //     c = (Int32(2), "world")
     std::tuple<int32_t, std::string> c = std::tuple<int32_t, std::string>{2, "world"};
     //     print(a == b)
-    std::cout << tpy::print_bool((a == b)) << "\n";
+    std::cout << ::tpy::print_bool((a == b)) << "\n";
     //     print(a != b)
-    std::cout << tpy::print_bool((a != b)) << "\n";
+    std::cout << ::tpy::print_bool((a != b)) << "\n";
     //     print(a == c)
-    std::cout << tpy::print_bool((a == c)) << "\n";
+    std::cout << ::tpy::print_bool((a == c)) << "\n";
     //     print(a != c)
-    std::cout << tpy::print_bool((a != c)) << "\n";
+    std::cout << ::tpy::print_bool((a != c)) << "\n";
     //     # Comparison in conditional
     //     if a == b:
     if ((a == b)) {
@@ -45,7 +45,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

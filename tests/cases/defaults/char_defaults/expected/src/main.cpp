@@ -13,7 +13,7 @@ void greet(char ch) {
 // def bracket(text: str, open_ch: Char = '(', close_ch: Char = ')') -> str:
 std::string bracket(std::string_view text, char open_ch, char close_ch) {
     //     return str(open_ch) + text + str(close_ch)
-    return (tpy::str_concat((tpy::str_concat(std::string(tpy::char_to_str(open_ch)), text)), std::string(tpy::char_to_str(close_ch))));
+    return (::tpy::str_concat((::tpy::str_concat(std::string(::tpy::char_to_str(open_ch)), text)), std::string(::tpy::char_to_str(close_ch))));
 }
 
 // def main() -> None:
@@ -40,7 +40,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

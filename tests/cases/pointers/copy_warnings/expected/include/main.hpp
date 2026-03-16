@@ -87,7 +87,7 @@ struct Container {
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     os << "Container("
-       << "items=" << tpy::ListPrinter(obj.items)
+       << "items=" << ::tpy::ListPrinter(obj.items)
        << ")";
     return os;
 }
@@ -100,7 +100,7 @@ struct Holder {
 
 
     //     def set_value(self, v: T) -> None:
-    void set_value(tpy::param_val_or_ref_t<T> v) {
+    void set_value(::tpy::param_val_or_ref_t<T> v) {
         //         self.value = v            # tpyc: warning(/may copy T into field/)
         this->value = v;
         //         self.value = copy(v)      # tpyc: ok
@@ -111,7 +111,7 @@ struct Holder {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
     os << "Holder("
-       << "value=" << tpy::ValuePrinter(obj.value)
+       << "value=" << ::tpy::ValuePrinter(obj.value)
        << ")";
     return os;
 }
@@ -127,15 +127,15 @@ struct OptHolder {
     //     def set_value(self, p: Point | None) -> None:
     void set_value(Point* p) {
         //         self.value = p            # tpyc: warning(/copies Point | None into field/)
-        this->value = tpy::ptr_to_optional(p);
+        this->value = ::tpy::ptr_to_optional(p);
         //         self.value = copy(p)      # tpyc: ok
-        this->value = tpy::ptr_to_optional(p);
+        this->value = ::tpy::ptr_to_optional(p);
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const OptHolder& obj) {
     os << "OptHolder("
-       << "value=" << tpy::print_optional_val(obj.value)
+       << "value=" << ::tpy::print_optional_val(obj.value)
        << ")";
     return os;
 }

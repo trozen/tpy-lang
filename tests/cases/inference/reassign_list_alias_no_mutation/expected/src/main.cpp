@@ -12,7 +12,7 @@ void main() {
     //     b = a           # tpyc: type(/Array/)
     std::array<int32_t, 3> b = std::move(a);
     //     print(len(b))
-    std::cout << tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n";
 }
 
 void __tpy_init() {
@@ -27,7 +27,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

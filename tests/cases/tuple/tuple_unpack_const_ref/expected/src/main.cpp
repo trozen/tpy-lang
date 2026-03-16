@@ -5,9 +5,9 @@ namespace tpy_user::main {
 
 
 // def get_pair() -> tuple[int, int]:
-std::tuple<tpy::BigInt, tpy::BigInt> get_pair() {
+std::tuple<::tpy::BigInt, ::tpy::BigInt> get_pair() {
     //     return (42, 100)
-    return std::tuple<tpy::BigInt, tpy::BigInt>{tpy::BigInt(42), tpy::BigInt(100)};
+    return std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(42), ::tpy::BigInt(100)};
 }
 
 // def get_string_pair() -> tuple[String, String]:
@@ -20,8 +20,8 @@ std::tuple<std::string, std::string> get_string_pair() {
 void test_rvalue_const_ref() {
     //     a, b = get_pair()
     auto __tup_1 = get_pair();
-    const tpy::BigInt& a = std::get<0>(__tup_1);
-    const tpy::BigInt& b = std::get<1>(__tup_1);
+    const ::tpy::BigInt& a = std::get<0>(__tup_1);
+    const ::tpy::BigInt& b = std::get<1>(__tup_1);
     //     print(a)
     std::cout << a << "\n";
     //     print(b)
@@ -32,10 +32,10 @@ void test_rvalue_const_ref() {
 void test_augassign_no_const_ref() {
     //     a, b = get_pair()
     auto __tup_1 = get_pair();
-    const tpy::BigInt& a = std::get<0>(__tup_1);
-    tpy::BigInt b = std::get<1>(__tup_1);
+    const ::tpy::BigInt& a = std::get<0>(__tup_1);
+    ::tpy::BigInt b = std::get<1>(__tup_1);
     //     b += 1
-    b = (b) + (tpy::BigInt(1));
+    b = (b) + (::tpy::BigInt(1));
     //     print(a)
     std::cout << a << "\n";
     //     print(b)
@@ -46,10 +46,10 @@ void test_augassign_no_const_ref() {
 void test_reassign_no_const_ref() {
     //     a, b = get_pair()
     auto __tup_1 = get_pair();
-    const tpy::BigInt& a = std::get<0>(__tup_1);
-    tpy::BigInt b = std::get<1>(__tup_1);
+    const ::tpy::BigInt& a = std::get<0>(__tup_1);
+    ::tpy::BigInt b = std::get<1>(__tup_1);
     //     b = 200
-    b = tpy::BigInt(200);
+    b = ::tpy::BigInt(200);
     //     print(a)
     std::cout << a << "\n";
     //     print(b)
@@ -59,11 +59,11 @@ void test_reassign_no_const_ref() {
 // def test_lvalue_const_ref() -> None:
 void test_lvalue_const_ref() {
     //     t: tuple[int, int] = (10, 20)
-    std::tuple<tpy::BigInt, tpy::BigInt> t = std::tuple<tpy::BigInt, tpy::BigInt>{tpy::BigInt(10), tpy::BigInt(20)};
+    std::tuple<::tpy::BigInt, ::tpy::BigInt> t = std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(10), ::tpy::BigInt(20)};
     //     a, b = t
     const auto& __tup_1 = t;
-    const tpy::BigInt& a = std::get<0>(__tup_1);
-    const tpy::BigInt& b = std::get<1>(__tup_1);
+    const ::tpy::BigInt& a = std::get<0>(__tup_1);
+    const ::tpy::BigInt& b = std::get<1>(__tup_1);
     //     print(a)
     std::cout << a << "\n";
     //     print(b)
@@ -73,13 +73,13 @@ void test_lvalue_const_ref() {
 // def test_lvalue_reassigned_source() -> None:
 void test_lvalue_reassigned_source() {
     //     t: tuple[int, int] = (10, 20)
-    std::tuple<tpy::BigInt, tpy::BigInt> t = std::tuple<tpy::BigInt, tpy::BigInt>{tpy::BigInt(10), tpy::BigInt(20)};
+    std::tuple<::tpy::BigInt, ::tpy::BigInt> t = std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(10), ::tpy::BigInt(20)};
     //     a, b = t
     const auto& __tup_1 = t;
-    tpy::BigInt a = std::get<0>(__tup_1);
-    tpy::BigInt b = std::get<1>(__tup_1);
+    ::tpy::BigInt a = std::get<0>(__tup_1);
+    ::tpy::BigInt b = std::get<1>(__tup_1);
     //     t = (30, 40)
-    t = std::tuple<tpy::BigInt, tpy::BigInt>{tpy::BigInt(30), tpy::BigInt(40)};
+    t = std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(30), ::tpy::BigInt(40)};
     //     print(a)
     std::cout << a << "\n";
     //     print(b)
@@ -102,12 +102,12 @@ void test_string_const_ref() {
 void test_augassign_in_branch() {
     //     a, b = get_pair()
     auto __tup_1 = get_pair();
-    const tpy::BigInt& a = std::get<0>(__tup_1);
-    tpy::BigInt b = std::get<1>(__tup_1);
+    const ::tpy::BigInt& a = std::get<0>(__tup_1);
+    ::tpy::BigInt b = std::get<1>(__tup_1);
     //     if a > 0:
     if ((a > 0)) {
         //         b += 1
-        b = (b) + (tpy::BigInt(1));
+        b = (b) + (::tpy::BigInt(1));
     }
     //     print(a)
     std::cout << a << "\n";
@@ -139,7 +139,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

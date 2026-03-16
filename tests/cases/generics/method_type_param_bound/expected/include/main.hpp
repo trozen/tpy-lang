@@ -24,8 +24,8 @@ struct Pair {
     explicit Pair(T&& a, T&& b) : a(std::move(a)), b(std::move(b)) {}
 
     //     def min_val[T: Comparable](self) -> T:
-    tpy::val_or_ref_t<T> min_val()
-      requires tpy::Comparable<T> {
+    ::tpy::val_or_ref_t<T> min_val()
+      requires ::tpy::Comparable<T> {
         //         if self.a < self.b:
         if ((this->a < this->b)) {
             //             return self.a
@@ -36,7 +36,7 @@ struct Pair {
     }
 
     //     def with_default[T: Default](self) -> T:
-    tpy::val_or_cref_t<T> with_default() const
+    ::tpy::val_or_cref_t<T> with_default() const
       requires std::default_initializable<T> {
         //         return make_default()
         return T{};
@@ -46,9 +46,9 @@ struct Pair {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
     os << "Pair("
-       << "a=" << tpy::ValuePrinter(obj.a)
+       << "a=" << ::tpy::ValuePrinter(obj.a)
        << ", "
-       << "b=" << tpy::ValuePrinter(obj.b)
+       << "b=" << ::tpy::ValuePrinter(obj.b)
        << ")";
     return os;
 }

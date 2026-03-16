@@ -7,21 +7,21 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     p1 = Point(y=20, x=10)
-    Point p1 = Point(tpy::BigInt(10), tpy::BigInt(20));
+    Point p1 = Point(::tpy::BigInt(10), ::tpy::BigInt(20));
     //     print(f"p1: ({p1.x}, {p1.y})")
     std::cout << std::format("p1: ({}, {})", (p1.x).to_string(), (p1.y).to_string()) << "\n";
     //     p2 = Point(1, y=2)
-    Point p2 = Point(tpy::BigInt(1), tpy::BigInt(2));
+    Point p2 = Point(::tpy::BigInt(1), ::tpy::BigInt(2));
     //     print(f"p2: ({p2.x}, {p2.y})")
     std::cout << std::format("p2: ({}, {})", (p2.x).to_string(), (p2.y).to_string()) << "\n";
     //     c1 = Config("localhost", verbose=True)
-    Config c1 = Config("localhost", tpy::BigInt(8080), true);
+    Config c1 = Config("localhost", ::tpy::BigInt(8080), true);
     //     print(f"c1: {c1.host}:{c1.port} verbose={c1.verbose}")
-    std::cout << std::format("c1: {}:{} verbose={}", c1.host, (c1.port).to_string(), tpy::bool_to_str(c1.verbose)) << "\n";
+    std::cout << std::format("c1: {}:{} verbose={}", c1.host, (c1.port).to_string(), ::tpy::bool_to_str(c1.verbose)) << "\n";
     //     c2 = Config(host="example.com", port=9090)
-    Config c2 = Config("example.com", tpy::BigInt(9090));
+    Config c2 = Config("example.com", ::tpy::BigInt(9090));
     //     print(f"c2: {c2.host}:{c2.port} verbose={c2.verbose}")
-    std::cout << std::format("c2: {}:{} verbose={}", c2.host, (c2.port).to_string(), tpy::bool_to_str(c2.verbose)) << "\n";
+    std::cout << std::format("c2: {}:{} verbose={}", c2.host, (c2.port).to_string(), ::tpy::bool_to_str(c2.verbose)) << "\n";
 }
 
 void __tpy_init() {
@@ -36,7 +36,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

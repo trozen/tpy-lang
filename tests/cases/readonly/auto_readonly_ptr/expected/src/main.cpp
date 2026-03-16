@@ -9,7 +9,7 @@ void read_holder(const NodeHolder& h) {
     //     p = h.get_node()  # tpyc: type(Ptr[readonly[Node]])
     const Node* p = h.get_node();
     //     print(p.value)
-    std::cout << tpy::deref_check(p).value << "\n";
+    std::cout << ::tpy::deref_check(p).value << "\n";
 }
 
 // def main() -> None:
@@ -23,9 +23,9 @@ void main() {
     //     p = h.get_node()  # tpyc: type(Ptr[Node])
     Node* p = h.get_node();
     //     p.value = Int32(99)
-    tpy::deref_check(p).value = 99;
+    ::tpy::deref_check(p).value = 99;
     //     print(h.get_node().value)
-    std::cout << tpy::deref_check(h.get_node()).value << "\n";
+    std::cout << ::tpy::deref_check(h.get_node()).value << "\n";
     //     n2 = Node(Int32(42))
     Node n2 = Node(42);
     //     h._node = Ptr(n2)
@@ -46,7 +46,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

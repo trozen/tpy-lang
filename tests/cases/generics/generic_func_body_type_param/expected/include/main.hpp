@@ -10,7 +10,7 @@ struct Box;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-std::vector<T> collect(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b);
+std::vector<T> collect(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 void main();
 
 // class Box:
@@ -32,7 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // def collect[T](a: T, b: T) -> Own[list[T]]:
 template<typename T>
-std::vector<T> collect(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<T> b) {
+std::vector<T> collect(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     //     result: list[T] = []
     std::vector<T> result = std::vector<T>{};
     //     result.append(a)

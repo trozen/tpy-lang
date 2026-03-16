@@ -16,7 +16,7 @@ struct Point;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-tpy::val_or_ref_t<T> first(std::vector<T>& items);
+::tpy::val_or_ref_t<T> first(std::vector<T>& items);
 template<Mutable T>
 void process(std::vector<T>& items);
 void test();
@@ -24,16 +24,16 @@ void test();
 // class Point:
 struct Point {
     //     x: int
-    tpy::BigInt x;
+    ::tpy::BigInt x;
 
     //     def __init__(self, x: int) -> None:
     Point() = default;
-    explicit Point(const tpy::BigInt& x) : x(x) {}
+    explicit Point(const ::tpy::BigInt& x) : x(x) {}
 
     //     def mutate(self) -> None:
     void mutate() {
         //         self.x += 10
-        this->x = (this->x) + (tpy::BigInt(10));
+        this->x = (this->x) + (::tpy::BigInt(10));
     }
 };
 
@@ -46,15 +46,15 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // def first[T](items: list[T]) -> T:
 template<typename T>
-tpy::val_or_ref_t<T> first(std::vector<T>& items) {
+::tpy::val_or_ref_t<T> first(std::vector<T>& items) {
     //     return items[0]
-    return tpy::__getitem__(items, 0);
+    return ::tpy::__getitem__(items, 0);
 }
 // def process[T: Mutable](items: list[T]) -> None:
 template<Mutable T>
 void process(std::vector<T>& items) {
     //     item = first(items)  # tpyc: type(T)  -- val_or_ref_t<T>: Point& for records
-    tpy::val_or_ref_t<T> item = first<T>(items);
+    ::tpy::val_or_ref_t<T> item = first<T>(items);
     //     item.mutate()        # mutation through the reference
     item.mutate();
 }

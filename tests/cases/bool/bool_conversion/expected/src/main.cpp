@@ -35,48 +35,48 @@ void __tpy_init() {
     // b0: bool = bool()
     b0 = false;
     // print(b0)  # False
-    std::cout << tpy::print_bool(b0) << "\n";
+    std::cout << ::tpy::print_bool(b0) << "\n";
     // # From bool
     // b1: bool = bool(True)
     b1 = true;
     // print(b1)  # True
-    std::cout << tpy::print_bool(b1) << "\n";
+    std::cout << ::tpy::print_bool(b1) << "\n";
     // b2: bool = bool(False)
     b2 = false;
     // print(b2)  # False
-    std::cout << tpy::print_bool(b2) << "\n";
+    std::cout << ::tpy::print_bool(b2) << "\n";
     // # From Int32
     // b3: bool = bool(Int32(0))
     b3 = (0 != 0);
     // print(b3)  # False
-    std::cout << tpy::print_bool(b3) << "\n";
+    std::cout << ::tpy::print_bool(b3) << "\n";
     // b4: bool = bool(Int32(1))
     b4 = (1 != 0);
     // print(b4)  # True
-    std::cout << tpy::print_bool(b4) << "\n";
+    std::cout << ::tpy::print_bool(b4) << "\n";
     // b5: bool = bool(Int32(-5))
     b5 = (-5 != 0);
     // print(b5)  # True
-    std::cout << tpy::print_bool(b5) << "\n";
+    std::cout << ::tpy::print_bool(b5) << "\n";
     // # From int (BigInt)
     // b6: bool = bool(0)
     b6 = (0 != 0);
     // print(b6)  # False
-    std::cout << tpy::print_bool(b6) << "\n";
+    std::cout << ::tpy::print_bool(b6) << "\n";
     // b7: bool = bool(42)
     b7 = (42 != 0);
     // print(b7)  # True
-    std::cout << tpy::print_bool(b7) << "\n";
+    std::cout << ::tpy::print_bool(b7) << "\n";
     // b8: bool = bool(-100)
     b8 = (-100 != 0);
     // print(b8)  # True
-    std::cout << tpy::print_bool(b8) << "\n";
+    std::cout << ::tpy::print_bool(b8) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

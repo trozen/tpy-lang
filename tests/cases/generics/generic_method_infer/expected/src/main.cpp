@@ -19,7 +19,7 @@ void main() {
     //     r3 = b.transform(True)
     bool r3 = b.transform<bool>(true);
     //     print(r3)
-    std::cout << tpy::print_bool(r3) << "\n";
+    std::cout << ::tpy::print_bool(r3) << "\n";
 }
 
 void __tpy_init() {
@@ -34,7 +34,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

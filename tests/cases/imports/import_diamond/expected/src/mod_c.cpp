@@ -7,7 +7,7 @@ namespace tpy_user::mod_c {
 // def c_value() -> Int32:
 int32_t c_value() {
     //     return d_value() + Int32(20)
-    return (tpy::add_check<int32_t>(::tpy_user::mod_d::d_value(), 20));
+    return (::tpy::add_check<int32_t>(::tpy_user::mod_d::d_value(), 20));
 }
 
 void __tpy_init() {

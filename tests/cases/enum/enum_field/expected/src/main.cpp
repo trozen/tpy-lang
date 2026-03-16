@@ -49,7 +49,7 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     p: Pixel = Pixel(0, 0, Color.Red)
-    Pixel p = Pixel(tpy::BigInt(0), tpy::BigInt(0), Color::Red);
+    Pixel p = Pixel(::tpy::BigInt(0), ::tpy::BigInt(0), Color::Red);
     //     print(p.color)
     std::cout << p.color << "\n";
     //     p.color = Color.Blue
@@ -70,7 +70,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

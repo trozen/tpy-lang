@@ -8,14 +8,14 @@ namespace tpy_user::main {
 int32_t neg{};
 
 // def factorial(n: int) -> int:
-tpy::BigInt factorial(const tpy::BigInt& n) {
+::tpy::BigInt factorial(const ::tpy::BigInt& n) {
     //     if n <= 1:
     if ((n <= 1)) {
         //         return 1
-        return tpy::BigInt(1);
+        return ::tpy::BigInt(1);
     }
     //     return n * factorial(n - 1)
-    return ((n) * (factorial(((n) - (tpy::BigInt(1))))));
+    return ((n) * (factorial(((n) - (::tpy::BigInt(1))))));
 }
 
 // def test_arithmetic():
@@ -26,24 +26,24 @@ void test_arithmetic() {
     int32_t b = 3;
     //     # Basic arithmetic
     //     print(a + b)  # 13
-    std::cout << (tpy::add_check<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(a, b)) << "\n";
     //     print(a - b)  # 7
-    std::cout << (tpy::sub_check<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::sub_check<int32_t>(a, b)) << "\n";
     //     print(a * b)  # 30
-    std::cout << (tpy::mul_check<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::mul_check<int32_t>(a, b)) << "\n";
     //     print(a // b)  # 3 (floor division)
-    std::cout << (tpy::div_floor<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::div_floor<int32_t>(a, b)) << "\n";
     //     print(a % b)  # 1
-    std::cout << (tpy::mod_floor<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::mod_floor<int32_t>(a, b)) << "\n";
     //     # Negative division (Python semantics)
     //     c = -7
     int32_t c = -7;
     //     d = 3
     int32_t d = 3;
     //     print(c // d)  # -3 (not -2!)
-    std::cout << (tpy::div_floor<int32_t>(c, d)) << "\n";
+    std::cout << (::tpy::div_floor<int32_t>(c, d)) << "\n";
     //     print(c % d)   # 2 (not -1!)
-    std::cout << (tpy::mod_floor<int32_t>(c, d)) << "\n";
+    std::cout << (::tpy::mod_floor<int32_t>(c, d)) << "\n";
 }
 
 // def test_comparison():
@@ -76,9 +76,9 @@ void __tpy_init() {
 
     // # Top-level execution
     // print(factorial(10))  # 3628800
-    std::cout << factorial(tpy::BigInt(10)) << "\n";
+    std::cout << factorial(::tpy::BigInt(10)) << "\n";
     // print(factorial(20))  # 2432902008176640000 (fits in 63 bits)
-    std::cout << factorial(tpy::BigInt(20)) << "\n";
+    std::cout << factorial(::tpy::BigInt(20)) << "\n";
     // test_arithmetic()
     test_arithmetic();
     // test_comparison()
@@ -93,7 +93,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

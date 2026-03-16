@@ -31,13 +31,13 @@ struct Holder {
     Holder& operator=(Holder&&) = default;
 
     //     def get(self) -> T:
-    tpy::val_or_cref_t<T> get() const {
+    ::tpy::val_or_cref_t<T> get() const {
         //         return self._storage.load0()
         return this->_storage.load0();
     }
 
     //     def set(self, value: T) -> None:
-    void set(tpy::param_val_or_ref_t<T> value) {
+    void set(::tpy::param_val_or_ref_t<T> value) {
         //         self._storage.drop0()
         this->_storage.drop0();
         //         self._storage.init0(value)

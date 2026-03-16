@@ -9,7 +9,7 @@ void test_assert_non_negative() {
     //     x: Int32 = 42
     int32_t x = 42;
     //     assert x >= 0
-    if (!((x >= 0))) tpy::tpy_panic("assertion failed");
+    if (!((x >= 0))) ::tpy::tpy_panic("assertion failed");
     //     y = UInt32(x)  # tpyc: cast_safe(UInt32)
     uint32_t y = static_cast<uint32_t>(x);
     //     print(y)
@@ -34,7 +34,7 @@ void test_no_elision_unchecked() {
     //     x: Int32 = Int32(5)
     int32_t x = 5;
     //     y = UInt32(x)  # tpyc: cast_checked(UInt32)
-    uint32_t y = tpy::int_cast_check<uint32_t>(x);
+    uint32_t y = ::tpy::int_cast_check<uint32_t>(x);
     //     print(y)
     std::cout << y << "\n";
 }
@@ -44,9 +44,9 @@ void test_no_elision_narrowing() {
     //     x: Int64 = 100
     int64_t x = 100;
     //     assert x >= 0
-    if (!((x >= 0))) tpy::tpy_panic("assertion failed");
+    if (!((x >= 0))) ::tpy::tpy_panic("assertion failed");
     //     y = UInt32(x)  # tpyc: cast_checked(UInt32)
-    uint32_t y = tpy::int_cast_check<uint32_t>(x);
+    uint32_t y = ::tpy::int_cast_check<uint32_t>(x);
     //     print(y)
     std::cout << y << "\n";
 }
@@ -56,11 +56,11 @@ void test_no_elision_after_reassign() {
     //     x: Int32 = 10
     int32_t x = 10;
     //     assert x >= 0
-    if (!((x >= 0))) tpy::tpy_panic("assertion failed");
+    if (!((x >= 0))) ::tpy::tpy_panic("assertion failed");
     //     x = Int32(3)
     x = 3;
     //     y = UInt32(x)  # tpyc: cast_checked(UInt32)
-    uint32_t y = tpy::int_cast_check<uint32_t>(x);
+    uint32_t y = ::tpy::int_cast_check<uint32_t>(x);
     //     print(y)
     std::cout << y << "\n";
 }
@@ -84,7 +84,7 @@ void test_int64_to_uint64() {
     //     x: Int64 = 1000
     int64_t x = 1000;
     //     assert x >= 0
-    if (!((x >= 0))) tpy::tpy_panic("assertion failed");
+    if (!((x >= 0))) ::tpy::tpy_panic("assertion failed");
     //     y = UInt64(x)  # tpyc: cast_safe(UInt64)
     uint64_t y = static_cast<uint64_t>(x);
     //     print(y)
@@ -115,7 +115,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

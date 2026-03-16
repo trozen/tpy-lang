@@ -9,7 +9,7 @@ void main() {
     //     a: UInt8 = UInt8(255)
     uint8_t a = 255;
     //     b: UInt8 = a + UInt8(1)
-    uint8_t b = (tpy::add_check<uint8_t>(a, 1));
+    uint8_t b = (::tpy::add_check<uint8_t>(a, 1));
     //     print(b)
     std::cout << static_cast<int>(b) << "\n";
 }
@@ -26,7 +26,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

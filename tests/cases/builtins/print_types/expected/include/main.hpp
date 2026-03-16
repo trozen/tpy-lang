@@ -8,7 +8,7 @@ namespace tpy_user::main {
 
 extern std::string s;
 extern char c;
-extern std::vector<tpy::BigInt>* items;
+extern std::vector<::tpy::BigInt>* items;
 extern std::array<int32_t, 3>* arr;
 extern ::tpy_user::tplib::ArrayList<int32_t, 4>* al;
 extern std::optional<int32_t> x;

@@ -8,12 +8,12 @@ namespace tpy_user::main {
 void main() {
     //     # Single condition
     //     evens: dict[Int32, Int32] = {x: x * x for x in range(10) if x % 2 == 0}
-    tpy::ordered_map<int32_t, int32_t> evens = [&]() {
-        tpy::ordered_map<int32_t, int32_t> __result;
+    ::tpy::ordered_map<int32_t, int32_t> evens = [&]() {
+        ::tpy::ordered_map<int32_t, int32_t> __result;
         const int32_t __stop_0 = 10;
         for (int32_t x = 0; x < __stop_0; ++x) {
-            if (((tpy::mod_floor<int32_t>(x, 2)) == 0)) {
-                __result.insert_or_assign(x, (tpy::mul_check<int32_t>(x, x)));
+            if (((::tpy::mod_floor<int32_t>(x, 2)) == 0)) {
+                __result.insert_or_assign(x, (::tpy::mul_check<int32_t>(x, x)));
             }
         }
         return __result;
@@ -25,15 +25,15 @@ void main() {
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t k = *__beg_1;
         //         print(k, evens[k])
-        std::cout << k << " " << tpy::__getitem__(evens, k) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(evens, k) << "\n";
     }
     //     # Filter from existing dict
     //     src: dict[str, Int32] = {"a": 1, "b": 5, "c": 2, "d": 8}
-    tpy::ordered_map<std::string, int32_t> src = tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 5}, {"c", 2}, {"d", 8}});
+    ::tpy::ordered_map<std::string, int32_t> src = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 5}, {"c", 2}, {"d", 8}});
     //     big: dict[str, Int32] = {k: v for k, v in src.items() if v > 3}
-    tpy::ordered_map<std::string, int32_t> big = [&]() {
-        tpy::ordered_map<std::string, int32_t> __result;
-        auto __obj_2 = tpy::dict_items(src);
+    ::tpy::ordered_map<std::string, int32_t> big = [&]() {
+        ::tpy::ordered_map<std::string, int32_t> __result;
+        auto __obj_2 = ::tpy::dict_items(src);
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
@@ -53,7 +53,7 @@ void main() {
     for (; __beg_3 != __end_3; ++__beg_3) {
         std::string_view k = *__beg_3;
         //         print(k, big[k])
-        std::cout << k << " " << tpy::__getitem__(big, k) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(big, k) << "\n";
     }
 }
 
@@ -69,7 +69,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

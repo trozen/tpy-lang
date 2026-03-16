@@ -9,15 +9,15 @@ int32_t test_reassign_renarrows(std::optional<int32_t> x) {
     //     x = 10
     x = 10;
     //     return x + 1
-    return (tpy::add_check<int32_t>((*x), 1));
+    return (::tpy::add_check<int32_t>((*x), 1));
 }
 
 // def test_truthiness_short_circuit(a: Int32 | None, b: Int32 | None) -> Int32:
 int32_t test_truthiness_short_circuit(std::optional<int32_t> a, std::optional<int32_t> b) {
     //     if a and b:
-    if ((tpy::is_truthy(a) && tpy::is_truthy(b))) {
+    if ((::tpy::is_truthy(a) && ::tpy::is_truthy(b))) {
         //         return a + b
-        return (tpy::add_check<int32_t>((*a), (*b)));
+        return (::tpy::add_check<int32_t>((*a), (*b)));
     }
     //     return 0
     return 0;
@@ -28,7 +28,7 @@ int32_t test_is_not_none_short_circuit(std::optional<int32_t> a, std::optional<i
     //     if a is not None and b is not None:
     if (((a.has_value()) && (b.has_value()))) {
         //         return a + b
-        return (tpy::add_check<int32_t>((*a), (*b)));
+        return (::tpy::add_check<int32_t>((*a), (*b)));
     }
     //     return 0
     return 0;
@@ -54,7 +54,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

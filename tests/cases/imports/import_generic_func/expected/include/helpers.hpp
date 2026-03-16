@@ -8,21 +8,21 @@ namespace tpy_user::helpers {
 inline constexpr std::string_view __name__ = "helpers";
 
 template<typename T>
-tpy::val_or_ref_t<T> first(std::vector<T>& items);
+::tpy::val_or_ref_t<T> first(std::vector<T>& items);
 template<typename T>
 int32_t length(const std::vector<T>& items);
 
 // def first[T](items: list[T]) -> T:
 template<typename T>
-tpy::val_or_ref_t<T> first(std::vector<T>& items) {
+::tpy::val_or_ref_t<T> first(std::vector<T>& items) {
     //     return items[0]
-    return tpy::__getitem__(items, 0);
+    return ::tpy::__getitem__(items, 0);
 }
 // def length[T](items: list[T]) -> Int32:
 template<typename T>
 int32_t length(const std::vector<T>& items) {
     //     return len(items)
-    return tpy::__len__(items);
+    return ::tpy::__len__(items);
 }
 
 void __tpy_init();

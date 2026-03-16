@@ -30,11 +30,11 @@ void test_char_from_string_index() {
     //     text: str = "Hello"
     std::string_view text = "Hello";
     //     c0: Char = text[0]
-    char c0 = tpy::__getitem__(text, 0);
+    char c0 = ::tpy::__getitem__(text, 0);
     //     c1: Char = text[1]
-    char c1 = tpy::__getitem__(text, 1);
+    char c1 = ::tpy::__getitem__(text, 1);
     //     c4: Char = text[4]
-    char c4 = tpy::__getitem__(text, 4);
+    char c4 = ::tpy::__getitem__(text, 4);
     //     print(c0)
     std::cout << c0 << "\n";
     //     print(c1)
@@ -157,14 +157,14 @@ int32_t count_vowels(std::string_view text) {
     //     i: Int32 = 0
     int32_t i = 0;
     //     while i < len(text):
-    while ((i < tpy::__len__(text))) {
+    while ((i < ::tpy::__len__(text))) {
         //         if is_vowel(text[i]):
         if (is_vowel(text[i])) {
             //             count += 1
-            count = tpy::add_check<int32_t>(count, 1);
+            count = ::tpy::add_check<int32_t>(count, 1);
         }
         //         i += 1
-        i = tpy::add_check<int32_t>(i, 1);
+        i = ::tpy::add_check<int32_t>(i, 1);
     }
     //     return count
     return count;
@@ -327,7 +327,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

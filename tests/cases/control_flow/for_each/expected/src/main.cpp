@@ -29,7 +29,7 @@ int32_t sum_array() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t n = *__beg_0;
         //         result += n
-        result = tpy::add_check<int32_t>(result, n);
+        result = ::tpy::add_check<int32_t>(result, n);
     }
     //     return result
     return result;
@@ -71,7 +71,7 @@ int32_t nested_sum() {
         for (; __beg_1 != __end_1; ++__beg_1) {
             int32_t b = *__beg_1;
             //             total += a * b
-            total = tpy::add_check<int32_t>(total, (tpy::mul_check<int32_t>(a, b)));
+            total = ::tpy::add_check<int32_t>(total, (::tpy::mul_check<int32_t>(a, b)));
         }
     }
     //     return total
@@ -96,7 +96,7 @@ void __tpy_init() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //     total += x
-        total = tpy::add_check<int32_t>(total, x);
+        total = ::tpy::add_check<int32_t>(total, x);
     }
     // print(total)  # 15
     std::cout << total << "\n";
@@ -116,7 +116,7 @@ void __tpy_init() {
     // print(sum_array())  # 600
     std::cout << sum_array() << "\n";
     // print_span([7, 8, 9])
-    print_span(tpy::as_mut_span(std::array<int32_t, 3>{7, 8, 9}));
+    print_span(::tpy::as_mut_span(std::array<int32_t, 3>{7, 8, 9}));
     // # Test for-each over string
     // text = "AB"
     text = "AB";
@@ -136,7 +136,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

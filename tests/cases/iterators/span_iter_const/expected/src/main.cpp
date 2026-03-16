@@ -27,7 +27,7 @@ void main() {
     }
     //     # Const iteration via __repr__
     //     print(repr(s))
-    std::cout << std::string(tpy::__repr__(s)) << "\n";
+    std::cout << std::string(::tpy::__repr__(s)) << "\n";
     //     # Const iteration via readonly method
     //     print(s.sum())
     std::cout << s.sum() << "\n";
@@ -45,7 +45,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

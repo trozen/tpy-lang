@@ -23,7 +23,7 @@ struct Pair {
     //     def __str__(self) -> str:
     std::string __str__() const {
         //         return "Pair((" + str(self.data[0]) + ", '" + self.data[1] + "'))"
-        return (tpy::str_concat((tpy::str_concat((tpy::str_concat((tpy::str_concat("Pair((", tpy::fixed_to_str<int32_t>(std::get<0>(this->data)))), ", '")), std::get<1>(this->data))), "'))"));
+        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Pair((", ::tpy::fixed_to_str<int32_t>(std::get<0>(this->data)))), ", '")), std::get<1>(this->data))), "'))"));
     }
 };
 

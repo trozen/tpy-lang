@@ -8,13 +8,13 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     x: int = 10
-    tpy::BigInt x = tpy::BigInt(10);
+    ::tpy::BigInt x = ::tpy::BigInt(10);
     //     y: int = 0
-    tpy::BigInt y = tpy::BigInt(0);
+    ::tpy::BigInt y = ::tpy::BigInt(0);
     //     z: float = x / y
-    double z = (tpy::truediv(static_cast<double>(x), static_cast<double>(y)));
+    double z = (::tpy::truediv(static_cast<double>(x), static_cast<double>(y)));
     //     print(z)
-    std::cout << tpy::print_float(z) << "\n";
+    std::cout << ::tpy::print_float(z) << "\n";
 }
 
 void __tpy_init() {
@@ -29,7 +29,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

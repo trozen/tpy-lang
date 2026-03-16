@@ -24,7 +24,7 @@ void test_stop_snapshot() {
         //         n = 0
         n = 0;
         //         count += 1
-        count = tpy::add_check<int32_t>(count, 1);
+        count = ::tpy::add_check<int32_t>(count, 1);
     }
     //     print(count)  # 5
     std::cout << count << "\n";
@@ -45,8 +45,8 @@ void test_all_args_snapshot() {
     int32_t __start_0 = start;
     int32_t __stop_0 = stop;
     int32_t __step_0 = step;
-    if (__step_0 == 0) tpy::tpy_panic("range() arg 3 must not be zero");
-    tpy::range_check_overflow<int32_t>(__start_0, __stop_0, __step_0);
+    if (__step_0 == 0) ::tpy::tpy_panic("range() arg 3 must not be zero");
+    ::tpy::range_check_overflow<int32_t>(__start_0, __stop_0, __step_0);
     for (int32_t i = __start_0; __step_0 > 0 ? i < __stop_0 : i > __stop_0; i += __step_0) {
         //         start = 100
         start = 100;
@@ -55,7 +55,7 @@ void test_all_args_snapshot() {
         //         step = 100
         step = 100;
         //         total += i
-        total = tpy::add_check<int32_t>(total, i);
+        total = ::tpy::add_check<int32_t>(total, i);
     }
     //     print(total)  # 0 + 2 + 4 + 6 + 8 = 20
     std::cout << total << "\n";
@@ -81,7 +81,7 @@ void __tpy_init() {
     int32_t __stop_0 = get_stop(3);
     for (int32_t i = 0; i < __stop_0; ++i) {
         //     count += 1
-        count = tpy::add_check<int32_t>(count, 1);
+        count = ::tpy::add_check<int32_t>(count, 1);
     }
     // print(count)  # 3 (get_stop prints "3" once, then loop runs 3 times)
     std::cout << count << "\n";
@@ -96,7 +96,7 @@ void __tpy_init() {
         //     n = 0
         n = 0;
         //     count2 += 1
-        count2 = tpy::add_check<int32_t>(count2, 1);
+        count2 = ::tpy::add_check<int32_t>(count2, 1);
     }
     // print(count2)  # 4
     std::cout << count2 << "\n";
@@ -109,7 +109,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

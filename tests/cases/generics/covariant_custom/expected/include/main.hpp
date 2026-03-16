@@ -130,7 +130,7 @@ struct Tagged {
         //         if self._owned:
         if (this->_owned) {
             //             unsafe_drop(self._ptr)
-            tpy::destroy_at(this->_ptr);
+            ::tpy::destroy_at(this->_ptr);
             //             unsafe_free(self._ptr)
             ::operator delete(this->_ptr, std::align_val_t(alignof(T)));
         }
@@ -144,13 +144,13 @@ struct Tagged {
     template<typename, typename> friend struct Tagged;
 
     //     def get(self) -> T:
-    tpy::val_or_ref_t<T> get() {
+    ::tpy::val_or_ref_t<T> get() {
         //         return self._ptr
-        return tpy::deref_check(this->_ptr);
+        return ::tpy::deref_check(this->_ptr);
     }
 
     //     def tag(self) -> N:
-    tpy::val_or_ref_t<N> tag() {
+    ::tpy::val_or_ref_t<N> tag() {
         //         return self._tag
         return this->_tag;
     }
@@ -161,9 +161,9 @@ inline std::ostream& operator<<(std::ostream& os, const Tagged<T, N>& obj) {
     os << "Tagged("
        << "_ptr=" << obj._ptr
        << ", "
-       << "_tag=" << tpy::ValuePrinter(obj._tag)
+       << "_tag=" << ::tpy::ValuePrinter(obj._tag)
        << ", "
-       << "_owned=" << tpy::print_bool(obj._owned)
+       << "_owned=" << ::tpy::print_bool(obj._owned)
        << ")";
     return os;
 }

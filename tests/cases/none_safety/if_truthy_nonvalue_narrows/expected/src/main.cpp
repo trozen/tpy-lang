@@ -11,7 +11,7 @@ int32_t score(Point* p) {
     //     if p:  # tpyc: ok
     if (p) {
         //         return p.x + 1  # tpyc: ok
-        return (tpy::add_check<int32_t>(p->x, 1));
+        return (::tpy::add_check<int32_t>(p->x, 1));
     }
     //     return 0
     return 0;
@@ -34,7 +34,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

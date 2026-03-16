@@ -61,7 +61,7 @@ struct Counter {
     //     def increment(self) -> None:
     void increment() {
         //         self.val = self.val + 1
-        this->val = (tpy::add_check<int32_t>(this->val, 1));
+        this->val = (::tpy::add_check<int32_t>(this->val, 1));
     }
 };
 

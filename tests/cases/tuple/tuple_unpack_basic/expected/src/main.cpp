@@ -32,7 +32,7 @@ void main() {
     int32_t y = std::get<1>(__tup_2);
     std::string_view z = std::get<2>(__tup_2);
     //     print(x)
-    std::cout << tpy::print_bool(x) << "\n";
+    std::cout << ::tpy::print_bool(x) << "\n";
     //     print(y)
     std::cout << y << "\n";
     //     print(z)
@@ -51,7 +51,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

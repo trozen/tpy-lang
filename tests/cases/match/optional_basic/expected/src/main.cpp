@@ -50,7 +50,7 @@ std::string describe(std::optional<std::string_view> s) {
         //         case _:
         } else {
             //             return "other: " + s
-            return (tpy::str_concat("other: ", (*s)));
+            return (::tpy::str_concat("other: ", (*s)));
         }
     }
     //     return ""
@@ -85,7 +85,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

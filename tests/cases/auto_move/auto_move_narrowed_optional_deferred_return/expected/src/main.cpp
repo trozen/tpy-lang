@@ -14,7 +14,7 @@ Handle extract() {
     //     h.value = Int32(88)
     h->value = 88;
     //     assert h is not None
-    if (!((h != nullptr))) tpy::tpy_panic("assertion failed");
+    if (!((h != nullptr))) ::tpy::tpy_panic("assertion failed");
     //     return h  # tpyc: ok
     return std::move((*h));
 }
@@ -39,7 +39,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

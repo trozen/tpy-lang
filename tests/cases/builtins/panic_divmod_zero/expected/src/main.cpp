@@ -11,7 +11,7 @@ void main() {
     //     b: Int32 = Int32(0)
     int32_t b = 0;
     //     q, r = divmod(a, b)
-    auto __tup_1 = tpy::divmod_fixed<int32_t>(a, b);
+    auto __tup_1 = ::tpy::divmod_fixed<int32_t>(a, b);
     int32_t q = std::get<0>(__tup_1);
     int32_t r = std::get<1>(__tup_1);
     //     print(q)
@@ -30,7 +30,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

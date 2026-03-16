@@ -14,23 +14,23 @@ void main() {
     Version v3 = Version(1, 1, 0);
     //     # Ordering
     //     print(v1 < v2)
-    std::cout << tpy::print_bool((v1 < v2)) << "\n";
+    std::cout << ::tpy::print_bool((v1 < v2)) << "\n";
     //     print(v1 < v3)
-    std::cout << tpy::print_bool((v1 < v3)) << "\n";
+    std::cout << ::tpy::print_bool((v1 < v3)) << "\n";
     //     print(v2 > v3)
-    std::cout << tpy::print_bool((v2 > v3)) << "\n";
+    std::cout << ::tpy::print_bool((v2 > v3)) << "\n";
     //     # Equality
     //     print(v1 == Version(1, 0, 0))
-    std::cout << tpy::print_bool((v1 == Version(1, 0, 0))) << "\n";
+    std::cout << ::tpy::print_bool((v1 == Version(1, 0, 0))) << "\n";
     //     print(v1 != v2)
-    std::cout << tpy::print_bool((v1 != v2)) << "\n";
+    std::cout << ::tpy::print_bool((v1 != v2)) << "\n";
     //     # Hash (from frozen) -- usable as dict key
     //     d: dict[Version, str] = {v1: "one", v2: "two"}
-    tpy::ordered_map<Version, std::string> d = tpy::ordered_map<Version, std::string>({{v1, "one"}, {v2, "two"}});
+    ::tpy::ordered_map<Version, std::string> d = ::tpy::ordered_map<Version, std::string>({{v1, "one"}, {v2, "two"}});
     //     print(d[v1])
-    std::cout << tpy::__getitem__(d, v1) << "\n";
+    std::cout << ::tpy::__getitem__(d, v1) << "\n";
     //     print(d[v2])
-    std::cout << tpy::__getitem__(d, v2) << "\n";
+    std::cout << ::tpy::__getitem__(d, v2) << "\n";
 }
 
 void __tpy_init() {
@@ -45,7 +45,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

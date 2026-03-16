@@ -36,9 +36,9 @@ struct Base {
     std::string __repr__() const {
         std::ostringstream __os;
         __os << "Base("
-           << "x=" << tpy::print_float(this->x)
+           << "x=" << ::tpy::print_float(this->x)
            << ", "
-           << "y=" << tpy::print_float(this->y)
+           << "y=" << ::tpy::print_float(this->y)
            << ")";
         return __os.str();
     }
@@ -69,7 +69,7 @@ struct Other {
     std::string __repr__() const {
         std::ostringstream __os;
         __os << "Other("
-           << "v=" << tpy::print_float(this->v)
+           << "v=" << ::tpy::print_float(this->v)
            << ")";
         return __os.str();
     }
@@ -100,11 +100,11 @@ struct Child : Base {
     std::string __repr__() const {
         std::ostringstream __os;
         __os << "Child("
-           << "x=" << tpy::print_float(this->x)
+           << "x=" << ::tpy::print_float(this->x)
            << ", "
-           << "y=" << tpy::print_float(this->y)
+           << "y=" << ::tpy::print_float(this->y)
            << ", "
-           << "z=" << tpy::print_float(this->z)
+           << "z=" << ::tpy::print_float(this->z)
            << ")";
         return __os.str();
     }

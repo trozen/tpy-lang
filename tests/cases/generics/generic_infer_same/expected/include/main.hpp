@@ -26,9 +26,9 @@ struct Same {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Same<T>& obj) {
     os << "Same("
-       << "a=" << tpy::ValuePrinter(obj.a)
+       << "a=" << ::tpy::ValuePrinter(obj.a)
        << ", "
-       << "b=" << tpy::ValuePrinter(obj.b)
+       << "b=" << ::tpy::ValuePrinter(obj.b)
        << ")";
     return os;
 }

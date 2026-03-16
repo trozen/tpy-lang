@@ -10,14 +10,14 @@ void main() {
     //     items: list[Int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
     //     widened: dict[int, int] = {x: x * x for x in items}
-    tpy::ordered_map<tpy::BigInt, tpy::BigInt> widened = [&]() {
-        tpy::ordered_map<tpy::BigInt, tpy::BigInt> __result;
+    ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> widened = [&]() {
+        ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> __result;
         auto& __obj_0 = items;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            __result.insert_or_assign(tpy::BigInt(x), tpy::BigInt((tpy::mul_check<int32_t>(x, x))));
+            __result.insert_or_assign(::tpy::BigInt(x), ::tpy::BigInt((::tpy::mul_check<int32_t>(x, x))));
         }
         return __result;
     }();
@@ -26,17 +26,17 @@ void main() {
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        const tpy::BigInt& k = *__beg_1;
+        const ::tpy::BigInt& k = *__beg_1;
         //         print(k, widened[k])
-        std::cout << k << " " << tpy::__getitem__(widened, k.to_fixed_check<int32_t>()) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(widened, k.to_fixed_check<int32_t>()) << "\n";
     }
     //     # Int32 -> Int64 widening via annotation
     //     wide64: dict[Int32, Int64] = {x: x * 2 for x in range(3)}
-    tpy::ordered_map<int32_t, int64_t> wide64 = [&]() {
-        tpy::ordered_map<int32_t, int64_t> __result;
+    ::tpy::ordered_map<int32_t, int64_t> wide64 = [&]() {
+        ::tpy::ordered_map<int32_t, int64_t> __result;
         const int32_t __stop_2 = 3;
         for (int32_t x = 0; x < __stop_2; ++x) {
-            __result.insert_or_assign(x, static_cast<int64_t>((tpy::mul_check<int32_t>(x, 2))));
+            __result.insert_or_assign(x, static_cast<int64_t>((::tpy::mul_check<int32_t>(x, 2))));
         }
         return __result;
     }();
@@ -47,7 +47,7 @@ void main() {
     for (; __beg_3 != __end_3; ++__beg_3) {
         int32_t k = *__beg_3;
         //         print(k, wide64[k])
-        std::cout << k << " " << tpy::__getitem__(wide64, k) << "\n";
+        std::cout << k << " " << ::tpy::__getitem__(wide64, k) << "\n";
     }
 }
 
@@ -63,7 +63,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -12,20 +12,20 @@ void main() {
     int32_t n = 3;
     //     # Basic repetition
     //     print(s * n)
-    std::cout << (tpy::str_repeat(s, n)) << "\n";
+    std::cout << (::tpy::str_repeat(s, n)) << "\n";
     //     print(s * 1)
-    std::cout << (tpy::str_repeat(s, 1)) << "\n";
+    std::cout << (::tpy::str_repeat(s, 1)) << "\n";
     //     print(s * 0)
-    std::cout << (tpy::str_repeat(s, 0)) << "\n";
+    std::cout << (::tpy::str_repeat(s, 0)) << "\n";
     //     # Reverse form
     //     print(n * s)
-    std::cout << (tpy::str_repeat(s, n)) << "\n";
+    std::cout << (::tpy::str_repeat(s, n)) << "\n";
     //     # Literal repetition
     //     print("xy" * 4)
-    std::cout << (tpy::str_repeat("xy", 4)) << "\n";
+    std::cout << (::tpy::str_repeat("xy", 4)) << "\n";
     //     # Negative count returns empty
     //     print(s * -1)
-    std::cout << (tpy::str_repeat(s, -1)) << "\n";
+    std::cout << (::tpy::str_repeat(s, -1)) << "\n";
 }
 
 void __tpy_init() {
@@ -40,7 +40,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

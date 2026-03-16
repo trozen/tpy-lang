@@ -26,20 +26,20 @@ struct Base {
     //     def items(self) -> Span[auto_readonly[Int32]]:
     std::span<int32_t> items() {
         //         return self._data
-        return tpy::as_mut_span(this->_data);
+        return ::tpy::as_mut_span(this->_data);
     }
 
     //     @auto_readonly
     //     def items(self) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> items() const {
         //         return self._data
-        return tpy::as_span(this->_data);
+        return ::tpy::as_span(this->_data);
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
     os << "Base("
-       << "_data=" << tpy::ListPrinter(obj._data)
+       << "_data=" << ::tpy::ListPrinter(obj._data)
        << ")";
     return os;
 }
@@ -57,7 +57,7 @@ struct Child : Base {
     //     def items(self) -> Span[auto_readonly[Int32]]:  # tpyc: warning(/non-polymorphic/)
     std::span<int32_t> items() {
         //         return self._extra
-        return tpy::as_mut_span(this->_extra);
+        return ::tpy::as_mut_span(this->_extra);
     }
 
     //     @override
@@ -65,13 +65,13 @@ struct Child : Base {
     //     def items(self) -> Span[auto_readonly[Int32]]:  # tpyc: warning(/non-polymorphic/)
     std::span<const int32_t> items() const {
         //         return self._extra
-        return tpy::as_span(this->_extra);
+        return ::tpy::as_span(this->_extra);
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
     os << "Child("
-       << "_extra=" << tpy::ListPrinter(obj._extra)
+       << "_extra=" << ::tpy::ListPrinter(obj._extra)
        << ")";
     return os;
 }

@@ -9,7 +9,7 @@ Point* q{};
 // def get_x(p: Point | None) -> Int32:
 int32_t get_x(Point* p) {
     //     assert p is not None
-    if (!((p != nullptr))) tpy::tpy_panic("assertion failed");
+    if (!((p != nullptr))) ::tpy::tpy_panic("assertion failed");
     //     return p.x
     return p->x;
 }
@@ -17,7 +17,7 @@ int32_t get_x(Point* p) {
 // def get_mag(p: Point | None) -> Int32:
 int32_t get_mag(Point* p) {
     //     assert p is not None, "point required"
-    if (!((p != nullptr))) tpy::tpy_panic("point required");
+    if (!((p != nullptr))) ::tpy::tpy_panic("point required");
     //     return p.mag()
     return p->mag();
 }
@@ -39,7 +39,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

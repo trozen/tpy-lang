@@ -20,25 +20,25 @@ struct Container {
 
     //     def __init__(self, val: T | None):
     Container() = default;
-    explicit Container(const T* val) : _val(tpy::ptr_to_optional(val)) {}
+    explicit Container(const T* val) : _val(::tpy::ptr_to_optional(val)) {}
 
     //     def get(self) -> T | None:
     T* get() {
         //         return self._val
-        return tpy::optional_to_ptr(this->_val);
+        return ::tpy::optional_to_ptr(this->_val);
     }
 
     //     def set(self, val: T | None) -> None:
     void set(T* val) {
         //         self._val = val
-        this->_val = tpy::ptr_to_optional(val);
+        this->_val = ::tpy::ptr_to_optional(val);
     }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     os << "Container("
-       << "_val=" << tpy::print_optional_val(obj._val)
+       << "_val=" << ::tpy::print_optional_val(obj._val)
        << ")";
     return os;
 }

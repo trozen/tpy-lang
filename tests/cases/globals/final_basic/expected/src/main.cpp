@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def twice(x: Int32) -> Int32:
 int32_t twice(int32_t x) {
     //     return x + x
-    return (tpy::add_check<int32_t>(x, x));
+    return (::tpy::add_check<int32_t>(x, x));
 }
 
 // def main() -> None:
@@ -17,11 +17,11 @@ void main() {
     //     print(NEG_VAL)
     std::cout << NEG_VAL << "\n";
     //     print(PI)
-    std::cout << tpy::print_float(PI) << "\n";
+    std::cout << ::tpy::print_float(PI) << "\n";
     //     print(DEBUG)
-    std::cout << tpy::print_bool(DEBUG) << "\n";
+    std::cout << ::tpy::print_bool(DEBUG) << "\n";
     //     print(DISABLED)
-    std::cout << tpy::print_bool(DISABLED) << "\n";
+    std::cout << ::tpy::print_bool(DISABLED) << "\n";
     //     print(NAME)
     std::cout << NAME << "\n";
     //     print(LETTER)
@@ -30,7 +30,7 @@ void main() {
     //     print(twice(MAX_SIZE))
     std::cout << twice(MAX_SIZE) << "\n";
     //     y: Int32 = MAX_SIZE + NEG_VAL
-    int32_t y = (tpy::add_check<int32_t>(MAX_SIZE, NEG_VAL));
+    int32_t y = (::tpy::add_check<int32_t>(MAX_SIZE, NEG_VAL));
     //     print(y)
     std::cout << y << "\n";
 }
@@ -47,7 +47,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -8,29 +8,29 @@ namespace tpy_user::main {
 // def test_eq() -> None:
 void test_eq() {
     //     a: int = 5
-    tpy::BigInt a = tpy::BigInt(5);
+    ::tpy::BigInt a = ::tpy::BigInt(5);
     //     b: float = 5.0
     double b = 5.0;
     //     print(a == b)
-    std::cout << tpy::print_bool((static_cast<double>(a) == b)) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<double>(a) == b)) << "\n";
     //     print(a != b)
-    std::cout << tpy::print_bool((static_cast<double>(a) != b)) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<double>(a) != b)) << "\n";
 }
 
 // def test_ordering() -> None:
 void test_ordering() {
     //     x: int = 3
-    tpy::BigInt x = tpy::BigInt(3);
+    ::tpy::BigInt x = ::tpy::BigInt(3);
     //     y: float = 3.5
     double y = 3.5;
     //     print(x < y)
-    std::cout << tpy::print_bool((static_cast<double>(x) < y)) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<double>(x) < y)) << "\n";
     //     print(x > y)
-    std::cout << tpy::print_bool((static_cast<double>(x) > y)) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<double>(x) > y)) << "\n";
     //     print(x <= y)
-    std::cout << tpy::print_bool((static_cast<double>(x) <= y)) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<double>(x) <= y)) << "\n";
     //     print(x >= y)
-    std::cout << tpy::print_bool((static_cast<double>(x) >= y)) << "\n";
+    std::cout << ::tpy::print_bool((static_cast<double>(x) >= y)) << "\n";
 }
 
 // def test_float_gt_int() -> None:
@@ -38,11 +38,11 @@ void test_float_gt_int() {
     //     f: float = 10.0
     double f = 10.0;
     //     i: int = 7
-    tpy::BigInt i = tpy::BigInt(7);
+    ::tpy::BigInt i = ::tpy::BigInt(7);
     //     print(f > i)
-    std::cout << tpy::print_bool((f > static_cast<double>(i))) << "\n";
+    std::cout << ::tpy::print_bool((f > static_cast<double>(i))) << "\n";
     //     print(f < i)
-    std::cout << tpy::print_bool((f < static_cast<double>(i))) << "\n";
+    std::cout << ::tpy::print_bool((f < static_cast<double>(i))) << "\n";
 }
 
 // def main() -> None:
@@ -67,7 +67,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -11,17 +11,17 @@ void test_int32_cmp() {
     //     b = Int32(3)
     int32_t b = 3;
     //     print(a > b)
-    std::cout << tpy::print_bool((a > b)) << "\n";
+    std::cout << ::tpy::print_bool((a > b)) << "\n";
     //     print(a < b)
-    std::cout << tpy::print_bool((a < b)) << "\n";
+    std::cout << ::tpy::print_bool((a < b)) << "\n";
     //     print(a == b)
-    std::cout << tpy::print_bool((a == b)) << "\n";
+    std::cout << ::tpy::print_bool((a == b)) << "\n";
     //     print(a != b)
-    std::cout << tpy::print_bool((a != b)) << "\n";
+    std::cout << ::tpy::print_bool((a != b)) << "\n";
     //     print(a >= b)
-    std::cout << tpy::print_bool((a >= b)) << "\n";
+    std::cout << ::tpy::print_bool((a >= b)) << "\n";
     //     print(a <= b)
-    std::cout << tpy::print_bool((a <= b)) << "\n";
+    std::cout << ::tpy::print_bool((a <= b)) << "\n";
 }
 
 // def test_int64_cmp() -> None:
@@ -31,11 +31,11 @@ void test_int64_cmp() {
     //     y = Int64(200)
     int64_t y = 200;
     //     print(x < y)
-    std::cout << tpy::print_bool((x < y)) << "\n";
+    std::cout << ::tpy::print_bool((x < y)) << "\n";
     //     print(x > y)
-    std::cout << tpy::print_bool((x > y)) << "\n";
+    std::cout << ::tpy::print_bool((x > y)) << "\n";
     //     print(x == y)
-    std::cout << tpy::print_bool((x == y)) << "\n";
+    std::cout << ::tpy::print_bool((x == y)) << "\n";
 }
 
 // def test_uint32_cmp() -> None:
@@ -45,11 +45,11 @@ void test_uint32_cmp() {
     //     n = UInt32(10)
     uint32_t n = 10;
     //     print(m == n)
-    std::cout << tpy::print_bool((m == n)) << "\n";
+    std::cout << ::tpy::print_bool((m == n)) << "\n";
     //     print(m != n)
-    std::cout << tpy::print_bool((m != n)) << "\n";
+    std::cout << ::tpy::print_bool((m != n)) << "\n";
     //     print(m >= n)
-    std::cout << tpy::print_bool((m >= n)) << "\n";
+    std::cout << ::tpy::print_bool((m >= n)) << "\n";
 }
 
 // def main() -> None:
@@ -74,7 +74,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

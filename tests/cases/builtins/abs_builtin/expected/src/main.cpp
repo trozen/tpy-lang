@@ -11,7 +11,7 @@ int32_t x{};
 int32_t y{};
 // # Large BigInt
 // big = int(-1000000)
-tpy::BigInt big;
+::tpy::BigInt big;
 // # Test abs with float
 // z: float = -3.14
 double z{};
@@ -39,24 +39,24 @@ void __tpy_init() {
     std::cout << std::abs(99) << "\n";
     // # Large BigInt
     // big = int(-1000000)
-    big = tpy::BigInt(static_cast<int64_t>(-1000000));
+    big = ::tpy::BigInt(static_cast<int64_t>(-1000000));
     // print(abs(big))
-    std::cout << tpy::BigInt::abs(big) << "\n";
+    std::cout << ::tpy::BigInt::abs(big) << "\n";
     // # Test abs with float
     // z: float = -3.14
     z = -(3.14);
     // print(abs(z))
-    std::cout << tpy::print_float(std::fabs(z)) << "\n";
+    std::cout << ::tpy::print_float(std::fabs(z)) << "\n";
     // print(abs(2.5))
-    std::cout << tpy::print_float(std::fabs(2.5)) << "\n";
+    std::cout << ::tpy::print_float(std::fabs(2.5)) << "\n";
     // print(abs(-0.0))
-    std::cout << tpy::print_float(std::fabs(-(0.0))) << "\n";
+    std::cout << ::tpy::print_float(std::fabs(-(0.0))) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

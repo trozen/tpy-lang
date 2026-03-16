@@ -24,9 +24,9 @@ struct Accum {
         //         while i < n:
         while ((i < n)) {
             //             self.total = self.total + i  # tpyc: ok
-            this->total = (tpy::add_check<int32_t>(this->total, i));
+            this->total = (::tpy::add_check<int32_t>(this->total, i));
             //             i = i + Int32(1)
-            i = (tpy::add_check<int32_t>(i, 1));
+            i = (::tpy::add_check<int32_t>(i, 1));
         }
     }
 };

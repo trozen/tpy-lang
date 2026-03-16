@@ -11,21 +11,21 @@ extern std::vector<int32_t>* vals;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-tpy::val_or_ref_t<T> first(std::vector<T>& items);
+::tpy::val_or_ref_t<T> first(std::vector<T>& items);
 template<typename T>
-tpy::val_or_ref_t<T> last(std::vector<T>& items);
+::tpy::val_or_ref_t<T> last(std::vector<T>& items);
 
 // def first[T](items: list[T]) -> T:
 template<typename T>
-tpy::val_or_ref_t<T> first(std::vector<T>& items) {
+::tpy::val_or_ref_t<T> first(std::vector<T>& items) {
     //     return items[0]
-    return tpy::__getitem__(items, 0);
+    return ::tpy::__getitem__(items, 0);
 }
 // def last[T](items: list[T]) -> T:
 template<typename T>
-tpy::val_or_ref_t<T> last(std::vector<T>& items) {
+::tpy::val_or_ref_t<T> last(std::vector<T>& items) {
     //     return items[len(items) - 1]
-    return tpy::__getitem__(items, (tpy::sub_check<int32_t>(tpy::__len__(items), 1)));
+    return ::tpy::__getitem__(items, (::tpy::sub_check<int32_t>(::tpy::__len__(items), 1)));
 }
 
 void __tpy_init();

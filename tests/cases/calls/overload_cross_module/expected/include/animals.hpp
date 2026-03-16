@@ -33,11 +33,11 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 // class Cat:
 struct Cat {
     //     lives: int
-    tpy::BigInt lives;
+    ::tpy::BigInt lives;
 
     //     def __init__(self, lives: int) -> None:
     Cat() = default;
-    explicit Cat(const tpy::BigInt& lives) : lives(lives) {}
+    explicit Cat(const ::tpy::BigInt& lives) : lives(lives) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {

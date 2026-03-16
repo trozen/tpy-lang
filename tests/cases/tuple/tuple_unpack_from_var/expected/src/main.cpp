@@ -18,7 +18,7 @@ void main() {
     std::cout << b << "\n";
     //     # Original variable still usable after unpack
     //     print(t)
-    std::cout << tpy::TuplePrinter(t) << "\n";
+    std::cout << ::tpy::TuplePrinter(t) << "\n";
 }
 
 void __tpy_init() {
@@ -33,7 +33,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

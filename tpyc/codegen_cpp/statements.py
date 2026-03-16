@@ -268,7 +268,7 @@ class StatementGenerator:
                     if isinstance(ret_value, TpyFieldAccess):
                         val_type = self.ctx.get_expr_type(ret_value)
                         if isinstance(val_type, OptionalType) and val_type.uses_pointer_repr():
-                            return f"{indent}return tpy::optional_to_ptr({ret_expr});\n"
+                            return f"{indent}return ::tpy::optional_to_ptr({ret_expr});\n"
                     # Take address of lvalue
                     return f"{indent}return &({ret_expr});\n"
                 ret_expr = self.expressions.gen_expr(
@@ -286,7 +286,7 @@ class StatementGenerator:
                 ):
                     analyzed_type = self.ctx.get_expr_type(ret_value)
                     if isinstance(analyzed_type, OptionalType):
-                        ret_expr = f"tpy::deref_optional_check({ret_expr})"
+                        ret_expr = f"::tpy::deref_optional_check({ret_expr})"
                     else:
                         ret_expr = f"(*{ret_expr})"
                         # Narrowed Optional[str] param: (*s) yields string_view
@@ -598,7 +598,7 @@ class StatementGenerator:
                               is_optional_slot: bool = True) -> str:
         """Assign rvalue into pre-declared slot and derive pointer expression."""
         if is_opt_field:
-            return f"tpy::optional_to_ptr({slot} = {init_expr})"
+            return f"::tpy::optional_to_ptr({slot} = {init_expr})"
         if is_optional_slot:
             return f"&*({slot} = {init_expr})"
         return f"&({slot} = {init_expr})"
@@ -607,7 +607,7 @@ class StatementGenerator:
     def _ptr_from_local_slot(slot: str, is_opt_field: bool) -> str:
         """Derive pointer from an inline-declared slot."""
         if is_opt_field:
-            return f"tpy::optional_to_ptr({slot})"
+            return f"::tpy::optional_to_ptr({slot})"
         return f"&{slot}"
 
     @staticmethod
@@ -686,7 +686,7 @@ class StatementGenerator:
             if isinstance(init, TpyFieldAccess):
                 if not self.ctx.is_rvalue_source(init):
                     init_expr = self.expressions.gen_expr(init, target_type)
-                    return f"{indent}{const_pfx}{cpp_type}* {name} = tpy::optional_to_ptr({init_expr});\n"
+                    return f"{indent}{const_pfx}{cpp_type}* {name} = ::tpy::optional_to_ptr({init_expr});\n"
                 # rvalue field: fall through to rvalue path
             else:
                 init_expr = self.expressions.gen_expr(init, target_type)
@@ -748,14 +748,14 @@ class StatementGenerator:
             return f"{rebind_decl}{indent}{const_pfx}{cpp_type}* {name} = &({init_expr});\n"
 
     def _gen_slice_assign(self, stmt: TpyAssign, indent: str) -> str:
-        """Generate code for slice assignment: a[x:y] = rhs -> tpy::list_set_slice."""
+        """Generate code for slice assignment: a[x:y] = rhs -> ::tpy::list_set_slice."""
         assert isinstance(stmt.target, TpySubscript)
         sl = stmt.target.index
         assert isinstance(sl, TpySlice)
         obj = self.expressions.gen_expr(stmt.target.obj)
         subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(stmt.target.obj) else obj
         start = self.expressions._gen_slice_bound(sl.lower) if sl.lower is not None else "0"
-        stop = self.expressions._gen_slice_bound(sl.upper) if sl.upper is not None else "tpy::SLICE_END"
+        stop = self.expressions._gen_slice_bound(sl.upper) if sl.upper is not None else "::tpy::SLICE_END"
         target_type = self.ctx.get_expr_type(stmt.target)
         value = self.expressions.gen_expr(stmt.value, target_type)
         value = self.expressions._maybe_move(stmt.value, value)
@@ -765,7 +765,7 @@ class StatementGenerator:
             assert isinstance(target_type, ListType)
             elem_cpp = self.types.type_to_cpp(target_type.element_type)
             value = f"std::vector<{elem_cpp}>{value}"
-        return f"{indent}tpy::list_set_slice({subscript_obj}, {start}, {stop}, {value});\n"
+        return f"{indent}::tpy::list_set_slice({subscript_obj}, {start}, {stop}, {value});\n"
 
     def _gen_pointer_local_rebind(self, name: str, cpp_type: str, init: 'TpyExpr',
                                    target_type: TpyType | None, indent: str) -> str:
@@ -802,7 +802,7 @@ class StatementGenerator:
             if isinstance(init, TpyFieldAccess):
                 if not self.ctx.is_rvalue_source(init):
                     init_expr = self.expressions.gen_expr(init, target_type)
-                    return f"{indent}{cpp_name} = tpy::optional_to_ptr({init_expr});\n"
+                    return f"{indent}{cpp_name} = ::tpy::optional_to_ptr({init_expr});\n"
                 # rvalue field: fall through to rvalue path
             else:
                 init_expr = self.expressions.gen_expr(init, target_type)
@@ -904,7 +904,7 @@ class StatementGenerator:
             return self._gen_dynamic_protocol_init(stmt.name, target_type, stmt.init, indent)
 
         # TypeParamRef variable initialized from a user method or free function call: use
-        # tpy::val_or_ref_t<T> (or tpy::val_or_cref_t<T> for readonly methods). This expands
+        # ::tpy::val_or_ref_t<T> (or ::tpy::val_or_cref_t<T> for readonly methods). This expands
         # to T for value types and T& (or const T&) for non-value types, matching the C++
         # return type semantics. Only for non-reassigned, non-hoisted vars -- rebinding a
         # val_or_ref_t alias is not possible in C++ (references can't be rebound), so
@@ -918,7 +918,7 @@ class StatementGenerator:
             fi = stmt.init.resolved_function_info
             if fi is not None and fi.cpp_template is None and isinstance(fi.return_type, TypeParamRef):
                 init_expr = self.expressions.gen_expr(stmt.init, target_type)
-                trait = "tpy::val_or_cref_t" if fi.is_readonly else "tpy::val_or_ref_t"
+                trait = "::tpy::val_or_cref_t" if fi.is_readonly else "::tpy::val_or_ref_t"
                 return f"{indent}{trait}<{cpp_type}> {cpp_name} = {init_expr};\n"
 
         # Indirection for non-value types in function/method scope
@@ -999,7 +999,7 @@ class StatementGenerator:
             ):
                 analyzed_type = self.ctx.get_expr_type(stmt.init)
                 if isinstance(analyzed_type, OptionalType):
-                    init_expr = f"tpy::deref_optional_check({init_expr})"
+                    init_expr = f"::tpy::deref_optional_check({init_expr})"
                 else:
                     init_expr = f"(*{init_expr})"
             # string_view -> string init requires explicit conversion in C++.
@@ -1040,7 +1040,7 @@ class StatementGenerator:
                 code = expand_cpp_template(cpp_template, subscript_obj, index_expr, value)
                 return f"{indent}{code};\n"
             else:
-                return f"{indent}tpy::__setitem__({subscript_obj}, {index_expr}, {value});\n"
+                return f"{indent}::tpy::__setitem__({subscript_obj}, {index_expr}, {value});\n"
 
         # Pointer-local rebinding (e.g., x.field = ... where x is pointer-local handled by field access)
         if isinstance(stmt.target, TpyName) and stmt.target.name in self.ctx.pointer_locals:
@@ -1056,7 +1056,7 @@ class StatementGenerator:
                 # Value source is T* (pointer-local, function returning Optional) -> wrap
                 if self.ctx.is_indirect_name(stmt.value):
                     value = self.expressions.gen_expr(stmt.value)
-                    return f"{indent}{target} = tpy::ptr_to_optional({value});\n"
+                    return f"{indent}{target} = ::tpy::ptr_to_optional({value});\n"
                 raw_val_type = self.ctx.get_expr_type(stmt.value)
                 val_type = raw_val_type.wrapped if isinstance(raw_val_type, OwnType) else raw_val_type
                 source = self.ctx.unwrap_copy(stmt.value)
@@ -1069,7 +1069,7 @@ class StatementGenerator:
                     if is_owned_optional:
                         value = self.expressions._maybe_move(stmt.value, value)
                         return f"{indent}{target} = {value};\n"
-                    return f"{indent}{target} = tpy::ptr_to_optional({value});\n"
+                    return f"{indent}{target} = ::tpy::ptr_to_optional({value});\n"
                 # Direct value or optional-to-optional (field-to-field) works without conversion
                 value = self.expressions.gen_expr_deref(stmt.value, target_type)
                 value = self.expressions._maybe_move(stmt.value, value)
@@ -1101,7 +1101,7 @@ class StatementGenerator:
                 code = expand_cpp_template(cpp_template, subscript_obj, index_expr)
                 parts.append(f"{indent}{code};\n")
             else:
-                parts.append(f"{indent}tpy::__delitem__({subscript_obj}, {index_expr});\n")
+                parts.append(f"{indent}::tpy::__delitem__({subscript_obj}, {index_expr});\n")
         return "".join(parts)
 
     def _gen_aug_assign_code(self, stmt: TpyAugAssign, indent: str) -> str:
@@ -1212,7 +1212,7 @@ class StatementGenerator:
             code = expand_cpp_template(set_template, subscript_obj, index_expr, result_expr)
             return f"{indent}{code};\n"
         else:
-            return f"{indent}tpy::__setitem__({subscript_obj}, {index_expr}, {result_expr});\n"
+            return f"{indent}::tpy::__setitem__({subscript_obj}, {index_expr}, {result_expr});\n"
 
     def _try_str_inplace_append(
         self, target_name: str, target_cpp: str, value_expr: TpyExpr,
@@ -1421,24 +1421,24 @@ class StatementGenerator:
                 return
             if stmt.message is not None and isinstance(stmt.message, TpyStrLiteral):
                 msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
-                out.write(f'{indent}tpy::tpy_panic("{msg}");\n')
+                out.write(f'{indent}::tpy::tpy_panic("{msg}");\n')
                 return
-            out.write(f'{indent}tpy::tpy_panic("assertion failed");\n')
+            out.write(f'{indent}::tpy::tpy_panic("assertion failed");\n')
             return
         if isinstance(stmt.condition, TpyNoneLiteral):
             if stmt.message is not None and isinstance(stmt.message, TpyStrLiteral):
                 msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
-                out.write(f'{indent}tpy::tpy_panic("{msg}");\n')
+                out.write(f'{indent}::tpy::tpy_panic("{msg}");\n')
                 return
-            out.write(f'{indent}tpy::tpy_panic("assertion failed");\n')
+            out.write(f'{indent}::tpy::tpy_panic("assertion failed");\n')
             return
         bool_cond = self.expressions.gen_truthy_expr(stmt.condition)
         self.ctx.temps.flush(out, indent)
         if stmt.message is not None and isinstance(stmt.message, TpyStrLiteral):
             msg = stmt.message.value.replace("\\", "\\\\").replace('"', '\\"')
-            out.write(f'{indent}if (!({bool_cond})) tpy::tpy_panic("{msg}");\n')
+            out.write(f'{indent}if (!({bool_cond})) ::tpy::tpy_panic("{msg}");\n')
         else:
-            out.write(f'{indent}if (!({bool_cond})) tpy::tpy_panic("assertion failed");\n')
+            out.write(f'{indent}if (!({bool_cond})) ::tpy::tpy_panic("assertion failed");\n')
         # Emit std::get<T> extractions for isinstance-narrowed union variables.
         # Unlike if-branch narrowing, assert narrowing persists for the rest of scope,
         # so we do NOT call ctx.restore_narrowed_vars.
@@ -1892,16 +1892,16 @@ class StatementGenerator:
         """Generate begin/end loop with an iter_adapt wrapper.
 
         Captures the original iterable first (to keep it alive), then wraps
-        it with tpy::iter_adapt, then delegates to _gen_begin_end_loop.
+        it with ::tpy::iter_adapt, then delegates to _gen_begin_end_loop.
 
         When iter_call_expr is set (e.g. ".__iter__()"), calls it as a suffix
         on the source to get an iterator first.
-        When iter_call_fn is set (e.g. lambda src: f"tpy::__iter__({src})"),
+        When iter_call_fn is set (e.g. lambda src: f"::tpy::__iter__({src})"),
         calls it as a function on the source name.
 
         Produces:
             auto& __src_N = <lvalue_expr>;   // or: auto __src_N = <rvalue_expr>;
-            auto __obj_N = tpy::<adapter>(__src_N);
+            auto __obj_N = ::tpy::<adapter>(__src_N);
             auto __beg_N = __obj_N.begin();
             ...
         """
@@ -1915,14 +1915,14 @@ class StatementGenerator:
         if iter_call_fn:
             iter_name = f"__iter_{n}"
             out.write(f"{indent}auto {iter_name} = {iter_call_fn(src_name)};\n")
-            adapted_expr = f"tpy::{adapter}({iter_name})"
+            adapted_expr = f"::tpy::{adapter}({iter_name})"
         elif iter_call_expr:
             # Two-step: call __iter__() on source, then wrap result with adapter
             iter_name = f"__iter_{n}"
             out.write(f"{indent}auto {iter_name} = {src_name}{iter_call_expr};\n")
-            adapted_expr = f"tpy::{adapter}({iter_name})"
+            adapted_expr = f"::tpy::{adapter}({iter_name})"
         else:
-            adapted_expr = f"tpy::{adapter}({src_name})"
+            adapted_expr = f"::tpy::{adapter}({src_name})"
         self._gen_begin_end_loop(out, stmt, indent, adapted_expr, elem_type, is_lvalue=False)
 
     def _gen_captured_call_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
@@ -1930,12 +1930,12 @@ class StatementGenerator:
                                 make_call: "Callable[[str], str]") -> None:
         """Capture iterable, apply a method/function call, then begin/end loop.
 
-        Used for __iter__(), tpy::as_span(), and tpy::iter_for_loop() where
+        Used for __iter__(), ::tpy::as_span(), and ::tpy::iter_for_loop() where
         the container must stay alive for the iterator/span to remain valid.
 
         Produces:
             auto& __src_N = <lvalue_expr>;   // or: auto __src_N = <rvalue_expr>;
-            auto __obj_N = __src_N.__iter__();  // (or tpy::as_span(__src_N))
+            auto __obj_N = __src_N.__iter__();  // (or ::tpy::as_span(__src_N))
             auto __beg_N = __obj_N.begin();
             ...
         """
@@ -2116,7 +2116,7 @@ class StatementGenerator:
             step_temp = f"__step_{n}"
             out.write(f"{indent}{cpp_elem} {step_temp} = {step_cpp};\n")
             step_cpp = step_temp
-            out.write(f'{indent}if ({step_cpp} == 0) tpy::tpy_panic("range() arg 3 must not be zero");\n')
+            out.write(f'{indent}if ({step_cpp} == 0) ::tpy::tpy_panic("range() arg 3 must not be zero");\n')
             self._gen_range_overflow_check(out, indent, start_expr, stop_expr, step_cpp, elem_type)
             out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
                       f"{step_cpp} > 0 ? {var} < {stop_expr} : {var} > {stop_expr}; "
@@ -2131,20 +2131,20 @@ class StatementGenerator:
         """Emit upfront overflow check for fixed-int range loops with step != ±1."""
         if isinstance(elem_type, FixedIntType):
             cpp_t = elem_type.to_cpp()
-            out.write(f"{indent}tpy::range_check_overflow<{cpp_t}>({start_expr}, {stop_expr}, {step_expr});\n")
+            out.write(f"{indent}::tpy::range_check_overflow<{cpp_t}>({start_expr}, {stop_expr}, {step_expr});\n")
 
     def _gen_for_each(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
         """Generate a for-each loop over a collection or iterator.
 
         All iteration uses a single canonical begin/end loop shape.
         The iterable expression is wrapped with an adapter if needed:
-        - Enum: tpy::EnumUtil<E>::members
-        - Protocol Iterator[T]: tpy::iter_adapt(expr)
-        - Protocol Iterable[T]: tpy::__iter__(expr) + tpy::iter_adapt(iter)
-        - Protocol ReadOnlySpanLike[T]: tpy::as_span(expr)
-        - range(): counter optimization first, else tpy::Range<T>(args...)
-        - OptIterator types: tpy::iter_adapt(expr)
-        - __iter__()-based types: expr.__iter__() or tpy::iter_adapt(expr.__iter__())
+        - Enum: ::tpy::EnumUtil<E>::members
+        - Protocol Iterator[T]: ::tpy::iter_adapt(expr)
+        - Protocol Iterable[T]: ::tpy::__iter__(expr) + ::tpy::iter_adapt(iter)
+        - Protocol ReadOnlySpanLike[T]: ::tpy::as_span(expr)
+        - range(): counter optimization first, else ::tpy::Range<T>(args...)
+        - OptIterator types: ::tpy::iter_adapt(expr)
+        - __iter__()-based types: expr.__iter__() or ::tpy::iter_adapt(expr.__iter__())
         - Native C++ ranges (dict, set, str, etc.): expr directly
         """
         has_else = bool(stmt.orelse)
@@ -2174,7 +2174,7 @@ class StatementGenerator:
         if stmt.enum_iterable is not None:
             enum_type = stmt.enum_iterable
             cpp_type = enum_type.to_cpp()
-            iterable = f"tpy::EnumUtil<{cpp_type}>::members"
+            iterable = f"::tpy::EnumUtil<{cpp_type}>::members"
             self._gen_begin_end_loop(out, stmt, indent, iterable, enum_type)
             return
 
@@ -2202,15 +2202,15 @@ class StatementGenerator:
                 # path at C++ template instantiation time, avoiding optional<T>
                 # wrapping when the concrete type is a native C++ range.
                 self._gen_captured_call_loop(out, stmt, indent, iterable, elem_type,
-                                             lambda src: f"tpy::iter_for_loop({src})")
+                                             lambda src: f"::tpy::iter_for_loop({src})")
             return
 
-        # Handle ReadOnlySpanLike[T] protocol-typed iterables (uses tpy::as_span)
+        # Handle ReadOnlySpanLike[T] protocol-typed iterables (uses ::tpy::as_span)
         if is_protocol_type(resolved_type) and resolved_type.qualified_name() == "tpy.ReadOnlySpanLike":
             elem_type = sema_elem or resolved_type.type_args[0]
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
             self._gen_captured_call_loop(out, stmt, indent, iterable, elem_type,
-                                         lambda src: f"tpy::as_span({src})")
+                                         lambda src: f"::tpy::as_span({src})")
             return
 
         # Optimize range() calls to C-style counter loops
@@ -2244,7 +2244,7 @@ class StatementGenerator:
                                              lambda src: f"{src}.__iter__()")
             else:
                 # OptIterator-based iterator -- call __iter__(), then wrap with iter_adapt.
-                # Call .__iter__() directly rather than tpy::__iter__() to avoid one
+                # Call .__iter__() directly rather than ::tpy::__iter__() to avoid one
                 # template dispatch level.
                 self._gen_adapted_loop(out, stmt, indent, iterable, elem_type,
                                        "iter_adapt", iter_call_expr=".__iter__()")

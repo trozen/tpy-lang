@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def abs_val(x: Int32) -> Int32:
 int32_t abs_val(int32_t x) {
     //     return x if x >= 0 else -x
-    return (((x >= 0)) ? (x) : (tpy::neg_check<int32_t>(x)));
+    return (((x >= 0)) ? (x) : (::tpy::neg_check<int32_t>(x)));
 }
 
 // def max_val(a: Int32, b: Int32) -> Int32:
@@ -92,7 +92,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

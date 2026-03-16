@@ -28,7 +28,7 @@ struct Wrapper {
         //         if self.text is not None:
         if ((this->text.has_value())) {
             //             print(self.text[0])
-            std::cout << tpy::__getitem__((*this->text), 0) << "\n";
+            std::cout << ::tpy::__getitem__((*this->text), 0) << "\n";
         }
     }
 };

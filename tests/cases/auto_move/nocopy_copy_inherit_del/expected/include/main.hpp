@@ -70,7 +70,7 @@ struct CopyableResource : Resource {
     //     def __copy__(self) -> Own[CopyableResource]:
     CopyableResource __copy__() const {
         //         return CopyableResource(self.id + 100)
-        return CopyableResource((tpy::add_check<int32_t>(this->id, 100)));
+        return CopyableResource((::tpy::add_check<int32_t>(this->id, 100)));
     }
 };
 

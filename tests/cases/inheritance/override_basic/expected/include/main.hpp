@@ -48,7 +48,7 @@ struct Square : Shape {
     //     def area(self) -> Int32:  # tpyc: warning(/non-polymorphic/)
     int32_t area() const {
         //         return self.side * self.side
-        return (tpy::mul_check<int32_t>(this->side, this->side));
+        return (::tpy::mul_check<int32_t>(this->side, this->side));
     }
 
     //     @override

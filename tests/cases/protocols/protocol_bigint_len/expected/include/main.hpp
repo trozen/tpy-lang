@@ -9,21 +9,21 @@ struct MyCollection;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<tpy::Sized T_items>
-tpy::BigInt count(const T_items& items);
+template<::tpy::Sized T_items>
+::tpy::BigInt count(const T_items& items);
 void main();
 
 // class MyCollection:
 struct MyCollection {
     //     size: int
-    tpy::BigInt size;
+    ::tpy::BigInt size;
 
     //     def __init__(self, n: int) -> None:
     MyCollection() = default;
-    explicit MyCollection(const tpy::BigInt& n) : size(n) {}
+    explicit MyCollection(const ::tpy::BigInt& n) : size(n) {}
 
     //     def __len__(self) -> int:
-    tpy::BigInt __len__() const {
+    ::tpy::BigInt __len__() const {
         //         return self.size
         return this->size;
     }
@@ -37,10 +37,10 @@ inline std::ostream& operator<<(std::ostream& os, const MyCollection& obj) {
 }
 
 // def count(items: Sized) -> int:
-template<tpy::Sized T_items>
-tpy::BigInt count(const T_items& items) {
+template<::tpy::Sized T_items>
+::tpy::BigInt count(const T_items& items) {
     //     return len(items)
-    return tpy::BigInt(tpy::__len__(items));
+    return ::tpy::BigInt(::tpy::__len__(items));
 }
 
 void __tpy_init();

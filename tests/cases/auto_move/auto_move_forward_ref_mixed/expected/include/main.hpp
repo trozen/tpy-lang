@@ -10,7 +10,7 @@ struct Box;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-void mixed(std::type_identity_t<T>&& x, tpy::param_val_or_ref_t<T> y);
+void mixed(std::type_identity_t<T>&& x, ::tpy::param_val_or_ref_t<T> y);
 void main();
 
 // class Box:
@@ -29,7 +29,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // def mixed[T](x: Own[T], y: T) -> None:
 template<typename T>
-void mixed(std::type_identity_t<T>&& x, tpy::param_val_or_ref_t<T> y) {
+void mixed(std::type_identity_t<T>&& x, ::tpy::param_val_or_ref_t<T> y) {
     //     pass
 }
 

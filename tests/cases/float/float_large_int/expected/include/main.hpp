@@ -5,11 +5,11 @@
 
 namespace tpy_user::main {
 
-extern tpy::BigInt a;
-extern tpy::BigInt b;
-extern tpy::BigInt c;
-extern tpy::BigInt d;
-extern tpy::BigInt e;
+extern ::tpy::BigInt a;
+extern ::tpy::BigInt b;
+extern ::tpy::BigInt c;
+extern ::tpy::BigInt d;
+extern ::tpy::BigInt e;
 inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();

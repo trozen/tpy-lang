@@ -8,9 +8,9 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     print(sqrt(4.0))
-    std::cout << tpy::print_float(sqrt(4.0)) << "\n";
+    std::cout << ::tpy::print_float(sqrt(4.0)) << "\n";
     //     print(sqrt(9.0))
-    std::cout << tpy::print_float(sqrt(9.0)) << "\n";
+    std::cout << ::tpy::print_float(sqrt(9.0)) << "\n";
 }
 
 void __tpy_init() {
@@ -29,7 +29,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

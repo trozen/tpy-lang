@@ -33,9 +33,9 @@ void main() {
     //     ptr2: Ptr[Point] = get_ptr_copy(ptr)
     Point* ptr2 = get_ptr_copy(ptr);
     //     print(ptr1.x)
-    std::cout << tpy::deref_check(ptr1).x << "\n";
+    std::cout << ::tpy::deref_check(ptr1).x << "\n";
     //     print(ptr2.y)
-    std::cout << tpy::deref_check(ptr2).y << "\n";
+    std::cout << ::tpy::deref_check(ptr2).y << "\n";
 }
 
 void __tpy_init() {
@@ -50,7 +50,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

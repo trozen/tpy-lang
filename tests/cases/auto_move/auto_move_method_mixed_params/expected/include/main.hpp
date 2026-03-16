@@ -39,7 +39,7 @@ struct Holder {
         //         self.inner = inner
         this->inner = std::move(inner);
         //         self.inner.value = self.inner.value + tag
-        this->inner.value = (tpy::add_check<int32_t>(this->inner.value, tag));
+        this->inner.value = (::tpy::add_check<int32_t>(this->inner.value, tag));
     }
 };
 
@@ -72,7 +72,7 @@ struct GenericHolder {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GenericHolder<T>& obj) {
     os << "GenericHolder("
-       << "item=" << tpy::ValuePrinter(obj.item)
+       << "item=" << ::tpy::ValuePrinter(obj.item)
        << ")";
     return os;
 }
@@ -91,7 +91,7 @@ struct GenericBox {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const GenericBox<T>& obj) {
     os << "GenericBox("
-       << "item=" << tpy::ValuePrinter(obj.item)
+       << "item=" << ::tpy::ValuePrinter(obj.item)
        << ")";
     return os;
 }

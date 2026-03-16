@@ -22,7 +22,7 @@ struct Utils {
     //     @staticmethod
     //     def identity[U](val: U) -> U:
     template<typename U>
-    static tpy::val_or_ref_t<U> identity(tpy::param_val_or_ref_t<U> val) {
+    static ::tpy::val_or_ref_t<U> identity(::tpy::param_val_or_ref_t<U> val) {
         //         return val
         return val;
     }

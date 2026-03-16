@@ -20,10 +20,10 @@ void main() {
     //     print(b)
     std::cout << b << "\n";
     //     print(c)
-    std::cout << tpy::print_bool(c) << "\n";
+    std::cout << ::tpy::print_bool(c) << "\n";
     //     # Negative indexing
     //     print(t[-1])
-    std::cout << tpy::print_bool(std::get<2>(t)) << "\n";
+    std::cout << ::tpy::print_bool(std::get<2>(t)) << "\n";
     //     print(t[-2])
     std::cout << std::get<1>(t) << "\n";
     //     print(t[-3])
@@ -42,7 +42,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

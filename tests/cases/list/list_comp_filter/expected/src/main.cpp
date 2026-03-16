@@ -25,7 +25,7 @@ void main() {
         return __result;
     }();
     //     print(pos)
-    std::cout << tpy::ListPrinter(pos) << "\n";
+    std::cout << ::tpy::ListPrinter(pos) << "\n";
     //     # Filter with transformation
     //     evens = [x * x for x in range(10) if x % 2 == 0]
     std::vector<int32_t> evens = [&]() {
@@ -33,14 +33,14 @@ void main() {
         const int32_t __stop_1 = 10;
         if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
         for (int32_t x = 0; x < __stop_1; ++x) {
-            if (((tpy::mod_floor<int32_t>(x, 2)) == 0)) {
-                __result.push_back((tpy::mul_check<int32_t>(x, x)));
+            if (((::tpy::mod_floor<int32_t>(x, 2)) == 0)) {
+                __result.push_back((::tpy::mul_check<int32_t>(x, x)));
             }
         }
         return __result;
     }();
     //     print(evens)
-    std::cout << tpy::ListPrinter(evens) << "\n";
+    std::cout << ::tpy::ListPrinter(evens) << "\n";
     //     # Multiple conditions (all must be true)
     //     result = [x for x in range(20) if x % 2 == 0 if x % 3 == 0]
     std::vector<int32_t> result = [&]() {
@@ -48,14 +48,14 @@ void main() {
         const int32_t __stop_2 = 20;
         if (__stop_2 > 0) __result.reserve(static_cast<size_t>(__stop_2));
         for (int32_t x = 0; x < __stop_2; ++x) {
-            if (((tpy::mod_floor<int32_t>(x, 2)) == 0) && ((tpy::mod_floor<int32_t>(x, 3)) == 0)) {
+            if (((::tpy::mod_floor<int32_t>(x, 2)) == 0) && ((::tpy::mod_floor<int32_t>(x, 3)) == 0)) {
                 __result.push_back(x);
             }
         }
         return __result;
     }();
     //     print(result)
-    std::cout << tpy::ListPrinter(result) << "\n";
+    std::cout << ::tpy::ListPrinter(result) << "\n";
     //     # Filter strings by length
     //     words: list[str] = ["hi", "hello", "hey", "howdy", "yo"]
     std::vector<std::string> words = {"hi", "hello", "hey", "howdy", "yo"};
@@ -68,14 +68,14 @@ void main() {
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
             std::string w = *__beg_3;
-            if ((tpy::__len__(w) <= 3)) {
+            if ((::tpy::__len__(w) <= 3)) {
                 __result.push_back(w);
             }
         }
         return __result;
     }();
     //     print(short)
-    std::cout << tpy::ListPrinter(short_) << "\n";
+    std::cout << ::tpy::ListPrinter(short_) << "\n";
 }
 
 void __tpy_init() {
@@ -90,7 +90,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

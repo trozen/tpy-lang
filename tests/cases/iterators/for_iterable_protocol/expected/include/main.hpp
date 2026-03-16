@@ -10,7 +10,7 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<tpy::Iterable<int32_t> T_items>
+template<::tpy::Iterable<int32_t> T_items>
 int32_t sum_items(T_items& items);
 void main();
 
@@ -34,7 +34,7 @@ struct CounterIter {
             //             result = self.current
             int32_t result = this->current;
             //             self.current += 1
-            this->current = tpy::add_check<int32_t>(this->current, 1);
+            this->current = ::tpy::add_check<int32_t>(this->current, 1);
             //             return result
             return result;
         }
@@ -43,7 +43,7 @@ struct CounterIter {
     }
 
     int32_t __next__() {
-        tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
+        ::tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
     }
 };
 
@@ -84,19 +84,19 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 // def sum_items(items: Iterable[Int32]) -> Int32:
-template<tpy::Iterable<int32_t> T_items>
+template<::tpy::Iterable<int32_t> T_items>
 int32_t sum_items(T_items& items) {
     //     total: Int32 = 0
     int32_t total = 0;
     //     for x in items:
     auto& __src_0 = items;
-    auto __obj_0 = tpy::iter_for_loop(__src_0);
+    auto __obj_0 = ::tpy::iter_for_loop(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         total += x
-        total = tpy::add_check<int32_t>(total, x);
+        total = ::tpy::add_check<int32_t>(total, x);
     }
     //     return total
     return total;

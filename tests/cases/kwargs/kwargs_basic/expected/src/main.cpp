@@ -12,7 +12,7 @@ void greet(std::string_view name, std::string_view greeting) {
 }
 
 // def add(a: int, b: int) -> int:
-tpy::BigInt add(const tpy::BigInt& a, const tpy::BigInt& b) {
+::tpy::BigInt add(const ::tpy::BigInt& a, const ::tpy::BigInt& b) {
     //     return a + b
     return ((a) + (b));
 }
@@ -24,7 +24,7 @@ void main() {
     //     greet(greeting="Hi", name="Alice")
     greet("Alice", "Hi");
     //     print(add(a=3, b=4))
-    std::cout << add(tpy::BigInt(3), tpy::BigInt(4)) << "\n";
+    std::cout << add(::tpy::BigInt(3), ::tpy::BigInt(4)) << "\n";
 }
 
 void __tpy_init() {
@@ -39,7 +39,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

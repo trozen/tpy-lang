@@ -27,13 +27,13 @@ struct Container {
     }
 
     //     def set(self, val: T) -> None:
-    void set(tpy::param_val_or_ref_t<T> val) {
+    void set(::tpy::param_val_or_ref_t<T> val) {
         //         self.val = val
         this->val = val;
     }
 
     //     def get(self) -> T:
-    tpy::val_or_ref_t<T> get() {
+    ::tpy::val_or_ref_t<T> get() {
         //         return self.val
         return this->val;
     }
@@ -42,7 +42,7 @@ struct Container {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     os << "Container("
-       << "val=" << tpy::ValuePrinter(obj.val)
+       << "val=" << ::tpy::ValuePrinter(obj.val)
        << ")";
     return os;
 }
@@ -61,13 +61,13 @@ struct Pair {
     }
 
     //     def get_a(self) -> T:
-    tpy::val_or_ref_t<T> get_a() {
+    ::tpy::val_or_ref_t<T> get_a() {
         //         return self.a
         return this->a;
     }
 
     //     def get_b(self) -> U:
-    tpy::val_or_ref_t<U> get_b() {
+    ::tpy::val_or_ref_t<U> get_b() {
         //         return self.b
         return this->b;
     }
@@ -76,9 +76,9 @@ struct Pair {
 template<typename T, typename U>
 inline std::ostream& operator<<(std::ostream& os, const Pair<T, U>& obj) {
     os << "Pair("
-       << "a=" << tpy::ValuePrinter(obj.a)
+       << "a=" << ::tpy::ValuePrinter(obj.a)
        << ", "
-       << "b=" << tpy::ValuePrinter(obj.b)
+       << "b=" << ::tpy::ValuePrinter(obj.b)
        << ")";
     return os;
 }

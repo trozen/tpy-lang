@@ -10,18 +10,18 @@ std::string describe(const std::variant<Bird, Cat, Dog>& a) {
     if (std::holds_alternative<Dog>(a)) {
         auto& __a = std::get<Dog>(a);
         //         return "dog: " + a.name
-        return (tpy::str_concat("dog: ", __a.name));
+        return (::tpy::str_concat("dog: ", __a.name));
     //     elif isinstance(a, Cat):
     } else if (std::holds_alternative<Cat>(a)) {
         auto& __a = std::get<Cat>(a);
         //         return "cat: " + a.name
-        return (tpy::str_concat("cat: ", __a.name));
+        return (::tpy::str_concat("cat: ", __a.name));
     } else {
         //     elif isinstance(a, Bird):
         if (std::holds_alternative<Bird>(a)) {
             auto& __a = std::get<Bird>(a);
             //         return "bird: " + a.name
-            return (tpy::str_concat("bird: ", __a.name));
+            return (::tpy::str_concat("bird: ", __a.name));
         }
     }
     //     return "unknown"
@@ -56,7 +56,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

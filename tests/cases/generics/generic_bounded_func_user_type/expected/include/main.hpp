@@ -9,8 +9,8 @@ struct MyContainer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<tpy::Sized T>
-int32_t get_length(tpy::param_val_or_ref_t<T> item);
+template<::tpy::Sized T>
+int32_t get_length(::tpy::param_val_or_ref_t<T> item);
 void main();
 
 // class MyContainer:
@@ -25,26 +25,26 @@ struct MyContainer {
     //     def __len__(self) -> Int32:
     int32_t __len__() const {
         //         return len(self.data)
-        return tpy::__len__(this->data);
+        return ::tpy::__len__(this->data);
     }
 
     size_t size() const {
         auto len = __len__();
-        if (len < 0) tpy::tpy_panic("__len__ returned negative value");
+        if (len < 0) ::tpy::tpy_panic("__len__ returned negative value");
         return static_cast<size_t>(len);
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyContainer& obj) {
     os << "MyContainer("
-       << "data=" << tpy::ListPrinter(obj.data)
+       << "data=" << ::tpy::ListPrinter(obj.data)
        << ")";
     return os;
 }
 
 // def get_length[T: Sized](item: T) -> Int32:
-template<tpy::Sized T>
-int32_t get_length(tpy::param_val_or_ref_t<T> item) {
+template<::tpy::Sized T>
+int32_t get_length(::tpy::param_val_or_ref_t<T> item) {
     //     # Note: Can't call len(item) here yet - returning fixed value
     //     # This tests that the bound is validated during inference
     //     return 42

@@ -7,11 +7,11 @@ namespace tpy_user::main {
 // def test() -> None:
 void test() {
     //     pts = [Point(1), Point(2)]
-    std::vector<Point> pts = {Point(tpy::BigInt(1)), Point(tpy::BigInt(2))};
+    std::vector<Point> pts = {Point(::tpy::BigInt(1)), Point(::tpy::BigInt(2))};
     //     process(pts)
     process<Point>(pts);
     //     print(pts[0].x)  # 11: mutation was visible, so item was a ref not a copy
-    std::cout << tpy::__getitem__(pts, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
 }
 
 void __tpy_init() {
@@ -26,7 +26,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

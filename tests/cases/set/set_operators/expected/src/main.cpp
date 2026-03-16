@@ -7,67 +7,67 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     a: set[Int32] = {1, 2, 3}
-    tpy::ordered_set<int32_t> a = tpy::ordered_set<int32_t>({1, 2, 3});
+    ::tpy::ordered_set<int32_t> a = ::tpy::ordered_set<int32_t>({1, 2, 3});
     //     b: set[Int32] = {2, 3, 4}
-    tpy::ordered_set<int32_t> b = tpy::ordered_set<int32_t>({2, 3, 4});
+    ::tpy::ordered_set<int32_t> b = ::tpy::ordered_set<int32_t>({2, 3, 4});
     //     # Binary operators
     //     print(a | b)
-    std::cout << tpy::SetPrinter((tpy::set_union(a, b))) << "\n";
+    std::cout << ::tpy::SetPrinter((::tpy::set_union(a, b))) << "\n";
     //     print(a & b)
-    std::cout << tpy::SetPrinter((tpy::set_intersection(a, b))) << "\n";
+    std::cout << ::tpy::SetPrinter((::tpy::set_intersection(a, b))) << "\n";
     //     print(a - b)
-    std::cout << tpy::SetPrinter((tpy::set_difference(a, b))) << "\n";
+    std::cout << ::tpy::SetPrinter((::tpy::set_difference(a, b))) << "\n";
     //     print(a ^ b)
-    std::cout << tpy::SetPrinter((tpy::set_symmetric_difference(a, b))) << "\n";
+    std::cout << ::tpy::SetPrinter((::tpy::set_symmetric_difference(a, b))) << "\n";
     //     # Comparison operators (subset/superset)
     //     c: set[Int32] = {1, 2}
-    tpy::ordered_set<int32_t> c = tpy::ordered_set<int32_t>({1, 2});
+    ::tpy::ordered_set<int32_t> c = ::tpy::ordered_set<int32_t>({1, 2});
     //     print(c <= a)
-    std::cout << tpy::print_bool((c <= a)) << "\n";
+    std::cout << ::tpy::print_bool((c <= a)) << "\n";
     //     print(a <= a)
-    std::cout << tpy::print_bool((a <= a)) << "\n";
+    std::cout << ::tpy::print_bool((a <= a)) << "\n";
     //     print(c < a)
-    std::cout << tpy::print_bool((c < a)) << "\n";
+    std::cout << ::tpy::print_bool((c < a)) << "\n";
     //     print(a < a)
-    std::cout << tpy::print_bool((a < a)) << "\n";
+    std::cout << ::tpy::print_bool((a < a)) << "\n";
     //     print(a >= c)
-    std::cout << tpy::print_bool((a >= c)) << "\n";
+    std::cout << ::tpy::print_bool((a >= c)) << "\n";
     //     print(a > c)
-    std::cout << tpy::print_bool((a > c)) << "\n";
+    std::cout << ::tpy::print_bool((a > c)) << "\n";
     //     print(a > a)
-    std::cout << tpy::print_bool((a > a)) << "\n";
+    std::cout << ::tpy::print_bool((a > a)) << "\n";
     //     # Equality
     //     d: set[Int32] = {3, 2, 1}
-    tpy::ordered_set<int32_t> d = tpy::ordered_set<int32_t>({3, 2, 1});
+    ::tpy::ordered_set<int32_t> d = ::tpy::ordered_set<int32_t>({3, 2, 1});
     //     print(a == d)
-    std::cout << tpy::print_bool((a == d)) << "\n";
+    std::cout << ::tpy::print_bool((a == d)) << "\n";
     //     print(a != b)
-    std::cout << tpy::print_bool((a != b)) << "\n";
+    std::cout << ::tpy::print_bool((a != b)) << "\n";
     //     # In-place operators
     //     e: set[Int32] = {1, 2}
-    tpy::ordered_set<int32_t> e = tpy::ordered_set<int32_t>({1, 2});
+    ::tpy::ordered_set<int32_t> e = ::tpy::ordered_set<int32_t>({1, 2});
     //     e |= b
-    tpy::set_update(e, b);
+    ::tpy::set_update(e, b);
     //     print(e)
-    std::cout << tpy::SetPrinter(e) << "\n";
+    std::cout << ::tpy::SetPrinter(e) << "\n";
     //     f: set[Int32] = {1, 2, 3, 4}
-    tpy::ordered_set<int32_t> f = tpy::ordered_set<int32_t>({1, 2, 3, 4});
+    ::tpy::ordered_set<int32_t> f = ::tpy::ordered_set<int32_t>({1, 2, 3, 4});
     //     f &= a
-    tpy::set_intersection_update(f, a);
+    ::tpy::set_intersection_update(f, a);
     //     print(f)
-    std::cout << tpy::SetPrinter(f) << "\n";
+    std::cout << ::tpy::SetPrinter(f) << "\n";
     //     g: set[Int32] = {1, 2, 3}
-    tpy::ordered_set<int32_t> g = tpy::ordered_set<int32_t>({1, 2, 3});
+    ::tpy::ordered_set<int32_t> g = ::tpy::ordered_set<int32_t>({1, 2, 3});
     //     g -= b
-    tpy::set_difference_update(g, b);
+    ::tpy::set_difference_update(g, b);
     //     print(g)
-    std::cout << tpy::SetPrinter(g) << "\n";
+    std::cout << ::tpy::SetPrinter(g) << "\n";
     //     h: set[Int32] = {1, 2, 3}
-    tpy::ordered_set<int32_t> h = tpy::ordered_set<int32_t>({1, 2, 3});
+    ::tpy::ordered_set<int32_t> h = ::tpy::ordered_set<int32_t>({1, 2, 3});
     //     h ^= b
-    tpy::set_symmetric_difference_update(h, b);
+    ::tpy::set_symmetric_difference_update(h, b);
     //     print(h)
-    std::cout << tpy::SetPrinter(h) << "\n";
+    std::cout << ::tpy::SetPrinter(h) << "\n";
 }
 
 void __tpy_init() {
@@ -82,7 +82,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

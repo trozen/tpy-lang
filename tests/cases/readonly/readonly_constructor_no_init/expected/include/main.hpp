@@ -9,7 +9,7 @@ struct Logger;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-tpy::BigInt ok();
+::tpy::BigInt ok();
 
 // class Logger:
 struct Logger {

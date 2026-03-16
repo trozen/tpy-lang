@@ -16,7 +16,7 @@ void main() {
     Dog __tmp_1{Dog()};
     greet(__tmp_1);
     //     greet(Cat())
-    tpy::Adapter<DynNamed, Cat> __tmp_2{Cat()};
+    ::tpy::Adapter<DynNamed, Cat> __tmp_2{Cat()};
     greet(__tmp_2);
 }
 
@@ -32,7 +32,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

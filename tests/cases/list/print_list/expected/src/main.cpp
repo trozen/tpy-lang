@@ -17,20 +17,20 @@ void __tpy_init() {
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
     nums = &__global_slot_1;
     // print(nums)
-    std::cout << tpy::ListPrinter((*nums)) << "\n";
+    std::cout << ::tpy::ListPrinter((*nums)) << "\n";
     // print([10, 20, 30])
-    std::cout << tpy::ListPrinter(std::vector<int32_t>{10, 20, 30}) << "\n";
+    std::cout << ::tpy::ListPrinter(std::vector<int32_t>{10, 20, 30}) << "\n";
     // nested = [[1, 2], [3, 4]]
     static std::vector<std::vector<int32_t>> __global_slot_2 = {{1, 2}, {3, 4}};
     nested = &__global_slot_2;
     // print(nested)
-    std::cout << tpy::ListPrinter((*nested)) << "\n";
+    std::cout << ::tpy::ListPrinter((*nested)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

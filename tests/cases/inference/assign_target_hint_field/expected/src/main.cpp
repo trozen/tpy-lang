@@ -9,21 +9,21 @@ void main() {
     //     a = WithArray[Int32, 3]()
     WithArray<int32_t, 3> a = WithArray<int32_t, 3>();
     //     a.data[0] = Int32(10)
-    tpy::__setitem__(a.data, 0, 10);
+    ::tpy::__setitem__(a.data, 0, 10);
     //     print("array:", a.data[0])
-    std::cout << "array:" << " " << tpy::__getitem__(a.data, 0) << "\n";
+    std::cout << "array:" << " " << ::tpy::__getitem__(a.data, 0) << "\n";
     //     l = WithList[Int32]()
     WithList<int32_t> l = WithList<int32_t>();
     //     l.items.append(Int32(42))
     l.items.push_back(42);
     //     print("list:", l.items)
-    std::cout << "list:" << " " << tpy::ListPrinter(l.items) << "\n";
+    std::cout << "list:" << " " << ::tpy::ListPrinter(l.items) << "\n";
     //     d = WithDict[str, Int32]()
     WithDict<std::string, int32_t> d = WithDict<std::string, int32_t>();
     //     d.data["x"] = Int32(99)
-    tpy::__setitem__(d.data, "x", 99);
+    ::tpy::__setitem__(d.data, "x", 99);
     //     print("dict:", d.data)
-    std::cout << "dict:" << " " << tpy::DictPrinter(d.data) << "\n";
+    std::cout << "dict:" << " " << ::tpy::DictPrinter(d.data) << "\n";
     //     h = WithHeapStorage[Int32](Int32(7))
     WithHeapStorage<int32_t> h = WithHeapStorage<int32_t>(7);
     //     print("heap:", h.get())
@@ -45,7 +45,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

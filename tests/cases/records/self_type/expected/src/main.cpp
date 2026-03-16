@@ -45,7 +45,7 @@ void test_generic() {
     //     s.push(Int32(10)).push(Int32(20)).push(Int32(30))
     s.push(10).push(20).push(30);
     //     print(len(s.items))
-    std::cout << tpy::__len__(s.items) << "\n";
+    std::cout << ::tpy::__len__(s.items) << "\n";
     //     print(s.describe())
     std::cout << s.describe() << "\n";
 }
@@ -64,7 +64,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

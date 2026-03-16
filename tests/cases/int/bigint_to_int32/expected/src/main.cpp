@@ -45,14 +45,14 @@ int32_t takes_int32(int32_t x) {
 
 // # 2. Return statement: BigInt returned as Int32
 // def return_as_int32(x: int) -> Int32:
-int32_t return_as_int32(const tpy::BigInt& x) {
+int32_t return_as_int32(const ::tpy::BigInt& x) {
     //     return x
     return (x).to_fixed_check<int32_t>();
 }
 
 // # 3. Variable declaration: BigInt assigned to Int32 var
 // def var_decl_test(x: int) -> Int32:
-int32_t var_decl_test(const tpy::BigInt& x) {
+int32_t var_decl_test(const ::tpy::BigInt& x) {
     //     result: Int32 = x
     int32_t result = (x).to_fixed_check<int32_t>();
     //     return result
@@ -61,7 +61,7 @@ int32_t var_decl_test(const tpy::BigInt& x) {
 
 // # 4. Assignment: BigInt assigned to Int32 var
 // def assign_test(x: int) -> Int32:
-int32_t assign_test(const tpy::BigInt& x) {
+int32_t assign_test(const ::tpy::BigInt& x) {
     //     result: Int32 = 0
     int32_t result = 0;
     //     result = x
@@ -72,14 +72,14 @@ int32_t assign_test(const tpy::BigInt& x) {
 
 // # 5. For loop with BigInt bound
 // def loop_test(n: int) -> Int32:
-int32_t loop_test(const tpy::BigInt& n) {
+int32_t loop_test(const ::tpy::BigInt& n) {
     //     total: Int32 = 0
     int32_t total = 0;
     //     for i in range(n):
-    tpy::BigInt __stop_0 = n;
-    for (tpy::BigInt i = 0; i < __stop_0; ++i) {
+    ::tpy::BigInt __stop_0 = n;
+    for (::tpy::BigInt i = 0; i < __stop_0; ++i) {
         //         total += 1
-        total = tpy::add_check<int32_t>(total, 1);
+        total = ::tpy::add_check<int32_t>(total, 1);
     }
     //     return total
     return total;
@@ -87,7 +87,7 @@ int32_t loop_test(const tpy::BigInt& n) {
 
 // # 6. Int32() constructor from BigInt
 // def constructor_test(x: int) -> Int32:
-int32_t constructor_test(const tpy::BigInt& x) {
+int32_t constructor_test(const ::tpy::BigInt& x) {
     //     return Int32(x)
     return (x).to_fixed_check<int32_t>();
 }
@@ -95,7 +95,7 @@ int32_t constructor_test(const tpy::BigInt& x) {
 // def literal_ops_local() -> Int32:
 int32_t literal_ops_local() {
     //     x: Int32 = 100 + 200
-    int32_t x = tpy::add_check<int32_t>(100, 200);
+    int32_t x = ::tpy::add_check<int32_t>(100, 200);
     //     return x
     return x;
 }
@@ -107,15 +107,15 @@ void __tpy_init() {
 
     // # 7. Literal arithmetic: BigInt result assigned to Int32
     // a: Int32 = 1 + 2           # addition
-    a = tpy::add_check<int32_t>(1, 2);
+    a = ::tpy::add_check<int32_t>(1, 2);
     // b: Int32 = 10 - 3          # subtraction
-    b = tpy::sub_check<int32_t>(10, 3);
+    b = ::tpy::sub_check<int32_t>(10, 3);
     // c: Int32 = 4 * 5           # multiplication
-    c = tpy::mul_check<int32_t>(4, 5);
+    c = ::tpy::mul_check<int32_t>(4, 5);
     // d: Int32 = 17 // 3         # division
-    d = tpy::div_check<int32_t>(17, 3);
+    d = ::tpy::div_check<int32_t>(17, 3);
     // e: Int32 = 2 ** 10         # power
-    e = tpy::pow_check<int32_t>(2, 10);
+    e = ::tpy::pow_check<int32_t>(2, 10);
     // # Test all conversions
     // n = 5
     n = 5;
@@ -126,27 +126,27 @@ void __tpy_init() {
     std::cout << result1 << "\n";
     // # Return as Int32
     // result2 = return_as_int32(10)
-    result2 = return_as_int32(tpy::BigInt(10));
+    result2 = return_as_int32(::tpy::BigInt(10));
     // print(result2)
     std::cout << result2 << "\n";
     // # Variable declaration
     // result3 = var_decl_test(15)
-    result3 = var_decl_test(tpy::BigInt(15));
+    result3 = var_decl_test(::tpy::BigInt(15));
     // print(result3)
     std::cout << result3 << "\n";
     // # Assignment
     // result4 = assign_test(20)
-    result4 = assign_test(tpy::BigInt(20));
+    result4 = assign_test(::tpy::BigInt(20));
     // print(result4)
     std::cout << result4 << "\n";
     // # For loop
     // result5 = loop_test(3)
-    result5 = loop_test(tpy::BigInt(3));
+    result5 = loop_test(::tpy::BigInt(3));
     // print(result5)
     std::cout << result5 << "\n";
     // # Int32() constructor
     // result6 = constructor_test(25)
-    result6 = constructor_test(tpy::BigInt(25));
+    result6 = constructor_test(::tpy::BigInt(25));
     // print(result6)
     std::cout << result6 << "\n";
     // # Literal arithmetic (global)
@@ -168,7 +168,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

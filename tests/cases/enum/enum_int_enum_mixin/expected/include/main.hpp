@@ -25,7 +25,7 @@ struct tpy::EnumUtil<tpy_user::main::SmallEnum> {
 namespace tpy_user::main {
 
 inline std::ostream& operator<<(std::ostream& __os, SmallEnum __e) {
-    return __os << "SmallEnum." << tpy::EnumUtil<SmallEnum>::name(__e);
+    return __os << "SmallEnum." << ::tpy::EnumUtil<SmallEnum>::name(__e);
 }
 
 inline constexpr std::string_view __name__ = "__main__";

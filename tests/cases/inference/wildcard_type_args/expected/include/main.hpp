@@ -13,11 +13,11 @@ template<typename T> struct Mapper;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x);
+::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x);
 template<typename T, typename U>
-tpy::val_or_ref_t<T> pair_func(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<U> b);
+::tpy::val_or_ref_t<T> pair_func(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b);
 template<typename A, typename B, typename C>
-tpy::val_or_ref_t<B> triple(tpy::param_val_or_ref_t<A> a, tpy::param_val_or_ref_t<B> b, tpy::param_val_or_ref_t<C> c);
+::tpy::val_or_ref_t<B> triple(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t<B> b, ::tpy::param_val_or_ref_t<C> c);
 void take_box(Box<int32_t>& b);
 void main();
 
@@ -32,7 +32,7 @@ struct Box {
     explicit Box(const T& val) : val(val) {}
 
     //     def get(self) -> T:
-    tpy::val_or_ref_t<T> get() {
+    ::tpy::val_or_ref_t<T> get() {
         //         return self.val
         return this->val;
     }
@@ -41,7 +41,7 @@ struct Box {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     os << "Box("
-       << "val=" << tpy::ValuePrinter(obj.val)
+       << "val=" << ::tpy::ValuePrinter(obj.val)
        << ")";
     return os;
 }
@@ -62,9 +62,9 @@ struct Pair {
 template<typename T, typename U>
 inline std::ostream& operator<<(std::ostream& os, const Pair<T, U>& obj) {
     os << "Pair("
-       << "a=" << tpy::ValuePrinter(obj.a)
+       << "a=" << ::tpy::ValuePrinter(obj.a)
        << ", "
-       << "b=" << tpy::ValuePrinter(obj.b)
+       << "b=" << ::tpy::ValuePrinter(obj.b)
        << ")";
     return os;
 }
@@ -81,13 +81,13 @@ struct Container {
     }
 
     //     def set(self, val: T) -> None:
-    void set(tpy::param_val_or_ref_t<T> val) {
+    void set(::tpy::param_val_or_ref_t<T> val) {
         //         self.val = val
         this->val = val;
     }
 
     //     def get(self) -> T:
-    tpy::val_or_ref_t<T> get() {
+    ::tpy::val_or_ref_t<T> get() {
         //         return self.val
         return this->val;
     }
@@ -96,7 +96,7 @@ struct Container {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     os << "Container("
-       << "val=" << tpy::ValuePrinter(obj.val)
+       << "val=" << ::tpy::ValuePrinter(obj.val)
        << ")";
     return os;
 }
@@ -113,7 +113,7 @@ struct Mapper {
 
     //     def transform[U, V](self, u: U, v: V) -> V:
     template<typename U, typename V>
-    tpy::val_or_cref_t<V> transform(const U& u, const V& v) const {
+    ::tpy::val_or_cref_t<V> transform(const U& u, const V& v) const {
         //         return v
         return v;
     }
@@ -122,26 +122,26 @@ struct Mapper {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Mapper<T>& obj) {
     os << "Mapper("
-       << "val=" << tpy::ValuePrinter(obj.val)
+       << "val=" << ::tpy::ValuePrinter(obj.val)
        << ")";
     return os;
 }
 
 // def identity[T](x: T) -> T:
 template<typename T>
-tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x) {
+::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
     //     return x
     return x;
 }
 // def pair_func[T, U](a: T, b: U) -> T:
 template<typename T, typename U>
-tpy::val_or_ref_t<T> pair_func(tpy::param_val_or_ref_t<T> a, tpy::param_val_or_ref_t<U> b) {
+::tpy::val_or_ref_t<T> pair_func(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
     //     return a
     return a;
 }
 // def triple[A, B, C](a: A, b: B, c: C) -> B:
 template<typename A, typename B, typename C>
-tpy::val_or_ref_t<B> triple(tpy::param_val_or_ref_t<A> a, tpy::param_val_or_ref_t<B> b, tpy::param_val_or_ref_t<C> c) {
+::tpy::val_or_ref_t<B> triple(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t<B> b, ::tpy::param_val_or_ref_t<C> c) {
     //     return b
     return b;
 }

@@ -11,7 +11,7 @@ int64_t a{};
 int64_t b{};
 // # Out-of-range literal should promote to BigInt with warning.
 // c = 2 ** 70  # tpyc: warning(/outside default Int64 range/)
-tpy::BigInt c;
+::tpy::BigInt c;
 // # List literal elements should be Int64.
 // items = [10, 20, 30]
 std::vector<int64_t>* items{};
@@ -23,17 +23,17 @@ void __tpy_init() {
 
     // # Int64 default: in-range literals should stay fixed-int.
     // a = 2 ** 40
-    a = tpy::pow_check<int64_t>(2, 40);
+    a = ::tpy::pow_check<int64_t>(2, 40);
     // print(a)
     std::cout << a << "\n";
     // # Still supports regular arithmetic in fixed-int mode.
     // b = 10
     b = 10;
     // print(a + b)
-    std::cout << (tpy::add_check<int64_t>(a, b)) << "\n";
+    std::cout << (::tpy::add_check<int64_t>(a, b)) << "\n";
     // # Out-of-range literal should promote to BigInt with warning.
     // c = 2 ** 70  # tpyc: warning(/outside default Int64 range/)
-    c = ((tpy::BigInt(2)).pow(tpy::BigInt(70)));
+    c = ((::tpy::BigInt(2)).pow(::tpy::BigInt(70)));
     // print(c)
     std::cout << c << "\n";
     // # range() should use Int64 loop variable.
@@ -47,13 +47,13 @@ void __tpy_init() {
     static std::vector<int64_t> __global_slot_1 = {10, 20, 30};
     items = &__global_slot_1;
     // print(items[0])
-    std::cout << tpy::__getitem__((*items), 0) << "\n";
+    std::cout << ::tpy::__getitem__((*items), 0) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -8,13 +8,13 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     d = {"a": 1, "b": 2, "c": 3}
-    tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
     //     d["a"] = 10
-    tpy::__setitem__(d, "a", 10);
+    ::tpy::__setitem__(d, "a", 10);
     //     d["b"] = 20
-    tpy::__setitem__(d, "b", 20);
+    ::tpy::__setitem__(d, "b", 20);
     //     print(d)
-    std::cout << tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n";
     //     for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
@@ -38,7 +38,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

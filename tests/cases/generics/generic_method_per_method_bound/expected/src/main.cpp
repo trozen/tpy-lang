@@ -15,7 +15,7 @@ void main() {
     //     c.add(Int32(20))
     c.add(20);
     //     print(c.is_sorted())
-    std::cout << tpy::print_bool(c.is_sorted()) << "\n";
+    std::cout << ::tpy::print_bool(c.is_sorted()) << "\n";
     //     c2: Container[Int32] = Container[Int32]()
     Container<int32_t> c2 = Container<int32_t>();
     //     c2.add(Int32(1))
@@ -25,7 +25,7 @@ void main() {
     //     c2.add(Int32(3))
     c2.add(3);
     //     print(c2.is_sorted())
-    std::cout << tpy::print_bool(c2.is_sorted()) << "\n";
+    std::cout << ::tpy::print_bool(c2.is_sorted()) << "\n";
 }
 
 void __tpy_init() {
@@ -40,7 +40,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

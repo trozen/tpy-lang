@@ -36,7 +36,7 @@ struct Pair {
     //     def __repr__(self) -> str:
     std::string __repr__() const {
         //         return str(self.key) + ":" + str(self.tag)
-        return (tpy::str_concat((tpy::str_concat(tpy::fixed_to_str<int32_t>(this->key), ":")), tpy::fixed_to_str<int32_t>(this->tag)));
+        return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(this->key), ":")), ::tpy::fixed_to_str<int32_t>(this->tag)));
     }
 
     friend bool operator<(const Pair& lhs, const Pair& other) {

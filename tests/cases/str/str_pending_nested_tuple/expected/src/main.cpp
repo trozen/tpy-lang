@@ -6,7 +6,7 @@ namespace tpy_user::main {
 
 // # StrView-promoted local used in nested tuple's str slot must become owned str
 // def pick(flag: bool) -> tuple[int, tuple[str, bool]]:
-std::tuple<tpy::BigInt, std::tuple<std::string, bool>> pick(bool flag) {
+std::tuple<::tpy::BigInt, std::tuple<std::string, bool>> pick(bool flag) {
     //     label: str = "no"
     std::string_view label = "no";
     //     if flag:
@@ -15,7 +15,7 @@ std::tuple<tpy::BigInt, std::tuple<std::string, bool>> pick(bool flag) {
         label = "yes";
     }
     //     return 0, (label, flag)
-    return std::tuple<tpy::BigInt, std::tuple<std::string, bool>>{tpy::BigInt(0), std::tuple<std::string, bool>{std::string(label), flag}};
+    return std::tuple<::tpy::BigInt, std::tuple<std::string, bool>>{::tpy::BigInt(0), std::tuple<std::string, bool>{std::string(label), flag}};
 }
 
 void __tpy_init() {
@@ -24,15 +24,15 @@ void __tpy_init() {
     initialized = true;
 
     // print(pick(True))
-    std::cout << tpy::TuplePrinter(pick(true)) << "\n";
+    std::cout << ::tpy::TuplePrinter(pick(true)) << "\n";
     // print(pick(False))
-    std::cout << tpy::TuplePrinter(pick(false)) << "\n";
+    std::cout << ::tpy::TuplePrinter(pick(false)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

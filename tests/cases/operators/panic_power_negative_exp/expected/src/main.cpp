@@ -22,13 +22,13 @@ void __tpy_init() {
     // y = -1
     y = -1;
     // z = x ** y  # Should panic
-    z = (tpy::pow_check<int32_t>(x, y));
+    z = (::tpy::pow_check<int32_t>(x, y));
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -25,7 +25,7 @@ struct Helper {
     //     def add(a: Int32, b: Int32) -> Int32:
     static int32_t add(int32_t a, int32_t b) {
         //         return a + b
-        return (tpy::add_check<int32_t>(a, b));
+        return (::tpy::add_check<int32_t>(a, b));
     }
 
     //     def get(self) -> Int32:

@@ -15,7 +15,7 @@ void main() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         a[0:1] = [99]  # tpyc: warning(/Mutation of 'a'.*while borrowed/)
-        tpy::list_set_slice(a, 0, 1, std::vector<int32_t>{99});
+        ::tpy::list_set_slice(a, 0, 1, std::vector<int32_t>{99});
         //         break
         break;
     }
@@ -33,7 +33,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

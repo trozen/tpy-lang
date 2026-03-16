@@ -4,18 +4,18 @@
 namespace tpy_user::main {
 
 // B: int = 1 << 62
-tpy::BigInt B;
+::tpy::BigInt B;
 // SMALL_MAX: int = B - 1
-tpy::BigInt SMALL_MAX;
+::tpy::BigInt SMALL_MAX;
 // SMALL_MIN: int = -B
-tpy::BigInt SMALL_MIN;
+::tpy::BigInt SMALL_MIN;
 // BIG_POS: int = B
-tpy::BigInt BIG_POS;
+::tpy::BigInt BIG_POS;
 // BIG_NEG: int = -B - 1
-tpy::BigInt BIG_NEG;
+::tpy::BigInt BIG_NEG;
 
 // def show_mul(label: str, a: int, b: int) -> None:
-void show_mul(std::string_view label, const tpy::BigInt& a, const tpy::BigInt& b) {
+void show_mul(std::string_view label, const ::tpy::BigInt& a, const ::tpy::BigInt& b) {
     //     print(label)
     std::cout << label << "\n";
     //     print(a)
@@ -32,35 +32,35 @@ void __tpy_init() {
     initialized = true;
 
     // B: int = 1 << 62
-    B = ((tpy::BigInt(1)) << (tpy::BigInt(62)));
+    B = ((::tpy::BigInt(1)) << (::tpy::BigInt(62)));
     // SMALL_MAX: int = B - 1
-    SMALL_MAX = ((B) - (tpy::BigInt(1)));
+    SMALL_MAX = ((B) - (::tpy::BigInt(1)));
     // SMALL_MIN: int = -B
     SMALL_MIN = -(B);
     // BIG_POS: int = B
     BIG_POS = B;
     // BIG_NEG: int = -B - 1
-    BIG_NEG = ((-(B)) - (tpy::BigInt(1)));
+    BIG_NEG = ((-(B)) - (::tpy::BigInt(1)));
     // # small * small -> small
     // show_mul("mul_small_small_stays_small", SMALL_MAX, 1)
-    show_mul("mul_small_small_stays_small", SMALL_MAX, tpy::BigInt(1));
+    show_mul("mul_small_small_stays_small", SMALL_MAX, ::tpy::BigInt(1));
     // show_mul("mul_small_small_zero", SMALL_MIN, 0)
-    show_mul("mul_small_small_zero", SMALL_MIN, tpy::BigInt(0));
+    show_mul("mul_small_small_zero", SMALL_MIN, ::tpy::BigInt(0));
     // # small * small -> large (cross boundary)
     // show_mul("mul_small_small_to_large_pos", SMALL_MAX, 2)
-    show_mul("mul_small_small_to_large_pos", SMALL_MAX, tpy::BigInt(2));
+    show_mul("mul_small_small_to_large_pos", SMALL_MAX, ::tpy::BigInt(2));
     // show_mul("mul_small_small_to_large_neg", SMALL_MIN, -1)
-    show_mul("mul_small_small_to_large_neg", SMALL_MIN, tpy::BigInt(-1));
+    show_mul("mul_small_small_to_large_neg", SMALL_MIN, ::tpy::BigInt(-1));
     // # small * large -> large
     // show_mul("mul_small_large_to_large_1", SMALL_MAX, BIG_POS)
     show_mul("mul_small_large_to_large_1", SMALL_MAX, BIG_POS);
     // show_mul("mul_small_large_to_large_2", -1, BIG_POS)
-    show_mul("mul_small_large_to_large_2", tpy::BigInt(-1), BIG_POS);
+    show_mul("mul_small_large_to_large_2", ::tpy::BigInt(-1), BIG_POS);
     // # large * small -> large (or exact-boundary canonicalization to small)
     // show_mul("mul_large_small_large", BIG_POS, 2)
-    show_mul("mul_large_small_large", BIG_POS, tpy::BigInt(2));
+    show_mul("mul_large_small_large", BIG_POS, ::tpy::BigInt(2));
     // show_mul("mul_large_small_back_to_small", BIG_POS, -1)
-    show_mul("mul_large_small_back_to_small", BIG_POS, tpy::BigInt(-1));
+    show_mul("mul_large_small_back_to_small", BIG_POS, ::tpy::BigInt(-1));
     // # large * large -> large
     // show_mul("mul_large_large", BIG_POS, BIG_NEG)
     show_mul("mul_large_large", BIG_POS, BIG_NEG);
@@ -68,13 +68,13 @@ void __tpy_init() {
     // print("add_sub_boundary")
     std::cout << "add_sub_boundary" << "\n";
     // print(SMALL_MAX + 1)      # small -> large
-    std::cout << ((SMALL_MAX) + (tpy::BigInt(1))) << "\n";
+    std::cout << ((SMALL_MAX) + (::tpy::BigInt(1))) << "\n";
     // print(BIG_POS - 1)        # large -> small
-    std::cout << ((BIG_POS) - (tpy::BigInt(1))) << "\n";
+    std::cout << ((BIG_POS) - (::tpy::BigInt(1))) << "\n";
     // print(BIG_NEG + 1)        # large -> small (SMALL_MIN)
-    std::cout << ((BIG_NEG) + (tpy::BigInt(1))) << "\n";
+    std::cout << ((BIG_NEG) + (::tpy::BigInt(1))) << "\n";
     // print(SMALL_MIN - 1)      # small -> large
-    std::cout << ((SMALL_MIN) - (tpy::BigInt(1))) << "\n";
+    std::cout << ((SMALL_MIN) - (::tpy::BigInt(1))) << "\n";
     // print(BIG_POS + BIG_NEG)  # exact small result (-1)
     std::cout << ((BIG_POS) + (BIG_NEG)) << "\n";
     // print(BIG_POS - BIG_POS)  # exact small result (0)
@@ -83,13 +83,13 @@ void __tpy_init() {
     // print("div_mod_boundary")
     std::cout << "div_mod_boundary" << "\n";
     // print(BIG_POS // 2)         # small
-    std::cout << ((BIG_POS) / (tpy::BigInt(2))) << "\n";
+    std::cout << ((BIG_POS) / (::tpy::BigInt(2))) << "\n";
     // print(BIG_POS % 2)          # small
-    std::cout << ((BIG_POS) % (tpy::BigInt(2))) << "\n";
+    std::cout << ((BIG_POS) % (::tpy::BigInt(2))) << "\n";
     // print((BIG_NEG + 1) // 2)   # small
-    std::cout << ((((BIG_NEG) + (tpy::BigInt(1)))) / (tpy::BigInt(2))) << "\n";
+    std::cout << ((((BIG_NEG) + (::tpy::BigInt(1)))) / (::tpy::BigInt(2))) << "\n";
     // print((BIG_NEG + 1) % 2)    # small
-    std::cout << ((((BIG_NEG) + (tpy::BigInt(1)))) % (tpy::BigInt(2))) << "\n";
+    std::cout << ((((BIG_NEG) + (::tpy::BigInt(1)))) % (::tpy::BigInt(2))) << "\n";
     // # Fixed-width conversion sanity around boundary values.
     // print("fixed_width_conversions")
     std::cout << "fixed_width_conversions" << "\n";
@@ -98,15 +98,15 @@ void __tpy_init() {
     // print(Int64(SMALL_MIN))
     std::cout << (SMALL_MIN).to_fixed_check<int64_t>() << "\n";
     // print(Int64(BIG_POS - 1))
-    std::cout << (((BIG_POS) - (tpy::BigInt(1)))).to_fixed_check<int64_t>() << "\n";
+    std::cout << (((BIG_POS) - (::tpy::BigInt(1)))).to_fixed_check<int64_t>() << "\n";
     // print(Int64(BIG_NEG + 1))
-    std::cout << (((BIG_NEG) + (tpy::BigInt(1)))).to_fixed_check<int64_t>() << "\n";
+    std::cout << (((BIG_NEG) + (::tpy::BigInt(1)))).to_fixed_check<int64_t>() << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

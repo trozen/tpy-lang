@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def add(a: tp.Int32, b: tp.Int32) -> tp.Int32:
 int32_t add(int32_t a, int32_t b) {
     //     return a + b
-    return (tpy::add_check<int32_t>(a, b));
+    return (::tpy::add_check<int32_t>(a, b));
 }
 
 // def main():
@@ -32,7 +32,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -8,7 +8,7 @@ namespace tpy_user::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 void greet(std::string_view name, std::string_view greeting = "Hello", std::string_view punctuation = "!");
-tpy::BigInt compute(const tpy::BigInt& a, const tpy::BigInt& b, const tpy::BigInt& c);
+::tpy::BigInt compute(const ::tpy::BigInt& a, const ::tpy::BigInt& b, const ::tpy::BigInt& c);
 void main();
 
 void __tpy_init();

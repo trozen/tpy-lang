@@ -33,11 +33,11 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 // class Cat:
 struct Cat {
     //     lives: int
-    tpy::BigInt lives;
+    ::tpy::BigInt lives;
 
     //     def __init__(self, lives: int) -> None:
     Cat() = default;
-    explicit Cat(const tpy::BigInt& lives) : lives(lives) {}
+    explicit Cat(const ::tpy::BigInt& lives) : lives(lives) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
@@ -50,29 +50,29 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // class Vet:
 struct Vet {
     //     count: int
-    tpy::BigInt count;
+    ::tpy::BigInt count;
 
     //     def __init__(self) -> None:
-    Vet() : count(tpy::BigInt(0)) {}
+    Vet() : count(::tpy::BigInt(0)) {}
 
     //     @overload
     //     def treat(self, animal: Dog) -> str: ...
     std::string treat(Dog& animal) {
         //         self.count = self.count + 1
-        this->count = ((this->count) + (tpy::BigInt(1)));
+        this->count = ((this->count) + (::tpy::BigInt(1)));
         //         if isinstance(animal, Dog):
         //             return "Treated dog: " + animal.name
-        return (tpy::str_concat("Treated dog: ", animal.name));
+        return (::tpy::str_concat("Treated dog: ", animal.name));
     }
 
     //     @overload
     //     def treat(self, animal: Cat) -> str: ...
     std::string treat(Cat& animal) {
         //         self.count = self.count + 1
-        this->count = ((this->count) + (tpy::BigInt(1)));
+        this->count = ((this->count) + (::tpy::BigInt(1)));
         //         if isinstance(animal, Dog):
         //             return "Treated cat with " + str(animal.lives) + " lives"
-        return (tpy::str_concat((tpy::str_concat("Treated cat with ", (animal.lives).to_string())), " lives"));
+        return (::tpy::str_concat((::tpy::str_concat("Treated cat with ", (animal.lives).to_string())), " lives"));
     }
 };
 

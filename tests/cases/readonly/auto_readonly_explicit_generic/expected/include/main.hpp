@@ -22,7 +22,7 @@ struct Vec {
     Vec() : _data(std::vector<T>{}) {}
 
     //     def push(self, v: T) -> None:
-    void push(tpy::param_val_or_ref_t<T> v) {
+    void push(::tpy::param_val_or_ref_t<T> v) {
         //         self._data.append(v)
         auto __tmp_1 = v;
         this->_data.push_back(std::move(__tmp_1));
@@ -32,21 +32,21 @@ struct Vec {
     //     def data(self) -> Span[auto_readonly[T]]:
     std::span<T> data() {
         //         return self._data
-        return tpy::as_mut_span(this->_data);
+        return ::tpy::as_mut_span(this->_data);
     }
 
     //     @auto_readonly
     //     def data(self) -> Span[auto_readonly[T]]:
     std::span<const T> data() const {
         //         return self._data
-        return tpy::as_span(this->_data);
+        return ::tpy::as_span(this->_data);
     }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Vec<T>& obj) {
     os << "Vec("
-       << "_data=" << tpy::ListPrinter(obj._data)
+       << "_data=" << ::tpy::ListPrinter(obj._data)
        << ")";
     return os;
 }

@@ -9,13 +9,13 @@ void main() {
     //     c: Circle | Rect = Circle(5.0)
     std::variant<Circle, Rect> c = Circle(5.0);
     //     print(c.radius)
-    std::cout << tpy::print_float(std::get<Circle>(c).radius) << "\n";
+    std::cout << ::tpy::print_float(std::get<Circle>(c).radius) << "\n";
     //     r: Circle | Rect = Rect(3.0, 4.0)
     std::variant<Circle, Rect> r = Rect(3.0, 4.0);
     //     print(r.width)
-    std::cout << tpy::print_float(std::get<Rect>(r).width) << "\n";
+    std::cout << ::tpy::print_float(std::get<Rect>(r).width) << "\n";
     //     print(r.height)
-    std::cout << tpy::print_float(std::get<Rect>(r).height) << "\n";
+    std::cout << ::tpy::print_float(std::get<Rect>(r).height) << "\n";
 }
 
 void __tpy_init() {
@@ -30,7 +30,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

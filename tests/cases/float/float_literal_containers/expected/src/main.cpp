@@ -11,7 +11,7 @@ void test_list_inferred() {
     //     xs.append(4.5)
     xs.push_back(4.5);
     //     print(xs)
-    std::cout << tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_list_annotated_float32() -> None:
@@ -19,23 +19,23 @@ void test_list_annotated_float32() {
     //     xs: list[Float32] = [1.0, 2.0, 3.0]  # tpyc: type(list[Float32])
     std::vector<float> xs = {1.0, 2.0, 3.0};
     //     print(xs)
-    std::cout << tpy::ListPrinter(xs) << "\n";
+    std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_dict_inferred() -> None:
 void test_dict_inferred() {
     //     d = {"a": 1.5, "b": 2.5}  # tpyc: type(dict[str, float])
-    tpy::ordered_map<std::string, double> d = tpy::ordered_map<std::string, double>({{"a", 1.5}, {"b", 2.5}});
+    ::tpy::ordered_map<std::string, double> d = ::tpy::ordered_map<std::string, double>({{"a", 1.5}, {"b", 2.5}});
     //     print(d)
-    std::cout << tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
 // def test_set_inferred() -> None:
 void test_set_inferred() {
     //     s = {1.5, 2.5, 3.5}  # tpyc: type(set[float])
-    tpy::ordered_set<double> s = tpy::ordered_set<double>({1.5, 2.5, 3.5});
+    ::tpy::ordered_set<double> s = ::tpy::ordered_set<double>({1.5, 2.5, 3.5});
     //     print(s)
-    std::cout << tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n";
 }
 
 // def test_ternary_float_literal() -> None:
@@ -45,7 +45,7 @@ void test_ternary_float_literal() {
     //     y = x if True else 2.0  # tpyc: type(Float32)
     float y = ((true) ? (x) : (2.0f));
     //     print(y)
-    std::cout << tpy::print_float(static_cast<double>(y)) << "\n";
+    std::cout << ::tpy::print_float(static_cast<double>(y)) << "\n";
 }
 
 // def test_annotated_float64() -> None:
@@ -53,7 +53,7 @@ void test_annotated_float64() {
     //     b: float = 5.0  # tpyc: type(float)
     double b = 5.0;
     //     print(b)
-    std::cout << tpy::print_float(b) << "\n";
+    std::cout << ::tpy::print_float(b) << "\n";
 }
 
 void __tpy_init() {
@@ -78,7 +78,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

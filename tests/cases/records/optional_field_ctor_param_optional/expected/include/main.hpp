@@ -46,12 +46,12 @@ struct Edge {
 
     //     def __init__(self, p: Point | None):
     Edge() = default;
-    explicit Edge(const Point* p) : target(tpy::ptr_to_optional(p)) {}
+    explicit Edge(const Point* p) : target(::tpy::ptr_to_optional(p)) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Edge& obj) {
     os << "Edge("
-       << "target=" << tpy::print_optional_val(obj.target)
+       << "target=" << ::tpy::print_optional_val(obj.target)
        << ")";
     return os;
 }

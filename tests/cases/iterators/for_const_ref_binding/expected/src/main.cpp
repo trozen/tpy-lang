@@ -33,7 +33,7 @@ void test_read_only_loop() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
         //         total = total + p.value()
-        total = (tpy::add_check<int32_t>(total, p.value()));
+        total = (::tpy::add_check<int32_t>(total, p.value()));
     }
     //     print(total)
     std::cout << total << "\n";
@@ -53,7 +53,7 @@ void test_non_readonly_method_loop() {
         lst.push_back(99);
     }
     //     print(len(items[Int32(0)]))
-    std::cout << tpy::__len__(tpy::__getitem__(items, 0)) << "\n";
+    std::cout << ::tpy::__len__(::tpy::__getitem__(items, 0)) << "\n";
 }
 
 // def test_field_mutate_loop() -> None:
@@ -70,7 +70,7 @@ void test_field_mutate_loop() {
         p.x = 99;
     }
     //     print(items[Int32(0)].x)
-    std::cout << tpy::__getitem__(items, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).x << "\n";
 }
 
 // def test_nested_field_mutate_loop() -> None:
@@ -87,7 +87,7 @@ void test_nested_field_mutate_loop() {
         c.items.push_back(99);
     }
     //     print(len(items[Int32(0)].items))
-    std::cout << tpy::__len__(tpy::__getitem__(items, 0).items) << "\n";
+    std::cout << ::tpy::__len__(::tpy::__getitem__(items, 0).items) << "\n";
 }
 
 // def test_assign_to_local_loop() -> None:
@@ -142,7 +142,7 @@ void test_pass_to_mutating_func() {
         mutate_point(p);
     }
     //     print(items[Int32(0)].x)
-    std::cout << tpy::__getitem__(items, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).x << "\n";
 }
 
 // def test_pass_to_readonly_func() -> None:
@@ -158,7 +158,7 @@ void test_pass_to_readonly_func() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
         //         total = total + read_point(p)
-        total = (tpy::add_check<int32_t>(total, read_point(p)));
+        total = (::tpy::add_check<int32_t>(total, read_point(p)));
     }
     //     print(total)
     std::cout << total << "\n";
@@ -180,7 +180,7 @@ void test_ptr_from_loop_var() {
         ptr->x = 42;
     }
     //     print(items[Int32(0)].x)
-    std::cout << tpy::__getitem__(items, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(items, 0).x << "\n";
 }
 
 // def test_value_type_loop() -> None:
@@ -196,7 +196,7 @@ void test_value_type_loop() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t n = *__beg_0;
         //         total = total + n
-        total = (tpy::add_check<int32_t>(total, n));
+        total = (::tpy::add_check<int32_t>(total, n));
     }
     //     print(total)
     std::cout << total << "\n";
@@ -224,7 +224,7 @@ void test_sequential_loops_same_var() {
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& p = *__beg_1;
         //         total = total + p.value()
-        total = (tpy::add_check<int32_t>(total, p.value()));
+        total = (::tpy::add_check<int32_t>(total, p.value()));
     }
     //     print(total)
     std::cout << total << "\n";
@@ -233,15 +233,15 @@ void test_sequential_loops_same_var() {
 // def test_bigint_const_ref() -> None:
 void test_bigint_const_ref() {
     //     items: list[int] = [10, 20, 30]
-    std::vector<tpy::BigInt> items = {10, 20, 30};
+    std::vector<::tpy::BigInt> items = {10, 20, 30};
     //     total: int = 0
-    tpy::BigInt total = tpy::BigInt(0);
+    ::tpy::BigInt total = ::tpy::BigInt(0);
     //     for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        const tpy::BigInt& x = *__beg_0;
+        const ::tpy::BigInt& x = *__beg_0;
         //         total = total + x
         total = ((total) + (x));
     }
@@ -252,17 +252,17 @@ void test_bigint_const_ref() {
 // def test_bigint_mutated() -> None:
 void test_bigint_mutated() {
     //     items: list[int] = [10, 20, 30]
-    std::vector<tpy::BigInt> items = {10, 20, 30};
+    std::vector<::tpy::BigInt> items = {10, 20, 30};
     //     total: int = 0
-    tpy::BigInt total = tpy::BigInt(0);
+    ::tpy::BigInt total = ::tpy::BigInt(0);
     //     for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        tpy::BigInt x = *__beg_0;
+        ::tpy::BigInt x = *__beg_0;
         //         x = x + 1
-        x = ((x) + (tpy::BigInt(1)));
+        x = ((x) + (::tpy::BigInt(1)));
         //         total = total + x
         total = ((total) + (x));
     }
@@ -314,7 +314,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

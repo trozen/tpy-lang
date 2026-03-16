@@ -7,15 +7,15 @@ namespace tpy_user::main {
 // # Literal-seeded variable promoted to BigInt inside an if-branch within
 // # a while loop should keep BigInt for subsequent operations in the loop body.
 // def get_big() -> int:
-tpy::BigInt get_big() {
+::tpy::BigInt get_big() {
     //     return 42
-    return tpy::BigInt(42);
+    return ::tpy::BigInt(42);
 }
 
 // def test_augassign_in_while() -> None:
 void test_augassign_in_while() {
     //     ip = 0
-    tpy::BigInt ip = tpy::BigInt(0);
+    ::tpy::BigInt ip = ::tpy::BigInt(0);
     //     while ip < 10:
     while ((ip < 10)) {
         //         c = '>'
@@ -39,7 +39,7 @@ void test_augassign_in_while() {
             }
         }
         //         ip += 1
-        ip = (ip) + (tpy::BigInt(1));
+        ip = (ip) + (::tpy::BigInt(1));
     }
     //     print(ip)
     std::cout << ip << "\n";
@@ -48,7 +48,7 @@ void test_augassign_in_while() {
 // def test_binop_in_while() -> None:
 void test_binop_in_while() {
     //     x = 0
-    tpy::BigInt x = tpy::BigInt(0);
+    ::tpy::BigInt x = ::tpy::BigInt(0);
     //     while x < 5:
     while ((x < 5)) {
         //         if True:
@@ -57,7 +57,7 @@ void test_binop_in_while() {
             x = get_big();
         }
         //         y: int = x + 1
-        tpy::BigInt y = ((x) + (tpy::BigInt(1)));
+        ::tpy::BigInt y = ((x) + (::tpy::BigInt(1)));
         //         x = y
         x = y;
     }
@@ -79,7 +79,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -9,7 +9,7 @@ void show_guarded(const Config& cfg) {
     //     if cfg.port is not None:
     if ((cfg.port.has_value())) {
         //         print(cfg.port)
-        std::cout << tpy::print_optional_val(cfg.port) << "\n";
+        std::cout << ::tpy::print_optional_val(cfg.port) << "\n";
     //     else:
     } else {
         //         print("no port")
@@ -18,7 +18,7 @@ void show_guarded(const Config& cfg) {
     //     if cfg.name is not None:
     if ((cfg.name.has_value())) {
         //         print(cfg.name)
-        std::cout << tpy::print_optional_val(cfg.name) << "\n";
+        std::cout << ::tpy::print_optional_val(cfg.name) << "\n";
     //     else:
     } else {
         //         print("no name")
@@ -27,7 +27,7 @@ void show_guarded(const Config& cfg) {
     //     if cfg.flag is not None:
     if ((cfg.flag.has_value())) {
         //         print(cfg.flag)
-        std::cout << tpy::print_optional_val<tpy::print_bool, bool>(cfg.flag) << "\n";
+        std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(cfg.flag) << "\n";
     //     else:
     } else {
         //         print("no flag")
@@ -36,7 +36,7 @@ void show_guarded(const Config& cfg) {
     //     if cfg.ratio is not None:
     if ((cfg.ratio.has_value())) {
         //         print(cfg.ratio)
-        std::cout << tpy::print_optional_val<tpy::print_float, double>(cfg.ratio) << "\n";
+        std::cout << ::tpy::print_optional_val<::tpy::print_float, double>(cfg.ratio) << "\n";
     //     else:
     } else {
         //         print("no ratio")
@@ -47,14 +47,14 @@ void show_guarded(const Config& cfg) {
 // def show_truthy(cfg: Config) -> None:
 void show_truthy(const Config& cfg) {
     //     if cfg.port:
-    if (tpy::is_truthy(cfg.port)) {
+    if (::tpy::is_truthy(cfg.port)) {
         //         print(cfg.port)
-        std::cout << tpy::print_optional_val(cfg.port) << "\n";
+        std::cout << ::tpy::print_optional_val(cfg.port) << "\n";
     }
     //     if cfg.name:
-    if (tpy::is_truthy(cfg.name)) {
+    if (::tpy::is_truthy(cfg.name)) {
         //         print(cfg.name)
-        std::cout << tpy::print_optional_val(cfg.name) << "\n";
+        std::cout << ::tpy::print_optional_val(cfg.name) << "\n";
     }
 }
 
@@ -86,7 +86,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -7,25 +7,25 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     p: Point = Point(3, 7)
-    Point p = Point(tpy::BigInt(3), tpy::BigInt(7));
+    Point p = Point(::tpy::BigInt(3), ::tpy::BigInt(7));
     //     # str() dispatches to __str__
     //     print(str(p))
-    std::cout << std::string(tpy::__str__(p)) << "\n";
+    std::cout << std::string(::tpy::__str__(p)) << "\n";
     //     # repr() dispatches to __repr__
     //     print(repr(p))
-    std::cout << std::string(tpy::__repr__(p)) << "\n";
+    std::cout << std::string(::tpy::__repr__(p)) << "\n";
     //     # print() uses operator<< which delegates to __str__
     //     print(p)
     std::cout << p << "\n";
     //     # f-string uses __str__
     //     print(f"point = {p}")
-    std::cout << std::format("point = {}", tpy::__str__(p)) << "\n";
+    std::cout << std::format("point = {}", ::tpy::__str__(p)) << "\n";
     //     # !r uses __repr__
     //     print(f"debug: {p!r}")
-    std::cout << std::format("debug: {}", tpy::__repr__(p)) << "\n";
+    std::cout << std::format("debug: {}", ::tpy::__repr__(p)) << "\n";
     //     # !s uses __str__
     //     print(f"display: {p!s}")
-    std::cout << std::format("display: {}", tpy::__str__(p)) << "\n";
+    std::cout << std::format("display: {}", ::tpy::__str__(p)) << "\n";
 }
 
 void __tpy_init() {
@@ -40,7 +40,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-tpy::BigInt unwrap_or(std::optional<tpy::BigInt> x, const tpy::BigInt& fallback);
-std::optional<tpy::BigInt> first_positive(const std::vector<tpy::BigInt>& nums);
+::tpy::BigInt unwrap_or(std::optional<::tpy::BigInt> x, const ::tpy::BigInt& fallback);
+std::optional<::tpy::BigInt> first_positive(const std::vector<::tpy::BigInt>& nums);
 void main();
 
 void __tpy_init();

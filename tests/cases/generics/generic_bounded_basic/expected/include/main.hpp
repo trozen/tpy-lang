@@ -5,14 +5,14 @@
 
 namespace tpy_user::main {
 
-template<tpy::Sized T> struct Container;
+template<::tpy::Sized T> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
 // class Container[T: Sized]:
-template<tpy::Sized T>
+template<::tpy::Sized T>
 struct Container {
     //     item: T
     T item;
@@ -22,7 +22,7 @@ struct Container {
     explicit Container(const T& item) : item(item) {}
 
     //     def get_item(self) -> T:
-    tpy::val_or_ref_t<T> get_item() {
+    ::tpy::val_or_ref_t<T> get_item() {
         //         return self.item
         return this->item;
     }
@@ -31,7 +31,7 @@ struct Container {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     os << "Container("
-       << "item=" << tpy::ValuePrinter(obj.item)
+       << "item=" << ::tpy::ValuePrinter(obj.item)
        << ")";
     return os;
 }

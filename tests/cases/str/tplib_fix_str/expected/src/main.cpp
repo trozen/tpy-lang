@@ -10,7 +10,7 @@ void main() {
     //     s = FixStr[16]()
     ::tpy_user::tplib::FixStr<16> s = ::tpy_user::tplib::FixStr<16>();
     //     print(len(s))               # 0
-    std::cout << tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n";
     //     h: Char = "h"
     char h = 'h';
     //     i: Char = "i"
@@ -20,7 +20,7 @@ void main() {
     //     s.append(i)
     s.append(i);
     //     print(len(s))               # 2
-    std::cout << tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n";
     //     # -- getitem --
     //     print(s[0])                 # h
     std::cout << s[0] << "\n";
@@ -30,14 +30,14 @@ void main() {
     //     o: Char = "o"
     char o = 'o';
     //     s[1] = o
-    tpy::__setitem__(s, 1, o);
+    ::tpy::__setitem__(s, 1, o);
     //     print(s[1])                 # o
     std::cout << s[1] << "\n";
     //     # -- pop --
     //     print(s.pop())              # o
     std::cout << s.pop() << "\n";
     //     print(len(s))               # 1
-    std::cout << tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n";
     //     # -- iter --
     //     e: Char = "e"
     char e = 'e';
@@ -50,7 +50,7 @@ void main() {
     //     for c in s:
     auto& __src_0 = s;
     auto __iter_0 = __src_0.__iter__();
-    auto __obj_0 = tpy::iter_adapt(__iter_0);
+    auto __obj_0 = ::tpy::iter_adapt(__iter_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -62,7 +62,7 @@ void main() {
     //     for c in s:
     auto& __src_1 = s;
     auto __iter_1 = __src_1.__iter__();
-    auto __obj_1 = tpy::iter_adapt(__iter_1);
+    auto __obj_1 = ::tpy::iter_adapt(__iter_1);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
@@ -74,18 +74,18 @@ void main() {
     //     print(s)                    # hey
     std::cout << s << "\n";
     //     greeting: str = str(s)
-    std::string greeting = std::string(tpy::__str__(s));
+    std::string greeting = std::string(::tpy::__str__(s));
     //     print(greeting)             # hey
     std::cout << greeting << "\n";
     //     print(f"val={s}")           # val=hey
-    std::cout << std::format("val={}", tpy::__str__(s)) << "\n";
+    std::cout << std::format("val={}", ::tpy::__str__(s)) << "\n";
     //     # -- copy --
     //     t = copy(s)
     ::tpy_user::tplib::FixStr<16> t = ::tpy_user::tplib::FixStr<16>(s);
     //     b: Char = "b"
     char b = 'b';
     //     t[0] = b
-    tpy::__setitem__(t, 0, b);
+    ::tpy::__setitem__(t, 0, b);
     //     print(s[0])                 # h (original unchanged)
     std::cout << s[0] << "\n";
     //     print(t[0])                 # b
@@ -94,7 +94,7 @@ void main() {
     //     s.clear()
     s.clear();
     //     print(len(s))               # 0
-    std::cout << tpy::__len__(s) << "\n";
+    std::cout << ::tpy::__len__(s) << "\n";
 }
 
 void __tpy_init() {
@@ -111,7 +111,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

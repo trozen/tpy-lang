@@ -10,7 +10,7 @@ struct Config;
 inline constexpr std::string_view __name__ = "__main__";
 
 std::string get_name(const Config& cfg);
-tpy::BigInt get_port(const Config& cfg);
+::tpy::BigInt get_port(const Config& cfg);
 std::string test_negated(const Config& cfg);
 void main();
 
@@ -19,18 +19,18 @@ struct Config {
     //     name: Optional[str]
     std::optional<std::string> name;
     //     port: Optional[int]
-    std::optional<tpy::BigInt> port;
+    std::optional<::tpy::BigInt> port;
 
     //     def __init__(self, name: Optional[str], port: Optional[int]) -> None:
     Config() = default;
-    explicit Config(std::optional<std::string_view> name, std::optional<tpy::BigInt> port) : name(name ? std::make_optional(std::string(*name)) : std::nullopt), port(port) {}
+    explicit Config(std::optional<std::string_view> name, std::optional<::tpy::BigInt> port) : name(name ? std::make_optional(std::string(*name)) : std::nullopt), port(port) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     os << "Config("
        << "name=" << (obj.name.has_value() ? std::string("'") + std::string(obj.name.value()) + "'" : std::string("None"))
        << ", "
-       << "port=" << tpy::print_optional_val(obj.port)
+       << "port=" << ::tpy::print_optional_val(obj.port)
        << ")";
     return os;
 }

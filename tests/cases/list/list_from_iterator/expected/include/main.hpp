@@ -28,7 +28,7 @@ struct Counter {
             //             val = self.current
             int32_t val = this->current;
             //             self.current += 1
-            this->current = tpy::add_check<int32_t>(this->current, 1);
+            this->current = ::tpy::add_check<int32_t>(this->current, 1);
             //             return val
             return val;
         }

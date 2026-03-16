@@ -50,7 +50,7 @@ struct Finder {
         int32_t __stop_0 = n;
         for (int32_t i = 0; i < __stop_0; ++i) {
             //             p: Point = Point(i, i * 2)
-            Point* p = &*(__slot_2 = Point(i, (tpy::mul_check<int32_t>(i, 2))));
+            Point* p = &*(__slot_2 = Point(i, (::tpy::mul_check<int32_t>(i, 2))));
             //             saved = p  # tpyc: warning(/hoisted to function scope/)
             saved = p;
         }

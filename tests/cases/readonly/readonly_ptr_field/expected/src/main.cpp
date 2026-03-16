@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def read_through(c: readonly[Container]) -> Int32:
 int32_t read_through(const Container& c) {
     //     return c.ptr.__deref__().value
-    return tpy::deref_check(c.ptr).value;
+    return ::tpy::deref_check(c.ptr).value;
 }
 
 // def main() -> None:
@@ -36,7 +36,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

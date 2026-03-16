@@ -7,41 +7,41 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     c1 = Container(3)
-    Container c1 = Container(tpy::BigInt(3));
+    Container c1 = Container(::tpy::BigInt(3));
     //     c2 = Container(0)
-    Container c2 = Container(tpy::BigInt(0));
+    Container c2 = Container(::tpy::BigInt(0));
     //     # if with __bool__
     //     if c1:
-    if (tpy::__bool__(c1)) {
+    if (::tpy::__bool__(c1)) {
         //         print("c1 truthy")
         std::cout << "c1 truthy" << "\n";
     }
     //     if c2:
-    if (tpy::__bool__(c2)) {
+    if (::tpy::__bool__(c2)) {
         //         print("c2 truthy")
         std::cout << "c2 truthy" << "\n";
     }
     //     # while with __bool__ (reassigned variable uses pointer slot)
     //     c3 = Container(2)
-    Container __slot_1 = Container(tpy::BigInt(2));
+    Container __slot_1 = Container(::tpy::BigInt(2));
     std::optional<Container> __slot_2;
     Container* c3 = &__slot_1;
     //     while c3:
-    while (tpy::__bool__((*c3))) {
+    while (::tpy::__bool__((*c3))) {
         //         print(c3.count)
         std::cout << c3->count << "\n";
         //         c3 = Container(c3.count - 1)
-        c3 = &*(__slot_2 = Container(((c3->count) - (tpy::BigInt(1)))));
+        c3 = &*(__slot_2 = Container(((c3->count) - (::tpy::BigInt(1)))));
     }
     //     # not with __bool__
     //     if not c2:
-    if ((!(tpy::__bool__(c2)))) {
+    if ((!(::tpy::__bool__(c2)))) {
         //         print("c2 falsy")
         std::cout << "c2 falsy" << "\n";
     }
     //     # and/or with __bool__
     //     if c1 and not c2:
-    if ((tpy::__bool__(c1) && (!(tpy::__bool__(c2))))) {
+    if ((::tpy::__bool__(c1) && (!(::tpy::__bool__(c2))))) {
         //         print("c1 and not c2")
         std::cout << "c1 and not c2" << "\n";
     }
@@ -59,7 +59,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

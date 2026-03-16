@@ -8,8 +8,8 @@ namespace tpy_user::main {
 template<typename T> struct Inner;
 template<typename T> struct Outer;
 
-extern Inner<tpy::BigInt>* inner;
-extern Outer<Inner<tpy::BigInt>>* outer;
+extern Inner<::tpy::BigInt>* inner;
+extern Outer<Inner<::tpy::BigInt>>* outer;
 extern Outer<Inner<int32_t>>* outer2;
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -27,7 +27,7 @@ struct Inner {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Inner<T>& obj) {
     os << "Inner("
-       << "value=" << tpy::ValuePrinter(obj.value)
+       << "value=" << ::tpy::ValuePrinter(obj.value)
        << ")";
     return os;
 }
@@ -46,7 +46,7 @@ struct Outer {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Outer<T>& obj) {
     os << "Outer("
-       << "inner=" << tpy::ValuePrinter(obj.inner)
+       << "inner=" << ::tpy::ValuePrinter(obj.inner)
        << ")";
     return os;
 }

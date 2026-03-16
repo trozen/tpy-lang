@@ -8,11 +8,11 @@ namespace tpy_user::main {
 void main() {
     //     # Range to set
     //     squares: set[Int32] = {x * x for x in range(5)}
-    tpy::ordered_set<int32_t> squares = [&]() {
-        tpy::ordered_set<int32_t> __result;
+    ::tpy::ordered_set<int32_t> squares = [&]() {
+        ::tpy::ordered_set<int32_t> __result;
         const int32_t __stop_0 = 5;
         for (int32_t x = 0; x < __stop_0; ++x) {
-            __result.insert((tpy::mul_check<int32_t>(x, x)));
+            __result.insert((::tpy::mul_check<int32_t>(x, x)));
         }
         return __result;
     }();
@@ -29,8 +29,8 @@ void main() {
     //     items: list[Int32] = [1, 2, 2, 3, 3, 3]
     std::vector<int32_t> items = {1, 2, 2, 3, 3, 3};
     //     unique: set[Int32] = {x for x in items}
-    tpy::ordered_set<int32_t> unique = [&]() {
-        tpy::ordered_set<int32_t> __result;
+    ::tpy::ordered_set<int32_t> unique = [&]() {
+        ::tpy::ordered_set<int32_t> __result;
         auto& __obj_2 = items;
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
@@ -41,13 +41,13 @@ void main() {
         return __result;
     }();
     //     print(len(unique))
-    std::cout << tpy::__len__(unique) << "\n";
+    std::cout << ::tpy::__len__(unique) << "\n";
     //     # String set from list
     //     names: list[str] = ["alice", "bob", "alice", "charlie"]
     std::vector<std::string> names = {"alice", "bob", "alice", "charlie"};
     //     name_set: set[str] = {n for n in names}
-    tpy::ordered_set<std::string> name_set = [&]() {
-        tpy::ordered_set<std::string> __result;
+    ::tpy::ordered_set<std::string> name_set = [&]() {
+        ::tpy::ordered_set<std::string> __result;
         auto& __obj_3 = names;
         auto __beg_3 = __obj_3.begin();
         auto __end_3 = __obj_3.end();
@@ -58,11 +58,11 @@ void main() {
         return __result;
     }();
     //     print(len(name_set))
-    std::cout << tpy::__len__(name_set) << "\n";
+    std::cout << ::tpy::__len__(name_set) << "\n";
     //     # 2-arg range
     //     r2: set[Int32] = {x for x in range(3, 7)}
-    tpy::ordered_set<int32_t> r2 = [&]() {
-        tpy::ordered_set<int32_t> __result;
+    ::tpy::ordered_set<int32_t> r2 = [&]() {
+        ::tpy::ordered_set<int32_t> __result;
         const int32_t __start_4 = 3;
         const int32_t __stop_5 = 7;
         for (int32_t x = __start_4; x < __stop_5; ++x) {
@@ -93,7 +93,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

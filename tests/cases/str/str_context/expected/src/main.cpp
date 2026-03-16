@@ -7,13 +7,13 @@ namespace tpy_user::main {
 // def greet(name: str) -> str:
 std::string greet(std::string_view name) {
     //     return str("Hello ") + name
-    return (tpy::str_concat(std::string("Hello "), name));
+    return (::tpy::str_concat(std::string("Hello "), name));
 }
 
 // def get_name() -> str:
 std::string get_name() {
     //     return str(Int32(42))
-    return tpy::fixed_to_str<int32_t>(42);
+    return ::tpy::fixed_to_str<int32_t>(42);
 }
 
 // def main() -> None:
@@ -37,7 +37,7 @@ void main() {
     //     names: list[str] = ["hello", "world"]
     std::vector<std::string> names = {"hello", "world"};
     //     print(names[0])  # hello
-    std::cout << tpy::__getitem__(names, 0) << "\n";
+    std::cout << ::tpy::__getitem__(names, 0) << "\n";
 }
 
 void __tpy_init() {
@@ -52,7 +52,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

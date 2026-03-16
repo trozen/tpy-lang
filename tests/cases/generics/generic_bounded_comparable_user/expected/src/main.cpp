@@ -14,9 +14,9 @@ void main() {
     MyInt z = MyInt(10);
     //     # Test comparison via Comparable bound
     //     print(is_less(x, y))  # True
-    std::cout << tpy::print_bool(is_less<MyInt>(x, y)) << "\n";
+    std::cout << ::tpy::print_bool(is_less<MyInt>(x, y)) << "\n";
     //     print(is_less(y, x))  # False
-    std::cout << tpy::print_bool(is_less<MyInt>(y, x)) << "\n";
+    std::cout << ::tpy::print_bool(is_less<MyInt>(y, x)) << "\n";
     //     # Test returning bounded type
     //     result = find_min(x, y)
     MyInt& result = find_min<MyInt>(x, y);
@@ -24,9 +24,9 @@ void main() {
     std::cout << result.value << "\n";
     //     # Test equality
     //     print(x == z)  # True
-    std::cout << tpy::print_bool((x == z)) << "\n";
+    std::cout << ::tpy::print_bool((x == z)) << "\n";
     //     print(x == y)  # False
-    std::cout << tpy::print_bool((x == y)) << "\n";
+    std::cout << ::tpy::print_bool((x == y)) << "\n";
 }
 
 void __tpy_init() {
@@ -41,7 +41,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

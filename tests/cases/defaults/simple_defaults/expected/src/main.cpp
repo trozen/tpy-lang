@@ -13,7 +13,7 @@ void greet(std::string_view name, std::string_view greeting) {
 // def add(a: Int32, b: Int32 = Int32(0)) -> Int32:
 int32_t add(int32_t a, int32_t b) {
     //     return a + b
-    return (tpy::add_check<int32_t>(a, b));
+    return (::tpy::add_check<int32_t>(a, b));
 }
 
 // def scale(value: float, factor: float = 1.0) -> float:
@@ -46,9 +46,9 @@ void main() {
     //     print(add(Int32(5), Int32(3)))
     std::cout << add(5, 3) << "\n";
     //     print(scale(2.5))
-    std::cout << tpy::print_float(scale(2.5)) << "\n";
+    std::cout << ::tpy::print_float(scale(2.5)) << "\n";
     //     print(scale(2.5, 3.0))
-    std::cout << tpy::print_float(scale(2.5, 3.0)) << "\n";
+    std::cout << ::tpy::print_float(scale(2.5, 3.0)) << "\n";
     //     log("info")
     log("info");
     //     log("debug", True)
@@ -67,7 +67,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -15,7 +15,7 @@ void conditional_hoist() {
     //     for i in range(5):
     for (int32_t i = 0; i < 5; ++i) {
         //         p: Point = Point(i, i * 3)
-        Point* p = &*(__slot_2 = Point(i, (tpy::mul_check<int32_t>(i, 3))));
+        Point* p = &*(__slot_2 = Point(i, (::tpy::mul_check<int32_t>(i, 3))));
         //         if i > 2:
         if ((i > 2)) {
             //             saved = p  # tpyc: warning(/hoisted to function scope/)
@@ -38,7 +38,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

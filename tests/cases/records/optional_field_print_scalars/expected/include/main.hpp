@@ -27,11 +27,11 @@ struct Settings {
 
 inline std::ostream& operator<<(std::ostream& os, const Settings& obj) {
     os << "Settings("
-       << "count=" << tpy::print_optional_val(obj.count)
+       << "count=" << ::tpy::print_optional_val(obj.count)
        << ", "
-       << "flag=" << tpy::print_optional_val<tpy::print_bool, bool>(obj.flag)
+       << "flag=" << ::tpy::print_optional_val<::tpy::print_bool, bool>(obj.flag)
        << ", "
-       << "ratio=" << tpy::print_optional_val<tpy::print_float, double>(obj.ratio)
+       << "ratio=" << ::tpy::print_optional_val<::tpy::print_float, double>(obj.ratio)
        << ", "
        << "label=" << (obj.label.has_value() ? std::string("'") + std::string(obj.label.value()) + "'" : std::string("None"))
        << ")";

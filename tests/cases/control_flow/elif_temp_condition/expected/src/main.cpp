@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def has_items(items: list[Int32]) -> bool:
 bool has_items(const std::vector<int32_t>& items) {
     //     return len(items) > 0
-    return (tpy::__len__(items) > 0);
+    return (::tpy::__len__(items) > 0);
 }
 
 // def test(x: Int32) -> Int32:
@@ -52,7 +52,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

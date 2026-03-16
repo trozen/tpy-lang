@@ -147,7 +147,7 @@ std::string with_guard(std::string_view cmd, bool verbose) {
         //         case s:
         auto& s = __match_subject;
         //             return "unknown: " + s
-        return (tpy::str_concat("unknown: ", s));
+        return (::tpy::str_concat("unknown: ", s));
     }
     __match_end_2:;
 }
@@ -351,7 +351,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

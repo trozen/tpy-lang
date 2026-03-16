@@ -27,7 +27,7 @@ void main() {
     //     print(b.measure())
     std::cout << b.measure() << "\n";
     //     print_area(Rect(3, 4))
-    tpy::Adapter<Shape, Rect> __tmp_2{Rect(3, 4)};
+    ::tpy::Adapter<Shape, Rect> __tmp_2{Rect(3, 4)};
     print_area(__tmp_2);
 }
 
@@ -43,7 +43,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

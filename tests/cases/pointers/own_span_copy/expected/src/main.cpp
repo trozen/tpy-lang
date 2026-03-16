@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def get_span(data: list[Int32]) -> Span[Int32]:
 std::span<int32_t> get_span(std::vector<int32_t>& data) {
     //     return data
-    return tpy::as_mut_span(data);
+    return ::tpy::as_mut_span(data);
 }
 
 // def main() -> None:
@@ -21,13 +21,13 @@ void main() {
     std::span<int32_t> span_copy = std::span<int32_t>(span);
     //     # Both spans can access the same data
     //     print(span[0])
-    std::cout << tpy::__getitem__(span, 0) << "\n";
+    std::cout << ::tpy::__getitem__(span, 0) << "\n";
     //     print(span_copy[0])
-    std::cout << tpy::__getitem__(span_copy, 0) << "\n";
+    std::cout << ::tpy::__getitem__(span_copy, 0) << "\n";
     //     print(len(span))
-    std::cout << tpy::__len__(span) << "\n";
+    std::cout << ::tpy::__len__(span) << "\n";
     //     print(len(span_copy))
-    std::cout << tpy::__len__(span_copy) << "\n";
+    std::cout << ::tpy::__len__(span_copy) << "\n";
 }
 
 void __tpy_init() {
@@ -42,7 +42,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

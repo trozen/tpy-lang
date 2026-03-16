@@ -7,9 +7,9 @@ namespace tpy_user::main {
 // def score(x: Int32 | None) -> Int32:
 int32_t score(std::optional<int32_t> x) {
     //     if x:  # tpyc: warning(/Truthiness check on optional value/)
-    if (tpy::is_truthy(x)) {
+    if (::tpy::is_truthy(x)) {
         //         return x + 1  # tpyc: ok
-        return (tpy::add_check<int32_t>((*x), 1));
+        return (::tpy::add_check<int32_t>((*x), 1));
     }
     //     return 0
     return 0;
@@ -31,7 +31,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -7,17 +7,17 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     item = TaggedItem("apple", {"fruit", "red"})
-    TaggedItem item = TaggedItem("apple", tpy::ordered_set<std::string>({"fruit", "red"}));
+    TaggedItem item = TaggedItem("apple", ::tpy::ordered_set<std::string>({"fruit", "red"}));
     //     print(len(item.tags))
-    std::cout << tpy::__len__(item.tags) << "\n";
+    std::cout << ::tpy::__len__(item.tags) << "\n";
     //     print("fruit" in item.tags)
-    std::cout << tpy::print_bool((item.tags.contains("fruit"))) << "\n";
+    std::cout << ::tpy::print_bool((item.tags.contains("fruit"))) << "\n";
     //     item.tags.add("sweet")
     item.tags.insert("sweet");
     //     print(len(item.tags))
-    std::cout << tpy::__len__(item.tags) << "\n";
+    std::cout << ::tpy::__len__(item.tags) << "\n";
     //     print("sweet" in item.tags)
-    std::cout << tpy::print_bool((item.tags.contains("sweet"))) << "\n";
+    std::cout << ::tpy::print_bool((item.tags.contains("sweet"))) << "\n";
 }
 
 void __tpy_init() {
@@ -32,7 +32,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -43,7 +43,7 @@ void __tpy_init() {
     // n = 123
     n = 123;
     // print(n)
-    std::cout << tpy::print_optional_val(n) << "\n";
+    std::cout << ::tpy::print_optional_val(n) << "\n";
     // z = 0
     z = 0;
     // z = Int32(666)
@@ -55,19 +55,19 @@ void __tpy_init() {
     // f = 1.5
     f = 1.5;
     // print(f)
-    std::cout << tpy::print_float(f) << "\n";
+    std::cout << ::tpy::print_float(f) << "\n";
     // flag = None
     flag = std::nullopt;
     // flag = get_flag()
     flag = get_flag();
     // print(flag)
-    std::cout << tpy::print_optional_val<tpy::print_bool, bool>(flag) << "\n";
+    std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(flag) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

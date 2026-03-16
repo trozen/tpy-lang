@@ -89,7 +89,7 @@ void test_or_float() {
     //     x = a or b  # tpyc: type(float)
     double x = (a ? a : b);
     //     print(x)
-    std::cout << tpy::print_float(x) << "\n";
+    std::cout << ::tpy::print_float(x) << "\n";
     //     c: float = 1.5
     double c = 1.5;
     //     d: float = 2.5
@@ -97,7 +97,7 @@ void test_or_float() {
     //     y = c or d  # tpyc: type(float)
     double y = (c ? c : d);
     //     print(y)
-    std::cout << tpy::print_float(y) << "\n";
+    std::cout << ::tpy::print_float(y) << "\n";
 }
 
 // def test_and_float() -> None:
@@ -109,7 +109,7 @@ void test_and_float() {
     //     x = a and b  # tpyc: type(float)
     double x = (a ? b : a);
     //     print(x)
-    std::cout << tpy::print_float(x) << "\n";
+    std::cout << ::tpy::print_float(x) << "\n";
     //     c: float = 1.5
     double c = 1.5;
     //     d: float = 2.5
@@ -117,17 +117,17 @@ void test_and_float() {
     //     y = c and d  # tpyc: type(float)
     double y = (c ? d : c);
     //     print(y)
-    std::cout << tpy::print_float(y) << "\n";
+    std::cout << ::tpy::print_float(y) << "\n";
 }
 
 // def test_or_bigint() -> None:
 void test_or_bigint() {
     //     a: int = 0
-    tpy::BigInt a = tpy::BigInt(0);
+    ::tpy::BigInt a = ::tpy::BigInt(0);
     //     b: int = 100
-    tpy::BigInt b = tpy::BigInt(100);
+    ::tpy::BigInt b = ::tpy::BigInt(100);
     //     x = a or b  # tpyc: type(int)
-    tpy::BigInt x = (a ? a : b);
+    ::tpy::BigInt x = (a ? a : b);
     //     print(x)
     std::cout << x << "\n";
 }
@@ -231,11 +231,11 @@ void test_record_with_bool() {
     //     five: Counter = Counter(5)
     Counter five = Counter(5);
     //     x = zero or five
-    Counter& x = (tpy::__bool__(zero) ? zero : five);
+    Counter& x = (::tpy::__bool__(zero) ? zero : five);
     //     print(x.count)
     std::cout << x.count << "\n";
     //     y = five and zero
-    Counter& y = (tpy::__bool__(five) ? zero : five);
+    Counter& y = (::tpy::__bool__(five) ? zero : five);
     //     print(y.count)
     std::cout << y.count << "\n";
     //     # Mutation via result must affect the original (reference semantics)
@@ -282,14 +282,14 @@ void test_record_or_constructor() {
     Counter zero = Counter(0);
     //     x = zero or Counter(5)
     auto&& __tmp_4 = Counter(5);
-    Counter& x = (tpy::__bool__(zero) ? zero : __tmp_4);
+    Counter& x = (::tpy::__bool__(zero) ? zero : __tmp_4);
     //     print(x.count)
     std::cout << x.count << "\n";
     //     five: Counter = Counter(5)
     Counter five = Counter(5);
     //     y = five and Counter(0)
     auto&& __tmp_5 = Counter(0);
-    Counter& y = (tpy::__bool__(five) ? __tmp_5 : five);
+    Counter& y = (::tpy::__bool__(five) ? __tmp_5 : five);
     //     print(y.count)
     std::cout << y.count << "\n";
 }
@@ -327,7 +327,7 @@ void test_annotated() {
     //     f: float = fa or fb  # tpyc: type(float)
     double f = (fa ? fa : fb);
     //     print(f)
-    std::cout << tpy::print_float(f) << "\n";
+    std::cout << ::tpy::print_float(f) << "\n";
 }
 
 // def test_literal_or_literal() -> None:
@@ -348,13 +348,13 @@ void test_literal_or_literal() {
     //     xi: int = 0 or 1  # tpyc: type(int)
     auto&& __tmp_10 = 0;
     auto&& __tmp_11 = 1;
-    tpy::BigInt xi = tpy::BigInt((__tmp_10 ? __tmp_10 : __tmp_11));
+    ::tpy::BigInt xi = ::tpy::BigInt((__tmp_10 ? __tmp_10 : __tmp_11));
     //     print(xi)
     std::cout << xi << "\n";
     //     yi: int = 3 and 0  # tpyc: type(int)
     auto&& __tmp_12 = 3;
     auto&& __tmp_13 = 0;
-    tpy::BigInt yi = tpy::BigInt((__tmp_12 ? __tmp_13 : __tmp_12));
+    ::tpy::BigInt yi = ::tpy::BigInt((__tmp_12 ? __tmp_13 : __tmp_12));
     //     print(yi)
     std::cout << yi << "\n";
 }
@@ -409,7 +409,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

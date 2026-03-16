@@ -38,15 +38,15 @@ void __tpy_init() {
     (*points).push_back(Point(5, 6));
     // # Chain field/method access on Optional-returning expression
     // print(find(points, 3).x)      # tpyc: warning(/Potential None access on optional value/)
-    std::cout << tpy::deref_check(find((*points), 3)).x << "\n";
+    std::cout << ::tpy::deref_check(find((*points), 3)).x << "\n";
     // print(find(points, 5).mag())  # tpyc: warning(/Potential None access on optional value/)
-    std::cout << tpy::deref_check(find((*points), 5)).mag() << "\n";
+    std::cout << ::tpy::deref_check(find((*points), 5)).mag() << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -5,17 +5,17 @@
 
 namespace tpy_user::main {
 
-template<tpy::ValueType T> struct Box;
-template<tpy::ValueType T> struct Ring;
+template<::tpy::ValueType T> struct Box;
+template<::tpy::ValueType T> struct Ring;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<tpy::ValueType T>
-tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> v);
+template<::tpy::ValueType T>
+::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> v);
 void main();
 
 // class Box[T: ValueType]:
-template<tpy::ValueType T>
+template<::tpy::ValueType T>
 struct Box {
     //     value: T
     T value;
@@ -25,13 +25,13 @@ struct Box {
     explicit Box(const T& value) : value(value) {}
 
     //     def get(self) -> T:
-    tpy::val_or_cref_t<T> get() const {
+    ::tpy::val_or_cref_t<T> get() const {
         //         return self.value
         return this->value;
     }
 
     //     def set(self, value: T) -> None:
-    void set(tpy::param_val_or_ref_t<T> value) {
+    void set(::tpy::param_val_or_ref_t<T> value) {
         //         self.value = value  # tpyc: ok
         this->value = value;
     }
@@ -40,13 +40,13 @@ struct Box {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     os << "Box("
-       << "value=" << tpy::ValuePrinter(obj.value)
+       << "value=" << ::tpy::ValuePrinter(obj.value)
        << ")";
     return os;
 }
 
 // class Ring[T: ValueType]:
-template<tpy::ValueType T>
+template<::tpy::ValueType T>
 struct Ring {
     //     data: Array[T, 4]
     std::array<T, 4> data;
@@ -58,24 +58,24 @@ struct Ring {
     explicit Ring(const T& fill) : data({fill, fill, fill, fill}), size(0) {}
 
     //     def put(self, v: T) -> None:
-    void put(tpy::param_val_or_ref_t<T> v) {
+    void put(::tpy::param_val_or_ref_t<T> v) {
         //         self.data[self.size] = v  # tpyc: ok
-        tpy::__setitem__(this->data, this->size, v);
+        ::tpy::__setitem__(this->data, this->size, v);
         //         self.size += 1
-        this->size = tpy::add_check<int32_t>(this->size, 1);
+        this->size = ::tpy::add_check<int32_t>(this->size, 1);
     }
 
     //     def get(self, i: Int32) -> T:
-    tpy::val_or_cref_t<T> get(int32_t i) const {
+    ::tpy::val_or_cref_t<T> get(int32_t i) const {
         //         return self.data[i]
-        return tpy::__getitem__(this->data, i);
+        return ::tpy::__getitem__(this->data, i);
     }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Ring<T>& obj) {
     os << "Ring("
-       << "data=" << tpy::ListPrinter(obj.data)
+       << "data=" << ::tpy::ListPrinter(obj.data)
        << ", "
        << "size=" << obj.size
        << ")";
@@ -83,8 +83,8 @@ inline std::ostream& operator<<(std::ostream& os, const Ring<T>& obj) {
 }
 
 // def identity[T: ValueType](v: T) -> T:
-template<tpy::ValueType T>
-tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> v) {
+template<::tpy::ValueType T>
+::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> v) {
     //     return v
     return v;
 }

@@ -7,18 +7,18 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     d = {1: "a", 2: "b"}
-    tpy::ordered_map<int32_t, std::string> d = tpy::ordered_map<int32_t, std::string>({{1, "a"}, {2, "b"}});
+    ::tpy::ordered_map<int32_t, std::string> d = ::tpy::ordered_map<int32_t, std::string>({{1, "a"}, {2, "b"}});
     //     print(d[1])
-    std::cout << tpy::__getitem__(d, 1) << "\n";
+    std::cout << ::tpy::__getitem__(d, 1) << "\n";
     //     d2 = {"x": 1, "y": 2}
-    tpy::ordered_map<std::string, int32_t> d2 = tpy::ordered_map<std::string, int32_t>({{"x", 1}, {"y", 2}});
+    ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::ordered_map<std::string, int32_t>({{"x", 1}, {"y", 2}});
     //     print(d2["x"])
-    std::cout << tpy::__getitem__(d2, "x") << "\n";
+    std::cout << ::tpy::__getitem__(d2, "x") << "\n";
     //     # Mixed: Int32 keys with bare int values
     //     d3 = {Int32(10): 100, Int32(20): 200}
-    tpy::ordered_map<int32_t, int32_t> d3 = tpy::ordered_map<int32_t, int32_t>({{10, 100}, {20, 200}});
+    ::tpy::ordered_map<int32_t, int32_t> d3 = ::tpy::ordered_map<int32_t, int32_t>({{10, 100}, {20, 200}});
     //     print(d3[Int32(10)])
-    std::cout << tpy::__getitem__(d3, 10) << "\n";
+    std::cout << ::tpy::__getitem__(d3, 10) << "\n";
 }
 
 void __tpy_init() {
@@ -33,7 +33,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

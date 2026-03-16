@@ -20,11 +20,11 @@ extern int32_t result6;
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t takes_int32(int32_t x);
-int32_t return_as_int32(const tpy::BigInt& x);
-int32_t var_decl_test(const tpy::BigInt& x);
-int32_t assign_test(const tpy::BigInt& x);
-int32_t loop_test(const tpy::BigInt& n);
-int32_t constructor_test(const tpy::BigInt& x);
+int32_t return_as_int32(const ::tpy::BigInt& x);
+int32_t var_decl_test(const ::tpy::BigInt& x);
+int32_t assign_test(const ::tpy::BigInt& x);
+int32_t loop_test(const ::tpy::BigInt& n);
+int32_t constructor_test(const ::tpy::BigInt& x);
 int32_t literal_ops_local();
 
 void __tpy_init();

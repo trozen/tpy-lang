@@ -9,7 +9,7 @@ void test_bool_list() {
     //     bools: list[bool] = [True, False, True]
     std::vector<bool> bools = {true, false, true};
     //     print(bools)
-    std::cout << tpy::ListPrinter(bools) << "\n";
+    std::cout << ::tpy::ListPrinter(bools) << "\n";
 }
 
 // def test_float_list() -> None:
@@ -17,7 +17,7 @@ void test_float_list() {
     //     floats: list[float] = [1.0, 2.5, 0.0, -3.0]
     std::vector<double> floats = {1.0, 2.5, 0.0, -(3.0)};
     //     print(floats)
-    std::cout << tpy::ListPrinter(floats) << "\n";
+    std::cout << ::tpy::ListPrinter(floats) << "\n";
 }
 
 // def test_str_list() -> None:
@@ -25,7 +25,7 @@ void test_str_list() {
     //     strs: list[str] = ["hello", "world"]
     std::vector<std::string> strs = {"hello", "world"};
     //     print(strs)
-    std::cout << tpy::ListPrinter(strs) << "\n";
+    std::cout << ::tpy::ListPrinter(strs) << "\n";
 }
 
 // def test_bool_array() -> None:
@@ -33,7 +33,7 @@ void test_bool_array() {
     //     arr: Array[bool, 3] = [True, False, True]
     std::array<bool, 3> arr = {true, false, true};
     //     print(arr)
-    std::cout << tpy::ListPrinter(arr) << "\n";
+    std::cout << ::tpy::ListPrinter(arr) << "\n";
 }
 
 // def test_nested_bool() -> None:
@@ -41,7 +41,7 @@ void test_nested_bool() {
     //     nested: list[list[bool]] = [[True, False], [False, True]]
     std::vector<std::vector<bool>> nested = {{true, false}, {false, true}};
     //     print(nested)
-    std::cout << tpy::ListPrinter(nested) << "\n";
+    std::cout << ::tpy::ListPrinter(nested) << "\n";
 }
 
 // def main() -> None:
@@ -70,7 +70,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

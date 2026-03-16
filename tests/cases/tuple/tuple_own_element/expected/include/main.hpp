@@ -26,7 +26,7 @@ struct Point {
     //     def __repr__(self) -> str:
     std::string __repr__() const {
         //         return "Point(x=" + str(self.x) + ", y=" + str(self.y) + ")"
-        return (tpy::str_concat((tpy::str_concat((tpy::str_concat((tpy::str_concat("Point(x=", tpy::fixed_to_str<int32_t>(this->x))), ", y=")), tpy::fixed_to_str<int32_t>(this->y))), ")"));
+        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Point(x=", ::tpy::fixed_to_str<int32_t>(this->x))), ", y=")), ::tpy::fixed_to_str<int32_t>(this->y))), ")"));
     }
 };
 

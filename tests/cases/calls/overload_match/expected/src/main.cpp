@@ -32,9 +32,9 @@ void main() {
     //     s = Square(3.0)
     Square s = Square(3.0);
     //     print(area(c))
-    std::cout << tpy::print_float(area(c)) << "\n";
+    std::cout << ::tpy::print_float(area(c)) << "\n";
     //     print(area(s))
-    std::cout << tpy::print_float(area(s)) << "\n";
+    std::cout << ::tpy::print_float(area(s)) << "\n";
 }
 
 void __tpy_init() {
@@ -49,7 +49,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

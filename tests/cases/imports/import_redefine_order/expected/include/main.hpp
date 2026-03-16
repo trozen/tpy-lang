@@ -7,7 +7,7 @@
 namespace tpy_user::main {
 
 extern int32_t MAX;
-extern tpy::BigInt MIN;
+extern ::tpy::BigInt MIN;
 inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();

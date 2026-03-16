@@ -120,7 +120,7 @@ class ExpressionGenerator:
             if isinstance(self.ctx.get_expr_type(arg), OptionalType):
                 arg_gen = self.gen_expr(arg, ptype)
                 if isinstance(arg, TpyFieldAccess):
-                    return f"tpy::optional_to_ptr({arg_gen})"
+                    return f"::tpy::optional_to_ptr({arg_gen})"
                 return arg_gen
             gen = self.gen_expr(arg, ptype)
             if self.ctx.is_temporary_expr(arg):
@@ -144,10 +144,10 @@ class ExpressionGenerator:
         if isinstance(arg_type, OptionalType):
             arg_gen = self.gen_expr(arg, ptype)
             if isinstance(arg, TpyFieldAccess):
-                return f"tpy::optional_to_ptr({arg_gen})"
+                return f"::tpy::optional_to_ptr({arg_gen})"
             # std::optional<T> -> T* conversion (generic return passed to concrete param)
             if not arg_type.uses_pointer_repr():
-                return f"tpy::optional_to_ptr({arg_gen})"
+                return f"::tpy::optional_to_ptr({arg_gen})"
             return arg_gen
         gen = self.gen_expr(arg, ptype)
         if self.ctx.is_temporary_expr(arg):
@@ -191,7 +191,7 @@ class ExpressionGenerator:
             # If sema already narrowed this expression to non-Optional, unwrap
             # without an extra runtime check. Otherwise keep checked dereference.
             if isinstance(analyzed_type, OptionalType):
-                result = f"tpy::deref_optional_check({result})"
+                result = f"::tpy::deref_optional_check({result})"
             else:
                 result = f"(*{result})"
         return result
@@ -568,15 +568,15 @@ class ExpressionGenerator:
         if isinstance(var_type, EnumType):
             return "true"
         if isinstance(var_type, OptionalType) and not var_type.uses_pointer_repr():
-            return f"tpy::is_truthy({rendered})"
+            return f"::tpy::is_truthy({rendered})"
         if is_any_str_type(var_type):
             return f"(!{rendered}.empty())"
         record = self.ctx.analyzer.registry.get_record_for_type(var_type)
         if record:
             if record.get_method_overloads("__bool__"):
-                return f"tpy::__bool__({rendered})"
+                return f"::tpy::__bool__({rendered})"
             if record.get_method_overloads("__len__"):
-                return f"(tpy::__len__({rendered}) != 0)"
+                return f"(::tpy::__len__({rendered}) != 0)"
             # User records without __bool__/__len__ are always truthy (Python default).
             # Builtin types (int, float, etc.) have implicit C++ bool conversion.
             if isinstance(var_type, NamedType) and var_type.is_user_record:
@@ -1215,10 +1215,10 @@ class ExpressionGenerator:
         """Emit an integer literal, wrapping in BigInt constructor if needed."""
         if isinstance(target_type, BigIntType):
             if -2**31 <= v <= 2**31 - 1:
-                return f"tpy::BigInt({v})"
+                return f"::tpy::BigInt({v})"
             if -2**63 <= v <= 2**63 - 1:
-                return f"tpy::BigInt(static_cast<int64_t>({v}LL))"
-            return f'tpy::BigInt::from_str("{v}")'
+                return f"::tpy::BigInt(static_cast<int64_t>({v}LL))"
+            return f'::tpy::BigInt::from_str("{v}")'
         return str(v)
 
     def _gen_call(self, expr: TpyCall) -> str:
@@ -1254,7 +1254,7 @@ class ExpressionGenerator:
             name_node = TpyName(var_name)
             var_ref = self.gen_expr_deref(name_node) if self.ctx.is_indirect_name(name_node) else var_name
             return f"std::holds_alternative<{cpp_type}>({var_ref})"
-        # Enum value lookup: Color(0) -> tpy::EnumUtil<Color>::from_value(0)
+        # Enum value lookup: Color(0) -> ::tpy::EnumUtil<Color>::from_value(0)
         if expr.enum_from_value is not None:
             enum_type = expr.enum_from_value
             cpp_type = enum_type.to_cpp()
@@ -1264,13 +1264,13 @@ class ExpressionGenerator:
             arg_type = self.types.get_resolved_type(expr.args[0])
             if isinstance(arg_type, BigIntType):
                 arg = f"({arg}).to_fixed_check<{underlying_cpp}>()"
-            return f"tpy::EnumUtil<{cpp_type}>::from_value({arg})"
-        # Enum try_parse: try_parse(Color, "Red") -> tpy::EnumUtil<Color>::try_parse("Red")
+            return f"::tpy::EnumUtil<{cpp_type}>::from_value({arg})"
+        # Enum try_parse: try_parse(Color, "Red") -> ::tpy::EnumUtil<Color>::try_parse("Red")
         if expr.enum_try_parse is not None:
             enum_type = expr.enum_try_parse
             cpp_type = enum_type.to_cpp()
             arg = self.gen_expr(expr.args[1])
-            return f"tpy::EnumUtil<{cpp_type}>::try_parse({arg})"
+            return f"::tpy::EnumUtil<{cpp_type}>::try_parse({arg})"
         # Check if it's a builtin type constructor (e.g., int from builtins, Int32 from tpy)
         for module_name in ["builtins", "tpy"]:
             qname = f"{module_name}.{expr.func}"
@@ -1412,7 +1412,7 @@ class ExpressionGenerator:
                 func_cpp_name = qualified_cpp_name(source_module, original_name)
 
             # For generic TPy functions, emit explicit type args to avoid C++ deduction
-            # issues with tpy::param_val_or_ref_t<T> parameters.  Skip for @native
+            # issues with ::tpy::param_val_or_ref_t<T> parameters.  Skip for @native
             # functions -- their C++ signatures use natural parameter types so
             # template argument deduction works correctly.
             if func_info.is_generic() and expr.inferred_type_args and not func_info.is_native_import:
@@ -1583,7 +1583,7 @@ class ExpressionGenerator:
                 return self.builtins.gen_builtin_function_overloads(temp_call, [fi])
             if fi and (fi.is_native_import or fi.is_extern_c):
                 func_name = fi.native_name or fi.name
-                # Qualified native names (e.g. "tpy::math::log_base") are absolute
+                # Qualified native names (e.g. "::tpy::math::log_base") are absolute
                 # C++ symbols -- prefix with :: and don't wrap in the user module namespace.
                 if "::" in func_name:
                     if not func_name.startswith("::"):
@@ -1605,7 +1605,7 @@ class ExpressionGenerator:
                 enum_type = fi.return_type.inner
                 cpp_type = enum_type.to_cpp()
                 arg = self.gen_expr(expr.args[1])
-                return f"tpy::EnumUtil<{cpp_type}>::try_parse({arg})"
+                return f"::tpy::EnumUtil<{cpp_type}>::try_parse({arg})"
             # copy() from tpy -- produce an explicit copy (rvalue) of the argument
             if module_name == "tpy" and expr.method == "copy":
                 arg = expr.args[0]
@@ -1808,10 +1808,10 @@ class ExpressionGenerator:
         # Optional with runtime null check -- must come before deref fast path
         if expr.needs_optional_runtime_check and is_optional_ptr:
             if isinstance(expr.obj, TpyFieldAccess):
-                return f"tpy::deref_optional_check({obj}){deref_chain}.{expr.method}{method_targs}({args})"
+                return f"::tpy::deref_optional_check({obj}){deref_chain}.{expr.method}{method_targs}({args})"
             # For pointer-globals with wrapper storage, this yields raw `T*`.
             ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
-            return f"tpy::deref_check({ptr_expr}){deref_chain}.{expr.method}{method_targs}({args})"
+            return f"::tpy::deref_check({ptr_expr}){deref_chain}.{expr.method}{method_targs}({args})"
         # User-defined Deref: emit .__deref__() calls before method call
         is_narrowed = (isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.narrowed_vars) or is_assign_narrowed
         if deref_chain and obj_type and not obj_type.is_pointer():
@@ -1822,7 +1822,7 @@ class ExpressionGenerator:
         if obj_type and obj_type.is_pointer():
             if expr.ptr_non_null:
                 return f"{obj}->{expr.method}{method_targs}({args})"
-            return f"tpy::deref_check({obj}).{expr.method}{method_targs}({args})"
+            return f"::tpy::deref_check({obj}).{expr.method}{method_targs}({args})"
         use_arrow = ((self.ctx.is_indirect_name(expr.obj) and not is_narrowed and not is_consuming)
                      or is_optional_ptr)
         accessor = "->" if use_arrow else "."
@@ -1889,7 +1889,7 @@ class ExpressionGenerator:
         if isinstance(actual_obj_type, EnumType):
             if expr.field == "name":
                 cpp_type = actual_obj_type.to_cpp()
-                return f"tpy::EnumUtil<{cpp_type}>::name({obj})"
+                return f"::tpy::EnumUtil<{cpp_type}>::name({obj})"
             elif expr.field == "value":
                 return f"static_cast<{actual_obj_type.underlying_type.to_cpp()}>({obj})"
 
@@ -1906,9 +1906,9 @@ class ExpressionGenerator:
         # Optional with runtime null check -- must come before deref fast path
         if expr.needs_optional_runtime_check and is_optional_ptr:
             if isinstance(expr.obj, TpyFieldAccess):
-                return f"tpy::deref_optional_check({obj}){deref_chain}.{cpp_field}"
+                return f"::tpy::deref_optional_check({obj}){deref_chain}.{cpp_field}"
             ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
-            return f"tpy::deref_check({ptr_expr}){deref_chain}.{cpp_field}"
+            return f"::tpy::deref_check({ptr_expr}){deref_chain}.{cpp_field}"
         # User-defined Deref: emit .__deref__() calls before field access
         if deref_chain and obj_type and not obj_type.is_pointer():
             if is_indirect or is_optional_ptr:
@@ -1921,7 +1921,7 @@ class ExpressionGenerator:
                 return f"(*{obj})->{cpp_field}"
             if expr.ptr_non_null:
                 return f"{obj}->{cpp_field}"
-            return f"tpy::deref_check({obj}).{cpp_field}"
+            return f"::tpy::deref_check({obj}).{cpp_field}"
         if is_indirect or is_optional_ptr:
             return f"{obj}->{cpp_field}"
         return f"{obj}.{cpp_field}"
@@ -1957,14 +1957,14 @@ class ExpressionGenerator:
         return literal
 
     def _gen_dict_literal(self, expr: TpyDictLiteral) -> str:
-        """Generate dict literal code: {k: v, ...} -> tpy::ordered_map<K, V>({{k, v}, ...})"""
+        """Generate dict literal code: {k: v, ...} -> ::tpy::ordered_map<K, V>({{k, v}, ...})"""
         dict_type = self.ctx.get_expr_type(expr)
         assert isinstance(dict_type, DictType)
         cpp_key = dict_type.key_type.to_cpp()
         cpp_val = dict_type.value_type.to_cpp()
 
         if not expr.keys:
-            return f"tpy::ordered_map<{cpp_key}, {cpp_val}>()"
+            return f"::tpy::ordered_map<{cpp_key}, {cpp_val}>()"
 
         pairs = []
         for k, v in zip(expr.keys, expr.values):
@@ -1973,22 +1973,22 @@ class ExpressionGenerator:
             v_resolved = self.types.get_resolved_type(v, dict_type.value_type)
             v_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(v, dict_type.value_type), v_resolved, dict_type.value_type)
             pairs.append(f"{{{k_cpp}, {v_cpp}}}")
-        return f"tpy::ordered_map<{cpp_key}, {cpp_val}>({{{', '.join(pairs)}}})"
+        return f"::tpy::ordered_map<{cpp_key}, {cpp_val}>({{{', '.join(pairs)}}})"
 
     def _gen_set_literal(self, expr: TpySetLiteral) -> str:
-        """Generate set literal code: {a, b, ...} -> tpy::ordered_set<T>({a, b, ...})"""
+        """Generate set literal code: {a, b, ...} -> ::tpy::ordered_set<T>({a, b, ...})"""
         set_type = self.ctx.get_expr_type(expr)
         assert isinstance(set_type, SetType)
         cpp_elem = set_type.element_type.to_cpp()
 
         if not expr.elements:
-            return f"tpy::ordered_set<{cpp_elem}>()"
+            return f"::tpy::ordered_set<{cpp_elem}>()"
 
         elems = []
         for e in expr.elements:
             e_resolved = self.types.get_resolved_type(e, set_type.element_type)
             elems.append(self._wrap_for_owned_slot(self.gen_expr_deref(e, set_type.element_type), e_resolved, set_type.element_type))
-        return f"tpy::ordered_set<{cpp_elem}>({{{', '.join(elems)}}})"
+        return f"::tpy::ordered_set<{cpp_elem}>({{{', '.join(elems)}}})"
 
     def _gen_list_repeat(self, expr: TpyListRepeat, target_type: TpyType | None) -> str:
         """Generate list repeat code."""
@@ -2028,7 +2028,7 @@ class ExpressionGenerator:
             repeat_elems.append(self._wrap_for_owned_slot(self.gen_expr_deref(e, elem_type or e_resolved), e_resolved, elem_type))
         elements = ", ".join(repeat_elems)
         cpp_elem_type = elem_type.to_cpp() if elem_type else "auto"
-        range_expr = f"tpy::repeat_range<{cpp_elem_type}>({count}, {{{elements}}})"
+        range_expr = f"::tpy::repeat_range<{cpp_elem_type}>({count}, {{{elements}}})"
 
         # Lazy: resolved to ListRepeatType -- emit bare repeat_range (no materialization)
         if isinstance(result_type, ListRepeatType):
@@ -2036,7 +2036,7 @@ class ExpressionGenerator:
 
         # Materialized: wrap in from_range to construct the target container
         cpp_type = result_type.to_cpp()
-        return f"tpy::from_range<{cpp_type}>({range_expr})"
+        return f"::tpy::from_range<{cpp_type}>({range_expr})"
 
     def _gen_list_comprehension(self, expr: TpyListComprehension,
                                 target_type: TpyType | None = None) -> str:
@@ -2134,7 +2134,7 @@ class ExpressionGenerator:
         value_resolved = self.types.get_resolved_type(expr.value_expr, value_type)
         value_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.value_expr, value_type), value_resolved, value_type)
         return self._gen_comprehension_iife(
-            expr.generator, f"tpy::ordered_map<{cpp_key}, {cpp_val}>",
+            expr.generator, f"::tpy::ordered_map<{cpp_key}, {cpp_val}>",
             f"__result.insert_or_assign({key_code}, {value_code})", skip_reserve=True)
 
     def _gen_set_comprehension(self, expr: TpySetComprehension) -> str:
@@ -2143,7 +2143,7 @@ class ExpressionGenerator:
         elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
         insert_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
         return self._gen_comprehension_iife(
-            expr.generator, f"tpy::ordered_set<{cpp_elem}>",
+            expr.generator, f"::tpy::ordered_set<{cpp_elem}>",
             f"__result.insert({insert_code})", skip_reserve=True)
 
     def _gen_generator_expression(self, expr: TpyGeneratorExpression) -> str:
@@ -2189,13 +2189,13 @@ class ExpressionGenerator:
             start_code = self.gen_expr_deref(gen.iterable.args[0], sema_elem)
             stop_code = self.gen_expr_deref(gen.iterable.args[1], sema_elem)
             step_code = self.gen_expr_deref(gen.iterable.args[2], sema_elem)
-            buf.write(f"{ind1}auto __src = tpy::Range<{cpp_iter}>({start_code}, {stop_code}, {step_code});\n")
+            buf.write(f"{ind1}auto __src = ::tpy::Range<{cpp_iter}>({start_code}, {stop_code}, {step_code});\n")
         elif is_lvalue:
             buf.write(f"{ind1}auto& __src = {iterable_code};\n")
         else:
             buf.write(f"{ind1}auto __src = {iterable_code};\n")
 
-        buf.write(f"{ind1}return tpy::make_generator<{cpp_elem}>(\n")
+        buf.write(f"{ind1}return ::tpy::make_generator<{cpp_elem}>(\n")
 
         ind2i = ind2 + INDENT
         ind3i = ind2i + INDENT
@@ -2253,7 +2253,7 @@ class ExpressionGenerator:
             stop_code = self.gen_expr_deref(range_call.args[1], elem_type)
             captures = f"__i = static_cast<{cpp_iter}>({start_code}), __stop = static_cast<{cpp_iter}>({stop_code})"
 
-        buf.write(f"tpy::make_generator<{cpp_elem}>(\n")
+        buf.write(f"::tpy::make_generator<{cpp_elem}>(\n")
         buf.write(f"{ind1}[&, {captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
         buf.write(f"{ind2}while (__i < __stop) {{\n")
         buf.write(f"{ind3}{cpp_iter} {cpp_var} = __i++;\n")
@@ -2536,18 +2536,18 @@ class ExpressionGenerator:
                 cpp_parts.append(f"const {base}&")
             elif isinstance(et, TypeParamRef):
                 # Defer value-vs-ref to C++ instantiation time
-                cpp_parts.append(f"tpy::val_or_ref_t<{base}>")
+                cpp_parts.append(f"::tpy::val_or_ref_t<{base}>")
             else:
                 cpp_parts.append(base)
         return f"std::tuple<{', '.join(cpp_parts)}>"
 
     def _gen_subscript(self, expr: TpySubscript) -> str:
         """Generate subscript code."""
-        # Enum name lookup: Color["Red"] -> tpy::EnumUtil<Color>::from_name("Red")
+        # Enum name lookup: Color["Red"] -> ::tpy::EnumUtil<Color>::from_name("Red")
         if expr.enum_from_name is not None:
             cpp_type = expr.enum_from_name.to_cpp()
             index = self.gen_expr(expr.index)
-            return f"tpy::EnumUtil<{cpp_type}>::from_name({index})"
+            return f"::tpy::EnumUtil<{cpp_type}>::from_name({index})"
 
         obj = self.gen_expr(expr.obj)
 
@@ -2590,11 +2590,11 @@ class ExpressionGenerator:
             and analyzed_obj_type.uses_pointer_repr()
         ):
             if isinstance(expr.obj, TpyFieldAccess):
-                subscript_obj = f"tpy::deref_optional_check({obj})"
+                subscript_obj = f"::tpy::deref_optional_check({obj})"
             else:
                 # For pointer-globals with wrapper storage, this yields raw `T*`.
                 ptr_expr = self.ctx.pointer_value_expr(expr.obj, obj)
-                subscript_obj = f"tpy::deref_check({ptr_expr})"
+                subscript_obj = f"::tpy::deref_check({ptr_expr})"
         index_expr = self.gen_index_expr(expr.index, index_type)
 
         # Bounds-safe: index provably in [0, len(obj)), skip normalize_index
@@ -2648,7 +2648,7 @@ class ExpressionGenerator:
     def _gen_slice(self, obj: str, sl: TpySlice, obj_expr: TpyExpr) -> str:
         """Generate slice: str_slice for strings, list_slice for containers."""
         start = self._gen_slice_bound(sl.lower) if sl.lower is not None else "0"
-        stop = self._gen_slice_bound(sl.upper) if sl.upper is not None else "tpy::SLICE_END"
+        stop = self._gen_slice_bound(sl.upper) if sl.upper is not None else "::tpy::SLICE_END"
         obj_type = self.types.get_resolved_type(obj_expr)
         # get_resolved_type returns the C++ declared type, which stays
         # Optional even after narrowing. Use sema's analyzed type to
@@ -2658,8 +2658,8 @@ class ExpressionGenerator:
             if not isinstance(analyzed, OptionalType):
                 obj_type = obj_type.inner
         if is_any_str_type(obj_type):
-            return f"tpy::str_slice({obj}, {start}, {stop})"
-        return f"tpy::list_slice({obj}, {start}, {stop})"
+            return f"::tpy::str_slice({obj}, {start}, {stop})"
+        return f"::tpy::list_slice({obj}, {start}, {stop})"
 
     def _gen_slice_bound(self, expr: TpyExpr) -> str:
         """Generate a slice bound expression, converting to int32_t if needed."""
@@ -2673,10 +2673,10 @@ class ExpressionGenerator:
         """Generate user-type slice via direct __getitem__ call."""
         start = self._gen_optional_slice_bound(sl.lower)
         stop = self._gen_optional_slice_bound(sl.upper)
-        return f"{obj}.__getitem__(tpy::Slice{{{start}, {stop}}})"
+        return f"{obj}.__getitem__(::tpy::Slice{{{start}, {stop}}})"
 
     def _gen_optional_slice_bound(self, expr: TpyExpr | None) -> str:
-        """Generate an optional slice bound for tpy::Slice construction."""
+        """Generate an optional slice bound for ::tpy::Slice construction."""
         if expr is None:
             return "std::nullopt"
         return self._gen_slice_bound(expr)
@@ -2704,14 +2704,14 @@ class ExpressionGenerator:
             return gen_inner
         # ReadOnlySpanLike[T] protocol type: always uses as_span (readonly)
         if is_protocol_type(actual_type) and actual_type.qualified_name() == "tpy.ReadOnlySpanLike":
-            return f"tpy::as_span({gen_inner})"
+            return f"::tpy::as_span({gen_inner})"
         # User type with __span__() method: call it directly
         if isinstance(actual_type, NamedType) and actual_type.is_user_record:
             if builtin_modules.get_span_element_type(actual_type, registry=self.ctx.analyzer.registry) is not None:
                 if self.ctx.is_indirect_name(expr):
                     gen_inner = f"(*{gen_inner})"
                 return f"{gen_inner}.__span__()"
-        helper = "tpy::as_span" if span_type.is_readonly else "tpy::as_mut_span"
+        helper = "::tpy::as_span" if span_type.is_readonly else "::tpy::as_mut_span"
         if isinstance(expr, TpyArrayLiteral):
             expected_array_type = ArrayType(span_type.element_type, len(expr.elements))
             array_expr = f"{expected_array_type.to_cpp()}{gen_inner}"
@@ -2778,20 +2778,20 @@ class ExpressionGenerator:
                 if container_str is not None:
                     gen_arg = container_str
                 elif conv == FSTRING_CONV_REPR:
-                    gen_arg = f"tpy::__repr__({gen_arg})"
+                    gen_arg = f"::tpy::__repr__({gen_arg})"
                 # !s conversion on user types: wrap with __str__
                 elif conv == FSTRING_CONV_STR and is_user_type:
-                    gen_arg = f"tpy::__str__({gen_arg})"
+                    gen_arg = f"::tpy::__str__({gen_arg})"
                 # Wrap args that need Python-compatible formatting
                 elif isinstance(arg_type, BoolType):
                     if has_spec:
                         gen_arg = f"static_cast<int>({gen_arg})"
                     else:
-                        gen_arg = f"tpy::bool_to_str({gen_arg})"
+                        gen_arg = f"::tpy::bool_to_str({gen_arg})"
                 elif isinstance(arg_type, FloatType) and not has_spec:
-                    gen_arg = f"tpy::float_to_str({gen_arg})"
+                    gen_arg = f"::tpy::float_to_str({gen_arg})"
                 elif isinstance(arg_type, Float32Type) and not has_spec:
-                    gen_arg = f"tpy::float_to_str(static_cast<double>({gen_arg}))"
+                    gen_arg = f"::tpy::float_to_str(static_cast<double>({gen_arg}))"
                 elif self.types.is_runtime_bigint(part.expr, arg_type) and not has_spec:
                     gen_arg = f"({gen_arg}).to_string()"
                 elif isinstance(arg_type, FixedIntType) and arg_type.bits == 8:
@@ -2799,7 +2799,7 @@ class ExpressionGenerator:
                 elif isinstance(arg_type, EnumType):
                     gen_arg = f"static_cast<int>({gen_arg})"
                 elif is_user_type:
-                    gen_arg = f"tpy::__str__({gen_arg})"
+                    gen_arg = f"::tpy::__str__({gen_arg})"
 
                 args.append(gen_arg)
 

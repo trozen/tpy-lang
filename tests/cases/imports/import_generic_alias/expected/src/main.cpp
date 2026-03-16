@@ -15,17 +15,17 @@ void __tpy_init() {
     static std::array<int32_t, 3> __global_slot_1 = {1, 2, 3};
     x = &__global_slot_1;
     // print(len(x))
-    std::cout << tpy::__len__((*x)) << "\n";
+    std::cout << ::tpy::__len__((*x)) << "\n";
     // print(x[0])
-    std::cout << tpy::__getitem__((*x), 0) << "\n";
+    std::cout << ::tpy::__getitem__((*x), 0) << "\n";
     // print(x[1])
-    std::cout << tpy::__getitem__((*x), 1) << "\n";
+    std::cout << ::tpy::__getitem__((*x), 1) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

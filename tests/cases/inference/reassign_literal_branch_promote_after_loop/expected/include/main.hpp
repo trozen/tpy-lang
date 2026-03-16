@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-tpy::BigInt get_big();
+::tpy::BigInt get_big();
 void test_after_while();
 void test_after_for();
 

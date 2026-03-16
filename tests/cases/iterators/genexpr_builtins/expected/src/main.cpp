@@ -8,69 +8,69 @@ namespace tpy_user::main {
 void main() {
     //     # list() from genexpr
     //     squares: list[Int32] = list(x * x for x in range(5))
-    std::vector<int32_t> squares = tpy::collect<std::vector<int32_t>>(tpy::make_generator<int32_t>(
+    std::vector<int32_t> squares = ::tpy::collect<std::vector<int32_t>>(::tpy::make_generator<int32_t>(
         [&, __i = int32_t(0), __stop = static_cast<int32_t>(5)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
                 int32_t x = __i++;
-                return std::optional<int32_t>((tpy::mul_check<int32_t>(x, x)));
+                return std::optional<int32_t>((::tpy::mul_check<int32_t>(x, x)));
             }
             return std::nullopt;
         }
     ));
     //     print(squares)
-    std::cout << tpy::ListPrinter(squares) << "\n";
+    std::cout << ::tpy::ListPrinter(squares) << "\n";
     //     # list.extend with genexpr
     //     items: list[Int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
     //     items.extend(x * 10 for x in range(3))
-    tpy::list_extend(items, tpy::make_generator<int32_t>(
+    ::tpy::list_extend(items, ::tpy::make_generator<int32_t>(
         [&, __i = int32_t(0), __stop = static_cast<int32_t>(3)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
                 int32_t x = __i++;
-                return std::optional<int32_t>((tpy::mul_check<int32_t>(x, 10)));
+                return std::optional<int32_t>((::tpy::mul_check<int32_t>(x, 10)));
             }
             return std::nullopt;
         }
     ));
     //     print(items)
-    std::cout << tpy::ListPrinter(items) << "\n";
+    std::cout << ::tpy::ListPrinter(items) << "\n";
     //     # set() from genexpr
     //     mods: set[Int32] = set(x % 3 for x in range(10))
-    tpy::ordered_set<int32_t> mods = tpy::set_collect<int32_t>(tpy::make_generator<int32_t>(
+    ::tpy::ordered_set<int32_t> mods = ::tpy::set_collect<int32_t>(::tpy::make_generator<int32_t>(
         [&, __i = int32_t(0), __stop = static_cast<int32_t>(10)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
                 int32_t x = __i++;
-                return std::optional<int32_t>((tpy::mod_floor<int32_t>(x, 3)));
+                return std::optional<int32_t>((::tpy::mod_floor<int32_t>(x, 3)));
             }
             return std::nullopt;
         }
     ));
     //     print(mods)
-    std::cout << tpy::SetPrinter(mods) << "\n";
+    std::cout << ::tpy::SetPrinter(mods) << "\n";
     //     # dict() from genexpr of tuples
     //     d: dict[str, Int32] = dict((str(x), x * x) for x in range(4))
-    tpy::ordered_map<std::string, int32_t> d = tpy::dict_collect_pairs<std::string, int32_t>(tpy::make_generator<std::tuple<std::string, int32_t>>(
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_collect_pairs<std::string, int32_t>(::tpy::make_generator<std::tuple<std::string, int32_t>>(
         [&, __i = int32_t(0), __stop = static_cast<int32_t>(4)]() mutable -> std::optional<std::tuple<std::string, int32_t>> {
             while (__i < __stop) {
                 int32_t x = __i++;
-                return std::optional<std::tuple<std::string, int32_t>>(std::tuple<std::string, int32_t>{tpy::fixed_to_str<int32_t>(x), (tpy::mul_check<int32_t>(x, x))});
+                return std::optional<std::tuple<std::string, int32_t>>(std::tuple<std::string, int32_t>{::tpy::fixed_to_str<int32_t>(x), (::tpy::mul_check<int32_t>(x, x))});
             }
             return std::nullopt;
         }
     ));
     //     print(d)
-    std::cout << tpy::DictPrinter(d) << "\n";
+    std::cout << ::tpy::DictPrinter(d) << "\n";
     //     # str.join with genexpr
     //     words: list[str] = ["hello", "world", "test"]
     std::vector<std::string> words = {"hello", "world", "test"};
     //     print(" ".join(w.upper() for w in words))
-    std::cout << tpy::str_join(" ", [&]() {
+    std::cout << ::tpy::str_join(" ", [&]() {
         auto& __src = words;
-        return tpy::make_generator<std::string>(
+        return ::tpy::make_generator<std::string>(
             [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::string> {
                 while (__beg != __end) {
                     std::string w = *__beg++;
-                    return std::optional<std::string>(tpy::str_upper(w));
+                    return std::optional<std::string>(::tpy::str_upper(w));
                 }
                 return std::nullopt;
             }
@@ -90,7 +90,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

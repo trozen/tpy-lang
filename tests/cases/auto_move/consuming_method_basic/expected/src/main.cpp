@@ -7,14 +7,14 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     w = Wrapper(42)
-    Wrapper w = Wrapper(tpy::BigInt(42));
+    Wrapper w = Wrapper(::tpy::BigInt(42));
     //     result = w.take()
-    tpy::BigInt result = std::move(w).take();
+    ::tpy::BigInt result = std::move(w).take();
     //     print(result)
     std::cout << result << "\n";
     //     # Calling on a temporary should also work
     //     print(Wrapper(99).take())
-    std::cout << Wrapper(tpy::BigInt(99)).take() << "\n";
+    std::cout << Wrapper(::tpy::BigInt(99)).take() << "\n";
 }
 
 void __tpy_init() {
@@ -29,7 +29,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

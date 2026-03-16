@@ -20,21 +20,21 @@ void __tpy_init() {
     // y = 2.0
     y = 2.0;
     // print(x + y)
-    std::cout << tpy::print_float(((x) + (y))) << "\n";
+    std::cout << ::tpy::print_float(((x) + (y))) << "\n";
     // print(x - y)
-    std::cout << tpy::print_float(((x) - (y))) << "\n";
+    std::cout << ::tpy::print_float(((x) - (y))) << "\n";
     // print(x * y)
-    std::cout << tpy::print_float(((x) * (y))) << "\n";
+    std::cout << ::tpy::print_float(((x) * (y))) << "\n";
     // print(x / y)
-    std::cout << tpy::print_float((tpy::truediv(x, y))) << "\n";
+    std::cout << ::tpy::print_float((::tpy::truediv(x, y))) << "\n";
     // print(-x)
-    std::cout << tpy::print_float(-(x)) << "\n";
+    std::cout << ::tpy::print_float(-(x)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

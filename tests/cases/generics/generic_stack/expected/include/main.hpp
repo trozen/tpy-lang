@@ -21,29 +21,29 @@ struct Stack {
     Stack() : items(std::vector<T>()) {}
 
     //     def push(self, value: T) -> None:
-    void push(tpy::param_val_or_ref_t<T> value) {
+    void push(::tpy::param_val_or_ref_t<T> value) {
         //         self.items.append(value)
         auto __tmp_1 = value;
         this->items.push_back(std::move(__tmp_1));
     }
 
     //     def pop(self) -> T:
-    tpy::val_or_ref_t<T> pop() {
+    ::tpy::val_or_ref_t<T> pop() {
         //         return self.items.pop()
-        return tpy::pop_back(this->items);
+        return ::tpy::pop_back(this->items);
     }
 
     //     def is_empty(self) -> bool:
     bool is_empty() const {
         //         return len(self.items) == 0
-        return (tpy::__len__(this->items) == 0);
+        return (::tpy::__len__(this->items) == 0);
     }
 };
 
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Stack<T>& obj) {
     os << "Stack("
-       << "items=" << tpy::ListPrinter(obj.items)
+       << "items=" << ::tpy::ListPrinter(obj.items)
        << ")";
     return os;
 }

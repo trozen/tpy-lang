@@ -45,13 +45,13 @@ void __tpy_init() {
     // print(sink.put(unsafe_cast(unsafe_ptr(carg))))  # tpyc: ok
     std::cout << sink->put(reinterpret_cast<void*>((*carg).data())) << "\n";
     // print(len(parg_list))
-    std::cout << tpy::__len__((*parg_list)) << "\n";
+    std::cout << ::tpy::__len__((*parg_list)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

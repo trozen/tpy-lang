@@ -31,7 +31,7 @@ struct tpy::EnumUtil<tpy_user::main::Priority> {
 namespace tpy_user::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Priority __e) {
-    return __os << "Priority." << tpy::EnumUtil<Priority>::name(__e);
+    return __os << "Priority." << ::tpy::EnumUtil<Priority>::name(__e);
 }
 
 struct Widget;

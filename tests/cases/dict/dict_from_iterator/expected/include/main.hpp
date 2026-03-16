@@ -27,11 +27,11 @@ struct PairIter {
         //         if self.current < self.limit:
         if ((this->current < this->limit)) {
             //             key = str(self.current)
-            std::string key = tpy::fixed_to_str<int32_t>(this->current);
+            std::string key = ::tpy::fixed_to_str<int32_t>(this->current);
             //             val = self.current * 10
-            int32_t val = (tpy::mul_check<int32_t>(this->current, 10));
+            int32_t val = (::tpy::mul_check<int32_t>(this->current, 10));
             //             self.current += 1
-            this->current = tpy::add_check<int32_t>(this->current, 1);
+            this->current = ::tpy::add_check<int32_t>(this->current, 1);
             //             return (key, val)
             return std::tuple<std::string, int32_t>{key, val};
         }

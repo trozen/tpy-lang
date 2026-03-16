@@ -645,7 +645,7 @@ class RecordGenerator:
                                     if isinstance(val_type, OptionalType) and not isinstance(source, TpyFieldAccess):
                                         # Own[T] | None is already std::optional<T>; T | None is T* needing conversion
                                         if not (isinstance(val_type, OptionalType) and isinstance(val_type.inner, OwnType)):
-                                            value = f"tpy::ptr_to_optional({value})"
+                                            value = f"::tpy::ptr_to_optional({value})"
                                 inits.append((field_name, value))
             return inits
         finally:
@@ -754,7 +754,7 @@ class RecordGenerator:
         """Generate operator[] for subscript read syntax.
 
         For readonly __getitem__: dual overloads (const + non-const) matching
-        the method itself. Writes go through tpy::__setitem__.
+        the method itself. Writes go through ::tpy::__setitem__.
         For non-readonly __getitem__: non-const only (method mutates self).
         For @overload __getitem__: generate operator[] for each stub.
         For @auto_readonly __getitem__ clone pairs: const first, then mutable,
@@ -914,7 +914,7 @@ class RecordGenerator:
             return
         hash_fields = ", ".join(f"this->{escape_cpp_name(fld.name)}" for fld in dc_fields)
         out.write(f"\n{INDENT}uint64_t __hash__() const {{\n")
-        out.write(f"{INDENT}{INDENT}return tpy::hash_combine(0, {hash_fields});\n")
+        out.write(f"{INDENT}{INDENT}return ::tpy::hash_combine(0, {hash_fields});\n")
         out.write(f"{INDENT}}}\n")
 
     def _gen_order_operator(self, out: TextIO, record: TpyRecord) -> None:
@@ -973,37 +973,37 @@ class RecordGenerator:
                 inner = fld.type.inner
                 inner_cpp = inner.to_cpp()
                 if isinstance(inner, BoolType):
-                    out.write(f' << tpy::print_optional_val<tpy::print_bool, {inner_cpp}>({acc})')
+                    out.write(f' << ::tpy::print_optional_val<::tpy::print_bool, {inner_cpp}>({acc})')
                 elif isinstance(inner, (FloatType, Float32Type)):
-                    out.write(f' << tpy::print_optional_val<tpy::print_float, {inner_cpp}>({acc})')
+                    out.write(f' << ::tpy::print_optional_val<::tpy::print_float, {inner_cpp}>({acc})')
                 elif is_any_str_type(inner):
                     out.write(f' << ({acc}.has_value() ? std::string("\'") + std::string({acc}.value()) + "\'" : std::string("None"))')
                 elif isinstance(inner, TupleType):
-                    out.write(f';\n{indent}if ({acc}.has_value()) {stream} << tpy::TuplePrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
+                    out.write(f';\n{indent}if ({acc}.has_value()) {stream} << ::tpy::TuplePrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
                 elif isinstance(inner, DictType):
-                    out.write(f';\n{indent}if ({acc}.has_value()) {stream} << tpy::DictPrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
+                    out.write(f';\n{indent}if ({acc}.has_value()) {stream} << ::tpy::DictPrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
                 elif isinstance(inner, SetType):
-                    out.write(f';\n{indent}if ({acc}.has_value()) {stream} << tpy::SetPrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
+                    out.write(f';\n{indent}if ({acc}.has_value()) {stream} << ::tpy::SetPrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
                 elif isinstance(inner, (ListType, ArrayType, SpanType)):
-                    out.write(f';\n{indent}if ({acc}.has_value()) {stream} << tpy::ListPrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
+                    out.write(f';\n{indent}if ({acc}.has_value()) {stream} << ::tpy::ListPrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
                 else:
-                    out.write(f' << tpy::print_optional_val({acc})')
+                    out.write(f' << ::tpy::print_optional_val({acc})')
             elif isinstance(fld.type, BoolType):
-                out.write(f' << tpy::print_bool({acc})')
+                out.write(f' << ::tpy::print_bool({acc})')
             elif isinstance(fld.type, FloatType):
-                out.write(f' << tpy::print_float({acc})')
+                out.write(f' << ::tpy::print_float({acc})')
             elif isinstance(fld.type, Float32Type):
-                out.write(f' << tpy::print_float(static_cast<double>({acc}))')
+                out.write(f' << ::tpy::print_float(static_cast<double>({acc}))')
             elif isinstance(fld.type, TypeParamRef):
-                out.write(f' << tpy::ValuePrinter({acc})')
+                out.write(f' << ::tpy::ValuePrinter({acc})')
             elif isinstance(fld.type, TupleType):
-                out.write(f' << tpy::TuplePrinter({acc})')
+                out.write(f' << ::tpy::TuplePrinter({acc})')
             elif isinstance(fld.type, DictType):
-                out.write(f' << tpy::DictPrinter({acc})')
+                out.write(f' << ::tpy::DictPrinter({acc})')
             elif isinstance(fld.type, SetType):
-                out.write(f' << tpy::SetPrinter({acc})')
+                out.write(f' << ::tpy::SetPrinter({acc})')
             elif isinstance(fld.type, (ListType, ArrayType, SpanType)):
-                out.write(f' << tpy::ListPrinter({acc})')
+                out.write(f' << ::tpy::ListPrinter({acc})')
             elif isinstance(fld.type, NamedType) and fld.type.is_module_type:
                 out.write(f' << "<{fld.type}>"')
             else:
@@ -1041,7 +1041,7 @@ class RecordGenerator:
         elif is_signed:
             out.write(f"\n{INDENT}size_t size() const {{\n")
             out.write(f"{INDENT}{INDENT}auto len = __len__();\n")
-            out.write(f"{INDENT}{INDENT}if (len < 0) tpy::tpy_panic(\"__len__ returned negative value\");\n")
+            out.write(f"{INDENT}{INDENT}if (len < 0) ::tpy::tpy_panic(\"__len__ returned negative value\");\n")
             out.write(f"{INDENT}{INDENT}return static_cast<size_t>(len);\n")
             out.write(f"{INDENT}}}\n")
         else:

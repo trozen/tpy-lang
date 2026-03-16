@@ -9,9 +9,9 @@ int32_t mutate_and_get(Box& b) {
     //     if b.value is not None:
     if ((b.value.has_value())) {
         //         b.value = b.value + 1
-        b.value = (tpy::add_check<int32_t>((*b.value), 1));
+        b.value = (::tpy::add_check<int32_t>((*b.value), 1));
         //         return b.value + 0
-        return (tpy::add_check<int32_t>((*b.value), 0));
+        return (::tpy::add_check<int32_t>((*b.value), 0));
     }
     //     return 0
     return 0;
@@ -31,7 +31,7 @@ int32_t use(Box& b) {
         //         observe(mutate_and_get(b))
         observe(mutate_and_get(b));
         //         return b.value + 1  # tpyc: warning(/Potential None access/)
-        return (tpy::add_check<int32_t>(tpy::deref_optional_check(b.value), 1));
+        return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(b.value), 1));
     }
     //     return 0
     return 0;
@@ -50,7 +50,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

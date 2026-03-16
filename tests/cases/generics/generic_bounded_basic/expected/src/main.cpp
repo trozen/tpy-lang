@@ -8,12 +8,12 @@ namespace tpy_user::main {
 void main() {
     //     # list[int] satisfies Sized, so instantiation works
     //     c = Container[list[int]]([1, 2, 3])
-    Container<std::vector<tpy::BigInt>> c = Container<std::vector<tpy::BigInt>>({1, 2, 3});
+    Container<std::vector<::tpy::BigInt>> c = Container<std::vector<::tpy::BigInt>>({1, 2, 3});
     //     items = c.get_item()
-    std::vector<tpy::BigInt>& items = c.get_item();
+    std::vector<::tpy::BigInt>& items = c.get_item();
     //     # len() works on the concrete type after retrieval
     //     print(len(items))
-    std::cout << tpy::__len__(items) << "\n";
+    std::cout << ::tpy::__len__(items) << "\n";
 }
 
 void __tpy_init() {
@@ -26,7 +26,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

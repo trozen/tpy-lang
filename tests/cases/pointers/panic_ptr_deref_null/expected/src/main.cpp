@@ -9,7 +9,7 @@ void main() {
     //     p: Ptr[Int32] = Ptr[Int32]()
     int32_t* p = static_cast<int32_t*>(nullptr);
     //     print(p.__deref__())
-    std::cout << tpy::deref_check(p) << "\n";
+    std::cout << ::tpy::deref_check(p) << "\n";
 }
 
 void __tpy_init() {
@@ -24,7 +24,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

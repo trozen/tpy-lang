@@ -11,7 +11,7 @@ void main() {
     //     b: Int32 = Int32(-1)
     int32_t b = -1;
     //     print(pow(a, b))
-    std::cout << tpy::pow_check<int32_t>(a, b) << "\n";
+    std::cout << ::tpy::pow_check<int32_t>(a, b) << "\n";
 }
 
 void __tpy_init() {
@@ -26,7 +26,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

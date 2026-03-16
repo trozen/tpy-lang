@@ -11,19 +11,19 @@ inline constexpr std::string_view __name__ = "__main__";
 
 Point* get_or_none(bool flag, Point& p);
 Point* pick(bool flag, Point* a, Point* b);
-tpy::BigInt narrowed_field(Point* p);
+::tpy::BigInt narrowed_field(Point* p);
 void main();
 
 // class Point:
 struct Point {
     //         self.x = x
-    tpy::BigInt x;
+    ::tpy::BigInt x;
     //         self.y = y
-    tpy::BigInt y;
+    ::tpy::BigInt y;
 
     //     def __init__(self, x: int, y: int) -> None:
     Point() = default;
-    explicit Point(const tpy::BigInt& x, const tpy::BigInt& y) : x(x), y(y) {}
+    explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {

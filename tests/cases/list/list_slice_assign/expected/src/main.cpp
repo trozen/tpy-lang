@@ -10,7 +10,7 @@ void main() {
     std::vector<int32_t> a = {1, 2, 3, 4, 5};
     //     # Replace same length
     //     a[1:3] = [10, 20]
-    tpy::list_set_slice(a, 1, 3, std::vector<int32_t>{10, 20});
+    ::tpy::list_set_slice(a, 1, 3, std::vector<int32_t>{10, 20});
     //     for x in a:
     auto& __obj_0 = a;
     auto __beg_0 = __obj_0.begin();
@@ -22,12 +22,12 @@ void main() {
     }
     //     # Replace with longer (resize)
     //     a[1:3] = [10, 20, 30, 40]
-    tpy::list_set_slice(a, 1, 3, std::vector<int32_t>{10, 20, 30, 40});
+    ::tpy::list_set_slice(a, 1, 3, std::vector<int32_t>{10, 20, 30, 40});
     //     print(len(a))
-    std::cout << tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n";
     //     # Delete elements
     //     a[1:4] = []
-    tpy::list_set_slice(a, 1, 4, std::vector<int32_t>{});
+    ::tpy::list_set_slice(a, 1, 4, std::vector<int32_t>{});
     //     for x in a:
     auto& __obj_1 = a;
     auto __beg_1 = __obj_1.begin();
@@ -39,7 +39,7 @@ void main() {
     }
     //     # Insert at position (start == stop)
     //     a[1:1] = [99, 98]
-    tpy::list_set_slice(a, 1, 1, std::vector<int32_t>{99, 98});
+    ::tpy::list_set_slice(a, 1, 1, std::vector<int32_t>{99, 98});
     //     for x in a:
     auto& __obj_2 = a;
     auto __beg_2 = __obj_2.begin();
@@ -53,7 +53,7 @@ void main() {
     //     b: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> b = {1, 2, 3, 4, 5};
     //     b[-2:] = [100, 200]
-    tpy::list_set_slice(b, -2, tpy::SLICE_END, std::vector<int32_t>{100, 200});
+    ::tpy::list_set_slice(b, -2, ::tpy::SLICE_END, std::vector<int32_t>{100, 200});
     //     for x in b:
     auto& __obj_3 = b;
     auto __beg_3 = __obj_3.begin();
@@ -67,7 +67,7 @@ void main() {
     //     c: list[Int32] = [1, 2, 3]
     std::vector<int32_t> c = {1, 2, 3};
     //     c[:] = [10, 20]
-    tpy::list_set_slice(c, 0, tpy::SLICE_END, std::vector<int32_t>{10, 20});
+    ::tpy::list_set_slice(c, 0, ::tpy::SLICE_END, std::vector<int32_t>{10, 20});
     //     for x in c:
     auto& __obj_4 = c;
     auto __beg_4 = __obj_4.begin();
@@ -91,7 +91,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

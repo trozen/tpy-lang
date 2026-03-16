@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def get_first(items: list[Point]) -> Point:
 Point& get_first(std::vector<Point>& items) {
     //     return items[0]  # return_borrows_from = {0}
-    return tpy::__getitem__(items, 0);
+    return ::tpy::__getitem__(items, 0);
 }
 
 // def get_list(items: list[Point]) -> list[Point]:
@@ -23,9 +23,9 @@ void test_aug_assign_warns() {
     //     first = get_first(data)        # 8b: ELEMENT borrow on data
     Point& first = get_first(data);
     //     data += [Point(5, 6)]          # tpyc: warning(/Mutation of 'data'.*'\+='/)
-    tpy::list_extend(data, {Point(5, 6)});
+    ::tpy::list_extend(data, {Point(5, 6)});
     //     print(len(data))               # 3
-    std::cout << tpy::__len__(data) << "\n";
+    std::cout << ::tpy::__len__(data) << "\n";
 }
 
 // def test_iter_aug_assign_warns() -> None:
@@ -39,12 +39,12 @@ void test_iter_aug_assign_warns() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
         //         data += [Point(5, 6)]      # tpyc: warning(/Mutation of 'data'.*'\+=' invalidates the iterator/)
-        tpy::list_extend(data, {Point(5, 6)});
+        ::tpy::list_extend(data, {Point(5, 6)});
         //         break
         break;
     }
     //     print(len(data))               # 3
-    std::cout << tpy::__len__(data) << "\n";
+    std::cout << ::tpy::__len__(data) << "\n";
 }
 
 // def test_no_borrow_no_warn() -> None:
@@ -52,9 +52,9 @@ void test_no_borrow_no_warn() {
     //     data: list[Point] = [Point(1, 2), Point(3, 4)]
     std::vector<Point> data = {Point(1, 2), Point(3, 4)};
     //     data += [Point(5, 6)]          # tpyc: ok
-    tpy::list_extend(data, std::vector<Point>{Point(5, 6)});
+    ::tpy::list_extend(data, std::vector<Point>{Point(5, 6)});
     //     print(len(data))               # 3
-    std::cout << tpy::__len__(data) << "\n";
+    std::cout << ::tpy::__len__(data) << "\n";
 }
 
 // def test_borrow_cleared_no_warn() -> None:
@@ -67,9 +67,9 @@ void test_borrow_cleared_no_warn() {
     //     first = Point(9, 9)            # clears borrow
     first = &*(__slot_1 = Point(9, 9));
     //     data += [Point(5, 6)]          # tpyc: ok
-    tpy::list_extend(data, {Point(5, 6)});
+    ::tpy::list_extend(data, {Point(5, 6)});
     //     print(len(data))               # 3
-    std::cout << tpy::__len__(data) << "\n";
+    std::cout << ::tpy::__len__(data) << "\n";
 }
 
 // def main() -> None:
@@ -96,7 +96,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

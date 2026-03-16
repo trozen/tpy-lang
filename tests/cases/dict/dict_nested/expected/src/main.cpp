@@ -7,15 +7,15 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     d: dict[str, dict[str, Int32]] = {"inner": {"a": 1, "b": 2}}
-    tpy::ordered_map<std::string, tpy::ordered_map<std::string, int32_t>> d = tpy::ordered_map<std::string, tpy::ordered_map<std::string, int32_t>>({{"inner", tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}})}});
+    ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> d = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"inner", ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}})}});
     //     print(d["inner"]["a"])
-    std::cout << tpy::__getitem__(tpy::__getitem__(d, "inner"), "a") << "\n";
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__(d, "inner"), "a") << "\n";
     //     print(d["inner"]["b"])
-    std::cout << tpy::__getitem__(tpy::__getitem__(d, "inner"), "b") << "\n";
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__(d, "inner"), "b") << "\n";
     //     d2: dict[str, dict[str, str]] = {"x": {"k": "v"}}
-    tpy::ordered_map<std::string, tpy::ordered_map<std::string, std::string>> d2 = tpy::ordered_map<std::string, tpy::ordered_map<std::string, std::string>>({{"x", tpy::ordered_map<std::string, std::string>({{"k", "v"}})}});
+    ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, std::string>> d2 = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, std::string>>({{"x", ::tpy::ordered_map<std::string, std::string>({{"k", "v"}})}});
     //     print(d2["x"]["k"])
-    std::cout << tpy::__getitem__(tpy::__getitem__(d2, "x"), "k") << "\n";
+    std::cout << ::tpy::__getitem__(::tpy::__getitem__(d2, "x"), "k") << "\n";
 }
 
 void __tpy_init() {
@@ -30,7 +30,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

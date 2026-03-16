@@ -8,7 +8,7 @@ namespace tpy_user::main {
 // def get_first(items: list[Point]) -> Point:
 Point& get_first(std::vector<Point>& items) {
     //     return items[0]  # tpyc: ok
-    return tpy::__getitem__(items, 0);
+    return ::tpy::__getitem__(items, 0);
 }
 
 // # Direct param -- borrows from p (param 0)
@@ -69,7 +69,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

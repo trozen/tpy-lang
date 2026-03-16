@@ -11,13 +11,13 @@ void main() {
     //     p: Ptr[Int32] = Ptr(x)
     int32_t* p = &x;
     //     print(deref(p))
-    std::cout << tpy::deref_check(p) << "\n";
+    std::cout << ::tpy::deref_check(p) << "\n";
     //     y: Int32 = 77
     int32_t y = 77;
     //     rp: Ptr[readonly[Int32]] = Ptr(y)
     const int32_t* rp = &y;
     //     print(deref(rp))
-    std::cout << tpy::deref_check(rp) << "\n";
+    std::cout << ::tpy::deref_check(rp) << "\n";
     //     z: Int32 = 99
     int32_t z = 99;
     //     print(deref_protocol(Ptr(z)))
@@ -32,7 +32,7 @@ void main() {
     //     b = Box(33)
     Box b = Box(33);
     //     print(deref(b))
-    std::cout << tpy::deref_check(b) << "\n";
+    std::cout << ::tpy::deref_check(b) << "\n";
 }
 
 void __tpy_init() {
@@ -47,7 +47,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

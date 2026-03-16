@@ -14,7 +14,7 @@ void test_borrow_warn() {
     //     pts.append(Point(5, 6))  # tpyc: warning(/Mutation of 'pts' while borrowed/)
     pts.push_back(Point(5, 6));
     //     print(len(pts))           # 3
-    std::cout << tpy::__len__(pts) << "\n";
+    std::cout << ::tpy::__len__(pts) << "\n";
 }
 
 // # (b) Return-through-local: non-generic caller -- p borrows from items via 8b contract.
@@ -52,7 +52,7 @@ void test_method_ref_semantics() {
     //     p.x = 99
     p.x = 99;
     //     print(box._items[0].x)   # 99: p is a reference into box._items, not a copy
-    std::cout << tpy::__getitem__(box._items, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(box._items, 0).x << "\n";
 }
 
 // def test_method_return_through_local() -> None:
@@ -91,7 +91,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

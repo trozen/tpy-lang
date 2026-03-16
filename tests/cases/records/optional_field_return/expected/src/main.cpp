@@ -19,23 +19,23 @@ void __tpy_init() {
     // r = b.get_item()
     r = b->get_item();
     // print(r is None)
-    std::cout << tpy::print_bool((r == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((r == nullptr)) << "\n";
     // b.item = copy(Point(3, 4))
     b->item = Point(3, 4);
     // r = b.get_item()
     r = b->get_item();
     // print(r is not None)
-    std::cout << tpy::print_bool((r != nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((r != nullptr)) << "\n";
     // print(r.x)
-    std::cout << tpy::deref_check(r).x << "\n";
+    std::cout << ::tpy::deref_check(r).x << "\n";
     // print(r.y)
-    std::cout << tpy::deref_check(r).y << "\n";
+    std::cout << ::tpy::deref_check(r).y << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

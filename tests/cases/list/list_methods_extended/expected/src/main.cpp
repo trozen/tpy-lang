@@ -10,11 +10,11 @@ void print_list(const std::vector<int32_t>& nums) {
     //     i: Int32 = 0
     int32_t i = 0;
     //     while i < len(nums):
-    while ((i < tpy::__len__(nums))) {
+    while ((i < ::tpy::__len__(nums))) {
         //         print(nums[i])
         std::cout << nums[i] << "\n";
         //         i += 1
-        i = tpy::add_check<int32_t>(i, 1);
+        i = ::tpy::add_check<int32_t>(i, 1);
     }
     //     print("---")
     std::cout << "---" << "\n";
@@ -27,21 +27,21 @@ void test_pop_at_index() {
     std::vector<int32_t> nums = {10, 20, 30, 40, 50};
     //     # Pop from middle
     //     val: Int32 = nums.pop(2)
-    int32_t val = tpy::list_pop_at(nums, 2);
+    int32_t val = ::tpy::list_pop_at(nums, 2);
     //     print(val)
     std::cout << val << "\n";
     //     print_list(nums)
     print_list(nums);
     //     # Pop from beginning
     //     val = nums.pop(0)
-    val = tpy::list_pop_at(nums, 0);
+    val = ::tpy::list_pop_at(nums, 0);
     //     print(val)
     std::cout << val << "\n";
     //     print_list(nums)
     print_list(nums);
     //     # Pop with negative index (-1 = last)
     //     val = nums.pop(-1)
-    val = tpy::list_pop_at(nums, -1);
+    val = ::tpy::list_pop_at(nums, -1);
     //     print(val)
     std::cout << val << "\n";
     //     print_list(nums)
@@ -53,13 +53,13 @@ void test_index() {
     //     nums: list[Int32] = [10, 20, 30, 20, 40]
     std::vector<int32_t> nums = {10, 20, 30, 20, 40};
     //     print(nums.index(10))  # 0
-    std::cout << tpy::list_index(nums, 10) << "\n";
+    std::cout << ::tpy::list_index(nums, 10) << "\n";
     //     print(nums.index(20))  # 1 (first occurrence)
-    std::cout << tpy::list_index(nums, 20) << "\n";
+    std::cout << ::tpy::list_index(nums, 20) << "\n";
     //     print(nums.index(30))  # 2
-    std::cout << tpy::list_index(nums, 30) << "\n";
+    std::cout << ::tpy::list_index(nums, 30) << "\n";
     //     print(nums.index(40))  # 4
-    std::cout << tpy::list_index(nums, 40) << "\n";
+    std::cout << ::tpy::list_index(nums, 40) << "\n";
 }
 
 // def test_count() -> None:
@@ -67,13 +67,13 @@ void test_count() {
     //     nums: list[Int32] = [1, 2, 2, 3, 2, 4, 2]
     std::vector<int32_t> nums = {1, 2, 2, 3, 2, 4, 2};
     //     print(nums.count(1))  # 1
-    std::cout << tpy::list_count(nums, 1) << "\n";
+    std::cout << ::tpy::list_count(nums, 1) << "\n";
     //     print(nums.count(2))  # 4
-    std::cout << tpy::list_count(nums, 2) << "\n";
+    std::cout << ::tpy::list_count(nums, 2) << "\n";
     //     print(nums.count(3))  # 1
-    std::cout << tpy::list_count(nums, 3) << "\n";
+    std::cout << ::tpy::list_count(nums, 3) << "\n";
     //     print(nums.count(5))  # 0 (not found)
-    std::cout << tpy::list_count(nums, 5) << "\n";
+    std::cout << ::tpy::list_count(nums, 5) << "\n";
 }
 
 // def test_reverse() -> None:
@@ -81,12 +81,12 @@ void test_reverse() {
     //     nums: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
     //     nums.reverse()
-    tpy::list_reverse(nums);
+    ::tpy::list_reverse(nums);
     //     print_list(nums)
     print_list(nums);
     //     # Reverse again
     //     nums.reverse()
-    tpy::list_reverse(nums);
+    ::tpy::list_reverse(nums);
     //     print_list(nums)
     print_list(nums);
 }
@@ -96,15 +96,15 @@ void test_copy() {
     //     nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
     //     copy: list[Int32] = nums.copy()
-    std::vector<int32_t> copy = tpy::list_copy(nums);
+    std::vector<int32_t> copy = ::tpy::list_copy(nums);
     //     # Modify original
     //     nums.append(4)
     nums.push_back(4);
     //     # Copy should be unaffected
     //     print(len(nums))   # 4
-    std::cout << tpy::__len__(nums) << "\n";
+    std::cout << ::tpy::__len__(nums) << "\n";
     //     print(len(copy))   # 3
-    std::cout << tpy::__len__(copy) << "\n";
+    std::cout << ::tpy::__len__(copy) << "\n";
     //     print_list(copy)
     print_list(copy);
 }
@@ -114,14 +114,14 @@ void test_setitem() {
     //     nums: list[Int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
     //     nums[0] = 100
-    tpy::__setitem__(nums, 0, 100);
+    ::tpy::__setitem__(nums, 0, 100);
     //     nums[2] = 300
-    tpy::__setitem__(nums, 2, 300);
+    ::tpy::__setitem__(nums, 2, 300);
     //     print_list(nums)
     print_list(nums);
     //     # Negative index
     //     nums[-1] = 999
-    tpy::__setitem__(nums, -1, 999);
+    ::tpy::__setitem__(nums, -1, 999);
     //     print_list(nums)
     print_list(nums);
 }
@@ -161,7 +161,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

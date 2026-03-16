@@ -31,13 +31,13 @@ struct Config {
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     os << "Config("
-       << "port=" << tpy::print_optional_val(obj.port)
+       << "port=" << ::tpy::print_optional_val(obj.port)
        << ", "
        << "name=" << (obj.name.has_value() ? std::string("'") + std::string(obj.name.value()) + "'" : std::string("None"))
        << ", "
-       << "flag=" << tpy::print_optional_val<tpy::print_bool, bool>(obj.flag)
+       << "flag=" << ::tpy::print_optional_val<::tpy::print_bool, bool>(obj.flag)
        << ", "
-       << "ratio=" << tpy::print_optional_val<tpy::print_float, double>(obj.ratio)
+       << "ratio=" << ::tpy::print_optional_val<::tpy::print_float, double>(obj.ratio)
        << ")";
     return os;
 }

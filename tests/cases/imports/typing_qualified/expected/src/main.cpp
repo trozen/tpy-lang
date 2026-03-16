@@ -9,7 +9,7 @@ int32_t maybe_add(std::optional<int32_t> x, int32_t y) {
     //     if x is not None:
     if ((x.has_value())) {
         //         return x + y
-        return (tpy::add_check<int32_t>((*x), y));
+        return (::tpy::add_check<int32_t>((*x), y));
     }
     //     return y
     return y;
@@ -38,7 +38,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -11,19 +11,19 @@ void main() {
     int32_t __tmp_4 = 20;
     std::vector<int32_t> xs = collect<int32_t>(__tmp_3, __tmp_4);
     //     print(len(xs))
-    std::cout << tpy::__len__(xs) << "\n";
+    std::cout << ::tpy::__len__(xs) << "\n";
     //     print(xs[0])
-    std::cout << tpy::__getitem__(xs, 0) << "\n";
+    std::cout << ::tpy::__getitem__(xs, 0) << "\n";
     //     print(xs[1])
-    std::cout << tpy::__getitem__(xs, 1) << "\n";
+    std::cout << ::tpy::__getitem__(xs, 1) << "\n";
     //     ys = collect(Box(Int32(1)), Box(Int32(2)))
     Box __tmp_5 = Box(1);
     Box __tmp_6 = Box(2);
     std::vector<Box> ys = collect<Box>(__tmp_5, __tmp_6);
     //     print(len(ys))
-    std::cout << tpy::__len__(ys) << "\n";
+    std::cout << ::tpy::__len__(ys) << "\n";
     //     print(ys[0].value)
-    std::cout << tpy::__getitem__(ys, 0).value << "\n";
+    std::cout << ::tpy::__getitem__(ys, 0).value << "\n";
 }
 
 void __tpy_init() {
@@ -38,7 +38,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

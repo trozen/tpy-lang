@@ -18,7 +18,7 @@ struct Ops {
     //     def plus_one(x: Int32) -> Int32:
     static int32_t plus_one(int32_t x) {
         //         return x + 1
-        return (tpy::add_check<int32_t>(x, 1));
+        return (::tpy::add_check<int32_t>(x, 1));
     }
 };
 

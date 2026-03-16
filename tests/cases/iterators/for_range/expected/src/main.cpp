@@ -23,7 +23,7 @@ int32_t sum_range(int32_t n) {
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
         //         total += i
-        total = tpy::add_check<int32_t>(total, i);
+        total = ::tpy::add_check<int32_t>(total, i);
     }
     //     return total
     return total;
@@ -51,7 +51,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

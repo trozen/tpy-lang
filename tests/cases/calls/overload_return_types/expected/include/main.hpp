@@ -11,9 +11,9 @@ struct Cat;
 inline constexpr std::string_view __name__ = "__main__";
 
 std::string get_value(const Dog& animal);
-tpy::BigInt get_value(const Cat& animal);
+::tpy::BigInt get_value(const Cat& animal);
 void use_dog_result(std::string_view name);
-void use_cat_result(const tpy::BigInt& lives);
+void use_cat_result(const ::tpy::BigInt& lives);
 void main();
 
 // class Dog:
@@ -36,11 +36,11 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 // class Cat:
 struct Cat {
     //     lives: int
-    tpy::BigInt lives;
+    ::tpy::BigInt lives;
 
     //     def __init__(self, lives: int) -> None:
     Cat() = default;
-    explicit Cat(const tpy::BigInt& lives) : lives(lives) {}
+    explicit Cat(const ::tpy::BigInt& lives) : lives(lives) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {

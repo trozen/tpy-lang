@@ -4,13 +4,13 @@
 namespace tpy_user::main {
 
 // x: int = 0
-tpy::BigInt x;
+::tpy::BigInt x;
 
 // def increment() -> None:
 void increment() {
     //     global x
     //     x = x + 1
-    x = ((x) + (tpy::BigInt(1)));
+    x = ((x) + (::tpy::BigInt(1)));
 }
 
 void __tpy_init() {
@@ -19,7 +19,7 @@ void __tpy_init() {
     initialized = true;
 
     // x: int = 0
-    x = tpy::BigInt(0);
+    x = ::tpy::BigInt(0);
     // increment()
     increment();
     // increment()
@@ -31,7 +31,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -7,24 +7,24 @@ namespace tpy_user::main {
 // def find_first(items: list[Point]) -> Point:
 Point& find_first(std::vector<Point>& items) {
     //     return items[0]
-    return tpy::__getitem__(items, 0);
+    return ::tpy::__getitem__(items, 0);
 }
 
 // def bump(p: Point) -> None:
 void bump(Point& p) {
     //     p.x += 10
-    p.x = (p.x) + (tpy::BigInt(10));
+    p.x = (p.x) + (::tpy::BigInt(10));
 }
 
 // def test() -> None:
 void test() {
     //     pts = [Point(1), Point(2)]
-    std::vector<Point> pts = {Point(tpy::BigInt(1)), Point(tpy::BigInt(2))};
+    std::vector<Point> pts = {Point(::tpy::BigInt(1)), Point(::tpy::BigInt(2))};
     //     # Free function: find_first returns Point& -> bump receives it directly
     //     bump(find_first(pts))
     bump(find_first(pts));
     //     print(pts[0].x)   # 11
-    std::cout << tpy::__getitem__(pts, 0).x << "\n";
+    std::cout << ::tpy::__getitem__(pts, 0).x << "\n";
     //     # Method: holder.get() returns Point& -> bump receives it directly
     //     h = Holder()
     Holder h = Holder();
@@ -46,7 +46,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

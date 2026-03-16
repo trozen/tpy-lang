@@ -65,7 +65,7 @@ struct Line {
     //     def get_end(self) -> Point | None:
     Point* get_end() {
         //         return self.end
-        return tpy::optional_to_ptr(this->end);
+        return ::tpy::optional_to_ptr(this->end);
     }
 };
 
@@ -73,7 +73,7 @@ inline std::ostream& operator<<(std::ostream& os, const Line& obj) {
     os << "Line("
        << "start=" << obj.start
        << ", "
-       << "end=" << tpy::print_optional_val(obj.end)
+       << "end=" << ::tpy::print_optional_val(obj.end)
        << ")";
     return os;
 }

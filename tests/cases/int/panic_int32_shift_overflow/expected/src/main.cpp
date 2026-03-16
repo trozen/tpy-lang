@@ -14,13 +14,13 @@ void __tpy_init() {
     // x: Int32 = 1
     x = 1;
     // print(x << 100)  # Should panic: shift count too large
-    std::cout << (tpy::lshift_check<int32_t>(x, 100)) << "\n";
+    std::cout << (::tpy::lshift_check<int32_t>(x, 100)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

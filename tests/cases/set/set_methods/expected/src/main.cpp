@@ -7,46 +7,46 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     s: set[Int32] = {10, 20, 30}
-    tpy::ordered_set<int32_t> s = tpy::ordered_set<int32_t>({10, 20, 30});
+    ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({10, 20, 30});
     //     # discard (no error if missing)
     //     s.discard(20)
     s.erase(20);
     //     print(s)
-    std::cout << tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n";
     //     s.discard(99)  # no error
     s.erase(99);
     //     print(s)
-    std::cout << tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n";
     //     # remove (panics if missing, tested separately)
     //     s.remove(10)
-    tpy::set_remove(s, 10);
+    ::tpy::set_remove(s, 10);
     //     print(s)
-    std::cout << tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n";
     //     # pop (removes first element)
     //     val: Int32 = s.pop()
-    int32_t val = tpy::set_pop(s);
+    int32_t val = ::tpy::set_pop(s);
     //     print(val)
     std::cout << val << "\n";
     //     print(s)
-    std::cout << tpy::SetPrinter(s) << "\n";
+    std::cout << ::tpy::SetPrinter(s) << "\n";
     //     # copy
     //     a: set[Int32] = {1, 2, 3}
-    tpy::ordered_set<int32_t> a = tpy::ordered_set<int32_t>({1, 2, 3});
+    ::tpy::ordered_set<int32_t> a = ::tpy::ordered_set<int32_t>({1, 2, 3});
     //     b: set[Int32] = a.copy()
-    tpy::ordered_set<int32_t> b = tpy::set_copy(a);
+    ::tpy::ordered_set<int32_t> b = ::tpy::set_copy(a);
     //     b.add(4)
     b.insert(4);
     //     print(a)
-    std::cout << tpy::SetPrinter(a) << "\n";
+    std::cout << ::tpy::SetPrinter(a) << "\n";
     //     print(b)
-    std::cout << tpy::SetPrinter(b) << "\n";
+    std::cout << ::tpy::SetPrinter(b) << "\n";
     //     # clear
     //     a.clear()
     a.clear();
     //     print(a)
-    std::cout << tpy::SetPrinter(a) << "\n";
+    std::cout << ::tpy::SetPrinter(a) << "\n";
     //     print(len(a))
-    std::cout << tpy::__len__(a) << "\n";
+    std::cout << ::tpy::__len__(a) << "\n";
 }
 
 void __tpy_init() {
@@ -61,7 +61,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

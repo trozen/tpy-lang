@@ -42,9 +42,9 @@ void main() {
     //     pts: list[Point] = list()
     std::vector<Point> pts = std::vector<Point>();
     //     h.value = find_point(pts, 1)  # tpyc: warning(/copies Point | None into field/)
-    h.value = tpy::ptr_to_optional(find_point(pts, 1));
+    h.value = ::tpy::ptr_to_optional(find_point(pts, 1));
     //     h.value = copy(find_point(pts, 1))  # tpyc: ok
-    h.value = tpy::ptr_to_optional(find_point(pts, 1));
+    h.value = ::tpy::ptr_to_optional(find_point(pts, 1));
     //     # Optional field: field-to-field (lvalue)
     //     h.value = h.value             # tpyc: warning(/copies Point | None into field/)
     h.value = h.value;
@@ -66,7 +66,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

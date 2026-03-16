@@ -24,9 +24,9 @@ struct CachedList {
     //     def __getitem__(self, idx: Int32) -> Int32:
     int32_t __getitem__(int32_t idx) {
         //         self._hits = self._hits + 1
-        this->_hits = (tpy::add_check<int32_t>(this->_hits, 1));
+        this->_hits = (::tpy::add_check<int32_t>(this->_hits, 1));
         //         return self._data[idx]
-        return tpy::__getitem__(this->_data, idx);
+        return ::tpy::__getitem__(this->_data, idx);
     }
 
     int32_t operator[](int32_t idx) {
@@ -36,7 +36,7 @@ struct CachedList {
 
 inline std::ostream& operator<<(std::ostream& os, const CachedList& obj) {
     os << "CachedList("
-       << "_data=" << tpy::ListPrinter(obj._data)
+       << "_data=" << ::tpy::ListPrinter(obj._data)
        << ", "
        << "_hits=" << obj._hits
        << ")";

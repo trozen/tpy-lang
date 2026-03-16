@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template<typename A, typename B>
 Pair<B, A> swap_pair(Pair<A, B>& p);
 template<typename A, typename B>
-Pair<A, B> create_pair(tpy::param_val_or_ref_t<A> a, tpy::param_val_or_ref_t<B> b);
+Pair<A, B> create_pair(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t<B> b);
 
 // class Pair[A, B]:
 template<typename A, typename B>
@@ -32,9 +32,9 @@ struct Pair {
 template<typename A, typename B>
 inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
     os << "Pair("
-       << "first=" << tpy::ValuePrinter(obj.first)
+       << "first=" << ::tpy::ValuePrinter(obj.first)
        << ", "
-       << "second=" << tpy::ValuePrinter(obj.second)
+       << "second=" << ::tpy::ValuePrinter(obj.second)
        << ")";
     return os;
 }
@@ -47,7 +47,7 @@ Pair<B, A> swap_pair(Pair<A, B>& p) {
 }
 // def create_pair[A, B](a: A, b: B) -> Own[Pair[A, B]]:
 template<typename A, typename B>
-Pair<A, B> create_pair(tpy::param_val_or_ref_t<A> a, tpy::param_val_or_ref_t<B> b) {
+Pair<A, B> create_pair(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t<B> b) {
     //     return Pair[A, B](a, b)
     return Pair<A, B>(a, b);
 }

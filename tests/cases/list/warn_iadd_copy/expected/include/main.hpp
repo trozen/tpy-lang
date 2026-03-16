@@ -41,9 +41,9 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 template<typename T>
 void test_iadd_generic_warns(std::vector<T>& a, const std::vector<T>& b) {
     //     a += b  # tpyc: warning(/may copy T elements/)
-    tpy::list_extend(a, b);
+    ::tpy::list_extend(a, b);
     //     print(len(b))
-    std::cout << tpy::__len__(b) << "\n";
+    std::cout << ::tpy::__len__(b) << "\n";
 }
 
 void __tpy_init();

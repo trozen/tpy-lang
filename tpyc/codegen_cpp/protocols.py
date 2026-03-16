@@ -145,14 +145,14 @@ class ProtocolGenerator:
         return protocol_name
 
     def get_dynamic_adapter_type(self, protocol_name: str, concrete_cpp: str) -> str:
-        """Get the full C++ type for an owning adapter: tpy::Adapter<Base, Concrete>."""
+        """Get the full C++ type for an owning adapter: ::tpy::Adapter<Base, Concrete>."""
         base = self.get_dynamic_base_name(protocol_name)
-        return f"tpy::Adapter<{base}, {concrete_cpp}>"
+        return f"::tpy::Adapter<{base}, {concrete_cpp}>"
 
     def get_dynamic_ref_adapter_type(self, protocol_name: str, concrete_cpp: str) -> str:
-        """Get the full C++ type for a ref adapter: tpy::RefAdapter<Base, Concrete>."""
+        """Get the full C++ type for a ref adapter: ::tpy::RefAdapter<Base, Concrete>."""
         base = self.get_dynamic_base_name(protocol_name)
-        return f"tpy::RefAdapter<{base}, {concrete_cpp}>"
+        return f"::tpy::RefAdapter<{base}, {concrete_cpp}>"
 
     def _protocol_inherits_from(self, protocol_name: str, ancestor_name: str) -> bool:
         """Check if protocol_name transitively inherits from ancestor_name."""
@@ -225,7 +225,7 @@ class ProtocolGenerator:
     def _concept_constraint(self, pname: str, ptype: NamedType) -> str:
         """Build the concept constraint expression for a protocol template param.
 
-        Returns e.g. 'tpy::Sized<T_items>' or 'tpy::Sequence<T_items, int32_t>'.
+        Returns e.g. '::tpy::Sized<T_items>' or '::tpy::Sequence<T_items, int32_t>'.
         """
         concept_name = self.get_concept_name(ptype)
         if ptype.type_args:
@@ -243,7 +243,7 @@ class ProtocolGenerator:
         """Generate template header combining type parameters and concept constraints.
 
         For generic functions: template<typename T>
-        For generic functions with protocols: template<typename T, tpy::Sized T_items>
+        For generic functions with protocols: template<typename T, ::tpy::Sized T_items>
         For bounded type params: template<Comparable T>
         For protocol unions: template<typename T_items> requires (A<T_items> || B<T_items>)
         """
@@ -411,10 +411,10 @@ class ProtocolGenerator:
             # Protocol type params (e.g., T in Container[T]) are mapped to _T0, _T1, etc.
             ret_cpp = subst_to_cpp(method_sig.return_type)
 
-            # For dunder methods that have tpy:: free function equivalents, use those
+            # For dunder methods that have ::tpy:: free function equivalents, use those
             # This allows std types (vector, string, etc.) to satisfy the protocol
             if method_sig.name == "__len__":
-                out.write(f"{INDENT}{{ tpy::__len__(t) }} -> std::convertible_to<{ret_cpp}>;\n")
+                out.write(f"{INDENT}{{ ::tpy::__len__(t) }} -> std::convertible_to<{ret_cpp}>;\n")
             elif method_sig.name in DUNDER_TO_BINARY_OP and len(method_sig.params) == 1:
                 # Binary operators - use C++ operator syntax
                 # e.g., __add__(Self) -> Self becomes { t + std::declval<T>() } -> convertible_to<T>
@@ -483,7 +483,7 @@ class ProtocolGenerator:
 
     def gen_dynamic_adapter_specs(self, out: TextIO, protocol: TpyProtocol,
                                   module_namespace: str) -> None:
-        """Generate tpy::Adapter and tpy::RefAdapter partial specializations.
+        """Generate ::tpy::Adapter and ::tpy::RefAdapter partial specializations.
 
         Emitted at global scope (outside user namespace), following the EnumUtil
         pattern. Uses fully-qualified names for concept and base class.
@@ -547,13 +547,13 @@ class ProtocolGenerator:
         arg_names = [pname for pname, _ in method_sig.params]
         args_str = ", ".join(arg_names)
 
-        # Dunder methods with tpy:: free function equivalents
+        # Dunder methods with ::tpy:: free function equivalents
         if method_sig.name == "__len__":
-            return f"tpy::__len__(inner)"
+            return f"::tpy::__len__(inner)"
         if method_sig.name == "__getitem__" and len(method_sig.params) == 1:
-            return f"tpy::__getitem__(inner, {args_str})"
+            return f"::tpy::__getitem__(inner, {args_str})"
         if method_sig.name == "__setitem__" and len(method_sig.params) == 2:
-            return f"tpy::__setitem__(inner, {args_str})"
+            return f"::tpy::__setitem__(inner, {args_str})"
         if method_sig.name in DUNDER_TO_BINARY_OP and len(method_sig.params) == 1:
             cpp_op = DUNDER_TO_BINARY_OP[method_sig.name]
             return f"inner {cpp_op} {arg_names[0]}"

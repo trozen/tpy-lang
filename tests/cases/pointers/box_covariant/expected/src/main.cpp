@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def print_area(b: Box[Shape]) -> None:
 void print_area(::tpy_user::tplib::Box<Shape>& b) {
     //     print(b.get().area())
-    std::cout << tpy::print_float(b.get().area()) << "\n";
+    std::cout << ::tpy::print_float(b.get().area()) << "\n";
 }
 
 // def make_shape() -> Own[Box[Shape]]:
@@ -35,12 +35,12 @@ void main() {
     //     b_shape: Box[Shape] = bc2
     ::tpy_user::tplib::Box<Shape> b_shape = std::move(bc2);
     //     print(b_shape.get().area())
-    std::cout << tpy::print_float(b_shape.get().area()) << "\n";
+    std::cout << ::tpy::print_float(b_shape.get().area()) << "\n";
     //     # Return coercion via Own
     //     b3 = make_shape()
     ::tpy_user::tplib::Box<Shape> b3 = make_shape();
     //     print(b3.get().area())
-    std::cout << tpy::print_float(b3.get().area()) << "\n";
+    std::cout << ::tpy::print_float(b3.get().area()) << "\n";
 }
 
 void __tpy_init() {
@@ -57,7 +57,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

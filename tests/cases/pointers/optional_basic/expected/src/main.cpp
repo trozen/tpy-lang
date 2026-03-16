@@ -10,13 +10,13 @@ void test() {
     std::optional<Point> __slot_1;
     Point* p = nullptr;
     //     print(p is None)
-    std::cout << tpy::print_bool((p == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
     //     p = Point(1, 2)
     p = &*(__slot_1 = Point(1, 2));
     //     print(p is None)
-    std::cout << tpy::print_bool((p == nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
     //     print(p is not None)
-    std::cout << tpy::print_bool((p != nullptr)) << "\n";
+    std::cout << ::tpy::print_bool((p != nullptr)) << "\n";
     //     print(p.x)
     std::cout << p->x << "\n";
 }
@@ -33,7 +33,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

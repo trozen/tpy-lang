@@ -17,8 +17,8 @@ void __tpy_init() {
     step = 0;
     // for i in range(1, 5, step):
     int32_t __step_0 = step;
-    if (__step_0 == 0) tpy::tpy_panic("range() arg 3 must not be zero");
-    tpy::range_check_overflow<int32_t>(1, 5, __step_0);
+    if (__step_0 == 0) ::tpy::tpy_panic("range() arg 3 must not be zero");
+    ::tpy::range_check_overflow<int32_t>(1, 5, __step_0);
     for (int32_t i = 1; __step_0 > 0 ? i < 5 : i > 5; i += __step_0) {
         //     print(i)
         std::cout << i << "\n";
@@ -28,7 +28,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

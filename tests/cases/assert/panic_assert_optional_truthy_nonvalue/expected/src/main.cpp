@@ -14,13 +14,13 @@ void __tpy_init() {
     // x: C | None = None
     x = nullptr;
     // assert x
-    if (!(x)) tpy::tpy_panic("assertion failed");
+    if (!(x)) ::tpy::tpy_panic("assertion failed");
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

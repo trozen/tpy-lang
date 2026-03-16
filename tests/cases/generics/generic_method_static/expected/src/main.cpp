@@ -10,7 +10,7 @@ void main() {
     //     print(Utils.identity[Int32](Int32(42)))
     std::cout << Utils::identity<int32_t>(42) << "\n";
     //     print(Utils.identity[bool](True))
-    std::cout << tpy::print_bool(Utils::identity<bool>(true)) << "\n";
+    std::cout << ::tpy::print_bool(Utils::identity<bool>(true)) << "\n";
 }
 
 void __tpy_init() {
@@ -25,7 +25,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

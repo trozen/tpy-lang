@@ -32,7 +32,7 @@ struct Point {
     }
 
     uint64_t __hash__() const {
-        return tpy::hash_combine(0, this->x, this->y);
+        return ::tpy::hash_combine(0, this->x, this->y);
     }
 
     std::string __repr__() const {
@@ -71,7 +71,7 @@ struct Config {
     }
 
     uint64_t __hash__() const {
-        return tpy::hash_combine(0, this->name, this->value);
+        return ::tpy::hash_combine(0, this->name, this->value);
     }
 
     std::string __repr__() const {

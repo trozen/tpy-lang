@@ -78,7 +78,7 @@ struct Rect {
     //     def area(self) -> Int32:
     int32_t area() const {
         //         return self._w * self._h
-        return (tpy::mul_check<int32_t>(this->_w, this->_h));
+        return (::tpy::mul_check<int32_t>(this->_w, this->_h));
     }
 };
 
@@ -133,7 +133,7 @@ int32_t get_measure(const T_p& p) {
 template<Resizable T_p>
 int32_t double_resize(T_p& p) {
     //     p.resize(p.measure() * 2)
-    p.resize((tpy::mul_check<int32_t>(p.measure(), 2)));
+    p.resize((::tpy::mul_check<int32_t>(p.measure(), 2)));
     //     return p.measure()
     return p.measure();
 }

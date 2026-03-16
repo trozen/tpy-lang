@@ -9,11 +9,11 @@ void main() {
     //     h1 = Holder(None)
     Holder h1 = Holder(std::nullopt);
     //     print(h1.value is None)
-    std::cout << tpy::print_bool((!h1.value.has_value())) << "\n";
+    std::cout << ::tpy::print_bool((!h1.value.has_value())) << "\n";
     //     h2 = Holder(Int32(42))
     Holder h2 = Holder(42);
     //     print(h2.value)
-    std::cout << tpy::print_optional_val(h2.value) << "\n";
+    std::cout << ::tpy::print_optional_val(h2.value) << "\n";
 }
 
 void __tpy_init() {
@@ -28,7 +28,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

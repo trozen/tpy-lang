@@ -16,14 +16,14 @@ void main() {
     std::cout << v.z << "\n";
     //     # Equality with all fields
     //     print(v == Vec3(1, 2, 3))
-    std::cout << tpy::print_bool((v == Vec3(1, 2, 3))) << "\n";
+    std::cout << ::tpy::print_bool((v == Vec3(1, 2, 3))) << "\n";
     //     print(v == Vec3(1, 2, 4))
-    std::cout << tpy::print_bool((v == Vec3(1, 2, 4))) << "\n";
+    std::cout << ::tpy::print_bool((v == Vec3(1, 2, 4))) << "\n";
     //     # Hash works (frozen)
     //     d: dict[Vec3, str] = {v: "a"}
-    tpy::ordered_map<Vec3, std::string> d = tpy::ordered_map<Vec3, std::string>({{v, "a"}});
+    ::tpy::ordered_map<Vec3, std::string> d = ::tpy::ordered_map<Vec3, std::string>({{v, "a"}});
     //     print(d[Vec3(1, 2, 3)])
-    std::cout << tpy::__getitem__(d, Vec3(1, 2, 3)) << "\n";
+    std::cout << ::tpy::__getitem__(d, Vec3(1, 2, 3)) << "\n";
 }
 
 void __tpy_init() {
@@ -38,7 +38,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

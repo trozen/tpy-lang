@@ -5,25 +5,25 @@ namespace tpy_user::main {
 
 
 // def get_value(o: Outer) -> int:
-tpy::BigInt get_value(const Outer& o) {
+::tpy::BigInt get_value(const Outer& o) {
     //     if o.inner.value is not None:
     if ((o.inner.value.has_value())) {
         //         return o.inner.value  # tpyc: ok
         return (*o.inner.value);
     }
     //     return 0
-    return tpy::BigInt(0);
+    return ::tpy::BigInt(0);
 }
 
 // def get_value_truthy(o: Outer) -> int:
-tpy::BigInt get_value_truthy(const Outer& o) {
+::tpy::BigInt get_value_truthy(const Outer& o) {
     //     if o.inner.value:
-    if (tpy::is_truthy(o.inner.value)) {
+    if (::tpy::is_truthy(o.inner.value)) {
         //         return o.inner.value  # tpyc: ok
         return (*o.inner.value);
     }
     //     return 0
-    return tpy::BigInt(0);
+    return ::tpy::BigInt(0);
 }
 
 // def main() -> None:
@@ -54,7 +54,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -60,7 +60,7 @@ struct MyCounter : Counter {
     //     def increment(self) -> None:
     void increment() override {
         //         self.count = self.count + Int32(1)
-        this->count = (tpy::add_check<int32_t>(this->count, 1));
+        this->count = (::tpy::add_check<int32_t>(this->count, 1));
     }
 
     //     def value(self) -> Int32:
@@ -89,7 +89,7 @@ struct Tally {
     //     def increment(self) -> None:
     void increment() {
         //         self.count = self.count + Int32(1)
-        this->count = (tpy::add_check<int32_t>(this->count, 1));
+        this->count = (::tpy::add_check<int32_t>(this->count, 1));
     }
 
     //     def value(self) -> Int32:

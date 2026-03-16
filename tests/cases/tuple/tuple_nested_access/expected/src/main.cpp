@@ -13,12 +13,12 @@ void main() {
     //     print(inner[0])
     std::cout << std::get<0>(inner) << "\n";
     //     print(inner[1])
-    std::cout << tpy::print_bool(std::get<1>(inner)) << "\n";
+    std::cout << ::tpy::print_bool(std::get<1>(inner)) << "\n";
     //     # Return value access
     //     print(n[0])
     std::cout << std::get<0>(n) << "\n";
     //     print(n[1])
-    std::cout << tpy::TuplePrinter(std::get<1>(n)) << "\n";
+    std::cout << ::tpy::TuplePrinter(std::get<1>(n)) << "\n";
 }
 
 void __tpy_init() {
@@ -33,7 +33,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

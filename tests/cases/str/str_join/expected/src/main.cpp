@@ -9,33 +9,33 @@ namespace tpy_user::main {
 void main() {
     //     # Basic join
     //     result = ",".join(["a", "b", "c"])
-    std::string result = tpy::str_join(",", {"a", "b", "c"});
+    std::string result = ::tpy::str_join(",", {"a", "b", "c"});
     //     print(result)
     std::cout << result << "\n";
     //     # Empty separator
     //     together = "".join(["a", "b", "c"])
-    std::string together = tpy::str_join("", {"a", "b", "c"});
+    std::string together = ::tpy::str_join("", {"a", "b", "c"});
     //     print(together)
     std::cout << together << "\n";
     //     # Single element
     //     single = ",".join(["only"])
-    std::string single = tpy::str_join(",", {"only"});
+    std::string single = ::tpy::str_join(",", {"only"});
     //     print(single)
     std::cout << single << "\n";
     //     # Empty list
     //     empty_items: list[str] = []
     std::vector<std::string> empty_items = std::vector<std::string>{};
     //     empty = ",".join(empty_items)
-    std::string empty = tpy::str_join(",", empty_items);
+    std::string empty = ::tpy::str_join(",", empty_items);
     //     print("empty:", len(empty))
-    std::cout << "empty:" << " " << tpy::__len__(empty) << "\n";
+    std::cout << "empty:" << " " << ::tpy::__len__(empty) << "\n";
     //     # Join with variable separator
     //     sep = " - "
     std::string_view sep = " - ";
     //     items = ["one", "two", "three"]
     std::array<std::string, 3> items = {"one", "two", "three"};
     //     print(sep.join(items))
-    std::cout << tpy::str_join(sep, items) << "\n";
+    std::cout << ::tpy::str_join(sep, items) << "\n";
 }
 
 void __tpy_init() {
@@ -50,7 +50,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

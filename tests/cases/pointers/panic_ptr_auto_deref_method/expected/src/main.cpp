@@ -9,7 +9,7 @@ void main() {
     //     p: Ptr[Counter] = Ptr[Counter]()
     Counter* p = static_cast<Counter*>(nullptr);
     //     print(p.get_value())
-    std::cout << tpy::deref_check(p).get_value() << "\n";
+    std::cout << ::tpy::deref_check(p).get_value() << "\n";
 }
 
 void __tpy_init() {
@@ -24,7 +24,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

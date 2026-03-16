@@ -13,7 +13,7 @@ void test_iterable_params() {
     std::cout << sum_items(nums) << "\n";
     //     # range
     //     print(sum_items(range(5)))
-    auto __tmp_1 = tpy::Range<int32_t>(5);
+    auto __tmp_1 = ::tpy::Range<int32_t>(5);
     std::cout << sum_items(__tmp_1) << "\n";
     //     # str
     //     print(count_chars("hello"))
@@ -26,12 +26,12 @@ void test_iterable_params() {
     std::cout << sum_items(arr) << "\n";
     //     # Span (mutable, via Ptr)
     //     sp: Span[Int32] = Span(Ptr(arr[0]), 3)
-    std::span<int32_t> sp = std::span<int32_t>(&tpy::__getitem__(arr, 0), static_cast<size_t>(3));
+    std::span<int32_t> sp = std::span<int32_t>(&::tpy::__getitem__(arr, 0), static_cast<size_t>(3));
     //     print(sum_items(sp))
     std::cout << sum_items(sp) << "\n";
     //     # Span[readonly[T]] (via Array.__span__())
     //     rosp: Span[readonly[Int32]] = arr.__span__()
-    std::span<const int32_t> rosp = tpy::as_span(arr);
+    std::span<const int32_t> rosp = ::tpy::as_span(arr);
     //     print(sum_items(rosp))
     std::cout << sum_items(rosp) << "\n";
     //     # list (another)
@@ -51,7 +51,7 @@ void test_iterable_params() {
     std::cout << count_chars(sv) << "\n";
     //     # dict (iterates over keys)
     //     d: dict[str, Int32] = {"a": 1, "b": 2}
-    tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
     //     print(sum_strs(d))
     std::cout << sum_strs(d) << "\n";
 }
@@ -62,18 +62,18 @@ void test_manual_iter() {
     //     nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
     //     it = nums.__iter__()
-    auto it = tpy::__iter__(nums);
+    auto it = ::tpy::__iter__(nums);
     //     total: Int32 = 0
     int32_t total = 0;
     //     for x in it:
     auto& __src_0 = it;
-    auto __obj_0 = tpy::iter_adapt(__src_0);
+    auto __obj_0 = ::tpy::iter_adapt(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         total += x
-        total = tpy::add_check<int32_t>(total, x);
+        total = ::tpy::add_check<int32_t>(total, x);
     }
     //     print(total)
     std::cout << total << "\n";
@@ -81,10 +81,10 @@ void test_manual_iter() {
     //     chars: str = "hi"
     std::string_view chars = "hi";
     //     char_it = chars.__iter__()
-    auto char_it = tpy::__iter__(chars);
+    auto char_it = ::tpy::__iter__(chars);
     //     for c in char_it:
     auto& __src_1 = char_it;
-    auto __obj_1 = tpy::iter_adapt(__src_1);
+    auto __obj_1 = ::tpy::iter_adapt(__src_1);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
@@ -96,10 +96,10 @@ void test_manual_iter() {
     //     arr: Array[Int32, 2] = [7, 8]
     std::array<int32_t, 2> arr = {7, 8};
     //     arr_it = arr.__iter__()
-    auto arr_it = tpy::__iter__(arr);
+    auto arr_it = ::tpy::__iter__(arr);
     //     for v in arr_it:
     auto& __src_2 = arr_it;
-    auto __obj_2 = tpy::iter_adapt(__src_2);
+    auto __obj_2 = ::tpy::iter_adapt(__src_2);
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
@@ -109,12 +109,12 @@ void test_manual_iter() {
     }
     //     # dict.__iter__()
     //     d: dict[str, Int32] = {"x": 10, "y": 20}
-    tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}});
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 10}, {"y", 20}});
     //     d_it = d.__iter__()
-    auto d_it = tpy::__iter__(d);
+    auto d_it = ::tpy::__iter__(d);
     //     for k in d_it:
     auto& __src_3 = d_it;
-    auto __obj_3 = tpy::iter_adapt(__src_3);
+    auto __obj_3 = ::tpy::iter_adapt(__src_3);
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
@@ -130,29 +130,29 @@ void test_iter_builtin() {
     //     nums: list[Int32] = [4, 5, 6]
     std::vector<int32_t> nums = {4, 5, 6};
     //     it = iter(nums)
-    auto it = tpy::__iter__(nums);
+    auto it = ::tpy::__iter__(nums);
     //     total: Int32 = 0
     int32_t total = 0;
     //     for x in it:
     auto& __src_0 = it;
-    auto __obj_0 = tpy::iter_adapt(__src_0);
+    auto __obj_0 = ::tpy::iter_adapt(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         total += x
-        total = tpy::add_check<int32_t>(total, x);
+        total = ::tpy::add_check<int32_t>(total, x);
     }
     //     print(total)
     std::cout << total << "\n";
     //     # iter() on dict
     //     d: dict[str, Int32] = {"p": 1, "q": 2}
-    tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"p", 1}, {"q", 2}});
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"p", 1}, {"q", 2}});
     //     d_it = iter(d)
-    auto d_it = tpy::__iter__(d);
+    auto d_it = ::tpy::__iter__(d);
     //     for k in d_it:
     auto& __src_1 = d_it;
-    auto __obj_1 = tpy::iter_adapt(__src_1);
+    auto __obj_1 = ::tpy::iter_adapt(__src_1);
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
@@ -176,7 +176,7 @@ void main() {
     test_iter_builtin();
     //     # Test Iterable[int] with list[int] (range path) and direct BigInt
     //     bigints: list[int] = [100, 200, 300]
-    std::vector<tpy::BigInt> bigints = {100, 200, 300};
+    std::vector<::tpy::BigInt> bigints = {100, 200, 300};
     //     print(sum_bigints(bigints))
     std::cout << sum_bigints(bigints) << "\n";
 }
@@ -193,7 +193,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

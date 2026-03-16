@@ -8,7 +8,7 @@ namespace tpy_user::main {
 // class HasLength(Protocol):
 template<typename T>
 concept HasLength = requires(const T& t) {
-    { t.length() } -> std::convertible_to<tpy::BigInt>;
+    { t.length() } -> std::convertible_to<::tpy::BigInt>;
 };
 
 struct Words;
@@ -30,15 +30,15 @@ struct Words {
 
     //     @readonly
     //     def length(self) -> int:
-    tpy::BigInt length() const {
+    ::tpy::BigInt length() const {
         //         return len(self.items)
-        return tpy::BigInt(tpy::__len__(this->items));
+        return ::tpy::BigInt(::tpy::__len__(this->items));
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Words& obj) {
     os << "Words("
-       << "items=" << tpy::ListPrinter(obj.items)
+       << "items=" << ::tpy::ListPrinter(obj.items)
        << ")";
     return os;
 }
@@ -46,23 +46,23 @@ inline std::ostream& operator<<(std::ostream& os, const Words& obj) {
 // class Numbers:
 struct Numbers {
     //     items: list[int]
-    std::vector<tpy::BigInt> items;
+    std::vector<::tpy::BigInt> items;
 
     //     def __init__(self, items: list[int]) -> None:
     Numbers() = default;
-    explicit Numbers(const std::vector<tpy::BigInt>& items) : items(items) {}
+    explicit Numbers(const std::vector<::tpy::BigInt>& items) : items(items) {}
 
     //     @readonly
     //     def length(self) -> int:
-    tpy::BigInt length() const {
+    ::tpy::BigInt length() const {
         //         return len(self.items)
-        return tpy::BigInt(tpy::__len__(this->items));
+        return ::tpy::BigInt(::tpy::__len__(this->items));
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Numbers& obj) {
     os << "Numbers("
-       << "items=" << tpy::ListPrinter(obj.items)
+       << "items=" << ::tpy::ListPrinter(obj.items)
        << ")";
     return os;
 }
@@ -70,7 +70,7 @@ inline std::ostream& operator<<(std::ostream& os, const Numbers& obj) {
 // class Container:
 struct Container {
     //     count: int
-    tpy::BigInt count;
+    ::tpy::BigInt count;
 
     //     def __init__(self, items: HasLength) -> None:
     Container() = default;
@@ -87,7 +87,7 @@ struct Container {
     //     @readonly
     //     def combined_len(self, other: HasLength) -> int:
     template<HasLength T_other>
-    tpy::BigInt combined_len(const T_other& other) const {
+    ::tpy::BigInt combined_len(const T_other& other) const {
         //         return self.count + other.length()
         return ((this->count) + (other.length()));
     }

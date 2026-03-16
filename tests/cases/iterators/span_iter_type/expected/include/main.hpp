@@ -7,25 +7,25 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<tpy::Iterable<int32_t> T_it>
+template<::tpy::Iterable<int32_t> T_it>
 int32_t sum_iterable(T_it& it);
 int32_t sum_readonly(std::span<const int32_t> rs);
 void main();
 
 // def sum_iterable(it: Iterable[Int32]) -> Int32:
-template<tpy::Iterable<int32_t> T_it>
+template<::tpy::Iterable<int32_t> T_it>
 int32_t sum_iterable(T_it& it) {
     //     total: Int32 = 0
     int32_t total = 0;
     //     for x in it:
     auto& __src_0 = it;
-    auto __obj_0 = tpy::iter_for_loop(__src_0);
+    auto __obj_0 = ::tpy::iter_for_loop(__src_0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         //         total += x
-        total = tpy::add_check<int32_t>(total, x);
+        total = ::tpy::add_check<int32_t>(total, x);
     }
     //     return total
     return total;

@@ -36,7 +36,7 @@ struct Container {
 
 inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
     os << "Container("
-       << "items=" << tpy::ListPrinter(obj.items)
+       << "items=" << ::tpy::ListPrinter(obj.items)
        << ")";
     return os;
 }

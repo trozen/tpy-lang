@@ -13,7 +13,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template<typename T>
 Container<T> make_box();
 template<typename T>
-tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x);
+::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x);
 Container<int32_t> get_box();
 void main();
 
@@ -28,7 +28,7 @@ struct Container {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     os << "Container("
-       << "val=" << tpy::ValuePrinter(obj.val)
+       << "val=" << ::tpy::ValuePrinter(obj.val)
        << ")";
     return os;
 }
@@ -49,9 +49,9 @@ struct Pair {
 template<typename A, typename B>
 inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
     os << "Pair("
-       << "first=" << tpy::ValuePrinter(obj.first)
+       << "first=" << ::tpy::ValuePrinter(obj.first)
        << ", "
-       << "second=" << tpy::ValuePrinter(obj.second)
+       << "second=" << ::tpy::ValuePrinter(obj.second)
        << ")";
     return os;
 }
@@ -64,7 +64,7 @@ Container<T> make_box() {
 }
 // def identity[T](x: T) -> T:
 template<typename T>
-tpy::val_or_ref_t<T> identity(tpy::param_val_or_ref_t<T> x) {
+::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
     //     return x
     return x;
 }

@@ -29,26 +29,26 @@ void __tpy_init() {
     initialized = true;
 
     // print(maybe_int(True))
-    std::cout << tpy::print_optional_val(maybe_int(true)) << "\n";
+    std::cout << ::tpy::print_optional_val(maybe_int(true)) << "\n";
     // print(maybe_int(False))
-    std::cout << tpy::print_optional_val(maybe_int(false)) << "\n";
+    std::cout << ::tpy::print_optional_val(maybe_int(false)) << "\n";
     // result: Int32 | None = maybe_int(True)
     result = maybe_int(true);
     // if result is not None:
     if ((result.has_value())) {
         //     print(result)
-        std::cout << tpy::print_optional_val(result) << "\n";
+        std::cout << ::tpy::print_optional_val(result) << "\n";
     }
     // print(pass_through(99))
-    std::cout << tpy::print_optional_val(pass_through(99)) << "\n";
+    std::cout << ::tpy::print_optional_val(pass_through(99)) << "\n";
     // print(pass_through(None))
-    std::cout << tpy::print_optional_val(pass_through(std::nullopt)) << "\n";
+    std::cout << ::tpy::print_optional_val(pass_through(std::nullopt)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

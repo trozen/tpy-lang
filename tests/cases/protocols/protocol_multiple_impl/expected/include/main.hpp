@@ -56,7 +56,7 @@ struct Box {
     //     def size(self) -> Int32:
     int32_t size() const {
         //         return self.width * self.height
-        return (tpy::mul_check<int32_t>(this->width, this->height));
+        return (::tpy::mul_check<int32_t>(this->width, this->height));
     }
 };
 

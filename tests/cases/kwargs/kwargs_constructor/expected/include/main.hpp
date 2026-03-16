@@ -16,13 +16,13 @@ void main();
 // class Point:
 struct Point {
     //         self.x = x
-    tpy::BigInt x;
+    ::tpy::BigInt x;
     //         self.y = y
-    tpy::BigInt y;
+    ::tpy::BigInt y;
 
     //     def __init__(self, x: int, y: int) -> None:
     Point() = default;
-    explicit Point(const tpy::BigInt& x, const tpy::BigInt& y) : x(x), y(y) {}
+    explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
@@ -39,13 +39,13 @@ struct Config {
     //         self.host = host
     std::string host;
     //         self.port = port
-    tpy::BigInt port;
+    ::tpy::BigInt port;
     //         self.verbose = verbose
     bool verbose;
 
     //     def __init__(self, host: str, port: int = 8080, verbose: bool = False) -> None:
     Config() = default;
-    explicit Config(std::string_view host, const tpy::BigInt& port = 8080, bool verbose = false) : host(host), port(port), verbose(verbose) {}
+    explicit Config(std::string_view host, const ::tpy::BigInt& port = 8080, bool verbose = false) : host(host), port(port), verbose(verbose) {}
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
@@ -54,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
        << ", "
        << "port=" << obj.port
        << ", "
-       << "verbose=" << tpy::print_bool(obj.verbose)
+       << "verbose=" << ::tpy::print_bool(obj.verbose)
        << ")";
     return os;
 }

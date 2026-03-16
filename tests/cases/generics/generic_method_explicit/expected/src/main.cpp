@@ -9,7 +9,7 @@ void main() {
     //     b = Box[Int32](Int32(10))
     Box<int32_t> b = Box<int32_t>(10);
     //     r1 = b.transform[int](42)
-    tpy::BigInt r1 = b.transform<tpy::BigInt>(42);
+    ::tpy::BigInt r1 = b.transform<::tpy::BigInt>(42);
     //     print(r1)
     std::cout << r1 << "\n";
     //     r2 = b.transform[str]("world")
@@ -30,7 +30,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

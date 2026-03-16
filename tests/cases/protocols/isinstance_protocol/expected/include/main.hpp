@@ -7,19 +7,19 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<tpy::Sized T_items>
+template<::tpy::Sized T_items>
 void describe(const T_items& items);
-template<tpy::Sized T_items>
+template<::tpy::Sized T_items>
 void check_not(const T_items& items);
 void main();
 
 // def describe(items: Sized) -> None:
-template<tpy::Sized T_items>
+template<::tpy::Sized T_items>
 void describe(const T_items& items) {
     //     if isinstance(items, Sized):
-    if constexpr (tpy::Sized<T_items>) {
+    if constexpr (::tpy::Sized<T_items>) {
         //         print("sized:", len(items))
-        std::cout << "sized:" << " " << tpy::__len__(items) << "\n";
+        std::cout << "sized:" << " " << ::tpy::__len__(items) << "\n";
     //     else:
     } else {
         //         print("not sized")
@@ -27,16 +27,16 @@ void describe(const T_items& items) {
     }
 }
 // def check_not(items: Sized) -> None:
-template<tpy::Sized T_items>
+template<::tpy::Sized T_items>
 void check_not(const T_items& items) {
     //     if not isinstance(items, Sized):
-    if constexpr ((!(tpy::Sized<T_items>))) {
+    if constexpr ((!(::tpy::Sized<T_items>))) {
         //         print("not sized")
         std::cout << "not sized" << "\n";
     //     else:
     } else {
         //         print("sized:", len(items))
-        std::cout << "sized:" << " " << tpy::__len__(items) << "\n";
+        std::cout << "sized:" << " " << ::tpy::__len__(items) << "\n";
     }
 }
 

@@ -57,14 +57,14 @@ struct BoxContainer {
     //     def __getitem__(self, i: Int32) -> IntBox:
     IntBox& __getitem__(int32_t i) {
         //         return self.items[i]
-        return tpy::__getitem__(this->items, i);
+        return ::tpy::__getitem__(this->items, i);
     }
 
     //     @auto_readonly
     //     def __getitem__(self, i: Int32) -> IntBox:
     const IntBox& __getitem__(int32_t i) const {
         //         return self.items[i]
-        return tpy::__getitem__(this->items, i);
+        return ::tpy::__getitem__(this->items, i);
     }
 
     const IntBox& operator[](int32_t i) const {
@@ -78,7 +78,7 @@ struct BoxContainer {
 
 inline std::ostream& operator<<(std::ostream& os, const BoxContainer& obj) {
     os << "BoxContainer("
-       << "items=" << tpy::ListPrinter(obj.items)
+       << "items=" << ::tpy::ListPrinter(obj.items)
        << ")";
     return os;
 }

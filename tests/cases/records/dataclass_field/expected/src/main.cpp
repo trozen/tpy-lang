@@ -14,9 +14,9 @@ void main() {
     //     print(c1.value)
     std::cout << c1.value << "\n";
     //     print(len(c1.tags))
-    std::cout << tpy::__len__(c1.tags) << "\n";
+    std::cout << ::tpy::__len__(c1.tags) << "\n";
     //     print(len(c1.lookup))
-    std::cout << tpy::__len__(c1.lookup) << "\n";
+    std::cout << ::tpy::__len__(c1.lookup) << "\n";
     //     # Override some defaults
     //     c2 = Config("prod", 99, ["a", "b"])
     Config c2 = Config("prod", 99, {"a", "b"});
@@ -25,14 +25,14 @@ void main() {
     //     print(c2.value)
     std::cout << c2.value << "\n";
     //     print(len(c2.tags))
-    std::cout << tpy::__len__(c2.tags) << "\n";
+    std::cout << ::tpy::__len__(c2.tags) << "\n";
     //     # Each instance gets its own list/dict (no sharing)
     //     c1.tags.append("x")
     c1.tags.push_back("x");
     //     print(len(c1.tags))
-    std::cout << tpy::__len__(c1.tags) << "\n";
+    std::cout << ::tpy::__len__(c1.tags) << "\n";
     //     print(len(c2.tags))
-    std::cout << tpy::__len__(c2.tags) << "\n";
+    std::cout << ::tpy::__len__(c2.tags) << "\n";
     //     # Non-generic user type as factory default
     //     cv = Canvas("drawing")
     Canvas cv = Canvas("drawing");
@@ -56,7 +56,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

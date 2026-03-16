@@ -7,22 +7,22 @@ namespace tpy_user::main {
 // # Literal-seeded variable (Int32 default) promoted to BigInt via
 // # reassignment inside an if-branch should keep BigInt after the branch.
 // def get_big() -> int:
-tpy::BigInt get_big() {
+::tpy::BigInt get_big() {
     //     return 42
-    return tpy::BigInt(42);
+    return ::tpy::BigInt(42);
 }
 
 // def test_augassign() -> None:
 void test_augassign() {
     //     x = 0
-    tpy::BigInt x = tpy::BigInt(0);
+    ::tpy::BigInt x = ::tpy::BigInt(0);
     //     if True:
     if (true) {
         //         x = get_big()
         x = get_big();
     }
     //     x += 1
-    x = (x) + (tpy::BigInt(1));
+    x = (x) + (::tpy::BigInt(1));
     //     print(x)
     std::cout << x << "\n";
 }
@@ -30,14 +30,14 @@ void test_augassign() {
 // def test_binop() -> None:
 void test_binop() {
     //     x = 0
-    tpy::BigInt x = tpy::BigInt(0);
+    ::tpy::BigInt x = ::tpy::BigInt(0);
     //     if True:
     if (true) {
         //         x = get_big()
         x = get_big();
     }
     //     y: int = x + 10
-    tpy::BigInt y = ((x) + (tpy::BigInt(10)));
+    ::tpy::BigInt y = ((x) + (::tpy::BigInt(10)));
     //     print(y)
     std::cout << y << "\n";
 }
@@ -45,7 +45,7 @@ void test_binop() {
 // def test_elif_chain() -> None:
 void test_elif_chain() {
     //     x = 0
-    tpy::BigInt x = tpy::BigInt(0);
+    ::tpy::BigInt x = ::tpy::BigInt(0);
     //     c = '>'
     std::string_view c = ">";
     //     if c == '>':
@@ -67,7 +67,7 @@ void test_elif_chain() {
         }
     }
     //     x += 1
-    x = (x) + (tpy::BigInt(1));
+    x = (x) + (::tpy::BigInt(1));
     //     print(x)
     std::cout << x << "\n";
 }
@@ -88,7 +88,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

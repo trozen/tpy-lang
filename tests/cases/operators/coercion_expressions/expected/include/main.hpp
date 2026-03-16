@@ -12,7 +12,7 @@ struct Outer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t return_expr_as_int32(const tpy::BigInt& a, const tpy::BigInt& b);
+int32_t return_expr_as_int32(const ::tpy::BigInt& a, const ::tpy::BigInt& b);
 int32_t take_int32(int32_t n);
 void test_bigint_expr_to_int32();
 void modify_via_ptr(Point* p);
@@ -24,20 +24,20 @@ void test_literal_expr_to_int32();
 // class Counter:
 struct Counter {
     //     value: int
-    tpy::BigInt value;
+    ::tpy::BigInt value;
 
     //     def __init__(self, v: int) -> None:
     Counter() = default;
-    explicit Counter(const tpy::BigInt& v) : value(v) {}
+    explicit Counter(const ::tpy::BigInt& v) : value(v) {}
 
     //     def get(self) -> int:
-    tpy::BigInt get() const {
+    ::tpy::BigInt get() const {
         //         return self.value
         return this->value;
     }
 
     //     def add(self, x: int) -> int:
-    tpy::BigInt add(const tpy::BigInt& x) const {
+    ::tpy::BigInt add(const ::tpy::BigInt& x) const {
         //         return self.value + x
         return ((this->value) + (x));
     }

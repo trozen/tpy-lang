@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // def main() -> None:
 void main() {
     //     d: dict[str, Int32] = {"a": 1, "b": 2, "c": 3}
-    tpy::ordered_map<std::string, int32_t> d = tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
     //     # dict itself is Iterable[K]
     //     print("keys via dict:")
     std::cout << "keys via dict:" << "\n";
@@ -17,19 +17,19 @@ void main() {
     //     print("keys via keys():")
     std::cout << "keys via keys():" << "\n";
     //     collect_items(d.keys())
-    auto __tmp_1 = tpy::dict_keys(d);
+    auto __tmp_1 = ::tpy::dict_keys(d);
     collect_items(__tmp_1);
     //     # dict.values() is Iterable[V]
     //     print("values via values():")
     std::cout << "values via values():" << "\n";
     //     collect_ints(d.values())
-    auto __tmp_2 = tpy::dict_values(d);
+    auto __tmp_2 = ::tpy::dict_values(d);
     collect_ints(__tmp_2);
     //     # dict.items() is Iterable[tuple[K, V]]
     //     print("items via items():")
     std::cout << "items via items():" << "\n";
     //     collect_pairs(d.items())
-    auto __tmp_3 = tpy::dict_items(d);
+    auto __tmp_3 = ::tpy::dict_items(d);
     collect_pairs(__tmp_3);
 }
 
@@ -45,7 +45,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

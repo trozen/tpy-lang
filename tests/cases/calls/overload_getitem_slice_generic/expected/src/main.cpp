@@ -19,7 +19,7 @@ void main() {
     std::cout << c[1] << "\n";
     //     # Slice
     //     sp = c[Int32(0):Int32(2)]
-    std::span<const int32_t> sp = c.__getitem__(tpy::Slice{0, 2});
+    std::span<const int32_t> sp = c.__getitem__(::tpy::Slice{0, 2});
     //     for x in sp:
     auto& __obj_0 = sp;
     auto __beg_0 = __obj_0.begin();
@@ -52,7 +52,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

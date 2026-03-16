@@ -13,11 +13,11 @@ std::vector<std::string> in_list() {
 }
 
 // def in_tuple_list() -> Own[list[tuple[int, str]]]:
-std::vector<std::tuple<tpy::BigInt, std::string>> in_tuple_list() {
+std::vector<std::tuple<::tpy::BigInt, std::string>> in_tuple_list() {
     //     label: str = "no"
     std::string_view label = "no";
     //     return [(0, label)]
-    return {std::tuple<tpy::BigInt, std::string>{tpy::BigInt(0), std::string(label)}};
+    return {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(0), std::string(label)}};
 }
 
 // def in_list_var() -> Own[list[str]]:
@@ -31,11 +31,11 @@ std::vector<std::string> in_list_var() {
 }
 
 // def in_tuple_list_var() -> Own[list[tuple[int, str]]]:
-std::vector<std::tuple<tpy::BigInt, std::string>> in_tuple_list_var() {
+std::vector<std::tuple<::tpy::BigInt, std::string>> in_tuple_list_var() {
     //     label: str = "no"
     std::string_view label = "no";
     //     xs = [(0, label)]
-    std::vector<std::tuple<tpy::BigInt, std::string>> xs = {std::tuple<tpy::BigInt, std::string>{tpy::BigInt(0), std::string(label)}};
+    std::vector<std::tuple<::tpy::BigInt, std::string>> xs = {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(0), std::string(label)}};
     //     return xs
     return xs;
 }
@@ -45,7 +45,7 @@ std::vector<std::string> in_list_repeat() {
     //     label: str = "no"
     std::string_view label = "no";
     //     return [label] * 3
-    return tpy::from_range<std::vector<std::string>>(tpy::repeat_range<std::string>(3, {std::string(label)}));
+    return ::tpy::from_range<std::vector<std::string>>(::tpy::repeat_range<std::string>(3, {std::string(label)}));
 }
 
 // def in_list_comp() -> Own[list[str]]:
@@ -65,11 +65,11 @@ std::vector<std::string> in_list_comp() {
 }
 
 // def in_nested_tuple_list() -> Own[list[tuple[str, tuple[str, int]]]]:
-std::vector<std::tuple<std::string, std::tuple<std::string, tpy::BigInt>>> in_nested_tuple_list() {
+std::vector<std::tuple<std::string, std::tuple<std::string, ::tpy::BigInt>>> in_nested_tuple_list() {
     //     label: str = "x"
     std::string_view label = "x";
     //     return [(label, (label, 42))]
-    return {std::tuple<std::string, std::tuple<std::string, tpy::BigInt>>{std::string(label), std::tuple<std::string, tpy::BigInt>{std::string(label), tpy::BigInt(42)}}};
+    return {std::tuple<std::string, std::tuple<std::string, ::tpy::BigInt>>{std::string(label), std::tuple<std::string, ::tpy::BigInt>{std::string(label), ::tpy::BigInt(42)}}};
 }
 
 void __tpy_init() {
@@ -78,25 +78,25 @@ void __tpy_init() {
     initialized = true;
 
     // print(in_list())
-    std::cout << tpy::ListPrinter(in_list()) << "\n";
+    std::cout << ::tpy::ListPrinter(in_list()) << "\n";
     // print(in_tuple_list())
-    std::cout << tpy::ListPrinter(in_tuple_list()) << "\n";
+    std::cout << ::tpy::ListPrinter(in_tuple_list()) << "\n";
     // print(in_list_var())
-    std::cout << tpy::ListPrinter(in_list_var()) << "\n";
+    std::cout << ::tpy::ListPrinter(in_list_var()) << "\n";
     // print(in_tuple_list_var())
-    std::cout << tpy::ListPrinter(in_tuple_list_var()) << "\n";
+    std::cout << ::tpy::ListPrinter(in_tuple_list_var()) << "\n";
     // print(in_list_repeat())
-    std::cout << tpy::ListPrinter(in_list_repeat()) << "\n";
+    std::cout << ::tpy::ListPrinter(in_list_repeat()) << "\n";
     // print(in_list_comp())
-    std::cout << tpy::ListPrinter(in_list_comp()) << "\n";
+    std::cout << ::tpy::ListPrinter(in_list_comp()) << "\n";
     // print(in_nested_tuple_list())
-    std::cout << tpy::ListPrinter(in_nested_tuple_list()) << "\n";
+    std::cout << ::tpy::ListPrinter(in_nested_tuple_list()) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

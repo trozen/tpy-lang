@@ -20,35 +20,35 @@ void __tpy_init() {
     static std::array<int32_t, 3> __global_slot_1 = {1, 2, 3};
     arr = &__global_slot_1;
     // arr[0] = 100
-    tpy::__setitem__((*arr), 0, 100);
+    ::tpy::__setitem__((*arr), 0, 100);
     // arr[1] = 200
-    tpy::__setitem__((*arr), 1, 200);
+    ::tpy::__setitem__((*arr), 1, 200);
     // arr[2] = 300
-    tpy::__setitem__((*arr), 2, 300);
+    ::tpy::__setitem__((*arr), 2, 300);
     // print(arr[0])
-    std::cout << tpy::__getitem__((*arr), 0) << "\n";
+    std::cout << ::tpy::__getitem__((*arr), 0) << "\n";
     // print(arr[1])
-    std::cout << tpy::__getitem__((*arr), 1) << "\n";
+    std::cout << ::tpy::__getitem__((*arr), 1) << "\n";
     // print(arr[2])
-    std::cout << tpy::__getitem__((*arr), 2) << "\n";
+    std::cout << ::tpy::__getitem__((*arr), 2) << "\n";
     // # list subscript assignment
     // items: list[Int32] = [10, 20]
     static std::vector<int32_t> __global_slot_2 = {10, 20};
     items = &__global_slot_2;
     // items[0] = 99
-    tpy::__setitem__((*items), 0, 99);
+    ::tpy::__setitem__((*items), 0, 99);
     // items[1] = 88
-    tpy::__setitem__((*items), 1, 88);
+    ::tpy::__setitem__((*items), 1, 88);
     // print(items[0])
-    std::cout << tpy::__getitem__((*items), 0) << "\n";
+    std::cout << ::tpy::__getitem__((*items), 0) << "\n";
     // print(items[1])
-    std::cout << tpy::__getitem__((*items), 1) << "\n";
+    std::cout << ::tpy::__getitem__((*items), 1) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -12,9 +12,9 @@ void drain_circles(const std::variant<Circle, Rect>& s) {
     while (std::holds_alternative<Circle>(s)) {
         auto& __s = std::get<Circle>(s);
         //         print(s.radius)
-        std::cout << tpy::print_float(__s.radius) << "\n";
+        std::cout << ::tpy::print_float(__s.radius) << "\n";
         //         count += 1
-        count = tpy::add_check<int32_t>(count, 1);
+        count = ::tpy::add_check<int32_t>(count, 1);
         //         if count >= 3:
         if ((count >= 3)) {
             //             break
@@ -47,7 +47,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // def f(a: int, b: int = 10, c: int = 20) -> None:
-void f(const tpy::BigInt& a, const tpy::BigInt& b, const tpy::BigInt& c) {
+void f(const ::tpy::BigInt& a, const ::tpy::BigInt& b, const ::tpy::BigInt& c) {
     //     print(f"a={a} b={b} c={c}")
     std::cout << std::format("a={} b={} c={}", (a).to_string(), (b).to_string(), (c).to_string()) << "\n";
 }
@@ -26,11 +26,11 @@ void h(int32_t a, int32_t b) {
 // def main() -> None:
 void main() {
     //     f(1, c=3)
-    f(tpy::BigInt(1), tpy::BigInt(10), tpy::BigInt(3));
+    f(::tpy::BigInt(1), ::tpy::BigInt(10), ::tpy::BigInt(3));
     //     f(1)
-    f(tpy::BigInt(1));
+    f(::tpy::BigInt(1));
     //     f(1, 2, c=3)
-    f(tpy::BigInt(1), tpy::BigInt(2), tpy::BigInt(3));
+    f(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3));
     //     g("hello", z="world")
     g("hello", "default_y", "world");
     //     h(Int32(5), b=Int32(9))
@@ -49,7 +49,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

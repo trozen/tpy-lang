@@ -24,16 +24,16 @@ void main() {
     }
     //     # Expensive value type + non-value: BigInt becomes const T&, Point becomes T&
     //     pairs: list[tuple[int, Point]] = [(1, Point(10, 20)), (2, Point(30, 40))]
-    std::vector<std::tuple<tpy::BigInt, Point>> pairs = {std::tuple<tpy::BigInt, Point>{tpy::BigInt(1), Point(10, 20)}, std::tuple<tpy::BigInt, Point>{tpy::BigInt(2), Point(30, 40)}};
+    std::vector<std::tuple<::tpy::BigInt, Point>> pairs = {std::tuple<::tpy::BigInt, Point>{::tpy::BigInt(1), Point(10, 20)}, std::tuple<::tpy::BigInt, Point>{::tpy::BigInt(2), Point(30, 40)}};
     //     for n, pt in pairs:
     auto& __obj_1 = pairs;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        std::tuple<tpy::BigInt, Point> __for_tup_1 = *__beg_1;
+        std::tuple<::tpy::BigInt, Point> __for_tup_1 = *__beg_1;
         //     for n, pt in pairs:
         auto& __tup_2 = __for_tup_1;
-        const tpy::BigInt& n = std::get<0>(__tup_2);
+        const ::tpy::BigInt& n = std::get<0>(__tup_2);
         Point* pt = &std::get<1>(__tup_2);
         //         print(n, pt)
         std::cout << n << " " << (*pt) << "\n";
@@ -68,7 +68,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

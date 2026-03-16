@@ -7,7 +7,7 @@ namespace tpy_user::main {
 
 extern int64_t a;
 extern int64_t b;
-extern tpy::BigInt c;
+extern ::tpy::BigInt c;
 extern std::vector<int64_t>* items;
 inline constexpr std::string_view __name__ = "__main__";
 

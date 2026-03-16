@@ -13,7 +13,7 @@ void sink(Box<int32_t>&& b) {
 // def take_two(a: Own[Box[Int32]], b: Own[Box[Int32]]) -> None:
 void take_two(Box<int32_t>&& a, Box<int32_t>&& b) {
     //     print(a.val + b.val)
-    std::cout << (tpy::add_check<int32_t>(a.val, b.val)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(a.val, b.val)) << "\n";
 }
 
 // def main() -> None:
@@ -50,7 +50,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

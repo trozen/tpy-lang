@@ -7,9 +7,9 @@ namespace tpy_user::main {
 // def return_owned_int32() -> Own[Int32]:
 int32_t return_owned_int32() {
     //     big: int = 42
-    tpy::BigInt big = tpy::BigInt(42);
+    ::tpy::BigInt big = ::tpy::BigInt(42);
     //     return copy(big)  # BigInt -> Own[Int32] requires .to_int32() coercion
-    return (tpy::BigInt(big)).to_fixed_check<int32_t>();
+    return (::tpy::BigInt(big)).to_fixed_check<int32_t>();
 }
 
 // def take_owned_int32(x: Own[Int32]) -> Int32:
@@ -27,7 +27,7 @@ void main() {
     std::cout << result1 << "\n";
     //     # Test argument coercion
     //     big: int = 100
-    tpy::BigInt big = tpy::BigInt(100);
+    ::tpy::BigInt big = ::tpy::BigInt(100);
     //     result2: Int32 = take_owned_int32(big)
     int32_t result2 = take_owned_int32((big).to_fixed_check<int32_t>());
     //     print(result2)  # 100
@@ -46,7 +46,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

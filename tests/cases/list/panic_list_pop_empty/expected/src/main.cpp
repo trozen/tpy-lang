@@ -9,9 +9,9 @@ void main() {
     //     items: list[Int32] = [1]
     std::vector<int32_t> items = {1};
     //     items.pop()  # Remove the only element
-    tpy::pop_back(items);
+    ::tpy::pop_back(items);
     //     x: Int32 = items.pop()  # Should panic: pop from empty list
-    int32_t x = tpy::pop_back(items);
+    int32_t x = ::tpy::pop_back(items);
     //     print(x)
     std::cout << x << "\n";
 }
@@ -28,7 +28,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -24,20 +24,20 @@ struct Buffer {
     //     def as_span(self) -> Span[auto_readonly[Int32]]:
     std::span<int32_t> as_span() {
         //         return self._data
-        return tpy::as_mut_span(this->_data);
+        return ::tpy::as_mut_span(this->_data);
     }
 
     //     @auto_readonly
     //     def as_span(self) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> as_span() const {
         //         return self._data
-        return tpy::as_span(this->_data);
+        return ::tpy::as_span(this->_data);
     }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
     os << "Buffer("
-       << "_data=" << tpy::ListPrinter(obj._data)
+       << "_data=" << ::tpy::ListPrinter(obj._data)
        << ")";
     return os;
 }

@@ -8,16 +8,16 @@ namespace tpy_user::main {
 void main() {
     //     # Explicit type parameter
     //     a: Int64 = round[Int64](7.7)
-    int64_t a = tpy::round_to<int64_t>(7.7);
+    int64_t a = ::tpy::round_to<int64_t>(7.7);
     //     print(a)
     std::cout << a << "\n";
     //     b: Int32 = round[Int32](2.5)
-    int32_t b = tpy::round_to<int32_t>(2.5);
+    int32_t b = ::tpy::round_to<int32_t>(2.5);
     //     print(b)
     std::cout << b << "\n";
     //     # round[T] with default_int inference
     //     c: Int64 = round(99.9)
-    int64_t c = tpy::round_to<int64_t>(99.9);
+    int64_t c = ::tpy::round_to<int64_t>(99.9);
     //     print(c)
     std::cout << c << "\n";
 }
@@ -34,7 +34,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

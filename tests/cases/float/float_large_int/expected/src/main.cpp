@@ -5,16 +5,16 @@ namespace tpy_user::main {
 
 // # Test converting large floats to int (requires GMP, not int64)
 // a = int(1e18)  # Within int64 range
-tpy::BigInt a;
+::tpy::BigInt a;
 // b = int(1e50)  # Way beyond int64 range
-tpy::BigInt b;
+::tpy::BigInt b;
 // c = int(-1e50)  # Negative large value
-tpy::BigInt c;
+::tpy::BigInt c;
 // # Also test that truncation toward zero works
 // d = int(1.9e20)
-tpy::BigInt d;
+::tpy::BigInt d;
 // e = int(-1.9e20)
-tpy::BigInt e;
+::tpy::BigInt e;
 
 void __tpy_init() {
     static bool initialized = false;
@@ -23,11 +23,11 @@ void __tpy_init() {
 
     // # Test converting large floats to int (requires GMP, not int64)
     // a = int(1e18)  # Within int64 range
-    a = tpy::BigInt::from_float(1e+18);
+    a = ::tpy::BigInt::from_float(1e+18);
     // b = int(1e50)  # Way beyond int64 range
-    b = tpy::BigInt::from_float(1e+50);
+    b = ::tpy::BigInt::from_float(1e+50);
     // c = int(-1e50)  # Negative large value
-    c = tpy::BigInt::from_float(-(1e+50));
+    c = ::tpy::BigInt::from_float(-(1e+50));
     // print(a)
     std::cout << a << "\n";
     // print(b)
@@ -36,9 +36,9 @@ void __tpy_init() {
     std::cout << c << "\n";
     // # Also test that truncation toward zero works
     // d = int(1.9e20)
-    d = tpy::BigInt::from_float(1.9e+20);
+    d = ::tpy::BigInt::from_float(1.9e+20);
     // e = int(-1.9e20)
-    e = tpy::BigInt::from_float(-(1.9e+20));
+    e = ::tpy::BigInt::from_float(-(1.9e+20));
     // print(d)
     std::cout << d << "\n";
     // print(e)
@@ -48,7 +48,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

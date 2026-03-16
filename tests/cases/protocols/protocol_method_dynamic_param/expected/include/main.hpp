@@ -57,7 +57,7 @@ struct Dog : Speaker {
     //     def speak(self) -> str:
     std::string speak() override {
         //         return "Woof from " + self.name
-        return (tpy::str_concat("Woof from ", this->name));
+        return (::tpy::str_concat("Woof from ", this->name));
     }
 };
 
@@ -80,7 +80,7 @@ struct Cat : Speaker {
     //     def speak(self) -> str:
     std::string speak() override {
         //         return "Meow from " + self.name
-        return (tpy::str_concat("Meow from ", this->name));
+        return (::tpy::str_concat("Meow from ", this->name));
     }
 };
 
@@ -120,7 +120,7 @@ struct Announcer {
     //     def announce(self, s: Speaker) -> None:
     void announce(Speaker& s) const {
         //         print(self.prefix + s.speak())
-        std::cout << (tpy::str_concat(this->prefix, s.speak())) << "\n";
+        std::cout << (::tpy::str_concat(this->prefix, s.speak())) << "\n";
     }
 };
 

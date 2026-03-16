@@ -7,8 +7,8 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-tpy::ordered_map<std::string, int32_t> make_dict();
-int32_t sum_values(const tpy::ordered_map<std::string, int32_t>& d);
+::tpy::ordered_map<std::string, int32_t> make_dict();
+int32_t sum_values(const ::tpy::ordered_map<std::string, int32_t>& d);
 void main();
 
 void __tpy_init();

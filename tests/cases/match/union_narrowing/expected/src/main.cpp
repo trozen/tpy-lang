@@ -13,14 +13,14 @@ void describe(const std::variant<Circle, Rect>& s) {
     case 0: {
         auto& __case_0 = std::get<0>(__match_subject);
         //             print(s.radius)
-        std::cout << tpy::print_float(__case_0.radius) << "\n";
+        std::cout << ::tpy::print_float(__case_0.radius) << "\n";
         break;
     }
     //         case Rect():
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject);
         //             print(s.width * s.height)
-        std::cout << tpy::print_float(((__case_1.width) * (__case_1.height))) << "\n";
+        std::cout << ::tpy::print_float(((__case_1.width) * (__case_1.height))) << "\n";
         break;
     }
     }
@@ -50,7 +50,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

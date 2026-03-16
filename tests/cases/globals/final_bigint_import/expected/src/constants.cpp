@@ -3,7 +3,7 @@
 
 namespace tpy_user::constants {
 
-const tpy::BigInt BIG_VALUE = tpy::BigInt(1000000);
+const ::tpy::BigInt BIG_VALUE = ::tpy::BigInt(1000000);
 
 void __tpy_init() {
     static bool initialized = false;

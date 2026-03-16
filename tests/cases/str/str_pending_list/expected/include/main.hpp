@@ -8,12 +8,12 @@ namespace tpy_user::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 std::vector<std::string> in_list();
-std::vector<std::tuple<tpy::BigInt, std::string>> in_tuple_list();
+std::vector<std::tuple<::tpy::BigInt, std::string>> in_tuple_list();
 std::vector<std::string> in_list_var();
-std::vector<std::tuple<tpy::BigInt, std::string>> in_tuple_list_var();
+std::vector<std::tuple<::tpy::BigInt, std::string>> in_tuple_list_var();
 std::vector<std::string> in_list_repeat();
 std::vector<std::string> in_list_comp();
-std::vector<std::tuple<std::string, std::tuple<std::string, tpy::BigInt>>> in_nested_tuple_list();
+std::vector<std::tuple<std::string, std::tuple<std::string, ::tpy::BigInt>>> in_nested_tuple_list();
 
 void __tpy_init();
 } // namespace tpy_user::main

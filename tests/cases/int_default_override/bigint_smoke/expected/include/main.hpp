@@ -5,10 +5,10 @@
 
 namespace tpy_user::main {
 
-extern tpy::BigInt x;
-extern tpy::BigInt y;
-extern tpy::BigInt z;
-extern std::vector<tpy::BigInt>* items;
+extern ::tpy::BigInt x;
+extern ::tpy::BigInt y;
+extern ::tpy::BigInt z;
+extern std::vector<::tpy::BigInt>* items;
 inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();

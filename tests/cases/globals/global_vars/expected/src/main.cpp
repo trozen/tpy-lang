@@ -80,15 +80,15 @@ void __tpy_init() {
     // idx = 1
     idx = 1;
     // print(items[idx])
-    std::cout << tpy::__getitem__((*items), idx) << "\n";
+    std::cout << ::tpy::__getitem__((*items), idx) << "\n";
     // # Test 3: Global int used in list repeat count
     // count = 3
     count = 3;
     // repeated: list[Int32] = [0] * count
-    static std::vector<int32_t> __global_slot_2 = tpy::from_range<std::vector<int32_t>>(tpy::repeat_range<int32_t>(count, {0}));
+    static std::vector<int32_t> __global_slot_2 = ::tpy::from_range<std::vector<int32_t>>(::tpy::repeat_range<int32_t>(count, {0}));
     repeated = &__global_slot_2;
     // print(len(repeated))
-    std::cout << tpy::__len__((*repeated)) << "\n";
+    std::cout << ::tpy::__len__((*repeated)) << "\n";
     // # Test 4: Global int reassignment (z = 0; z = 5 pattern)
     // z = 0
     z = 0;
@@ -153,16 +153,16 @@ void __tpy_init() {
     // global_ptr: Ptr[Point] = local_pt
     global_ptr = &(*local_pt);
     // print(global_ptr.a)
-    std::cout << tpy::deref_check(global_ptr).a << "\n";
+    std::cout << ::tpy::deref_check(global_ptr).a << "\n";
     // print(global_ptr.b)
-    std::cout << tpy::deref_check(global_ptr).b << "\n";
+    std::cout << ::tpy::deref_check(global_ptr).b << "\n";
     // # Test 9: Int32 += with global default-int value
     // counter: Int32 = 10
     counter = 10;
     // increment = 5
     increment = 5;
     // counter += increment
-    counter = tpy::add_check<int32_t>(counter, increment);
+    counter = ::tpy::add_check<int32_t>(counter, increment);
     // print(counter)
     std::cout << counter << "\n";
     // # Test 10: Global in binop with method template
@@ -171,13 +171,13 @@ void __tpy_init() {
     // b = 3
     b = 3;
     // print(a + b)
-    std::cout << (tpy::add_check<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::add_check<int32_t>(a, b)) << "\n";
     // print(a - b)
-    std::cout << (tpy::sub_check<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::sub_check<int32_t>(a, b)) << "\n";
     // print(a * b)
-    std::cout << (tpy::mul_check<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::mul_check<int32_t>(a, b)) << "\n";
     // print(a // b)
-    std::cout << (tpy::div_floor<int32_t>(a, b)) << "\n";
+    std::cout << (::tpy::div_floor<int32_t>(a, b)) << "\n";
     // val = 999  # Global that's shadowed by __init__ param
     val = 999;
     // c: Counter = Counter(50)
@@ -194,15 +194,15 @@ void __tpy_init() {
     // delta = 5
     delta = 5;
     // arr[0] += delta  # global BigInt on RHS needs deref before .to_int32()
-    tpy::__setitem__((*arr), 0, tpy::add_check<int32_t>(tpy::__getitem__((*arr), 0), delta));
+    ::tpy::__setitem__((*arr), 0, ::tpy::add_check<int32_t>(::tpy::__getitem__((*arr), 0), delta));
     // print(arr[0])
-    std::cout << tpy::__getitem__((*arr), 0) << "\n";
+    std::cout << ::tpy::__getitem__((*arr), 0) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

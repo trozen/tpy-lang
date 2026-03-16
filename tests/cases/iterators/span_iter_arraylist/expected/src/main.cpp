@@ -16,7 +16,7 @@ void main() {
     a.append(3);
     //     # Direct __iter__() returns SpanIter
     //     it: SpanIter[Int32] = a.__iter__()
-    tpy::SpanIter<int32_t> it = a.__iter__();
+    ::tpy::SpanIter<int32_t> it = a.__iter__();
     //     consume(it)
     consume(it);
 }
@@ -36,7 +36,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

@@ -50,25 +50,25 @@ void __tpy_init() {
     // some_a: Char | None = a
     some_a = a;
     // print(eq_left(some_a, a))
-    std::cout << tpy::print_bool(eq_left(some_a, a)) << "\n";
+    std::cout << ::tpy::print_bool(eq_left(some_a, a)) << "\n";
     // print(eq_left(some_a, b))
-    std::cout << tpy::print_bool(eq_left(some_a, b)) << "\n";
+    std::cout << ::tpy::print_bool(eq_left(some_a, b)) << "\n";
     // print(eq_left(none_char, a))
-    std::cout << tpy::print_bool(eq_left(none_char, a)) << "\n";
+    std::cout << ::tpy::print_bool(eq_left(none_char, a)) << "\n";
     // print(eq_right(a, some_a))
-    std::cout << tpy::print_bool(eq_right(a, some_a)) << "\n";
+    std::cout << ::tpy::print_bool(eq_right(a, some_a)) << "\n";
     // print(eq_right(a, none_char))
-    std::cout << tpy::print_bool(eq_right(a, none_char)) << "\n";
+    std::cout << ::tpy::print_bool(eq_right(a, none_char)) << "\n";
     // print(ne_left(none_char, a))
-    std::cout << tpy::print_bool(ne_left(none_char, a)) << "\n";
+    std::cout << ::tpy::print_bool(ne_left(none_char, a)) << "\n";
     // print(ne_right(a, none_char))
-    std::cout << tpy::print_bool(ne_right(a, none_char)) << "\n";
+    std::cout << ::tpy::print_bool(ne_right(a, none_char)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

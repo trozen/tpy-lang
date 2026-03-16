@@ -58,9 +58,9 @@ void main() {
     }
     //     # Test math.floor/ceil
     //     f = math.floor(3.7)
-    tpy::BigInt f = ::tpy::BigInt::from_floor(3.7);
+    ::tpy::BigInt f = ::tpy::BigInt::from_floor(3.7);
     //     ce = math.ceil(3.2)
-    tpy::BigInt ce = ::tpy::BigInt::from_ceil(3.2);
+    ::tpy::BigInt ce = ::tpy::BigInt::from_ceil(3.2);
     //     if f > 2.99 and f < 3.01 and ce > 3.99 and ce < 4.01:
     if (((((static_cast<double>(f) > 2.99) && (static_cast<double>(f) < 3.01)) && (static_cast<double>(ce) > 3.99)) && (static_cast<double>(ce) < 4.01))) {
         //         print("floor/ceil ok")
@@ -86,7 +86,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

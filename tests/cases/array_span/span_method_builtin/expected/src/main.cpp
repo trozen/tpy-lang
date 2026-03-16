@@ -9,9 +9,9 @@ void from_list() {
     //     data: list[Int32] = [1, 2, 3]
     std::vector<int32_t> data = {1, 2, 3};
     //     s = data.__span__()
-    std::span<const int32_t> s = tpy::as_span(data);
+    std::span<const int32_t> s = ::tpy::as_span(data);
     //     print(len(s), s[0], s[1], s[2])
-    std::cout << tpy::__len__(s) << " " << tpy::__getitem__(s, 0) << " " << tpy::__getitem__(s, 1) << " " << tpy::__getitem__(s, 2) << "\n";
+    std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << " " << ::tpy::__getitem__(s, 2) << "\n";
 }
 
 // def from_array() -> None:
@@ -19,9 +19,9 @@ void from_array() {
     //     a: Array[Int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> a = {10, 20, 30};
     //     s = a.__span__()
-    std::span<const int32_t> s = tpy::as_span(a);
+    std::span<const int32_t> s = ::tpy::as_span(a);
     //     print(len(s), s[0], s[1], s[2])
-    std::cout << tpy::__len__(s) << " " << tpy::__getitem__(s, 0) << " " << tpy::__getitem__(s, 1) << " " << tpy::__getitem__(s, 2) << "\n";
+    std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << " " << ::tpy::__getitem__(s, 2) << "\n";
 }
 
 // def from_span() -> None:
@@ -29,11 +29,11 @@ void from_span() {
     //     a: Array[Int32, 3] = [4, 5, 6]
     std::array<int32_t, 3> a = {4, 5, 6};
     //     sp: Span[Int32] = a
-    std::span<int32_t> sp = tpy::as_mut_span(a);
+    std::span<int32_t> sp = ::tpy::as_mut_span(a);
     //     s = sp.__span__()
-    std::span<const int32_t> s = tpy::as_span(sp);
+    std::span<const int32_t> s = ::tpy::as_span(sp);
     //     print(len(s), s[0], s[1], s[2])
-    std::cout << tpy::__len__(s) << " " << tpy::__getitem__(s, 0) << " " << tpy::__getitem__(s, 1) << " " << tpy::__getitem__(s, 2) << "\n";
+    std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << " " << ::tpy::__getitem__(s, 2) << "\n";
 }
 
 // def from_readonly_span() -> None:
@@ -41,11 +41,11 @@ void from_readonly_span() {
     //     a: Array[Int32, 3] = [7, 8, 9]
     std::array<int32_t, 3> a = {7, 8, 9};
     //     ro: Span[readonly[Int32]] = a
-    std::span<const int32_t> ro = tpy::as_span(a);
+    std::span<const int32_t> ro = ::tpy::as_span(a);
     //     s = ro.__span__()
-    std::span<const int32_t> s = tpy::as_span(ro);
+    std::span<const int32_t> s = ::tpy::as_span(ro);
     //     print(len(s), s[0], s[1], s[2])
-    std::cout << tpy::__len__(s) << " " << tpy::__getitem__(s, 0) << " " << tpy::__getitem__(s, 1) << " " << tpy::__getitem__(s, 2) << "\n";
+    std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << " " << ::tpy::__getitem__(s, 2) << "\n";
 }
 
 // def from_arraylist() -> None:
@@ -59,7 +59,7 @@ void from_arraylist() {
     //     s = al.__span__()
     std::span<int32_t> s = al.__span__();
     //     print(len(s), s[0], s[1])
-    std::cout << tpy::__len__(s) << " " << tpy::__getitem__(s, 0) << " " << tpy::__getitem__(s, 1) << "\n";
+    std::cout << ::tpy::__len__(s) << " " << ::tpy::__getitem__(s, 0) << " " << ::tpy::__getitem__(s, 1) << "\n";
 }
 
 void __tpy_init() {
@@ -84,7 +84,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

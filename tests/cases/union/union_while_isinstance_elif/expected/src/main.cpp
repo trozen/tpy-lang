@@ -14,20 +14,20 @@ void describe(const std::variant<Circle, Rect, Triangle>& s) {
         if (std::holds_alternative<Circle>(s)) {
             auto& __s = std::get<Circle>(s);
             //             print(s.radius)
-            std::cout << tpy::print_float(__s.radius) << "\n";
+            std::cout << ::tpy::print_float(__s.radius) << "\n";
         //         elif isinstance(s, Rect):
         } else if (std::holds_alternative<Rect>(s)) {
             auto& __s = std::get<Rect>(s);
             //             print(s.width)
-            std::cout << tpy::print_float(__s.width) << "\n";
+            std::cout << ::tpy::print_float(__s.width) << "\n";
         //         else:
         } else {
             auto& __s = std::get<Triangle>(s);
             //             print(s.base)
-            std::cout << tpy::print_float(__s.base) << "\n";
+            std::cout << ::tpy::print_float(__s.base) << "\n";
         }
         //         i += 1
-        i = tpy::add_check<int32_t>(i, 1);
+        i = ::tpy::add_check<int32_t>(i, 1);
     }
 }
 
@@ -59,7 +59,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

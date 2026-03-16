@@ -7,27 +7,27 @@ namespace tpy_user::main {
 // def test_basic() -> None:
 void test_basic() {
     //     buf: Array[Int16, 5] = [0] * 5
-    std::array<int16_t, 5> buf = tpy::from_range<std::array<int16_t, 5>>(tpy::repeat_range<int16_t>(5, {0}));
+    std::array<int16_t, 5> buf = ::tpy::from_range<std::array<int16_t, 5>>(::tpy::repeat_range<int16_t>(5, {0}));
     //     print(len(buf))
-    std::cout << tpy::__len__(buf) << "\n";
+    std::cout << ::tpy::__len__(buf) << "\n";
     //     print(buf[0], buf[4])
-    std::cout << tpy::__getitem__(buf, 0) << " " << tpy::__getitem__(buf, 4) << "\n";
+    std::cout << ::tpy::__getitem__(buf, 0) << " " << ::tpy::__getitem__(buf, 4) << "\n";
 }
 
 // def test_nonzero() -> None:
 void test_nonzero() {
     //     arr: Array[Int32, 4] = [42] * 4
-    std::array<int32_t, 4> arr = tpy::from_range<std::array<int32_t, 4>>(tpy::repeat_range<int32_t>(4, {42}));
+    std::array<int32_t, 4> arr = ::tpy::from_range<std::array<int32_t, 4>>(::tpy::repeat_range<int32_t>(4, {42}));
     //     print(arr[0], arr[1], arr[2], arr[3])
-    std::cout << tpy::__getitem__(arr, 0) << " " << tpy::__getitem__(arr, 1) << " " << tpy::__getitem__(arr, 2) << " " << tpy::__getitem__(arr, 3) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 0) << " " << ::tpy::__getitem__(arr, 1) << " " << ::tpy::__getitem__(arr, 2) << " " << ::tpy::__getitem__(arr, 3) << "\n";
 }
 
 // def test_multi_element() -> None:
 void test_multi_element() {
     //     arr: Array[Int32, 6] = [1, 2, 3] * 2
-    std::array<int32_t, 6> arr = tpy::from_range<std::array<int32_t, 6>>(tpy::repeat_range<int32_t>(2, {1, 2, 3}));
+    std::array<int32_t, 6> arr = ::tpy::from_range<std::array<int32_t, 6>>(::tpy::repeat_range<int32_t>(2, {1, 2, 3}));
     //     print(arr[0], arr[1], arr[2], arr[3], arr[4], arr[5])
-    std::cout << tpy::__getitem__(arr, 0) << " " << tpy::__getitem__(arr, 1) << " " << tpy::__getitem__(arr, 2) << " " << tpy::__getitem__(arr, 3) << " " << tpy::__getitem__(arr, 4) << " " << tpy::__getitem__(arr, 5) << "\n";
+    std::cout << ::tpy::__getitem__(arr, 0) << " " << ::tpy::__getitem__(arr, 1) << " " << ::tpy::__getitem__(arr, 2) << " " << ::tpy::__getitem__(arr, 3) << " " << ::tpy::__getitem__(arr, 4) << " " << ::tpy::__getitem__(arr, 5) << "\n";
 }
 
 void __tpy_init() {
@@ -46,7 +46,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

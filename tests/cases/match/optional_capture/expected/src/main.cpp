@@ -19,7 +19,7 @@ std::string classify(std::optional<int32_t> x) {
         default: {
             auto& v = __match_inner;
             //             return str(v)
-            return tpy::fixed_to_str<int32_t>(v);
+            return ::tpy::fixed_to_str<int32_t>(v);
             break;
         }
         }
@@ -40,7 +40,7 @@ std::string describe(std::optional<std::string_view> x) {
         {
             auto& s = __match_inner;
             //             return "got: " + s
-            return (tpy::str_concat("got: ", s));
+            return (::tpy::str_concat("got: ", s));
         }
     }
 }
@@ -69,7 +69,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

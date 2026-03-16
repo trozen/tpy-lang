@@ -4,7 +4,7 @@
 namespace tpy_user::main {
 
 // x = 0  # tpyc: type(int)
-tpy::BigInt x;
+::tpy::BigInt x;
 // f = 0  # tpyc: type(float)
 double f{};
 
@@ -14,11 +14,11 @@ void __tpy_init() {
     initialized = true;
 
     // x = 0  # tpyc: type(int)
-    x = tpy::BigInt(0);
+    x = ::tpy::BigInt(0);
     // x = Int32(10)  # tpyc: type(int)
     x = 10;
     // x = int(20)  # tpyc: type(int)
-    x = tpy::BigInt(static_cast<int64_t>(20));
+    x = ::tpy::BigInt(static_cast<int64_t>(20));
     // print(x)
     std::cout << x << "\n";
     // f = 0  # tpyc: type(float)
@@ -28,13 +28,13 @@ void __tpy_init() {
     // f = 1.5  # tpyc: type(float)
     f = 1.5;
     // print(f)
-    std::cout << tpy::print_float(f) << "\n";
+    std::cout << ::tpy::print_float(f) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

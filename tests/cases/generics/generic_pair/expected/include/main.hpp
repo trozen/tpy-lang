@@ -24,13 +24,13 @@ struct Pair {
     explicit Pair(const A& first, const B& second) : first(first), second(second) {}
 
     //     def get_first(self) -> A:
-    tpy::val_or_ref_t<A> get_first() {
+    ::tpy::val_or_ref_t<A> get_first() {
         //         return self.first
         return this->first;
     }
 
     //     def get_second(self) -> B:
-    tpy::val_or_ref_t<B> get_second() {
+    ::tpy::val_or_ref_t<B> get_second() {
         //         return self.second
         return this->second;
     }
@@ -39,9 +39,9 @@ struct Pair {
 template<typename A, typename B>
 inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
     os << "Pair("
-       << "first=" << tpy::ValuePrinter(obj.first)
+       << "first=" << ::tpy::ValuePrinter(obj.first)
        << ", "
-       << "second=" << tpy::ValuePrinter(obj.second)
+       << "second=" << ::tpy::ValuePrinter(obj.second)
        << ")";
     return os;
 }

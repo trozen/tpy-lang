@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // start: Int32 = 0
 int32_t start{};
 // big_end = 1 << 40  # tpyc: warning(/outside default Int32 range/)
-tpy::BigInt big_end;
+::tpy::BigInt big_end;
 // # 1. Int32 start, BigInt stop
 // count: Int32 = 0
 int32_t count{};
@@ -15,7 +15,7 @@ int32_t count{};
 // end: Int32 = 5
 int32_t end{};
 // big_start = 1 << 40  # tpyc: warning(/outside default Int32 range/)
-tpy::BigInt big_start;
+::tpy::BigInt big_start;
 
 void __tpy_init() {
     static bool initialized = false;
@@ -26,16 +26,16 @@ void __tpy_init() {
     // start: Int32 = 0
     start = 0;
     // big_end = 1 << 40  # tpyc: warning(/outside default Int32 range/)
-    big_end = ((tpy::BigInt(1)) << (tpy::BigInt(40)));
+    big_end = ((::tpy::BigInt(1)) << (::tpy::BigInt(40)));
     // # 1. Int32 start, BigInt stop
     // count: Int32 = 0
     count = 0;
     // for i in range(start, big_end):
-    tpy::BigInt __start_0 = tpy::BigInt(start);
-    tpy::BigInt __stop_0 = big_end;
-    for (tpy::BigInt i = __start_0; i < __stop_0; ++i) {
+    ::tpy::BigInt __start_0 = ::tpy::BigInt(start);
+    ::tpy::BigInt __stop_0 = big_end;
+    for (::tpy::BigInt i = __start_0; i < __stop_0; ++i) {
         //     count += 1
-        count = tpy::add_check<int32_t>(count, 1);
+        count = ::tpy::add_check<int32_t>(count, 1);
         //     if count >= 5:
         if ((count >= 5)) {
             //         break
@@ -48,11 +48,11 @@ void __tpy_init() {
     // end: Int32 = 5
     end = 5;
     // big_start = 1 << 40  # tpyc: warning(/outside default Int32 range/)
-    big_start = ((tpy::BigInt(1)) << (tpy::BigInt(40)));
+    big_start = ((::tpy::BigInt(1)) << (::tpy::BigInt(40)));
     // for i in range(big_start, big_start + end):
-    tpy::BigInt __start_1 = big_start;
-    tpy::BigInt __stop_1 = ((big_start) + (tpy::BigInt(end)));
-    for (tpy::BigInt i = __start_1; i < __stop_1; ++i) {
+    ::tpy::BigInt __start_1 = big_start;
+    ::tpy::BigInt __stop_1 = ((big_start) + (::tpy::BigInt(end)));
+    for (::tpy::BigInt i = __start_1; i < __stop_1; ++i) {
         //     print(i)
         std::cout << i << "\n";
     }
@@ -61,7 +61,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

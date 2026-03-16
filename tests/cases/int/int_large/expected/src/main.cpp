@@ -5,14 +5,14 @@ namespace tpy_user::main {
 
 
 // def factorial(n: int) -> int:
-tpy::BigInt factorial(const tpy::BigInt& n) {
+::tpy::BigInt factorial(const ::tpy::BigInt& n) {
     //     if n <= 1:
     if ((n <= 1)) {
         //         return 1
-        return tpy::BigInt(1);
+        return ::tpy::BigInt(1);
     }
     //     return n * factorial(n - 1)
-    return ((n) * (factorial(((n) - (tpy::BigInt(1))))));
+    return ((n) * (factorial(((n) - (::tpy::BigInt(1))))));
 }
 
 void __tpy_init() {
@@ -22,22 +22,22 @@ void __tpy_init() {
 
     // # 20! fits in 63-bit small int
     // print(factorial(20))
-    std::cout << factorial(tpy::BigInt(20)) << "\n";
+    std::cout << factorial(::tpy::BigInt(20)) << "\n";
     // # 25! exceeds 63 bits - uses GMP
     // print(factorial(25))
-    std::cout << factorial(tpy::BigInt(25)) << "\n";
+    std::cout << factorial(::tpy::BigInt(25)) << "\n";
     // # 50! is huge - only GMP can handle
     // print(factorial(50))
-    std::cout << factorial(tpy::BigInt(50)) << "\n";
+    std::cout << factorial(::tpy::BigInt(50)) << "\n";
     // # 100! - truly arbitrary precision
     // print(factorial(100))
-    std::cout << factorial(tpy::BigInt(100)) << "\n";
+    std::cout << factorial(::tpy::BigInt(100)) << "\n";
 }
 
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

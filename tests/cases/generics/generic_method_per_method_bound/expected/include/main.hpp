@@ -21,7 +21,7 @@ struct Container {
     Container() : items(std::vector<T>{}) {}
 
     //     def add(self, item: T) -> None:
-    void add(tpy::param_val_or_ref_t<T> item) {
+    void add(::tpy::param_val_or_ref_t<T> item) {
         //         self.items.append(item)
         auto __tmp_1 = item;
         this->items.push_back(std::move(__tmp_1));
@@ -29,18 +29,18 @@ struct Container {
 
     //     def is_sorted[T: Comparable](self) -> bool:
     bool is_sorted() const
-      requires tpy::Comparable<T> {
+      requires ::tpy::Comparable<T> {
         //         i: Int32 = Int32(1)
         int32_t i = 1;
         //         while i < Int32(len(self.items)):
-        while ((i < tpy::__len__(this->items))) {
+        while ((i < ::tpy::__len__(this->items))) {
             //             if self.items[i] < self.items[i - Int32(1)]:
-            if ((tpy::__getitem__(this->items, i) < tpy::__getitem__(this->items, (tpy::sub_check<int32_t>(i, 1))))) {
+            if ((::tpy::__getitem__(this->items, i) < ::tpy::__getitem__(this->items, (::tpy::sub_check<int32_t>(i, 1))))) {
                 //                 return False
                 return false;
             }
             //             i = i + Int32(1)
-            i = (tpy::add_check<int32_t>(i, 1));
+            i = (::tpy::add_check<int32_t>(i, 1));
         }
         //         return True
         return true;
@@ -50,7 +50,7 @@ struct Container {
 template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     os << "Container("
-       << "items=" << tpy::ListPrinter(obj.items)
+       << "items=" << ::tpy::ListPrinter(obj.items)
        << ")";
     return os;
 }

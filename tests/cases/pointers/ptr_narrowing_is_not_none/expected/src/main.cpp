@@ -38,7 +38,7 @@ int32_t test_is_none_early_return(Point* p) {
 // def test_assert(p: Ptr[Point]) -> Int32:
 int32_t test_assert(Point* p) {
     //     assert p is not None
-    if (!((p != nullptr))) tpy::tpy_panic("assertion failed");
+    if (!((p != nullptr))) ::tpy::tpy_panic("assertion failed");
     //     return p.x  # tpyc: non_null(p)
     return p->x;
 }
@@ -89,7 +89,7 @@ int32_t test_merge_no_guarantee(Point* p) {
         //         pass
     }
     //     return p.x  # tpyc: nullable(p)
-    return tpy::deref_check(p).x;
+    return ::tpy::deref_check(p).x;
 }
 
 // def main() -> None:
@@ -128,7 +128,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }

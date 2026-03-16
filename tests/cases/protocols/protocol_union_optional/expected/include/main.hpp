@@ -10,33 +10,33 @@ struct Holder;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || tpy::Sequence<T_items, tpy::BigInt> || tpy::Sized<T_items>)
-tpy::BigInt process(const T_items* items = nullptr);
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sequence<T_items, ::tpy::BigInt> || ::tpy::Sized<T_items>)
+::tpy::BigInt process(const T_items* items = nullptr);
 template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || tpy::Sequence<T_items, tpy::BigInt> || tpy::Sized<T_items>)
-tpy::BigInt with_else(const T_items* items = nullptr);
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sequence<T_items, ::tpy::BigInt> || ::tpy::Sized<T_items>)
+::tpy::BigInt with_else(const T_items* items = nullptr);
 void main();
 
 // class Holder:
 struct Holder {
     //     count: int
-    tpy::BigInt count;
+    ::tpy::BigInt count;
 
     //     def __init__(self, items: Sized | Sequence[int] | None = None) -> None:
     Holder() : Holder(static_cast<std::nullptr_t*>(nullptr)) {}
     template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || tpy::Sequence<T_items, tpy::BigInt> || tpy::Sized<T_items>)
-    explicit Holder(const T_items* items = nullptr) : count(tpy::BigInt(0)) {
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sequence<T_items, ::tpy::BigInt> || ::tpy::Sized<T_items>)
+    explicit Holder(const T_items* items = nullptr) : count(::tpy::BigInt(0)) {
         //         if items is not None:
         if constexpr (!std::same_as<T_items, std::nullptr_t>) {
             //             if isinstance(items, Sized):
-            if constexpr (tpy::Sized<T_items>) {
+            if constexpr (::tpy::Sized<T_items>) {
                 //                 self.count = len(items)
-                this->count = tpy::BigInt(tpy::__len__((*items)));
+                this->count = ::tpy::BigInt(::tpy::__len__((*items)));
             //             else:
             } else {
                 //                 self.count = -1
-                this->count = tpy::BigInt(-1);
+                this->count = ::tpy::BigInt(-1);
             }
         }
     }
@@ -51,45 +51,45 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // def process(items: Sized | Sequence[int] | None = None) -> int:
 template<typename T_items>
-  requires (std::same_as<T_items, std::nullptr_t> || tpy::Sequence<T_items, tpy::BigInt> || tpy::Sized<T_items>)
-tpy::BigInt process(const T_items* items) {
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sequence<T_items, ::tpy::BigInt> || ::tpy::Sized<T_items>)
+::tpy::BigInt process(const T_items* items) {
     //     if items is not None:
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
         //         if isinstance(items, Sequence):
-        if constexpr (tpy::Sequence<T_items, tpy::BigInt>) {
+        if constexpr (::tpy::Sequence<T_items, ::tpy::BigInt>) {
             //             return items[0]
             return (*items)[0];
         //         elif isinstance(items, Sized):
-        } else if constexpr (tpy::Sized<T_items>) {
+        } else if constexpr (::tpy::Sized<T_items>) {
             //             return len(items)
-            return tpy::BigInt(tpy::__len__((*items)));
+            return ::tpy::BigInt(::tpy::__len__((*items)));
         }
     }
     //     return -1
-    return tpy::BigInt(-1);
+    return ::tpy::BigInt(-1);
 }
 // def with_else(items: Sized | Sequence[int] | None = None) -> int:
 template<typename T_items>
-  requires (std::same_as<T_items, std::nullptr_t> || tpy::Sequence<T_items, tpy::BigInt> || tpy::Sized<T_items>)
-tpy::BigInt with_else(const T_items* items) {
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sequence<T_items, ::tpy::BigInt> || ::tpy::Sized<T_items>)
+::tpy::BigInt with_else(const T_items* items) {
     //     if items is not None:
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
         //         if isinstance(items, Sequence):
-        if constexpr (tpy::Sequence<T_items, tpy::BigInt>) {
+        if constexpr (::tpy::Sequence<T_items, ::tpy::BigInt>) {
             //             return items[0]
             return (*items)[0];
         //         elif isinstance(items, Sized):
-        } else if constexpr (tpy::Sized<T_items>) {
+        } else if constexpr (::tpy::Sized<T_items>) {
             //             return len(items)
-            return tpy::BigInt(tpy::__len__((*items)));
+            return ::tpy::BigInt(::tpy::__len__((*items)));
         }
     //     else:
     } else {
         //         return -99
-        return tpy::BigInt(-99);
+        return ::tpy::BigInt(-99);
     }
     //     return -1
-    return tpy::BigInt(-1);
+    return ::tpy::BigInt(-1);
 }
 
 void __tpy_init();

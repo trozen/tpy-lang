@@ -12,7 +12,7 @@ void test_dict_ctor();
 void test_multiple();
 void test_numeric_widen();
 void test_getitem_after_infer();
-void takes_dict(const tpy::ordered_map<std::string, int32_t>& d);
+void takes_dict(const ::tpy::ordered_map<std::string, int32_t>& d);
 void test_param_context();
 void test_param_only();
 

@@ -20,7 +20,7 @@ Point make_point(int32_t x, int32_t y) {
 int32_t take_point(Point&& p) {
     //     # Field access on Own[T] should work - unwraps to the underlying type
     //     return p.x + p.y
-    return (tpy::add_check<int32_t>(p.x, p.y));
+    return (::tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // def main():
@@ -44,7 +44,7 @@ void __tpy_init() {
 } // namespace tpy_user::main
 
 int main(int argc, char* argv[]) {
-    tpy::init_sys_argv(argc, argv);
+    ::tpy::init_sys_argv(argc, argv);
     tpy_user::main::__tpy_init();
     return 0;
 }
