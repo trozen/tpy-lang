@@ -313,13 +313,7 @@ class TypeCompatibility:
             is_auto_moved = False
             if isinstance(source_expr, TpyName) and id(source_expr) in self.ctx.all_last_uses:
                 is_auto_moved = self._is_movable_var(source_expr.name)
-            if is_auto_moved and isinstance(source_expr, TpyName):
-                self.ctx.mark_own_param_consumed(source_expr.name)
-            # copy(param) also counts as consuming the param
-            if self.is_copy_call(source_expr) and isinstance(source_expr, TpyCall) and source_expr.args:
-                inner = source_expr.args[0]
-                if isinstance(inner, TpyName):
-                    self.ctx.mark_own_param_consumed(inner.name)
+            self.check_own_consumption(source_expr)
             if (not is_return and source_expr is not None
                     and not expected.wrapped.is_value_type()
                     and not self._is_value_type_param(expected.wrapped)
@@ -710,6 +704,23 @@ class TypeCompatibility:
             module_name, func_name = self.ctx.imported_names[expr.func]
             return module_name == "tpy" and func_name == "copy"
         return False
+
+    def check_own_consumption(self, expr: TpyExpr) -> None:
+        """Mark Own[T] param as consumed if expr transfers ownership.
+
+        Handles two patterns:
+        - Auto-move: bare name at last use of a movable variable
+        - copy(): explicit copy transfers ownership of the param's value
+        """
+        if isinstance(expr, TpyName):
+            if (id(expr) in self.ctx.all_last_uses
+                    and self._is_movable_var(expr.name)):
+                self.ctx.mark_own_param_consumed(expr.name)
+            return
+        if self.is_copy_call(expr) and isinstance(expr, TpyCall) and expr.args:
+            inner = expr.args[0]
+            if isinstance(inner, TpyName):
+                self.ctx.mark_own_param_consumed(inner.name)
 
     def _is_value_type_param(self, typ: TpyType) -> bool:
         """Check if a TypeParamRef has a ValueType bound in the current context."""

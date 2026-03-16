@@ -1012,7 +1012,7 @@ class CallAnalyzer:
                                and id(arg) in self.ctx.all_last_uses
                                and self.compat._is_movable_var(arg.name))
         if is_last_use_movable:
-            self.ctx.mark_own_param_consumed(arg.name)
+            self.compat.check_own_consumption(arg)
             return
         if self._is_nocopy_type(arg_type):
             reason = self.ctx.nocopy_reason(arg_type)
@@ -1047,8 +1047,7 @@ class CallAnalyzer:
         if (isinstance(inner, TpyName)
                 and id(inner) in self.ctx.all_last_uses
                 and self.compat._is_movable_var(inner.name)):
-            # copy() at last use = effectively a move, param is consumed
-            self.ctx.mark_own_param_consumed(inner.name)
+            self.compat.check_own_consumption(arg)
             self.ctx.warning(
                 f"unnecessary copy() -- '{inner.name}' is at its last use and would be moved automatically",
                 arg,
@@ -1068,9 +1067,8 @@ class CallAnalyzer:
         if not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
             self._check_own_param_arg(arg, arg_type, pname, own_ptype)
         # Own[T] param forwarded to another Own[T] param — mark consumption
-        if isinstance(arg, TpyName) and isinstance(arg_type, OwnType):
-            if id(arg) in self.ctx.all_last_uses and self.compat._is_movable_var(arg.name):
-                self.ctx.mark_own_param_consumed(arg.name)
+        if isinstance(arg_type, OwnType):
+            self.compat.check_own_consumption(arg)
         self._warn_unnecessary_copy(arg)
 
     def _validate_generic_constructor(self, expr: TpyCall, arg_types: list[TpyType]) -> None:
