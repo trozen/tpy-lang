@@ -1,1 +1,2 @@
+main.py:9: warning: Own[Box] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:23: warning: unnecessary copy() -- 'b' is at its last use and would be moved automatically

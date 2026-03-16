@@ -1133,6 +1133,15 @@ Generated C++: `void push(std::type_identity_t<T>&& item) { this->items.push_bac
 
 At call sites, the compiler inserts `std::move()` at last use. For non-last-use, a copy is made (with a sema warning) and moved into the parameter.
 
+**Own[T] param consumption warning (Working)**: When an `Own[T]` param is never consumed -- not stored in a field, forwarded to another `Own[T]` param, or returned as `Own[T]` -- the compiler warns:
+
+```python
+def borrow_only(b: Own[Box]) -> Int32:
+    return b.value  # warning: Own[Box] param 'b' is never consumed
+```
+
+This warning is suppressed for value types (`Own[Int32]` -- copy equals move), `@nocopy` types (Own is the only way to pass them), and generic `T` bounded to `ValueType`.
+
 #### @nocopy Types (Working)
 
 Types decorated with `@nocopy` have their copy constructor and copy assignment deleted

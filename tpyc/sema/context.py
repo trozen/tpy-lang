@@ -377,6 +377,8 @@ class SemanticContext:
     current_struct_mutated_param_names: set[str] = field(default_factory=set)
     # Return borrow inference (8b): param names whose storage the return value borrows from
     current_returned_param_names: set[str] = field(default_factory=set)
+    # Own[T] consumption tracking: params that are stored, forwarded, or returned
+    current_consumed_own_params: set[str] = field(default_factory=set)
 
     # --- Scope escape tracking ---
     var_scope_depth: dict[str, int] = field(default_factory=dict)
@@ -606,6 +608,7 @@ class SemanticContext:
         self.current_self_mutated = False
         self.current_struct_mutated_param_names.clear()
         self.current_returned_param_names.clear()
+        self.current_consumed_own_params.clear()
 
     def mark_loop_var_mutated(self, name: str) -> None:
         """Mark a for-each loop variable as mutated (prevents const-ref binding)."""
@@ -671,6 +674,11 @@ class SemanticContext:
         iterable = self.loop_var_iterable.get(name)
         if iterable is not None:
             self.mark_param_returned(iterable)
+
+    def mark_own_param_consumed(self, name: str) -> None:
+        """Mark an Own[T] param as consumed (stored, forwarded, or returned)."""
+        if name in self.current_param_names:
+            self.current_consumed_own_params.add(name)
 
     def mark_str_borrowers_mutated(self, storage: str) -> None:
         """Mark PendingStrType borrowers of storage as source-mutated.

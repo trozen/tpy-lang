@@ -1,2 +1,4 @@
+main.py:13: warning: Own[Point] param 'p' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:18: warning: Own[Point] param 'p' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:25: warning: unnecessary copy() -- 'p' is at its last use and would be moved automatically
 main.py:33: warning: unnecessary copy() -- 'p' is at its last use and would be moved automatically

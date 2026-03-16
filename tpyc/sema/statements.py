@@ -197,6 +197,11 @@ class StatementAnalyzer:
             context: Description for error messages, e.g. "return type" or "tuple element 1".
         """
         if self.compat.is_copy_call(expr):
+            # copy(x) returns ownership -- mark inner as consumed
+            if isinstance(expr, TpyCall) and expr.args:
+                inner = expr.args[0]
+                if isinstance(inner, TpyName):
+                    self.ctx.mark_own_param_consumed(inner.name)
             return
         if not self.compat.is_lvalue(expr):
             return
@@ -204,6 +209,7 @@ class StatementAnalyzer:
                          and id(expr) in self.ctx.all_last_uses
                          and self.compat._is_movable_var(expr.name))
         if is_auto_moved:
+            self.ctx.mark_own_param_consumed(expr.name)
             return
         expr_type = self.ctx.get_expr_type(expr)
         is_nocopy = expr_type is not None and self.ctx.is_type_nocopy(expr_type)
@@ -1732,6 +1738,9 @@ class StatementAnalyzer:
             declared_target_type = self.narrowing.declared_type_for_expr(stmt.target)
             if declared_target_type is not None:
                 target_type = declared_target_type
+            # Own[T] param stored in a field/container — mark as consumed
+            if isinstance(stmt.value, TpyName) and stmt.value.name in self.ctx.current_param_names:
+                self.ctx.mark_own_param_consumed(stmt.value.name)
         if isinstance(stmt.target, TpyName):
             # Track param rebinding (subsequent mutations target the new local, not the arg)
             if stmt.target.name in self.ctx.current_param_names:

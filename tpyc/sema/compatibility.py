@@ -313,6 +313,13 @@ class TypeCompatibility:
             is_auto_moved = False
             if isinstance(source_expr, TpyName) and id(source_expr) in self.ctx.all_last_uses:
                 is_auto_moved = self._is_movable_var(source_expr.name)
+            if is_auto_moved and isinstance(source_expr, TpyName):
+                self.ctx.mark_own_param_consumed(source_expr.name)
+            # copy(param) also counts as consuming the param
+            if self.is_copy_call(source_expr) and isinstance(source_expr, TpyCall) and source_expr.args:
+                inner = source_expr.args[0]
+                if isinstance(inner, TpyName):
+                    self.ctx.mark_own_param_consumed(inner.name)
             if (not is_return and source_expr is not None
                     and not expected.wrapped.is_value_type()
                     and not self._is_value_type_param(expected.wrapped)

@@ -10,7 +10,7 @@ from typing import Optional
 
 from ..typesys import (
     TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, VoidType,
-    INT32, ReadonlyType, unwrap_readonly, OwnType, OptionalType, RecordInfo, FieldInfo,
+    INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
     EnumType,
 )
 from ..namespace import Namespace, NameBinding, BindingKind
@@ -626,6 +626,32 @@ class SemanticAnalyzer:
                 return ReadonlyType(ptype)
         return ptype
 
+    def _warn_unconsumed_own_params(self, func: TpyFunction) -> None:
+        """Warn when Own[T] params are never consumed (stored, forwarded, or returned)."""
+        for pname, ptype in func.params:
+            own = unwrap_optional_own(unwrap_readonly(ptype))
+            if own is None:
+                continue
+            if pname in self.ctx.current_consumed_own_params:
+                continue
+            # Value types: copy == move, no semantic difference
+            if own.wrapped.is_value_type():
+                continue
+            # Generic T bounded to ValueType: same as value type
+            if isinstance(own.wrapped, TypeParamRef):
+                bound = self.type_ops.get_type_param_bound(own.wrapped.name)
+                if (bound is not None and isinstance(bound, NamedType)
+                        and bound.qualified_name() == "tpy.ValueType"):
+                    continue
+            # @nocopy types: Own is the only way to pass them
+            if self.ctx.is_type_nocopy(own.wrapped):
+                continue
+            self.ctx.warning(
+                f"Own[{own.wrapped}] param '{pname}' is never consumed "
+                f"(not stored in a field, forwarded to another Own[T], or returned)",
+                func,
+            )
+
     def _analyze_function(self, func: TpyFunction) -> None:
         """Analyze a function body."""
         # Stub functions (extern imports with ... body) have no body to analyze
@@ -698,6 +724,7 @@ class SemanticAnalyzer:
                 if pname in self.ctx.current_returned_param_names
             )
 
+        self._warn_unconsumed_own_params(func)
         self.function_scan_results[id(func)] = scan
         if self.ctx.hoisted_vars:
             self.function_hoisted_vars[id(func)] = self.ctx.hoisted_vars.copy()
@@ -1142,6 +1169,7 @@ class SemanticAnalyzer:
                         returned = returned | frozenset([-1])
                     method_fi.return_borrows_from = returned
 
+            self._warn_unconsumed_own_params(method)
             self.function_scan_results[id(method)] = scan
             if self.ctx.hoisted_vars:
                 self.function_hoisted_vars[id(method)] = self.ctx.hoisted_vars.copy()

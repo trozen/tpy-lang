@@ -1,0 +1,1 @@
+main.py:24: warning: Own[Container] param 'c' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

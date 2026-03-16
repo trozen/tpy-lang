@@ -1000,29 +1000,31 @@ class CallAnalyzer:
         is_last_use_movable = (isinstance(arg, TpyName)
                                and id(arg) in self.ctx.all_last_uses
                                and self.compat._is_movable_var(arg.name))
-        if not is_last_use_movable:
-            if self._is_nocopy_type(arg_type):
-                reason = self.ctx.nocopy_reason(arg_type)
-                is_movable = (isinstance(arg, TpyName)
-                              and self.compat._is_movable_var(arg.name))
-                if is_movable:
-                    # Movable owner, but not at last use (used later)
-                    raise self.ctx.error(
-                        f"{reason} is used after this point "
-                        f"and cannot be moved into '{pname}: Own[{ptype.wrapped}]'. "
-                        f"Remove later uses or restructure the code.",
-                        arg
-                    )
-                # Not movable (T& alias, readonly param, etc.)
+        if is_last_use_movable:
+            self.ctx.mark_own_param_consumed(arg.name)
+            return
+        if self._is_nocopy_type(arg_type):
+            reason = self.ctx.nocopy_reason(arg_type)
+            is_movable = (isinstance(arg, TpyName)
+                          and self.compat._is_movable_var(arg.name))
+            if is_movable:
+                # Movable owner, but not at last use (used later)
                 raise self.ctx.error(
-                    f"{reason} cannot be copied into "
-                    f"'{pname}: Own[{ptype.wrapped}]'. "
-                    f"Only the original owner can be moved at its last use.",
+                    f"{reason} is used after this point "
+                    f"and cannot be moved into '{pname}: Own[{ptype.wrapped}]'. "
+                    f"Remove later uses or restructure the code.",
                     arg
                 )
-            # Non-nocopy implicit copy: warning is emitted by the coercion
-            # path in compatibility.py (T -> Own[T] coercion), so no need
-            # to duplicate it here.
+            # Not movable (T& alias, readonly param, etc.)
+            raise self.ctx.error(
+                f"{reason} cannot be copied into "
+                f"'{pname}: Own[{ptype.wrapped}]'. "
+                f"Only the original owner can be moved at its last use.",
+                arg
+            )
+        # Non-nocopy implicit copy: warning is emitted by the coercion
+        # path in compatibility.py (T -> Own[T] coercion), so no need
+        # to duplicate it here.
 
     def _warn_unnecessary_copy(self, arg: TpyExpr) -> None:
         """Warn when copy(x) is passed to Own[T] param but x is at last use."""
@@ -1034,6 +1036,8 @@ class CallAnalyzer:
         if (isinstance(inner, TpyName)
                 and id(inner) in self.ctx.all_last_uses
                 and self.compat._is_movable_var(inner.name)):
+            # copy() at last use = effectively a move, param is consumed
+            self.ctx.mark_own_param_consumed(inner.name)
             self.ctx.warning(
                 f"unnecessary copy() -- '{inner.name}' is at its last use and would be moved automatically",
                 arg,
@@ -1052,6 +1056,10 @@ class CallAnalyzer:
             return
         if not isinstance(arg_type, OwnType) and not arg_type.is_value_type():
             self._check_own_param_arg(arg, arg_type, pname, own_ptype)
+        # Own[T] param forwarded to another Own[T] param — mark consumption
+        if isinstance(arg, TpyName) and isinstance(arg_type, OwnType):
+            if id(arg) in self.ctx.all_last_uses and self.compat._is_movable_var(arg.name):
+                self.ctx.mark_own_param_consumed(arg.name)
         self._warn_unnecessary_copy(arg)
 
     def _validate_generic_constructor(self, expr: TpyCall, arg_types: list[TpyType]) -> None:
@@ -1480,6 +1488,7 @@ class CallAnalyzer:
             if matched is not None:
                 expr.resolved_function_info = matched
                 for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, matched.params)):
+                    self.check_own_param(arg, arg_t, pname, ptype)
                     if arg_t != ptype:
                         expr.args[i] = self.compat.coerce_expr(arg, arg_t, ptype,
                                                                 f"argument '{pname}'",
@@ -1517,6 +1526,7 @@ class CallAnalyzer:
                 expr.resolved_function_info = resolved
                 expr.inferred_type_args = tuple(type_subst[p] for p in overload.type_params)
                 for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, resolved.params)):
+                    self.check_own_param(arg, arg_t, pname, ptype)
                     if arg_t != ptype:
                         expr.args[i] = self.compat.coerce_expr(arg, arg_t, ptype,
                                                                 f"argument '{pname}'",

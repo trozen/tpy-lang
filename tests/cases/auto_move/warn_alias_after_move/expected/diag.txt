@@ -1,1 +1,2 @@
+main.py:9: warning: Own[Point] param 'p' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:17: warning: copies Point into owned storage; use copy() to make this explicit
