@@ -46,7 +46,7 @@ if TYPE_CHECKING:
     from .expressions import ExpressionAnalyzer
     from .protocols import ProtocolChecker
 
-from .context import BorrowKind, PENDING_CONTAINER_TYPES
+from .context import BorrowKind, PENDING_CONTAINER_TYPES, _storage_key, _borrow_storage_root
 from .local_deduction import collect_pending_source_types
 from tpyc import modules as builtin_modules
 
@@ -82,27 +82,6 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
             if root is not None:
                 ctx.borrow_tracker.add_borrow(root, borrower, BorrowKind.ELEMENT)
 
-
-def _borrow_storage_root(expr: TpyExpr) -> str | None:
-    """Extract the root variable name whose storage is borrowed by this expression.
-
-    Deliberately single-level: only handles items[i] and obj.field directly.
-    Nested access like matrix[i][j] or chain.field.subfield returns None
-    (conservative -- no borrow registered). Single-level is sufficient for
-    borrow_tracker registration; use addr_taken_roots when you only need the
-    root variable name without registering a named borrow entry.
-
-    Returns None for rvalues (calls, literals, etc.) that own fresh storage.
-    """
-    if isinstance(expr, TpyCoerce):
-        return _borrow_storage_root(expr.expr)
-    if isinstance(expr, TpyName):
-        return expr.name
-    if isinstance(expr, TpySubscript) and isinstance(expr.obj, TpyName):
-        return expr.obj.name
-    if isinstance(expr, TpyFieldAccess) and isinstance(expr.obj, TpyName):
-        return expr.obj.name
-    return None
 
 
 
@@ -161,6 +140,17 @@ class StatementAnalyzer:
         """Wire circular dependencies (must be called before analyze_stmt)."""
         self.expr = expr
         self.match.set_dependencies(self, expr)
+
+    def _resolve_obj_storage(self, obj: TpyExpr) -> str | None:
+        """Resolve the borrow-tracker storage key for a mutation target's object.
+
+        For simple names, resolves aliases via effective_storage().
+        For single-level field access (self.items), returns the dotted key directly
+        (no alias resolution -- field paths are not aliased in the tracker).
+        """
+        if isinstance(obj, TpyName):
+            return self.ctx.borrow_tracker.effective_storage(obj.name)
+        return _storage_key(obj)
 
     def _warn_all_caps_without_final(self, name: str, type_hint: str, node: TpyStmt) -> None:
         """Warn on ALL_CAPS module-level variables without Final annotation."""
@@ -702,6 +692,11 @@ class StatementAnalyzer:
                         inner = unwrap_readonly(iterable_type)
                         if (isinstance(inner, (TypeParamRef,)) or is_protocol_type(inner)):
                             self.ctx.mark_param_mutated(stmt.iterable.name)
+                    elif isinstance(stmt.iterable, TpyFieldAccess):
+                        key = _storage_key(stmt.iterable)
+                        if key is not None:
+                            self.ctx.borrow_tracker.add_borrow(key, "__for_iter", BorrowKind.ITER)
+                            self.ctx.loop_var_iterable[stmt.var] = key
                     elif isinstance(stmt.iterable, (TpyCall, TpyMethodCall)):
                         # 8b: iterable is a call whose return borrows from source arg(s).
                         # Register ITER borrow directly on those source containers so that
@@ -1863,8 +1858,8 @@ class StatementAnalyzer:
             self.ctx.mark_param_mutated(root)
             # Slice assignment replaces a subrange -- structural mutation.
             self.ctx.mark_param_structurally_mutated(root)
-        if isinstance(stmt.target.obj, TpyName):
-            storage = self.ctx.borrow_tracker.effective_storage(stmt.target.obj.name)
+        storage = self._resolve_obj_storage(stmt.target.obj)
+        if storage is not None:
             if self.ctx.borrow_tracker.has_borrow_of_kinds(storage, (BorrowKind.ELEMENT, BorrowKind.PTR, BorrowKind.ITER)):
                 self.ctx.warning(
                     f"Mutation of '{storage}' while borrowed"
@@ -2011,16 +2006,30 @@ class StatementAnalyzer:
         # has field/element/ptr borrows.
         # Subscript assignment (items[i] = val) is in-place and does NOT reallocate,
         # so existing element/ptr borrows remain valid (no dangling). No warning needed.
-        if isinstance(stmt.target, TpySubscript) and isinstance(stmt.target.obj, TpyName):
-            storage = self.ctx.borrow_tracker.effective_storage(stmt.target.obj.name)
-            self.ctx.mark_str_borrowers_mutated(storage)
-        elif isinstance(stmt.target, TpyFieldAccess) and isinstance(stmt.target.obj, TpyName):
-            storage = self.ctx.borrow_tracker.effective_storage(stmt.target.obj.name)
-            if self.ctx.borrow_tracker.has_borrow_of_kinds(storage, (BorrowKind.FIELD, BorrowKind.ELEMENT, BorrowKind.PTR, BorrowKind.ITER)):
+        if isinstance(stmt.target, TpySubscript):
+            storage = self._resolve_obj_storage(stmt.target.obj)
+            if storage is not None:
+                self.ctx.mark_str_borrowers_mutated(storage)
+        elif isinstance(stmt.target, TpyFieldAccess):
+            storage = self._resolve_obj_storage(stmt.target.obj)
+            # Also check the field-path key itself (e.g. "self.items" for self.items = [...])
+            # since borrows may be registered on the dotted key.
+            field_storage = _storage_key(stmt.target)
+            _BORROW_KINDS = (BorrowKind.FIELD, BorrowKind.ELEMENT, BorrowKind.PTR, BorrowKind.ITER)
+            has_conflict = False
+            if storage is not None and self.ctx.borrow_tracker.has_borrow_of_kinds(storage, _BORROW_KINDS):
+                has_conflict = True
+            if not has_conflict and field_storage is not None and self.ctx.borrow_tracker.has_borrow_of_kinds(field_storage, _BORROW_KINDS):
+                storage = field_storage
+                has_conflict = True
+            if has_conflict:
                 msg = (f"Mutation of '{storage}' while borrowed"
                        " (field assignment may invalidate references)")
                 self.ctx.warning(msg, stmt)
-            self.ctx.mark_str_borrowers_mutated(storage)
+            if storage is not None:
+                self.ctx.mark_str_borrowers_mutated(storage)
+            if field_storage is not None and field_storage != storage:
+                self.ctx.mark_str_borrowers_mutated(field_storage)
 
         # PendingDictType subscript assignment: d[k] = v -- infer key/value types
         if isinstance(stmt.target, TpySubscript):
@@ -2110,8 +2119,8 @@ class StatementAnalyzer:
                 # del item removes an element from the container -- structural mutation.
                 self.ctx.mark_param_structurally_mutated(del_root)
             # Borrow conflict: del on a container with element-level borrows
-            if isinstance(subscript.obj, TpyName):
-                storage = self.ctx.borrow_tracker.effective_storage(subscript.obj.name)
+            storage = self._resolve_obj_storage(subscript.obj)
+            if storage is not None:
                 if self.ctx.borrow_tracker.has_element_borrow(storage):
                     if self.ctx.borrow_tracker.has_iter_borrow(storage):
                         msg = (f"Mutation of '{storage}' while iterating over it"
@@ -2216,18 +2225,30 @@ class StatementAnalyzer:
         # Borrow conflict: augmented assignment may mutate borrowed storage.
         # Subscript aug-assign (items[i] += x) modifies element in-place -- same as
         # subscript assign, no reallocation, element/ptr borrows remain valid.
-        if isinstance(stmt.target, TpySubscript) and isinstance(stmt.target.obj, TpyName):
-            storage = self.ctx.borrow_tracker.effective_storage(stmt.target.obj.name)
-            self.ctx.mark_str_borrowers_mutated(storage)
-        elif isinstance(stmt.target, TpyFieldAccess) and isinstance(stmt.target.obj, TpyName):
-            storage = self.ctx.borrow_tracker.effective_storage(stmt.target.obj.name)
-            if self.ctx.borrow_tracker.has_borrow_of_kinds(storage, (BorrowKind.FIELD, BorrowKind.ELEMENT, BorrowKind.PTR, BorrowKind.ITER)):
+        if isinstance(stmt.target, TpySubscript):
+            storage = self._resolve_obj_storage(stmt.target.obj)
+            if storage is not None:
+                self.ctx.mark_str_borrowers_mutated(storage)
+        elif isinstance(stmt.target, TpyFieldAccess):
+            storage = self._resolve_obj_storage(stmt.target.obj)
+            field_storage = _storage_key(stmt.target)
+            _BORROW_KINDS = (BorrowKind.FIELD, BorrowKind.ELEMENT, BorrowKind.PTR, BorrowKind.ITER)
+            has_conflict = False
+            if storage is not None and self.ctx.borrow_tracker.has_borrow_of_kinds(storage, _BORROW_KINDS):
+                has_conflict = True
+            if not has_conflict and field_storage is not None and self.ctx.borrow_tracker.has_borrow_of_kinds(field_storage, _BORROW_KINDS):
+                storage = field_storage
+                has_conflict = True
+            if has_conflict:
                 self.ctx.warning(
                     f"Mutation of '{storage}' while borrowed"
                     " (field assignment may invalidate references)",
                     stmt,
                 )
-            self.ctx.mark_str_borrowers_mutated(storage)
+            if storage is not None:
+                self.ctx.mark_str_borrowers_mutated(storage)
+            if field_storage is not None and field_storage != storage:
+                self.ctx.mark_str_borrowers_mutated(field_storage)
         # Borrow conflict: aug-assign on a name target that has element borrows.
         # Any structural aug-assign (list +=, set |=, user-defined __iadd__ that
         # reallocates) is a mutation -- check the borrow state, not the container type.

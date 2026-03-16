@@ -49,6 +49,39 @@ def addr_taken_roots(expr: TpyExpr) -> list[str]:
     return []
 
 
+def _storage_key(expr: TpyExpr) -> str | None:
+    """Extract storage key: 'name' or 'name.field' for single-level field access.
+
+    Used by the borrow tracker as a dict key to identify storage that can be
+    borrowed from or mutated.  Supports dotted paths so that ``self.items``
+    and ``obj.field`` are tracked separately from ``self`` / ``obj``.
+    """
+    if isinstance(expr, TpyName):
+        return expr.name
+    if isinstance(expr, TpyFieldAccess) and isinstance(expr.obj, TpyName):
+        return f"{expr.obj.name}.{expr.field}"
+    return None
+
+
+def _borrow_storage_root(expr: TpyExpr) -> str | None:
+    """Extract the storage key whose storage is borrowed by this expression.
+
+    Handles simple names (``items``), subscript on names or single-level
+    field access (``items[i]``, ``self.items[i]``), and field access on
+    names (``obj.field``).  Returns None for deeper nesting or rvalues
+    (conservative -- no borrow registered).
+    """
+    if isinstance(expr, TpyCoerce):
+        return _borrow_storage_root(expr.expr)
+    if isinstance(expr, TpyName):
+        return expr.name
+    if isinstance(expr, TpySubscript):
+        return _storage_key(expr.obj)
+    if isinstance(expr, TpyFieldAccess):
+        return _storage_key(expr)
+    return None
+
+
 class BorrowKind(Enum):
     """Kind of borrow relationship between a borrower and its storage."""
     ALIAS = "alias"       # whole-container alias (safe through mutations)
@@ -100,11 +133,22 @@ class BorrowTracker:
             del self.borrows[storage]
 
     def remove_storage_borrows(self, storage: str) -> None:
-        """Remove all borrows of ``storage`` (e.g. when storage is reassigned)."""
+        """Remove all borrows of ``storage`` and any field-path borrows (``storage.*``).
+
+        When a variable is reassigned (``obj = Foo()``), borrows stored under
+        dotted keys like ``obj.items`` must also be cleared since the old
+        object's fields are no longer reachable through the variable.
+        """
         borrowers = self.borrows.pop(storage, None)
         if borrowers:
             for b in borrowers:
                 self.borrow_kinds.pop((storage, b), None)
+        # Clear field-path borrows: "storage.field"
+        prefix = storage + "."
+        to_remove = [k for k in self.borrows if k.startswith(prefix)]
+        for k in to_remove:
+            for b in self.borrows.pop(k):
+                self.borrow_kinds.pop((k, b), None)
 
     def has_iter_borrow(self, storage_name: str) -> bool:
         """Check if a variable is borrowed by an active for-loop iterator."""
@@ -634,7 +678,9 @@ class SemanticContext:
             self.current_mutated_param_names.add(name)
         iterable = self.loop_var_iterable.get(name)
         if iterable is not None:
-            self.mark_param_mutated(iterable)
+            # Field-path iterables ("c.items") need root extraction for param lookup
+            root = iterable.split(".")[0] if "." in iterable else iterable
+            self.mark_param_mutated(root)
         # 8a.5: trace through element/field/ptr borrows to source param.
         # When v = items[i] (deferred) and v is later written through,
         # mark the ultimate storage root (e.g. items) as mutated.
@@ -658,7 +704,8 @@ class SemanticContext:
             self.current_struct_mutated_param_names.add(name)
         iterable = self.loop_var_iterable.get(name)
         if iterable is not None:
-            self.mark_param_structurally_mutated(iterable)
+            root = iterable.split(".")[0] if "." in iterable else iterable
+            self.mark_param_structurally_mutated(root)
 
     def mark_param_returned(self, name: str) -> None:
         """Mark a parameter as contributing to the return value (8b).
@@ -675,7 +722,8 @@ class SemanticContext:
             self.current_returned_param_names.add(name)
         iterable = self.loop_var_iterable.get(name)
         if iterable is not None:
-            self.mark_param_returned(iterable)
+            root = iterable.split(".")[0] if "." in iterable else iterable
+            self.mark_param_returned(root)
 
     def mark_own_param_consumed(self, name: str) -> None:
         """Mark an Own[T] param as consumed (stored, forwarded, or returned)."""
@@ -689,14 +737,21 @@ class SemanticContext:
         back to std::string when the view's source storage is mutated.
         Uses str_source_borrows (separate from the main borrow system,
         since PendingStrType is a value type and not tracked there).
+
+        Also invalidates field-path borrows: mutating ``p`` invalidates
+        string views borrowed from ``p.name``, ``p.field``, etc.
         """
-        str_var_ids = self.str_source_borrows.get(storage)
-        if not str_var_ids:
-            return
-        for str_var_id in str_var_ids:
-            info = self.str_vars.get(str_var_id)
-            if info is not None:
-                info.source_mutated = True
+        keys = [storage]
+        prefix = storage + "."
+        keys.extend(k for k in self.str_source_borrows if k.startswith(prefix))
+        for key in keys:
+            str_var_ids = self.str_source_borrows.get(key)
+            if not str_var_ids:
+                continue
+            for str_var_id in str_var_ids:
+                info = self.str_vars.get(str_var_id)
+                if info is not None:
+                    info.source_mutated = True
 
     # ------------------------------------------------------------------
     # Unified container literal lookup

@@ -1,0 +1,7 @@
+main.py:19: warning: Mutation of 'self.items' while iterating over it ('append' invalidates the iterator)
+main.py:25: warning: Mutation of 'self.items' while borrowed ('append' may invalidate references)
+main.py:37: warning: Mutation of 'self.items' while borrowed (field assignment may invalidate references)
+main.py:43: warning: Mutation of 'self.items' while borrowed (field assignment may invalidate references)
+main.py:49: warning: copies Point into field; use copy() to make this explicit
+main.py:55: warning: Mutation of 'h.point' while borrowed (field assignment may invalidate references)
+main.py:70: warning: Mutation of 'c.items' while borrowed ('append' may invalidate references)

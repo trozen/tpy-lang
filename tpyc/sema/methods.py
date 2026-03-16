@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from ..typesys import PendingGenericInstanceInfo
 
 from tpyc.modules.builtins import LIST_MUTATION_METHODS, LIST_ITER_INVALIDATING, DICT_MUTATION_METHODS, SET_MUTATION_METHODS
+from .context import _storage_key
 
 
 def _contains_type_param_ref_type(typ: TpyType, param_names: set[str]) -> bool:
@@ -391,8 +392,12 @@ class MethodAnalyzer:
 
         # Borrow conflict: structural mutation on a container with element-level borrows.
         # Resolves aliases so that alias.append() warns when items has element borrows.
+        # Also handles field-path receivers (self.items.append()) via _storage_key.
         if isinstance(expr.obj, TpyName):
             storage = self.ctx.borrow_tracker.effective_storage(expr.obj.name)
+        else:
+            storage = _storage_key(expr.obj)
+        if storage is not None:
             if self.ctx.borrow_tracker.has_element_borrow(storage):
                 is_mutation = False
                 if isinstance(obj_type, (PendingListType, ListType)):

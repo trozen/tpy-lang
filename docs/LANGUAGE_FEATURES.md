@@ -4859,6 +4859,31 @@ items.append(Point(5, 6))  # warning: Mutation of 'items' while borrowed
 items[0] = Point(9, 9)     # ok: subscript write is not structural
 ```
 
+### Field-Path Borrow Tracking (Working)
+
+Borrow tracking extends to single-level field access paths (`self.items`, `obj.field`). This catches common patterns in methods where the receiver's container field is borrowed and then mutated:
+
+```python
+class Container:
+    items: list[Point]
+
+    def process(self) -> None:
+        for p in self.items:
+            self.items.append(Point(p.x, p.y))  # warning: Mutation of 'self.items' while iterating
+
+        ptr = Ptr(self.items[0])
+        self.items.append(Point(5, 6))  # warning: Mutation of 'self.items' while borrowed
+
+        self.items += [Point(7, 8)]     # warning: Mutation of 'self.items' while borrowed
+        self.items = [Point(9, 9)]      # warning: Mutation of 'self.items' while borrowed
+
+c = Container()
+ptr = Ptr(c.items[0])
+c.items.append(Point(7, 8))  # warning: Mutation of 'c.items' while borrowed
+```
+
+**Scope**: Single-level field paths only (`obj.field`). Deeper nesting (`obj.a.b`) is conservatively not tracked (no false positives, but no warnings either). Reassigning the root variable (`c = Container()`) clears all field-path borrows for that root.
+
 ## Open Questions
 
 1. **Allocation control ergonomics**: `@noalloc` vs `@alloc` vs module-level vs compiler flag?
