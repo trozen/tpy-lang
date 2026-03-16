@@ -8,7 +8,7 @@ namespace tpy_user::main {
 void main() {
     //     # sys.argv should at least contain the program name
     //     if len(sys.argv) >= 1:
-    if ((::tpy::__len__(::tpy::sys_argv) >= 1)) {
+    if ((::tpy::__len__((*tpy_user::sys::argv)) >= 1)) {
         //         print("ok")
         std::cout << "ok" << "\n";
     //     else:
@@ -24,6 +24,7 @@ void __tpy_init() {
     initialized = true;
 
     // import sys
+    ::tpy_user::sys::__tpy_init();
     // main()
     main();
 }

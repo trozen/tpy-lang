@@ -199,7 +199,6 @@ class BuiltinModule:
 # Import module definitions
 from tpyc.modules import builtins as _builtins_mod
 from tpyc.modules import tpy as _tpy_mod
-from tpyc.modules import sys as _sys_mod
 from tpyc.modules import typing as _typing_mod
 from tpyc.modules import extern as _extern_mod
 from tpyc.modules import enum as _enum_mod
@@ -209,7 +208,6 @@ from tpyc.modules import dataclasses as _dataclasses_mod
 _MODULE_FACTORIES: dict[str, Callable[[], BuiltinModule]] = {
     _builtins_mod.NAME: _builtins_mod.init_module,
     _tpy_mod.NAME: _tpy_mod.init_module,
-    _sys_mod.NAME: _sys_mod.init_module,
     _typing_mod.NAME: _typing_mod.init_module,
     _extern_mod.NAME: _extern_mod.init_module,
     _enum_mod.NAME: _enum_mod.init_module,

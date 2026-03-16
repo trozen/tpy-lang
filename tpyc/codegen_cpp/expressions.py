@@ -459,7 +459,9 @@ class ExpressionGenerator:
                     # At top level: use local only if current line >= declaration line
                     if self.ctx.current_stmt_line == 0 or self.ctx.current_stmt_line >= decl_line:
                         return escape_cpp_name(expr.name)
-                # Use qualified import reference (convert dotted name to C++ namespace)
+                # Use qualified import reference (convert dotted name to C++ namespace).
+                # Pointer indirection for non-value-type globals is handled by
+                # is_indirect_name() -> gen_expr_deref() at call sites.
                 source_module, original_name = self.ctx.user_imported_variables[expr.name]
                 return qualified_cpp_name(source_module, original_name)
             result = escape_cpp_name(expr.name)
@@ -1860,7 +1862,11 @@ class ExpressionGenerator:
                     module_name = binding.import_source[0] if binding.import_source else expr.obj.name
                     module_info = self.ctx.analyzer.registry.get_module(module_name)
                     if module_info and expr.field in module_info.variables:
-                        return module_info.variables[expr.field].cpp_expr
+                        var_info = module_info.variables[expr.field]
+                        # Non-value-type globals are T* pointers -- dereference for value access
+                        if var_info.is_pointer:
+                            return f"(*{var_info.cpp_expr})"
+                        return var_info.cpp_expr
 
                 # Enum type-level member access: Color.Red -> Color::Red
                 if binding and binding.kind == BindingKind.ENUM:

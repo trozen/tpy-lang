@@ -650,10 +650,18 @@ class CodeGenContext:
     def is_indirect_name(self, expr: TpyExpr) -> bool:
         """Check if expression needs indirect access (-> / deref).
 
-        Unifies pointer-globals (T*) and pointer-locals (T*) -- both use
-        -> for field/method access and (*x) for value dereference.
+        Unifies pointer-globals (T*), pointer-locals (T*), and cross-module
+        imported pointer variables -- all use -> for field/method access
+        and (*x) for value dereference.
         """
-        return self._is_pointer_global(expr) or self.is_pointer_local(expr)
+        if self._is_pointer_global(expr) or self.is_pointer_local(expr):
+            return True
+        if isinstance(expr, TpyName) and expr.name in self.user_imported_variables:
+            source_module, original_name = self.user_imported_variables[expr.name]
+            module_info = self.analyzer.registry.get_module(source_module)
+            if module_info and original_name in module_info.variables:
+                return module_info.variables[original_name].is_pointer
+        return False
 
     def get_expr_type(self, expr: TpyExpr) -> TpyType | None:
         """Get the sema-analyzed type of an expression, unwrapping ReadonlyType.

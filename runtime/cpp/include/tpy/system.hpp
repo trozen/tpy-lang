@@ -8,6 +8,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <string>
 #include <string_view>
 #include <thread>
 #include <vector>
@@ -47,6 +48,15 @@ inline void time_sleep(double seconds) {
  * Note: string_views point to argv strings which are valid for program lifetime.
  */
 inline std::vector<std::string_view> sys_argv;
+
+/**
+ * get_sys_argv - Return sys_argv as owned strings for module-level init.
+ *
+ * Called once during sys module init, after init_sys_argv() has populated sys_argv.
+ */
+inline std::vector<std::string> get_sys_argv() {
+    return {sys_argv.begin(), sys_argv.end()};
+}
 
 /**
  * init_sys_argv - Initialize sys_argv from main()'s argc/argv.

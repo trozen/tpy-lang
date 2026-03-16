@@ -803,7 +803,7 @@ class Compiler:
         Returns:
             ModuleInfo suitable for registry storage.
         """
-        from .typesys import ModuleInfo, ModuleVarInfo
+        from .typesys import ModuleInfo, ModuleVarInfo, FinalType
 
         functions = dict(exports.functions)
 
@@ -817,7 +817,9 @@ class Compiler:
                 cpp_expr = f"{module_to_cpp_namespace(source_module)}::{original_name}"
             else:
                 cpp_expr = f"{ns}::{k}"
-            variables[k] = ModuleVarInfo(k, v, cpp_expr)
+            # Non-Final non-value-type globals are stored as T* pointers in C++
+            is_ptr = not isinstance(v, FinalType) and not v.is_value_type()
+            variables[k] = ModuleVarInfo(k, v, cpp_expr, is_pointer=is_ptr)
 
         is_native = compiled.ast.directives.native_module if compiled else False
         return ModuleInfo(

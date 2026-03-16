@@ -356,7 +356,7 @@ Library search roots and CPython stubs:
 2. `-L` paths (user-specified, in order)
 3. `lib/tpy/` (tplib, tpy ecosystem)
 4. `lib/stdlib/` (Python stdlib analogs)
-5. Hardcoded builtins as fallback (`math`, `time`, `sys`)
+5. Hardcoded builtins as fallback (none currently -- `math`, `time`, `sys` moved to lib/stdlib/)
 
 CPython tests (`test_cpy.py`) use PYTHONPATH `lib/cpy/:lib/tpy/:src_dir`.
 

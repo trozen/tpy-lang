@@ -2649,6 +2649,7 @@ class ModuleVarInfo:
     name: str
     type: TpyType
     cpp_expr: str  # C++ expression to access the variable
+    is_pointer: bool = False  # True for non-value-type module globals (stored as T* in C++)
 
 
 @dataclass
