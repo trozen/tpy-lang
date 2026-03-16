@@ -1354,7 +1354,7 @@ class Parser:
                     if tp.bound is not None:
                         bound_type = self._parse_type_annotation(tp.bound)
                         if not isinstance(bound_type, NamedType) or not bound_type.is_protocol:
-                            raise ParseError(f"Type parameter bound must be a protocol, got {bound_type}", tp)
+                            raise ParseError(f"Type parameter bound must be a protocol or 'int', got {bound_type}", tp)
                         method_type_param_bounds[tp.name] = bound_type
                 else:
                     raise ParseError(f"Only simple type parameters supported, got {type(tp).__name__}", node)
@@ -1538,24 +1538,34 @@ class Parser:
                 raise ParseError(f"Unknown decorator '{dec_name}' on function '{node.name}'", dec)
 
         # Extract type parameters from Python 3.12+ syntax: def foo[T, U]():
-        # Also extract bounds: def foo[T: Comparable]():
-        # Note: Functions don't currently support INT type params (only TYPE)
+        # Bounds: def foo[T: Comparable](): (protocol bound)
+        # INT params: def foo[T, N: int](): (integer type parameter, e.g. for Array[T, N])
         type_params = []
         type_param_bounds: dict[str, TpyType] = {}
+        type_param_kinds: list[TypeParamKind] = []
         if hasattr(node, 'type_params') and node.type_params:
             for tp in node.type_params:
                 if isinstance(tp, ast.TypeVar):
                     type_params.append(tp.name)
                     if tp.bound is not None:
-                        bound_type = self._parse_type_annotation(tp.bound)
-                        if not isinstance(bound_type, NamedType) or not bound_type.is_protocol:
-                            raise ParseError(f"Type parameter bound must be a protocol, got {bound_type}", tp)
-                        type_param_bounds[tp.name] = bound_type
+                        if isinstance(tp.bound, ast.Name) and tp.bound.id == 'int':
+                            type_param_kinds.append(TypeParamKind.INT)
+                        else:
+                            type_param_kinds.append(TypeParamKind.TYPE)
+                            bound_type = self._parse_type_annotation(tp.bound)
+                            if not isinstance(bound_type, NamedType) or not bound_type.is_protocol:
+                                raise ParseError(f"Type parameter bound must be a protocol or 'int', got {bound_type}", tp)
+                            type_param_bounds[tp.name] = bound_type
+                    else:
+                        type_param_kinds.append(TypeParamKind.TYPE)
                 else:
                     raise ParseError(f"Only simple type parameters supported, got {type(tp).__name__}", node)
 
-        # Set scope for parsing parameter and return types (all TYPE kind for functions)
-        type_param_scope = {tp: TypeParamKind.TYPE for tp in type_params} if type_params else None
+        # Set scope for parsing parameter and return types
+        type_param_scope = (
+            {tp: kind for tp, kind in zip(type_params, type_param_kinds)}
+            if type_params else None
+        )
         old_scope = self._type_param_scope
         self._type_param_scope = type_param_scope
 

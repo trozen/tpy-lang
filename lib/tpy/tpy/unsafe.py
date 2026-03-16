@@ -1,9 +1,20 @@
 # tpy: native_module
 from typing import overload
 from tpy.extern import native, cpp_template
-from tpy import Ptr, Own, UInt32, Int64, StrView, Char, readonly
+from tpy import Ptr, Own, UInt32, Int64, StrView, Char, Array, readonly
 
-# unsafe_ptr: all overloads in builtin supplement (Array[T, N] needs INT type param)
+# unsafe_ptr: get a raw pointer from a container or string
+@overload
+@cpp_template("{0}.data()")
+def unsafe_ptr(s: str) -> Ptr[readonly[Char]]: ...
+
+@overload
+@cpp_template("{0}.data()")
+def unsafe_ptr[T, N: int](a: Array[T, N]) -> Ptr[T]: ...
+
+@overload
+@cpp_template("{0}.data()")
+def unsafe_ptr[T](l: list[T]) -> Ptr[T]: ...
 
 # unsafe_cast: reinterpret a pointer as a different pointee type
 # TODO: add @compiler_check decorator to make sema validation visible here
