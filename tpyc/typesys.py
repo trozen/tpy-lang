@@ -1452,8 +1452,6 @@ class UnionType(TpyType):
         return not self.is_value_type()
 
     def param_needs_copy_for_reassign(self) -> bool:
-        if self.uses_pointer_repr():
-            return False  # pointer variant is cheap to copy
         return False
 
     def __str__(self) -> str:

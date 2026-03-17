@@ -8,6 +8,8 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Bugs
 - Walrus variable possibly unbound: when `:=` is inside a short-circuit `and`/`or` branch that may not execute, using the variable after the `if` could read an uninitialized value. Sema should warn/error on use of walrus-bound variables that are not definitely assigned on all paths.
+- `operator<<` for non-value union fields: records with `Dog | Cat` fields fail to compile because the auto-generated printer emits `os << obj.pet` on a `std::variant<Dog, Cat>`, which has no `operator<<`. Needs a visit-based printer for value-variant fields. Blocks struct fields with non-value union types.
+- Union field assignment: `owner.pet = new_pet` where `new_pet` is a pointer variant (`variant<T*...>`) and `pet` is a value-variant field (`variant<T...>`) needs `to_value_variant` conversion at the assignment site. Currently only handled in constructor member init lists.
 
 ## Fuzzy Testing Findings (2026-03-12)
 
