@@ -174,6 +174,7 @@ class TempState:
 
     def __init__(self):
         self._pending: list[tuple[str, str, str]] = []
+        self._pending_named: list[tuple[str, str, str | None, bool]] = []
         self._counter: int = 0
 
     def create(self, param_type: TpyType, init_expr: str) -> str:
@@ -192,8 +193,21 @@ class TempState:
         self._pending.append((temp_name, cpp_type, init_expr, brace_init))
         return temp_name
 
+    def declare_named(self, name: str, cpp_type: str, *,
+                      init: str | None = None, brace_init: bool = False) -> None:
+        """Register a named pre-declaration (for walrus operator variables)."""
+        self._pending_named.append((name, cpp_type, init, brace_init))
+
     def flush(self, out: TextIO, indent: str) -> None:
         """Emit any pending temp variable declarations."""
+        for name, cpp_type, init_val, brace_init in self._pending_named:
+            if init_val is not None:
+                out.write(f"{indent}{cpp_type} {name} = {init_val};\n")
+            elif brace_init:
+                out.write(f"{indent}{cpp_type} {name}{{}};\n")
+            else:
+                out.write(f"{indent}{cpp_type} {name};\n")
+        self._pending_named.clear()
         for temp_name, type_cpp, init_expr, brace_init in self._pending:
             if brace_init:
                 out.write(f"{indent}{type_cpp} {temp_name}{{{init_expr}}};\n")
@@ -263,6 +277,8 @@ class CodeGenContext:
     declared_vars: set[str] = field(default_factory=set)
     var_types: dict[str, TpyType] = field(default_factory=dict)
     local_scope_names: set[str] = field(default_factory=set)
+    # Walrus pre-declarations already emitted (not snapshot/restored across branches)
+    walrus_pre_declared: set[str] = field(default_factory=set)
     global_names: set[str] = field(default_factory=set)
     current_ns: Namespace | None = None
     in_method: bool = False
@@ -382,6 +398,7 @@ class CodeGenContext:
         self.in_method = False
         self.narrowed_vars = {}
         self.assign_narrowed_types = {}
+        self.walrus_pre_declared = set()
         # Note: overload_param_types is NOT reset here -- it's managed by
         # _gen_overload_specialized_function/method which set it before gen_body
         # and clear it in a finally block.

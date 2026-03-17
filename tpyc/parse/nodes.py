@@ -328,6 +328,13 @@ class TpyIfExpr(TpyExpr):
 
 
 @dataclass
+class TpyNamedExpr(TpyExpr):
+    """Walrus operator: (x := expr)."""
+    target: str
+    value: TpyExpr
+
+
+@dataclass
 class TpyStmt:
     """Base class for statements."""
     loc: SourceLocation | None = field(default=None, kw_only=True)

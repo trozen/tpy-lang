@@ -47,9 +47,11 @@ class ScopeTracker:
         inner_scope = Scope(self.ctx.current_scope)
         old_scope = self.ctx.current_scope
         self.ctx.current_scope = inner_scope
+        self.ctx.in_comprehension += 1
         try:
             yield inner_scope
         finally:
+            self.ctx.in_comprehension -= 1
             self.ctx.current_scope = old_scope
 
     @contextmanager

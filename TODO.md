@@ -9,6 +9,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 
 ## Bugs
+- Walrus variable possibly unbound: when `:=` is inside a short-circuit `and`/`or` branch that may not execute, using the variable after the `if` could read an uninitialized value. Sema should warn/error on use of walrus-bound variables that are not definitely assigned on all paths.
 
 ## Fuzzy Testing Findings (2026-03-12)
 
@@ -52,7 +53,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - properties
 - with statement/context manager
 - yield/generator function
-- walrus operator :=
 - Protocol isinstance in ternary expressions: `x = a.foo() if isinstance(a, P1) else a.bar()` generates a runtime `?:` but both branches must be valid C++ at template instantiation time. Fix: generate an IIFE with `if constexpr` inside, e.g. `[&]() -> T { if constexpr (P1<T_a>) { return a.foo(); } else { return a.bar(); } }()`. This also enables single-line field init in `__init__` (goes into the C++ member initializer list instead of requiring unconditional pre-assignment + reassignment in branches).
 - Allow `@runtime_checkable` decorator on protocols (no-op in tpyc, enables CPython compatibility for isinstance checks on user-defined protocols)
 - `del x` (variable unbinding): complex in compiled context -- needs lifetime/scope analysis. Low priority.

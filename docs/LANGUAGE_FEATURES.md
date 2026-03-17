@@ -4485,7 +4485,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
 - **Working**: Global variables (typed)
 - **Working**: Contextual type inference from assignment/return/nested-call context for generic functions, record constructors, and module-type constructors; partial explicit type args; `_` wildcard type arguments
 - **Working**: `global` keyword for explicit global mutation from functions
-- **Open**: `:=` walrus → if useful pattern emerges
+- **Working**: `:=` walrus operator (assignment expression) -- `if`, `while`, `and`/`or` chains, general expression positions. Value types use `T x{}`; non-value types use `std::optional<T>` wrapping. Comprehension scope leak (PEP 572) supported.
 
 ---
 

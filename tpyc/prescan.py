@@ -6,7 +6,7 @@ Run once in sema; results consumed by both sema and codegen.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields as dc_fields
 
 from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
@@ -14,7 +14,9 @@ from .parse import (
     TpyCall, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyMethodCall,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat,
-    TpyCoerce, TpyFieldAccess, TpyIfExpr,
+    TpyCoerce, TpyFieldAccess, TpyIfExpr, TpyNamedExpr,
+    TpyExprStmt, TpyReturn, TpyAssert,
+    TpyFStringValue, TpyComprehensionGenerator,
 )
 
 
@@ -63,6 +65,8 @@ def _expr_to_narrowing_key(expr: TpyExpr) -> str | None:
     """
     if isinstance(expr, TpyName):
         return expr.name
+    if isinstance(expr, TpyNamedExpr):
+        return expr.target
     if isinstance(expr, TpyFieldAccess):
         obj_key = _expr_to_narrowing_key(expr.obj)
         if obj_key is not None:
@@ -100,15 +104,76 @@ def is_scan_rvalue(expr: TpyExpr | None) -> bool:
         return False
     if isinstance(expr, TpyFieldAccess):
         return is_scan_rvalue(expr.obj)
+    if isinstance(expr, TpyNamedExpr):
+        return is_scan_rvalue(expr.value)
     return isinstance(expr, (TpyCall, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyMethodCall,
                              TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
                              TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat,
                              TpyIfExpr))
 
 
+def _scan_walrus_in_expr(expr: TpyExpr | None, declared: set[str],
+                         result: ScanResult) -> None:
+    """Walk an expression tree to find walrus operator bindings.
+
+    Uses generic dataclass field introspection so new expression types
+    are handled automatically without manual enumeration.
+    """
+    if expr is None:
+        return
+    if isinstance(expr, TpyNamedExpr):
+        if expr.target in declared:
+            result.reassigned.add(expr.target)
+            result.rvalue_reassigned.add(expr.target)
+        else:
+            declared.add(expr.target)
+    for f in dc_fields(expr):
+        val = getattr(expr, f.name)
+        if isinstance(val, TpyExpr):
+            _scan_walrus_in_expr(val, declared, result)
+        elif isinstance(val, TpyComprehensionGenerator):
+            _scan_walrus_in_expr(val.iterable, declared, result)
+            for cond in val.conditions:
+                _scan_walrus_in_expr(cond, declared, result)
+        elif isinstance(val, list):
+            for item in val:
+                if isinstance(item, TpyExpr):
+                    _scan_walrus_in_expr(item, declared, result)
+                elif isinstance(item, TpyFStringValue):
+                    _scan_walrus_in_expr(item.expr, declared, result)
+        elif isinstance(val, dict):
+            for v in val.values():
+                if isinstance(v, TpyExpr):
+                    _scan_walrus_in_expr(v, declared, result)
+
+
+def _scan_walrus_in_stmt(stmt: TpyStmt, declared: set[str],
+                          result: ScanResult) -> None:
+    """Scan expressions within a statement for walrus bindings."""
+    if isinstance(stmt, TpyIf):
+        _scan_walrus_in_expr(stmt.condition, declared, result)
+    elif isinstance(stmt, TpyWhile):
+        _scan_walrus_in_expr(stmt.condition, declared, result)
+    elif isinstance(stmt, TpyExprStmt):
+        _scan_walrus_in_expr(stmt.expr, declared, result)
+    elif isinstance(stmt, TpyVarDecl):
+        _scan_walrus_in_expr(stmt.init, declared, result)
+    elif isinstance(stmt, TpyAssign):
+        _scan_walrus_in_expr(stmt.value, declared, result)
+    elif isinstance(stmt, TpyReturn):
+        _scan_walrus_in_expr(stmt.value, declared, result)
+    elif isinstance(stmt, TpyAssert):
+        _scan_walrus_in_expr(stmt.condition, declared, result)
+        _scan_walrus_in_expr(stmt.message, declared, result)
+    elif isinstance(stmt, TpyAugAssign):
+        _scan_walrus_in_expr(stmt.value, declared, result)
+
+
 def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                 result: ScanResult) -> None:
     for stmt in stmts:
+        # Scan for walrus bindings inside expressions before normal stmt scanning
+        _scan_walrus_in_stmt(stmt, declared, result)
         if isinstance(stmt, TpyVarDecl):
             if stmt.name in declared:
                 result.reassigned.add(stmt.name)

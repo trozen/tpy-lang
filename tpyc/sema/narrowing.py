@@ -16,7 +16,7 @@ from ..typesys import (
 from ..parse import (
     TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyFieldAccess,
     TpySubscript, TpyNoneLiteral, TpyCall, TpyMethodCall,
-    TpyIntLiteral, TpyCoerce,
+    TpyIntLiteral, TpyCoerce, TpyNamedExpr,
 )
 from .value_range import ValueRange
 from ..prescan import match_is_none, _expr_to_narrowing_key
@@ -250,8 +250,8 @@ class NarrowingTracker:
                 else:
                     return {}, {key: inner_type}
 
-        # Truthiness on Optional: `if x:` / `if obj.field:` narrows in true branch
-        if isinstance(expr, (TpyName, TpyFieldAccess)):
+        # Truthiness on Optional: `if x:` / `if obj.field:` / `if (x := get()):` narrows
+        if isinstance(expr, (TpyName, TpyFieldAccess, TpyNamedExpr)):
             key = _expr_to_narrowing_key(expr)
             if key is not None:
                 effective = self._effective_type_for_key(key)

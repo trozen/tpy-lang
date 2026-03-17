@@ -27,7 +27,7 @@ from ..parse import (
     TpyArrayLiteral, TpyTupleLiteral, TupleElemCapture, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression,
     TpySlice, TpySubscript, TpyCoerce,
-    TpyIfExpr,
+    TpyIfExpr, TpyNamedExpr,
 )
 from ..prescan import match_is_none
 from ..namespace import BindingKind
@@ -520,6 +520,9 @@ class ExpressionGenerator:
 
         elif isinstance(expr, TpyIfExpr):
             return self._gen_if_expr(expr, target_type)
+
+        elif isinstance(expr, TpyNamedExpr):
+            return self._gen_named_expr(expr)
 
         return "/* unknown expr */"
 
@@ -2813,6 +2816,42 @@ class ExpressionGenerator:
         fmt_str = "".join(fmt_parts)
         args_str = ", ".join(args)
         return f'std::format("{fmt_str}", {args_str})'
+
+    def _gen_named_expr(self, expr: TpyNamedExpr) -> str:
+        """Generate walrus operator: (x := value) -> inline C++ assignment."""
+        value_type = self.types.get_resolved_type(expr)
+        cpp_name = escape_cpp_name(expr.target)
+        value_code = self.gen_expr(expr.value, value_type)
+
+        # Emit pre-declaration only once per function (walrus_pre_declared
+        # is not snapshot/restored across branches, unlike declared_vars)
+        need_predecl = expr.target not in self.ctx.walrus_pre_declared
+        if need_predecl:
+            self.ctx.walrus_pre_declared.add(expr.target)
+            cpp_type = self.types.type_to_cpp(value_type)
+
+            if isinstance(value_type, OptionalType) and value_type.uses_pointer_repr():
+                inner_cpp = self.types.type_to_cpp(value_type.inner)
+                self.ctx.temps.declare_named(cpp_name, f"{inner_cpp}*", init="nullptr")
+                self.ctx.pointer_locals.add(expr.target)
+            elif value_type.is_value_type() or isinstance(value_type, OptionalType):
+                self.ctx.temps.declare_named(cpp_name, cpp_type)
+            else:
+                # Non-value, non-Optional: std::optional<T> x; + comma for T& result
+                self.ctx.temps.declare_named(cpp_name, f"std::optional<{cpp_type}>")
+                self.ctx.narrowed_vars[expr.target] = f"(*{cpp_name})"
+
+        # Always ensure tracking state is set (may have been cleared by
+        # restore_local_scope between branches)
+        self.ctx.declared_vars.add(expr.target)
+        self.ctx.local_scope_names.add(expr.target)
+        self.ctx.var_types[expr.target] = value_type
+        if isinstance(value_type, OptionalType) and value_type.uses_pointer_repr():
+            self.ctx.pointer_locals.add(expr.target)
+
+        if not value_type.is_value_type() and not isinstance(value_type, OptionalType):
+            return f"({cpp_name} = {value_code}, *{cpp_name})"
+        return f"({cpp_name} = {value_code})"
 
     def _gen_if_expr(self, expr: TpyIfExpr,
                      target_type: TpyType | None = None) -> str:

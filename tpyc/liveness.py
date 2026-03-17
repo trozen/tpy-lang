@@ -22,7 +22,7 @@ from .parse import (
     TpyName, TpyCall, TpyMethodCall, TpyBinOp, TpyChainedCompare, TpyUnaryOp,
     TpyTypeParamConstruct,
     TpyFieldAccess, TpySubscript, TpyArrayLiteral, TpyListRepeat,
-    TpyCoerce, TpyIfExpr,
+    TpyCoerce, TpyIfExpr, TpyNamedExpr,
 )
 
 # source_name -> set[alias_name] reverse map
@@ -546,8 +546,9 @@ def _process_reads(
     detached_aliases: set[str],
 ) -> None:
     """Collect name reads in an expression, mark last uses, update live set."""
-    reads = _collect_reads_expr(expr)
-    if not reads:
+    walrus_defs: set[str] = set()
+    reads = _collect_reads_expr(expr, walrus_defs)
+    if not reads and not walrus_defs:
         return
 
     # Count occurrences per variable name in this expression.
@@ -569,69 +570,84 @@ def _process_reads(
     for node in reads:
         live.add(node.name)
 
+    # Walrus targets are definitions -- kill them from live set
+    live -= walrus_defs
 
-def _collect_reads_expr(expr: TpyExpr) -> list[TpyName]:
-    """Recursively collect all TpyName nodes that are read in an expression."""
+
+def _collect_reads_expr(expr: TpyExpr,
+                        walrus_defs: set[str] | None = None) -> list[TpyName]:
+    """Recursively collect all TpyName nodes that are read in an expression.
+
+    If walrus_defs is provided, also collects walrus (:=) target names into it.
+    """
     if isinstance(expr, TpyName):
         return [expr]
 
     elif isinstance(expr, TpyCall):
         result: list[TpyName] = []
         for arg in expr.args:
-            result.extend(_collect_reads_expr(arg))
+            result.extend(_collect_reads_expr(arg, walrus_defs))
         for kwarg in expr.kwargs.values():
-            result.extend(_collect_reads_expr(kwarg))
+            result.extend(_collect_reads_expr(kwarg, walrus_defs))
         return result
 
     elif isinstance(expr, TpyMethodCall):
-        result = _collect_reads_expr(expr.obj)
+        result = _collect_reads_expr(expr.obj, walrus_defs)
         for arg in expr.args:
-            result.extend(_collect_reads_expr(arg))
+            result.extend(_collect_reads_expr(arg, walrus_defs))
         for kwarg in expr.kwargs.values():
-            result.extend(_collect_reads_expr(kwarg))
+            result.extend(_collect_reads_expr(kwarg, walrus_defs))
         return result
 
     elif isinstance(expr, TpyBinOp):
-        return _collect_reads_expr(expr.left) + _collect_reads_expr(expr.right)
+        return (_collect_reads_expr(expr.left, walrus_defs)
+                + _collect_reads_expr(expr.right, walrus_defs))
 
     elif isinstance(expr, TpyChainedCompare):
-        result = _collect_reads_expr(expr.left)
+        result = _collect_reads_expr(expr.left, walrus_defs)
         for comp in expr.comparators:
-            result.extend(_collect_reads_expr(comp))
+            result.extend(_collect_reads_expr(comp, walrus_defs))
         return result
 
     elif isinstance(expr, TpyUnaryOp):
-        return _collect_reads_expr(expr.operand)
+        return _collect_reads_expr(expr.operand, walrus_defs)
 
     elif isinstance(expr, TpyFieldAccess):
-        return _collect_reads_expr(expr.obj)
+        return _collect_reads_expr(expr.obj, walrus_defs)
 
     elif isinstance(expr, TpySubscript):
-        return _collect_reads_expr(expr.obj) + _collect_reads_expr(expr.index)
+        return (_collect_reads_expr(expr.obj, walrus_defs)
+                + _collect_reads_expr(expr.index, walrus_defs))
 
     elif isinstance(expr, TpyArrayLiteral):
         result = []
         for elem in expr.elements:
-            result.extend(_collect_reads_expr(elem))
+            result.extend(_collect_reads_expr(elem, walrus_defs))
         return result
 
     elif isinstance(expr, TpyListRepeat):
         result = []
         for elem in expr.elements:
-            result.extend(_collect_reads_expr(elem))
-        result.extend(_collect_reads_expr(expr.count))
+            result.extend(_collect_reads_expr(elem, walrus_defs))
+        result.extend(_collect_reads_expr(expr.count, walrus_defs))
         return result
 
     elif isinstance(expr, TpyCoerce):
-        return _collect_reads_expr(expr.expr)
+        return _collect_reads_expr(expr.expr, walrus_defs)
 
     elif isinstance(expr, TpyIfExpr):
         # Flat collection: a var in both branches counts >= 2 -> no move
         # (conservative but correct; only one branch evaluates at runtime).
-        result = _collect_reads_expr(expr.condition)
-        result.extend(_collect_reads_expr(expr.then_expr))
-        result.extend(_collect_reads_expr(expr.else_expr))
+        result = _collect_reads_expr(expr.condition, walrus_defs)
+        result.extend(_collect_reads_expr(expr.then_expr, walrus_defs))
+        result.extend(_collect_reads_expr(expr.else_expr, walrus_defs))
         return result
+
+    elif isinstance(expr, TpyNamedExpr):
+        # Walrus: collect reads from value (the target is a write, not a read)
+        if walrus_defs is not None:
+            walrus_defs.add(expr.target)
+        return _collect_reads_expr(expr.value, walrus_defs)
 
     elif isinstance(expr, TpyTypeParamConstruct):
         return []

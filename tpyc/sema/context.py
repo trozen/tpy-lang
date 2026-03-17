@@ -403,6 +403,7 @@ class SemanticContext:
 
     # --- Control flow ---
     loop_depth: int = 0
+    in_comprehension: int = 0
     # Set when inside a try/except block -- the exception type being caught
     try_except_error_type: str | None = None
     is_top_level: bool = False

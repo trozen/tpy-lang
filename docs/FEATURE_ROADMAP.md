@@ -81,7 +81,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D11 | Dict comprehension | S-M | Done | [VI](#dict-comprehension) |
 | D12 | Set comprehension | S | Done | [VI](#set-comprehension) |
 | D13 | Generator expressions | M | Done | [VI](#generator-expressions) |
-| D14 | Walrus operator (`:=`) | S-M | Not started | [VI](#walrus-operator) |
+| D14 | Walrus operator (`:=`) | S-M | Done | [VI](#walrus-operator) |
 | D15 | `Any` type | M | Not started | [I](#any-type) |
 | D16 | Dynamic attributes (`__getattr__`/`__setattr__`) | M-L | Not started | [VII](#dynamic-attributes) |
 | D17 | `*args` (variadic positional arguments) | M | Not started | [VI](#args--kwargs) |
@@ -1795,15 +1795,18 @@ Assignment expression (`:=`) that assigns and returns a value. PEP 572.
 comprehension filters where you want to compute a value, test it, and keep it.
 Also useful in `while` loops (`while (line := read_line()) is not None`).
 
-Maps to C++ assignment-in-expression or a preceding variable declaration
-depending on context.
+Maps to C++ pre-declaration + inline assignment expression. Value types use
+`T x{}; ... (x = expr)`. Non-value types use `std::optional<T> x; ... (x = expr, *x)`
+with `narrowed_vars` for subsequent access. C++ `&&`/`||` preserve short-circuit
+semantics naturally, so walrus in `and`/`or` chains works without special handling.
 
-**Current state**: Not started.
+**Current state**: Done. Works in `if` conditions, `while` conditions, `and`/`or`
+chains, general expression positions, and comprehension filters (PEP 572 scope leak).
+Optional narrowing (`is not None`) and truthiness narrowing work through walrus.
 
-**Dependencies**: None for basic form. Comprehension integration needs list
-comprehensions (B9).
+**Dependencies**: None.
 
-**Effort**: S-M
+**Effort**: S-M (done)
 
 ---
 

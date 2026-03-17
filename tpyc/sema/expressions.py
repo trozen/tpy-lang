@@ -29,7 +29,7 @@ from ..parse import (
     TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression, TpyComprehensionGenerator,
     TpySlice, TpySubscript, TpyCoerce,
-    TpyIfExpr,
+    TpyIfExpr, TpyNamedExpr,
 )
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
@@ -143,6 +143,8 @@ class ExpressionAnalyzer:
             typ = TypeParamRef(expr.param_name)
         elif isinstance(expr, TpyIfExpr):
             typ = self._analyze_if_expr(expr)
+        elif isinstance(expr, TpyNamedExpr):
+            typ = self._analyze_named_expr(expr)
         elif isinstance(expr, TpyCoerce):
             # Coercions are attached post-analysis; treat as the expected type.
             typ = expr.expected_type
@@ -1341,6 +1343,42 @@ class ExpressionAnalyzer:
         )
 
     # -- Ternary expression analysis ------------------------------------------
+
+    def _analyze_named_expr(self, expr: TpyNamedExpr) -> TpyType:
+        """Analyze walrus operator: (x := expr)."""
+        value_type = self.analyze_expr(expr.value)
+        name = expr.target
+
+        # Resolve pending/literal types for the variable binding
+        resolved = value_type
+        if isinstance(resolved, IntLiteralType):
+            resolved = self.ctx.default_int_type
+        elif isinstance(resolved, FloatLiteralType):
+            resolved = FLOAT
+        elif isinstance(resolved, PendingStrType):
+            resolved = STR
+
+        # PEP 572: walrus in comprehension leaks to enclosing function scope
+        target_scope = self.ctx.current_scope
+        levels = self.ctx.in_comprehension
+        while levels > 0 and target_scope.parent is not None:
+            target_scope = target_scope.parent
+            levels -= 1
+
+        existing = target_scope.lookup(name)
+        if existing is not None:
+            # Reassignment via walrus -- keep existing type
+            pass
+        else:
+            # New binding
+            target_scope.define(name, resolved)
+            if self.ctx.current_ns:
+                self.ctx.current_ns.bind_variable(name, resolved)
+
+        self.ctx.definitely_assigned.add(name)
+        self.ctx.rvalue_vars.add(name)
+
+        return value_type
 
     def _analyze_if_expr(
         self, expr: TpyIfExpr, type_hint: TpyType | None = None,
