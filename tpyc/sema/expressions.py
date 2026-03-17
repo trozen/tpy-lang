@@ -462,6 +462,8 @@ class ExpressionAnalyzer:
         if expr.op in ("&&", "||"):
             type_true, type_false = self.narrowing.condition_type_facts(expr.left)
             saved_types = dict(self.ctx.narrowed_types)
+            # Save definitely_assigned: RHS may not execute due to short-circuit
+            saved_assigned = frozenset(self.ctx.definitely_assigned)
             if expr.op == "&&":
                 self.ctx.narrowed_types.update(type_true)
             else:
@@ -470,6 +472,15 @@ class ExpressionAnalyzer:
                 right_type = self.analyze_expr(expr.right)
             finally:
                 self.ctx.narrowed_types = saved_types
+                # Track walrus vars introduced in RHS (short-circuit conditional)
+                rhs_walrus = self.ctx.definitely_assigned - saved_assigned
+                if rhs_walrus:
+                    if expr.op == "&&":
+                        self.ctx.sc_and_walrus |= rhs_walrus
+                    else:
+                        self.ctx.sc_or_walrus |= rhs_walrus
+                # Rollback: RHS walrus vars are not definitely assigned
+                self.ctx.definitely_assigned = set(saved_assigned)
         else:
             right_type = self.analyze_expr(expr.right)
 
@@ -1377,6 +1388,8 @@ class ExpressionAnalyzer:
 
         self.ctx.definitely_assigned.add(name)
         self.ctx.rvalue_vars.add(name)
+        if name not in self.ctx.var_scope_depth:
+            self.ctx.var_scope_depth[name] = target_scope.depth
 
         return value_type
 

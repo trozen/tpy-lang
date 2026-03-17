@@ -17,6 +17,7 @@ void test_multiple_walrus();
 void test_reuse_walrus_target();
 void test_walrus_in_branch();
 int32_t double_(int32_t x);
+void test_walrus_elif();
 void test_comprehension_walrus();
 void main();
 

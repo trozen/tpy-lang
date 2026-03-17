@@ -1,0 +1,1 @@
+main.py:8: error: variable 'y' may not be assigned at this point

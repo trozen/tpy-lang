@@ -516,7 +516,17 @@ class StatementAnalyzer:
                                     self.ctx.mark_param_returned(src)
             self.init.mark_terminated()
         elif isinstance(stmt, TpyIf):
+            assigned_before_cond = frozenset(self.ctx.definitely_assigned)
+            saved_sc_and = self.ctx.sc_and_walrus.copy()
+            saved_sc_or = self.ctx.sc_or_walrus.copy()
+            self.ctx.sc_and_walrus = set()
+            self.ctx.sc_or_walrus = set()
             self.expr.analyze_expr(stmt.condition)
+            always_walrus = self.ctx.definitely_assigned - assigned_before_cond
+            sc_and = self.ctx.sc_and_walrus   # safe in then-body
+            sc_or = self.ctx.sc_or_walrus     # safe in else-body
+            self.ctx.sc_and_walrus = saved_sc_and
+            self.ctx.sc_or_walrus = saved_sc_or
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             then_type_facts, else_type_facts = self.narrowing.condition_type_facts(stmt.condition)
             ptr_nn_then, ptr_nn_else = self.narrowing.condition_ptr_null_facts(stmt.condition)
@@ -530,6 +540,9 @@ class StatementAnalyzer:
             # Save binding types for ReadonlyType merge after branches
             bindings_before = dict(self.ctx.current_scope.bindings)
             ns_types_before = self._save_ns_var_types()
+            # Then-body: condition was true -> && operands all evaluated,
+            # but || RHS may have been skipped (LHS alone was truthy)
+            self.ctx.definitely_assigned |= always_walrus | sc_and
             self.ctx.narrowed_types.update(then_type_facts)
             self.ctx.non_null_ptr_vars |= ptr_nn_then
             self._apply_range_facts(range_true)
@@ -543,6 +556,9 @@ class StatementAnalyzer:
             self.ctx.current_scope.bindings.update(bindings_before)
             self._restore_ns_var_types(ns_types_before)
             self.init.restore(before)
+            # Else-body: condition was false -> || operands all evaluated,
+            # but && RHS may have been skipped (LHS alone was falsy)
+            self.ctx.definitely_assigned |= always_walrus | sc_or
             self.ctx.current_consumed_own_params = consumed_before.copy()
             self.ctx.narrowed_types.update(else_type_facts)
             self.ctx.non_null_ptr_vars |= ptr_nn_else
@@ -598,7 +614,16 @@ class StatementAnalyzer:
                     for name in sorted(predecl)
                 }
         elif isinstance(stmt, TpyWhile):
+            assigned_before_cond = frozenset(self.ctx.definitely_assigned)
+            saved_sc_and = self.ctx.sc_and_walrus.copy()
+            saved_sc_or = self.ctx.sc_or_walrus.copy()
+            self.ctx.sc_and_walrus = set()
+            self.ctx.sc_or_walrus = set()
             self.expr.analyze_expr(stmt.condition)
+            always_walrus_w = self.ctx.definitely_assigned - assigned_before_cond
+            all_walrus_w = always_walrus_w | self.ctx.sc_and_walrus | self.ctx.sc_or_walrus
+            self.ctx.sc_and_walrus = saved_sc_and
+            self.ctx.sc_or_walrus = saved_sc_or
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             then_type_facts, _ = self.narrowing.condition_type_facts(stmt.condition)
             ptr_nn, _ = self.narrowing.condition_ptr_null_facts(stmt.condition)
@@ -623,6 +648,8 @@ class StatementAnalyzer:
             # Vars reassigned from unknown inside the body lose non-null provenance
             body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
             self.init.restore(before)
+            # Re-add all walrus vars (condition always evaluates fully)
+            self.ctx.definitely_assigned |= all_walrus_w
             # Loop might not execute — consumption inside is not definite
             self.ctx.current_consumed_own_params = consumed_before_loop
             self.ctx.non_null_ptr_vars &= body_end_nn_ptr

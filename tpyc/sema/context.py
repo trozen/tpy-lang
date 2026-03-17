@@ -404,6 +404,11 @@ class SemanticContext:
     # --- Control flow ---
     loop_depth: int = 0
     in_comprehension: int = 0
+    # Walrus vars from short-circuit RHS, split by operator:
+    # - and_walrus: RHS of && (safe in then-body, not in else-body)
+    # - or_walrus: RHS of || (safe in else-body, not in then-body)
+    sc_and_walrus: set[str] = field(default_factory=set)
+    sc_or_walrus: set[str] = field(default_factory=set)
     # Set when inside a try/except block -- the exception type being caught
     try_except_error_type: str | None = None
     is_top_level: bool = False
