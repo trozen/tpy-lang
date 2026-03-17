@@ -36,12 +36,14 @@ ordered_map<K, V> dict_from_pairs(R&& range) {
     return result;
 }
 
-// dict(opt_iterator) -- construct from user-defined iterator of tuples
+// dict(iterator) -- construct from user-defined iterator of tuples
 template<typename K, typename V, typename Iter>
 ordered_map<K, V> dict_collect_pairs(Iter&& iter) {
     ordered_map<K, V> result;
-    while (auto opt = iter.__next_opt__()) {
-        result.insert_or_assign(std::get<0>(*opt), std::get<1>(*opt));
+    for (;;) {
+        auto __r = iter.__next__();
+        if (!__r.has_value()) break;
+        result.insert_or_assign(std::get<0>(*__r), std::get<1>(*__r));
     }
     return result;
 }

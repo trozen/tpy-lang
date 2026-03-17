@@ -51,11 +51,12 @@ def init_module() -> BuiltinModule:
 
     # Iterator[T] -- Python-compatible iterator protocol
     # Conformance checked against __next__ (return T) on records.
-    # The cpp template uses __next_opt__() since that's what C++ actually calls.
+    # All iterator types have __next__() -- user-defined via @error_return,
+    # built-in C++ types via wrapper methods over __next_opt__().
     module.protocol("Iterator",
         type_params=["T"],
         methods={
-            "__next__": MethodDef(params=[], returns=T, cpp="{self}.__next_opt__()"),
+            "__next__": MethodDef(params=[], returns=T, cpp="{self}.__next__()"),
             "__iter__": MethodDef(params=[], returns=SELF, cpp="{self}.__iter__()"),
         },
         cpp_concept="::tpy::Iterator",

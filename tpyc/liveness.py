@@ -17,8 +17,8 @@ from __future__ import annotations
 
 from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
-    TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyAssert,
-    TpyExprStmt, TpyRaiseStopIteration, TpyMatch,
+    TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyAssert, TpyRaise,
+    TpyExprStmt, TpyMatch,
     TpyName, TpyCall, TpyMethodCall, TpyBinOp, TpyChainedCompare, TpyUnaryOp,
     TpyTypeParamConstruct,
     TpyFieldAccess, TpySubscript, TpyArrayLiteral, TpyListRepeat,
@@ -155,7 +155,7 @@ def _stmts_terminate(stmts: list[TpyStmt]) -> bool:
     if not stmts:
         return False
     last = stmts[-1]
-    if isinstance(last, (TpyReturn, TpyBreak, TpyRaiseStopIteration)):
+    if isinstance(last, (TpyReturn, TpyBreak, TpyRaise)):
         return True
     if isinstance(last, TpyIf):
         return (_stmts_terminate(last.then_body)
@@ -274,8 +274,7 @@ def _analyze_stmt(
         if stmt.message:
             _process_reads(stmt.message, live, last_uses, source_aliases, detached_aliases)
 
-    elif isinstance(stmt, TpyRaiseStopIteration):
-        # Terminates this path
+    elif isinstance(stmt, TpyRaise):
         live.clear()
 
     # TpyBreak, TpyContinue, TpyPassStmt, TpyGlobal, TpyImport: no reads
@@ -533,7 +532,7 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
             for node in _collect_reads_expr(stmt.message):
                 live.add(node.name)
 
-    elif isinstance(stmt, TpyRaiseStopIteration):
+    elif isinstance(stmt, TpyRaise):
         live.clear()
 
 

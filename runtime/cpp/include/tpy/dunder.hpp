@@ -12,6 +12,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <expected>
 #include <format>
 #include <functional>
 #include <optional>
@@ -419,7 +420,7 @@ uint64_t hash_combine(uint64_t seed, const T& val, const Rest&... rest) {
 }
 
 // =============================================
-// native_iterator: wraps C++ begin/end into __next_opt__()
+// native_iterator: wraps C++ begin/end into __next_opt__() / __next__()
 // =============================================
 
 template<typename Iter, typename T>
@@ -430,6 +431,11 @@ struct native_iterator {
     std::optional<T> __next_opt__() {
         if (current_ == end_) return std::nullopt;
         return std::optional<T>{*current_++};
+    }
+
+    std::expected<T, StopIteration> __next__() {
+        if (current_ == end_) return std::unexpected(StopIteration{});
+        return T{*current_++};
     }
 
     native_iterator& __iter__() { return *this; }

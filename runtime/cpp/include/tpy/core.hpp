@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <expected>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -16,6 +17,11 @@
 #include <variant>
 
 namespace tpy {
+
+// Python exception hierarchy (zero-size sentinels for std::expected<T, E>)
+struct BaseException {};
+struct Exception : BaseException {};
+struct StopIteration : Exception {};
 
 /**
  * Panic and abort - called on fatal runtime errors.

@@ -18,7 +18,7 @@ from ..typesys import (
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
-    TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt, TpyRaiseStopIteration,
+    TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt,
     TpyRaise, TpyTryExcept,
     TpyGlobal,
     TpyImport, TpySubscript, TpySlice, TpyStrLiteral, TpyNoneLiteral, TpyName, TpyExpr, TpyFunction,
@@ -351,14 +351,7 @@ class StatementGenerator:
             return ""  # No-op - emit nothing
         elif isinstance(stmt, TpyGlobal):
             return ""  # No C++ output -- just a sema directive
-        elif isinstance(stmt, TpyRaiseStopIteration):
-            return f"{indent}return std::nullopt;\n"
         elif isinstance(stmt, TpyRaise):
-            # Legacy __next__ without @error_return: emit std::nullopt for
-            # the __next_opt__ -> std::optional<T> path
-            if (stmt.exception_type == "StopIteration"
-                    and not self.ctx.current_error_return):
-                return f"{indent}return std::nullopt;\n"
             return f"{indent}return std::unexpected({stmt.exception_type}{{}});\n"
         elif isinstance(stmt, TpyImport):
             # Only emit __tpy_init() for user modules that have runtime init.
@@ -1486,6 +1479,8 @@ class StatementGenerator:
         after_label = f"__after_try_{n}"
 
         out.write(f"{indent}{{\n")
+        self.ctx.indent_level += 1
+        inner = self.ctx.indent()
 
         # Snapshot codegen scope so try body declarations don't bleed into except
         br_snap = self.ctx.snapshot_local_scope()
@@ -1504,8 +1499,8 @@ class StatementGenerator:
         for s in stmt.else_body:
             self.gen_stmt(out, s)
 
-        out.write(f"{indent}{INDENT}goto {after_label};\n")
-        out.write(f"{indent}{INDENT}{except_label}:;\n")
+        out.write(f"{inner}goto {after_label};\n")
+        out.write(f"{inner}{except_label}:;\n")
 
         # Restore scope for except body (same scope as before try)
         self.ctx.restore_local_scope(br_snap)
@@ -1514,7 +1509,8 @@ class StatementGenerator:
         for s in stmt.except_body:
             self.gen_stmt(out, s)
 
-        out.write(f"{indent}{INDENT}{after_label}:;\n")
+        out.write(f"{inner}{after_label}:;\n")
+        self.ctx.indent_level -= 1
         out.write(f"{indent}}}\n")
 
     def _gen_error_return_var_decl(self, stmt: TpyVarDecl, indent: str) -> str:
@@ -2063,31 +2059,46 @@ class StatementGenerator:
 
         self._gen_loop_body(out, stmt, indent, elem_type)
 
-    def _gen_error_return_next_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
-                                     iterable_expr: str, elem_type: TpyType) -> None:
-        """Generate direct loop for iterators with @error_return(StopIteration) __next__.
+    def _gen_direct_next_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
+                               iterable_expr: str, elem_type: TpyType,
+                               call: str = ".__next__()",
+                               iter_name: str | None = None) -> None:
+        """Generate direct for(;;) loop calling a next-method.
+
+        call is the method suffix appended to the iterator name, e.g.:
+          ".__next__()"       -- error_return user iterators
+          ".__next_opt__()"   -- OptIterator built-in types
+
+        When iter_name is provided, the iterator variable is already allocated
+        by the caller and no capture line is emitted.
 
         Produces:
-            auto& __iter_N = <expr>;              // capture iterator
+            auto& __iter_N = <expr>;   (skipped when iter_name is provided)
             for (;;) {
-                auto __r_N = __iter_N.__next__();
+                auto __r_N = <call>;
                 if (!__r_N.has_value()) break;
                 T x = *__r_N;
                 // body
             }
         """
-        n = self.ctx.iter_counter
-        self.ctx.iter_counter += 1
-        iter_name = f"__iter_{n}"
-        r_name = f"__r_{n}"
-        cpp_var = escape_cpp_name(stmt.var)
+        if iter_name is None:
+            n = self.ctx.iter_counter
+            self.ctx.iter_counter += 1
+            iter_name = f"__iter_{n}"
+            r_name = f"__r_{n}"
 
-        src_binding = "auto&" if self._is_lvalue_iterable(stmt.iterable) else "auto"
-        self.ctx.temps.flush(out, indent)
-        out.write(f"{indent}{src_binding} {iter_name} = {iterable_expr};\n")
+            src_binding = "auto&" if self._is_lvalue_iterable(stmt.iterable) else "auto"
+            self.ctx.temps.flush(out, indent)
+            out.write(f"{indent}{src_binding} {iter_name} = {iterable_expr};\n")
+        else:
+            self.ctx.temps.flush(out, indent)
+            n = self.ctx.iter_counter
+            self.ctx.iter_counter += 1
+            r_name = f"__r_{n}"
+        cpp_var = escape_cpp_name(stmt.var)
         out.write(f"{indent}for (;;) {{\n")
         inner_indent = indent + INDENT
-        out.write(f"{inner_indent}auto {r_name} = {iter_name}.__next__();\n")
+        out.write(f"{inner_indent}auto {r_name} = {iter_name}{call};\n")
         out.write(f"{inner_indent}if (!{r_name}.has_value()) break;\n")
 
         if stmt.const_loop_var and elem_type and elem_type.is_value_type():
@@ -2105,53 +2116,38 @@ class StatementGenerator:
 
         self._gen_loop_body(out, stmt, indent, elem_type)
 
-    def _gen_adapted_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
-                          iterable_expr: str, elem_type: TpyType,
-                          adapter: str, iter_call_expr: str = "",
-                          iter_call_fn: Callable[[str], str] | None = None) -> None:
-        """Generate begin/end loop with an iter_adapt wrapper.
+    def _gen_direct_next_loop_with_iter(self, out: TextIO, stmt: TpyForEach, indent: str,
+                                         iterable_expr: str, elem_type: TpyType,
+                                         iter_call: str = ".__iter__",
+                                         next_call: str = "iter_next") -> None:
+        """Call __iter__() on source, then direct loop on the resulting iterator.
 
-        Captures the original iterable first (to keep it alive), then wraps
-        it with ::tpy::iter_adapt, then delegates to _gen_begin_end_loop.
-
-        When iter_call_expr is set (e.g. ".__iter__()"), calls it as a suffix
-        on the source to get an iterator first.
-        When iter_call_fn is set (e.g. lambda src: f"::tpy::__iter__({src})"),
-        calls it as a function on the source name.
-
-        Produces:
-            auto& __src_N = <lvalue_expr>;   // or: auto __src_N = <rvalue_expr>;
-            auto __obj_N = ::tpy::<adapter>(__src_N);
-            auto __beg_N = __obj_N.begin();
-            ...
+        iter_call: how to get the iterator (".__iter__" for method, "::tpy::__iter__" for free fn)
+        next_call: how to advance (".__next__()" or ".__next_opt__()")
         """
         n = self.ctx.iter_counter
-        # Don't increment -- _gen_begin_end_loop will allocate its own counter
+        self.ctx.iter_counter += 1
         src_name = f"__src_{n}"
+        iter_name = f"__itr_{n}"
         src_binding = "auto&" if self._is_lvalue_iterable(stmt.iterable) else "auto"
 
         self.ctx.temps.flush(out, indent)
         out.write(f"{indent}{src_binding} {src_name} = {iterable_expr};\n")
-        if iter_call_fn:
-            iter_name = f"__iter_{n}"
-            out.write(f"{indent}auto {iter_name} = {iter_call_fn(src_name)};\n")
-            adapted_expr = f"::tpy::{adapter}({iter_name})"
-        elif iter_call_expr:
-            # Two-step: call __iter__() on source, then wrap result with adapter
-            iter_name = f"__iter_{n}"
-            out.write(f"{indent}auto {iter_name} = {src_name}{iter_call_expr};\n")
-            adapted_expr = f"::tpy::{adapter}({iter_name})"
+        if iter_call.startswith("."):
+            out.write(f"{indent}auto {iter_name} = {src_name}{iter_call}();\n")
         else:
-            adapted_expr = f"::tpy::{adapter}({src_name})"
-        self._gen_begin_end_loop(out, stmt, indent, adapted_expr, elem_type, is_lvalue=False)
+            out.write(f"{indent}auto {iter_name} = {iter_call}({src_name});\n")
+
+        self._gen_direct_next_loop(out, stmt, indent, iterable_expr, elem_type,
+                                   call=next_call, iter_name=iter_name)
 
     def _gen_captured_call_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
                                 iterable_expr: str, elem_type: TpyType,
                                 make_call: "Callable[[str], str]") -> None:
         """Capture iterable, apply a method/function call, then begin/end loop.
 
-        Used for __iter__(), ::tpy::as_span(), and ::tpy::iter_for_loop() where
-        the container must stay alive for the iterator/span to remain valid.
+        Used for __iter__() and ::tpy::as_span() where the container must
+        stay alive for the iterator/span to remain valid.
 
         Produces:
             auto& __src_N = <lvalue_expr>;   // or: auto __src_N = <rvalue_expr>;
@@ -2356,16 +2352,8 @@ class StatementGenerator:
     def _gen_for_each(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
         """Generate a for-each loop over a collection or iterator.
 
-        All iteration uses a single canonical begin/end loop shape.
-        The iterable expression is wrapped with an adapter if needed:
-        - Enum: ::tpy::EnumUtil<E>::members
-        - Protocol Iterator[T]: ::tpy::iter_adapt(expr)
-        - Protocol Iterable[T]: ::tpy::__iter__(expr) + ::tpy::iter_adapt(iter)
-        - Protocol ReadOnlySpanLike[T]: ::tpy::as_span(expr)
-        - range(): counter optimization first, else ::tpy::Range<T>(args...)
-        - OptIterator types: ::tpy::iter_adapt(expr)
-        - __iter__()-based types: expr.__iter__() or ::tpy::iter_adapt(expr.__iter__())
-        - Native C++ ranges (dict, set, str, etc.): expr directly
+        Dispatch is handled by _gen_for_each_loop; see its docstring for
+        the full dispatch order.
         """
         has_else = bool(stmt.orelse)
         label = ""
@@ -2389,7 +2377,16 @@ class StatementGenerator:
             out.write(f"{indent}{label}:;\n")
 
     def _gen_for_each_loop(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
-        """Generate the loop part of a for-each (without else handling)."""
+        """Generate the loop part of a for-each (without else handling).
+
+        Dispatch order:
+        - Protocol Iterator[T]: direct for(;;) with tpy::iter_next()
+        - Protocol Iterable[T]: __iter__() then direct for(;;) with tpy::iter_next()
+        - OptIterator types: direct for(;;) with .__next_opt__()
+        - error_return __next__ types: direct for(;;) with .__next__()
+        - __iter__()-based types: __iter__() then direct for(;;) with tpy::iter_next()
+        - Native C++ ranges: begin/end loop
+        """
         # Enum iteration: `for c in Color` -> range over EnumUtil<Color>::members
         if stmt.enum_iterable is not None:
             enum_type = stmt.enum_iterable
@@ -2417,13 +2414,13 @@ class StatementGenerator:
             elem_type = sema_elem or resolved_type.type_args[0]
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
             if resolved_type.qualified_name() == "typing.Iterator":
-                self._gen_adapted_loop(out, stmt, indent, iterable, elem_type, "iter_adapt")
+                self._gen_direct_next_loop(out, stmt, indent, iterable, elem_type,
+                                            call=".__next__()")
             else:
-                # Iterable[T]: iter_for_loop dispatches to direct range or adapted
-                # path at C++ template instantiation time, avoiding optional<T>
-                # wrapping when the concrete type is a native C++ range.
-                self._gen_captured_call_loop(out, stmt, indent, iterable, elem_type,
-                                             lambda src: f"::tpy::iter_for_loop({src})")
+                # Iterable[T]: call __iter__(), then direct __next__() loop
+                self._gen_direct_next_loop_with_iter(out, stmt, indent, iterable, elem_type,
+                                                      iter_call="::tpy::__iter__",
+                                                      next_call=".__next__()")
             return
 
         # Handle ReadOnlySpanLike[T] protocol-typed iterables (uses ::tpy::as_span)
@@ -2445,18 +2442,20 @@ class StatementGenerator:
                 self._gen_begin_end_loop(out, stmt, indent, iterable, elem_type, is_lvalue=False)
                 return
 
-        # Check for error_return __next__ iterators -- direct loop (no iter_adapt)
-        er_elem = get_error_return_next_element_type(iterable_type, registry=self.ctx.analyzer.registry)
-        if er_elem is not None:
-            iterable = self.expressions.gen_expr_deref(stmt.iterable)
-            self._gen_error_return_next_loop(out, stmt, indent, iterable, sema_elem or er_elem)
-            return
-
-        # Check for OptIterator types -- wrap with iter_adapt
+        # Check for OptIterator types -- direct loop (prefer __next_opt__ over __next__)
         iter_elem = get_native_iterator_element_type(iterable_type, registry=self.ctx.analyzer.registry)
         if iter_elem is not None:
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
-            self._gen_adapted_loop(out, stmt, indent, iterable, sema_elem or iter_elem, "iter_adapt")
+            self._gen_direct_next_loop(out, stmt, indent, iterable, sema_elem or iter_elem,
+                                        call=".__next_opt__()")
+            return
+
+        # Check for error_return __next__ iterators -- direct loop
+        er_elem = get_error_return_next_element_type(iterable_type, registry=self.ctx.analyzer.registry)
+        if er_elem is not None:
+            iterable = self.expressions.gen_expr_deref(stmt.iterable)
+            self._gen_direct_next_loop(out, stmt, indent, iterable, sema_elem or er_elem,
+                                        call=".__next__()")
             return
 
         # Check for __iter__()-based types (preferred over __span__).
@@ -2471,11 +2470,10 @@ class StatementGenerator:
                 self._gen_captured_call_loop(out, stmt, indent, iterable, elem_type,
                                              lambda src: f"{src}.__iter__()")
             else:
-                # OptIterator-based iterator -- call __iter__(), then wrap with iter_adapt.
-                # Call .__iter__() directly rather than ::tpy::__iter__() to avoid one
-                # template dispatch level.
-                self._gen_adapted_loop(out, stmt, indent, iterable, elem_type,
-                                       "iter_adapt", iter_call_expr=".__iter__()")
+                # Call __iter__(), then direct __next__() loop
+                self._gen_direct_next_loop_with_iter(out, stmt, indent, iterable, elem_type,
+                                                      iter_call=".__iter__",
+                                                      next_call=".__next__()")
             return
 
         # Native C++ range fallback (list, dict, str, Array, Span, __span__-only types, etc.)

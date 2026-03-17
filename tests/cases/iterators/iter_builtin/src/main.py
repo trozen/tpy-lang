@@ -1,5 +1,5 @@
-# Tests iter() and try_next() builtin functions
-from tpy import Int32, Own, try_next
+# Tests iter() builtin and explicit __next__() with try/except
+from tpy import Int32, Own
 
 class CounterIter:
     current: Int32
@@ -30,15 +30,21 @@ def main() -> None:
     c = Counter(4)
     it = iter(c)
 
-    # try_next() returns next value or None
-    v = try_next(it)
-    while v is not None:
+    # Advance iterator with try/except
+    while True:
+        try:
+            v = it.__next__()
+        except StopIteration:
+            break
         print(v)
-        v = try_next(it)
 
-    # Exhausted iterator returns None
-    v2 = try_next(it)
-    if v2 is None:
+    # Exhausted iterator raises StopIteration
+    exhausted = False
+    try:
+        it.__next__()
+    except StopIteration:
+        exhausted = True
+    if exhausted:
         print("exhausted")
 
 main()

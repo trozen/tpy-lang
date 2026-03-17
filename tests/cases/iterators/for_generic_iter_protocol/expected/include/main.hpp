@@ -44,12 +44,6 @@ struct StorageIter {
         //         raise StopIteration
         return std::unexpected(StopIteration{});
     }
-
-    std::optional<T> __next_opt__() {
-        auto __r = __next__();
-        if (__r.has_value()) return *__r;
-        return std::nullopt;
-    }
 };
 
 template<typename T, std::size_t N>

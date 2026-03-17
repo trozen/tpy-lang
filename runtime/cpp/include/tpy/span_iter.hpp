@@ -11,6 +11,7 @@
 
 #pragma once
 
+#include <expected>
 #include <optional>
 #include <span>
 #include <type_traits>
@@ -37,7 +38,12 @@ struct SpanIter {
         return std::optional<std::remove_const_t<T>>{span_[index_++]};
     }
 
-    // Iterator protocol
+    // Iterator protocol -- wraps __next_opt__ for uniform __next__() interface
+    std::expected<std::remove_const_t<T>, StopIteration> __next__() {
+        if (index_ >= span_.size()) return std::unexpected(StopIteration{});
+        return span_[index_++];
+    }
+
     const SpanIter& __iter__() const { return *this; }
 };
 

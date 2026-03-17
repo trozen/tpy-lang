@@ -603,13 +603,6 @@ class _MakeDefault:
 make_default = _MakeDefault()
 
 
-def try_next(it) -> object | None:
-    """Return next value from iterator, or None if exhausted."""
-    try:
-        return it.__next__()
-    except StopIteration:
-        return None
-
 def span(x):
     """Get a readonly span from a ReadOnlySpanLike type."""
     return x.__span__()

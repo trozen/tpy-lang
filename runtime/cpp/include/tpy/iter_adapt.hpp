@@ -15,6 +15,7 @@
 #pragma once
 
 #include <cstddef>
+#include <expected>
 #include <iterator>
 #include <optional>
 
@@ -70,7 +71,8 @@ IterAdaptRange<Iter> iter_adapt(Iter& iter) {
 }
 
 // Generator expression wrapper: stores a mutable callable returning optional<T>,
-// provides __next_opt__() and __iter__() so it integrates with iter_adapt.
+// provides __next_opt__(), __next__(), and __iter__() so it integrates with
+// both iter_adapt and direct __next__() loops.
 template<typename T, typename F>
 class generator_wrapper {
     F fn_;
@@ -78,6 +80,13 @@ public:
     explicit generator_wrapper(F&& fn) : fn_(std::move(fn)) {}
 
     std::optional<T> __next_opt__() { return fn_(); }
+
+    std::expected<T, StopIteration> __next__() {
+        auto opt = fn_();
+        if (opt.has_value()) return *std::move(opt);
+        return std::unexpected(StopIteration{});
+    }
+
     generator_wrapper& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const generator_wrapper&) {

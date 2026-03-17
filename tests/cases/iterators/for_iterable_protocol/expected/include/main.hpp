@@ -41,12 +41,6 @@ struct CounterIter {
         //         raise StopIteration
         return std::unexpected(StopIteration{});
     }
-
-    std::optional<int32_t> __next_opt__() {
-        auto __r = __next__();
-        if (__r.has_value()) return *__r;
-        return std::nullopt;
-    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const CounterIter& obj) {
@@ -92,11 +86,11 @@ int32_t sum_items(T_items& items) {
     int32_t total = 0;
     //     for x in items:
     auto& __src_0 = items;
-    auto __obj_0 = ::tpy::iter_for_loop(__src_0);
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        int32_t x = *__beg_0;
+    auto __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t x = *__r_1;
         //         total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }

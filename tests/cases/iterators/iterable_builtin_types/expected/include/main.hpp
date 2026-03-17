@@ -29,11 +29,11 @@ int32_t sum_items(T_items& items) {
     int32_t total = 0;
     //     for x in items:
     auto& __src_0 = items;
-    auto __obj_0 = ::tpy::iter_for_loop(__src_0);
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        int32_t x = *__beg_0;
+    auto __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t x = *__r_1;
         //         total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
@@ -47,11 +47,11 @@ int32_t count_chars(T_items& items) {
     int32_t n = 0;
     //     for c in items:
     auto& __src_0 = items;
-    auto __obj_0 = ::tpy::iter_for_loop(__src_0);
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        char c = *__beg_0;
+    auto __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        char c = *__r_1;
         //         n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
     }
@@ -65,11 +65,11 @@ std::string sum_strs(T_items& items) {
     std::string result = "";
     //     for s in items:
     auto& __src_0 = items;
-    auto __obj_0 = ::tpy::iter_for_loop(__src_0);
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view s = *__beg_0;
+    auto __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        std::string_view s = *__r_1;
         //         result = result + s + " "
         result = (::tpy::str_concat((::tpy::str_concat(result, s)), " "));
     }
@@ -85,12 +85,11 @@ void test_iter_on_protocol(T_items& items) {
     //     total: Int32 = 0
     int32_t total = 0;
     //     for x in it:
-    auto& __src_0 = it;
-    auto __obj_0 = ::tpy::iter_adapt(__src_0);
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        int32_t x = *__beg_0;
+    auto& __iter_0 = it;
+    for (;;) {
+        auto __r_0 = __iter_0.__next__();
+        if (!__r_0.has_value()) break;
+        int32_t x = *__r_0;
         //         total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
@@ -105,11 +104,11 @@ template<::tpy::Iterable<::tpy::BigInt> T_items>
     ::tpy::BigInt total = ::tpy::BigInt(0);
     //     for x in items:
     auto& __src_0 = items;
-    auto __obj_0 = ::tpy::iter_for_loop(__src_0);
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        const ::tpy::BigInt& x = *__beg_0;
+    auto __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        const ::tpy::BigInt& x = *__r_1;
         //         total = total + x
         total = ((total) + (x));
     }

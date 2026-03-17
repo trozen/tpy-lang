@@ -1148,11 +1148,16 @@ class MethodAnalyzer:
                                      cpp_template: str | None = None) -> FunctionInfo:
         """Build a FunctionInfo for a protocol method signature."""
         params = [ParamInfo(n, t) for n, t in raw_params]
+        # __next__ on Iterator protocol has implicit @error_return(StopIteration)
+        error_return_type = None
+        if method_name == "__next__":
+            error_return_type = "StopIteration"
         return FunctionInfo(
             name=method_name, params=params, return_type=return_type,
             is_method=True,
             is_readonly=self._is_protocol_method_readonly(protocol_name, method_name),
             cpp_template=cpp_template,
+            error_return_type=error_return_type,
         )
 
     def _analyze_protocol_or_bound_method(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:

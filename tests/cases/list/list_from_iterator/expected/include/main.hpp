@@ -35,6 +35,12 @@ struct Counter {
         //         return None
         return std::nullopt;
     }
+
+    std::expected<int32_t, StopIteration> __next__() {
+        auto __opt = __next_opt__();
+        if (__opt.has_value()) return *std::move(__opt);
+        return std::unexpected(StopIteration{});
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {

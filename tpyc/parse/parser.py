@@ -33,7 +33,7 @@ from .nodes import (
     TpyIfExpr,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
-    TpyPassStmt, TpyGlobal, TpyRaiseStopIteration, TpyRaise, TpyTryExcept,
+    TpyPassStmt, TpyGlobal, TpyRaise, TpyTryExcept,
     TpyPattern, TpyWildcardPattern, TpyCapturePattern, TpyClassPattern,
     TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
     TpyMatchCase, TpyMatch,

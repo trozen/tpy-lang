@@ -10,12 +10,11 @@ void main() {
     Dual d = Dual();
     //     for x in d:
     auto& __src_0 = d;
-    auto __iter_0 = __src_0.__iter__();
-    auto __obj_0 = ::tpy::iter_adapt(__iter_0);
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        int32_t x = *__beg_0;
+    auto __itr_0 = __src_0.__iter__();
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t x = *__r_1;
         //         print(x)
         std::cout << x << "\n";
     }

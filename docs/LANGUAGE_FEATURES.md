@@ -2252,7 +2252,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design rationale.
 
 #### Working: `OptIterator[T]` (lazy iteration)
 
-`OptIterator[T]` is a **structural protocol** for types that produce values lazily via `__next_opt__()` returning `T | None`. Any type with a `__next_opt__() -> Optional[T]` method automatically conforms — no explicit `extends` declaration needed. Types with `__next__() -> T` + `raise StopIteration` also conform (the compiler synthesizes `__next_opt__` in the type registry).
+`OptIterator[T]` is a **structural protocol** for types that produce values lazily via `__next_opt__()` returning `T | None`. Any type with a `__next_opt__() -> Optional[T]` method automatically conforms — no explicit `extends` declaration needed. Used primarily by built-in C++ iterators (Range, SpanIter) and generator expressions. User-defined iterators use `__next__()` with `@error_return(StopIteration)` instead; the compiler synthesizes a `__next__` entry from `__next_opt__` in the type registry for `Iterator[T]` protocol conformance.
 
 ```python
 from tpy import Int32, OptIterator
@@ -2311,7 +2311,7 @@ for (;;) {
 }
 ```
 
-Generic `OptIterator[T]` parameters and legacy `__next_opt__` iterators use `iter_adapt` (begin/end wrapper over `__next_opt__`).
+Generic `OptIterator[T]` parameters and `__next_opt__` iterators use direct `for(;;)` loops that call `.__next_opt__()` and break on `nullopt`.
 
 **Key characteristics**:
 - **Structural protocol**: Any type with `__next_opt__() -> T | None` automatically conforms
@@ -2326,8 +2326,8 @@ Generic `OptIterator[T]` parameters and legacy `__next_opt__` iterators use `ite
 | 2. Counter-loop optimization | **Working** | `for i in range(...)` → C-style `for (int32_t i = ...)` |
 | 3. Range as NativeIterable | **Working** | `Range[T]` is an immutable container with `begin()`/`end()`, supports `list(range(...))` |
 | 4. Structural OptIterator | **Working** | Check `__next_opt__() -> Optional[T]` method for protocol conformance |
-| 5. User-defined iterators | **Working** | `__iter__`/`__next__` via `@error_return(StopIteration)` -> `std::expected`, with `__next_opt__` compat wrapper |
-| 6. Iterator[T]/Iterable[T] | **Working** | Built-in protocols from `typing`, for-loop support, `iter()`, `try_next()` builtins |
+| 5. User-defined iterators | **Working** | `__iter__`/`__next__` via `@error_return(StopIteration)` -> `std::expected` |
+| 6. Iterator[T]/Iterable[T] | **Working** | Built-in protocols from `typing`, for-loop support, `iter()` builtin |
 | 7. `__span__` protocol | **Working** | `__span__() -> Span[T]` for implicit Span coercion; iteration requires `__iter__()` |
 | 7b. `ReadOnlySpanLike[T]` protocol | **Working** | Readonly protocol for types with `__span__()`, for-loop and ReadOnlySpan coercion |
 | 8. Generator expressions | **Working** | `(expr for x in iterable)` → lazy `make_generator` wrapper, satisfies `Iterable[T]` |
@@ -2341,7 +2341,7 @@ See [docs/ITERATOR_DESIGN.md](ITERATOR_DESIGN.md) for the full iterator design d
 Two patterns for user-defined iterators:
 
 **Pattern 1: Python-compatible** — `__next__(self) -> T` + `raise StopIteration` (runs in both tpyc and CPython).
-The compiler auto-applies `@error_return(StopIteration)`, producing `std::expected<T, StopIteration>` in C++. A compatibility `__next_opt__()` wrapper is also emitted for `iter_adapt`/`try_next()` backward compat:
+The compiler auto-applies `@error_return(StopIteration)`, producing `std::expected<T, StopIteration>` in C++:
 
 ```python
 from __future__ import annotations
@@ -2430,11 +2430,14 @@ def sum_all(items: Iterable[Int32]) -> Int32:
 it: Iterator[Int32] = iter(Counter(5))
 ```
 
-**`try_next()` builtin**: Calls `it.__next_opt__()`, returns `T | None`. Provides a safe way to advance an iterator without exceptions.
+**Explicit `__next__()` calls**: Since `__next__` is `@error_return(StopIteration)`, direct calls require `try/except`:
 
 ```python
 it = iter(Counter(5))
-val = try_next(it)  # Int32 | None
+try:
+    val = it.__next__()
+except StopIteration:
+    print("exhausted")
 ```
 
 **Auto-synthesis of `__iter__`**: Types that define `__next__` (or `__next_opt__`) but not `__iter__` automatically get `__iter__` synthesized, returning `self`. This matches Python's convention where iterators are their own iterables.
@@ -2553,7 +2556,7 @@ def sum_generic[T: Iterable[Int32]](items: T) -> Int32:
     return total
 ```
 
-**For-loop support**: `for x in expr` works when `expr` has type `Iterator[T]` (uses `iter_adapt` via `__next_opt__`) or `Iterable[T]` (calls `__iter__()` first, then iterates the resulting iterator). User-defined iterators with `__next__` use the direct `std::expected` loop path.
+**For-loop support**: `for x in expr` works when `expr` has type `Iterator[T]` (direct `for(;;)` loop via `tpy::iter_next()`) or `Iterable[T]` (calls `__iter__()` first, then iterates the resulting iterator). User-defined iterators with `__next__` use the direct `std::expected` loop path.
 
 #### Working: Span coercion via `ReadOnlySpanLike[T]`
 
@@ -3793,7 +3796,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `str()` → string conversions for scalars, containers, and Stringable/Representable types (see below)
 - **Working**: `int(str)` → string-to-int parsing (via `BigInt::from_str`)
 - **Working**: `iter(x)` → calls `x.__iter__()`, returns `Iterator[T]`
-- **Working**: `try_next(it)` → calls `it.__next_opt__()`, returns `T | None` (safe iterator advancement)
+- **Removed**: `try_next(it)` -- use `try/except StopIteration` with `it.__next__()` instead
 - **Working**: `make_default[T]()` / `make_default()` → default-constructs `T` (maps to `T{}` in C++). Requires `T: Default`. Type can be explicit or inferred from context. Portable alternative to `T()`.
 - **Open**: `enumerate()` → returns OptIterator (see iterator roadmap)
 - **Open**: `zip()` → returns OptIterator (see iterator roadmap)

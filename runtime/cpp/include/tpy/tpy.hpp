@@ -55,7 +55,7 @@
 // Iterator adapter: __next_opt__() -> C++ begin/end (depends on <optional>)
 #include "iter_adapt.hpp"
 
-// SpanIter: lightweight iterator over contiguous span (depends on <span>, <optional>)
+// SpanIter: lightweight iterator over contiguous span (depends on <span>, error_return)
 #include "span_iter.hpp"
 
 // Non-range overloads for container ops (depends on iter_adapt, container_ops)
@@ -81,9 +81,6 @@
 
 // Math helpers for lib/stdlib/math.py @native declarations (log_base wrapper)
 #include "math_ops.hpp"
-
-// Error return types for @error_return decorator (depends on <expected>)
-#include "error_return.hpp"
 
 // Expose types in global namespace for TurboPython generated code
 using ::tpy::UninitArrayStorage;

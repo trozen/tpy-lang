@@ -473,12 +473,6 @@ class TpyGlobal(TpyStmt):
 
 
 @dataclass
-class TpyRaiseStopIteration(TpyStmt):
-    """raise StopIteration -- terminates __next__ method."""
-    pass
-
-
-@dataclass
 class TpyRaise(TpyStmt):
     """raise E -- returns error from @error_return function."""
     exception_type: str  # e.g. "NotFound"

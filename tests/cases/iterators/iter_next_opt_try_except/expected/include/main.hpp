@@ -6,10 +6,10 @@
 namespace tpy_user::main {
 
 struct Counter;
-struct Box;
 
-extern Box* b;
 inline constexpr std::string_view __name__ = "__main__";
+
+void main();
 
 // class Counter:
 struct Counter {
@@ -22,14 +22,8 @@ struct Counter {
     Counter() = default;
     explicit Counter(int32_t limit) : current(0), limit(limit) {}
 
-    //     def __iter__(self) -> Counter:
-    Counter& __iter__() {
-        //         return self
-        return (*this);
-    }
-
-    //     def __next__(self) -> Int32:
-    std::expected<int32_t, StopIteration> __next__() {
+    //     def __next_opt__(self) -> Int32 | None:
+    std::optional<int32_t> __next_opt__() {
         //         if self.current < self.limit:
         if ((this->current < this->limit)) {
             //             result = self.current
@@ -39,7 +33,13 @@ struct Counter {
             //             return result
             return result;
         }
-        //         raise StopIteration
+        //         return None
+        return std::nullopt;
+    }
+
+    std::expected<int32_t, StopIteration> __next__() {
+        auto __opt = __next_opt__();
+        if (__opt.has_value()) return *std::move(__opt);
         return std::unexpected(StopIteration{});
     }
 };
@@ -49,22 +49,6 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
        << "current=" << obj.current
        << ", "
        << "limit=" << obj.limit
-       << ")";
-    return os;
-}
-
-// class Box:
-struct Box {
-    //     it: Counter
-    Counter it;
-
-    //     def __init__(self) -> None:
-    Box() : it(Counter(3)) {}
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
-    os << "Box("
-       << "it=" << obj.it
        << ")";
     return os;
 }

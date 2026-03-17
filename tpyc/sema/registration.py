@@ -589,15 +589,18 @@ class TypeRegistrar:
             else:
                 methods[method.name] = [func_info]
 
-        # __next__() -> T implies __next_opt__() -> Optional[T] for protocol conformance
-        if "__next__" in methods and "__next_opt__" not in methods:
-            next_info = methods["__next__"][0]
-            if not isinstance(next_info.return_type, (OptionalType, VoidType)):
-                methods["__next_opt__"] = [FunctionInfo(
-                    name="__next_opt__",
-                    params=[ParamInfo(p.name, p.type) for p in next_info.params],
-                    return_type=OptionalType(next_info.return_type),
+        # __next_opt__() -> Optional[T] implies __next__() -> T with error_return
+        # for Iterator[T] protocol conformance (reverse synthesis).
+        # The C++ type has a real __next__() wrapper method, so no cpp_template needed.
+        if "__next_opt__" in methods and "__next__" not in methods:
+            opt_info = methods["__next_opt__"][0]
+            if isinstance(opt_info.return_type, OptionalType):
+                methods["__next__"] = [FunctionInfo(
+                    name="__next__",
+                    params=[ParamInfo(p.name, p.type) for p in opt_info.params],
+                    return_type=opt_info.return_type.inner,
                     is_method=True,
+                    error_return_type="StopIteration",
                 )]
 
         # Auto-synthesize __iter__() -> Self on iterator types (has __next__ but no __iter__)

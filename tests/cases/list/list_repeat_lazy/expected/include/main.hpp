@@ -21,11 +21,11 @@ void consume(T_items& items) {
     int32_t total = 0;
     //     for v in items:
     auto& __src_0 = items;
-    auto __obj_0 = ::tpy::iter_for_loop(__src_0);
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        int32_t v = *__beg_0;
+    auto __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t v = *__r_1;
         //         total += v
         total = ::tpy::add_check<int32_t>(total, v);
     }

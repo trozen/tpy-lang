@@ -6,7 +6,7 @@
 |-------|-------------|--------|
 | 1 | Generic mechanism: `@error_return(E)` decorator, `raise E` codegen (`std::unexpected`), `try/except` parsing + caller enforcement, `std::expected<T, E>` return + unwrap, `try/except/else` | Done |
 | 2 | Iterator migration: auto-add `@error_return(StopIteration)` on `__next__`, `StopIteration` built-in type, for-loop codegen using `std::expected` directly | Done |
-| 3 | Cleanup: deprecate `__next_opt__`, migrate internal iterators (Range, SpanIter), remove `iter_adapt`/panic stub/synthesis, `try_next()` migration | Not started |
+| 3 | Cleanup: reverse synthesis (`__next_opt__` -> synthesize `__next__`), remove compat wrapper/panic stub/`iter_adapt`/`try_next()`, direct loops for `__next_opt__` types, `tpy::iter_next()` dispatch | Done |
 
 ### Future Extensions
 
@@ -291,11 +291,6 @@ The check walks up the statement context to find an enclosing `TpyTryExcept`.
 machinery is an implicit `try/except StopIteration` consumer. Calls to `__next__`
 from for-loop codegen don't need explicit try/except -- the for-loop handles it.
 
-**Special case -- `try_next()`**: The `try_next()` builtin is defined as returning
-`T | None` and internally calls `__next__()`. It acts as an implicit catch --
-the result is converted from `std::expected<T, StopIteration>` to
-`std::optional<T>`.
-
 #### Codegen
 
 ```python
@@ -397,46 +392,14 @@ When the compiler sees `def __next__(self) -> T` without an explicit
 
 This means **all existing `__next__` methods continue to work unchanged**.
 
-### `try_next()` Builtin
+### `OptIterator` Protocol Status
 
-`try_next(it)` calls `it.__next__()` and converts the result:
-- Success -> value (as `T`)
-- StopIteration -> `None` (as `Optional[T]`)
+`OptIterator[T]` requires `__next_opt__() -> Optional[T]`. Used by built-in C++
+iterators (Range, SpanIter) and generator expressions. User-defined iterators use
+`__next__()` with `@error_return(StopIteration)` instead.
 
-C++ codegen:
-
-```cpp
-// try_next(it) where __next__() returns std::expected<T, StopIteration>
-auto __tmp = it.__next__();
-auto result = __tmp.has_value() ? std::optional<T>(*__tmp) : std::nullopt;
-```
-
-Or as a runtime helper:
-
-```cpp
-template<typename T>
-std::optional<T> try_next_impl(std::expected<T, StopIteration> result) {
-    if (result.has_value()) return *result;
-    return std::nullopt;
-}
-```
-
-### `OptIterator` Protocol Transition
-
-Currently `OptIterator[T]` requires `__next_opt__() -> Optional[T]`. With
-`@error_return`, iterators expose `__next__() -> std::expected<T, StopIteration>`
-instead.
-
-**Phase 1**: Both patterns coexist. The compiler accepts:
-- `__next__()` with `@error_return(StopIteration)` (new pattern)
-- `__next_opt__() -> T | None` (old pattern, still works)
-
-The `OptIterator` concept and `iter_adapt` runtime continue to work for old-style
-iterators. New-style iterators use the `std::expected` path.
-
-**Follow-up PR**: Deprecate and remove `__next_opt__`. Redefine `OptIterator[T]`
-to require `__next__() -> std::expected<T, StopIteration>`. Update `iter_adapt`
-or remove it.
+The compiler synthesizes a `__next__` entry from `__next_opt__` for `Iterator[T]`
+protocol conformance. `tpy::iter_next()` dispatches to whichever method exists.
 
 ---
 
@@ -457,22 +420,6 @@ helpers).
 namespace tpy {
 
 struct StopIteration {};
-
-}  // namespace tpy
-```
-
-### Optional Helper
-
-For `try_next()` conversion:
-
-```cpp
-namespace tpy {
-
-template<typename T>
-std::optional<T> expected_to_optional(std::expected<T, StopIteration>&& result) {
-    if (result.has_value()) return std::move(*result);
-    return std::nullopt;
-}
 
 }  // namespace tpy
 ```
@@ -522,9 +469,6 @@ def error_return(exc_type):
 For `__next__`, the decorator is auto-added silently by the compiler, so CPython
 never sees it -- no stub needed for that case.
 
-`try_next()` CPython stub already catches `StopIteration` and returns `None` --
-no changes needed.
-
 ---
 
 ## Error Messages
@@ -551,7 +495,6 @@ no changes needed.
 | `error_return/try_else` | try/except/else block |
 | `error_return/for_loop` | For-loop consuming `__next__` with error_return |
 | `error_return/auto_next` | `__next__` without explicit decorator (auto-added) |
-| `error_return/try_next_compat` | `try_next()` with new-style iterators |
 | `error_return/iter_protocol` | `__iter__` returning iterator with `__next__` |
 | `error_raise_no_decorator` | `raise StopIteration` without `@error_return` |
 | `error_raise_wrong_type` | `raise ValueError` with `@error_return(StopIteration)` |

@@ -1547,7 +1547,7 @@ class CallAnalyzer:
                             expr,
                         )
                 ret = resolved.return_type
-                # Built-in generic functions (e.g. try_next) delegate to
+                # Built-in generic functions (e.g. iter) delegate to
                 # concrete methods whose C++ returns std::optional<T>, not T*.
                 if (overload.is_builtin_function and overload.type_params
                         and isinstance(ret, OptionalType) and ret.force_pointer_repr):
@@ -1874,7 +1874,7 @@ class CallAnalyzer:
         # Resolve return type
         resolved_return = self.type_ops.substitute_type_params(func.return_type, type_subst)
 
-        # Built-in generic functions (e.g. try_next) delegate to concrete methods
+        # Built-in generic functions (e.g. iter) delegate to concrete methods
         # whose C++ returns std::optional<T>, not T*. Strip force_pointer_repr
         # that substitute_type_params sets for unbounded TypeParamRef -> value type.
         if (func.is_builtin_function and func.type_params

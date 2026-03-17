@@ -41,6 +41,12 @@ struct Counter {
         //         return None
         return std::nullopt;
     }
+
+    std::expected<int32_t, StopIteration> __next__() {
+        auto __opt = __next_opt__();
+        if (__opt.has_value()) return *std::move(__opt);
+        return std::unexpected(StopIteration{});
+    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
@@ -58,12 +64,11 @@ int32_t sum_iter(T_it& it) {
     //     total: Int32 = 0
     int32_t total = 0;
     //     for x in it:
-    auto& __src_0 = it;
-    auto __obj_0 = ::tpy::iter_adapt(__src_0);
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        int32_t x = *__beg_0;
+    auto& __iter_0 = it;
+    for (;;) {
+        auto __r_0 = __iter_0.__next_opt__();
+        if (!__r_0.has_value()) break;
+        int32_t x = *__r_0;
         //         total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
@@ -76,12 +81,11 @@ int32_t count_iter(T_it& it) {
     //     n: Int32 = 0
     int32_t n = 0;
     //     for x in it:
-    auto& __src_0 = it;
-    auto __obj_0 = ::tpy::iter_adapt(__src_0);
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        int32_t x = *__beg_0;
+    auto& __iter_0 = it;
+    for (;;) {
+        auto __r_0 = __iter_0.__next_opt__();
+        if (!__r_0.has_value()) break;
+        int32_t x = *__r_0;
         //         n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
     }
@@ -92,12 +96,11 @@ int32_t count_iter(T_it& it) {
 template<::tpy::OptIterator<int32_t> T_it>
 int32_t first_or_fallback(T_it& it, int32_t fallback) {
     //     for x in it:
-    auto& __src_0 = it;
-    auto __obj_0 = ::tpy::iter_adapt(__src_0);
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        int32_t x = *__beg_0;
+    auto& __iter_0 = it;
+    for (;;) {
+        auto __r_0 = __iter_0.__next_opt__();
+        if (!__r_0.has_value()) break;
+        int32_t x = *__r_0;
         //         return x
         return x;
     }

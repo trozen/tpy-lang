@@ -6,20 +6,16 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # iter() returns an iterator from an iterable
-    //     c = Counter(4)
-    Counter c = Counter(4);
-    //     it = iter(c)
-    auto it = ::tpy::__iter__(c);
-    //     # Advance iterator with try/except
+    //     c = Counter(3)
+    Counter c = Counter(3);
     //     while True:
     while (true) {
         //         try:
         int32_t v;
         {
-            //             v = it.__next__()
+            //             v = c.__next__()
             {
-                auto __try_tmp_2 = it.__next__();
+                auto __try_tmp_2 = c.__next__();
                 if (!__try_tmp_2.has_value()) goto __except_1;
                 v = *__try_tmp_2;
             }
@@ -32,14 +28,14 @@ void main() {
         //         print(v)
         std::cout << v << "\n";
     }
-    //     # Exhausted iterator raises StopIteration
+    //     # Verify exhaustion
     //     exhausted = False
     bool exhausted = false;
     //     try:
     {
-        //         it.__next__()
+        //         c.__next__()
         {
-            auto __try_tmp_4 = it.__next__();
+            auto __try_tmp_4 = c.__next__();
             if (!__try_tmp_4.has_value()) goto __except_3;
         }
         goto __after_try_3;

@@ -28,36 +28,36 @@ void main() {
     //     try:
     int32_t idx;
     {
-    //         idx = find_index(items, 30)
-    {
-        auto __try_tmp_2 = find_index(items, 30);
-        if (!__try_tmp_2.has_value()) goto __except_1;
-        idx = *__try_tmp_2;
-    }
-    //         print(idx)
-    std::cout << idx << "\n";
+        //         idx = find_index(items, 30)
+        {
+            auto __try_tmp_2 = find_index(items, 30);
+            if (!__try_tmp_2.has_value()) goto __except_1;
+            idx = *__try_tmp_2;
+        }
+        //         print(idx)
+        std::cout << idx << "\n";
         goto __after_try_1;
         __except_1:;
-    //         print("not found")
-    std::cout << "not found" << "\n";
+        //         print("not found")
+        std::cout << "not found" << "\n";
         __after_try_1:;
     }
     //     # Error case
     //     try:
     int32_t idx2;
     {
-    //         idx2 = find_index(items, 99)
-    {
-        auto __try_tmp_4 = find_index(items, 99);
-        if (!__try_tmp_4.has_value()) goto __except_3;
-        idx2 = *__try_tmp_4;
-    }
-    //         print(idx2)
-    std::cout << idx2 << "\n";
+        //         idx2 = find_index(items, 99)
+        {
+            auto __try_tmp_4 = find_index(items, 99);
+            if (!__try_tmp_4.has_value()) goto __except_3;
+            idx2 = *__try_tmp_4;
+        }
+        //         print(idx2)
+        std::cout << idx2 << "\n";
         goto __after_try_3;
         __except_3:;
-    //         print("not found")
-    std::cout << "not found" << "\n";
+        //         print("not found")
+        std::cout << "not found" << "\n";
         __after_try_3:;
     }
 }

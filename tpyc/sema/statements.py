@@ -19,7 +19,7 @@ from ..typesys import (
 from ..parse import (
     TpyExpr,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
-    TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert, TpyRaiseStopIteration,
+    TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert,
     TpyRaise, TpyTryExcept,
     TpyGlobal,
     TpyCall, TpyMethodCall, TpyArrayLiteral, TpyListComprehension, TpyDictLiteral, TpyCoerce,
@@ -804,12 +804,6 @@ class StatementAnalyzer:
             self._apply_range_facts(range_true)
         elif isinstance(stmt, TpyGlobal):
             self._analyze_global_stmt(stmt)
-        elif isinstance(stmt, TpyRaiseStopIteration):
-            # Legacy AST node -- kept for backward compat but parser no longer emits it
-            func = self.ctx.current_function
-            if not isinstance(func, TpyFunction) or func.name != "__next__":
-                raise self.ctx.error("'raise StopIteration' can only be used inside a __next__ method", stmt)
-            self.init.mark_terminated()
         elif isinstance(stmt, TpyRaise):
             self._analyze_raise(stmt)
         elif isinstance(stmt, TpyTryExcept):

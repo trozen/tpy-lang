@@ -930,7 +930,7 @@ def _find_iter_method_info(
                 elem = type_subst[elem.name]
             return IterInfo(elem, iter_is_native=True)
 
-        # User-defined iterator with __next_opt__
+        # User-defined iterator with __next_opt__ or error_return __next__
         if isinstance(ret, NamedType) and ret.is_user_record:
             iter_type_args = ret.type_args
             if iter_type_args and type_subst:
@@ -939,6 +939,8 @@ def _find_iter_method_info(
                     for a in iter_type_args
                 ]
             elem = _find_record_next_element(ret.name, iter_type_args, registry)
+            if elem is None:
+                elem = _find_error_return_next_element(ret.name, iter_type_args, registry)
             if elem is not None:
                 iter_native = is_native_iterable(ret, registry)
                 return IterInfo(elem, iter_is_native=iter_native)

@@ -62,7 +62,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | C3 | @noalloc enforcement | L | Parsed only | [IV](#noalloc-enforcement) |
 | C4 | Effect framework (@nothrow, @pure) | M-L | Not started | [IV](#effect-system-generalized) |
 | C5 | Cyclic dependency handling | L | Not started | [V](#cyclic-dependency-handling) |
-| C6 | `@error_return` annotation | M | Phase 1 done | [III](#error_return-annotation) |
+| C6 | `@error_return` annotation | M | Done | [III](#error_return-annotation) |
 
 ### Phase D: Functional + Python Compat
 
@@ -356,7 +356,7 @@ satisfies the readonly protocol via covariant return. `ReadOnlySpanLike[T]` valu
 `Span[readonly[T]]` and support for-loop iteration.
 
 **Why it matters**: Previously user-defined types could only iterate via `__iter__`/`__next__`,
-which allocates an iterator object and generates a while-loop with `__next_opt__()` calls.
+which allocates an iterator object and generates a loop with `__next__()` calls.
 Builtin types use `NativeIterable[T]` for zero-cost C++ range-based for, but this protocol
 was not user-extensible. `__span__` bridges the gap for any contiguous container with no
 overhead. `ArrayList[T, N]` now uses `__span__` instead of `__iter__`/`ArrayListIter`.
@@ -780,7 +780,6 @@ def sum_all(items: Iterable[Int32]) -> Int32:
 - `Iterator[T]`: protocol with `__next__(self) -> T` and `__iter__(self) -> Self`
 - `Iterable[T]`: protocol with `__iter__(self) -> Iterator[T]`
 - `iter(x)` builtin: calls `x.__iter__()`, returns `Iterator[T]`
-- `try_next(it)` builtin: calls `it.__next_opt__()`, returns `T | None`
 - Auto-synthesis of `__iter__` on types with `__next__` (returning self)
 - For-loop support for `Iterator[T]` and `Iterable[T]` parameter types
 - Bounded type parameters: `T: Iterable[Int32]`
@@ -1046,17 +1045,15 @@ error signaling (e.g. `StopIteration` in iterators). These are better compiled a
 `@error_return` makes this transformation explicit and opt-in, separating the
 control-flow-exception pattern from the general exception model (C1/C2).
 
-**Current state**: Phase 1 done. Generic mechanism working: `@error_return(E)` decorator,
-`raise E` codegen (`std::unexpected`), `try/except/else` parsing and codegen (goto-based
-dispatch), caller enforcement, branch-aware flow analysis, variable hoisting.
-
-Remaining phases: auto-add on `__next__` (Phase 2), `__next_opt__` deprecation (Phase 3).
-See `docs/ERROR_RETURN_DESIGN.md` for full design.
+**Current state**: Done. All three phases complete: generic `@error_return(E)` mechanism
+(Phase 1), auto-add on `__next__` with `StopIteration` built-in type (Phase 2), and
+cleanup with reverse synthesis, `tpy::iter_next()` dispatch, and direct for-loop codegen
+(Phase 3). See `docs/ERROR_RETURN_DESIGN.md` for full design.
 
 **Dependencies**: None for the basic annotation. Interacts with the general exception model
 (C1/C2) but can be implemented independently.
 
-**Effort**: M (Phase 1 done; Phase 2-3 incremental)
+**Effort**: M (done)
 
 ---
 

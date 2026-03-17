@@ -83,6 +83,11 @@ class IterableHelper:
         if iter_elem is not None:
             return iter_elem
 
+        # Check error_return __next__ (user-defined iterators)
+        er_elem = builtin_modules.get_error_return_next_element_type(iterable_type, registry=self.ctx.registry)
+        if er_elem is not None:
+            return er_elem
+
         # Check __iter__() method (container -> separate iterator)
         iter_elem = builtin_modules.get_iter_element_type(iterable_type, registry=self.ctx.registry)
         if iter_elem is not None:

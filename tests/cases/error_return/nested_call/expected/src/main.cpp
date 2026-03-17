@@ -27,29 +27,29 @@ void main() {
     //     try:
     int32_t idx;
     {
-    //         if len(items) > 0:
-    if ((::tpy::__len__(items) > 0)) {
-        //             idx = find(items, 20)
-        {
-            auto __try_tmp_2 = find(items, 20);
-            if (!__try_tmp_2.has_value()) goto __except_1;
-            idx = *__try_tmp_2;
+        //         if len(items) > 0:
+        if ((::tpy::__len__(items) > 0)) {
+            //             idx = find(items, 20)
+            {
+                auto __try_tmp_2 = find(items, 20);
+                if (!__try_tmp_2.has_value()) goto __except_1;
+                idx = *__try_tmp_2;
+            }
+        //         else:
+        } else {
+            //             idx = find(items, 10)
+            {
+                auto __try_tmp_3 = find(items, 10);
+                if (!__try_tmp_3.has_value()) goto __except_1;
+                idx = *__try_tmp_3;
+            }
         }
-    //         else:
-    } else {
-        //             idx = find(items, 10)
-        {
-            auto __try_tmp_3 = find(items, 10);
-            if (!__try_tmp_3.has_value()) goto __except_1;
-            idx = *__try_tmp_3;
-        }
-    }
-    //         print(idx)
-    std::cout << idx << "\n";
+        //         print(idx)
+        std::cout << idx << "\n";
         goto __after_try_1;
         __except_1:;
-    //         print("not found")
-    std::cout << "not found" << "\n";
+        //         print("not found")
+        std::cout << "not found" << "\n";
         __after_try_1:;
     }
 }

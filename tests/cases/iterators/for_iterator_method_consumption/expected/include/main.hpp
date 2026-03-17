@@ -42,12 +42,6 @@ struct Counter {
         //         raise StopIteration
         return std::unexpected(StopIteration{});
     }
-
-    std::optional<int32_t> __next_opt__() {
-        auto __r = __next__();
-        if (__r.has_value()) return *__r;
-        return std::nullopt;
-    }
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {

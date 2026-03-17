@@ -313,7 +313,7 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | Header | Purpose |
 |--------|---------|
 | `tpy.hpp` | Main header - includes all modules |
-| `core.hpp` | `tpy_panic`, `deref_check` |
+| `core.hpp` | `tpy_panic`, `deref_check`, exception sentinels (`StopIteration`, etc.) |
 | `format.hpp` | Python-style printing (`print_bool`, `print_float`, `char_to_str`) |
 | `fixed_int.hpp` | Template-based checked arithmetic for all fixed-width integer types |
 | `type_traits.hpp` | `is_value_type` trait for value/reference semantics |

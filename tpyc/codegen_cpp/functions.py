@@ -727,14 +727,8 @@ class FunctionGenerator:
                        dynamic_overrides: dict[str, bool] | None = None,
                        record_type_param_bounds: dict[str, TpyType] | None = None) -> None:
         """Generate a method definition inside a struct."""
-        is_dunder_next = method.name == "__next__"
-        # __next__ with @error_return uses std::expected (new path);
-        # __next__ without error_return uses legacy __next_opt__ rename
-        is_legacy_next = is_dunder_next and not method.error_return
-        cpp_name = "__next_opt__" if is_legacy_next else method.name
+        cpp_name = method.name
         cpp_return_type = method.return_type
-        if is_legacy_next:
-            cpp_return_type = OptionalType(method.return_type)
 
         is_const = method.is_readonly
         is_static = method.is_staticmethod
@@ -757,20 +751,16 @@ class FunctionGenerator:
                                       static=is_static, override=is_override,
                                       record_type_param_bounds=record_type_param_bounds)
 
-        if is_dunder_next and method.error_return:
-            # Emit __next_opt__() compatibility wrapper for iter_adapt/try_next
-            opt_ret = f"std::optional<{method.return_type.to_cpp_return()}>"
-            out.write(f"\n{INDENT}{opt_ret} __next_opt__() {{\n")
-            out.write(f"{INDENT}{INDENT}auto __r = __next__();\n")
-            out.write(f"{INDENT}{INDENT}if (__r.has_value()) return *__r;\n")
-            out.write(f"{INDENT}{INDENT}return std::nullopt;\n")
-            out.write(f"{INDENT}}}\n")
-        elif is_legacy_next:
-            # Legacy: emit a __next__() panic stub so direct calls compile but fail at runtime
-            orig_ret = method.return_type.to_cpp_return()
-            out.write(f"\n{INDENT}{orig_ret} __next__() {{\n")
-            out.write(f'{INDENT}{INDENT}::tpy::tpy_panic("__next__() is not directly callable; use a for-loop");\n')
-            out.write(f"{INDENT}}}\n")
+        # User types with __next_opt__: emit __next__() wrapper for Iterator[T] conformance
+        if method.name == "__next_opt__" and not method.error_return:
+            opt_ret = method.return_type
+            if isinstance(opt_ret, OptionalType):
+                inner_cpp = opt_ret.inner.to_cpp_return()
+                out.write(f"\n{INDENT}std::expected<{inner_cpp}, StopIteration> __next__() {{\n")
+                out.write(f"{INDENT}{INDENT}auto __opt = __next_opt__();\n")
+                out.write(f"{INDENT}{INDENT}if (__opt.has_value()) return *std::move(__opt);\n")
+                out.write(f"{INDENT}{INDENT}return std::unexpected(StopIteration{{}});\n")
+                out.write(f"{INDENT}}}\n")
 
     def _gen_method_overload(
         self, out: TextIO, method: TpyFunction, record_name: str,

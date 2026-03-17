@@ -28,20 +28,20 @@ void main() {
     int32_t doubled;
     int32_t idx;
     {
-    //         idx = find(items, 20)
-    {
-        auto __try_tmp_2 = find(items, 20);
-        if (!__try_tmp_2.has_value()) goto __except_1;
-        idx = *__try_tmp_2;
-    }
-    //         doubled = idx * 2
-    doubled = (::tpy::mul_check<int32_t>(idx, 2));
-    //         print(doubled)
-    std::cout << doubled << "\n";
+        //         idx = find(items, 20)
+        {
+            auto __try_tmp_2 = find(items, 20);
+            if (!__try_tmp_2.has_value()) goto __except_1;
+            idx = *__try_tmp_2;
+        }
+        //         doubled = idx * 2
+        doubled = (::tpy::mul_check<int32_t>(idx, 2));
+        //         print(doubled)
+        std::cout << doubled << "\n";
         goto __after_try_1;
         __except_1:;
-    //         print("not found")
-    std::cout << "not found" << "\n";
+        //         print("not found")
+        std::cout << "not found" << "\n";
         __after_try_1:;
     }
 }

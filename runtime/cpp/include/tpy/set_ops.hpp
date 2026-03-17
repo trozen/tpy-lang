@@ -30,12 +30,14 @@ ordered_set<T> set_from_range(R&& range) {
     return result;
 }
 
-// set(opt_iterator) -- construct from user-defined iterator
+// set(iterator) -- construct from user-defined iterator
 template<typename T, typename Iter>
 ordered_set<T> set_collect(Iter&& iter) {
     ordered_set<T> result;
-    while (auto opt = iter.__next_opt__()) {
-        result.insert(std::move(*opt));
+    for (;;) {
+        auto __r = iter.__next__();
+        if (!__r.has_value()) break;
+        result.insert(std::move(*__r));
     }
     return result;
 }
