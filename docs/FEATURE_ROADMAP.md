@@ -1727,7 +1727,8 @@ unique_lengths = {len(name) for name in names}
 Builds a `set[T]` from an iterable with optional filtering. Same generator model
 as list/dict comprehensions.
 
-**Current state**: Not started.
+**Current state**: Done. IIFE-based codegen with loop + `insert`, supports filtering
+and tuple unpacking. Annotation propagation supported.
 
 **Dependencies**: Set type (D9). List comprehension infrastructure (B9).
 
@@ -1771,7 +1772,9 @@ infrastructure.
 
 See `docs/COMPREHENSION_DESIGN.md` for full design.
 
-**Current state**: Not started.
+**Current state**: Done. `tpy::make_generator<T>(lambda)` wrapper satisfying
+`Iterable[T]`. Supports range sources, container sources, filter clauses, tuple
+unpacking, outer local capture.
 
 **Dependencies**: List comprehension infrastructure (B9). Builtin function awareness
 in sema for fusion.

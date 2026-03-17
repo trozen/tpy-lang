@@ -1,5 +1,7 @@
 # TODO
 
+See docs/FEATURE_ROADMAP.md for bigger tasks
+
 ## Next
 - move builtins and builtin modules to .py files
 - Union return copies non-value members: `f() -> A | B` returns `std::variant<A, B>` by value, copying record members. Python returns by reference. `std::variant<A&, B&>` is not valid C++. Params are fine (`&` for non-value unions). See `docs/UNION_TYPES_DESIGN.md` Known Semantic Gaps.
@@ -41,14 +43,10 @@
 - tpy.ctypes.CInt32
 - ptr() function? Auto-select Ptr vs Ptr[readonly[T]] based on binding mutability. Needs sema-level magic (mutability not in type, it's in binding context).
 
-## Hard Problems
-(see FEATURE_ROADMAP.md for tracked hard problems)
-
 ## Python features
 - Any
 - dynamic attributes
 - list/container slicing (Phase 3: step)
-- list slice assignment: `a[1:3] = [10, 20]` -- done. RHS must be `list[T]`; span RHS is a future extension.
 - lambda expression
 - properties
 - with statement/context manager
