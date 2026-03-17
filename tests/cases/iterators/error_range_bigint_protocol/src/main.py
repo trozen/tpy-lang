@@ -1,5 +1,4 @@
-from typing import OptIterator
-from tpy import Int32
+from tpy import OptIterator, Int32
 
 def f(it: OptIterator[Int32]) -> Int32:
     return 0

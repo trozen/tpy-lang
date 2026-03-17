@@ -29,6 +29,7 @@ void __tpy_init() {
     // from tplib.array_list import ArrayList
     ::tpy_user::tplib::__tpy_init();
     ::tpy_user::tplib::array_list::__tpy_init();
+    // from typing import Iterable
     // main()
     main();
 }

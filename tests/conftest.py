@@ -45,9 +45,10 @@ def run_cpython(src_file: Path) -> str:
     """Run a TurboPython file with CPython using the test harness."""
     env = os.environ.copy()
     # Include CPython stubs (for tpy module), tpy search root (for tplib),
-    # stdlib analogs, and source dir (for multi-module imports)
+    # and source dir (for multi-module imports).
+    # lib/stdlib/ is NOT included -- CPython uses its own stdlib.
     src_dir = src_file.parent
-    env["PYTHONPATH"] = f"{CPY_LIB_DIR}{os.pathsep}{TPY_LIB_DIR}{os.pathsep}{STDLIB_DIR}{os.pathsep}{src_dir}"
+    env["PYTHONPATH"] = f"{CPY_LIB_DIR}{os.pathsep}{TPY_LIB_DIR}{os.pathsep}{src_dir}"
 
     result = subprocess.run(
         [sys.executable, str(src_file)],

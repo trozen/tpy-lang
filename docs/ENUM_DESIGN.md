@@ -292,7 +292,7 @@ cross-module import resolution (alongside existing `records`, `protocols`,
 
 ### Module Recognition
 
-Add `"enum"` to `SPECIAL_MODULES` in `parse/parser.py` (alongside `"typing"`,
+Add `"enum"` to `PARSER_KEYWORDS` in `parse/imports.py` (alongside `"typing"`,
 `"tpy"`, etc.). This enables `_resolve_type_name()` to track names imported
 via `from enum import Enum, auto`. Without this, `Enum` and `auto` are
 unresolvable -- the same mechanism used for `from typing import Protocol`.

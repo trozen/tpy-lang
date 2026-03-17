@@ -55,6 +55,20 @@ class ProtocolChecker:
         self.ctx = ctx
         self.type_ops = type_ops
 
+    def is_all_readonly(self, proto_info: 'ProtocolInfo') -> bool:
+        """Check if all methods (including inherited) are readonly."""
+        if proto_info.is_readonly:
+            return True
+        if not all(m.is_readonly for m in proto_info.methods):
+            return False
+        for parent_name in proto_info.parent_protocols:
+            parent = self.ctx.registry.get_protocol(parent_name)
+            if parent is None:
+                return False  # unknown parent -- conservatively non-readonly
+            if not self.is_all_readonly(parent):
+                return False
+        return True  # all methods (if any) are readonly, all parents (if any) are readonly
+
     def type_conforms_to_protocol(self, actual: TpyType, protocol: NamedType) -> bool:
         """Check if actual type conforms to a protocol.
 

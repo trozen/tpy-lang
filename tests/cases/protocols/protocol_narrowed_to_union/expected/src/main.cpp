@@ -19,6 +19,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Narrowed Optional[Protocol] passed to a required multi-protocol union param.
+    // # Regression test: the narrowed variable (pointer in C++) must be dereferenced.
+    // from typing import Iterable
     // main()
     main();
 }

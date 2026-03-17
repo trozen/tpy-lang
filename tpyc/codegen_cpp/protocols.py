@@ -134,7 +134,11 @@ class ProtocolGenerator:
             source_module, original_name = self.ctx.user_imported_protocols[protocol.name]
             cpp_name = f"__{original_name}_Concept__" if is_dynamic else original_name
             return qualified_cpp_name(source_module, cpp_name)
-        # User-defined protocol
+        # Protocol from a bare-imported module (import typing + typing.Sized)
+        if protocol_info and protocol_info.module and protocol_info.module in self.ctx.user_module_imports:
+            cpp_name = f"__{protocol.name}_Concept__" if is_dynamic else protocol.name
+            return qualified_cpp_name(protocol_info.module, cpp_name)
+        # Protocol defined in the current module (or unknown origin fallback)
         return f"__{protocol.name}_Concept__" if is_dynamic else protocol.name
 
     def get_dynamic_base_name(self, protocol_name: str) -> str:

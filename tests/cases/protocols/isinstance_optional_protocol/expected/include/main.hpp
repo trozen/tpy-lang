@@ -2,25 +2,26 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "typing.hpp"
 
 namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sized<T_items>)
 int32_t count_if_sized(const T_items* items = nullptr);
 template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpy::ReadOnlySpanLike<T_items, int32_t>)
 int32_t sum_span(const T_items* items = nullptr);
 template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sized<T_items>)
 int32_t check_not(const T_items* items = nullptr);
 void main();
 
 // def count_if_sized(items: Sized | None = None) -> Int32:
 template<typename T_items>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sized<T_items>)
 int32_t count_if_sized(const T_items* items) {
     //     if isinstance(items, Sized):
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
@@ -55,7 +56,7 @@ int32_t sum_span(const T_items* items) {
 }
 // def check_not(items: Sized | None = None) -> Int32:
 template<typename T_items>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sized<T_items>)
 int32_t check_not(const T_items* items) {
     //     if not isinstance(items, Sized):
     if constexpr (std::same_as<T_items, std::nullptr_t>) {

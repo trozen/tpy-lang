@@ -1492,4 +1492,18 @@ class SemanticAnalyzer:
             self.ctx.user_imported_variables[local_name] = (module_name, original_name)
             return
 
+        # Parser keywords (Protocol, Optional, etc.) are handled at parse time,
+        # not exported by .py files -- silently skip them here.
+        from ..parse import is_parser_keyword
+        if is_parser_keyword(module_name, original_name):
+            return
+
+        # If this module shadows a builtin, fall back to builtin handling
+        # for names the .py file doesn't define (incremental migration support).
+        # Only allow names that actually exist in the builtin.
+        if module_info.has_builtin_fallback:
+            from ..modules import get_module as get_builtin_module
+            builtin = get_builtin_module(module_name)
+            if builtin and (original_name in builtin.functions or original_name in builtin.protocols):
+                return
         raise self._error(f"'{original_name}' not found in module '{module_name}'")

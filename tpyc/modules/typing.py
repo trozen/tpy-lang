@@ -17,13 +17,8 @@ def init_module() -> BuiltinModule:
     """Initialize and return the typing module."""
     module = BuiltinModule(NAME)
 
-    # Sized protocol: types that support len()
-    # The cpp template is used for calling __len__ on protocol-typed variables
-    module.protocol("Sized",
-        methods={"__len__": MethodDef(params=[], returns=INT32, cpp="::tpy::__len__({self})")},
-        cpp_concept="::tpy::Sized",
-        is_readonly=True,
-    )
+    # Sized is defined in lib/stdlib/typing.py (implicitly compiled).
+    # No builtin definition needed.
 
     # Sequence[T] protocol: types that support len() and indexing
     # Generic protocol with type parameter T

@@ -2,18 +2,19 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "typing.hpp"
 
 namespace tpy_user::main {
 
 extern std::vector<int32_t>* items;
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy::Sized T_s>
+template<::tpy_user::typing::Sized T_s>
 int32_t get_len(const T_s& s);
 
 // @readonly
 // def get_len(s: Sized) -> Int32:
-template<::tpy::Sized T_s>
+template<::tpy_user::typing::Sized T_s>
 int32_t get_len(const T_s& s) {
     //     return len(s)  # tpyc: ok
     return ::tpy::__len__(s);

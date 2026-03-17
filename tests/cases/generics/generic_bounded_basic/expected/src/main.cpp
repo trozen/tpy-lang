@@ -21,6 +21,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Test bounded type parameters - bound validation at instantiation
+    // # Note: Calling protocol methods on T inside the generic is not yet supported
+    // from typing import Sized
 }
 
 } // namespace tpy_user::main

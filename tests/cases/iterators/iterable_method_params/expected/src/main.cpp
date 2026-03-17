@@ -60,6 +60,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Test Iterable[T] as param type for extend, join, list() constructors
+    // from typing import Iterable
     // main()
     main();
 }

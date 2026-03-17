@@ -331,6 +331,14 @@ def protocol_def_to_info(pdef: ProtocolDef, module_name: str = "") -> ProtocolIn
     )
 
 
+def get_all_protocols_for_module(module_name: str) -> list["ProtocolInfo"]:
+    """Return all builtin protocols defined by a specific module."""
+    module = get_module(module_name)
+    if module is None:
+        return []
+    return [protocol_def_to_info(pdef, module_name) for pdef in module.protocols.values()]
+
+
 def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "RecordInfo":
     """Convert BuiltinTypeDef to RecordInfo for unified lookup.
 

@@ -2,6 +2,7 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "typing.hpp"
 
 namespace tpy_user::main {
 
@@ -11,11 +12,11 @@ template<typename T> struct GenericContainer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy::Sized T_items, typename T_extra = std::nullptr_t>
-  requires (std::same_as<T_extra, std::nullptr_t> || ::tpy::Sized<T_extra>)
+template<::tpy_user::typing::Sized T_items, typename T_extra = std::nullptr_t>
+  requires (std::same_as<T_extra, std::nullptr_t> || ::tpy_user::typing::Sized<T_extra>)
 ::tpy::BigInt count_items(const T_items& items, const T_extra* extra = nullptr);
 template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sized<T_items>)
 ::tpy::BigInt only_optional(const T_items* items = nullptr);
 template<::tpy::Sequence<::tpy::BigInt> T_items, typename T_extra = std::nullptr_t>
   requires (std::same_as<T_extra, std::nullptr_t> || ::tpy::Sequence<T_extra, ::tpy::BigInt>)
@@ -30,7 +31,7 @@ struct Container {
     //     def __init__(self, items: Optional[Sized] = None) -> None:
     Container() : Container(static_cast<std::nullptr_t*>(nullptr)) {}
     template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sized<T_items>)
     explicit Container(const T_items* items = nullptr) {
         //         if items is not None:
         if constexpr (!std::same_as<T_items, std::nullptr_t>) {
@@ -44,8 +45,8 @@ struct Container {
     }
 
     //     def update(self, items: Sized, extra: Optional[Sized] = None) -> None:
-    template<::tpy::Sized T_items, typename T_extra = std::nullptr_t>
-  requires (std::same_as<T_extra, std::nullptr_t> || ::tpy::Sized<T_extra>)
+    template<::tpy_user::typing::Sized T_items, typename T_extra = std::nullptr_t>
+  requires (std::same_as<T_extra, std::nullptr_t> || ::tpy_user::typing::Sized<T_extra>)
     void update(const T_items& items, const T_extra* extra = nullptr) {
         //         self.count = len(items)
         this->count = ::tpy::BigInt(::tpy::__len__(items));
@@ -72,8 +73,8 @@ struct MixedContainer {
 
     //     def __init__(self, items: Sized, extra: Optional[Sized] = None) -> None:
     MixedContainer() = default;
-    template<::tpy::Sized T_items, typename T_extra = std::nullptr_t>
-  requires (std::same_as<T_extra, std::nullptr_t> || ::tpy::Sized<T_extra>)
+    template<::tpy_user::typing::Sized T_items, typename T_extra = std::nullptr_t>
+  requires (std::same_as<T_extra, std::nullptr_t> || ::tpy_user::typing::Sized<T_extra>)
     explicit MixedContainer(const T_items& items, const T_extra* extra = nullptr) : count(::tpy::BigInt(::tpy::__len__(items))) {
         //         if extra is not None:
         if constexpr (!std::same_as<T_extra, std::nullptr_t>) {
@@ -100,7 +101,7 @@ struct GenericContainer {
     //     def __init__(self, items: Optional[Sized] = None) -> None:
     GenericContainer() : GenericContainer(static_cast<std::nullptr_t*>(nullptr)) {}
     template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sized<T_items>)
     explicit GenericContainer(const T_items* items = nullptr) {
         //         if items is not None:
         if constexpr (!std::same_as<T_items, std::nullptr_t>) {
@@ -123,8 +124,8 @@ inline std::ostream& operator<<(std::ostream& os, const GenericContainer<T>& obj
 }
 
 // def count_items(items: Sized, extra: Optional[Sized] = None) -> int:
-template<::tpy::Sized T_items, typename T_extra>
-  requires (std::same_as<T_extra, std::nullptr_t> || ::tpy::Sized<T_extra>)
+template<::tpy_user::typing::Sized T_items, typename T_extra>
+  requires (std::same_as<T_extra, std::nullptr_t> || ::tpy_user::typing::Sized<T_extra>)
 ::tpy::BigInt count_items(const T_items& items, const T_extra* extra) {
     //     result: int = len(items)
     ::tpy::BigInt result = ::tpy::BigInt(::tpy::__len__(items));
@@ -138,7 +139,7 @@ template<::tpy::Sized T_items, typename T_extra>
 }
 // def only_optional(items: Optional[Sized] = None) -> int:
 template<typename T_items>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sized<T_items>)
 ::tpy::BigInt only_optional(const T_items* items) {
     //     if items is not None:
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {

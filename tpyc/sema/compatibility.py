@@ -151,7 +151,7 @@ class TypeCompatibility:
                 allow = False
                 if is_protocol_type(expected) and self.protocols:
                     proto_info = self.ctx.registry.get_protocol(expected.name)
-                    if proto_info and proto_info.is_readonly:
+                    if proto_info and self.protocols.is_all_readonly(proto_info):
                         allow = True
                 if not allow:
                     raise SemanticError(

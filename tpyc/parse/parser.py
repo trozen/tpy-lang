@@ -41,7 +41,7 @@ from .nodes import (
     ModuleDirectives,
 )
 from .imports import (
-    ImportProcessor, SPECIAL_MODULES,
+    ImportProcessor, PARSER_KEYWORDS, is_parser_keyword_module,
     PYTHON_BUILTINS, TYPING_NAMES, TPY_TYPE_NAMES, TPY_TYPES,
 )
 
@@ -348,12 +348,17 @@ class Parser:
             return None
         local_module = node.value.id
         canonical = self._reverse_module_aliases.get(local_module, local_module)
-        if canonical not in SPECIAL_MODULES:
-            return None
         # Verify the module was bare-imported (imports[canonical] is None means
-        # whole-module import; the key being absent means no import at all)
+        # whole-module import; the key being absent means no import at all).
+        # For parser-keyword modules, None marks whole-module import.
+        # For user modules, they're in bare_module_imports (checked via imports dict).
         imports = self._imports.imports
-        if imports is None or canonical not in imports or imports[canonical] is not None:
+        if imports is None or canonical not in imports:
+            return None
+        entry = imports[canonical]
+        # None means whole-module import (parser-keyword modules).
+        # For user modules, bare import sets an empty set AND adds to bare_module_imports.
+        if entry is not None and not (isinstance(entry, set) and canonical in self._bare_module_imports):
             return None
         return (canonical, node.attr)
 
@@ -438,7 +443,7 @@ class Parser:
             mod = node.value.id
             canonical = self._reverse_module_aliases.get(mod, mod)
             qualified = f"{mod}.{node.attr}"
-            if canonical in SPECIAL_MODULES:
+            if is_parser_keyword_module(canonical):
                 raise ParseError(f"'{qualified}' requires: import {canonical}", node)
 
     def _is_ignorable_for_import_order(self, node: ast.stmt) -> bool:
@@ -557,9 +562,9 @@ class Parser:
                 self._reverse_module_aliases = {v: k for k, v in module_aliases.items()}
             elif isinstance(node, ast.ClassDef):
                 seen_non_import = True
-                # Warn if class shadows an imported special name
+                # Warn if class shadows an imported parser keyword name
                 source = self._imports.get_import_source(node.name)
-                if source and source[0] in SPECIAL_MODULES:
+                if source and is_parser_keyword_module(source[0]):
                     self._warn(f"class '{node.name}' shadows import from '{source[0]}'", node)
                 result = self._parse_class(node)
                 if isinstance(result, TpyProtocol):
@@ -568,7 +573,7 @@ class Parser:
                     self.registry.register_protocol(ProtocolInfo(
                         name=result.name,
                         methods=result.methods,
-                        type_params=result.type_params
+                        type_params=result.type_params,
                     ))
                 elif isinstance(result, TpyEnum):
                     enums.append(result)
@@ -907,10 +912,11 @@ class Parser:
                         if isinstance(tp.bound, ast.Name) and tp.bound.id == 'int':
                             type_param_kinds.append(TypeParamKind.INT)
                         else:
-                            # Regular protocol bound
+                            # Protocol bound -- full validation deferred to sema
+                            # (cross-module protocols aren't in parser registry)
                             type_param_kinds.append(TypeParamKind.TYPE)
                             bound_type = self._parse_type_annotation(tp.bound)
-                            if not isinstance(bound_type, NamedType) or not bound_type.is_protocol:
+                            if not isinstance(bound_type, NamedType):
                                 raise ParseError(f"Type parameter bound must be a protocol or 'int', got {bound_type}", tp)
                             type_param_bounds[tp.name] = bound_type
                     else:
@@ -1369,7 +1375,7 @@ class Parser:
                     method_type_params.append(tp.name)
                     if tp.bound is not None:
                         bound_type = self._parse_type_annotation(tp.bound)
-                        if not isinstance(bound_type, NamedType) or not bound_type.is_protocol:
+                        if not isinstance(bound_type, NamedType):
                             raise ParseError(f"Type parameter bound must be a protocol or 'int', got {bound_type}", tp)
                         method_type_param_bounds[tp.name] = bound_type
                 else:
@@ -1579,7 +1585,7 @@ class Parser:
                         else:
                             type_param_kinds.append(TypeParamKind.TYPE)
                             bound_type = self._parse_type_annotation(tp.bound)
-                            if not isinstance(bound_type, NamedType) or not bound_type.is_protocol:
+                            if not isinstance(bound_type, NamedType):
                                 raise ParseError(f"Type parameter bound must be a protocol or 'int', got {bound_type}", tp)
                             type_param_bounds[tp.name] = bound_type
                     else:
@@ -1779,8 +1785,9 @@ class Parser:
                         self._raise_unresolved_import_error(raw_name, node)
                     return self._parse_generic_type(node, resolved_container, lookup.type_def, type_param_scope)
 
-                # Generic types from explicitly imported builtin submodules (tpy.mem, etc.)
-                if resolved and resolved[0] not in SPECIAL_MODULES:
+                # Generic types from imported modules (user modules, builtin submodules, etc.)
+                # Skip modules where ALL names are parser keywords (fully hardcoded types).
+                if resolved and not (resolved[0] in PARSER_KEYWORDS and PARSER_KEYWORDS[resolved[0]] is None):
                     source_module, original_name = resolved
                     if lookup := lookup_generic_type_in_module(original_name, source_module):
                         return self._parse_generic_type(node, resolved_container, lookup.type_def, type_param_scope)

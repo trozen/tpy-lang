@@ -2,17 +2,18 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "typing.hpp"
 
 namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy::Sized T_items>
+template<::tpy_user::typing::Sized T_items>
 int32_t count(const T_items& items);
 void main();
 
 // def count(items: Sized) -> Int32:
-template<::tpy::Sized T_items>
+template<::tpy_user::typing::Sized T_items>
 int32_t count(const T_items& items) {
     //     return len(items)
     return ::tpy::__len__(items);

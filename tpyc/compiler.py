@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .parse import Parser, ParseError, TpyModule, TpyImport, RelativeImportKey, SourceLocation
+from .parse import Parser, ParseError, TpyModule, TpyImport, RelativeImportKey, SourceLocation, is_parser_keyword_module
 from .sema import SemanticAnalyzer, SemanticError, DiagnosticLevel
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names
@@ -327,6 +327,7 @@ class Compiler:
             if self.resolver:
                 # Discover imported library modules
                 self._discover_imports(entry_name, ast, [entry_name])
+                self._discover_implicit_stdlib()
                 self._compute_compile_order()
             else:
                 self.compile_order = [entry_name]
@@ -341,6 +342,9 @@ class Compiler:
         entry_name = ModuleResolver.get_module_name(self.entry_point)
         self._discover_modules(entry_name, self.entry_point, [], is_entry_point=True)
 
+        # 1b. Implicitly discover stdlib typing module (provides Sized for len(), etc.)
+        self._discover_implicit_stdlib()
+
         # 2. Compute compilation order (topological sort)
         self._compute_compile_order()
 
@@ -354,6 +358,22 @@ class Compiler:
 
         # Return in dependency order
         return [self.modules[name] for name in self.compile_order]
+
+    # Stdlib modules that are always compiled (even without explicit import).
+    # These provide protocol definitions used by builtins (e.g. Sized for len()).
+    _IMPLICIT_STDLIB = ["typing"]
+
+    def _discover_implicit_stdlib(self) -> None:
+        """Discover implicit stdlib modules that builtins depend on."""
+        if not self.resolver:
+            return
+        for mod_name in self._IMPLICIT_STDLIB:
+            if mod_name in self.modules:
+                continue
+            resolved = self.resolver.resolve(mod_name)
+            if resolved is None:
+                continue  # not available (e.g. --no-stdlib)
+            self._discover_modules(resolved.canonical_name, resolved.path, [])
 
     def _discover_modules(self, module_name: str, path: Path, import_chain: list[str],
                           import_lineno: int | None = None, is_entry_point: bool = False,
@@ -418,7 +438,7 @@ class Compiler:
                     continue
                 imported_name = resolved_name
 
-            self._process_user_import(imported_name, import_lineno, module_name, path, builtin_names, new_chain)
+            self._process_user_import(imported_name, import_lineno, module_name, path, builtin_names, new_chain, parent_ast=ast)
 
     def _resolve_relative_import(
         self,
@@ -510,6 +530,7 @@ class Compiler:
         path: Path,
         builtin_names: set[str],
         new_chain: list[str],
+        parent_ast: TpyModule | None = None,
     ) -> None:
         """Resolve a user module import, checking for not-found and builtin shadowing."""
         resolved = self.resolver.resolve(imported_name)
@@ -524,6 +545,20 @@ class Compiler:
             if imported_name not in self.shadowed_builtins:
                 self.shadowed_builtins[imported_name] = set()
             self.shadowed_builtins[imported_name].add((module_name, import_lineno))
+        # Parser-keyword modules don't emit TpyImport at parse time (to avoid
+        # dead source comments when no .py file exists). Now that we've found a
+        # .py file, inject the TpyImport for __tpy_init() ordering.
+        # Insert at the position matching the original import line for correct
+        # init ordering relative to other statements.
+        if parent_ast is not None and is_parser_keyword_module(imported_name):
+            if not any(isinstance(s, TpyImport) and s.module_name == imported_name for s in parent_ast.top_level_stmts):
+                new_import = TpyImport(module_name=imported_name, loc=SourceLocation(import_lineno, 0))
+                insert_idx = len(parent_ast.top_level_stmts)
+                for i, s in enumerate(parent_ast.top_level_stmts):
+                    if hasattr(s, 'loc') and s.loc and s.loc.line > import_lineno:
+                        insert_idx = i
+                        break
+                parent_ast.top_level_stmts.insert(insert_idx, new_import)
         self._discover_package_inits(imported_name, new_chain, import_lineno)
         self._discover_modules(resolved.canonical_name, resolved.path, new_chain, import_lineno,
                                is_package_init=resolved.is_package_init)
@@ -550,7 +585,7 @@ class Compiler:
 
             self._process_user_import(
                 imported_name, import_lineno, module_name,
-                Path("<stdin>"), builtin_names, import_chain
+                Path("<stdin>"), builtin_names, import_chain, parent_ast=ast
             )
 
     def _discover_package_inits(self, dotted_name: str, import_chain: list[str],
@@ -615,6 +650,11 @@ class Compiler:
             # Should not happen since we check for cycles earlier
             raise CompileError("Internal error: could not resolve module dependencies")
 
+        # Move implicit stdlib modules to the front so they're analyzed
+        # before any user code (builtins like len() depend on their protocols).
+        implicit = [m for m in self._IMPLICIT_STDLIB if m in self.modules and m in result]
+        if implicit:
+            result = implicit + [m for m in result if m not in implicit]
         self.compile_order = result
 
     def _analyze_module(self, compiled: CompiledModule) -> None:
@@ -641,10 +681,28 @@ class Compiler:
             module_info = self._exports_to_module_info(dep_name, dep_compiled.exports, dep_compiled)
             self._merge_builtin_supplements(module_info)
             analyzer.registry.register_module(module_info)
+            # Register .py-defined protocols so resolve_type can find them
+            # for qualified access (e.g. typing.Sized via bare `import typing`).
+            # Only register protocols from .py files (no cpp_concept), not ones
+            # merged from builtins which are already registered at init.
+            for proto in module_info.protocols.values():
+                if not proto.cpp_concept:
+                    analyzer.registry.register_protocol(proto)
             # Enqueue transitive dependencies
             for transitive in self.modules[dep_name].ast.user_module_imports:
                 if transitive not in registered:
                     queue.append(transitive)
+
+        # Register protocols from implicit stdlib modules (e.g. Sized from typing)
+        # so builtins like len() can type-check, even without explicit import.
+        for implicit_mod in self._IMPLICIT_STDLIB:
+            if implicit_mod not in registered and implicit_mod in self.modules:
+                dep_compiled = self.modules[implicit_mod]
+                module_info = self._exports_to_module_info(implicit_mod, dep_compiled.exports, dep_compiled)
+                self._merge_builtin_supplements(module_info)
+                for proto in module_info.protocols.values():
+                    if not proto.cpp_concept:
+                        analyzer.registry.register_protocol(proto)
 
         # Set module name for __name__
         module_name = "__main__" if compiled.is_entry_point else compiled.name
@@ -837,14 +895,15 @@ class Compiler:
     def _merge_builtin_supplements(self, module_info: 'ModuleInfo') -> None:
         """Supplement a .py module's exports with definitions from a same-named builtin.
 
-        Enables hybrid modules: .py defines most functions, builtin provides
-        functions that need special compiler support (e.g., INT type params,
-        custom validation). Only adds missing names -- .py definitions take precedence.
+        Enables hybrid modules: .py defines most functions/protocols, builtin provides
+        definitions that need special compiler support. Only adds missing names --
+        .py definitions take precedence.
         """
-        from .modules import get_module as get_builtin_module, builtin_function_to_info
+        from .modules import get_module as get_builtin_module, builtin_function_to_info, get_all_protocols_for_module
         builtin = get_builtin_module(module_info.name)
         if builtin is None:
             return
+        module_info.has_builtin_fallback = True
         for func_name, fn_def in builtin.functions.items():
             if func_name not in module_info.functions:
                 module_info.functions[func_name] = builtin_function_to_info(
@@ -854,6 +913,10 @@ class Compiler:
                 existing = module_info.functions[func_name]
                 module_info.functions[func_name] = existing + builtin_function_to_info(
                     fn_def, module_info.name)
+        # Merge protocols from builtin (.py takes precedence)
+        for protocol_info in get_all_protocols_for_module(module_info.name):
+            if protocol_info.name not in module_info.protocols:
+                module_info.protocols[protocol_info.name] = protocol_info
 
     def _check_no_errors(self, compiled: CompiledModule) -> None:
         """Raise if the module has any error-level diagnostics from analysis."""

@@ -267,7 +267,8 @@ class TypeRegistrar:
                 )
             self.type_ops.validate_type(fld.type, allow_type_param_ref=is_generic, loc=fld.loc)
             # Protocol types cannot be used as field types
-            if is_protocol_type(fld.type):
+            resolved_fld_type = self.type_ops.resolve_type(fld.type)
+            if is_protocol_type(resolved_fld_type):
                 raise SemanticError(
                     f"Protocol type '{fld.type.name}' cannot be used as a field type in '{record.name}'. "
                     f"Protocols are only valid as function and method parameters",
@@ -432,7 +433,8 @@ class TypeRegistrar:
             init_defaults = record.init_method.defaults
             for i, (pname, ptype) in enumerate(record.init_method.params):
                 has_default = bool(init_defaults) and i < len(init_defaults) and init_defaults[i] is not None
-                init_params.append((pname, ptype, init_defaults[i] if has_default else None))
+                resolved_ptype = self.type_ops.resolve_type(ptype, protocols_only=True)
+                init_params.append((pname, resolved_ptype, init_defaults[i] if has_default else None))
         elif is_native and record.fields:
             # Native records without __init__: synthesize init_params from fields
             for fld in record.fields:
@@ -467,12 +469,14 @@ class TypeRegistrar:
                         f"@staticmethod '{record.name}.{method.name}'",
                         method.loc or record.loc,
                     )
-            # Substitute Self -> record type in method signatures
+            # Substitute Self -> record type and resolve cross-module protocol flags
             method_params = [
-                (n, self.type_ops.substitute_self(t, record_self_type))
+                (n, self.type_ops.resolve_type(
+                    self.type_ops.substitute_self(t, record_self_type), protocols_only=True))
                 for n, t in method.params
             ]
-            method_return = self.type_ops.substitute_self(method.return_type, record_self_type)
+            method_return = self.type_ops.resolve_type(
+                self.type_ops.substitute_self(method.return_type, record_self_type), protocols_only=True)
 
             for pname, ptype in method_params:
                 if has_auto_readonly(ptype):
@@ -513,6 +517,8 @@ class TypeRegistrar:
             method.is_readonly = resolved_readonly
             method_type_param_bounds = self._resolve_type_param_bounds(
                 method.type_param_bounds, method.loc or record.loc)
+            if method_type_param_bounds:
+                method.type_param_bounds.update(method_type_param_bounds)
             method_defaults = method.defaults if method.defaults else []
             # Propagate resolved types back to AST so analyzer/codegen see concrete types.
             # Attach class-level type param bounds to TypeParamRef instances so that
@@ -613,15 +619,23 @@ class TypeRegistrar:
                 is_readonly=False,
             )]
 
-        # Convert parsed bounds to NamedType (validate they are protocols)
+        # Convert parsed bounds to NamedType (validate they are protocols).
+        # Same-file protocols already have is_protocol=True from the parser;
+        # resolve_type fixes cross-module protocols (e.g. imported Sized).
         type_param_bounds: dict[str, NamedType] = {}
         for param_name, bound_type in record.type_param_bounds.items():
-            if not is_protocol_type(bound_type):
+            resolved_bound = self.type_ops.resolve_type(bound_type) if not is_protocol_type(bound_type) else bound_type
+            if not is_protocol_type(resolved_bound):
                 raise SemanticError(
-                    f"Type parameter bound must be a protocol, got {bound_type}",
+                    f"Type parameter bound must be a protocol, got {resolved_bound}",
                     record.loc,
                 )
-            type_param_bounds[param_name] = bound_type
+            type_param_bounds[param_name] = resolved_bound
+
+        # Update the record's parsed bounds with resolved versions so they
+        # propagate to record_ctx.type_param_bounds during method analysis.
+        if type_param_bounds:
+            record.type_param_bounds.update(type_param_bounds)
 
         # Attach bounds to TypeParamRef instances in method signatures so that
         # downstream code (codegen, type_ops) can check bounds without context lookup.
@@ -1319,6 +1333,10 @@ class TypeRegistrar:
 
         type_param_bounds = self._resolve_type_param_bounds(
             func.type_param_bounds, func.loc)
+        # Propagate resolved bounds back to AST so get_type_param_bound sees
+        # correct is_protocol flags during body analysis (safe: fresh AST per compile)
+        if type_param_bounds:
+            func.type_param_bounds.update(type_param_bounds)
 
         fi_linkage = _LINKAGE_MAP[func.linkage.name]
 
@@ -1386,6 +1404,9 @@ class TypeRegistrar:
 
             type_param_bounds = self._resolve_type_param_bounds(
                 func.type_param_bounds, func.loc)
+            # Propagate resolved bounds back to AST (safe: fresh AST per compile)
+            if type_param_bounds:
+                func.type_param_bounds.update(type_param_bounds)
 
             func_defaults = func.defaults if func.defaults else []
             info = FunctionInfo(

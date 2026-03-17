@@ -57,6 +57,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // from typing import Iterable
     // test_lazy_variable_count()
     test_lazy_variable_count();
     // test_lazy_for_loop()

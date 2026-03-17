@@ -2,17 +2,18 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "typing.hpp"
 
 namespace tpy_user::main {
 
-template<::tpy::Sized T> struct Container;
+template<::tpy_user::typing::Sized T> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
 // class Container[T: Sized]:
-template<::tpy::Sized T>
+template<::tpy_user::typing::Sized T>
 struct Container {
     //     item: T
     T item;

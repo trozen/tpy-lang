@@ -41,19 +41,24 @@ class TypeOperations:
     def __init__(self, ctx: SemanticContext):
         self.ctx = ctx
 
-    def resolve_type(self, typ: TpyType) -> TpyType:
+    def resolve_type(self, typ: TpyType, *, protocols_only: bool = False) -> TpyType:
         """Resolve a type, setting is_protocol flag on NamedType when needed.
 
         During parsing, NamedType may be created with is_protocol=False for
         names that are actually protocols. This method sets the flag correctly.
         Also converts NamedType("T") to TypeParamRef("T") when T is a type
-        parameter in the current function or record scope.
+        parameter in the current function or record scope (unless protocols_only).
+
+        Args:
+            protocols_only: If True, only resolve protocol flags -- skip
+                TypeParamRef conversion. Used during record registration when
+                type parameter scope is not yet active.
         """
         if isinstance(typ, NamedType):
             # Convert bare NamedType to TypeParamRef when it matches a type
             # parameter name in scope (method-level type params in annotations
             # are parsed as NamedType but should be TypeParamRef).
-            if not typ.type_args and not typ.is_protocol:
+            if not protocols_only and not typ.type_args and not typ.is_protocol:
                 from ..parse import TpyFunction
                 func = self.ctx.current_function
                 if isinstance(func, TpyFunction) and typ.name in func.type_params:
@@ -61,9 +66,11 @@ class TypeOperations:
                     return TypeParamRef(typ.name, bound=bound)
                 if typ.name in (self.ctx.record_ctx.type_params or []):
                     return TypeParamRef(typ.name)
-            # Check if this should have is_protocol set
+            # Check if this should have is_protocol set.
+            # Only upgrade False -> True, never downgrade (parser may know about
+            # same-file protocols not yet in the sema registry).
             protocol_info = self.ctx.registry.get_protocol(typ.name)
-            resolved_is_protocol = protocol_info is not None
+            resolved_is_protocol = typ.is_protocol or (protocol_info is not None)
             resolved_is_dynamic = bool(protocol_info and protocol_info.is_dynamic)
             # Set _module_qname for protocols from their ProtocolInfo.module
             resolved_qname = typ._module_qname
@@ -75,7 +82,7 @@ class TypeOperations:
             # Recursively resolve type arguments
             if typ.type_args:
                 new_args = tuple(
-                    self.resolve_type(arg) if isinstance(arg, TpyType) else arg
+                    self.resolve_type(arg, protocols_only=protocols_only) if isinstance(arg, TpyType) else arg
                     for arg in typ.type_args
                 )
                 # Identity check: NamedType.__eq__ excludes is_dynamic_protocol
@@ -95,23 +102,27 @@ class TypeOperations:
                 return NamedType(typ.name, typ.type_args, resolved_is_protocol,
                                  resolved_qname, resolved_is_dynamic)
         elif isinstance(typ, PtrType):
-            resolved_pointee = self.resolve_type(typ.pointee)
+            resolved_pointee = self.resolve_type(typ.pointee, protocols_only=protocols_only)
             if resolved_pointee is not typ.pointee:
                 return PtrType(resolved_pointee, is_readonly=typ.is_readonly)
         elif isinstance(typ, OwnType):
-            resolved_wrapped = self.resolve_type(typ.wrapped)
+            resolved_wrapped = self.resolve_type(typ.wrapped, protocols_only=protocols_only)
             if resolved_wrapped is not typ.wrapped:
                 return OwnType(resolved_wrapped)
         elif isinstance(typ, ReadonlyType):
-            resolved_wrapped = self.resolve_type(typ.wrapped)
+            resolved_wrapped = self.resolve_type(typ.wrapped, protocols_only=protocols_only)
             if resolved_wrapped is not typ.wrapped:
                 return ReadonlyType(resolved_wrapped)
         elif isinstance(typ, AutoReadonlyType):
-            resolved_wrapped = self.resolve_type(typ.wrapped)
+            resolved_wrapped = self.resolve_type(typ.wrapped, protocols_only=protocols_only)
             if resolved_wrapped is not typ.wrapped:
                 return AutoReadonlyType(resolved_wrapped)
+        elif isinstance(typ, OptionalType):
+            resolved_inner = self.resolve_type(typ.inner, protocols_only=protocols_only)
+            if resolved_inner is not typ.inner:
+                return OptionalType(resolved_inner, force_pointer_repr=typ.uses_pointer_repr())
         elif isinstance(typ, UnionType):
-            resolved_members = tuple(self.resolve_type(m) for m in typ.members)
+            resolved_members = tuple(self.resolve_type(m, protocols_only=protocols_only) for m in typ.members)
             if any(new is not old for new, old in zip(resolved_members, typ.members)):
                 return UnionType(resolved_members)
         return typ

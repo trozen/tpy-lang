@@ -19,17 +19,6 @@
 namespace tpy {
 
 /**
- * Sized concept - types that support tpy::__len__()
- *
- * Matches Python's typing.Protocol approach to structural subtyping.
- * A type is Sized if tpy::__len__(x) is valid and returns int32_t.
- */
-template<typename T>
-concept Sized = requires(const T& t) {
-    { tpy::__len__(t) } -> std::convertible_to<int32_t>;
-};
-
-/**
  * Sequence concept - types that support tpy::__len__() and tpy::__getitem__()
  *
  * Generic protocol parameterized by element type ElemT.

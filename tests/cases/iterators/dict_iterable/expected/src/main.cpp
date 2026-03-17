@@ -38,6 +38,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Dict types conform to Iterable[T], passable to generic functions
+    // from typing import Iterable
     // main()
     main();
 }

@@ -785,7 +785,7 @@ class TpyModule:
     #                  module_name -> None (for "import X")
     #                  module_name -> "*" (for "from X import *")
     imports: dict[str, set[tuple[str, str]] | None | str] = field(default_factory=dict)
-    # User module imports (modules not in SPECIAL_MODULES, resolved as files): {module_name: line_number}
+    # Modules to resolve as files: {module_name: line_number}
     user_module_imports: dict[str, int] = field(default_factory=dict)
     # Module aliases from "from . import submod" -> {canonical_name: local_name}
     module_aliases: dict[str, str] = field(default_factory=dict)

@@ -29,8 +29,8 @@ from .nodes import (
 )
 
 from .imports import (
-    SPECIAL_MODULES, TPY_TYPES,
-    PYTHON_BUILTINS, TYPING_NAMES, TPY_TYPE_NAMES,
+    PARSER_KEYWORDS, is_parser_keyword_module, is_parser_keyword,
+    TPY_TYPES, PYTHON_BUILTINS, TYPING_NAMES, TPY_TYPE_NAMES,
     ImportProcessor,
 )
 
@@ -59,8 +59,8 @@ __all__ = [
     "ParseWarning", "TpyModule",
     "is_super_del_call",
     # imports
-    "SPECIAL_MODULES", "TPY_TYPES",
-    "PYTHON_BUILTINS", "TYPING_NAMES", "TPY_TYPE_NAMES",
+    "PARSER_KEYWORDS", "is_parser_keyword_module", "is_parser_keyword",
+    "TPY_TYPES", "PYTHON_BUILTINS", "TYPING_NAMES", "TPY_TYPE_NAMES",
     "ImportProcessor",
     # parser
     "Parser",

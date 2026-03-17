@@ -31,6 +31,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Test aliased module with qualified access (import typing as t)
+    // import typing as t
     // main()
     main();
 }

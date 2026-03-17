@@ -255,7 +255,9 @@ class TestSendSyncRecordDerivation:
             "    print(len(c.items))\n"
             "main()\n"
         )
-        compiler = Compiler.from_source(source)
+        from .cli import get_lib_dir
+        lib_dirs = [get_lib_dir() / "stdlib"]
+        compiler = Compiler.from_source(source, lib_dirs=lib_dirs)
         compiler.compile()
         container_type = NamedType("Container")
         assert container_type.is_send()

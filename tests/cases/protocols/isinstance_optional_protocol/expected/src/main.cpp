@@ -34,6 +34,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # isinstance() on Optional[Protocol] -- narrows away None at compile time
+    // from typing import Sized
     // main()
     main();
 }

@@ -180,6 +180,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Builtin types (list, str, Array, etc.) conform to Iterable[T]:
+    // # 1. Passed to Iterable[T] params  2. Explicit __iter__()  3. iter() builtin
+    // from typing import Iterable
     // main()
     main();
 }

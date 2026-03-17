@@ -2,6 +2,7 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "typing.hpp"
 
 namespace tpy_user::main {
 
@@ -9,7 +10,7 @@ struct MyCollection;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy::Sized T_items>
+template<::tpy_user::typing::Sized T_items>
 ::tpy::BigInt count(const T_items& items);
 void main();
 
@@ -37,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const MyCollection& obj) {
 }
 
 // def count(items: Sized) -> int:
-template<::tpy::Sized T_items>
+template<::tpy_user::typing::Sized T_items>
 ::tpy::BigInt count(const T_items& items) {
     //     return len(items)
     return ::tpy::BigInt(::tpy::__len__(items));

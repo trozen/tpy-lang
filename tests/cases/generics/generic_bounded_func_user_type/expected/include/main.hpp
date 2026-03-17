@@ -2,6 +2,7 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "typing.hpp"
 
 namespace tpy_user::main {
 
@@ -9,7 +10,7 @@ struct MyContainer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy::Sized T>
+template<::tpy_user::typing::Sized T>
 int32_t get_length(::tpy::param_val_or_ref_t<T> item);
 void main();
 
@@ -43,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const MyContainer& obj) {
 }
 
 // def get_length[T: Sized](item: T) -> Int32:
-template<::tpy::Sized T>
+template<::tpy_user::typing::Sized T>
 int32_t get_length(::tpy::param_val_or_ref_t<T> item) {
     //     # Note: Can't call len(item) here yet - returning fixed value
     //     # This tests that the bound is validated during inference

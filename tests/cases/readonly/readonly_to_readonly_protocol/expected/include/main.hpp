@@ -2,12 +2,13 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "typing.hpp"
 
 namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy::Sized T_s>
+template<::tpy_user::typing::Sized T_s>
 int32_t get_len(const T_s& s);
 template<::tpy::Sequence<int32_t> T_s>
 int32_t get_first(const T_s& s);
@@ -15,7 +16,7 @@ void observe(const std::vector<int32_t>& items);
 void main();
 
 // def get_len(s: Sized) -> Int32:
-template<::tpy::Sized T_s>
+template<::tpy_user::typing::Sized T_s>
 int32_t get_len(const T_s& s) {
     //     return Int32(len(s))
     return ::tpy::__len__(s);

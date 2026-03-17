@@ -348,7 +348,7 @@ Library search roots and CPython stubs:
 |-----------|---------|
 | `tpy/` | Search root for TPy ecosystem (tpyc looks here for `tplib` etc.) |
 | `tpy/tplib/` | TPy standard library: `Box[T]`, custom collections |
-| `stdlib/` | Python stdlib analogs for TPy: `bisect`, etc. |
+| `stdlib/` | Python stdlib analogs for TPy: `typing` (Sized protocol), `bisect`, etc. `typing` is implicitly compiled even without explicit import. |
 | `cpy/tpy/` | CPython stubs ONLY (not seen by tpyc): `Int32`, `Ptr`, `Array`, decorators; submodules: `mem`, `unsafe` |
 
 **Compiler search order** (first match wins):
