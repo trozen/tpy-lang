@@ -1,4 +1,7 @@
-from tpy import Int32, OptIterator
+# Tests passing user-defined iterators to Iterator[T] protocol params
+from __future__ import annotations
+from typing import Iterator
+from tpy import Int32
 
 class Counter:
     current: Int32
@@ -8,31 +11,34 @@ class Counter:
         self.current = start
         self.limit = limit
 
-    def __next_opt__(self) -> Int32 | None:
+    def __iter__(self) -> Counter:
+        return self
+
+    def __next__(self) -> Int32:
         if self.current < self.limit:
             val = self.current
             self.current += 1
             return val
-        return None
+        raise StopIteration
 
-def sum_iter(it: OptIterator[Int32]) -> Int32:
+def sum_iter(it: Iterator[Int32]) -> Int32:
     total: Int32 = 0
     for x in it:
         total += x
     return total
 
-def count_iter(it: OptIterator[Int32]) -> Int32:
+def count_iter(it: Iterator[Int32]) -> Int32:
     n: Int32 = 0
     for x in it:
         n += 1
     return n
 
-def first_or_fallback(it: OptIterator[Int32], fallback: Int32) -> Int32:
+def first_or_fallback(it: Iterator[Int32], fallback: Int32) -> Int32:
     for x in it:
         return x
     return fallback
 
-# Pass Counter objects (which extend OptIterator[Int32])
+# Pass Counter objects (which satisfy Iterator[Int32])
 print(sum_iter(Counter(0, 5)))          # 0+1+2+3+4 = 10
 print(sum_iter(Counter(1, 6)))          # 1+2+3+4+5 = 15
 

@@ -735,71 +735,6 @@ def get_extends_protocol_type_arg(
     return None
 
 
-def get_native_iterator_element_type(tpy_type: "TpyType", registry: "TypeRegistry | None" = None) -> "TpyType | None":
-    """If type is/extends OptIterator[T], return T. Otherwise None."""
-    from tpyc.typesys import NamedType, is_protocol_type
-
-    # Direct OptIterator[T] protocol type
-    if is_protocol_type(tpy_type) and tpy_type.qualified_name() == "tpy.OptIterator":
-        if tpy_type.type_args:
-            return tpy_type.type_args[0]
-        return None
-
-    # Builtin type extending OptIterator (no registry: user records handled
-    # below via method introspection, not implemented_protocols)
-    result = get_extends_protocol_type_arg(tpy_type, "OptIterator")
-    if result is not None:
-        return result
-
-    # User-defined records with __next_opt__()/__next__() -> Optional[T]
-    if registry is not None:
-        if isinstance(tpy_type, NamedType) and tpy_type.is_user_record:
-            return _find_record_next_element(tpy_type.name, tpy_type.type_args, registry)
-
-    return None
-
-
-def _find_record_next_element(
-    record_name: str, type_args: "list[TpyType] | None", registry: "TypeRegistry",
-) -> "TpyType | None":
-    """Walk a record's method table (and parent chain) looking for __next_opt__() -> Optional[T].
-
-    Classes defining __next__() -> T have a synthesized __next_opt__() -> Optional[T]
-    added during registration, so only __next_opt__ needs to be checked here.
-    """
-    from tpyc.typesys import NamedType, OptionalType, OwnType, TypeParamRef
-
-    record = registry.find_record(record_name)
-    if record is None:
-        return None
-
-    type_subst: dict[str, "TpyType"] = {}
-    if record.type_params and type_args:
-        type_subst = dict(zip(record.type_params, type_args))
-
-    for method in record.get_method_overloads("__next_opt__"):
-        if len(method.params) == 0 and isinstance(method.return_type, OptionalType):
-            inner = method.return_type.inner
-            # __next__() -> Own[T] produces Optional[Own[T]]; unwrap Own
-            if isinstance(inner, OwnType):
-                inner = inner.wrapped
-            if isinstance(inner, TypeParamRef) and inner.name in type_subst:
-                return type_subst[inner.name]
-            return inner
-
-    # Walk parent chain
-    if record.parent and isinstance(record.parent, NamedType) and record.parent.is_user_record:
-        parent_args = list(record.parent.type_args) if record.parent.type_args else None
-        if type_subst and parent_args:
-            parent_args = [
-                type_subst[a.name] if isinstance(a, TypeParamRef) and a.name in type_subst else a
-                for a in parent_args
-            ]
-        return _find_record_next_element(record.parent.name, parent_args, registry)
-
-    return None
-
-
 def get_error_return_next_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
     """If type has __next__() with @error_return(StopIteration), return element type T."""
     from tpyc.typesys import NamedType, OwnType, TypeParamRef
@@ -938,7 +873,7 @@ def _find_iter_method_info(
                 elem = type_subst[elem.name]
             return IterInfo(elem, iter_is_native=True)
 
-        # User-defined iterator with __next_opt__ or error_return __next__
+        # User-defined iterator with error_return __next__
         if isinstance(ret, NamedType) and ret.is_user_record:
             iter_type_args = ret.type_args
             if iter_type_args and type_subst:
@@ -946,9 +881,7 @@ def _find_iter_method_info(
                     type_subst.get(a.name, a) if isinstance(a, TypeParamRef) else a
                     for a in iter_type_args
                 ]
-            elem = _find_record_next_element(ret.name, iter_type_args, registry)
-            if elem is None:
-                elem = _find_error_return_next_element(ret.name, iter_type_args, registry)
+            elem = _find_error_return_next_element(ret.name, iter_type_args, registry)
             if elem is not None:
                 iter_native = is_native_iterable(ret, registry)
                 return IterInfo(elem, iter_is_native=iter_native)

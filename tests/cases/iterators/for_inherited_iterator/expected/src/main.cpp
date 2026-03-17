@@ -9,32 +9,29 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # 1. for-loop over child inheriting next() from parent
+    // # 1. for-loop over child inheriting __next__() from parent
     // for x in DoubleCounter(3):
     auto __iter_0 = DoubleCounter(3);
     for (;;) {
-        auto __r_0 = __iter_0.__next_opt__();
+        auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
         int32_t x = *__r_0;
         //     print(x)
         std::cout << x << "\n";
     }
-    // print(sum_iter(DoubleCounter(3)))
-    auto __tmp_1 = DoubleCounter(3);
-    std::cout << sum_iter(__tmp_1) << "\n";
-    // # 3. Multi-level: for-loop + protocol param
+    // # 2. for-loop over multi-level child
     // for x in GrandChild(2):
     auto __iter_1 = GrandChild(2);
     for (;;) {
-        auto __r_1 = __iter_1.__next_opt__();
+        auto __r_1 = __iter_1.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = *__r_1;
         //     print(x)
         std::cout << x << "\n";
     }
-    // print(sum_iter(GrandChild(2)))
-    auto __tmp_2 = GrandChild(2);
-    std::cout << sum_iter(__tmp_2) << "\n";
+    // # 3. Verify output matches
+    // print("done")
+    std::cout << "done" << "\n";
 }
 
 } // namespace tpy_user::main

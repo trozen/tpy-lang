@@ -338,7 +338,7 @@ The codegen should reuse the existing for-loop iteration strategies:
 | `list[T]`, `Array[T,N]`, `Span[T]` | `begin()/end()` range | Yes |
 | `range(N)` | Counter loop (`for i = 0; i < N; ++i`) | Yes |
 | `dict[K,V]` | Native iteration over ordered_map | Yes |
-| `Iterator[T]` / `Iterable[T]` | `__next_opt__` while-loop | Yes |
+| `Iterator[T]` / `Iterable[T]` | `__next__` while-loop (`std::expected`) | Yes |
 
 The existing `_gen_for_each` already handles all these cases. The comprehension codegen
 wraps the same logic inside the IIFE.
@@ -489,8 +489,8 @@ squares: list[Int32] = list(x * x for x in range(5))
 
 The codegen produces a mutable C++ lambda returning `optional<T>`, wrapped in
 `tpy::generator_wrapper<T, F>` via `tpy::make_generator<T>(lambda)`. The
-wrapper provides `__next_opt__()` and `__iter__()`, integrating with
-`iter_adapt.hpp` for for-loop and iterable infrastructure.
+wrapper provides `__next__()` (returning `std::expected<T, StopIteration>`) and
+`__iter__()`, integrating with the standard iterator infrastructure.
 
 ```python
 result = sum_positive(x * x for x in data if x > 0)
@@ -540,7 +540,7 @@ Generator expressions produce rvalue temporaries. Two mechanisms handle this:
 ### Type system
 
 `GenExprType(element_type)` is an internal-only type (not user-facing). It
-satisfies `Iterable[T]` and `OptIterator[T]` protocols via special cases in
+satisfies `Iterable[T]` and `Iterator[T]` protocols via special cases in
 `protocols.py`. The C++ type is always `auto` (deduced from `make_generator`).
 
 ### Future optimization: fused IIFE for builtins

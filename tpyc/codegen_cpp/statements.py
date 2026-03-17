@@ -2067,7 +2067,6 @@ class StatementGenerator:
 
         call is the method suffix appended to the iterator name, e.g.:
           ".__next__()"       -- error_return user iterators
-          ".__next_opt__()"   -- OptIterator built-in types
 
         When iter_name is provided, the iterator variable is already allocated
         by the caller and no capture line is emitted.
@@ -2119,11 +2118,11 @@ class StatementGenerator:
     def _gen_direct_next_loop_with_iter(self, out: TextIO, stmt: TpyForEach, indent: str,
                                          iterable_expr: str, elem_type: TpyType,
                                          iter_call: str = ".__iter__",
-                                         next_call: str = "iter_next") -> None:
+                                         next_call: str = ".__next__()") -> None:
         """Call __iter__() on source, then direct loop on the resulting iterator.
 
         iter_call: how to get the iterator (".__iter__" for method, "::tpy::__iter__" for free fn)
-        next_call: how to advance (".__next__()" or ".__next_opt__()")
+        next_call: how to advance (".__next__()")
         """
         n = self.ctx.iter_counter
         self.ctx.iter_counter += 1
@@ -2380,11 +2379,10 @@ class StatementGenerator:
         """Generate the loop part of a for-each (without else handling).
 
         Dispatch order:
-        - Protocol Iterator[T]: direct for(;;) with tpy::iter_next()
-        - Protocol Iterable[T]: __iter__() then direct for(;;) with tpy::iter_next()
-        - OptIterator types: direct for(;;) with .__next_opt__()
+        - Protocol Iterator[T]: direct for(;;) with .__next__()
+        - Protocol Iterable[T]: __iter__() then direct for(;;) with .__next__()
         - error_return __next__ types: direct for(;;) with .__next__()
-        - __iter__()-based types: __iter__() then direct for(;;) with tpy::iter_next()
+        - __iter__()-based types: __iter__() then direct for(;;) with .__next__()
         - Native C++ ranges: begin/end loop
         """
         # Enum iteration: `for c in Color` -> range over EnumUtil<Color>::members
@@ -2395,7 +2393,7 @@ class StatementGenerator:
             self._gen_begin_end_loop(out, stmt, indent, iterable, enum_type)
             return
 
-        from tpyc.modules import (get_native_iterator_element_type, get_iter_info,
+        from tpyc.modules import (get_iter_info,
                                    get_error_return_next_element_type)
         iterable_type = self.types.get_resolved_type(stmt.iterable)
 
@@ -2441,14 +2439,6 @@ class StatementGenerator:
             if elem_type:
                 self._gen_begin_end_loop(out, stmt, indent, iterable, elem_type, is_lvalue=False)
                 return
-
-        # Check for OptIterator types -- direct loop (prefer __next_opt__ over __next__)
-        iter_elem = get_native_iterator_element_type(iterable_type, registry=self.ctx.analyzer.registry)
-        if iter_elem is not None:
-            iterable = self.expressions.gen_expr_deref(stmt.iterable)
-            self._gen_direct_next_loop(out, stmt, indent, iterable, sema_elem or iter_elem,
-                                        call=".__next_opt__()")
-            return
 
         # Check for error_return __next__ iterators -- direct loop
         er_elem = get_error_return_next_element_type(iterable_type, registry=self.ctx.analyzer.registry)

@@ -9,7 +9,6 @@
 
 #include <cstdint>
 #include <iterator>
-#include <optional>
 #include <ranges>
 #include <type_traits>
 
@@ -42,19 +41,6 @@ concept NativeIterable = requires(const T& t) {
     { std::ranges::begin(t) } -> std::input_or_output_iterator;
     { std::ranges::end(t) } -> std::sentinel_for<decltype(std::ranges::begin(t))>;
     { *std::ranges::begin(t) } -> std::convertible_to<ElemT>;
-};
-
-/**
- * OptIterator concept - types that produce values lazily via __next_opt__()
- *
- * A type is OptIterator<ElemT> if calling __next_opt__() returns
- * std::optional<ElemT>. Used for built-in C++ iterators (Range, SpanIter)
- * and generator expressions. User-defined iterators use __next__() with
- * @error_return(StopIteration) instead.
- */
-template<typename T, typename ElemT>
-concept OptIterator = requires(T& t) {
-    { t.__next_opt__() } -> std::same_as<std::optional<ElemT>>;
 };
 
 /**

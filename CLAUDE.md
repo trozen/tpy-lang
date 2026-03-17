@@ -335,7 +335,7 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `enum.hpp` | `EnumUtil<T>` primary template for enum name/value/members support |
 | `dynamic.hpp` | `Adapter<Base, T>` and `RefAdapter<Base, T>` for `@dynamic` protocols |
 | `iterable_ops.hpp` | Non-range overloads for container operations (`list_extend`, `str_join`, etc.) |
-| `iter_adapt.hpp` | Wraps `__next_opt__()` types into C++ input iterators (begin/end) |
+| `generator.hpp` | `generator_wrapper` and `make_generator` for generator expressions |
 | `span_iter.hpp` | `tpy::SpanIter<T>` lightweight iterator over contiguous span |
 
 Generated code requires C++23 (for `std::ranges` concepts).

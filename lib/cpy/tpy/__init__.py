@@ -494,12 +494,6 @@ class NativeIterable(_Protocol[T]):
 
 
 @_runtime_checkable
-class OptIterator(_Protocol[T]):
-    """Types that produce values lazily via next()."""
-    def __iter__(self): ...
-
-
-@_runtime_checkable
 class Deref(_Protocol[T]):
     """Types that can be dereferenced to yield T."""
     def __deref__(self): ...

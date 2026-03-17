@@ -5,49 +5,47 @@
 
 namespace tpy_user::main {
 
-struct PairIter;
+struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-// class PairIter:
-struct PairIter {
+// class Counter:
+struct Counter {
     //     current: Int32
     int32_t current;
     //     limit: Int32
     int32_t limit;
 
     //     def __init__(self, limit: Int32) -> None:
-    PairIter() = default;
-    explicit PairIter(int32_t limit) : current(0), limit(limit) {}
+    Counter() = default;
+    explicit Counter(int32_t limit) : current(0), limit(limit) {}
 
-    //     def __iter__(self) -> PairIter:
-    PairIter& __iter__() {
+    //     def __iter__(self) -> Counter:
+    Counter& __iter__() {
         //         return self
         return (*this);
     }
 
-    //     def __next__(self) -> tuple[str, Int32]:
-    std::expected<std::tuple<std::string, int32_t>, StopIteration> __next__() {
+    //     def __next__(self) -> Int32:
+    std::expected<int32_t, StopIteration> __next__() {
         //         if self.current < self.limit:
         if ((this->current < this->limit)) {
-            //             key = str(self.current)
-            std::string key = ::tpy::fixed_to_str<int32_t>(this->current);
-            //             val = self.current * 10
-            int32_t val = (::tpy::mul_check<int32_t>(this->current, 10));
+            //             val = self.current
+            int32_t val = this->current;
             //             self.current += 1
             this->current = ::tpy::add_check<int32_t>(this->current, 1);
-            //             return (key, val)
-            return std::tuple<std::string, int32_t>{key, val};
+            //             return val
+            return val;
         }
         //         raise StopIteration
         return std::unexpected(StopIteration{});
     }
 };
 
-inline std::ostream& operator<<(std::ostream& os, const PairIter& obj) {
-    os << "PairIter("
+inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
+    os << "Counter("
        << "current=" << obj.current
        << ", "
        << "limit=" << obj.limit

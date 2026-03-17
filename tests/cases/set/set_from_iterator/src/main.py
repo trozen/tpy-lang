@@ -1,4 +1,4 @@
-# Tests list() constructor from user-defined iterator
+# Tests set() constructor from user-defined iterator
 from __future__ import annotations
 from tpy import Int32
 
@@ -20,5 +20,9 @@ class Counter:
             return val
         raise StopIteration
 
-result = list(Counter(5))
-print(result)
+def main() -> None:
+    s = set(Counter(5))
+    print(s)
+    print(len(s))
+
+main()

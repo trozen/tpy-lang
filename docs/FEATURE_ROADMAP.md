@@ -1047,7 +1047,7 @@ control-flow-exception pattern from the general exception model (C1/C2).
 
 **Current state**: Done. All three phases complete: generic `@error_return(E)` mechanism
 (Phase 1), auto-add on `__next__` with `StopIteration` built-in type (Phase 2), and
-cleanup with reverse synthesis, `tpy::iter_next()` dispatch, and direct for-loop codegen
+cleanup with unified `__next__()` -> `std::expected` and direct for-loop codegen
 (Phase 3). See `docs/ERROR_RETURN_DESIGN.md` for full design.
 
 **Dependencies**: None for the basic annotation. Interacts with the general exception model
@@ -1525,7 +1525,7 @@ def fibonacci() -> Iterator[int]:
         a, b = b, a + b
 ```
 
-Maps to state-machine class implementing `OptIterator`. Could be zero-alloc if
+Maps to state-machine class implementing `Iterator`. Could be zero-alloc if
 state machine is stack-allocated.
 
 **Current state**: Not started. `yield` is in the parser's unsupported keyword list.

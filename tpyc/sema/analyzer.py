@@ -1033,15 +1033,6 @@ class SemanticAnalyzer:
         self.ctx.record_ctx.type_param_kinds = record.type_param_kinds if record.type_param_kinds else None
         self.ctx.record_ctx.type_param_bounds = record.type_param_bounds if record.type_param_bounds else None
 
-        # Reject class defining both __next__ and __next_opt__ (__next_opt__ compat wrapper is auto-emitted)
-        method_names = {m.name for m in record.methods}
-        if "__next__" in method_names and "__next_opt__" in method_names:
-            next_method = next(m for m in record.methods if m.name == "__next__")
-            raise self._error(
-                "Cannot define both __next__ and __next_opt__ in the same class",
-                next_method
-            )
-
         # Collect method overload groups for this record
         self._collect_method_overload_groups(record)
 

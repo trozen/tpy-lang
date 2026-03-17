@@ -6,7 +6,7 @@
 |-------|-------------|--------|
 | 1 | Generic mechanism: `@error_return(E)` decorator, `raise E` codegen (`std::unexpected`), `try/except` parsing + caller enforcement, `std::expected<T, E>` return + unwrap, `try/except/else` | Done |
 | 2 | Iterator migration: auto-add `@error_return(StopIteration)` on `__next__`, `StopIteration` built-in type, for-loop codegen using `std::expected` directly | Done |
-| 3 | Cleanup: reverse synthesis (`__next_opt__` -> synthesize `__next__`), remove compat wrapper/panic stub/`iter_adapt`/`try_next()`, direct loops for `__next_opt__` types, `tpy::iter_next()` dispatch | Done |
+| 3 | Cleanup: all iterators unified on `__next__()` -> `std::expected`, removed legacy compat wrappers | Done |
 
 ### Future Extensions
 
@@ -217,7 +217,7 @@ std::expected<int32_t, StopIteration> __next__() {
 }
 ```
 
-Note: no more `__next_opt__` renaming. The method keeps its original name.
+The method keeps its original name `__next__` in the generated C++.
 
 ### `try/except` -- Caller Side
 
@@ -342,8 +342,7 @@ Generates:
 ### For-Loop Integration
 
 The for-loop is the primary consumer of `__next__` with
-`@error_return(StopIteration)`. The codegen changes from the current
-`iter_adapt(__next_opt__)` pattern to directly using `std::expected`:
+`@error_return(StopIteration)`. The codegen uses `std::expected` directly:
 
 ```python
 for x in counter:
@@ -375,9 +374,6 @@ while (true) {
 }
 ```
 
-This replaces the `iter_adapt` wrapper entirely for error_return iterators.
-The generated code is simpler and more direct.
-
 **NativeIterable types** (list, Array, Span, str) are unaffected -- they continue
 to use C++ range-based `for` with `begin()`/`end()`.
 
@@ -391,15 +387,6 @@ When the compiler sees `def __next__(self) -> T` without an explicit
 3. The user-visible behavior is identical to writing the decorator explicitly.
 
 This means **all existing `__next__` methods continue to work unchanged**.
-
-### `OptIterator` Protocol Status
-
-`OptIterator[T]` requires `__next_opt__() -> Optional[T]`. Used by built-in C++
-iterators (Range, SpanIter) and generator expressions. User-defined iterators use
-`__next__()` with `@error_return(StopIteration)` instead.
-
-The compiler synthesizes a `__next__` entry from `__next_opt__` for `Iterator[T]`
-protocol conformance. `tpy::iter_next()` dispatches to whichever method exists.
 
 ---
 

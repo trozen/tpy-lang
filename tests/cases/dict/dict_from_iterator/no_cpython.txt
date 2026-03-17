@@ -1,1 +1,0 @@
-OptIterator protocol (__next_opt__) is TPy-specific

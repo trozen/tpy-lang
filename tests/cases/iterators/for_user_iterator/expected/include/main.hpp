@@ -2,6 +2,7 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "typing.hpp"
 
 namespace tpy_user::main {
 
@@ -9,7 +10,7 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy::OptIterator<int32_t> T_it>
+template<::tpy::Iterator<int32_t> T_it>
 int32_t sum_iter(T_it& it);
 
 // class Counter:
@@ -23,8 +24,14 @@ struct Counter {
     Counter() = default;
     explicit Counter(int32_t limit) : current(0), limit(limit) {}
 
-    //     def __next_opt__(self) -> Int32 | None:
-    std::optional<int32_t> __next_opt__() {
+    //     def __iter__(self) -> Counter:
+    Counter& __iter__() {
+        //         return self
+        return (*this);
+    }
+
+    //     def __next__(self) -> Int32:
+    std::expected<int32_t, StopIteration> __next__() {
         //         if self.current < self.limit:
         if ((this->current < this->limit)) {
             //             result = self.current
@@ -34,13 +41,7 @@ struct Counter {
             //             return result
             return result;
         }
-        //         return None
-        return std::nullopt;
-    }
-
-    std::expected<int32_t, StopIteration> __next__() {
-        auto __opt = __next_opt__();
-        if (__opt.has_value()) return *std::move(__opt);
+        //         raise StopIteration
         return std::unexpected(StopIteration{});
     }
 };
@@ -54,16 +55,16 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
-// # 2. Pass to function taking OptIterator[Int32] (structural conformance)
-// def sum_iter(it: OptIterator[Int32]) -> Int32:
-template<::tpy::OptIterator<int32_t> T_it>
+// # 2. Pass to function taking Iterator[Int32] (structural conformance)
+// def sum_iter(it: Iterator[Int32]) -> Int32:
+template<::tpy::Iterator<int32_t> T_it>
 int32_t sum_iter(T_it& it) {
     //     total: Int32 = 0
     int32_t total = 0;
     //     for x in it:
     auto& __iter_0 = it;
     for (;;) {
-        auto __r_0 = __iter_0.__next_opt__();
+        auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
         int32_t x = *__r_0;
         //         total += x

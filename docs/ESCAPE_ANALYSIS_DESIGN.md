@@ -587,10 +587,10 @@ propagation):
    - **Mutable Span coercion**: `Array -> Span[T]` calls `as_mut_span()` requiring
      non-const source.
    All are tracked in Phase 1 via `addr_taken_roots()` (see `context.py`).
-   - **For-loop iteration over protocol/TypeParamRef params**: `tpy::iter_adapt(T& iter)`
-     requires `T&`, so any param iterated with `for x in param` where `param` has a
-     protocol or TypeParamRef type is marked mutated. (8a.4 -- Done, part of for-loop
-     mutation tracking in `sema/statements.py`)
+   - **For-loop iteration over protocol/TypeParamRef params**: iterating with
+     `for x in param` where `param` has a protocol or TypeParamRef type requires
+     `T&` (mutation of iterator state), so the param is marked mutated. (8a.4 --
+     Done, part of for-loop mutation tracking in `sema/statements.py`)
 
 2. **Call edges** (`call_edges: list[CallEdge]`): For each call to a user function
    or method, record which caller parameter flows into which callee parameter:

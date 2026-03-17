@@ -418,10 +418,10 @@ def init_module() -> BuiltinModule:
             cpp="::tpy::as_span({self})", is_readonly=True, is_pure=True,
         )],
     }, constructors=[
-        # list(iterator) - create list from OptIterator (user-defined iterators)
-        # Checked first: OptIterator types also match Iterable, so must be tried before.
+        # list(iterator) - create list from Iterator (user-defined iterators)
+        # Checked first: Iterator types also match Iterable, so must be tried before.
         MethodDef(
-            params=[ParamDef("x", NamedType("OptIterator", (T,), is_protocol=True))],
+            params=[ParamDef("x", NamedType("Iterator", (T,), is_protocol=True))],
             returns=T,
             cpp="::tpy::collect<std::vector<{T}>>({0})",
             is_readonly=True, is_pure=True,
@@ -543,10 +543,10 @@ def init_module() -> BuiltinModule:
             is_readonly=True, is_pure=True,
         )],
     }, constructors=[
-        # dict(iterator) - create dict from OptIterator of tuple[K, V]
-        # Checked first: OptIterator types also match Iterable, so must be tried before.
+        # dict(iterator) - create dict from Iterator of tuple[K, V]
+        # Checked first: Iterator types also match Iterable, so must be tried before.
         MethodDef(
-            params=[ParamDef("x", NamedType("OptIterator", (TupleType((K, V)),), is_protocol=True))],
+            params=[ParamDef("x", NamedType("Iterator", (TupleType((K, V)),), is_protocol=True))],
             returns=V,  # Placeholder - sema infers actual dict[K,V] from argument
             cpp="::tpy::dict_collect_pairs<{K}, {V}>({0})",
             is_readonly=True, is_pure=True,
@@ -794,9 +794,9 @@ def init_module() -> BuiltinModule:
             cpp="::tpy::set_symmetric_difference_update({self}, {0})",
         )],
     }, constructors=[
-        # set(iterator) from OptIterator
+        # set(iterator) from Iterator
         MethodDef(
-            params=[ParamDef("x", NamedType("OptIterator", (T,), is_protocol=True))],
+            params=[ParamDef("x", NamedType("Iterator", (T,), is_protocol=True))],
             returns=T,
             cpp="::tpy::set_collect<{T}>({0})",
             is_readonly=True, is_pure=True,

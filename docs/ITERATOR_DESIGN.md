@@ -6,13 +6,12 @@
 |---------|--------|-------|
 | `range()` as `Range[T]` type | **Done** | Generic over Int32/BigInt |
 | `range()` counter-loop optimization | **Done** | `for i in range(n)` → C-style `for` |
-| `OptIterator[T]` protocol | **Done** | Structural: `__next_opt__() -> Optional[T]` |
-| User `__next__` + `raise StopIteration` | **Done** | Transformed to `__next_opt__` in codegen |
-| User `__next_opt__` (TurboPython-specific) | **Done** | Direct optional-return pattern |
+| `Iterator[T]` protocol | **Done** | `__next__()` with `@error_return(StopIteration)` -> `std::expected` |
+| User `__next__` + `raise StopIteration` | **Done** | Auto `@error_return(StopIteration)`, `std::expected` codegen |
 | `__iter__` container→iterator separation | **Done** | Structural detection, no protocol |
 | `NativeIterable[T]` (C++ containers) | **Done** | Marker protocol for `begin()`/`end()` |
 | Iterator consumption semantics | **Done** | `auto&` for lvalues, `auto` for rvalues |
-| `__next__()` panic stub | **Done** | Direct calls compile but panic at runtime |
+| `__next__()` explicit calls | **Done** | Direct calls require `try/except StopIteration` |
 | `Iterable[T]` protocol | **Todo** | Needs return-type conformance in protocol system |
 | Consuming iteration (`__iter__(self: Own[Self])`) | **Planned** | See `docs/CONSUMING_ITERATION_DESIGN.md` |
 | `OwnIter[T]` runtime type | **Planned** | Drain iterator for `list[T]`, owns moved `std::vector<T>` |
@@ -23,7 +22,7 @@
 | `__reversed__` / `reversed()` | **Todo** | User-defined reverse iteration |
 | `__contains__` / `in` for user types | **Todo** | Currently `in` only works on built-in containers |
 | Iterator combinators | **Todo** | `enumerate()`, `zip()`, `filter()`, `map()` |
-| Generator functions (`yield`) | **Todo** | State-machine class implementing OptIterator |
+| Generator functions (`yield`) | **Todo** | State-machine class implementing Iterator |
 | `yield from` | **Todo** | Delegation to sub-generators |
 | Generator `send()`/`throw()`/`close()` | **Todo** | Coroutine protocol |
 | `StopIteration` with value | **Todo** | Generator return values via `raise StopIteration(value)` |
@@ -42,16 +41,16 @@ The `for` statement dispatches to one of three codegen paths based on the iterab
 for x in expr:
     body
 
-    ┌─ OptIterator[T]?  ──→  while-loop (or range counter-loop)
+    ┌─ Iterator[T]?      ──→  while-loop (or range counter-loop)
     │
     ├─ has __iter__()?   ──→  __iter__() + while-loop
     │
     └─ NativeIterable?   ──→  C++ range-based for
 ```
 
-**Path 1: OptIterator** — types with `__next_opt__() -> Optional[T]`. Includes `Range[T]` and user-defined iterators. Range calls get an additional optimization to C-style counter loops.
+**Path 1: Iterator** -- types with `__next__()` returning `std::expected<T, StopIteration>` via `@error_return(StopIteration)`. Includes `Range[T]`, `SpanIter[T]`, and user-defined iterators. Range calls get an additional optimization to C-style counter loops.
 
-**Path 2: `__iter__` protocol** — types with `__iter__()` returning an OptIterator. The container is materialized first, then `__iter__()` is called to obtain a separate iterator object.
+**Path 2: `__iter__` protocol** -- types with `__iter__()` returning an Iterator. The container is materialized first, then `__iter__()` is called to obtain a separate iterator object.
 
 **Path 3: NativeIterable** -- C++ containers with `begin()`/`end()` (`list`, `Array`, `Span`, `str`). Uses C++ range-based `for` directly.
 
@@ -59,30 +58,19 @@ for x in expr:
 
 | Type | Role | C++ |
 |------|------|-----|
-| `OptIterator[T]` | Structural protocol for lazy iterators | `tpy::OptIterator` concept |
+| `Iterator[T]` | Protocol for lazy iterators (`__next__` + `@error_return(StopIteration)`) | `std::expected<T, StopIteration>` return |
 | `NativeIterable[T]` | Marker protocol for C++ containers | `tpy::NativeIterable` concept |
 | `Range[T]` | Built-in range iterator (generic) | `tpy::Range<T>` |
 
 ---
 
-## OptIterator Protocol
+## Iterator Protocol
 
-`OptIterator[T]` is a **structural protocol** — any type with `__next_opt__() -> Optional[T]` conforms automatically, no declaration needed.
+`Iterator[T]` is the standard iterator protocol. Iterators define `__next__(self) -> T` with `@error_return(StopIteration)`, which compiles to `std::expected<T, StopIteration>` in C++. The compiler auto-adds `@error_return(StopIteration)` on `__next__` methods, so the decorator is not required explicitly.
 
-### C++ Concept
+### Authoring Pattern
 
-```cpp
-template<typename T, typename ElemT>
-concept OptIterator = requires(T& t) {
-    { t.__next_opt__() } -> std::same_as<std::optional<ElemT>>;
-};
-```
-
-### Two Authoring Patterns
-
-Users can define iterators in two ways:
-
-**Pattern 1: Python-compatible** (`__next__` + `raise StopIteration`):
+**Python-compatible** (`__next__` + `raise StopIteration`):
 
 ```python
 class Counter:
@@ -104,33 +92,17 @@ class Counter:
         raise StopIteration
 ```
 
-This runs in both TurboPython and CPython. The compiler transforms it under the hood.
+This runs in both TurboPython and CPython. The compiler auto-applies `@error_return(StopIteration)`.
 
-**Pattern 2: TurboPython-specific** (`__next_opt__`):
-
-```python
-class Counter:
-    # ... same fields ...
-    def __next_opt__(self) -> Int32 | None:
-        if self.current < self.limit:
-            result = self.current
-            self.current += 1
-            return result
-        return None
-```
-
-Both patterns produce the same C++ output.
-
-### `__next__` Transformation
+### `__next__` Codegen
 
 When the compiler sees `def __next__(self) -> T`, it:
 
-1. **Sema** — validates `__next__` has an explicit return type annotation and the class doesn't also define `__next_opt__`. Synthesizes a `__next_opt__() -> Optional[T]` entry in the type registry for protocol conformance.
+1. **Sema** -- validates `__next__` has an explicit return type annotation. Auto-adds `@error_return(StopIteration)`.
 
-2. **Codegen** — emits the method body as `__next_opt__() -> std::optional<T>`:
-   - `return expr` works via C++ implicit `optional` construction
-   - `raise StopIteration` → `return std::nullopt;`
-   - Also emits a `__next__()` panic stub (so direct calls compile but fail at runtime)
+2. **Codegen** -- emits the method as `__next__() -> std::expected<T, StopIteration>`:
+   - `return expr` works via C++ implicit `std::expected` construction
+   - `raise StopIteration` -> `return std::unexpected(StopIteration{});`
 
 Generated C++ for the Counter example:
 ```cpp
@@ -140,17 +112,13 @@ struct Counter {
 
   Counter& __iter__() { return (*this); }
 
-  std::optional<int32_t> __next_opt__() {
+  std::expected<int32_t, StopIteration> __next__() {
     if (this->current < this->limit) {
       int32_t result = this->current;
       this->current = tpy::int32_add(this->current, 1);
       return result;
     }
-    return std::nullopt;
-  }
-
-  int32_t __next__() {
-    tpy::tpy_panic("__next__() is not directly callable; use a for-loop");
+    return std::unexpected(StopIteration{});
   }
 };
 ```
@@ -160,10 +128,9 @@ struct Counter {
 | Rule | Stage |
 |------|-------|
 | `__next__` must have explicit return type | Sema |
-| Cannot define both `__next__` and `__next_opt__` | Sema |
-| `raise StopIteration` only inside `__next__` | Sema |
+| `raise StopIteration` only inside `__next__` (or `@error_return(StopIteration)` functions) | Sema |
 | `raise StopIteration` does not accept arguments | Parser |
-| Direct `obj.__next__()` calls → runtime panic | Codegen (panic stub) |
+| Direct `obj.__next__()` calls require `try/except StopIteration` | Sema (caller enforcement) |
 
 ---
 
@@ -173,7 +140,7 @@ The `__iter__` method enables the **container → separate iterator** pattern, w
 
 ### Detection
 
-`__iter__` support is **structural** — the compiler checks if the type has an `__iter__()` method and whether the return type conforms to `OptIterator[T]`. There is no `Iterable[T]` protocol type yet (see Known Limitations).
+`__iter__` support is **structural** -- the compiler checks if the type has an `__iter__()` method and whether the return type conforms to `Iterator[T]`. There is no `Iterable[T]` protocol type yet (see Known Limitations).
 
 ### Codegen Pattern
 
@@ -186,8 +153,10 @@ Generates:
 ```cpp
 auto& __obj_0 = container;           // reference if lvalue
 auto  __iter_0 = __obj_0.__iter__(); // always own the iterator
-while (auto __opt_0 = __iter_0.__next_opt__()) {
-    int32_t x = *__opt_0;
+for (;;) {
+    auto __r_0 = __iter_0.__next__();  // std::expected<T, StopIteration>
+    if (!__r_0.has_value()) break;
+    int32_t x = *__r_0;
     // body
 }
 ```
@@ -274,7 +243,7 @@ Non-literal start/stop arguments are pre-evaluated into temporaries to match Pyt
 
 Int32 uses `tpy::int32_add()` for overflow checking; BigInt uses `+=`.
 
-When range optimization can't apply (e.g., zero step detected at codegen time), it falls back to the general OptIterator while-loop path using `Range<T>.__next_opt__()`.
+When range optimization can't apply (e.g., zero step detected at codegen time), it falls back to the general Iterator while-loop path using `Range<T>.__next__()`.
 
 ---
 
@@ -302,11 +271,9 @@ This path is not user-extensible — it requires the C++ type to support `std::r
 
 - **No `Iterable[T]` protocol**: `__iter__` support is structural (detected by `get_iter_element_type()`), not protocol-based. Can't write `def f(it: Iterable[T])` as a parameter type. Adding it requires return-type conformance checking in the protocol system.
 
-- **Generic Optional codegen mismatch**: For generic records, `T | None` generates `T*`/`nullptr` instead of `std::optional<T>`. This breaks C++ concepts that expect `std::optional<ElemT>` (e.g., `tpy::OptIterator`).
+- **No `next()` builtin**: Direct `obj.__next__()` calls require `try/except StopIteration`. The `next()` builtin function is not yet implemented.
 
-- **No `next()` builtin**: Direct `obj.__next__()` calls are rejected at runtime (panic stub). The `next()` builtin function is not yet implemented.
-
-- **No C++ range compatibility for user iterators**: User-defined `OptIterator` and `__iter__` types don't expose `begin()`/`end()`, so they can't be used with C++ `std::ranges` algorithms or range-based `for` from external C++ code.
+- **No C++ range compatibility for user iterators**: User-defined `Iterator` and `__iter__` types don't expose `begin()`/`end()`, so they can't be used with C++ `std::ranges` algorithms or range-based `for` from external C++ code.
 
 ---
 
@@ -323,8 +290,8 @@ Tests live in `tests/cases/iterators/`:
 | `for_range_mixed` | Mixed Int32/BigInt range args |
 | `for_range_snapshot` | Generated C++ for range loops |
 | `for_native_iterable` | `NativeIterable[T]` protocol parameter |
-| `for_native_iterator` | `OptIterator[T]` protocol parameter |
-| `for_user_iterator` | User `__next_opt__` pattern |
+| `for_native_iterator` | `Iterator[T]` protocol parameter |
+| `for_user_iterator` | User `__next__` pattern |
 | `for_user_iterator_dunder` | User `__next__` + `raise StopIteration` |
 | `for_inherited_iterator` | Iterator via class inheritance |
 | `for_iter_protocol` | `__iter__()` container→iterator pattern |
@@ -333,14 +300,14 @@ Tests live in `tests/cases/iterators/`:
 | `for_iterator_subscript_consumption` | Consumption via `items[idx]` |
 | `for_iterator_method_consumption` | Consumption via `obj.method()` |
 | `native_iterable_str` | String iteration (`NativeIterable[Char]`) |
-| `panic_direct_dunder_next` | `obj.__next__()` panics at runtime |
+| `panic_direct_dunder_next` | `obj.__next__()` without try/except |
 | `panic_range_zero_step` | `range(0, 5, 0)` panics |
 | `panic_range_variable_zero_step` | Variable zero step panics |
-| `error_for_bad_next` | `__next_opt__` with wrong return type |
-| `error_for_bad_next_arity` | `__next_opt__` with wrong arity |
+| `error_for_bad_next` | `__next__` with wrong return type |
+| `error_for_bad_next_arity` | `__next__` with wrong arity |
 | `error_iter_bad_return` | `__iter__` returning non-iterator |
 | `error_next_no_return_type` | `__next__` without return annotation |
-| `error_next_dual_definition` | Both `__next__` and `__next_opt__` |
+| `error_next_dual_definition` | Duplicate `__next__` definitions |
 | `error_raise_stop_outside_next` | `raise StopIteration` outside `__next__` |
 | `error_raise_stop_with_args` | `raise StopIteration("msg")` with args |
 | `error_native_iterable_*` | Various `NativeIterable` type errors |
@@ -352,16 +319,15 @@ Tests live in `tests/cases/iterators/`:
 
 | File | Role |
 |------|------|
-| `runtime/cpp/include/tpy/range.hpp` | `Range<T>` with `__next_opt__()` |
-| `runtime/cpp/include/tpy/protocols.hpp` | `OptIterator`, `NativeIterable` concepts |
-| `tpyc/modules/tpy.py` | `OptIterator[T]` protocol definition |
+| `runtime/cpp/include/tpy/range.hpp` | `Range<T>` with `__next__()` -> `std::expected` |
+| `runtime/cpp/include/tpy/protocols.hpp` | `NativeIterable` concept |
+| `tpyc/modules/tpy.py` | `Iterator[T]` protocol definition |
 | `tpyc/modules/__init__.py` | `get_native_iterator_element_type()`, `get_iter_element_type()` |
-| `tpyc/sema/registration.py` | Synthetic `__next_opt__` from `__next__` |
-| `tpyc/sema/analyzer.py` | `__next__` validation (return type, dual definition) |
+| `tpyc/sema/registration.py` | `__next__` auto `@error_return(StopIteration)` |
+| `tpyc/sema/analyzer.py` | `__next__` validation (return type) |
 | `tpyc/sema/statements.py` | `raise StopIteration` validation |
 | `tpyc/sema/list_literals.py` | `is_type_iterable()`, `get_iterable_element_type_or_none()` |
 | `tpyc/parse/parser.py` | `raise StopIteration` parsing |
-| `tpyc/parse/nodes.py` | `TpyRaiseStopIteration` node |
+| `tpyc/parse/nodes.py` | `TpyRaise` node |
 | `tpyc/codegen_cpp/statements.py` | All for-loop codegen paths, `_is_lvalue_iterable()` |
-| `tpyc/codegen_cpp/functions.py` | `__next__` → `__next_opt__` transform, panic stub |
-| `tests/harness/tpy/__init__.py` | CPython simulation of `OptIterator` |
+| `tpyc/codegen_cpp/functions.py` | `__next__` -> `std::expected` codegen |

@@ -673,7 +673,7 @@ class StatementAnalyzer:
                     line=(stmt.loc.line if stmt.loc else None),
                 )
                 stmt.elem_type = elem_type
-                is_native_iterator = builtin_modules.get_native_iterator_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
+                is_direct_next_iter = builtin_modules.get_error_return_next_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
                 is_iter_based = builtin_modules.get_iter_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
                 is_protocol_iter = is_protocol_type(resolved_for_iter) and resolved_for_iter.qualified_name() in ("typing.Iterator", "typing.Iterable")
                 before = self.init.save()
@@ -687,7 +687,7 @@ class StatementAnalyzer:
                         self.ctx.borrow_tracker.add_borrow(stmt.iterable.name, "__for_iter", BorrowKind.ITER)
                         self.ctx.loop_var_iterable[stmt.var] = stmt.iterable.name
                         # Protocol-typed and TypeParamRef params used as for-loop iterables
-                        # require mutable access: tpy::iter_adapt(T& iter) takes T&, not const T&.
+                        # require mutable access: .__next__() mutates iterator state.
                         # Mark them mutated so the generated param gets T& not const T&.
                         inner = unwrap_readonly(iterable_type)
                         if (isinstance(inner, (TypeParamRef,)) or is_protocol_type(inner)):
@@ -715,11 +715,11 @@ class StatementAnalyzer:
                                 if src is not None:
                                     self.ctx.borrow_tracker.add_borrow(src, "__for_iter", BorrowKind.ITER)
                                     self.ctx.loop_var_iterable[stmt.var] = src
-                    if is_native_iterator or is_protocol_iter:
+                    if is_direct_next_iter or is_protocol_iter:
                         iter_depth = inner_scope.depth
                     elif is_iter_based:
                         # __iter__() returning NativeIterable (e.g. SpanIter) references
-                        # the container's storage; OptIterator creates fresh values.
+                        # the container's storage; user-defined iterators create fresh values.
                         iter_info_result = builtin_modules.get_iter_info(inner_iterable_type, registry=self.ctx.registry)
                         if iter_info_result and iter_info_result.iter_is_native:
                             if self.compat.is_lvalue(stmt.iterable):

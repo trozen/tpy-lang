@@ -1,4 +1,4 @@
-# Tests calling __next__() via try/except on a type that only defines __next_opt__
+# Tests calling __next__() via try/except on a user-defined iterator
 from tpy import Int32
 
 class Counter:
@@ -9,12 +9,12 @@ class Counter:
         self.current = 0
         self.limit = limit
 
-    def __next_opt__(self) -> Int32 | None:
+    def __next__(self) -> Int32:
         if self.current < self.limit:
             result = self.current
             self.current += 1
             return result
-        return None
+        raise StopIteration
 
 def main() -> None:
     c = Counter(3)

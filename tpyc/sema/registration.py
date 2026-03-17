@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage,
-    TypeParamKind, OptionalType, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
+    TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, is_protocol_type,
     IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, EnumType, IntEnumType, BoolType, SpanIterType,
     FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL, UINT64,
     register_value_type_record, register_send_record, register_sync_record,
@@ -595,22 +595,8 @@ class TypeRegistrar:
             else:
                 methods[method.name] = [func_info]
 
-        # __next_opt__() -> Optional[T] implies __next__() -> T with error_return
-        # for Iterator[T] protocol conformance (reverse synthesis).
-        # The C++ type has a real __next__() wrapper method, so no cpp_template needed.
-        if "__next_opt__" in methods and "__next__" not in methods:
-            opt_info = methods["__next_opt__"][0]
-            if isinstance(opt_info.return_type, OptionalType):
-                methods["__next__"] = [FunctionInfo(
-                    name="__next__",
-                    params=[ParamInfo(p.name, p.type) for p in opt_info.params],
-                    return_type=opt_info.return_type.inner,
-                    is_method=True,
-                    error_return_type="StopIteration",
-                )]
-
         # Auto-synthesize __iter__() -> Self on iterator types (has __next__ but no __iter__)
-        if ("__next__" in methods or "__next_opt__" in methods) and "__iter__" not in methods:
+        if "__next__" in methods and "__iter__" not in methods:
             methods["__iter__"] = [FunctionInfo(
                 name="__iter__",
                 params=[],

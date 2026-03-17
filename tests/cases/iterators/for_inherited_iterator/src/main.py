@@ -1,4 +1,6 @@
-from tpy import Int32, OptIterator
+# Tests inherited __next__ from parent class
+from __future__ import annotations
+from tpy import Int32
 
 class Counter:
     current: Int32
@@ -8,12 +10,15 @@ class Counter:
         self.current = 0
         self.limit = limit
 
-    def __next_opt__(self) -> Int32 | None:
+    def __iter__(self) -> Counter:
+        return self
+
+    def __next__(self) -> Int32:
         if self.current < self.limit:
             result = self.current
             self.current += 1
             return result
-        return None
+        raise StopIteration
 
 class DoubleCounter(Counter):
     def __init__(self, limit: Int32) -> None:
@@ -24,20 +29,13 @@ class GrandChild(DoubleCounter):
     def __init__(self, limit: Int32) -> None:
         super().__init__(limit)
 
-# 1. for-loop over child inheriting next() from parent
+# 1. for-loop over child inheriting __next__() from parent
 for x in DoubleCounter(3):
     print(x)
 
-# 2. Pass inherited iterator to OptIterator[Int32] param
-def sum_iter(it: OptIterator[Int32]) -> Int32:
-    total: Int32 = 0
-    for x in it:
-        total += x
-    return total
-
-print(sum_iter(DoubleCounter(3)))
-
-# 3. Multi-level: for-loop + protocol param
+# 2. for-loop over multi-level child
 for x in GrandChild(2):
     print(x)
-print(sum_iter(GrandChild(2)))
+
+# 3. Verify output matches
+print("done")

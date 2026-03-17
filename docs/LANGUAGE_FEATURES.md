@@ -425,7 +425,7 @@ log(f"x={x}")
 - **Working**: `Array[T, N]` - fixed-size array with explicit type annotation
 - **Working**: `Span[T]` - non-owning mutable view into contiguous memory → `std::span<T>`
 - **Working**: `Span[readonly[T]]` - non-owning read-only view into contiguous memory → `std::span<const T>`
-- **Working**: `SpanIter[T]` - lightweight iterator over a contiguous span → `tpy::SpanIter<T>`. Constructed from `Span[T]` or `Span[readonly[T]]`. Implements `NativeIterable[T]`, `OptIterator[T]`, `Iterable[T]`, `Iterator[T]`. Used as the return type of `__iter__()` on span-backed user types (e.g. `ArrayList`).
+- **Working**: `SpanIter[T]` - lightweight iterator over a contiguous span → `tpy::SpanIter<T>`. Constructed from `Span[T]` or `Span[readonly[T]]`. Implements `NativeIterable[T]`, `Iterable[T]`, `Iterator[T]`. Used as the return type of `__iter__()` on span-backed user types (e.g. `ArrayList`).
 - **Working**: `tuple[T1, T2, ...]` - fixed-length typed tuple -> `std::tuple<T1, T2, ...>`
 - **Working**: `dict[K, V]` - ordered hash map → `tpy::ordered_map<K, V>` (insertion-order preserving)
   - Literals `{k: v, ...}`, subscript `d[k]`/`d[k] = v`, `del d[k]`, `len(d)`, `k in d`, `for k in d`
@@ -2250,12 +2250,13 @@ print(sum_all(nums))  # 6
 
 See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design rationale.
 
-#### Working: `OptIterator[T]` (lazy iteration)
+#### Working: Lazy Iteration via `Iterator[T]`
 
-`OptIterator[T]` is a **structural protocol** for types that produce values lazily via `__next_opt__()` returning `T | None`. Any type with a `__next_opt__() -> Optional[T]` method automatically conforms — no explicit `extends` declaration needed. Used primarily by built-in C++ iterators (Range, SpanIter) and generator expressions. User-defined iterators use `__next__()` with `@error_return(StopIteration)` instead; the compiler synthesizes a `__next__` entry from `__next_opt__` in the type registry for `Iterator[T]` protocol conformance.
+All iterators use the `Iterator[T]` protocol (`__next__(self) -> T` with `@error_return(StopIteration)`), returning `std::expected<T, StopIteration>` in C++. This applies to both user-defined iterators and built-in iterators (Range, SpanIter, generator expressions).
 
 ```python
-from tpy import Int32, OptIterator
+from typing import Iterator
+from tpy import Int32
 
 class Counter:
     current: Int32
@@ -2265,19 +2266,19 @@ class Counter:
         self.current = 0
         self.limit = limit
 
-    def __next_opt__(self) -> Int32 | None:
+    def __next__(self) -> Int32:
         if self.current < self.limit:
             result = self.current
             self.current += 1
             return result
-        return None
+        raise StopIteration
 
-# Direct use in for-loop (structural detection)
+# Direct use in for-loop
 for x in Counter(5):
     print(x)
 
-# Pass to function taking OptIterator[Int32] (structural conformance)
-def sum_iter(it: OptIterator[Int32]) -> Int32:
+# Pass to function taking Iterator[Int32]
+def sum_iter(it: Iterator[Int32]) -> Int32:
     total: Int32 = 0
     for x in it:
         total += x
@@ -2299,7 +2300,7 @@ tpy::range_check_overflow<int32_t>(0, 100, 3);
 for (int32_t i = 0; i < 100; i += 3) { ... }
 ```
 
-Step ±1 uses `++i`/`--i` with no overflow check. Other steps use an upfront `range_check_overflow` that verifies the final increment won't overflow, then uses unchecked `i += step` in the hot loop. Variable steps use a ternary condition (`step > 0 ? i < stop : i > stop`). User-defined iterators with `__next__` + `@error_return(StopIteration)` use a direct loop:
+Step +/-1 uses `++i`/`--i` with no overflow check. Other steps use an upfront `range_check_overflow` that verifies the final increment won't overflow, then uses unchecked `i += step` in the hot loop. Variable steps use a ternary condition (`step > 0 ? i < stop : i > stop`). All iterators (user-defined and built-in) with `__next__` + `@error_return(StopIteration)` use a direct loop:
 
 ```cpp
 auto& __iter_0 = it;
@@ -2311,10 +2312,8 @@ for (;;) {
 }
 ```
 
-Generic `OptIterator[T]` parameters and `__next_opt__` iterators use direct `for(;;)` loops that call `.__next_opt__()` and break on `nullopt`.
-
 **Key characteristics**:
-- **Structural protocol**: Any type with `__next_opt__() -> T | None` automatically conforms
+- **Unified protocol**: All iterators use `__next__() -> std::expected<T, StopIteration>`
 - **Lazy evaluation**: Values produced one at a time, no container allocation
 - **break/continue**: Work naturally in both counter-loops and while-loops
 
@@ -2322,17 +2321,15 @@ Generic `OptIterator[T]` parameters and `__next_opt__` iterators use direct `for
 
 | Phase | Status | What |
 |-------|--------|------|
-| 1. OptIterator | **Working** | User-defined iterators via `__next_opt__()` protocol |
+| 1. Iterator protocol | **Working** | User-defined iterators via `__next__()` + `@error_return(StopIteration)` -> `std::expected` |
 | 2. Counter-loop optimization | **Working** | `for i in range(...)` → C-style `for (int32_t i = ...)` |
 | 3. Range as NativeIterable | **Working** | `Range[T]` is an immutable container with `begin()`/`end()`, supports `list(range(...))` |
-| 4. Structural OptIterator | **Working** | Check `__next_opt__() -> Optional[T]` method for protocol conformance |
-| 5. User-defined iterators | **Working** | `__iter__`/`__next__` via `@error_return(StopIteration)` -> `std::expected` |
-| 6. Iterator[T]/Iterable[T] | **Working** | Built-in protocols from `typing`, for-loop support, `iter()` builtin |
-| 7. `__span__` protocol | **Working** | `__span__() -> Span[T]` for implicit Span coercion; iteration requires `__iter__()` |
-| 7b. `ReadOnlySpanLike[T]` protocol | **Working** | Readonly protocol for types with `__span__()`, for-loop and ReadOnlySpan coercion |
-| 8. Generator expressions | **Working** | `(expr for x in iterable)` → lazy `make_generator` wrapper, satisfies `Iterable[T]` |
-| 9. Generator functions | Open | `yield` → state-machine class implementing OptIterator |
-| 10. Iterator combinators | Open | `enumerate()`, `zip()`, `filter()`, `map()`, `reversed()` |
+| 4. Iterator[T]/Iterable[T] | **Working** | Built-in protocols from `typing`, for-loop support, `iter()` builtin |
+| 5. `__span__` protocol | **Working** | `__span__() -> Span[T]` for implicit Span coercion; iteration requires `__iter__()` |
+| 5b. `ReadOnlySpanLike[T]` protocol | **Working** | Readonly protocol for types with `__span__()`, for-loop and ReadOnlySpan coercion |
+| 6. Generator expressions | **Working** | `(expr for x in iterable)` → lazy `make_generator` wrapper, satisfies `Iterable[T]` |
+| 7. Generator functions | Open | `yield` → state-machine class implementing `Iterator` |
+| 8. Iterator combinators | Open | `enumerate()`, `zip()`, `filter()`, `map()`, `reversed()` |
 
 See [docs/ITERATOR_DESIGN.md](ITERATOR_DESIGN.md) for the full iterator design document.
 
@@ -2367,19 +2364,6 @@ class Counter:
 
 for x in Counter(5):
     print(x)
-```
-
-**Pattern 2: TurboPython-specific** — `__next_opt__(self) -> T | None` (produces `std::optional<T>` directly):
-
-```python
-class Counter:
-    # ... same fields and __init__ ...
-    def __next_opt__(self) -> Int32 | None:
-        if self.current < self.limit:
-            result = self.current
-            self.current += 1
-            return result
-        return None
 ```
 
 **Container → Iterator separation** via `__iter__()`:
@@ -2440,7 +2424,7 @@ except StopIteration:
     print("exhausted")
 ```
 
-**Auto-synthesis of `__iter__`**: Types that define `__next__` (or `__next_opt__`) but not `__iter__` automatically get `__iter__` synthesized, returning `self`. This matches Python's convention where iterators are their own iterables.
+**Auto-synthesis of `__iter__`**: Types that define `__next__` but not `__iter__` automatically get `__iter__` synthesized, returning `self`. This matches Python's convention where iterators are their own iterables.
 
 **Built-in `Iterable[T]` conformance**: All standard container and string types conform to `Iterable[T]`: `list[T]`, `Array[T, N]`, `Span[T]`, `Span[readonly[T]]`, `Range[T]`, `str`, `String`, `StrView` (as `Iterable[Char]`), `dict[K,V]` (as `Iterable[K]`), `dict_keys`, `dict_values`, `dict_items`. This enables passing any builtin container to generic functions accepting `Iterable[T]`, calling `__iter__()` explicitly, and using the `iter()` builtin. Direct `for` loops over these types still use fast range-based C++ iteration (`NativeIterable`) as an optimization.
 
@@ -2504,7 +2488,7 @@ when passed as a function argument. `Span[readonly[T]]` return cannot coerce to 
 **CPython compatibility**: `__span__` is not meaningful in CPython. Span-backed types should
 define `__iter__(self) -> SpanIter[T]` (returning `SpanIter(self.__span__())`) to provide
 CPython-compatible iteration. `SpanIter[T]` is a builtin type in the `tpy` module that wraps
-a span and implements `Iterable[T]`/`Iterator[T]`/`OptIterator[T]`/`NativeIterable[T]`.
+a span and implements `Iterable[T]`/`Iterator[T]`/`NativeIterable[T]`.
 
 #### Working: `ReadOnlySpanLike[T]` Protocol
 
@@ -2556,7 +2540,7 @@ def sum_generic[T: Iterable[Int32]](items: T) -> Int32:
     return total
 ```
 
-**For-loop support**: `for x in expr` works when `expr` has type `Iterator[T]` (direct `for(;;)` loop via `tpy::iter_next()`) or `Iterable[T]` (calls `__iter__()` first, then iterates the resulting iterator). User-defined iterators with `__next__` use the direct `std::expected` loop path.
+**For-loop support**: `for x in expr` works when `expr` has type `Iterator[T]` (direct `for(;;)` loop calling `__next__()` and checking `has_value()`) or `Iterable[T]` (calls `__iter__()` first, then iterates the resulting iterator). All iterators use the direct `std::expected` loop path.
 
 #### Working: Span coercion via `ReadOnlySpanLike[T]`
 
@@ -2596,7 +2580,7 @@ Protocols serve as **compiler traits**—letting the compiler discover type capa
 - `Sequence[T]` for types supporting `len()` and indexing ✓ (working)
 - `for` loops work on `Iterable[T]`-typed parameters ✓ (working)
 - `for` loops work on `NativeIterable[T]`-typed parameters ✓ (working)
-- `for` loops work on `OptIterator[T]`-typed parameters ✓ (working)
+- `for` loops work on `Iterator[T]`-typed parameters ✓ (working)
 - Implicit coercion to `Span[T]` works on types extending `ReadOnlySpanLike[T]` ✓ (working)
 - `for` loops work on `Iterator[T]`-typed parameters ✓ (working)
 - `list.extend()`, `str.join()`, `list()`, `dict()` accept `Iterable[T]` params ✓ (working)
@@ -2762,7 +2746,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: `while`
 - **Working**: `for i in range(n)`, `for i in range(start, end)`, `for i in range(start, end, step)`
 - **Working**: `for item in container` (for-each over list, Array, Span, str)
-- **Working**: `for x in iterator` (for-each over OptIterator types -- user-defined iterators)
+- **Working**: `for x in iterator` (for-each over Iterator types -- user-defined iterators)
 - **Working**: `for x in iter_param` (for-each over `Iterator[T]` and `Iterable[T]` protocol-typed parameters)
 - **Working**: `break`, `continue`
 - **Working**: Reassigning loop variables inside for-loop body (compiles as assignment, not redeclaration; note: affects iteration unlike Python)
@@ -3060,7 +3044,6 @@ struct SortedContainer {
 - `Covariant[T]` - marker: type param T is covariant, enables `G[Child] -> G[Parent]` coercion
 - `Iterable[T]` - has `__iter__` returning `Iterator[T]` (standard Python iterable protocol, used in method signatures)
 - `Iterator[T]` - has `__next__` and `__iter__` (Python iterator protocol)
-- `OptIterator[T]` - lazy iteration via `next() -> Optional[T]`
 - `NativeIterable[T]` - codegen optimization marker for C++ range-for iteration
 - User-defined protocols (including protocols with inheritance)
 
@@ -3790,16 +3773,15 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `isinstance(x, T)` → compile-time type narrowing for union types (`std::holds_alternative<T>` + `std::get<T>`)
 - **Working**: `isinstance(x, Protocol)` → compile-time protocol check on protocol-typed template params (`if constexpr (Concept<T_x>)`)
 - **Open**: `type()` → compile-time type info
-- **Working**: `list()` → empty list constructor (requires type annotation), `list(iterable)` from Iterable containers, `list(range(...))`, `list(iterator)` from OptIterator
+- **Working**: `list()` → empty list constructor (requires type annotation), `list(iterable)` from Iterable containers, `list(range(...))`, `list(iterator)` from Iterator
 - **Working**: `int(float)` → truncates toward zero, panics on NaN/infinity
 - **Working**: `float(int)`, `float(Int32)` → converts to float
 - **Working**: `str()` → string conversions for scalars, containers, and Stringable/Representable types (see below)
 - **Working**: `int(str)` → string-to-int parsing (via `BigInt::from_str`)
 - **Working**: `iter(x)` → calls `x.__iter__()`, returns `Iterator[T]`
-- **Removed**: `try_next(it)` -- use `try/except StopIteration` with `it.__next__()` instead
 - **Working**: `make_default[T]()` / `make_default()` → default-constructs `T` (maps to `T{}` in C++). Requires `T: Default`. Type can be explicit or inferred from context. Portable alternative to `T()`.
-- **Open**: `enumerate()` → returns OptIterator (see iterator roadmap)
-- **Open**: `zip()` → returns OptIterator (see iterator roadmap)
+- **Open**: `enumerate()` → returns `Iterator` (see iterator roadmap)
+- **Open**: `zip()` → returns `Iterator` (see iterator roadmap)
 
 #### Type Conversion Functions
 
@@ -3828,7 +3810,7 @@ z = list(other_list)         # → list[T], copies the list
 nums = list(range(5))        # → [0, 1, 2, 3, 4]
 nums2 = list(range(2, 7))   # → [2, 3, 4, 5, 6]
 
-# List from user-defined iterator (OptIterator)
+# List from user-defined iterator (Iterator)
 result = list(Counter(5))    # → [0, 1, 2, 3, 4]
 ```
 
@@ -3840,7 +3822,7 @@ std::vector<tpy::BigInt> x({1, 2, 3});
 // list(container) - from Iterable (range, array, list, etc.)
 auto y = tpy::from_range<std::vector<int32_t>>(tpy::Range<int32_t>(5));
 
-// list(iterator) - from OptIterator (user-defined)
+// list(iterator) - from Iterator (user-defined)
 auto z = tpy::collect<std::vector<int32_t>>(Counter(5));
 ```
 
@@ -4560,7 +4542,7 @@ Send/Sync rules for built-in types:
 ## Generators
 
 - **Working**: Generator expressions `(expr for x in iterable if cond)` → `tpy::make_generator<T>(lambda)` wrapper satisfying `Iterable[T]`. Supports range sources, container sources, filter clauses, tuple unpacking, outer local capture. See [COMPREHENSION_DESIGN.md](COMPREHENSION_DESIGN.md#generator-expressions).
-- **Open**: `yield` → generator as state-machine class implementing OptIterator (see iterator roadmap)
+- **Open**: `yield` → generator as state-machine class implementing `Iterator` (see iterator roadmap)
 - Could be zero-alloc if state machine is stack-allocated
 
 ---

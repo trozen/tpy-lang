@@ -46,8 +46,7 @@ def init_module() -> BuiltinModule:
 
     # Iterator[T] -- Python-compatible iterator protocol
     # Conformance checked against __next__ (return T) on records.
-    # All iterator types have __next__() -- user-defined via @error_return,
-    # built-in C++ types via wrapper methods over __next_opt__().
+    # All iterator types have __next__() via @error_return.
     module.protocol("Iterator",
         type_params=["T"],
         methods={

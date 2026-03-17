@@ -9,11 +9,12 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // from typing import Iterator
     // # 1. Direct use in for-loop (structural detection)
     // for x in Counter(5):
     auto __iter_0 = Counter(5);
     for (;;) {
-        auto __r_0 = __iter_0.__next_opt__();
+        auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
         int32_t x = *__r_0;
         //     print(x)
@@ -26,7 +27,7 @@ void __tpy_init() {
     // for x in Counter(0):
     auto __iter_1 = Counter(0);
     for (;;) {
-        auto __r_1 = __iter_1.__next_opt__();
+        auto __r_1 = __iter_1.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = *__r_1;
         //     print(x)

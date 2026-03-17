@@ -9,7 +9,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Pass Counter objects (which extend OptIterator[Int32])
+    // from typing import Iterator
+    // # Pass Counter objects (which satisfy Iterator[Int32])
     // print(sum_iter(Counter(0, 5)))          # 0+1+2+3+4 = 10
     auto __tmp_1 = Counter(0, 5);
     std::cout << sum_iter(__tmp_1) << "\n";

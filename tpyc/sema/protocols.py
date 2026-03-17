@@ -100,9 +100,9 @@ class ProtocolChecker:
         if isinstance(actual, PendingListType):
             return self.type_conforms_to_protocol(ListType(actual.element_type), protocol)
 
-        # GenExprType: satisfies Iterable[T] and OptIterator[T]
+        # GenExprType: satisfies Iterable[T] and Iterator[T]
         if isinstance(actual, GenExprType):
-            if protocol.name in ("Iterable", "OptIterator"):
+            if protocol.name in ("Iterable", "Iterator"):
                 if protocol.type_args and len(protocol.type_args) == 1:
                     return self.type_ops.types_match_for_inference(actual.element_type, protocol.type_args[0])
                 return True
@@ -289,7 +289,7 @@ class ProtocolChecker:
 
     # Protocols that ListRepeatType conforms to (lazy repeat range)
     _LIST_REPEAT_PROTOCOLS = {"Iterable", "Sized", "NativeIterable", "NativeRangeConstructible"}
-    _GENEXPR_PROTOCOLS = {"Iterable", "OptIterator"}
+    _GENEXPR_PROTOCOLS = {"Iterable", "Iterator"}
 
     def type_extends_any_protocol(self, actual: TpyType, protocol_name: str) -> bool:
         """Check if a type extends any variant of a protocol (ignoring type args).

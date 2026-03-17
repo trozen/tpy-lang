@@ -1,4 +1,7 @@
-from tpy import Int32, OptIterator
+# Tests user-defined iterator with __next__ and for-loop iteration
+from __future__ import annotations
+from typing import Iterator
+from tpy import Int32
 
 class Counter:
     current: Int32
@@ -8,19 +11,22 @@ class Counter:
         self.current = 0
         self.limit = limit
 
-    def __next_opt__(self) -> Int32 | None:
+    def __iter__(self) -> Counter:
+        return self
+
+    def __next__(self) -> Int32:
         if self.current < self.limit:
             result = self.current
             self.current += 1
             return result
-        return None
+        raise StopIteration
 
 # 1. Direct use in for-loop (structural detection)
 for x in Counter(5):
     print(x)
 
-# 2. Pass to function taking OptIterator[Int32] (structural conformance)
-def sum_iter(it: OptIterator[Int32]) -> Int32:
+# 2. Pass to function taking Iterator[Int32] (structural conformance)
+def sum_iter(it: Iterator[Int32]) -> Int32:
     total: Int32 = 0
     for x in it:
         total += x

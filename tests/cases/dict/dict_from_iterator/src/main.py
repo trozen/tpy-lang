@@ -1,4 +1,5 @@
-# Test dict() from user-defined OptIterator yielding tuple[K, V]
+# Test dict() from user-defined iterator yielding tuple[K, V]
+from __future__ import annotations
 from tpy import Int32
 
 class PairIter:
@@ -9,13 +10,16 @@ class PairIter:
         self.current = 0
         self.limit = limit
 
-    def __next_opt__(self) -> tuple[str, Int32] | None:
+    def __iter__(self) -> PairIter:
+        return self
+
+    def __next__(self) -> tuple[str, Int32]:
         if self.current < self.limit:
             key = str(self.current)
             val = self.current * 10
             self.current += 1
             return (key, val)
-        return None
+        raise StopIteration
 
 def main() -> None:
     d = dict(PairIter(3))

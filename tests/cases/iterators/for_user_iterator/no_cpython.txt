@@ -1,1 +1,0 @@
-OptIterator structural protocol not available in CPython

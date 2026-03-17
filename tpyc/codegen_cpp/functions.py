@@ -751,17 +751,6 @@ class FunctionGenerator:
                                       static=is_static, override=is_override,
                                       record_type_param_bounds=record_type_param_bounds)
 
-        # User types with __next_opt__: emit __next__() wrapper for Iterator[T] conformance
-        if method.name == "__next_opt__" and not method.error_return:
-            opt_ret = method.return_type
-            if isinstance(opt_ret, OptionalType):
-                inner_cpp = opt_ret.inner.to_cpp_return()
-                out.write(f"\n{INDENT}std::expected<{inner_cpp}, StopIteration> __next__() {{\n")
-                out.write(f"{INDENT}{INDENT}auto __opt = __next_opt__();\n")
-                out.write(f"{INDENT}{INDENT}if (__opt.has_value()) return *std::move(__opt);\n")
-                out.write(f"{INDENT}{INDENT}return std::unexpected(StopIteration{{}});\n")
-                out.write(f"{INDENT}}}\n")
-
     def _gen_method_overload(
         self, out: TextIO, method: TpyFunction, record_name: str,
         cpp_name: str, cpp_return_type: TpyType, *, const: bool, static: bool = False,

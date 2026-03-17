@@ -119,8 +119,8 @@ struct OwnIter {
     auto begin() { return std::make_move_iterator(data.begin()); }
     auto end()   { return std::make_move_iterator(data.end()); }
 
-    std::optional<T> __next_opt__() {
-        if (pos >= data.size()) return std::nullopt;
+    std::expected<T, StopIteration> __next__() {
+        if (pos >= data.size()) return std::unexpected(StopIteration{});
         return std::move(data[pos++]);
     }
 };
@@ -147,8 +147,8 @@ struct ArrayListDrainIter {
     std::size_t pos;
     std::size_t size;
 
-    std::optional<T> __next_opt__() {
-        if (pos >= size) return std::nullopt;
+    std::expected<T, StopIteration> __next__() {
+        if (pos >= size) return std::unexpected(StopIteration{});
         return std::move(data[pos++]);
     }
 };

@@ -570,28 +570,22 @@ class TypeOperations:
         arg_type: TpyType,
         inferred: dict[str, TpyType],
     ) -> bool:
-        """Match a protocol with TypeParamRef type_args against arg_type (e.g., NativeIterable[T], OptIterator[T])."""
+        """Match a protocol with TypeParamRef type_args against arg_type (e.g., NativeIterable[T], Iterator[T])."""
         from tpyc import modules as builtin_modules
 
-        # GenExprType satisfies Iterable[T] and OptIterator[T]
-        if isinstance(arg_type, GenExprType) and param_type.name in ("Iterable", "OptIterator"):
+        # GenExprType satisfies Iterable[T] and Iterator[T]
+        if isinstance(arg_type, GenExprType) and param_type.name in ("Iterable", "Iterator"):
             if len(param_type.type_args) == 1:
                 return self.match_type_with_inference(param_type.type_args[0], arg_type.element_type, inferred)
             return True
 
         protocol_name = param_type.name
         if param_type.qualified_name() == "typing.Iterator":
-            # Iterator[T] needs special handling: types may implement
-            # __next_opt__() (OptIterator) instead of __next__() (Iterator).
-            # Check OptIterator conformance as a bridge.
             if is_protocol_type(arg_type) and arg_type.qualified_name() == "typing.Iterator" and arg_type.type_args:
                 elem_type = arg_type.type_args[0]
             else:
-                elem_type = builtin_modules.get_native_iterator_element_type(
-                    arg_type, registry=self.ctx.registry)
-                if elem_type is None:
-                    elem_type = builtin_modules.get_extends_protocol_type_arg(
-                        arg_type, protocol_name, registry=self.ctx.registry)
+                elem_type = builtin_modules.get_extends_protocol_type_arg(
+                    arg_type, protocol_name, registry=self.ctx.registry)
                 if elem_type is None:
                     elem_type = self._infer_protocol_type_arg_structurally(
                         arg_type, protocol_name)

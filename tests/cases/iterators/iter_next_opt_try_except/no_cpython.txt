@@ -1,1 +1,0 @@
-__next_opt__ is a TPy-only protocol, not valid CPython

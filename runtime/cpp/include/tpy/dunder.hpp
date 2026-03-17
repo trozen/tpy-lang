@@ -15,7 +15,6 @@
 #include <expected>
 #include <format>
 #include <functional>
-#include <optional>
 #include <ranges>
 #include <span>
 #include <sstream>
@@ -420,18 +419,13 @@ uint64_t hash_combine(uint64_t seed, const T& val, const Rest&... rest) {
 }
 
 // =============================================
-// native_iterator: wraps C++ begin/end into __next_opt__() / __next__()
+// native_iterator: wraps C++ begin/end into __next__() / __iter__()
 // =============================================
 
 template<typename Iter, typename T>
 struct native_iterator {
     Iter current_;
     Iter end_;
-
-    std::optional<T> __next_opt__() {
-        if (current_ == end_) return std::nullopt;
-        return std::optional<T>{*current_++};
-    }
 
     std::expected<T, StopIteration> __next__() {
         if (current_ == end_) return std::unexpected(StopIteration{});

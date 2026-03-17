@@ -1,6 +1,8 @@
-from tpy import OptIterator, Int32
+# BigInt range does not conform to Iterator[Int32]
+from typing import Iterator
+from tpy import Int32
 
-def f(it: OptIterator[Int32]) -> Int32:
+def f(it: Iterator[Int32]) -> Int32:
     return 0
 
 base = 1 << 100

@@ -22,11 +22,11 @@ void main() {
     //     it = SpanIter(s)
     ::tpy::SpanIter<int32_t> it = ::tpy::SpanIter<int32_t>(s);
     //     for x in it:
-    auto& __iter_0 = it;
-    for (;;) {
-        auto __r_0 = __iter_0.__next_opt__();
-        if (!__r_0.has_value()) break;
-        int32_t x = *__r_0;
+    auto& __obj_0 = it;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
         //         print(x)
         std::cout << x << "\n";
     }

@@ -52,13 +52,13 @@
 // Protocols and concepts (depends on ranges)
 #include "protocols.hpp"
 
-// Iterator adapter: __next_opt__() -> C++ begin/end (depends on <optional>)
-#include "iter_adapt.hpp"
+// Generator expression wrapper (depends on <optional>, <expected>)
+#include "generator.hpp"
 
 // SpanIter: lightweight iterator over contiguous span (depends on <span>, error_return)
 #include "span_iter.hpp"
 
-// Non-range overloads for container ops (depends on iter_adapt, container_ops)
+// Non-range overloads for container ops (depends on dunder, container_ops)
 #include "iterable_ops.hpp"
 
 // Collection printing (depends on bigint)
