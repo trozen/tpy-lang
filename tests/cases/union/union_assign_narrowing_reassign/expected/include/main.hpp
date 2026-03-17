@@ -10,7 +10,7 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void check(const std::variant<Circle, Rect>& s);
+void check(const std::variant<Circle*, Rect*> s);
 void main();
 
 // # Reassigned union var loses assignment narrowing, requires isinstance

@@ -138,6 +138,9 @@ class StatementGenerator:
                 self.ctx.pointer_locals.add(pname)
                 if isinstance(ptype, ReadonlyType):
                     self.ctx.const_indirect_locals.add(pname)
+            # Non-value union params are pointer variants (variant<T*...>)
+            elif isinstance(actual, UnionType) and actual.uses_pointer_repr():
+                self.ctx.ptr_variant_locals.add(pname)
             # Own[T] and Own[T] | None params are movable (caller gave up ownership)
             own_actual = unwrap_optional_own(actual)
             if own_actual is not None and not own_actual.wrapped.is_value_type():
@@ -299,6 +302,22 @@ class StatementGenerator:
                             return f"{indent}return ::tpy::optional_to_ptr({ret_expr});\n"
                     # Take address of lvalue
                     return f"{indent}return &({ret_expr});\n"
+                # Pointer-variant union return: return variant<T*...>
+                if isinstance(ret_type, UnionType) and ret_type.uses_pointer_repr():
+                    if isinstance(ret_value, TpyNoneLiteral):
+                        return f"{indent}return std::monostate{{}};\n"
+                    # Check if source is a ptr-variant AND not currently narrowed.
+                    # Narrowed ptr-variant vars resolve to Dog& (via std::get), so
+                    # they need &() to produce Dog* for the return variant.
+                    is_narrowed = (isinstance(ret_value, TpyName)
+                                   and ret_value.name in self.ctx.narrowed_vars)
+                    if self._is_ptr_variant_source(ret_value) and not is_narrowed:
+                        ret_expr = self.expressions.gen_expr(ret_value, ret_type)
+                        return f"{indent}return {ret_expr};\n"
+                    # Narrowed variable or concrete lvalue: take address for implicit
+                    # variant<T*...> construction
+                    ret_expr = self.expressions.gen_expr(ret_value, ret_type)
+                    return f"{indent}return &({ret_expr});\n"
                 ret_expr = self.expressions.gen_expr(
                     ret_value, ret_type)
                 # Dereference pointer-locals/pointer-globals on return (T* -> T&)
@@ -389,6 +408,9 @@ class StatementGenerator:
         # Optional[T] for non-value T is always a pointer-local
         if isinstance(target_type, OptionalType) and target_type.uses_pointer_repr():
             return True
+        # Non-value unions use pointer-variant repr, not old T* indirection
+        if isinstance(target_type, UnionType) and target_type.uses_pointer_repr():
+            return False
         if target_type.is_value_type():
             return False
         if name in self.ctx.move_through_vars:
@@ -874,6 +896,126 @@ class StatementGenerator:
         else:
             return f"{indent}{cpp_name} = &({init_expr});\n"
 
+    def _is_ptr_variant_source(self, expr: TpyExpr) -> bool:
+        """Check if an expression produces a pointer variant (vs value variant).
+
+        Pointer-variant sources: ptr_variant locals, union params, function calls
+        returning non-value unions. Value-variant sources: constructors, Own returns,
+        field access, container subscript.
+        """
+        if isinstance(expr, TpyCoerce):
+            return self._is_ptr_variant_source(expr.expr)
+        if isinstance(expr, TpyName):
+            if expr.name in self.ctx.ptr_variant_locals:
+                return True
+            return False
+        if isinstance(expr, (TpyCall, TpyMethodCall)):
+            fi = expr.resolved_function_info
+            if fi is not None:
+                rt = fi.return_type
+                if isinstance(rt, UnionType) and rt.uses_pointer_repr():
+                    return True
+            return False
+        return False
+
+    def _gen_ptr_variant_local_init(
+        self, stmt: 'TpyVarDecl', target_type: UnionType, cpp_name: str, indent: str,
+    ) -> str:
+        """Generate initialization for a pointer-variant union local.
+
+        Handles three source kinds:
+        - Pointer-variant source (param, local, function return) -> copy directly
+        - Rvalue (constructor, Own return) -> storage slot + to_ptr_variant
+        - Lvalue value-variant (field, container element) -> to_ptr_variant
+        - None literal -> std::monostate{}
+        """
+        self.ctx.ptr_variant_locals.add(stmt.name)
+        pv_type = self.types.type_to_cpp_ptr_variant(target_type)
+        val_type = self.types.type_to_cpp(target_type)
+
+        if not stmt.init:
+            # Uninitialized nullable union -> monostate
+            return f"{indent}{pv_type} {cpp_name} = std::monostate{{}};\n"
+
+        if isinstance(stmt.init, TpyNoneLiteral):
+            return f"{indent}{pv_type} {cpp_name} = std::monostate{{}};\n"
+
+        if self._is_ptr_variant_source(stmt.init):
+            # Already a pointer variant (param, local, function call returning ptr variant)
+            init_expr = self.expressions.gen_expr(stmt.init, target_type)
+            return f"{indent}{pv_type} {cpp_name} = {init_expr};\n"
+
+        if self.ctx.is_rvalue_source(stmt.init):
+            # Rvalue (constructor, Own return, literal) -> allocate storage slot
+            static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
+            init_expr = self.expressions.gen_expr(stmt.init, target_type)
+            slot = self.ctx.slots.next_slot()
+            # Pre-declare rebind slot if the variable gets reassigned later with rvalues
+            rebind_decl = ""
+            if stmt.name in self.ctx.rvalue_reassigned_vars:
+                rebind_slot = self.ctx.slots.next_slot()
+                self.ctx.rebind_slots[stmt.name] = rebind_slot
+                rebind_decl = f"{indent}{static_kw}std::optional<{val_type}> {rebind_slot};\n"
+            return (f"{rebind_decl}"
+                    f"{indent}{static_kw}{val_type} {slot} = {init_expr};\n"
+                    f"{indent}{pv_type} {cpp_name} = ::tpy::to_ptr_variant({slot});\n")
+
+        # Lvalue source: either a value-variant lvalue or a concrete-type lvalue
+        init_type = self.ctx.get_expr_type(stmt.init)
+        init_expr = self.expressions.gen_expr(stmt.init, target_type)
+        # Pre-declare rebind slot if needed
+        rebind_decl = ""
+        if stmt.name in self.ctx.rvalue_reassigned_vars:
+            static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
+            rebind_slot = self.ctx.slots.next_slot()
+            self.ctx.rebind_slots[stmt.name] = rebind_slot
+            rebind_decl = f"{indent}{static_kw}std::optional<{val_type}> {rebind_slot};\n"
+        # If source is a value variant (field, container element), use to_ptr_variant
+        if isinstance(init_type, UnionType):
+            return (f"{rebind_decl}"
+                    f"{indent}{pv_type} {cpp_name} = ::tpy::to_ptr_variant({init_expr});\n")
+        # Concrete-type lvalue (e.g. Dog param): take address for implicit variant construction
+        return (f"{rebind_decl}"
+                f"{indent}{pv_type} {cpp_name}{{&({init_expr})}};\n")
+
+    def _gen_ptr_variant_local_reassign(
+        self, stmt: 'TpyVarDecl', target_type: TpyType | None, cpp_name: str, indent: str,
+    ) -> str:
+        """Generate reassignment for a pointer-variant union local."""
+        assert target_type is not None
+        assert isinstance(target_type, UnionType)
+        pv_type = self.types.type_to_cpp_ptr_variant(target_type)
+        val_type = self.types.type_to_cpp(target_type)
+
+        if isinstance(stmt.init, TpyNoneLiteral):
+            return f"{indent}{cpp_name} = std::monostate{{}};\n"
+
+        if self._is_ptr_variant_source(stmt.init):
+            init_expr = self.expressions.gen_expr(stmt.init, target_type)
+            return f"{indent}{cpp_name} = {init_expr};\n"
+
+        if self.ctx.is_rvalue_source(stmt.init):
+            # Rvalue -> use pre-declared rebind slot
+            init_expr = self.expressions.gen_expr(stmt.init, target_type)
+            rebind_slot = self.ctx.rebind_slots.get(stmt.name)
+            if rebind_slot:
+                return (f"{indent}{rebind_slot}.emplace({init_expr});\n"
+                        f"{indent}{cpp_name} = ::tpy::to_ptr_variant(*{rebind_slot});\n")
+            # Fallback: allocate inline slot
+            static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
+            slot = self.ctx.slots.next_slot()
+            return (f"{indent}{static_kw}{val_type} {slot} = {init_expr};\n"
+                    f"{indent}{cpp_name} = ::tpy::to_ptr_variant({slot});\n")
+
+        # Lvalue source
+        init_type = self.ctx.get_expr_type(stmt.init)
+        init_expr = self.expressions.gen_expr(stmt.init, target_type)
+        if isinstance(init_type, UnionType):
+            return f"{indent}{cpp_name} = ::tpy::to_ptr_variant({init_expr});\n"
+        # Concrete-type lvalue: take address
+        pv_cpp = self.types.type_to_cpp_ptr_variant(target_type)
+        return f"{indent}{cpp_name} = {pv_cpp}{{&({init_expr})}};\n"
+
     def _gen_var_decl_code(self, stmt: TpyVarDecl, indent: str) -> str | None:
         """Generate code for a variable declaration. Returns code to write or None."""
         from ..parse.nodes import VarLinkage
@@ -909,6 +1051,9 @@ class StatementGenerator:
                         resolve_type = var_type.inner
                     cpp_type = self.types.type_to_cpp(resolve_type) if resolve_type else "auto"
                     return self._gen_pointer_local_rebind(stmt.name, cpp_type, stmt.init, var_type, indent)
+                # Pointer-variant union reassignment
+                if stmt.name in self.ctx.ptr_variant_locals:
+                    return self._gen_ptr_variant_local_reassign(stmt, var_type, cpp_name, indent)
                 # String x = x + y -> x += y for buffer reuse
                 if result := self._try_str_inplace_append(stmt.name, cpp_name, stmt.init, var_type, indent):
                     return result
@@ -951,6 +1096,10 @@ class StatementGenerator:
                 init_expr = self.expressions.gen_expr(stmt.init, target_type)
                 trait = "::tpy::val_or_cref_t" if fi.is_readonly else "::tpy::val_or_ref_t"
                 return f"{indent}{trait}<{cpp_type}> {cpp_name} = {init_expr};\n"
+
+        # Pointer-variant locals for non-value unions
+        if isinstance(target_type, UnionType) and target_type.uses_pointer_repr():
+            return self._gen_ptr_variant_local_init(stmt, target_type, cpp_name, indent)
 
         # Indirection for non-value types in function/method scope
         if self._needs_indirection(target_type, stmt.name, stmt.init):
@@ -1358,7 +1507,11 @@ class StatementGenerator:
             is_const = (var_name in self.ctx.current_func_params
                         and var_decl_type is not None and var_decl_type.is_value_type())
             qualifier = "const auto&" if is_const else "auto&"
-            out.write(f"{inner_indent}{qualifier} {local_name} = std::get<{cpp_type}>({var_ref});\n")
+            # Pointer-variant unions: *std::get<T*>(var) to dereference the pointer
+            if var_name in self.ctx.ptr_variant_locals:
+                out.write(f"{inner_indent}{qualifier} {local_name} = *std::get<{cpp_type}*>({var_ref});\n")
+            else:
+                out.write(f"{inner_indent}{qualifier} {local_name} = std::get<{cpp_type}>({var_ref});\n")
             saved[var_name] = self.ctx.narrowed_vars.get(var_name)
             self.ctx.narrowed_vars[var_name] = local_name
         return saved
@@ -2201,7 +2354,8 @@ class StatementGenerator:
     def _returns_by_ref(self, expr: TpyExpr) -> bool:
         """Check if a call expression returns by reference (T&) in C++."""
         ret_type = self.types.get_resolved_type(expr)
-        return not ret_type.is_value_type() and not isinstance(ret_type, OptionalType)
+        return (not ret_type.is_value_type()
+                and not isinstance(ret_type, (OptionalType, UnionType)))
 
     @staticmethod
     def _is_literal_range_arg(expr: TpyExpr) -> bool:

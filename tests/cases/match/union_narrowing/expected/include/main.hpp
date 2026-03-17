@@ -10,7 +10,7 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void describe(const std::variant<Circle, Rect>& s);
+void describe(const std::variant<Circle*, Rect*> s);
 void main();
 
 // # match/case subject narrowing: access fields on subject directly (no binding)

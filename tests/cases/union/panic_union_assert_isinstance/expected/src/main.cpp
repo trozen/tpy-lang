@@ -5,10 +5,10 @@ namespace tpy_user::main {
 
 
 // def get_radius(s: Circle | Rect) -> Int32:
-int32_t get_radius(const std::variant<Circle, Rect>& s) {
+int32_t get_radius(const std::variant<Circle*, Rect*> s) {
     //     assert isinstance(s, Circle)
-    if (!(std::holds_alternative<Circle>(s))) ::tpy::tpy_panic("assertion failed");
-    auto& __s = std::get<Circle>(s);
+    if (!(std::holds_alternative<Circle*>(s))) ::tpy::tpy_panic("assertion failed");
+    auto& __s = *std::get<Circle*>(s);
     //     return s.radius
     return __s.radius;
 }
@@ -16,7 +16,8 @@ int32_t get_radius(const std::variant<Circle, Rect>& s) {
 // def main() -> None:
 void main() {
     //     r: Circle | Rect = Rect(Int32(4))
-    std::variant<Circle, Rect> r = Rect(4);
+    std::variant<Circle, Rect> __slot_1 = Rect(4);
+    std::variant<Circle*, Rect*> r = ::tpy::to_ptr_variant(__slot_1);
     //     print(get_radius(r))
     std::cout << get_radius(r) << "\n";
 }

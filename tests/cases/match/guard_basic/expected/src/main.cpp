@@ -5,12 +5,12 @@ namespace tpy_user::main {
 
 
 // def describe(a: Dog | Cat) -> str:
-std::string describe(const std::variant<Cat, Dog>& a) {
+std::string describe(const std::variant<Cat*, Dog*> a) {
     //     match a:
     auto& __match_subject = a;
     //         case Dog(name=n) if n == "Rex":
-    if (std::holds_alternative<Dog>(__match_subject)) {
-        auto& __case_0 = std::get<Dog>(__match_subject);
+    if (std::holds_alternative<Dog*>(__match_subject)) {
+        auto& __case_0 = *std::get<Dog*>(__match_subject);
         auto& n = __case_0.name;
         if ((n == "Rex")) {
             //             return "Rex the dog!"
@@ -19,15 +19,15 @@ std::string describe(const std::variant<Cat, Dog>& a) {
         }
     }
     //         case Dog():
-    if (std::holds_alternative<Dog>(__match_subject)) {
-        auto& __case_1 = std::get<Dog>(__match_subject);
+    if (std::holds_alternative<Dog*>(__match_subject)) {
+        auto& __case_1 = *std::get<Dog*>(__match_subject);
         //             return "some dog"
         return "some dog";
         goto __match_end_1;
     }
     //         case Cat(name=n) if n == "Whiskers":
-    if (std::holds_alternative<Cat>(__match_subject)) {
-        auto& __case_2 = std::get<Cat>(__match_subject);
+    if (std::holds_alternative<Cat*>(__match_subject)) {
+        auto& __case_2 = *std::get<Cat*>(__match_subject);
         auto& n = __case_2.name;
         if ((n == "Whiskers")) {
             //             return "Whiskers the cat!"
@@ -46,13 +46,17 @@ __match_end_1:;
 // def main() -> None:
 void main() {
     //     d1: Dog | Cat = Dog("Rex")
-    std::variant<Cat, Dog> d1 = Dog("Rex");
+    std::variant<Cat, Dog> __slot_1 = Dog("Rex");
+    std::variant<Cat*, Dog*> d1 = ::tpy::to_ptr_variant(__slot_1);
     //     d2: Dog | Cat = Dog("Buddy")
-    std::variant<Cat, Dog> d2 = Dog("Buddy");
+    std::variant<Cat, Dog> __slot_2 = Dog("Buddy");
+    std::variant<Cat*, Dog*> d2 = ::tpy::to_ptr_variant(__slot_2);
     //     c1: Dog | Cat = Cat("Whiskers")
-    std::variant<Cat, Dog> c1 = Cat("Whiskers");
+    std::variant<Cat, Dog> __slot_3 = Cat("Whiskers");
+    std::variant<Cat*, Dog*> c1 = ::tpy::to_ptr_variant(__slot_3);
     //     c2: Dog | Cat = Cat("Luna")
-    std::variant<Cat, Dog> c2 = Cat("Luna");
+    std::variant<Cat, Dog> __slot_4 = Cat("Luna");
+    std::variant<Cat*, Dog*> c2 = ::tpy::to_ptr_variant(__slot_4);
     //     print(describe(d1))
     std::cout << describe(d1) << "\n";
     //     print(describe(d2))

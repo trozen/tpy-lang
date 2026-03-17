@@ -1834,6 +1834,19 @@ class Parser:
             arms = _collect_bitor_arms(node)
             parsed = [self._parse_type_annotation(arm, type_param_scope) for arm in arms]
 
+            # Own[T] cannot appear as a union member in multi-type unions.
+            # Own[T] | None is fine (collapses to Optional[Own[T]]), but
+            # Cat | Own[Dog] is ambiguous (mixed ownership in one variant).
+            non_none = [t for t in parsed if not isinstance(t, VoidType)]
+            if len(non_none) > 1:
+                for t in non_none:
+                    if isinstance(t, OwnType):
+                        unwrapped = [p.wrapped if isinstance(p, OwnType) else p for p in non_none]
+                        raise ParseError(
+                            f"Own[{t.wrapped}] cannot be a union member. "
+                            f"Use Own[...] around the whole union instead: Own[{' | '.join(str(u) for u in unwrapped)}]",
+                            node)
+
             # Handle readonly normalization:
             # readonly[A] | readonly[B] -> readonly[A | B]
             # readonly[A] | B -> error (mixed readonly)

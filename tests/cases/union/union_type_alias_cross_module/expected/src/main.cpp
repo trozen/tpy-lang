@@ -5,16 +5,16 @@ namespace tpy_user::main {
 
 
 // def describe(s: Shape) -> str:
-std::string describe(const Shape& s) {
+std::string describe(const std::variant<::tpy_user::shapes::Circle*, ::tpy_user::shapes::Rect*> s) {
     //     if isinstance(s, Circle):
-    if (std::holds_alternative<::tpy_user::shapes::Circle>(s)) {
-        auto& __s = std::get<::tpy_user::shapes::Circle>(s);
+    if (std::holds_alternative<::tpy_user::shapes::Circle*>(s)) {
+        auto& __s = *std::get<::tpy_user::shapes::Circle*>(s);
         //         return "circle"
         return "circle";
     }
     //     assert isinstance(s, Rect)
-    if (!(std::holds_alternative<::tpy_user::shapes::Rect>(s))) ::tpy::tpy_panic("assertion failed");
-    auto& __s = std::get<::tpy_user::shapes::Rect>(s);
+    if (!(std::holds_alternative<::tpy_user::shapes::Rect*>(s))) ::tpy::tpy_panic("assertion failed");
+    auto& __s = *std::get<::tpy_user::shapes::Rect*>(s);
     //     return "rect"
     return "rect";
 }
@@ -22,9 +22,11 @@ std::string describe(const Shape& s) {
 // def main() -> None:
 void main() {
     //     c: Shape = Circle(Int32(10))
-    Shape c = ::tpy_user::shapes::Circle(10);
+    Shape __slot_1 = ::tpy_user::shapes::Circle(10);
+    std::variant<::tpy_user::shapes::Circle*, ::tpy_user::shapes::Rect*> c = ::tpy::to_ptr_variant(__slot_1);
     //     r: Shape = Rect(Int32(3))
-    Shape r = ::tpy_user::shapes::Rect(3);
+    Shape __slot_2 = ::tpy_user::shapes::Rect(3);
+    std::variant<::tpy_user::shapes::Circle*, ::tpy_user::shapes::Rect*> r = ::tpy::to_ptr_variant(__slot_2);
     //     print(describe(c))
     std::cout << describe(c) << "\n";
     //     print(describe(r))

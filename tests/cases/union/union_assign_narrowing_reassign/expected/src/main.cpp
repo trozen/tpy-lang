@@ -5,15 +5,15 @@ namespace tpy_user::main {
 
 
 // def check(s: Circle | Rect) -> None:
-void check(const std::variant<Circle, Rect>& s) {
+void check(const std::variant<Circle*, Rect*> s) {
     //     if isinstance(s, Circle):
-    if (std::holds_alternative<Circle>(s)) {
-        auto& __s = std::get<Circle>(s);
+    if (std::holds_alternative<Circle*>(s)) {
+        auto& __s = *std::get<Circle*>(s);
         //         print(s.radius)
         std::cout << ::tpy::print_float(__s.radius) << "\n";
     //     else:
     } else {
-        auto& __s = std::get<Rect>(s);
+        auto& __s = *std::get<Rect*>(s);
         //         print(s.width)
         std::cout << ::tpy::print_float(__s.width) << "\n";
     }
@@ -22,16 +22,17 @@ void check(const std::variant<Circle, Rect>& s) {
 // def main() -> None:
 void main() {
     //     s: Circle | Rect = Circle(1.0)
-    std::variant<Circle, Rect> __slot_1 = Circle(1.0);
     std::optional<std::variant<Circle, Rect>> __slot_2;
-    std::variant<Circle, Rect>* s = &__slot_1;
+    std::variant<Circle, Rect> __slot_1 = Circle(1.0);
+    std::variant<Circle*, Rect*> s = ::tpy::to_ptr_variant(__slot_1);
     //     print(s.radius)
-    std::cout << ::tpy::print_float(std::get<Circle>((*s)).radius) << "\n";
+    std::cout << ::tpy::print_float((*std::get<Circle*>(s)).radius) << "\n";
     //     s = Rect(3.0, 4.0)
-    s = &*(__slot_2 = Rect(3.0, 4.0));
+    __slot_2.emplace(Rect(3.0, 4.0));
+    s = ::tpy::to_ptr_variant(*__slot_2);
     //     if isinstance(s, Rect):
-    if (std::holds_alternative<Rect>((*s))) {
-        auto& __s = std::get<Rect>((*s));
+    if (std::holds_alternative<Rect*>(s)) {
+        auto& __s = *std::get<Rect*>(s);
         //         print(s.width)
         std::cout << ::tpy::print_float(__s.width) << "\n";
     }

@@ -10,7 +10,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, StrType, BoolType, FloatType, Float32Type, OptionalType, OwnType, ReadonlyType,
-    TypeParamRef, TypeParamKind, RecordInfo, TupleType, DictType, SetType,
+    TypeParamRef, TypeParamKind, RecordInfo, TupleType, DictType, SetType, UnionType,
     ListType, ArrayType, SpanType, SpanIterType, unwrap_readonly, unwrap_optional_own, is_any_str_type,
     get_covariant_params, FixedIntType, BigIntType, EnumType, PtrType,
 )
@@ -648,6 +648,11 @@ class RecordGenerator:
                                         # Own[T] | None is already std::optional<T>; T | None is T* needing conversion
                                         if not (isinstance(val_type, OptionalType) and isinstance(val_type.inner, OwnType)):
                                             value = f"::tpy::ptr_to_optional({value})"
+                                # Pointer-variant param -> value-variant field: deref+copy.
+                                # The param is variant<T*...> but the field stores variant<T...>.
+                                if isinstance(fld_type, UnionType) and fld_type.uses_pointer_repr():
+                                    val_cpp = self.types.type_to_cpp(fld_type)
+                                    value = f"::tpy::to_value_variant<{val_cpp}>({value})"
                                 inits.append((field_name, value))
             return inits
         finally:

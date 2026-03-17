@@ -11,7 +11,7 @@ struct Other;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void describe(const std::variant<Child, Other>& s);
+void describe(const std::variant<Child*, Other*> s);
 void main();
 
 // @dataclass

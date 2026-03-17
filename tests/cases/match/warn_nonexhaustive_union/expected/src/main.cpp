@@ -5,20 +5,20 @@ namespace tpy_user::main {
 
 
 // def describe(a: Dog | Cat | Bird) -> str:
-std::string describe(const std::variant<Bird, Cat, Dog>& a) {
+std::string describe(const std::variant<Bird*, Cat*, Dog*> a) {
     //     match a:  # tpyc: warning(/non-exhaustive match.*missing: Bird.*case _:/)
     auto& __match_subject = a;
     switch (__match_subject.index()) {
     //         case Dog():
     case 2: {
-        auto& __case_0 = std::get<2>(__match_subject);
+        auto& __case_0 = *std::get<2>(__match_subject);
         //             return "dog"
         return "dog";
         break;
     }
     //         case Cat():
     case 1: {
-        auto& __case_1 = std::get<1>(__match_subject);
+        auto& __case_1 = *std::get<1>(__match_subject);
         //             return "cat"
         return "cat";
         break;
@@ -31,7 +31,8 @@ std::string describe(const std::variant<Bird, Cat, Dog>& a) {
 // def main() -> None:
 void main() {
     //     d: Dog | Cat | Bird = Dog("Rex")
-    std::variant<Bird, Cat, Dog> d = Dog("Rex");
+    std::variant<Bird, Cat, Dog> __slot_1 = Dog("Rex");
+    std::variant<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
     //     print(describe(d))
     std::cout << describe(d) << "\n";
 }

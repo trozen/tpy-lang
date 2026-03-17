@@ -19,30 +19,31 @@ void greet_cat(const Cat& c) {
 // def main() -> None:
 void main() {
     //     pet: Dog | Cat = Dog("Rex")
-    std::variant<Cat, Dog> __slot_1 = Dog("Rex");
     std::optional<std::variant<Cat, Dog>> __slot_2;
-    std::variant<Cat, Dog>* pet = &__slot_1;
+    std::variant<Cat, Dog> __slot_1 = Dog("Rex");
+    std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     //     if isinstance(pet, Dog):
-    if (std::holds_alternative<Dog>((*pet))) {
-        auto& __pet = std::get<Dog>((*pet));
+    if (std::holds_alternative<Dog*>(pet)) {
+        auto& __pet = *std::get<Dog*>(pet);
         //         greet_dog(pet)
         greet_dog(__pet);
     //     else:
     } else {
-        auto& __pet = std::get<Cat>((*pet));
+        auto& __pet = *std::get<Cat*>(pet);
         //         greet_cat(pet)
         greet_cat(__pet);
     }
     //     pet = Cat("Whiskers")
-    pet = &*(__slot_2 = Cat("Whiskers"));
+    __slot_2.emplace(Cat("Whiskers"));
+    pet = ::tpy::to_ptr_variant(*__slot_2);
     //     if isinstance(pet, Cat):
-    if (std::holds_alternative<Cat>((*pet))) {
-        auto& __pet = std::get<Cat>((*pet));
+    if (std::holds_alternative<Cat*>(pet)) {
+        auto& __pet = *std::get<Cat*>(pet);
         //         greet_cat(pet)
         greet_cat(__pet);
     //     else:
     } else {
-        auto& __pet = std::get<Dog>((*pet));
+        auto& __pet = *std::get<Dog*>(pet);
         //         greet_dog(pet)
         greet_dog(__pet);
     }

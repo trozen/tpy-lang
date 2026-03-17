@@ -5,12 +5,12 @@ namespace tpy_user::main {
 
 
 // def test_and_flag(v: Int32 | Dog | None, flag: bool) -> str:
-std::string test_and_flag(const std::variant<std::monostate, Dog, int32_t>& v, bool flag) {
+std::string test_and_flag(const std::variant<std::monostate, Dog*, int32_t*> v, bool flag) {
     //     if v is not None and flag:
     if (((!std::holds_alternative<std::monostate>(v)) && flag)) {
         //         if isinstance(v, Int32):
-        if (std::holds_alternative<int32_t>(v)) {
-            auto& __v = std::get<int32_t>(v);
+        if (std::holds_alternative<int32_t*>(v)) {
+            auto& __v = *std::get<int32_t*>(v);
             //             return "int+flag"
             return "int+flag";
         }
@@ -22,10 +22,10 @@ std::string test_and_flag(const std::variant<std::monostate, Dog, int32_t>& v, b
 }
 
 // def test_and_isinstance(v: Int32 | Dog | None) -> str:
-std::string test_and_isinstance(const std::variant<std::monostate, Dog, int32_t>& v) {
+std::string test_and_isinstance(const std::variant<std::monostate, Dog*, int32_t*> v) {
     //     if v is not None and isinstance(v, Int32):
-    if (((!std::holds_alternative<std::monostate>(v)) && std::holds_alternative<int32_t>(v))) {
-        auto& __v = std::get<int32_t>(v);
+    if (((!std::holds_alternative<std::monostate>(v)) && std::holds_alternative<int32_t*>(v))) {
+        auto& __v = *std::get<int32_t*>(v);
         //         return "int"
         return "int";
     }
@@ -34,7 +34,7 @@ std::string test_and_isinstance(const std::variant<std::monostate, Dog, int32_t>
 }
 
 // def test_or(v: Int32 | Dog | None, w: Int32 | Dog | None) -> str:
-std::string test_or(const std::variant<std::monostate, Dog, int32_t>& v, const std::variant<std::monostate, Dog, int32_t>& w) {
+std::string test_or(const std::variant<std::monostate, Dog*, int32_t*> v, const std::variant<std::monostate, Dog*, int32_t*> w) {
     //     if v is None or w is None:
     if (((std::holds_alternative<std::monostate>(v)) || (std::holds_alternative<std::monostate>(w)))) {
         //         return "has none"
@@ -47,35 +47,31 @@ std::string test_or(const std::variant<std::monostate, Dog, int32_t>& v, const s
 // def main() -> None:
 void main() {
     //     print(test_and_flag(Int32(1), True))
-    std::variant<std::monostate, Dog, int32_t> __tmp_1 = 1;
-    std::cout << test_and_flag(__tmp_1, true) << "\n";
+    int32_t __tmp_1 = 1;
+    std::cout << test_and_flag(std::variant<std::monostate, Dog*, int32_t*>{&__tmp_1}, true) << "\n";
     //     print(test_and_flag(Int32(1), False))
-    std::variant<std::monostate, Dog, int32_t> __tmp_2 = 1;
-    std::cout << test_and_flag(__tmp_2, false) << "\n";
+    int32_t __tmp_2 = 1;
+    std::cout << test_and_flag(std::variant<std::monostate, Dog*, int32_t*>{&__tmp_2}, false) << "\n";
     //     print(test_and_flag(None, True))
-    std::variant<std::monostate, Dog, int32_t> __tmp_3 = std::monostate{};
-    std::cout << test_and_flag(__tmp_3, true) << "\n";
+    std::cout << test_and_flag(std::variant<std::monostate, Dog*, int32_t*>{std::monostate{}}, true) << "\n";
     //     print(test_and_isinstance(Int32(5)))
-    std::variant<std::monostate, Dog, int32_t> __tmp_4 = 5;
-    std::cout << test_and_isinstance(__tmp_4) << "\n";
+    int32_t __tmp_3 = 5;
+    std::cout << test_and_isinstance(std::variant<std::monostate, Dog*, int32_t*>{&__tmp_3}) << "\n";
     //     print(test_and_isinstance(Dog("Rex")))
-    std::variant<std::monostate, Dog, int32_t> __tmp_5 = Dog("Rex");
-    std::cout << test_and_isinstance(__tmp_5) << "\n";
+    Dog __tmp_4 = Dog("Rex");
+    std::cout << test_and_isinstance(std::variant<std::monostate, Dog*, int32_t*>{&__tmp_4}) << "\n";
     //     print(test_and_isinstance(None))
-    std::variant<std::monostate, Dog, int32_t> __tmp_6 = std::monostate{};
-    std::cout << test_and_isinstance(__tmp_6) << "\n";
+    std::cout << test_and_isinstance(std::variant<std::monostate, Dog*, int32_t*>{std::monostate{}}) << "\n";
     //     print(test_or(Int32(1), Dog("Rex")))
-    std::variant<std::monostate, Dog, int32_t> __tmp_7 = 1;
-    std::variant<std::monostate, Dog, int32_t> __tmp_8 = Dog("Rex");
-    std::cout << test_or(__tmp_7, __tmp_8) << "\n";
+    int32_t __tmp_5 = 1;
+    Dog __tmp_6 = Dog("Rex");
+    std::cout << test_or(std::variant<std::monostate, Dog*, int32_t*>{&__tmp_5}, std::variant<std::monostate, Dog*, int32_t*>{&__tmp_6}) << "\n";
     //     print(test_or(None, Dog("Rex")))
-    std::variant<std::monostate, Dog, int32_t> __tmp_9 = std::monostate{};
-    std::variant<std::monostate, Dog, int32_t> __tmp_10 = Dog("Rex");
-    std::cout << test_or(__tmp_9, __tmp_10) << "\n";
+    Dog __tmp_7 = Dog("Rex");
+    std::cout << test_or(std::variant<std::monostate, Dog*, int32_t*>{std::monostate{}}, std::variant<std::monostate, Dog*, int32_t*>{&__tmp_7}) << "\n";
     //     print(test_or(Int32(1), None))
-    std::variant<std::monostate, Dog, int32_t> __tmp_11 = 1;
-    std::variant<std::monostate, Dog, int32_t> __tmp_12 = std::monostate{};
-    std::cout << test_or(__tmp_11, __tmp_12) << "\n";
+    int32_t __tmp_8 = 1;
+    std::cout << test_or(std::variant<std::monostate, Dog*, int32_t*>{&__tmp_8}, std::variant<std::monostate, Dog*, int32_t*>{std::monostate{}}) << "\n";
 }
 
 void __tpy_init() {

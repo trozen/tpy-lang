@@ -5,24 +5,24 @@ namespace tpy_user::main {
 
 
 // def describe(a: Dog | Cat | Bird, verbose: bool) -> str:
-std::string describe(const std::variant<Bird, Cat, Dog>& a, bool verbose) {
+std::string describe(const std::variant<Bird*, Cat*, Dog*> a, bool verbose) {
     //     match a:
     auto& __match_subject = a;
     //         case Dog() | Cat() if verbose:
-    if ((std::holds_alternative<Dog>(__match_subject) || std::holds_alternative<Cat>(__match_subject)) && verbose) {
+    if ((std::holds_alternative<Dog*>(__match_subject) || std::holds_alternative<Cat*>(__match_subject)) && verbose) {
         //             return "verbose pet"
         return "verbose pet";
         goto __match_end_1;
     }
     //         case Dog() | Cat():
-    if (std::holds_alternative<Dog>(__match_subject) || std::holds_alternative<Cat>(__match_subject)) {
+    if (std::holds_alternative<Dog*>(__match_subject) || std::holds_alternative<Cat*>(__match_subject)) {
         //             return "pet"
         return "pet";
         goto __match_end_1;
     }
     //         case Bird():
-    if (std::holds_alternative<Bird>(__match_subject)) {
-        auto& __case_2 = std::get<Bird>(__match_subject);
+    if (std::holds_alternative<Bird*>(__match_subject)) {
+        auto& __case_2 = *std::get<Bird*>(__match_subject);
         //             return "bird"
         return "bird";
         goto __match_end_1;
@@ -33,12 +33,12 @@ __match_end_1:;
 }
 
 // def find(a: Dog | Cat | Bird) -> str:
-std::string find(const std::variant<Bird, Cat, Dog>& a) {
+std::string find(const std::variant<Bird*, Cat*, Dog*> a) {
     //     match a:
     auto& __match_subject = a;
     //         case Dog(name=n) | Cat(name=n) if n == "Rex":
-    if (std::holds_alternative<Dog>(__match_subject)) {
-        auto& __case_0_0 = std::get<Dog>(__match_subject);
+    if (std::holds_alternative<Dog*>(__match_subject)) {
+        auto& __case_0_0 = *std::get<Dog*>(__match_subject);
         auto& n = __case_0_0.name;
         if ((n == "Rex")) {
             //             return "found Rex"
@@ -46,8 +46,8 @@ std::string find(const std::variant<Bird, Cat, Dog>& a) {
             goto __match_end_2;
         }
     }
-    if (std::holds_alternative<Cat>(__match_subject)) {
-        auto& __case_0_1 = std::get<Cat>(__match_subject);
+    if (std::holds_alternative<Cat*>(__match_subject)) {
+        auto& __case_0_1 = *std::get<Cat*>(__match_subject);
         auto& n = __case_0_1.name;
         if ((n == "Rex")) {
             //             return "found Rex"
@@ -56,23 +56,23 @@ std::string find(const std::variant<Bird, Cat, Dog>& a) {
         }
     }
     //         case Dog(name=n) | Cat(name=n):
-    if (std::holds_alternative<Dog>(__match_subject)) {
-        auto& __case_1_0 = std::get<Dog>(__match_subject);
+    if (std::holds_alternative<Dog*>(__match_subject)) {
+        auto& __case_1_0 = *std::get<Dog*>(__match_subject);
         auto& n = __case_1_0.name;
         //             return "other pet: " + n
         return (::tpy::str_concat("other pet: ", n));
         goto __match_end_2;
     }
-    if (std::holds_alternative<Cat>(__match_subject)) {
-        auto& __case_1_1 = std::get<Cat>(__match_subject);
+    if (std::holds_alternative<Cat*>(__match_subject)) {
+        auto& __case_1_1 = *std::get<Cat*>(__match_subject);
         auto& n = __case_1_1.name;
         //             return "other pet: " + n
         return (::tpy::str_concat("other pet: ", n));
         goto __match_end_2;
     }
     //         case Bird(name=n):
-    if (std::holds_alternative<Bird>(__match_subject)) {
-        auto& __case_2 = std::get<Bird>(__match_subject);
+    if (std::holds_alternative<Bird*>(__match_subject)) {
+        auto& __case_2 = *std::get<Bird*>(__match_subject);
         auto& n = __case_2.name;
         //             return "bird: " + n
         return (::tpy::str_concat("bird: ", n));
@@ -86,11 +86,14 @@ __match_end_2:;
 // def main() -> None:
 void main() {
     //     d: Dog | Cat | Bird = Dog("Rex")
-    std::variant<Bird, Cat, Dog> d = Dog("Rex");
+    std::variant<Bird, Cat, Dog> __slot_1 = Dog("Rex");
+    std::variant<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
     //     c: Dog | Cat | Bird = Cat("Luna")
-    std::variant<Bird, Cat, Dog> c = Cat("Luna");
+    std::variant<Bird, Cat, Dog> __slot_2 = Cat("Luna");
+    std::variant<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
     //     b: Dog | Cat | Bird = Bird("Tweety")
-    std::variant<Bird, Cat, Dog> b = Bird("Tweety");
+    std::variant<Bird, Cat, Dog> __slot_3 = Bird("Tweety");
+    std::variant<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
     //     print(describe(d, True))
     std::cout << describe(d, true) << "\n";
     //     print(describe(d, False))

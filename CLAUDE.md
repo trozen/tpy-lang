@@ -337,6 +337,7 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `iterable_ops.hpp` | Non-range overloads for container operations (`list_extend`, `str_join`, etc.) |
 | `generator.hpp` | `generator_wrapper` and `make_generator` for generator expressions |
 | `span_iter.hpp` | `tpy::SpanIter<T>` lightweight iterator over contiguous span |
+| `variant_ref.hpp` | `to_ptr_variant`, `to_const_ptr_variant`, `to_value_variant` for non-value union two-layer repr |
 
 Generated code requires C++23 (for `std::ranges` concepts).
 
@@ -400,6 +401,9 @@ The compiler is a proof-of-concept. Not yet implemented:
 | `Span[T]` | `std::span<T>` |
 | `Span[readonly[T]]` | `std::span<const T>` |
 | `SpanIter[T]` | `tpy::SpanIter<T>` |
+| `A \| B` (value types) | `std::variant<A, B>` |
+| `A \| B` (non-value, params/returns/locals) | `std::variant<A*, B*>` (pointer variant) |
+| `A \| B` (non-value, fields/containers) | `std::variant<A, B>` (value variant) |
 | `Ptr[T]` | `T*` |
 | `Ptr[readonly[T]]` | `const T*` |
 | `Own[T]` | `T` (by value, for returns/params) |

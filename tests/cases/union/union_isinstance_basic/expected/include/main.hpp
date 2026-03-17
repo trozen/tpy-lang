@@ -10,7 +10,7 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-double area(const std::variant<Circle, Rect>& s);
+double area(const std::variant<Circle*, Rect*> s);
 void main();
 
 // # isinstance narrowing on two-member union with field access

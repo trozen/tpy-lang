@@ -5,13 +5,13 @@ namespace tpy_user::main {
 
 
 // def describe(s: Point | Label) -> None:
-void describe(const std::variant<Label, Point>& s) {
+void describe(const std::variant<Label*, Point*> s) {
     //     match s:
     auto& __match_subject = s;
     switch (__match_subject.index()) {
     //         case Point(px, py, z=pz):
     case 1: {
-        auto& __case_0 = std::get<1>(__match_subject);
+        auto& __case_0 = *std::get<1>(__match_subject);
         auto& px = __case_0.x;
         auto& py = __case_0.y;
         auto& pz = __case_0.z;
@@ -21,7 +21,7 @@ void describe(const std::variant<Label, Point>& s) {
     }
     //         case Label(t):
     case 0: {
-        auto& __case_1 = std::get<0>(__match_subject);
+        auto& __case_1 = *std::get<0>(__match_subject);
         auto& t = __case_1.text;
         //             print(t)
         std::cout << t << "\n";
@@ -33,11 +33,13 @@ void describe(const std::variant<Label, Point>& s) {
 // def main() -> None:
 void main() {
     //     p: Point | Label = Point(1.0, 2.0, 3.0)
-    std::variant<Label, Point> p = Point(1.0, 2.0, 3.0);
+    std::variant<Label, Point> __slot_1 = Point(1.0, 2.0, 3.0);
+    std::variant<Label*, Point*> p = ::tpy::to_ptr_variant(__slot_1);
     //     describe(p)
     describe(p);
     //     la: Point | Label = Label("hello")
-    std::variant<Label, Point> la = Label("hello");
+    std::variant<Label, Point> __slot_2 = Label("hello");
+    std::variant<Label*, Point*> la = ::tpy::to_ptr_variant(__slot_2);
     //     describe(la)
     describe(la);
 }

@@ -10,7 +10,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 using ::tpy_user::shapes::Shape;
 
-std::string describe(const Shape& s);
+std::string describe(const std::variant<::tpy_user::shapes::Circle*, ::tpy_user::shapes::Rect*> s);
 void main();
 
 void __tpy_init();

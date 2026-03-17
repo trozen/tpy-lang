@@ -2589,6 +2589,12 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
 
 ### Union/Optional
 - **Working**: Union types `A | B | C` → `std::variant<A, B, C>`
+  - **Pointer-variant representation**: non-value unions (containing records) use a two-layer representation for zero-copy semantics:
+    - Storage (fields, containers, rvalue slots): `std::variant<Dog, Cat>` (value variant)
+    - Reference (params, returns, locals): `std::variant<Dog*, Cat*>` (pointer variant, passed by value)
+    - Const methods use `std::variant<const Dog*, const Cat*>`
+    - Conversion: `::tpy::to_ptr_variant()` / `::tpy::to_const_ptr_variant()` runtime utilities
+    - Value-type unions (`Int32 | str`) continue using `std::variant<...>` everywhere (no pointers)
   - Two-way, three-way, and n-way unions in annotations (function params, returns, local variables)
   - Canonical member ordering (sorted by type name, `None`/`std::monostate` always first)
   - `A | None` with single non-None type still produces `Optional[T]` (backward compatible)
@@ -2615,7 +2621,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - `while isinstance(x, T)` narrows `x` to `T` inside the loop body (same extraction as if-blocks)
   - Assignment narrowing: `v: A | B = A(...)` narrows `v` to `A` so field access works without isinstance; uses inline `std::get<T>()` at access points (not aliased, so `v` can still be passed to functions expecting the full union)
   - Assignment narrowing is cleared on reassignment (`v = B(...)` clears the `A` narrowing)
-  - Value-type semantics: all-value unions (`int | bool`) pass as `const&`; unions with records pass as `&` (mutable)
+  - Value-type semantics: all-value unions (`int | bool`) pass as `const&`; unions with records use pointer-variant `std::variant<T*...>` (by value, zero-copy)
   - Nullable unions: `A | B | None` maps to `std::variant<A, B, std::monostate>`
   - `v is None` / `v is not None` on nullable unions: `std::holds_alternative<std::monostate>(v)`
   - `is not None` narrows to remaining non-None members; chained isinstance further narrows

@@ -9,8 +9,8 @@ struct Dog;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string describe(const std::variant<std::monostate, Dog, int32_t>& v);
-void process(const std::variant<std::monostate, Dog, int32_t>& v);
+std::string describe(const std::variant<std::monostate, Dog*, int32_t*> v);
+void process(const std::variant<std::monostate, Dog*, int32_t*> v);
 void main();
 
 // class Dog:

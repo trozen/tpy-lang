@@ -11,7 +11,8 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NamedType, SelfType,
-    BigIntType, BoolType, IntLiteralType, TypeParamRef, FunctionInfo, is_protocol_type, unwrap_readonly,
+    BigIntType, BoolType, IntLiteralType, TypeParamRef, UnionType, FunctionInfo,
+    is_protocol_type, unwrap_readonly,
 )
 from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -255,6 +256,7 @@ class LocalScopeSnap:
     var_types: dict[str, TpyType]
     local_scope_names: set[str]
     pointer_locals: set[str]
+    ptr_variant_locals: set[str]
     const_indirect_locals: set[str]
     movable_locals: set[str]
     rebind_slots: dict[str, str]
@@ -298,6 +300,10 @@ class CodeGenContext:
     # --- Pointer-local tracking ---
     pointer_locals: set[str] = field(default_factory=set)
     const_indirect_locals: set[str] = field(default_factory=set)
+
+    # --- Pointer-variant locals (non-value union variables) ---
+    # Variables that are std::variant<T*...> instead of std::variant<T...>.
+    ptr_variant_locals: set[str] = field(default_factory=set)
     pointer_globals: set[str] = field(default_factory=set)
     final_globals: set[str] = field(default_factory=set)
     slots: SlotState = field(default_factory=SlotState)
@@ -378,6 +384,7 @@ class CodeGenContext:
         self.local_scope_names = set()
         self.global_declared_vars = set()
         self.pointer_locals = set()
+        self.ptr_variant_locals = set()
         self.const_indirect_locals = set()
         self.slots.reset()
         self.rebind_slots = {}
@@ -417,6 +424,7 @@ class CodeGenContext:
             var_types=dict(self.var_types),
             local_scope_names=self.local_scope_names.copy(),
             pointer_locals=self.pointer_locals.copy(),
+            ptr_variant_locals=self.ptr_variant_locals.copy(),
             const_indirect_locals=self.const_indirect_locals.copy(),
             movable_locals=self.movable_locals.copy(),
             rebind_slots=dict(self.rebind_slots),
@@ -430,6 +438,7 @@ class CodeGenContext:
         self.var_types = dict(snap.var_types)
         self.local_scope_names = snap.local_scope_names.copy()
         self.pointer_locals = snap.pointer_locals.copy()
+        self.ptr_variant_locals = snap.ptr_variant_locals.copy()
         self.const_indirect_locals = snap.const_indirect_locals.copy()
         self.movable_locals = snap.movable_locals.copy()
         self.rebind_slots = dict(snap.rebind_slots)
@@ -736,7 +745,7 @@ class CodeGenContext:
         rt = fi.return_type
         return (rt is not None
                 and not rt.is_value_type()
-                and not isinstance(rt, (TypeParamRef, OwnType, OptionalType)))
+                and not isinstance(rt, (TypeParamRef, OwnType, OptionalType, UnionType)))
 
     def is_rvalue_source(self, expr: TpyExpr) -> bool:
         """Check if an expression produces an rvalue (needs a stack slot).

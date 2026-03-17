@@ -5,21 +5,21 @@ namespace tpy_user::main {
 
 
 // def describe(s: MaybeShape) -> str:
-std::string describe(const MaybeShape& s) {
+std::string describe(const std::variant<std::monostate, Circle*, Rect*> s) {
     //     if s is None:
     if ((std::holds_alternative<std::monostate>(s))) {
         //         return "nothing"
         return "nothing";
     }
     //     if isinstance(s, Circle):
-    if (std::holds_alternative<Circle>(s)) {
-        auto& __s = std::get<Circle>(s);
+    if (std::holds_alternative<Circle*>(s)) {
+        auto& __s = *std::get<Circle*>(s);
         //         return "circle"
         return "circle";
     }
     //     assert isinstance(s, Rect)
-    if (!(std::holds_alternative<Rect>(s))) ::tpy::tpy_panic("assertion failed");
-    auto& __s = std::get<Rect>(s);
+    if (!(std::holds_alternative<Rect*>(s))) ::tpy::tpy_panic("assertion failed");
+    auto& __s = *std::get<Rect*>(s);
     //     return "rect"
     return "rect";
 }
@@ -27,9 +27,10 @@ std::string describe(const MaybeShape& s) {
 // def main() -> None:
 void main() {
     //     a: MaybeShape = Circle(Int32(1))
-    MaybeShape a = Circle(1);
+    MaybeShape __slot_1 = Circle(1);
+    std::variant<std::monostate, Circle*, Rect*> a = ::tpy::to_ptr_variant(__slot_1);
     //     b: MaybeShape = None
-    MaybeShape b = std::monostate{};
+    std::variant<std::monostate, Circle*, Rect*> b = std::monostate{};
     //     print(describe(a))
     std::cout << describe(a) << "\n";
     //     print(describe(b))

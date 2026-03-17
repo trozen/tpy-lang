@@ -1181,7 +1181,11 @@ class ExpressionGenerator:
                 var_ref = self.ctx.narrowed_vars[var_name]
             elif self.ctx.is_indirect_name(TpyName(var_name)):
                 var_ref = f"(*{var_name})"
-            result[var_name] = f"std::get<{cpp_type}>({var_ref})"
+            # Pointer-variant unions: *std::get<T*>(var) to dereference
+            if var_name in self.ctx.ptr_variant_locals:
+                result[var_name] = f"(*std::get<{cpp_type}*>({var_ref}))"
+            else:
+                result[var_name] = f"std::get<{cpp_type}>({var_ref})"
         return result
 
     def _extract_isinstance_facts(
@@ -1266,6 +1270,10 @@ class ExpressionGenerator:
                 var_name = self.ctx.narrowed_vars[var_name]
             name_node = TpyName(var_name)
             var_ref = self.gen_expr_deref(name_node) if self.ctx.is_indirect_name(name_node) else var_name
+            # Pointer-variant unions: holds_alternative<T*> instead of <T>
+            orig_var = expr.isinstance_var
+            if orig_var in self.ctx.ptr_variant_locals:
+                return f"std::holds_alternative<{cpp_type}*>({var_ref})"
             return f"std::holds_alternative<{cpp_type}>({var_ref})"
         # Enum value lookup: Color(0) -> ::tpy::EnumUtil<Color>::from_value(0)
         if expr.enum_from_value is not None:
@@ -1381,23 +1389,42 @@ class ExpressionGenerator:
                     init_expr = self.gen_expr(arg, resolved_ptype)
                     temp_name = self.ctx.temps.create(resolved_ptype, init_expr)
                     gen_args.append(temp_name)
-                # Union params: wrap concrete member type in std::variant via a temp
-                # so the lvalue reference can bind.
+                # Union params: wrap concrete member type in variant
                 elif isinstance(unwrap_readonly(resolved_ptype), UnionType):
+                    ptype_union = unwrap_readonly(resolved_ptype)
                     arg_type = self.ctx.get_expr_type(arg)
                     cpp_decl = self._get_cpp_declared_type(arg)
                     already_union = (
                         isinstance(arg_type, UnionType)
                         or (cpp_decl is not None and isinstance(cpp_decl, UnionType))
                     )
-                    if arg_type is not None and not already_union:
-                        variant_cpp = self.types.type_to_cpp(unwrap_readonly(resolved_ptype))
-                        arg_expr = self.gen_expr_deref(arg, arg_type)
-                        arg_expr = self._maybe_move(arg, arg_expr)
-                        temp_name = self.ctx.temps.create_typed(variant_cpp, arg_expr, brace_init=False)
-                        gen_args.append(temp_name)
+                    if ptype_union.uses_pointer_repr():
+                        # Pointer-variant param: wrap concrete value as variant<T*,...>{&expr}
+                        if isinstance(arg, TpyNoneLiteral):
+                            # None -> monostate (not a pointer)
+                            pv_cpp = self.types.type_to_cpp_ptr_variant(ptype_union)
+                            gen_args.append(f"{pv_cpp}{{std::monostate{{}}}}")
+                        elif arg_type is not None and not already_union:
+                            pv_cpp = self.types.type_to_cpp_ptr_variant(ptype_union)
+                            arg_expr = self.gen_expr_deref(arg, arg_type)
+                            if self.ctx.is_rvalue_source(arg):
+                                # Rvalue: materialize temp first, then take address
+                                temp = self.ctx.temps.create(arg_type, arg_expr)
+                                gen_args.append(f"{pv_cpp}{{&{temp}}}")
+                            else:
+                                gen_args.append(f"{pv_cpp}{{&({arg_expr})}}")
+                        else:
+                            gen_args.append(self.gen_call_arg(arg, resolved_ptype))
                     else:
-                        gen_args.append(self.gen_call_arg(arg, resolved_ptype))
+                        # Value-type union: wrap concrete member in value variant temp
+                        if arg_type is not None and not already_union:
+                            variant_cpp = self.types.type_to_cpp(ptype_union)
+                            arg_expr = self.gen_expr_deref(arg, arg_type)
+                            arg_expr = self._maybe_move(arg, arg_expr)
+                            temp_name = self.ctx.temps.create_typed(variant_cpp, arg_expr, brace_init=False)
+                            gen_args.append(temp_name)
+                        else:
+                            gen_args.append(self.gen_call_arg(arg, resolved_ptype))
                 else:
                     gen_args.append(self.gen_call_arg(arg, resolved_ptype))
 
@@ -1841,8 +1868,14 @@ class ExpressionGenerator:
             # In @overload context, param is already concrete -- skip std::get
             if expr_obj.name in self.ctx.overload_param_types:
                 return obj_code, False
+            # Already isinstance-narrowed -- std::get extraction was done at block entry
+            if expr_obj.name in self.ctx.narrowed_vars:
+                return obj_code, False
             narrowed_type = self.ctx.assign_narrowed_types[expr_obj.name]
             cpp_type = self.types.type_to_cpp(narrowed_type)
+            # Pointer-variant unions: *std::get<T*>(var)
+            if expr_obj.name in self.ctx.ptr_variant_locals:
+                return f"(*std::get<{cpp_type}*>({obj_code}))", True
             if self.ctx.is_indirect_name(expr_obj):
                 return f"std::get<{cpp_type}>((*{expr_obj.name}))", True
             return f"std::get<{cpp_type}>({obj_code})", True

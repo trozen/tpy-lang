@@ -11,7 +11,7 @@ struct Triangle;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-double area(const std::variant<Circle, Rect, Triangle>& s);
+double area(const std::variant<Circle*, Rect*, Triangle*> s);
 void main();
 
 // # isinstance elif chain with three-member union

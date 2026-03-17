@@ -1,0 +1,1 @@
+main.py:14: error: Own[Dog] cannot be a union member. Use Own[...] around the whole union instead: Own[Cat | Dog]

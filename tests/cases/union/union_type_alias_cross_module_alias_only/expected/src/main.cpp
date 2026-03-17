@@ -5,7 +5,7 @@ namespace tpy_user::main {
 
 
 // def describe(s: Shape) -> str:
-std::string describe(const Shape& s) {
+std::string describe(const std::variant<::tpy_user::shapes::Circle*, ::tpy_user::shapes::Rect*> s) {
     //     return "shape"
     return "shape";
 }

@@ -5,13 +5,13 @@ namespace tpy_user::main {
 
 
 // def describe(s: Child | Other) -> None:
-void describe(const std::variant<Child, Other>& s) {
+void describe(const std::variant<Child*, Other*> s) {
     //     match s:
     auto& __match_subject = s;
     switch (__match_subject.index()) {
     //         case Child(a, b, c):
     case 0: {
-        auto& __case_0 = std::get<0>(__match_subject);
+        auto& __case_0 = *std::get<0>(__match_subject);
         auto& a = __case_0.x;
         auto& b = __case_0.y;
         auto& c = __case_0.z;
@@ -21,7 +21,7 @@ void describe(const std::variant<Child, Other>& s) {
     }
     //         case Other(v):
     case 1: {
-        auto& __case_1 = std::get<1>(__match_subject);
+        auto& __case_1 = *std::get<1>(__match_subject);
         auto& v = __case_1.v;
         //             print(v)
         std::cout << ::tpy::print_float(v) << "\n";
@@ -33,11 +33,13 @@ void describe(const std::variant<Child, Other>& s) {
 // def main() -> None:
 void main() {
     //     obj: Child | Other = Child(1.0, 2.0, 3.0)
-    std::variant<Child, Other> obj = Child(1.0, 2.0, 3.0);
+    std::variant<Child, Other> __slot_1 = Child(1.0, 2.0, 3.0);
+    std::variant<Child*, Other*> obj = ::tpy::to_ptr_variant(__slot_1);
     //     describe(obj)
     describe(obj);
     //     o: Child | Other = Other(9.0)
-    std::variant<Child, Other> o = Other(9.0);
+    std::variant<Child, Other> __slot_2 = Other(9.0);
+    std::variant<Child*, Other*> o = ::tpy::to_ptr_variant(__slot_2);
     //     describe(o)
     describe(o);
 }

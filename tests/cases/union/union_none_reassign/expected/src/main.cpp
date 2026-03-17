@@ -7,16 +7,15 @@ namespace tpy_user::main {
 // def test_reassign_to_none() -> str:
 std::string test_reassign_to_none() {
     //     v: Int32 | Dog | None = Int32(5)
-    std::variant<std::monostate, Dog, int32_t> __slot_1 = 5;
     std::optional<std::variant<std::monostate, Dog, int32_t>> __slot_2;
-    std::variant<std::monostate, Dog, int32_t>* v = &__slot_1;
+    std::variant<std::monostate, Dog, int32_t> __slot_1 = 5;
+    std::variant<std::monostate, Dog*, int32_t*> v = ::tpy::to_ptr_variant(__slot_1);
     //     if v is not None:
-    if ((!std::holds_alternative<std::monostate>((*v)))) {
+    if ((!std::holds_alternative<std::monostate>(v))) {
         //         v = None
-        __slot_2.emplace(std::monostate{});
-        v = &(*__slot_2);
+        v = std::monostate{};
         //         if v is None:
-        if ((std::holds_alternative<std::monostate>((*v)))) {
+        if ((std::holds_alternative<std::monostate>(v))) {
             //             return "reassigned to none"
             return "reassigned to none";
         }
@@ -28,16 +27,15 @@ std::string test_reassign_to_none() {
 // def test_init_none_then_assign() -> str:
 std::string test_init_none_then_assign() {
     //     v: Int32 | Dog | None = None
-    std::variant<std::monostate, Dog, int32_t> __slot_1 = std::monostate{};
-    std::optional<std::variant<std::monostate, Dog, int32_t>> __slot_2;
-    std::variant<std::monostate, Dog, int32_t>* v = &__slot_1;
+    std::variant<std::monostate, Dog*, int32_t*> v = std::monostate{};
     //     v = Int32(42)
-    v = &*(__slot_2 = 42);
+    std::variant<std::monostate, Dog, int32_t> __slot_1 = 42;
+    v = ::tpy::to_ptr_variant(__slot_1);
     //     if v is not None:
-    if ((!std::holds_alternative<std::monostate>((*v)))) {
+    if ((!std::holds_alternative<std::monostate>(v))) {
         //         if isinstance(v, Int32):
-        if (std::holds_alternative<int32_t>((*v))) {
-            auto& __v = std::get<int32_t>((*v));
+        if (std::holds_alternative<int32_t*>(v)) {
+            auto& __v = *std::get<int32_t*>(v);
             //             return "got int"
             return "got int";
         }

@@ -59,9 +59,12 @@ def area(s: Shape) -> float:
 
 ## Known Semantic Gaps
 
-| Issue | Description | Params | Returns |
-|-------|-------------|--------|---------|
-| Return copies non-value members | `f() -> A \| B` returns `std::variant<A, B>` by value, copying record members. Python returns by reference. `std::variant<A&, B&>` is not valid C++, unlike `std::tuple<A&, int>`. | OK (`&` for non-value unions) | Copies |
+No known semantic gaps. Non-value unions use a two-layer representation:
+- **Storage** (fields, containers, rvalue slots): `std::variant<Dog, Cat>` (value variant)
+- **Reference** (params, returns, locals): `std::variant<Dog*, Cat*>` (pointer variant)
+
+This enables zero-copy returns. Conversion between layers uses `::tpy::to_ptr_variant()`.
+Value-type unions (`Int32 | str`) continue using `std::variant<int32_t, std::string>` everywhere.
 
 ## Design Principles
 

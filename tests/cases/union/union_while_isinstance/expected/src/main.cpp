@@ -5,12 +5,12 @@ namespace tpy_user::main {
 
 
 // def drain_circles(s: Circle | Rect) -> None:
-void drain_circles(const std::variant<Circle, Rect>& s) {
+void drain_circles(const std::variant<Circle*, Rect*> s) {
     //     count: Int32 = 0
     int32_t count = 0;
     //     while isinstance(s, Circle):
-    while (std::holds_alternative<Circle>(s)) {
-        auto& __s = std::get<Circle>(s);
+    while (std::holds_alternative<Circle*>(s)) {
+        auto& __s = *std::get<Circle*>(s);
         //         print(s.radius)
         std::cout << ::tpy::print_float(__s.radius) << "\n";
         //         count += 1
@@ -26,11 +26,13 @@ void drain_circles(const std::variant<Circle, Rect>& s) {
 // def main() -> None:
 void main() {
     //     c: Circle | Rect = Circle(5.0)
-    std::variant<Circle, Rect> c = Circle(5.0);
+    std::variant<Circle, Rect> __slot_1 = Circle(5.0);
+    std::variant<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
     //     drain_circles(c)
     drain_circles(c);
     //     r: Circle | Rect = Rect(3.0, 4.0)
-    std::variant<Circle, Rect> r = Rect(3.0, 4.0);
+    std::variant<Circle, Rect> __slot_2 = Rect(3.0, 4.0);
+    std::variant<Circle*, Rect*> r = ::tpy::to_ptr_variant(__slot_2);
     //     drain_circles(r)
     drain_circles(r);
 }

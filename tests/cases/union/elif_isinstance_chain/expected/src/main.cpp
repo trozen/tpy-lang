@@ -5,21 +5,21 @@ namespace tpy_user::main {
 
 
 // def describe(a: Dog | Cat | Bird) -> str:
-std::string describe(const std::variant<Bird, Cat, Dog>& a) {
+std::string describe(const std::variant<Bird*, Cat*, Dog*> a) {
     //     if isinstance(a, Dog):
-    if (std::holds_alternative<Dog>(a)) {
-        auto& __a = std::get<Dog>(a);
+    if (std::holds_alternative<Dog*>(a)) {
+        auto& __a = *std::get<Dog*>(a);
         //         return "dog: " + a.name
         return (::tpy::str_concat("dog: ", __a.name));
     //     elif isinstance(a, Cat):
-    } else if (std::holds_alternative<Cat>(a)) {
-        auto& __a = std::get<Cat>(a);
+    } else if (std::holds_alternative<Cat*>(a)) {
+        auto& __a = *std::get<Cat*>(a);
         //         return "cat: " + a.name
         return (::tpy::str_concat("cat: ", __a.name));
     } else {
         //     elif isinstance(a, Bird):
-        if (std::holds_alternative<Bird>(a)) {
-            auto& __a = std::get<Bird>(a);
+        if (std::holds_alternative<Bird*>(a)) {
+            auto& __a = *std::get<Bird*>(a);
             //         return "bird: " + a.name
             return (::tpy::str_concat("bird: ", __a.name));
         }
@@ -31,11 +31,14 @@ std::string describe(const std::variant<Bird, Cat, Dog>& a) {
 // def main() -> None:
 void main() {
     //     d: Dog | Cat | Bird = Dog("Rex")
-    std::variant<Bird, Cat, Dog> d = Dog("Rex");
+    std::variant<Bird, Cat, Dog> __slot_1 = Dog("Rex");
+    std::variant<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
     //     c: Dog | Cat | Bird = Cat("Whiskers")
-    std::variant<Bird, Cat, Dog> c = Cat("Whiskers");
+    std::variant<Bird, Cat, Dog> __slot_2 = Cat("Whiskers");
+    std::variant<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
     //     b: Dog | Cat | Bird = Bird("Tweety")
-    std::variant<Bird, Cat, Dog> b = Bird("Tweety");
+    std::variant<Bird, Cat, Dog> __slot_3 = Bird("Tweety");
+    std::variant<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
     //     print(describe(d))
     std::cout << describe(d) << "\n";
     //     print(describe(c))

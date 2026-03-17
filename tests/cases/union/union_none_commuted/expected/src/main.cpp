@@ -5,15 +5,15 @@ namespace tpy_user::main {
 
 
 // def check(v: Int32 | Cat | None) -> str:
-std::string check(const std::variant<std::monostate, Cat, int32_t>& v) {
+std::string check(const std::variant<std::monostate, Cat*, int32_t*> v) {
     //     if None is v:
     if ((std::holds_alternative<std::monostate>(v))) {
         //         return "none"
         return "none";
     }
     //     if isinstance(v, Int32):
-    if (std::holds_alternative<int32_t>(v)) {
-        auto& __v = std::get<int32_t>(v);
+    if (std::holds_alternative<int32_t*>(v)) {
+        auto& __v = *std::get<int32_t*>(v);
         //         return "int"
         return "int";
     }
@@ -22,12 +22,12 @@ std::string check(const std::variant<std::monostate, Cat, int32_t>& v) {
 }
 
 // def check_not(v: Int32 | Cat | None) -> str:
-std::string check_not(const std::variant<std::monostate, Cat, int32_t>& v) {
+std::string check_not(const std::variant<std::monostate, Cat*, int32_t*> v) {
     //     if None is not v:
     if ((!std::holds_alternative<std::monostate>(v))) {
         //         if isinstance(v, Int32):
-        if (std::holds_alternative<int32_t>(v)) {
-            auto& __v = std::get<int32_t>(v);
+        if (std::holds_alternative<int32_t*>(v)) {
+            auto& __v = *std::get<int32_t*>(v);
             //             return "got int"
             return "got int";
         }
@@ -41,23 +41,21 @@ std::string check_not(const std::variant<std::monostate, Cat, int32_t>& v) {
 // def main() -> None:
 void main() {
     //     print(check(Int32(1)))
-    std::variant<std::monostate, Cat, int32_t> __tmp_1 = 1;
-    std::cout << check(__tmp_1) << "\n";
+    int32_t __tmp_1 = 1;
+    std::cout << check(std::variant<std::monostate, Cat*, int32_t*>{&__tmp_1}) << "\n";
     //     print(check(Cat("Whiskers")))
-    std::variant<std::monostate, Cat, int32_t> __tmp_2 = Cat("Whiskers");
-    std::cout << check(__tmp_2) << "\n";
+    Cat __tmp_2 = Cat("Whiskers");
+    std::cout << check(std::variant<std::monostate, Cat*, int32_t*>{&__tmp_2}) << "\n";
     //     print(check(None))
-    std::variant<std::monostate, Cat, int32_t> __tmp_3 = std::monostate{};
-    std::cout << check(__tmp_3) << "\n";
+    std::cout << check(std::variant<std::monostate, Cat*, int32_t*>{std::monostate{}}) << "\n";
     //     print(check_not(Int32(2)))
-    std::variant<std::monostate, Cat, int32_t> __tmp_4 = 2;
-    std::cout << check_not(__tmp_4) << "\n";
+    int32_t __tmp_3 = 2;
+    std::cout << check_not(std::variant<std::monostate, Cat*, int32_t*>{&__tmp_3}) << "\n";
     //     print(check_not(Cat("Paws")))
-    std::variant<std::monostate, Cat, int32_t> __tmp_5 = Cat("Paws");
-    std::cout << check_not(__tmp_5) << "\n";
+    Cat __tmp_4 = Cat("Paws");
+    std::cout << check_not(std::variant<std::monostate, Cat*, int32_t*>{&__tmp_4}) << "\n";
     //     print(check_not(None))
-    std::variant<std::monostate, Cat, int32_t> __tmp_6 = std::monostate{};
-    std::cout << check_not(__tmp_6) << "\n";
+    std::cout << check_not(std::variant<std::monostate, Cat*, int32_t*>{std::monostate{}}) << "\n";
 }
 
 void __tpy_init() {

@@ -159,6 +159,7 @@ class MatchGenerator:
     ) -> None:
         """Generate switch (__match_subject.index()) for union subjects."""
         inner = INDENT * (self.ctx.indent_level + 1)
+        is_ptr_var = subject_type.uses_pointer_repr()
         out.write(f"{indent}switch (__match_subject.index()) {{\n")
 
         for i, case in enumerate(stmt.cases):
@@ -172,11 +173,14 @@ class MatchGenerator:
                 case_var: str | None = None
                 if pattern.keywords or case.type_facts:
                     case_var = f"__case_{i}"
-                    out.write(f"{inner}auto& {case_var} = std::get<{idx}>(__match_subject);\n")
+                    get_expr = f"*std::get<{idx}>(__match_subject)" if is_ptr_var else f"std::get<{idx}>(__match_subject)"
+                    out.write(f"{inner}auto& {case_var} = {get_expr};\n")
                 if pattern.keywords:
                     self._gen_match_field_bindings(out, pattern, case_var, inner)
+                fallback = (f"*std::get<{idx}>(__match_subject)" if is_ptr_var
+                            else f"std::get<{idx}>(__match_subject)")
                 self._emit_binding(out, as_name, as_raw_name,
-                                   case_var or f"std::get<{idx}>(__match_subject)", inner)
+                                   case_var or fallback, inner)
                 # Narrowing
                 saved_narrow: dict[str, str | None] = {}
                 if case.type_facts:
@@ -229,7 +233,8 @@ class MatchGenerator:
                         idx = self._variant_index(subject_type, alt.resolved_type)
                         out.write(f"{indent}case {idx}: {{\n")
                         case_var = f"__case_{i}_{j}"
-                        out.write(f"{inner}auto& {case_var} = std::get<{idx}>(__match_subject);\n")
+                        get_expr = f"*std::get<{idx}>(__match_subject)" if is_ptr_var else f"std::get<{idx}>(__match_subject)"
+                        out.write(f"{inner}auto& {case_var} = {get_expr};\n")
                         if alt.keywords:
                             self._gen_match_field_bindings(out, alt, case_var, inner)
                         saved = self._apply_narrowing(case.type_facts, case_var)
@@ -523,6 +528,7 @@ class MatchGenerator:
                 self._gen_guarded_union_class_arm(
                     out, pattern, i, indent, inner, case.body,
                     case.guard, as_name, as_raw_name, case.type_facts, end_label,
+                    subject_type=subject_type,
                 )
 
             elif isinstance(pattern, TpyOrPattern):
@@ -561,16 +567,20 @@ class MatchGenerator:
         as_name: str | None, as_raw_name: str | None,
         type_facts: dict[str, TpyType] | None,
         end_label: str,
+        subject_type: UnionType | None = None,
     ) -> None:
         """Generate a class-pattern arm for guarded union match (goto-based fallthrough)."""
         assert pattern.resolved_type is not None
         cpp_type = self.types.type_to_cpp(pattern.resolved_type)
+        is_ptr_var = subject_type is not None and subject_type.uses_pointer_repr()
 
-        out.write(f"{indent}if (std::holds_alternative<{cpp_type}>(__match_subject)) {{\n")
+        holds_type = f"{cpp_type}*" if is_ptr_var else cpp_type
+        out.write(f"{indent}if (std::holds_alternative<{holds_type}>(__match_subject)) {{\n")
         case_var: str | None = None
         if pattern.keywords or type_facts or as_name is not None:
             case_var = f"__case_{arm_idx}"
-            out.write(f"{inner}auto& {case_var} = std::get<{cpp_type}>(__match_subject);\n")
+            get_expr = f"*std::get<{holds_type}>(__match_subject)" if is_ptr_var else f"std::get<{cpp_type}>(__match_subject)"
+            out.write(f"{inner}auto& {case_var} = {get_expr};\n")
         if pattern.keywords:
             self._gen_match_field_bindings(out, pattern, case_var, inner)
         self._emit_binding(out, as_name, as_raw_name, case_var, inner)
@@ -611,13 +621,15 @@ class MatchGenerator:
             for alt in pattern.patterns
         )
 
+        is_ptr_var = subject_type.uses_pointer_repr()
         if not has_bindings:
             conds = []
             for alt in pattern.patterns:
                 if isinstance(alt, TpyClassPattern):
                     assert alt.resolved_type is not None
                     cpp_type = self.types.type_to_cpp(alt.resolved_type)
-                    conds.append(f"std::holds_alternative<{cpp_type}>(__match_subject)")
+                    holds_type = f"{cpp_type}*" if is_ptr_var else cpp_type
+                    conds.append(f"std::holds_alternative<{holds_type}>(__match_subject)")
                 elif isinstance(alt, (TpyWildcardPattern, TpyCapturePattern)):
                     conds.append("true")
                 else:
@@ -640,6 +652,7 @@ class MatchGenerator:
                     self._gen_guarded_union_class_arm(
                         out, alt, f"{arm_idx}_{j}", indent, inner, body,
                         guard, None, None, type_facts, end_label,
+                        subject_type=subject_type,
                     )
                 else:
                     raise CodeGenError(f"Unsupported or-pattern alternative with bindings: {type(alt).__name__}")

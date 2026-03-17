@@ -1394,19 +1394,67 @@ class UnionType(TpyType):
     def is_sync(self) -> bool:
         return all(m.is_sync() for m in self.members)
 
+    def uses_pointer_repr(self) -> bool:
+        """Whether this union uses pointer-variant repr for params/returns/locals.
+
+        True when any non-None member is not a value type (e.g. Dog | Cat with records).
+        Pointer variants use std::variant<Dog*, Cat*> instead of std::variant<Dog, Cat>.
+        """
+        return not self.is_value_type()
+
+    def to_cpp_ptr_variant(self) -> str:
+        """Return the pointer-variant type: std::variant<Dog*, Cat*>.
+
+        Monostate members (None) stay as std::monostate.
+        Does not use type aliases (aliases are for value variants only).
+        """
+        cpp_members = [
+            "std::monostate" if isinstance(m, (NoneType, VoidType))
+            else f"{m.to_cpp()}*"
+            for m in self.members
+        ]
+        return f"std::variant<{', '.join(cpp_members)}>"
+
+    def to_cpp_const_ptr_variant(self) -> str:
+        """Return the const pointer-variant type: std::variant<const Dog*, const Cat*>."""
+        cpp_members = [
+            "std::monostate" if isinstance(m, (NoneType, VoidType))
+            else f"const {m.to_cpp()}*"
+            for m in self.members
+        ]
+        return f"std::variant<{', '.join(cpp_members)}>"
+
     def to_cpp_param(self, name: str) -> str:
-        if self.is_value_type():
-            return f"const {self.to_cpp()}& {name}"
-        return f"{self.to_cpp()}& {name}"
+        if self.uses_pointer_repr():
+            return f"{self.to_cpp_ptr_variant()} {name}"
+        return f"const {self.to_cpp()}& {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
+        if self.uses_pointer_repr():
+            # const on the variant itself, not on the pointers inside.
+            # Tells the optimizer the discriminant won't change.
+            return f"const {self.to_cpp_ptr_variant()} {name}"
         return f"const {self.to_cpp()}& {name}"
 
     def to_cpp_return(self) -> str:
+        if self.uses_pointer_repr():
+            return self.to_cpp_ptr_variant()
         return self.to_cpp()
 
     def to_cpp_return_const(self) -> str:
+        if self.uses_pointer_repr():
+            return self.to_cpp_const_ptr_variant()
         return self.to_cpp()
+
+    def is_ref_param(self) -> bool:
+        if self.uses_pointer_repr():
+            return False  # pointer variant passed by value
+        return not self.is_value_type()
+
+    def param_needs_copy_for_reassign(self) -> bool:
+        if self.uses_pointer_repr():
+            return False  # pointer variant is cheap to copy
+        return False
 
     def __str__(self) -> str:
         parts = [

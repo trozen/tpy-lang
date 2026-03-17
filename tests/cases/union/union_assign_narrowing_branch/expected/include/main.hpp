@@ -10,7 +10,7 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string describe(const std::variant<Circle, Rect>& s);
+std::string describe(const std::variant<Circle*, Rect*> s);
 void main();
 
 // # Assignment narrowing interacts correctly with isinstance branches

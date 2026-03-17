@@ -5,17 +5,17 @@ namespace tpy_user::main {
 
 
 // def rename(pet: Cat | Dog, new_name: str) -> None:
-void rename(std::variant<Cat, Dog>& pet, std::string_view new_name) {
+void rename(std::variant<Cat*, Dog*> pet, std::string_view new_name) {
     //     # pet is proven mutated (field assignment after narrowing) -- must stay T&
     //     if isinstance(pet, Cat):
-    if (std::holds_alternative<Cat>(pet)) {
-        auto& __pet = std::get<Cat>(pet);
+    if (std::holds_alternative<Cat*>(pet)) {
+        auto& __pet = *std::get<Cat*>(pet);
         //         pet.name = new_name
         __pet.name = new_name;
     } else {
         //     elif isinstance(pet, Dog):
-        if (std::holds_alternative<Dog>(pet)) {
-            auto& __pet = std::get<Dog>(pet);
+        if (std::holds_alternative<Dog*>(pet)) {
+            auto& __pet = *std::get<Dog*>(pet);
             //         pet.name = new_name
             __pet.name = new_name;
         }
@@ -23,17 +23,17 @@ void rename(std::variant<Cat, Dog>& pet, std::string_view new_name) {
 }
 
 // def read_name(pet: Cat | Dog) -> str:
-std::string read_name(const std::variant<Cat, Dog>& pet) {
+std::string read_name(const std::variant<Cat*, Dog*> pet) {
     //     # pet is NOT mutated (read-only access) -- must become const T&
     //     if isinstance(pet, Cat):
-    if (std::holds_alternative<Cat>(pet)) {
-        auto& __pet = std::get<Cat>(pet);
+    if (std::holds_alternative<Cat*>(pet)) {
+        auto& __pet = *std::get<Cat*>(pet);
         //         return pet.name
         return __pet.name;
     } else {
         //     elif isinstance(pet, Dog):
-        if (std::holds_alternative<Dog>(pet)) {
-            auto& __pet = std::get<Dog>(pet);
+        if (std::holds_alternative<Dog*>(pet)) {
+            auto& __pet = *std::get<Dog*>(pet);
             //         return pet.name
             return __pet.name;
         }
@@ -46,9 +46,11 @@ std::string read_name(const std::variant<Cat, Dog>& pet) {
 void test() {
     //     # Use union-typed locals so rename gets a direct reference (no auto-wrap copy)
     //     c: Cat | Dog = Cat("Whiskers")
-    std::variant<Cat, Dog> c = Cat("Whiskers");
+    std::variant<Cat, Dog> __slot_1 = Cat("Whiskers");
+    std::variant<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_1);
     //     d: Cat | Dog = Dog("Rex")
-    std::variant<Cat, Dog> d = Dog("Rex");
+    std::variant<Cat, Dog> __slot_2 = Dog("Rex");
+    std::variant<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_2);
     //     rename(c, "Fluffy")
     rename(c, "Fluffy");
     //     rename(d, "Buddy")

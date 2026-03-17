@@ -153,11 +153,14 @@ class FunctionGenerator:
             elif const_params:
                 part = ptype.to_cpp_const_param(cpp_pname)
             elif (mutated_params is not None and i not in mutated_params
-                    and ptype.is_ref_param()
+                    and (ptype.is_ref_param()
+                         or (isinstance(ptype, UnionType) and ptype.uses_pointer_repr()))
                     and not isinstance(ptype, TypeParamRef)
                     and not (reassigned_params and pname in reassigned_params)):
-                # Param is provably not mutated and not rebound -- safe to bind as const T&.
-                # Only applies when is_ref_param() is True (T& -> const T&).
+                # Param is provably not mutated and not rebound -- safe to use const.
+                # For ref params: T& -> const T&.
+                # For pointer-variant unions: variant<T*...> -> const variant<T*...>
+                # (const on the variant, not on the pointers -- no conversion issues).
                 # TypeParamRef excluded: its to_cpp_param() uses ::tpy::param_val_or_ref_t<T>
                 # (trait-based), not T& directly; to_cpp_const_param() gives const T& which
                 # differs in ABI for value-type instantiations.
@@ -301,14 +304,17 @@ class FunctionGenerator:
         result: set[str] = set()
         if use_const_params:
             for pname, ptype in params:
-                if ptype.is_ref_param() and not isinstance(ptype, TypeParamRef):
+                if ((ptype.is_ref_param()
+                     or (isinstance(ptype, UnionType) and ptype.uses_pointer_repr()))
+                        and not isinstance(ptype, TypeParamRef)):
                     result.add(pname)
             return result
         if mutated_params is None:
             return result
         for i, (pname, ptype) in enumerate(params):
             if (i not in mutated_params
-                    and ptype.is_ref_param()
+                    and (ptype.is_ref_param()
+                         or (isinstance(ptype, UnionType) and ptype.uses_pointer_repr()))
                     and not isinstance(ptype, TypeParamRef)
                     and not (reassigned_params and pname in reassigned_params)):
                 result.add(pname)
