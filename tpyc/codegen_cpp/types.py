@@ -374,3 +374,12 @@ class TypeResolver:
         ]
         return f"std::variant<{', '.join(cpp_members)}>"
 
+    def type_to_cpp_const_ptr_variant(self, typ: 'UnionType') -> str:
+        """Return the const pointer-variant type with qualified member names."""
+        cpp_members = [
+            "std::monostate" if isinstance(m, (NoneType, VoidType))
+            else f"const {self.type_to_cpp(m)}*"
+            for m in typ.members
+        ]
+        return f"std::variant<{', '.join(cpp_members)}>"
+

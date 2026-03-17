@@ -1,0 +1,1 @@
+TPy auto-generates operator<< repr for records; CPython uses default object repr without __repr__

@@ -1,0 +1,2 @@
+Zoo(pet=Dog(name='Rex'), tag='test')
+Zoo(pet=Cat(name='Whiskers'), tag='cats')

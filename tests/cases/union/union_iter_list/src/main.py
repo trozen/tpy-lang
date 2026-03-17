@@ -1,5 +1,4 @@
 # Iterating over list of non-value union (value-variant elements)
-from tpy import Int32
 
 class Dog:
     name: str

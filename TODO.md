@@ -8,8 +8,8 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 
 ## Bugs
-- `operator<<` for non-value union fields: records with `Dog | Cat` fields fail to compile because the auto-generated printer emits `os << obj.pet` on a `std::variant<Dog, Cat>`, which has no `operator<<`. Needs a visit-based printer for value-variant fields. Blocks struct fields with non-value union types.
 - Union field assignment: `owner.pet = new_pet` where `new_pet` is a pointer variant (`variant<T*...>`) and `pet` is a value-variant field (`variant<T...>`) needs `to_value_variant` conversion at the assignment site. Currently only handled in constructor member init lists.
+- Pointer-variant union reassignment from const source: `p = z.pet` where `p` was declared as `variant<T*...>` (mutable) but `z.pet` is const. The types are incompatible (`variant<T*...>` vs `variant<const T*...>`). Needs copy materialization into a mutable slot on reassignment from const source.
 
 ## Fuzzy Testing Findings (2026-03-12)
 

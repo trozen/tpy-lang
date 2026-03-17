@@ -1181,9 +1181,10 @@ class ExpressionGenerator:
                 var_ref = self.ctx.narrowed_vars[var_name]
             elif self.ctx.is_indirect_name(TpyName(var_name)):
                 var_ref = f"(*{var_name})"
-            # Pointer-variant unions: *std::get<T*>(var) to dereference
+            # Pointer-variant unions: *std::get<T*>(var) or *std::get<const T*>(var)
             if var_name in self.ctx.ptr_variant_locals:
-                result[var_name] = f"(*std::get<{cpp_type}*>({var_ref}))"
+                const_pfx = "const " if var_name in self.ctx.const_indirect_locals else ""
+                result[var_name] = f"(*std::get<{const_pfx}{cpp_type}*>({var_ref}))"
             else:
                 result[var_name] = f"std::get<{cpp_type}>({var_ref})"
         return result
@@ -1270,10 +1271,11 @@ class ExpressionGenerator:
                 var_name = self.ctx.narrowed_vars[var_name]
             name_node = TpyName(var_name)
             var_ref = self.gen_expr_deref(name_node) if self.ctx.is_indirect_name(name_node) else var_name
-            # Pointer-variant unions: holds_alternative<T*> instead of <T>
+            # Pointer-variant unions: holds_alternative<T*> or <const T*>
             orig_var = expr.isinstance_var
             if orig_var in self.ctx.ptr_variant_locals:
-                return f"std::holds_alternative<{cpp_type}*>({var_ref})"
+                const_pfx = "const " if orig_var in self.ctx.const_indirect_locals else ""
+                return f"std::holds_alternative<{const_pfx}{cpp_type}*>({var_ref})"
             return f"std::holds_alternative<{cpp_type}>({var_ref})"
         # Enum value lookup: Color(0) -> ::tpy::EnumUtil<Color>::from_value(0)
         if expr.enum_from_value is not None:
@@ -1873,9 +1875,10 @@ class ExpressionGenerator:
                 return obj_code, False
             narrowed_type = self.ctx.assign_narrowed_types[expr_obj.name]
             cpp_type = self.types.type_to_cpp(narrowed_type)
-            # Pointer-variant unions: *std::get<T*>(var)
+            # Pointer-variant unions: *std::get<T*>(var) or *std::get<const T*>(var)
             if expr_obj.name in self.ctx.ptr_variant_locals:
-                return f"(*std::get<{cpp_type}*>({obj_code}))", True
+                const_pfx = "const " if expr_obj.name in self.ctx.const_indirect_locals else ""
+                return f"(*std::get<{const_pfx}{cpp_type}*>({obj_code}))", True
             if self.ctx.is_indirect_name(expr_obj):
                 return f"std::get<{cpp_type}>((*{expr_obj.name}))", True
             return f"std::get<{cpp_type}>({obj_code})", True

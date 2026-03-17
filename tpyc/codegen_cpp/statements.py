@@ -896,6 +896,19 @@ class StatementGenerator:
         else:
             return f"{indent}{cpp_name} = &({init_expr});\n"
 
+    def _is_const_union_source(self, expr: TpyExpr) -> bool:
+        """Check if an expression yields a const value-variant (needs to_const_ptr_variant)."""
+        if isinstance(expr, TpyCoerce):
+            return self._is_const_union_source(expr.expr)
+        if isinstance(expr, (TpyFieldAccess, TpySubscript)):
+            obj = expr.obj
+            if isinstance(obj, TpyName):
+                return (obj.name in self.ctx.const_ref_params
+                        or obj.name in self.ctx.const_indirect_locals)
+            # Chained access (outer.inner.pet): recurse on the object
+            return self._is_const_union_source(obj)
+        return False
+
     def _is_ptr_variant_source(self, expr: TpyExpr) -> bool:
         """Check if an expression produces a pointer variant (vs value variant).
 
@@ -970,11 +983,23 @@ class StatementGenerator:
             rebind_slot = self.ctx.slots.next_slot()
             self.ctx.rebind_slots[stmt.name] = rebind_slot
             rebind_decl = f"{indent}{static_kw}std::optional<{val_type}> {rebind_slot};\n"
-        # If source is a value variant (field, container element), use to_ptr_variant
+        # Detect const source (field on const-ref param or const-indirect local)
+        is_const_source = self._is_const_union_source(stmt.init)
+        # If source is a value variant (field, container element), convert to pointer variant
         if isinstance(init_type, UnionType):
+            if is_const_source:
+                cpv_type = self.types.type_to_cpp_const_ptr_variant(target_type)
+                self.ctx.const_indirect_locals.add(stmt.name)
+                return (f"{rebind_decl}"
+                        f"{indent}{cpv_type} {cpp_name} = ::tpy::to_const_ptr_variant({init_expr});\n")
             return (f"{rebind_decl}"
                     f"{indent}{pv_type} {cpp_name} = ::tpy::to_ptr_variant({init_expr});\n")
         # Concrete-type lvalue (e.g. Dog param): take address for implicit variant construction
+        if is_const_source:
+            cpv_type = self.types.type_to_cpp_const_ptr_variant(target_type)
+            self.ctx.const_indirect_locals.add(stmt.name)
+            return (f"{rebind_decl}"
+                    f"{indent}{cpv_type} {cpp_name}{{&({init_expr})}};\n")
         return (f"{rebind_decl}"
                 f"{indent}{pv_type} {cpp_name}{{&({init_expr})}};\n")
 
@@ -1507,9 +1532,10 @@ class StatementGenerator:
             is_const = (var_name in self.ctx.current_func_params
                         and var_decl_type is not None and var_decl_type.is_value_type())
             qualifier = "const auto&" if is_const else "auto&"
-            # Pointer-variant unions: *std::get<T*>(var) to dereference the pointer
+            # Pointer-variant unions: *std::get<T*>(var) or *std::get<const T*>(var)
             if var_name in self.ctx.ptr_variant_locals:
-                out.write(f"{inner_indent}{qualifier} {local_name} = *std::get<{cpp_type}*>({var_ref});\n")
+                const_pfx = "const " if var_name in self.ctx.const_indirect_locals else ""
+                out.write(f"{inner_indent}{qualifier} {local_name} = *std::get<{const_pfx}{cpp_type}*>({var_ref});\n")
             else:
                 out.write(f"{inner_indent}{qualifier} {local_name} = std::get<{cpp_type}>({var_ref});\n")
             saved[var_name] = self.ctx.narrowed_vars.get(var_name)

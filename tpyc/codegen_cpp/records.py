@@ -1011,6 +1011,14 @@ class RecordGenerator:
                 out.write(f' << ::tpy::SetPrinter({acc})')
             elif isinstance(fld.type, (ListType, ArrayType, SpanType)):
                 out.write(f' << ::tpy::ListPrinter({acc})')
+            elif isinstance(fld.type, UnionType):
+                if fld.type.has_none_member():
+                    out.write(f';\n{indent}std::visit([&](const auto& __v) {{'
+                              f' if constexpr (std::is_same_v<std::remove_cvref_t<decltype(__v)>, std::monostate>)'
+                              f' {stream} << "None"; else {stream} << __v;'
+                              f' }}, {acc});\n{indent}{stream}')
+                else:
+                    out.write(f';\n{indent}std::visit([&](const auto& __v) {{ {stream} << __v; }}, {acc});\n{indent}{stream}')
             elif isinstance(fld.type, NamedType) and (fld.type.is_module_type or self._is_native(fld.type)):
                 out.write(f' << "<{fld.type}>"')
             else:
