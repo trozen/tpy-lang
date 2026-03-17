@@ -18,7 +18,7 @@ from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarD
 from .registration import build_record_self_type
 from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName, TpyCall,
-    TpyMethodCall, TpyExprStmt,
+    TpyMethodCall, TpyExprStmt, TpyRaise, TpyTryExcept, TpyMatch,
 )
 
 from .diagnostics import Scope, Diagnostic, SemanticError
@@ -123,6 +123,28 @@ def _type_contains_type_param(typ: TpyType) -> bool:
         et = elem()
         if isinstance(et, TpyType) and _type_contains_type_param(et):
             return True
+    return False
+
+
+def _body_has_raise(stmts: list[TpyStmt], exception_type: str) -> bool:
+    """Return True if any path in *stmts* contains ``raise <exception_type>``."""
+    for stmt in stmts:
+        if isinstance(stmt, TpyRaise) and stmt.exception_type == exception_type:
+            return True
+        if isinstance(stmt, TpyIf):
+            if _body_has_raise(stmt.then_body, exception_type) or _body_has_raise(stmt.else_body, exception_type):
+                return True
+        elif isinstance(stmt, (TpyWhile, TpyForEach)):
+            if _body_has_raise(stmt.body, exception_type) or _body_has_raise(stmt.orelse, exception_type):
+                return True
+        elif isinstance(stmt, TpyTryExcept):
+            if (_body_has_raise(stmt.try_body, exception_type) or _body_has_raise(stmt.except_body, exception_type)
+                    or _body_has_raise(stmt.else_body, exception_type)):
+                return True
+        elif isinstance(stmt, TpyMatch):
+            for case in stmt.cases:
+                if _body_has_raise(case.body, exception_type):
+                    return True
     return False
 
 
@@ -1089,6 +1111,14 @@ class SemanticAnalyzer:
             # Analyze body
             for stmt in method.body:
                 self.stmts.analyze_stmt(stmt)
+
+            # Warn if __next__ has no raise StopIteration (likely infinite loop)
+            if method.name == "__next__" and not _body_has_raise(method.body, "StopIteration"):
+                self.ctx.warning(
+                    "__next__() has no 'raise StopIteration' -- "
+                    "iterator will loop forever if caller exhausts it",
+                    method
+                )
 
             # Check for field assignments inside control flow in __init__
             if method.name == "__init__":

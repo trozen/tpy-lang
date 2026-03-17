@@ -2840,6 +2840,24 @@ class TypeRegistry:
                 break
         return False
 
+    def get_method_overloads_with_parents(
+        self, record: RecordInfo, method_name: str,
+    ) -> list['FunctionInfo']:
+        """Look up method overloads on a record, walking the parent chain.
+
+        Returns the first match found (own methods take precedence over inherited).
+        Does NOT apply type substitution for generic parents -- callers that need
+        substitution should use ProtocolChecker.lookup_record_method_overloads.
+        """
+        overloads = record.get_method_overloads(method_name)
+        if overloads:
+            return overloads
+        if record.parent:
+            parent_info = self.get_record_for_type(record.parent)
+            if parent_info:
+                return self.get_method_overloads_with_parents(parent_info, method_name)
+        return []
+
     def get_record_for_type(self, tpy_type: 'TpyType') -> Optional[RecordInfo]:
         """Unified lookup for any type's RecordInfo.
 

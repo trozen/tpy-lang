@@ -462,6 +462,12 @@ class ProtocolChecker:
         # std::convertible_to<int32_t> so the implicit conversion is safe.
         if isinstance(expected, FixedIntType) and isinstance(unwrapped, BigIntType):
             return True
+        # Inherited method return type: actual is a parent of expected.
+        # e.g. Counter.__iter__() -> Counter inherited by DoubleCounter,
+        # checked against Iterator[T] which expects __iter__() -> Self
+        # (= DoubleCounter). Counter is a valid supertype.
+        if self.ctx.registry.is_subclass_of(expected, unwrapped):
+            return True
         # If expected is a protocol, check if actual conforms to it
         if is_protocol_type(expected) and isinstance(expected, NamedType):
             return self.type_conforms_to_protocol(unwrapped, expected)

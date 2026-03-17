@@ -2424,6 +2424,10 @@ except StopIteration:
     print("exhausted")
 ```
 
+**Inherited iterators**: Child classes that inherit `__next__` from a parent satisfy `Iterator[T]` protocol and work with `list()`/`set()`/`dict()` constructors. For example, `DoubleCounter(Counter)` can be passed to `Iterator[Int32]` params even though `__next__` is defined on `Counter`.
+
+**Missing `raise StopIteration` warning**: If a `__next__` method contains no `raise StopIteration` on any code path, the compiler emits a warning. Such iterators never signal termination and will loop forever when used in `for` loops without an explicit `break`.
+
 **Auto-synthesis of `__iter__`**: Types that define `__next__` but not `__iter__` automatically get `__iter__` synthesized, returning `self`. This matches Python's convention where iterators are their own iterables.
 
 **Built-in `Iterable[T]` conformance**: All standard container and string types conform to `Iterable[T]`: `list[T]`, `Array[T, N]`, `Span[T]`, `Span[readonly[T]]`, `Range[T]`, `str`, `String`, `StrView` (as `Iterable[Char]`), `dict[K,V]` (as `Iterable[K]`), `dict_keys`, `dict_values`, `dict_items`. This enables passing any builtin container to generic functions accepting `Iterable[T]`, calling `__iter__()` explicitly, and using the `iter()` builtin. Direct `for` loops over these types still use fast range-based C++ iteration (`NativeIterable`) as an optimization.

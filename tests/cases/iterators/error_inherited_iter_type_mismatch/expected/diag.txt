@@ -1,0 +1,1 @@
+main.py:31: error: Type DoubleCounter does not conform to protocol Iterator[str] in argument 'it'

@@ -193,8 +193,9 @@ tests/
 2. Add source file: `src/main.py` with a short comment (1-2 lines) at the very top explaining what the test covers -- test names alone are often not enough context
    - Prefer putting test logic inside functions (e.g. `def main(): ...` + `main()`) rather than as top-level statements. Top-level codegen differs from function codegen (globals use pointer slots, different variable model), so use top-level statements only when specifically testing global variable behavior.
 3. Add `# tpyc:` annotations on lines that test specific compiler behavior:
-   - `# tpyc: ok` - line should compile without error
+   - `# tpyc: ok` - line should compile without error or warning
    - `# tpyc: error(/regex/)` - line should produce an error matching the regex
+   - `# tpyc: warning(/regex/)` - line should produce a warning matching the regex
    - `# tpyc: type(TypeName)` - assert the compiler-inferred type of the variable declared on this line (e.g. `s = "hello"  # tpyc: type(StrView)`). Supports regex with `/pattern/` syntax. Validated in `test_comp` only (not in update mode).
    - `# tpyc: non_null(var)` - assert that `var` is proven non-null at this ptr dereference (skips `deref_check`). Validated in `test_comp` only.
    - `# tpyc: nullable(var)` - assert that `var` is NOT proven non-null at this ptr dereference (uses `deref_check`). Validated in `test_comp` only.

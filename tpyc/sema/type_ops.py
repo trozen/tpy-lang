@@ -649,7 +649,7 @@ class TypeOperations:
 
         inferred: dict[str, TpyType] = {}
         for method_sig in protocol_info.methods:
-            for method_info in record.get_method_overloads(method_sig.name):
+            for method_info in self.ctx.registry.get_method_overloads_with_parents(record, method_sig.name):
                 if len(method_info.params) != len(method_sig.params):
                     continue
                 ret = _substitute(method_info.return_type)
