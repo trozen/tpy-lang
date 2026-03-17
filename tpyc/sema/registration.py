@@ -1280,8 +1280,8 @@ class TypeRegistrar:
         # Resolve types (sets is_protocol flag correctly for imported protocols)
         resolved_params = []
         for pname, ptype in func.params:
-            resolved_ptype = self.type_ops.resolve_type(ptype)
             try:
+                resolved_ptype = self.type_ops.resolve_type(ptype)
                 self.type_ops.validate_type(resolved_ptype, allow_type_param_ref=is_generic)
             except SemanticError as e:
                 raise self.ctx.error(str(e), func)

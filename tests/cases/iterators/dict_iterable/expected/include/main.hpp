@@ -8,16 +8,16 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy::Iterable<std::string> T_items>
+template<::tpy_user::typing::Iterable<std::string> T_items>
 void collect_items(T_items& items);
-template<::tpy::Iterable<int32_t> T_items>
+template<::tpy_user::typing::Iterable<int32_t> T_items>
 void collect_ints(T_items& items);
-template<::tpy::Iterable<std::tuple<std::string, int32_t>> T_items>
+template<::tpy_user::typing::Iterable<std::tuple<std::string, int32_t>> T_items>
 void collect_pairs(T_items& items);
 void main();
 
 // def collect_items(items: Iterable[str]) -> None:
-template<::tpy::Iterable<std::string> T_items>
+template<::tpy_user::typing::Iterable<std::string> T_items>
 void collect_items(T_items& items) {
     //     for x in items:
     auto& __src_0 = items;
@@ -31,7 +31,7 @@ void collect_items(T_items& items) {
     }
 }
 // def collect_ints(items: Iterable[Int32]) -> None:
-template<::tpy::Iterable<int32_t> T_items>
+template<::tpy_user::typing::Iterable<int32_t> T_items>
 void collect_ints(T_items& items) {
     //     for x in items:
     auto& __src_0 = items;
@@ -45,7 +45,7 @@ void collect_ints(T_items& items) {
     }
 }
 // def collect_pairs(items: Iterable[tuple[str, Int32]]) -> None:
-template<::tpy::Iterable<std::tuple<std::string, int32_t>> T_items>
+template<::tpy_user::typing::Iterable<std::tuple<std::string, int32_t>> T_items>
 void collect_pairs(T_items& items) {
     //     for pair in items:
     auto& __src_0 = items;

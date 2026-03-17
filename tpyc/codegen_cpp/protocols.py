@@ -9,8 +9,8 @@ from collections import namedtuple
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, TypeParamRef, TypeParamKind, ReadonlyType, VoidType, OptionalType,
-    UnionType, StrType, MethodSignature, is_protocol_type, unwrap_readonly,
+    TpyType, NamedType, TypeParamRef, TypeParamKind, ReadonlyType, VoidType, SelfType,
+    OptionalType, UnionType, StrType, MethodSignature, is_protocol_type, unwrap_readonly,
     is_protocol_union, protocol_union_protocols, protocol_union_has_none,
 )
 from ..parse import TpyProtocol, TpyRecord
@@ -421,31 +421,41 @@ class ProtocolGenerator:
             return resolved.to_cpp()
 
         for method_sig in all_methods:
-            # Generate requirement for each method
-            # SelfType.to_cpp() returns "T", so this handles Self -> T substitution
+            # Generate requirement for each method.
+            # SelfType.to_cpp() returns "T", so this handles Self -> T substitution.
             # Protocol type params (e.g., T in Container[T]) are mapped to _T0, _T1, etc.
             ret_cpp = concept_type_cpp(method_sig.return_type)
+            # Skip return type check when the C++ return doesn't match the
+            # protocol signature: protocol returns (Iterator[T] -- can't
+            # convertible_to a concept), __next__ (C++ returns
+            # std::expected<T, StopIteration>, not T), and Self on __iter__
+            # (just checks the expression is valid, not the return type).
+            skip_return_check = (is_protocol_type(method_sig.return_type)
+                                 or method_sig.name == "__next__"
+                                 or (isinstance(method_sig.return_type, SelfType)
+                                     and method_sig.name not in DUNDER_TO_BINARY_OP))
 
-            # For dunder methods that have ::tpy:: free function equivalents, use those
-            # This allows std types (vector, string, etc.) to satisfy the protocol
-            if method_sig.name == "__len__":
-                out.write(f"{INDENT}{{ ::tpy::__len__(t) }} -> std::convertible_to<{ret_cpp}>;\n")
+            # Build the C++ call expression from DUNDER_CPP_TEMPLATES, binary
+            # operator map, or direct member call (in that priority order).
+            from ..modules import get_dunder_cpp_template
+            cpp_tmpl = get_dunder_cpp_template(method_sig.name)
+            if cpp_tmpl is not None:
+                # Expand template: {self} -> t, {0}/{1}/... -> std::declval<ParamCpp>()
+                call_expr = cpp_tmpl.replace("{self}", "t")
+                for i, (_, ptype) in enumerate(method_sig.params):
+                    call_expr = call_expr.replace(f"{{{i}}}", f"std::declval<{subst_to_cpp(ptype)}>()")
             elif method_sig.name in DUNDER_TO_BINARY_OP and len(method_sig.params) == 1:
-                # Binary operators - use C++ operator syntax
-                # e.g., __add__(Self) -> Self becomes { t + std::declval<T>() } -> convertible_to<T>
                 cpp_op = DUNDER_TO_BINARY_OP[method_sig.name]
                 _, ptype = method_sig.params[0]
-                param_cpp = subst_to_cpp(ptype)
-                out.write(f"{INDENT}{{ t {cpp_op} std::declval<{param_cpp}>() }} -> std::convertible_to<{ret_cpp}>;\n")
+                call_expr = f"t {cpp_op} std::declval<{subst_to_cpp(ptype)}>()"
             else:
-                # { t.method_name(args...) } -> std::convertible_to<return_type>;
-                params_str = ""
-                if method_sig.params:
-                    # Use std::declval for parameter types
-                    # SelfType.to_cpp() returns "T", so Self params become std::declval<T>()
-                    param_exprs = [f"std::declval<{subst_to_cpp(ptype)}>()" for _, ptype in method_sig.params]
-                    params_str = ", ".join(param_exprs)
-                out.write(f"{INDENT}{{ t.{method_sig.name}({params_str}) }} -> std::convertible_to<{ret_cpp}>;\n")
+                param_exprs = [f"std::declval<{subst_to_cpp(ptype)}>()" for _, ptype in method_sig.params]
+                call_expr = f"t.{method_sig.name}({', '.join(param_exprs)})"
+
+            if skip_return_check:
+                out.write(f"{INDENT}{call_expr};\n")
+            else:
+                out.write(f"{INDENT}{{ {call_expr} }} -> std::convertible_to<{ret_cpp}>;\n")
 
         # Collect all fields including inherited ones
         all_fields = self.collect_concept_fields(protocol.name)

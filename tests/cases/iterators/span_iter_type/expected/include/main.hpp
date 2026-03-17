@@ -8,13 +8,13 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy::Iterable<int32_t> T_it>
+template<::tpy_user::typing::Iterable<int32_t> T_it>
 int32_t sum_iterable(T_it& it);
 int32_t sum_readonly(std::span<const int32_t> rs);
 void main();
 
 // def sum_iterable(it: Iterable[Int32]) -> Int32:
-template<::tpy::Iterable<int32_t> T_it>
+template<::tpy_user::typing::Iterable<int32_t> T_it>
 int32_t sum_iterable(T_it& it) {
     //     total: Int32 = 0
     int32_t total = 0;

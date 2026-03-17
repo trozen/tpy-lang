@@ -66,12 +66,10 @@ class BuiltinGenerator:
                 )
             if overloads and overloads[0].cpp_template:
                 return overloads[0].cpp_template
-        # Check builtin protocol method templates (e.g., Sequence.__getitem__)
+        # Check dunder method C++ templates (e.g., __getitem__ -> ::tpy::__getitem__)
         if is_protocol_type(tpy_type):
-            from ..modules import lookup_protocol
-            proto_def = lookup_protocol(tpy_type.name)
-            if proto_def and method_name in proto_def.methods:
-                return proto_def.methods[method_name].cpp
+            from ..modules import get_dunder_cpp_template
+            return get_dunder_cpp_template(method_name)
         return None
 
     def gen_method_from_function_info(self, obj: str, args: list[TpyExpr],

@@ -8,12 +8,12 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy::Iterator<int32_t> T_it>
+template<::tpy_user::typing::Iterator<int32_t> T_it>
 void consume(T_it& it);
 void main();
 
 // def consume(it: Iterator[Int32]) -> None:
-template<::tpy::Iterator<int32_t> T_it>
+template<::tpy_user::typing::Iterator<int32_t> T_it>
 void consume(T_it& it) {
     //     for x in it:
     auto& __iter_0 = it;

@@ -9,19 +9,19 @@ namespace tpy_user::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T_items>
-  requires (::tpy::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
+  requires (::tpy_user::typing::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
 void describe(const T_items& items);
 template<typename T_items>
-  requires (::tpy::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
+  requires (::tpy_user::typing::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
 ::tpy::BigInt get_value(const T_items& items);
 void main();
 
 // def describe(items: Sized | Sequence[int]) -> None:
 template<typename T_items>
-  requires (::tpy::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
+  requires (::tpy_user::typing::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
 void describe(const T_items& items) {
     //     if isinstance(items, Sequence):
-    if constexpr (::tpy::Sequence<T_items, ::tpy::BigInt>) {
+    if constexpr (::tpy_user::typing::Sequence<T_items, ::tpy::BigInt>) {
         //         print(items[0])
         std::cout << items[0] << "\n";
     //     elif isinstance(items, Sized):
@@ -32,10 +32,10 @@ void describe(const T_items& items) {
 }
 // def get_value(items: Sized | Sequence[int]) -> int:
 template<typename T_items>
-  requires (::tpy::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
+  requires (::tpy_user::typing::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
 ::tpy::BigInt get_value(const T_items& items) {
     //     if isinstance(items, Sequence):
-    if constexpr (::tpy::Sequence<T_items, ::tpy::BigInt>) {
+    if constexpr (::tpy_user::typing::Sequence<T_items, ::tpy::BigInt>) {
         //         return items[0]
         return items[0];
     //     elif isinstance(items, Sized):

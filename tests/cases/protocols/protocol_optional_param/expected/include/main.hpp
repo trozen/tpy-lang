@@ -18,8 +18,8 @@ template<::tpy_user::typing::Sized T_items, typename T_extra = std::nullptr_t>
 template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sized<T_items>)
 ::tpy::BigInt only_optional(const T_items* items = nullptr);
-template<::tpy::Sequence<::tpy::BigInt> T_items, typename T_extra = std::nullptr_t>
-  requires (std::same_as<T_extra, std::nullptr_t> || ::tpy::Sequence<T_extra, ::tpy::BigInt>)
+template<::tpy_user::typing::Sequence<::tpy::BigInt> T_items, typename T_extra = std::nullptr_t>
+  requires (std::same_as<T_extra, std::nullptr_t> || ::tpy_user::typing::Sequence<T_extra, ::tpy::BigInt>)
 ::tpy::BigInt sum_optional(const T_items& items, const T_extra* extra = nullptr);
 void main();
 
@@ -151,8 +151,8 @@ template<typename T_items>
 }
 // # Generic Optional[Protocol] param: Optional[Sequence[int]]
 // def sum_optional(items: Sequence[int], extra: Optional[Sequence[int]] = None) -> int:
-template<::tpy::Sequence<::tpy::BigInt> T_items, typename T_extra>
-  requires (std::same_as<T_extra, std::nullptr_t> || ::tpy::Sequence<T_extra, ::tpy::BigInt>)
+template<::tpy_user::typing::Sequence<::tpy::BigInt> T_items, typename T_extra>
+  requires (std::same_as<T_extra, std::nullptr_t> || ::tpy_user::typing::Sequence<T_extra, ::tpy::BigInt>)
 ::tpy::BigInt sum_optional(const T_items& items, const T_extra* extra) {
     //     result: int = 0
     ::tpy::BigInt result = ::tpy::BigInt(0);

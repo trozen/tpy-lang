@@ -11,7 +11,7 @@ struct MyRange;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy::Iterable<int32_t> T>
+template<::tpy_user::typing::Iterable<int32_t> T>
 int32_t sum_all(::tpy::param_val_or_ref_t<T> items);
 void main();
 
@@ -81,7 +81,7 @@ inline std::ostream& operator<<(std::ostream& os, const MyRange& obj) {
 }
 
 // def sum_all[T: Iterable[Int32]](items: T) -> Int32:
-template<::tpy::Iterable<int32_t> T>
+template<::tpy_user::typing::Iterable<int32_t> T>
 int32_t sum_all(::tpy::param_val_or_ref_t<T> items) {
     //     total: Int32 = 0
     int32_t total = 0;

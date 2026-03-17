@@ -8,7 +8,7 @@ namespace tpy_user::main {
 
 struct RangeIter;
 struct MyRange;
-template<::tpy::Iterable<int32_t> T> struct Summer;
+template<::tpy_user::typing::Iterable<int32_t> T> struct Summer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -80,7 +80,7 @@ inline std::ostream& operator<<(std::ostream& os, const MyRange& obj) {
 }
 
 // class Summer[T: Iterable[Int32]]:
-template<::tpy::Iterable<int32_t> T>
+template<::tpy_user::typing::Iterable<int32_t> T>
 struct Summer {
     //     items: T
     T items;

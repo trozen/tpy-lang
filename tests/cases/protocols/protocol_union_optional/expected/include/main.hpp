@@ -11,10 +11,10 @@ struct Holder;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
 ::tpy::BigInt process(const T_items* items = nullptr);
 template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
 ::tpy::BigInt with_else(const T_items* items = nullptr);
 void main();
 
@@ -26,7 +26,7 @@ struct Holder {
     //     def __init__(self, items: Sized | Sequence[int] | None = None) -> None:
     Holder() : Holder(static_cast<std::nullptr_t*>(nullptr)) {}
     template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
     explicit Holder(const T_items* items = nullptr) : count(::tpy::BigInt(0)) {
         //         if items is not None:
         if constexpr (!std::same_as<T_items, std::nullptr_t>) {
@@ -52,12 +52,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 // def process(items: Sized | Sequence[int] | None = None) -> int:
 template<typename T_items>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
 ::tpy::BigInt process(const T_items* items) {
     //     if items is not None:
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
         //         if isinstance(items, Sequence):
-        if constexpr (::tpy::Sequence<T_items, ::tpy::BigInt>) {
+        if constexpr (::tpy_user::typing::Sequence<T_items, ::tpy::BigInt>) {
             //             return items[0]
             return (*items)[0];
         //         elif isinstance(items, Sized):
@@ -71,12 +71,12 @@ template<typename T_items>
 }
 // def with_else(items: Sized | Sequence[int] | None = None) -> int:
 template<typename T_items>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
 ::tpy::BigInt with_else(const T_items* items) {
     //     if items is not None:
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
         //         if isinstance(items, Sequence):
-        if constexpr (::tpy::Sequence<T_items, ::tpy::BigInt>) {
+        if constexpr (::tpy_user::typing::Sequence<T_items, ::tpy::BigInt>) {
             //             return items[0]
             return (*items)[0];
         //         elif isinstance(items, Sized):

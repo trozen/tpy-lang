@@ -583,7 +583,12 @@ class ProtocolChecker:
                     for pname, ptype in method_sig.params
                 ]
                 return_type = self.type_ops.substitute_types(method_sig.return_type, type_subst)
-                return (params, return_type, method_sig.cpp_template)
+                cpp_template = method_sig.cpp_template
+                # .py protocols don't have cpp templates; use dunder map
+                if cpp_template is None:
+                    from ..modules import get_dunder_cpp_template
+                    cpp_template = get_dunder_cpp_template(method_name)
+                return (params, return_type, cpp_template)
 
         return None
 

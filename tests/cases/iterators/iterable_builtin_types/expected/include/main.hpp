@@ -8,23 +8,23 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy::Iterable<int32_t> T_items>
+template<::tpy_user::typing::Iterable<int32_t> T_items>
 int32_t sum_items(T_items& items);
-template<::tpy::Iterable<char> T_items>
+template<::tpy_user::typing::Iterable<char> T_items>
 int32_t count_chars(T_items& items);
-template<::tpy::Iterable<std::string> T_items>
+template<::tpy_user::typing::Iterable<std::string> T_items>
 std::string sum_strs(T_items& items);
 void test_iterable_params();
 void test_manual_iter();
-template<::tpy::Iterable<int32_t> T_items>
+template<::tpy_user::typing::Iterable<int32_t> T_items>
 void test_iter_on_protocol(T_items& items);
 void test_iter_builtin();
-template<::tpy::Iterable<::tpy::BigInt> T_items>
+template<::tpy_user::typing::Iterable<::tpy::BigInt> T_items>
 ::tpy::BigInt sum_bigints(T_items& items);
 void main();
 
 // def sum_items(items: Iterable[Int32]) -> Int32:
-template<::tpy::Iterable<int32_t> T_items>
+template<::tpy_user::typing::Iterable<int32_t> T_items>
 int32_t sum_items(T_items& items) {
     //     total: Int32 = 0
     int32_t total = 0;
@@ -42,7 +42,7 @@ int32_t sum_items(T_items& items) {
     return total;
 }
 // def count_chars(items: Iterable[Char]) -> Int32:
-template<::tpy::Iterable<char> T_items>
+template<::tpy_user::typing::Iterable<char> T_items>
 int32_t count_chars(T_items& items) {
     //     n: Int32 = 0
     int32_t n = 0;
@@ -60,7 +60,7 @@ int32_t count_chars(T_items& items) {
     return n;
 }
 // def sum_strs(items: Iterable[str]) -> str:
-template<::tpy::Iterable<std::string> T_items>
+template<::tpy_user::typing::Iterable<std::string> T_items>
 std::string sum_strs(T_items& items) {
     //     result: str = ""
     std::string result = "";
@@ -78,7 +78,7 @@ std::string sum_strs(T_items& items) {
     return result;
 }
 // def test_iter_on_protocol(items: Iterable[Int32]) -> None:
-template<::tpy::Iterable<int32_t> T_items>
+template<::tpy_user::typing::Iterable<int32_t> T_items>
 void test_iter_on_protocol(T_items& items) {
     //     # __iter__() on a protocol-typed variable
     //     it = items.__iter__()
@@ -98,7 +98,7 @@ void test_iter_on_protocol(T_items& items) {
     std::cout << total << "\n";
 }
 // def sum_bigints(items: Iterable[int]) -> int:
-template<::tpy::Iterable<::tpy::BigInt> T_items>
+template<::tpy_user::typing::Iterable<::tpy::BigInt> T_items>
 ::tpy::BigInt sum_bigints(T_items& items) {
     //     # Iterable[int] (BigInt) -- expensive value type, const ref when unmutated
     //     total: int = 0

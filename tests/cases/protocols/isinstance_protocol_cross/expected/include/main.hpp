@@ -8,12 +8,12 @@ namespace tpy_user::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy::Sequence<int32_t> T_items>
+template<::tpy_user::typing::Sequence<int32_t> T_items>
 void cross_protocol(const T_items& items);
 void main();
 
 // def cross_protocol(items: Sequence[Int32]) -> None:
-template<::tpy::Sequence<int32_t> T_items>
+template<::tpy_user::typing::Sequence<int32_t> T_items>
 void cross_protocol(const T_items& items) {
     //     if isinstance(items, Hashable):
     if constexpr (::tpy::Hashable<T_items>) {

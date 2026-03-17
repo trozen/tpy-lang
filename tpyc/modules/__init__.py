@@ -120,7 +120,7 @@ class BuiltinModule:
             type_param_bounds=type_param_bounds or {},
         )
 
-    def protocol(self, name: str, methods: dict[str, MethodDef], cpp_concept: str,
+    def protocol(self, name: str, methods: dict[str, MethodDef], cpp_concept: str = "",
                  type_params: list[str] | None = None, is_readonly: bool = False):
         """Register a protocol definition."""
         self.protocols[name] = ProtocolDef(
@@ -276,6 +276,24 @@ def get_all_modules() -> list[BuiltinModule]:
 def get_importable_modules() -> list[BuiltinModule]:
     """Get modules that require explicit import (excludes builtins)."""
     return [m for m in get_all_modules() if m.name != "builtins"]
+
+
+# C++ expression templates for Python dunder methods.
+# Used when .py-defined protocols don't carry cpp templates.
+DUNDER_CPP_TEMPLATES: dict[str, str] = {
+    "__len__": "::tpy::__len__({self})",
+    "__getitem__": "::tpy::__getitem__({self}, {0})",
+    "__setitem__": "::tpy::__setitem__({self}, {0}, {1})",
+    "__iter__": "::tpy::__iter__({self})",
+    "__next__": "{self}.__next__()",
+    "__contains__": "::tpy::__contains__({self}, {0})",
+    "__delitem__": "::tpy::__delitem__({self}, {0})",
+}
+
+
+def get_dunder_cpp_template(method_name: str) -> str | None:
+    """Get the C++ expression template for a dunder method, or None."""
+    return DUNDER_CPP_TEMPLATES.get(method_name)
 
 
 def lookup_protocol(name: str) -> ProtocolDef | None:

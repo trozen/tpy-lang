@@ -10,7 +10,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 template<::tpy_user::typing::Sized T_s>
 int32_t get_len(const T_s& s);
-template<::tpy::Sequence<int32_t> T_s>
+template<::tpy_user::typing::Sequence<int32_t> T_s>
 int32_t get_first(const T_s& s);
 void observe(const std::vector<int32_t>& items);
 void main();
@@ -22,7 +22,7 @@ int32_t get_len(const T_s& s) {
     return ::tpy::__len__(s);
 }
 // def get_first(s: Sequence[Int32]) -> Int32:
-template<::tpy::Sequence<int32_t> T_s>
+template<::tpy_user::typing::Sequence<int32_t> T_s>
 int32_t get_first(const T_s& s) {
     //     return s[0]
     return ::tpy::__getitem__(s, 0);

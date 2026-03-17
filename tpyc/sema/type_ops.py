@@ -70,6 +70,13 @@ class TypeOperations:
             # Only upgrade False -> True, never downgrade (parser may know about
             # same-file protocols not yet in the sema registry).
             protocol_info = self.ctx.registry.get_protocol(typ.name)
+            # Generic protocols require type arguments (e.g., Sequence[T] not bare Sequence)
+            if (protocol_info and protocol_info.type_params
+                    and not typ.type_args and not protocols_only):
+                from ..sema.diagnostics import SemanticError
+                raise SemanticError(
+                    f"Generic protocol '{typ.name}' requires type arguments: "
+                    f"{typ.name}[{', '.join(protocol_info.type_params)}]")
             resolved_is_protocol = typ.is_protocol or (protocol_info is not None)
             resolved_is_dynamic = bool(protocol_info and protocol_info.is_dynamic)
             # Set _module_qname for protocols from their ProtocolInfo.module

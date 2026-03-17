@@ -18,18 +18,6 @@
 namespace tpy {
 
 /**
- * Sequence concept - types that support tpy::__len__() and tpy::__getitem__()
- *
- * Generic protocol parameterized by element type ElemT.
- * A type is Sequence<ElemT> if it has len() and __getitem__(i) -> ElemT.
- */
-template<typename T, typename ElemT>
-concept Sequence = requires(const T& t, int32_t i) {
-    { tpy::__len__(t) } -> std::convertible_to<int32_t>;
-    { tpy::__getitem__(t, i) } -> std::convertible_to<ElemT>;
-};
-
-/**
  * NativeIterable concept - types that support C++ range-based for loops
  *
  * A type is NativeIterable<ElemT> if it supports begin()/end() iteration
@@ -44,33 +32,6 @@ concept NativeIterable = requires(const T& t) {
 };
 
 /**
- * Iterator concept - types that produce values lazily via __next__()
- * and support tpy::__iter__() (returning self).
- *
- * All iterator types have __next__(): user-defined iterators via
- * @error_return(StopIteration), built-in iterators via wrapper methods.
- * ElemT is not checked at the C++ level; sema enforces element type correctness.
- *
- * Maps to Python's Iterator[T] protocol.
- */
-template<typename T, typename ElemT>
-concept Iterator = requires(T& t) {
-    t.__next__();
-    tpy::__iter__(t);
-};
-
-/**
- * Iterable concept - types that support tpy::__iter__() returning an Iterator
- *
- * Maps to Python's Iterable[T] protocol.
- */
-template<typename T, typename ElemT>
-concept Iterable = requires(T& t) {
-    tpy::__iter__(t);
-    requires Iterator<decltype(tpy::__iter__(t)), ElemT>;
-};
-
-/**
  * ReadOnlySpanLike concept - types that expose contiguous storage as a readonly span
  *
  * A type is ReadOnlySpanLike<ElemT> if tpy::as_span(t) yields something convertible
@@ -80,17 +41,6 @@ concept Iterable = requires(T& t) {
 template<typename T, typename ElemT>
 concept ReadOnlySpanLike = requires(const T& t) {
     { tpy::as_span(t) } -> std::convertible_to<std::span<const ElemT>>;
-};
-
-/**
- * MutableSequence concept - types that support len(), read indexing, and write indexing
- *
- * A type is MutableSequence<ElemT> if it satisfies Sequence<ElemT> and additionally
- * supports element assignment via tpy::__setitem__().
- */
-template<typename T, typename ElemT>
-concept MutableSequence = Sequence<T, ElemT> && requires(T& t, int32_t i, ElemT v) {
-    { tpy::__setitem__(t, i, std::move(v)) };
 };
 
 /**

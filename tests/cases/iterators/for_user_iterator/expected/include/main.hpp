@@ -10,7 +10,7 @@ struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy::Iterator<int32_t> T_it>
+template<::tpy_user::typing::Iterator<int32_t> T_it>
 int32_t sum_iter(T_it& it);
 
 // class Counter:
@@ -57,7 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // # 2. Pass to function taking Iterator[Int32] (structural conformance)
 // def sum_iter(it: Iterator[Int32]) -> Int32:
-template<::tpy::Iterator<int32_t> T_it>
+template<::tpy_user::typing::Iterator<int32_t> T_it>
 int32_t sum_iter(T_it& it) {
     //     total: Int32 = 0
     int32_t total = 0;
