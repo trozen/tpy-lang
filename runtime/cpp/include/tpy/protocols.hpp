@@ -46,4 +46,16 @@ concept NativeRangeConstructible = requires(repeat_range<ElemT> r) {
     T(std::ranges::begin(r), std::ranges::end(r));
 };
 
+/**
+ * Fixed-width integer concepts - constrain generic functions to fixed-int types
+ */
+template<typename T>
+concept AnyFixedInt = std::is_integral_v<T> && !std::is_same_v<T, bool>;
+
+template<typename T>
+concept AnyFixedSigned = AnyFixedInt<T> && std::is_signed_v<T>;
+
+template<typename T>
+concept AnyFixedUnsigned = AnyFixedInt<T> && std::is_unsigned_v<T>;
+
 } // namespace tpy

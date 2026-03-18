@@ -292,7 +292,7 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 
 | Module | Purpose |
 |--------|---------|
-| `builtins.py` | Built-in types (`list`, `dict`, `str`, `int`, etc.) and functions with special handling (`print`, `isinstance`, `pow`, `round`, `divmod`, `range`, `iter`) |
+| `builtins.py` | Built-in types (`list`, `dict`, `str`, `int`, etc.) and functions with special handling (`print`, `isinstance`, `round`, `range`, `iter`) |
 | `resolver.py` | User module resolution |
 | `helpers.py` | Helper utilities for type definitions |
 | `tpy.py` | TurboPython-specific types (`Int32`, `Array`, `Span`, etc.) and `copy`/`try_parse` functions. Protocols defined in `lib/tpy/tpy/__init__.py` |
@@ -320,7 +320,7 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `dict_ops.hpp` | Dict helpers: `dict_get`, `dict_pop`, `DictPrinter` |
 | `set_ops.hpp` | Set helpers: `set_remove`, `set_pop`, `set_union`, `SetPrinter` |
 | `dunder.hpp` | Protocol free functions (`__len__`, `__getitem__`, `__setitem__`, `__delitem__`) |
-| `protocols.hpp` | `NativeIterable`, `NativeRangeConstructible` marker concepts (structural protocol concepts are compiler-generated) |
+| `protocols.hpp` | `NativeIterable`, `NativeRangeConstructible`, `AnyFixedInt`/`Signed`/`Unsigned` marker concepts (structural protocol concepts are compiler-generated) |
 | `printing.hpp` | `ListPrinter`, `ValuePrinter` for collections |
 | `uninit_array_storage.hpp` | `UninitArrayStorage<T, N>` inline uninitialized storage |
 | `uninit_heap_storage.hpp` | `UninitHeapStorage<T>` heap-allocated uninitialized storage |
@@ -346,7 +346,7 @@ Library search roots and CPython stubs:
 | `tpy/tpy/` | TPy package: `__init__.py` defines protocols (`Comparable`, `Truthy`, `ValueType`, etc.). Implicitly compiled. |
 | `tpy/tplib/` | TPy standard library: `Box[T]`, custom collections |
 | `tpy/typing.py` | `typing` protocols (`Sized`, `Sequence`, etc.). Implicitly compiled. |
-| `tpy/builtins.py` | Builtin functions (`len`, `repr`, `hash`, `chr`, `ord`, `abs`, `min`, `max`). Implicitly compiled. |
+| `tpy/builtins.py` | Builtin functions (`len`, `repr`, `hash`, `chr`, `ord`, `abs`, `min`, `max`, `pow`, `divmod`) and exception classes (`BaseException`, `Exception`, `StopIteration`). Implicitly compiled. |
 | `tpy/math.py`, `time.py`, `sys.py`, `bisect.py` | Python stdlib analogs |
 | `cpy/tpy/` | CPython stubs ONLY (not seen by tpyc): `Int32`, `Ptr`, `Array`, decorators; submodules: `mem`, `unsafe` |
 | `cpy/tplib` | Symlink to `tpy/tplib/` so CPython tests can find tplib |

@@ -59,20 +59,6 @@ def init_module() -> BuiltinModule:
     """Initialize and return the builtins module."""
     module = BuiltinModule(NAME)
 
-    pow_overloads = [
-        MethodDef(params=[ParamDef("x", BIGINT), ParamDef("y", BIGINT)],
-                  returns=BIGINT, cpp="({0}).pow({1})", is_readonly=True, is_pure=True),
-        MethodDef(params=[ParamDef("x", FLOAT), ParamDef("y", FLOAT)],
-                  returns=FLOAT, cpp="std::pow({0}, {1})", is_readonly=True, is_pure=True),
-    ]
-    for t in ALL_FIXED_INTS:
-        cpp_t = t.to_cpp()
-        pow_overloads.append(MethodDef(
-            params=[ParamDef("x", t), ParamDef("y", t)],
-            returns=t, cpp=f"::tpy::pow_check<{cpp_t}>({{0}}, {{1}})", is_readonly=True, is_pure=True,
-        ))
-    module.function("pow", overloads=pow_overloads)
-
     # round(): generic round[T](float)->T with default T=default_int_type,
     # identity for integer types, and ndigits variants
     round_overloads = [
@@ -101,25 +87,6 @@ def init_module() -> BuiltinModule:
         returns=BIGINT, cpp="::tpy::round_bigint({0}, {1})", is_readonly=True, is_pure=True))
     module.function("round", overloads=round_overloads,
                     type_params=["T"], type_param_defaults={"T": "DEFAULT_INT"})
-
-    # divmod(a, b) -> tuple[T, T]
-    divmod_overloads = [
-        MethodDef(params=[ParamDef("a", BIGINT), ParamDef("b", BIGINT)],
-                  returns=TupleType((BIGINT, BIGINT)),
-                  cpp="::tpy::divmod_bigint({0}, {1})", is_readonly=True, is_pure=True),
-        MethodDef(params=[ParamDef("a", FLOAT), ParamDef("b", FLOAT)],
-                  returns=TupleType((FLOAT, FLOAT)),
-                  cpp="::tpy::divmod_float({0}, {1})", is_readonly=True, is_pure=True),
-    ]
-    for t in ALL_FIXED_INTS:
-        cpp_t = t.to_cpp()
-        divmod_overloads.append(MethodDef(
-            params=[ParamDef("a", t), ParamDef("b", t)],
-            returns=TupleType((t, t)),
-            cpp=f"::tpy::divmod_fixed<{cpp_t}>({{0}}, {{1}})", is_readonly=True, is_pure=True,
-        ))
-    module.function("divmod", overloads=divmod_overloads)
-
 
     # list[T]: Dynamic list backed by std::vector<T>
     # Methods use TypeParamRef("T") which gets resolved to element_type at lookup time

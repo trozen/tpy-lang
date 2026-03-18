@@ -26,11 +26,11 @@ void main() {
     std::cout << c << "\n";
     // # float pow
     // d: float = pow(2.0, 0.5)
-    double d = std::pow(2.0, 0.5);
+    double d = ::std::pow(2.0, 0.5);
     // print(d)
     std::cout << ::tpy::print_float(d) << "\n";
     // print(pow(3.0, 2.0))
-    std::cout << ::tpy::print_float(std::pow(3.0, 2.0)) << "\n";
+    std::cout << ::tpy::print_float(::std::pow(3.0, 2.0)) << "\n";
 }
 
 void __tpy_init() {

@@ -3767,7 +3767,7 @@ class Car(Vehicle, Printable, Measurable):
 
 ## Built-in Functions
 
-- **Working**: `print()`, `len()`, `hash()`, `range()`, `chr()`, `ord()`, `pow()`, `round()`, `divmod()`, `copy()` -- simple builtins (`len`, `repr`, `hash`, `chr`, `ord`, `abs`, `min`, `max`) defined in `lib/tpy/builtins.py` via `@native`/`@cpp_template`
+- **Working**: `print()`, `len()`, `hash()`, `range()`, `chr()`, `ord()`, `pow()`, `round()`, `divmod()`, `copy()` -- most builtins (`len`, `repr`, `hash`, `chr`, `ord`, `abs`, `min`, `max`, `pow`, `divmod`) defined in `lib/tpy/builtins.py` via `@native`/`@cpp_template`
   - `print("x", end="")` supported (`end` must be a string literal; dynamic `end` not yet supported)
   - Container printing matches Python format: bools as `True`/`False`, floats with `.0`, strings in `'quotes'`
 - **Working**: `str()`, `repr()`, f-strings on containers (tuple, list, dict, Array, Span) -- uses runtime to_str helpers matching `print()` format

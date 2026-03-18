@@ -1,7 +1,10 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
 from typing import overload, Sized
-from tpy import Int32, UInt64, Char, String, StrView, pure, readonly
+from tpy import (
+    Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64,
+    Char, String, StrView, pure, readonly,
+)
 from tpy import Hashable, Representable
 from tpy.extern import native, cpp_template
 
@@ -161,3 +164,127 @@ def max(a: float, b: float) -> float: ...
 @readonly
 @cpp_template("std::fmax(std::fmax({0}, {1}), {2})")
 def max(a: float, b: float, c: float) -> float: ...
+
+
+# pow(x, y) -- checked exponentiation
+@overload
+@pure
+@readonly
+@cpp_template("({0}).pow({1})")
+def pow(x: int, y: int) -> int: ...
+
+@overload
+@pure
+@readonly
+@native("std::pow")
+def pow(x: float, y: float) -> float: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::pow_check<int8_t>")
+def pow(x: Int8, y: Int8) -> Int8: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::pow_check<int16_t>")
+def pow(x: Int16, y: Int16) -> Int16: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::pow_check<int32_t>")
+def pow(x: Int32, y: Int32) -> Int32: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::pow_check<int64_t>")
+def pow(x: Int64, y: Int64) -> Int64: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::pow_check<uint8_t>")
+def pow(x: UInt8, y: UInt8) -> UInt8: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::pow_check<uint16_t>")
+def pow(x: UInt16, y: UInt16) -> UInt16: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::pow_check<uint32_t>")
+def pow(x: UInt32, y: UInt32) -> UInt32: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::pow_check<uint64_t>")
+def pow(x: UInt64, y: UInt64) -> UInt64: ...
+
+
+# divmod(a, b) -> tuple[T, T]
+@overload
+@pure
+@readonly
+@native("tpy::divmod_bigint")
+def divmod(a: int, b: int) -> tuple[int, int]: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::divmod_float")
+def divmod(a: float, b: float) -> tuple[float, float]: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::divmod_fixed<int8_t>")
+def divmod(a: Int8, b: Int8) -> tuple[Int8, Int8]: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::divmod_fixed<int16_t>")
+def divmod(a: Int16, b: Int16) -> tuple[Int16, Int16]: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::divmod_fixed<int32_t>")
+def divmod(a: Int32, b: Int32) -> tuple[Int32, Int32]: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::divmod_fixed<int64_t>")
+def divmod(a: Int64, b: Int64) -> tuple[Int64, Int64]: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::divmod_fixed<uint8_t>")
+def divmod(a: UInt8, b: UInt8) -> tuple[UInt8, UInt8]: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::divmod_fixed<uint16_t>")
+def divmod(a: UInt16, b: UInt16) -> tuple[UInt16, UInt16]: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::divmod_fixed<uint32_t>")
+def divmod(a: UInt32, b: UInt32) -> tuple[UInt32, UInt32]: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::divmod_fixed<uint64_t>")
+def divmod(a: UInt64, b: UInt64) -> tuple[UInt64, UInt64]: ...
