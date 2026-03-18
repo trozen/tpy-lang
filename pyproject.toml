@@ -15,6 +15,9 @@ package = true
 [tool.setuptools.packages.find]
 include = ["tpyc*", "runtime*"]
 
+[tool.pyright]
+extraPaths = ["lib/cpy"]
+
 [tool.pytest.ini_options]
 addopts = "-n auto"
 

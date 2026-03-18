@@ -8,4 +8,4 @@ if [ -z "$1" ]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PYTHONPATH="$SCRIPT_DIR/lib/cpy:$SCRIPT_DIR/lib/tpy:$SCRIPT_DIR/lib/stdlib" python3 "$1"
+PYTHONPATH="$SCRIPT_DIR/lib/cpy" python3 "$1"

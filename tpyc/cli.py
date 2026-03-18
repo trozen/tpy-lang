@@ -78,12 +78,8 @@ def main() -> int:
         help="Extra library search path (can be repeated)",
     )
     parser.add_argument(
-        "--no-tplib", action="store_true",
-        help="Disable tplib standard library",
-    )
-    parser.add_argument(
         "--no-stdlib", action="store_true",
-        help="Disable Python stdlib analogs",
+        help="Disable standard library (tplib, stdlib modules, tpy protocols)",
     )
     parser.add_argument(
         "--backend",
@@ -99,10 +95,8 @@ def main() -> int:
     lib_dirs: list[Path] = []
     for extra in (args.lib or []):
         lib_dirs.append(Path(extra).resolve())
-    if not args.no_tplib:
-        lib_dirs.append(lib_dir / "tpy")
     if not args.no_stdlib:
-        lib_dirs.append(lib_dir / "stdlib")
+        lib_dirs.append(lib_dir / "tpy")
 
     # Handle REPL mode
     if args.repl:

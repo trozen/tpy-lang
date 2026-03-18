@@ -2,7 +2,7 @@
 TurboPython typing module.
 
 Provides Protocol types matching Python's typing module.
-All protocols (Sized, Sequence, etc.) are defined in lib/stdlib/typing.py.
+All protocols (Sized, Sequence, etc.) are defined in lib/tpy/typing.py.
 Dunder-to-C++ mappings are in DUNDER_CPP_TEMPLATES (modules/__init__.py).
 """
 

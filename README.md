@@ -49,8 +49,7 @@ Options:
   --emit-source     Embed Python source lines as comments in generated C++
   -L <path>         Extra library search path (can be repeated)
   --backend <name>  REPL backend: auto|clang-repl|clang|gcc (default: auto)
-  --no-tplib        Disable tplib standard library
-  --no-stdlib       Disable Python stdlib analogs
+  --no-stdlib       Disable standard library
   -v                Verbose output
   -vv               Show compilation commands
 ```

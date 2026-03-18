@@ -48,8 +48,7 @@ uv run tpyc -i --backend gcc
 # Extra library search paths
 uv run tpyc -x -L /my/libs examples/main.py
 
-# Disable tplib or stdlib
-uv run tpyc -x --no-tplib examples/main.py
+# Disable standard library
 uv run tpyc -x --no-stdlib examples/main.py
 
 # Install for development (uses uv package manager)
@@ -296,7 +295,7 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | `builtins.py` | Built-in functions (`print`, `len`, `str`, `int`, `bool`, etc.) |
 | `resolver.py` | User module resolution |
 | `helpers.py` | Helper utilities for type definitions |
-| `typing.py` | `typing` module (shell -- protocols defined in `lib/stdlib/typing.py`) |
+| `typing.py` | `typing` module (shell -- protocols defined in `lib/tpy/typing.py`) |
 | `tpy.py` | TurboPython-specific types (`Int32`, `Array`, `Span`, etc.) and `copy`/`try_parse` functions. Protocols defined in `lib/tpy/tpy/__init__.py` |
 | `unsafe.py` | `tpy.unsafe` module -- unsafe pointer operations |
 | `mem.py` | `tpy.mem` module -- uninitialized storage primitives |
@@ -348,20 +347,20 @@ Library search roots and CPython stubs:
 
 | Directory | Purpose |
 |-----------|---------|
-| `tpy/` | Search root for TPy ecosystem (tpyc looks here for `tplib` etc.) |
+| `tpy/` | Single search root for all library modules |
 | `tpy/tpy/` | TPy package: `__init__.py` defines protocols (`Comparable`, `Truthy`, `ValueType`, etc.). Implicitly compiled. |
 | `tpy/tplib/` | TPy standard library: `Box[T]`, custom collections |
-| `stdlib/` | Python stdlib analogs for TPy: `typing` (Sized, Sequence protocols), `bisect`, etc. `typing` is implicitly compiled even without explicit import. |
+| `tpy/typing.py` | `typing` protocols (`Sized`, `Sequence`, etc.). Implicitly compiled. |
+| `tpy/math.py`, `time.py`, `sys.py`, `bisect.py` | Python stdlib analogs |
 | `cpy/tpy/` | CPython stubs ONLY (not seen by tpyc): `Int32`, `Ptr`, `Array`, decorators; submodules: `mem`, `unsafe` |
+| `cpy/tplib` | Symlink to `tpy/tplib/` so CPython tests can find tplib |
 
 **Compiler search order** (first match wins):
 1. Entry point directory (user modules)
 2. `-L` paths (user-specified, in order)
-3. `lib/tpy/` (tplib, tpy ecosystem)
-4. `lib/stdlib/` (Python stdlib analogs)
-5. Hardcoded builtins as fallback (none currently -- `math`, `time`, `sys` moved to lib/stdlib/)
+3. `lib/tpy/` (tplib, stdlib modules, tpy protocols)
 
-CPython tests (`test_cpy.py`) use PYTHONPATH `lib/cpy/:lib/tpy/:src_dir`.
+CPython tests (`test_cpy.py`) use PYTHONPATH `lib/cpy/:src_dir`.
 
 ## Performance Profiles (Planned)
 

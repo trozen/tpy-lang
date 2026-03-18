@@ -4011,7 +4011,7 @@ Each module initializes only once (double-init guard prevents diamond dependency
 
 **Circular imports:** Detected at compile time with clear error messages.
 
-**Shadowing builtin modules:** User modules can shadow builtin modules (none currently -- `math`, `time`, `sys` moved to lib/stdlib/). If you create `math.py` in your project, `from math import ...` will use your module instead of the builtin. A warning is emitted:
+**Shadowing builtin modules:** User modules can shadow builtin modules (none currently -- `math`, `time`, `sys` moved to lib/tpy/). If you create `math.py` in your project, `from math import ...` will use your module instead of the builtin. A warning is emitted:
 ```
 main.py:1: warning: import 'math' shadows builtin module
 ```
@@ -4147,14 +4147,11 @@ TurboPython has two library search roots that provide reusable modules:
 **Module resolution order** (first match wins):
 1. Entry point directory (user modules)
 2. `-L` paths (user-specified, in order)
-3. `lib/tpy/` (tplib, tpy ecosystem)
-4. `lib/stdlib/` (Python stdlib analogs)
-5. Hardcoded builtins as fallback (none currently -- `math`, `time`, `sys` moved to lib/stdlib/)
+3. `lib/tpy/` (tplib, stdlib modules, tpy protocols)
 
 **CLI flags:**
 - `-L /path` -- add extra library search path (can be repeated)
-- `--no-tplib` -- disable tplib standard library
-- `--no-stdlib` -- disable Python stdlib analogs
+- `--no-stdlib` -- disable standard library
 
 **Available tplib modules:**
 

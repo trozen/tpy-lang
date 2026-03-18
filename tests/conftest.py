@@ -36,19 +36,18 @@ PROJECT_ROOT = TESTS_DIR.parent
 LIB_DIR = PROJECT_ROOT / "lib"
 CPY_LIB_DIR = LIB_DIR / "cpy"
 TPY_LIB_DIR = LIB_DIR / "tpy"
-STDLIB_DIR = LIB_DIR / "stdlib"
-DEFAULT_LIB_DIRS = [TPY_LIB_DIR, STDLIB_DIR]
+DEFAULT_LIB_DIRS = [TPY_LIB_DIR]
 RUNTIME_DIR = PROJECT_ROOT / "runtime" / "cpp" / "include"
 
 
 def run_cpython(src_file: Path) -> str:
     """Run a TurboPython file with CPython using the test harness."""
     env = os.environ.copy()
-    # Include CPython stubs (for tpy module), tpy search root (for tplib),
-    # and source dir (for multi-module imports).
-    # lib/stdlib/ is NOT included -- CPython uses its own stdlib.
+    # Include CPython stubs (for tpy module + tplib symlink) and source dir
+    # (for multi-module imports). lib/tpy/ is NOT included -- CPython uses
+    # its own stdlib, and tpy types come from the cpy stubs.
     src_dir = src_file.parent
-    env["PYTHONPATH"] = f"{CPY_LIB_DIR}{os.pathsep}{TPY_LIB_DIR}{os.pathsep}{src_dir}"
+    env["PYTHONPATH"] = f"{CPY_LIB_DIR}{os.pathsep}{src_dir}"
 
     result = subprocess.run(
         [sys.executable, str(src_file)],
