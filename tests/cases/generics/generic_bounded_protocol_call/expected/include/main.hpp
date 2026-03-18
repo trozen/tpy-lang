@@ -2,6 +2,7 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
 #include "typing.hpp"
 
 namespace tpy_user::main {
@@ -50,7 +51,7 @@ template<::tpy_user::typing::Sized T>
 int32_t outer_len(::tpy::param_val_or_ref_t<T> x);
 template<Clonable T>
 T clone_it(::tpy::param_val_or_ref_t<T> item);
-template<::tpy::Comparable T>
+template<::tpy_user::tpy::Comparable T>
 bool is_less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 void main();
 
@@ -249,7 +250,7 @@ T clone_it(::tpy::param_val_or_ref_t<T> item) {
 }
 // # Test 10: Builtin protocol with Self (Comparable has __lt__(Self) -> bool)
 // def is_less[T: Comparable](a: T, b: T) -> bool:
-template<::tpy::Comparable T>
+template<::tpy_user::tpy::Comparable T>
 bool is_less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     // return a < b  # Uses __lt__ which takes Self parameter
     return (a < b);

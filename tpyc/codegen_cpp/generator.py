@@ -72,6 +72,7 @@ class CodeGenerator:
     def generate(self, module: TpyModule, module_name: str = "generated",
                  is_entry_point: bool = True,
                  actual_user_modules: set[str] | None = None,
+                 implicit_stdlib_modules: set[str] | None = None,
                  reexported_functions: dict[str, tuple[str, str]] | None = None,
                  reexported_records: dict[str, tuple[str, str]] | None = None,
                  reexported_variables: dict[str, tuple[str, str]] | None = None,
@@ -126,6 +127,7 @@ class CodeGenerator:
         else:
             self.ctx.user_module_imports = module.user_module_imports
             self.ctx.all_user_modules = set(module.user_module_imports.keys())
+        self.ctx.implicit_stdlib_modules = implicit_stdlib_modules or set()
         self.ctx.user_imported_functions = dict(self.analyzer.ctx.user_imported_functions)
         self.ctx.user_imported_records = dict(self.analyzer.ctx.user_imported_records)
         self.ctx.user_imported_protocols = dict(self.analyzer.ctx.user_imported_protocols)
@@ -367,10 +369,13 @@ class CodeGenerator:
         separately at global scope via _gen_dynamic_adapter_specs().
         """
         from ..parse import TpyProtocol as _TP
-        self.protocols.gen_concept_decl(hpp, protocol)
+        emitted = self.protocols.gen_concept_decl(hpp, protocol)
+        if not emitted:
+            return
         if protocol.is_dynamic:
             hpp.write("\n")
             self.protocols.gen_dynamic_base_class(hpp, protocol)
+        hpp.write("\n")
 
     def _generate_forward_decls_and_concepts(
         self, hpp: TextIO, module: TpyModule, deps: _ProtocolDeps
@@ -393,7 +398,6 @@ class CodeGenerator:
         for protocol in module.protocols:
             if protocol.name in deps.prereq_protocols:
                 self._emit_concept_and_dynamic(hpp, protocol)
-                hpp.write("\n")
 
         # Forward declare records referenced by bound protocols
         for record_name in sorted(deps.bound_protocol_records):
@@ -420,7 +424,6 @@ class CodeGenerator:
         for protocol in module.protocols:
             if protocol.name in deps.bound_protocols and protocol.name not in deps.prereq_protocols:
                 self._emit_concept_and_dynamic(hpp, protocol)
-                hpp.write("\n")
 
         # Fully define records referenced by bound protocols
         for record in module.records:
@@ -461,7 +464,6 @@ class CodeGenerator:
         for protocol in module.protocols:
             if protocol.name not in deps.bound_protocols and protocol.name not in deps.prereq_protocols:
                 self._emit_concept_and_dynamic(hpp, protocol)
-                hpp.write("\n")
 
     def _generate_definitions_and_reexports(
         self, hpp: TextIO, module: TpyModule,
@@ -847,9 +849,18 @@ class CodeGenerator:
                 else:
                     out.write(f'#include "{include_path}"\n')
             out.write('\n')
+        # Include implicit stdlib module headers (typing, tpy) -- they define
+        # protocols used by builtins and user code even without explicit import.
+        included = set()
+        for implicit_mod in sorted(self.ctx.implicit_stdlib_modules):
+            if implicit_mod == self.ctx.module_name:
+                continue
+            if implicit_mod in self.ctx.all_user_modules:
+                include_path = self._module_to_include_path(implicit_mod)
+                out.write(f'#include "{include_path}"\n')
+                included.add(implicit_mod)
         # Include user module headers (including parent packages for dotted imports)
         # Skip builtin modules - they don't have separate header files
-        included = set()
         for user_mod in sorted(self.ctx.user_module_imports):
             # Skip builtin modules - they don't generate separate headers
             module_info = self.analyzer.registry.get_module(user_mod)

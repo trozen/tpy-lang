@@ -296,8 +296,8 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | `builtins.py` | Built-in functions (`print`, `len`, `str`, `int`, `bool`, etc.) |
 | `resolver.py` | User module resolution |
 | `helpers.py` | Helper utilities for type definitions |
-| `typing.py` | `typing` module (type annotations) |
-| `tpy.py` | TurboPython-specific types and decorators |
+| `typing.py` | `typing` module (shell -- protocols defined in `lib/stdlib/typing.py`) |
+| `tpy.py` | TurboPython-specific types (`Int32`, `Array`, `Span`, etc.) and `copy`/`try_parse` functions. Protocols defined in `lib/tpy/tpy/__init__.py` |
 | `unsafe.py` | `tpy.unsafe` module -- unsafe pointer operations |
 | `mem.py` | `tpy.mem` module -- uninitialized storage primitives |
 | `extern.py` | `tpy.extern` module -- native global variable declarations |
@@ -327,7 +327,7 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `dict_ops.hpp` | Dict helpers: `dict_get`, `dict_pop`, `DictPrinter` |
 | `set_ops.hpp` | Set helpers: `set_remove`, `set_pop`, `set_union`, `SetPrinter` |
 | `dunder.hpp` | Protocol free functions (`__len__`, `__getitem__`, `__setitem__`, `__delitem__`) |
-| `protocols.hpp` | `Sized`, `Sequence` concepts |
+| `protocols.hpp` | `NativeIterable`, `NativeRangeConstructible` marker concepts (structural protocol concepts are compiler-generated) |
 | `printing.hpp` | `ListPrinter`, `ValuePrinter` for collections |
 | `uninit_array_storage.hpp` | `UninitArrayStorage<T, N>` inline uninitialized storage |
 | `uninit_heap_storage.hpp` | `UninitHeapStorage<T>` heap-allocated uninitialized storage |
@@ -349,8 +349,9 @@ Library search roots and CPython stubs:
 | Directory | Purpose |
 |-----------|---------|
 | `tpy/` | Search root for TPy ecosystem (tpyc looks here for `tplib` etc.) |
+| `tpy/tpy/` | TPy package: `__init__.py` defines protocols (`Comparable`, `Truthy`, `ValueType`, etc.). Implicitly compiled. |
 | `tpy/tplib/` | TPy standard library: `Box[T]`, custom collections |
-| `stdlib/` | Python stdlib analogs for TPy: `typing` (Sized protocol), `bisect`, etc. `typing` is implicitly compiled even without explicit import. |
+| `stdlib/` | Python stdlib analogs for TPy: `typing` (Sized, Sequence protocols), `bisect`, etc. `typing` is implicitly compiled even without explicit import. |
 | `cpy/tpy/` | CPython stubs ONLY (not seen by tpyc): `Int32`, `Ptr`, `Array`, decorators; submodules: `mem`, `unsafe` |
 
 **Compiler search order** (first match wins):

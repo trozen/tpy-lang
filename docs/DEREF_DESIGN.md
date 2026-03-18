@@ -142,19 +142,14 @@ Added flow-tracked `non_null_ptr_vars` set to sema context (alongside existing `
 
 ## Deref[T] Protocol Definition
 
-Defined in `tpyc/modules/tpy.py`:
+Defined in `lib/tpy/tpy/__init__.py`:
 
 ```python
-module.protocol("Deref",
-    type_params=["T"],
-    methods={
-        "__deref__": MethodDef(params=[], returns=T, cpp="{self}.__deref__()"),
-    },
-    cpp_concept="tpy::Deref",
-)
+class Deref[T](Protocol):
+    def __deref__(self) -> T: ...
 ```
 
-Both `Ptr[T]` and `Ptr[readonly[T]]` declare `extends=["Deref[T]"]`. User-defined types conform structurally by implementing `__deref__() -> T`.
+The compiler generates a C++20 concept from this definition. Both `Ptr[T]` and `Ptr[readonly[T]]` declare `extends=["Deref[T]"]`. User-defined types conform structurally by implementing `__deref__() -> T`.
 
 ## Notes
 

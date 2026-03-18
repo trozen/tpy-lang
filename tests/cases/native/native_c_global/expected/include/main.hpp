@@ -2,6 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "typing.hpp"
 
 extern "C" int32_t g_frame_count;
 extern "C" int32_t tick;

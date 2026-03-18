@@ -2,6 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "typing.hpp"
 
 namespace engine { extern int32_t score; }
 

@@ -2,6 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "typing.hpp"
 #include "mypackage/utils.hpp"
 
 namespace tpy_user::mypackage {

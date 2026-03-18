@@ -342,7 +342,7 @@ class Compiler:
         entry_name = ModuleResolver.get_module_name(self.entry_point)
         self._discover_modules(entry_name, self.entry_point, [], is_entry_point=True)
 
-        # 1b. Implicitly discover stdlib typing module (provides Sized for len(), etc.)
+        # 1b. Implicitly discover stdlib modules (typing, tpy)
         self._discover_implicit_stdlib()
 
         # 2. Compute compilation order (topological sort)
@@ -361,7 +361,7 @@ class Compiler:
 
     # Stdlib modules that are always compiled (even without explicit import).
     # These provide protocol definitions used by builtins (e.g. Sized for len()).
-    _IMPLICIT_STDLIB = ["typing"]
+    _IMPLICIT_STDLIB = ["tpy", "typing"]
 
     def _discover_implicit_stdlib(self) -> None:
         """Discover implicit stdlib modules that builtins depend on."""
@@ -693,16 +693,17 @@ class Compiler:
                 if transitive not in registered:
                     queue.append(transitive)
 
-        # Register protocols from implicit stdlib modules (e.g. Sized from typing)
-        # so builtins like len() can type-check, even without explicit import.
+        # Register implicit stdlib modules (typing, tpy) -- their protocols are
+        # needed for builtin type-checking, and their functions/types need to be
+        # available for import (e.g. from tpy import make_default).
         for implicit_mod in self._IMPLICIT_STDLIB:
             if implicit_mod not in registered and implicit_mod in self.modules:
                 dep_compiled = self.modules[implicit_mod]
                 module_info = self._exports_to_module_info(implicit_mod, dep_compiled.exports, dep_compiled)
                 self._merge_builtin_supplements(module_info)
+                analyzer.registry.register_module(module_info)
                 for proto in module_info.protocols.values():
-                    if not proto.cpp_concept:
-                        analyzer.registry.register_protocol(proto)
+                    analyzer.registry.register_protocol(proto)
 
         # Set module name for __name__
         module_name = "__main__" if compiled.is_entry_point else compiled.name
@@ -965,10 +966,12 @@ class Compiler:
         codegen = CodeGenerator(compiled.analyzer, options)
         # Pass actual user modules (those in self.modules, not builtins without user files)
         actual_user_modules = set(self.modules.keys())
+        implicit_stdlib = set(m for m in self._IMPLICIT_STDLIB if m in self.modules)
         hpp_code, cpp_code = codegen.generate(
             compiled.ast, mod_name,
             is_entry_point=compiled.is_entry_point,
             actual_user_modules=actual_user_modules,
+            implicit_stdlib_modules=implicit_stdlib,
             reexported_functions=compiled.exports.reexported_functions,
             reexported_records=compiled.exports.reexported_records,
             reexported_variables=compiled.exports.reexported_variables,
@@ -988,10 +991,12 @@ class Compiler:
         self._check_no_errors(compiled)
         codegen = CodeGenerator(compiled.analyzer, options)
         actual_user_modules = set(self.modules.keys())
+        implicit_stdlib = set(m for m in self._IMPLICIT_STDLIB if m in self.modules)
         return codegen.generate(
             compiled.ast, compiled.name,
             is_entry_point=compiled.is_entry_point,
             actual_user_modules=actual_user_modules,
+            implicit_stdlib_modules=implicit_stdlib,
             reexported_functions=compiled.exports.reexported_functions,
             reexported_records=compiled.exports.reexported_records,
             reexported_variables=compiled.exports.reexported_variables,

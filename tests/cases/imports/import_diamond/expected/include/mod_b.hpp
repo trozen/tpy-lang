@@ -2,6 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "typing.hpp"
 #include "mod_d.hpp"
 
 namespace tpy_user::mod_b {

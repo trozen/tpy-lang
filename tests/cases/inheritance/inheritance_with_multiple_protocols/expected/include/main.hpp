@@ -2,6 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "typing.hpp"
 
 namespace tpy_user::main {
 
@@ -9,7 +11,7 @@ namespace tpy_user::main {
 // class Printable(Protocol):
 template<typename T>
 concept Printable = requires(const T& t) {
-    { t.__str__() } -> std::convertible_to<std::string_view>;
+    { ::tpy::__str__(t) } -> std::convertible_to<std::string_view>;
 };
 
 // class Measurable(Protocol):

@@ -748,6 +748,7 @@ class TpyProtocol:
     type_params: list[str] = field(default_factory=list)
     parent_protocols: list[str] = field(default_factory=list)
     is_dynamic: bool = False
+    cpp_concept: str | None = None
     loc: SourceLocation | None = None
 
 

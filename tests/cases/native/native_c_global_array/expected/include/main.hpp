@@ -3,6 +3,7 @@
 
 #include <tpy/tpy.hpp>
 #include "tpy.hpp"
+#include "typing.hpp"
 #include "tpy/unsafe.hpp"
 
 extern "C" int16_t g_scores[];

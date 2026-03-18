@@ -138,6 +138,10 @@ class ProtocolGenerator:
         if protocol_info and protocol_info.module and protocol_info.module in self.ctx.user_module_imports:
             cpp_name = f"__{protocol.name}_Concept__" if is_dynamic else protocol.name
             return qualified_cpp_name(protocol_info.module, cpp_name)
+        # Protocol from an implicit stdlib module (typing, tpy) -- needs qualified name
+        if protocol_info and protocol_info.module and protocol_info.module in self.ctx.all_user_modules:
+            cpp_name = f"__{protocol.name}_Concept__" if is_dynamic else protocol.name
+            return qualified_cpp_name(protocol_info.module, cpp_name)
         # Protocol defined in the current module (or unknown origin fallback)
         return f"__{protocol.name}_Concept__" if is_dynamic else protocol.name
 
@@ -372,7 +376,16 @@ class ProtocolGenerator:
         - Usage: Container<int32_t> V means V must satisfy Container<V, int32_t>
 
         For protocol inheritance, includes requirements from all parent protocols.
+
+        Protocols with cpp_concept (e.g. @native marker protocols) are backed by
+        runtime C++ concepts and don't need generated concept definitions.
+
+        Returns True if a concept was emitted, False if skipped.
         """
+        # Skip protocols backed by runtime C++ concepts
+        protocol_info = self.ctx.analyzer.registry.get_protocol(protocol.name)
+        if protocol_info and protocol_info.cpp_concept:
+            return False
         self.ctx.emit_preceding_comments(out, protocol.loc)
         self.ctx.emit_source_comment(out, protocol.loc)
         # Build template params: T (checked type) + one for each protocol type param
@@ -464,6 +477,7 @@ class ProtocolGenerator:
             out.write(f"{INDENT}{{ t.{field_name} }} -> std::convertible_to<{field_cpp}>;\n")
 
         out.write("};\n")
+        return True
 
     def gen_dynamic_base_class(self, out: TextIO, protocol: TpyProtocol) -> None:
         """Generate abstract base class for a @dynamic protocol.

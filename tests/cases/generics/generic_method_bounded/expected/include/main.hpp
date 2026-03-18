@@ -2,6 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "typing.hpp"
 
 namespace tpy_user::main {
 
@@ -22,7 +24,7 @@ struct Wrapper {
     explicit Wrapper(const T& val) : val(val) {}
 
     // def is_less[U: Comparable](self, a: U, b: U) -> bool:
-    template<::tpy::Comparable U>
+    template<::tpy_user::tpy::Comparable U>
     bool is_less(const U& a, const U& b) const {
         // return a < b
         return (a < b);

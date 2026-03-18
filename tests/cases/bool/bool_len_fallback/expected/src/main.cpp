@@ -12,9 +12,9 @@ void main() {
     Stack s2 = Stack(0);
     // # bool() with __len__ fallback
     // print(bool(s1))  # True
-    std::cout << ::tpy::print_bool((tpy::__len__(s1) != 0)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__len__(s1) != 0)) << "\n";
     // print(bool(s2))  # False
-    std::cout << ::tpy::print_bool((tpy::__len__(s2) != 0)) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::__len__(s2) != 0)) << "\n";
     // # if with __len__ fallback
     // if s1:
     if ((::tpy::__len__(s1) != 0)) {

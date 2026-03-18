@@ -2,10 +2,12 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "typing.hpp"
 
 namespace tpy_user::main {
 
-template<::tpy::Comparable T> struct SortedPair;
+template<::tpy_user::tpy::Comparable T> struct SortedPair;
 
 // # Protocol that references the bounded generic record
 // class PairFactory(Protocol):
@@ -24,7 +26,7 @@ void main();
 
 // # A generic record with a bounded type parameter
 // class SortedPair[T: Comparable]:
-template<::tpy::Comparable T>
+template<::tpy_user::tpy::Comparable T>
 struct SortedPair {
     // first: T
     T first;

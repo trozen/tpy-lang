@@ -2,6 +2,7 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
 #include "typing.hpp"
 
 namespace tpy_user::main {
@@ -16,7 +17,7 @@ void main();
 template<::tpy_user::typing::Sequence<int32_t> T_items>
 void cross_protocol(const T_items& items) {
     // if isinstance(items, Hashable):
-    if constexpr (::tpy::Hashable<T_items>) {
+    if constexpr (::tpy_user::tpy::Hashable<T_items>) {
         // print("hashable sequence of", len(items))
         std::cout << "hashable sequence of" << " " << ::tpy::__len__(items) << "\n";
     // else:

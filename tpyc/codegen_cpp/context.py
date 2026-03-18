@@ -356,6 +356,7 @@ class CodeGenContext:
     # --- Cross-module import tracking ---
     user_module_imports: set[str] = field(default_factory=set)
     all_user_modules: set[str] = field(default_factory=set)
+    implicit_stdlib_modules: set[str] = field(default_factory=set)
     # Maps local_name -> (source_module, original_name) to support import aliases
     user_imported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_records: dict[str, tuple[str, str]] = field(default_factory=dict)

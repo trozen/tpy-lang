@@ -2,6 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "typing.hpp"
 #include "outer.hpp"
 #include "outer/inner.hpp"
 #include "outer/inner/mod.hpp"

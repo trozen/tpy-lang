@@ -2,6 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "typing.hpp"
 
 namespace tpy_user::main {
 
@@ -25,7 +27,7 @@ struct Pair {
 
     // def min_val[T: Comparable](self) -> T:
     ::tpy::val_or_ref_t<T> min_val()
-      requires ::tpy::Comparable<T> {
+      requires ::tpy_user::tpy::Comparable<T> {
         // if self.a < self.b:
         if ((this->a < this->b)) {
             // return self.a

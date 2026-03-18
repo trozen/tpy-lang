@@ -1098,6 +1098,7 @@ class Parser:
     def _parse_protocol(self, node: ast.ClassDef) -> TpyProtocol:
         """Parse a protocol definition."""
         is_dynamic = False
+        cpp_concept: str | None = None
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"protocol '{node.name}'")
             if qname == "tpy.dynamic":
@@ -1105,10 +1106,17 @@ class Parser:
                     raise ParseError("@dynamic does not take arguments", dec)
                 is_dynamic = True
                 continue
+            if qname == "tpy.extern.native":
+                if not isinstance(arg, str):
+                    raise ParseError("@native on protocol requires a C++ concept name string argument", dec)
+                cpp_concept = arg
+                continue
             dec_name = self._decorator_local_name(dec) or "?"
             raise ParseError(
                 f"Unsupported decorator '@{dec_name}' on protocol '{node.name}'. "
-                f"Only @dynamic (from tpy) is allowed on protocols", dec)
+                f"Only @dynamic (from tpy) and @native (from tpy.extern) are allowed on protocols", dec)
+        if is_dynamic and cpp_concept is not None:
+            raise ParseError("@dynamic and @native cannot be combined on a protocol", node)
 
         # Extract parent protocols (excluding Protocol itself)
         parent_protocols = []
@@ -1206,7 +1214,7 @@ class Parser:
 
         # Restore the scope
         self._type_param_scope = old_scope
-        return TpyProtocol(name=node.name, methods=methods, fields=fields, type_params=type_params, parent_protocols=parent_protocols, is_dynamic=is_dynamic, loc=self._loc(node))
+        return TpyProtocol(name=node.name, methods=methods, fields=fields, type_params=type_params, parent_protocols=parent_protocols, is_dynamic=is_dynamic, cpp_concept=cpp_concept, loc=self._loc(node))
 
     def _parse_enum(
         self, node: ast.ClassDef,

@@ -1302,8 +1302,14 @@ def attach_type_param_bounds(t: TpyType, bounds: dict[str, 'NamedType']) -> TpyT
     into the types stored in method signatures.
     """
     if isinstance(t, TypeParamRef):
-        if t.bound is None and t.name in bounds:
-            return TypeParamRef(t.name, bound=bounds[t.name], kind=t.kind)
+        if t.name in bounds:
+            resolved_bound = bounds[t.name]
+            # Replace bound if missing or if the resolved version has better info
+            # (e.g. is_protocol=True from sema vs is_protocol=False from parser
+            # for protocols defined in implicit stdlib .py modules)
+            if t.bound is None or (isinstance(t.bound, NamedType) and not t.bound.is_protocol
+                                   and resolved_bound.is_protocol):
+                return TypeParamRef(t.name, bound=resolved_bound, kind=t.kind)
         return t
     new_inners = tuple(attach_type_param_bounds(inner, bounds) for inner in t.inner_types())
     if any(new is not old for new, old in zip(new_inners, t.inner_types())):

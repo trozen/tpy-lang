@@ -2,6 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "typing.hpp"
 
 namespace tpy_user::main {
 
@@ -9,7 +11,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy::Truthy T>
+template<::tpy_user::tpy::Truthy T>
 bool check(::tpy::param_val_or_ref_t<T> x);
 void main();
 
@@ -37,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 // def check[T: Truthy](x: T) -> bool:
-template<::tpy::Truthy T>
+template<::tpy_user::tpy::Truthy T>
 bool check(::tpy::param_val_or_ref_t<T> x) {
     // return bool(x)
     return ::tpy::__bool__(x);

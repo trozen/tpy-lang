@@ -2,6 +2,7 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
 #include "typing.hpp"
 
 namespace tpy_user::main {
@@ -9,19 +10,19 @@ namespace tpy_user::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T_items>
-  requires (::tpy_user::typing::Iterable<T_items, int32_t> || ::tpy::ReadOnlySpanLike<T_items, int32_t>)
+  requires (::tpy_user::typing::Iterable<T_items, int32_t> || ::tpy_user::tpy::ReadOnlySpanLike<T_items, int32_t>)
 int32_t total(T_items& items);
 template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Iterable<T_items, int32_t> || ::tpy::ReadOnlySpanLike<T_items, int32_t>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Iterable<T_items, int32_t> || ::tpy_user::tpy::ReadOnlySpanLike<T_items, int32_t>)
 int32_t maybe_total(const T_items* items);
 void main();
 
 // def total(items: ReadOnlySpanLike[Int32] | Iterable[Int32]) -> Int32:
 template<typename T_items>
-  requires (::tpy_user::typing::Iterable<T_items, int32_t> || ::tpy::ReadOnlySpanLike<T_items, int32_t>)
+  requires (::tpy_user::typing::Iterable<T_items, int32_t> || ::tpy_user::tpy::ReadOnlySpanLike<T_items, int32_t>)
 int32_t total(T_items& items) {
     // if isinstance(items, ReadOnlySpanLike):
-    if constexpr (::tpy::ReadOnlySpanLike<T_items, int32_t>) {
+    if constexpr (::tpy_user::tpy::ReadOnlySpanLike<T_items, int32_t>) {
         // s = span(items)
         std::span<const int32_t> s = ::tpy::as_span(items);
         // result: Int32 = 0
@@ -56,7 +57,7 @@ int32_t total(T_items& items) {
 }
 // def maybe_total(items: ReadOnlySpanLike[Int32] | Iterable[Int32] | None) -> Int32:
 template<typename T_items>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Iterable<T_items, int32_t> || ::tpy::ReadOnlySpanLike<T_items, int32_t>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Iterable<T_items, int32_t> || ::tpy_user::tpy::ReadOnlySpanLike<T_items, int32_t>)
 int32_t maybe_total(const T_items* items) {
     // if items is not None:
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {

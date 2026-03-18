@@ -1501,7 +1501,7 @@ def is_truthy(x: Truthy) -> bool:
     return bool(x)
 ```
 
-Generated C++ uses `tpy::__bool__()` free function dispatch, with a default template forwarding to user-defined `__bool__()` methods. The `tpy::Truthy` concept constrains generic parameters.
+Generated C++ uses `::tpy::__bool__()` free function dispatch, with a default template forwarding to user-defined `__bool__()` methods. The compiler generates a `Truthy` concept to constrain generic parameters.
 
 Implicit truthiness is supported: `if obj:`, `while obj:`, `not obj`, `and`/`or` all call `__bool__()` automatically for types that define it. Built-in containers (`list`, `str`, `Array`, `Span`) use `__len__() != 0` for truthiness, matching Python semantics where empty containers are falsy.
 
@@ -3035,12 +3035,13 @@ def duplicate[T: Clonable](item: T) -> Own[T]:
 
 Generated C++ (concept-constrained templates):
 ```cpp
-template<tpy::Sized T>
+// Protocols from typing/tpy generate concepts in tpy_user::typing/tpy_user::tpy namespaces
+template<tpy_user::typing::Sized T>
 int32_t get_length(const T& items) {
-    return tpy::__len__(items);
+    return ::tpy::__len__(items);
 }
 
-template<tpy::Comparable T>
+template<tpy_user::tpy::Comparable T>
 struct SortedContainer {
     std::vector<T> data;
     void add(const T& item) { ... }

@@ -2,6 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "typing.hpp"
 
 namespace tpy_user::main {
 
@@ -29,7 +31,7 @@ struct Container {
 
     // def is_sorted[T: Comparable](self) -> bool:
     bool is_sorted() const
-      requires ::tpy::Comparable<T> {
+      requires ::tpy_user::tpy::Comparable<T> {
         // i: Int32 = Int32(1)
         int32_t i = 1;
         // while i < Int32(len(self.items)):

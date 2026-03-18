@@ -450,6 +450,21 @@ class TypeRegistrar:
         # methods, which would break mutable-vs-const overload tie-breaking.
         mutable_clone_ids: set[int] = {id(m) for m in record.methods if m.is_auto_readonly_mutable_clone}
 
+        # Resolve record-level type param bounds early so that
+        # attach_type_param_bounds in the method loop below uses resolved versions
+        # (with is_protocol=True, _module_qname set from sema registry).
+        if record.type_param_bounds:
+            resolved_record_bounds: dict[str, NamedType] = {}
+            for param_name, bound_type in record.type_param_bounds.items():
+                resolved_bound = self.type_ops.resolve_type(bound_type) if not is_protocol_type(bound_type) else bound_type
+                if not is_protocol_type(resolved_bound):
+                    raise SemanticError(
+                        f"Type parameter bound must be a protocol, got {resolved_bound}",
+                        record.loc,
+                    )
+                resolved_record_bounds[param_name] = resolved_bound
+            record.type_param_bounds.update(resolved_record_bounds)
+
         # Register all methods
         methods = {}
         for method in record.methods:
@@ -611,35 +626,17 @@ class TypeRegistrar:
                 is_readonly=False,
             )]
 
-        # Convert parsed bounds to NamedType (validate they are protocols).
-        # Same-file protocols already have is_protocol=True from the parser;
-        # resolve_type fixes cross-module protocols (e.g. imported Sized).
-        type_param_bounds: dict[str, NamedType] = {}
-        for param_name, bound_type in record.type_param_bounds.items():
-            resolved_bound = self.type_ops.resolve_type(bound_type) if not is_protocol_type(bound_type) else bound_type
-            if not is_protocol_type(resolved_bound):
-                raise SemanticError(
-                    f"Type parameter bound must be a protocol, got {resolved_bound}",
-                    record.loc,
-                )
-            type_param_bounds[param_name] = resolved_bound
-
-        # Update the record's parsed bounds with resolved versions so they
-        # propagate to record_ctx.type_param_bounds during method analysis.
-        if type_param_bounds:
-            record.type_param_bounds.update(type_param_bounds)
-
-        # Attach bounds to TypeParamRef instances in method signatures so that
-        # downstream code (codegen, type_ops) can check bounds without context lookup.
-        if type_param_bounds:
+        # Attach resolved bounds to TypeParamRef instances in RecordInfo method
+        # signatures so downstream code (codegen, type_ops) can check bounds.
+        if record.type_param_bounds:
             for method_list in methods.values():
                 for i, func_info in enumerate(method_list):
                     new_params = [
-                        ParamInfo(p.name, attach_type_param_bounds(p.type, type_param_bounds),
+                        ParamInfo(p.name, attach_type_param_bounds(p.type, record.type_param_bounds),
                                   p.requires_lvalue, p.requires_mutable, default_expr=p.default_expr)
                         for p in func_info.params
                     ]
-                    new_return = attach_type_param_bounds(func_info.return_type, type_param_bounds)
+                    new_return = attach_type_param_bounds(func_info.return_type, record.type_param_bounds)
                     if (any(np.type is not op.type for np, op in zip(new_params, func_info.params))
                             or new_return is not func_info.return_type):
                         method_list[i] = FunctionInfo(
@@ -724,7 +721,7 @@ class TypeRegistrar:
             methods=methods,
             type_params=record.type_params,
             type_param_kinds=record.type_param_kinds,
-            type_param_bounds=type_param_bounds,
+            type_param_bounds=record.type_param_bounds,
             parent=None,
             implemented_protocols=[],
             native_name=record.native_name,
@@ -1160,6 +1157,8 @@ class TypeRegistrar:
             fields=protocol.fields,
             type_params=protocol.type_params,
             parent_protocols=protocol.parent_protocols,
+            cpp_concept=protocol.cpp_concept,
+            is_marker=protocol.cpp_concept is not None and len(resolved_methods) == 0,
             is_dynamic=protocol.is_dynamic,
             module=self.ctx.module_name,
         )

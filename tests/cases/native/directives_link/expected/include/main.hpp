@@ -4,6 +4,8 @@
 #include <tpy/tpy.hpp>
 #include <math.h>
 
+#include "tpy.hpp"
+#include "typing.hpp"
 
 namespace tpy_user::main {
 

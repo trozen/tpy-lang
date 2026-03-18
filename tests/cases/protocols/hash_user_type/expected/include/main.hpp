@@ -2,6 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "typing.hpp"
 
 namespace tpy_user::main {
 
@@ -9,7 +11,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy::Hashable T_x>
+template<::tpy_user::tpy::Hashable T_x>
 uint64_t get_hash(const T_x& x);
 void main();
 
@@ -51,7 +53,7 @@ template<> struct std::hash<tpy_user::main::Point> {
 namespace tpy_user::main {
 
 // def get_hash(x: Hashable) -> UInt64:
-template<::tpy::Hashable T_x>
+template<::tpy_user::tpy::Hashable T_x>
 uint64_t get_hash(const T_x& x) {
     // return hash(x)
     return ::tpy::__hash__(x);

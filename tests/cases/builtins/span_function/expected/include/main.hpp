@@ -2,6 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include "tpy.hpp"
+#include "typing.hpp"
 
 namespace tpy_user::main {
 
@@ -9,9 +11,9 @@ struct Buffer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy::ReadOnlySpanLike<int32_t> T_x>
+template<::tpy_user::tpy::ReadOnlySpanLike<int32_t> T_x>
 int32_t span_len(const T_x& x);
-template<::tpy::ReadOnlySpanLike<int32_t> T_x>
+template<::tpy_user::tpy::ReadOnlySpanLike<int32_t> T_x>
 int32_t span_sum(const T_x& x);
 void main();
 
@@ -46,13 +48,13 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
 }
 
 // def span_len(x: ReadOnlySpanLike[Int32]) -> Int32:
-template<::tpy::ReadOnlySpanLike<int32_t> T_x>
+template<::tpy_user::tpy::ReadOnlySpanLike<int32_t> T_x>
 int32_t span_len(const T_x& x) {
     // return len(span(x))
     return ::tpy::__len__(::tpy::as_span(x));
 }
 // def span_sum(x: ReadOnlySpanLike[Int32]) -> Int32:
-template<::tpy::ReadOnlySpanLike<int32_t> T_x>
+template<::tpy_user::tpy::ReadOnlySpanLike<int32_t> T_x>
 int32_t span_sum(const T_x& x) {
     // total: Int32 = 0
     int32_t total = 0;

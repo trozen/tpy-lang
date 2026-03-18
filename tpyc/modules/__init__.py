@@ -288,6 +288,12 @@ DUNDER_CPP_TEMPLATES: dict[str, str] = {
     "__next__": "{self}.__next__()",
     "__contains__": "::tpy::__contains__({self}, {0})",
     "__delitem__": "::tpy::__delitem__({self}, {0})",
+    "__bool__": "::tpy::__bool__({self})",
+    "__str__": "::tpy::__str__({self})",
+    "__repr__": "::tpy::__repr__({self})",
+    "__hash__": "::tpy::__hash__({self})",
+    "__deref__": "::tpy::deref_check({self})",
+    "__span__": "::tpy::as_span({self})",
 }
 
 

@@ -5,6 +5,8 @@
 #include "mylib/mylib.h"
 #include <system_header.h>
 
+#include "tpy.hpp"
+#include "typing.hpp"
 
 namespace tpy_user::main {
 

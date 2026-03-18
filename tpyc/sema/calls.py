@@ -1381,7 +1381,7 @@ class CallAnalyzer:
                         name="__len__",
                         params=[ParamInfo("x", arg_type)],
                         return_type=BOOL,
-                        cpp_template="(tpy::__len__({0}) != 0)",
+                        cpp_template="(::tpy::__len__({0}) != 0)",
                         is_readonly=True,
                     )
                     return BOOL

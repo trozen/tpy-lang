@@ -3,6 +3,7 @@
 
 #include <tpy/tpy.hpp>
 #include "tpy.hpp"
+#include "typing.hpp"
 #include "tpy/unsafe.hpp"
 
 namespace tpy_user::main {
