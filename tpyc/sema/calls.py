@@ -294,6 +294,22 @@ class CallAnalyzer:
         """Wire circular dependencies (must be called before analyze_call)."""
         self.expr = expr
 
+    def _restore_readonly_arg(self, arg: TpyExpr, arg_type: TpyType,
+                              target_is_readonly: bool = False) -> TpyType:
+        """Restore ReadonlyType on arg if isinstance narrowing stripped it.
+
+        isinstance narrowing replaces the expr type with the concrete member,
+        losing the ReadonlyType wrapper.  The scope binding preserves it.
+        Skip when the target function/method is @readonly -- its params are
+        implicitly readonly so passing a readonly arg is always safe.
+        """
+        if (not target_is_readonly
+                and isinstance(arg, TpyName)
+                and not isinstance(arg_type, ReadonlyType)
+                and self.ctx.is_readonly_name(arg.name)):
+            return ReadonlyType(arg_type)
+        return arg_type
+
     def resolve_pending_borrow_checks(self) -> None:
         """Emit or suppress deferred borrow warnings after Phase 2 propagation."""
         for fi, param_idx, storage, loc in self.pending_borrow_checks:
@@ -1707,6 +1723,7 @@ class CallAnalyzer:
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
             # Handle list() constructor - infer type from parameter
             arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
+            arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
 
             # Check for Own[T] passed directly to object type parameter
             if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType) and not ptype.is_value_type():
@@ -1845,6 +1862,7 @@ class CallAnalyzer:
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
             resolved_ptype = self.type_ops.substitute_type_params(ptype, type_subst)
             arg_type = self.expr.analyze_expr_with_hint(arg, resolved_ptype)
+            arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
 
             # Check for Own[T] passed directly to object type parameter
             if isinstance(arg_type, OwnType) and not isinstance(resolved_ptype, OwnType) and not resolved_ptype.is_value_type():
@@ -1958,6 +1976,7 @@ class CallAnalyzer:
                 for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
                     resolved_ptype = self.type_ops.substitute_type_params(ptype, type_subst) if type_subst else ptype
                     arg_type = self.expr.analyze_expr_with_hint(arg, resolved_ptype)
+                    arg_type = self._restore_readonly_arg(arg, arg_type)
                     self.check_own_param(arg, arg_type, pname, resolved_ptype)
                     expr.args[i] = self.compat.coerce_expr(arg, arg_type, resolved_ptype, f"argument '{pname}'",
                                                            coercion_ctx=CoercionContext.ARG)
@@ -2030,9 +2049,10 @@ class CallAnalyzer:
                     type_subst = inferred
                     for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
                         resolved_ptype = self.type_ops.substitute_type_params(ptype, type_subst)
-                        self.check_own_param(arg, arg_types[i], pname, resolved_ptype)
+                        at = self._restore_readonly_arg(arg, arg_types[i])
+                        self.check_own_param(arg, at, pname, resolved_ptype)
                         expr.args[i] = self.compat.coerce_expr(
-                            arg, arg_types[i], resolved_ptype,
+                            arg, at, resolved_ptype,
                             f"argument '{pname}'", coercion_ctx=CoercionContext.ARG
                         )
                     self._set_record_constructor_info(expr, record, inferred_type, type_subst)
@@ -2091,6 +2111,7 @@ class CallAnalyzer:
                 )
             for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
                 arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
+                arg_type = self._restore_readonly_arg(arg, arg_type)
                 self.check_own_param(arg, arg_type, pname, ptype)
                 expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
                                                         coercion_ctx=CoercionContext.ARG)
@@ -2176,6 +2197,7 @@ class CallAnalyzer:
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
             # Handle list() constructor - infer type from parameter
             arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
+            arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
 
             # Check for Own[T] passed directly to object type parameter
             if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType) and not ptype.is_value_type():

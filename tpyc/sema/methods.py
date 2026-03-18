@@ -133,6 +133,7 @@ class MethodAnalyzer:
         self, expr: TpyMethodCall,
         params: list[tuple[str, TpyType]],
         arg_types: list[TpyType] | None = None,
+        target_is_readonly: bool = False,
     ) -> None:
         """Analyze, ownership-check, and coerce method arguments in place.
 
@@ -148,6 +149,7 @@ class MethodAnalyzer:
                 at = pre[i]
             else:
                 at = self.expr.analyze_expr_with_hint(arg, ptype)
+            at = self.calls._restore_readonly_arg(arg, at, target_is_readonly)
             self.calls.check_own_param(arg, at, pname, ptype)
             expr.args[i] = self.compat.coerce_expr(arg, at, ptype, f"argument '{pname}'",
                                                     coercion_ctx=CoercionContext.ARG)
@@ -185,7 +187,7 @@ class MethodAnalyzer:
                     arity_error_msg(expr.method, resolved.min_args, resolved.max_args, len(expr.args)),
                     expr)
             expr.resolved_function_info = resolved
-            self._check_and_coerce_args(expr, resolved.params)
+            self._check_and_coerce_args(expr, resolved.params, target_is_readonly=resolved.is_readonly)
             if type_subst:
                 validate_generic_defaults(
                     expr.args, unresolved, type_subst, self.type_ops,
@@ -208,7 +210,8 @@ class MethodAnalyzer:
                 raise self.ctx.error(
                     f"No matching overload for '{expr.method}' with argument types ({arg_strs})", expr)
             expr.resolved_function_info = resolved
-            self._check_and_coerce_args(expr, resolved.params, arg_types)
+            self._check_and_coerce_args(expr, resolved.params, arg_types,
+                                        target_is_readonly=resolved.is_readonly)
             # Overloaded methods with generic defaults: find unresolved counterpart
             if type_subst:
                 idx = resolved_overloads.index(resolved)
