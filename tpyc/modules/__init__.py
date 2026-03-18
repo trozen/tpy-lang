@@ -199,7 +199,6 @@ class BuiltinModule:
 # Import module definitions
 from tpyc.modules import builtins as _builtins_mod
 from tpyc.modules import tpy as _tpy_mod
-from tpyc.modules import typing as _typing_mod
 from tpyc.modules import extern as _extern_mod
 from tpyc.modules import enum as _enum_mod
 from tpyc.modules import dataclasses as _dataclasses_mod
@@ -208,7 +207,6 @@ from tpyc.modules import dataclasses as _dataclasses_mod
 _MODULE_FACTORIES: dict[str, Callable[[], BuiltinModule]] = {
     _builtins_mod.NAME: _builtins_mod.init_module,
     _tpy_mod.NAME: _tpy_mod.init_module,
-    _typing_mod.NAME: _typing_mod.init_module,
     _extern_mod.NAME: _extern_mod.init_module,
     _enum_mod.NAME: _enum_mod.init_module,
     _dataclasses_mod.NAME: _dataclasses_mod.init_module,
@@ -249,13 +247,6 @@ def get_builtins() -> BuiltinModule:
 def get_tpy() -> BuiltinModule:
     """Get the tpy module."""
     result = get_module("tpy")
-    assert result is not None
-    return result
-
-
-def get_typing() -> BuiltinModule:
-    """Get the typing module."""
-    result = get_module("typing")
     assert result is not None
     return result
 
@@ -307,14 +298,9 @@ def lookup_protocol(name: str) -> ProtocolDef | None:
 
     Used by the parser to check protocol type annotations before semantic analysis.
     """
-    # Check default modules first
     for module in _all_modules():
         if proto := module.protocols.get(name):
             return proto
-    # Also check typing module for protocols like Sized
-    typing_mod = get_typing()
-    if proto := typing_mod.protocols.get(name):
-        return proto
     return None
 
 
@@ -324,10 +310,6 @@ def get_all_protocols() -> list[tuple[ProtocolDef, str]]:
     for module in _all_modules():
         for pdef in module.protocols.values():
             result.append((pdef, module.name))
-    # Also include typing module protocols
-    typing_mod = get_typing()
-    for pdef in typing_mod.protocols.values():
-        result.append((pdef, typing_mod.name))
     return result
 
 
