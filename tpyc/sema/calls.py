@@ -19,6 +19,7 @@ from ..typesys import (
     is_protocol_union, protocol_union_protocols,
     StrViewType, STRVIEW, MutationCallEdge,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
+    FnType,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
@@ -451,6 +452,8 @@ class CallAnalyzer:
             binding = self.ctx.current_ns.lookup(expr.func)
             if binding:
                 if binding.kind == BindingKind.VARIABLE:
+                    if isinstance(binding.type, FnType):
+                        return self._analyze_fn_type_call(expr, binding.type)
                     raise self.ctx.error(f"'{expr.func}' is not callable", expr)
                 elif binding.kind == BindingKind.FUNCTION:
                     # Builtin-supplemented functions route through builtin path
@@ -2235,3 +2238,36 @@ class CallAnalyzer:
         self._check_loop_var_arg_mutation(expr)
         self._record_mutation_call_edges(expr)
         return func.return_type
+
+    def _analyze_fn_type_call(self, expr: TpyCall, fn_type: FnType) -> TpyType:
+        """Analyze a call to a variable of Fn type."""
+        if expr.kwargs:
+            raise self.ctx.error(
+                "Keyword arguments are not supported for Fn-typed callables "
+                "(Fn types have no parameter names)", expr)
+        if len(expr.args) != len(fn_type.param_types):
+            raise self.ctx.error(
+                f"Fn type expects {len(fn_type.param_types)} argument(s), "
+                f"got {len(expr.args)}",
+                expr
+            )
+        for i, (arg, expected_type) in enumerate(zip(expr.args, fn_type.param_types)):
+            arg_type = self.expr.analyze_expr_with_hint(arg, expected_type)
+            if arg_type != expected_type:
+                try:
+                    self.compat.check_type_compatible(
+                        arg_type, expected_type,
+                        f"argument {i + 1}", loc=expr.loc, source_expr=arg)
+                except SemanticError:
+                    raise self.ctx.error(
+                        f"Argument {i + 1}: expected '{expected_type}', got '{arg_type}'",
+                        expr
+                    )
+        # Synthesize a FunctionInfo so codegen can treat this uniformly
+        expr.resolved_function_info = FunctionInfo(
+            name=expr.func,
+            params=[ParamInfo(f"__a{i}", t) for i, t in enumerate(fn_type.param_types)],
+            return_type=fn_type.return_type,
+            is_readonly=True,
+        )
+        return fn_type.return_type

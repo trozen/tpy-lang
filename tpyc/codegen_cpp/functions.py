@@ -9,7 +9,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, OwnType, ReadonlyType, OptionalType, PendingListType, ListType, ArrayType, IntLiteralType,
-    UnionType,
+    UnionType, VoidType, FnType,
     BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
     Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, is_any_str_type, SpanType,
     resolve_int_literals, CONST_PARAMS_METHODS,
@@ -67,6 +67,116 @@ class FunctionGenerator:
     def set_statements(self, statements: StatementGenerator):
         """Set statements generator (to break circular dependency)."""
         self.statements = statements
+
+    def _collect_fn_params(self, params: list[tuple[str, TpyType]]) -> list[tuple[int, str, FnType]]:
+        """Collect Fn-typed parameters: returns (fn_index, param_name, fn_type)."""
+        result = []
+        idx = 0
+        for pname, ptype in params:
+            if isinstance(ptype, FnType):
+                result.append((idx, pname, ptype))
+                idx += 1
+        return result
+
+    def _gen_fn_template_parts(
+        self, fn_params: list[tuple[int, str, FnType]],
+    ) -> tuple[list[str], list[str]]:
+        """Generate template params and requires clauses for Fn-typed params.
+
+        Returns (template_parts, requires_parts).
+        """
+        template_parts = []
+        requires_parts = []
+        for idx, pname, fn_type in fn_params:
+            template_parts.append(f"typename __F{idx}")
+            # Build requires clause: { __fn(__a0, __a1, ...) } -> std::convertible_to<R>
+            req_params_list = [f"__F{idx}& __fn"] + [
+                f"{pt.to_cpp_param_type()} __a{i}" for i, pt in enumerate(fn_type.param_types)
+            ]
+            call_args = ", ".join(f"__a{i}" for i in range(len(fn_type.param_types)))
+            if isinstance(fn_type.return_type, VoidType):
+                requires_parts.append(
+                    f"requires({', '.join(req_params_list)}) {{\n"
+                    f"    __fn({call_args});\n"
+                    f"}}"
+                )
+            else:
+                ret_cpp = fn_type.return_type.to_cpp()
+                requires_parts.append(
+                    f"requires({', '.join(req_params_list)}) {{\n"
+                    f"    {{ __fn({call_args}) }}"
+                    f" -> std::convertible_to<{ret_cpp}>;\n"
+                    f"}}"
+                )
+        return template_parts, requires_parts
+
+    @staticmethod
+    def _merge_fn_into_header(
+        base_header: str,
+        fn_tpl_parts: list[str],
+        fn_req_parts: list[str],
+        indent: str = "",
+    ) -> str:
+        """Merge Fn template params/requires into an existing (or empty) template header.
+
+        indent: prefix for continuation lines (e.g. INDENT for method context).
+        """
+        def _indent_requires(req_str: str) -> str:
+            """Indent all lines of a requires clause."""
+            lines = req_str.split("\n")
+            return "\n".join(f"{indent}  {line}" for line in lines)
+
+        if base_header:
+            header_lines = base_header.rstrip("\n").split("\n")
+            tpl_line = header_lines[0].strip()
+            inner = tpl_line[len("template<"):-1]
+            all_parts = inner + ", " + ", ".join(fn_tpl_parts) if inner else ", ".join(fn_tpl_parts)
+            new_tpl = f"template<{all_parts}>"
+
+            existing_requires = ""
+            if len(header_lines) > 1 and header_lines[1].strip().startswith("requires"):
+                existing_requires = header_lines[1].strip()
+            if existing_requires and fn_req_parts:
+                fn_clause = _indent_requires(" && ".join(fn_req_parts))
+                return f"{new_tpl}\n{indent}  {existing_requires} &&\n{fn_clause}\n"
+            elif fn_req_parts:
+                fn_clause = _indent_requires("requires " + " && ".join(fn_req_parts))
+                return f"{new_tpl}\n{fn_clause}\n"
+            elif existing_requires:
+                return f"{new_tpl}\n{indent}  {existing_requires}\n"
+            return f"{new_tpl}\n"
+        else:
+            tpl = f"template<{', '.join(fn_tpl_parts)}>"
+            if fn_req_parts:
+                fn_clause = _indent_requires("requires " + " && ".join(fn_req_parts))
+                return f"{tpl}\n{fn_clause}\n"
+            return f"{tpl}\n"
+
+    def _gen_template_header_with_fn(
+        self, func: TpyFunction,
+        proto_params: list,
+        *, emit_defaults: bool = True,
+        emit_fn_requires: bool = True,
+        indent: str = "",
+    ) -> str:
+        """Generate a template header that includes both protocol and Fn params.
+
+        emit_fn_requires: if False, skip the Fn requires clause (for forward decls
+        where the constraint on the definition is sufficient).
+        indent: prefix for continuation lines (e.g. INDENT for method context).
+        """
+        fn_params = self._collect_fn_params(func.params)
+        base_header = self.protocols.gen_combined_template_header(
+            func.type_params, proto_params, func.type_param_bounds,
+            emit_defaults=emit_defaults,
+        )
+        if not fn_params:
+            return base_header
+
+        fn_tpl_parts, fn_req_parts = self._gen_fn_template_parts(fn_params)
+        if not emit_fn_requires:
+            fn_req_parts = []
+        return self._merge_fn_into_header(base_header, fn_tpl_parts, fn_req_parts, indent=indent)
 
     @staticmethod
     def default_to_cpp(expr: TpyExpr, ptype: TpyType) -> str:
@@ -145,8 +255,17 @@ class FunctionGenerator:
         emit_defaults: if True, append ' = <value>' for params with defaults.
         """
         parts = []
+        fn_idx = 0
         for i, (pname, ptype) in enumerate(params):
             cpp_pname = escape_cpp_name(pname)
+            # FnType params become forwarding-ref template params
+            if isinstance(ptype, FnType):
+                part = f"__F{fn_idx}&& {cpp_pname}"
+                fn_idx += 1
+                if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
+                    part += f" = {self.default_to_cpp(defaults[i], ptype)}"
+                parts.append(part)
+                continue
             own = unwrap_readonly(ptype)
             if (reassigned_params and pname in reassigned_params
                     and ptype.param_needs_copy_for_reassign()):
@@ -226,8 +345,17 @@ class FunctionGenerator:
         const T_x& / const Base& instead of T_x& / Base&.
         """
         result = []
+        fn_idx = 0
         for i, (pname, ptype) in enumerate(params):
             cpp_pname = escape_cpp_name(pname)
+            # FnType params become forwarding-ref template params (same as gen_params)
+            if isinstance(ptype, FnType):
+                part = f"__F{fn_idx}&& {cpp_pname}"
+                fn_idx += 1
+                if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
+                    part += f" = {self.default_to_cpp(defaults[i], ptype)}"
+                result.append(part)
+                continue
             unwrapped = unwrap_readonly(ptype)
             if self.protocols.is_static_protocol_param(ptype):
                 # Unified static protocol handling (single, optional, or union)
@@ -383,10 +511,12 @@ class FunctionGenerator:
         return False
 
     def is_template_function(self, func: TpyFunction) -> bool:
-        """Check if a function needs a C++ template (generic type params or protocol params)."""
+        """Check if a function needs a C++ template (generic type params, protocol params, or Fn params)."""
         if func.type_params:
             return True
         if self.protocols.get_all_protocol_params(func.params):
+            return True
+        if any(isinstance(pt, FnType) for _, pt in func.params):
             return True
         return False
 
@@ -425,12 +555,13 @@ class FunctionGenerator:
         rp = self._get_reassigned_params(func)
         mp = self._get_func_mutated_params(func)
         has_proto_params = bool(proto_params)
+        has_fn_params = any(isinstance(pt, FnType) for _, pt in func.params)
 
         dfl = func.defaults if func.defaults else None
-        if is_generic or has_proto_params:
-            out.write(self.protocols.gen_combined_template_header(
-                func.type_params, proto_params, func.type_param_bounds,
-            ))
+        if is_generic or has_proto_params or has_fn_params:
+            # Forward decl: skip Fn requires clause (constraint on definition is sufficient)
+            out.write(self._gen_template_header_with_fn(func, proto_params,
+                                                        emit_fn_requires=False))
             ret_type = self._resolve_return_type(func.return_type, error_return=func.error_return)
             params = (self.gen_params_with_protocols(func.params, func.type_params,
                                                      mutated_params=mp,
@@ -494,14 +625,13 @@ class FunctionGenerator:
         rp = self._get_reassigned_params(func)
         mp = self._get_func_mutated_params(func)
         has_proto_params = bool(proto_params)
+        has_fn_params = any(isinstance(pt, FnType) for _, pt in func.params)
 
-        if is_generic or has_proto_params:
+        if is_generic or has_proto_params or has_fn_params:
             # Template functions: emit full definition in header so that
             # importing modules can instantiate them.
             if func.is_stub:
-                out.write(self.protocols.gen_combined_template_header(
-                    func.type_params, proto_params, func.type_param_bounds,
-                ))
+                out.write(self._gen_template_header_with_fn(func, proto_params))
                 ret_type = self._resolve_return_type(func.return_type)
                 params = (self.gen_params_with_protocols(func.params, func.type_params,
                                                          mutated_params=mp,
@@ -584,13 +714,13 @@ class FunctionGenerator:
         rp = self._get_reassigned_params(func)
         mp = self._get_func_mutated_params(func)
         has_proto_params = bool(proto_params)
+        has_fn_params = any(isinstance(pt, FnType) for _, pt in func.params)
 
-        if is_generic or has_proto_params:
+        if is_generic or has_proto_params or has_fn_params:
             # Generate combined template header for generic functions and/or protocol params
             # Skip default template args -- already emitted in the forward declaration
-            out.write(self.protocols.gen_combined_template_header(
-                func.type_params, proto_params, func.type_param_bounds,
-                emit_defaults=False,
+            out.write(self._gen_template_header_with_fn(
+                func, proto_params, emit_defaults=False,
             ))
             ret_type = self._resolve_return_type(func.return_type, error_return=func.error_return)
             params = (self.gen_params_with_protocols(func.params, func.type_params,
@@ -866,16 +996,23 @@ class FunctionGenerator:
         out.write("\n")
         self.ctx.emit_preceding_comments(out, method.loc, indent=INDENT)
         self.ctx.emit_source_comment(out, method.loc, indent=INDENT)
-        if proto_params or new_method_params:
+        fn_params = self._collect_fn_params(method.params)
+        if proto_params or new_method_params or fn_params:
             # Bounds for new method type params only (class param bounds go on the requires clause)
             bounds_for_header = dict(record_type_param_bounds) if record_type_param_bounds else {}
             bounds_for_header.update(
                 {k: v for k, v in method.type_param_bounds.items()
                  if k in set(new_method_params)}
             )
-            template_header = self.protocols.gen_combined_template_header(
+            base_header = self.protocols.gen_combined_template_header(
                 new_method_params, proto_params, bounds_for_header,
             )
+            if fn_params:
+                fn_tpl_parts, fn_req_parts = self._gen_fn_template_parts(fn_params)
+                template_header = self._merge_fn_into_header(
+                    base_header, fn_tpl_parts, fn_req_parts, indent=INDENT)
+            else:
+                template_header = base_header
             out.write(f"{INDENT}{template_header}")
         out.write(f"{INDENT}{static_prefix}{ret_type} {cpp_name}({params}){const_suffix}{rvalue_suffix}{override_suffix}{requires_clause} {{\n")
 

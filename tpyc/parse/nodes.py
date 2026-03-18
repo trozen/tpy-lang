@@ -283,6 +283,19 @@ class TpyGeneratorExpression(TpyExpr):
 
 
 @dataclass
+class TpyLambda(TpyExpr):
+    """Lambda expression: lambda x, y: x + y.
+
+    Parameter types are inferred from context (Fn type hint) during sema.
+    """
+    param_names: list[str]
+    body: TpyExpr
+    inferred_param_types: list['TpyType'] = field(default_factory=list)
+    inferred_return_type: 'TpyType | None' = None
+    captured_names: list[str] = field(default_factory=list)
+
+
+@dataclass
 class TpySetLiteral(TpyExpr):
     """Set literal: {value, value, ...}"""
     elements: list[TpyExpr]

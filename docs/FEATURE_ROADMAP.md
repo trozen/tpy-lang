@@ -68,11 +68,13 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
-| D1 | Closures / nested functions | L | Not started | [VI](#closures--nested-functions) |
-| D2 | Callable type | L | Not started | [I](#callable--function-pointer-types) |
+| D1a | `Fn` type + non-capturing lambda | M | Done | [VI](#closures--nested-functions) |
+| D1b | Capturing lambdas (non-escaping closures) | M | Not started | [VI](#closures--nested-functions) |
+| D1c | `Callable` type (`std::function`, escaping) | M | Not started | [I](#callable--function-pointer-types) |
+| D2 | Named function references as values | S | Not started | [I](#callable--function-pointer-types) |
 | D3 | f-strings | M | Done | [VII](#f-strings) |
 | D4 | with statement | M | Done | [VI](#with-statement-context-managers) |
-| D5 | Lambda | M | Not started | [VI](#lambda) |
+| D5 | Nested `def` with captures, `nonlocal` | M-L | Not started | [VI](#closures--nested-functions) |
 | D6 | Properties (@property) | M | Not started | [VII](#properties) |
 | D7 | String literal types (Literal[...]) | M | Not started | [III](#string-literal-types) |
 | D8 | `@override` decorator | S | Done | [VII](#override-decorator) |

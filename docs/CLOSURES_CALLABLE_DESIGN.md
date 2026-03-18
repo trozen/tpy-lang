@@ -4,12 +4,13 @@
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 1 | `Fn` type + `Callable` type + lambda expressions | Not started |
+| 1a | `Fn` type + non-capturing lambda expressions | Done |
+| 1b | Capturing lambdas (non-escaping closures) | Not started |
+| 1c | `Callable` type (`std::function`, escaping closures) | Not started |
 | 2 | Named function references as values (`apply(double, 42)`) | Not started |
-| 3 | Escaping closures with captures | Not started |
-| 4 | Nested `def` with captures, `nonlocal` keyword | Not started |
-| 5 | Generator functions (`yield`) | Not started |
-| 6 | `@noalloc` enforcement, `FnOnce` semantics for `Own[T]` captures | Not started |
+| 3 | Nested `def` with captures, `nonlocal` keyword | Not started |
+| 4 | Generator functions (`yield`) | Not started |
+| 5 | `@noalloc` enforcement, `FnOnce` semantics for `Own[T]` captures | Not started |
 
 ### Future Extensions
 
@@ -22,6 +23,7 @@
 | Variadic `Callable` | `Callable[..., R]` accepting any args -- needs `*args` (D17) |
 | Method references | `obj.method` as a value -- partial application binding `self` (Phase 4+) |
 | `Fn \| None` (optional zero-cost) | Template-based optional callable via `Optional[Protocol]` pattern (`std::nullptr_t` default). Currently an error -- use `Callable \| None` instead. |
+| `Fn` as local variable annotation | `f: Fn[[Int32], Int32] = lambda x: x + 1` -- use `Fn` as type context for a named lambda, codegen as `auto` (zero-cost). Only valid when not reassigned (reassignment would need `std::function`). Currently an error. |
 
 ---
 

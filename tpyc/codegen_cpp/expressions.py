@@ -14,7 +14,7 @@ from ..typesys import (
     DictKeysViewType, DictValuesViewType, DictItemsViewType,
     PendingListType, ListRepeatType,
     SpanType, SpanIterType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
-    EnumType, IntEnumType, TupleType,
+    EnumType, IntEnumType, TupleType, FnType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, container_to_str_template,
     ResolvedBinop, get_covariant_params,
 )
@@ -28,6 +28,7 @@ from ..parse import (
     TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression,
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr, TpyNamedExpr,
+    TpyLambda,
 )
 from ..prescan import match_is_none
 from ..namespace import BindingKind
@@ -590,6 +591,9 @@ class ExpressionGenerator:
 
         elif isinstance(expr, TpyNamedExpr):
             return self._gen_named_expr(expr)
+
+        elif isinstance(expr, TpyLambda):
+            return self._gen_lambda(expr)
 
         return "/* unknown expr */"
 
@@ -3052,3 +3056,29 @@ class ExpressionGenerator:
         if isinstance(branch_type, (OptionalType, PtrType)):
             return code
         return f"&({code})"
+
+    def _gen_lambda(self, expr: TpyLambda) -> str:
+        """Generate a C++ lambda expression from a TpyLambda."""
+        params = []
+        for pname, ptype in zip(expr.param_names, expr.inferred_param_types):
+            cpp_type = ptype.to_cpp_param(escape_cpp_name(pname))
+            params.append(cpp_type)
+        params_str = ", ".join(params)
+
+        # Track lambda params as locals so they're not treated as global pointer slots
+        saved_locals = self.ctx.local_scope_names.copy()
+        for pname in expr.param_names:
+            self.ctx.local_scope_names.add(pname)
+        try:
+            body_code = self.gen_expr(expr.body, expr.inferred_return_type)
+        finally:
+            self.ctx.local_scope_names = saved_locals
+
+        if expr.captured_names:
+            refs = ", ".join(f"&{escape_cpp_name(n)}" for n in expr.captured_names)
+            capture = f"[{refs}]"
+        else:
+            capture = "[]"
+        if isinstance(expr.inferred_return_type, VoidType):
+            return f"{capture}({params_str}) {{ {body_code}; }}"
+        return f"{capture}({params_str}) {{ return {body_code}; }}"

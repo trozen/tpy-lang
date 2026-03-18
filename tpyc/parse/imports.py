@@ -25,6 +25,8 @@ PARSER_KEYWORDS: dict[str, frozenset[str] | None] = {
         "Float32", "Float64",
         "Array", "Span", "SpanIter", "Ptr", "Own", "Char",
         "String", "StrView", "ReadOnlyPtr",
+        # Callable types
+        "Fn",
         # Decorators/modifiers
         "readonly", "noalloc", "nocopy", "dynamic", "pure",
         "auto_readonly", "error_return",
@@ -45,6 +47,7 @@ TPY_TYPES = {
     "Char",  # Character type
     "Span", "Array",  # Container types
     "Ptr", "ReadOnlyPtr", "Own",  # Pointer types (ReadOnlyPtr is a deprecated alias for Ptr[readonly[T]])
+    "Fn",  # Callable types
     "Hashable", "Comparable", "Deref", "Default",  # Protocols (user-facing)
     "Truthy", "Stringable", "Representable",  # Protocols (less common)
 }

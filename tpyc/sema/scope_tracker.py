@@ -55,6 +55,24 @@ class ScopeTracker:
             self.ctx.current_scope = old_scope
 
     @contextmanager
+    def lambda_scope(self) -> Iterator[Scope]:
+        """Create an inner scope for a lambda body."""
+        inner_scope = Scope(self.ctx.current_scope)
+        old_scope = self.ctx.current_scope
+        old_ns = self.ctx.current_ns
+        old_assigned = self.ctx.definitely_assigned.copy()
+        self.ctx.current_scope = inner_scope
+        if self.ctx.current_ns:
+            inner_ns = Namespace(parent=self.ctx.current_ns)
+            self.ctx.current_ns = inner_ns
+        try:
+            yield inner_scope
+        finally:
+            self.ctx.definitely_assigned = old_assigned
+            self.ctx.current_scope = old_scope
+            self.ctx.current_ns = old_ns
+
+    @contextmanager
     def loop_var(self, scope: Scope, name: str, var_type: TpyType,
                  depth: int, is_foreach: bool = False) -> Iterator[None]:
         """Bind a loop variable in scope/namespace and track its depth."""

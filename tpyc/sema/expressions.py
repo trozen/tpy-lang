@@ -16,7 +16,7 @@ from ..typesys import (
     FixedIntType, StringType, StrViewType, make_union,
     ResolvedBinop, FunctionInfo, ParamInfo, UnknownElementType, UNKNOWN_ELEMENT,
     PendingDictType, PendingSetType, DictLiteralInfo,
-    resolve_int_literals,
+    resolve_int_literals, FnType,
     INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, SLICE, is_protocol_type, container_to_str_template,
     PendingGenericInstanceType, SliceType,
 )
@@ -30,6 +30,7 @@ from ..parse import (
     TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression, TpyComprehensionGenerator,
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr, TpyNamedExpr,
+    TpyLambda,
 )
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
@@ -51,6 +52,53 @@ if TYPE_CHECKING:
     from .scope_tracker import ScopeTracker
 
 from tpyc import modules as builtin_modules
+
+
+def _collect_name_refs(expr: TpyExpr) -> set[str]:
+    """Collect all TpyName references in an expression tree.
+
+    TODO: replace with TpyExpr.children() generic walk -- same pattern
+    exists in liveness.py:_collect_reads_expr (~90 lines).
+    """
+    names: set[str] = set()
+    _walk_names(expr, names)
+    return names
+
+
+def _walk_names(node: TpyExpr, out: set[str]) -> None:
+    if isinstance(node, TpyName):
+        out.add(node.name)
+    elif isinstance(node, TpyBinOp):
+        _walk_names(node.left, out)
+        _walk_names(node.right, out)
+    elif isinstance(node, TpyUnaryOp):
+        _walk_names(node.operand, out)
+    elif isinstance(node, TpyCall):
+        for arg in node.args:
+            _walk_names(arg, out)
+    elif isinstance(node, TpyMethodCall):
+        _walk_names(node.obj, out)
+        for arg in node.args:
+            _walk_names(arg, out)
+    elif isinstance(node, TpyFieldAccess):
+        _walk_names(node.obj, out)
+    elif isinstance(node, TpySubscript):
+        _walk_names(node.obj, out)
+        _walk_names(node.index, out)
+    elif isinstance(node, TpyIfExpr):
+        _walk_names(node.condition, out)
+        _walk_names(node.then_expr, out)
+        _walk_names(node.else_expr, out)
+    elif isinstance(node, TpyChainedCompare):
+        _walk_names(node.left, out)
+        for comp in node.comparators:
+            _walk_names(comp, out)
+    elif isinstance(node, TpyFString):
+        for part in node.parts:
+            if isinstance(part, TpyFStringValue):
+                _walk_names(part.expr, out)
+    elif isinstance(node, TpyCoerce):
+        _walk_names(node.expr, out)
 
 
 class ExpressionAnalyzer:
@@ -145,6 +193,8 @@ class ExpressionAnalyzer:
             typ = self._analyze_if_expr(expr)
         elif isinstance(expr, TpyNamedExpr):
             typ = self._analyze_named_expr(expr)
+        elif isinstance(expr, TpyLambda):
+            typ = self._analyze_lambda(expr)
         elif isinstance(expr, TpyCoerce):
             # Coercions are attached post-analysis; treat as the expected type.
             typ = expr.expected_type
@@ -162,6 +212,12 @@ class ExpressionAnalyzer:
         """
         if type_hint is None:
             return self.analyze_expr(expr)
+
+        # Lambda with Fn type hint: infer param types from the hint
+        if isinstance(expr, TpyLambda) and isinstance(type_hint, FnType):
+            typ = self._analyze_lambda_with_fn_hint(expr, type_hint)
+            self.ctx.set_expr_type(expr, typ)
+            return typ
 
         # Ternary expression: propagate hint to both branches
         if isinstance(expr, TpyIfExpr):
@@ -2234,3 +2290,55 @@ class ExpressionAnalyzer:
                         part.expr,
                     )
         return STR
+
+    # --- Lambda expressions ---
+
+    def _analyze_lambda(self, expr: TpyLambda) -> TpyType:
+        """Analyze a lambda without a type hint -- error (types cannot be inferred)."""
+        raise self.ctx.error(
+            "Lambda parameter types cannot be inferred without context. "
+            "Pass the lambda to a function that accepts Fn[...] type",
+            expr
+        )
+
+    def _analyze_lambda_with_fn_hint(self, expr: TpyLambda, fn_type: FnType) -> FnType:
+        """Analyze a lambda with a Fn type hint providing parameter types."""
+        if len(expr.param_names) != len(fn_type.param_types):
+            raise self.ctx.error(
+                f"Lambda has {len(expr.param_names)} parameter(s) but "
+                f"Fn type expects {len(fn_type.param_types)}",
+                expr
+            )
+
+        expr.inferred_param_types = list(fn_type.param_types)
+
+        with self.scopes.lambda_scope() as scope:
+            for pname, ptype in zip(expr.param_names, fn_type.param_types):
+                scope.define(pname, ptype)
+                if self.ctx.current_ns:
+                    self.ctx.current_ns.bind_variable(pname, ptype)
+                self.ctx.definitely_assigned.add(pname)
+
+            body_type = self.analyze_expr(expr.body)
+
+        # Detect captures: names in body that resolve from the outer scope
+        param_set = set(expr.param_names)
+        free_names = _collect_name_refs(expr.body)
+        captured = sorted(free_names - param_set)
+        expr.captured_names = captured
+
+        # Check return type compatibility (allow implicit coercions like int literal -> Int32)
+        if body_type != fn_type.return_type:
+            try:
+                self.compat.check_type_compatible(
+                    body_type, fn_type.return_type,
+                    "lambda return", loc=expr.loc)
+            except SemanticError:
+                raise self.ctx.error(
+                    f"Lambda body type '{body_type}' is not compatible with "
+                    f"expected return type '{fn_type.return_type}'",
+                    expr
+                )
+
+        expr.inferred_return_type = fn_type.return_type
+        return fn_type

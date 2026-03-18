@@ -13,7 +13,7 @@ from ..typesys import (
     ListType, DictType, ArrayType, SpanType, PendingListType, PendingDictType, PendingSetType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
     ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, StrVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType, UnknownElementType,
     EnumType, unwrap_readonly, is_any_str_type, TupleType,
-    PendingGenericInstanceType,
+    PendingGenericInstanceType, FnType, contains_fn_type,
     INT32, VOID, BIGINT, FLOAT, STRVIEW, is_protocol_type, is_protocol_union,
     qualify_exception_name,
 )
@@ -1310,6 +1310,14 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 f"readonly[{stmt.type.wrapped}] cannot be used as a variable type. "
                 f"Readonly on locals is deduced from initialization",
+                stmt
+            )
+
+        # Fn[...] is only valid in parameter position
+        if stmt.type and contains_fn_type(stmt.type):
+            raise self.ctx.error(
+                "Fn type is only valid in parameter position. "
+                "Use Callable for fields, returns, and locals",
                 stmt
             )
 

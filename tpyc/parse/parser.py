@@ -15,7 +15,7 @@ from typing import NoReturn, Optional
 from ..typesys import (
     TpyType, NamedType, PtrType, OwnType, ReadonlyType, AutoReadonlyType, FinalType, SelfType,
     strip_auto_readonly, apply_auto_readonly,
-    TypeParamRef, OptionalType, VoidType, make_union, EnumType, TupleType,
+    TypeParamRef, OptionalType, VoidType, make_union, EnumType, TupleType, FnType,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BOOL, FLOAT, FLOAT32, BIGINT, SELF, SLICE, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo, TypeParamKind,
     INT8, INT16, INT64, UINT8, UINT16, UINT32, UINT64, ALL_FIXED_INTS,
@@ -30,7 +30,7 @@ from .nodes import (
     TpyFieldAccess, TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyComprehensionGenerator, TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression,
     TpySlice, TpySubscript, TpyCoerce,
-    TpyIfExpr, TpyNamedExpr,
+    TpyIfExpr, TpyNamedExpr, TpyLambda,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
     TpyPassStmt, TpyGlobal, TpyRaise, TpyTryExcept, TpyWithItem, TpyWith,
@@ -299,7 +299,7 @@ class Parser:
 
     FORBIDDEN_CONSTRUCTS = {
         "with", "async", "await",
-        "lambda", "yield", "nonlocal",
+        "yield", "nonlocal",
     }
 
     def __init__(self):
@@ -1781,6 +1781,21 @@ class Parser:
                     elif original == "auto_readonly":
                         inner = self._parse_type_annotation(node.slice, type_param_scope)
                         return AutoReadonlyType(inner)
+                    elif original == "Fn":
+                        slices = _extract_subscript_slices(node)
+                        if len(slices) != 2:
+                            raise ParseError(
+                                "Fn requires exactly 2 arguments: Fn[[ParamTypes...], ReturnType]", node)
+                        param_list_node, return_node = slices
+                        if not isinstance(param_list_node, ast.List):
+                            raise ParseError(
+                                "Fn parameter types must be a list: Fn[[Int32, str], bool]", node)
+                        param_types = tuple(
+                            self._parse_type_annotation(p, type_param_scope)
+                            for p in param_list_node.elts
+                        )
+                        return_type = self._parse_type_annotation(return_node, type_param_scope)
+                        return FnType(param_types, return_type)
                 elif module == "builtins":
                     if original == "tuple":
                         return self._parse_tuple_type(node, type_param_scope)
@@ -2523,6 +2538,23 @@ class Parser:
             target = node.target.id
             value = self._parse_expr(node.value)
             return TpyNamedExpr(target=target, value=value, loc=loc)
+
+        elif isinstance(node, ast.Lambda):
+            if node.args.vararg or node.args.kwarg:
+                raise ParseError("*args and **kwargs are not supported in lambda", node)
+            if node.args.kwonlyargs or node.args.posonlyargs:
+                raise ParseError(
+                    "Keyword-only and positional-only parameters are not supported in lambda", node)
+            if any(d is not None for d in node.args.defaults) or node.args.kw_defaults:
+                raise ParseError("Default arguments are not supported in lambda", node)
+            for arg in node.args.args:
+                if arg.annotation is not None:
+                    raise ParseError(
+                        "Type annotations on lambda parameters are not supported; "
+                        "types are inferred from context", node)
+            param_names = [arg.arg for arg in node.args.args]
+            body = self._parse_expr(node.body)
+            return TpyLambda(param_names=param_names, body=body, loc=loc)
 
         else:
             raise ParseError(f"Unsupported expression: {type(node).__name__}", node)

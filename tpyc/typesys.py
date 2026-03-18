@@ -230,6 +230,17 @@ class TpyType:
             return self.to_cpp()
         return f"const {self.to_cpp()}&"
 
+    def to_cpp_param_type(self) -> str:
+        """Return just the C++ parameter type (no variable name).
+
+        Matches the type used by to_cpp_param(). Subclasses that override
+        to_cpp_param() should also override this if the type differs from
+        the default (e.g. str -> std::string_view, BigInt -> const BigInt&).
+        """
+        if self.is_value_type():
+            return self.to_cpp()
+        return f"{self.to_cpp()}&"
+
     def to_cpp_param(self, name: str) -> str:
         """Return the C++ parameter declaration for this type.
 
@@ -385,6 +396,9 @@ class StrType(TpyType):
     def is_expensive_copy(self) -> bool:
         return True
 
+    def to_cpp_param_type(self) -> str:
+        return "std::string_view"
+
     def to_cpp_param(self, name: str) -> str:
         return f"std::string_view {name}"
 
@@ -417,6 +431,9 @@ class StringType(TpyType):
 
     def is_expensive_copy(self) -> bool:
         return True
+
+    def to_cpp_param_type(self) -> str:
+        return "const std::string&"
 
     def to_cpp_param(self, name: str) -> str:
         return f"const std::string& {name}"
@@ -547,6 +564,9 @@ class BigIntType(TpyType):
 
     def is_expensive_copy(self) -> bool:
         return True
+
+    def to_cpp_param_type(self) -> str:
+        return f"const {self.to_cpp()}&"
 
     def to_cpp_param(self, name: str) -> str:
         # BigInt is expensive to copy, pass by const reference
@@ -757,6 +777,11 @@ class TypeParamRef(TpyType):
             return True
         # Unknown at definition time - the trait decides at C++ instantiation
         return False
+
+    def to_cpp_param_type(self) -> str:
+        if self.kind == TypeParamKind.INT:
+            return "std::size_t"
+        return f"::tpy::param_val_or_ref_t<{self.name}>"
 
     def to_cpp_param(self, name: str) -> str:
         if self.kind == TypeParamKind.INT:
@@ -1061,6 +1086,14 @@ class OwnType(TpyType):
     def is_sync(self) -> bool:
         return self.wrapped.is_sync()
 
+    def to_cpp_param_type(self) -> str:
+        if self.wrapped.is_value_type():
+            return self.wrapped.to_cpp()
+        cpp_type = self.wrapped.to_cpp()
+        if isinstance(self.wrapped, TypeParamRef):
+            return f"std::type_identity_t<{cpp_type}>&&"
+        return f"{cpp_type}&&"
+
     def to_cpp_param(self, name: str) -> str:
         # Value types (int32_t, bool, float, Char, Ptr, Span, str, etc.) are
         # trivially movable — T by value is optimal, no T&& needed.
@@ -1114,6 +1147,11 @@ class ReadonlyType(TpyType):
         # readonly prevents mutation, so a Send type frozen by readonly is
         # safe to share (effectively Sync). Already-Sync types stay Sync.
         return self.wrapped.is_send() or self.wrapped.is_sync()
+
+    def to_cpp_param_type(self) -> str:
+        # Readonly params use the const version of the wrapped type
+        dummy = self.wrapped.to_cpp_const_param("__x")
+        return dummy.rsplit(" __x", 1)[0]
 
     def to_cpp_param(self, name: str) -> str:
         return self.wrapped.to_cpp_const_param(name)
@@ -1372,6 +1410,13 @@ class OptionalType(TpyType):
             return f"const {self.inner.to_cpp()}*"
         return self.to_cpp()
 
+    def to_cpp_param_type(self) -> str:
+        if self.uses_pointer_repr():
+            return f"{self.inner.to_cpp()}*"
+        if isinstance(self.inner, StrType):
+            return "std::optional<std::string_view>"
+        return self.to_cpp()
+
     def to_cpp_param(self, name: str) -> str:
         if self.uses_pointer_repr():
             return f"{self.inner.to_cpp()}* {name}"
@@ -1467,6 +1512,11 @@ class UnionType(TpyType):
         ]
         return f"std::variant<{', '.join(cpp_members)}>"
 
+    def to_cpp_param_type(self) -> str:
+        if self.uses_pointer_repr():
+            return self.to_cpp_ptr_variant()
+        return f"const {self.to_cpp()}&"
+
     def to_cpp_param(self, name: str) -> str:
         if self.uses_pointer_repr():
             return f"{self.to_cpp_ptr_variant()} {name}"
@@ -1546,6 +1596,10 @@ class TupleType(TpyType):
             not et.is_value_type() and not isinstance(et, (OwnType, TypeParamRef))
             for et in self.element_types
         )
+
+    def to_cpp_param_type(self) -> str:
+        args = ", ".join(t.to_cpp_return() for t in self.element_types)
+        return f"const std::tuple<{args}>&"
 
     def to_cpp_param(self, name: str) -> str:
         args = ", ".join(t.to_cpp_return() for t in self.element_types)
@@ -2184,6 +2238,46 @@ class GenExprType(TpyType):
 
     def qualified_name(self) -> Optional[str]:
         return None
+
+
+@dataclass(frozen=True)
+class FnType(TpyType):
+    """Fn[[ParamType, ...], ReturnType] -- zero-cost callable (template).
+
+    Valid only in function parameter position. Generates a C++ template parameter
+    with a requires clause constraining the call signature.
+    """
+    param_types: tuple[TpyType, ...]
+    return_type: TpyType
+
+    def to_cpp(self) -> str:
+        raise RuntimeError(
+            "FnType.to_cpp() should not be called directly; "
+            "Fn params use template codegen"
+        )
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def inner_types(self) -> tuple[TpyType, ...]:
+        return self.param_types + (self.return_type,)
+
+    def with_inner_types(self, types: tuple[TpyType, ...]) -> 'TpyType':
+        return FnType(types[:-1], types[-1])
+
+    def __str__(self) -> str:
+        params = ", ".join(str(t) for t in self.param_types)
+        return f"Fn[[{params}], {self.return_type}]"
+
+    def qualified_name(self) -> Optional[str]:
+        return None
+
+
+def contains_fn_type(typ: TpyType) -> bool:
+    """Check if a type contains FnType anywhere in its structure."""
+    if isinstance(typ, FnType):
+        return True
+    return any(contains_fn_type(inner) for inner in typ.inner_types())
 
 
 @dataclass

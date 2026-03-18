@@ -1,0 +1,1 @@
+main.py:8: error: Lambda has 1 parameter(s) but Fn type expects 2

@@ -4500,7 +4500,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
 - **Working**: List comprehensions `[expr for x in iterable if cond]` -> IIFE with loop. When output size is compile-time known (`range()` with literal args, `Array[T,N]` source, no filter), produces `std::array<T, N>` (zero heap allocation). Otherwise `std::vector<T>` with `push_back` and `reserve()` for Sized iterables. Supports tuple unpacking, annotation propagation
 - **Working**: Dict comprehensions `{key: value for x in iterable if cond}` -> IIFE with loop + `insert_or_assign`. Supports tuple unpacking, annotation propagation, all iteration strategies
 - **Working**: Set comprehensions `{expr for x in iterable if cond}` -> IIFE with loop + `insert`. Supports tuple unpacking, annotation propagation, all iteration strategies
-- **Open**: Lambda → anonymous struct with `operator()` or inline
+- **Working**: Lambda expressions `lambda x: expr` with `Fn` type inference (see Lambda / Closures section)
 - **Working**: String slice `s[start:end]` -> `std::string_view` (clamping, negative indices)
 - **Working**: Container slice `items[start:end]` -> `std::span<T>` (zero-copy view, clamping, negative indices). Supports list, Array, Span, Span[readonly[T]]. Step not yet supported
 - **Working**: User-type slice `obj[start:end]` via `@overload __getitem__(self, index: slice)` with `tpy::Slice` dispatch
@@ -4587,13 +4587,21 @@ Send/Sync rules for built-in types:
 
 ## Lambda / Closures
 
-- **Open**: `lambda x: x + 1` → inline or functor class
-- **Open**: Functions accepting lambdas → templates for efficiency
+- **Working**: `Fn[[A, B], R]` type -- zero-cost callable parameter (C++ template + `requires` constraint). Valid in function/method parameter position only.
   ```python
-  def map_values(items: List[T], fn: Callable[[T], T]) -> None:
-      # fn could be a template parameter, inlined at compile time
+  from tpy import Fn, Int32
+  def apply(f: Fn[[Int32], Int32], x: Int32) -> Int32:
+      return f(x)
+  apply(lambda x: x + 1, 42)  # lambda inlined, zero overhead
   ```
-- **Open**: Closures capturing variables → struct with captured state
+- **Working**: Lambda expressions `lambda x: expr` -- parameter types inferred from `Fn` context via bidirectional inference. Non-capturing lambdas generate `[]`, capturing lambdas generate explicit capture lists (`[&var]`).
+- **Working**: Capturing lambdas -- outer variables captured by reference. Safe for non-escaping `Fn` params (template-based, lifetime bounded by the call).
+- **Working**: `Fn` in method parameters -- generates per-method template with `requires` constraint.
+- **Open**: `Callable[[A, B], R]` type -- type-erased callable (`std::function`). For fields, returns, containers, reassigned locals.
+- **Open**: Named function references as callable values (`apply(double, 42)`)
+- **Open**: Nested `def` with captures, `nonlocal` keyword
+- **Open**: Generator functions (`yield`) -- manual state machine transformation
+- See `docs/CLOSURES_CALLABLE_DESIGN.md` for full design and phasing.
 
 ---
 

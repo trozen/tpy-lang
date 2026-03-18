@@ -6,7 +6,7 @@ allowing TurboPython source files to run in CPython and enabling IDE support.
 """
 
 from __future__ import annotations
-from typing import Generic, TypeVar, Protocol as _Protocol, runtime_checkable as _runtime_checkable
+from typing import Generic, TypeVar, Callable, Protocol as _Protocol, runtime_checkable as _runtime_checkable
 import copy as _copy_module
 
 T = TypeVar('T')
@@ -604,3 +604,6 @@ def span(x):
 def deref(x):
     """Dereference a Deref[T] type to get the underlying value."""
     return x.__deref__()
+
+
+Fn = Callable

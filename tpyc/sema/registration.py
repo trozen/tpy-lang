@@ -16,6 +16,7 @@ from ..typesys import (
     attach_type_param_bounds,
     has_auto_readonly,
     qualify_exception_name,
+    FnType, contains_fn_type,
 )
 from ..parse import (
     TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
@@ -45,6 +46,8 @@ def _contains_self_type(typ: TpyType) -> bool:
     if isinstance(typ, SelfType):
         return True
     return any(_contains_self_type(inner) for inner in typ.inner_types())
+
+
 
 
 def build_record_self_type(record: TpyRecord) -> NamedType:
@@ -263,6 +266,12 @@ class TypeRegistrar:
             if _contains_self_type(fld.type):
                 raise SemanticError(
                     f"Self cannot be used as a field type in '{record.name}'",
+                    loc=fld.loc
+                )
+            if contains_fn_type(fld.type):
+                raise SemanticError(
+                    "Fn type is only valid in parameter position. "
+                    "Use Callable for fields, returns, and locals",
                     loc=fld.loc
                 )
 
@@ -1302,6 +1311,13 @@ class TypeRegistrar:
                     f"Only @dynamic protocols can be used as return types",
                     func.loc
                 )
+
+        if contains_fn_type(resolved_return):
+            raise SemanticError(
+                "Fn type is only valid in parameter position. "
+                "Use Callable for fields, returns, and locals",
+                func.loc
+            )
 
         type_param_bounds = self._resolve_type_param_bounds(
             func.type_param_bounds, func.loc)

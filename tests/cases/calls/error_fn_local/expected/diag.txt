@@ -1,0 +1,1 @@
+main.py:6: error: Fn type is only valid in parameter position. Use Callable for fields, returns, and locals
