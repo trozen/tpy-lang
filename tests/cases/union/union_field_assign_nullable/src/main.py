@@ -38,12 +38,18 @@ def main() -> None:
         if isinstance(p2, Cat):
             print(p2.name)
 
+    # Assign None (must emit std::monostate{}, not nullptr)
+    s.pet = None  # tpyc: warning(/Mutation.*while borrowed/)
+    p3 = s.pet
+    if p3 is None:
+        print("cleared")
+
     # Assign again from pointer-variant local
     another: Dog | Cat | None = Dog("Buddy")
     s.pet = another  # tpyc: warning(/Mutation.*while borrowed/)
-    p3 = s.pet
-    if p3 is not None:
-        if isinstance(p3, Dog):
-            print(p3.name)
+    p4 = s.pet
+    if p4 is not None:
+        if isinstance(p4, Dog):
+            print(p4.name)
 
 main()

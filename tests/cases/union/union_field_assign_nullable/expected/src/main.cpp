@@ -49,21 +49,31 @@ void main() {
             std::cout << __p2.name << "\n";
         }
     }
+    // # Assign None (must emit std::monostate{}, not nullptr)
+    // s.pet = None  # tpyc: warning(/Mutation.*while borrowed/)
+    s.pet = std::monostate{};
+    // p3 = s.pet
+    std::variant<std::monostate, Cat*, Dog*> p3 = ::tpy::to_ptr_variant(s.pet);
+    // if p3 is None:
+    if ((std::holds_alternative<std::monostate>(p3))) {
+        // print("cleared")
+        std::cout << "cleared" << "\n";
+    }
     // # Assign again from pointer-variant local
     // another: Dog | Cat | None = Dog("Buddy")
     std::variant<std::monostate, Cat, Dog> __slot_2 = Dog("Buddy");
     std::variant<std::monostate, Cat*, Dog*> another = ::tpy::to_ptr_variant(__slot_2);
     // s.pet = another  # tpyc: warning(/Mutation.*while borrowed/)
     s.pet = ::tpy::to_value_variant<std::variant<std::monostate, Cat, Dog>>(another);
-    // p3 = s.pet
-    std::variant<std::monostate, Cat*, Dog*> p3 = ::tpy::to_ptr_variant(s.pet);
-    // if p3 is not None:
-    if ((!std::holds_alternative<std::monostate>(p3))) {
-        // if isinstance(p3, Dog):
-        if (std::holds_alternative<Dog*>(p3)) {
-            auto& __p3 = *std::get<Dog*>(p3);
-            // print(p3.name)
-            std::cout << __p3.name << "\n";
+    // p4 = s.pet
+    std::variant<std::monostate, Cat*, Dog*> p4 = ::tpy::to_ptr_variant(s.pet);
+    // if p4 is not None:
+    if ((!std::holds_alternative<std::monostate>(p4))) {
+        // if isinstance(p4, Dog):
+        if (std::holds_alternative<Dog*>(p4)) {
+            auto& __p4 = *std::get<Dog*>(p4);
+            // print(p4.name)
+            std::cout << __p4.name << "\n";
         }
     }
 }

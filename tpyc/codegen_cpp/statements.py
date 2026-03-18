@@ -1286,7 +1286,7 @@ class StatementGenerator:
             # Union field: pointer-variant source -> value-variant field conversion
             if isinstance(target_type, UnionType) and target_type.uses_pointer_repr():
                 target = self.expressions.gen_expr(stmt.target)
-                value = self.expressions.gen_expr(stmt.value)
+                value = self.expressions.gen_expr(stmt.value, target_type)
                 if self._is_ptr_variant_source(stmt.value):
                     val_cpp = self.types.type_to_cpp(target_type)
                     value = f"::tpy::to_value_variant<{val_cpp}>({value})"
