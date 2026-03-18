@@ -359,6 +359,9 @@ class CodeGenContext:
     # When set, we're inside a try body -- error_return calls should goto this label
     try_except_label: str | None = None
 
+    # --- with statement ---
+    with_counter: int = 0
+
     # --- Match/case label counter (for goto-based guard fallthrough) ---
     match_counter: int = 0
 

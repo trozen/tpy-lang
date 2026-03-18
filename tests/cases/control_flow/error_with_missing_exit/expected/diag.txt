@@ -1,0 +1,1 @@
+main.py:11: error: Type 'NoExit' cannot be used as a context manager (missing __exit__ method)

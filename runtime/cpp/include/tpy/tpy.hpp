@@ -85,6 +85,9 @@
 // Pointer-variant utilities for non-value union types (depends on <variant>)
 #include "variant_ref.hpp"
 
+// RAII guard for `with` statement context managers (no dependencies)
+#include "with_guard.hpp"
+
 // Expose types in global namespace for TurboPython generated code
 using ::tpy::UninitArrayStorage;
 using ::tpy::UninitHeapStorage;

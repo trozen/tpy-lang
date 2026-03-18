@@ -494,6 +494,23 @@ class TpyTryExcept(TpyStmt):
     else_body: list[TpyStmt]     # may be empty
 
 
+@dataclass
+class TpyWithItem:
+    """A single context manager in a with statement."""
+    context_expr: TpyExpr
+    target: str | None  # as-variable name, or None if no `as`
+    loc: SourceLocation | None = None
+    # Set by sema: type returned by __enter__()
+    enter_type: TpyType | None = None
+
+
+@dataclass
+class TpyWith(TpyStmt):
+    """with statement (context managers)."""
+    items: list[TpyWithItem]
+    body: list[TpyStmt]
+
+
 # -- Pattern matching nodes --
 
 @dataclass

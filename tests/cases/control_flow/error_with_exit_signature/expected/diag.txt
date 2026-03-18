@@ -1,0 +1,1 @@
+main.py:7: error: __exit__ must have 3 parameters: __exit__(self, exc_type, exc_val, exc_tb)

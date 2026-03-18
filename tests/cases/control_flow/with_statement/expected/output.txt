@@ -1,0 +1,32 @@
+enter A
+[A] hello
+exit A
+after with
+---
+enter B
+inside B
+exit B
+after B
+---
+connecting
+session-42
+disconnected
+after connection
+---
+enter X
+enter Y
+[X] first
+[Y] second
+exit Y
+exit X
+after both
+---
+enter V
+[V] inside
+exit V
+[V] after
+---
+enter R
+[R] before return
+exit R
+result

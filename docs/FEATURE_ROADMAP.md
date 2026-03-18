@@ -71,7 +71,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D1 | Closures / nested functions | L | Not started | [VI](#closures--nested-functions) |
 | D2 | Callable type | L | Not started | [I](#callable--function-pointer-types) |
 | D3 | f-strings | M | Done | [VII](#f-strings) |
-| D4 | with statement | M | Not started | [VI](#with-statement-context-managers) |
+| D4 | with statement | M | Done | [VI](#with-statement-context-managers) |
 | D5 | Lambda | M | Not started | [VI](#lambda) |
 | D6 | Properties (@property) | M | Not started | [VII](#properties) |
 | D7 | String literal types (Literal[...]) | M | Not started | [III](#string-literal-types) |
@@ -140,6 +140,9 @@ don't get lost.
 | Final for non-primitive types | A1 | `Final[list[T]]` -- needs deep immutability |
 | Cross-module Final references | A1 | Use imported Finals in initializers |
 | Virtual methods in inheritance | B4 | `@dynamic` protocols cover the use case; class-based virtual dispatch is a distant future consideration |
+| `__exit__` exception args + return | D4 | Pass `(exc_type, exc_val, exc_tb)` to `__exit__`, return `True` to suppress. Blocked on general exceptions (C1/C2) |
+| `@contextmanager` decorator | D4 | `yield`-based context managers via `contextlib.contextmanager`. Blocked on generators (F3) |
+| `async with` | D4 | `__aenter__`/`__aexit__` async context managers. Blocked on async (G1) |
 | IIFE init-list for branching `__init__` | A8 | Generate `field([&]{ if (...) return x; else return y; }())` in member init-list, removing the need for helper functions. Handles all types including `@nocopy`/const fields. |
 
 ---
@@ -1459,13 +1462,19 @@ with open(path) as f:
 # f.__exit__() called automatically
 ```
 
-Maps to C++ RAII / scoped blocks. Natural fit.
+Maps to C++ RAII via `tpy::WithGuard<T>` -- a guard struct whose destructor calls
+`__exit__()`, ensuring cleanup on early return or panic.
 
-**Current state**: Not started.
+**Current state**: Done. Duck-typed `__enter__`/`__exit__` protocol. `__exit__` accepts
+0 params (TPy-native) or 3 params (CPython-compatible -- exception params stripped at
+parse time). `as`-variable visible after `with` block (CPython scoping). Multiple
+context managers (`with a() as x, b() as y:`) emit nested guards (LIFO exit order).
+`__enter__` return type determines the `as`-binding type (can differ from context manager
+type).
 
-**Dependencies**: `__enter__` / `__exit__` protocol.
+**Dependencies**: `__enter__` / `__exit__` protocol (done, duck-typed).
 
-**Effort**: M
+**Effort**: M (done)
 
 ---
 

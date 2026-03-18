@@ -135,7 +135,7 @@ tests/
 │   ├── bool/                 # bool type and conversion
 │   ├── builtins/             # Built-in functions, stdlib modules
 │   ├── calls/                # Function calls, argument passing, @overload dispatch
-│   ├── control_flow/         # if/else, for loops, break/continue
+│   ├── control_flow/         # if/else, for loops, break/continue, with statement
 │   ├── defaults/             # Default argument values
 │   ├── dict/                 # Dict type, subscript, methods
 │   ├── set/                  # Set type, methods, operators, algebra
@@ -338,6 +338,7 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `generator.hpp` | `generator_wrapper` and `make_generator` for generator expressions |
 | `span_iter.hpp` | `tpy::SpanIter<T>` lightweight iterator over contiguous span |
 | `variant_ref.hpp` | `to_ptr_variant`, `to_const_ptr_variant`, `to_value_variant` for non-value union two-layer repr |
+| `with_guard.hpp` | `tpy::WithGuard<T>` RAII guard for `with` statement context managers |
 
 Generated code requires C++23 (for `std::ranges` concepts).
 

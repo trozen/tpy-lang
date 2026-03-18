@@ -33,7 +33,7 @@ from .nodes import (
     TpyIfExpr, TpyNamedExpr,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
-    TpyPassStmt, TpyGlobal, TpyRaise, TpyTryExcept,
+    TpyPassStmt, TpyGlobal, TpyRaise, TpyTryExcept, TpyWithItem, TpyWith,
     TpyPattern, TpyWildcardPattern, TpyCapturePattern, TpyClassPattern,
     TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
     TpyMatchCase, TpyMatch,
@@ -1409,6 +1409,8 @@ class Parser:
         params = []
         has_self = not is_staticmethod
         is_consuming = False
+        # Count non-self params for __exit__ stripping check
+        n_non_self = len(node.args.args) - (1 if has_self else 0)
         args_iter = iter(enumerate(node.args.args))
         for i, arg in args_iter:
             if i == 0 and has_self:
@@ -1437,10 +1439,24 @@ class Parser:
                             node,
                         )
                 continue
+            # __exit__ exception params (exc_type, exc_val, exc_tb) are stripped --
+            # they are always None in TPy (no general exceptions). This allows
+            # CPython-compatible signatures without requiring type annotations.
+            if node.name == "__exit__" and n_non_self == 3 and has_self:
+                continue
             if arg.annotation is None:
                 raise ParseError(f"Parameter '{arg.arg}' must have type annotation", node)
             param_type = self._parse_type_annotation(arg.annotation, type_param_scope)
             params.append((arg.arg, param_type))
+
+        # __exit__ must have exactly 3 params (exc_type, exc_val, exc_tb) to
+        # match CPython's context manager protocol.
+        if node.name == "__exit__" and has_self and n_non_self != 3:
+            raise ParseError(
+                f"__exit__ must have 3 parameters: "
+                f"__exit__(self, exc_type, exc_val, exc_tb)",
+                node,
+            )
 
         # Parse default parameter values (skip_self for non-static methods)
         defaults = self._parse_param_defaults(node, params, skip_self=has_self,
@@ -2135,6 +2151,9 @@ class Parser:
         elif isinstance(node, ast.Try):
             return self._parse_try(node, loc)
 
+        elif isinstance(node, ast.With):
+            return self._parse_with(node, loc)
+
         else:
             raise ParseError(f"Unsupported statement: {type(node).__name__}", node)
 
@@ -2179,6 +2198,23 @@ class Parser:
             else_body=else_body,
             loc=loc,
         )
+
+    def _parse_with(self, node: ast.With, loc: SourceLocation | None) -> TpyWith:
+        """Parse a with statement."""
+        items: list[TpyWithItem] = []
+        for item in node.items:
+            context_expr = self._parse_expr(item.context_expr)
+            target: str | None = None
+            if item.optional_vars is not None:
+                if not isinstance(item.optional_vars, ast.Name):
+                    raise ParseError(
+                        "'with ... as' target must be a simple variable", node
+                    )
+                target = item.optional_vars.id
+            item_loc = self._loc(item.context_expr)
+            items.append(TpyWithItem(context_expr, target, loc=item_loc))
+        body = [self._parse_stmt(s) for s in node.body]
+        return TpyWith(items, body, loc=loc)
 
     def _parse_delete(self, node: ast.Delete, loc: SourceLocation | None) -> TpyStmt:
         """Parse a del statement. Only subscript targets are supported."""

@@ -2764,6 +2764,15 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: Const-ref loop variable binding -- when the loop body never mutates the loop variable (no field writes, no non-`@readonly` method calls, no passing to mutable parameters, no address-of), codegen emits `const auto&` instead of `auto&&`. Value types always use typed copies regardless. Parameter mutation inference (see [Implementation Notes](#parameter-mutation-inference-partial)) refines "passing to mutable parameters": if the callee is known not to mutate a specific parameter, passing the loop variable there does not force mutable binding.
 - **Working**: `for/else`, `while/else` -- else block runs when loop completes without `break`; `break` emits `goto` past the else body
 
+### `with` Statement (Context Managers)
+- **Working**: `with expr as var:` -- duck-typed context manager protocol via `__enter__`/`__exit__` methods
+  - `__enter__(self) -> T` -- return type determines the `as`-variable type (can differ from the context manager type)
+  - `__exit__(self) -> None` (TPy-native) or `__exit__(self, exc_type, exc_val, exc_tb) -> None` (CPython-compatible; exception params are stripped at parse time since TPy has no general exceptions)
+  - RAII cleanup via `tpy::WithGuard<T>` -- `__exit__()` is called in the guard destructor, ensuring cleanup on early return or panic
+  - `as`-variable is visible after the `with` block (matching CPython scoping)
+  - Multiple context managers: `with a() as x, b() as y:` -- nested guards, inner exits first (LIFO)
+  - `with expr:` (no `as`) -- enter/exit without binding
+
 ### Other
 - **Working**: `return`, `pass`
 - **Working**: `del obj[key]` -- element deletion via `__delitem__` dunder (dict, list, user types)

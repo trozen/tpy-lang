@@ -21,7 +21,7 @@ from ..parse import (
     TpyExpr,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert,
-    TpyRaise, TpyTryExcept,
+    TpyRaise, TpyTryExcept, TpyWith,
     TpyGlobal,
     TpyCall, TpyMethodCall, TpyArrayLiteral, TpyListComprehension, TpyDictLiteral, TpyCoerce,
     TpySubscript, TpySlice, TpyStrLiteral, TpyName, TpyTupleLiteral,
@@ -838,6 +838,8 @@ class StatementAnalyzer:
             self._analyze_try_except(stmt)
         elif isinstance(stmt, TpyMatch):
             self.match.analyze_match(stmt)
+        elif isinstance(stmt, TpyWith):
+            self._analyze_with(stmt)
 
     def _apply_range_facts(self, facts: dict[str, 'ValueRange']) -> None:
         """Apply integer range facts, intersecting with any existing ranges."""
@@ -993,6 +995,55 @@ class StatementAnalyzer:
                 for name in sorted(predecl)
                 if name in all_bindings
             }
+
+    def _analyze_with(self, stmt: TpyWith) -> None:
+        """Analyze a with statement (context managers).
+
+        Checks that each context expression has __enter__ and __exit__ methods.
+        Types the as-binding from __enter__ return type. The as-variable is
+        visible after the with block (matching CPython semantics).
+        """
+        for item in stmt.items:
+            ctx_type = self.expr.analyze_expr(item.context_expr)
+
+            # Look up __enter__ and __exit__ on the context manager type
+            record_info = self.ctx.registry.get_record_for_type(ctx_type)
+            err_node = item.context_expr
+            if record_info is None:
+                raise self.ctx.error(
+                    f"Type '{ctx_type}' cannot be used as a context manager"
+                    f" (not a record type)", err_node)
+
+            enter_overloads = record_info.methods.get("__enter__")
+            if not enter_overloads:
+                raise self.ctx.error(
+                    f"Type '{ctx_type}' cannot be used as a context manager"
+                    f" (missing __enter__ method)", err_node)
+
+            exit_overloads = record_info.methods.get("__exit__")
+            if not exit_overloads:
+                raise self.ctx.error(
+                    f"Type '{ctx_type}' cannot be used as a context manager"
+                    f" (missing __exit__ method)", err_node)
+
+            # Get return type of __enter__() -- use the first overload
+            enter_info = enter_overloads[0]
+            enter_type = enter_info.return_type
+            item.enter_type = enter_type
+
+            # Register the as-variable if present
+            if item.target is not None:
+                resolved = self._infer_new_local_type(
+                    item.target, enter_type, None, None,
+                    line=(stmt.loc.line if stmt.loc else None),
+                )
+                item.enter_type = resolved
+                self.ctx.current_scope.define(item.target, resolved)
+                self.init.mark_assigned(item.target)
+
+        # Analyze the body
+        for s in stmt.body:
+            self.analyze_stmt(s)
 
     def _analyze_global_stmt(self, stmt: TpyGlobal) -> None:
         """Analyze a `global x, y` statement."""

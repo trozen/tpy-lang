@@ -20,7 +20,7 @@ from ..typesys import (
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt,
-    TpyRaise, TpyTryExcept,
+    TpyRaise, TpyTryExcept, TpyWith,
     TpyGlobal,
     TpyImport, TpySubscript, TpySlice, TpyStrLiteral, TpyNoneLiteral, TpyName, TpyExpr, TpyFunction,
     TpyAssert, TpyBoolLiteral, TpyArrayLiteral,
@@ -221,6 +221,9 @@ class StatementGenerator:
             self.ctx.emit_source_comment(out, stmt.loc, indent)
             self._emit_branch_decls(out, stmt, indent)
             self._gen_try_except(out, stmt, indent)
+        elif isinstance(stmt, TpyWith):
+            self.ctx.emit_source_comment(out, stmt.loc, indent)
+            self._gen_with(out, stmt, indent)
         else:
             # Simple statements - single flush point for all
             code = self._gen_simple_stmt(stmt, indent)
@@ -1655,6 +1658,57 @@ class StatementGenerator:
                 else:
                     out.write(f"{indent}{cpp_name} = "
                               f"{get_expr};\n")
+
+    def _gen_with(self, out: TextIO, stmt: 'TpyWith', indent: str) -> None:
+        """Generate a with statement using tpy::WithGuard for RAII cleanup.
+
+        Emits:
+            auto __ctx_N = <context_expr>;
+            auto& f = __ctx_N.__enter__();   // or just __ctx_N.__enter__() if no as
+            {
+                tpy::WithGuard __guard_N{__ctx_N};
+                <body>
+            }
+
+        The ctx and as-variable are hoisted outside the guard scope so they
+        remain visible after the with block (matching CPython semantics).
+        Multiple context managers emit nested guards.
+        """
+        self.ctx.temps.flush(out, indent)
+
+        # Generate each context manager setup (hoisted outside guard scope)
+        guard_ids: list[int] = []
+        for item in stmt.items:
+            self.ctx.with_counter += 1
+            n = self.ctx.with_counter
+            guard_ids.append(n)
+
+            ctx_expr = self.expressions.gen_expr(item.context_expr)
+            out.write(f"{indent}auto __ctx_{n} = {ctx_expr};\n")
+
+            if item.target is not None:
+                assert item.enter_type is not None
+                if item.enter_type.is_value_type():
+                    out.write(f"{indent}auto {item.target} = __ctx_{n}.__enter__();\n")
+                else:
+                    out.write(f"{indent}auto& {item.target} = __ctx_{n}.__enter__();\n")
+            else:
+                out.write(f"{indent}__ctx_{n}.__enter__();\n")
+
+        # Open guard scope(s) -- nested for multiple context managers
+        for n in guard_ids:
+            out.write(f"{self.ctx.indent()}{{\n")
+            self.ctx.indent_level += 1
+            out.write(f"{self.ctx.indent()}::tpy::WithGuard __guard_{n}{{__ctx_{n}}};\n")
+
+        # Emit body
+        for s in stmt.body:
+            self.gen_stmt(out, s)
+
+        # Close guard scopes (in reverse order)
+        for _ in guard_ids:
+            self.ctx.indent_level -= 1
+            out.write(f"{self.ctx.indent()}}}\n")
 
     def _gen_try_except(self, out: TextIO, stmt: TpyTryExcept, indent: str) -> None:
         """Generate a try/except block using goto-based error dispatch.
