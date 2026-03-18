@@ -82,36 +82,36 @@ namespace tpy_user::main {
 
 // def try_it(name: str) -> None:
 void try_it(std::string_view name) {
-    //     d = try_parse(Direction, name)
+    // d = try_parse(Direction, name)
     std::optional<Direction> d = ::tpy::EnumUtil<Direction>::try_parse(name);
-    //     if d is not None:
+    // if d is not None:
     if ((d.has_value())) {
-        //         print(d)
+        // print(d)
         std::cout << ::tpy::print_optional_val(d) << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("not found")
+        // print("not found")
         std::cout << "not found" << "\n";
     }
 }
 
 // def main() -> None:
 void main() {
-    //     try_it("North")
+    // try_it("North")
     try_it("North");
-    //     try_it("South")
+    // try_it("South")
     try_it("South");
-    //     try_it("East")
+    // try_it("East")
     try_it("East");
-    //     try_it("West")
+    // try_it("West")
     try_it("West");
-    //     try_it("Up")
+    // try_it("Up")
     try_it("Up");
-    //     try_it("Down")
+    // try_it("Down")
     try_it("Down");
-    //     try_it("Left")
+    // try_it("Left")
     try_it("Left");
-    //     try_it("")
+    // try_it("")
     try_it("");
 }
 

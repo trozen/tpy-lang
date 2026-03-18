@@ -10,19 +10,19 @@ Point* result{};
 
 // def find(points: list[Point], target: Int32) -> Point | None:
 Point* find(std::vector<Point>& points, int32_t target) {
-    //     for p in points:
+    // for p in points:
     auto& __obj_0 = points;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        //         if p.x == target:
+        // if p.x == target:
         if ((p.x == target)) {
-            //             return p
+            // return p
             return &(p);
         }
     }
-    //     return None
+    // return None
     return nullptr;
 }
 
@@ -44,7 +44,7 @@ void __tpy_init() {
     result = find((*points), 2);
     // if result is not None:
     if ((result != nullptr)) {
-        //     print(result.y)
+        // print(result.y)
         std::cout << result->y << "\n";
     }
     // result = find(points, 99)

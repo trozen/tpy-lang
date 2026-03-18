@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     a: Int32 = Int32(5)
+    // a: Int32 = Int32(5)
     int32_t a = 5;
-    //     b: Int32 = Int32(0)
+    // b: Int32 = Int32(0)
     int32_t b = 0;
-    //     print(a / b)
+    // print(a / b)
     std::cout << ::tpy::print_float((::tpy::truediv(static_cast<double>(a), static_cast<double>(b)))) << "\n";
 }
 

@@ -6,21 +6,21 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     a = ArrayList[Int32, 4]()
+    // a = ArrayList[Int32, 4]()
     ::tpy_user::tplib::array_list::ArrayList<int32_t, 4> a = ::tpy_user::tplib::array_list::ArrayList<int32_t, 4>();
-    //     a.append(10)
+    // a.append(10)
     a.append(10);
-    //     a.append_default()
+    // a.append_default()
     a.append_default();
-    //     a.append(30)
+    // a.append(30)
     a.append(30);
-    //     print(len(a))
+    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
-    //     print(a[0])
+    // print(a[0])
     std::cout << a[0] << "\n";
-    //     print(a[1])
+    // print(a[1])
     std::cout << a[1] << "\n";
-    //     print(a[2])
+    // print(a[2])
     std::cout << a[2] << "\n";
 }
 

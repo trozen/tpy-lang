@@ -7,9 +7,9 @@ namespace tpy_user::main {
 // @readonly
 // def ok() -> int:
 ::tpy::BigInt ok() {
-    //     Logger()  # tpyc: ok
+    // Logger()  # tpyc: ok
     Logger();
-    //     return 0
+    // return 0
     return ::tpy::BigInt(0);
 }
 

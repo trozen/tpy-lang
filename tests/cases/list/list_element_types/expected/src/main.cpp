@@ -27,54 +27,54 @@ std::vector<::tpy::BigInt>* bigint_list{};
 // # Case 6: Local variable with Int32 element
 // def local_mixed() -> Int32:
 int32_t local_mixed() {
-    //     data = [Int32(5), 6, 7]
+    // data = [Int32(5), 6, 7]
     std::array<int32_t, 3> data = {5, 6, 7};
-    //     return data[2]
+    // return data[2]
     return ::tpy::__getitem__(data, 2);
 }
 
 // # Case 7: Passing to Span[Int32] param requires Int32 elements
 // def sum_span(nums: Span[Int32]) -> Int32:
 int32_t sum_span(std::span<int32_t> nums) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     for n in nums:
+    // for n in nums:
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t n = *__beg_0;
-        //         total += n
+        // total += n
         total = ::tpy::add_check<int32_t>(total, n);
     }
-    //     return total
+    // return total
     return total;
 }
 
 // # Case 8: Local list passed to Span[Int32] infers Int32
 // def test_local_span() -> Int32:
 int32_t test_local_span() {
-    //     local_data = [4, 5, 6]  # Inferred as Int32 when passed to Span[Int32]
+    // local_data = [4, 5, 6]  # Inferred as Int32 when passed to Span[Int32]
     std::array<int32_t, 3> local_data = {4, 5, 6};
-    //     return sum_span(local_data)
+    // return sum_span(local_data)
     return sum_span(::tpy::as_mut_span(local_data));
 }
 
 // # Case 9: Span[int] (BigInt span)
 // def sum_span_bigint(nums: Span[int]) -> int:
 ::tpy::BigInt sum_span_bigint(std::span<::tpy::BigInt> nums) {
-    //     total: int = 0
+    // total: int = 0
     ::tpy::BigInt total = ::tpy::BigInt(0);
-    //     for n in nums:
+    // for n in nums:
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const ::tpy::BigInt& n = *__beg_0;
-        //         total += n
+        // total += n
         total = (total) + (n);
     }
-    //     return total
+    // return total
     return total;
 }
 

@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     d = Dog()
+    // d = Dog()
     Dog d = Dog();
-    //     speak(d)
+    // speak(d)
     speak<Dog>(d);
 }
 

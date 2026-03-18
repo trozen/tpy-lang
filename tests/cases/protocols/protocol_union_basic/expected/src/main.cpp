@@ -6,12 +6,12 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     nums: list[int] = [10, 20, 30]
+    // nums: list[int] = [10, 20, 30]
     std::vector<::tpy::BigInt> nums = {10, 20, 30};
-    //     # list satisfies both Sized and Sequence[int]; Sequence branch fires first
-    //     describe(nums)
+    // # list satisfies both Sized and Sequence[int]; Sequence branch fires first
+    // describe(nums)
     describe(nums);
-    //     print(get_value(nums))
+    // print(get_value(nums))
     std::cout << get_value(nums) << "\n";
 }
 

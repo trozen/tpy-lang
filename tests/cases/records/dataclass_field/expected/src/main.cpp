@@ -6,41 +6,41 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # All defaults
-    //     c1 = Config("test")
+    // # All defaults
+    // c1 = Config("test")
     Config c1 = Config("test");
-    //     print(c1.name)
+    // print(c1.name)
     std::cout << c1.name << "\n";
-    //     print(c1.value)
+    // print(c1.value)
     std::cout << c1.value << "\n";
-    //     print(len(c1.tags))
+    // print(len(c1.tags))
     std::cout << ::tpy::__len__(c1.tags) << "\n";
-    //     print(len(c1.lookup))
+    // print(len(c1.lookup))
     std::cout << ::tpy::__len__(c1.lookup) << "\n";
-    //     # Override some defaults
-    //     c2 = Config("prod", 99, ["a", "b"])
+    // # Override some defaults
+    // c2 = Config("prod", 99, ["a", "b"])
     Config c2 = Config("prod", 99, {"a", "b"});
-    //     print(c2.name)
+    // print(c2.name)
     std::cout << c2.name << "\n";
-    //     print(c2.value)
+    // print(c2.value)
     std::cout << c2.value << "\n";
-    //     print(len(c2.tags))
+    // print(len(c2.tags))
     std::cout << ::tpy::__len__(c2.tags) << "\n";
-    //     # Each instance gets its own list/dict (no sharing)
-    //     c1.tags.append("x")
+    // # Each instance gets its own list/dict (no sharing)
+    // c1.tags.append("x")
     c1.tags.push_back("x");
-    //     print(len(c1.tags))
+    // print(len(c1.tags))
     std::cout << ::tpy::__len__(c1.tags) << "\n";
-    //     print(len(c2.tags))
+    // print(len(c2.tags))
     std::cout << ::tpy::__len__(c2.tags) << "\n";
-    //     # Non-generic user type as factory default
-    //     cv = Canvas("drawing")
+    // # Non-generic user type as factory default
+    // cv = Canvas("drawing")
     Canvas cv = Canvas("drawing");
-    //     print(cv.origin)
+    // print(cv.origin)
     std::cout << cv.origin << "\n";
-    //     cv2 = Canvas("art", Point(10, 20))
+    // cv2 = Canvas("art", Point(10, 20))
     Canvas cv2 = Canvas("art", Point(10, 20));
-    //     print(cv2.origin)
+    // print(cv2.origin)
     std::cout << cv2.origin << "\n";
 }
 

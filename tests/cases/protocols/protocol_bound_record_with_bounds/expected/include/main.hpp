@@ -15,16 +15,16 @@ concept Printable = requires(T& t) {
 // # Record that implements Printable
 // class Message:
 struct Message {
-    //     text: str
+    // text: str
     std::string text;
 
-    //     def __init__(self, text: str) -> None:
+    // def __init__(self, text: str) -> None:
     Message() = default;
     explicit Message(std::string_view text) : text(text) {}
 
-    //     def to_str(self) -> str:
+    // def to_str(self) -> str:
     std::string to_str() const {
-        //         return self.text
+        // return self.text
         return this->text;
     }
 };
@@ -56,16 +56,16 @@ void main();
 // class Wrapper[T: Printable]:
 template<Printable T>
 struct Wrapper {
-    //     value: T
+    // value: T
     T value;
 
-    //     def __init__(self, value: T) -> None:
+    // def __init__(self, value: T) -> None:
     Wrapper() = default;
     explicit Wrapper(const T& value) : value(value) {}
 
-    //     def print_wrapped(self) -> None:
+    // def print_wrapped(self) -> None:
     void print_wrapped() {
-        //         print(self.value.to_str())
+        // print(self.value.to_str())
         std::cout << this->value.to_str() << "\n";
     }
 };
@@ -83,9 +83,9 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
 struct DefaultWrapperMaker {
 
 
-    //     def make(self, text: str) -> Own[Wrapper[Message]]:
+    // def make(self, text: str) -> Own[Wrapper[Message]]:
     Wrapper<Message> make(std::string_view text) const {
-        //         return Wrapper(Message(text))
+        // return Wrapper(Message(text))
         return Wrapper<Message>(Message(text));
     }
 };
@@ -100,16 +100,16 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultWrapperMaker& obj
 // class Container[T: WrapperMaker]:
 template<WrapperMaker T>
 struct Container {
-    //     factory: T
+    // factory: T
     T factory;
 
-    //     def __init__(self, factory: T) -> None:
+    // def __init__(self, factory: T) -> None:
     Container() = default;
     explicit Container(const T& factory) : factory(factory) {}
 
-    //     def create_wrapper(self, text: str) -> Own[Wrapper[Message]]:
+    // def create_wrapper(self, text: str) -> Own[Wrapper[Message]]:
     Wrapper<Message> create_wrapper(std::string_view text) {
-        //         return self.factory.make(text)
+        // return self.factory.make(text)
         return this->factory.make(text);
     }
 };

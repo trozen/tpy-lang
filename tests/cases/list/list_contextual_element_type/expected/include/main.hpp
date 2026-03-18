@@ -15,9 +15,9 @@ void main();
 
 // class Rect:
 struct Rect {
-    //     w: Int32
+    // w: Int32
     int32_t w;
-    //     h: Int32
+    // h: Int32
     int32_t h;
 
 };
@@ -33,7 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 
 // class Circle:
 struct Circle {
-    //     r: Int32
+    // r: Int32
     int32_t r;
 
 };

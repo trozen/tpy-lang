@@ -23,47 +23,47 @@ void main();
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sized<T_items>)
 int32_t count_if_sized(const T_items* items) {
-    //     if isinstance(items, Sized):
+    // if isinstance(items, Sized):
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-        //         return len(items)
+        // return len(items)
         return ::tpy::__len__((*items));
     }
-    //     return -1
+    // return -1
     return -1;
 }
 // def sum_span(items: ReadOnlySpanLike[Int32] | None = None) -> Int32:
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpy::ReadOnlySpanLike<T_items, int32_t>)
 int32_t sum_span(const T_items* items) {
-    //     if isinstance(items, ReadOnlySpanLike):
+    // if isinstance(items, ReadOnlySpanLike):
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-        //         total: Int32 = 0
+        // total: Int32 = 0
         int32_t total = 0;
-        //         for x in items:
+        // for x in items:
         auto& __obj_0 = (*items);
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            //             total += x
+            // total += x
             total = ::tpy::add_check<int32_t>(total, x);
         }
-        //         return total
+        // return total
         return total;
     }
-    //     return -1
+    // return -1
     return -1;
 }
 // def check_not(items: Sized | None = None) -> Int32:
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sized<T_items>)
 int32_t check_not(const T_items* items) {
-    //     if not isinstance(items, Sized):
+    // if not isinstance(items, Sized):
     if constexpr (std::same_as<T_items, std::nullptr_t>) {
-        //         return -1
+        // return -1
         return -1;
     }
-    //     return len(items)
+    // return len(items)
     return ::tpy::__len__((*items));
 }
 

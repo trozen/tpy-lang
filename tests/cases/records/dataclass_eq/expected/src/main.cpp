@@ -6,32 +6,32 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Single field
-    //     print(Id(1) == Id(1))
+    // # Single field
+    // print(Id(1) == Id(1))
     std::cout << ::tpy::print_bool((Id(1) == Id(1))) << "\n";
-    //     print(Id(1) == Id(2))
+    // print(Id(1) == Id(2))
     std::cout << ::tpy::print_bool((Id(1) == Id(2))) << "\n";
-    //     p1 = Point(1, 2)
+    // p1 = Point(1, 2)
     Point p1 = Point(1, 2);
-    //     p2 = Point(1, 2)
+    // p2 = Point(1, 2)
     Point p2 = Point(1, 2);
-    //     p3 = Point(1, 3)
+    // p3 = Point(1, 3)
     Point p3 = Point(1, 3);
-    //     print(p1 == p2)
+    // print(p1 == p2)
     std::cout << ::tpy::print_bool((p1 == p2)) << "\n";
-    //     print(p1 == p3)
+    // print(p1 == p3)
     std::cout << ::tpy::print_bool((p1 == p3)) << "\n";
-    //     print(p1 != p3)
+    // print(p1 != p3)
     std::cout << ::tpy::print_bool((p1 != p3)) << "\n";
-    //     c1 = Config("a", 1)
+    // c1 = Config("a", 1)
     Config c1 = Config("a", 1);
-    //     c2 = Config("a", 1)
+    // c2 = Config("a", 1)
     Config c2 = Config("a", 1);
-    //     c3 = Config("a", 1, "x")
+    // c3 = Config("a", 1, "x")
     Config c3 = Config("a", 1, "x");
-    //     print(c1 == c2)
+    // print(c1 == c2)
     std::cout << ::tpy::print_bool((c1 == c2)) << "\n";
-    //     print(c1 == c3)
+    // print(c1 == c3)
     std::cout << ::tpy::print_bool((c1 == c3)) << "\n";
 }
 

@@ -8,18 +8,18 @@ std::vector<std::optional<int32_t>>* vals{};
 
 // def write_none(items: list[Int32 | None]) -> Int32:
 int32_t write_none(std::vector<std::optional<int32_t>>& items) {
-    //     items[0] = None
+    // items[0] = None
     ::tpy::__setitem__(items, 0, std::nullopt);
-    //     items.append(None)
+    // items.append(None)
     items.push_back(std::nullopt);
-    //     items.insert(0, None)
+    // items.insert(0, None)
     ::tpy::list_insert(items, 0, std::nullopt);
-    //     if items[1] is not None:
+    // if items[1] is not None:
     if ((::tpy::__getitem__(items, 1).has_value())) {
-        //         return items[1] + 1  # tpyc: warning(/Potential None access/)
+        // return items[1] + 1  # tpyc: warning(/Potential None access/)
         return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(::tpy::__getitem__(items, 1)), 1));
     }
-    //     return 0
+    // return 0
     return 0;
 }
 

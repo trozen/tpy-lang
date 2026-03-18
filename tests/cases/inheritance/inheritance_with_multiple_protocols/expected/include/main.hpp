@@ -33,18 +33,18 @@ inline constexpr std::string_view __name__ = "__main__";
 // # Base class
 // class Vehicle:
 struct Vehicle {
-    //     brand: str
+    // brand: str
     std::string brand;
-    //     year: Int32
+    // year: Int32
     int32_t year;
 
-    //     def __init__(self, brand: str, year: Int32) -> None:
+    // def __init__(self, brand: str, year: Int32) -> None:
     Vehicle() = default;
     explicit Vehicle(std::string_view brand, int32_t year) : brand(brand), year(year) {}
 
-    //     def get_brand(self) -> str:
+    // def get_brand(self) -> str:
     std::string get_brand() const {
-        //         return self.brand
+        // return self.brand
         return this->brand;
     }
 };
@@ -61,35 +61,35 @@ inline std::ostream& operator<<(std::ostream& os, const Vehicle& obj) {
 // # Inherit from class AND implement multiple protocols
 // class Car(Vehicle, Printable, Measurable, Describable):
 struct Car : Vehicle {
-    //     model: str
+    // model: str
     std::string model;
-    //     car_weight: Int32
+    // car_weight: Int32
     int32_t car_weight;
 
-    //     def __init__(self, brand: str, year: Int32, model: str, car_weight: Int32) -> None:
+    // def __init__(self, brand: str, year: Int32, model: str, car_weight: Int32) -> None:
     Car() = default;
     explicit Car(std::string_view brand, int32_t year, std::string_view model, int32_t car_weight) : model(model), car_weight(car_weight) {
-        //         self.brand = brand
+        // self.brand = brand
         this->brand = brand;
-        //         self.year = year
+        // self.year = year
         this->year = year;
     }
 
-    //     def __str__(self) -> str:
+    // def __str__(self) -> str:
     std::string __str__() const {
-        //         return self.model
+        // return self.model
         return this->model;
     }
 
-    //     def weight(self) -> Int32:
+    // def weight(self) -> Int32:
     int32_t weight() const {
-        //         return self.car_weight
+        // return self.car_weight
         return this->car_weight;
     }
 
-    //     def describe(self) -> str:
+    // def describe(self) -> str:
     std::string describe() const {
-        //         return "A car"
+        // return "A car"
         return "A car";
     }
 };

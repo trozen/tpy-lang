@@ -6,58 +6,58 @@ namespace tpy_user::main {
 
 // def ensure_dog(pet: Dog | Cat) -> Dog | Cat:
 std::variant<Cat*, Dog*> ensure_dog(std::variant<Cat*, Dog*> pet) {
-    //     if isinstance(pet, Dog):
+    // if isinstance(pet, Dog):
     if (std::holds_alternative<Dog*>(pet)) {
         auto& __pet = *std::get<Dog*>(pet);
-        //         return pet
+        // return pet
         return &(__pet);
     }
-    //     return pet
+    // return pet
     return pet;
 }
 
 // def pick_first_dog(a: Dog | Cat, b: Dog | Cat) -> Dog | Cat:
 std::variant<Cat*, Dog*> pick_first_dog(std::variant<Cat*, Dog*> a, std::variant<Cat*, Dog*> b) {
-    //     if isinstance(a, Dog):
+    // if isinstance(a, Dog):
     if (std::holds_alternative<Dog*>(a)) {
         auto& __a = *std::get<Dog*>(a);
-        //         return a
+        // return a
         return &(__a);
     }
-    //     if isinstance(b, Dog):
+    // if isinstance(b, Dog):
     if (std::holds_alternative<Dog*>(b)) {
         auto& __b = *std::get<Dog*>(b);
-        //         return b
+        // return b
         return &(__b);
     }
-    //     return a
+    // return a
     return a;
 }
 
 // def main() -> None:
 void main() {
-    //     d = Dog("Rex")
+    // d = Dog("Rex")
     Dog d = Dog("Rex");
-    //     c = Cat("Whiskers")
+    // c = Cat("Whiskers")
     Cat c = Cat("Whiskers");
-    //     pet: Dog | Cat = d
+    // pet: Dog | Cat = d
     std::variant<Cat*, Dog*> pet{&(d)};
-    //     result = ensure_dog(pet)
+    // result = ensure_dog(pet)
     std::variant<Cat*, Dog*> result = ensure_dog(pet);
-    //     if isinstance(result, Dog):
+    // if isinstance(result, Dog):
     if (std::holds_alternative<Dog*>(result)) {
         auto& __result = *std::get<Dog*>(result);
-        //         print(result.name)
+        // print(result.name)
         std::cout << __result.name << "\n";
     }
-    //     pet2: Dog | Cat = c
+    // pet2: Dog | Cat = c
     std::variant<Cat*, Dog*> pet2{&(c)};
-    //     result2 = pick_first_dog(pet2, pet)
+    // result2 = pick_first_dog(pet2, pet)
     std::variant<Cat*, Dog*> result2 = pick_first_dog(pet2, pet);
-    //     if isinstance(result2, Dog):
+    // if isinstance(result2, Dog):
     if (std::holds_alternative<Dog*>(result2)) {
         auto& __result2 = *std::get<Dog*>(result2);
-        //         print(result2.name)
+        // print(result2.name)
         std::cout << __result2.name << "\n";
     }
 }

@@ -52,17 +52,17 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     d: Direction = Direction.North
+    // d: Direction = Direction.North
     Direction d = Direction::North;
-    //     print(d)
+    // print(d)
     std::cout << d << "\n";
-    //     print(d.value)
+    // print(d.value)
     std::cout << static_cast<int32_t>(d) << "\n";
-    //     d = Direction.West
+    // d = Direction.West
     d = Direction::West;
-    //     print(d)
+    // print(d)
     std::cout << d << "\n";
-    //     print(d.value)
+    // print(d.value)
     std::cout << static_cast<int32_t>(d) << "\n";
 }
 

@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     factory = DefaultPairFactory()
+    // factory = DefaultPairFactory()
     DefaultPairFactory factory = DefaultPairFactory();
-    //     pair = create_pair(factory, 30, 10)
+    // pair = create_pair(factory, 30, 10)
     SortedPair<int32_t> pair = create_pair<DefaultPairFactory>(factory, 30, 10);
-    //     print(pair.first)
+    // print(pair.first)
     std::cout << pair.first << "\n";
-    //     print(pair.second)
+    // print(pair.second)
     std::cout << pair.second << "\n";
 }
 

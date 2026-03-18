@@ -18,56 +18,56 @@ namespace tpy_user::main {
 
 // def test_or(a: dict[str, Int32], b: dict[str, Int32]) -> None:
 void test_or(::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_map<std::string, int32_t>& b) {
-    //     x = a or b  # tpyc: type(dict[str, Int32])
+    // x = a or b  # tpyc: type(dict[str, Int32])
     ::tpy::ordered_map<std::string, int32_t>& x = ((::tpy::__len__(a) != 0) ? a : b);
-    //     print(x)
+    // print(x)
     std::cout << ::tpy::DictPrinter(x) << "\n";
 }
 
 // def test_and(a: dict[str, Int32], b: dict[str, Int32]) -> None:
 void test_and(::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_map<std::string, int32_t>& b) {
-    //     x = a and b  # tpyc: type(dict[str, Int32])
+    // x = a and b  # tpyc: type(dict[str, Int32])
     ::tpy::ordered_map<std::string, int32_t>& x = ((::tpy::__len__(a) != 0) ? b : a);
-    //     print(x)
+    // print(x)
     std::cout << ::tpy::DictPrinter(x) << "\n";
 }
 
 // def test_ternary(a: dict[str, Int32], b: dict[str, Int32], cond: bool) -> None:
 void test_ternary(::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_map<std::string, int32_t>& b, bool cond) {
-    //     x = a if cond else b  # tpyc: type(dict[str, Int32])
+    // x = a if cond else b  # tpyc: type(dict[str, Int32])
     ::tpy::ordered_map<std::string, int32_t>& x = ((cond) ? (a) : (b));
-    //     print(x)
+    // print(x)
     std::cout << ::tpy::DictPrinter(x) << "\n";
 }
 
 // def test_literal_or() -> None:
 void test_literal_or() {
-    //     x = {"a": Int32(1)} or {"b": Int32(2)}  # tpyc: type(dict[str, Int32])
+    // x = {"a": Int32(1)} or {"b": Int32(2)}  # tpyc: type(dict[str, Int32])
     auto&& __tmp_1 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     auto&& __tmp_2 = ::tpy::ordered_map<std::string, int32_t>({{"b", 2}});
     ::tpy::ordered_map<std::string, int32_t> x = ((::tpy::__len__(__tmp_1) != 0) ? __tmp_1 : __tmp_2);
-    //     print(x)
+    // print(x)
     std::cout << ::tpy::DictPrinter(x) << "\n";
 }
 
 // def test_literal_ternary(cond: bool) -> None:
 void test_literal_ternary(bool cond) {
-    //     x = {"a": Int32(1)} if cond else {"b": Int32(2)}  # tpyc: type(dict[str, Int32])
+    // x = {"a": Int32(1)} if cond else {"b": Int32(2)}  # tpyc: type(dict[str, Int32])
     ::tpy::ordered_map<std::string, int32_t> x = ((cond) ? (::tpy::ordered_map<std::string, int32_t>({{"a", 1}})) : (::tpy::ordered_map<std::string, int32_t>({{"b", 2}})));
-    //     print(x)
+    // print(x)
     std::cout << ::tpy::DictPrinter(x) << "\n";
 }
 
 // def test_ternary_alias(a: dict[str, Int32], b: dict[str, Int32], cond: bool) -> None:
 void test_ternary_alias(::tpy::ordered_map<std::string, int32_t>& a, ::tpy::ordered_map<std::string, int32_t>& b, bool cond) {
-    //     # x binds to a or b by reference; mutation through x must be visible in original.
-    //     x = a if cond else b
+    // # x binds to a or b by reference; mutation through x must be visible in original.
+    // x = a if cond else b
     ::tpy::ordered_map<std::string, int32_t>& x = ((cond) ? (a) : (b));
-    //     x["z"] = Int32(99)
+    // x["z"] = Int32(99)
     ::tpy::__setitem__(x, "z", 99);
-    //     print(a)
+    // print(a)
     std::cout << ::tpy::DictPrinter(a) << "\n";
-    //     print(b)
+    // print(b)
     std::cout << ::tpy::DictPrinter(b) << "\n";
 }
 

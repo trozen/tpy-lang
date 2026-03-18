@@ -6,42 +6,42 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     a: Array[Int32, 3] = [10, 20, 30]
+    // a: Array[Int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> a = {10, 20, 30};
-    //     # iter() on mutable Span
-    //     s: Span[Int32] = a
+    // # iter() on mutable Span
+    // s: Span[Int32] = a
     std::span<int32_t> s = ::tpy::as_mut_span(a);
-    //     it = iter(s)
+    // it = iter(s)
     auto it = ::tpy::__iter__(s);
-    //     for x in it:
+    // for x in it:
     auto& __iter_0 = it;
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
         int32_t x = *__r_0;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
-    //     # iter() on Span[readonly[T]]
-    //     ro: Span[readonly[Int32]] = a
+    // # iter() on Span[readonly[T]]
+    // ro: Span[readonly[Int32]] = a
     std::span<const int32_t> ro = ::tpy::as_span(a);
-    //     it2 = iter(ro)
+    // it2 = iter(ro)
     auto it2 = ::tpy::__iter__(ro);
-    //     for x in it2:
+    // for x in it2:
     auto& __iter_1 = it2;
     for (;;) {
         auto __r_1 = __iter_1.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = *__r_1;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
-    //     # Pass iter(span) to Iterator[T] param
-    //     consume(iter(s))
+    // # Pass iter(span) to Iterator[T] param
+    // consume(iter(s))
     auto __tmp_1 = ::tpy::__iter__(s);
     consume(__tmp_1);
-    //     # print(iter(span)) -- should print <iterator>
-    //     print(iter(s))
+    // # print(iter(span)) -- should print <iterator>
+    // print(iter(s))
     std::cout << ::tpy::__iter__(s) << "\n";
 }
 

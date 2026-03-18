@@ -6,36 +6,36 @@ namespace tpy_user::main {
 
 // def classify(x: Optional[Int32]) -> str:
 std::string classify(std::optional<int32_t> x) {
-    //     match x:  # tpyc: warning(/non-exhaustive match.*missing: None.*case _:/)
+    // match x:  # tpyc: warning(/non-exhaustive match.*missing: None.*case _:/)
     auto& __match_subject = x;
     if (__match_subject.has_value()) {
         auto& __match_inner = (*__match_subject);
         switch (__match_inner) {
-        //         case 0:
+        // case 0:
         case 0: {
-            //             return "zero"
+            // return "zero"
             return "zero";
             break;
         }
-        //         case 1:
+        // case 1:
         case 1: {
-            //             return "one"
+            // return "one"
             return "one";
             break;
         }
         }
     }
-    //     return "unknown"
+    // return "unknown"
     return "unknown";
 }
 
 // def main() -> None:
 void main() {
-    //     print(classify(Int32(0)))
+    // print(classify(Int32(0)))
     std::cout << classify(0) << "\n";
-    //     print(classify(Int32(1)))
+    // print(classify(Int32(1)))
     std::cout << classify(1) << "\n";
-    //     print(classify(Int32(5)))
+    // print(classify(Int32(5)))
     std::cout << classify(5) << "\n";
 }
 

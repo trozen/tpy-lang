@@ -6,16 +6,16 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     show(True)
+    // show(True)
     bool __tmp_1 = true;
     show<bool>(__tmp_1);
-    //     show(False)
+    // show(False)
     bool __tmp_2 = false;
     show<bool>(__tmp_2);
-    //     show(42)
+    // show(42)
     int32_t __tmp_3 = 42;
     show<int32_t>(__tmp_3);
-    //     show("hello")
+    // show("hello")
     std::string_view __tmp_4 = "hello";
     show<std::string_view>(__tmp_4);
 }

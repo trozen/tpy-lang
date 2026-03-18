@@ -17,27 +17,27 @@ void test_class_with_pass();
 
 // class Counter:
 struct Counter {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: Int32) -> None:
     Counter() = default;
     explicit Counter(int32_t v) : value(v) {}
 
-    //     def do_nothing(self) -> None:
+    // def do_nothing(self) -> None:
     void do_nothing() const {
-        //         pass
+        // pass
     }
 
-    //     def maybe_increment(self, flag: Int32) -> None:
+    // def maybe_increment(self, flag: Int32) -> None:
     void maybe_increment(int32_t flag) {
-        //         if flag > 0:
+        // if flag > 0:
         if ((flag > 0)) {
-            //             self.value += 1
+            // self.value += 1
             this->value = ::tpy::add_check<int32_t>(this->value, 1);
-        //         else:
+        // else:
         } else {
-            //             pass
+            // pass
         }
     }
 };

@@ -31,11 +31,11 @@ struct Base {
         }
         return *this;
     }
-    //     def __del__(self):
+    // def __del__(self):
 
     ~Base() {
         if (!__tpy_owned_) return;
-        //         print("Base destroyed")
+        // print("Base destroyed")
         std::cout << "Base destroyed" << "\n";
     }
 };
@@ -48,10 +48,10 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 
 // class Child(Base):
 struct Child : Base {
-    //     label: str
+    // label: str
     std::string label;
 
-    //     def __init__(self, label: str):
+    // def __init__(self, label: str):
     Child() = default;
     explicit Child(std::string_view label) : label(label) {}
     Child(const Child&) = delete;
@@ -66,11 +66,11 @@ struct Child : Base {
         }
         return *this;
     }
-    //     def __del__(self):
+    // def __del__(self):
 
     ~Child() {
         if (!__tpy_owned_) return;
-        //         print("Child destroyed:", self.label)
+        // print("Child destroyed:", self.label)
         std::cout << "Child destroyed:" << " " << this->label << "\n";
     }
 };

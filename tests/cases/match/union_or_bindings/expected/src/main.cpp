@@ -6,53 +6,53 @@ namespace tpy_user::main {
 
 // def describe(a: Dog | Cat | Bird) -> str:
 std::string describe(const std::variant<Bird*, Cat*, Dog*> a) {
-    //     match a:
+    // match a:
     auto& __match_subject = a;
     switch (__match_subject.index()) {
-    //         case Dog(name=n) | Cat(name=n):
+    // case Dog(name=n) | Cat(name=n):
     case 2: {
         auto& __case_0_0 = *std::get<2>(__match_subject);
         auto& n = __case_0_0.name;
-        //             return "pet: " + n
+        // return "pet: " + n
         return (::tpy::str_concat("pet: ", n));
         break;
     }
     case 1: {
         auto& __case_0_1 = *std::get<1>(__match_subject);
         auto& n = __case_0_1.name;
-        //             return "pet: " + n
+        // return "pet: " + n
         return (::tpy::str_concat("pet: ", n));
         break;
     }
-    //         case Bird(name=n):
+    // case Bird(name=n):
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject);
         auto& n = __case_1.name;
-        //             return "bird: " + n
+        // return "bird: " + n
         return (::tpy::str_concat("bird: ", n));
         break;
     }
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def main() -> None:
 void main() {
-    //     d: Dog | Cat | Bird = Dog("Rex")
+    // d: Dog | Cat | Bird = Dog("Rex")
     std::variant<Bird, Cat, Dog> __slot_1 = Dog("Rex");
     std::variant<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    //     c: Dog | Cat | Bird = Cat("Whiskers")
+    // c: Dog | Cat | Bird = Cat("Whiskers")
     std::variant<Bird, Cat, Dog> __slot_2 = Cat("Whiskers");
     std::variant<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
-    //     b: Dog | Cat | Bird = Bird("Tweety")
+    // b: Dog | Cat | Bird = Bird("Tweety")
     std::variant<Bird, Cat, Dog> __slot_3 = Bird("Tweety");
     std::variant<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
-    //     print(describe(d))
+    // print(describe(d))
     std::cout << describe(d) << "\n";
-    //     print(describe(c))
+    // print(describe(c))
     std::cout << describe(c) << "\n";
-    //     print(describe(b))
+    // print(describe(b))
     std::cout << describe(b) << "\n";
 }
 

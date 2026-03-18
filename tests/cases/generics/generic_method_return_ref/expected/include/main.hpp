@@ -22,16 +22,16 @@ void test();
 
 // class Point:
 struct Point {
-    //     x: int
+    // x: int
     ::tpy::BigInt x;
 
-    //     def __init__(self, x: int) -> None:
+    // def __init__(self, x: int) -> None:
     Point() = default;
     explicit Point(const ::tpy::BigInt& x) : x(x) {}
 
-    //     def mutate(self) -> None:
+    // def mutate(self) -> None:
     void mutate() {
-        //         self.x += 10
+        // self.x += 10
         this->x = (this->x) + (::tpy::BigInt(10));
     }
 };
@@ -46,9 +46,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // def process[T: Mutable](box: Box[T]) -> None:
 template<Mutable T>
 void process(::tpy_user::tplib::Box<T>& box) {
-    //     item = box.get()  # tpyc: type(T)  -- val_or_ref_t<T>: Point& for records
+    // item = box.get()  # tpyc: type(T)  -- val_or_ref_t<T>: Point& for records
     ::tpy::val_or_ref_t<T> item = box.get();
-    //     item.mutate()     # mutation through the reference
+    // item.mutate()     # mutation through the reference
     item.mutate();
 }
 

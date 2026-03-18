@@ -6,23 +6,23 @@ namespace tpy_user::main {
 
 // def copy_into(src: readonly[Point], dest: Point) -> None:
 void copy_into(const Point& src, Point& dest) {
-    //     dest.x = src.x
+    // dest.x = src.x
     dest.x = src.x;
-    //     dest.y = src.y
+    // dest.y = src.y
     dest.y = src.y;
 }
 
 // def main() -> None:
 void main() {
-    //     a = Point(Int32(10), Int32(20))
+    // a = Point(Int32(10), Int32(20))
     Point a = Point(10, 20);
-    //     b = Point(Int32(0), Int32(0))
+    // b = Point(Int32(0), Int32(0))
     Point b = Point(0, 0);
-    //     copy_into(a, b)
+    // copy_into(a, b)
     copy_into(a, b);
-    //     print(b.x)
+    // print(b.x)
     std::cout << b.x << "\n";
-    //     print(b.y)
+    // print(b.y)
     std::cout << b.y << "\n";
 }
 

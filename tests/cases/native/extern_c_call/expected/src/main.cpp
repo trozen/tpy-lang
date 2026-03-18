@@ -8,7 +8,7 @@ namespace tpy_user::main {
 // @extern_c("Helper_Add")
 // def helper_add(x: Int32) -> Int32:
 extern "C" int32_t Helper_Add(int32_t x) {
-    //     return x + Int32(1)
+    // return x + Int32(1)
     return (::tpy::add_check<int32_t>(x, 1));
 }
 
@@ -17,9 +17,9 @@ extern "C" int32_t Helper_Add(int32_t x) {
 // @extern_c
 // def app_init() -> None:
 extern "C" void app_init() {
-    //     y: Int32 = helper_add(Int32(42))
+    // y: Int32 = helper_add(Int32(42))
     int32_t y = Helper_Add(42);
-    //     print(y)
+    // print(y)
     std::cout << y << "\n";
 }
 

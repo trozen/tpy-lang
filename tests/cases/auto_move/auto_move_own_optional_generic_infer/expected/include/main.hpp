@@ -15,7 +15,7 @@ void main();
 
 // class Box:
 struct Box {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
 };
@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // def take_optional[T](item: Own[T] | None, fallback: Int32) -> Int32:
 template<typename T>
 int32_t take_optional(std::optional<T> item, int32_t fallback) {
-    //     return fallback
+    // return fallback
     return fallback;
 }
 

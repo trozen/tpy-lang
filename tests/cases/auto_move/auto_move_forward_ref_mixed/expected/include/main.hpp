@@ -15,7 +15,7 @@ void main();
 
 // class Box:
 struct Box {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
 };
@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // def mixed[T](x: Own[T], y: T) -> None:
 template<typename T>
 void mixed(std::type_identity_t<T>&& x, ::tpy::param_val_or_ref_t<T> y) {
-    //     pass
+    // pass
 }
 
 void __tpy_init();

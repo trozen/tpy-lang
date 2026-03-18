@@ -9,7 +9,7 @@ namespace tpy_user::main {
 // # tpy: frobnicate("something")
 // def main() -> None:
 void main() {
-    //     pass
+    // pass
 }
 
 void __tpy_init() {

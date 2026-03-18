@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     w = Wrapper()
+    // w = Wrapper()
     Wrapper w = Wrapper();
-    //     print(w.get_mutable().x)   # 1
+    // print(w.get_mutable().x)   # 1
     std::cout << w.get_mutable().x << "\n";
-    //     c = Container()
+    // c = Container()
     Container c = Container();
-    //     print(c.first_x())         # 1
+    // print(c.first_x())         # 1
     std::cout << c.first_x() << "\n";
 }
 

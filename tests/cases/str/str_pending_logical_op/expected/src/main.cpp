@@ -6,105 +6,105 @@ namespace tpy_user::main {
 
 // def test_or(a: str, b: str) -> None:
 void test_or(std::string_view a, std::string_view b) {
-    //     x = a or b  # tpyc: type(StrView)
+    // x = a or b  # tpyc: type(StrView)
     std::string_view x = ((!a.empty()) ? a : b);
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_and(a: str, b: str) -> None:
 void test_and(std::string_view a, std::string_view b) {
-    //     x = a and b  # tpyc: type(StrView)
+    // x = a and b  # tpyc: type(StrView)
     std::string_view x = ((!a.empty()) ? b : a);
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_ternary(a: str, b: str, cond: bool) -> None:
 void test_ternary(std::string_view a, std::string_view b, bool cond) {
-    //     x = a if cond else b  # tpyc: type(StrView)
+    // x = a if cond else b  # tpyc: type(StrView)
     std::string_view x = ((cond) ? (a) : (b));
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_literal_or() -> None:
 void test_literal_or() {
-    //     x = "hello" or "world"  # tpyc: type(StrView)
+    // x = "hello" or "world"  # tpyc: type(StrView)
     std::string_view __tmp_1 = "hello";
     std::string_view __tmp_2 = "world";
     std::string_view x = ((!__tmp_1.empty()) ? __tmp_1 : __tmp_2);
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_or_right_promotes() -> None:
 void test_or_right_promotes() {
-    //     # When the right-hand operand later promotes to std::string (via augassign),
-    //     # the result x must also promote -- it might point to b's buffer at runtime.
-    //     a = "hello"
+    // # When the right-hand operand later promotes to std::string (via augassign),
+    // # the result x must also promote -- it might point to b's buffer at runtime.
+    // a = "hello"
     std::string_view a = "hello";
-    //     b = "world"
+    // b = "world"
     std::string b = "world";
-    //     x = a or b  # tpyc: type(str)
+    // x = a or b  # tpyc: type(str)
     std::string x = std::string(((!a.empty()) ? a : std::string_view(b)));
-    //     b += "!"
+    // b += "!"
     b += "!";
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_ternary_right_promotes() -> None:
 void test_ternary_right_promotes() {
-    //     a = "hello"
+    // a = "hello"
     std::string_view a = "hello";
-    //     b = "world"
+    // b = "world"
     std::string b = "world";
-    //     x = a if True else b  # tpyc: type(str)
+    // x = a if True else b  # tpyc: type(str)
     std::string x = std::string(((true) ? (a) : (b)));
-    //     b += "!"
+    // b += "!"
     b += "!";
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_or_chain(a: str, b: str, c: str) -> None:
 void test_or_chain(std::string_view a, std::string_view b, std::string_view c) {
-    //     # Three-operand chain: (a or b) or c -- parsed left-associatively.
-    //     x = a or b or c  # tpyc: type(StrView)
+    // # Three-operand chain: (a or b) or c -- parsed left-associatively.
+    // x = a or b or c  # tpyc: type(StrView)
     auto&& __tmp_3 = ((!a.empty()) ? a : b);
     std::string_view x = ((!__tmp_3.empty()) ? __tmp_3 : c);
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_literal_or_chain() -> None:
 void test_literal_or_chain() {
-    //     x = "foo" or "bar" or "baz"  # tpyc: type(StrView)
+    // x = "foo" or "bar" or "baz"  # tpyc: type(StrView)
     std::string_view __tmp_4 = "foo";
     std::string_view __tmp_5 = "bar";
     auto&& __tmp_6 = ((!__tmp_4.empty()) ? __tmp_4 : __tmp_5);
     std::string_view __tmp_7 = "baz";
     std::string_view x = ((!__tmp_6.empty()) ? __tmp_6 : __tmp_7);
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_or_chain_third_promotes() -> None:
 void test_or_chain_third_promotes() {
-    //     # Promotion must propagate from the third operand too, not just left/right.
-    //     a = "hello"
+    // # Promotion must propagate from the third operand too, not just left/right.
+    // a = "hello"
     std::string_view a = "hello";
-    //     b = "world"
+    // b = "world"
     std::string_view b = "world";
-    //     c = "!"
+    // c = "!"
     std::string c = "!";
-    //     x = a or b or c  # tpyc: type(str)
+    // x = a or b or c  # tpyc: type(str)
     auto&& __tmp_8 = ((!a.empty()) ? a : b);
     std::string x = std::string(((!__tmp_8.empty()) ? __tmp_8 : std::string_view(c)));
-    //     c += "?"
+    // c += "?"
     c += "?";
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 

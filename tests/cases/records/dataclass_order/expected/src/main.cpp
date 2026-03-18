@@ -6,33 +6,33 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     a = Point(1, 2)
+    // a = Point(1, 2)
     Point a = Point(1, 2);
-    //     b = Point(3, 4)
+    // b = Point(3, 4)
     Point b = Point(3, 4);
-    //     c = Point(1, 3)
+    // c = Point(1, 3)
     Point c = Point(1, 3);
-    //     # Lexicographic ordering by fields
-    //     print(a < b)
+    // # Lexicographic ordering by fields
+    // print(a < b)
     std::cout << ::tpy::print_bool((a < b)) << "\n";
-    //     print(b < a)
+    // print(b < a)
     std::cout << ::tpy::print_bool((b < a)) << "\n";
-    //     print(a < c)
+    // print(a < c)
     std::cout << ::tpy::print_bool((a < c)) << "\n";
-    //     # <= and >=
-    //     print(a <= Point(1, 2))
+    // # <= and >=
+    // print(a <= Point(1, 2))
     std::cout << ::tpy::print_bool((a <= Point(1, 2))) << "\n";
-    //     print(a >= a)
+    // print(a >= a)
     std::cout << ::tpy::print_bool((a >= a)) << "\n";
-    //     # > operator
-    //     print(b > a)
+    // # > operator
+    // print(b > a)
     std::cout << ::tpy::print_bool((b > a)) << "\n";
-    //     print(a > c)
+    // print(a > c)
     std::cout << ::tpy::print_bool((a > c)) << "\n";
-    //     # Equality still works
-    //     print(a == Point(1, 2))
+    // # Equality still works
+    // print(a == Point(1, 2))
     std::cout << ::tpy::print_bool((a == Point(1, 2))) << "\n";
-    //     print(a != b)
+    // print(a != b)
     std::cout << ::tpy::print_bool((a != b)) << "\n";
 }
 

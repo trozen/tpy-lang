@@ -6,30 +6,30 @@ namespace tpy_user::main {
 
 // def consume(b: Own[Box]) -> Int32:
 int32_t consume(Box&& b) {
-    //     return b.value
+    // return b.value
     return b.value;
 }
 
 // def make_box(v: Int32) -> Own[Box]:
 Box make_box(int32_t v) {
-    //     b = Box()
+    // b = Box()
     Box b = Box();
-    //     b.value = v
+    // b.value = v
     b.value = v;
-    //     return copy(b)  # tpyc: warning(/unnecessary copy/)
+    // return copy(b)  # tpyc: warning(/unnecessary copy/)
     return Box(b);
 }
 
 // def main():
 void main() {
-    //     b = Box()
+    // b = Box()
     Box b = Box();
-    //     b.value = 42
+    // b.value = 42
     b.value = 42;
-    //     # Warning at call arg site too
-    //     print(consume(copy(b)))  # tpyc: warning(/unnecessary copy/)
+    // # Warning at call arg site too
+    // print(consume(copy(b)))  # tpyc: warning(/unnecessary copy/)
     std::cout << consume(Box(b)) << "\n";
-    //     print(make_box(99).value)
+    // print(make_box(99).value)
     std::cout << make_box(99).value << "\n";
 }
 

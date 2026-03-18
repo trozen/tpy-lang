@@ -6,29 +6,29 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # hash() returns UInt64 and compiles for all hashable types
-    //     h1: UInt64 = hash("hello")
+    // # hash() returns UInt64 and compiles for all hashable types
+    // h1: UInt64 = hash("hello")
     uint64_t h1 = ::tpy::__hash__("hello");
-    //     h2: UInt64 = hash(Int32(42))
+    // h2: UInt64 = hash(Int32(42))
     uint64_t h2 = ::tpy::__hash__(42);
-    //     h3: UInt64 = hash(42)
+    // h3: UInt64 = hash(42)
     uint64_t h3 = ::tpy::__hash__(42);
-    //     h4: UInt64 = hash(3.14)
+    // h4: UInt64 = hash(3.14)
     uint64_t h4 = ::tpy::__hash__(3.14);
-    //     h5: UInt64 = hash(True)
+    // h5: UInt64 = hash(True)
     uint64_t h5 = ::tpy::__hash__(true);
-    //     c: Char = "a"
+    // c: Char = "a"
     char c = 'a';
-    //     h6: UInt64 = hash(c)
+    // h6: UInt64 = hash(c)
     uint64_t h6 = ::tpy::__hash__(c);
-    //     # Same value should produce the same hash
-    //     print(hash("hello") == hash("hello"))
+    // # Same value should produce the same hash
+    // print(hash("hello") == hash("hello"))
     std::cout << ::tpy::print_bool((::tpy::__hash__("hello") == ::tpy::__hash__("hello"))) << "\n";
-    //     print(hash(Int32(10)) == hash(Int32(10)))
+    // print(hash(Int32(10)) == hash(Int32(10)))
     std::cout << ::tpy::print_bool((::tpy::__hash__(10) == ::tpy::__hash__(10))) << "\n";
-    //     print(hash(42) == hash(42))
+    // print(hash(42) == hash(42))
     std::cout << ::tpy::print_bool((::tpy::__hash__(42) == ::tpy::__hash__(42))) << "\n";
-    //     print("ok")
+    // print("ok")
     std::cout << "ok" << "\n";
 }
 

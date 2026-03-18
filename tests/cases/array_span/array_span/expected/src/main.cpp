@@ -15,18 +15,18 @@ std::vector<int32_t>* items{};
 
 // def sum_span(values: Span[Int32]) -> Int32:
 int32_t sum_span(std::span<int32_t> values) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     i: Int32 = 0
+    // i: Int32 = 0
     int32_t i = 0;
-    //     while i < len(values):
+    // while i < len(values):
     while ((i < ::tpy::__len__(values))) {
-        //         total += values[i]
+        // total += values[i]
         total = ::tpy::add_check<int32_t>(total, values[i]);
-        //         i += 1
+        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    //     return total
+    // return total
     return total;
 }
 

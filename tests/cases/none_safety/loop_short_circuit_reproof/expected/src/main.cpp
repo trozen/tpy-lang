@@ -6,12 +6,12 @@ namespace tpy_user::main {
 
 // def shrink(x: Int32 | None) -> Int32:
 int32_t shrink(std::optional<int32_t> x) {
-    //     while x is not None and x > 0:
+    // while x is not None and x > 0:
     while (((x.has_value()) && ((*x) > 0))) {
-        //         x = x - 1  # tpyc: ok
+        // x = x - 1  # tpyc: ok
         x = (::tpy::sub_check<int32_t>((*x), 1));
     }
-    //     return 0
+    // return 0
     return 0;
 }
 

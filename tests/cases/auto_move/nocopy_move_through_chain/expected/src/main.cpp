@@ -6,21 +6,21 @@ namespace tpy_user::main {
 
 // def chain() -> Own[Handle]:
 Handle chain() {
-    //     h = Handle(99)
+    // h = Handle(99)
     Handle h = Handle(99);
-    //     a = h
+    // a = h
     Handle a = std::move(h);
-    //     b = a
+    // b = a
     Handle b = std::move(a);
-    //     return b
+    // return b
     return b;
 }
 
 // def main():
 void main() {
-    //     r = chain()
+    // r = chain()
     Handle r = chain();
-    //     print(r.fd)
+    // print(r.fd)
     std::cout << r.fd << "\n";
 }
 

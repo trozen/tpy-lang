@@ -8,8 +8,8 @@ namespace tpy_user::main {
 
 // def increment() -> None:
 void increment() {
-    //     global x
-    //     x = x + 1
+    // global x
+    // x = x + 1
     x = ((x) + (::tpy::BigInt(1)));
 }
 

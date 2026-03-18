@@ -16,16 +16,16 @@ void main();
 
 // class MyContainer:
 struct MyContainer {
-    //     data: list[Int32]
+    // data: list[Int32]
     std::vector<int32_t> data;
 
-    //     def __init__(self, items: list[Int32]) -> None:
+    // def __init__(self, items: list[Int32]) -> None:
     MyContainer() = default;
     explicit MyContainer(const std::vector<int32_t>& items) : data(items) {}
 
-    //     def __len__(self) -> Int32:
+    // def __len__(self) -> Int32:
     int32_t __len__() const {
-        //         return len(self.data)
+        // return len(self.data)
         return ::tpy::__len__(this->data);
     }
 
@@ -46,9 +46,9 @@ inline std::ostream& operator<<(std::ostream& os, const MyContainer& obj) {
 // def get_length[T: Sized](item: T) -> Int32:
 template<::tpy_user::typing::Sized T>
 int32_t get_length(::tpy::param_val_or_ref_t<T> item) {
-    //     # Note: Can't call len(item) here yet - returning fixed value
-    //     # This tests that the bound is validated during inference
-    //     return 42
+    // # Note: Can't call len(item) here yet - returning fixed value
+    // # This tests that the bound is validated during inference
+    // return 42
     return 42;
 }
 

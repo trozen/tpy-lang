@@ -15,58 +15,58 @@ void test_generic();
 
 // class Builder:
 struct Builder {
-    //     name: str
+    // name: str
     std::string name;
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, name: str, value: Int32) -> None:
+    // def __init__(self, name: str, value: Int32) -> None:
     Builder() = default;
     explicit Builder(std::string_view name, int32_t value) : name(name), value(value) {}
 
-    //     def set_name(self, name: str) -> Self:
+    // def set_name(self, name: str) -> Self:
     Builder& set_name(std::string_view name) {
-        //         self.name = name
+        // self.name = name
         this->name = name;
-        //         return self
+        // return self
         return (*this);
     }
 
-    //     def set_value(self, value: Int32) -> Self:
+    // def set_value(self, value: Int32) -> Self:
     Builder& set_value(int32_t value) {
-        //         self.value = value
+        // self.value = value
         this->value = value;
-        //         return self
+        // return self
         return (*this);
     }
 
-    //     def with_offset(self, other: Self) -> Int32:
+    // def with_offset(self, other: Self) -> Int32:
     int32_t with_offset(const Builder& other) const {
-        //         return self.value + other.value
+        // return self.value + other.value
         return (::tpy::add_check<int32_t>(this->value, other.value));
     }
 
-    //     @auto_readonly
-    //     def find_match(self, target: Int32) -> Optional[Self]:
+    // @auto_readonly
+    // def find_match(self, target: Int32) -> Optional[Self]:
     Builder* find_match(int32_t target) {
-        //         if self.value == target:
+        // if self.value == target:
         if ((this->value == target)) {
-            //             return self
+            // return self
             return &((*this));
         }
-        //         return None
+        // return None
         return nullptr;
     }
 
-    //     @auto_readonly
-    //     def find_match(self, target: Int32) -> Optional[Self]:
+    // @auto_readonly
+    // def find_match(self, target: Int32) -> Optional[Self]:
     const Builder* find_match(int32_t target) const {
-        //         if self.value == target:
+        // if self.value == target:
         if ((this->value == target)) {
-            //             return self
+            // return self
             return &((*this));
         }
-        //         return None
+        // return None
         return nullptr;
     }
 };
@@ -83,28 +83,28 @@ inline std::ostream& operator<<(std::ostream& os, const Builder& obj) {
 // class Stack[T]:
 template<typename T>
 struct Stack {
-    //     items: list[T]
+    // items: list[T]
     std::vector<T> items;
-    //     label: str
+    // label: str
     std::string label;
 
-    //     def __init__(self, label: str) -> None:
+    // def __init__(self, label: str) -> None:
     Stack() = default;
     explicit Stack(std::string_view label) : items(std::vector<T>{}), label(label) {}
 
-    //     def push(self, item: T) -> Self:
+    // def push(self, item: T) -> Self:
     Stack<T>& push(::tpy::param_val_or_ref_t<T> item) {
-        //         self.items.append(item)
+        // self.items.append(item)
         auto __tmp_1 = item;
         this->items.push_back(std::move(__tmp_1));
-        //         return self
+        // return self
         return (*this);
     }
 
-    //     @readonly
-    //     def describe(self) -> str:
+    // @readonly
+    // def describe(self) -> str:
     std::string describe() const {
-        //         return self.label
+        // return self.label
         return this->label;
     }
 };

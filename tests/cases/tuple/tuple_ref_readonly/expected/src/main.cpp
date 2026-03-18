@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c = Container(Int32(42))
+    // c = Container(Int32(42))
     Container c = Container(42);
-    //     w = Wrapper(c)
+    // w = Wrapper(c)
     Wrapper w = Wrapper(c);
-    //     pair = w.get_pair()
+    // pair = w.get_pair()
     auto pair = w.get_pair();
-    //     print(pair[0])
+    // print(pair[0])
     std::cout << std::get<0>(pair) << "\n";
-    //     print(pair[1])
+    // print(pair[1])
     std::cout << std::get<1>(pair) << "\n";
 }
 

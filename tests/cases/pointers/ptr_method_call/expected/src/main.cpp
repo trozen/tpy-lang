@@ -6,14 +6,14 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     pt: Point = Point(10, 20)
+    // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    //     p: Ptr[Point] = Ptr(pt)
+    // p: Ptr[Point] = Ptr(pt)
     Point* p = &pt;
-    //     # Method call through Ptr auto-deref
-    //     print(p.sum())
+    // # Method call through Ptr auto-deref
+    // print(p.sum())
     std::cout << p->sum() << "\n";
-    //     print(p.describe())
+    // print(p.describe())
     std::cout << p->describe() << "\n";
 }
 

@@ -34,11 +34,11 @@ void __tpy_init() {
     ::tpy::BigInt __start_0 = ::tpy::BigInt(start);
     ::tpy::BigInt __stop_0 = big_end;
     for (::tpy::BigInt i = __start_0; i < __stop_0; ++i) {
-        //     count += 1
+        // count += 1
         count = ::tpy::add_check<int32_t>(count, 1);
-        //     if count >= 5:
+        // if count >= 5:
         if ((count >= 5)) {
-            //         break
+            // break
             break;
         }
     }
@@ -53,7 +53,7 @@ void __tpy_init() {
     ::tpy::BigInt __start_1 = big_start;
     ::tpy::BigInt __stop_1 = ((big_start) + (::tpy::BigInt(end)));
     for (::tpy::BigInt i = __start_1; i < __stop_1; ++i) {
-        //     print(i)
+        // print(i)
         std::cout << i << "\n";
     }
 }

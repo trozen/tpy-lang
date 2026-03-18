@@ -14,13 +14,13 @@ void main();
 // @dataclass
 // class Color:
 struct Color {
-    //     r: Int32
+    // r: Int32
     int32_t r;
-    //     g: Int32
+    // g: Int32
     int32_t g;
-    //     b: Int32
+    // b: Int32
     int32_t b;
-    //     a: Int32 = 255
+    // a: Int32 = 255
     int32_t a = 255;
 
     Color() = default;

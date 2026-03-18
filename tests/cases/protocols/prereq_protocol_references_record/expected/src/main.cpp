@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     factory = DefaultWrapperMaker()
+    // factory = DefaultWrapperMaker()
     DefaultWrapperMaker factory = DefaultWrapperMaker();
-    //     container = Container(factory)
+    // container = Container(factory)
     Container<DefaultWrapperMaker> container = Container<DefaultWrapperMaker>(factory);
-    //     wrapper = container.create_wrapper("test")
+    // wrapper = container.create_wrapper("test")
     Wrapper<Message> wrapper = container.create_wrapper("test");
-    //     result = wrapper.get_result()
+    // result = wrapper.get_result()
     Result result = wrapper.get_result();
-    //     print(result.value)
+    // print(result.value)
     std::cout << result.value << "\n";
 }
 

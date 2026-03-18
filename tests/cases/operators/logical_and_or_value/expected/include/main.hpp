@@ -33,16 +33,16 @@ void main();
 
 // class Counter:
 struct Counter {
-    //     count: Int32
+    // count: Int32
     int32_t count;
 
-    //     def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: Int32) -> None:
     Counter() = default;
     explicit Counter(int32_t n) : count(n) {}
 
-    //     def __bool__(self) -> bool:
+    // def __bool__(self) -> bool:
     bool __bool__() const {
-        //         return self.count != 0
+        // return self.count != 0
         return (this->count != 0);
     }
 };
@@ -56,12 +56,12 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

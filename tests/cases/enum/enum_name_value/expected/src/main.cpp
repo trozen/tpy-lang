@@ -48,17 +48,17 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c: Color = Color.Green
+    // c: Color = Color.Green
     Color c = Color::Green;
-    //     print(c.name)
+    // print(c.name)
     std::cout << ::tpy::EnumUtil<Color>::name(c) << "\n";
-    //     print(c.value)
+    // print(c.value)
     std::cout << static_cast<int32_t>(c) << "\n";
-    //     c = Color.Blue
+    // c = Color.Blue
     c = Color::Blue;
-    //     print(c.name)
+    // print(c.name)
     std::cout << ::tpy::EnumUtil<Color>::name(c) << "\n";
-    //     print(c.value)
+    // print(c.value)
     std::cout << static_cast<int32_t>(c) << "\n";
 }
 

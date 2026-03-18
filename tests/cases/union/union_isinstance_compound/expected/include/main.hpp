@@ -20,10 +20,10 @@ void main();
 // # isinstance in compound conditions: and/or, negation, multi-variable
 // class A:
 struct A {
-    //     x: int
+    // x: int
     ::tpy::BigInt x;
 
-    //     def __init__(self, x: int) -> None:
+    // def __init__(self, x: int) -> None:
     A() = default;
     explicit A(const ::tpy::BigInt& x) : x(x) {}
 };
@@ -37,10 +37,10 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 // class B:
 struct B {
-    //     y: int
+    // y: int
     ::tpy::BigInt y;
 
-    //     def __init__(self, y: int) -> None:
+    // def __init__(self, y: int) -> None:
     B() = default;
     explicit B(const ::tpy::BigInt& y) : y(y) {}
 };

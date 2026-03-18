@@ -6,23 +6,23 @@ namespace tpy_user::main {
 
 // def swap(p: tuple[Point, Int32]) -> tuple[Int32, Point]:
 std::tuple<int32_t, Point&> swap(const std::tuple<Point&, int32_t>& p) {
-    //     return (p[1], p[0])
+    // return (p[1], p[0])
     return std::tuple<int32_t, Point&>{std::get<1>(p), std::get<0>(p)};
 }
 
 // def main() -> None:
 void main() {
-    //     p = Point(Int32(1), Int32(2))
+    // p = Point(Int32(1), Int32(2))
     Point p = Point(1, 2);
-    //     t = (p, Int32(10))
+    // t = (p, Int32(10))
     auto t = std::tuple<Point&, int32_t>{p, 10};
-    //     result = swap(t)
+    // result = swap(t)
     auto result = swap(t);
-    //     print(result[0])
+    // print(result[0])
     std::cout << std::get<0>(result) << "\n";
-    //     print(result[1].x)
+    // print(result[1].x)
     std::cout << std::get<1>(result).x << "\n";
-    //     print(result[1].y)
+    // print(result[1].y)
     std::cout << std::get<1>(result).y << "\n";
 }
 

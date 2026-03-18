@@ -51,21 +51,21 @@ void main();
 // # Direct inheritor
 // class MyCounter(Counter):
 struct MyCounter : Counter {
-    //     count: Int32
+    // count: Int32
     int32_t count;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     MyCounter() : count(0) {}
 
-    //     def increment(self) -> None:
+    // def increment(self) -> None:
     void increment() override {
-        //         self.count = self.count + Int32(1)
+        // self.count = self.count + Int32(1)
         this->count = (::tpy::add_check<int32_t>(this->count, 1));
     }
 
-    //     def value(self) -> Int32:
+    // def value(self) -> Int32:
     int32_t value() override {
-        //         return self.count
+        // return self.count
         return this->count;
     }
 };
@@ -80,21 +80,21 @@ inline std::ostream& operator<<(std::ostream& os, const MyCounter& obj) {
 // # Structural conformance (no inheritance)
 // class Tally:
 struct Tally {
-    //     count: Int32
+    // count: Int32
     int32_t count;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Tally() : count(0) {}
 
-    //     def increment(self) -> None:
+    // def increment(self) -> None:
     void increment() {
-        //         self.count = self.count + Int32(1)
+        // self.count = self.count + Int32(1)
         this->count = (::tpy::add_check<int32_t>(this->count, 1));
     }
 
-    //     def value(self) -> Int32:
+    // def value(self) -> Int32:
     int32_t value() const {
-        //         return self.count
+        // return self.count
         return this->count;
     }
 };

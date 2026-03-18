@@ -7,59 +7,59 @@ namespace tpy_user::main {
 // # Warning: reads but never consumes
 // def borrow_only(b: Own[Box]) -> Int32:  # tpyc: warning(/never consumed/)
 int32_t borrow_only(Box&& b) {
-    //     return b.value
+    // return b.value
     return b.value;
 }
 
 // # No warning: forwards to another Own[T] param at last use
 // def forward(b: Own[Box]) -> Int32:
 int32_t forward(Box&& b) {
-    //     return borrow_only(b)
+    // return borrow_only(b)
     return borrow_only(std::move(b));
 }
 
 // # No warning: returns as Own[T]
 // def passthrough(b: Own[Box]) -> Own[Box]:
 Box passthrough(Box&& b) {
-    //     return b
+    // return b
     return b;
 }
 
 // # No warning: stores via copy()
 // def copy_store(b: Own[Box]) -> Int32:
 int32_t copy_store(Box&& b) {
-    //     h = Holder(copy(b))
+    // h = Holder(copy(b))
     Holder h = Holder(Box(b));
-    //     return h.item.value
+    // return h.item.value
     return h.item.value;
 }
 
 // # Warning: conditional consumption -- only consumed on one branch
 // def partial_consume(b: Own[Box], cond: bool) -> Int32:  # tpyc: warning(/never consumed/)
 int32_t partial_consume(Box&& b, bool cond) {
-    //     if cond:
+    // if cond:
     if (cond) {
-        //         h = Holder(b)
+        // h = Holder(b)
         Holder h = Holder(std::move(b));
-        //         return h.item.value
+        // return h.item.value
         return h.item.value;
     }
-    //     return b.value
+    // return b.value
     return b.value;
 }
 
 // # No warning: consumed on both branches
 // def both_branches(b: Own[Box], cond: bool) -> Int32:
 int32_t both_branches(Box&& b, bool cond) {
-    //     if cond:
+    // if cond:
     if (cond) {
-        //         h = Holder(b)
+        // h = Holder(b)
         Holder h = Holder(std::move(b));
-        //         return h.item.value
+        // return h.item.value
         return h.item.value;
-    //     else:
+    // else:
     } else {
-        //         return forward(b)
+        // return forward(b)
         return forward(std::move(b));
     }
 }
@@ -67,75 +67,75 @@ int32_t both_branches(Box&& b, bool cond) {
 // # No warning: consumed after early return
 // def early_return(b: Own[Box], cond: bool) -> Int32:
 int32_t early_return(Box&& b, bool cond) {
-    //     if cond:
+    // if cond:
     if (cond) {
-        //         return 0
+        // return 0
         return 0;
     }
-    //     return forward(b)
+    // return forward(b)
     return forward(std::move(b));
 }
 
 // # Warning: consumed inside loop that might not execute
 // def loop_consume(b: Own[Box], items: list[Int32]) -> Int32:  # tpyc: warning(/never consumed/)
 int32_t loop_consume(Box&& b, const std::vector<int32_t>& items) {
-    //     for item in items:
+    // for item in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t item = *__beg_0;
-        //         return forward(b)
+        // return forward(b)
         return forward(std::move(b));
     }
-    //     return b.value
+    // return b.value
     return b.value;
 }
 
 // # Warning: match -- consumed on one arm, wildcard only borrows
 // def match_partial_arm(b: Own[Box], x: Int32) -> Int32:  # tpyc: warning(/never consumed/)
 int32_t match_partial_arm(Box&& b, int32_t x) {
-    //     result: Int32 = 0
+    // result: Int32 = 0
     int32_t result = 0;
-    //     match x:
+    // match x:
     auto& __match_subject = x;
     switch (__match_subject) {
-    //         case 1:
+    // case 1:
     case 1: {
-        //             h = Holder(b)
+        // h = Holder(b)
         Holder h = Holder(std::move(b));
-        //             result = h.item.value
+        // result = h.item.value
         result = h.item.value;
         break;
     }
-    //         case _:
+    // case _:
     default: {
-        //             result = b.value
+        // result = b.value
         result = b.value;
         break;
     }
     }
-    //     return result
+    // return result
     return result;
 }
 
 // # No warning: match -- consumed on all arms (auto-move now works in match)
 // def match_all_arms(b: Own[Box], x: Int32) -> Int32:  # tpyc: ok
 int32_t match_all_arms(Box&& b, int32_t x) {
-    //     match x:
+    // match x:
     auto& __match_subject = x;
     switch (__match_subject) {
-    //         case 1:
+    // case 1:
     case 1: {
-        //             return forward(b)
+        // return forward(b)
         return forward(std::move(b));
         break;
     }
-    //         case _:
+    // case _:
     default: {
-        //             h = Holder(b)
+        // h = Holder(b)
         Holder h = Holder(std::move(b));
-        //             return h.item.value
+        // return h.item.value
         return h.item.value;
         break;
     }
@@ -144,28 +144,28 @@ int32_t match_all_arms(Box&& b, int32_t x) {
 
 // def main() -> None:
 void main() {
-    //     print(borrow_only(Box(1)))
+    // print(borrow_only(Box(1)))
     std::cout << borrow_only(Box(1)) << "\n";
-    //     print(forward(Box(2)))
+    // print(forward(Box(2)))
     std::cout << forward(Box(2)) << "\n";
-    //     print(passthrough(Box(3)).value)
+    // print(passthrough(Box(3)).value)
     std::cout << passthrough(Box(3)).value << "\n";
-    //     print(copy_store(Box(4)))
+    // print(copy_store(Box(4)))
     std::cout << copy_store(Box(4)) << "\n";
-    //     print(Holder(Box(5)).item.value)
+    // print(Holder(Box(5)).item.value)
     std::cout << Holder(Box(5)).item.value << "\n";
-    //     print(partial_consume(Box(6), True))
+    // print(partial_consume(Box(6), True))
     std::cout << partial_consume(Box(6), true) << "\n";
-    //     print(both_branches(Box(7), False))
+    // print(both_branches(Box(7), False))
     std::cout << both_branches(Box(7), false) << "\n";
-    //     print(early_return(Box(8), False))
+    // print(early_return(Box(8), False))
     std::cout << early_return(Box(8), false) << "\n";
-    //     print(loop_consume(Box(9), [1]))
+    // print(loop_consume(Box(9), [1]))
     std::vector<int32_t> __tmp_1 = {1};
     std::cout << loop_consume(Box(9), __tmp_1) << "\n";
-    //     print(match_partial_arm(Box(10), 1))
+    // print(match_partial_arm(Box(10), 1))
     std::cout << match_partial_arm(Box(10), 1) << "\n";
-    //     print(match_all_arms(Box(11), 2))
+    // print(match_all_arms(Box(11), 2))
     std::cout << match_all_arms(Box(11), 2) << "\n";
 }
 

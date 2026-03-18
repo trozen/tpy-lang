@@ -7,14 +7,14 @@ namespace tpy_user::main {
 // # StrView-promoted local used in nested tuple's str slot must become owned str
 // def pick(flag: bool) -> tuple[int, tuple[str, bool]]:
 std::tuple<::tpy::BigInt, std::tuple<std::string, bool>> pick(bool flag) {
-    //     label: str = "no"
+    // label: str = "no"
     std::string_view label = "no";
-    //     if flag:
+    // if flag:
     if (flag) {
-        //         label = "yes"
+        // label = "yes"
         label = "yes";
     }
-    //     return 0, (label, flag)
+    // return 0, (label, flag)
     return std::tuple<::tpy::BigInt, std::tuple<std::string, bool>>{::tpy::BigInt(0), std::tuple<std::string, bool>{std::string(label), flag}};
 }
 

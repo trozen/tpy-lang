@@ -17,22 +17,22 @@ void main();
 
 // class MyInt:
 struct MyInt {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, v: Int32):
+    // def __init__(self, v: Int32):
     MyInt() = default;
     explicit MyInt(int32_t v) : value(v) {}
 
-    //     def __lt__(self, other: MyInt) -> bool:
+    // def __lt__(self, other: MyInt) -> bool:
     bool __lt__(const MyInt& other) const {
-        //         return self.value < other.value
+        // return self.value < other.value
         return (this->value < other.value);
     }
 
-    //     def __eq__(self, other: MyInt) -> bool:
+    // def __eq__(self, other: MyInt) -> bool:
     bool __eq__(const MyInt& other) const {
-        //         return self.value == other.value
+        // return self.value == other.value
         return (this->value == other.value);
     }
 
@@ -55,18 +55,18 @@ inline std::ostream& operator<<(std::ostream& os, const MyInt& obj) {
 // def is_less[T: Comparable](a: T, b: T) -> bool:
 template<::tpy::Comparable T>
 bool is_less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    //     return a < b
+    // return a < b
     return (a < b);
 }
 // def find_min[T: Comparable](a: T, b: T) -> T:
 template<::tpy::Comparable T>
 ::tpy::val_or_ref_t<T> find_min(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    //     if a < b:
+    // if a < b:
     if ((a < b)) {
-        //         return a
+        // return a
         return a;
     }
-    //     return b
+    // return b
     return b;
 }
 

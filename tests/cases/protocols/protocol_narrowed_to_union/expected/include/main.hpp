@@ -20,37 +20,37 @@ void main();
 template<typename T_items>
   requires (::tpy_user::typing::Iterable<T_items, int32_t> || ::tpy::ReadOnlySpanLike<T_items, int32_t>)
 int32_t total(T_items& items) {
-    //     if isinstance(items, ReadOnlySpanLike):
+    // if isinstance(items, ReadOnlySpanLike):
     if constexpr (::tpy::ReadOnlySpanLike<T_items, int32_t>) {
-        //         s = span(items)
+        // s = span(items)
         std::span<const int32_t> s = ::tpy::as_span(items);
-        //         result: Int32 = 0
+        // result: Int32 = 0
         int32_t result = 0;
-        //         for x in s:
+        // for x in s:
         auto& __obj_0 = s;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            //             result += x
+            // result += x
             result = ::tpy::add_check<int32_t>(result, x);
         }
-        //         return result
+        // return result
         return result;
-    //     else:
+    // else:
     } else {
-        //         result2: Int32 = 0
+        // result2: Int32 = 0
         int32_t result2 = 0;
-        //         for x2 in items:
+        // for x2 in items:
         auto& __obj_1 = items;
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             int32_t x2 = *__beg_1;
-            //             result2 += x2
+            // result2 += x2
             result2 = ::tpy::add_check<int32_t>(result2, x2);
         }
-        //         return result2
+        // return result2
         return result2;
     }
 }
@@ -58,12 +58,12 @@ int32_t total(T_items& items) {
 template<typename T_items>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Iterable<T_items, int32_t> || ::tpy::ReadOnlySpanLike<T_items, int32_t>)
 int32_t maybe_total(const T_items* items) {
-    //     if items is not None:
+    // if items is not None:
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-        //         return total(items)
+        // return total(items)
         return total((*items));
     }
-    //     return -1
+    // return -1
     return -1;
 }
 

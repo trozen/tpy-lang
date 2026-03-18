@@ -17,9 +17,9 @@ void main();
 // @dataclass
 // class Base:
 struct Base {
-    //     x: float
+    // x: float
     double x;
-    //     y: float
+    // y: float
     double y;
 
     Base() = default;
@@ -52,7 +52,7 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 // @dataclass
 // class Other:
 struct Other {
-    //     v: float
+    // v: float
     double v;
 
     Other() = default;
@@ -83,7 +83,7 @@ inline std::ostream& operator<<(std::ostream& os, const Other& obj) {
 // @dataclass
 // class Child(Base):
 struct Child : Base {
-    //     z: float
+    // z: float
     double z;
 
     Child() = default;

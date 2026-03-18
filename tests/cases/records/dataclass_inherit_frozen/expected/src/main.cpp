@@ -6,23 +6,23 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     v = Vec3(1, 2, 3)
+    // v = Vec3(1, 2, 3)
     Vec3 v = Vec3(1, 2, 3);
-    //     print(v)
+    // print(v)
     std::cout << v << "\n";
-    //     print(v.x)
+    // print(v.x)
     std::cout << v.x << "\n";
-    //     print(v.z)
+    // print(v.z)
     std::cout << v.z << "\n";
-    //     # Equality with all fields
-    //     print(v == Vec3(1, 2, 3))
+    // # Equality with all fields
+    // print(v == Vec3(1, 2, 3))
     std::cout << ::tpy::print_bool((v == Vec3(1, 2, 3))) << "\n";
-    //     print(v == Vec3(1, 2, 4))
+    // print(v == Vec3(1, 2, 4))
     std::cout << ::tpy::print_bool((v == Vec3(1, 2, 4))) << "\n";
-    //     # Hash works (frozen)
-    //     d: dict[Vec3, str] = {v: "a"}
+    // # Hash works (frozen)
+    // d: dict[Vec3, str] = {v: "a"}
     ::tpy::ordered_map<Vec3, std::string> d = ::tpy::ordered_map<Vec3, std::string>({{v, "a"}});
-    //     print(d[Vec3(1, 2, 3)])
+    // print(d[Vec3(1, 2, 3)])
     std::cout << ::tpy::__getitem__(d, Vec3(1, 2, 3)) << "\n";
 }
 

@@ -31,54 +31,54 @@ namespace tpy_user::main {
 
 // def probe(label: str, a: int, b: int, shift: Int32) -> None:
 void probe(std::string_view label, const ::tpy::BigInt& a, const ::tpy::BigInt& b, int32_t shift) {
-    //     print("===")
+    // print("===")
     std::cout << "===" << "\n";
-    //     print(label)
+    // print(label)
     std::cout << label << "\n";
-    //     print("===")
+    // print("===")
     std::cout << "===" << "\n";
-    //     print(a)
+    // print(a)
     std::cout << a << "\n";
-    //     print(b)
+    // print(b)
     std::cout << b << "\n";
-    //     print(a + b)
+    // print(a + b)
     std::cout << ((a) + (b)) << "\n";
-    //     print(a - b)
+    // print(a - b)
     std::cout << ((a) - (b)) << "\n";
-    //     print(a * b)
+    // print(a * b)
     std::cout << ((a) * (b)) << "\n";
-    //     if b != 0:
+    // if b != 0:
     if ((b != 0)) {
-        //         print(a // b)
+        // print(a // b)
         std::cout << ((a) / (b)) << "\n";
-        //         print(a % b)
+        // print(a % b)
         std::cout << ((a) % (b)) << "\n";
     }
-    //     print(a & b)
+    // print(a & b)
     std::cout << ((a) & (b)) << "\n";
-    //     print(a | b)
+    // print(a | b)
     std::cout << ((a) | (b)) << "\n";
-    //     print(a ^ b)
+    // print(a ^ b)
     std::cout << ((a) ^ (b)) << "\n";
-    //     print(a << shift)
+    // print(a << shift)
     std::cout << ((a) << (::tpy::BigInt(shift))) << "\n";
-    //     print(a >> shift)
+    // print(a >> shift)
     std::cout << ((a) >> (::tpy::BigInt(shift))) << "\n";
-    //     print(-a)
+    // print(-a)
     std::cout << -(a) << "\n";
-    //     print(~a)
+    // print(~a)
     std::cout << ~(a) << "\n";
-    //     print(a == b)
+    // print(a == b)
     std::cout << ::tpy::print_bool((a == b)) << "\n";
-    //     print(a != b)
+    // print(a != b)
     std::cout << ::tpy::print_bool((a != b)) << "\n";
-    //     print(a < b)
+    // print(a < b)
     std::cout << ::tpy::print_bool((a < b)) << "\n";
-    //     print(a <= b)
+    // print(a <= b)
     std::cout << ::tpy::print_bool((a <= b)) << "\n";
-    //     print(a > b)
+    // print(a > b)
     std::cout << ::tpy::print_bool((a > b)) << "\n";
-    //     print(a >= b)
+    // print(a >= b)
     std::cout << ::tpy::print_bool((a >= b)) << "\n";
 }
 

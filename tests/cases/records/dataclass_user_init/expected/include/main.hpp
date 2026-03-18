@@ -14,12 +14,12 @@ void main();
 // @dataclass
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32) -> None:  # tpyc: warning(/will not generate __init__/)
+    // def __init__(self, x: Int32, y: Int32) -> None:  # tpyc: warning(/will not generate __init__/)
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x((::tpy::mul_check<int32_t>(x, 2))), y(y) {}
 

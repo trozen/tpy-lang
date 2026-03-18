@@ -6,26 +6,26 @@ namespace tpy_user::main {
 
 // def print_range(start: Int32, end: Int32) -> None:
 void print_range(int32_t start, int32_t end) {
-    //     for i in range(start, end):
+    // for i in range(start, end):
     int32_t __start_0 = start;
     int32_t __stop_0 = end;
     for (int32_t i = __start_0; i < __stop_0; ++i) {
-        //         print(i)
+        // print(i)
         std::cout << i << "\n";
     }
 }
 
 // def sum_range(n: Int32) -> Int32:
 int32_t sum_range(int32_t n) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     for i in range(n):
+    // for i in range(n):
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        //         total += i
+        // total += i
         total = ::tpy::add_check<int32_t>(total, i);
     }
-    //     return total
+    // return total
     return total;
 }
 
@@ -37,7 +37,7 @@ void __tpy_init() {
     // # Single-arg range (0 to n)
     // for i in range(5):
     for (int32_t i = 0; i < 5; ++i) {
-        //     print(i)
+        // print(i)
         std::cout << i << "\n";
     }
     // # Two-arg range (start to end)

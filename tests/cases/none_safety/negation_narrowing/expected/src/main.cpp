@@ -6,12 +6,12 @@ namespace tpy_user::main {
 
 // def f(x: Int32 | None) -> Int32:
 int32_t f(std::optional<int32_t> x) {
-    //     if not (x is None):
+    // if not (x is None):
     if ((!((!x.has_value())))) {
-        //         return x + 1
+        // return x + 1
         return (::tpy::add_check<int32_t>((*x), 1));
     }
-    //     return 0
+    // return 0
     return 0;
 }
 

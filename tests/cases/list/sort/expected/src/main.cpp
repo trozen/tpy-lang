@@ -6,77 +6,77 @@ namespace tpy_user::main {
 
 // def test_list_sort() -> None:
 void test_list_sort() {
-    //     a: list[Int32] = [5, 3, 1, 4, 2]
+    // a: list[Int32] = [5, 3, 1, 4, 2]
     std::vector<int32_t> a = {5, 3, 1, 4, 2};
-    //     a.sort()
+    // a.sort()
     std::stable_sort(a.begin(), a.end());
-    //     print(a)
+    // print(a)
     std::cout << ::tpy::ListPrinter(a) << "\n";
 }
 
 // def test_arraylist_sort() -> None:
 void test_arraylist_sort() {
-    //     a = ArrayList[Int32, 8]()
+    // a = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> a = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    //     a.append(5)
+    // a.append(5)
     a.append(5);
-    //     a.append(3)
+    // a.append(3)
     a.append(3);
-    //     a.append(1)
+    // a.append(1)
     a.append(1);
-    //     a.append(4)
+    // a.append(4)
     a.append(4);
-    //     a.append(2)
+    // a.append(2)
     a.append(2);
-    //     a.sort()
+    // a.sort()
     a.sort();
-    //     print(a)
+    // print(a)
     std::cout << a << "\n";
 }
 
 // def test_user_type_sort() -> None:
 void test_user_type_sort() {
-    //     a: list[Pair] = [Pair(3, 0), Pair(1, 0), Pair(2, 0)]
+    // a: list[Pair] = [Pair(3, 0), Pair(1, 0), Pair(2, 0)]
     std::vector<Pair> a = {Pair(3, 0), Pair(1, 0), Pair(2, 0)};
-    //     a.sort()
+    // a.sort()
     std::stable_sort(a.begin(), a.end());
-    //     for p in a:
+    // for p in a:
     auto& __obj_0 = a;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        //         print(p)
+        // print(p)
         std::cout << p << "\n";
     }
 }
 
 // def test_stable_sort() -> None:
 void test_stable_sort() {
-    //     a: list[Pair] = [
+    // a: list[Pair] = [
     std::vector<Pair> a = {Pair(2, 1), Pair(1, 1), Pair(2, 2), Pair(1, 2), Pair(2, 3)};
-    //     a.sort()
+    // a.sort()
     std::stable_sort(a.begin(), a.end());
-    //     for p in a:
+    // for p in a:
     auto& __obj_0 = a;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        //         print(p)
+        // print(p)
         std::cout << p << "\n";
     }
 }
 
 // def main() -> None:
 void main() {
-    //     test_list_sort()
+    // test_list_sort()
     test_list_sort();
-    //     test_arraylist_sort()
+    // test_arraylist_sort()
     test_arraylist_sort();
-    //     test_user_type_sort()
+    // test_user_type_sort()
     test_user_type_sort();
-    //     test_stable_sort()
+    // test_stable_sort()
     test_stable_sort();
 }
 

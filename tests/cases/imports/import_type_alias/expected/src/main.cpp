@@ -10,9 +10,9 @@ char ch{};
 
 // def greet(n: I, c: C) -> None:
 void greet(int32_t n, char c) {
-    //     print(n)
+    // print(n)
     std::cout << n << "\n";
-    //     print(c)
+    // print(c)
     std::cout << c << "\n";
 }
 

@@ -48,9 +48,9 @@ void main();
 struct Dog : Pet {
 
 
-    //     def make_noise(self) -> str:
+    // def make_noise(self) -> str:
     std::string make_noise() override {
-        //         return "Woof"
+        // return "Woof"
         return "Woof";
     }
 };
@@ -64,7 +64,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 // def speak[T: Pet](animal: T) -> None:
 template<__Pet_Concept__ T>
 void speak(::tpy::param_val_or_ref_t<T> animal) {
-    //     print(animal.make_noise())
+    // print(animal.make_noise())
     std::cout << animal.make_noise() << "\n";
 }
 

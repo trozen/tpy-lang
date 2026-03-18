@@ -6,67 +6,67 @@ namespace tpy_user::main {
 
 // def test_aug_assign():
 void test_aug_assign() {
-    //     x: Int32 = 10
+    // x: Int32 = 10
     int32_t x = 10;
-    //     # Addition
-    //     x += 5
+    // # Addition
+    // x += 5
     x = ::tpy::add_check<int32_t>(x, 5);
-    //     print(x)  # 15
+    // print(x)  # 15
     std::cout << x << "\n";
-    //     # Subtraction
-    //     x -= 3
+    // # Subtraction
+    // x -= 3
     x = ::tpy::sub_check<int32_t>(x, 3);
-    //     print(x)  # 12
+    // print(x)  # 12
     std::cout << x << "\n";
-    //     # Multiplication
-    //     x *= 2
+    // # Multiplication
+    // x *= 2
     x = ::tpy::mul_check<int32_t>(x, 2);
-    //     print(x)  # 24
+    // print(x)  # 24
     std::cout << x << "\n";
-    //     # Division (floor division for integer semantics)
-    //     x //= 4
+    // # Division (floor division for integer semantics)
+    // x //= 4
     x = ::tpy::div_check<int32_t>(x, 4);
-    //     print(x)  # 6
+    // print(x)  # 6
     std::cout << x << "\n";
-    //     # Modulo
-    //     x %= 4
+    // # Modulo
+    // x %= 4
     x = ::tpy::mod_check<int32_t>(x, 4);
-    //     print(x)  # 2
+    // print(x)  # 2
     std::cout << x << "\n";
-    //     # Bitwise AND
-    //     x = 15
+    // # Bitwise AND
+    // x = 15
     x = 15;
-    //     x &= 9   # 0b1111 & 0b1001 = 0b1001
+    // x &= 9   # 0b1111 & 0b1001 = 0b1001
     x = static_cast<int32_t>(x & 9);
-    //     print(x)  # 9
+    // print(x)  # 9
     std::cout << x << "\n";
-    //     # Bitwise OR
-    //     x = 9
+    // # Bitwise OR
+    // x = 9
     x = 9;
-    //     x |= 6   # 0b1001 | 0b0110 = 0b1111
+    // x |= 6   # 0b1001 | 0b0110 = 0b1111
     x = static_cast<int32_t>(x | 6);
-    //     print(x)  # 15
+    // print(x)  # 15
     std::cout << x << "\n";
-    //     # Bitwise XOR
-    //     x = 15
+    // # Bitwise XOR
+    // x = 15
     x = 15;
-    //     x ^= 6   # 0b1111 ^ 0b0110 = 0b1001
+    // x ^= 6   # 0b1111 ^ 0b0110 = 0b1001
     x = static_cast<int32_t>(x ^ 6);
-    //     print(x)  # 9
+    // print(x)  # 9
     std::cout << x << "\n";
-    //     # Left shift
-    //     x = 1
+    // # Left shift
+    // x = 1
     x = 1;
-    //     x <<= 4
+    // x <<= 4
     x = ::tpy::lshift_check<int32_t>(x, 4);
-    //     print(x)  # 16
+    // print(x)  # 16
     std::cout << x << "\n";
-    //     # Right shift
-    //     x = 32
+    // # Right shift
+    // x = 32
     x = 32;
-    //     x >>= 2
+    // x >>= 2
     x = ::tpy::rshift_check<int32_t>(x, 2);
-    //     print(x)  # 8
+    // print(x)  # 8
     std::cout << x << "\n";
 }
 

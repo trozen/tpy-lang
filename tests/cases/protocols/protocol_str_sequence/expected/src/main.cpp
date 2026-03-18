@@ -6,19 +6,19 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     text: str = "hello"
+    // text: str = "hello"
     std::string_view text = "hello";
-    //     # str conforms to Sequence[Char]
-    //     print(first_char(text))    # h
+    // # str conforms to Sequence[Char]
+    // print(first_char(text))    # h
     std::cout << first_char(text) << "\n";
-    //     print(count_chars(text))   # 5
+    // print(count_chars(text))   # 5
     std::cout << count_chars(text) << "\n";
-    //     # Direct indexing on str
-    //     print(text[0])             # h
+    // # Direct indexing on str
+    // print(text[0])             # h
     std::cout << ::tpy::__getitem__(text, 0) << "\n";
-    //     print(text[-1])            # o
+    // print(text[-1])            # o
     std::cout << ::tpy::__getitem__(text, -1) << "\n";
-    //     print(text[2])             # l
+    // print(text[2])             # l
     std::cout << ::tpy::__getitem__(text, 2) << "\n";
 }
 

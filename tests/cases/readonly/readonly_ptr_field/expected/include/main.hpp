@@ -15,10 +15,10 @@ void main();
 
 // class Data:
 struct Data {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: Int32) -> None:
     Data() = default;
     explicit Data(int32_t v) : value(v) {}
 };
@@ -32,16 +32,16 @@ inline std::ostream& operator<<(std::ostream& os, const Data& obj) {
 
 // class Container:
 struct Container {
-    //     ptr: Ptr[Data]
+    // ptr: Ptr[Data]
     Data* ptr;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Container() : ptr(static_cast<Data*>(nullptr)) {}
 
-    //     @readonly
-    //     def read_value(self) -> Int32:
+    // @readonly
+    // def read_value(self) -> Int32:
     int32_t read_value() const {
-        //         return self.ptr.__deref__().value
+        // return self.ptr.__deref__().value
         return ::tpy::deref_check(this->ptr).value;
     }
 };

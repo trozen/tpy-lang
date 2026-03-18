@@ -6,48 +6,48 @@ namespace tpy_user::main {
 
 // def sum_array(arr: Array[Int32, 3]) -> Int32:
 int32_t sum_array(const std::array<int32_t, 3>& arr) {
-    //     return arr[0] + arr[1] + arr[2]
+    // return arr[0] + arr[1] + arr[2]
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(::tpy::__getitem__(arr, 0), ::tpy::__getitem__(arr, 1))), ::tpy::__getitem__(arr, 2)));
 }
 
 // def main():
 void main() {
-    //     # List literal assigned to Array variable
-    //     arr1: Array[Int32, 3] = [1, 2, 3]
+    // # List literal assigned to Array variable
+    // arr1: Array[Int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> arr1 = {1, 2, 3};
-    //     print(sum_array(arr1))  # 6
+    // print(sum_array(arr1))  # 6
     std::cout << sum_array(arr1) << "\n";
-    //     # List literal passed directly to Array parameter
-    //     print(sum_array([10, 20, 30]))  # 60
+    // # List literal passed directly to Array parameter
+    // print(sum_array([10, 20, 30]))  # 60
     std::array<int32_t, 3> __tmp_1 = {10, 20, 30};
     std::cout << sum_array(__tmp_1) << "\n";
-    //     # List literal in variable initializer
-    //     result: Int32 = sum_array([100, 200, 300])
+    // # List literal in variable initializer
+    // result: Int32 = sum_array([100, 200, 300])
     std::array<int32_t, 3> __tmp_2 = {100, 200, 300};
     int32_t result = sum_array(__tmp_2);
-    //     print(result)  # 600
+    // print(result)  # 600
     std::cout << result << "\n";
-    //     # List literal in condition
-    //     if sum_array([1, 1, 1]) > 0:
+    // # List literal in condition
+    // if sum_array([1, 1, 1]) > 0:
     std::array<int32_t, 3> __tmp_3 = {1, 1, 1};
     if ((sum_array(__tmp_3) > 0)) {
-        //         print(1)  # 1
+        // print(1)  # 1
         std::cout << 1 << "\n";
-    //     else:
+    // else:
     } else {
-        //         print(0)
+        // print(0)
         std::cout << 0 << "\n";
     }
-    //     # List literal in while condition (edge case)
-    //     count: Int32 = 0
+    // # List literal in while condition (edge case)
+    // count: Int32 = 0
     int32_t count = 0;
-    //     while sum_array([1, 0, 0]) > count:
+    // while sum_array([1, 0, 0]) > count:
     std::array<int32_t, 3> __tmp_4 = {1, 0, 0};
     while ((sum_array(__tmp_4) > count)) {
-        //         count = count + 1
+        // count = count + 1
         count = (::tpy::add_check<int32_t>(count, 1));
     }
-    //     print(count)  # 1
+    // print(count)  # 1
     std::cout << count << "\n";
 }
 

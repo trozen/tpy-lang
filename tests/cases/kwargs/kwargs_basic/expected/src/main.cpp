@@ -7,23 +7,23 @@ namespace tpy_user::main {
 // # Keyword arguments for free functions: basic usage
 // def greet(name: str, greeting: str = "Hello") -> None:
 void greet(std::string_view name, std::string_view greeting) {
-    //     print(f"{greeting}, {name}!")
+    // print(f"{greeting}, {name}!")
     std::cout << std::format("{}, {}!", greeting, name) << "\n";
 }
 
 // def add(a: int, b: int) -> int:
 ::tpy::BigInt add(const ::tpy::BigInt& a, const ::tpy::BigInt& b) {
-    //     return a + b
+    // return a + b
     return ((a) + (b));
 }
 
 // def main() -> None:
 void main() {
-    //     greet(name="World")
+    // greet(name="World")
     greet("World");
-    //     greet(greeting="Hi", name="Alice")
+    // greet(greeting="Hi", name="Alice")
     greet("Alice", "Hi");
-    //     print(add(a=3, b=4))
+    // print(add(a=3, b=4))
     std::cout << add(::tpy::BigInt(3), ::tpy::BigInt(4)) << "\n";
 }
 

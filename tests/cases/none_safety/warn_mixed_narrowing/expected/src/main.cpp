@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def f(a: Int32 | None, b: Int32 | None) -> Int32:
 int32_t f(std::optional<int32_t> a, std::optional<int32_t> b) {
-    //     assert a is not None
+    // assert a is not None
     if (!((a.has_value()))) ::tpy::tpy_panic("assertion failed");
-    //     return a + b  # tpyc: warning(/Potential None access/)
+    // return a + b  # tpyc: warning(/Potential None access/)
     return (::tpy::add_check<int32_t>((*a), ::tpy::deref_optional_check(b)));
 }
 

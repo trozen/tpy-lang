@@ -8,45 +8,45 @@ namespace tpy_user::main {
 // # keep BigInt for operations after the loop exits.
 // def get_big() -> int:
 ::tpy::BigInt get_big() {
-    //     return 42
+    // return 42
     return ::tpy::BigInt(42);
 }
 
 // def test_after_while() -> None:
 void test_after_while() {
-    //     x = 0
+    // x = 0
     ::tpy::BigInt x = ::tpy::BigInt(0);
-    //     while x < 1:
+    // while x < 1:
     while ((x < 1)) {
-        //         if True:
+        // if True:
         if (true) {
-            //             x = get_big()
+            // x = get_big()
             x = get_big();
         }
-        //         x += 1
+        // x += 1
         x = (x) + (::tpy::BigInt(1));
     }
-    //     y: int = x + 1
+    // y: int = x + 1
     ::tpy::BigInt y = ((x) + (::tpy::BigInt(1)));
-    //     print(y)
+    // print(y)
     std::cout << y << "\n";
 }
 
 // def test_after_for() -> None:
 void test_after_for() {
-    //     x = 0
+    // x = 0
     ::tpy::BigInt x = ::tpy::BigInt(0);
-    //     for i in range(0, 3):
+    // for i in range(0, 3):
     for (int32_t i = 0; i < 3; ++i) {
-        //         if True:
+        // if True:
         if (true) {
-            //             x = get_big()
+            // x = get_big()
             x = get_big();
         }
     }
-    //     y: int = x + 1
+    // y: int = x + 1
     ::tpy::BigInt y = ((x) + (::tpy::BigInt(1)));
-    //     print(y)
+    // print(y)
     std::cout << y << "\n";
 }
 

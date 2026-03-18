@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> Int32:
 int32_t main() {
-    //     helper()
+    // helper()
     ::tpy_user::mypackage::utils::helper();
-    //     return Int32(0)
+    // return Int32(0)
     return 0;
 }
 

@@ -6,70 +6,70 @@ namespace tpy_user::main {
 
 // def show_guarded(cfg: Config) -> None:
 void show_guarded(const Config& cfg) {
-    //     if cfg.port is not None:
+    // if cfg.port is not None:
     if ((cfg.port.has_value())) {
-        //         print(cfg.port)
+        // print(cfg.port)
         std::cout << ::tpy::print_optional_val(cfg.port) << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("no port")
+        // print("no port")
         std::cout << "no port" << "\n";
     }
-    //     if cfg.name is not None:
+    // if cfg.name is not None:
     if ((cfg.name.has_value())) {
-        //         print(cfg.name)
+        // print(cfg.name)
         std::cout << ::tpy::print_optional_val(cfg.name) << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("no name")
+        // print("no name")
         std::cout << "no name" << "\n";
     }
-    //     if cfg.flag is not None:
+    // if cfg.flag is not None:
     if ((cfg.flag.has_value())) {
-        //         print(cfg.flag)
+        // print(cfg.flag)
         std::cout << ::tpy::print_optional_val<::tpy::print_bool, bool>(cfg.flag) << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("no flag")
+        // print("no flag")
         std::cout << "no flag" << "\n";
     }
-    //     if cfg.ratio is not None:
+    // if cfg.ratio is not None:
     if ((cfg.ratio.has_value())) {
-        //         print(cfg.ratio)
+        // print(cfg.ratio)
         std::cout << ::tpy::print_optional_val<::tpy::print_float, double>(cfg.ratio) << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("no ratio")
+        // print("no ratio")
         std::cout << "no ratio" << "\n";
     }
 }
 
 // def show_truthy(cfg: Config) -> None:
 void show_truthy(const Config& cfg) {
-    //     if cfg.port:
+    // if cfg.port:
     if (::tpy::is_truthy(cfg.port)) {
-        //         print(cfg.port)
+        // print(cfg.port)
         std::cout << ::tpy::print_optional_val(cfg.port) << "\n";
     }
-    //     if cfg.name:
+    // if cfg.name:
     if (::tpy::is_truthy(cfg.name)) {
-        //         print(cfg.name)
+        // print(cfg.name)
         std::cout << ::tpy::print_optional_val(cfg.name) << "\n";
     }
 }
 
 // def main() -> None:
 void main() {
-    //     show_guarded(Config(8080, "test", True, 3.14))
+    // show_guarded(Config(8080, "test", True, 3.14))
     Config __tmp_1 = Config(8080, "test", true, 3.14);
     show_guarded(__tmp_1);
-    //     show_guarded(Config(None, None, None, None))
+    // show_guarded(Config(None, None, None, None))
     Config __tmp_2 = Config(std::nullopt, std::nullopt, std::nullopt, std::nullopt);
     show_guarded(__tmp_2);
-    //     show_truthy(Config(42, "hello", None, None))
+    // show_truthy(Config(42, "hello", None, None))
     Config __tmp_3 = Config(42, "hello", std::nullopt, std::nullopt);
     show_truthy(__tmp_3);
-    //     show_truthy(Config(None, None, None, None))
+    // show_truthy(Config(None, None, None, None))
     Config __tmp_4 = Config(std::nullopt, std::nullopt, std::nullopt, std::nullopt);
     show_truthy(__tmp_4);
 }

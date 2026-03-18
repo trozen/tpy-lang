@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     s: set[Int32] = set()
+    // s: set[Int32] = set()
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
-    //     print(s)
+    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    //     print(len(s))
+    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
-    //     s.add(42)
+    // s.add(42)
     s.insert(42);
-    //     print(s)
+    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
 }
 

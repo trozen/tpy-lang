@@ -6,23 +6,23 @@ namespace tpy_user::main {
 
 // def pick(cond: bool) -> None:
 void pick(bool cond) {
-    //     if cond:
+    // if cond:
     std::optional<int32_t> x;
     if (cond) {
-        //         x = None
+        // x = None
         x = std::nullopt;
-    //     else:
+    // else:
     } else {
-        //         x = 5
+        // x = 5
         x = 5;
     }
-    //     if x is None:
+    // if x is None:
     if ((!x.has_value())) {
-        //         print(0)
+        // print(0)
         std::cout << 0 << "\n";
-    //     else:
+    // else:
     } else {
-        //         print(x)
+        // print(x)
         std::cout << ::tpy::print_optional_val(x) << "\n";
     }
 }

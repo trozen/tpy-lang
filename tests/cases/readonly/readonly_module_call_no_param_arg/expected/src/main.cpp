@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // @readonly
 // def ok() -> None:
 void ok() {
-    //     h.mutate()  # tpyc: ok
+    // h.mutate()  # tpyc: ok
     ::tpy_user::helpers::mutate();
 }
 

@@ -8,13 +8,13 @@ std::optional<int32_t> x;
 
 // def prove() -> None:
 void prove() {
-    //     assert x is not None
+    // assert x is not None
     if (!((x.has_value()))) ::tpy::tpy_panic("assertion failed");
 }
 
 // def use() -> Int32:
 int32_t use() {
-    //     return x + 1  # tpyc: warning(/Potential None access/)
+    // return x + 1  # tpyc: warning(/Potential None access/)
     return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(x), 1));
 }
 

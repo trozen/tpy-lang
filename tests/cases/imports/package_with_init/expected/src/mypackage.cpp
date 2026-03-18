@@ -8,7 +8,7 @@ int32_t CONST{};
 
 // def func() -> None:
 void func() {
-    //     print("from init")
+    // print("from init")
     std::cout << "from init" << "\n";
 }
 

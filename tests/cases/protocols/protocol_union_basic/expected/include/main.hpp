@@ -20,13 +20,13 @@ void main();
 template<typename T_items>
   requires (::tpy_user::typing::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
 void describe(const T_items& items) {
-    //     if isinstance(items, Sequence):
+    // if isinstance(items, Sequence):
     if constexpr (::tpy_user::typing::Sequence<T_items, ::tpy::BigInt>) {
-        //         print(items[0])
+        // print(items[0])
         std::cout << items[0] << "\n";
-    //     elif isinstance(items, Sized):
+    // elif isinstance(items, Sized):
     } else if constexpr (::tpy_user::typing::Sized<T_items>) {
-        //         print(len(items))
+        // print(len(items))
         std::cout << ::tpy::__len__(items) << "\n";
     }
 }
@@ -34,16 +34,16 @@ void describe(const T_items& items) {
 template<typename T_items>
   requires (::tpy_user::typing::Sequence<T_items, ::tpy::BigInt> || ::tpy_user::typing::Sized<T_items>)
 ::tpy::BigInt get_value(const T_items& items) {
-    //     if isinstance(items, Sequence):
+    // if isinstance(items, Sequence):
     if constexpr (::tpy_user::typing::Sequence<T_items, ::tpy::BigInt>) {
-        //         return items[0]
+        // return items[0]
         return items[0];
-    //     elif isinstance(items, Sized):
+    // elif isinstance(items, Sized):
     } else if constexpr (::tpy_user::typing::Sized<T_items>) {
-        //         return len(items)
+        // return len(items)
         return ::tpy::BigInt(::tpy::__len__(items));
     }
-    //     return 0
+    // return 0
     return ::tpy::BigInt(0);
 }
 

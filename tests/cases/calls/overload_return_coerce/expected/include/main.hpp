@@ -23,10 +23,10 @@ void main();
 
 // class A:
 struct A {
-    //     x: Int32
+    // x: Int32
     int32_t x;
 
-    //     def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: Int32) -> None:
     A() = default;
     explicit A(int32_t x) : x(x) {}
 };
@@ -40,10 +40,10 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 // class B:
 struct B {
-    //     y: float
+    // y: float
     double y;
 
-    //     def __init__(self, y: float) -> None:
+    // def __init__(self, y: float) -> None:
     B() = default;
     explicit B(double y) : y(y) {}
 };
@@ -57,10 +57,10 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 
 // class C:
 struct C {
-    //     z: Int64
+    // z: Int64
     int64_t z;
 
-    //     def __init__(self, z: Int64) -> None:
+    // def __init__(self, z: Int64) -> None:
     C() = default;
     explicit C(int64_t z) : z(z) {}
 };

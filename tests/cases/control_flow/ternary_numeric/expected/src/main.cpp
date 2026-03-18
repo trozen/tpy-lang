@@ -6,40 +6,40 @@ namespace tpy_user::main {
 
 // def wider(flag: bool, a: Int32, b: Int64) -> Int64:
 int64_t wider(bool flag, int32_t a, int64_t b) {
-    //     # Int32 + Int64 -> Int64
-    //     return a if flag else b
+    // # Int32 + Int64 -> Int64
+    // return a if flag else b
     return ((flag) ? (static_cast<int64_t>(a)) : (b));
 }
 
 // def literal_with_typed(flag: bool, x: Int32) -> Int32:
 int32_t literal_with_typed(bool flag, int32_t x) {
-    //     # Int literal adopts the concrete type from the other branch
-    //     return x if flag else 0
+    // # Int literal adopts the concrete type from the other branch
+    // return x if flag else 0
     return ((flag) ? (x) : (0));
 }
 
 // def both_literals(flag: bool) -> None:
 void both_literals(bool flag) {
-    //     # Both branches are int literals -> default int type
-    //     x = 10 if flag else 20
+    // # Both branches are int literals -> default int type
+    // x = 10 if flag else 20
     int32_t x = ((flag) ? (10) : (20));
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     print(wider(True, 42, 100))
+    // print(wider(True, 42, 100))
     std::cout << wider(true, 42, 100) << "\n";
-    //     print(wider(False, 42, 100))
+    // print(wider(False, 42, 100))
     std::cout << wider(false, 42, 100) << "\n";
-    //     print(literal_with_typed(True, 5))
+    // print(literal_with_typed(True, 5))
     std::cout << literal_with_typed(true, 5) << "\n";
-    //     print(literal_with_typed(False, 5))
+    // print(literal_with_typed(False, 5))
     std::cout << literal_with_typed(false, 5) << "\n";
-    //     both_literals(True)
+    // both_literals(True)
     both_literals(true);
-    //     both_literals(False)
+    // both_literals(False)
     both_literals(false);
 }
 

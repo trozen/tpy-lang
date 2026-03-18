@@ -18,24 +18,24 @@ void main();
 
 // class Pair:
 struct Pair {
-    //     key: Int32
+    // key: Int32
     int32_t key;
-    //     tag: Int32
+    // tag: Int32
     int32_t tag;
 
-    //     def __init__(self, key: Int32, tag: Int32) -> None:
+    // def __init__(self, key: Int32, tag: Int32) -> None:
     Pair() = default;
     explicit Pair(int32_t key, int32_t tag) : key(key), tag(tag) {}
 
-    //     def __lt__(self, other: Pair) -> bool:
+    // def __lt__(self, other: Pair) -> bool:
     bool __lt__(const Pair& other) const {
-        //         return self.key < other.key
+        // return self.key < other.key
         return (this->key < other.key);
     }
 
-    //     def __repr__(self) -> str:
+    // def __repr__(self) -> str:
     std::string __repr__() const {
-        //         return str(self.key) + ":" + str(self.tag)
+        // return str(self.key) + ":" + str(self.tag)
         return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(this->key), ":")), ::tpy::fixed_to_str<int32_t>(this->tag)));
     }
 

@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def add(a: tpy.Int32, b: tpy.Int32) -> tpy.Int32:
 int32_t add(int32_t a, int32_t b) {
-    //     return a + b
+    // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
 // def main():
 void main() {
-    //     x: tpy.Int32 = tpy.Int32(10)
+    // x: tpy.Int32 = tpy.Int32(10)
     int32_t x = 10;
-    //     y: tpy.Int32 = tpy.Int32(20)
+    // y: tpy.Int32 = tpy.Int32(20)
     int32_t y = 20;
-    //     print(add(x, y))
+    // print(add(x, y))
     std::cout << add(x, y) << "\n";
 }
 

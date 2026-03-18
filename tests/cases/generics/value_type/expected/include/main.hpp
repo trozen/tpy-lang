@@ -15,9 +15,9 @@ void main();
 
 // class Vec2(ValueType):
 struct Vec2 {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
 };
@@ -34,9 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
 // # Rect uses Vec2 -- tests nested value types
 // class Rect(ValueType):
 struct Rect {
-    //     pos: Vec2
+    // pos: Vec2
     Vec2 pos;
-    //     size: Vec2
+    // size: Vec2
     Vec2 size;
 
 };

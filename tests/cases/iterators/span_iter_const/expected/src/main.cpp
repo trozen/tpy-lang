@@ -6,30 +6,30 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     s = Stack()
+    // s = Stack()
     Stack s = Stack();
-    //     s.push(10)
+    // s.push(10)
     s.push(10);
-    //     s.push(20)
+    // s.push(20)
     s.push(20);
-    //     s.push(30)
+    // s.push(30)
     s.push(30);
-    //     # Non-const iteration
-    //     for x in s:
+    // # Non-const iteration
+    // for x in s:
     auto& __src_0 = s;
     auto __obj_0 = __src_0.__iter__();
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
-    //     # Const iteration via __repr__
-    //     print(repr(s))
+    // # Const iteration via __repr__
+    // print(repr(s))
     std::cout << std::string(::tpy::__repr__(s)) << "\n";
-    //     # Const iteration via readonly method
-    //     print(s.sum())
+    // # Const iteration via readonly method
+    // print(s.sum())
     std::cout << s.sum() << "\n";
 }
 

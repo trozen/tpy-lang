@@ -6,45 +6,45 @@ namespace tpy_user::main {
 
 // def identity(pet: Dog | Cat) -> Dog | Cat:
 std::variant<Cat*, Dog*> identity(std::variant<Cat*, Dog*> pet) {
-    //     return pet
+    // return pet
     return pet;
 }
 
 // def get_name(pet: Dog | Cat) -> str:
 std::string get_name(const std::variant<Cat*, Dog*> pet) {
-    //     if isinstance(pet, Dog):
+    // if isinstance(pet, Dog):
     if (std::holds_alternative<Dog*>(pet)) {
         auto& __pet = *std::get<Dog*>(pet);
-        //         return pet.name
+        // return pet.name
         return __pet.name;
     }
-    //     if isinstance(pet, Cat):
+    // if isinstance(pet, Cat):
     if (std::holds_alternative<Cat*>(pet)) {
         auto& __pet = *std::get<Cat*>(pet);
-        //         return pet.name
+        // return pet.name
         return __pet.name;
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def main() -> None:
 void main() {
-    //     d = Dog("Rex", 5)
+    // d = Dog("Rex", 5)
     Dog d = Dog("Rex", 5);
-    //     pet: Dog | Cat = d
+    // pet: Dog | Cat = d
     std::variant<Cat*, Dog*> pet{&(d)};
-    //     result = identity(pet)
+    // result = identity(pet)
     std::variant<Cat*, Dog*> result = identity(pet);
-    //     print(get_name(result))
+    // print(get_name(result))
     std::cout << get_name(result) << "\n";
-    //     c = Cat("Whiskers", 9)
+    // c = Cat("Whiskers", 9)
     Cat c = Cat("Whiskers", 9);
-    //     pet2: Dog | Cat = c
+    // pet2: Dog | Cat = c
     std::variant<Cat*, Dog*> pet2{&(c)};
-    //     result2 = identity(pet2)
+    // result2 = identity(pet2)
     std::variant<Cat*, Dog*> result2 = identity(pet2);
-    //     print(get_name(result2))
+    // print(get_name(result2))
     std::cout << get_name(result2) << "\n";
 }
 

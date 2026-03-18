@@ -6,24 +6,24 @@ namespace tpy_user::main {
 
 // def make(p: Point) -> tuple[Int32, Point]:
 std::tuple<int32_t, Point&> make(Point& p) {
-    //     return (Int32(1), p)
+    // return (Int32(1), p)
     return std::tuple<int32_t, Point&>{1, p};
 }
 
 // def main() -> None:
 void main() {
-    //     p = Point(Int32(10), Int32(20))
+    // p = Point(Int32(10), Int32(20))
     Point p = Point(10, 20);
-    //     t = make(p)
+    // t = make(p)
     auto t = make(p);
-    //     print(t[0])
+    // print(t[0])
     std::cout << std::get<0>(t) << "\n";
-    //     print(t[1])
+    // print(t[1])
     std::cout << std::get<1>(t) << "\n";
-    //     # Mutation through reference is visible
-    //     p.x = Int32(99)
+    // # Mutation through reference is visible
+    // p.x = Int32(99)
     p.x = 99;
-    //     print(t[1])
+    // print(t[1])
     std::cout << std::get<1>(t) << "\n";
 }
 

@@ -56,10 +56,10 @@ void main();
 // # Record conforming to HasValue
 // class Point:
 struct Point {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, v: Int32):
+    // def __init__(self, v: Int32):
     Point() = default;
     explicit Point(int32_t v) : value(v) {}
 };
@@ -74,12 +74,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // # Record conforming to HasXY
 // class Vec2:
 struct Vec2 {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32):
+    // def __init__(self, x: Int32, y: Int32):
     Vec2() = default;
     explicit Vec2(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -96,16 +96,16 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
 // # Record conforming to Container
 // class Box:
 struct Box {
-    //     count: Int32
+    // count: Int32
     int32_t count;
 
-    //     def __init__(self, c: Int32):
+    // def __init__(self, c: Int32):
     Box() = default;
     explicit Box(int32_t c) : count(c) {}
 
-    //     def is_empty(self) -> bool:
+    // def is_empty(self) -> bool:
     bool is_empty() const {
-        //         return self.count == 0
+        // return self.count == 0
         return (this->count == 0);
     }
 };
@@ -120,10 +120,10 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // # Record conforming to Holder[Int32]
 // class IntHolder:
 struct IntHolder {
-    //     item: Int32
+    // item: Int32
     int32_t item;
 
-    //     def __init__(self, v: Int32):
+    // def __init__(self, v: Int32):
     IntHolder() = default;
     explicit IntHolder(int32_t v) : item(v) {}
 };
@@ -139,16 +139,16 @@ inline std::ostream& operator<<(std::ostream& os, const IntHolder& obj) {
 // class Wrapper[T: HasValue]:
 template<HasValue T>
 struct Wrapper {
-    //     inner: T
+    // inner: T
     T inner;
 
-    //     def __init__(self, val: T):
+    // def __init__(self, val: T):
     Wrapper() = default;
     explicit Wrapper(const T& val) : inner(val) {}
 
-    //     def get_inner_value(self) -> Int32:
+    // def get_inner_value(self) -> Int32:
     int32_t get_inner_value() const {
-        //         return self.inner.value
+        // return self.inner.value
         return this->inner.value;
     }
 };
@@ -165,33 +165,33 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
 // def get_value[T: HasValue](item: T) -> Int32:
 template<HasValue T>
 int32_t get_value(::tpy::param_val_or_ref_t<T> item) {
-    //     return item.value
+    // return item.value
     return item.value;
 }
 // # Function using protocol with multiple fields
 // def sum_xy[T: HasXY](item: T) -> Int32:
 template<HasXY T>
 int32_t sum_xy(::tpy::param_val_or_ref_t<T> item) {
-    //     return item.x + item.y
+    // return item.x + item.y
     return (::tpy::add_check<int32_t>(item.x, item.y));
 }
 // # Function using protocol with field and method
 // def describe[T: Container](item: T) -> Int32:
 template<Container T>
 int32_t describe(::tpy::param_val_or_ref_t<T> item) {
-    //     if item.is_empty():
+    // if item.is_empty():
     if (item.is_empty()) {
-        //         return 0
+        // return 0
         return 0;
     }
-    //     return item.count
+    // return item.count
     return item.count;
 }
 // # Function using generic protocol with field
 // def get_item[T: Holder[Int32]](holder: T) -> Int32:
 template<Holder<int32_t> T>
 int32_t get_item(::tpy::param_val_or_ref_t<T> holder) {
-    //     return holder.item
+    // return holder.item
     return holder.item;
 }
 

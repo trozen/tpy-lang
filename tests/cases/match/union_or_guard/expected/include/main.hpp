@@ -18,7 +18,7 @@ void main();
 // @dataclass
 // class Dog:
 struct Dog {
-    //     name: str
+    // name: str
     std::string name;
 
     Dog() = default;
@@ -49,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 // @dataclass
 // class Cat:
 struct Cat {
-    //     name: str
+    // name: str
     std::string name;
 
     Cat() = default;
@@ -80,7 +80,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // @dataclass
 // class Bird:
 struct Bird {
-    //     name: str
+    // name: str
     std::string name;
 
     Bird() = default;

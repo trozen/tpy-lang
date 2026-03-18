@@ -8,58 +8,58 @@ namespace tpy_user::main {
 // # without including the null terminator.
 // def test_literal_iter() -> None:
 void test_literal_iter() {
-    //     for ch in "abc":
+    // for ch in "abc":
     auto __obj_0 = std::string_view("abc");
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char ch = *__beg_0;
-        //         print(ch)
+        // print(ch)
         std::cout << ch << "\n";
     }
 }
 
 // def test_var_iter() -> None:
 void test_var_iter() {
-    //     s = "abc"
+    // s = "abc"
     std::string_view s = "abc";
-    //     for ch in s:
+    // for ch in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char ch = *__beg_0;
-        //         print(ch)
+        // print(ch)
         std::cout << ch << "\n";
     }
 }
 
 // def test_empty_literal() -> None:
 void test_empty_literal() {
-    //     count = 0
+    // count = 0
     int32_t count = 0;
-    //     for ch in "":
+    // for ch in "":
     auto __obj_0 = std::string_view("");
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char ch = *__beg_0;
-        //         count += 1
+        // count += 1
         count = ::tpy::add_check<int32_t>(count, 1);
     }
-    //     print("empty:", count)
+    // print("empty:", count)
     std::cout << "empty:" << " " << count << "\n";
 }
 
 // def test_single_char() -> None:
 void test_single_char() {
-    //     for ch in "x":
+    // for ch in "x":
     auto __obj_0 = std::string_view("x");
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char ch = *__beg_0;
-        //         print(ch)
+        // print(ch)
         std::cout << ch << "\n";
     }
 }

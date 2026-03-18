@@ -9,7 +9,7 @@ namespace tpy_user::main {
 // # tpy: include("<system_header.h>")
 // def main() -> None:
 void main() {
-    //     pass
+    // pass
 }
 
 void __tpy_init() {

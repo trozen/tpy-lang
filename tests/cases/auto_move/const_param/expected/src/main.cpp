@@ -7,62 +7,62 @@ namespace tpy_user::main {
 // # Non-mutated param: should become const Point& in codegen
 // def read_point(p: Point) -> Int32:
 int32_t read_point(const Point& p) {
-    //     r: Int32 = p.x  # tpyc: type(Int32)
+    // r: Int32 = p.x  # tpyc: type(Int32)
     int32_t r = p.x;
-    //     return r
+    // return r
     return r;
 }
 
 // # Mutated param (field write): should stay Point&
 // def mutate_point(p: Point) -> None:
 void mutate_point(Point& p) {
-    //     p.x = Int32(99)
+    // p.x = Int32(99)
     p.x = 99;
 }
 
 // # Ptr(param) address-taking: must stay Point& (not const Point&)
 // def take_ptr(p: Point) -> Ptr[Point]:
 Point* take_ptr(Point& p) {
-    //     return Ptr(p)
+    // return Ptr(p)
     return &p;
 }
 
 // # Ptr(items[i]) subscript address-taking: items must stay vector& (not const)
 // def take_elem_ptr(items: list[Point], i: Int32) -> Ptr[Point]:
 Point* take_elem_ptr(std::vector<Point>& items, int32_t i) {
-    //     return Ptr(items[i])
+    // return Ptr(items[i])
     return &::tpy::__getitem__(items, i);
 }
 
 // # Optional[Point] coercion: &(p) taken -- must stay Point&
 // def to_optional(p: Point) -> Optional[Point]:
 Point* to_optional(Point& p) {
-    //     return p
+    // return p
     return &(p);
 }
 
 // # Non-mutated list param: should become const vector&
 // def sum_list(items: list[Int32]) -> Int32:
 int32_t sum_list(const std::vector<int32_t>& items) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     for x in items:
+    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         total += x
+        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    //     return total
+    // return total
     return total;
 }
 
 // # Mutated list param (append): should stay vector&
 // def append_item(items: list[Int32], v: Int32) -> None:
 void append_item(std::vector<int32_t>& items, int32_t v) {
-    //     items.append(v)
+    // items.append(v)
     auto __tmp_1 = v;
     items.push_back(std::move(__tmp_1));
 }
@@ -70,37 +70,37 @@ void append_item(std::vector<int32_t>& items, int32_t v) {
 // # Phase 2 propagation: wrapper passes items to mutating callee -> items must stay T&
 // def append_wrapper(items: list[Int32], v: Int32) -> None:
 void append_wrapper(std::vector<int32_t>& items, int32_t v) {
-    //     append_item(items, v)
+    // append_item(items, v)
     append_item(items, v);
 }
 
 // def main() -> None:
 void main() {
-    //     p = Point(Int32(1), Int32(2))
+    // p = Point(Int32(1), Int32(2))
     Point p = Point(1, 2);
-    //     print(read_point(p))
+    // print(read_point(p))
     std::cout << read_point(p) << "\n";
-    //     mutate_point(p)
+    // mutate_point(p)
     mutate_point(p);
-    //     print(p.x)
+    // print(p.x)
     std::cout << p.x << "\n";
-    //     pts: list[Point] = [Point(Int32(10), Int32(20)), Point(Int32(30), Int32(40))]
+    // pts: list[Point] = [Point(Int32(10), Int32(20)), Point(Int32(30), Int32(40))]
     std::vector<Point> pts = {Point(10, 20), Point(30, 40)};
-    //     ptr = take_elem_ptr(pts, Int32(0))
+    // ptr = take_elem_ptr(pts, Int32(0))
     Point* ptr = take_elem_ptr(pts, 0);
-    //     print(ptr.__deref__().x)
+    // print(ptr.__deref__().x)
     std::cout << ::tpy::deref_check(ptr).x << "\n";
-    //     nums: list[Int32] = [Int32(10), Int32(20)]
+    // nums: list[Int32] = [Int32(10), Int32(20)]
     std::vector<int32_t> nums = {10, 20};
-    //     print(sum_list(nums))
+    // print(sum_list(nums))
     std::cout << sum_list(nums) << "\n";
-    //     append_item(nums, Int32(30))
+    // append_item(nums, Int32(30))
     append_item(nums, 30);
-    //     print(sum_list(nums))
+    // print(sum_list(nums))
     std::cout << sum_list(nums) << "\n";
-    //     append_wrapper(nums, Int32(40))
+    // append_wrapper(nums, Int32(40))
     append_wrapper(nums, 40);
-    //     print(sum_list(nums))
+    // print(sum_list(nums))
     std::cout << sum_list(nums) << "\n";
 }
 

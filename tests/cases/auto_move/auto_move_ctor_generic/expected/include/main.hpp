@@ -14,7 +14,7 @@ void main();
 
 // class Inner:
 struct Inner {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
 };
@@ -29,10 +29,10 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
 // class Box[T]:
 template<typename T>
 struct Box {
-    //     item: T
+    // item: T
     T item;
 
-    //     def __init__(self, item: Own[T]):
+    // def __init__(self, item: Own[T]):
     Box() = default;
     explicit Box(T&& item) : item(std::move(item)) {}
 };

@@ -13,12 +13,12 @@ void main();
 
 // class Point:
 struct Point {
-    //         self.x = x
+    // self.x = x
     int32_t x;
-    //         self.y = y
+    // self.y = y
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32):
+    // def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };

@@ -14,25 +14,25 @@ void main();
 // @dataclass
 // class Rect:
 struct Rect {
-    //     width: Int32
+    // width: Int32
     int32_t width;
-    //     height: Int32
+    // height: Int32
     int32_t height;
 
     Rect() = default;
     explicit Rect(int32_t width, int32_t height) : width(width), height(height) {}
 
-    //     def area(self) -> Int32:
+    // def area(self) -> Int32:
     int32_t area() const {
-        //         return self.width * self.height
+        // return self.width * self.height
         return (::tpy::mul_check<int32_t>(this->width, this->height));
     }
 
-    //     def scale(self, factor: Int32) -> None:
+    // def scale(self, factor: Int32) -> None:
     void scale(int32_t factor) {
-        //         self.width = self.width * factor
+        // self.width = self.width * factor
         this->width = (::tpy::mul_check<int32_t>(this->width, factor));
-        //         self.height = self.height * factor
+        // self.height = self.height * factor
         this->height = (::tpy::mul_check<int32_t>(this->height, factor));
     }
 

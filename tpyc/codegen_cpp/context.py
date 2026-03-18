@@ -479,6 +479,7 @@ class CodeGenContext:
 
     def _write_source_comment(self, out: TextIO, line_no: int, source: str, indent: str = "") -> None:
         """Write a source comment line, optionally including the .py line number."""
+        source = source.lstrip()
         if self.options.comment_line_numbers:
             out.write(f"{indent}// {line_no}: {source}\n")
         else:

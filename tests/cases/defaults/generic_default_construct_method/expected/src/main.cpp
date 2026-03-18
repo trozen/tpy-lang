@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c = Container[Int32](10)
+    // c = Container[Int32](10)
     Container<int32_t> c = Container<int32_t>(10);
-    //     print(c.get_or_default())
+    // print(c.get_or_default())
     std::cout << c.get_or_default() << "\n";
-    //     print(c.get_or_default(99))
+    // print(c.get_or_default(99))
     std::cout << c.get_or_default(99) << "\n";
 }
 

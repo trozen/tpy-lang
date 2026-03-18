@@ -7,17 +7,17 @@ namespace tpy_user::main {
 // @readonly
 // def alias_param(b: Box) -> Int32:
 int32_t alias_param(const Box& b) {
-    //     alias = b  # lvalue alias -> const Box*
+    // alias = b  # lvalue alias -> const Box*
     const Box& alias = b;
-    //     return alias.get_value()
+    // return alias.get_value()
     return alias.get_value();
 }
 
 // def main() -> None:
 void main() {
-    //     b = Box(Int32(42))
+    // b = Box(Int32(42))
     Box b = Box(42);
-    //     print(alias_param(b))
+    // print(alias_param(b))
     std::cout << alias_param(b) << "\n";
 }
 

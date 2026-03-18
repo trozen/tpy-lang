@@ -6,12 +6,12 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     pt: Point = Point(10, 20)
+    // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    //     r: Ref = Ref(pt)
+    // r: Ref = Ref(pt)
     Ref r = Ref(pt);
-    //     # Method call through user-defined __deref__
-    //     print(r.sum())
+    // # Method call through user-defined __deref__
+    // print(r.sum())
     std::cout << r.__deref__().sum() << "\n";
 }
 

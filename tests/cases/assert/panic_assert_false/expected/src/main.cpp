@@ -6,7 +6,7 @@ namespace tpy_user::main {
 
 // def fail_now() -> None:
 void fail_now() {
-    //     assert False, "boom"
+    // assert False, "boom"
     ::tpy::tpy_panic("boom");
 }
 

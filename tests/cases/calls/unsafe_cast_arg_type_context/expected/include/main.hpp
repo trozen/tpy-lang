@@ -21,9 +21,9 @@ int32_t take_ptr(void* p);
 struct Sink {
 
 
-    //     def put(self, p: Ptr[None]) -> Int32:
+    // def put(self, p: Ptr[None]) -> Int32:
     int32_t put(void* p) const {
-        //         return Int32(20)
+        // return Int32(20)
         return 20;
     }
 };

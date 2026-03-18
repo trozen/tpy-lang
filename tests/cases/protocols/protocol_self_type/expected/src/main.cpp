@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     a: Int32 = 21
+    // a: Int32 = 21
     int32_t a = 21;
-    //     b: Int32 = 21
+    // b: Int32 = 21
     int32_t b = 21;
-    //     add_values(a, b)
+    // add_values(a, b)
     add_values(a, b);
 }
 

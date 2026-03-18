@@ -18,34 +18,34 @@ void main();
 // def first_or[T](items: list[T], fallback: T = Int32(0)) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> first_or(std::vector<T>& items, ::tpy::param_val_or_ref_t<T> fallback) {
-    //     if len(items) > 0:
+    // if len(items) > 0:
     if ((::tpy::__len__(items) > 0)) {
-        //         return items[0]
+        // return items[0]
         return ::tpy::__getitem__(items, 0);
     }
-    //     return fallback
+    // return fallback
     return fallback;
 }
 // def fallback_or[T](items: list[T], fallback: T = 0) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> fallback_or(std::vector<T>& items, ::tpy::param_val_or_ref_t<T> fallback) {
-    //     if len(items) > 0:
+    // if len(items) > 0:
     if ((::tpy::__len__(items) > 0)) {
-        //         return items[0]
+        // return items[0]
         return ::tpy::__getitem__(items, 0);
     }
-    //     return fallback
+    // return fallback
     return fallback;
 }
 // def pick[T](a: T, b: T, use_first: bool = True) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> pick(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b, bool use_first) {
-    //     if use_first:
+    // if use_first:
     if (use_first) {
-        //         return a
+        // return a
         return a;
     }
-    //     return b
+    // return b
     return b;
 }
 

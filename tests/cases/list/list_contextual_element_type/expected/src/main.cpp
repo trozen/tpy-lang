@@ -6,71 +6,71 @@ namespace tpy_user::main {
 
 // def make_optional_list() -> Own[list[Int32 | None]]:
 std::vector<std::optional<int32_t>> make_optional_list() {
-    //     return [Int32(1), None, Int32(3)]
+    // return [Int32(1), None, Int32(3)]
     return {1, std::nullopt, 3};
 }
 
 // def main():
 void main() {
-    //     # Homogeneous literal, wider annotation (Optional)
-    //     a: list[Int32 | None] = [Int32(1), Int32(2)]
+    // # Homogeneous literal, wider annotation (Optional)
+    // a: list[Int32 | None] = [Int32(1), Int32(2)]
     std::vector<std::optional<int32_t>> a = {1, 2};
-    //     print(len(a))
+    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
-    //     # None-only literal
-    //     b: list[Int32 | None] = [None]
+    // # None-only literal
+    // b: list[Int32 | None] = [None]
     std::vector<std::optional<int32_t>> b = {std::nullopt};
-    //     print(len(b))
+    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
-    //     # Mixed literal: Int32 and None
-    //     c: list[Int32 | None] = [Int32(1), None, Int32(3)]
+    // # Mixed literal: Int32 and None
+    // c: list[Int32 | None] = [Int32(1), None, Int32(3)]
     std::vector<std::optional<int32_t>> c = {1, std::nullopt, 3};
-    //     print(len(c))
+    // print(len(c))
     std::cout << ::tpy::__len__(c) << "\n";
-    //     # Empty literal with union element type
-    //     d: list[Int32 | None] = []
+    // # Empty literal with union element type
+    // d: list[Int32 | None] = []
     std::vector<std::optional<int32_t>> d = std::vector<std::optional<int32_t>>{};
-    //     d.append(Int32(42))
+    // d.append(Int32(42))
     d.push_back(42);
-    //     d.append(None)
+    // d.append(None)
     d.push_back(std::nullopt);
-    //     print(len(d))
+    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
-    //     # Return type context with union element type
-    //     e: list[Int32 | None] = make_optional_list()
+    // # Return type context with union element type
+    // e: list[Int32 | None] = make_optional_list()
     std::vector<std::optional<int32_t>> e = make_optional_list();
-    //     print(len(e))
+    // print(len(e))
     std::cout << ::tpy::__len__(e) << "\n";
-    //     # Mutation on widened type
-    //     a.append(None)
+    // # Mutation on widened type
+    // a.append(None)
     a.push_back(std::nullopt);
-    //     print(len(a))
+    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
-    //     # Int literals in union annotation
-    //     f: list[Int32 | None] = [1, None, 3]
+    // # Int literals in union annotation
+    // f: list[Int32 | None] = [1, None, 3]
     std::vector<std::optional<int32_t>> f = {1, std::nullopt, 3};
-    //     print(len(f))
+    // print(len(f))
     std::cout << ::tpy::__len__(f) << "\n";
-    //     # Int literals in wider numeric type
-    //     g: list[Int64] = [1, 2, 3]
+    // # Int literals in wider numeric type
+    // g: list[Int64] = [1, 2, 3]
     std::vector<int64_t> g = {1, 2, 3};
-    //     print(len(g))
+    // print(len(g))
     std::cout << ::tpy::__len__(g) << "\n";
-    //     # Union of records: lvalue and rvalue mixing
-    //     r = Rect()
+    // # Union of records: lvalue and rvalue mixing
+    // r = Rect()
     Rect r = Rect();
-    //     r.w = 10
+    // r.w = 10
     r.w = 10;
-    //     r.h = 20
+    // r.h = 20
     r.h = 20;
-    //     shapes: list[Rect | Circle] = [r, Circle()]
+    // shapes: list[Rect | Circle] = [r, Circle()]
     std::vector<std::variant<Circle, Rect>> shapes = {r, Circle()};
-    //     print(len(shapes))
+    // print(len(shapes))
     std::cout << ::tpy::__len__(shapes) << "\n";
-    //     # Union of records: all rvalues
-    //     shapes2: list[Rect | Circle] = [Rect(), Circle()]
+    // # Union of records: all rvalues
+    // shapes2: list[Rect | Circle] = [Rect(), Circle()]
     std::vector<std::variant<Circle, Rect>> shapes2 = {Rect(), Circle()};
-    //     print(len(shapes2))
+    // print(len(shapes2))
     std::cout << ::tpy::__len__(shapes2) << "\n";
 }
 

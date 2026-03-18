@@ -14,18 +14,18 @@ std::vector<int32_t>* chars{};
 
 // def sum_list(nums: list[Int32]) -> Int32:
 int32_t sum_list(const std::vector<int32_t>& nums) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     i: Int32 = 0
+    // i: Int32 = 0
     int32_t i = 0;
-    //     while i < len(nums):
+    // while i < len(nums):
     while ((i < ::tpy::__len__(nums))) {
-        //         total += nums[i]
+        // total += nums[i]
         total = ::tpy::add_check<int32_t>(total, nums[i]);
-        //         i += 1
+        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    //     return total
+    // return total
     return total;
 }
 

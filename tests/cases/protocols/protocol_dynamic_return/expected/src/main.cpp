@@ -8,32 +8,32 @@ Pet* global_pet{};
 
 // def echo(pet: Pet) -> Pet:
 Pet& echo(Pet& pet) {
-    //     return pet
+    // return pet
     return pet;
 }
 
 // def get_global() -> Pet:
 Pet& get_global() {
-    //     return global_pet
+    // return global_pet
     return (*global_pet);
 }
 
 // def main() -> None:
 void main() {
-    //     # Return parameter
-    //     dog = Dog()
+    // # Return parameter
+    // dog = Dog()
     Dog dog = Dog();
-    //     result: Pet = echo(dog)
+    // result: Pet = echo(dog)
     Pet* result = &echo(dog);
-    //     print(result.name())
+    // print(result.name())
     std::cout << result->name() << "\n";
-    //     # Return global
-    //     g: Pet = get_global()
+    // # Return global
+    // g: Pet = get_global()
     Pet* g = &get_global();
-    //     print(g.name())
+    // print(g.name())
     std::cout << g->name() << "\n";
-    //     # Chain: return value used in another call
-    //     print(echo(dog).name())
+    // # Chain: return value used in another call
+    // print(echo(dog).name())
     std::cout << echo(dog).name() << "\n";
 }
 

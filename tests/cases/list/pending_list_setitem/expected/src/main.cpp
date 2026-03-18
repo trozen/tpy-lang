@@ -6,16 +6,16 @@ namespace tpy_user::main {
 
 // def test_setitem_mutation():
 void test_setitem_mutation() {
-    //     # Function-local: should resolve to list (not Array) because __setitem__ mutates
-    //     items = [Int32(1), Int32(2), Int32(3)]
+    // # Function-local: should resolve to list (not Array) because __setitem__ mutates
+    // items = [Int32(1), Int32(2), Int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
-    //     items.__setitem__(Int32(0), Int32(99))
+    // items.__setitem__(Int32(0), Int32(99))
     ::tpy::__setitem__(items, 0, 99);
-    //     print(items[Int32(0)])  # 99
+    // print(items[Int32(0)])  # 99
     std::cout << ::tpy::__getitem__(items, 0) << "\n";
-    //     print(items[Int32(1)])  # 2
+    // print(items[Int32(1)])  # 2
     std::cout << ::tpy::__getitem__(items, 1) << "\n";
-    //     print(items[Int32(2)])  # 3
+    // print(items[Int32(2)])  # 3
     std::cout << ::tpy::__getitem__(items, 2) << "\n";
 }
 

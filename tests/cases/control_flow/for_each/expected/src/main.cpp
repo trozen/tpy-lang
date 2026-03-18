@@ -18,33 +18,33 @@ std::string text;
 // # Test for-each with local inferred array (no mutation -> std::array)
 // def sum_array() -> Int32:
 int32_t sum_array() {
-    //     nums = [100, 200, 300]
+    // nums = [100, 200, 300]
     std::array<int32_t, 3> nums = {100, 200, 300};
-    //     result: Int32 = 0
+    // result: Int32 = 0
     int32_t result = 0;
-    //     for n in nums:
+    // for n in nums:
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t n = *__beg_0;
-        //         result += n
+        // result += n
         result = ::tpy::add_check<int32_t>(result, n);
     }
-    //     return result
+    // return result
     return result;
 }
 
 // # Test for-each over Span parameter
 // def print_span(data: Span[Int32]) -> None:
 void print_span(std::span<int32_t> data) {
-    //     for x in data:
+    // for x in data:
     auto& __obj_0 = data;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
 }
@@ -52,29 +52,29 @@ void print_span(std::span<int32_t> data) {
 // # Test nested for-each
 // def nested_sum() -> Int32:
 int32_t nested_sum() {
-    //     outer = [1, 2]
+    // outer = [1, 2]
     std::array<int32_t, 2> outer = {1, 2};
-    //     inner = [10, 20]
+    // inner = [10, 20]
     std::array<int32_t, 2> inner = {10, 20};
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     for a in outer:
+    // for a in outer:
     auto& __obj_0 = outer;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t a = *__beg_0;
-        //         for b in inner:
+        // for b in inner:
         auto& __obj_1 = inner;
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             int32_t b = *__beg_1;
-            //             total += a * b
+            // total += a * b
             total = ::tpy::add_check<int32_t>(total, (::tpy::mul_check<int32_t>(a, b)));
         }
     }
-    //     return total
+    // return total
     return total;
 }
 
@@ -95,7 +95,7 @@ void __tpy_init() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //     total += x
+        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
     // print(total)  # 15
@@ -110,7 +110,7 @@ void __tpy_init() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t val = *__beg_1;
-        //     print(val)
+        // print(val)
         std::cout << val << "\n";
     }
     // print(sum_array())  # 600
@@ -126,7 +126,7 @@ void __tpy_init() {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         char c = *__beg_2;
-        //     print(c)
+        // print(c)
         std::cout << c << "\n";
     }
     // print(nested_sum())  # 1*10 + 1*20 + 2*10 + 2*20 = 90

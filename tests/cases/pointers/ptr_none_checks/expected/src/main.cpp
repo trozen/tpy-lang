@@ -47,11 +47,11 @@ void __tpy_init() {
     std::cout << ::tpy::print_bool((cp == nullptr)) << "\n";
     // if p is not None:
     if ((p != nullptr)) {
-        //     print(p.__deref__())
+        // print(p.__deref__())
         std::cout << ::tpy::deref_check(p) << "\n";
     // else:
     } else {
-        //     print(Int32(0))
+        // print(Int32(0))
         std::cout << 0 << "\n";
     }
 }

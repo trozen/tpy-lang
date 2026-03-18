@@ -7,11 +7,11 @@ namespace tpy_user::main {
 // @extern_c
 // def app_init() -> None:
 extern "C" void app_init() {
-    //     abs(Int32(0))
+    // abs(Int32(0))
     std::abs(0);
-    //     x: Int32 = get_clock()
+    // x: Int32 = get_clock()
     int32_t x = tpy_clock();
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 

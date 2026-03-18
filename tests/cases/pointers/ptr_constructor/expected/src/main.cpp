@@ -6,83 +6,83 @@ namespace tpy_user::main {
 
 // def read_via_ptr(p: Ptr[Point]) -> None:
 void read_via_ptr(Point* p) {
-    //     print(p.x)
+    // print(p.x)
     std::cout << ::tpy::deref_check(p).x << "\n";
-    //     print(p.y)
+    // print(p.y)
     std::cout << ::tpy::deref_check(p).y << "\n";
 }
 
 // def read_via_constptr(p: Ptr[readonly[Point]]) -> None:
 void read_via_constptr(const Point* p) {
-    //     print(p.x)
+    // print(p.x)
     std::cout << ::tpy::deref_check(p).x << "\n";
-    //     print(p.y)
+    // print(p.y)
     std::cout << ::tpy::deref_check(p).y << "\n";
 }
 
 // def test_null_constructors() -> None:
 void test_null_constructors() {
-    //     p1: Ptr[None] = Ptr[None]()
+    // p1: Ptr[None] = Ptr[None]()
     void* p1 = static_cast<void*>(nullptr);
-    //     p2: Ptr[readonly[None]] = Ptr[readonly[None]]()
+    // p2: Ptr[readonly[None]] = Ptr[readonly[None]]()
     const void* p2 = static_cast<const void*>(nullptr);
-    //     p3: Ptr[Int32] = Ptr[Int32]()
+    // p3: Ptr[Int32] = Ptr[Int32]()
     int32_t* p3 = static_cast<int32_t*>(nullptr);
-    //     p4: Ptr[readonly[Int32]] = Ptr[readonly[Int32]]()
+    // p4: Ptr[readonly[Int32]] = Ptr[readonly[Int32]]()
     const int32_t* p4 = static_cast<const int32_t*>(nullptr);
-    //     print("null ok")
+    // print("null ok")
     std::cout << "null ok" << "\n";
 }
 
 // def test_ptr_explicit() -> None:
 void test_ptr_explicit() {
-    //     pt: Point = Point(10, 20)
+    // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    //     pp: Ptr[Point] = Ptr[Point](pt)
+    // pp: Ptr[Point] = Ptr[Point](pt)
     Point* pp = &pt;
-    //     read_via_ptr(pp)
+    // read_via_ptr(pp)
     read_via_ptr(pp);
 }
 
 // def test_ptr_inferred() -> None:
 void test_ptr_inferred() {
-    //     pt: Point = Point(30, 40)
+    // pt: Point = Point(30, 40)
     Point pt = Point(30, 40);
-    //     pp: Ptr[Point] = Ptr(pt)
+    // pp: Ptr[Point] = Ptr(pt)
     Point* pp = &pt;
-    //     read_via_ptr(pp)
+    // read_via_ptr(pp)
     read_via_ptr(pp);
 }
 
 // def test_constptr_explicit() -> None:
 void test_constptr_explicit() {
-    //     pt: Point = Point(50, 60)
+    // pt: Point = Point(50, 60)
     Point pt = Point(50, 60);
-    //     cp: Ptr[readonly[Point]] = Ptr[readonly[Point]](pt)
+    // cp: Ptr[readonly[Point]] = Ptr[readonly[Point]](pt)
     const Point* cp = &pt;
-    //     read_via_constptr(cp)
+    // read_via_constptr(cp)
     read_via_constptr(cp);
 }
 
 // def test_constptr_inferred() -> None:
 void test_constptr_inferred() {
-    //     pt: Point = Point(70, 80)
+    // pt: Point = Point(70, 80)
     Point pt = Point(70, 80);
-    //     cp: Ptr[readonly[Point]] = Ptr(pt)
+    // cp: Ptr[readonly[Point]] = Ptr(pt)
     const Point* cp = &pt;
-    //     read_via_constptr(cp)
+    // read_via_constptr(cp)
     read_via_constptr(cp);
 }
 
 // def test_ptr_write() -> None:
 void test_ptr_write() {
-    //     pt: Point = Point(1, 2)
+    // pt: Point = Point(1, 2)
     Point pt = Point(1, 2);
-    //     pp: Ptr[Point] = Ptr(pt)
+    // pp: Ptr[Point] = Ptr(pt)
     Point* pp = &pt;
-    //     pp.x = Int32(99)
+    // pp.x = Int32(99)
     pp->x = 99;
-    //     print(pt.x)
+    // print(pt.x)
     std::cout << pt.x << "\n";
 }
 

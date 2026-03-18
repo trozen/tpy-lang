@@ -13,33 +13,33 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // class Counter:
 struct Counter {
-    //     current: Int32
+    // current: Int32
     int32_t current;
-    //     limit: Int32
+    // limit: Int32
     int32_t limit;
 
-    //     def __init__(self, limit: Int32) -> None:
+    // def __init__(self, limit: Int32) -> None:
     Counter() = default;
     explicit Counter(int32_t limit) : current(0), limit(limit) {}
 
-    //     def __iter__(self) -> Counter:
+    // def __iter__(self) -> Counter:
     Counter& __iter__() {
-        //         return self
+        // return self
         return (*this);
     }
 
-    //     def __next__(self) -> Int32:
+    // def __next__(self) -> Int32:
     std::expected<int32_t, StopIteration> __next__() {
-        //         if self.current < self.limit:
+        // if self.current < self.limit:
         if ((this->current < this->limit)) {
-            //             result = self.current
+            // result = self.current
             int32_t result = this->current;
-            //             self.current += 1
+            // self.current += 1
             this->current = ::tpy::add_check<int32_t>(this->current, 1);
-            //             return result
+            // return result
             return result;
         }
-        //         raise StopIteration
+        // raise StopIteration
         return std::unexpected(StopIteration{});
     }
 };
@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 // class DoubleCounter(Counter):
 struct DoubleCounter : Counter {
 
-    //     def __init__(self, limit: Int32) -> None:
+    // def __init__(self, limit: Int32) -> None:
     DoubleCounter() = default;
     explicit DoubleCounter(int32_t limit) : Counter((::tpy::mul_check<int32_t>(limit, 2))) {}
 };
@@ -71,7 +71,7 @@ inline std::ostream& operator<<(std::ostream& os, const DoubleCounter& obj) {
 // class GrandChild(DoubleCounter):
 struct GrandChild : DoubleCounter {
 
-    //     def __init__(self, limit: Int32) -> None:
+    // def __init__(self, limit: Int32) -> None:
     GrandChild() = default;
     explicit GrandChild(int32_t limit) : DoubleCounter(limit) {}
 };

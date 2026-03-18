@@ -6,37 +6,37 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Non-generic record constructor: hint from __init__ param flows to inner call
-    //     h = Holder(wrap(Int32(42)))
+    // # Non-generic record constructor: hint from __init__ param flows to inner call
+    // h = Holder(wrap(Int32(42)))
     int32_t __tmp_2 = 42;
     Holder h = Holder(wrap<int32_t>(__tmp_2));
-    //     print(h.box.val)
+    // print(h.box.val)
     std::cout << h.box.val << "\n";
-    //     # Same with bare literal: hint chain infers Int32, coerces literal
-    //     h2 = Holder(wrap(99))
+    // # Same with bare literal: hint chain infers Int32, coerces literal
+    // h2 = Holder(wrap(99))
     int32_t __tmp_3 = 99;
     Holder h2 = Holder(wrap<int32_t>(__tmp_3));
-    //     print(h2.box.val)
+    // print(h2.box.val)
     std::cout << h2.box.val << "\n";
-    //     # Generic record with explicit type args: hint flows to inner call
-    //     outer = Box[Box[Int32]](wrap(Int32(10)))
+    // # Generic record with explicit type args: hint flows to inner call
+    // outer = Box[Box[Int32]](wrap(Int32(10)))
     int32_t __tmp_4 = 10;
     Box<Box<int32_t>> outer = Box<Box<int32_t>>(wrap<int32_t>(__tmp_4));
-    //     print(outer.val.val)
+    // print(outer.val.val)
     std::cout << outer.val.val << "\n";
-    //     # Same with bare literal
-    //     outer2 = Box[Box[Int32]](wrap(20))
+    // # Same with bare literal
+    // outer2 = Box[Box[Int32]](wrap(20))
     int32_t __tmp_5 = 20;
     Box<Box<int32_t>> outer2 = Box<Box<int32_t>>(wrap<int32_t>(__tmp_5));
-    //     print(outer2.val.val)
+    // print(outer2.val.val)
     std::cout << outer2.val.val << "\n";
-    //     # Annotation-driven: no explicit type args on Box(), inferred from LHS
-    //     outer3: Box[Box[Int32]] = Box(wrap(30))
+    // # Annotation-driven: no explicit type args on Box(), inferred from LHS
+    // outer3: Box[Box[Int32]] = Box(wrap(30))
     int32_t __tmp_6 = 30;
     Box<Box<int32_t>> outer3 = Box<Box<int32_t>>(wrap<int32_t>(__tmp_6));
-    //     print(outer3.val.val)
+    // print(outer3.val.val)
     std::cout << outer3.val.val << "\n";
-    //     print("done")
+    // print("done")
     std::cout << "done" << "\n";
 }
 

@@ -6,18 +6,18 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # iter() returns an iterator from an iterable
-    //     c = Counter(4)
+    // # iter() returns an iterator from an iterable
+    // c = Counter(4)
     Counter c = Counter(4);
-    //     it = iter(c)
+    // it = iter(c)
     auto it = ::tpy::__iter__(c);
-    //     # Advance iterator with try/except
-    //     while True:
+    // # Advance iterator with try/except
+    // while True:
     while (true) {
-        //         try:
+        // try:
         int32_t v;
         {
-            //             v = it.__next__()
+            // v = it.__next__()
             {
                 auto __try_tmp_2 = it.__next__();
                 if (!__try_tmp_2.has_value()) goto __except_1;
@@ -25,32 +25,32 @@ void main() {
             }
             goto __after_try_1;
             __except_1:;
-            //             break
+            // break
             break;
             __after_try_1:;
         }
-        //         print(v)
+        // print(v)
         std::cout << v << "\n";
     }
-    //     # Exhausted iterator raises StopIteration
-    //     exhausted = False
+    // # Exhausted iterator raises StopIteration
+    // exhausted = False
     bool exhausted = false;
-    //     try:
+    // try:
     {
-        //         it.__next__()
+        // it.__next__()
         {
             auto __try_tmp_4 = it.__next__();
             if (!__try_tmp_4.has_value()) goto __except_3;
         }
         goto __after_try_3;
         __except_3:;
-        //         exhausted = True
+        // exhausted = True
         exhausted = true;
         __after_try_3:;
     }
-    //     if exhausted:
+    // if exhausted:
     if (exhausted) {
-        //         print("exhausted")
+        // print("exhausted")
         std::cout << "exhausted" << "\n";
     }
 }

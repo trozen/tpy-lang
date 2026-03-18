@@ -6,36 +6,36 @@ namespace tpy_user::main {
 
 // def modify_point(p: Ptr[Point]) -> None:
 void modify_point(Point* p) {
-    //     p.x = 999
+    // p.x = 999
     ::tpy::deref_check(p).x = 999;
 }
 
 // def read_point(p: Ptr[readonly[Point]]) -> Int32:
 int32_t read_point(const Point* p) {
-    //     return p.x
+    // return p.x
     return ::tpy::deref_check(p).x;
 }
 
 // def test_coercion() -> None:
 void test_coercion() {
-    //     pt: Point = Point(10, 20)
+    // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    //     # Record -> Ptr coercion in function call
-    //     modify_point(pt)
+    // # Record -> Ptr coercion in function call
+    // modify_point(pt)
     modify_point(&pt);
-    //     print(pt.x)  # Should print 999
+    // print(pt.x)  # Should print 999
     std::cout << pt.x << "\n";
-    //     # Record -> Ptr[readonly[...]] coercion in function call
-    //     result: Int32 = read_point(pt)
+    // # Record -> Ptr[readonly[...]] coercion in function call
+    // result: Int32 = read_point(pt)
     int32_t result = read_point(&pt);
-    //     print(result)  # Should print 999
+    // print(result)  # Should print 999
     std::cout << result << "\n";
-    //     # Explicit Ptr -> Ptr[readonly[...]] also works
-    //     ptr: Ptr[Point] = pt
+    // # Explicit Ptr -> Ptr[readonly[...]] also works
+    // ptr: Ptr[Point] = pt
     Point* ptr = &pt;
-    //     result2: Int32 = read_point(ptr)
+    // result2: Int32 = read_point(ptr)
     int32_t result2 = read_point(ptr);
-    //     print(result2)  # Should print 999
+    // print(result2)  # Should print 999
     std::cout << result2 << "\n";
 }
 

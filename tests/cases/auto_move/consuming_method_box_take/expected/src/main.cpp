@@ -6,14 +6,14 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     b: Box[Int32] = Box(Int32(42))
+    // b: Box[Int32] = Box(Int32(42))
     ::tpy_user::tplib::box::Box<int32_t> b = ::tpy_user::tplib::box::Box<int32_t>(42);
-    //     val: Int32 = b.take()
+    // val: Int32 = b.take()
     int32_t val = std::move(b).take();
-    //     print(val)
+    // print(val)
     std::cout << val << "\n";
-    //     # Temporary receiver
-    //     print(Box(Int32(99)).take())
+    // # Temporary receiver
+    // print(Box(Int32(99)).take())
     std::cout << ::tpy_user::tplib::box::Box<int32_t>(99).take() << "\n";
 }
 

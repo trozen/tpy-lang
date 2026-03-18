@@ -8,30 +8,30 @@ std::vector<std::optional<int32_t>>* l{};
 
 // def make_list() -> Own[list[Int32 | None]]:
 std::vector<std::optional<int32_t>> make_list() {
-    //     result: list[Int32 | None] = []
+    // result: list[Int32 | None] = []
     std::vector<std::optional<int32_t>> result = std::vector<std::optional<int32_t>>{};
-    //     result.append(Int32(1))
+    // result.append(Int32(1))
     result.push_back(1);
-    //     return copy(result)  # tpyc: warning(/unnecessary copy/)
+    // return copy(result)  # tpyc: warning(/unnecessary copy/)
     return std::vector<std::optional<int32_t>>(result);
 }
 
 // # Mutates global l, which may alias the parameter
 // def mut() -> None:
 void mut() {
-    //     l[0] = None
+    // l[0] = None
     ::tpy::__setitem__((*l), 0, std::nullopt);
 }
 
 // def f(items: list[Int32 | None]) -> None:
 void f(const std::vector<std::optional<int32_t>>& items) {
-    //     if items[0] is not None:
+    // if items[0] is not None:
     if ((::tpy::__getitem__(items, 0).has_value())) {
-        //         mut()
+        // mut()
         mut();
-        //         i: Int32 = Int32(1) + items[0]  # tpyc: warning(/Potential None access/)
+        // i: Int32 = Int32(1) + items[0]  # tpyc: warning(/Potential None access/)
         int32_t i = (::tpy::add_check<int32_t>(1, ::tpy::deref_optional_check(::tpy::__getitem__(items, 0))));
-        //         print(i)
+        // print(i)
         std::cout << i << "\n";
     }
 }

@@ -6,30 +6,30 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     s1 = Stack(Int32(3))
+    // s1 = Stack(Int32(3))
     Stack s1 = Stack(3);
-    //     s2 = Stack(Int32(0))
+    // s2 = Stack(Int32(0))
     Stack s2 = Stack(0);
-    //     # bool() with __len__ fallback
-    //     print(bool(s1))  # True
+    // # bool() with __len__ fallback
+    // print(bool(s1))  # True
     std::cout << ::tpy::print_bool((tpy::__len__(s1) != 0)) << "\n";
-    //     print(bool(s2))  # False
+    // print(bool(s2))  # False
     std::cout << ::tpy::print_bool((tpy::__len__(s2) != 0)) << "\n";
-    //     # if with __len__ fallback
-    //     if s1:
+    // # if with __len__ fallback
+    // if s1:
     if ((::tpy::__len__(s1) != 0)) {
-        //         print("s1 truthy")
+        // print("s1 truthy")
         std::cout << "s1 truthy" << "\n";
     }
-    //     if s2:
+    // if s2:
     if ((::tpy::__len__(s2) != 0)) {
-        //         print("s2 truthy")
+        // print("s2 truthy")
         std::cout << "s2 truthy" << "\n";
     }
-    //     # not with __len__ fallback
-    //     if not s2:
+    // # not with __len__ fallback
+    // if not s2:
     if ((!((::tpy::__len__(s2) != 0)))) {
-        //         print("s2 falsy")
+        // print("s2 falsy")
         std::cout << "s2 falsy" << "\n";
     }
 }

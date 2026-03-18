@@ -6,48 +6,48 @@ namespace tpy_user::main {
 
 // def make_list(x: Int32) -> Own[list[Int32]]:
 std::vector<int32_t> make_list(int32_t x) {
-    //     return [x, x + 1, x + 2]
+    // return [x, x + 1, x + 2]
     return {x, (::tpy::add_check<int32_t>(x, 1)), (::tpy::add_check<int32_t>(x, 2))};
 }
 
 // def main():
 void main() {
-    //     # Empty list from generic function
-    //     a: list[Int32] = make_empty[Int32]()
+    // # Empty list from generic function
+    // a: list[Int32] = make_empty[Int32]()
     std::vector<int32_t> a = make_empty<int32_t>();
-    //     a.append(99)
+    // a.append(99)
     a.push_back(99);
-    //     print(len(a))
+    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
-    //     print(a[0])
+    // print(a[0])
     std::cout << ::tpy::__getitem__(a, 0) << "\n";
-    //     # Single-element list from generic function (T inferred from arg)
-    //     b: list[Int32] = make_single(42)
+    // # Single-element list from generic function (T inferred from arg)
+    // b: list[Int32] = make_single(42)
     int32_t __tmp_1 = 42;
     std::vector<int32_t> b = make_single<int32_t>(__tmp_1);
-    //     b.append(100)
+    // b.append(100)
     b.push_back(100);
-    //     for x in b:
+    // for x in b:
     auto& __obj_0 = b;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
-    //     # Multi-element list from non-generic function
-    //     c: list[Int32] = make_list(10)
+    // # Multi-element list from non-generic function
+    // c: list[Int32] = make_list(10)
     std::vector<int32_t> c = make_list(10);
-    //     c.append(100)
+    // c.append(100)
     c.push_back(100);
-    //     for x in c:
+    // for x in c:
     auto& __obj_1 = c;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
 }

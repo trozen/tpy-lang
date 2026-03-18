@@ -6,7 +6,7 @@ namespace tpy_user::mod_b {
 
 // def func_b() -> None:
 void func_b() {
-    //     print("func_b called")
+    // print("func_b called")
     std::cout << "func_b called" << "\n";
 }
 

@@ -12,16 +12,16 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // class Settings:
 struct Settings {
-    //     count: Int32 | None
+    // count: Int32 | None
     std::optional<int32_t> count;
-    //     flag: bool | None
+    // flag: bool | None
     std::optional<bool> flag;
-    //     ratio: float | None
+    // ratio: float | None
     std::optional<double> ratio;
-    //     label: str | None
+    // label: str | None
     std::optional<std::string> label;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Settings() : count(std::nullopt), flag(std::nullopt), ratio(std::nullopt), label(std::nullopt) {}
 };
 

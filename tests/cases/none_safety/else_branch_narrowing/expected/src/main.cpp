@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def describe(x: Int32 | None) -> Int32:
 int32_t describe(std::optional<int32_t> x) {
-    //     if x is None:
+    // if x is None:
     if ((!x.has_value())) {
-        //         return -1
+        // return -1
         return -1;
-    //     else:
+    // else:
     } else {
-        //         return x + 1
+        // return x + 1
         return (::tpy::add_check<int32_t>((*x), 1));
     }
 }

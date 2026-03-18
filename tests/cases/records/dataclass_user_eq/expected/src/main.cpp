@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     p1 = Point(1, 2)
+    // p1 = Point(1, 2)
     Point p1 = Point(1, 2);
-    //     p2 = Point(1, 3)
+    // p2 = Point(1, 3)
     Point p2 = Point(1, 3);
-    //     print(p1 == p2)
+    // print(p1 == p2)
     std::cout << ::tpy::print_bool((p1 == p2)) << "\n";
 }
 

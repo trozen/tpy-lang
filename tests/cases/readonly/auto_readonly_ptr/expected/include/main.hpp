@@ -15,10 +15,10 @@ void main();
 
 // class Node:
 struct Node {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: Int32) -> None:
     Node() = default;
     explicit Node(int32_t v) : value(v) {}
 };
@@ -32,23 +32,23 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 // class NodeHolder:
 struct NodeHolder {
-    //     _node: Ptr[Node]
+    // _node: Ptr[Node]
     Node* _node;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     NodeHolder() : _node(static_cast<Node*>(nullptr)) {}
 
-    //     @auto_readonly
-    //     def get_node(self) -> Ptr[auto_readonly[Node]]:
+    // @auto_readonly
+    // def get_node(self) -> Ptr[auto_readonly[Node]]:
     Node* get_node() {
-        //         return self._node
+        // return self._node
         return this->_node;
     }
 
-    //     @auto_readonly
-    //     def get_node(self) -> Ptr[auto_readonly[Node]]:
+    // @auto_readonly
+    // def get_node(self) -> Ptr[auto_readonly[Node]]:
     const Node* get_node() const {
-        //         return self._node
+        // return self._node
         return this->_node;
     }
 };

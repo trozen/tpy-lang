@@ -19,17 +19,17 @@ void main();
 
 // class Box(Measurable):
 struct Box {
-    //     volume: Int32
+    // volume: Int32
     int32_t volume;
 
-    //     def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: Int32) -> None:
     Box() = default;
     explicit Box(int32_t v) : volume(v) {}
 
-    //     @override
-    //     def measure(self) -> Int32:  # tpyc: ok
+    // @override
+    // def measure(self) -> Int32:  # tpyc: ok
     int32_t measure() const {
-        //         return self.volume
+        // return self.volume
         return this->volume;
     }
 };

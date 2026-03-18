@@ -14,10 +14,10 @@ void field_access_escape();
 
 // class Inner:
 struct Inner {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, value: Int32):
+    // def __init__(self, value: Int32):
     Inner() = default;
     explicit Inner(int32_t value) : value(value) {}
 };
@@ -31,10 +31,10 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
 
 // class Outer:
 struct Outer {
-    //     inner: Inner
+    // inner: Inner
     Inner inner;
 
-    //     def __init__(self, inner: Inner):
+    // def __init__(self, inner: Inner):
     Outer() = default;
     explicit Outer(const Inner& inner) : inner(inner) {}
 };

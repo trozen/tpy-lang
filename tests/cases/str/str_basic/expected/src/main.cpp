@@ -6,21 +6,21 @@ namespace tpy_user::main {
 
 // def count_char(text: str, target: Char) -> Int32:
 int32_t count_char(std::string_view text, char target) {
-    //     count: Int32 = 0
+    // count: Int32 = 0
     int32_t count = 0;
-    //     i: Int32 = 0
+    // i: Int32 = 0
     int32_t i = 0;
-    //     while i < len(text):
+    // while i < len(text):
     while ((i < ::tpy::__len__(text))) {
-        //         if text[i] == target:
+        // if text[i] == target:
         if ((text[i] == target)) {
-            //             count += 1
+            // count += 1
             count = ::tpy::add_check<int32_t>(count, 1);
         }
-        //         i += 1
+        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    //     return count
+    // return count
     return count;
 }
 

@@ -12,49 +12,49 @@ std::vector<int32_t>* global_list2{};
 
 // def test_empty_list() -> int:
 ::tpy::BigInt test_empty_list() {
-    //     items: list[int] = []
+    // items: list[int] = []
     std::vector<::tpy::BigInt> items = std::vector<::tpy::BigInt>{};
-    //     items.append(1)
+    // items.append(1)
     items.push_back(1);
-    //     items.append(2)
+    // items.append(2)
     items.push_back(2);
-    //     items.append(3)
+    // items.append(3)
     items.push_back(3);
-    //     return len(items)
+    // return len(items)
     return ::tpy::BigInt(::tpy::__len__(items));
 }
 
 // def test_empty_list_int32() -> Int32:
 int32_t test_empty_list_int32() {
-    //     nums: list[Int32] = []
+    // nums: list[Int32] = []
     std::vector<int32_t> nums = std::vector<int32_t>{};
-    //     nums.append(Int32(10))
+    // nums.append(Int32(10))
     nums.push_back(10);
-    //     nums.append(Int32(20))
+    // nums.append(Int32(20))
     nums.push_back(20);
-    //     return nums[0] + nums[1]
+    // return nums[0] + nums[1]
     return (::tpy::add_check<int32_t>(::tpy::__getitem__(nums, 0), ::tpy::__getitem__(nums, 1)));
 }
 
 // def test_list_constructor() -> int:
 ::tpy::BigInt test_list_constructor() {
-    //     items: list[int] = list()
+    // items: list[int] = list()
     std::vector<::tpy::BigInt> items = std::vector<::tpy::BigInt>();
-    //     items.append(5)
+    // items.append(5)
     items.push_back(5);
-    //     items.append(6)
+    // items.append(6)
     items.push_back(6);
-    //     return len(items)
+    // return len(items)
     return ::tpy::BigInt(::tpy::__len__(items));
 }
 
 // def test_list_constructor_int32() -> Int32:
 int32_t test_list_constructor_int32() {
-    //     nums: list[Int32] = list()
+    // nums: list[Int32] = list()
     std::vector<int32_t> nums = std::vector<int32_t>();
-    //     nums.append(Int32(100))
+    // nums.append(Int32(100))
     nums.push_back(100);
-    //     return nums[0]
+    // return nums[0]
     return ::tpy::__getitem__(nums, 0);
 }
 

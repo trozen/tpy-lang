@@ -14,18 +14,18 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // class Config:
 struct Config {
-    //     name: str
+    // name: str
     std::string name;
-    //     max_retries: Int32 | None
+    // max_retries: Int32 | None
     std::optional<int32_t> max_retries;
 
-    //     def __init__(self, name: str):
+    // def __init__(self, name: str):
     Config() = default;
     explicit Config(std::string_view name) : name(name), max_retries(std::nullopt) {}
 
-    //     def get_retries(self) -> Int32 | None:
+    // def get_retries(self) -> Int32 | None:
     std::optional<int32_t> get_retries() const {
-        //         return self.max_retries
+        // return self.max_retries
         return this->max_retries;
     }
 };

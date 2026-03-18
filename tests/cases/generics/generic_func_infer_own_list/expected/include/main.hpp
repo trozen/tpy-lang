@@ -19,9 +19,9 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
 };
@@ -38,18 +38,18 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // def first_val[T](items: Own[list[T]]) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> first_val(std::vector<T>&& items) {
-    //     return items[0]
+    // return items[0]
     return items[0];
 }
 // def consume_list[T](items: Own[list[T]]) -> None:
 template<typename T>
 void consume_list(std::vector<T>&& items) {
-    //     pass
+    // pass
 }
 // def consume_both[T](a: Own[T], b: Own[T]) -> None:
 template<typename T>
 void consume_both(std::type_identity_t<T>&& a, std::type_identity_t<T>&& b) {
-    //     pass
+    // pass
 }
 
 void __tpy_init();

@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     p = Point(3, 4)
+    // p = Point(3, 4)
     Point p = Point(3, 4);
-    //     print(p.magnitude_sq())
+    // print(p.magnitude_sq())
     std::cout << p.magnitude_sq() << "\n";
 }
 

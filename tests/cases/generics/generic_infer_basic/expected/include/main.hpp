@@ -15,10 +15,10 @@ inline constexpr std::string_view __name__ = "__main__";
 // class Box[T]:
 template<typename T>
 struct Box {
-    //     value: T
+    // value: T
     T value;
 
-    //     def __init__(self, value: T) -> None:
+    // def __init__(self, value: T) -> None:
     Box() = default;
     explicit Box(const T& value) : value(value) {}
 };

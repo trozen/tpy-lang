@@ -26,10 +26,10 @@ void main();
 
 // class Box:
 struct Box {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: Int32) -> None:
     Box() = default;
     explicit Box(int32_t value) : value(value) {}
 };
@@ -43,10 +43,10 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // class Holder:
 struct Holder {
-    //     item: Box
+    // item: Box
     Box item;
 
-    //     def __init__(self, item: Own[Box]) -> None:
+    // def __init__(self, item: Own[Box]) -> None:
     Holder() = default;
     explicit Holder(Box&& item) : item(std::move(item)) {}
 };
@@ -62,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // def value_type_borrow[T: ValueType](x: Own[T]) -> T:  # tpyc: ok
 template<::tpy::ValueType T>
 ::tpy::val_or_ref_t<T> value_type_borrow(std::type_identity_t<T>&& x) {
-    //     return x
+    // return x
     return x;
 }
 

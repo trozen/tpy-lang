@@ -27,22 +27,22 @@ void main();
 
 // class IntBox:
 struct IntBox {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, v: Int32):
+    // def __init__(self, v: Int32):
     IntBox() = default;
     explicit IntBox(int32_t v) : value(v) {}
 
-    //     def get(self) -> Int32:
+    // def get(self) -> Int32:
     int32_t get() const {
-        //         return self.value
+        // return self.value
         return this->value;
     }
 
-    //     def set(self, value: Int32) -> None:
+    // def set(self, value: Int32) -> None:
     void set(int32_t value) {
-        //         self.value = value
+        // self.value = value
         this->value = value;
     }
 };
@@ -56,22 +56,22 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
 
 // class StrBox:
 struct StrBox {
-    //     value: str
+    // value: str
     std::string value;
 
-    //     def __init__(self, v: str):
+    // def __init__(self, v: str):
     StrBox() = default;
     explicit StrBox(std::string_view v) : value(v) {}
 
-    //     def get(self) -> str:
+    // def get(self) -> str:
     std::string get() const {
-        //         return self.value
+        // return self.value
         return this->value;
     }
 
-    //     def set(self, value: str) -> None:
+    // def set(self, value: str) -> None:
     void set(std::string_view value) {
-        //         self.value = value
+        // self.value = value
         this->value = value;
     }
 };
@@ -86,19 +86,19 @@ inline std::ostream& operator<<(std::ostream& os, const StrBox& obj) {
 // def extract[C: Container[Int32]](c: C) -> Int32:
 template<Container<int32_t> C>
 int32_t extract(::tpy::param_val_or_ref_t<C> c) {
-    //     return c.get()
+    // return c.get()
     return c.get();
 }
 // def update[C: Container[Int32]](c: C, v: Int32) -> None:
 template<Container<int32_t> C>
 void update(::tpy::param_val_or_ref_t<C> c, int32_t v) {
-    //     c.set(v)
+    // c.set(v)
     c.set(v);
 }
 // def extract_str[C: Container[str]](c: C) -> str:
 template<Container<std::string> C>
 std::string extract_str(::tpy::param_val_or_ref_t<C> c) {
-    //     return c.get()
+    // return c.get()
     return c.get();
 }
 

@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def test_branch(flag: bool) -> None:
 void test_branch(bool flag) {
-    //     w = Wrapper(42)
+    // w = Wrapper(42)
     Wrapper w = Wrapper(::tpy::BigInt(42));
-    //     if flag:
+    // if flag:
     if (flag) {
-        //         result = w.take()
+        // result = w.take()
         ::tpy::BigInt result = std::move(w).take();
-        //         print(result)
+        // print(result)
         std::cout << result << "\n";
-    //     else:
+    // else:
     } else {
-        //         print(w.get())
+        // print(w.get())
         std::cout << w.get() << "\n";
     }
 }

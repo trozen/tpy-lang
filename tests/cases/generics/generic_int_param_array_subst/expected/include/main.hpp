@@ -17,23 +17,23 @@ void main();
 // class Buffer[T, N: int]:
 template<typename T, std::size_t N>
 struct Buffer {
-    //     data: Array[T, N]
+    // data: Array[T, N]
     std::array<T, N> data;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Buffer() {
-        //         pass
+        // pass
     }
 
-    //     def get_data(self) -> Array[T, N]:
+    // def get_data(self) -> Array[T, N]:
     std::array<T, N>& get_data() {
-        //         return self.data
+        // return self.data
         return this->data;
     }
 
-    //     def set_data(self, arr: Array[T, N]) -> None:
+    // def set_data(self, arr: Array[T, N]) -> None:
     void set_data(const std::array<T, N>& arr) {
-        //         self.data = arr
+        // self.data = arr
         this->data = arr;
     }
 };

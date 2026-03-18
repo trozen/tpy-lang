@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def close(h: Own[Handle]) -> Int32:
 int32_t close(Handle&& h) {
-    //     return h.fd
+    // return h.fd
     return h.fd;
 }
 
 // def main():
 void main() {
-    //     h = Handle()
+    // h = Handle()
     Handle h = Handle();
-    //     h.fd = 42
+    // h.fd = 42
     h.fd = 42;
-    //     print(close(h))  # tpyc: ok
+    // print(close(h))  # tpyc: ok
     std::cout << close(std::move(h)) << "\n";
 }
 

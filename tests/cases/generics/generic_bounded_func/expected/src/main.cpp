@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # list[int] satisfies Sized, so inference should work
-    //     items = identity([1, 2, 3])
+    // # list[int] satisfies Sized, so inference should work
+    // items = identity([1, 2, 3])
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
     std::vector<int32_t>& items = identity<std::vector<int32_t>>(__tmp_1);
-    //     print(len(items))  # Should print 3
+    // print(len(items))  # Should print 3
     std::cout << ::tpy::__len__(items) << "\n";
-    //     # str satisfies Sized too
-    //     s = identity("hello")
+    // # str satisfies Sized too
+    // s = identity("hello")
     std::string_view __tmp_2 = "hello";
     std::string_view s = identity<std::string_view>(__tmp_2);
-    //     print(len(s))  # Should print 5
+    // print(len(s))  # Should print 5
     std::cout << ::tpy::__len__(s) << "\n";
 }
 

@@ -6,68 +6,68 @@ namespace tpy_user::main {
 
 // def guarded(p: Point) -> str:
 std::string guarded(const Point& p) {
-    //     match p:
+    // match p:
     auto& __match_subject = p;
-    //         case Point(x=0, y=0):
+    // case Point(x=0, y=0):
     if (__match_subject.x == 0 && __match_subject.y == 0) {
-        //             return "origin"
+        // return "origin"
         return "origin";
         goto __match_end_1;
     }
-    //         case Point(x=x) if x > 0:
+    // case Point(x=x) if x > 0:
     {
         auto& x = __match_subject.x;
         if ((x > 0)) {
-            //             return "positive x"
+            // return "positive x"
             return "positive x";
             goto __match_end_1;
         }
     }
-    //         case _:
+    // case _:
     {
-        //             return "other"
+        // return "other"
         return "other";
     }
     __match_end_1:;
-    //     return ""
+    // return ""
     return "";
 }
 
 // def or_pattern(p: Point) -> str:
 std::string or_pattern(const Point& p) {
-    //     match p:
+    // match p:
     auto& __match_subject = p;
-    //         case Point(x=0, y=0) | Point(x=1, y=1):
+    // case Point(x=0, y=0) | Point(x=1, y=1):
     if ((__match_subject.x == 0 && __match_subject.y == 0) || (__match_subject.x == 1 && __match_subject.y == 1)) {
-        //             return "special"
+        // return "special"
         return "special";
-    //         case _:
+    // case _:
     } else {
-        //             return "other"
+        // return "other"
         return "other";
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def main() -> None:
 void main() {
-    //     print(guarded(Point(Int32(0), Int32(0))))
+    // print(guarded(Point(Int32(0), Int32(0))))
     Point __tmp_1 = Point(0, 0);
     std::cout << guarded(__tmp_1) << "\n";
-    //     print(guarded(Point(Int32(5), Int32(3))))
+    // print(guarded(Point(Int32(5), Int32(3))))
     Point __tmp_2 = Point(5, 3);
     std::cout << guarded(__tmp_2) << "\n";
-    //     print(guarded(Point(Int32(-1), Int32(0))))
+    // print(guarded(Point(Int32(-1), Int32(0))))
     Point __tmp_3 = Point(-1, 0);
     std::cout << guarded(__tmp_3) << "\n";
-    //     print(or_pattern(Point(Int32(0), Int32(0))))
+    // print(or_pattern(Point(Int32(0), Int32(0))))
     Point __tmp_4 = Point(0, 0);
     std::cout << or_pattern(__tmp_4) << "\n";
-    //     print(or_pattern(Point(Int32(1), Int32(1))))
+    // print(or_pattern(Point(Int32(1), Int32(1))))
     Point __tmp_5 = Point(1, 1);
     std::cout << or_pattern(__tmp_5) << "\n";
-    //     print(or_pattern(Point(Int32(2), Int32(3))))
+    // print(or_pattern(Point(Int32(2), Int32(3))))
     Point __tmp_6 = Point(2, 3);
     std::cout << or_pattern(__tmp_6) << "\n";
 }

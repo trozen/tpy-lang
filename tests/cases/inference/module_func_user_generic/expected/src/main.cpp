@@ -6,12 +6,12 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # module.func[T](args) syntax on user-defined generic
-    //     y = helpers.identity[Int32](Int32(7))
+    // # module.func[T](args) syntax on user-defined generic
+    // y = helpers.identity[Int32](Int32(7))
     int32_t y = ::tpy_user::helpers::identity<int32_t>(7);
-    //     print(y)
+    // print(y)
     std::cout << y << "\n";
-    //     print("done")
+    // print("done")
     std::cout << "done" << "\n";
 }
 

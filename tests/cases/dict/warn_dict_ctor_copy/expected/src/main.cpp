@@ -6,85 +6,85 @@ namespace tpy_user::main {
 
 // def make_pairs() -> Own[list[tuple[str, Node]]]:
 std::vector<std::tuple<std::string, Node>> make_pairs() {
-    //     return [("a", Node(Int32(1)))]
+    // return [("a", Node(Int32(1)))]
     return {std::tuple<std::string, Node>{"a", Node(1)}};
 }
 
 // def test_dict_ctor_ref_value_warns() -> None:
 void test_dict_ctor_ref_value_warns() {
-    //     pairs: list[tuple[str, Node]] = [("a", Node(Int32(1)))]
+    // pairs: list[tuple[str, Node]] = [("a", Node(Int32(1)))]
     std::vector<std::tuple<std::string, Node>> pairs = {std::tuple<std::string, Node>{"a", Node(1)}};
-    //     d = dict(pairs)  # tpyc: warning(/copies tuple\[str, Node\] elements/)
+    // d = dict(pairs)  # tpyc: warning(/copies tuple\[str, Node\] elements/)
     ::tpy::ordered_map<std::string, Node> d = ::tpy::dict_from_pairs<std::string, Node>(pairs);
-    //     print(len(pairs))
+    // print(len(pairs))
     std::cout << ::tpy::__len__(pairs) << "\n";
 }
 
 // def test_dict_ctor_value_types_no_warn() -> None:
 void test_dict_ctor_value_types_no_warn() {
-    //     pairs: list[tuple[str, Int32]] = [("a", Int32(1))]
+    // pairs: list[tuple[str, Int32]] = [("a", Int32(1))]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}};
-    //     d = dict(pairs)  # tpyc: ok
+    // d = dict(pairs)  # tpyc: ok
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_from_pairs<std::string, int32_t>(pairs);
-    //     print(len(d))
+    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
 // def test_dict_ctor_copy_no_warn() -> None:
 void test_dict_ctor_copy_no_warn() {
-    //     pairs: list[tuple[str, Node]] = [("a", Node(Int32(1)))]
+    // pairs: list[tuple[str, Node]] = [("a", Node(Int32(1)))]
     std::vector<std::tuple<std::string, Node>> pairs = {std::tuple<std::string, Node>{"a", Node(1)}};
-    //     d = dict(copy(pairs))  # tpyc: ok
+    // d = dict(copy(pairs))  # tpyc: ok
     ::tpy::ordered_map<std::string, Node> d = ::tpy::dict_from_pairs<std::string, Node>(std::vector<std::tuple<std::string, Node>>(pairs));
-    //     print(len(pairs))
+    // print(len(pairs))
     std::cout << ::tpy::__len__(pairs) << "\n";
 }
 
 // def test_dict_ctor_last_use_no_warn() -> None:
 void test_dict_ctor_last_use_no_warn() {
-    //     pairs: list[tuple[str, Node]] = [("a", Node(Int32(1)))]
+    // pairs: list[tuple[str, Node]] = [("a", Node(Int32(1)))]
     std::vector<std::tuple<std::string, Node>> pairs = {std::tuple<std::string, Node>{"a", Node(1)}};
-    //     d = dict(pairs)  # tpyc: ok -- pairs last use
+    // d = dict(pairs)  # tpyc: ok -- pairs last use
     ::tpy::ordered_map<std::string, Node> d = ::tpy::dict_from_pairs<std::string, Node>(pairs);
-    //     print(len(d))
+    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
 // def test_dict_ctor_rvalue_no_warn() -> None:
 void test_dict_ctor_rvalue_no_warn() {
-    //     d = dict(make_pairs())  # tpyc: ok
+    // d = dict(make_pairs())  # tpyc: ok
     ::tpy::ordered_map<std::string, Node> d = ::tpy::dict_from_pairs<std::string, Node>(make_pairs());
-    //     print(len(d))
+    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
 }
 
 // def test_dict_ctor_nested_tuple_warns() -> None:
 void test_dict_ctor_nested_tuple_warns() {
-    //     pairs: list[tuple[str, tuple[str, Node]]] = []
+    // pairs: list[tuple[str, tuple[str, Node]]] = []
     std::vector<std::tuple<std::string, std::tuple<std::string, Node>>> pairs = std::vector<std::tuple<std::string, std::tuple<std::string, Node>>>{};
-    //     d = dict(pairs)  # tpyc: warning(/copies tuple\[str, tuple\[str, Node\]\] elements/)
+    // d = dict(pairs)  # tpyc: warning(/copies tuple\[str, tuple\[str, Node\]\] elements/)
     ::tpy::ordered_map<std::string, std::tuple<std::string, Node>> d = ::tpy::dict_from_pairs<std::string, std::tuple<std::string, Node>>(pairs);
-    //     print(len(pairs))
+    // print(len(pairs))
     std::cout << ::tpy::__len__(pairs) << "\n";
 }
 
 // def test_dict_ctor_list_value_warns() -> None:
 void test_dict_ctor_list_value_warns() {
-    //     pairs: list[tuple[str, list[Node]]] = []
+    // pairs: list[tuple[str, list[Node]]] = []
     std::vector<std::tuple<std::string, std::vector<Node>>> pairs = std::vector<std::tuple<std::string, std::vector<Node>>>{};
-    //     d = dict(pairs)  # tpyc: warning(/copies tuple\[str, list\[Node\]\] elements/)
+    // d = dict(pairs)  # tpyc: warning(/copies tuple\[str, list\[Node\]\] elements/)
     ::tpy::ordered_map<std::string, std::vector<Node>> d = ::tpy::dict_from_pairs<std::string, std::vector<Node>>(pairs);
-    //     print(len(pairs))
+    // print(len(pairs))
     std::cout << ::tpy::__len__(pairs) << "\n";
 }
 
 // def test_dict_ctor_nested_value_no_warn() -> None:
 void test_dict_ctor_nested_value_no_warn() {
-    //     pairs: list[tuple[str, tuple[str, Int32]]] = []
+    // pairs: list[tuple[str, tuple[str, Int32]]] = []
     std::vector<std::tuple<std::string, std::tuple<std::string, int32_t>>> pairs = std::vector<std::tuple<std::string, std::tuple<std::string, int32_t>>>{};
-    //     d = dict(pairs)  # tpyc: ok
+    // d = dict(pairs)  # tpyc: ok
     ::tpy::ordered_map<std::string, std::tuple<std::string, int32_t>> d = ::tpy::dict_from_pairs<std::string, std::tuple<std::string, int32_t>>(pairs);
-    //     print(len(pairs))
+    // print(len(pairs))
     std::cout << ::tpy::__len__(pairs) << "\n";
 }
 

@@ -6,21 +6,21 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     storage = UninitHeapStorage[Int32](UInt32(4))
+    // storage = UninitHeapStorage[Int32](UInt32(4))
     ::tpy::UninitHeapStorage<int32_t> storage = ::tpy::UninitHeapStorage<int32_t>(4);
-    //     storage.init(UInt32(0), 42)
+    // storage.init(UInt32(0), 42)
     storage.init(0, 42);
-    //     storage.init(UInt32(1), 99)
+    // storage.init(UInt32(1), 99)
     storage.init(1, 99);
-    //     w = Wrapper[Int32](Ptr(storage))
+    // w = Wrapper[Int32](Ptr(storage))
     Wrapper<int32_t> w = Wrapper<int32_t>(&storage);
-    //     print(w.load_at(UInt32(0)))
+    // print(w.load_at(UInt32(0)))
     std::cout << w.load_at(0) << "\n";
-    //     print(w.load_at(UInt32(1)))
+    // print(w.load_at(UInt32(1)))
     std::cout << w.load_at(1) << "\n";
-    //     storage.drop(UInt32(0))
+    // storage.drop(UInt32(0))
     storage.drop(0);
-    //     storage.drop(UInt32(1))
+    // storage.drop(UInt32(1))
     storage.drop(1);
 }
 

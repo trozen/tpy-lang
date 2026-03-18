@@ -14,29 +14,29 @@ void main();
 // class Container[T]:
 template<typename T>
 struct Container {
-    //     value: T
+    // value: T
     T value;
 
-    //     def __init__(self, value: Own[T]):
+    // def __init__(self, value: Own[T]):
     Container() = default;
     explicit Container(T&& value) : value(std::move(value)) {}
 
-    //     @staticmethod
-    //     def create(v: Own[T]) -> Own[Container[T]]:
+    // @staticmethod
+    // def create(v: Own[T]) -> Own[Container[T]]:
     static Container<T> create(T&& v) {
-        //         return Container(v)
+        // return Container(v)
         return Container<T>(std::move(v));
     }
 
-    //     @staticmethod
-    //     def wrap_optional(v: Own[T] | None) -> Own[Container[T]] | None:
+    // @staticmethod
+    // def wrap_optional(v: Own[T] | None) -> Own[Container[T]] | None:
     static std::optional<Container<T>> wrap_optional(std::optional<T> v) {
-        //         if v is not None:
+        // if v is not None:
         if ((v.has_value())) {
-            //             return Container(v)
+            // return Container(v)
             return Container<T>(std::move((*v)));
         }
-        //         return None
+        // return None
         return std::nullopt;
     }
 };

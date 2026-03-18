@@ -6,23 +6,23 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c = Counter()
+    // c = Counter()
     Counter c = Counter();
-    //     c.display()
+    // c.display()
     c.display();
-    //     c.increment()
+    // c.increment()
     c.increment();
-    //     c.display()
+    // c.display()
     c.display();
-    //     c.increment(Int32(5))
+    // c.increment(Int32(5))
     c.increment(5);
-    //     c.display()
+    // c.display()
     c.display();
-    //     c.display("total")
+    // c.display("total")
     c.display("total");
-    //     c2 = Counter(Int32(100))
+    // c2 = Counter(Int32(100))
     Counter c2 = Counter(100);
-    //     c2.display()
+    // c2.display()
     c2.display();
 }
 

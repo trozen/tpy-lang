@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     p = Point(Int32(10), Int32(20))
+    // p = Point(Int32(10), Int32(20))
     Point p = Point(10, 20);
-    //     print(p.x)
+    // print(p.x)
     std::cout << p.x << "\n";
-    //     print(p.y)
+    // print(p.y)
     std::cout << p.y << "\n";
 }
 

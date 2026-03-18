@@ -6,19 +6,19 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     p = Processor()
+    // p = Processor()
     Processor p = Processor();
-    //     r = Ruler()
+    // r = Ruler()
     Ruler r = Ruler();
-    //     p.process(r)
+    // p.process(r)
     p.process(r);
-    //     print(p.count)
+    // print(p.count)
     std::cout << p.count << "\n";
-    //     w = Walker()
+    // w = Walker()
     Walker w = Walker();
-    //     p.process(w)
+    // p.process(w)
     p.process(w);
-    //     print(p.count)
+    // print(p.count)
     std::cout << p.count << "\n";
 }
 

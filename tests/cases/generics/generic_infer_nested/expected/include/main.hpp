@@ -16,10 +16,10 @@ inline constexpr std::string_view __name__ = "__main__";
 // class Inner[T]:
 template<typename T>
 struct Inner {
-    //     value: T
+    // value: T
     T value;
 
-    //     def __init__(self, value: T) -> None:
+    // def __init__(self, value: T) -> None:
     Inner() = default;
     explicit Inner(const T& value) : value(value) {}
 };
@@ -35,10 +35,10 @@ inline std::ostream& operator<<(std::ostream& os, const Inner<T>& obj) {
 // class Outer[T]:
 template<typename T>
 struct Outer {
-    //     inner: T
+    // inner: T
     T inner;
 
-    //     def __init__(self, inner: T) -> None:
+    // def __init__(self, inner: T) -> None:
     Outer() = default;
     explicit Outer(const T& inner) : inner(inner) {}
 };

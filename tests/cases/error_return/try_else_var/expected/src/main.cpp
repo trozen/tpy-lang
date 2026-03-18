@@ -7,40 +7,40 @@ namespace tpy_user::main {
 // @error_return(NotFound)
 // def find(items: list[Int32], target: Int32) -> Int32:
 std::expected<int32_t, NotFound> find(const std::vector<int32_t>& items, int32_t target) {
-    //     for i in range(len(items)):
+    // for i in range(len(items)):
     int32_t __stop_0 = ::tpy::__len__(items);
     for (int32_t i = 0; i < __stop_0; ++i) {
-        //         if items[i] == target:
+        // if items[i] == target:
         if ((items[i] == target)) {
-            //             return i
+            // return i
             return i;
         }
     }
-    //     raise NotFound
+    // raise NotFound
     return std::unexpected(NotFound{});
 }
 
 // def main() -> None:
 void main() {
-    //     items: list[Int32] = [10, 20, 30]
+    // items: list[Int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    //     try:
+    // try:
     int32_t doubled;
     int32_t idx;
     {
-        //         idx = find(items, 20)
+        // idx = find(items, 20)
         {
             auto __try_tmp_2 = find(items, 20);
             if (!__try_tmp_2.has_value()) goto __except_1;
             idx = *__try_tmp_2;
         }
-        //         doubled = idx * 2
+        // doubled = idx * 2
         doubled = (::tpy::mul_check<int32_t>(idx, 2));
-        //         print(doubled)
+        // print(doubled)
         std::cout << doubled << "\n";
         goto __after_try_1;
         __except_1:;
-        //         print("not found")
+        // print("not found")
         std::cout << "not found" << "\n";
         __after_try_1:;
     }

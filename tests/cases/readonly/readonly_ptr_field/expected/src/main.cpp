@@ -6,21 +6,21 @@ namespace tpy_user::main {
 
 // def read_through(c: readonly[Container]) -> Int32:
 int32_t read_through(const Container& c) {
-    //     return c.ptr.__deref__().value
+    // return c.ptr.__deref__().value
     return ::tpy::deref_check(c.ptr).value;
 }
 
 // def main() -> None:
 void main() {
-    //     d = Data(Int32(42))
+    // d = Data(Int32(42))
     Data d = Data(42);
-    //     c = Container()
+    // c = Container()
     Container c = Container();
-    //     c.ptr = Ptr(d)
+    // c.ptr = Ptr(d)
     c.ptr = &d;
-    //     print(c.read_value())
+    // print(c.read_value())
     std::cout << c.read_value() << "\n";
-    //     print(read_through(c))
+    // print(read_through(c))
     std::cout << read_through(c) << "\n";
 }
 

@@ -15,9 +15,9 @@ void main();
 // @dataclass(frozen=True)
 // class Vec2:
 struct Vec2 {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
     Vec2() = default;
@@ -54,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
 // @dataclass(frozen=True)
 // class Vec3(Vec2):
 struct Vec3 : Vec2 {
-    //     z: Int32
+    // z: Int32
     int32_t z;
 
     Vec3() = default;

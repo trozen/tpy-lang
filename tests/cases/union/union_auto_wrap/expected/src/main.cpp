@@ -6,28 +6,28 @@ namespace tpy_user::main {
 
 // def process(v: A | B) -> None:
 void process(const std::variant<A*, B*> v) {
-    //     if isinstance(v, A):
+    // if isinstance(v, A):
     if (std::holds_alternative<A*>(v)) {
         auto& __v = *std::get<A*>(v);
-        //         print(v.x)
+        // print(v.x)
         std::cout << __v.x << "\n";
-    //     else:
+    // else:
     } else {
         auto& __v = *std::get<B*>(v);
-        //         print(v.y)
+        // print(v.y)
         std::cout << __v.y << "\n";
     }
 }
 
 // def main() -> None:
 void main() {
-    //     a: A = A(42)
+    // a: A = A(42)
     A a = A(::tpy::BigInt(42));
-    //     b: B = B("hello")
+    // b: B = B("hello")
     B b = B("hello");
-    //     process(a)
+    // process(a)
     process(std::variant<A*, B*>{&(a)});
-    //     process(b)
+    // process(b)
     process(std::variant<A*, B*>{&(b)});
 }
 

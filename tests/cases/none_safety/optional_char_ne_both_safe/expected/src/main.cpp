@@ -16,7 +16,7 @@ std::optional<char> n;
 
 // def ne_both(a: Char | None, b: Char | None) -> bool:
 bool ne_both(std::optional<char> a, std::optional<char> b) {
-    //     return a != b  # tpyc: ok
+    // return a != b  # tpyc: ok
     return (a != b);
 }
 

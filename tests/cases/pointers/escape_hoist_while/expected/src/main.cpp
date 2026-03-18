@@ -7,21 +7,21 @@ namespace tpy_user::main {
 // def while_escape() -> None:
 void while_escape() {
   std::optional<Point> __slot_2;
-    //     saved: Point = Point(0, 0)
+    // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    //     i: Int32 = 0
+    // i: Int32 = 0
     int32_t i = 0;
-    //     while i < 3:
+    // while i < 3:
     while ((i < 3)) {
-        //         p: Point = Point(i, i)
+        // p: Point = Point(i, i)
         Point* p = &*(__slot_2 = Point(i, i));
-        //         saved = p  # tpyc: warning(/hoisted to function scope/)
+        // saved = p  # tpyc: warning(/hoisted to function scope/)
         saved = p;
-        //         i = i + 1
+        // i = i + 1
         i = (::tpy::add_check<int32_t>(i, 1));
     }
-    //     print(saved.x, saved.y)
+    // print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 

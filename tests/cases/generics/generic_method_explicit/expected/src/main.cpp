@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     b = Box[Int32](Int32(10))
+    // b = Box[Int32](Int32(10))
     Box<int32_t> b = Box<int32_t>(10);
-    //     r1 = b.transform[int](42)
+    // r1 = b.transform[int](42)
     ::tpy::BigInt r1 = b.transform<::tpy::BigInt>(42);
-    //     print(r1)
+    // print(r1)
     std::cout << r1 << "\n";
-    //     r2 = b.transform[str]("world")
+    // r2 = b.transform[str]("world")
     std::string r2 = b.transform<std::string>("world");
-    //     print(r2)
+    // print(r2)
     std::cout << r2 << "\n";
 }
 

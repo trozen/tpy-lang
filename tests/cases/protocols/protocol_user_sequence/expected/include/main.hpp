@@ -18,22 +18,22 @@ void main();
 
 // class IntWrapper:
 struct IntWrapper {
-    //     data: list[Int32]
+    // data: list[Int32]
     std::vector<int32_t> data;
 
-    //     def __init__(self, items: list[Int32]) -> None:
+    // def __init__(self, items: list[Int32]) -> None:
     IntWrapper() = default;
     explicit IntWrapper(const std::vector<int32_t>& items) : data(items) {}
 
-    //     def __len__(self) -> Int32:
+    // def __len__(self) -> Int32:
     int32_t __len__() const {
-        //         return len(self.data)
+        // return len(self.data)
         return ::tpy::__len__(this->data);
     }
 
-    //     def __getitem__(self, index: Int32) -> Int32:
+    // def __getitem__(self, index: Int32) -> Int32:
     int32_t __getitem__(int32_t index) const {
-        //         return self.data[index]
+        // return self.data[index]
         return ::tpy::__getitem__(this->data, index);
     }
 
@@ -58,24 +58,24 @@ inline std::ostream& operator<<(std::ostream& os, const IntWrapper& obj) {
 // def sum_seq(s: Sequence[Int32]) -> Int32:
 template<::tpy_user::typing::Sequence<int32_t> T_s>
 int32_t sum_seq(const T_s& s) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     i: Int32 = 0
+    // i: Int32 = 0
     int32_t i = 0;
-    //     while i < len(s):
+    // while i < len(s):
     while ((i < ::tpy::__len__(s))) {
-        //         total += s[i]
+        // total += s[i]
         total = ::tpy::add_check<int32_t>(total, s[i]);
-        //         i += 1
+        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    //     return total
+    // return total
     return total;
 }
 // def first(s: Sequence[Int32]) -> Int32:
 template<::tpy_user::typing::Sequence<int32_t> T_s>
 int32_t first(const T_s& s) {
-    //     return s[0]
+    // return s[0]
     return ::tpy::__getitem__(s, 0);
 }
 

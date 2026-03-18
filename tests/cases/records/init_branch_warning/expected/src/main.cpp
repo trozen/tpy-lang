@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c = Config(True)
+    // c = Config(True)
     Config c = Config(true);
-    //     print(c.value)
+    // print(c.value)
     std::cout << c.value << "\n";
 }
 

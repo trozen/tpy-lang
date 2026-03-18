@@ -14,25 +14,25 @@ std::optional<char> some_a;
 
 // def eq_left(o: Char | None, c: Char) -> bool:
 bool eq_left(std::optional<char> o, char c) {
-    //     return o == c  # tpyc: ok
+    // return o == c  # tpyc: ok
     return (o == c);
 }
 
 // def eq_right(c: Char, o: Char | None) -> bool:
 bool eq_right(char c, std::optional<char> o) {
-    //     return c == o  # tpyc: ok
+    // return c == o  # tpyc: ok
     return (c == o);
 }
 
 // def ne_left(o: Char | None, c: Char) -> bool:
 bool ne_left(std::optional<char> o, char c) {
-    //     return o != c  # tpyc: ok
+    // return o != c  # tpyc: ok
     return (o != c);
 }
 
 // def ne_right(c: Char, o: Char | None) -> bool:
 bool ne_right(char c, std::optional<char> o) {
-    //     return c != o  # tpyc: ok
+    // return c != o  # tpyc: ok
     return (c != o);
 }
 

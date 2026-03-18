@@ -14,31 +14,31 @@ void main();
 // class Pair[T]:
 template<typename T>
 struct Pair {
-    //     a: T
+    // a: T
     T a;
-    //     b: T
+    // b: T
     T b;
 
-    //     def __init__(self, a: Own[T], b: Own[T]) -> None:
+    // def __init__(self, a: Own[T], b: Own[T]) -> None:
     Pair() = default;
     explicit Pair(T&& a, T&& b) : a(std::move(a)), b(std::move(b)) {}
 
-    //     def min_val[T: Comparable](self) -> T:
+    // def min_val[T: Comparable](self) -> T:
     ::tpy::val_or_ref_t<T> min_val()
       requires ::tpy::Comparable<T> {
-        //         if self.a < self.b:
+        // if self.a < self.b:
         if ((this->a < this->b)) {
-            //             return self.a
+            // return self.a
             return this->a;
         }
-        //         return self.b
+        // return self.b
         return this->b;
     }
 
-    //     def with_default[T: Default](self) -> T:
+    // def with_default[T: Default](self) -> T:
     ::tpy::val_or_cref_t<T> with_default() const
       requires std::default_initializable<T> {
-        //         return make_default()
+        // return make_default()
         return T{};
     }
 };

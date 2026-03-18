@@ -6,19 +6,19 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     arr: Array[Point, 2] = [Point(1, 2), Point(3, 4)]
+    // arr: Array[Point, 2] = [Point(1, 2), Point(3, 4)]
     std::array<Point, 2> arr = {Point(1, 2), Point(3, 4)};
-    //     p: Ptr[Point] = unsafe_ptr(arr)
+    // p: Ptr[Point] = unsafe_ptr(arr)
     Point* p = arr.data();
-    //     pt: Point = Point(10, 20)
+    // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    //     unsafe_store(p, 0, pt)
+    // unsafe_store(p, 0, pt)
     p[0] = pt;
-    //     loaded: Point = unsafe_load(p, 0)
+    // loaded: Point = unsafe_load(p, 0)
     Point loaded = p[0];
-    //     print(loaded.x)
+    // print(loaded.x)
     std::cout << loaded.x << "\n";
-    //     print(loaded.y)
+    // print(loaded.y)
     std::cout << loaded.y << "\n";
 }
 

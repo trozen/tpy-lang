@@ -20,7 +20,7 @@ void __tpy_init() {
     if (__step_0 == 0) ::tpy::tpy_panic("range() arg 3 must not be zero");
     ::tpy::range_check_overflow<int32_t>(1, 5, __step_0);
     for (int32_t i = 1; __step_0 > 0 ? i < 5 : i > 5; i += __step_0) {
-        //     print(i)
+        // print(i)
         std::cout << i << "\n";
     }
 }

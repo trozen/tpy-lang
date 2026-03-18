@@ -16,10 +16,10 @@ void main();
 // class Container[T]:
 template<typename T>
 struct Container {
-    //     value: T
+    // value: T
     T value;
 
-    //     def __init__(self, value: T) -> None:
+    // def __init__(self, value: T) -> None:
     Container() = default;
     explicit Container(const T& value) : value(value) {}
 };
@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 // class IntContainer(Container[Int32]):
 struct IntContainer : Container<int32_t> {
 
-    //     def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: Int32) -> None:
     IntContainer() = default;
     explicit IntContainer(int32_t value) : Container<int32_t>(value) {}
 };

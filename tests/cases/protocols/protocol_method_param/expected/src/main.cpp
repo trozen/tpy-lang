@@ -6,19 +6,19 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     w = Words(["hello", "world", "!"])
+    // w = Words(["hello", "world", "!"])
     Words w = Words({"hello", "world", "!"});
-    //     c = Container(w)
+    // c = Container(w)
     Container c = Container(w);
-    //     print(c.count)
+    // print(c.count)
     std::cout << c.count << "\n";
-    //     n = Numbers([10, 20])
+    // n = Numbers([10, 20])
     Numbers n = Numbers({10, 20});
-    //     c.update(n)
+    // c.update(n)
     c.update(n);
-    //     print(c.count)
+    // print(c.count)
     std::cout << c.count << "\n";
-    //     print(c.combined_len(w))
+    // print(c.combined_len(w))
     std::cout << c.combined_len(w) << "\n";
 }
 

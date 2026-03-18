@@ -14,12 +14,12 @@ void main();
 
 // class Pair:
 struct Pair {
-    //     a: Int32
+    // a: Int32
     int32_t a;
-    //     b: Int32
+    // b: Int32
     int32_t b;
 
-    //     def __init__(self, x: Int32):
+    // def __init__(self, x: Int32):
     Pair() = default;
     explicit Pair(int32_t x) : a(x), b(twice(x)) {}
 };

@@ -6,18 +6,18 @@ namespace tpy_user::main {
 
 // def test() -> None:
 void test() {
-    //     p: Point | None = None
+    // p: Point | None = None
     std::optional<Point> __slot_1;
     Point* p = nullptr;
-    //     print(p is None)
+    // print(p is None)
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
-    //     p = Point(1, 2)
+    // p = Point(1, 2)
     p = &*(__slot_1 = Point(1, 2));
-    //     print(p is None)
+    // print(p is None)
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
-    //     print(p is not None)
+    // print(p is not None)
     std::cout << ::tpy::print_bool((p != nullptr)) << "\n";
-    //     print(p.x)
+    // print(p.x)
     std::cout << p->x << "\n";
 }
 

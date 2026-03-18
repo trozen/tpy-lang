@@ -6,47 +6,47 @@ namespace tpy_user::main {
 
 // def modify_list(items: list[Int32]) -> None:
 void modify_list(std::vector<int32_t>& items) {
-    //     items.append(100)
+    // items.append(100)
     items.push_back(100);
 }
 
 // def main() -> None:
 void main() {
-    //     # Test 1: Box with value type (Int32) - param is const T&
-    //     box_int: Box[Int32] = Box[Int32](42)
+    // # Test 1: Box with value type (Int32) - param is const T&
+    // box_int: Box[Int32] = Box[Int32](42)
     Box<int32_t> box_int = Box<int32_t>(42);
-    //     box_int.set(99)
+    // box_int.set(99)
     box_int.set(99);
-    //     print(box_int.get())
+    // print(box_int.get())
     std::cout << box_int.get() << "\n";
-    //     # Test 2: Box with object type (list) - param is T&
-    //     # Pass a literal - should create a temporary
-    //     box_list: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
+    // # Test 2: Box with object type (list) - param is T&
+    // # Pass a literal - should create a temporary
+    // box_list: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
     Box<std::vector<int32_t>> box_list = Box<std::vector<int32_t>>({1, 2, 3});
-    //     box_list.set([4, 5, 6])
+    // box_list.set([4, 5, 6])
     std::vector<int32_t> __tmp_1 = {4, 5, 6};
     box_list.set(__tmp_1);
-    //     for x in box_list.get():
+    // for x in box_list.get():
     auto& __obj_0 = box_list.get();
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
-    //     # Test 3: Direct list mutation through non-generic function
-    //     nums: list[Int32] = [10, 20]
+    // # Test 3: Direct list mutation through non-generic function
+    // nums: list[Int32] = [10, 20]
     std::vector<int32_t> nums = {10, 20};
-    //     modify_list(nums)
+    // modify_list(nums)
     modify_list(nums);
-    //     for x in nums:
+    // for x in nums:
     auto& __obj_1 = nums;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
 }

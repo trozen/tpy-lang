@@ -14,17 +14,17 @@ void observe_method(bool flag, const Box& p);
 
 // class Box:
 struct Box {
-    //     v: Int32
+    // v: Int32
     int32_t v;
 
-    //     def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: Int32) -> None:
     Box() = default;
     explicit Box(int32_t v) : v(v) {}
 
-    //     @readonly
-    //     def get_v(self) -> Int32:
+    // @readonly
+    // def get_v(self) -> Int32:
     int32_t get_v() const {
-        //         return self.v
+        // return self.v
         return this->v;
     }
 };

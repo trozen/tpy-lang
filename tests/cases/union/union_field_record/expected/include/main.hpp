@@ -16,10 +16,10 @@ void main();
 // # Record with non-value union field: construct, read, narrow
 // class Dog:
 struct Dog {
-    //     name: str
+    // name: str
     std::string name;
 
-    //     def __init__(self, name: str) -> None:
+    // def __init__(self, name: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name) : name(name) {}
 };
@@ -33,10 +33,10 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 // class Cat:
 struct Cat {
-    //     name: str
+    // name: str
     std::string name;
 
-    //     def __init__(self, name: str) -> None:
+    // def __init__(self, name: str) -> None:
     Cat() = default;
     explicit Cat(std::string_view name) : name(name) {}
 };
@@ -50,12 +50,12 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 // class Zoo:
 struct Zoo {
-    //     pet: Dog | Cat
+    // pet: Dog | Cat
     std::variant<Cat, Dog> pet;
-    //     tag: str
+    // tag: str
     std::string tag;
 
-    //     def __init__(self, pet: Dog | Cat, tag: str) -> None:
+    // def __init__(self, pet: Dog | Cat, tag: str) -> None:
     explicit Zoo(const std::variant<Cat*, Dog*> pet, std::string_view tag) : pet(::tpy::to_value_variant<std::variant<Cat, Dog>>(pet)), tag(tag) {}
 };
 

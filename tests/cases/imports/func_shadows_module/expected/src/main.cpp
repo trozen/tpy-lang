@@ -6,7 +6,7 @@ namespace tpy_user::main {
 
 // def time() -> int:
 ::tpy::BigInt time() {
-    //     return 42
+    // return 42
     return ::tpy::BigInt(42);
 }
 

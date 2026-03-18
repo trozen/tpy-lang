@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     p = Processor[Int32](Int32(1))
+    // p = Processor[Int32](Int32(1))
     Processor<int32_t> p = Processor<int32_t>(1);
-    //     print(p.process())
+    // print(p.process())
     std::cout << p.process() << "\n";
-    //     print(p.wrap("hello"))
+    // print(p.wrap("hello"))
     std::cout << p.wrap<std::string_view>("hello") << "\n";
 }
 

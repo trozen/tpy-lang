@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def get_radius(c: Circle) -> Int32:
 int32_t get_radius(const ::tpy_user::shapes::Circle& c) {
-    //     return c.radius
+    // return c.radius
     return c.radius;
 }
 
 // def main() -> None:
 void main() {
-    //     c = Circle(Int32(10))
+    // c = Circle(Int32(10))
     ::tpy_user::shapes::Circle c = ::tpy_user::shapes::Circle(10);
-    //     print(get_radius(c))
+    // print(get_radius(c))
     std::cout << get_radius(c) << "\n";
 }
 

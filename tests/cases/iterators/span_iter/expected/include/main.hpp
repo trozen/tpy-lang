@@ -15,13 +15,13 @@ void main();
 // def consume(it: Iterator[Int32]) -> None:
 template<::tpy_user::typing::Iterator<int32_t> T_it>
 void consume(T_it& it) {
-    //     for x in it:
+    // for x in it:
     auto& __iter_0 = it;
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
         int32_t x = *__r_0;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
 }

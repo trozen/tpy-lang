@@ -16,7 +16,7 @@ void main();
 // @dataclass
 // class Circle:
 struct Circle {
-    //     radius: float
+    // radius: float
     double radius;
 
     Circle() = default;
@@ -47,9 +47,9 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
 // @dataclass
 // class Rect:
 struct Rect {
-    //     width: float
+    // width: float
     double width;
-    //     height: float
+    // height: float
     double height;
 
     Rect() = default;

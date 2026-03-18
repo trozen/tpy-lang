@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> Int32:
 int32_t main() {
-    //     m = Message("Hello")
+    // m = Message("Hello")
     Message m = Message("Hello");
-    //     show(m)
+    // show(m)
     show(m);
-    //     return Int32(0)
+    // return Int32(0)
     return 0;
 }
 

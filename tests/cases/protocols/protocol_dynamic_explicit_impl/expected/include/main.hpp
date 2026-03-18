@@ -48,24 +48,24 @@ void main();
 
 // class Item(Describable):
 struct Item : Describable {
-    //     _name: str
+    // _name: str
     std::string _name;
-    //     _id: Int32
+    // _id: Int32
     int32_t _id;
 
-    //     def __init__(self, name: str, id: Int32) -> None:
+    // def __init__(self, name: str, id: Int32) -> None:
     Item() = default;
     explicit Item(std::string_view name, int32_t id) : _name(name), _id(id) {}
 
-    //     def describe(self) -> str:
+    // def describe(self) -> str:
     std::string describe() override {
-        //         return self._name
+        // return self._name
         return this->_name;
     }
 
-    //     def id(self) -> Int32:
+    // def id(self) -> Int32:
     int32_t id() override {
-        //         return self._id
+        // return self._id
         return this->_id;
     }
 };

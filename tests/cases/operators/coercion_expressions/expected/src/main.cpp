@@ -7,121 +7,121 @@ namespace tpy_user::main {
 // # --- BigInt expression -> Int32 ---
 // def return_expr_as_int32(a: int, b: int) -> Int32:
 int32_t return_expr_as_int32(const ::tpy::BigInt& a, const ::tpy::BigInt& b) {
-    //     return a + b  # Expression result (BigInt) -> Int32
+    // return a + b  # Expression result (BigInt) -> Int32
     return (((a) + (b))).to_fixed_check<int32_t>();
 }
 
 // def take_int32(n: Int32) -> Int32:
 int32_t take_int32(int32_t n) {
-    //     return n * 2
+    // return n * 2
     return (::tpy::mul_check<int32_t>(n, 2));
 }
 
 // def test_bigint_expr_to_int32() -> None:
 void test_bigint_expr_to_int32() {
-    //     print("BigInt expressions -> Int32:")
+    // print("BigInt expressions -> Int32:")
     std::cout << "BigInt expressions -> Int32:" << "\n";
-    //     a: int = 10
+    // a: int = 10
     ::tpy::BigInt a = ::tpy::BigInt(10);
-    //     b: int = 20
+    // b: int = 20
     ::tpy::BigInt b = ::tpy::BigInt(20);
-    //     # Binary op result in return
-    //     result: Int32 = return_expr_as_int32(a, b)
+    // # Binary op result in return
+    // result: Int32 = return_expr_as_int32(a, b)
     int32_t result = return_expr_as_int32(a, b);
-    //     print(result)  # 30
+    // print(result)  # 30
     std::cout << result << "\n";
-    //     # Binary op result in function argument
-    //     print(take_int32(a + b))  # 60
+    // # Binary op result in function argument
+    // print(take_int32(a + b))  # 60
     std::cout << take_int32((((a) + (b))).to_fixed_check<int32_t>()) << "\n";
-    //     # Binary op result in variable declaration
-    //     sum_val: Int32 = a + b + 5
+    // # Binary op result in variable declaration
+    // sum_val: Int32 = a + b + 5
     int32_t sum_val = (((((a) + (b))) + (::tpy::BigInt(5)))).to_fixed_check<int32_t>();
-    //     print(sum_val)  # 35
+    // print(sum_val)  # 35
     std::cout << sum_val << "\n";
-    //     # Binary op result in assignment
-    //     sum_val = a * b
+    // # Binary op result in assignment
+    // sum_val = a * b
     sum_val = (((a) * (b))).to_fixed_check<int32_t>();
-    //     print(sum_val)  # 200
+    // print(sum_val)  # 200
     std::cout << sum_val << "\n";
-    //     # Method call result -> Int32
-    //     c: Counter = Counter(100)
+    // # Method call result -> Int32
+    // c: Counter = Counter(100)
     Counter c = Counter(::tpy::BigInt(100));
-    //     val: Int32 = c.get()
+    // val: Int32 = c.get()
     int32_t val = (c.get()).to_fixed_check<int32_t>();
-    //     print(val)  # 100
+    // print(val)  # 100
     std::cout << val << "\n";
-    //     # Method call with arg result -> Int32
-    //     val = c.add(50)
+    // # Method call with arg result -> Int32
+    // val = c.add(50)
     val = (c.add(50)).to_fixed_check<int32_t>();
-    //     print(val)  # 150
+    // print(val)  # 150
     std::cout << val << "\n";
 }
 
 // # --- Field access -> Ptr ---
 // def modify_via_ptr(p: Ptr[Point]) -> None:
 void modify_via_ptr(Point* p) {
-    //     p.x = p.x + 100
+    // p.x = p.x + 100
     ::tpy::deref_check(p).x = (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, 100));
 }
 
 // def read_via_const_ptr(p: Ptr[readonly[Point]]) -> Int32:
 int32_t read_via_const_ptr(const Point* p) {
-    //     return p.x + p.y
+    // return p.x + p.y
     return (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, ::tpy::deref_check(p).y));
 }
 
 // def test_field_access_to_ptr() -> None:
 void test_field_access_to_ptr() {
-    //     print("Field access -> Ptr:")
+    // print("Field access -> Ptr:")
     std::cout << "Field access -> Ptr:" << "\n";
-    //     cont: Container = Container(5, 10)
+    // cont: Container = Container(5, 10)
     Container cont = Container(5, 10);
-    //     # Field access -> Ptr in function call
-    //     modify_via_ptr(cont.pt)
+    // # Field access -> Ptr in function call
+    // modify_via_ptr(cont.pt)
     modify_via_ptr(&cont.pt);
-    //     print(cont.pt.x)  # 105
+    // print(cont.pt.x)  # 105
     std::cout << cont.pt.x << "\n";
-    //     # Field access -> Ptr[readonly[...]] in function call
-    //     print(read_via_const_ptr(cont.pt))  # 115
+    // # Field access -> Ptr[readonly[...]] in function call
+    // print(read_via_const_ptr(cont.pt))  # 115
     std::cout << read_via_const_ptr(&cont.pt) << "\n";
 }
 
 // def test_nested_field_to_ptr() -> None:
 void test_nested_field_to_ptr() {
-    //     print("Nested field -> Ptr:")
+    // print("Nested field -> Ptr:")
     std::cout << "Nested field -> Ptr:" << "\n";
-    //     outer: Outer = Outer(7, 8)
+    // outer: Outer = Outer(7, 8)
     Outer outer = Outer(7, 8);
-    //     # Nested field access -> Ptr
-    //     modify_via_ptr(outer.inner.pt)
+    // # Nested field access -> Ptr
+    // modify_via_ptr(outer.inner.pt)
     modify_via_ptr(&outer.inner.pt);
-    //     print(outer.inner.pt.x)  # 107
+    // print(outer.inner.pt.x)  # 107
     std::cout << outer.inner.pt.x << "\n";
-    //     # Nested field access -> Ptr[readonly[...]]
-    //     print(read_via_const_ptr(outer.inner.pt))  # 115
+    // # Nested field access -> Ptr[readonly[...]]
+    // print(read_via_const_ptr(outer.inner.pt))  # 115
     std::cout << read_via_const_ptr(&outer.inner.pt) << "\n";
 }
 
 // def test_literal_expr_to_int32() -> None:
 void test_literal_expr_to_int32() {
-    //     print("Literal expressions -> Int32:")
+    // print("Literal expressions -> Int32:")
     std::cout << "Literal expressions -> Int32:" << "\n";
-    //     # Literal arithmetic assigned to Int32 (should use Int32 ops)
-    //     x: Int32 = 10 + 20 + 30
+    // # Literal arithmetic assigned to Int32 (should use Int32 ops)
+    // x: Int32 = 10 + 20 + 30
     int32_t x = ::tpy::add_check<int32_t>(::tpy::add_check<int32_t>(10, 20), 30);
-    //     print(x)  # 60
+    // print(x)  # 60
     std::cout << x << "\n";
-    //     # Nested literal expression
-    //     y: Int32 = (5 + 5) * (2 + 3)
+    // # Nested literal expression
+    // y: Int32 = (5 + 5) * (2 + 3)
     int32_t y = ::tpy::mul_check<int32_t>(::tpy::add_check<int32_t>(5, 5), ::tpy::add_check<int32_t>(2, 3));
-    //     print(y)  # 50
+    // print(y)  # 50
     std::cout << y << "\n";
-    //     # Mixed literal and variable
-    //     aa: Int32 = 100
+    // # Mixed literal and variable
+    // aa: Int32 = 100
     int32_t aa = 100;
-    //     bb: Int32 = aa + 50  # Int32 + literal -> Int32
+    // bb: Int32 = aa + 50  # Int32 + literal -> Int32
     int32_t bb = (::tpy::add_check<int32_t>(aa, 50));
-    //     print(bb)  # 150
+    // print(bb)  # 150
     std::cout << bb << "\n";
 }
 

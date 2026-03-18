@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     d = Dog()
+    // d = Dog()
     Dog d = Dog();
-    //     c = Cat()
+    // c = Cat()
     Cat c = Cat();
-    //     print(d.make_noise())
+    // print(d.make_noise())
     std::cout << d.make_noise() << "\n";
-    //     print(c.make_noise())
+    // print(c.make_noise())
     std::cout << c.make_noise() << "\n";
 }
 

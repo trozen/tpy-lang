@@ -6,21 +6,21 @@ namespace tpy_user::main {
 
 // def test_strview_basic() -> None:
 void test_strview_basic() {
-    //     s: StrView = StrView("hello")
+    // s: StrView = StrView("hello")
     std::string_view s = std::string_view("hello");
-    //     print(s)  # hello
+    // print(s)  # hello
     std::cout << s << "\n";
-    //     print(len(s))  # 5
+    // print(len(s))  # 5
     std::cout << ::tpy::__len__(s) << "\n";
 }
 
 // def test_strview_getitem() -> None:
 void test_strview_getitem() {
-    //     s: StrView = StrView("abc")
+    // s: StrView = StrView("abc")
     std::string_view s = std::string_view("abc");
-    //     print(s[0])  # a
+    // print(s[0])  # a
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    //     print(s[-1])  # c
+    // print(s[-1])  # c
     std::cout << ::tpy::__getitem__(s, -1) << "\n";
 }
 

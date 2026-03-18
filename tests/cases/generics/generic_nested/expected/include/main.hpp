@@ -15,16 +15,16 @@ void main();
 // class Box[T]:
 template<typename T>
 struct Box {
-    //     value: T
+    // value: T
     T value;
 
-    //     def __init__(self, value: T) -> None:
+    // def __init__(self, value: T) -> None:
     Box() = default;
     explicit Box(const T& value) : value(value) {}
 
-    //     def get(self) -> T:
+    // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get() {
-        //         return self.value
+        // return self.value
         return this->value;
     }
 };
@@ -40,22 +40,22 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 // class Container[T]:
 template<typename T>
 struct Container {
-    //     inner: Box[T]
+    // inner: Box[T]
     Box<T> inner;
 
-    //     def __init__(self, value: T) -> None:
+    // def __init__(self, value: T) -> None:
     Container() = default;
     explicit Container(const T& value) : inner(Box<T>(value)) {}
 
-    //     def get_inner(self) -> Box[T]:
+    // def get_inner(self) -> Box[T]:
     Box<T>& get_inner() {
-        //         return self.inner
+        // return self.inner
         return this->inner;
     }
 
-    //     def get_value(self) -> T:
+    // def get_value(self) -> T:
     ::tpy::val_or_ref_t<T> get_value() {
-        //         return self.inner.get()
+        // return self.inner.get()
         return this->inner.get();
     }
 };

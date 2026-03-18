@@ -10,15 +10,15 @@ Point* p{};
 
 // def make_pair() -> tuple[Int32, Own[Point]]:
 std::tuple<int32_t, Point> make_pair() {
-    //     return (Int32(42), Point(Int32(1), Int32(2)))
+    // return (Int32(42), Point(Int32(1), Int32(2)))
     return std::tuple<int32_t, Point>{42, Point(1, 2)};
 }
 
 // def read_point() -> None:
 void read_point() {
-    //     print(p.x)
+    // print(p.x)
     std::cout << p->x << "\n";
-    //     print(p.y)
+    // print(p.y)
     std::cout << p->y << "\n";
 }
 

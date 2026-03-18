@@ -14,10 +14,10 @@ void main();
 
 // class Data:
 struct Data {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: Int32) -> None:
     Data() = default;
     explicit Data(int32_t v) : value(v) {}
 };

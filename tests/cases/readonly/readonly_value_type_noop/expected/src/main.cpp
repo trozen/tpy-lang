@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def add_one(x: readonly[Int32]) -> Int32:
 int32_t add_one(int32_t x) {
-    //     return x + Int32(1)
+    // return x + Int32(1)
     return (::tpy::add_check<int32_t>(x, 1));
 }
 
 // def main() -> None:
 void main() {
-    //     v = Int32(10)
+    // v = Int32(10)
     int32_t v = 10;
-    //     print(add_one(v))
+    // print(add_one(v))
     std::cout << add_one(v) << "\n";
 }
 

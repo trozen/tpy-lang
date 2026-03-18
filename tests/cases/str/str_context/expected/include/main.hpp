@@ -15,10 +15,10 @@ void main();
 
 // class Person:
 struct Person {
-    //     name: str
+    // name: str
     std::string name;
 
-    //     def __init__(self, name: str) -> None:
+    // def __init__(self, name: str) -> None:
     Person() = default;
     explicit Person(std::string_view name) : name(name) {}
 };

@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     s = set(Counter(5))
+    // s = set(Counter(5))
     ::tpy::ordered_set<int32_t> s = ::tpy::set_collect<int32_t>(Counter(5));
-    //     print(s)
+    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    //     print(len(s))
+    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
 }
 

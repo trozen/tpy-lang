@@ -13,16 +13,16 @@ void main();
 
 // class Counter:
 struct Counter {
-    //     x: Int32
+    // x: Int32
     int32_t x;
 
-    //     def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: Int32) -> None:
     Counter() = default;
     explicit Counter(int32_t x) : x(x) {}
 
-    //     def __len__(self) -> Int32:
+    // def __len__(self) -> Int32:
     int32_t __len__() const {
-        //         return self.x
+        // return self.x
         return this->x;
     }
 

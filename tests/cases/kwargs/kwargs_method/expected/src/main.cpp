@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     fmt = Formatter()
+    // fmt = Formatter()
     Formatter fmt = Formatter();
-    //     print(fmt.format("hello"))
+    // print(fmt.format("hello"))
     std::cout << fmt.format("hello") << "\n";
-    //     print(fmt.format("hello", fill="*"))
+    // print(fmt.format("hello", fill="*"))
     std::cout << fmt.format("hello", 0, "*") << "\n";
-    //     print(fmt.format(text="world", width=10))
+    // print(fmt.format(text="world", width=10))
     std::cout << fmt.format("world", 10) << "\n";
 }
 

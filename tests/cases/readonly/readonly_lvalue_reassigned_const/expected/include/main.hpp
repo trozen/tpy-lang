@@ -14,17 +14,17 @@ void main();
 
 // class Box:
 struct Box {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: Int32) -> None:
     Box() = default;
     explicit Box(int32_t value) : value(value) {}
 
-    //     @readonly
-    //     def get_value(self) -> Int32:
+    // @readonly
+    // def get_value(self) -> Int32:
     int32_t get_value() const {
-        //         return self.value
+        // return self.value
         return this->value;
     }
 };

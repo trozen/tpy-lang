@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     nums: list[Int32] = [10, 20, 30]
+    // nums: list[Int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
-    //     print(nums[-4])
+    // print(nums[-4])
     std::cout << ::tpy::__getitem__(nums, -4) << "\n";
 }
 

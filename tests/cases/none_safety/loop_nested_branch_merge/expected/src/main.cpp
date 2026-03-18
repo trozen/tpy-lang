@@ -6,22 +6,22 @@ namespace tpy_user::main {
 
 // def nested(flag: bool, a: Int32 | None, b: Int32 | None) -> Int32:
 int32_t nested(bool flag, std::optional<int32_t> a, std::optional<int32_t> b) {
-    //     while flag:
+    // while flag:
     while (flag) {
-        //         if a is not None:
+        // if a is not None:
         if ((a.has_value())) {
-            //             if b is None:
+            // if b is None:
             if ((!b.has_value())) {
-                //                 break
+                // break
                 break;
             }
-            //             return a + b  # tpyc: ok
+            // return a + b  # tpyc: ok
             return (::tpy::add_check<int32_t>((*a), (*b)));
         }
-        //         break
+        // break
         break;
     }
-    //     return 0
+    // return 0
     return 0;
 }
 

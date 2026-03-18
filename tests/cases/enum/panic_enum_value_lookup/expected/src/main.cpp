@@ -48,9 +48,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c: Color = Color(99)
+    // c: Color = Color(99)
     Color c = ::tpy::EnumUtil<Color>::from_value(99);
-    //     print(c)
+    // print(c)
     std::cout << c << "\n";
 }
 

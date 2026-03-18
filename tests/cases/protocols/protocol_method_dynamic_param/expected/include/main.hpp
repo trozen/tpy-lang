@@ -47,16 +47,16 @@ void main();
 
 // class Dog(Speaker):
 struct Dog : Speaker {
-    //     name: str
+    // name: str
     std::string name;
 
-    //     def __init__(self, name: str) -> None:
+    // def __init__(self, name: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name) : name(name) {}
 
-    //     def speak(self) -> str:
+    // def speak(self) -> str:
     std::string speak() override {
-        //         return "Woof from " + self.name
+        // return "Woof from " + self.name
         return (::tpy::str_concat("Woof from ", this->name));
     }
 };
@@ -70,16 +70,16 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 // class Cat(Speaker):
 struct Cat : Speaker {
-    //     name: str
+    // name: str
     std::string name;
 
-    //     def __init__(self, name: str) -> None:
+    // def __init__(self, name: str) -> None:
     Cat() = default;
     explicit Cat(std::string_view name) : name(name) {}
 
-    //     def speak(self) -> str:
+    // def speak(self) -> str:
     std::string speak() override {
-        //         return "Meow from " + self.name
+        // return "Meow from " + self.name
         return (::tpy::str_concat("Meow from ", this->name));
     }
 };
@@ -93,10 +93,10 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 // class Recorder:
 struct Recorder {
-    //     message: str
+    // message: str
     std::string message;
 
-    //     def __init__(self, s: Speaker) -> None:
+    // def __init__(self, s: Speaker) -> None:
     Recorder() = default;
     explicit Recorder(Speaker& s) : message(s.speak()) {}
 };
@@ -110,16 +110,16 @@ inline std::ostream& operator<<(std::ostream& os, const Recorder& obj) {
 
 // class Announcer:
 struct Announcer {
-    //     prefix: str
+    // prefix: str
     std::string prefix;
 
-    //     def __init__(self, prefix: str) -> None:
+    // def __init__(self, prefix: str) -> None:
     Announcer() = default;
     explicit Announcer(std::string_view prefix) : prefix(prefix) {}
 
-    //     def announce(self, s: Speaker) -> None:
+    // def announce(self, s: Speaker) -> None:
     void announce(Speaker& s) const {
-        //         print(self.prefix + s.speak())
+        // print(self.prefix + s.speak())
         std::cout << (::tpy::str_concat(this->prefix, s.speak())) << "\n";
     }
 };

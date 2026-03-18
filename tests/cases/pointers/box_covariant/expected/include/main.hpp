@@ -48,16 +48,16 @@ void main();
 
 // class Circle(Shape):
 struct Circle : Shape {
-    //     _r: float
+    // _r: float
     double _r;
 
-    //     def __init__(self, r: float) -> None:
+    // def __init__(self, r: float) -> None:
     Circle() = default;
     explicit Circle(double r) : _r(r) {}
 
-    //     def area(self) -> float:
+    // def area(self) -> float:
     double area() override {
-        //         return 3.14 * self._r * self._r
+        // return 3.14 * self._r * self._r
         return ((((3.14) * (this->_r))) * (this->_r));
     }
 };
@@ -71,16 +71,16 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
 
 // class Square(Shape):
 struct Square : Shape {
-    //     _s: float
+    // _s: float
     double _s;
 
-    //     def __init__(self, s: float) -> None:
+    // def __init__(self, s: float) -> None:
     Square() = default;
     explicit Square(double s) : _s(s) {}
 
-    //     def area(self) -> float:
+    // def area(self) -> float:
     double area() override {
-        //         return self._s * self._s
+        // return self._s * self._s
         return ((this->_s) * (this->_s));
     }
 };

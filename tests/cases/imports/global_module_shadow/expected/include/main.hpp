@@ -15,7 +15,7 @@ void f();
 
 // class Timer:
 struct Timer {
-    //     x: Int32
+    // x: Int32
     int32_t x;
 
 };

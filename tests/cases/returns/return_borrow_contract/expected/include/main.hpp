@@ -17,12 +17,12 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -39,22 +39,22 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // # Method returning from self (index -1)
 // class Container:
 struct Container {
-    //     _items: list[Point]
+    // _items: list[Point]
     std::vector<Point> _items;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Container() : _items(std::vector<Point>{}) {}
 
-    //     def add(self, p: Point) -> None:
+    // def add(self, p: Point) -> None:
     void add(const Point& p) {
-        //         self._items.append(p)
+        // self._items.append(p)
         auto __tmp_1 = p;
         this->_items.push_back(std::move(__tmp_1));
     }
 
-    //     def first(self) -> Point:
+    // def first(self) -> Point:
     Point& first() {
-        //         return self._items[0]  # tpyc: ok (borrows from self)
+        // return self._items[0]  # tpyc: ok (borrows from self)
         return ::tpy::__getitem__(this->_items, 0);
     }
 };

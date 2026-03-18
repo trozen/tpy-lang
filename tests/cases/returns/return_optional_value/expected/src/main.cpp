@@ -8,18 +8,18 @@ std::optional<int32_t> result;
 
 // def maybe_int(flag: bool) -> Int32 | None:
 std::optional<int32_t> maybe_int(bool flag) {
-    //     if flag:
+    // if flag:
     if (flag) {
-        //         return 42
+        // return 42
         return 42;
     }
-    //     return None
+    // return None
     return std::nullopt;
 }
 
 // def pass_through(val: Int32 | None) -> Int32 | None:
 std::optional<int32_t> pass_through(std::optional<int32_t> val) {
-    //     return val
+    // return val
     return val;
 }
 
@@ -36,7 +36,7 @@ void __tpy_init() {
     result = maybe_int(true);
     // if result is not None:
     if ((result.has_value())) {
-        //     print(result)
+        // print(result)
         std::cout << ::tpy::print_optional_val(result) << "\n";
     }
     // print(pass_through(99))

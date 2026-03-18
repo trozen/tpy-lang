@@ -13,12 +13,12 @@ void main();
 
 // class Rect:
 struct Rect {
-    //     width: Int32
+    // width: Int32
     int32_t width;
-    //         self.height = height
+    // self.height = height
     int32_t height;
 
-    //     def __init__(self, width: Int32, height: Int32):
+    // def __init__(self, width: Int32, height: Int32):
     Rect() = default;
     explicit Rect(int32_t width, int32_t height) : width(width), height(height) {}
 };

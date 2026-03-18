@@ -10,18 +10,18 @@ Point* p{};
 // # Function with pointer-local `p` (branch-declared, creates rebind_slots entry)
 // def foo(cond: bool) -> None:
 void foo(bool cond) {
-    //     if cond:
+    // if cond:
     std::optional<Point> __slot_1;
     Point* p;
     if (cond) {
-        //         p = Point(1, 2)
+        // p = Point(1, 2)
         p = &*(__slot_1 = Point(1, 2));
-    //     else:
+    // else:
     } else {
-        //         p = Point(3, 4)
+        // p = Point(3, 4)
         p = &*(__slot_1 = Point(3, 4));
     }
-    //     print(p.x, p.y)
+    // print(p.x, p.y)
     std::cout << p->x << " " << p->y << "\n";
 }
 

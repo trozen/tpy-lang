@@ -15,12 +15,12 @@ void test();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -37,24 +37,24 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // class Box[T]:
 template<typename T>
 struct Box {
-    //     _value: T
+    // _value: T
     T _value;
 
-    //     def __init__(self, value: T) -> None:
+    // def __init__(self, value: T) -> None:
     Box() = default;
     explicit Box(const T& value) : _value(value) {}
 
-    //     @auto_readonly
-    //     def __deref__(self) -> T:
+    // @auto_readonly
+    // def __deref__(self) -> T:
     ::tpy::val_or_ref_t<T> __deref__() {
-        //         return self._value
+        // return self._value
         return this->_value;
     }
 
-    //     @auto_readonly
-    //     def __deref__(self) -> T:
+    // @auto_readonly
+    // def __deref__(self) -> T:
     ::tpy::val_or_cref_t<T> __deref__() const {
-        //         return self._value
+        // return self._value
         return this->_value;
     }
 

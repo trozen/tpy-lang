@@ -7,25 +7,25 @@ namespace tpy_user::main {
 // # Python int (BigInt) with default parameter values
 // def add(a: int, b: int = 0) -> int:
 ::tpy::BigInt add(const ::tpy::BigInt& a, const ::tpy::BigInt& b) {
-    //     return a + b
+    // return a + b
     return ((a) + (b));
 }
 
 // def scale(value: int, factor: int = 1) -> int:
 ::tpy::BigInt scale(const ::tpy::BigInt& value, const ::tpy::BigInt& factor) {
-    //     return value * factor
+    // return value * factor
     return ((value) * (factor));
 }
 
 // def main() -> None:
 void main() {
-    //     print(add(5))
+    // print(add(5))
     std::cout << add(::tpy::BigInt(5)) << "\n";
-    //     print(add(5, 3))
+    // print(add(5, 3))
     std::cout << add(::tpy::BigInt(5), ::tpy::BigInt(3)) << "\n";
-    //     print(scale(10))
+    // print(scale(10))
     std::cout << scale(::tpy::BigInt(10)) << "\n";
-    //     print(scale(10, 4))
+    // print(scale(10, 4))
     std::cout << scale(::tpy::BigInt(10), ::tpy::BigInt(4)) << "\n";
 }
 

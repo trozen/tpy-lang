@@ -6,23 +6,23 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     xs = collect(Int32(10), Int32(20))
+    // xs = collect(Int32(10), Int32(20))
     int32_t __tmp_3 = 10;
     int32_t __tmp_4 = 20;
     std::vector<int32_t> xs = collect<int32_t>(__tmp_3, __tmp_4);
-    //     print(len(xs))
+    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
-    //     print(xs[0])
+    // print(xs[0])
     std::cout << ::tpy::__getitem__(xs, 0) << "\n";
-    //     print(xs[1])
+    // print(xs[1])
     std::cout << ::tpy::__getitem__(xs, 1) << "\n";
-    //     ys = collect(Box(Int32(1)), Box(Int32(2)))
+    // ys = collect(Box(Int32(1)), Box(Int32(2)))
     Box __tmp_5 = Box(1);
     Box __tmp_6 = Box(2);
     std::vector<Box> ys = collect<Box>(__tmp_5, __tmp_6);
-    //     print(len(ys))
+    // print(len(ys))
     std::cout << ::tpy::__len__(ys) << "\n";
-    //     print(ys[0].value)
+    // print(ys[0].value)
     std::cout << ::tpy::__getitem__(ys, 0).value << "\n";
 }
 

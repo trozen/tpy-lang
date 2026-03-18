@@ -6,51 +6,51 @@ namespace tpy_user::main {
 
 // def get_ptr(p: Ptr[Point]) -> Ptr[Point]:
 Point* get_ptr(Point* p) {
-    //     return p
+    // return p
     return p;
 }
 
 // # if p is not None: p non-null in then-branch (field + method)
 // def test_if_not_none(p: Ptr[Point]) -> Int32:
 int32_t test_if_not_none(Point* p) {
-    //     if p is not None:
+    // if p is not None:
     if ((p != nullptr)) {
-        //         return p.sum()  # tpyc: non_null(p)
+        // return p.sum()  # tpyc: non_null(p)
         return p->sum();
     }
-    //     return Int32(0)
+    // return Int32(0)
     return 0;
 }
 
 // # if p is None: return -- p non-null after early return
 // def test_is_none_early_return(p: Ptr[Point]) -> Int32:
 int32_t test_is_none_early_return(Point* p) {
-    //     if p is None:
+    // if p is None:
     if ((p == nullptr)) {
-        //         return Int32(-1)
+        // return Int32(-1)
         return -1;
     }
-    //     return p.x  # tpyc: non_null(p)
+    // return p.x  # tpyc: non_null(p)
     return p->x;
 }
 
 // # assert p is not None -- p non-null after assert
 // def test_assert(p: Ptr[Point]) -> Int32:
 int32_t test_assert(Point* p) {
-    //     assert p is not None
+    // assert p is not None
     if (!((p != nullptr))) ::tpy::tpy_panic("assertion failed");
-    //     return p.x  # tpyc: non_null(p)
+    // return p.x  # tpyc: non_null(p)
     return p->x;
 }
 
 // # while p is not None -- p non-null inside loop body
 // def test_while(p: Ptr[Point]) -> None:
 void test_while(Point* p) {
-    //     while p is not None:
+    // while p is not None:
     while ((p != nullptr)) {
-        //         print(p.x)  # tpyc: non_null(p)
+        // print(p.x)  # tpyc: non_null(p)
         std::cout << p->x << "\n";
-        //         break
+        // break
         break;
     }
 }
@@ -58,13 +58,13 @@ void test_while(Point* p) {
 // # while with reassignment from unknown inside body -- loses provenance after loop
 // def test_while_reassign(p: Ptr[Point]) -> None:
 void test_while_reassign(Point* p) {
-    //     while p is not None:
+    // while p is not None:
     while ((p != nullptr)) {
-        //         print(p.x)  # tpyc: non_null(p)
+        // print(p.x)  # tpyc: non_null(p)
         std::cout << p->x << "\n";
-        //         p = get_ptr(p)
+        // p = get_ptr(p)
         p = get_ptr(p);
-        //         break
+        // break
         break;
     }
 }
@@ -72,47 +72,47 @@ void test_while_reassign(Point* p) {
 // # Ptr[readonly[...]]: same narrowing applies
 // def test_readonly_ptr(p: Ptr[readonly[Point]]) -> Int32:
 int32_t test_readonly_ptr(const Point* p) {
-    //     if p is not None:
+    // if p is not None:
     if ((p != nullptr)) {
-        //         return p.x  # tpyc: non_null(p)
+        // return p.x  # tpyc: non_null(p)
         return p->x;
     }
-    //     return Int32(0)
+    // return Int32(0)
     return 0;
 }
 
 // # After branch merge without early return: non-null not guaranteed
 // def test_merge_no_guarantee(p: Ptr[Point]) -> Int32:
 int32_t test_merge_no_guarantee(Point* p) {
-    //     if p is not None:
+    // if p is not None:
     if ((p != nullptr)) {
-        //         pass
+        // pass
     }
-    //     return p.x  # tpyc: nullable(p)
+    // return p.x  # tpyc: nullable(p)
     return ::tpy::deref_check(p).x;
 }
 
 // def main() -> None:
 void main() {
-    //     pt = Point(Int32(10), Int32(20))
+    // pt = Point(Int32(10), Int32(20))
     Point pt = Point(10, 20);
-    //     p: Ptr[Point] = Ptr(pt)
+    // p: Ptr[Point] = Ptr(pt)
     Point* p = &pt;
-    //     cp: Ptr[readonly[Point]] = Ptr(pt)
+    // cp: Ptr[readonly[Point]] = Ptr(pt)
     const Point* cp = &pt;
-    //     print(test_if_not_none(p))
+    // print(test_if_not_none(p))
     std::cout << test_if_not_none(p) << "\n";
-    //     print(test_is_none_early_return(p))
+    // print(test_is_none_early_return(p))
     std::cout << test_is_none_early_return(p) << "\n";
-    //     print(test_assert(p))
+    // print(test_assert(p))
     std::cout << test_assert(p) << "\n";
-    //     test_while(p)
+    // test_while(p)
     test_while(p);
-    //     test_while_reassign(p)
+    // test_while_reassign(p)
     test_while_reassign(p);
-    //     print(test_readonly_ptr(cp))
+    // print(test_readonly_ptr(cp))
     std::cout << test_readonly_ptr(cp) << "\n";
-    //     print(test_merge_no_guarantee(p))
+    // print(test_merge_no_guarantee(p))
     std::cout << test_merge_no_guarantee(p) << "\n";
 }
 

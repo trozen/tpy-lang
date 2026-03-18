@@ -21,18 +21,18 @@ inline constexpr std::string_view __name__ = "__main__";
 // # Base class
 // class Entity:
 struct Entity {
-    //     name: str
+    // name: str
     std::string name;
-    //     id: Int32
+    // id: Int32
     int32_t id;
 
-    //     def __init__(self, name: str, id: Int32) -> None:
+    // def __init__(self, name: str, id: Int32) -> None:
     Entity() = default;
     explicit Entity(std::string_view name, int32_t id) : name(name), id(id) {}
 
-    //     def get_name(self) -> str:
+    // def get_name(self) -> str:
     std::string get_name() const {
-        //         return self.name
+        // return self.name
         return this->name;
     }
 };
@@ -49,21 +49,21 @@ inline std::ostream& operator<<(std::ostream& os, const Entity& obj) {
 // # Inherit from class AND implement protocol
 // class Person(Entity, Printable):
 struct Person : Entity {
-    //     age: Int32
+    // age: Int32
     int32_t age;
 
-    //     def __init__(self, name: str, id: Int32, age: Int32) -> None:
+    // def __init__(self, name: str, id: Int32, age: Int32) -> None:
     Person() = default;
     explicit Person(std::string_view name, int32_t id, int32_t age) : age(age) {
-        //         self.name = name
+        // self.name = name
         this->name = name;
-        //         self.id = id
+        // self.id = id
         this->id = id;
     }
 
-    //     def __str__(self) -> str:
+    // def __str__(self) -> str:
     std::string __str__() const {
-        //         return self.name
+        // return self.name
         return this->name;
     }
 };

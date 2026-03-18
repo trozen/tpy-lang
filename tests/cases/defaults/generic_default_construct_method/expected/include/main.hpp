@@ -14,16 +14,16 @@ void main();
 // class Container[T]:
 template<typename T>
 struct Container {
-    //     val: T
+    // val: T
     T val;
 
-    //     def __init__(self, val: T) -> None:
+    // def __init__(self, val: T) -> None:
     Container() = default;
     explicit Container(const T& val) : val(val) {}
 
-    //     def get_or_default(self, fallback: T = T()) -> T:
+    // def get_or_default(self, fallback: T = T()) -> T:
     ::tpy::val_or_cref_t<T> get_or_default(const T& fallback = T{}) const {
-        //         return fallback
+        // return fallback
         return fallback;
     }
 };

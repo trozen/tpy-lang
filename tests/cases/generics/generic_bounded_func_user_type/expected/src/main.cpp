@@ -6,12 +6,12 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c = MyContainer([1, 2, 3, 4, 5])
+    // c = MyContainer([1, 2, 3, 4, 5])
     MyContainer c = MyContainer({1, 2, 3, 4, 5});
-    //     # MyContainer satisfies Sized, so inference should work
-    //     result = get_length(c)
+    // # MyContainer satisfies Sized, so inference should work
+    // result = get_length(c)
     int32_t result = get_length<MyContainer>(c);
-    //     print(result)
+    // print(result)
     std::cout << result << "\n";
 }
 

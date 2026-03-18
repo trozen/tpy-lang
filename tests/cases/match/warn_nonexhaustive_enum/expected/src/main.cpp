@@ -48,31 +48,31 @@ namespace tpy_user::main {
 
 // def describe(c: Color) -> str:
 std::string describe(Color c) {
-    //     match c:  # tpyc: warning(/non-exhaustive match.*missing: Color.Blue.*case _:/)
+    // match c:  # tpyc: warning(/non-exhaustive match.*missing: Color.Blue.*case _:/)
     auto& __match_subject = c;
     switch (__match_subject) {
-    //         case Color.Red:
+    // case Color.Red:
     case Color::Red: {
-        //             return "red"
+        // return "red"
         return "red";
         break;
     }
-    //         case Color.Green:
+    // case Color.Green:
     case Color::Green: {
-        //             return "green"
+        // return "green"
         return "green";
         break;
     }
     }
-    //     return "unknown"
+    // return "unknown"
     return "unknown";
 }
 
 // def main() -> None:
 void main() {
-    //     print(describe(Color.Red))
+    // print(describe(Color.Red))
     std::cout << describe(Color::Red) << "\n";
-    //     print(describe(Color.Green))
+    // print(describe(Color.Green))
     std::cout << describe(Color::Green) << "\n";
 }
 

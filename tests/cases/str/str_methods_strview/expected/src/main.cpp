@@ -6,31 +6,31 @@ namespace tpy_user::main {
 
 // def test_methods(s: StrView) -> None:
 void test_methods(std::string_view s) {
-    //     print("strip:", s.strip())
+    // print("strip:", s.strip())
     std::cout << "strip:" << " " << ::tpy::str_strip(s) << "\n";
-    //     print("upper:", s.upper())
+    // print("upper:", s.upper())
     std::cout << "upper:" << " " << ::tpy::str_upper(s) << "\n";
-    //     print("lower:", s.lower())
+    // print("lower:", s.lower())
     std::cout << "lower:" << " " << ::tpy::str_lower(s) << "\n";
-    //     print("find:", s.find("ll"))
+    // print("find:", s.find("ll"))
     std::cout << "find:" << " " << ::tpy::str_find(s, "ll") << "\n";
-    //     print("startswith:", s.startswith("he"))
+    // print("startswith:", s.startswith("he"))
     std::cout << "startswith:" << " " << ::tpy::print_bool(::tpy::str_startswith(s, "he")) << "\n";
-    //     print("endswith:", s.endswith("lo"))
+    // print("endswith:", s.endswith("lo"))
     std::cout << "endswith:" << " " << ::tpy::print_bool(::tpy::str_endswith(s, "lo")) << "\n";
-    //     print("count:", s.count("l"))
+    // print("count:", s.count("l"))
     std::cout << "count:" << " " << ::tpy::str_count(s, "l") << "\n";
-    //     print("replace:", s.replace("l", "r"))
+    // print("replace:", s.replace("l", "r"))
     std::cout << "replace:" << " " << ::tpy::str_replace(s, "l", "r") << "\n";
-    //     print("isalpha:", s.isalpha())
+    // print("isalpha:", s.isalpha())
     std::cout << "isalpha:" << " " << ::tpy::print_bool(::tpy::str_isalpha(s)) << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     sv: StrView = "hello"
+    // sv: StrView = "hello"
     std::string_view sv = "hello";
-    //     test_methods(sv)
+    // test_methods(sv)
     test_methods(sv);
 }
 

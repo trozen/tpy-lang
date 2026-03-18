@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def after_break(x: Int32 | None, flag: bool) -> Int32:
 int32_t after_break(std::optional<int32_t> x, bool flag) {
-    //     while flag:
+    // while flag:
     while (flag) {
-        //         if x is None:
+        // if x is None:
         if ((!x.has_value())) {
-            //             break
+            // break
             break;
         }
-        //         flag = False
+        // flag = False
         flag = false;
     }
-    //     return x + 1  # tpyc: warning(/Potential None access/)
+    // return x + 1  # tpyc: warning(/Potential None access/)
     return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(x), 1));
 }
 

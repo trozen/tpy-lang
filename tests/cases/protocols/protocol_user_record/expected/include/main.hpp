@@ -16,16 +16,16 @@ void main();
 
 // class MyContainer:
 struct MyContainer {
-    //     size: Int32
+    // size: Int32
     int32_t size;
 
-    //     def __init__(self, size: Int32) -> None:
+    // def __init__(self, size: Int32) -> None:
     MyContainer() = default;
     explicit MyContainer(int32_t size) : size(size) {}
 
-    //     def __len__(self) -> Int32:
+    // def __len__(self) -> Int32:
     int32_t __len__() const {
-        //         return self.size
+        // return self.size
         return this->size;
     }
 };
@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const MyContainer& obj) {
 // def count(items: Sized) -> Int32:
 template<::tpy_user::typing::Sized T_items>
 int32_t count(const T_items& items) {
-    //     return len(items)
+    // return len(items)
     return ::tpy::__len__(items);
 }
 

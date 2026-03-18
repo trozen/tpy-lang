@@ -6,26 +6,26 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c = C(1, 2, 3)
+    // c = C(1, 2, 3)
     C c = C(1, 2, 3);
-    //     print(c)
+    // print(c)
     std::cout << c << "\n";
-    //     print(c.x)
+    // print(c.x)
     std::cout << c.x << "\n";
-    //     print(c.y)
+    // print(c.y)
     std::cout << c.y << "\n";
-    //     print(c.z)
+    // print(c.z)
     std::cout << c.z << "\n";
-    //     print(c == C(1, 2, 3))
+    // print(c == C(1, 2, 3))
     std::cout << ::tpy::print_bool((c == C(1, 2, 3))) << "\n";
-    //     print(c == C(1, 2, 4))
+    // print(c == C(1, 2, 4))
     std::cout << ::tpy::print_bool((c == C(1, 2, 4))) << "\n";
-    //     # Intermediate works
-    //     b = B(10, 20)
+    // # Intermediate works
+    // b = B(10, 20)
     B b = B(10, 20);
-    //     print(b)
+    // print(b)
     std::cout << b << "\n";
-    //     print(b == B(10, 20))
+    // print(b == B(10, 20))
     std::cout << ::tpy::print_bool((b == B(10, 20))) << "\n";
 }
 

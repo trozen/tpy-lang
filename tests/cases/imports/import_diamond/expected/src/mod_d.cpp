@@ -6,7 +6,7 @@ namespace tpy_user::mod_d {
 
 // def d_value() -> Int32:
 int32_t d_value() {
-    //     return Int32(5)
+    // return Int32(5)
     return 5;
 }
 

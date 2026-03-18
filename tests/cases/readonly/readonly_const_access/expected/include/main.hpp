@@ -14,23 +14,23 @@ void main();
 
 // class Container:
 struct Container {
-    //     _items: list[Int32]
+    // _items: list[Int32]
     std::vector<int32_t> _items;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Container() : _items({10, 20, 30}) {}
 
-    //     @readonly
-    //     def items(self) -> list[Int32]:
+    // @readonly
+    // def items(self) -> list[Int32]:
     const std::vector<int32_t>& items() const {
-        //         return self._items
+        // return self._items
         return this->_items;
     }
 
-    //     @readonly
-    //     def count(self) -> Int32:
+    // @readonly
+    // def count(self) -> Int32:
     int32_t count() const {
-        //         return Int32(len(self._items))
+        // return Int32(len(self._items))
         return ::tpy::__len__(this->_items);
     }
 };

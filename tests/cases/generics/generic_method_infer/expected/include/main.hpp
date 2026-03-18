@@ -14,17 +14,17 @@ void main();
 // class Box[T]:
 template<typename T>
 struct Box {
-    //     val: T
+    // val: T
     T val;
 
-    //     def __init__(self, val: T):
+    // def __init__(self, val: T):
     Box() = default;
     explicit Box(const T& val) : val(val) {}
 
-    //     def transform[U](self, other: U) -> U:
+    // def transform[U](self, other: U) -> U:
     template<typename U>
     ::tpy::val_or_cref_t<U> transform(const U& other) const {
-        //         return other
+        // return other
         return other;
     }
 };

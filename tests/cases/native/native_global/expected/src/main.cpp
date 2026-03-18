@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     print(score)
+    // print(score)
     std::cout << engine::score << "\n";
-    //     print(lives)
+    // print(lives)
     std::cout << lives << "\n";
 }
 

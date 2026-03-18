@@ -9,10 +9,10 @@ int32_t x{};
 // @readonly
 // def ok() -> Int32:
 int32_t ok() {
-    //     global x
-    //     x = 1  # tpyc: ok
+    // global x
+    // x = 1  # tpyc: ok
     x = 1;
-    //     return x
+    // return x
     return x;
 }
 

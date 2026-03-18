@@ -14,9 +14,9 @@ void main();
 // @dataclass
 // class TaggedItem:
 struct TaggedItem {
-    //     name: str
+    // name: str
     std::string name;
-    //     tags: set[str]
+    // tags: set[str]
     ::tpy::ordered_set<std::string> tags;
 
     TaggedItem() = default;

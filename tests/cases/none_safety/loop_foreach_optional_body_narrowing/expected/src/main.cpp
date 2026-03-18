@@ -8,23 +8,23 @@ std::vector<std::optional<int32_t>>* vals{};
 
 // def sum_non_none(items: list[Int32 | None]) -> Int32:
 int32_t sum_non_none(const std::vector<std::optional<int32_t>>& items) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     for item in items:
+    // for item in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::optional<int32_t> item = *__beg_0;
-        //         if item is None:
+        // if item is None:
         if ((!item.has_value())) {
-            //             continue
+            // continue
             continue;
         }
-        //         total = total + item  # tpyc: ok
+        // total = total + item  # tpyc: ok
         total = (::tpy::add_check<int32_t>(total, (*item)));
     }
-    //     return total
+    // return total
     return total;
 }
 

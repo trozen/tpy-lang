@@ -14,16 +14,16 @@ void main();
 // class Box[T]:
 template<typename T>
 struct Box {
-    //     value: T
+    // value: T
     T value;
 
-    //     def __init__(self, value: T) -> None:
+    // def __init__(self, value: T) -> None:
     Box() = default;
     explicit Box(const T& value) : value(value) {}
 
-    //     def get(self) -> T:
+    // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get() {
-        //         return self.value
+        // return self.value
         return this->value;
     }
 };

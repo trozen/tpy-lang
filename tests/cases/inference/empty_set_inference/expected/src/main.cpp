@@ -6,96 +6,96 @@ namespace tpy_user::main {
 
 // def test_basic() -> None:
 void test_basic() {
-    //     s = set()  # tpyc: type(set[Int32])
+    // s = set()  # tpyc: type(set[Int32])
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
-    //     s.add(42)
+    // s.add(42)
     s.insert(42);
-    //     s.add(10)
+    // s.add(10)
     s.insert(10);
-    //     print(s)
+    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
 }
 
 // def test_str() -> None:
 void test_str() {
-    //     s = set()  # tpyc: type(set[str])
+    // s = set()  # tpyc: type(set[str])
     ::tpy::ordered_set<std::string> s = ::tpy::ordered_set<std::string>();
-    //     s.add("hello")
+    // s.add("hello")
     s.insert("hello");
-    //     s.add("world")
+    // s.add("world")
     s.insert("world");
-    //     print(len(s))
+    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
-    //     print("hello" in s)
+    // print("hello" in s)
     std::cout << ::tpy::print_bool((s.contains("hello"))) << "\n";
 }
 
 // def test_multiple() -> None:
 void test_multiple() {
-    //     s = set()  # tpyc: type(set[Int32])
+    // s = set()  # tpyc: type(set[Int32])
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
-    //     s.add(1)
+    // s.add(1)
     s.insert(1);
-    //     s.add(2)
+    // s.add(2)
     s.insert(2);
-    //     s.add(3)
+    // s.add(3)
     s.insert(3);
-    //     print(s)
+    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
 }
 
 // def test_numeric_widen() -> None:
 void test_numeric_widen() {
-    //     s = set()  # tpyc: type(set[Int64])
+    // s = set()  # tpyc: type(set[Int64])
     ::tpy::ordered_set<int64_t> s = ::tpy::ordered_set<int64_t>();
-    //     s.add(Int32(1))
+    // s.add(Int32(1))
     s.insert(1);
-    //     s.add(Int64(2))
+    // s.add(Int64(2))
     s.insert(2);
-    //     print(s)
+    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
 }
 
 // def takes_set(s: set[Int32]) -> None:
 void takes_set(const ::tpy::ordered_set<int32_t>& s) {
-    //     for x in s:
+    // for x in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
 }
 
 // def test_param_context() -> None:
 void test_param_context() {
-    //     s = set()  # tpyc: type(set[Int32])
+    // s = set()  # tpyc: type(set[Int32])
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
-    //     s.add(42)
+    // s.add(42)
     s.insert(42);
-    //     takes_set(s)
+    // takes_set(s)
     takes_set(s);
 }
 
 // def test_param_only() -> None:
 void test_param_only() {
-    //     s = set()  # tpyc: type(set[Int32])
+    // s = set()  # tpyc: type(set[Int32])
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
-    //     takes_set(s)
+    // takes_set(s)
     takes_set(s);
 }
 
 // def test_discard_infers() -> None:
 void test_discard_infers() {
-    //     s = set()  # tpyc: type(set[Int32])
+    // s = set()  # tpyc: type(set[Int32])
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
-    //     s.discard(42)
+    // s.discard(42)
     s.erase(42);
-    //     s.add(10)
+    // s.add(10)
     s.insert(10);
-    //     print(s)
+    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
 }
 

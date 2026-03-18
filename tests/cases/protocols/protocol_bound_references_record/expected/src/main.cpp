@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     factory = DefaultFooMaker()
+    // factory = DefaultFooMaker()
     DefaultFooMaker factory = DefaultFooMaker();
-    //     bar = Bar(factory)
+    // bar = Bar(factory)
     Bar<DefaultFooMaker> bar = Bar<DefaultFooMaker>(factory);
-    //     foo = bar.create_foo()
+    // foo = bar.create_foo()
     Foo foo = bar.create_foo();
-    //     print(foo.value)
+    // print(foo.value)
     std::cout << foo.value << "\n";
 }
 

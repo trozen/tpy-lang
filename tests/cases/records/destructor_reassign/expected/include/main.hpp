@@ -18,11 +18,11 @@ void test_inherit();
 
 // class Resource:
 struct Resource {
-    //     name: str
+    // name: str
     std::string name;
     bool __tpy_owned_ = true;
 
-    //     def __init__(self, name: str):
+    // def __init__(self, name: str):
     Resource() = default;
     explicit Resource(std::string_view name) : name(name) {}
     Resource(const Resource&) = delete;
@@ -37,11 +37,11 @@ struct Resource {
         }
         return *this;
     }
-    //     def __del__(self):
+    // def __del__(self):
 
     ~Resource() {
         if (!__tpy_owned_) return;
-        //         print("drop", self.name)
+        // print("drop", self.name)
         std::cout << "drop" << " " << this->name << "\n";
     }
 };
@@ -55,11 +55,11 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
 
 // class Base:
 struct Base {
-    //     tag: str
+    // tag: str
     std::string tag;
     bool __tpy_owned_ = true;
 
-    //     def __init__(self, tag: str):
+    // def __init__(self, tag: str):
     Base() = default;
     explicit Base(std::string_view tag) : tag(tag) {}
     Base(const Base&) = delete;
@@ -74,11 +74,11 @@ struct Base {
         }
         return *this;
     }
-    //     def __del__(self):
+    // def __del__(self):
 
     ~Base() {
         if (!__tpy_owned_) return;
-        //         print("~Base", self.tag)
+        // print("~Base", self.tag)
         std::cout << "~Base" << " " << this->tag << "\n";
     }
 };
@@ -93,7 +93,7 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 // class Child(Base):
 struct Child : Base {
 
-    //     def __init__(self, tag: str):
+    // def __init__(self, tag: str):
     Child() = default;
     explicit Child(std::string_view tag) : Base(tag) {}
     Child(const Child&) = delete;
@@ -108,11 +108,11 @@ struct Child : Base {
         }
         return *this;
     }
-    //     def __del__(self):
+    // def __del__(self):
 
     ~Child() {
         if (!__tpy_owned_) return;
-        //         print("~Child", self.tag)
+        // print("~Child", self.tag)
         std::cout << "~Child" << " " << this->tag << "\n";
     }
 };

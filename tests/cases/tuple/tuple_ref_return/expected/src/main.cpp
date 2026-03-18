@@ -6,24 +6,24 @@ namespace tpy_user::main {
 
 // def find(p: Point) -> tuple[Point, bool]:
 std::tuple<Point&, bool> find(Point& p) {
-    //     return (p, True)
+    // return (p, True)
     return std::tuple<Point&, bool>{p, true};
 }
 
 // def main() -> None:
 void main() {
-    //     p = Point(Int32(1), Int32(2))
+    // p = Point(Int32(1), Int32(2))
     Point p = Point(1, 2);
-    //     result = find(p)
+    // result = find(p)
     auto result = find(p);
-    //     print(result[0])
+    // print(result[0])
     std::cout << std::get<0>(result) << "\n";
-    //     print(result[1])
+    // print(result[1])
     std::cout << ::tpy::print_bool(std::get<1>(result)) << "\n";
-    //     # Mutation through reference is visible
-    //     p.x = Int32(42)
+    // # Mutation through reference is visible
+    // p.x = Int32(42)
     p.x = 42;
-    //     print(result[0])
+    // print(result[0])
     std::cout << std::get<0>(result) << "\n";
 }
 

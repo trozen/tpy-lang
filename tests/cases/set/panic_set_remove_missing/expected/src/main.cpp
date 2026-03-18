@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     s: set[Int32] = {1, 2, 3}
+    // s: set[Int32] = {1, 2, 3}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({1, 2, 3});
-    //     s.remove(99)
+    // s.remove(99)
     ::tpy::set_remove(s, 99);
 }
 

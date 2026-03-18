@@ -6,59 +6,59 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Test 1: len() on list (builtin Sized)
-    //     items = [1, 2, 3, 4, 5]
+    // # Test 1: len() on list (builtin Sized)
+    // items = [1, 2, 3, 4, 5]
     std::vector<int32_t> items = {1, 2, 3, 4, 5};
-    //     print(get_length(items))  # 5
+    // print(get_length(items))  # 5
     std::cout << get_length<std::vector<int32_t>>(items) << "\n";
-    //     # Test 1b: len() on str (builtin Sized)
-    //     msg = "hello"
+    // # Test 1b: len() on str (builtin Sized)
+    // msg = "hello"
     std::string_view msg = "hello";
-    //     print(get_length(msg))  # 5
+    // print(get_length(msg))  # 5
     std::cout << get_length<std::string_view>(msg) << "\n";
-    //     # Test 2: User-defined protocol method
-    //     v = MyValue(42)
+    // # Test 2: User-defined protocol method
+    // v = MyValue(42)
     MyValue v = MyValue(42);
-    //     print(stringify(v))  # value
+    // print(stringify(v))  # value
     std::cout << stringify<MyValue>(v) << "\n";
-    //     # Test 3: MyValue satisfies Sized too (has __len__)
-    //     print(get_length(v))  # 42
+    // # Test 3: MyValue satisfies Sized too (has __len__)
+    // print(get_length(v))  # 42
     std::cout << get_length<MyValue>(v) << "\n";
-    //     # Test 4: Generic class calling method on bounded type param
-    //     printer = Printer[MyValue]()
+    // # Test 4: Generic class calling method on bounded type param
+    // printer = Printer[MyValue]()
     Printer<MyValue> printer = Printer<MyValue>();
-    //     print(printer.get_str(v))  # value
+    // print(printer.get_str(v))  # value
     std::cout << printer.get_str(v) << "\n";
-    //     # Test 4b: Same generic class with different type
-    //     point_printer = Printer[Point]()
+    // # Test 4b: Same generic class with different type
+    // point_printer = Printer[Point]()
     Printer<Point> point_printer = Printer<Point>();
-    //     print(point_printer.get_str(Point(10, 20)))  # Point
+    // print(point_printer.get_str(Point(10, 20)))  # Point
     Point __tmp_1 = Point(10, 20);
     std::cout << point_printer.get_str(__tmp_1) << "\n";
-    //     # Test 6: Multiple type params with different bounds
-    //     print(process_both(items, v))  # value, then 5
+    // # Test 6: Multiple type params with different bounds
+    // print(process_both(items, v))  # value, then 5
     std::cout << process_both<std::vector<int32_t>, MyValue>(items, v) << "\n";
-    //     # Test 7: Protocol with multiple methods
-    //     w = Widget("test", 99)
+    // # Test 7: Protocol with multiple methods
+    // w = Widget("test", 99)
     Widget w = Widget("test", 99);
-    //     use_multi(w)  # test, then 99
+    // use_multi(w)  # test, then 99
     use_multi<Widget>(w);
-    //     # Test 8: Nested bounded calls
-    //     print(outer_len(items))  # 5
+    // # Test 8: Nested bounded calls
+    // print(outer_len(items))  # 5
     std::cout << outer_len<std::vector<int32_t>>(items) << "\n";
-    //     # Test 9: User protocol with Self - clone returns T (Box), not Clonable
-    //     box = Box(123)
+    // # Test 9: User protocol with Self - clone returns T (Box), not Clonable
+    // box = Box(123)
     Box box = Box(123);
-    //     cloned = clone_it(box)  # cloned should be Box, not Clonable
+    // cloned = clone_it(box)  # cloned should be Box, not Clonable
     Box cloned = clone_it<Box>(box);
-    //     print(cloned.value)  # 123 - accessing Box.value proves type is Box
+    // print(cloned.value)  # 123 - accessing Box.value proves type is Box
     std::cout << cloned.value << "\n";
-    //     # Test 10: Builtin protocol with Self - Comparable.__lt__(Self)
-    //     print(is_less(1, 2))  # True
+    // # Test 10: Builtin protocol with Self - Comparable.__lt__(Self)
+    // print(is_less(1, 2))  # True
     int32_t __tmp_2 = 1;
     int32_t __tmp_3 = 2;
     std::cout << ::tpy::print_bool(is_less<int32_t>(__tmp_2, __tmp_3)) << "\n";
-    //     print(is_less(5, 3))  # False
+    // print(is_less(5, 3))  # False
     int32_t __tmp_4 = 5;
     int32_t __tmp_5 = 3;
     std::cout << ::tpy::print_bool(is_less<int32_t>(__tmp_4, __tmp_5)) << "\n";

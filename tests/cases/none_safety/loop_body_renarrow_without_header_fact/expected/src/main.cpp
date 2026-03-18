@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def body_renarrow(flag: bool, x: Int32 | None) -> Int32:
 int32_t body_renarrow(bool flag, std::optional<int32_t> x) {
-    //     while flag:
+    // while flag:
     while (flag) {
-        //         if x is not None:
+        // if x is not None:
         if ((x.has_value())) {
-            //             return x + 1  # tpyc: ok
+            // return x + 1  # tpyc: ok
             return (::tpy::add_check<int32_t>((*x), 1));
         }
-        //         flag = False
+        // flag = False
         flag = false;
     }
-    //     return 0
+    // return 0
     return 0;
 }
 

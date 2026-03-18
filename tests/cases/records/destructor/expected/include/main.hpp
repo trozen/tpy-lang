@@ -16,11 +16,11 @@ void main();
 // # both for local variables and globals
 // class Resource:
 struct Resource {
-    //     name: str
+    // name: str
     std::string name;
     bool __tpy_owned_ = true;
 
-    //     def __init__(self, name: str):
+    // def __init__(self, name: str):
     Resource() = default;
     explicit Resource(std::string_view name) : name(name) {}
     Resource(const Resource&) = delete;
@@ -35,11 +35,11 @@ struct Resource {
         }
         return *this;
     }
-    //     def __del__(self):
+    // def __del__(self):
 
     ~Resource() {
         if (!__tpy_owned_) return;
-        //         print("destroying", self.name)
+        // print("destroying", self.name)
         std::cout << "destroying" << " " << this->name << "\n";
     }
 };

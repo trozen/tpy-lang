@@ -6,27 +6,27 @@ namespace tpy_user::main {
 
 // def make(i: Int32) -> Own[Box]:
 Box make(int32_t i) {
-    //     return Box(i)
+    // return Box(i)
     return Box(i);
 }
 
 // def test_while() -> None:
 void test_while() {
-    //     result = None
+    // result = None
     std::optional<Box> __slot_1;
     Box* result = nullptr;
-    //     i = Int32(0)
+    // i = Int32(0)
     int32_t i = 0;
-    //     while i < Int32(3):
+    // while i < Int32(3):
     while ((i < 3)) {
-        //         result = make(i)
+        // result = make(i)
         result = &*(__slot_1 = make(i));
-        //         i += Int32(1)
+        // i += Int32(1)
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    //     if result is not None:
+    // if result is not None:
     if ((result != nullptr)) {
-        //         print(result.v)
+        // print(result.v)
         std::cout << result->v << "\n";
     }
 }

@@ -6,12 +6,12 @@ namespace tpy_user::main {
 
 // def factorial(n: int) -> int:
 ::tpy::BigInt factorial(const ::tpy::BigInt& n) {
-    //     if n <= 1:
+    // if n <= 1:
     if ((n <= 1)) {
-        //         return 1
+        // return 1
         return ::tpy::BigInt(1);
     }
-    //     return n * factorial(n - 1)
+    // return n * factorial(n - 1)
     return ((n) * (factorial(((n) - (::tpy::BigInt(1))))));
 }
 

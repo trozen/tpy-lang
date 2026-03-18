@@ -7,18 +7,18 @@ namespace tpy_user::main {
 // # match/case on bool subject with True/False singleton patterns
 // def describe(b: bool) -> str:
 std::string describe(bool b) {
-    //     match b:
+    // match b:
     auto& __match_subject = b;
     switch (__match_subject) {
-    //         case True:
+    // case True:
     case true: {
-        //             return "yes"
+        // return "yes"
         return "yes";
         break;
     }
-    //         case False:
+    // case False:
     case false: {
-        //             return "no"
+        // return "no"
         return "no";
         break;
     }
@@ -27,9 +27,9 @@ std::string describe(bool b) {
 
 // def main() -> None:
 void main() {
-    //     print(describe(True))
+    // print(describe(True))
     std::cout << describe(true) << "\n";
-    //     print(describe(False))
+    // print(describe(False))
     std::cout << describe(false) << "\n";
 }
 

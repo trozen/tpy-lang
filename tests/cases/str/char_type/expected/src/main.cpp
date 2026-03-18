@@ -7,275 +7,275 @@ namespace tpy_user::main {
 // # Test Char type comprehensively
 // def test_char_literals() -> None:
 void test_char_literals() {
-    //     a: Char = "A"
+    // a: Char = "A"
     char a = 'A';
-    //     b: Char = "B"
+    // b: Char = "B"
     char b = 'B';
-    //     space: Char = " "
+    // space: Char = " "
     char space = ' ';
-    //     newline: Char = "\n"
+    // newline: Char = "\n"
     char newline = '\n';
-    //     print(a)
+    // print(a)
     std::cout << a << "\n";
-    //     print(b)
+    // print(b)
     std::cout << b << "\n";
-    //     print(space, end="")
+    // print(space, end="")
     std::cout << space;
-    //     print("x")
+    // print("x")
     std::cout << "x" << "\n";
 }
 
 // def test_char_from_string_index() -> None:
 void test_char_from_string_index() {
-    //     text: str = "Hello"
+    // text: str = "Hello"
     std::string_view text = "Hello";
-    //     c0: Char = text[0]
+    // c0: Char = text[0]
     char c0 = ::tpy::__getitem__(text, 0);
-    //     c1: Char = text[1]
+    // c1: Char = text[1]
     char c1 = ::tpy::__getitem__(text, 1);
-    //     c4: Char = text[4]
+    // c4: Char = text[4]
     char c4 = ::tpy::__getitem__(text, 4);
-    //     print(c0)
+    // print(c0)
     std::cout << c0 << "\n";
-    //     print(c1)
+    // print(c1)
     std::cout << c1 << "\n";
-    //     print(c4)
+    // print(c4)
     std::cout << c4 << "\n";
 }
 
 // def test_char_comparison() -> None:
 void test_char_comparison() {
-    //     a: Char = "a"
+    // a: Char = "a"
     char a = 'a';
-    //     b: Char = "b"
+    // b: Char = "b"
     char b = 'b';
-    //     a2: Char = "a"
+    // a2: Char = "a"
     char a2 = 'a';
-    //     # Equality
-    //     if a == a2:
+    // # Equality
+    // if a == a2:
     if ((a == a2)) {
-        //         print("a == a: yes")
+        // print("a == a: yes")
         std::cout << "a == a: yes" << "\n";
     }
-    //     if a == b:
+    // if a == b:
     if ((a == b)) {
-        //         print("a == b: yes")
+        // print("a == b: yes")
         std::cout << "a == b: yes" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("a == b: no")
+        // print("a == b: no")
         std::cout << "a == b: no" << "\n";
     }
-    //     # Inequality
-    //     if a != b:
+    // # Inequality
+    // if a != b:
     if ((a != b)) {
-        //         print("a != b: yes")
+        // print("a != b: yes")
         std::cout << "a != b: yes" << "\n";
     }
-    //     # Ordering (lexicographic by ASCII)
-    //     if a < b:
+    // # Ordering (lexicographic by ASCII)
+    // if a < b:
     if ((a < b)) {
-        //         print("a < b: yes")
+        // print("a < b: yes")
         std::cout << "a < b: yes" << "\n";
     }
-    //     if b > a:
+    // if b > a:
     if ((b > a)) {
-        //         print("b > a: yes")
+        // print("b > a: yes")
         std::cout << "b > a: yes" << "\n";
     }
-    //     if a <= a2:
+    // if a <= a2:
     if ((a <= a2)) {
-        //         print("a <= a: yes")
+        // print("a <= a: yes")
         std::cout << "a <= a: yes" << "\n";
     }
-    //     if b >= a:
+    // if b >= a:
     if ((b >= a)) {
-        //         print("b >= a: yes")
+        // print("b >= a: yes")
         std::cout << "b >= a: yes" << "\n";
     }
 }
 
 // def test_char_in_string() -> None:
 void test_char_in_string() {
-    //     text: str = "hello world"
+    // text: str = "hello world"
     std::string_view text = "hello world";
-    //     target: Char = "o"
+    // target: Char = "o"
     char target = 'o';
-    //     missing: Char = "z"
+    // missing: Char = "z"
     char missing = 'z';
-    //     if target in text:
+    // if target in text:
     if ((text.find(target) != std::string::npos)) {
-        //         print("o in text: yes")
+        // print("o in text: yes")
         std::cout << "o in text: yes" << "\n";
     }
-    //     if missing in text:
+    // if missing in text:
     if ((text.find(missing) != std::string::npos)) {
-        //         print("z in text: yes")
+        // print("z in text: yes")
         std::cout << "z in text: yes" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("z in text: no")
+        // print("z in text: no")
         std::cout << "z in text: no" << "\n";
     }
 }
 
 // def is_vowel(c: Char) -> bool:
 bool is_vowel(char c) {
-    //     if c == "a":
+    // if c == "a":
     if ((c == 'a')) {
-        //         return True
+        // return True
         return true;
     }
-    //     if c == "e":
+    // if c == "e":
     if ((c == 'e')) {
-        //         return True
+        // return True
         return true;
     }
-    //     if c == "i":
+    // if c == "i":
     if ((c == 'i')) {
-        //         return True
+        // return True
         return true;
     }
-    //     if c == "o":
+    // if c == "o":
     if ((c == 'o')) {
-        //         return True
+        // return True
         return true;
     }
-    //     if c == "u":
+    // if c == "u":
     if ((c == 'u')) {
-        //         return True
+        // return True
         return true;
     }
-    //     return False
+    // return False
     return false;
 }
 
 // def count_vowels(text: str) -> Int32:
 int32_t count_vowels(std::string_view text) {
-    //     count: Int32 = 0
+    // count: Int32 = 0
     int32_t count = 0;
-    //     i: Int32 = 0
+    // i: Int32 = 0
     int32_t i = 0;
-    //     while i < len(text):
+    // while i < len(text):
     while ((i < ::tpy::__len__(text))) {
-        //         if is_vowel(text[i]):
+        // if is_vowel(text[i]):
         if (is_vowel(text[i])) {
-            //             count += 1
+            // count += 1
             count = ::tpy::add_check<int32_t>(count, 1);
         }
-        //         i += 1
+        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    //     return count
+    // return count
     return count;
 }
 
 // def test_char_function_param() -> None:
 void test_char_function_param() {
-    //     if is_vowel("a"):
+    // if is_vowel("a"):
     if (is_vowel('a')) {
-        //         print("a is vowel")
+        // print("a is vowel")
         std::cout << "a is vowel" << "\n";
     }
-    //     if is_vowel("b"):
+    // if is_vowel("b"):
     if (is_vowel('b')) {
-        //         print("b is vowel")
+        // print("b is vowel")
         std::cout << "b is vowel" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("b is not vowel")
+        // print("b is not vowel")
         std::cout << "b is not vowel" << "\n";
     }
-    //     if is_vowel("e"):
+    // if is_vowel("e"):
     if (is_vowel('e')) {
-        //         print("e is vowel")
+        // print("e is vowel")
         std::cout << "e is vowel" << "\n";
     }
-    //     if is_vowel("x"):
+    // if is_vowel("x"):
     if (is_vowel('x')) {
-        //         print("x is vowel")
+        // print("x is vowel")
         std::cout << "x is vowel" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("x is not vowel")
+        // print("x is not vowel")
         std::cout << "x is not vowel" << "\n";
     }
 }
 
 // def test_char_iteration() -> None:
 void test_char_iteration() {
-    //     text: str = "abc"
+    // text: str = "abc"
     std::string_view text = "abc";
-    //     for c in text:
+    // for c in text:
     auto& __obj_0 = text;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char c = *__beg_0;
-        //         print(c)
+        // print(c)
         std::cout << c << "\n";
     }
 }
 
 // def test_vowel_counting() -> None:
 void test_vowel_counting() {
-    //     print(count_vowels("hello"))
+    // print(count_vowels("hello"))
     std::cout << count_vowels("hello") << "\n";
-    //     print(count_vowels("world"))
+    // print(count_vowels("world"))
     std::cout << count_vowels("world") << "\n";
-    //     print(count_vowels("aeiou"))
+    // print(count_vowels("aeiou"))
     std::cout << count_vowels("aeiou") << "\n";
-    //     print(count_vowels("xyz"))
+    // print(count_vowels("xyz"))
     std::cout << count_vowels("xyz") << "\n";
 }
 
 // def test_chr_function() -> None:
 void test_chr_function() {
-    //     c65: Char = chr(65)
+    // c65: Char = chr(65)
     char c65 = static_cast<char>(65);
-    //     c97: Char = chr(97)
+    // c97: Char = chr(97)
     char c97 = static_cast<char>(97);
-    //     print(c65)
+    // print(c65)
     std::cout << c65 << "\n";
-    //     print(c97)
+    // print(c97)
     std::cout << c97 << "\n";
-    //     # Compare chr result
-    //     if c65 == "A":
+    // # Compare chr result
+    // if c65 == "A":
     if ((c65 == 'A')) {
-        //         print("chr(65) == A: yes")
+        // print("chr(65) == A: yes")
         std::cout << "chr(65) == A: yes" << "\n";
     }
-    //     if c97 == "a":
+    // if c97 == "a":
     if ((c97 == 'a')) {
-        //         print("chr(97) == a: yes")
+        // print("chr(97) == a: yes")
         std::cout << "chr(97) == a: yes" << "\n";
     }
 }
 
 // def accepts_str(s: str) -> None:
 void accepts_str(std::string_view s) {
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_char_to_str_coercion() -> None:
 void test_char_to_str_coercion() {
-    //     # Assign single-char literal to str variable
-    //     s1: str = "x"
+    // # Assign single-char literal to str variable
+    // s1: str = "x"
     std::string_view s1 = "x";
-    //     print(s1)
+    // print(s1)
     std::cout << s1 << "\n";
-    //     # Pass single-char literal to str parameter
-    //     accepts_str("w")
+    // # Pass single-char literal to str parameter
+    // accepts_str("w")
     accepts_str("w");
-    //     # Multiple single-char str variables
-    //     a: str = "a"
+    // # Multiple single-char str variables
+    // a: str = "a"
     std::string_view a = "a";
-    //     b: str = "b"
+    // b: str = "b"
     std::string_view b = "b";
-    //     if a < b:
+    // if a < b:
     if ((a < b)) {
-        //         print("a < b")
+        // print("a < b")
         std::cout << "a < b" << "\n";
     }
 }

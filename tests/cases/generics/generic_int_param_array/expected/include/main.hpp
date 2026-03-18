@@ -14,23 +14,23 @@ void main();
 // class Buffer[T, N: int]:
 template<typename T, std::size_t N>
 struct Buffer {
-    //     data: Array[T, N]
+    // data: Array[T, N]
     std::array<T, N> data;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Buffer() {
-        //         pass
+        // pass
     }
 
-    //     def set(self, idx: Int32, val: T) -> None:
+    // def set(self, idx: Int32, val: T) -> None:
     void set(int32_t idx, ::tpy::param_val_or_ref_t<T> val) {
-        //         self.data[idx] = val
+        // self.data[idx] = val
         ::tpy::__setitem__(this->data, idx, val);
     }
 
-    //     def get(self, idx: Int32) -> T:
+    // def get(self, idx: Int32) -> T:
     ::tpy::val_or_ref_t<T> get(int32_t idx) {
-        //         return self.data[idx]
+        // return self.data[idx]
         return ::tpy::__getitem__(this->data, idx);
     }
 };

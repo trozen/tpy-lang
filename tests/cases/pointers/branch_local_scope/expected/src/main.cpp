@@ -6,75 +6,75 @@ namespace tpy_user::main {
 
 // def branch_rvalue_independent(cond: bool) -> None:
 void branch_rvalue_independent(bool cond) {
-    //     # p is rvalue-init in both branches, used only within each branch (not after)
-    //     if cond:
+    // # p is rvalue-init in both branches, used only within each branch (not after)
+    // if cond:
     std::optional<Point> __slot_1;
     Point* p;
     if (cond) {
-        //         p = Point(1, 2)
+        // p = Point(1, 2)
         p = &*(__slot_1 = Point(1, 2));
-        //         print(p.x, p.y)
+        // print(p.x, p.y)
         std::cout << p->x << " " << p->y << "\n";
-    //     else:
+    // else:
     } else {
-        //         p = Point(3, 4)
+        // p = Point(3, 4)
         p = &*(__slot_1 = Point(3, 4));
-        //         print(p.x, p.y)
+        // print(p.x, p.y)
         std::cout << p->x << " " << p->y << "\n";
     }
 }
 
 // def branch_rvalue_three_way(flag: Int32) -> None:
 void branch_rvalue_three_way(int32_t flag) {
-    //     # Three-way: each elif/else branch has its own independent local
-    //     if flag == 0:
+    // # Three-way: each elif/else branch has its own independent local
+    // if flag == 0:
     std::optional<Point> __slot_1;
     Point* p;
     if ((flag == 0)) {
-        //         p = Point(10, 20)
+        // p = Point(10, 20)
         p = &*(__slot_1 = Point(10, 20));
-        //         print(p.x, p.y)
+        // print(p.x, p.y)
         std::cout << p->x << " " << p->y << "\n";
-    //     elif flag == 1:
+    // elif flag == 1:
     } else if ((flag == 1)) {
-        //         p = Point(30, 40)
+        // p = Point(30, 40)
         p = &*(__slot_1 = Point(30, 40));
-        //         print(p.x, p.y)
+        // print(p.x, p.y)
         std::cout << p->x << " " << p->y << "\n";
-    //     else:
+    // else:
     } else {
-        //         p = Point(50, 60)
+        // p = Point(50, 60)
         p = &*(__slot_1 = Point(50, 60));
-        //         print(p.x, p.y)
+        // print(p.x, p.y)
         std::cout << p->x << " " << p->y << "\n";
     }
 }
 
 // def branch_mixed_scope(cond: bool) -> None:
 void branch_mixed_scope(bool cond) {
-    //     # First var is used after (pre-declared), second is branch-only (independent)
-    //     if cond:
+    // # First var is used after (pre-declared), second is branch-only (independent)
+    // if cond:
     std::optional<Point> __slot_1;
     Point* local;
     std::optional<Point> __slot_2;
     Point* shared;
     if (cond) {
-        //         shared = Point(1, 2)
+        // shared = Point(1, 2)
         shared = &*(__slot_2 = Point(1, 2));
-        //         local = Point(10, 20)
+        // local = Point(10, 20)
         local = &*(__slot_1 = Point(10, 20));
-        //         print(local.x, local.y)
+        // print(local.x, local.y)
         std::cout << local->x << " " << local->y << "\n";
-    //     else:
+    // else:
     } else {
-        //         shared = Point(3, 4)
+        // shared = Point(3, 4)
         shared = &*(__slot_2 = Point(3, 4));
-        //         local = Point(30, 40)
+        // local = Point(30, 40)
         local = &*(__slot_1 = Point(30, 40));
-        //         print(local.x, local.y)
+        // print(local.x, local.y)
         std::cout << local->x << " " << local->y << "\n";
     }
-    //     print(shared.x, shared.y)
+    // print(shared.x, shared.y)
     std::cout << shared->x << " " << shared->y << "\n";
 }
 

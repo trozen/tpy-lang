@@ -9,21 +9,21 @@ Point* ORIGIN{};
 
 // def get_origin() -> Point:
 Point& get_origin() {
-    //     return ORIGIN  # tpyc: ok (global lives forever)
+    // return ORIGIN  # tpyc: ok (global lives forever)
     return (*ORIGIN);
 }
 
 // def main():
 void main() {
-    //     ORIGIN.x = 100
+    // ORIGIN.x = 100
     ORIGIN->x = 100;
-    //     ORIGIN.y = 200
+    // ORIGIN.y = 200
     ORIGIN->y = 200;
-    //     ref: Point = get_origin()
+    // ref: Point = get_origin()
     Point& ref = get_origin();
-    //     print(ref.x)
+    // print(ref.x)
     std::cout << ref.x << "\n";
-    //     print(ref.y)
+    // print(ref.y)
     std::cout << ref.y << "\n";
 }
 

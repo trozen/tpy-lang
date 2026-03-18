@@ -7,29 +7,29 @@ namespace tpy_user::main {
 // # Test PendingStrType promotes to str (std::string) for owned-requiring usage
 // def test_str_constructor() -> None:
 void test_str_constructor() {
-    //     s = str(42)  # tpyc: type(str)
+    // s = str(42)  # tpyc: type(str)
     std::string s = ::tpy::fixed_to_str<int8_t>(42);
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_augassign() -> None:
 void test_augassign() {
-    //     s = "hello"  # tpyc: type(str)
+    // s = "hello"  # tpyc: type(str)
     std::string s = "hello";
-    //     s += " world"
+    // s += " world"
     s += " world";
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_reassign_from_owned() -> None:
 void test_reassign_from_owned() {
-    //     s = "start"  # tpyc: type(str)
+    // s = "start"  # tpyc: type(str)
     std::string s = "start";
-    //     s = str(99)
+    // s = str(99)
     s = ::tpy::fixed_to_str<int8_t>(99);
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 

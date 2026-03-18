@@ -6,57 +6,57 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     a: set[Int32] = {1, 2, 3}
+    // a: set[Int32] = {1, 2, 3}
     ::tpy::ordered_set<int32_t> a = ::tpy::ordered_set<int32_t>({1, 2, 3});
-    //     b: set[Int32] = {2, 3, 4}
+    // b: set[Int32] = {2, 3, 4}
     ::tpy::ordered_set<int32_t> b = ::tpy::ordered_set<int32_t>({2, 3, 4});
-    //     print(a.union(b))
+    // print(a.union(b))
     std::cout << ::tpy::SetPrinter(::tpy::set_union(a, b)) << "\n";
-    //     print(a.intersection(b))
+    // print(a.intersection(b))
     std::cout << ::tpy::SetPrinter(::tpy::set_intersection(a, b)) << "\n";
-    //     print(a.difference(b))
+    // print(a.difference(b))
     std::cout << ::tpy::SetPrinter(::tpy::set_difference(a, b)) << "\n";
-    //     print(a.symmetric_difference(b))
+    // print(a.symmetric_difference(b))
     std::cout << ::tpy::SetPrinter(::tpy::set_symmetric_difference(a, b)) << "\n";
-    //     # Predicates
-    //     c: set[Int32] = {1, 2}
+    // # Predicates
+    // c: set[Int32] = {1, 2}
     ::tpy::ordered_set<int32_t> c = ::tpy::ordered_set<int32_t>({1, 2});
-    //     print(c.issubset(a))
+    // print(c.issubset(a))
     std::cout << ::tpy::print_bool(::tpy::set_issubset(c, a)) << "\n";
-    //     print(a.issubset(c))
+    // print(a.issubset(c))
     std::cout << ::tpy::print_bool(::tpy::set_issubset(a, c)) << "\n";
-    //     print(a.issuperset(c))
+    // print(a.issuperset(c))
     std::cout << ::tpy::print_bool(::tpy::set_issuperset(a, c)) << "\n";
-    //     print(a.isdisjoint(b))
+    // print(a.isdisjoint(b))
     std::cout << ::tpy::print_bool(::tpy::set_isdisjoint(a, b)) << "\n";
-    //     d: set[Int32] = {10, 20}
+    // d: set[Int32] = {10, 20}
     ::tpy::ordered_set<int32_t> d = ::tpy::ordered_set<int32_t>({10, 20});
-    //     print(a.isdisjoint(d))
+    // print(a.isdisjoint(d))
     std::cout << ::tpy::print_bool(::tpy::set_isdisjoint(a, d)) << "\n";
-    //     # In-place updates
-    //     e: set[Int32] = {1, 2}
+    // # In-place updates
+    // e: set[Int32] = {1, 2}
     ::tpy::ordered_set<int32_t> e = ::tpy::ordered_set<int32_t>({1, 2});
-    //     e.update(b)
+    // e.update(b)
     ::tpy::set_update(e, b);
-    //     print(e)
+    // print(e)
     std::cout << ::tpy::SetPrinter(e) << "\n";
-    //     f: set[Int32] = {1, 2, 3, 4}
+    // f: set[Int32] = {1, 2, 3, 4}
     ::tpy::ordered_set<int32_t> f = ::tpy::ordered_set<int32_t>({1, 2, 3, 4});
-    //     f.intersection_update(a)
+    // f.intersection_update(a)
     ::tpy::set_intersection_update(f, a);
-    //     print(f)
+    // print(f)
     std::cout << ::tpy::SetPrinter(f) << "\n";
-    //     g: set[Int32] = {1, 2, 3}
+    // g: set[Int32] = {1, 2, 3}
     ::tpy::ordered_set<int32_t> g = ::tpy::ordered_set<int32_t>({1, 2, 3});
-    //     g.difference_update(b)
+    // g.difference_update(b)
     ::tpy::set_difference_update(g, b);
-    //     print(g)
+    // print(g)
     std::cout << ::tpy::SetPrinter(g) << "\n";
-    //     h: set[Int32] = {1, 2, 3}
+    // h: set[Int32] = {1, 2, 3}
     ::tpy::ordered_set<int32_t> h = ::tpy::ordered_set<int32_t>({1, 2, 3});
-    //     h.symmetric_difference_update(b)
+    // h.symmetric_difference_update(b)
     ::tpy::set_symmetric_difference_update(h, b);
-    //     print(h)
+    // print(h)
     std::cout << ::tpy::SetPrinter(h) << "\n";
 }
 

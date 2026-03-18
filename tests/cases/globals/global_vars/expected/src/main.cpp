@@ -70,7 +70,7 @@ void __tpy_init() {
     int32_t __start_0 = start;
     int32_t __stop_0 = end;
     for (int32_t i = __start_0; i < __stop_0; ++i) {
-        //     print(i)
+        // print(i)
         std::cout << i << "\n";
     }
     // # Test 2: Global int used as list index
@@ -104,20 +104,20 @@ void __tpy_init() {
     global_list = &__global_slot_3;
     // if 2 in global_list:
     if ((std::find((*global_list).begin(), (*global_list).end(), 2) != (*global_list).end())) {
-        //     print(1)
+        // print(1)
         std::cout << 1 << "\n";
     // else:
     } else {
-        //     print(0)
+        // print(0)
         std::cout << 0 << "\n";
     }
     // if 5 in global_list:
     if ((std::find((*global_list).begin(), (*global_list).end(), 5) != (*global_list).end())) {
-        //     print(1)
+        // print(1)
         std::cout << 1 << "\n";
     // else:
     } else {
-        //     print(0)
+        // print(0)
         std::cout << 0 << "\n";
     }
     // # Test 6: Loop variable shadows global
@@ -127,7 +127,7 @@ void __tpy_init() {
     std::cout << i << "\n";
     // for i in range(0, 2):
     for (int32_t i = 0; i < 2; ++i) {
-        //     print(i)
+        // print(i)
         std::cout << i << "\n";
     }
     // # Test 7: For-each loop variable shadows global
@@ -144,7 +144,7 @@ void __tpy_init() {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         int32_t x = *__beg_2;
-        //     print(x)
+        // print(x)
         std::cout << x << "\n";
     }
     // local_pt: Point = Point(42, 99)

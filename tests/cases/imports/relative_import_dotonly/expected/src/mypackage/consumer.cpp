@@ -6,7 +6,7 @@ namespace tpy_user::mypackage::consumer {
 
 // def compute() -> Int32:
 int32_t compute() {
-    //     return utils.add(Int32(7), Int32(8))
+    // return utils.add(Int32(7), Int32(8))
     return ::tpy_user::mypackage::utils::add(7, 8);
 }
 

@@ -6,92 +6,92 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # -- empty, append, len --
-    //     s = FixStr[16]()
+    // # -- empty, append, len --
+    // s = FixStr[16]()
     ::tpy_user::tplib::FixStr<16> s = ::tpy_user::tplib::FixStr<16>();
-    //     print(len(s))               # 0
+    // print(len(s))               # 0
     std::cout << ::tpy::__len__(s) << "\n";
-    //     h: Char = "h"
+    // h: Char = "h"
     char h = 'h';
-    //     i: Char = "i"
+    // i: Char = "i"
     char i = 'i';
-    //     s.append(h)
+    // s.append(h)
     s.append(h);
-    //     s.append(i)
+    // s.append(i)
     s.append(i);
-    //     print(len(s))               # 2
+    // print(len(s))               # 2
     std::cout << ::tpy::__len__(s) << "\n";
-    //     # -- getitem --
-    //     print(s[0])                 # h
+    // # -- getitem --
+    // print(s[0])                 # h
     std::cout << s[0] << "\n";
-    //     print(s[1])                 # i
+    // print(s[1])                 # i
     std::cout << s[1] << "\n";
-    //     # -- setitem --
-    //     o: Char = "o"
+    // # -- setitem --
+    // o: Char = "o"
     char o = 'o';
-    //     s[1] = o
+    // s[1] = o
     ::tpy::__setitem__(s, 1, o);
-    //     print(s[1])                 # o
+    // print(s[1])                 # o
     std::cout << s[1] << "\n";
-    //     # -- pop --
-    //     print(s.pop())              # o
+    // # -- pop --
+    // print(s.pop())              # o
     std::cout << s.pop() << "\n";
-    //     print(len(s))               # 1
+    // print(len(s))               # 1
     std::cout << ::tpy::__len__(s) << "\n";
-    //     # -- iter --
-    //     e: Char = "e"
+    // # -- iter --
+    // e: Char = "e"
     char e = 'e';
-    //     y: Char = "y"
+    // y: Char = "y"
     char y = 'y';
-    //     s.append(e)
+    // s.append(e)
     s.append(e);
-    //     s.append(y)
+    // s.append(y)
     s.append(y);
-    //     for c in s:
+    // for c in s:
     auto& __src_0 = s;
     auto __itr_0 = __src_0.__iter__();
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         char c = *__r_1;
-        //         print(c)                # h e y
+        // print(c)                # h e y
         std::cout << c << "\n";
     }
-    //     # iterate again
-    //     for c in s:
+    // # iterate again
+    // for c in s:
     auto& __src_2 = s;
     auto __itr_2 = __src_2.__iter__();
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         char c = *__r_3;
-        //         print(c)                # h e y
+        // print(c)                # h e y
         std::cout << c << "\n";
     }
-    //     # -- str / f-string --
-    //     print(s)                    # hey
+    // # -- str / f-string --
+    // print(s)                    # hey
     std::cout << s << "\n";
-    //     greeting: str = str(s)
+    // greeting: str = str(s)
     std::string greeting = std::string(::tpy::__str__(s));
-    //     print(greeting)             # hey
+    // print(greeting)             # hey
     std::cout << greeting << "\n";
-    //     print(f"val={s}")           # val=hey
+    // print(f"val={s}")           # val=hey
     std::cout << std::format("val={}", ::tpy::__str__(s)) << "\n";
-    //     # -- copy --
-    //     t = copy(s)
+    // # -- copy --
+    // t = copy(s)
     ::tpy_user::tplib::FixStr<16> t = ::tpy_user::tplib::FixStr<16>(s);
-    //     b: Char = "b"
+    // b: Char = "b"
     char b = 'b';
-    //     t[0] = b
+    // t[0] = b
     ::tpy::__setitem__(t, 0, b);
-    //     print(s[0])                 # h (original unchanged)
+    // print(s[0])                 # h (original unchanged)
     std::cout << s[0] << "\n";
-    //     print(t[0])                 # b
+    // print(t[0])                 # b
     std::cout << t[0] << "\n";
-    //     # -- clear --
-    //     s.clear()
+    // # -- clear --
+    // s.clear()
     s.clear();
-    //     print(len(s))               # 0
+    // print(len(s))               # 0
     std::cout << ::tpy::__len__(s) << "\n";
 }
 

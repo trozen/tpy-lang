@@ -11,221 +11,221 @@ Point* pt{};
 // # Test 1: Local sharing — y = x makes both point to same object
 // def test_local_sharing() -> None:
 void test_local_sharing() {
-    //     x: Point = Point(1, 2)
+    // x: Point = Point(1, 2)
     Point x = Point(1, 2);
-    //     y = x
+    // y = x
     Point& y = x;
-    //     y.x = 99
+    // y.x = 99
     y.x = 99;
-    //     print(x.x)  # 99 — shared
+    // print(x.x)  # 99 — shared
     std::cout << x.x << "\n";
-    //     print(y.x)  # 99
+    // print(y.x)  # 99
     std::cout << y.x << "\n";
 }
 
 // # Test 2: copy() creates independent value
 // def test_copy_independence() -> None:
 void test_copy_independence() {
-    //     x: Point = Point(10, 20)
+    // x: Point = Point(10, 20)
     Point x = Point(10, 20);
-    //     y: Point = copy(x)
+    // y: Point = copy(x)
     Point y = Point(x);
-    //     y.x = 999
+    // y.x = 999
     y.x = 999;
-    //     print(x.x)  # 10 — independent
+    // print(x.x)  # 10 — independent
     std::cout << x.x << "\n";
-    //     print(y.x)  # 999
+    // print(y.x)  # 999
     std::cout << y.x << "\n";
 }
 
 // # Test 3: Init from param — local points to param's object
 // def test_init_from_param(p: Point) -> None:
 void test_init_from_param(Point& p) {
-    //     local = p
+    // local = p
     Point& local = p;
-    //     local.x = 42
+    // local.x = 42
     local.x = 42;
-    //     print(p.x)  # 42 — shared through param
+    // print(p.x)  # 42 — shared through param
     std::cout << p.x << "\n";
 }
 
 // # Test 4: Init from container element — pointer into container
 // def test_init_from_element() -> None:
 void test_init_from_element() {
-    //     points: list[Point] = [Point(1, 1), Point(2, 2), Point(3, 3)]
+    // points: list[Point] = [Point(1, 1), Point(2, 2), Point(3, 3)]
     std::vector<Point> points = {Point(1, 1), Point(2, 2), Point(3, 3)};
-    //     elem = points[0]
+    // elem = points[0]
     Point& elem = ::tpy::__getitem__(points, 0);
-    //     elem.x = 100
+    // elem.x = 100
     elem.x = 100;
-    //     print(points[0].x)  # 100 — elem pointed into container
+    // print(points[0].x)  # 100 — elem pointed into container
     std::cout << ::tpy::__getitem__(points, 0).x << "\n";
 }
 
 // # Test 5: For-each over records — loop var is auto& reference
 // def test_foreach_mutation() -> None:
 void test_foreach_mutation() {
-    //     points: list[Point] = [Point(1, 10), Point(2, 20), Point(3, 30)]
+    // points: list[Point] = [Point(1, 10), Point(2, 20), Point(3, 30)]
     std::vector<Point> points = {Point(1, 10), Point(2, 20), Point(3, 30)};
-    //     for p in points:
+    // for p in points:
     auto& __obj_0 = points;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        //         p.x += 1
+        // p.x += 1
         p.x = ::tpy::add_check<int32_t>(p.x, 1);
     }
-    //     print(points[0].x)  # 2
+    // print(points[0].x)  # 2
     std::cout << ::tpy::__getitem__(points, 0).x << "\n";
-    //     print(points[1].x)  # 3
+    // print(points[1].x)  # 3
     std::cout << ::tpy::__getitem__(points, 1).x << "\n";
-    //     print(points[2].x)  # 4
+    // print(points[2].x)  # 4
     std::cout << ::tpy::__getitem__(points, 2).x << "\n";
 }
 
 // # Test 6: Rebinding pointer-local to different source
 // def test_rebinding() -> None:
 void test_rebinding() {
-    //     a: Point = Point(1, 1)
+    // a: Point = Point(1, 1)
     Point a = Point(1, 1);
-    //     b: Point = Point(2, 2)
+    // b: Point = Point(2, 2)
     Point b = Point(2, 2);
-    //     x = a
+    // x = a
     Point* x = &(a);
-    //     print(x.x)  # 1
+    // print(x.x)  # 1
     std::cout << x->x << "\n";
-    //     x = b
+    // x = b
     x = &(b);
-    //     print(x.x)  # 2
+    // print(x.x)  # 2
     std::cout << x->x << "\n";
-    //     x.x = 77
+    // x.x = 77
     x->x = 77;
-    //     print(b.x)  # 77 — x now points to b
+    // print(b.x)  # 77 — x now points to b
     std::cout << b.x << "\n";
 }
 
 // # Test 7: Rvalue append — no copy needed
 // def test_rvalue_append() -> None:
 void test_rvalue_append() {
-    //     results: list[Point] = []
+    // results: list[Point] = []
     std::vector<Point> results = std::vector<Point>{};
-    //     results.append(Point(5, 5))
+    // results.append(Point(5, 5))
     results.push_back(Point(5, 5));
-    //     results.append(Point(6, 6))
+    // results.append(Point(6, 6))
     results.push_back(Point(6, 6));
-    //     print(results[0].x)  # 5
+    // print(results[0].x)  # 5
     std::cout << ::tpy::__getitem__(results, 0).x << "\n";
-    //     print(results[1].x)  # 6
+    // print(results[1].x)  # 6
     std::cout << ::tpy::__getitem__(results, 1).x << "\n";
 }
 
 // # Test 8: Build list with copy
 // def test_build_with_copy() -> None:
 void test_build_with_copy() {
-    //     results: list[Point] = []
+    // results: list[Point] = []
     std::vector<Point> results = std::vector<Point>{};
-    //     p: Point = Point(1, 1)
+    // p: Point = Point(1, 1)
     Point p = Point(1, 1);
-    //     p.x = 10
+    // p.x = 10
     p.x = 10;
-    //     results.append(copy(p))
+    // results.append(copy(p))
     results.push_back(Point(p));
-    //     p.x = 20
+    // p.x = 20
     p.x = 20;
-    //     results.append(copy(p))  # tpyc: warning(/unnecessary copy/)
+    // results.append(copy(p))  # tpyc: warning(/unnecessary copy/)
     results.push_back(Point(p));
-    //     print(results[0].x)  # 10 — independent copy
+    // print(results[0].x)  # 10 — independent copy
     std::cout << ::tpy::__getitem__(results, 0).x << "\n";
-    //     print(results[1].x)  # 20 — independent copy
+    // print(results[1].x)  # 20 — independent copy
     std::cout << ::tpy::__getitem__(results, 1).x << "\n";
 }
 
 // # Test 9: Init from global — local points to global's object
 // def test_init_from_global() -> None:
 void test_init_from_global() {
-    //     local = g
+    // local = g
     Point& local = (*g);
-    //     local.x = 500
+    // local.x = 500
     local.x = 500;
-    //     print(g.x)  # 500 — shared through global
+    // print(g.x)  # 500 — shared through global
     std::cout << g->x << "\n";
 }
 
 // # Test 10: Rebind pointer-local to global
 // def test_rebind_to_global() -> None:
 void test_rebind_to_global() {
-    //     a: Point = Point(1, 1)
+    // a: Point = Point(1, 1)
     Point a = Point(1, 1);
-    //     x = a
+    // x = a
     Point* x = &(a);
-    //     x = g
+    // x = g
     x = g;
-    //     x.x = 600
+    // x.x = 600
     x->x = 600;
-    //     print(g.x)  # 600 — x now points to global
+    // print(g.x)  # 600 — x now points to global
     std::cout << g->x << "\n";
 }
 
 // # Test 11: List sharing — lists are non-value, assignment shares
 // def test_list_sharing() -> None:
 void test_list_sharing() {
-    //     a: list[Int32] = [1, 2, 3]
+    // a: list[Int32] = [1, 2, 3]
     std::vector<int32_t> a = {1, 2, 3};
-    //     b = a
+    // b = a
     std::vector<int32_t>& b = a;
-    //     b.append(4)
+    // b.append(4)
     b.push_back(4);
-    //     print(len(a))  # 4 — shared
+    // print(len(a))  # 4 — shared
     std::cout << ::tpy::__len__(a) << "\n";
-    //     print(a[3])    # 4
+    // print(a[3])    # 4
     std::cout << ::tpy::__getitem__(a, 3) << "\n";
 }
 
 // # Test 12: Pointer copy chain — a→b→c, mutation through c visible in a
 // def test_pointer_chain() -> None:
 void test_pointer_chain() {
-    //     a: Point = Point(1, 1)
+    // a: Point = Point(1, 1)
     Point a = Point(1, 1);
-    //     b = a
+    // b = a
     Point& b = a;
-    //     c = b
+    // c = b
     Point& c = b;
-    //     c.x = 88
+    // c.x = 88
     c.x = 88;
-    //     print(a.x)  # 88
+    // print(a.x)  # 88
     std::cout << a.x << "\n";
 }
 
 // def test_method_on_pointer_local() -> None:
 void test_method_on_pointer_local() {
-    //     c: Counter = Counter(0)
+    // c: Counter = Counter(0)
     Counter c = Counter(0);
-    //     c.increment()
+    // c.increment()
     c.increment();
-    //     c.increment()
+    // c.increment()
     c.increment();
-    //     print(c.val)  # 2
+    // print(c.val)  # 2
     std::cout << c.val << "\n";
 }
 
 // # Test 14: For-each value elements from pointer-local list
 // def test_foreach_value_from_pointer_local() -> None:
 void test_foreach_value_from_pointer_local() {
-    //     nums: list[Int32] = [10, 20, 30]
+    // nums: list[Int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     for n in nums:
+    // for n in nums:
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t n = *__beg_0;
-        //         total = total + n
+        // total = total + n
         total = (::tpy::add_check<int32_t>(total, n));
     }
-    //     print(total)  # 60
+    // print(total)  # 60
     std::cout << total << "\n";
 }
 

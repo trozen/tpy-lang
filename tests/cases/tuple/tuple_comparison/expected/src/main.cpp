@@ -6,29 +6,29 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     a = (Int32(1), "hello")
+    // a = (Int32(1), "hello")
     std::tuple<int32_t, std::string> a = std::tuple<int32_t, std::string>{1, "hello"};
-    //     b = (Int32(1), "hello")
+    // b = (Int32(1), "hello")
     std::tuple<int32_t, std::string> b = std::tuple<int32_t, std::string>{1, "hello"};
-    //     c = (Int32(2), "world")
+    // c = (Int32(2), "world")
     std::tuple<int32_t, std::string> c = std::tuple<int32_t, std::string>{2, "world"};
-    //     print(a == b)
+    // print(a == b)
     std::cout << ::tpy::print_bool((a == b)) << "\n";
-    //     print(a != b)
+    // print(a != b)
     std::cout << ::tpy::print_bool((a != b)) << "\n";
-    //     print(a == c)
+    // print(a == c)
     std::cout << ::tpy::print_bool((a == c)) << "\n";
-    //     print(a != c)
+    // print(a != c)
     std::cout << ::tpy::print_bool((a != c)) << "\n";
-    //     # Comparison in conditional
-    //     if a == b:
+    // # Comparison in conditional
+    // if a == b:
     if ((a == b)) {
-        //         print("equal")
+        // print("equal")
         std::cout << "equal" << "\n";
     }
-    //     if a != c:
+    // if a != c:
     if ((a != c)) {
-        //         print("not equal")
+        // print("not equal")
         std::cout << "not equal" << "\n";
     }
 }

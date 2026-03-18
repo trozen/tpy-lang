@@ -6,24 +6,24 @@ namespace tpy_user::main {
 
 // def f() -> None:
 void f() {
-    //     a: A | B = A(1.0)
+    // a: A | B = A(1.0)
     std::variant<A, B> __slot_1 = A(1.0);
     std::variant<A*, B*> a = ::tpy::to_ptr_variant(__slot_1);
-    //     print(a.x)
+    // print(a.x)
     std::cout << ::tpy::print_float((*std::get<A*>(a)).x) << "\n";
 }
 
 // def g(a: C) -> None:
 void g(const C& a) {
-    //     print(a.x)
+    // print(a.x)
     std::cout << ::tpy::print_float(a.x) << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     f()
+    // f()
     f();
-    //     g(C(2.0))
+    // g(C(2.0))
     C __tmp_1 = C(2.0);
     g(__tmp_1);
 }

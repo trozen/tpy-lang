@@ -10,11 +10,11 @@ bool flag{};
 
 // def bump() -> None:
 void bump() {
-    //     global counter
-    //     global flag
-    //     counter = counter + Int32(1)
+    // global counter
+    // global flag
+    // counter = counter + Int32(1)
     counter = (::tpy::add_check<int32_t>(counter, 1));
-    //     flag = True
+    // flag = True
     flag = true;
 }
 

@@ -6,44 +6,44 @@ namespace tpy_user::main {
 
 // def describe(a: Dog | Cat | Bird) -> str:
 std::string describe(const std::variant<Bird*, Cat*, Dog*> a) {
-    //     match a:
+    // match a:
     auto& __match_subject = a;
     switch (__match_subject.index()) {
-    //         case Dog() | Cat():
+    // case Dog() | Cat():
     case 2:
     case 1:
     {
-        //             return "mammal"
+        // return "mammal"
         return "mammal";
         break;
     }
-    //         case Bird():
+    // case Bird():
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject);
-        //             return "bird"
+        // return "bird"
         return "bird";
         break;
     }
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def with_default(a: Dog | Cat | Bird) -> str:
 std::string with_default(const std::variant<Bird*, Cat*, Dog*> a) {
-    //     match a:
+    // match a:
     auto& __match_subject = a;
     switch (__match_subject.index()) {
-    //         case Dog():
+    // case Dog():
     case 2: {
         auto& __case_0 = *std::get<2>(__match_subject);
-        //             return "dog"
+        // return "dog"
         return "dog";
         break;
     }
-    //         case _:
+    // case _:
     default: {
-        //             return "other"
+        // return "other"
         return "other";
         break;
     }
@@ -52,26 +52,26 @@ std::string with_default(const std::variant<Bird*, Cat*, Dog*> a) {
 
 // def main() -> None:
 void main() {
-    //     d: Dog | Cat | Bird = Dog("Rex")
+    // d: Dog | Cat | Bird = Dog("Rex")
     std::variant<Bird, Cat, Dog> __slot_1 = Dog("Rex");
     std::variant<Bird*, Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    //     c: Dog | Cat | Bird = Cat("Whiskers")
+    // c: Dog | Cat | Bird = Cat("Whiskers")
     std::variant<Bird, Cat, Dog> __slot_2 = Cat("Whiskers");
     std::variant<Bird*, Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
-    //     b: Dog | Cat | Bird = Bird("Tweety")
+    // b: Dog | Cat | Bird = Bird("Tweety")
     std::variant<Bird, Cat, Dog> __slot_3 = Bird("Tweety");
     std::variant<Bird*, Cat*, Dog*> b = ::tpy::to_ptr_variant(__slot_3);
-    //     print(describe(d))
+    // print(describe(d))
     std::cout << describe(d) << "\n";
-    //     print(describe(c))
+    // print(describe(c))
     std::cout << describe(c) << "\n";
-    //     print(describe(b))
+    // print(describe(b))
     std::cout << describe(b) << "\n";
-    //     print(with_default(d))
+    // print(with_default(d))
     std::cout << with_default(d) << "\n";
-    //     print(with_default(c))
+    // print(with_default(c))
     std::cout << with_default(c) << "\n";
-    //     print(with_default(b))
+    // print(with_default(b))
     std::cout << with_default(b) << "\n";
 }
 

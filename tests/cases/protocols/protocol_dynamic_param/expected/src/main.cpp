@@ -6,16 +6,16 @@ namespace tpy_user::main {
 
 // def greet(pet: Pet) -> None:
 void greet(Pet& pet) {
-    //     print(pet.make_noise())
+    // print(pet.make_noise())
     std::cout << pet.make_noise() << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     greet(Dog())
+    // greet(Dog())
     Dog __tmp_1{Dog()};
     greet(__tmp_1);
-    //     greet(Cat())
+    // greet(Cat())
     Cat __tmp_2{Cat()};
     greet(__tmp_2);
 }

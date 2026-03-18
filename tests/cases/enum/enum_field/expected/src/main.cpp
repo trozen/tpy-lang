@@ -48,13 +48,13 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     p: Pixel = Pixel(0, 0, Color.Red)
+    // p: Pixel = Pixel(0, 0, Color.Red)
     Pixel p = Pixel(::tpy::BigInt(0), ::tpy::BigInt(0), Color::Red);
-    //     print(p.color)
+    // print(p.color)
     std::cout << p.color << "\n";
-    //     p.color = Color.Blue
+    // p.color = Color.Blue
     p.color = Color::Blue;
-    //     print(p.color)
+    // print(p.color)
     std::cout << p.color << "\n";
 }
 

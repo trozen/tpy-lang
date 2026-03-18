@@ -7,21 +7,21 @@ namespace tpy_user::main {
 // # Dict literal, subscript read/write, len, print
 // def main() -> None:
 void main() {
-    //     d = {"x": 1, "y": 2, "z": 3}
+    // d = {"x": 1, "y": 2, "z": 3}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 1}, {"y", 2}, {"z", 3}});
-    //     print(d)
+    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    //     print(d["x"])
+    // print(d["x"])
     std::cout << ::tpy::__getitem__(d, "x") << "\n";
-    //     print(d["y"])
+    // print(d["y"])
     std::cout << ::tpy::__getitem__(d, "y") << "\n";
-    //     print(len(d))
+    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
-    //     d["w"] = 4
+    // d["w"] = 4
     ::tpy::__setitem__(d, "w", 4);
-    //     print(d["w"])
+    // print(d["w"])
     std::cout << ::tpy::__getitem__(d, "w") << "\n";
-    //     print(len(d))
+    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
 }
 

@@ -6,63 +6,63 @@ namespace tpy_user::main {
 
 // def describe_guarded(p: Point) -> str:
 std::string describe_guarded(const Point& p) {
-    //     match p:  # tpyc: warning(/non-exhaustive match.*case _:/)
+    // match p:  # tpyc: warning(/non-exhaustive match.*case _:/)
     auto& __match_subject = p;
-    //         case Point(x=x) if x > 0:
+    // case Point(x=x) if x > 0:
     {
         auto& x = __match_subject.x;
         if ((x > 0)) {
-            //             return "positive x"
+            // return "positive x"
             return "positive x";
             goto __match_end_1;
         }
     }
     __match_end_1:;
-    //     return "other"
+    // return "other"
     return "other";
 }
 
 // def describe_literal(p: Point) -> str:
 std::string describe_literal(const Point& p) {
-    //     match p:  # tpyc: warning(/non-exhaustive match.*case _:/)
+    // match p:  # tpyc: warning(/non-exhaustive match.*case _:/)
     auto& __match_subject = p;
-    //         case Point(x=0):
+    // case Point(x=0):
     if (__match_subject.x == 0) {
-        //             return "origin-x"
+        // return "origin-x"
         return "origin-x";
     }
-    //     return "other"
+    // return "other"
     return "other";
 }
 
 // def describe_exhaustive(p: Point) -> str:
 std::string describe_exhaustive(const Point& p) {
-    //     match p:  # tpyc: ok
+    // match p:  # tpyc: ok
     auto& __match_subject = p;
-    //         case Point(x=x, y=y):
+    // case Point(x=x, y=y):
     {
         auto& x = __match_subject.x;
         auto& y = __match_subject.y;
-        //             return "point"
+        // return "point"
         return "point";
     }
 }
 
 // def main() -> None:
 void main() {
-    //     print(describe_guarded(Point(1, 2)))
+    // print(describe_guarded(Point(1, 2)))
     Point __tmp_1 = Point(::tpy::BigInt(1), ::tpy::BigInt(2));
     std::cout << describe_guarded(__tmp_1) << "\n";
-    //     print(describe_guarded(Point(-1, 2)))
+    // print(describe_guarded(Point(-1, 2)))
     Point __tmp_2 = Point(::tpy::BigInt(-1), ::tpy::BigInt(2));
     std::cout << describe_guarded(__tmp_2) << "\n";
-    //     print(describe_literal(Point(0, 5)))
+    // print(describe_literal(Point(0, 5)))
     Point __tmp_3 = Point(::tpy::BigInt(0), ::tpy::BigInt(5));
     std::cout << describe_literal(__tmp_3) << "\n";
-    //     print(describe_literal(Point(1, 5)))
+    // print(describe_literal(Point(1, 5)))
     Point __tmp_4 = Point(::tpy::BigInt(1), ::tpy::BigInt(5));
     std::cout << describe_literal(__tmp_4) << "\n";
-    //     print(describe_exhaustive(Point(3, 4)))
+    // print(describe_exhaustive(Point(3, 4)))
     Point __tmp_5 = Point(::tpy::BigInt(3), ::tpy::BigInt(4));
     std::cout << describe_exhaustive(__tmp_5) << "\n";
 }

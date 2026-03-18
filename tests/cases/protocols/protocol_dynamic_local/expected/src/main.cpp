@@ -6,10 +6,10 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     pet: Pet = Dog()
+    // pet: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    //     print(pet.make_noise())
+    // print(pet.make_noise())
     std::cout << pet->make_noise() << "\n";
 }
 

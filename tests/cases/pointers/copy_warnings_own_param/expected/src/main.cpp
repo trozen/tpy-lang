@@ -6,47 +6,47 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     p: Point = Point()
+    // p: Point = Point()
     Point p = Point();
-    //     p.x = 1
+    // p.x = 1
     p.x = 1;
-    //     p.y = 2
+    // p.y = 2
     p.y = 2;
-    //     items: list[Point] = []
+    // items: list[Point] = []
     std::vector<Point> items = std::vector<Point>{};
-    //     # lvalue into container method — warns (implicit copy)
-    //     items.append(p)           # tpyc: warning(/copies Point into owned storage/)
+    // # lvalue into container method — warns (implicit copy)
+    // items.append(p)           # tpyc: warning(/copies Point into owned storage/)
     auto __tmp_1 = p;
     items.push_back(std::move(__tmp_1));
-    //     items.insert(0, p)        # tpyc: warning(/copies Point into owned storage/)
+    // items.insert(0, p)        # tpyc: warning(/copies Point into owned storage/)
     auto __tmp_2 = p;
     ::tpy::list_insert(items, 0, std::move(__tmp_2));
-    //     # lvalue into subscript assignment — warns
-    //     items[0] = p              # tpyc: warning(/copies Point into container/)
+    // # lvalue into subscript assignment — warns
+    // items[0] = p              # tpyc: warning(/copies Point into container/)
     ::tpy::__setitem__(items, 0, p);
-    //     # copy() silences the warning
-    //     items.append(copy(p))     # tpyc: ok
+    // # copy() silences the warning
+    // items.append(copy(p))     # tpyc: ok
     items.push_back(Point(p));
-    //     items[0] = copy(p)        # tpyc: ok
+    // items[0] = copy(p)        # tpyc: ok
     ::tpy::__setitem__(items, 0, Point(p));
-    //     items.insert(0, copy(p))  # tpyc: warning(/unnecessary copy/)
+    // items.insert(0, copy(p))  # tpyc: warning(/unnecessary copy/)
     ::tpy::list_insert(items, 0, Point(p));
-    //     # rvalue — no warning needed
-    //     items.append(Point())     # tpyc: ok
+    // # rvalue — no warning needed
+    // items.append(Point())     # tpyc: ok
     items.push_back(Point());
-    //     items[0] = Point()        # tpyc: ok
+    // items[0] = Point()        # tpyc: ok
     ::tpy::__setitem__(items, 0, Point());
-    //     # value types — no warning
-    //     nums: list[Int32] = []
+    // # value types — no warning
+    // nums: list[Int32] = []
     std::vector<int32_t> nums = std::vector<int32_t>{};
-    //     x: Int32 = 42
+    // x: Int32 = 42
     int32_t x = 42;
-    //     nums.append(x)            # tpyc: ok
+    // nums.append(x)            # tpyc: ok
     auto __tmp_3 = x;
     nums.push_back(std::move(__tmp_3));
-    //     nums[0] = x               # tpyc: ok
+    // nums[0] = x               # tpyc: ok
     ::tpy::__setitem__(nums, 0, x);
-    //     print(len(items))
+    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 

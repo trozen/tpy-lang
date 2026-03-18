@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     r = Rect(Int32(5), Int32(10))
+    // r = Rect(Int32(5), Int32(10))
     Rect r = Rect(5, 10);
-    //     print(r.width)
+    // print(r.width)
     std::cout << r.width << "\n";
-    //     print(r.height)
+    // print(r.height)
     std::cout << r.height << "\n";
 }
 

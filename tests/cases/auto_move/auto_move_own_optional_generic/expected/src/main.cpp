@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main():
 void main() {
-    //     b = Box()
+    // b = Box()
     Box b = Box();
-    //     b.value = Int32(42)
+    // b.value = Int32(42)
     b.value = 42;
-    //     print(take_optional[Box](b, Int32(99)))
+    // print(take_optional[Box](b, Int32(99)))
     std::cout << take_optional<Box>(std::move(b), 99) << "\n";
 }
 

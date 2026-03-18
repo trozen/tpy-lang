@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main():
 void main() {
-    //     t = time(99)
+    // t = time(99)
     time t = time(::tpy::BigInt(99));
-    //     print(t.value)
+    // print(t.value)
     std::cout << t.value << "\n";
 }
 

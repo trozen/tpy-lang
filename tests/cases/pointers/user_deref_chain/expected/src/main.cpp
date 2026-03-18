@@ -6,16 +6,16 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     pt: Point = Point(10, 20)
+    // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    //     b: Box = Box(Ref(pt))
+    // b: Box = Box(Ref(pt))
     Box b = Box(Ref(pt));
-    //     # Multi-hop deref chain: Box -> Ref -> Point
-    //     print(b.x)
+    // # Multi-hop deref chain: Box -> Ref -> Point
+    // print(b.x)
     std::cout << b.__deref__().__deref__().x << "\n";
-    //     print(b.y)
+    // print(b.y)
     std::cout << b.__deref__().__deref__().y << "\n";
-    //     print(b.sum())
+    // print(b.sum())
     std::cout << b.__deref__().__deref__().sum() << "\n";
 }
 

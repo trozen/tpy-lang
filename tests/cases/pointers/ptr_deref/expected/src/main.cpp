@@ -6,19 +6,19 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     x: Int32 = 42
+    // x: Int32 = 42
     int32_t x = 42;
-    //     p: Ptr[Int32] = Ptr(x)
+    // p: Ptr[Int32] = Ptr(x)
     int32_t* p = &x;
-    //     print(p.__deref__())
+    // print(p.__deref__())
     std::cout << ::tpy::deref_check(p) << "\n";
-    //     pt: Point = Point(10, 20)
+    // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    //     pp: Ptr[Point] = Ptr(pt)
+    // pp: Ptr[Point] = Ptr(pt)
     Point* pp = &pt;
-    //     print(pp.__deref__().x)
+    // print(pp.__deref__().x)
     std::cout << ::tpy::deref_check(pp).x << "\n";
-    //     print(pp.__deref__().y)
+    // print(pp.__deref__().y)
     std::cout << ::tpy::deref_check(pp).y << "\n";
 }
 

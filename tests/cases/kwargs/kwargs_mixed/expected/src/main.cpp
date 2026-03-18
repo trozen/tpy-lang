@@ -7,23 +7,23 @@ namespace tpy_user::main {
 // # Positional + keyword arguments mixed
 // def greet(name: str, greeting: str = "Hello", punctuation: str = "!") -> None:
 void greet(std::string_view name, std::string_view greeting, std::string_view punctuation) {
-    //     print(f"{greeting}, {name}{punctuation}")
+    // print(f"{greeting}, {name}{punctuation}")
     std::cout << std::format("{}, {}{}", greeting, name, punctuation) << "\n";
 }
 
 // def compute(a: int, b: int, c: int) -> int:
 ::tpy::BigInt compute(const ::tpy::BigInt& a, const ::tpy::BigInt& b, const ::tpy::BigInt& c) {
-    //     return a + b + c
+    // return a + b + c
     return ((((a) + (b))) + (c));
 }
 
 // def main() -> None:
 void main() {
-    //     greet("World", greeting="Hi")
+    // greet("World", greeting="Hi")
     greet("World", "Hi");
-    //     greet("Bob", punctuation=".")
+    // greet("Bob", punctuation=".")
     greet("Bob", "Hello", ".");
-    //     print(compute(1, 2, c=3))
+    // print(compute(1, 2, c=3))
     std::cout << compute(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)) << "\n";
 }
 

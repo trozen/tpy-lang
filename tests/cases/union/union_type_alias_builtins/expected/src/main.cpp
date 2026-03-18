@@ -6,28 +6,28 @@ namespace tpy_user::main {
 
 // def show_num(x: Num) -> None:
 void show_num(const Num& x) {
-    //     if isinstance(x, bool):
+    // if isinstance(x, bool):
     if (std::holds_alternative<bool>(x)) {
         const auto& __x = std::get<bool>(x);
-        //         print("bool")
+        // print("bool")
         std::cout << "bool" << "\n";
-    //     else:
+    // else:
     } else {
         const auto& __x = std::get<::tpy::BigInt>(x);
-        //         print("int")
+        // print("int")
         std::cout << "int" << "\n";
     }
 }
 
 // def main() -> None:
 void main() {
-    //     a: Num = 42
+    // a: Num = 42
     Num a = 42;
-    //     b: Num = True
+    // b: Num = True
     Num b = true;
-    //     show_num(a)
+    // show_num(a)
     show_num(a);
-    //     show_num(b)
+    // show_num(b)
     show_num(b);
 }
 

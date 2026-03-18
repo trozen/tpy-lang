@@ -6,29 +6,29 @@ namespace tpy_user::main {
 
 // def test_literal() -> None:
 void test_literal() {
-    //     s = "hello"  # tpyc: type(StrView)
+    // s = "hello"  # tpyc: type(StrView)
     std::string_view s = "hello";
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
-    //     print(len(s))
+    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
 }
 
 // def test_param(msg: str) -> None:
 void test_param(std::string_view msg) {
-    //     s = msg  # tpyc: type(StrView)
+    // s = msg  # tpyc: type(StrView)
     std::string_view s = msg;
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_strview_source() -> None:
 void test_strview_source() {
-    //     sv: StrView = StrView("view")
+    // sv: StrView = StrView("view")
     std::string_view sv = std::string_view("view");
-    //     s = sv  # tpyc: type(StrView)
+    // s = sv  # tpyc: type(StrView)
     std::string_view s = sv;
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 

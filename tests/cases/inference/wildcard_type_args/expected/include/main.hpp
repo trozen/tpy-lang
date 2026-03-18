@@ -24,16 +24,16 @@ void main();
 // class Box[T]:
 template<typename T>
 struct Box {
-    //     val: T
+    // val: T
     T val;
 
-    //     def __init__(self, val: T) -> None:
+    // def __init__(self, val: T) -> None:
     Box() = default;
     explicit Box(const T& val) : val(val) {}
 
-    //     def get(self) -> T:
+    // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get() {
-        //         return self.val
+        // return self.val
         return this->val;
     }
 };
@@ -49,12 +49,12 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 // class Pair[T, U]:
 template<typename T, typename U>
 struct Pair {
-    //     a: T
+    // a: T
     T a;
-    //     b: U
+    // b: U
     U b;
 
-    //     def __init__(self, a: T, b: U) -> None:
+    // def __init__(self, a: T, b: U) -> None:
     Pair() = default;
     explicit Pair(const T& a, const U& b) : a(a), b(b) {}
 };
@@ -72,23 +72,23 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<T, U>& obj) {
 // class Container[T]:
 template<typename T>
 struct Container {
-    //     val: T
+    // val: T
     T val;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Container() {
-        //         pass
+        // pass
     }
 
-    //     def set(self, val: T) -> None:
+    // def set(self, val: T) -> None:
     void set(::tpy::param_val_or_ref_t<T> val) {
-        //         self.val = val
+        // self.val = val
         this->val = val;
     }
 
-    //     def get(self) -> T:
+    // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get() {
-        //         return self.val
+        // return self.val
         return this->val;
     }
 };
@@ -104,17 +104,17 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 // class Mapper[T]:
 template<typename T>
 struct Mapper {
-    //     val: T
+    // val: T
     T val;
 
-    //     def __init__(self, val: T) -> None:
+    // def __init__(self, val: T) -> None:
     Mapper() = default;
     explicit Mapper(const T& val) : val(val) {}
 
-    //     def transform[U, V](self, u: U, v: V) -> V:
+    // def transform[U, V](self, u: U, v: V) -> V:
     template<typename U, typename V>
     ::tpy::val_or_cref_t<V> transform(const U& u, const V& v) const {
-        //         return v
+        // return v
         return v;
     }
 };
@@ -130,19 +130,19 @@ inline std::ostream& operator<<(std::ostream& os, const Mapper<T>& obj) {
 // def identity[T](x: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    //     return x
+    // return x
     return x;
 }
 // def pair_func[T, U](a: T, b: U) -> T:
 template<typename T, typename U>
 ::tpy::val_or_ref_t<T> pair_func(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
-    //     return a
+    // return a
     return a;
 }
 // def triple[A, B, C](a: A, b: B, c: C) -> B:
 template<typename A, typename B, typename C>
 ::tpy::val_or_ref_t<B> triple(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t<B> b, ::tpy::param_val_or_ref_t<C> c) {
-    //     return b
+    // return b
     return b;
 }
 

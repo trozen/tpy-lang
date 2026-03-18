@@ -6,70 +6,70 @@ namespace tpy_user::main {
 
 // def test_and_flag(v: Int32 | Dog | None, flag: bool) -> str:
 std::string test_and_flag(const std::variant<std::monostate, Dog*, int32_t*> v, bool flag) {
-    //     if v is not None and flag:
+    // if v is not None and flag:
     if (((!std::holds_alternative<std::monostate>(v)) && flag)) {
-        //         if isinstance(v, Int32):
+        // if isinstance(v, Int32):
         if (std::holds_alternative<int32_t*>(v)) {
             auto& __v = *std::get<int32_t*>(v);
-            //             return "int+flag"
+            // return "int+flag"
             return "int+flag";
         }
-        //         return "dog+flag"
+        // return "dog+flag"
         return "dog+flag";
     }
-    //     return "skip"
+    // return "skip"
     return "skip";
 }
 
 // def test_and_isinstance(v: Int32 | Dog | None) -> str:
 std::string test_and_isinstance(const std::variant<std::monostate, Dog*, int32_t*> v) {
-    //     if v is not None and isinstance(v, Int32):
+    // if v is not None and isinstance(v, Int32):
     if (((!std::holds_alternative<std::monostate>(v)) && std::holds_alternative<int32_t*>(v))) {
         auto& __v = *std::get<int32_t*>(v);
-        //         return "int"
+        // return "int"
         return "int";
     }
-    //     return "other"
+    // return "other"
     return "other";
 }
 
 // def test_or(v: Int32 | Dog | None, w: Int32 | Dog | None) -> str:
 std::string test_or(const std::variant<std::monostate, Dog*, int32_t*> v, const std::variant<std::monostate, Dog*, int32_t*> w) {
-    //     if v is None or w is None:
+    // if v is None or w is None:
     if (((std::holds_alternative<std::monostate>(v)) || (std::holds_alternative<std::monostate>(w)))) {
-        //         return "has none"
+        // return "has none"
         return "has none";
     }
-    //     return "both present"
+    // return "both present"
     return "both present";
 }
 
 // def main() -> None:
 void main() {
-    //     print(test_and_flag(Int32(1), True))
+    // print(test_and_flag(Int32(1), True))
     int32_t __tmp_1 = 1;
     std::cout << test_and_flag(std::variant<std::monostate, Dog*, int32_t*>{&__tmp_1}, true) << "\n";
-    //     print(test_and_flag(Int32(1), False))
+    // print(test_and_flag(Int32(1), False))
     int32_t __tmp_2 = 1;
     std::cout << test_and_flag(std::variant<std::monostate, Dog*, int32_t*>{&__tmp_2}, false) << "\n";
-    //     print(test_and_flag(None, True))
+    // print(test_and_flag(None, True))
     std::cout << test_and_flag(std::variant<std::monostate, Dog*, int32_t*>{std::monostate{}}, true) << "\n";
-    //     print(test_and_isinstance(Int32(5)))
+    // print(test_and_isinstance(Int32(5)))
     int32_t __tmp_3 = 5;
     std::cout << test_and_isinstance(std::variant<std::monostate, Dog*, int32_t*>{&__tmp_3}) << "\n";
-    //     print(test_and_isinstance(Dog("Rex")))
+    // print(test_and_isinstance(Dog("Rex")))
     Dog __tmp_4 = Dog("Rex");
     std::cout << test_and_isinstance(std::variant<std::monostate, Dog*, int32_t*>{&__tmp_4}) << "\n";
-    //     print(test_and_isinstance(None))
+    // print(test_and_isinstance(None))
     std::cout << test_and_isinstance(std::variant<std::monostate, Dog*, int32_t*>{std::monostate{}}) << "\n";
-    //     print(test_or(Int32(1), Dog("Rex")))
+    // print(test_or(Int32(1), Dog("Rex")))
     int32_t __tmp_5 = 1;
     Dog __tmp_6 = Dog("Rex");
     std::cout << test_or(std::variant<std::monostate, Dog*, int32_t*>{&__tmp_5}, std::variant<std::monostate, Dog*, int32_t*>{&__tmp_6}) << "\n";
-    //     print(test_or(None, Dog("Rex")))
+    // print(test_or(None, Dog("Rex")))
     Dog __tmp_7 = Dog("Rex");
     std::cout << test_or(std::variant<std::monostate, Dog*, int32_t*>{std::monostate{}}, std::variant<std::monostate, Dog*, int32_t*>{&__tmp_7}) << "\n";
-    //     print(test_or(Int32(1), None))
+    // print(test_or(Int32(1), None))
     int32_t __tmp_8 = 1;
     std::cout << test_or(std::variant<std::monostate, Dog*, int32_t*>{&__tmp_8}, std::variant<std::monostate, Dog*, int32_t*>{std::monostate{}}) << "\n";
 }

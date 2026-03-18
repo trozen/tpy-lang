@@ -22,16 +22,16 @@ void main();
 
 // class Node:
 struct Node {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: Int32) -> None:
     Node() = default;
     explicit Node(int32_t value) : value(value) {}
 
-    //     def get_value(self) -> Int32:
+    // def get_value(self) -> Int32:
     int32_t get_value() const {
-        //         return self.value
+        // return self.value
         return this->value;
     }
 };
@@ -45,81 +45,81 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 // class Container:
 struct Container {
-    //     node: Ptr[Node]
+    // node: Ptr[Node]
     Node* node;
 
-    //     def __init__(self, node: Ptr[Node]) -> None:
+    // def __init__(self, node: Ptr[Node]) -> None:
     Container() = default;
     explicit Container(Node* node) : node(node) {}
 
-    //     def read_if_present(self) -> Int32:
+    // def read_if_present(self) -> Int32:
     int32_t read_if_present() const {
-        //         if self.node is not None:
+        // if self.node is not None:
         if ((this->node != nullptr)) {
-            //             return self.node.value  # tpyc: non_null(self.node)
+            // return self.node.value  # tpyc: non_null(self.node)
             return this->node->value;
         }
-        //         return Int32(-1)
+        // return Int32(-1)
         return -1;
     }
 
-    //     def call_if_present(self) -> Int32:
+    // def call_if_present(self) -> Int32:
     int32_t call_if_present() {
-        //         if self.node is not None:
+        // if self.node is not None:
         if ((this->node != nullptr)) {
-            //             return self.node.get_value()  # tpyc: non_null(self.node)
+            // return self.node.get_value()  # tpyc: non_null(self.node)
             return this->node->get_value();
         }
-        //         return Int32(-1)
+        // return Int32(-1)
         return -1;
     }
 
-    //     def read_without_check(self) -> Int32:
+    // def read_without_check(self) -> Int32:
     int32_t read_without_check() const {
-        //         return self.node.value  # tpyc: nullable(self.node)
+        // return self.node.value  # tpyc: nullable(self.node)
         return ::tpy::deref_check(this->node).value;
     }
 
-    //     def read_after_merge(self) -> Int32:
+    // def read_after_merge(self) -> Int32:
     int32_t read_after_merge() const {
-        //         if self.node is not None:
+        // if self.node is not None:
         if ((this->node != nullptr)) {
-            //             pass
+            // pass
         }
-        //         return self.node.value  # tpyc: nullable(self.node)
+        // return self.node.value  # tpyc: nullable(self.node)
         return ::tpy::deref_check(this->node).value;
     }
 
-    //     def mutate(self) -> None:
+    // def mutate(self) -> None:
     void mutate() const {
-        //         pass
+        // pass
     }
 
-    //     # Method call on self invalidates self.node narrowing
-    //     def read_after_method_call(self) -> Int32:
+    // # Method call on self invalidates self.node narrowing
+    // def read_after_method_call(self) -> Int32:
     int32_t read_after_method_call() const {
-        //         if self.node is not None:
+        // if self.node is not None:
         if ((this->node != nullptr)) {
-            //             self.mutate()
+            // self.mutate()
             mutate();
-            //             return self.node.value  # tpyc: nullable(self.node)
+            // return self.node.value  # tpyc: nullable(self.node)
             return ::tpy::deref_check(this->node).value;
         }
-        //         return Int32(-1)
+        // return Int32(-1)
         return -1;
     }
 
-    //     # Field reassignment invalidates narrowing
-    //     def read_after_reassign(self, other: Ptr[Node]) -> Int32:
+    // # Field reassignment invalidates narrowing
+    // def read_after_reassign(self, other: Ptr[Node]) -> Int32:
     int32_t read_after_reassign(Node* other) {
-        //         if self.node is not None:
+        // if self.node is not None:
         if ((this->node != nullptr)) {
-            //             self.node = other
+            // self.node = other
             this->node = other;
-            //             return self.node.value  # tpyc: nullable(self.node)
+            // return self.node.value  # tpyc: nullable(self.node)
             return ::tpy::deref_check(this->node).value;
         }
-        //         return Int32(-1)
+        // return Int32(-1)
         return -1;
     }
 };
@@ -133,24 +133,24 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 
 // class Wrapper:
 struct Wrapper {
-    //     inner: Container
+    // inner: Container
     Container inner;
 
-    //     def __init__(self, inner: Container) -> None:
+    // def __init__(self, inner: Container) -> None:
     Wrapper() = default;
     explicit Wrapper(const Container& inner) : inner(inner) {}
 
-    //     # Method call on nested field invalidates its sub-path narrowing
-    //     def read_after_inner_mutate(self) -> Int32:
+    // # Method call on nested field invalidates its sub-path narrowing
+    // def read_after_inner_mutate(self) -> Int32:
     int32_t read_after_inner_mutate() {
-        //         if self.inner.node is not None:
+        // if self.inner.node is not None:
         if ((this->inner.node != nullptr)) {
-            //             self.inner.mutate()
+            // self.inner.mutate()
             this->inner.mutate();
-            //             return self.inner.node.value  # tpyc: nullable(self.inner.node)
+            // return self.inner.node.value  # tpyc: nullable(self.inner.node)
             return ::tpy::deref_check(this->inner.node).value;
         }
-        //         return Int32(-1)
+        // return Int32(-1)
         return -1;
     }
 };

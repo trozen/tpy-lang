@@ -39,7 +39,7 @@ void __tpy_init() {
     // # range() should use Int64 loop variable.
     // for i in range(3):
     for (int64_t i = 0; i < 3; ++i) {
-        //     print(i)
+        // print(i)
         std::cout << i << "\n";
     }
     // # List literal elements should be Int64.

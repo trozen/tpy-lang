@@ -6,65 +6,65 @@ namespace tpy_user::main {
 
 // def make_holder(p: Point) -> Own[Holder]:
 Holder make_holder(const Point& p) {
-    //     h = Holder()
+    // h = Holder()
     Holder h = Holder();
-    //     h.value = copy(p)
+    // h.value = copy(p)
     h.value = Point(p);
-    //     return copy(h)  # tpyc: warning(/unnecessary copy/)
+    // return copy(h)  # tpyc: warning(/unnecessary copy/)
     return Holder(h);
 }
 
 // def test_init_from_temp() -> None:
 void test_init_from_temp() {
-    //     p = Point(1, 2)
+    // p = Point(1, 2)
     Point p = Point(1, 2);
-    //     # Field access on Own[Holder] return (temporary) — must not dangle
-    //     v: Point | None = make_holder(p).value
+    // # Field access on Own[Holder] return (temporary) — must not dangle
+    // v: Point | None = make_holder(p).value
     std::optional<Point> __slot_1 = make_holder(p).value;
     Point* v = ::tpy::optional_to_ptr(__slot_1);
-    //     print(v is not None)
+    // print(v is not None)
     std::cout << ::tpy::print_bool((v != nullptr)) << "\n";
-    //     print(v.x)
+    // print(v.x)
     std::cout << ::tpy::deref_check(v).x << "\n";
-    //     print(v.y)
+    // print(v.y)
     std::cout << ::tpy::deref_check(v).y << "\n";
 }
 
 // def test_rebind_from_temp() -> None:
 void test_rebind_from_temp() {
-    //     v: Point | None = None
+    // v: Point | None = None
     std::optional<Point> __slot_1;
     Point* v = nullptr;
-    //     p = Point(3, 4)
+    // p = Point(3, 4)
     Point p = Point(3, 4);
-    //     # Rebind pointer-local from field of temporary
-    //     v = make_holder(p).value
+    // # Rebind pointer-local from field of temporary
+    // v = make_holder(p).value
     v = ::tpy::optional_to_ptr(__slot_1 = make_holder(p).value);
-    //     print(v is not None)
+    // print(v is not None)
     std::cout << ::tpy::print_bool((v != nullptr)) << "\n";
-    //     print(v.x)
+    // print(v.x)
     std::cout << ::tpy::deref_check(v).x << "\n";
 }
 
 // def test_rebind_in_block() -> None:
 void test_rebind_in_block() {
-    //     v: Point | None = None
+    // v: Point | None = None
     std::optional<Point> __slot_1;
     Point* v = nullptr;
-    //     p = Point(5, 6)
+    // p = Point(5, 6)
     Point p = Point(5, 6);
-    //     # Rebind inside if-block — slot must survive block exit
-    //     if True:
+    // # Rebind inside if-block — slot must survive block exit
+    // if True:
     if (true) {
-        //         v = make_holder(p).value
+        // v = make_holder(p).value
         v = ::tpy::optional_to_ptr(__slot_1 = make_holder(p).value);
     }
-    //     # v must still be valid here (slot hoisted to function scope)
-    //     print(v is not None)
+    // # v must still be valid here (slot hoisted to function scope)
+    // print(v is not None)
     std::cout << ::tpy::print_bool((v != nullptr)) << "\n";
-    //     print(v.x)
+    // print(v.x)
     std::cout << ::tpy::deref_check(v).x << "\n";
-    //     print(v.y)
+    // print(v.y)
     std::cout << ::tpy::deref_check(v).y << "\n";
 }
 

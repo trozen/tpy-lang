@@ -8,15 +8,15 @@ Holder* h{};
 
 // def describe(p: Point | None) -> None:
 void describe(Point* p) {
-    //     if p is not None:
+    // if p is not None:
     if ((p != nullptr)) {
-        //         print(p.x)
+        // print(p.x)
         std::cout << p->x << "\n";
-        //         print(p.y)
+        // print(p.y)
         std::cout << p->y << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("empty")
+        // print("empty")
         std::cout << "empty" << "\n";
     }
 }

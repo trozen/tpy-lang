@@ -6,40 +6,40 @@ namespace tpy_user::main {
 
 // def print_area(b: Box[Shape]) -> None:
 void print_area(::tpy_user::tplib::Box<Shape>& b) {
-    //     print(b.get().area())
+    // print(b.get().area())
     std::cout << ::tpy::print_float(b.get().area()) << "\n";
 }
 
 // def make_shape() -> Own[Box[Shape]]:
 ::tpy_user::tplib::Box<Shape> make_shape() {
-    //     return Box(Circle(3.0))
+    // return Box(Circle(3.0))
     return ::tpy_user::tplib::Box<Circle>(Circle(3.0));
 }
 
 // def main() -> None:
 void main() {
-    //     # Function arg coercion
-    //     bc = Box(Circle(5.0))
+    // # Function arg coercion
+    // bc = Box(Circle(5.0))
     ::tpy_user::tplib::Box<Circle> bc = ::tpy_user::tplib::Box<Circle>(Circle(5.0));
-    //     print_area(bc)
+    // print_area(bc)
     ::tpy_user::tplib::Box<Shape> __tmp_1 = std::move(bc);
     print_area(__tmp_1);
-    //     bs = Box(Square(3.0))
+    // bs = Box(Square(3.0))
     ::tpy_user::tplib::Box<Square> bs = ::tpy_user::tplib::Box<Square>(Square(3.0));
-    //     print_area(bs)
+    // print_area(bs)
     ::tpy_user::tplib::Box<Shape> __tmp_2 = std::move(bs);
     print_area(__tmp_2);
-    //     # Variable assignment coercion
-    //     bc2 = Box(Circle(2.0))
+    // # Variable assignment coercion
+    // bc2 = Box(Circle(2.0))
     ::tpy_user::tplib::Box<Circle> bc2 = ::tpy_user::tplib::Box<Circle>(Circle(2.0));
-    //     b_shape: Box[Shape] = bc2
+    // b_shape: Box[Shape] = bc2
     ::tpy_user::tplib::Box<Shape> b_shape = std::move(bc2);
-    //     print(b_shape.get().area())
+    // print(b_shape.get().area())
     std::cout << ::tpy::print_float(b_shape.get().area()) << "\n";
-    //     # Return coercion via Own
-    //     b3 = make_shape()
+    // # Return coercion via Own
+    // b3 = make_shape()
     ::tpy_user::tplib::Box<Shape> b3 = make_shape();
-    //     print(b3.get().area())
+    // print(b3.get().area())
     std::cout << ::tpy::print_float(b3.get().area()) << "\n";
 }
 

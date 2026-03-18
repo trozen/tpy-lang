@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main():
 void main() {
-    //     r1 = Resource(1)
+    // r1 = Resource(1)
     Resource r1 = Resource(1);
-    //     r2 = copy(r1)
+    // r2 = copy(r1)
     Resource r2 = Resource(r1);
-    //     print("r1 =", r1.id)
+    // print("r1 =", r1.id)
     std::cout << "r1 =" << " " << r1.id << "\n";
-    //     print("r2 =", r2.id)
+    // print("r2 =", r2.id)
     std::cout << "r2 =" << " " << r2.id << "\n";
 }
 

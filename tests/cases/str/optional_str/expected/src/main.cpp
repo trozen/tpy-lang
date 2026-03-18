@@ -6,41 +6,41 @@ namespace tpy_user::main {
 
 // def check_truthy(s: Optional[str]) -> None:
 void check_truthy(std::optional<std::string_view> s) {
-    //     if s:
+    // if s:
     if (::tpy::is_truthy(s)) {
-        //         print(s)
+        // print(s)
         std::cout << ::tpy::print_optional_val(s) << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("falsy")
+        // print("falsy")
         std::cout << "falsy" << "\n";
     }
 }
 
 // def check_none(s: Optional[str]) -> None:
 void check_none(std::optional<std::string_view> s) {
-    //     if s is not None:
+    // if s is not None:
     if ((s.has_value())) {
-        //         print(s)
+        // print(s)
         std::cout << ::tpy::print_optional_val(s) << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("none")
+        // print("none")
         std::cout << "none" << "\n";
     }
 }
 
 // def main() -> None:
 void main() {
-    //     check_truthy("hello")
+    // check_truthy("hello")
     check_truthy("hello");
-    //     check_truthy("")
+    // check_truthy("")
     check_truthy("");
-    //     check_truthy(None)
+    // check_truthy(None)
     check_truthy(std::nullopt);
-    //     check_none("world")
+    // check_none("world")
     check_none("world");
-    //     check_none(None)
+    // check_none(None)
     check_none(std::nullopt);
 }
 

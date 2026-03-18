@@ -6,21 +6,21 @@ namespace tpy_user::main {
 
 // def read_items(c: readonly[Container]) -> None:
 void read_items(const Container& c) {
-    //     items = c.items()
+    // items = c.items()
     const std::vector<int32_t>& items = c.items();
-    //     print(len(items))
+    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
-    //     print(items[0])
+    // print(items[0])
     std::cout << ::tpy::__getitem__(items, 0) << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     c = Container()
+    // c = Container()
     Container c = Container();
-    //     read_items(c)
+    // read_items(c)
     read_items(c);
-    //     print(c.count())
+    // print(c.count())
     std::cout << c.count() << "\n";
 }
 

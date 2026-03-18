@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> Int32:
 int32_t main() {
-    //     print(b_value())
+    // print(b_value())
     std::cout << ::tpy_user::mod_b::b_value() << "\n";
-    //     print(c_value())
+    // print(c_value())
     std::cout << ::tpy_user::mod_c::c_value() << "\n";
-    //     return Int32(0)
+    // return Int32(0)
     return 0;
 }
 

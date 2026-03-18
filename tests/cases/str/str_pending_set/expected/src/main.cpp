@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def in_set() -> Own[set[str]]:
 ::tpy::ordered_set<std::string> in_set() {
-    //     label: str = "x"
+    // label: str = "x"
     std::string_view label = "x";
-    //     return {label}
+    // return {label}
     return ::tpy::ordered_set<std::string>({std::string(label)});
 }
 
 // def in_set_comp() -> Own[set[str]]:
 ::tpy::ordered_set<std::string> in_set_comp() {
-    //     label: str = "x"
+    // label: str = "x"
     std::string_view label = "x";
-    //     return {label for _ in range(3)}
+    // return {label for _ in range(3)}
     return [&]() {
         ::tpy::ordered_set<std::string> __result;
         const int32_t __stop_0 = 3;

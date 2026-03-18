@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     x: UInt8 = UInt8(256.0)
+    // x: UInt8 = UInt8(256.0)
     uint8_t x = ::tpy::from_float_check<uint8_t>(256.0);
-    //     print(x)
+    // print(x)
     std::cout << static_cast<int>(x) << "\n";
 }
 

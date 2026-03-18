@@ -6,10 +6,10 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Int32 -> int (BigInt) widening via annotation
-    //     items: list[Int32] = [1, 2, 3]
+    // # Int32 -> int (BigInt) widening via annotation
+    // items: list[Int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
-    //     widened: dict[int, int] = {x: x * x for x in items}
+    // widened: dict[int, int] = {x: x * x for x in items}
     ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> widened = [&]() {
         ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> __result;
         auto& __obj_0 = items;
@@ -21,17 +21,17 @@ void main() {
         }
         return __result;
     }();
-    //     for k in widened:
+    // for k in widened:
     auto& __obj_1 = widened;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const ::tpy::BigInt& k = *__beg_1;
-        //         print(k, widened[k])
+        // print(k, widened[k])
         std::cout << k << " " << ::tpy::__getitem__(widened, k.to_fixed_check<int32_t>()) << "\n";
     }
-    //     # Int32 -> Int64 widening via annotation
-    //     wide64: dict[Int32, Int64] = {x: x * 2 for x in range(3)}
+    // # Int32 -> Int64 widening via annotation
+    // wide64: dict[Int32, Int64] = {x: x * 2 for x in range(3)}
     ::tpy::ordered_map<int32_t, int64_t> wide64 = [&]() {
         ::tpy::ordered_map<int32_t, int64_t> __result;
         const int32_t __stop_2 = 3;
@@ -40,13 +40,13 @@ void main() {
         }
         return __result;
     }();
-    //     for k in wide64:
+    // for k in wide64:
     auto& __obj_3 = wide64;
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         int32_t k = *__beg_3;
-        //         print(k, wide64[k])
+        // print(k, wide64[k])
         std::cout << k << " " << ::tpy::__getitem__(wide64, k) << "\n";
     }
 }

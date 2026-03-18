@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     arr: Array[Int32, 3] = [10, 20, 30]
+    // arr: Array[Int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    //     print(arr[10])
+    // print(arr[10])
     std::cout << ::tpy::__getitem__(arr, 10) << "\n";
 }
 

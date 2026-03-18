@@ -20,10 +20,10 @@ inline constexpr std::string_view __name__ = "__main__";
 // class PtrHolder[T]:
 template<typename T>
 struct PtrHolder {
-    //     ptr: Ptr[T]
+    // ptr: Ptr[T]
     T* ptr;
 
-    //     def __init__(self, ptr: Ptr[T]) -> None:
+    // def __init__(self, ptr: Ptr[T]) -> None:
     PtrHolder() = default;
     explicit PtrHolder(T* ptr) : ptr(ptr) {}
 };
@@ -39,10 +39,10 @@ inline std::ostream& operator<<(std::ostream& os, const PtrHolder<T>& obj) {
 // class ReadOnlyPtrHolder[T]:
 template<typename T>
 struct ReadOnlyPtrHolder {
-    //     ptr: Ptr[readonly[T]]
+    // ptr: Ptr[readonly[T]]
     const T* ptr;
 
-    //     def __init__(self, ptr: Ptr[readonly[T]]) -> None:
+    // def __init__(self, ptr: Ptr[readonly[T]]) -> None:
     ReadOnlyPtrHolder() = default;
     explicit ReadOnlyPtrHolder(const T* ptr) : ptr(ptr) {}
 };
@@ -57,9 +57,9 @@ inline std::ostream& operator<<(std::ostream& os, const ReadOnlyPtrHolder<T>& ob
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
 };

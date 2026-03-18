@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c = Converter()
+    // c = Converter()
     Converter c = Converter();
-    //     print(c.identity(42))
+    // print(c.identity(42))
     std::cout << c.identity<int32_t>(42) << "\n";
-    //     print(c.identity("hello"))
+    // print(c.identity("hello"))
     std::cout << c.identity<std::string_view>("hello") << "\n";
-    //     print(c.identity(True))
+    // print(c.identity(True))
     std::cout << ::tpy::print_bool(c.identity<bool>(true)) << "\n";
 }
 

@@ -13,42 +13,42 @@ void main();
 
 // class Item:
 struct Item {
-    //     name: str
+    // name: str
     std::string name;
-    //     desc: str
+    // desc: str
     std::string desc;
-    //     label: str
+    // label: str
     std::string label;
 
-    //     def __init__(self, name: str, desc: str, label: str):
+    // def __init__(self, name: str, desc: str, label: str):
     Item() = default;
     explicit Item(std::string_view name, std::string_view desc, std::string_view label) : name(name), desc(desc), label(label) {}
 
-    //     # Warning: -> str copies the field
-    //     def get_name(self) -> str:
+    // # Warning: -> str copies the field
+    // def get_name(self) -> str:
     std::string get_name() const {
-        //         return self.name  # tpyc: warning(/returns a copy of str field/)
+        // return self.name  # tpyc: warning(/returns a copy of str field/)
         return this->name;
     }
 
-    //     # No warning: -> StrView is zero-copy
-    //     def get_desc(self) -> StrView:
+    // # No warning: -> StrView is zero-copy
+    // def get_desc(self) -> StrView:
     std::string_view get_desc() const {
-        //         return self.desc
+        // return self.desc
         return this->desc;
     }
 
-    //     # No warning: -> String is explicit owned
-    //     def get_label(self) -> String:
+    // # No warning: -> String is explicit owned
+    // def get_label(self) -> String:
     std::string get_label() const {
-        //         return self.label
+        // return self.label
         return this->label;
     }
 
-    //     # No warning: dunder method
-    //     def __str__(self) -> str:
+    // # No warning: dunder method
+    // def __str__(self) -> str:
     std::string __str__() const {
-        //         return self.name
+        // return self.name
         return this->name;
     }
 };

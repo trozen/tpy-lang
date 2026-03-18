@@ -6,53 +6,53 @@ namespace tpy_user::main {
 
 // def in_list() -> Own[list[str]]:
 std::vector<std::string> in_list() {
-    //     label: str = "no"
+    // label: str = "no"
     std::string_view label = "no";
-    //     return [label]
+    // return [label]
     return {std::string(label)};
 }
 
 // def in_tuple_list() -> Own[list[tuple[int, str]]]:
 std::vector<std::tuple<::tpy::BigInt, std::string>> in_tuple_list() {
-    //     label: str = "no"
+    // label: str = "no"
     std::string_view label = "no";
-    //     return [(0, label)]
+    // return [(0, label)]
     return {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(0), std::string(label)}};
 }
 
 // def in_list_var() -> Own[list[str]]:
 std::vector<std::string> in_list_var() {
-    //     label: str = "no"
+    // label: str = "no"
     std::string_view label = "no";
-    //     xs = [label]
+    // xs = [label]
     std::vector<std::string> xs = {std::string(label)};
-    //     return xs
+    // return xs
     return xs;
 }
 
 // def in_tuple_list_var() -> Own[list[tuple[int, str]]]:
 std::vector<std::tuple<::tpy::BigInt, std::string>> in_tuple_list_var() {
-    //     label: str = "no"
+    // label: str = "no"
     std::string_view label = "no";
-    //     xs = [(0, label)]
+    // xs = [(0, label)]
     std::vector<std::tuple<::tpy::BigInt, std::string>> xs = {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(0), std::string(label)}};
-    //     return xs
+    // return xs
     return xs;
 }
 
 // def in_list_repeat() -> Own[list[str]]:
 std::vector<std::string> in_list_repeat() {
-    //     label: str = "no"
+    // label: str = "no"
     std::string_view label = "no";
-    //     return [label] * 3
+    // return [label] * 3
     return ::tpy::from_range<std::vector<std::string>>(::tpy::repeat_range<std::string>(3, {std::string(label)}));
 }
 
 // def in_list_comp() -> Own[list[str]]:
 std::vector<std::string> in_list_comp() {
-    //     label: str = "no"
+    // label: str = "no"
     std::string_view label = "no";
-    //     return [label for _ in range(3)]
+    // return [label for _ in range(3)]
     return [&]() {
         std::vector<std::string> __result;
         const int32_t __stop_0 = 3;
@@ -66,9 +66,9 @@ std::vector<std::string> in_list_comp() {
 
 // def in_nested_tuple_list() -> Own[list[tuple[str, tuple[str, int]]]]:
 std::vector<std::tuple<std::string, std::tuple<std::string, ::tpy::BigInt>>> in_nested_tuple_list() {
-    //     label: str = "x"
+    // label: str = "x"
     std::string_view label = "x";
-    //     return [(label, (label, 42))]
+    // return [(label, (label, 42))]
     return {std::tuple<std::string, std::tuple<std::string, ::tpy::BigInt>>{std::string(label), std::tuple<std::string, ::tpy::BigInt>{std::string(label), ::tpy::BigInt(42)}}};
 }
 

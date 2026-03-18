@@ -6,25 +6,25 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     x = create_default[Int32]()
+    // x = create_default[Int32]()
     int32_t x = create_default<int32_t>();
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
-    //     s = create_default[str]()
+    // s = create_default[str]()
     std::string s = create_default<std::string>();
-    //     print(len(s))
+    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
-    //     nums = fill[Int32](3)
+    // nums = fill[Int32](3)
     std::vector<int32_t> nums = fill<int32_t>(3);
-    //     print(len(nums))
+    // print(len(nums))
     std::cout << ::tpy::__len__(nums) << "\n";
-    //     for v in nums:
+    // for v in nums:
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        //         print(v)
+        // print(v)
         std::cout << v << "\n";
     }
 }

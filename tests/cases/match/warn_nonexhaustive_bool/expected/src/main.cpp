@@ -7,25 +7,25 @@ namespace tpy_user::main {
 // # warning: non-exhaustive match on bool (missing False)
 // def describe(b: bool) -> str:
 std::string describe(bool b) {
-    //     match b:  # tpyc: warning(/non-exhaustive match.*missing: False.*case _:/)
+    // match b:  # tpyc: warning(/non-exhaustive match.*missing: False.*case _:/)
     auto& __match_subject = b;
     switch (__match_subject) {
-    //         case True:
+    // case True:
     case true: {
-        //             return "yes"
+        // return "yes"
         return "yes";
         break;
     }
     }
-    //     return "unknown"
+    // return "unknown"
     return "unknown";
 }
 
 // def main() -> None:
 void main() {
-    //     print(describe(True))
+    // print(describe(True))
     std::cout << describe(true) << "\n";
-    //     print(describe(False))
+    // print(describe(False))
     std::cout << describe(false) << "\n";
 }
 

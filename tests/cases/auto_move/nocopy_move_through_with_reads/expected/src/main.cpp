@@ -6,21 +6,21 @@ namespace tpy_user::main {
 
 // def with_reads() -> Own[Handle]:
 Handle with_reads() {
-    //     h = Handle(7)
+    // h = Handle(7)
     Handle h = Handle(7);
-    //     alias = h
+    // alias = h
     Handle alias = std::move(h);
-    //     print(alias.fd)
+    // print(alias.fd)
     std::cout << alias.fd << "\n";
-    //     return alias
+    // return alias
     return alias;
 }
 
 // def main():
 void main() {
-    //     r = with_reads()
+    // r = with_reads()
     Handle r = with_reads();
-    //     print(r.fd)
+    // print(r.fd)
     std::cout << r.fd << "\n";
 }
 

@@ -6,20 +6,20 @@ namespace tpy_user::main {
 
 // def show(pair: tuple[Point, Int32]) -> None:
 void show(const std::tuple<Point&, int32_t>& pair) {
-    //     print(pair[0].x, pair[0].y, pair[1])
+    // print(pair[0].x, pair[0].y, pair[1])
     std::cout << std::get<0>(pair).x << " " << std::get<0>(pair).y << " " << std::get<1>(pair) << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     p = Point(Int32(10), Int32(20))
+    // p = Point(Int32(10), Int32(20))
     Point p = Point(10, 20);
-    //     show((p, Int32(42)))
+    // show((p, Int32(42)))
     show(std::tuple<Point&, int32_t>{p, 42});
-    //     # Mutation visible through reference
-    //     p.x = Int32(99)
+    // # Mutation visible through reference
+    // p.x = Int32(99)
     p.x = 99;
-    //     show((p, Int32(7)))
+    // show((p, Int32(7)))
     show(std::tuple<Point&, int32_t>{p, 7});
 }
 

@@ -7,9 +7,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     print(sqrt(4.0))
+    // print(sqrt(4.0))
     std::cout << ::tpy::print_float(sqrt(4.0)) << "\n";
-    //     print(sqrt(9.0))
+    // print(sqrt(9.0))
     std::cout << ::tpy::print_float(sqrt(9.0)) << "\n";
 }
 

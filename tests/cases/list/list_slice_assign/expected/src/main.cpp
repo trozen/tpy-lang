@@ -6,75 +6,75 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     a: list[Int32] = [1, 2, 3, 4, 5]
+    // a: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> a = {1, 2, 3, 4, 5};
-    //     # Replace same length
-    //     a[1:3] = [10, 20]
+    // # Replace same length
+    // a[1:3] = [10, 20]
     ::tpy::list_set_slice(a, 1, 3, std::vector<int32_t>{10, 20});
-    //     for x in a:
+    // for x in a:
     auto& __obj_0 = a;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
-    //     # Replace with longer (resize)
-    //     a[1:3] = [10, 20, 30, 40]
+    // # Replace with longer (resize)
+    // a[1:3] = [10, 20, 30, 40]
     ::tpy::list_set_slice(a, 1, 3, std::vector<int32_t>{10, 20, 30, 40});
-    //     print(len(a))
+    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
-    //     # Delete elements
-    //     a[1:4] = []
+    // # Delete elements
+    // a[1:4] = []
     ::tpy::list_set_slice(a, 1, 4, std::vector<int32_t>{});
-    //     for x in a:
+    // for x in a:
     auto& __obj_1 = a;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
-    //     # Insert at position (start == stop)
-    //     a[1:1] = [99, 98]
+    // # Insert at position (start == stop)
+    // a[1:1] = [99, 98]
     ::tpy::list_set_slice(a, 1, 1, std::vector<int32_t>{99, 98});
-    //     for x in a:
+    // for x in a:
     auto& __obj_2 = a;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         int32_t x = *__beg_2;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
-    //     # Negative indices
-    //     b: list[Int32] = [1, 2, 3, 4, 5]
+    // # Negative indices
+    // b: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> b = {1, 2, 3, 4, 5};
-    //     b[-2:] = [100, 200]
+    // b[-2:] = [100, 200]
     ::tpy::list_set_slice(b, -2, ::tpy::SLICE_END, std::vector<int32_t>{100, 200});
-    //     for x in b:
+    // for x in b:
     auto& __obj_3 = b;
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         int32_t x = *__beg_3;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
-    //     # Full slice replace
-    //     c: list[Int32] = [1, 2, 3]
+    // # Full slice replace
+    // c: list[Int32] = [1, 2, 3]
     std::vector<int32_t> c = {1, 2, 3};
-    //     c[:] = [10, 20]
+    // c[:] = [10, 20]
     ::tpy::list_set_slice(c, 0, ::tpy::SLICE_END, std::vector<int32_t>{10, 20});
-    //     for x in c:
+    // for x in c:
     auto& __obj_4 = c;
     auto __beg_4 = __obj_4.begin();
     auto __end_4 = __obj_4.end();
     for (; __beg_4 != __end_4; ++__beg_4) {
         int32_t x = *__beg_4;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
 }

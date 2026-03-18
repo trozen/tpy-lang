@@ -6,49 +6,49 @@ namespace tpy_user::main {
 
 // def test_lazy_variable_count() -> None:
 void test_lazy_variable_count() {
-    //     n: Int32 = 5
+    // n: Int32 = 5
     int32_t n = 5;
-    //     x = [7] * n  # tpyc: type(/repeat\[/)
+    // x = [7] * n  # tpyc: type(/repeat\[/)
     ::tpy::repeat_range<int32_t> x = ::tpy::repeat_range<int32_t>(n, {7});
-    //     print(len(x))
+    // print(len(x))
     std::cout << ::tpy::__len__(x) << "\n";
-    //     consume(x)
+    // consume(x)
     consume(x);
 }
 
 // def test_lazy_for_loop() -> None:
 void test_lazy_for_loop() {
-    //     n: Int32 = 3
+    // n: Int32 = 3
     int32_t n = 3;
-    //     r = [10] * n  # tpyc: type(/repeat\[/)
+    // r = [10] * n  # tpyc: type(/repeat\[/)
     ::tpy::repeat_range<int32_t> r = ::tpy::repeat_range<int32_t>(n, {10});
-    //     for v in r:
+    // for v in r:
     auto& __obj_0 = r;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
-        //         print(v)
+        // print(v)
         std::cout << v << "\n";
     }
 }
 
 // def test_direct_iterable_arg() -> None:
 void test_direct_iterable_arg() {
-    //     # Pass repeat literal directly to Iterable param
-    //     consume([3] * 4)
+    // # Pass repeat literal directly to Iterable param
+    // consume([3] * 4)
     auto __tmp_1 = ::tpy::from_range<std::array<int32_t, 4>>(::tpy::repeat_range<int32_t>(4, {3}));
     consume(__tmp_1);
 }
 
 // def test_print_lazy_repeat() -> None:
 void test_print_lazy_repeat() {
-    //     # Print on lazy repeat uses ListPrinter
-    //     n: Int32 = 4
+    // # Print on lazy repeat uses ListPrinter
+    // n: Int32 = 4
     int32_t n = 4;
-    //     r = [5] * n  # tpyc: type(/repeat\[/)
+    // r = [5] * n  # tpyc: type(/repeat\[/)
     ::tpy::repeat_range<int32_t> r = ::tpy::repeat_range<int32_t>(n, {5});
-    //     print(r)
+    // print(r)
     std::cout << ::tpy::ListPrinter(r) << "\n";
 }
 

@@ -6,65 +6,65 @@ namespace tpy_user::main {
 
 // def test_list_aug_assign() -> None:
 void test_list_aug_assign() {
-    //     nums: list[Int32] = [1, 2, 3]
+    // nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    //     nums[0] += 10
+    // nums[0] += 10
     ::tpy::__setitem__(nums, 0, ::tpy::add_check<int32_t>(::tpy::__getitem__(nums, 0), 10));
-    //     print(nums[0])  # 11
+    // print(nums[0])  # 11
     std::cout << ::tpy::__getitem__(nums, 0) << "\n";
-    //     nums[1] *= 5
+    // nums[1] *= 5
     ::tpy::__setitem__(nums, 1, ::tpy::mul_check<int32_t>(::tpy::__getitem__(nums, 1), 5));
-    //     print(nums[1])  # 10
+    // print(nums[1])  # 10
     std::cout << ::tpy::__getitem__(nums, 1) << "\n";
-    //     nums[2] -= 1
+    // nums[2] -= 1
     ::tpy::__setitem__(nums, 2, ::tpy::sub_check<int32_t>(::tpy::__getitem__(nums, 2), 1));
-    //     print(nums[2])  # 2
+    // print(nums[2])  # 2
     std::cout << ::tpy::__getitem__(nums, 2) << "\n";
 }
 
 // def test_arraylist_aug_assign() -> None:
 void test_arraylist_aug_assign() {
-    //     items = ArrayList[Int32, 4]()
+    // items = ArrayList[Int32, 4]()
     ::tpy_user::tplib::ArrayList<int32_t, 4> items = ::tpy_user::tplib::ArrayList<int32_t, 4>();
-    //     items.append(100)
+    // items.append(100)
     items.append(100);
-    //     items.append(200)
+    // items.append(200)
     items.append(200);
-    //     items[0] += 5
+    // items[0] += 5
     ::tpy::__setitem__(items, 0, ::tpy::add_check<int32_t>(items[0], 5));
-    //     print(items[0])  # 105
+    // print(items[0])  # 105
     std::cout << items[0] << "\n";
-    //     items[1] -= 50
+    // items[1] -= 50
     ::tpy::__setitem__(items, 1, ::tpy::sub_check<int32_t>(items[1], 50));
-    //     print(items[1])  # 150
+    // print(items[1])  # 150
     std::cout << items[1] << "\n";
 }
 
 // def test_negative_index_aug_assign() -> None:
 void test_negative_index_aug_assign() {
-    //     nums: list[Int32] = [10, 20, 30]
+    // nums: list[Int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
-    //     nums[-1] += 5
+    // nums[-1] += 5
     ::tpy::__setitem__(nums, -1, ::tpy::add_check<int32_t>(::tpy::__getitem__(nums, -1), 5));
-    //     print(nums[-1])  # 35
+    // print(nums[-1])  # 35
     std::cout << ::tpy::__getitem__(nums, -1) << "\n";
-    //     nums[-2] *= 2
+    // nums[-2] *= 2
     ::tpy::__setitem__(nums, -2, ::tpy::mul_check<int32_t>(::tpy::__getitem__(nums, -2), 2));
-    //     print(nums[-2])  # 40
+    // print(nums[-2])  # 40
     std::cout << ::tpy::__getitem__(nums, -2) << "\n";
 }
 
 // def test_array_aug_assign() -> None:
 void test_array_aug_assign() {
-    //     arr: Array[Int32, 3] = [10, 20, 30]
+    // arr: Array[Int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    //     arr[0] += 5
+    // arr[0] += 5
     ::tpy::__setitem__(arr, 0, ::tpy::add_check<int32_t>(::tpy::__getitem__(arr, 0), 5));
-    //     print(arr[0])  # 15
+    // print(arr[0])  # 15
     std::cout << ::tpy::__getitem__(arr, 0) << "\n";
-    //     arr[-1] *= 2
+    // arr[-1] *= 2
     ::tpy::__setitem__(arr, -1, ::tpy::mul_check<int32_t>(::tpy::__getitem__(arr, -1), 2));
-    //     print(arr[-1])  # 60
+    // print(arr[-1])  # 60
     std::cout << ::tpy::__getitem__(arr, -1) << "\n";
 }
 

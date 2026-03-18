@@ -6,30 +6,30 @@ namespace tpy_user::main {
 
 // def describe(c: Color) -> str:
 std::string describe(::tpy_user::colors::Color c) {
-    //     if c == Color.Red:
+    // if c == Color.Red:
     if ((c == ::tpy_user::colors::Color::Red)) {
-        //         return "red"
+        // return "red"
         return "red";
     }
-    //     return "other"
+    // return "other"
     return "other";
 }
 
 // def default_color() -> Color:
 ::tpy_user::colors::Color default_color() {
-    //     return Color.Blue
+    // return Color.Blue
     return ::tpy_user::colors::Color::Blue;
 }
 
 // def main() -> None:
 void main() {
-    //     c: Color = Color.Green
+    // c: Color = Color.Green
     ::tpy_user::colors::Color c = ::tpy_user::colors::Color::Green;
-    //     print(c)
+    // print(c)
     std::cout << c << "\n";
-    //     print(describe(Color.Red))
+    // print(describe(Color.Red))
     std::cout << describe(::tpy_user::colors::Color::Red) << "\n";
-    //     print(default_color())
+    // print(default_color())
     std::cout << default_color() << "\n";
 }
 

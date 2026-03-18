@@ -6,46 +6,46 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Init from concrete rvalue, then reassign to different type
-    //     pet: Dog | Cat = Dog("Rex")
+    // # Init from concrete rvalue, then reassign to different type
+    // pet: Dog | Cat = Dog("Rex")
     std::optional<std::variant<Cat, Dog>> __slot_2;
     std::variant<Cat, Dog> __slot_1 = Dog("Rex");
     std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
-    //     if isinstance(pet, Dog):
+    // if isinstance(pet, Dog):
     if (std::holds_alternative<Dog*>(pet)) {
         auto& __pet = *std::get<Dog*>(pet);
-        //         print(pet.name)
+        // print(pet.name)
         std::cout << __pet.name << "\n";
     }
-    //     pet = Cat("Whiskers")
+    // pet = Cat("Whiskers")
     __slot_2.emplace(Cat("Whiskers"));
     pet = ::tpy::to_ptr_variant(*__slot_2);
-    //     if isinstance(pet, Cat):
+    // if isinstance(pet, Cat):
     if (std::holds_alternative<Cat*>(pet)) {
         auto& __pet = *std::get<Cat*>(pet);
-        //         print(pet.name)
+        // print(pet.name)
         std::cout << __pet.name << "\n";
     }
-    //     # Reassign back to Dog
-    //     pet = Dog("Buddy")
+    // # Reassign back to Dog
+    // pet = Dog("Buddy")
     __slot_2.emplace(Dog("Buddy"));
     pet = ::tpy::to_ptr_variant(*__slot_2);
-    //     if isinstance(pet, Dog):
+    // if isinstance(pet, Dog):
     if (std::holds_alternative<Dog*>(pet)) {
         auto& __pet = *std::get<Dog*>(pet);
-        //         print(pet.name)
+        // print(pet.name)
         std::cout << __pet.name << "\n";
     }
-    //     # Reassign from another ptr-variant local
-    //     other: Dog | Cat = Cat("Luna")
+    // # Reassign from another ptr-variant local
+    // other: Dog | Cat = Cat("Luna")
     std::variant<Cat, Dog> __slot_3 = Cat("Luna");
     std::variant<Cat*, Dog*> other = ::tpy::to_ptr_variant(__slot_3);
-    //     pet = other
+    // pet = other
     pet = other;
-    //     if isinstance(pet, Cat):
+    // if isinstance(pet, Cat):
     if (std::holds_alternative<Cat*>(pet)) {
         auto& __pet = *std::get<Cat*>(pet);
-        //         print(pet.name)
+        // print(pet.name)
         std::cout << __pet.name << "\n";
     }
 }

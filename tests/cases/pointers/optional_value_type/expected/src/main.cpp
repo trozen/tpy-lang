@@ -18,13 +18,13 @@ std::optional<int32_t> z;
 // # Global-to-local: must stay on value path, no pointer-local indirection
 // def use_global() -> None:
 void use_global() {
-    //     local: Int32 | None = y
+    // local: Int32 | None = y
     std::optional<int32_t> local = y;
-    //     print(local)
+    // print(local)
     std::cout << ::tpy::print_optional_val(local) << "\n";
-    //     inferred = y
+    // inferred = y
     std::optional<int32_t> inferred = y;
-    //     print(inferred is None)
+    // print(inferred is None)
     std::cout << ::tpy::print_bool((!inferred.has_value())) << "\n";
 }
 

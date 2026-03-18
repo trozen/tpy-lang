@@ -14,7 +14,7 @@ void main();
 
 // class Box:
 struct Box {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
 };

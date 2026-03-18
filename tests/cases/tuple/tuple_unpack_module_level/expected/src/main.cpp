@@ -34,22 +34,22 @@ int32_t HI{};
 
 // def get_pair() -> tuple[Int32, Int32]:
 std::tuple<int32_t, int32_t> get_pair() {
-    //     return (Int32(10), Int32(20))
+    // return (Int32(10), Int32(20))
     return std::tuple<int32_t, int32_t>{10, 20};
 }
 
 // # Unpack with discard
 // def get_triple() -> tuple[Int32, Int32, Int32]:
 std::tuple<int32_t, int32_t, int32_t> get_triple() {
-    //     return (Int32(1), Int32(2), Int32(3))
+    // return (Int32(1), Int32(2), Int32(3))
     return std::tuple<int32_t, int32_t, int32_t>{1, 2, 3};
 }
 
 // def use_globals() -> None:
 void use_globals() {
-    //     print(lo)
+    // print(lo)
     std::cout << lo << "\n";
-    //     print(hi)
+    // print(hi)
     std::cout << hi << "\n";
 }
 

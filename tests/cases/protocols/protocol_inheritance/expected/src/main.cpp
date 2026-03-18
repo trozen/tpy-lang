@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     msg = Message("hello")
+    // msg = Message("hello")
     Message msg = Message("hello");
-    //     c = Container(msg)
+    // c = Container(msg)
     Container<Message> c = Container<Message>(msg);
-    //     c.describe()
+    // c.describe()
     c.describe();
 }
 

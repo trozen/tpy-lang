@@ -49,16 +49,16 @@ void main();
 // # Structural conformance (adapter wraps the call)
 // class Dog:
 struct Dog {
-    //     _name: str
+    // _name: str
     std::string _name;
 
-    //     def __init__(self, n: str):
+    // def __init__(self, n: str):
     Dog() = default;
     explicit Dog(std::string_view n) : _name(n) {}
 
-    //     def name(self) -> StrView:
+    // def name(self) -> StrView:
     std::string_view name() const {
-        //         return self._name
+        // return self._name
         return this->_name;
     }
 };
@@ -72,16 +72,16 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 // class Cat:
 struct Cat {
-    //     _name: str
+    // _name: str
     std::string _name;
 
-    //     def __init__(self, n: str):
+    // def __init__(self, n: str):
     Cat() = default;
     explicit Cat(std::string_view n) : _name(n) {}
 
-    //     def name(self) -> String:
+    // def name(self) -> String:
     std::string name() const {
-        //         return self._name
+        // return self._name
         return this->_name;
     }
 };
@@ -96,16 +96,16 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // # Direct inheritance (override must match vtable signature)
 // class Bird(Named):
 struct Bird : Named {
-    //     _name: str
+    // _name: str
     std::string _name;
 
-    //     def __init__(self, n: str):
+    // def __init__(self, n: str):
     Bird() = default;
     explicit Bird(std::string_view n) : _name(n) {}
 
-    //     def name(self) -> StrView:
+    // def name(self) -> StrView:
     std::string name() override {
-        //         return self._name
+        // return self._name
         return this->_name;
     }
 };
@@ -119,16 +119,16 @@ inline std::ostream& operator<<(std::ostream& os, const Bird& obj) {
 
 // class Fish(Named):
 struct Fish : Named {
-    //     _name: str
+    // _name: str
     std::string _name;
 
-    //     def __init__(self, n: str):
+    // def __init__(self, n: str):
     Fish() = default;
     explicit Fish(std::string_view n) : _name(n) {}
 
-    //     def name(self) -> String:
+    // def name(self) -> String:
     std::string name() override {
-        //         return self._name
+        // return self._name
         return this->_name;
     }
 };

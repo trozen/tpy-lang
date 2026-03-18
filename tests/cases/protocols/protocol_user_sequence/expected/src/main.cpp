@@ -6,24 +6,24 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     nums: list[Int32] = [10, 20, 30, 40]
+    // nums: list[Int32] = [10, 20, 30, 40]
     std::vector<int32_t> nums = {10, 20, 30, 40};
-    //     wrapper: IntWrapper = IntWrapper(nums)
+    // wrapper: IntWrapper = IntWrapper(nums)
     IntWrapper wrapper = IntWrapper(nums);
-    //     # Direct indexing on user record
-    //     print(wrapper[0])      # 10
+    // # Direct indexing on user record
+    // print(wrapper[0])      # 10
     std::cout << wrapper[0] << "\n";
-    //     print(wrapper[-1])     # 40
+    // print(wrapper[-1])     # 40
     std::cout << wrapper[-1] << "\n";
-    //     # User record conforms to Sequence[Int32]
-    //     print(sum_seq(wrapper))  # 100
+    // # User record conforms to Sequence[Int32]
+    // print(sum_seq(wrapper))  # 100
     std::cout << sum_seq(wrapper) << "\n";
-    //     print(first(wrapper))    # 10
+    // print(first(wrapper))    # 10
     std::cout << first(wrapper) << "\n";
-    //     # Same functions work with regular list
-    //     print(sum_seq(nums))     # 100
+    // # Same functions work with regular list
+    // print(sum_seq(nums))     # 100
     std::cout << sum_seq(nums) << "\n";
-    //     print(first(nums))       # 10
+    // print(first(nums))       # 10
     std::cout << first(nums) << "\n";
 }
 

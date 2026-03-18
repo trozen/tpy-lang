@@ -48,9 +48,9 @@ inline constexpr std::string_view __name__ = "__main__";
 struct Dog : Pet {
 
 
-    //     def name(self) -> str:
+    // def name(self) -> str:
     std::string name() override {
-        //         return "Rex"
+        // return "Rex"
         return "Rex";
     }
 };
@@ -65,9 +65,9 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 struct Cat {
 
 
-    //     def name(self) -> str:
+    // def name(self) -> str:
     std::string name() const {
-        //         return "Whiskers"
+        // return "Whiskers"
         return "Whiskers";
     }
 };
@@ -82,9 +82,9 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 struct Parrot {
 
 
-    //     def name(self) -> str:
+    // def name(self) -> str:
     std::string name() const {
-        //         return "Polly"
+        // return "Polly"
         return "Polly";
     }
 };

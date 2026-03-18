@@ -6,53 +6,53 @@ namespace tpy_user::main {
 
 // def test_ptr_borrow_field_write() -> None:
 void test_ptr_borrow_field_write() {
-    //     p = Point(Int32(1), Int32(2))
+    // p = Point(Int32(1), Int32(2))
     Point p = Point(1, 2);
-    //     ptr = Ptr(p)
+    // ptr = Ptr(p)
     Point* ptr = &p;
-    //     p.x = Int32(10)  # tpyc: warning(/Mutation of 'p'.*field assignment/)
+    // p.x = Int32(10)  # tpyc: warning(/Mutation of 'p'.*field assignment/)
     p.x = 10;
-    //     print(p.x)
+    // print(p.x)
     std::cout << p.x << "\n";
 }
 
 // def test_ptr_borrow_append() -> None:
 void test_ptr_borrow_append() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    //     ptr = Ptr(items[Int32(0)])
+    // ptr = Ptr(items[Int32(0)])
     Point* ptr = &::tpy::__getitem__(items, 0);
-    //     items.append(Point(Int32(3), Int32(4)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
+    // items.append(Point(Int32(3), Int32(4)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     items.push_back(Point(3, 4));
-    //     print(len(items))
+    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_ptr_borrow_subscript_assign() -> None:
 void test_ptr_borrow_subscript_assign() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    //     ptr = Ptr(items[Int32(0)])
+    // ptr = Ptr(items[Int32(0)])
     Point* ptr = &::tpy::__getitem__(items, 0);
-    //     items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: ok
+    // items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: ok
     ::tpy::__setitem__(items, 0, Point(9, 9));
-    //     print(items[Int32(0)].x)
+    // print(items[Int32(0)].x)
     std::cout << ::tpy::__getitem__(items, 0).x << "\n";
 }
 
 // def test_ptr_reassign_clears() -> None:
 void test_ptr_reassign_clears() {
-    //     p = Point(Int32(1), Int32(2))
+    // p = Point(Int32(1), Int32(2))
     Point p = Point(1, 2);
-    //     q = Point(Int32(3), Int32(4))
+    // q = Point(Int32(3), Int32(4))
     Point q = Point(3, 4);
-    //     ptr = Ptr(p)
+    // ptr = Ptr(p)
     Point* ptr = &p;
-    //     ptr = Ptr(q)
+    // ptr = Ptr(q)
     ptr = &q;
-    //     p.x = Int32(10)  # tpyc: ok
+    // p.x = Int32(10)  # tpyc: ok
     p.x = 10;
-    //     print(p.x)
+    // print(p.x)
     std::cout << p.x << "\n";
 }
 

@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c = Counter(0, 5)
+    // c = Counter(0, 5)
     Counter c = Counter(0, 5);
-    //     print(sum_items(c))
+    // print(sum_items(c))
     std::cout << sum_items(c) << "\n";
-    //     c2 = Counter(10, 15)
+    // c2 = Counter(10, 15)
     Counter c2 = Counter(10, 15);
-    //     print(sum_items(c2))
+    // print(sum_items(c2))
     std::cout << sum_items(c2) << "\n";
 }
 

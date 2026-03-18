@@ -6,152 +6,152 @@ namespace tpy_user::main {
 
 // def get_opt(x: Int32) -> Int32 | None:
 std::optional<int32_t> get_opt(int32_t x) {
-    //     if x > 0:
+    // if x > 0:
     if ((x > 0)) {
-        //         return x * 10
+        // return x * 10
         return (::tpy::mul_check<int32_t>(x, 10));
     }
-    //     return None
+    // return None
     return std::nullopt;
 }
 
 // def test_if_condition() -> None:
 void test_if_condition() {
-    //     items = [1, 2, 3, 4, 5]
+    // items = [1, 2, 3, 4, 5]
     std::array<int32_t, 5> items = {1, 2, 3, 4, 5};
-    //     if (n := len(items)) > 3:  # tpyc: ok
+    // if (n := len(items)) > 3:  # tpyc: ok
     int32_t n;
     if (((n = ::tpy::__len__(items)) > 3)) {
-        //         print(n)
+        // print(n)
         std::cout << n << "\n";
     }
 }
 
 // def test_optional_narrowing() -> None:
 void test_optional_narrowing() {
-    //     if (val := get_opt(3)) is not None:  # tpyc: ok
+    // if (val := get_opt(3)) is not None:  # tpyc: ok
     std::optional<int32_t> val;
     if (((val = get_opt(3)).has_value())) {
-        //         result = val + 5
+        // result = val + 5
         int32_t result = (::tpy::add_check<int32_t>((*val), 5));
-        //         print(result)
+        // print(result)
         std::cout << result << "\n";
     }
-    //     if (val2 := get_opt(-1)) is not None:  # tpyc: ok
+    // if (val2 := get_opt(-1)) is not None:  # tpyc: ok
     std::optional<int32_t> val2;
     if (((val2 = get_opt(-1)).has_value())) {
-        //         print("unreachable")
+        // print("unreachable")
         std::cout << "unreachable" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("none")
+        // print("none")
         std::cout << "none" << "\n";
     }
 }
 
 // def test_and_chain() -> None:
 void test_and_chain() {
-    //     x: Int32 = 10
+    // x: Int32 = 10
     int32_t x = 10;
-    //     if (y := x * 2) > 15 and (z := y + 1) > 20:  # tpyc: ok
+    // if (y := x * 2) > 15 and (z := y + 1) > 20:  # tpyc: ok
     int32_t y;
     int32_t z;
     if ((((y = (::tpy::mul_check<int32_t>(x, 2))) > 15) && ((z = (::tpy::add_check<int32_t>(y, 1))) > 20))) {
-        //         print(y, z)
+        // print(y, z)
         std::cout << y << " " << z << "\n";
     }
 }
 
 // def test_while_loop() -> None:
 void test_while_loop() {
-    //     values = [10, 20, 30, 0, 40]
+    // values = [10, 20, 30, 0, 40]
     std::array<int32_t, 5> values = {10, 20, 30, 0, 40};
-    //     i: Int32 = 0
+    // i: Int32 = 0
     int32_t i = 0;
-    //     while (v := values[i]) != 0:  # tpyc: ok
+    // while (v := values[i]) != 0:  # tpyc: ok
     int32_t v;
     while (((v = ::tpy::__getitem__(values, i)) != 0)) {
-        //         print(v)
+        // print(v)
         std::cout << v << "\n";
-        //         i += 1
+        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
 }
 
 // def test_expression_position() -> None:
 void test_expression_position() {
-    //     y = (x := 5) + 1  # tpyc: ok
+    // y = (x := 5) + 1  # tpyc: ok
     int32_t x;
     int32_t y = ::tpy::add_check<int32_t>((x = 5), 1);
-    //     print(x, y)
+    // print(x, y)
     std::cout << x << " " << y << "\n";
 }
 
 // def test_multiple_walrus() -> None:
 void test_multiple_walrus() {
-    //     a = (p := 3) + (q := 7)  # tpyc: ok
+    // a = (p := 3) + (q := 7)  # tpyc: ok
     int32_t p;
     int32_t q;
     int32_t a = ::tpy::add_check<int32_t>((p = 3), (q = 7));
-    //     print(p, q, a)
+    // print(p, q, a)
     std::cout << p << " " << q << " " << a << "\n";
 }
 
 // def test_reuse_walrus_target() -> None:
 void test_reuse_walrus_target() {
-    //     # Same walrus target used twice -- must not produce duplicate C++ declarations
-    //     if (val := get_opt(3)) is not None:  # tpyc: ok
+    // # Same walrus target used twice -- must not produce duplicate C++ declarations
+    // if (val := get_opt(3)) is not None:  # tpyc: ok
     std::optional<int32_t> val;
     if (((val = get_opt(3)).has_value())) {
-        //         print(val)
+        // print(val)
         std::cout << ::tpy::print_optional_val(val) << "\n";
     }
-    //     if (val := get_opt(5)) is not None:  # tpyc: ok
+    // if (val := get_opt(5)) is not None:  # tpyc: ok
     if (((val = get_opt(5)).has_value())) {
-        //         print(val)
+        // print(val)
         std::cout << ::tpy::print_optional_val(val) << "\n";
     }
 }
 
 // def test_walrus_in_branch() -> None:
 void test_walrus_in_branch() {
-    //     x: Int32 = 10
+    // x: Int32 = 10
     int32_t x = 10;
-    //     if x > 5:
+    // if x > 5:
     if ((x > 5)) {
-        //         y = (n := x + 1) * 2  # tpyc: ok
+        // y = (n := x + 1) * 2  # tpyc: ok
         int32_t n;
         int32_t y = (::tpy::mul_check<int32_t>((n = (::tpy::add_check<int32_t>(x, 1))), 2));
-        //         print(n, y)
+        // print(n, y)
         std::cout << n << " " << y << "\n";
     }
-    //     print("done")
+    // print("done")
     std::cout << "done" << "\n";
 }
 
 // def double(x: Int32) -> Int32:
 int32_t double_(int32_t x) {
-    //     return x * 2
+    // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // def test_walrus_elif() -> None:
 void test_walrus_elif() {
-    //     x: Int32 = 5
+    // x: Int32 = 5
     int32_t x = 5;
-    //     if x > 10:
+    // if x > 10:
     if ((x > 10)) {
-        //         print("big")
+        // print("big")
         std::cout << "big" << "\n";
-    //     elif (v := get_opt(x)) is not None:  # tpyc: ok
+    // elif (v := get_opt(x)) is not None:  # tpyc: ok
     } else {
         std::optional<int32_t> v;
         if (((v = get_opt(x)).has_value())) {
-            //         print(v)
+            // print(v)
             std::cout << ::tpy::print_optional_val(v) << "\n";
-        //     else:
+        // else:
         } else {
-            //         print("none")
+            // print("none")
             std::cout << "none" << "\n";
         }
     }
@@ -159,10 +159,10 @@ void test_walrus_elif() {
 
 // def test_comprehension_walrus() -> None:
 void test_comprehension_walrus() {
-    //     # PEP 572: walrus in comprehension leaks to enclosing scope
-    //     items = [1, 2, 3, 4, 5]
+    // # PEP 572: walrus in comprehension leaks to enclosing scope
+    // items = [1, 2, 3, 4, 5]
     std::array<int32_t, 5> items = {1, 2, 3, 4, 5};
-    //     filtered = [y for x in items if (y := double(x)) > 5]  # tpyc: ok
+    // filtered = [y for x in items if (y := double(x)) > 5]  # tpyc: ok
     int32_t y;
     std::vector<int32_t> filtered = [&]() {
         std::vector<int32_t> __result;
@@ -178,33 +178,33 @@ void test_comprehension_walrus() {
         }
         return __result;
     }();
-    //     print(filtered)
+    // print(filtered)
     std::cout << ::tpy::ListPrinter(filtered) << "\n";
-    //     print(y)
+    // print(y)
     std::cout << y << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     test_if_condition()
+    // test_if_condition()
     test_if_condition();
-    //     test_optional_narrowing()
+    // test_optional_narrowing()
     test_optional_narrowing();
-    //     test_and_chain()
+    // test_and_chain()
     test_and_chain();
-    //     test_while_loop()
+    // test_while_loop()
     test_while_loop();
-    //     test_expression_position()
+    // test_expression_position()
     test_expression_position();
-    //     test_multiple_walrus()
+    // test_multiple_walrus()
     test_multiple_walrus();
-    //     test_reuse_walrus_target()
+    // test_reuse_walrus_target()
     test_reuse_walrus_target();
-    //     test_walrus_in_branch()
+    // test_walrus_in_branch()
     test_walrus_in_branch();
-    //     test_walrus_elif()
+    // test_walrus_elif()
     test_walrus_elif();
-    //     test_comprehension_walrus()
+    // test_comprehension_walrus()
     test_comprehension_walrus();
 }
 

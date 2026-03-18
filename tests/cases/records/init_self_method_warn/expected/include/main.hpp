@@ -13,20 +13,20 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
-    //     z: Int32
+    // z: Int32
     int32_t z;
 
-    //     def __init__(self, x: Int32, y: Int32):
+    // def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y), z(magnitude()) {}
 
-    //     def magnitude(self) -> Int32:
+    // def magnitude(self) -> Int32:
     int32_t magnitude() const {
-        //         return self.x  # simplified
+        // return self.x  # simplified
         return this->x;
     }
 };

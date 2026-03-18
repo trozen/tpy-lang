@@ -20,16 +20,16 @@ void main();
 
 // class MyNumber:
 struct MyNumber {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: Int32) -> None:
     MyNumber() = default;
     explicit MyNumber(int32_t v) : value(v) {}
 
-    //     def add(self, x: Int32) -> Int32:
+    // def add(self, x: Int32) -> Int32:
     int32_t add(int32_t x) const {
-        //         return self.value + x
+        // return self.value + x
         return (::tpy::add_check<int32_t>(this->value, x));
     }
 };
@@ -44,16 +44,16 @@ inline std::ostream& operator<<(std::ostream& os, const MyNumber& obj) {
 // class Holder[T: Addable]:
 template<Addable T>
 struct Holder {
-    //     item: T
+    // item: T
     T item;
 
-    //     def __init__(self, item: T):
+    // def __init__(self, item: T):
     Holder() = default;
     explicit Holder(const T& item) : item(item) {}
 
-    //     def get_item(self) -> T:
+    // def get_item(self) -> T:
     ::tpy::val_or_ref_t<T> get_item() {
-        //         return self.item
+        // return self.item
         return this->item;
     }
 };

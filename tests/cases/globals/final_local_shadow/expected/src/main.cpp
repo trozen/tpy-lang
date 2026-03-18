@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     X: Int32 = 99
+    // X: Int32 = 99
     int32_t X = 99;
-    //     print(X)
+    // print(X)
     std::cout << X << "\n";
 }
 

@@ -6,34 +6,34 @@ namespace tpy_user::main {
 
 // def f(a: int, b: int = 10, c: int = 20) -> None:
 void f(const ::tpy::BigInt& a, const ::tpy::BigInt& b, const ::tpy::BigInt& c) {
-    //     print(f"a={a} b={b} c={c}")
+    // print(f"a={a} b={b} c={c}")
     std::cout << std::format("a={} b={} c={}", (a).to_string(), (b).to_string(), (c).to_string()) << "\n";
 }
 
 // def g(x: str, y: str = "default_y", z: str = "default_z") -> None:
 void g(std::string_view x, std::string_view y, std::string_view z) {
-    //     print(f"x={x} y={y} z={z}")
+    // print(f"x={x} y={y} z={z}")
     std::cout << std::format("x={} y={} z={}", x, y, z) << "\n";
 }
 
 // # Also test with Int32 to cover the fixed-int default path
 // def h(a: Int32, b: Int32 = Int32(100)) -> None:
 void h(int32_t a, int32_t b) {
-    //     print(f"a={a} b={b}")
+    // print(f"a={a} b={b}")
     std::cout << std::format("a={} b={}", a, b) << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     f(1, c=3)
+    // f(1, c=3)
     f(::tpy::BigInt(1), ::tpy::BigInt(10), ::tpy::BigInt(3));
-    //     f(1)
+    // f(1)
     f(::tpy::BigInt(1));
-    //     f(1, 2, c=3)
+    // f(1, 2, c=3)
     f(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3));
-    //     g("hello", z="world")
+    // g("hello", z="world")
     g("hello", "default_y", "world");
-    //     h(Int32(5), b=Int32(9))
+    // h(Int32(5), b=Int32(9))
     h(5, 9);
 }
 

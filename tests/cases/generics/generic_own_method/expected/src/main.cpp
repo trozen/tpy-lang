@@ -6,27 +6,27 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Test 1: Chained method call compiles and runs
-    //     b1: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
+    // # Test 1: Chained method call compiles and runs
+    // b1: Box[list[Int32]] = Box[list[Int32]]([1, 2, 3])
     Box<std::vector<int32_t>> b1 = Box<std::vector<int32_t>>({1, 2, 3});
-    //     b1.take().append(4)
+    // b1.take().append(4)
     b1.take().push_back(4);
-    //     print("chained call ok")
+    // print("chained call ok")
     std::cout << "chained call ok" << "\n";
-    //     # Test 2: Assign to variable, then call method
-    //     b2: Box[list[Int32]] = Box[list[Int32]]([10, 20, 30])
+    // # Test 2: Assign to variable, then call method
+    // b2: Box[list[Int32]] = Box[list[Int32]]([10, 20, 30])
     Box<std::vector<int32_t>> b2 = Box<std::vector<int32_t>>({10, 20, 30});
-    //     c: list[Int32] = b2.take()
+    // c: list[Int32] = b2.take()
     std::vector<int32_t> c = b2.take();
-    //     c.append(40)
+    // c.append(40)
     c.push_back(40);
-    //     for x in c:
+    // for x in c:
     auto& __obj_0 = c;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
 }

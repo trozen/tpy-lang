@@ -13,33 +13,33 @@ void main();
 
 // class Counter:
 struct Counter {
-    //     current: Int32
+    // current: Int32
     int32_t current;
-    //     limit: Int32
+    // limit: Int32
     int32_t limit;
 
-    //     def __init__(self, limit: Int32) -> None:
+    // def __init__(self, limit: Int32) -> None:
     Counter() = default;
     explicit Counter(int32_t limit) : current(0), limit(limit) {}
 
-    //     def __iter__(self) -> Counter:
+    // def __iter__(self) -> Counter:
     Counter& __iter__() {
-        //         return self
+        // return self
         return (*this);
     }
 
-    //     def __next__(self) -> Int32:
+    // def __next__(self) -> Int32:
     std::expected<int32_t, StopIteration> __next__() {
-        //         if self.current < self.limit:
+        // if self.current < self.limit:
         if ((this->current < this->limit)) {
-            //             val = self.current
+            // val = self.current
             int32_t val = this->current;
-            //             self.current += 1
+            // self.current += 1
             this->current = ::tpy::add_check<int32_t>(this->current, 1);
-            //             return val
+            // return val
             return val;
         }
-        //         raise StopIteration
+        // raise StopIteration
         return std::unexpected(StopIteration{});
     }
 };

@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c = Child(Int32(42), Int32(7))
+    // c = Child(Int32(42), Int32(7))
     Child c = Child(42, 7);
-    //     val: Int32 = c.take()
+    // val: Int32 = c.take()
     int32_t val = std::move(c).take();
-    //     print("got", val)
+    // print("got", val)
     std::cout << "got" << " " << val << "\n";
 }
 

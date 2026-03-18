@@ -8,9 +8,9 @@ std::vector<::tpy::BigInt>* items{};
 
 // def get_items() -> Own[list[int]]:
 std::vector<::tpy::BigInt> get_items() {
-    //     xs = [1, 2, 3]  # tpyc: type(/list/)
+    // xs = [1, 2, 3]  # tpyc: type(/list/)
     std::vector<::tpy::BigInt> xs = {1, 2, 3};
-    //     return xs
+    // return xs
     return xs;
 }
 

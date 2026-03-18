@@ -44,74 +44,74 @@ namespace tpy_user::main {
 
 // def check_point(p: Optional[Point]) -> str:
 std::string check_point(Point* p) {
-    //     match p:
+    // match p:
     auto& __match_subject = p;
-    //         case None:
+    // case None:
     if (__match_subject == nullptr) {
-        //             return "none"
+        // return "none"
         return "none";
     } else {
         auto& __match_inner = (*__match_subject);
-        //         case Point(x=0, y=0):
+        // case Point(x=0, y=0):
         if (__match_inner.x == 0 && __match_inner.y == 0) {
-            //             return "origin"
+            // return "origin"
             return "origin";
-        //         case Point(x=x, y=y):
+        // case Point(x=x, y=y):
         } else {
             auto& x = __match_inner.x;
             auto& y = __match_inner.y;
-            //             return str(x) + "," + str(y)
+            // return str(x) + "," + str(y)
             return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(x), ",")), ::tpy::fixed_to_str<int32_t>(y)));
         }
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def check_color(c: Optional[Color]) -> str:
 std::string check_color(std::optional<Color> c) {
-    //     match c:
+    // match c:
     auto& __match_subject = c;
-    //         case None:
+    // case None:
     if (!__match_subject.has_value()) {
-        //             return "none"
+        // return "none"
         return "none";
     } else {
         auto& __match_inner = (*__match_subject);
         switch (__match_inner) {
-        //         case Color.Red:
+        // case Color.Red:
         case Color::Red: {
-            //             return "red"
+            // return "red"
             return "red";
             break;
         }
-        //         case _:
+        // case _:
         default: {
-            //             return "other"
+            // return "other"
             return "other";
             break;
         }
         }
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def main() -> None:
 void main() {
-    //     print(check_point(None))
+    // print(check_point(None))
     std::cout << check_point(nullptr) << "\n";
-    //     print(check_point(Point(Int32(0), Int32(0))))
+    // print(check_point(Point(Int32(0), Int32(0))))
     Point __tmp_1 = Point(0, 0);
     std::cout << check_point(&(__tmp_1)) << "\n";
-    //     print(check_point(Point(Int32(3), Int32(4))))
+    // print(check_point(Point(Int32(3), Int32(4))))
     Point __tmp_2 = Point(3, 4);
     std::cout << check_point(&(__tmp_2)) << "\n";
-    //     print(check_color(None))
+    // print(check_color(None))
     std::cout << check_color(std::nullopt) << "\n";
-    //     print(check_color(Color.Red))
+    // print(check_color(Color.Red))
     std::cout << check_color(Color::Red) << "\n";
-    //     print(check_color(Color.Green))
+    // print(check_color(Color.Green))
     std::cout << check_color(Color::Green) << "\n";
 }
 

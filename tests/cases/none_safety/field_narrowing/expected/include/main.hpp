@@ -14,10 +14,10 @@ void main();
 
 // class Config:
 struct Config {
-    //     port: Optional[int]
+    // port: Optional[int]
     std::optional<::tpy::BigInt> port;
 
-    //     def __init__(self, port: Optional[int]) -> None:
+    // def __init__(self, port: Optional[int]) -> None:
     Config() = default;
     explicit Config(std::optional<::tpy::BigInt> port) : port(port) {}
 };

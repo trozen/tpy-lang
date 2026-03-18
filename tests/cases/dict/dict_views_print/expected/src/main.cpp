@@ -7,13 +7,13 @@ namespace tpy_user::main {
 // # Print dict views directly
 // def main() -> None:
 void main() {
-    //     d = {"a": 1, "b": 2}
+    // d = {"a": 1, "b": 2}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}});
-    //     print(d.keys())
+    // print(d.keys())
     std::cout << ::tpy::dict_keys(d) << "\n";
-    //     print(d.values())
+    // print(d.values())
     std::cout << ::tpy::dict_values(d) << "\n";
-    //     print(d.items())
+    // print(d.items())
     std::cout << ::tpy::dict_items(d) << "\n";
 }
 

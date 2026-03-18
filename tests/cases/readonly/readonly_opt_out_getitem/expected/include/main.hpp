@@ -12,20 +12,20 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // class CachedList:
 struct CachedList {
-    //     _data: list[Int32]
+    // _data: list[Int32]
     std::vector<int32_t> _data;
-    //     _hits: Int32
+    // _hits: Int32
     int32_t _hits;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     CachedList() : _data({10, 20, 30}), _hits(0) {}
 
-    //     @readonly(False)
-    //     def __getitem__(self, idx: Int32) -> Int32:
+    // @readonly(False)
+    // def __getitem__(self, idx: Int32) -> Int32:
     int32_t __getitem__(int32_t idx) {
-        //         self._hits = self._hits + 1
+        // self._hits = self._hits + 1
         this->_hits = (::tpy::add_check<int32_t>(this->_hits, 1));
-        //         return self._data[idx]
+        // return self._data[idx]
         return ::tpy::__getitem__(this->_data, idx);
     }
 

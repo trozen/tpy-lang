@@ -6,42 +6,42 @@ namespace tpy_user::main {
 
 // def unwrap_or(x: Optional[int], fallback: int) -> int:
 ::tpy::BigInt unwrap_or(std::optional<::tpy::BigInt> x, const ::tpy::BigInt& fallback) {
-    //     if x is not None:
+    // if x is not None:
     if ((x.has_value())) {
-        //         return x
+        // return x
         return std::move((*x));
     }
-    //     return fallback
+    // return fallback
     return fallback;
 }
 
 // def first_positive(nums: list[int]) -> Optional[int]:
 std::optional<::tpy::BigInt> first_positive(const std::vector<::tpy::BigInt>& nums) {
-    //     for n in nums:
+    // for n in nums:
     auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         ::tpy::BigInt n = *__beg_0;
-        //         if n > 0:
+        // if n > 0:
         if ((n > 0)) {
-            //             return n
+            // return n
             return n;
         }
     }
-    //     return None
+    // return None
     return std::nullopt;
 }
 
 // def main() -> None:
 void main() {
-    //     print(unwrap_or(first_positive([1, 2, 3]), 0))
+    // print(unwrap_or(first_positive([1, 2, 3]), 0))
     std::vector<::tpy::BigInt> __tmp_1 = {1, 2, 3};
     std::cout << unwrap_or(first_positive(__tmp_1), ::tpy::BigInt(0)) << "\n";
-    //     print(unwrap_or(first_positive([-1, -2]), 0))
+    // print(unwrap_or(first_positive([-1, -2]), 0))
     std::vector<::tpy::BigInt> __tmp_2 = {-1, -2};
     std::cout << unwrap_or(first_positive(__tmp_2), ::tpy::BigInt(0)) << "\n";
-    //     print(unwrap_or(None, 42))
+    // print(unwrap_or(None, 42))
     std::cout << unwrap_or(std::nullopt, ::tpy::BigInt(42)) << "\n";
 }
 

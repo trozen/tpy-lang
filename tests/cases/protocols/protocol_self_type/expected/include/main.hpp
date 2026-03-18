@@ -20,10 +20,10 @@ void main();
 // def add_values(x: Addable, y: Addable) -> None:
 template<Addable T_x, Addable T_y>
 void add_values(const T_x& x, const T_y& y) {
-    //     # Just verifies that x + y is valid for Addable types
-    //     result = x + y
+    // # Just verifies that x + y is valid for Addable types
+    // result = x + y
     auto result = (x + y);
-    //     print(result)
+    // print(result)
     std::cout << result << "\n";
 }
 

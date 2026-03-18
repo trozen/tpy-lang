@@ -44,22 +44,22 @@ namespace tpy_user::main {
 
 // def check(s: Signal) -> None:
 void check(Signal s) {
-    //     if s:
+    // if s:
     if (true) {
-        //         print("truthy")
+        // print("truthy")
         std::cout << "truthy" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("falsy")
+        // print("falsy")
         std::cout << "falsy" << "\n";
     }
 }
 
 // def main() -> None:
 void main() {
-    //     check(Signal.Off)
+    // check(Signal.Off)
     check(Signal::Off);
-    //     check(Signal.On)
+    // check(Signal.On)
     check(Signal::On);
 }
 

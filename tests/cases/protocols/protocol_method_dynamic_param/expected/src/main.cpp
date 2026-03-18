@@ -6,19 +6,19 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     d = Dog("Rex")
+    // d = Dog("Rex")
     Dog d = Dog("Rex");
-    //     c = Cat("Whiskers")
+    // c = Cat("Whiskers")
     Cat c = Cat("Whiskers");
-    //     r = Recorder(d)
+    // r = Recorder(d)
     Recorder r = Recorder(d);
-    //     print(r.message)
+    // print(r.message)
     std::cout << r.message << "\n";
-    //     ann = Announcer(">> ")
+    // ann = Announcer(">> ")
     Announcer ann = Announcer(">> ");
-    //     ann.announce(d)
+    // ann.announce(d)
     ann.announce(d);
-    //     ann.announce(c)
+    // ann.announce(c)
     ann.announce(c);
 }
 

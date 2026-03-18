@@ -6,7 +6,7 @@ namespace tpy_user::main {
 
 // def add_pair(a: Int32 | None, b: Int32 | None) -> Int32:
 int32_t add_pair(std::optional<int32_t> a, std::optional<int32_t> b) {
-    //     return a + b  # tpyc: warning(/Potential None access/)
+    // return a + b  # tpyc: warning(/Potential None access/)
     return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(a), ::tpy::deref_optional_check(b)));
 }
 

@@ -16,10 +16,10 @@ void main();
 // @nocopy
 // class Handle:
 struct Handle {
-    //     fd: Int32
+    // fd: Int32
     int32_t fd;
 
-    //     def __init__(self, fd: Int32):
+    // def __init__(self, fd: Int32):
     Handle() = default;
     explicit Handle(int32_t fd) : fd(fd) {}
     // non-copyable (@nocopy)
@@ -38,10 +38,10 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
 
 // class Container:
 struct Container {
-    //     handle: Handle
+    // handle: Handle
     Handle handle;
 
-    //     def __init__(self, handle: Own[Handle]):
+    // def __init__(self, handle: Own[Handle]):
     Container() = default;
     explicit Container(Handle&& handle) : handle(std::move(handle)) {}
     // copyable via __copy__
@@ -53,9 +53,9 @@ struct Container {
     Container(Container&&) = default;
     Container& operator=(Container&&) = default;
 
-    //     def __copy__(self) -> Own[Container]:
+    // def __copy__(self) -> Own[Container]:
     Container __copy__() const {
-        //         return Container(Handle(self.handle.fd))
+        // return Container(Handle(self.handle.fd))
         return Container(Handle(this->handle.fd));
     }
 };

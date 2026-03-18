@@ -14,10 +14,10 @@ void main();
 
 // class Sized:  # tpyc: warning(/shadows import from 'typing'/)
 struct Sized {
-    //     val: Int32
+    // val: Int32
     int32_t val;
 
-    //     def __init__(self, v: Int32):
+    // def __init__(self, v: Int32):
     Sized() = default;
     explicit Sized(int32_t v) : val(v) {}
 };

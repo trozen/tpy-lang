@@ -6,39 +6,39 @@ namespace tpy_user::main {
 
 // def main():
 void main() {
-    //     c: Char = "A"
+    // c: Char = "A"
     char c = 'A';
-    //     # str + Char
-    //     print("hello" + c)
+    // # str + Char
+    // print("hello" + c)
     std::cout << (::tpy::str_concat("hello", ::tpy::char_to_str(c))) << "\n";
-    //     # Char + str
-    //     print(c + "hello")
+    // # Char + str
+    // print(c + "hello")
     std::cout << (::tpy::str_concat(::tpy::char_to_str(c), "hello")) << "\n";
-    //     # Char + Char
-    //     print(c + c)
+    // # Char + Char
+    // print(c + c)
     std::cout << (::tpy::str_concat(::tpy::char_to_str(c), ::tpy::char_to_str(c))) << "\n";
-    //     # Char * int / int * Char
-    //     print(c * 3)
+    // # Char * int / int * Char
+    // print(c * 3)
     std::cout << (::tpy::str_repeat(::tpy::char_to_str(c), 3)) << "\n";
-    //     print(3 * c)
+    // print(3 * c)
     std::cout << (::tpy::str_repeat(::tpy::char_to_str(c), 3)) << "\n";
-    //     # len(Char) -- always 1
-    //     print(len(c))
+    // # len(Char) -- always 1
+    // print(len(c))
     std::cout << ::tpy::__len__(c) << "\n";
-    //     # ord(str) -- single char string
-    //     s = "B"
+    // # ord(str) -- single char string
+    // s = "B"
     std::string_view s = "B";
-    //     print(ord(s))
+    // print(ord(s))
     std::cout << ::tpy::ord_str(s) << "\n";
-    //     # ord(Char) still works
-    //     print(ord(c))
+    // # ord(Char) still works
+    // print(ord(c))
     std::cout << static_cast<int32_t>(static_cast<unsigned char>(c)) << "\n";
-    //     # Char(str) constructor
-    //     s2 = "Z"
+    // # Char(str) constructor
+    // s2 = "Z"
     std::string_view s2 = "Z";
-    //     z = Char(s2)
+    // z = Char(s2)
     char z = ::tpy::char_from_str(s2);
-    //     print(z)
+    // print(z)
     std::cout << z << "\n";
 }
 

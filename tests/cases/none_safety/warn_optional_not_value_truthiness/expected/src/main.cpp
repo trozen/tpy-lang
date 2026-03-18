@@ -6,12 +6,12 @@ namespace tpy_user::main {
 
 // def invert(x: bool | None) -> bool:
 bool invert(std::optional<bool> x) {
-    //     if not x:  # tpyc: warning(/Truthiness check on optional value/)  # tpyc: warning(/variable 'x'/)
+    // if not x:  # tpyc: warning(/Truthiness check on optional value/)  # tpyc: warning(/variable 'x'/)
     if ((!(::tpy::is_truthy(x)))) {
-        //         return True
+        // return True
         return true;
     }
-    //     return False
+    // return False
     return false;
 }
 

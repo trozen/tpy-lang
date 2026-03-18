@@ -15,30 +15,30 @@ void main();
 // class Vec[T]:
 template<typename T>
 struct Vec {
-    //     _data: list[T]
+    // _data: list[T]
     std::vector<T> _data;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Vec() : _data(std::vector<T>{}) {}
 
-    //     def push(self, v: T) -> None:
+    // def push(self, v: T) -> None:
     void push(::tpy::param_val_or_ref_t<T> v) {
-        //         self._data.append(v)
+        // self._data.append(v)
         auto __tmp_1 = v;
         this->_data.push_back(std::move(__tmp_1));
     }
 
-    //     @auto_readonly
-    //     def data(self) -> Span[auto_readonly[T]]:
+    // @auto_readonly
+    // def data(self) -> Span[auto_readonly[T]]:
     std::span<T> data() {
-        //         return self._data
+        // return self._data
         return ::tpy::as_mut_span(this->_data);
     }
 
-    //     @auto_readonly
-    //     def data(self) -> Span[auto_readonly[T]]:
+    // @auto_readonly
+    // def data(self) -> Span[auto_readonly[T]]:
     std::span<const T> data() const {
-        //         return self._data
+        // return self._data
         return ::tpy::as_span(this->_data);
     }
 };

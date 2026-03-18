@@ -7,35 +7,35 @@ namespace tpy_user::main {
 // # Tuple unpack str targets inferred as string_view when read-only
 // def get_pair() -> tuple[str, str]:
 std::tuple<std::string, std::string> get_pair() {
-    //     return ("hello", "world")
+    // return ("hello", "world")
     return std::tuple<std::string, std::string>{"hello", "world"};
 }
 
 // def main() -> None:
 void main() {
-    //     # Direct unpack, read-only -> string_view
-    //     a, b = get_pair()
+    // # Direct unpack, read-only -> string_view
+    // a, b = get_pair()
     auto __tup_1 = get_pair();
     std::string_view a = std::get<0>(__tup_1);
     std::string_view b = std::get<1>(__tup_1);
-    //     print(a)
+    // print(a)
     std::cout << a << "\n";
-    //     print(b)
+    // print(b)
     std::cout << b << "\n";
-    //     # Nested in loop with dict items
-    //     d: dict[str, str] = {"key1": "val1", "key2": "val2"}
+    // # Nested in loop with dict items
+    // d: dict[str, str] = {"key1": "val1", "key2": "val2"}
     ::tpy::ordered_map<std::string, std::string> d = ::tpy::ordered_map<std::string, std::string>({{"key1", "val1"}, {"key2", "val2"}});
-    //     for k, v in d.items():
+    // for k, v in d.items():
     auto __obj_0 = ::tpy::dict_items(d);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::tuple<std::string, std::string> __for_tup_0 = *__beg_0;
-        //     for k, v in d.items():
+        // for k, v in d.items():
         const auto& __tup_2 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_2);
         std::string_view v = std::get<1>(__tup_2);
-        //         print(k, v)
+        // print(k, v)
         std::cout << k << " " << v << "\n";
     }
 }

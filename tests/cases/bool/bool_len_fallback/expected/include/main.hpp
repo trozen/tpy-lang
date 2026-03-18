@@ -13,16 +13,16 @@ void main();
 
 // class Stack:
 struct Stack {
-    //     size: Int32
+    // size: Int32
     int32_t size;
 
-    //     def __init__(self, size: Int32) -> None:
+    // def __init__(self, size: Int32) -> None:
     Stack() = default;
     explicit Stack(int32_t size) : size(size) {}
 
-    //     def __len__(self) -> Int32:
+    // def __len__(self) -> Int32:
     int32_t __len__() const {
-        //         return self.size
+        // return self.size
         return this->size;
     }
 };

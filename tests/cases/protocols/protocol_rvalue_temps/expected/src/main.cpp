@@ -6,24 +6,24 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Test 1: Constructor call (rvalue)
-    //     show(IntBox(42))
+    // # Test 1: Constructor call (rvalue)
+    // show(IntBox(42))
     auto __tmp_1 = IntBox(42);
     show(__tmp_1);
-    //     # Test 4: Record subscript (rvalue - __getitem__ returns by value)
-    //     container = BoxContainer()
+    // # Test 4: Record subscript (rvalue - __getitem__ returns by value)
+    // container = BoxContainer()
     BoxContainer container = BoxContainer();
-    //     show(container[1])  # Should create temp for subscript result
+    // show(container[1])  # Should create temp for subscript result
     auto __tmp_2 = container[1];
     show(__tmp_2);
-    //     # Test 5: Multiple temps in one call sequence
-    //     show(IntBox(100))
+    // # Test 5: Multiple temps in one call sequence
+    // show(IntBox(100))
     auto __tmp_3 = IntBox(100);
     show(__tmp_3);
-    //     show(container[0])
+    // show(container[0])
     auto __tmp_4 = container[0];
     show(__tmp_4);
-    //     show(container[2])
+    // show(container[2])
     auto __tmp_5 = container[2];
     show(__tmp_5);
 }

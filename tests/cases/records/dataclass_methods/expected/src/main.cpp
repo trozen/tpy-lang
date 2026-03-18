@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     r = Rect(3, 4)
+    // r = Rect(3, 4)
     Rect r = Rect(3, 4);
-    //     print(r)
+    // print(r)
     std::cout << r << "\n";
-    //     print(r.area())
+    // print(r.area())
     std::cout << r.area() << "\n";
-    //     r.scale(2)
+    // r.scale(2)
     r.scale(2);
-    //     print(r)
+    // print(r)
     std::cout << r << "\n";
-    //     print(r.area())
+    // print(r.area())
     std::cout << r.area() << "\n";
 }
 

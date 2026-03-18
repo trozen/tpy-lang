@@ -15,10 +15,10 @@ std::string describe(const Cat& animal);
 
 // class Dog:
 struct Dog {
-    //     name: str
+    // name: str
     std::string name;
 
-    //     def __init__(self, name: str) -> None:
+    // def __init__(self, name: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name) : name(name) {}
 };
@@ -32,10 +32,10 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 // class Cat:
 struct Cat {
-    //     lives: int
+    // lives: int
     ::tpy::BigInt lives;
 
-    //     def __init__(self, lives: int) -> None:
+    // def __init__(self, lives: int) -> None:
     Cat() = default;
     explicit Cat(const ::tpy::BigInt& lives) : lives(lives) {}
 };

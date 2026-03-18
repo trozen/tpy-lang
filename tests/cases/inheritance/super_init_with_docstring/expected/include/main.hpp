@@ -14,10 +14,10 @@ inline constexpr std::string_view __name__ = "__main__";
 // # Test: docstring before super().__init__() is allowed
 // class Parent:
 struct Parent {
-    //     value: int
+    // value: int
     ::tpy::BigInt value;
 
-    //     def __init__(self, value: int) -> None:
+    // def __init__(self, value: int) -> None:
     Parent() = default;
     explicit Parent(const ::tpy::BigInt& value) : value(value) {}
 };
@@ -31,10 +31,10 @@ inline std::ostream& operator<<(std::ostream& os, const Parent& obj) {
 
 // class Child(Parent):
 struct Child : Parent {
-    //     extra: int
+    // extra: int
     ::tpy::BigInt extra;
 
-    //     def __init__(self, value: int, extra: int) -> None:
+    // def __init__(self, value: int, extra: int) -> None:
     Child() = default;
     explicit Child(const ::tpy::BigInt& value, const ::tpy::BigInt& extra) : Parent(value), extra(extra) {
     }

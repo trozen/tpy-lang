@@ -7,14 +7,14 @@ namespace tpy_user::main {
 // @extern_c
 // def app_init() -> None:
 extern "C" void app_init() {
-    //     print("app_init called")
+    // print("app_init called")
     std::cout << "app_init called" << "\n";
 }
 
 // @extern_c("app_tick")
 // def game_tick(time: Int32) -> None:
 extern "C" void app_tick(int32_t time) {
-    //     print(time)
+    // print(time)
     std::cout << time << "\n";
 }
 

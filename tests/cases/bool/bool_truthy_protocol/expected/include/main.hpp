@@ -15,16 +15,16 @@ void main();
 
 // class Box:
 struct Box {
-    //     value: int
+    // value: int
     ::tpy::BigInt value;
 
-    //     def __init__(self, value: int) -> None:
+    // def __init__(self, value: int) -> None:
     Box() = default;
     explicit Box(const ::tpy::BigInt& value) : value(value) {}
 
-    //     def __bool__(self) -> bool:
+    // def __bool__(self) -> bool:
     bool __bool__() const {
-        //         return self.value != 0
+        // return self.value != 0
         return (this->value != 0);
     }
 };
@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // def check[T: Truthy](x: T) -> bool:
 template<::tpy::Truthy T>
 bool check(::tpy::param_val_or_ref_t<T> x) {
-    //     return bool(x)
+    // return bool(x)
     return ::tpy::__bool__(x);
 }
 

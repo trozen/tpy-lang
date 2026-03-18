@@ -17,10 +17,10 @@ concept FooMaker = requires(T& t) {
 // # A record that will be referenced by a bound protocol
 // class Foo:
 struct Foo {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: Int32) -> None:
     Foo() = default;
     explicit Foo(int32_t value) : value(value) {}
 };
@@ -37,9 +37,9 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
 struct DefaultFooMaker {
 
 
-    //     def make(self) -> Own[Foo]:
+    // def make(self) -> Own[Foo]:
     Foo make() const {
-        //         return Foo(Int32(42))
+        // return Foo(Int32(42))
         return Foo(42);
     }
 };
@@ -68,16 +68,16 @@ void main();
 // class Bar[T: FooMaker]:
 template<FooMaker T>
 struct Bar {
-    //     factory: T
+    // factory: T
     T factory;
 
-    //     def __init__(self, factory: T) -> None:
+    // def __init__(self, factory: T) -> None:
     Bar() = default;
     explicit Bar(const T& factory) : factory(factory) {}
 
-    //     def create_foo(self) -> Own[Foo]:
+    // def create_foo(self) -> Own[Foo]:
     Foo create_foo() {
-        //         return self.factory.make()
+        // return self.factory.make()
         return this->factory.make();
     }
 };

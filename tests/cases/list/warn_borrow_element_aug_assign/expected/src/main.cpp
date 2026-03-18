@@ -6,69 +6,69 @@ namespace tpy_user::main {
 
 // def test_list_aug_assign() -> None:
 void test_list_aug_assign() {
-    //     items: list[Point] = [Point(Int32(1)), Point(Int32(2))]
+    // items: list[Point] = [Point(Int32(1)), Point(Int32(2))]
     std::vector<Point> items = {Point(1), Point(2)};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    //     items += [Point(Int32(3))]  # tpyc: warning(/Mutation of 'items'.*'\+='/)
+    // items += [Point(Int32(3))]  # tpyc: warning(/Mutation of 'items'.*'\+='/)
     ::tpy::list_extend(items, std::vector<Point>{Point(3)});
-    //     print(len(items))
+    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_list_method_still_warns() -> None:
 void test_list_method_still_warns() {
-    //     items: list[Point] = [Point(Int32(1))]
+    // items: list[Point] = [Point(Int32(1))]
     std::vector<Point> items = {Point(1)};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    //     items.append(Point(Int32(2)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
+    // items.append(Point(Int32(2)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     items.push_back(Point(2));
-    //     print(len(items))
+    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_value_type_no_warn() -> None:
 void test_value_type_no_warn() {
-    //     items: list[Int32] = [Int32(1), Int32(2)]
+    // items: list[Int32] = [Int32(1), Int32(2)]
     std::vector<int32_t> items = {1, 2};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     int32_t v = ::tpy::__getitem__(items, 0);
-    //     items += [Int32(3)]  # tpyc: ok
+    // items += [Int32(3)]  # tpyc: ok
     ::tpy::list_extend(items, std::vector<int32_t>{3});
-    //     print(len(items))
+    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_iter_borrow_aug_assign() -> None:
 void test_iter_borrow_aug_assign() {
-    //     items: list[Point] = [Point(Int32(1)), Point(Int32(2))]
+    // items: list[Point] = [Point(Int32(1)), Point(Int32(2))]
     std::vector<Point> items = {Point(1), Point(2)};
-    //     for p in items:
+    // for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        //         items += [Point(Int32(3))]  # tpyc: warning(/Mutation of 'items'.*'\+=' invalidates the iterator/)
+        // items += [Point(Int32(3))]  # tpyc: warning(/Mutation of 'items'.*'\+=' invalidates the iterator/)
         ::tpy::list_extend(items, std::vector<Point>{Point(3)});
-        //         break
+        // break
         break;
     }
 }
 
 // def test_reassign_borrower_clears() -> None:
 void test_reassign_borrower_clears() {
-    //     items: list[Point] = [Point(Int32(1))]
+    // items: list[Point] = [Point(Int32(1))]
     std::vector<Point> items = {Point(1)};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     std::optional<Point> __slot_1;
     Point* v = &(::tpy::__getitem__(items, 0));
-    //     v = Point(Int32(9))
+    // v = Point(Int32(9))
     v = &*(__slot_1 = Point(9));
-    //     items += [Point(Int32(2))]  # tpyc: ok
+    // items += [Point(Int32(2))]  # tpyc: ok
     ::tpy::list_extend(items, std::vector<Point>{Point(2)});
-    //     print(len(items))
+    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 

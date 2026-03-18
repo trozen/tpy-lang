@@ -15,9 +15,9 @@ void main();
 
 // class Vec2(ValueType):
 struct Vec2 {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
 };
@@ -34,9 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
 // class Pair[T: ValueType](ValueType):
 template<::tpy::ValueType T>
 struct Pair {
-    //     first: T
+    // first: T
     T first;
-    //     second: T
+    // second: T
     T second;
 
 };

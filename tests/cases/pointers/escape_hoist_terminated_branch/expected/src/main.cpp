@@ -9,26 +9,26 @@ namespace tpy_user::main {
 // def terminated_branch() -> None:
 void terminated_branch() {
   std::optional<Point> __slot_2;
-    //     saved: Point = Point(0, 0)
+    // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    //     for i in range(3):
+    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        //         items: list[Point] = [Point(99, 99)]
+        // items: list[Point] = [Point(99, 99)]
         std::vector<Point> items = {Point(99, 99)};
-        //         p: Point = Point(i, i)
+        // p: Point = Point(i, i)
         Point* p = &*(__slot_2 = Point(i, i));
-        //         if i == 0:
+        // if i == 0:
         if ((i == 0)) {
-            //             p = items[0]
+            // p = items[0]
             p = &(::tpy::__getitem__(items, 0));
-            //             continue
+            // continue
             continue;
         }
-        //         saved = p  # tpyc: warning(/hoisted to function scope/)
+        // saved = p  # tpyc: warning(/hoisted to function scope/)
         saved = p;
     }
-    //     print(saved.x, saved.y)
+    // print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 

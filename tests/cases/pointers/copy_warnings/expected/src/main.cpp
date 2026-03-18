@@ -6,51 +6,51 @@ namespace tpy_user::main {
 
 // def find_point(pts: list[Point], x: Int32) -> Point | None:
 Point* find_point(std::vector<Point>& pts, int32_t x) {
-    //     for p in pts:
+    // for p in pts:
     auto& __obj_0 = pts;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        //         if p.x == x:
+        // if p.x == x:
         if ((p.x == x)) {
-            //             return p
+            // return p
             return &(p);
         }
     }
-    //     return None
+    // return None
     return nullptr;
 }
 
 // def main() -> None:
 void main() {
-    //     r: Rect = Rect()
+    // r: Rect = Rect()
     Rect r = Rect();
-    //     p: Point = Point()
+    // p: Point = Point()
     Point p = Point();
-    //     r.corner = p                  # tpyc: warning(/copies Point into field/)
+    // r.corner = p                  # tpyc: warning(/copies Point into field/)
     r.corner = p;
-    //     r.corner = copy(p)            # tpyc: ok
+    // r.corner = copy(p)            # tpyc: ok
     r.corner = Point(p);
-    //     r.corner = Point()            # tpyc: ok
+    // r.corner = Point()            # tpyc: ok
     r.corner = Point();
-    //     r.width = 10                  # tpyc: ok
+    // r.width = 10                  # tpyc: ok
     r.width = 10;
-    //     # Optional field: function returning T | None
-    //     h: OptHolder = OptHolder()
+    // # Optional field: function returning T | None
+    // h: OptHolder = OptHolder()
     OptHolder h = OptHolder();
-    //     pts: list[Point] = list()
+    // pts: list[Point] = list()
     std::vector<Point> pts = std::vector<Point>();
-    //     h.value = find_point(pts, 1)  # tpyc: warning(/copies Point | None into field/)
+    // h.value = find_point(pts, 1)  # tpyc: warning(/copies Point | None into field/)
     h.value = ::tpy::ptr_to_optional(find_point(pts, 1));
-    //     h.value = copy(find_point(pts, 1))  # tpyc: ok
+    // h.value = copy(find_point(pts, 1))  # tpyc: ok
     h.value = ::tpy::ptr_to_optional(find_point(pts, 1));
-    //     # Optional field: field-to-field (lvalue)
-    //     h.value = h.value             # tpyc: warning(/copies Point | None into field/)
+    // # Optional field: field-to-field (lvalue)
+    // h.value = h.value             # tpyc: warning(/copies Point | None into field/)
     h.value = h.value;
-    //     h.value = copy(h.value)       # tpyc: ok
+    // h.value = copy(h.value)       # tpyc: ok
     h.value = h.value;
-    //     print(r.width)
+    // print(r.width)
     std::cout << r.width << "\n";
 }
 

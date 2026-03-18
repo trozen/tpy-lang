@@ -6,33 +6,33 @@ namespace tpy_user::main {
 
 // def test_tuple() -> None:
 void test_tuple() {
-    //     t = (Int32(10), "hello", True)
+    // t = (Int32(10), "hello", True)
     std::tuple<int32_t, std::string, bool> t = std::tuple<int32_t, std::string, bool>{10, "hello", true};
-    //     b = t[1]  # tpyc: type(StrView)
+    // b = t[1]  # tpyc: type(StrView)
     std::string_view b = std::get<1>(t);
-    //     print(b)
+    // print(b)
     std::cout << b << "\n";
 }
 
 // def test_list_view() -> None:
 void test_list_view() {
-    //     items: list[str] = ["alpha", "beta"]
+    // items: list[str] = ["alpha", "beta"]
     std::vector<std::string> items = {"alpha", "beta"};
-    //     s = items[0]  # tpyc: type(StrView)
+    // s = items[0]  # tpyc: type(StrView)
     std::string_view s = ::tpy::__getitem__(items, 0);
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_nested_tuple() -> None:
 void test_nested_tuple() {
-    //     t = ("outer", ("inner_a", "inner_b"))
+    // t = ("outer", ("inner_a", "inner_b"))
     std::tuple<std::string, std::tuple<std::string, std::string>> t = std::tuple<std::string, std::tuple<std::string, std::string>>{"outer", std::tuple<std::string, std::string>{"inner_a", "inner_b"}};
-    //     inner = t[1]
+    // inner = t[1]
     std::tuple<std::string, std::string> inner = std::get<1>(t);
-    //     a = inner[0]  # tpyc: type(StrView)
+    // a = inner[0]  # tpyc: type(StrView)
     std::string_view a = std::get<0>(inner);
-    //     print(a)
+    // print(a)
     std::cout << a << "\n";
 }
 

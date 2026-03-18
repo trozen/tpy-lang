@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     p = Person("Alice", "NYC")
+    // p = Person("Alice", "NYC")
     Person p = Person("Alice", "NYC");
-    //     print(p.name)
+    // print(p.name)
     std::cout << p.name << "\n";
-    //     print(p.city)
+    // print(p.city)
     std::cout << p.city << "\n";
 }
 

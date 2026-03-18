@@ -6,59 +6,59 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     m = MyList()
+    // m = MyList()
     MyList m = MyList();
-    //     # Index access
-    //     print(m[Int32(0)])
+    // # Index access
+    // print(m[Int32(0)])
     std::cout << m[0] << "\n";
-    //     print(m[Int32(3)])
+    // print(m[Int32(3)])
     std::cout << m[3] << "\n";
-    //     # Slice access with both bounds
-    //     sp = m[Int32(1):Int32(4)]
+    // # Slice access with both bounds
+    // sp = m[Int32(1):Int32(4)]
     std::span<const int32_t> sp = m.__getitem__(::tpy::Slice{1, 4});
-    //     for x in sp:
+    // for x in sp:
     auto& __obj_0 = sp;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
-    //     # Slice with omitted start
-    //     sp2 = m[:Int32(2)]
+    // # Slice with omitted start
+    // sp2 = m[:Int32(2)]
     std::span<const int32_t> sp2 = m.__getitem__(::tpy::Slice{std::nullopt, 2});
-    //     for x in sp2:
+    // for x in sp2:
     auto& __obj_1 = sp2;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
-    //     # Slice with omitted stop
-    //     sp3 = m[Int32(3):]
+    // # Slice with omitted stop
+    // sp3 = m[Int32(3):]
     std::span<const int32_t> sp3 = m.__getitem__(::tpy::Slice{3, std::nullopt});
-    //     for x in sp3:
+    // for x in sp3:
     auto& __obj_2 = sp3;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         int32_t x = *__beg_2;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
-    //     # Slice with both omitted
-    //     sp4 = m[:]
+    // # Slice with both omitted
+    // sp4 = m[:]
     std::span<const int32_t> sp4 = m.__getitem__(::tpy::Slice{std::nullopt, std::nullopt});
-    //     for x in sp4:
+    // for x in sp4:
     auto& __obj_3 = sp4;
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         int32_t x = *__beg_3;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
 }

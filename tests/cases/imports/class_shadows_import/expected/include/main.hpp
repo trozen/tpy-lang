@@ -14,10 +14,10 @@ void main();
 
 // class time:
 struct time {
-    //     value: int
+    // value: int
     ::tpy::BigInt value;
 
-    //     def __init__(self, v: int):
+    // def __init__(self, v: int):
     time() = default;
     explicit time(const ::tpy::BigInt& v) : value(v) {}
 };

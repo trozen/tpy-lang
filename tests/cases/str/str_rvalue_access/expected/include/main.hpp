@@ -15,12 +15,12 @@ void main();
 
 // class Pair:
 struct Pair {
-    //     first: str
+    // first: str
     std::string first;
-    //     second: str
+    // second: str
     std::string second;
 
-    //     def __init__(self, first: str, second: str) -> None:
+    // def __init__(self, first: str, second: str) -> None:
     Pair() = default;
     explicit Pair(std::string_view first, std::string_view second) : first(first), second(second) {}
 };

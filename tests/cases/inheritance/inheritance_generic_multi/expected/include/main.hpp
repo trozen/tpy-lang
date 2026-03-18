@@ -15,30 +15,30 @@ inline constexpr std::string_view __name__ = "__main__";
 // class Base[T, U]:
 template<typename T, typename U>
 struct Base {
-    //     first: T
+    // first: T
     T first;
-    //     second: U
+    // second: U
     U second;
 
-    //     def __init__(self, first: T, second: U) -> None:
+    // def __init__(self, first: T, second: U) -> None:
     Base() = default;
     explicit Base(const T& first, const U& second) : first(first), second(second) {}
 
-    //     def set_first(self, v: T) -> None:
+    // def set_first(self, v: T) -> None:
     void set_first(::tpy::param_val_or_ref_t<T> v) {
-        //         self.first = v
+        // self.first = v
         this->first = v;
     }
 
-    //     def get_first(self) -> T:
+    // def get_first(self) -> T:
     ::tpy::val_or_ref_t<T> get_first() {
-        //         return self.first
+        // return self.first
         return this->first;
     }
 
-    //     def get_second(self) -> U:
+    // def get_second(self) -> U:
     ::tpy::val_or_ref_t<U> get_second() {
-        //         return self.second
+        // return self.second
         return this->second;
     }
 };
@@ -57,12 +57,12 @@ inline std::ostream& operator<<(std::ostream& os, const Base<T, U>& obj) {
 template<typename T>
 struct Middle : Base<T, int32_t> {
 
-    //     def __init__(self, first: T, second: Int32) -> None:
+    // def __init__(self, first: T, second: Int32) -> None:
     Middle() = default;
     explicit Middle(const T& first, int32_t second) {
-        //         self.first = first
+        // self.first = first
         this->first = first;
-        //         self.second = second
+        // self.second = second
         this->second = second;
     }
 };
@@ -77,21 +77,21 @@ inline std::ostream& operator<<(std::ostream& os, const Middle<T>& obj) {
 // class Leaf[T](Middle[T]):
 template<typename T>
 struct Leaf : Middle<T> {
-    //     extra: str
+    // extra: str
     std::string extra;
 
-    //     def __init__(self, first: T, second: Int32, extra: str) -> None:
+    // def __init__(self, first: T, second: Int32, extra: str) -> None:
     Leaf() = default;
     explicit Leaf(const T& first, int32_t second, std::string_view extra) : extra(extra) {
-        //         self.first = first
+        // self.first = first
         this->first = first;
-        //         self.second = second
+        // self.second = second
         this->second = second;
     }
 
-    //     def get_extra(self) -> str:
+    // def get_extra(self) -> str:
     std::string get_extra() const {
-        //         return self.extra
+        // return self.extra
         return this->extra;
     }
 };

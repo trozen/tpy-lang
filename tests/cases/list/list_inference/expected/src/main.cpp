@@ -13,50 +13,50 @@ std::vector<int32_t>* global_inferred{};
 // # Local no mutation -> array (ArrayType)
 // def test_no_mutation() -> Int32:
 int32_t test_no_mutation() {
-    //     local = [1, 2, 3]
+    // local = [1, 2, 3]
     std::array<int32_t, 3> local = {1, 2, 3};
-    //     return local[0]
+    // return local[0]
     return ::tpy::__getitem__(local, 0);
 }
 
 // # Local with mutation -> vector (ListType)
 // def test_mutation() -> Int32:
 int32_t test_mutation() {
-    //     items = [1, 2, 3]
+    // items = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
-    //     items.append(4)
+    // items.append(4)
     items.push_back(4);
-    //     return len(items)
+    // return len(items)
     return ::tpy::__len__(items);
 }
 
 // # Passed to list param -> vector (ListType)
 // def takes_list(x: list[Int32]) -> None:
 void takes_list(std::vector<int32_t>& x) {
-    //     x.append(42)
+    // x.append(42)
     x.push_back(42);
 }
 
 // def test_list_param() -> None:
 void test_list_param() {
-    //     data = [1, 2, 3]
+    // data = [1, 2, 3]
     std::vector<int32_t> data = {1, 2, 3};
-    //     takes_list(data)
+    // takes_list(data)
     takes_list(data);
 }
 
 // # Passed to Span param -> array (ArrayType)
 // def takes_span(x: Span[Int32]) -> Int32:
 int32_t takes_span(std::span<int32_t> x) {
-    //     return x[0]
+    // return x[0]
     return ::tpy::__getitem__(x, 0);
 }
 
 // def test_span_param() -> Int32:
 int32_t test_span_param() {
-    //     data = [10, 20, 30]
+    // data = [10, 20, 30]
     std::array<int32_t, 3> data = {10, 20, 30};
-    //     return takes_span(data)
+    // return takes_span(data)
     return takes_span(::tpy::as_mut_span(data));
 }
 

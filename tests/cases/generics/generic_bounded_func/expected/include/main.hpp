@@ -15,7 +15,7 @@ void main();
 // def identity[T: Sized](item: T) -> T:
 template<::tpy_user::typing::Sized T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> item) {
-    //     return item
+    // return item
     return item;
 }
 

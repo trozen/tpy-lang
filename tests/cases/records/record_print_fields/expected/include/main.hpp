@@ -13,18 +13,18 @@ void main();
 
 // class Config:
 struct Config {
-    //     flag: bool
+    // flag: bool
     bool flag;
-    //     ratio: float
+    // ratio: float
     double ratio;
-    //     items: list[Int32]
+    // items: list[Int32]
     std::vector<int32_t> items;
-    //     tags: dict[str, Int32]
+    // tags: dict[str, Int32]
     ::tpy::ordered_map<std::string, int32_t> tags;
-    //     pair: tuple[Int32, str]
+    // pair: tuple[Int32, str]
     std::tuple<int32_t, std::string> pair;
 
-    //     def __init__(self, flag: bool, ratio: float, items: list[Int32],
+    // def __init__(self, flag: bool, ratio: float, items: list[Int32],
     Config() = default;
     explicit Config(bool flag, double ratio, const std::vector<int32_t>& items, const ::tpy::ordered_map<std::string, int32_t>& tags, const std::tuple<int32_t, std::string>& pair) : flag(flag), ratio(ratio), items(items), tags(tags), pair(pair) {}
 };

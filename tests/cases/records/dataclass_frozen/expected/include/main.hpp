@@ -15,9 +15,9 @@ void main();
 // @dataclass(frozen=True)
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
     Point() = default;
@@ -54,9 +54,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // @dataclass(frozen=True)
 // class Config:
 struct Config {
-    //     name: str
+    // name: str
     std::string name;
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
     Config() = default;

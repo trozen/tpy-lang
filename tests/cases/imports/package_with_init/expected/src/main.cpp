@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> Int32:
 int32_t main() {
-    //     print(CONST)
+    // print(CONST)
     std::cout << ::tpy_user::mypackage::CONST << "\n";
-    //     func()
+    // func()
     ::tpy_user::mypackage::func();
-    //     return Int32(0)
+    // return Int32(0)
     return 0;
 }
 

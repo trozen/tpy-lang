@@ -6,28 +6,28 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     a = Child(1, 2, 3)
+    // a = Child(1, 2, 3)
     Child a = Child(1, 2, 3);
-    //     b = Child(1, 2, 4)
+    // b = Child(1, 2, 4)
     Child b = Child(1, 2, 4);
-    //     c = Child(2, 0, 0)
+    // c = Child(2, 0, 0)
     Child c = Child(2, 0, 0);
-    //     # z differs: 3 < 4
-    //     print(a < b)
+    // # z differs: 3 < 4
+    // print(a < b)
     std::cout << ::tpy::print_bool((a < b)) << "\n";
-    //     print(b < a)
+    // print(b < a)
     std::cout << ::tpy::print_bool((b < a)) << "\n";
-    //     # x differs: 1 < 2
-    //     print(a < c)
+    // # x differs: 1 < 2
+    // print(a < c)
     std::cout << ::tpy::print_bool((a < c)) << "\n";
-    //     print(c < a)
+    // print(c < a)
     std::cout << ::tpy::print_bool((c < a)) << "\n";
-    //     # Equal
-    //     print(a <= Child(1, 2, 3))
+    // # Equal
+    // print(a <= Child(1, 2, 3))
     std::cout << ::tpy::print_bool((a <= Child(1, 2, 3))) << "\n";
-    //     print(a >= Child(1, 2, 3))
+    // print(a >= Child(1, 2, 3))
     std::cout << ::tpy::print_bool((a >= Child(1, 2, 3))) << "\n";
-    //     print(a)
+    // print(a)
     std::cout << a << "\n";
 }
 

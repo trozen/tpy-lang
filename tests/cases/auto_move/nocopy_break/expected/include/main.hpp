@@ -16,7 +16,7 @@ void main();
 // @nocopy
 // class Handle:
 struct Handle {
-    //     fd: Int32
+    // fd: Int32
     int32_t fd;
 
     Handle() = default;

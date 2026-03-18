@@ -6,7 +6,7 @@ namespace tpy_user::main {
 
 // def add_offset(x: float | None) -> float:
 double add_offset(std::optional<double> x) {
-    //     return x + 1.0  # tpyc: warning(/Potential None access/)
+    // return x + 1.0  # tpyc: warning(/Potential None access/)
     return ((::tpy::deref_optional_check(x)) + (1.0));
 }
 

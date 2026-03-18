@@ -6,19 +6,19 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Test with IntBox
-    //     box = IntBox(42)
+    // # Test with IntBox
+    // box = IntBox(42)
     IntBox box = IntBox(42);
-    //     print(extract(box))
+    // print(extract(box))
     std::cout << extract<IntBox>(box) << "\n";
-    //     update(box, 100)
+    // update(box, 100)
     update<IntBox>(box, 100);
-    //     print(extract(box))
+    // print(extract(box))
     std::cout << extract<IntBox>(box) << "\n";
-    //     # Test with StrBox
-    //     sbox = StrBox("hello")
+    // # Test with StrBox
+    // sbox = StrBox("hello")
     StrBox sbox = StrBox("hello");
-    //     print(extract_str(sbox))
+    // print(extract_str(sbox))
     std::cout << extract_str<StrBox>(sbox) << "\n";
 }
 

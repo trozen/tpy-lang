@@ -6,21 +6,21 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     d = Dog("Rex")
+    // d = Dog("Rex")
     Dog d = Dog("Rex");
-    //     pet: Dog | Cat = d
+    // pet: Dog | Cat = d
     std::variant<Cat*, Dog*> pet{&(d)};
-    //     z = Zoo(pet, "test")
+    // z = Zoo(pet, "test")
     Zoo z = Zoo(pet, "test");
-    //     print(z)
+    // print(z)
     std::cout << z << "\n";
-    //     c = Cat("Whiskers")
+    // c = Cat("Whiskers")
     Cat c = Cat("Whiskers");
-    //     pet2: Dog | Cat = c
+    // pet2: Dog | Cat = c
     std::variant<Cat*, Dog*> pet2{&(c)};
-    //     z2 = Zoo(pet2, "cats")
+    // z2 = Zoo(pet2, "cats")
     Zoo z2 = Zoo(pet2, "cats");
-    //     print(z2)
+    // print(z2)
     std::cout << z2 << "\n";
 }
 

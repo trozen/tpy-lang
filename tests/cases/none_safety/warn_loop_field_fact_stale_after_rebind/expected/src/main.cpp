@@ -6,21 +6,21 @@ namespace tpy_user::main {
 
 // def stale_after_rebind(b: Box, other: Box) -> Int32:
 int32_t stale_after_rebind(Box& b, Box& other) {
-    //     local: Box = b
+    // local: Box = b
     Box* local = &(b);
-    //     while local.value is not None:
+    // while local.value is not None:
     while ((local->value.has_value())) {
-        //         local = other
+        // local = other
         local = &(other);
-        //         if 0 == 1:
+        // if 0 == 1:
         if ((0 == 1)) {
-            //             return local.value + 1  # tpyc: warning(/Potential None access/)
+            // return local.value + 1  # tpyc: warning(/Potential None access/)
             return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(local->value), 1));
         }
-        //         break
+        // break
         break;
     }
-    //     return 0
+    // return 0
     return 0;
 }
 

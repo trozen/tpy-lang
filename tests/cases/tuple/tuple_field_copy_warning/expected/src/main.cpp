@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     p = Point(Int32(1), Int32(2))
+    // p = Point(Int32(1), Int32(2))
     Point p = Point(1, 2);
-    //     c = ContainerOk(p, Int32(42))
+    // c = ContainerOk(p, Int32(42))
     ContainerOk c = ContainerOk(p, 42);
-    //     print(c.data[0].x, c.data[1])
+    // print(c.data[0].x, c.data[1])
     std::cout << std::get<0>(c.data).x << " " << std::get<1>(c.data) << "\n";
 }
 

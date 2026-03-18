@@ -8,7 +8,7 @@ int32_t MAX_SIZE{};
 
 // def main() -> None:
 void main() {
-    //     print(MAX_SIZE)
+    // print(MAX_SIZE)
     std::cout << MAX_SIZE << "\n";
 }
 

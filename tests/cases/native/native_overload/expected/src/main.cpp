@@ -8,9 +8,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     print(log(1.0))
+    // print(log(1.0))
     std::cout << ::tpy::print_float(::std::log(1.0)) << "\n";
-    //     print(log(8.0, 2.0))
+    // print(log(8.0, 2.0))
     std::cout << ::tpy::print_float(::tpy::math::log_base(8.0, 2.0)) << "\n";
 }
 

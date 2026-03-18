@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     arr: Array[Int32, 3] = [1, 2, 3]
+    // arr: Array[Int32, 3] = [1, 2, 3]
     std::array<int32_t, 3> arr = {1, 2, 3};
-    //     box: Box = Box(arr)
+    // box: Box = Box(arr)
     Box box = Box(arr);
-    //     s: Span[Int32] = box.items
+    // s: Span[Int32] = box.items
     std::span<int32_t> s = ::tpy::as_mut_span(box.items);
-    //     print(s[0])
+    // print(s[0])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    //     print(s[2])
+    // print(s[2])
     std::cout << ::tpy::__getitem__(s, 2) << "\n";
 }
 

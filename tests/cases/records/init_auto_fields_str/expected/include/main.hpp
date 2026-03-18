@@ -14,12 +14,12 @@ void main();
 // # Auto-declare string fields from __init__
 // class Person:
 struct Person {
-    //         self.name = name
+    // self.name = name
     std::string name;
-    //         self.city = city
+    // self.city = city
     std::string city;
 
-    //     def __init__(self, name: str, city: str):
+    // def __init__(self, name: str, city: str):
     Person() = default;
     explicit Person(std::string_view name, std::string_view city) : name(name), city(city) {}
 };

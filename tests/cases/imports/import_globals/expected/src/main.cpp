@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> Int32:
 int32_t main() {
-    //     print(MAX_VALUE)
+    // print(MAX_VALUE)
     std::cout << ::tpy_user::config::MAX_VALUE << "\n";
-    //     print(get_max())
+    // print(get_max())
     std::cout << ::tpy_user::config::get_max() << "\n";
-    //     return Int32(0)
+    // return Int32(0)
     return 0;
 }
 

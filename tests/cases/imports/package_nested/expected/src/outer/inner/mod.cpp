@@ -6,7 +6,7 @@ namespace tpy_user::outer::inner::mod {
 
 // def func() -> None:
 void func() {
-    //     print("nested module")
+    // print("nested module")
     std::cout << "nested module" << "\n";
 }
 

@@ -16,10 +16,10 @@ void main();
 // @nocopy
 // class Handle:
 struct Handle {
-    //     fd: Int32
+    // fd: Int32
     int32_t fd;
 
-    //     def __init__(self, fd: Int32):
+    // def __init__(self, fd: Int32):
     Handle() = default;
     explicit Handle(int32_t fd) : fd(fd) {}
     // non-copyable (@nocopy)
@@ -39,10 +39,10 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
 // class Holder[T]:
 template<typename T>
 struct Holder {
-    //     item: T
+    // item: T
     T item;
 
-    //     def __init__(self, item: Own[T]):
+    // def __init__(self, item: Own[T]):
     Holder() = default;
     explicit Holder(T&& item) : item(std::move(item)) {}
 };

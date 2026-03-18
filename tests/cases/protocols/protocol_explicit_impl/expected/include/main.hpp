@@ -20,18 +20,18 @@ inline constexpr std::string_view __name__ = "__main__";
 // # Class that explicitly implements Printable
 // class Person(Printable):
 struct Person {
-    //     name: str
+    // name: str
     std::string name;
-    //     age: Int32
+    // age: Int32
     int32_t age;
 
-    //     def __init__(self, name: str, age: Int32) -> None:
+    // def __init__(self, name: str, age: Int32) -> None:
     Person() = default;
     explicit Person(std::string_view name, int32_t age) : name(name), age(age) {}
 
-    //     def __str__(self) -> str:
+    // def __str__(self) -> str:
     std::string __str__() const {
-        //         return self.name
+        // return self.name
         return this->name;
     }
 };

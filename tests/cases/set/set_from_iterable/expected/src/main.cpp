@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     items: list[Int32] = [10, 20, 30, 20, 10]
+    // items: list[Int32] = [10, 20, 30, 20, 10]
     std::vector<int32_t> items = {10, 20, 30, 20, 10};
-    //     s: set[Int32] = set(items)
+    // s: set[Int32] = set(items)
     ::tpy::ordered_set<int32_t> s = ::tpy::set_from_range<int32_t>(items);
-    //     print(s)
+    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    //     print(len(s))
+    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
 }
 

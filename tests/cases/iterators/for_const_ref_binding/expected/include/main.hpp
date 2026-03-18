@@ -30,19 +30,19 @@ void test_bigint_mutated();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    //     @readonly
-    //     def value(self) -> Int32:
+    // @readonly
+    // def value(self) -> Int32:
     int32_t value() const {
-        //         return self.x + self.y
+        // return self.x + self.y
         return (::tpy::add_check<int32_t>(this->x, this->y));
     }
 };
@@ -58,10 +58,10 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Container:
 struct Container {
-    //     items: list[Int32]
+    // items: list[Int32]
     std::vector<int32_t> items;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Container() : items({1, 2}) {}
 };
 

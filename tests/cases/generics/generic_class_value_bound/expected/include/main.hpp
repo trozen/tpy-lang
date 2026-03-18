@@ -17,22 +17,22 @@ void main();
 // class Box[T: ValueType]:
 template<::tpy::ValueType T>
 struct Box {
-    //     value: T
+    // value: T
     T value;
 
-    //     def __init__(self, value: T) -> None:
+    // def __init__(self, value: T) -> None:
     Box() = default;
     explicit Box(const T& value) : value(value) {}
 
-    //     def get(self) -> T:
+    // def get(self) -> T:
     ::tpy::val_or_cref_t<T> get() const {
-        //         return self.value
+        // return self.value
         return this->value;
     }
 
-    //     def set(self, value: T) -> None:
+    // def set(self, value: T) -> None:
     void set(::tpy::param_val_or_ref_t<T> value) {
-        //         self.value = value  # tpyc: ok
+        // self.value = value  # tpyc: ok
         this->value = value;
     }
 };
@@ -48,26 +48,26 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 // class Ring[T: ValueType]:
 template<::tpy::ValueType T>
 struct Ring {
-    //     data: Array[T, 4]
+    // data: Array[T, 4]
     std::array<T, 4> data;
-    //     size: Int32
+    // size: Int32
     int32_t size;
 
-    //     def __init__(self, fill: T) -> None:
+    // def __init__(self, fill: T) -> None:
     Ring() = default;
     explicit Ring(const T& fill) : data({fill, fill, fill, fill}), size(0) {}
 
-    //     def put(self, v: T) -> None:
+    // def put(self, v: T) -> None:
     void put(::tpy::param_val_or_ref_t<T> v) {
-        //         self.data[self.size] = v  # tpyc: ok
+        // self.data[self.size] = v  # tpyc: ok
         ::tpy::__setitem__(this->data, this->size, v);
-        //         self.size += 1
+        // self.size += 1
         this->size = ::tpy::add_check<int32_t>(this->size, 1);
     }
 
-    //     def get(self, i: Int32) -> T:
+    // def get(self, i: Int32) -> T:
     ::tpy::val_or_cref_t<T> get(int32_t i) const {
-        //         return self.data[i]
+        // return self.data[i]
         return ::tpy::__getitem__(this->data, i);
     }
 };
@@ -85,7 +85,7 @@ inline std::ostream& operator<<(std::ostream& os, const Ring<T>& obj) {
 // def identity[T: ValueType](v: T) -> T:
 template<::tpy::ValueType T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> v) {
-    //     return v
+    // return v
     return v;
 }
 

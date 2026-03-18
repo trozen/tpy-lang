@@ -14,16 +14,16 @@ inline constexpr std::string_view __name__ = "__main__";
 // class Container[T]:
 template<typename T>
 struct Container {
-    //     value: T
+    // value: T
     T value;
 
-    //     def __init__(self, value: T) -> None:
+    // def __init__(self, value: T) -> None:
     Container() = default;
     explicit Container(const T& value) : value(value) {}
 
-    //     def get(self) -> T:
+    // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get() {
-        //         return self.value
+        // return self.value
         return this->value;
     }
 };
@@ -38,13 +38,13 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 
 // class IntContainer(Container[Int32]):
 struct IntContainer : Container<int32_t> {
-    //     extra: Int32
+    // extra: Int32
     int32_t extra;
 
-    //     def __init__(self, value: Int32, extra: Int32) -> None:
+    // def __init__(self, value: Int32, extra: Int32) -> None:
     IntContainer() = default;
     explicit IntContainer(int32_t value, int32_t extra) : extra(extra) {
-        //         self.value = value
+        // self.value = value
         this->value = value;
     }
 };

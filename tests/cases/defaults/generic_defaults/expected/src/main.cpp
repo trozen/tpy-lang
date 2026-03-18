@@ -6,33 +6,33 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     nums: list[Int32] = [Int32(10), Int32(20)]
+    // nums: list[Int32] = [Int32(10), Int32(20)]
     std::vector<int32_t> nums = {10, 20};
-    //     empty: list[Int32] = []
+    // empty: list[Int32] = []
     std::vector<int32_t> empty = std::vector<int32_t>{};
-    //     # Call with default (fallback omitted)
-    //     print(first_or(nums))
+    // # Call with default (fallback omitted)
+    // print(first_or(nums))
     std::cout << first_or<int32_t>(nums) << "\n";
-    //     print(first_or(empty))
+    // print(first_or(empty))
     std::cout << first_or<int32_t>(empty) << "\n";
-    //     # Call with explicit fallback
-    //     print(first_or(nums, Int32(99)))
+    // # Call with explicit fallback
+    // print(first_or(nums, Int32(99)))
     int32_t __tmp_1 = 99;
     std::cout << first_or<int32_t>(nums, __tmp_1) << "\n";
-    //     print(first_or(empty, Int32(99)))
+    // print(first_or(empty, Int32(99)))
     int32_t __tmp_2 = 99;
     std::cout << first_or<int32_t>(empty, __tmp_2) << "\n";
-    //     # Bare literal default with generic type
-    //     print(fallback_or(nums))
+    // # Bare literal default with generic type
+    // print(fallback_or(nums))
     std::cout << fallback_or<int32_t>(nums) << "\n";
-    //     print(fallback_or(empty))
+    // print(fallback_or(empty))
     std::cout << fallback_or<int32_t>(empty) << "\n";
-    //     # Generic with bool default
-    //     print(pick(Int32(1), Int32(2)))
+    // # Generic with bool default
+    // print(pick(Int32(1), Int32(2)))
     int32_t __tmp_3 = 1;
     int32_t __tmp_4 = 2;
     std::cout << pick<int32_t>(__tmp_3, __tmp_4) << "\n";
-    //     print(pick(Int32(1), Int32(2), False))
+    // print(pick(Int32(1), Int32(2), False))
     int32_t __tmp_5 = 1;
     int32_t __tmp_6 = 2;
     std::cout << pick<int32_t>(__tmp_5, __tmp_6, false) << "\n";

@@ -48,9 +48,9 @@ void main();
 struct Parrot {
 
 
-    //     def make_noise(self) -> str:
+    // def make_noise(self) -> str:
     std::string make_noise() const {
-        //         return "Squawk"
+        // return "Squawk"
         return "Squawk";
     }
 };

@@ -6,34 +6,34 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     nums: list[Int32] = [1, 2, 3]
+    // nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    //     print(sum_iter(nums))  # 6
+    // print(sum_iter(nums))  # 6
     std::cout << sum_iter(nums) << "\n";
-    //     arr: Array[Int32, 3] = [10, 20, 30]
+    // arr: Array[Int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    //     print(sum_iter(arr))   # 60
+    // print(sum_iter(arr))   # 60
     std::cout << sum_iter(arr) << "\n";
-    //     more: Array[Int32, 2] = [100, 200]
+    // more: Array[Int32, 2] = [100, 200]
     std::array<int32_t, 2> more = {100, 200};
-    //     print(sum_iter(more))  # 300
+    // print(sum_iter(more))  # 300
     std::cout << sum_iter(more) << "\n";
-    //     print_all(nums)  # 1, 2, 3
+    // print_all(nums)  # 1, 2, 3
     print_all(nums);
-    //     # Test protocol-to-protocol passing
-    //     print(process_and_sum(arr))  # prints 10, 20, 30 then 60
+    // # Test protocol-to-protocol passing
+    // print(process_and_sum(arr))  # prints 10, 20, 30 then 60
     std::cout << process_and_sum(arr) << "\n";
-    //     # Test nested iteration
-    //     a: list[Int32] = [1, 2]
+    // # Test nested iteration
+    // a: list[Int32] = [1, 2]
     std::vector<int32_t> a = {1, 2};
-    //     b: list[Int32] = [10, 20]
+    // b: list[Int32] = [10, 20]
     std::vector<int32_t> b = {10, 20};
-    //     print(nested_iteration(a, b))  # (1*10 + 1*20) + (2*10 + 2*20) = 30 + 60 = 90
+    // print(nested_iteration(a, b))  # (1*10 + 1*20) + (2*10 + 2*20) = 30 + 60 = 90
     std::cout << nested_iteration(a, b) << "\n";
-    //     # Test "in" operator with NativeIterable
-    //     print(contains_value(nums, 2))   # True
+    // # Test "in" operator with NativeIterable
+    // print(contains_value(nums, 2))   # True
     std::cout << ::tpy::print_bool(contains_value(nums, 2)) << "\n";
-    //     print(contains_value(nums, 99))  # False
+    // print(contains_value(nums, 99))  # False
     std::cout << ::tpy::print_bool(contains_value(nums, 99)) << "\n";
 }
 

@@ -15,15 +15,15 @@ void main();
 // class Converter:
 struct Converter {
 
-    //     def __init__(self):
+    // def __init__(self):
     Converter() {
-        //         pass
+        // pass
     }
 
-    //     def identity[U](self, val: U) -> U:
+    // def identity[U](self, val: U) -> U:
     template<typename U>
     ::tpy::val_or_cref_t<U> identity(const U& val) const {
-        //         return val
+        // return val
         return val;
     }
 };

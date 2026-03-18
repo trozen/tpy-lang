@@ -6,27 +6,27 @@ namespace tpy_user::main {
 
 // def use_fields(p: Ptr[Point]) -> None:
 void use_fields(Point* p) {
-    //     # Multiple field accesses on same pointer in one expression
-    //     print(p.x + p.y)
+    // # Multiple field accesses on same pointer in one expression
+    // print(p.x + p.y)
     std::cout << (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, ::tpy::deref_check(p).y)) << "\n";
 }
 
 // def use_methods(p: Ptr[Point]) -> None:
 void use_methods(Point* p) {
-    //     # Method + field access on same pointer
-    //     print(p.sum(), p.x)
+    // # Method + field access on same pointer
+    // print(p.sum(), p.x)
     std::cout << ::tpy::deref_check(p).sum() << " " << ::tpy::deref_check(p).x << "\n";
 }
 
 // def test() -> None:
 void test() {
-    //     pt: Point = Point(3, 7)
+    // pt: Point = Point(3, 7)
     Point pt = Point(3, 7);
-    //     p: Ptr[Point] = Ptr(pt)
+    // p: Ptr[Point] = Ptr(pt)
     Point* p = &pt;
-    //     use_fields(p)
+    // use_fields(p)
     use_fields(p);
-    //     use_methods(p)
+    // use_methods(p)
     use_methods(p);
 }
 

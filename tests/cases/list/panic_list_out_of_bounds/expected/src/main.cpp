@@ -7,12 +7,12 @@ namespace tpy_user::main {
 // # Test that out-of-bounds access on list panics at runtime
 // def test_out_of_bounds() -> None:
 void test_out_of_bounds() {
-    //     items: list[Int32] = [10, 20, 30]
+    // items: list[Int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    //     # Access index 10 which is out of bounds (only 3 elements)
-    //     x: Int32 = items[10]
+    // # Access index 10 which is out of bounds (only 3 elements)
+    // x: Int32 = items[10]
     int32_t x = ::tpy::__getitem__(items, 10);
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 

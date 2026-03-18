@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     impl = Impl(Int32(42))
+    // impl = Impl(Int32(42))
     Impl impl = Impl(42);
-    //     use_callable(impl)
+    // use_callable(impl)
     use_callable(impl);
-    //     use_one_arg(impl)
+    // use_one_arg(impl)
     use_one_arg(impl);
 }
 

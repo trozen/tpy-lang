@@ -6,25 +6,25 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Basic: set() constrains T = Int32
-    //     c = Container()  # tpyc: type(/Container\[Int32\]/)
+    // # Basic: set() constrains T = Int32
+    // c = Container()  # tpyc: type(/Container\[Int32\]/)
     Container<int32_t> c = Container<int32_t>();
-    //     c.set(Int32(10))
+    // c.set(Int32(10))
     c.set(10);
-    //     x = c.get()
+    // x = c.get()
     int32_t x = c.get();
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
-    //     print(c.get_count())
+    // print(c.get_count())
     std::cout << c.get_count() << "\n";
-    //     # Void method before constraining call is OK
-    //     c2 = Container()
+    // # Void method before constraining call is OK
+    // c2 = Container()
     Container<int32_t> c2 = Container<int32_t>();
-    //     print(c2.get_count())  # returns Int32, no T dependency
+    // print(c2.get_count())  # returns Int32, no T dependency
     std::cout << c2.get_count() << "\n";
-    //     c2.set(Int32(42))
+    // c2.set(Int32(42))
     c2.set(42);
-    //     print(c2.get())
+    // print(c2.get())
     std::cout << c2.get() << "\n";
 }
 

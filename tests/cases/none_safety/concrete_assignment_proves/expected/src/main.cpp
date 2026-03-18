@@ -6,10 +6,10 @@ namespace tpy_user::main {
 
 // def make() -> Int32:
 int32_t make() {
-    //     p: Point | None = Point(7)
+    // p: Point | None = Point(7)
     Point __slot_1 = Point(7);
     Point* p = &__slot_1;
-    //     return p.x
+    // return p.x
     return p->x;
 }
 

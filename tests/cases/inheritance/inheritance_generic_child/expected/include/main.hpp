@@ -17,10 +17,10 @@ inline constexpr std::string_view __name__ = "__main__";
 // # Case 1: Generic class inheriting from non-generic class
 // class Animal:
 struct Animal {
-    //     name: str
+    // name: str
     std::string name;
 
-    //     def __init__(self, name: str) -> None:
+    // def __init__(self, name: str) -> None:
     Animal() = default;
     explicit Animal(std::string_view name) : name(name) {}
 };
@@ -36,16 +36,16 @@ inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
 // class Container[T]:
 template<typename T>
 struct Container {
-    //     value: T
+    // value: T
     T value;
 
-    //     def __init__(self, value: T) -> None:
+    // def __init__(self, value: T) -> None:
     Container() = default;
     explicit Container(const T& value) : value(value) {}
 
-    //     def get(self) -> T:
+    // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get() {
-        //         return self.value
+        // return self.value
         return this->value;
     }
 };
@@ -61,19 +61,19 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 // class Box[T](Animal):
 template<typename T>
 struct Box : Animal {
-    //     value: T
+    // value: T
     T value;
 
-    //     def __init__(self, name: str, value: T) -> None:
+    // def __init__(self, name: str, value: T) -> None:
     Box() = default;
     explicit Box(std::string_view name, const T& value) : value(value) {
-        //         self.name = name
+        // self.name = name
         this->name = name;
     }
 
-    //     def get(self) -> T:
+    // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get() {
-        //         return self.value
+        // return self.value
         return this->value;
     }
 };
@@ -89,13 +89,13 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 // class Wrapper[U](Container[Int32]):
 template<typename U>
 struct Wrapper : Container<int32_t> {
-    //     extra: U
+    // extra: U
     U extra;
 
-    //     def __init__(self, value: Int32, extra: U) -> None:
+    // def __init__(self, value: Int32, extra: U) -> None:
     Wrapper() = default;
     explicit Wrapper(int32_t value, const U& extra) : extra(extra) {
-        //         self.value = value
+        // self.value = value
         this->value = value;
     }
 };

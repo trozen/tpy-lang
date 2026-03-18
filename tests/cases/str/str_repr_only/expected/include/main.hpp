@@ -14,16 +14,16 @@ void main();
 // # Test __repr__ fallback: str()/print()/f-string fall back to __repr__ when no __str__
 // class Tag:
 struct Tag {
-    //     label: str
+    // label: str
     std::string label;
 
-    //     def __init__(self, label: str) -> None:
+    // def __init__(self, label: str) -> None:
     Tag() = default;
     explicit Tag(std::string_view label) : label(label) {}
 
-    //     def __repr__(self) -> str:
+    // def __repr__(self) -> str:
     std::string __repr__() const {
-        //         return "Tag(" + self.label + ")"
+        // return "Tag(" + self.label + ")"
         return (::tpy::str_concat((::tpy::str_concat("Tag(", this->label)), ")"));
     }
 };

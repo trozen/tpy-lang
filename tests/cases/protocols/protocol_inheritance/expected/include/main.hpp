@@ -28,22 +28,22 @@ void main();
 
 // class Message:
 struct Message {
-    //     text: str
+    // text: str
     std::string text;
 
-    //     def __init__(self, text: str) -> None:
+    // def __init__(self, text: str) -> None:
     Message() = default;
     explicit Message(std::string_view text) : text(text) {}
 
-    //     def to_str(self) -> str:
+    // def to_str(self) -> str:
     std::string to_str() const {
-        //         return self.text
+        // return self.text
         return this->text;
     }
 
-    //     def __len__(self) -> Int32:
+    // def __len__(self) -> Int32:
     int32_t __len__() const {
-        //         return Int32(5)
+        // return Int32(5)
         return 5;
     }
 
@@ -64,18 +64,18 @@ inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
 // class Container[T: PrintableAndSized]:
 template<PrintableAndSized T>
 struct Container {
-    //     value: T
+    // value: T
     T value;
 
-    //     def __init__(self, value: T) -> None:
+    // def __init__(self, value: T) -> None:
     Container() = default;
     explicit Container(const T& value) : value(value) {}
 
-    //     def describe(self) -> None:
+    // def describe(self) -> None:
     void describe() {
-        //         print(self.value.to_str())
+        // print(self.value.to_str())
         std::cout << this->value.to_str() << "\n";
-        //         print(len(self.value))
+        // print(len(self.value))
         std::cout << ::tpy::__len__(this->value) << "\n";
     }
 };

@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     items: list[tuple[str, Point]] = [("a", Point(1, 2)), ("b", Point(3, 4))]
+    // items: list[tuple[str, Point]] = [("a", Point(1, 2)), ("b", Point(3, 4))]
     std::vector<std::tuple<std::string, Point>> items = {std::tuple<std::string, Point>{"a", Point(1, 2)}, std::tuple<std::string, Point>{"b", Point(3, 4)}};
-    //     for item in items:
+    // for item in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::tuple<std::string, Point> item = *__beg_0;
-        //         print(item)
+        // print(item)
         std::cout << ::tpy::TuplePrinter(item) << "\n";
     }
 }

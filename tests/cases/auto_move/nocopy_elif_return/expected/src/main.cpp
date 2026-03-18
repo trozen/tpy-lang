@@ -6,40 +6,40 @@ namespace tpy_user::main {
 
 // def test(n: Int32) -> Own[Handle]:
 Handle test(int32_t n) {
-    //     h = Handle()
+    // h = Handle()
     Handle h = Handle();
-    //     h.fd = n
+    // h.fd = n
     h.fd = n;
-    //     if n == 1:
+    // if n == 1:
     if ((n == 1)) {
-        //         return h     # tpyc: ok
+        // return h     # tpyc: ok
         return h;
-    //     elif n == 2:
+    // elif n == 2:
     } else if ((n == 2)) {
-        //         print(h.fd)
+        // print(h.fd)
         std::cout << h.fd << "\n";
-        //         return h     # tpyc: ok
+        // return h     # tpyc: ok
         return h;
     }
-    //     print(h.fd)
+    // print(h.fd)
     std::cout << h.fd << "\n";
-    //     return h         # tpyc: ok
+    // return h         # tpyc: ok
     return h;
 }
 
 // def main():
 void main() {
-    //     h1 = test(1)
+    // h1 = test(1)
     Handle h1 = test(1);
-    //     print(h1.fd)
+    // print(h1.fd)
     std::cout << h1.fd << "\n";
-    //     h2 = test(2)
+    // h2 = test(2)
     Handle h2 = test(2);
-    //     print(h2.fd)
+    // print(h2.fd)
     std::cout << h2.fd << "\n";
-    //     h3 = test(3)
+    // h3 = test(3)
     Handle h3 = test(3);
-    //     print(h3.fd)
+    // print(h3.fd)
     std::cout << h3.fd << "\n";
 }
 

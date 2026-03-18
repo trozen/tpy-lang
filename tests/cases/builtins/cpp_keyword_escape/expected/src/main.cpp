@@ -6,63 +6,63 @@ namespace tpy_user::main {
 
 // def get_or_default(x: Int32, default: Int32) -> Int32:
 int32_t get_or_default(int32_t x, int32_t default_) {
-    //     if x > 0:
+    // if x > 0:
     if ((x > 0)) {
-        //         return x
+        // return x
         return x;
     }
-    //     return default
+    // return default
     return default_;
 }
 
 // def test_local_keywords() -> None:
 void test_local_keywords() {
-    //     delete: Int32 = 10
+    // delete: Int32 = 10
     int32_t delete_ = 10;
-    //     new: Int32 = 20
+    // new: Int32 = 20
     int32_t new_ = 20;
-    //     result: Int32 = delete + new
+    // result: Int32 = delete + new
     int32_t result = (::tpy::add_check<int32_t>(delete_, new_));
-    //     print(result)
+    // print(result)
     std::cout << result << "\n";
 }
 
 // def test_for_loop_keyword() -> None:
 void test_for_loop_keyword() {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     items: list[Int32] = [1, 2, 3]
+    // items: list[Int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
-    //     for operator in items:
+    // for operator in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t operator_ = *__beg_0;
-        //         total = total + operator
+        // total = total + operator
         total = (::tpy::add_check<int32_t>(total, operator_));
     }
-    //     print(total)
+    // print(total)
     std::cout << total << "\n";
 }
 
 // def delete(x: Int32) -> Int32:
 int32_t delete_(int32_t x) {
-    //     return x * 2
+    // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // def main() -> None:
 void main() {
-    //     print(get_or_default(5, 42))
+    // print(get_or_default(5, 42))
     std::cout << get_or_default(5, 42) << "\n";
-    //     print(get_or_default(-1, 42))
+    // print(get_or_default(-1, 42))
     std::cout << get_or_default(-1, 42) << "\n";
-    //     test_local_keywords()
+    // test_local_keywords()
     test_local_keywords();
-    //     test_for_loop_keyword()
+    // test_for_loop_keyword()
     test_for_loop_keyword();
-    //     print(delete(7))
+    // print(delete(7))
     std::cout << delete_(7) << "\n";
 }
 

@@ -6,16 +6,16 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     h = HeapVal(Int32(42))
+    // h = HeapVal(Int32(42))
     HeapVal h = HeapVal(42);
-    //     val: Int32 = h.take()
+    // val: Int32 = h.take()
     int32_t val = std::move(h).take();
-    //     print("got", val)
+    // print("got", val)
     std::cout << "got" << " " << val << "\n";
-    //     # Temporary
-    //     val2: Int32 = HeapVal(Int32(99)).take()
+    // # Temporary
+    // val2: Int32 = HeapVal(Int32(99)).take()
     int32_t val2 = HeapVal(99).take();
-    //     print("got", val2)
+    // print("got", val2)
     std::cout << "got" << " " << val2 << "\n";
 }
 

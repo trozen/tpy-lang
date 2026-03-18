@@ -6,83 +6,83 @@ namespace tpy_user::main {
 
 // def test_break():
 void test_break() {
-    //     # Break in while loop
-    //     i: Int32 = 0
+    // # Break in while loop
+    // i: Int32 = 0
     int32_t i = 0;
-    //     while i < 10:
+    // while i < 10:
     while ((i < 10)) {
-        //         if i == 5:
+        // if i == 5:
         if ((i == 5)) {
-            //             break
+            // break
             break;
         }
-        //         i += 1
+        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    //     print(i)  # 5
+    // print(i)  # 5
     std::cout << i << "\n";
 }
 
 // def test_continue():
 void test_continue() {
-    //     # Continue in for loop - skip even numbers
-    //     total: Int32 = 0
+    // # Continue in for loop - skip even numbers
+    // total: Int32 = 0
     int32_t total = 0;
-    //     for i in range(10):
+    // for i in range(10):
     for (int32_t i = 0; i < 10; ++i) {
-        //         if i % 2 == 0:
+        // if i % 2 == 0:
         if (((::tpy::mod_floor<int32_t>(i, 2)) == 0)) {
-            //             continue
+            // continue
             continue;
         }
-        //         total += i
+        // total += i
         total = ::tpy::add_check<int32_t>(total, i);
     }
-    //     print(total)  # 1 + 3 + 5 + 7 + 9 = 25
+    // print(total)  # 1 + 3 + 5 + 7 + 9 = 25
     std::cout << total << "\n";
 }
 
 // def test_nested_break():
 void test_nested_break() {
-    //     # Break only exits innermost loop
-    //     count: Int32 = 0
+    // # Break only exits innermost loop
+    // count: Int32 = 0
     int32_t count = 0;
-    //     for i in range(3):
+    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        //         for j in range(5):
+        // for j in range(5):
         for (int32_t j = 0; j < 5; ++j) {
-            //             if j == 2:
+            // if j == 2:
             if ((j == 2)) {
-                //                 break
+                // break
                 break;
             }
-            //             count += 1
+            // count += 1
             count = ::tpy::add_check<int32_t>(count, 1);
         }
     }
-    //     print(count)  # 2 * 3 = 6 (j goes 0, 1 then breaks, 3 times)
+    // print(count)  # 2 * 3 = 6 (j goes 0, 1 then breaks, 3 times)
     std::cout << count << "\n";
 }
 
 // def test_nested_continue():
 void test_nested_continue() {
-    //     # Continue only affects innermost loop
-    //     count: Int32 = 0
+    // # Continue only affects innermost loop
+    // count: Int32 = 0
     int32_t count = 0;
-    //     for i in range(3):
+    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        //         for j in range(4):
+        // for j in range(4):
         for (int32_t j = 0; j < 4; ++j) {
-            //             if j == 1:
+            // if j == 1:
             if ((j == 1)) {
-                //                 continue
+                // continue
                 continue;
             }
-            //             count += 1
+            // count += 1
             count = ::tpy::add_check<int32_t>(count, 1);
         }
     }
-    //     print(count)  # 3 * 3 = 9 (j skips 1, so 0, 2, 3 for each i)
+    // print(count)  # 3 * 3 = 9 (j skips 1, so 0, 2, 3 for each i)
     std::cout << count << "\n";
 }
 

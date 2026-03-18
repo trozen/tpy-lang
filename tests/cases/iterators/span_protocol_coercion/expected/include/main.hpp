@@ -15,15 +15,15 @@ void main();
 
 // class ROBuffer:
 struct ROBuffer {
-    //     _data: list[Int32]
+    // _data: list[Int32]
     std::vector<int32_t> _data;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     ROBuffer() : _data({1, 2, 3}) {}
 
-    //     def __span__(self) -> Span[readonly[Int32]]:
+    // def __span__(self) -> Span[readonly[Int32]]:
     std::span<const int32_t> __span__() const {
-        //         return self._data
+        // return self._data
         return ::tpy::as_span(this->_data);
     }
 };
@@ -37,23 +37,23 @@ inline std::ostream& operator<<(std::ostream& os, const ROBuffer& obj) {
 
 // class MutBuffer:
 struct MutBuffer {
-    //     _data: list[Int32]
+    // _data: list[Int32]
     std::vector<int32_t> _data;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     MutBuffer() : _data({10, 20, 30}) {}
 
-    //     @auto_readonly
-    //     def __span__(self) -> Span[auto_readonly[Int32]]:
+    // @auto_readonly
+    // def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<int32_t> __span__() {
-        //         return self._data
+        // return self._data
         return ::tpy::as_mut_span(this->_data);
     }
 
-    //     @auto_readonly
-    //     def __span__(self) -> Span[auto_readonly[Int32]]:
+    // @auto_readonly
+    // def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> __span__() const {
-        //         return self._data
+        // return self._data
         return ::tpy::as_span(this->_data);
     }
 };

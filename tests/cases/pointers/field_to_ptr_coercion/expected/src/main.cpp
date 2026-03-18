@@ -6,46 +6,46 @@ namespace tpy_user::main {
 
 // def modify_inner(p: Ptr[Inner]) -> None:
 void modify_inner(Inner* p) {
-    //     p.x = 999
+    // p.x = 999
     ::tpy::deref_check(p).x = 999;
 }
 
 // def read_inner(p: Ptr[readonly[Inner]]) -> Int32:
 int32_t read_inner(const Inner* p) {
-    //     return p.x
+    // return p.x
     return ::tpy::deref_check(p).x;
 }
 
 // def test_field_to_ptr() -> None:
 void test_field_to_ptr() {
-    //     outer: Outer = Outer(42)
+    // outer: Outer = Outer(42)
     Outer outer = Outer(42);
-    //     # obj.field -> Ptr coercion
-    //     modify_inner(outer.inner)
+    // # obj.field -> Ptr coercion
+    // modify_inner(outer.inner)
     modify_inner(&outer.inner);
-    //     print(outer.inner.x)
+    // print(outer.inner.x)
     std::cout << outer.inner.x << "\n";
 }
 
 // def test_field_to_const_ptr() -> None:
 void test_field_to_const_ptr() {
-    //     outer: Outer = Outer(100)
+    // outer: Outer = Outer(100)
     Outer outer = Outer(100);
-    //     # obj.field -> Ptr[readonly[...]] coercion
-    //     result: Int32 = read_inner(outer.inner)
+    // # obj.field -> Ptr[readonly[...]] coercion
+    // result: Int32 = read_inner(outer.inner)
     int32_t result = read_inner(&outer.inner);
-    //     print(result)
+    // print(result)
     std::cout << result << "\n";
 }
 
 // def test_subscript_to_ptr() -> None:
 void test_subscript_to_ptr() {
-    //     arr: Array[Inner, 3] = [Inner(1), Inner(2), Inner(3)]
+    // arr: Array[Inner, 3] = [Inner(1), Inner(2), Inner(3)]
     std::array<Inner, 3> arr = {Inner(1), Inner(2), Inner(3)};
-    //     # arr[i] -> Ptr coercion
-    //     modify_inner(arr[1])
+    // # arr[i] -> Ptr coercion
+    // modify_inner(arr[1])
     modify_inner(&::tpy::__getitem__(arr, 1));
-    //     print(arr[1].x)
+    // print(arr[1].x)
     std::cout << ::tpy::__getitem__(arr, 1).x << "\n";
 }
 

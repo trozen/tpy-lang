@@ -6,21 +6,21 @@ namespace tpy_user::main {
 
 // def read_container(c: Container[Int32]) -> None:
 void read_container(const Container<int32_t>& c) {
-    //     print(c.value)
+    // print(c.value)
     std::cout << c.value << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     ic: IntContainer = IntContainer(Int32(42))
+    // ic: IntContainer = IntContainer(Int32(42))
     IntContainer ic = IntContainer(42);
-    //     # Value upcast to generic parent
-    //     c: Container[Int32] = ic
+    // # Value upcast to generic parent
+    // c: Container[Int32] = ic
     Container<int32_t>& c = ic;
-    //     print(c.value)
+    // print(c.value)
     std::cout << c.value << "\n";
-    //     # Param passing
-    //     read_container(ic)
+    // # Param passing
+    // read_container(ic)
     read_container(ic);
 }
 

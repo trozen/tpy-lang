@@ -13,19 +13,19 @@ void main();
 
 // class Config:
 struct Config {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, flag: bool):
+    // def __init__(self, flag: bool):
     Config() = default;
     explicit Config(bool flag) {
-        //         if flag:  # tpyc: warning(/is not initialized before the constructor body/)
+        // if flag:  # tpyc: warning(/is not initialized before the constructor body/)
         if (flag) {
-            //             self.value = 10  # tpyc: ok
+            // self.value = 10  # tpyc: ok
             this->value = 10;
-        //         else:
+        // else:
         } else {
-            //             self.value = 20  # tpyc: ok
+            // self.value = 20  # tpyc: ok
             this->value = 20;
         }
     }

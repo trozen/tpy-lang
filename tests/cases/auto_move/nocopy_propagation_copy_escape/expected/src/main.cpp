@@ -6,19 +6,19 @@ namespace tpy_user::main {
 
 // def consume(c: Own[Container]) -> Int32:
 int32_t consume(Container&& c) {
-    //     return c.handle.fd
+    // return c.handle.fd
     return c.handle.fd;
 }
 
 // def main():
 void main() {
-    //     c = Container(Handle(42))
+    // c = Container(Handle(42))
     Container c = Container(Handle(42));
-    //     c2 = copy(c)
+    // c2 = copy(c)
     Container c2 = Container(c);
-    //     print(consume(c))
+    // print(consume(c))
     std::cout << consume(std::move(c)) << "\n";
-    //     print(consume(c2))
+    // print(consume(c2))
     std::cout << consume(std::move(c2)) << "\n";
 }
 

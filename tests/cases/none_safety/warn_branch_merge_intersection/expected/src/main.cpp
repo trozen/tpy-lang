@@ -6,16 +6,16 @@ namespace tpy_user::main {
 
 // def pick(flag: bool, a: Int32 | None, b: Int32 | None) -> Int32:
 int32_t pick(bool flag, std::optional<int32_t> a, std::optional<int32_t> b) {
-    //     if flag:
+    // if flag:
     if (flag) {
-        //         assert a is not None
+        // assert a is not None
         if (!((a.has_value()))) ::tpy::tpy_panic("assertion failed");
-    //     else:
+    // else:
     } else {
-        //         assert b is not None
+        // assert b is not None
         if (!((b.has_value()))) ::tpy::tpy_panic("assertion failed");
     }
-    //     return a + 1  # tpyc: warning(/Potential None access/)
+    // return a + 1  # tpyc: warning(/Potential None access/)
     return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(a), 1));
 }
 

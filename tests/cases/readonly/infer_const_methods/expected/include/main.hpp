@@ -58,35 +58,35 @@ void main();
 
 // class Counter:
 struct Counter {
-    //     count: Int32
+    // count: Int32
     int32_t count;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Counter() : count(0) {}
 
-    //     def increment(self) -> None:        # mutates self -- must NOT be const
+    // def increment(self) -> None:        # mutates self -- must NOT be const
     void increment() {
-        //         self.count += 1
+        // self.count += 1
         this->count = ::tpy::add_check<int32_t>(this->count, 1);
     }
 
-    //     def increment_twice(self) -> None:  # delegates to self.increment() -- must NOT be const
+    // def increment_twice(self) -> None:  # delegates to self.increment() -- must NOT be const
     void increment_twice() {
-        //         self.increment()
+        // self.increment()
         increment();
-        //         self.increment()
+        // self.increment()
         increment();
     }
 
-    //     def get(self) -> Int32:             # only reads -- inferred const
+    // def get(self) -> Int32:             # only reads -- inferred const
     int32_t get() const {
-        //         return self.count
+        // return self.count
         return this->count;
     }
 
-    //     def is_zero(self) -> bool:          # only reads -- inferred const
+    // def is_zero(self) -> bool:          # only reads -- inferred const
     bool is_zero() const {
-        //         return self.count == 0
+        // return self.count == 0
         return (this->count == 0);
     }
 };
@@ -100,28 +100,28 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // class Box:
 struct Box {
-    //     items: list[Int32]
+    // items: list[Int32]
     std::vector<int32_t> items;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Box() : items(std::vector<int32_t>{}) {}
 
-    //     def push(self, x: Int32) -> None:  # mutates self -- must NOT be const
+    // def push(self, x: Int32) -> None:  # mutates self -- must NOT be const
     void push(int32_t x) {
-        //         self.items.append(x)
+        // self.items.append(x)
         auto __tmp_1 = x;
         this->items.push_back(std::move(__tmp_1));
     }
 
-    //     def push_default(self) -> None:    # calls self.push() -- must NOT be const
+    // def push_default(self) -> None:    # calls self.push() -- must NOT be const
     void push_default() {
-        //         self.push(0)
+        // self.push(0)
         push(0);
     }
 
-    //     def size(self) -> Int32:           # only reads -- inferred const
+    // def size(self) -> Int32:           # only reads -- inferred const
     int32_t size() const {
-        //         return len(self.items)
+        // return len(self.items)
         return ::tpy::__len__(this->items);
     }
 };
@@ -138,31 +138,31 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // # recorded immediately rather than going through the call-edge propagation path.
 // class SortableBox:
 struct SortableBox {
-    //     items: list[Int32]
+    // items: list[Int32]
     std::vector<int32_t> items;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     SortableBox() : items(std::vector<int32_t>{}) {}
 
-    //     def fill(self, a: Int32, b: Int32) -> None:   # mutates self.items -- must NOT be const
+    // def fill(self, a: Int32, b: Int32) -> None:   # mutates self.items -- must NOT be const
     void fill(int32_t a, int32_t b) {
-        //         self.items.append(a)
+        // self.items.append(a)
         auto __tmp_2 = a;
         this->items.push_back(std::move(__tmp_2));
-        //         self.items.append(b)
+        // self.items.append(b)
         auto __tmp_3 = b;
         this->items.push_back(std::move(__tmp_3));
     }
 
-    //     def sort_items(self) -> None:                  # self.field.method() -- must NOT be const
+    // def sort_items(self) -> None:                  # self.field.method() -- must NOT be const
     void sort_items() {
-        //         self.items.sort()
+        // self.items.sort()
         std::stable_sort(this->items.begin(), this->items.end());
     }
 
-    //     def get_first(self) -> Int32:                  # only reads -- inferred const
+    // def get_first(self) -> Int32:                  # only reads -- inferred const
     int32_t get_first() const {
-        //         return self.items[0]
+        // return self.items[0]
         return ::tpy::__getitem__(this->items, 0);
     }
 };
@@ -176,16 +176,16 @@ inline std::ostream& operator<<(std::ostream& os, const SortableBox& obj) {
 
 // class Valued(DynValued):
 struct Valued : DynValued {
-    //     _n: Int32
+    // _n: Int32
     int32_t _n;
 
-    //     def __init__(self, n: Int32) -> None:
+    // def __init__(self, n: Int32) -> None:
     Valued() = default;
     explicit Valued(int32_t n) : _n(n) {}
 
-    //     def value(self) -> Int32:           # must NOT be const (pure virtual override)
+    // def value(self) -> Int32:           # must NOT be const (pure virtual override)
     int32_t value() override {
-        //         return self._n
+        // return self._n
         return this->_n;
     }
 };

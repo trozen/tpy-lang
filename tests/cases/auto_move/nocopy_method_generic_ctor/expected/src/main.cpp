@@ -6,36 +6,36 @@ namespace tpy_user::main {
 
 // def main():
 void main() {
-    //     # @nocopy via record method at last use
-    //     holder = Holder()
+    // # @nocopy via record method at last use
+    // holder = Holder()
     Holder holder = Holder();
-    //     holder.h = Handle()
+    // holder.h = Handle()
     holder.h = Handle();
-    //     h1 = Handle()
+    // h1 = Handle()
     Handle h1 = Handle();
-    //     h1.fd = 10
+    // h1.fd = 10
     h1.fd = 10;
-    //     holder.take(h1)  # tpyc: ok
+    // holder.take(h1)  # tpyc: ok
     holder.take(std::move(h1));
-    //     print(holder.h.fd)
+    // print(holder.h.fd)
     std::cout << holder.h.fd << "\n";
-    //     # @nocopy via generic ctor at last use
-    //     h2 = Handle()
+    // # @nocopy via generic ctor at last use
+    // h2 = Handle()
     Handle h2 = Handle();
-    //     h2.fd = 20
+    // h2.fd = 20
     h2.fd = 20;
-    //     gh = GenericHolder[Handle](h2)  # tpyc: ok
+    // gh = GenericHolder[Handle](h2)  # tpyc: ok
     GenericHolder<Handle> gh = GenericHolder<Handle>(std::move(h2));
-    //     print(gh.item.fd)
+    // print(gh.item.fd)
     std::cout << gh.item.fd << "\n";
-    //     # @nocopy via generic method at last use
-    //     h3 = Handle()
+    // # @nocopy via generic method at last use
+    // h3 = Handle()
     Handle h3 = Handle();
-    //     h3.fd = 30
+    // h3.fd = 30
     h3.fd = 30;
-    //     gh.replace(h3)  # tpyc: ok
+    // gh.replace(h3)  # tpyc: ok
     gh.replace(std::move(h3));
-    //     print(gh.item.fd)
+    // print(gh.item.fd)
     std::cout << gh.item.fd << "\n";
 }
 

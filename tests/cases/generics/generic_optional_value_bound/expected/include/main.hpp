@@ -14,29 +14,29 @@ void main();
 // class Box[T: ValueType]:
 template<::tpy::ValueType T>
 struct Box {
-    //     _value: T
+    // _value: T
     T _value;
-    //     _has: bool
+    // _has: bool
     bool _has;
 
-    //     def __init__(self, value: T) -> None:
+    // def __init__(self, value: T) -> None:
     Box() = default;
     explicit Box(const T& value) : _value(value), _has(true) {}
 
-    //     def get(self) -> T | None:
+    // def get(self) -> T | None:
     std::optional<T> get() const {
-        //         if self._has:
+        // if self._has:
         if (this->_has) {
-            //             return self._value
+            // return self._value
             return this->_value;
         }
-        //         return None
+        // return None
         return std::nullopt;
     }
 
-    //     def clear(self) -> None:
+    // def clear(self) -> None:
     void clear() {
-        //         self._has = False
+        // self._has = False
         this->_has = false;
     }
 };

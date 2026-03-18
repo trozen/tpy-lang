@@ -6,52 +6,52 @@ namespace tpy_user::main {
 
 // def sum_items(items: list[Int32], bonus: Int32 | None) -> Int32:
 int32_t sum_items(const std::vector<int32_t>& items, std::optional<int32_t> bonus) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     if bonus is not None:
+    // if bonus is not None:
     if ((bonus.has_value())) {
-        //         # bonus narrowed to Int32 here
-        //         for item in items:
+        // # bonus narrowed to Int32 here
+        // for item in items:
         auto& __obj_0 = items;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t item = *__beg_0;
-            //             total = total + item + bonus
+            // total = total + item + bonus
             total = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(total, item)), (*bonus)));
         }
-        //         return total
+        // return total
         return total;
     }
-    //     for item in items:
+    // for item in items:
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t item = *__beg_1;
-        //         total = total + item
+        // total = total + item
         total = (::tpy::add_check<int32_t>(total, item));
     }
-    //     return total
+    // return total
     return total;
 }
 
 // def assert_then_loop(x: Int32 | None, items: list[Int32]) -> Int32:
 int32_t assert_then_loop(std::optional<int32_t> x, const std::vector<int32_t>& items) {
-    //     assert x is not None
+    // assert x is not None
     if (!((x.has_value()))) ::tpy::tpy_panic("assertion failed");
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     for item in items:
+    // for item in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t item = *__beg_0;
-        //         total = total + item + x
+        // total = total + item + x
         total = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(total, item)), (*x)));
     }
-    //     return total
+    // return total
     return total;
 }
 

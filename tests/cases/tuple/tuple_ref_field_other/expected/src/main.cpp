@@ -6,29 +6,29 @@ namespace tpy_user::main {
 
 // def update(h: Holder, p: Point) -> None:
 void update(Holder& h, const Point& p) {
-    //     h.data = (copy(p), Int32(99))
+    // h.data = (copy(p), Int32(99))
     h.data = std::tuple<Point, int32_t>{Point(p), 99};
 }
 
 // def main() -> None:
 void main() {
-    //     p = Point(Int32(1), Int32(2))
+    // p = Point(Int32(1), Int32(2))
     Point p = Point(1, 2);
-    //     h = Holder(p, Int32(42))
+    // h = Holder(p, Int32(42))
     Holder h = Holder(p, 42);
-    //     print(h.data[0].x, h.data[1])
+    // print(h.data[0].x, h.data[1])
     std::cout << std::get<0>(h.data).x << " " << std::get<1>(h.data) << "\n";
-    //     # Update via non-self field assignment
-    //     p2 = Point(Int32(10), Int32(20))
+    // # Update via non-self field assignment
+    // p2 = Point(Int32(10), Int32(20))
     Point p2 = Point(10, 20);
-    //     update(h, p2)
+    // update(h, p2)
     update(h, p2);
-    //     print(h.data[0].x, h.data[1])
+    // print(h.data[0].x, h.data[1])
     std::cout << std::get<0>(h.data).x << " " << std::get<1>(h.data) << "\n";
-    //     # Mutation of p2 should NOT affect h.data (value semantics)
-    //     p2.x = Int32(55)
+    // # Mutation of p2 should NOT affect h.data (value semantics)
+    // p2.x = Int32(55)
     p2.x = 55;
-    //     print(h.data[0].x)
+    // print(h.data[0].x)
     std::cout << std::get<0>(h.data).x << "\n";
 }
 

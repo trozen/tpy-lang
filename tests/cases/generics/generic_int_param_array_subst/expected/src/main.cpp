@@ -8,37 +8,37 @@ std::array<int32_t, 3>* arr_global{};
 
 // def use_array(arr: Array[Int32, 3]) -> None:
 void use_array(const std::array<int32_t, 3>& arr) {
-    //     print(arr[0])
+    // print(arr[0])
     std::cout << ::tpy::__getitem__(arr, 0) << "\n";
-    //     print(arr[1])
+    // print(arr[1])
     std::cout << ::tpy::__getitem__(arr, 1) << "\n";
-    //     print(arr[2])
+    // print(arr[2])
     std::cout << ::tpy::__getitem__(arr, 2) << "\n";
 }
 
 // def get_global_array() -> Array[Int32, 3]:
 std::array<int32_t, 3>& get_global_array() {
-    //     return arr_global
+    // return arr_global
     return (*arr_global);
 }
 
 // def main() -> None:
 void main() {
-    //     b: Buffer[Int32, 3] = Buffer[Int32, 3]()
+    // b: Buffer[Int32, 3] = Buffer[Int32, 3]()
     Buffer<int32_t, 3> b = Buffer<int32_t, 3>();
-    //     # Test 1: Pass concrete array to generic method
-    //     concrete: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
+    // # Test 1: Pass concrete array to generic method
+    // concrete: Array[Int32, 3] = [Int32(1), Int32(2), Int32(3)]
     std::array<int32_t, 3> concrete = {1, 2, 3};
-    //     b.set_data(concrete)
+    // b.set_data(concrete)
     b.set_data(concrete);
-    //     # Test 2: Pass generic return type to concrete function
-    //     # get_data() returns Array[T, N], which should substitute to Array[Int32, 3]
-    //     use_array(b.get_data())
+    // # Test 2: Pass generic return type to concrete function
+    // # get_data() returns Array[T, N], which should substitute to Array[Int32, 3]
+    // use_array(b.get_data())
     use_array(b.get_data());
-    //     # Test 3: Assign concrete return to generic field via method
-    //     b.set_data(get_global_array())
+    // # Test 3: Assign concrete return to generic field via method
+    // b.set_data(get_global_array())
     b.set_data(get_global_array());
-    //     use_array(b.get_data())
+    // use_array(b.get_data())
     use_array(b.get_data());
 }
 

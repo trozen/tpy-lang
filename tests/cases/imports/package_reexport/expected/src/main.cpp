@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main() -> Int32:
 int32_t main() {
-    //     print(VERSION)
+    // print(VERSION)
     std::cout << ::tpy_user::mypackage::VERSION << "\n";
-    //     result: Int32 = add(Int32(5), Int32(7))
+    // result: Int32 = add(Int32(5), Int32(7))
     int32_t result = ::tpy_user::mypackage::add(5, 7);
-    //     print(result)
+    // print(result)
     std::cout << result << "\n";
-    //     return Int32(0)
+    // return Int32(0)
     return 0;
 }
 

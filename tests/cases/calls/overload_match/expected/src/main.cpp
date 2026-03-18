@@ -9,31 +9,31 @@ namespace tpy_user::main {
 // @overload
 // def area(shape: Circle) -> float: ...
 double area(const Circle& shape) {
-    //     match shape:
+    // match shape:
     auto& r = shape.radius;
-    //             return 3.14 * r * r
+    // return 3.14 * r * r
     return ((((3.14) * (r))) * (r));
 }
 
 // @overload
 // def area(shape: Square) -> float: ...
 double area(const Square& shape) {
-    //     match shape:
+    // match shape:
     auto& s = shape.side;
-    //             return s * s
+    // return s * s
     return ((s) * (s));
 }
 
 
 // def main() -> None:
 void main() {
-    //     c = Circle(5.0)
+    // c = Circle(5.0)
     Circle c = Circle(5.0);
-    //     s = Square(3.0)
+    // s = Square(3.0)
     Square s = Square(3.0);
-    //     print(area(c))
+    // print(area(c))
     std::cout << ::tpy::print_float(area(c)) << "\n";
-    //     print(area(s))
+    // print(area(s))
     std::cout << ::tpy::print_float(area(s)) << "\n";
 }
 

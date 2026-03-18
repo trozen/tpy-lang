@@ -8,114 +8,114 @@ std::vector<::tpy::BigInt>* result{};
 
 // def test_append() -> None:
 void test_append() {
-    //     xs = []  # tpyc: type(list[Int32])
+    // xs = []  # tpyc: type(list[Int32])
     std::vector<int32_t> xs = std::vector<int32_t>{};
-    //     xs.append(42)
+    // xs.append(42)
     xs.push_back(42);
-    //     print(xs)
+    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_list_ctor() -> None:
 void test_list_ctor() {
-    //     xs = list()  # tpyc: type(list[Int32])
+    // xs = list()  # tpyc: type(list[Int32])
     std::vector<int32_t> xs = std::vector<int32_t>();
-    //     xs.append(42)
+    // xs.append(42)
     xs.push_back(42);
-    //     print(xs)
+    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_insert() -> None:
 void test_insert() {
-    //     xs = []  # tpyc: type(list[Int32])
+    // xs = []  # tpyc: type(list[Int32])
     std::vector<int32_t> xs = std::vector<int32_t>{};
-    //     xs.insert(0, 99)
+    // xs.insert(0, 99)
     ::tpy::list_insert(xs, 0, 99);
-    //     print(xs)
+    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_multiple_append() -> None:
 void test_multiple_append() {
-    //     xs = []  # tpyc: type(list[Int32])
+    // xs = []  # tpyc: type(list[Int32])
     std::vector<int32_t> xs = std::vector<int32_t>{};
-    //     xs.append(1)
+    // xs.append(1)
     xs.push_back(1);
-    //     xs.append(2)
+    // xs.append(2)
     xs.push_back(2);
-    //     xs.append(3)
+    // xs.append(3)
     xs.push_back(3);
-    //     print(xs)
+    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_numeric_widen() -> None:
 void test_numeric_widen() {
-    //     xs = []  # tpyc: type(list[Int64])
+    // xs = []  # tpyc: type(list[Int64])
     std::vector<int64_t> xs = std::vector<int64_t>{};
-    //     xs.append(Int32(1))
+    // xs.append(Int32(1))
     xs.push_back(1);
-    //     xs.append(Int64(2))
+    // xs.append(Int64(2))
     xs.push_back(2);
-    //     print(xs)
+    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_return_context() -> Own[list[int]]:
 std::vector<::tpy::BigInt> test_return_context() {
-    //     xs = []  # tpyc: type(list[int])
+    // xs = []  # tpyc: type(list[int])
     std::vector<::tpy::BigInt> xs = std::vector<::tpy::BigInt>{};
-    //     xs.append(1)
+    // xs.append(1)
     xs.push_back(1);
-    //     return xs
+    // return xs
     return xs;
 }
 
 // def takes_list(items: list[int]) -> None:
 void takes_list(const std::vector<::tpy::BigInt>& items) {
-    //     for x in items:
+    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const ::tpy::BigInt& x = *__beg_0;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
 }
 
 // def test_param_context() -> None:
 void test_param_context() {
-    //     xs = []  # tpyc: type(list[int])
+    // xs = []  # tpyc: type(list[int])
     std::vector<::tpy::BigInt> xs = std::vector<::tpy::BigInt>{};
-    //     xs.append(10)
+    // xs.append(10)
     xs.push_back(10);
-    //     takes_list(xs)
+    // takes_list(xs)
     takes_list(xs);
 }
 
 // def test_param_overrides_inferred() -> None:
 void test_param_overrides_inferred() {
-    //     xs = []  # tpyc: type(list[int])
+    // xs = []  # tpyc: type(list[int])
     std::vector<::tpy::BigInt> xs = std::vector<::tpy::BigInt>{};
-    //     xs.append(Int32(1))
+    // xs.append(Int32(1))
     xs.push_back(1);
-    //     takes_list(xs)
+    // takes_list(xs)
     takes_list(xs);
 }
 
 // def test_alias_inference() -> None:
 void test_alias_inference() {
-    //     xs = []  # tpyc: type(list[Int32])
+    // xs = []  # tpyc: type(list[Int32])
     std::vector<int32_t> xs = std::vector<int32_t>{};
-    //     ys = xs
+    // ys = xs
     std::vector<int32_t>& ys = xs;
-    //     ys.append(42)
+    // ys.append(42)
     ys.push_back(42);
-    //     print(xs)
+    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
-    //     print(ys)
+    // print(ys)
     std::cout << ::tpy::ListPrinter(ys) << "\n";
 }
 

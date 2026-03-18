@@ -6,39 +6,39 @@ namespace tpy_user::main {
 
 // def show(v: DynValued) -> None:
 void show(DynValued& v) {
-    //     print(v.value())
+    // print(v.value())
     std::cout << v.value() << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     c = Counter()
+    // c = Counter()
     Counter c = Counter();
-    //     c.increment()
+    // c.increment()
     c.increment();
-    //     c.increment_twice()
+    // c.increment_twice()
     c.increment_twice();
-    //     print(c.get())
+    // print(c.get())
     std::cout << c.get() << "\n";
-    //     print(c.is_zero())
+    // print(c.is_zero())
     std::cout << ::tpy::print_bool(c.is_zero()) << "\n";
-    //     b = Box()
+    // b = Box()
     Box b = Box();
-    //     b.push(1)
+    // b.push(1)
     b.push(1);
-    //     b.push_default()
+    // b.push_default()
     b.push_default();
-    //     print(b.size())
+    // print(b.size())
     std::cout << b.size() << "\n";
-    //     sb = SortableBox()
+    // sb = SortableBox()
     SortableBox sb = SortableBox();
-    //     sb.fill(3, 1)
+    // sb.fill(3, 1)
     sb.fill(3, 1);
-    //     sb.sort_items()
+    // sb.sort_items()
     sb.sort_items();
-    //     print(sb.get_first())
+    // print(sb.get_first())
     std::cout << sb.get_first() << "\n";
-    //     show(Valued(7))
+    // show(Valued(7))
     Valued __tmp_4{Valued(7)};
     show(__tmp_4);
 }

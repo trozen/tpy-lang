@@ -7,9 +7,9 @@ namespace tpy_user::main {
 // @readonly
 // def build() -> Int32:
 int32_t build() {
-    //     b = Box(3)
+    // b = Box(3)
     Box b = Box(3);
-    //     return b.x  # tpyc: ok
+    // return b.x  # tpyc: ok
     return b.x;
 }
 

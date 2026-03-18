@@ -6,20 +6,20 @@ namespace tpy_user::main {
 
 // def opaque(b: Box) -> None:
 void opaque(Box& b) {
-    //     b.value = b.value
+    // b.value = b.value
     b.value = b.value;
 }
 
 // def use_after_call(b: Box) -> Int32:
 int32_t use_after_call(Box& b) {
-    //     while b.value is not None:
+    // while b.value is not None:
     while ((b.value.has_value())) {
-        //         opaque(b)
+        // opaque(b)
         opaque(b);
-        //         return b.value + 1  # tpyc: warning(/Potential None access/)
+        // return b.value + 1  # tpyc: warning(/Potential None access/)
         return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(b.value), 1));
     }
-    //     return 0
+    // return 0
     return 0;
 }
 

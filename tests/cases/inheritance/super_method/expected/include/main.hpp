@@ -13,22 +13,22 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // class Animal:
 struct Animal {
-    //     name: str
+    // name: str
     std::string name;
 
-    //     def __init__(self, name: str) -> None:
+    // def __init__(self, name: str) -> None:
     Animal() = default;
     explicit Animal(std::string_view name) : name(name) {}
 
-    //     def speak(self) -> str:
+    // def speak(self) -> str:
     std::string speak() const {
-        //         return "Animal says: ..."
+        // return "Animal says: ..."
         return "Animal says: ...";
     }
 
-    //     def describe(self) -> str:
+    // def describe(self) -> str:
     std::string describe() const {
-        //         return self.name
+        // return self.name
         return this->name;
     }
 };
@@ -42,25 +42,25 @@ inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
 
 // class Dog(Animal):
 struct Dog : Animal {
-    //     breed: str
+    // breed: str
     std::string breed;
 
-    //     def __init__(self, name: str, breed: str) -> None:
+    // def __init__(self, name: str, breed: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name, std::string_view breed) : Animal(name), breed(breed) {}
 
-    //     def speak(self) -> str:
+    // def speak(self) -> str:
     std::string speak() const {
-        //         return "Woof!"
+        // return "Woof!"
         return "Woof!";
     }
 
-    //     def full_speak(self) -> str:
+    // def full_speak(self) -> str:
     std::string full_speak() const {
-        //         # Call overridden parent method via super()
-        //         parent_speak = super().speak()
+        // # Call overridden parent method via super()
+        // parent_speak = super().speak()
         std::string parent_speak = Animal::speak();
-        //         return parent_speak
+        // return parent_speak
         return parent_speak;
     }
 };

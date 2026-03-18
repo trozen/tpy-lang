@@ -8,9 +8,9 @@ Point* pt{};
 
 // def get_x(p: Point | None) -> Int32:
 int32_t get_x(Point* p) {
-    //     assert p  # tpyc: ok
+    // assert p  # tpyc: ok
     if (!(p)) ::tpy::tpy_panic("assertion failed");
-    //     return p.x  # tpyc: ok
+    // return p.x  # tpyc: ok
     return p->x;
 }
 

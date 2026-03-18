@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     a = ArrayList[Int32, 4]()
+    // a = ArrayList[Int32, 4]()
     ::tpy_user::tplib::ArrayList<int32_t, 4> a = ::tpy_user::tplib::ArrayList<int32_t, 4>();
-    //     a.append(10)
+    // a.append(10)
     a.append(10);
-    //     a.append(20)
+    // a.append(20)
     a.append(20);
-    //     a.index(99)
+    // a.index(99)
     a.index(99);
 }
 

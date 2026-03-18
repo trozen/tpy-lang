@@ -6,20 +6,20 @@ namespace tpy_user::main {
 
 // def describe(s: Circle | Rect) -> None:
 void describe(const std::variant<Circle*, Rect*> s) {
-    //     match s:
+    // match s:
     auto& __match_subject = s;
     switch (__match_subject.index()) {
-    //         case Circle():
+    // case Circle():
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject);
-        //             print(s.radius)
+        // print(s.radius)
         std::cout << ::tpy::print_float(__case_0.radius) << "\n";
         break;
     }
-    //         case Rect():
+    // case Rect():
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject);
-        //             print(s.width * s.height)
+        // print(s.width * s.height)
         std::cout << ::tpy::print_float(((__case_1.width) * (__case_1.height))) << "\n";
         break;
     }
@@ -28,15 +28,15 @@ void describe(const std::variant<Circle*, Rect*> s) {
 
 // def main() -> None:
 void main() {
-    //     c: Circle | Rect = Circle(5.0)
+    // c: Circle | Rect = Circle(5.0)
     std::variant<Circle, Rect> __slot_1 = Circle(5.0);
     std::variant<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
-    //     r: Circle | Rect = Rect(3.0, 4.0)
+    // r: Circle | Rect = Rect(3.0, 4.0)
     std::variant<Circle, Rect> __slot_2 = Rect(3.0, 4.0);
     std::variant<Circle*, Rect*> r = ::tpy::to_ptr_variant(__slot_2);
-    //     describe(c)
+    // describe(c)
     describe(c);
-    //     describe(r)
+    // describe(r)
     describe(r);
 }
 

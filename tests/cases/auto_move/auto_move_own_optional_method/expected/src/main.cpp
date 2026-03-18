@@ -6,19 +6,19 @@ namespace tpy_user::main {
 
 // def main():
 void main() {
-    //     c = Container()
+    // c = Container()
     Container c = Container();
-    //     c.val = Int32(-1)
+    // c.val = Int32(-1)
     c.val = -1;
-    //     p = Point()
+    // p = Point()
     Point p = Point();
-    //     p.x = Int32(3)
+    // p.x = Int32(3)
     p.x = 3;
-    //     p.y = Int32(4)
+    // p.y = Int32(4)
     p.y = 4;
-    //     c.take(p)
+    // c.take(p)
     c.take(std::move(p));
-    //     print(c.val)
+    // print(c.val)
     std::cout << c.val << "\n";
 }
 

@@ -7,31 +7,31 @@ namespace tpy_user::main {
 // # match/case on float subject with literal patterns
 // def classify(x: float) -> str:
 std::string classify(double x) {
-    //     match x:
+    // match x:
     auto& __match_subject = x;
-    //         case 0.0:
+    // case 0.0:
     if (__match_subject == 0.0) {
-        //             return "zero"
+        // return "zero"
         return "zero";
-    //         case 1.0:
+    // case 1.0:
     } else if (__match_subject == 1.0) {
-        //             return "one"
+        // return "one"
         return "one";
-    //         case other:
+    // case other:
     } else {
         auto& other = __match_subject;
-        //             return "other"
+        // return "other"
         return "other";
     }
 }
 
 // def main() -> None:
 void main() {
-    //     print(classify(0.0))
+    // print(classify(0.0))
     std::cout << classify(0.0) << "\n";
-    //     print(classify(1.0))
+    // print(classify(1.0))
     std::cout << classify(1.0) << "\n";
-    //     print(classify(3.14))
+    // print(classify(3.14))
     std::cout << classify(3.14) << "\n";
 }
 

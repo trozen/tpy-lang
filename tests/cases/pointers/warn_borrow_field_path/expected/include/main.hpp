@@ -19,12 +19,12 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -40,64 +40,64 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Container:
 struct Container {
-    //     items: list[Point]
+    // items: list[Point]
     std::vector<Point> items;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Container() : items({Point(1, 2), Point(3, 4)}) {}
 
-    //     def iter_then_mutate(self) -> None:
+    // def iter_then_mutate(self) -> None:
     void iter_then_mutate() {
-        //         for p in self.items:
+        // for p in self.items:
         auto& __obj_0 = this->items;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& p = *__beg_0;
-            //             self.items.append(Point(p.x, p.y))  # tpyc: warning(/while iterating/)
+            // self.items.append(Point(p.x, p.y))  # tpyc: warning(/while iterating/)
             this->items.push_back(Point(p.x, p.y));
-            //             break
+            // break
             break;
         }
     }
 
-    //     def ptr_then_mutate(self) -> None:
+    // def ptr_then_mutate(self) -> None:
     void ptr_then_mutate() {
-        //         ptr = Ptr(self.items[0])
+        // ptr = Ptr(self.items[0])
         Point* ptr = &::tpy::__getitem__(this->items, 0);
-        //         self.items.append(Point(5, 6))  # tpyc: warning(/'append'.*invalidate/)
+        // self.items.append(Point(5, 6))  # tpyc: warning(/'append'.*invalidate/)
         this->items.push_back(Point(5, 6));
-        //         print(len(self.items))
+        // print(len(self.items))
         std::cout << ::tpy::__len__(this->items) << "\n";
     }
 
-    //     def safe_subscript_assign(self) -> None:
+    // def safe_subscript_assign(self) -> None:
     void safe_subscript_assign() {
-        //         ptr = Ptr(self.items[0])
+        // ptr = Ptr(self.items[0])
         Point* ptr = &::tpy::__getitem__(this->items, 0);
-        //         self.items[0] = Point(9, 9)  # tpyc: ok
+        // self.items[0] = Point(9, 9)  # tpyc: ok
         ::tpy::__setitem__(this->items, 0, Point(9, 9));
-        //         print(len(self.items))
+        // print(len(self.items))
         std::cout << ::tpy::__len__(this->items) << "\n";
     }
 
-    //     def aug_assign_field_container(self) -> None:
+    // def aug_assign_field_container(self) -> None:
     void aug_assign_field_container() {
-        //         ptr = Ptr(self.items[0])
+        // ptr = Ptr(self.items[0])
         Point* ptr = &::tpy::__getitem__(this->items, 0);
-        //         self.items += [Point(5, 6)]  # tpyc: warning(/while borrowed/)
+        // self.items += [Point(5, 6)]  # tpyc: warning(/while borrowed/)
         ::tpy::list_extend(this->items, std::vector<Point>{Point(5, 6)});
-        //         print(len(self.items))
+        // print(len(self.items))
         std::cout << ::tpy::__len__(this->items) << "\n";
     }
 
-    //     def field_reassign_while_borrowed(self) -> None:
+    // def field_reassign_while_borrowed(self) -> None:
     void field_reassign_while_borrowed() {
-        //         ptr = Ptr(self.items[0])
+        // ptr = Ptr(self.items[0])
         Point* ptr = &::tpy::__getitem__(this->items, 0);
-        //         self.items = [Point(9, 9)]  # tpyc: warning(/while borrowed/)
+        // self.items = [Point(9, 9)]  # tpyc: warning(/while borrowed/)
         this->items = {Point(9, 9)};
-        //         print(len(self.items))
+        // print(len(self.items))
         std::cout << ::tpy::__len__(this->items) << "\n";
     }
 };
@@ -111,10 +111,10 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 
 // class Holder:
 struct Holder {
-    //     point: Point
+    // point: Point
     Point point;
 
-    //     def __init__(self, p: Point) -> None:
+    // def __init__(self, p: Point) -> None:
     Holder() = default;
     explicit Holder(const Point& p) : point(p) {}
 };

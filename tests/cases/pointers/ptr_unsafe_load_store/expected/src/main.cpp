@@ -6,29 +6,29 @@ namespace tpy_user::main {
 
 // def test_store_and_load() -> None:
 void test_store_and_load() {
-    //     x: Int32 = Int32(5)
+    // x: Int32 = Int32(5)
     int32_t x = 5;
-    //     p: Ptr[Int32] = Ptr(x)
+    // p: Ptr[Int32] = Ptr(x)
     int32_t* p = &x;
-    //     unsafe_store(p, UInt32(0), Int32(99))
+    // unsafe_store(p, UInt32(0), Int32(99))
     p[0] = 99;
-    //     val: Int32 = unsafe_load(p, UInt32(0))
+    // val: Int32 = unsafe_load(p, UInt32(0))
     int32_t val = p[0];
-    //     print(val)
+    // print(val)
     std::cout << val << "\n";
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_constptr_load() -> None:
 void test_constptr_load() {
-    //     x: Int32 = Int32(42)
+    // x: Int32 = Int32(42)
     int32_t x = 42;
-    //     cp: Ptr[readonly[Int32]] = Ptr(x)
+    // cp: Ptr[readonly[Int32]] = Ptr(x)
     const int32_t* cp = &x;
-    //     val: Int32 = unsafe_load(cp, UInt32(0))
+    // val: Int32 = unsafe_load(cp, UInt32(0))
     int32_t val = cp[0];
-    //     print(val)
+    // print(val)
     std::cout << val << "\n";
 }
 

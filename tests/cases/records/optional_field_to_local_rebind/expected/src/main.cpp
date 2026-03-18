@@ -8,27 +8,27 @@ Holder* h{};
 
 // def test(h: Holder) -> None:
 void test(Holder& h) {
-    //     p: Point | None = h.value
+    // p: Point | None = h.value
     Point* p = ::tpy::optional_to_ptr(h.value);
-    //     print(p is None)
+    // print(p is None)
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
-    //     h.value = copy(Point(1, 2))
+    // h.value = copy(Point(1, 2))
     h.value = Point(1, 2);
-    //     p = h.value
+    // p = h.value
     p = ::tpy::optional_to_ptr(h.value);
-    //     print(p is None)
+    // print(p is None)
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
-    //     print(p.x)
+    // print(p.x)
     std::cout << ::tpy::deref_check(p).x << "\n";
-    //     p = None
+    // p = None
     p = nullptr;
-    //     print(p is None)
+    // print(p is None)
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
-    //     h.value = copy(Point(3, 4))
+    // h.value = copy(Point(3, 4))
     h.value = Point(3, 4);
-    //     p = h.value
+    // p = h.value
     p = ::tpy::optional_to_ptr(h.value);
-    //     print(p.y)
+    // print(p.y)
     std::cout << ::tpy::deref_check(p).y << "\n";
 }
 

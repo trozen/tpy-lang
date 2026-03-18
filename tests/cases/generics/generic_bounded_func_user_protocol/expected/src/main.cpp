@@ -6,10 +6,10 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     p = Point(10, 20)
+    // p = Point(10, 20)
     Point p = Point(10, 20);
-    //     # Point satisfies Printable, so inference should work
-    //     print_item(p)
+    // # Point satisfies Printable, so inference should work
+    // print_item(p)
     print_item<Point>(p);
 }
 

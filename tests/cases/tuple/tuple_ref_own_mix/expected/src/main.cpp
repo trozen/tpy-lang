@@ -6,28 +6,28 @@ namespace tpy_user::main {
 
 // def split(p: Point) -> tuple[Point, Own[Point]]:
 std::tuple<Point&, Point> split(Point& p) {
-    //     return (p, copy(p))
+    // return (p, copy(p))
     return std::tuple<Point&, Point>{p, Point(p)};
 }
 
 // def main() -> None:
 void main() {
-    //     p = Point(Int32(1), Int32(2))
+    // p = Point(Int32(1), Int32(2))
     Point p = Point(1, 2);
-    //     ref, owned = split(p)
+    // ref, owned = split(p)
     auto __tup_1 = split(p);
     Point& ref = std::get<0>(__tup_1);
     Point owned = std::move(std::get<1>(__tup_1));
-    //     print(ref)
+    // print(ref)
     std::cout << ref << "\n";
-    //     print(owned)
+    // print(owned)
     std::cout << owned << "\n";
-    //     # Mutation visible through ref, not through owned copy
-    //     p.x = Int32(99)
+    // # Mutation visible through ref, not through owned copy
+    // p.x = Int32(99)
     p.x = 99;
-    //     print(ref)
+    // print(ref)
     std::cout << ref << "\n";
-    //     print(owned)
+    // print(owned)
     std::cout << owned << "\n";
 }
 

@@ -7,200 +7,200 @@ namespace tpy_user::main {
 // # Test string comparison operators
 // def test_equality() -> None:
 void test_equality() {
-    //     a: str = "hello"
+    // a: str = "hello"
     std::string_view a = "hello";
-    //     b: str = "hello"
+    // b: str = "hello"
     std::string_view b = "hello";
-    //     c: str = "world"
+    // c: str = "world"
     std::string_view c = "world";
-    //     # Equal strings
-    //     if a == b:
+    // # Equal strings
+    // if a == b:
     if ((a == b)) {
-        //         print("hello == hello: yes")
+        // print("hello == hello: yes")
         std::cout << "hello == hello: yes" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("hello == hello: no")
+        // print("hello == hello: no")
         std::cout << "hello == hello: no" << "\n";
     }
-    //     # Unequal strings
-    //     if a == c:
+    // # Unequal strings
+    // if a == c:
     if ((a == c)) {
-        //         print("hello == world: yes")
+        // print("hello == world: yes")
         std::cout << "hello == world: yes" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("hello == world: no")
+        // print("hello == world: no")
         std::cout << "hello == world: no" << "\n";
     }
-    //     # Not equal
-    //     if a != c:
+    // # Not equal
+    // if a != c:
     if ((a != c)) {
-        //         print("hello != world: yes")
+        // print("hello != world: yes")
         std::cout << "hello != world: yes" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("hello != world: no")
+        // print("hello != world: no")
         std::cout << "hello != world: no" << "\n";
     }
-    //     if a != b:
+    // if a != b:
     if ((a != b)) {
-        //         print("hello != hello: yes")
+        // print("hello != hello: yes")
         std::cout << "hello != hello: yes" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("hello != hello: no")
+        // print("hello != hello: no")
         std::cout << "hello != hello: no" << "\n";
     }
 }
 
 // def test_ordering() -> None:
 void test_ordering() {
-    //     a: str = "apple"
+    // a: str = "apple"
     std::string_view a = "apple";
-    //     b: str = "banana"
+    // b: str = "banana"
     std::string_view b = "banana";
-    //     c: str = "apple"
+    // c: str = "apple"
     std::string_view c = "apple";
-    //     # Less than
-    //     if a < b:
+    // # Less than
+    // if a < b:
     if ((a < b)) {
-        //         print("apple < banana: yes")
+        // print("apple < banana: yes")
         std::cout << "apple < banana: yes" << "\n";
     }
-    //     if b < a:
+    // if b < a:
     if ((b < a)) {
-        //         print("banana < apple: yes")
+        // print("banana < apple: yes")
         std::cout << "banana < apple: yes" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("banana < apple: no")
+        // print("banana < apple: no")
         std::cout << "banana < apple: no" << "\n";
     }
-    //     # Less than or equal
-    //     if a <= c:
+    // # Less than or equal
+    // if a <= c:
     if ((a <= c)) {
-        //         print("apple <= apple: yes")
+        // print("apple <= apple: yes")
         std::cout << "apple <= apple: yes" << "\n";
     }
-    //     if a <= b:
+    // if a <= b:
     if ((a <= b)) {
-        //         print("apple <= banana: yes")
+        // print("apple <= banana: yes")
         std::cout << "apple <= banana: yes" << "\n";
     }
-    //     # Greater than
-    //     if b > a:
+    // # Greater than
+    // if b > a:
     if ((b > a)) {
-        //         print("banana > apple: yes")
+        // print("banana > apple: yes")
         std::cout << "banana > apple: yes" << "\n";
     }
-    //     # Greater than or equal
-    //     if c >= a:
+    // # Greater than or equal
+    // if c >= a:
     if ((c >= a)) {
-        //         print("apple >= apple: yes")
+        // print("apple >= apple: yes")
         std::cout << "apple >= apple: yes" << "\n";
     }
 }
 
 // def test_empty_strings() -> None:
 void test_empty_strings() {
-    //     empty: str = ""
+    // empty: str = ""
     std::string_view empty = "";
-    //     nonempty: str = "x"
+    // nonempty: str = "x"
     std::string_view nonempty = "x";
-    //     empty2: str = ""
+    // empty2: str = ""
     std::string_view empty2 = "";
-    //     if empty == empty2:
+    // if empty == empty2:
     if ((empty == empty2)) {
-        //         print("empty == empty: yes")
+        // print("empty == empty: yes")
         std::cout << "empty == empty: yes" << "\n";
     }
-    //     if empty < nonempty:
+    // if empty < nonempty:
     if ((empty < nonempty)) {
-        //         print("empty < x: yes")
+        // print("empty < x: yes")
         std::cout << "empty < x: yes" << "\n";
     }
-    //     if empty != nonempty:
+    // if empty != nonempty:
     if ((empty != nonempty)) {
-        //         print("empty != x: yes")
+        // print("empty != x: yes")
         std::cout << "empty != x: yes" << "\n";
     }
 }
 
 // def strings_equal(s1: str, s2: str) -> bool:
 bool strings_equal(std::string_view s1, std::string_view s2) {
-    //     return s1 == s2
+    // return s1 == s2
     return (s1 == s2);
 }
 
 // def test_comparison_in_function() -> None:
 void test_comparison_in_function() {
-    //     if strings_equal("test", "test"):
+    // if strings_equal("test", "test"):
     if (strings_equal("test", "test")) {
-        //         print("test == test: yes")
+        // print("test == test: yes")
         std::cout << "test == test: yes" << "\n";
     }
-    //     if strings_equal("foo", "bar"):
+    // if strings_equal("foo", "bar"):
     if (strings_equal("foo", "bar")) {
-        //         print("foo == bar: yes")
+        // print("foo == bar: yes")
         std::cout << "foo == bar: yes" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("foo == bar: no")
+        // print("foo == bar: no")
         std::cout << "foo == bar: no" << "\n";
     }
 }
 
 // def test_comparison_with_literals() -> None:
 void test_comparison_with_literals() {
-    //     name: str = "Alice"
+    // name: str = "Alice"
     std::string_view name = "Alice";
-    //     if name == "Alice":
+    // if name == "Alice":
     if ((name == "Alice")) {
-        //         print("name is Alice")
+        // print("name is Alice")
         std::cout << "name is Alice" << "\n";
     }
-    //     if name != "Bob":
+    // if name != "Bob":
     if ((name != "Bob")) {
-        //         print("name is not Bob")
+        // print("name is not Bob")
         std::cout << "name is not Bob" << "\n";
     }
-    //     if name < "Bob":
+    // if name < "Bob":
     if ((name < "Bob")) {
-        //         print("Alice < Bob: yes")
+        // print("Alice < Bob: yes")
         std::cout << "Alice < Bob: yes" << "\n";
     }
 }
 
 // def find_string(items: list[str], target: str) -> Int32:
 int32_t find_string(const std::vector<std::string>& items, std::string_view target) {
-    //     i: Int32 = 0
+    // i: Int32 = 0
     int32_t i = 0;
-    //     while i < len(items):
+    // while i < len(items):
     while ((i < ::tpy::__len__(items))) {
-        //         if items[i] == target:
+        // if items[i] == target:
         if ((items[i] == target)) {
-            //             return i
+            // return i
             return i;
         }
-        //         i += 1
+        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    //     return -1
+    // return -1
     return -1;
 }
 
 // def test_comparison_in_loop() -> None:
 void test_comparison_in_loop() {
-    //     names: list[str] = ["Alice", "Bob", "Charlie"]
+    // names: list[str] = ["Alice", "Bob", "Charlie"]
     std::vector<std::string> names = {"Alice", "Bob", "Charlie"};
-    //     idx: Int32 = find_string(names, "Bob")
+    // idx: Int32 = find_string(names, "Bob")
     int32_t idx = find_string(names, "Bob");
-    //     print(idx)
+    // print(idx)
     std::cout << idx << "\n";
-    //     idx = find_string(names, "Dave")
+    // idx = find_string(names, "Dave")
     idx = find_string(names, "Dave");
-    //     print(idx)
+    // print(idx)
     std::cout << idx << "\n";
 }
 

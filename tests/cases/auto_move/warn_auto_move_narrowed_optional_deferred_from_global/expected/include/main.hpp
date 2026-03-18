@@ -15,7 +15,7 @@ int32_t test();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
 
 };

@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> Int32:
 int32_t main() {
-    //     result: Int32 = compute()
+    // result: Int32 = compute()
     int32_t result = ::tpy_user::outer::inner::consumer::compute();
-    //     print(result)
+    // print(result)
     std::cout << result << "\n";
-    //     return Int32(0)
+    // return Int32(0)
     return 0;
 }
 

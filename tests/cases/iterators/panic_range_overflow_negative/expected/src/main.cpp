@@ -13,7 +13,7 @@ void __tpy_init() {
     // for i in range(Int32(-2147483647), Int32(-2147483648), Int32(-2)):
     ::tpy::range_check_overflow<int32_t>(-2147483647, -2147483648, -2);
     for (int32_t i = -2147483647; i > -2147483648; i += -2) {
-        //     print(i)
+        // print(i)
         std::cout << i << "\n";
     }
 }

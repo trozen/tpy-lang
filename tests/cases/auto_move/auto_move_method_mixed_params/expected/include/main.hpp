@@ -16,7 +16,7 @@ void main();
 
 // class Inner:
 struct Inner {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
 };
@@ -30,15 +30,15 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
 
 // class Holder:
 struct Holder {
-    //     inner: Inner
+    // inner: Inner
     Inner inner;
 
 
-    //     def set_with_tag(self, inner: Own[Inner], tag: Int32) -> None:
+    // def set_with_tag(self, inner: Own[Inner], tag: Int32) -> None:
     void set_with_tag(Inner&& inner, int32_t tag) {
-        //         self.inner = inner
+        // self.inner = inner
         this->inner = std::move(inner);
-        //         self.inner.value = self.inner.value + tag
+        // self.inner.value = self.inner.value + tag
         this->inner.value = (::tpy::add_check<int32_t>(this->inner.value, tag));
     }
 };
@@ -53,18 +53,18 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // class GenericHolder[T]:
 template<typename T>
 struct GenericHolder {
-    //     item: T
+    // item: T
     T item;
 
-    //     def __init__(self, item: Own[T]):
+    // def __init__(self, item: Own[T]):
     GenericHolder() = default;
     explicit GenericHolder(T&& item) : item(std::move(item)) {}
 
-    //     def replace_with_flag(self, item: Own[T], flag: Int32) -> Int32:
+    // def replace_with_flag(self, item: Own[T], flag: Int32) -> Int32:
     int32_t replace_with_flag(T&& item, int32_t flag) {
-        //         self.item = item
+        // self.item = item
         this->item = std::move(item);
-        //         return flag
+        // return flag
         return flag;
     }
 };
@@ -80,10 +80,10 @@ inline std::ostream& operator<<(std::ostream& os, const GenericHolder<T>& obj) {
 // class GenericBox[T]:
 template<typename T>
 struct GenericBox {
-    //     item: T
+    // item: T
     T item;
 
-    //     def __init__(self, item: T):
+    // def __init__(self, item: T):
     GenericBox() = default;
     explicit GenericBox(const T& item) : item(item) {}
 };

@@ -6,55 +6,55 @@ namespace tpy_user::main {
 
 // def take_str(s: str) -> None:
 void take_str(std::string_view s) {
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 
 // def take_string(s: String) -> None:
 void take_string(const std::string& s) {
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 
 // def take_strview(s: StrView) -> None:
 void take_strview(std::string_view s) {
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     # String -> str (identity, both std::string)
-    //     s1: String = String("hello")
+    // # String -> str (identity, both std::string)
+    // s1: String = String("hello")
     std::string s1 = std::string("hello");
-    //     take_str(s1)  # hello
+    // take_str(s1)  # hello
     take_str(s1);
-    //     # str -> String (identity)
-    //     s2: str = "world"
+    // # str -> String (identity)
+    // s2: str = "world"
     std::string s2 = "world";
-    //     take_string(s2)  # world
+    // take_string(s2)  # world
     take_string(s2);
-    //     # String -> StrView (safe implicit)
-    //     take_strview(s1)  # hello
+    // # String -> StrView (safe implicit)
+    // take_strview(s1)  # hello
     take_strview(s1);
-    //     # str -> StrView (safe implicit)
-    //     take_strview(s2)  # world
+    // # str -> StrView (safe implicit)
+    // take_strview(s2)  # world
     take_strview(s2);
-    //     # StrView -> String (allocates)
-    //     sv: StrView = StrView("view")
+    // # StrView -> String (allocates)
+    // sv: StrView = StrView("view")
     std::string_view sv = std::string_view("view");
-    //     take_string(sv)  # view
+    // take_string(sv)  # view
     take_string(std::string(sv));
-    //     # StrView -> str (allocates)
-    //     take_str(sv)  # view
+    // # StrView -> str (allocates)
+    // take_str(sv)  # view
     take_str(std::string(sv));
-    //     # Char -> str
-    //     c: Char = "X"
+    // # Char -> str
+    // c: Char = "X"
     char c = 'X';
-    //     take_str(c)  # X
+    // take_str(c)  # X
     take_str(std::string(::tpy::char_to_str(c)));
-    //     # Char -> String
-    //     take_string(c)  # X
+    // # Char -> String
+    // take_string(c)  # X
     take_string(std::string(1, c));
 }
 

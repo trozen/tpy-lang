@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     box = IntBox(42)
+    // box = IntBox(42)
     IntBox box = IntBox(42);
-    //     # IntBox satisfies Container[Int32]
-    //     h = Holder[IntBox](box)
+    // # IntBox satisfies Container[Int32]
+    // h = Holder[IntBox](box)
     Holder<IntBox> h = Holder<IntBox>(box);
-    //     # Call get() on the concrete type after retrieval
-    //     result = h.get_item()
+    // # Call get() on the concrete type after retrieval
+    // result = h.get_item()
     IntBox& result = h.get_item();
-    //     print(result.get())
+    // print(result.get())
     std::cout << result.get() << "\n";
 }
 

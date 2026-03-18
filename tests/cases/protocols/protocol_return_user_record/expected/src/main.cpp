@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     factory = DefaultFactory()
+    // factory = DefaultFactory()
     DefaultFactory factory = DefaultFactory();
-    //     p = make_point(factory, 10, 20)
+    // p = make_point(factory, 10, 20)
     Point p = make_point<DefaultFactory>(factory, 10, 20);
-    //     print(p.x)
+    // print(p.x)
     std::cout << p.x << "\n";
-    //     print(p.y)
+    // print(p.y)
     std::cout << p.y << "\n";
 }
 

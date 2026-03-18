@@ -15,11 +15,11 @@ void main();
 
 // class Base:
 struct Base {
-    //     name: str
+    // name: str
     std::string name;
     bool __tpy_owned_ = true;
 
-    //     def __init__(self, name: str):
+    // def __init__(self, name: str):
     Base() = default;
     explicit Base(std::string_view name) : name(name) {}
     Base(const Base&) = delete;
@@ -34,11 +34,11 @@ struct Base {
         }
         return *this;
     }
-    //     def __del__(self):
+    // def __del__(self):
 
     ~Base() {
         if (!__tpy_owned_) return;
-        //         print("drop", self.name)
+        // print("drop", self.name)
         std::cout << "drop" << " " << this->name << "\n";
     }
 };
@@ -52,10 +52,10 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 
 // class Child(Base):
 struct Child : Base {
-    //     tag: str
+    // tag: str
     std::string tag;
 
-    //     def __init__(self, name: str, tag: str):
+    // def __init__(self, name: str, tag: str):
     Child() = default;
     explicit Child(std::string_view name, std::string_view tag) : Base(name), tag(tag) {}
 };

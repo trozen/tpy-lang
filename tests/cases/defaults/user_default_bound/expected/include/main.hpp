@@ -16,21 +16,21 @@ void main();
 // def create_default[T: Default]() -> T:
 template<std::default_initializable T>
 ::tpy::val_or_ref_t<T> create_default() {
-    //     return make_default()
+    // return make_default()
     return T{};
 }
 // def fill[T: Default](n: Int32) -> Own[list[T]]:
 template<std::default_initializable T>
 std::vector<T> fill(int32_t n) {
-    //     result: list[T] = []
+    // result: list[T] = []
     std::vector<T> result = std::vector<T>{};
-    //     for i in range(n):
+    // for i in range(n):
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        //         result.append(make_default())
+        // result.append(make_default())
         result.push_back(T{});
     }
-    //     return result
+    // return result
     return result;
 }
 

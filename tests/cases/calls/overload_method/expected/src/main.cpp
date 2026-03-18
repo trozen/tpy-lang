@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     v = Vet()
+    // v = Vet()
     Vet v = Vet();
-    //     d = Dog("Rex")
+    // d = Dog("Rex")
     Dog d = Dog("Rex");
-    //     c = Cat(7)
+    // c = Cat(7)
     Cat c = Cat(::tpy::BigInt(7));
-    //     print(v.treat(d))
+    // print(v.treat(d))
     std::cout << v.treat(d) << "\n";
-    //     print(v.treat(c))
+    // print(v.treat(c))
     std::cout << v.treat(c) << "\n";
-    //     print(v.count)
+    // print(v.count)
     std::cout << v.count << "\n";
 }
 

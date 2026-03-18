@@ -40,7 +40,7 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c = Color["Purple"]
+    // c = Color["Purple"]
     Color c = ::tpy::EnumUtil<Color>::from_name("Purple");
 }
 

@@ -16,9 +16,9 @@ void main();
 // @dataclass
 // class Point:
 struct Point {
-    //     x: Int32 = 0
+    // x: Int32 = 0
     int32_t x = 0;
-    //     y: Int32 = 0
+    // y: Int32 = 0
     int32_t y = 0;
 
     explicit Point(int32_t x = 0, int32_t y = 0) : x(x), y(y) {}
@@ -50,13 +50,13 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // @dataclass
 // class Config:
 struct Config {
-    //     name: str
+    // name: str
     std::string name;
-    //     value: Int32 = field(default=42)
+    // value: Int32 = field(default=42)
     int32_t value = 42;
-    //     tags: list[str] = field(default_factory=list)
+    // tags: list[str] = field(default_factory=list)
     std::vector<std::string> tags = {};
-    //     lookup: dict[str, Int32] = field(default_factory=dict)
+    // lookup: dict[str, Int32] = field(default_factory=dict)
     ::tpy::ordered_map<std::string, int32_t> lookup = {};
 
     Config() = default;
@@ -94,9 +94,9 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
 // @dataclass
 // class Canvas:
 struct Canvas {
-    //     name: str
+    // name: str
     std::string name;
-    //     origin: Point = field(default_factory=Point)
+    // origin: Point = field(default_factory=Point)
     Point origin = Point();
 
     Canvas() = default;

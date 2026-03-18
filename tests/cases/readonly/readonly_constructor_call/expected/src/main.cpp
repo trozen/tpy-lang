@@ -7,9 +7,9 @@ namespace tpy_user::main {
 // @readonly
 // def build_flag() -> int:
 ::tpy::BigInt build_flag() {
-    //     Token()  # tpyc: ok
+    // Token()  # tpyc: ok
     Token();
-    //     return 0
+    // return 0
     return ::tpy::BigInt(0);
 }
 

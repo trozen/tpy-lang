@@ -6,26 +6,26 @@ namespace tpy_user::main {
 
 // def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point&& p) {
-    //     return p.x + p.y
+    // return p.x + p.y
     return (::tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // def forward(p: Own[Point]) -> Int32:
 int32_t forward(Point&& p) {
-    //     # p is an Own param; forwarding to another Own param at last use
-    //     return consume(p)
+    // # p is an Own param; forwarding to another Own param at last use
+    // return consume(p)
     return consume(std::move(p));
 }
 
 // def main():
 void main() {
-    //     p = Point()
+    // p = Point()
     Point p = Point();
-    //     p.x = 5
+    // p.x = 5
     p.x = 5;
-    //     p.y = 7
+    // p.y = 7
     p.y = 7;
-    //     print(forward(p))
+    // print(forward(p))
     std::cout << forward(std::move(p)) << "\n";
 }
 

@@ -14,17 +14,17 @@ void main();
 // @dataclass
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    //     def __eq__(self, other: Self) -> bool:  # tpyc: warning(/will not generate __eq__/)
+    // def __eq__(self, other: Self) -> bool:  # tpyc: warning(/will not generate __eq__/)
     bool __eq__(const Point& other) const {
-        //         return self.x == other.x
+        // return self.x == other.x
         return (this->x == other.x);
     }
 

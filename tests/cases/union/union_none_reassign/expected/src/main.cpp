@@ -6,51 +6,51 @@ namespace tpy_user::main {
 
 // def test_reassign_to_none() -> str:
 std::string test_reassign_to_none() {
-    //     v: Int32 | Dog | None = Int32(5)
+    // v: Int32 | Dog | None = Int32(5)
     std::optional<std::variant<std::monostate, Dog, int32_t>> __slot_2;
     std::variant<std::monostate, Dog, int32_t> __slot_1 = 5;
     std::variant<std::monostate, Dog*, int32_t*> v = ::tpy::to_ptr_variant(__slot_1);
-    //     if v is not None:
+    // if v is not None:
     if ((!std::holds_alternative<std::monostate>(v))) {
-        //         v = None
+        // v = None
         v = std::monostate{};
-        //         if v is None:
+        // if v is None:
         if ((std::holds_alternative<std::monostate>(v))) {
-            //             return "reassigned to none"
+            // return "reassigned to none"
             return "reassigned to none";
         }
     }
-    //     return "was none"
+    // return "was none"
     return "was none";
 }
 
 // def test_init_none_then_assign() -> str:
 std::string test_init_none_then_assign() {
-    //     v: Int32 | Dog | None = None
+    // v: Int32 | Dog | None = None
     std::variant<std::monostate, Dog*, int32_t*> v = std::monostate{};
-    //     v = Int32(42)
+    // v = Int32(42)
     std::variant<std::monostate, Dog, int32_t> __slot_1 = 42;
     v = ::tpy::to_ptr_variant(__slot_1);
-    //     if v is not None:
+    // if v is not None:
     if ((!std::holds_alternative<std::monostate>(v))) {
-        //         if isinstance(v, Int32):
+        // if isinstance(v, Int32):
         if (std::holds_alternative<int32_t*>(v)) {
             auto& __v = *std::get<int32_t*>(v);
-            //             return "got int"
+            // return "got int"
             return "got int";
         }
-        //         return "got dog"
+        // return "got dog"
         return "got dog";
     }
-    //     return "none"
+    // return "none"
     return "none";
 }
 
 // def main() -> None:
 void main() {
-    //     print(test_reassign_to_none())
+    // print(test_reassign_to_none())
     std::cout << test_reassign_to_none() << "\n";
-    //     print(test_init_none_then_assign())
+    // print(test_init_none_then_assign())
     std::cout << test_init_none_then_assign() << "\n";
 }
 

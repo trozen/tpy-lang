@@ -10,13 +10,13 @@ std::tuple<int32_t, bool> t2;
 
 // def main() -> None:
 void main() {
-    //     print(t1)
+    // print(t1)
     std::cout << ::tpy::TuplePrinter(t1) << "\n";
-    //     print(t2)
+    // print(t2)
     std::cout << ::tpy::TuplePrinter(t2) << "\n";
-    //     print(t1[0])
+    // print(t1[0])
     std::cout << std::get<0>(t1) << "\n";
-    //     print(t2[1])
+    // print(t2[1])
     std::cout << ::tpy::print_bool(std::get<1>(t2)) << "\n";
 }
 

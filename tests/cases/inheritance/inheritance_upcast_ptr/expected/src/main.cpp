@@ -6,40 +6,40 @@ namespace tpy_user::main {
 
 // def read_animal(p: Ptr[readonly[Animal]]) -> None:
 void read_animal(const Animal* p) {
-    //     print(p.name)
+    // print(p.name)
     std::cout << ::tpy::deref_check(p).name << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     d: Dog = Dog("Rex", "Lab")
+    // d: Dog = Dog("Rex", "Lab")
     Dog d = Dog("Rex", "Lab");
-    //     # Dog -> Ptr[readonly[Animal]] (param passing)
-    //     read_animal(d)
+    // # Dog -> Ptr[readonly[Animal]] (param passing)
+    // read_animal(d)
     read_animal(&d);
-    //     # Ptr[Dog] -> Ptr[Animal]
-    //     dp: Ptr[Dog] = Ptr(d)
+    // # Ptr[Dog] -> Ptr[Animal]
+    // dp: Ptr[Dog] = Ptr(d)
     Dog* dp = &d;
-    //     ap: Ptr[Animal] = dp
+    // ap: Ptr[Animal] = dp
     Animal* ap = dp;
-    //     print(ap.name)
+    // print(ap.name)
     std::cout << ap->name << "\n";
-    //     # Ptr[Dog] -> Ptr[readonly[Animal]]
-    //     cap: Ptr[readonly[Animal]] = dp
+    // # Ptr[Dog] -> Ptr[readonly[Animal]]
+    // cap: Ptr[readonly[Animal]] = dp
     const Animal* cap = dp;
-    //     print(cap.name)
+    // print(cap.name)
     std::cout << cap->name << "\n";
-    //     # Ptr[readonly[Dog]] -> Ptr[readonly[Animal]]
-    //     cdp: Ptr[readonly[Dog]] = Ptr(d)
+    // # Ptr[readonly[Dog]] -> Ptr[readonly[Animal]]
+    // cdp: Ptr[readonly[Dog]] = Ptr(d)
     const Dog* cdp = &d;
-    //     cap2: Ptr[readonly[Animal]] = cdp
+    // cap2: Ptr[readonly[Animal]] = cdp
     const Animal* cap2 = cdp;
-    //     print(cap2.name)
+    // print(cap2.name)
     std::cout << cap2->name << "\n";
-    //     # Multi-level: Puppy -> Ptr[readonly[Animal]] (grandchild -> grandparent)
-    //     p: Puppy = Puppy("Tiny", "Corgi", 8)
+    // # Multi-level: Puppy -> Ptr[readonly[Animal]] (grandchild -> grandparent)
+    // p: Puppy = Puppy("Tiny", "Corgi", 8)
     Puppy p = Puppy("Tiny", "Corgi", ::tpy::BigInt(8));
-    //     read_animal(p)
+    // read_animal(p)
     read_animal(&p);
 }
 

@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c = Child[Int32](Int32(5))
+    // c = Child[Int32](Int32(5))
     Child<int32_t> c = Child<int32_t>(5);
-    //     print(c.transform(42))
+    // print(c.transform(42))
     std::cout << c.transform<int32_t>(42) << "\n";
-    //     print(c.transform("inherited"))
+    // print(c.transform("inherited"))
     std::cout << c.transform<std::string_view>("inherited") << "\n";
 }
 

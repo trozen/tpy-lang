@@ -6,21 +6,21 @@ namespace tpy_user::main {
 
 // def use_after_continue_merge(flag: bool, x: Int32 | None) -> Int32:
 int32_t use_after_continue_merge(bool flag, std::optional<int32_t> x) {
-    //     while flag:
+    // while flag:
     while (flag) {
-        //         if x is None:
+        // if x is None:
         if ((!x.has_value())) {
-            //             flag = False
+            // flag = False
             flag = false;
-            //             continue
+            // continue
             continue;
         }
-        //         x = x + 1  # tpyc: ok
+        // x = x + 1  # tpyc: ok
         x = (::tpy::add_check<int32_t>((*x), 1));
-        //         flag = False
+        // flag = False
         flag = false;
     }
-    //     return 0
+    // return 0
     return 0;
 }
 

@@ -6,61 +6,61 @@ namespace tpy_user::main {
 
 // def test_int_widen() -> None:
 void test_int_widen() {
-    //     a = Int32(1)  # tpyc: type(Int64)
+    // a = Int32(1)  # tpyc: type(Int64)
     int64_t a = 1;
-    //     a = Int64(2)  # tpyc: type(Int64)
+    // a = Int64(2)  # tpyc: type(Int64)
     a = 2;
-    //     print(a)
+    // print(a)
     std::cout << a << "\n";
 }
 
 // def test_float_absorbs_int() -> None:
 void test_float_absorbs_int() {
-    //     b = Int32(1)  # tpyc: type(float)
+    // b = Int32(1)  # tpyc: type(float)
     double b = 1;
-    //     b = 1.5  # tpyc: type(float)
+    // b = 1.5  # tpyc: type(float)
     b = 1.5;
-    //     print(b)
+    // print(b)
     std::cout << ::tpy::print_float(b) << "\n";
 }
 
 // def test_float_stays_float() -> None:
 void test_float_stays_float() {
-    //     c = 1.5  # tpyc: type(float)
+    // c = 1.5  # tpyc: type(float)
     double c = 1.5;
-    //     c = Int32(1)  # tpyc: type(float)
+    // c = Int32(1)  # tpyc: type(float)
     c = static_cast<double>(1);
-    //     print(c)
+    // print(c)
     std::cout << ::tpy::print_float(c) << "\n";
 }
 
 // def test_bigint_absorbs_fixedint() -> None:
 void test_bigint_absorbs_fixedint() {
-    //     d = Int32(1)  # tpyc: type(int)
+    // d = Int32(1)  # tpyc: type(int)
     ::tpy::BigInt d = 1;
-    //     d = int(2)  # tpyc: type(int)
+    // d = int(2)  # tpyc: type(int)
     d = ::tpy::BigInt(static_cast<int64_t>(2));
-    //     print(d)
+    // print(d)
     std::cout << d << "\n";
 }
 
 // def test_unsigned_to_wider_signed() -> None:
 void test_unsigned_to_wider_signed() {
-    //     e = UInt8(1)  # tpyc: type(Int32)
+    // e = UInt8(1)  # tpyc: type(Int32)
     int32_t e = 1;
-    //     e = Int32(2)  # tpyc: type(Int32)
+    // e = Int32(2)  # tpyc: type(Int32)
     e = 2;
-    //     print(e)
+    // print(e)
     std::cout << e << "\n";
 }
 
 // def test_uint32_to_int64() -> None:
 void test_uint32_to_int64() {
-    //     g = UInt32(1)  # tpyc: type(Int64)
+    // g = UInt32(1)  # tpyc: type(Int64)
     int64_t g = 1;
-    //     g = Int64(2)  # tpyc: type(Int64)
+    // g = Int64(2)  # tpyc: type(Int64)
     g = 2;
-    //     print(g)
+    // print(g)
     std::cout << g << "\n";
 }
 

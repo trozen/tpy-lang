@@ -6,61 +6,61 @@ namespace tpy_user::main {
 
 // def test_list_view() -> None:
 void test_list_view() {
-    //     names: list[str] = ["alice", "bob"]
+    // names: list[str] = ["alice", "bob"]
     std::vector<std::string> names = {"alice", "bob"};
-    //     x = names[Int32(0)]  # tpyc: type(StrView)
+    // x = names[Int32(0)]  # tpyc: type(StrView)
     std::string_view x = ::tpy::__getitem__(names, 0);
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_list_mutation_fallback() -> None:
 void test_list_mutation_fallback() {
-    //     names: list[str] = ["alice", "bob"]
+    // names: list[str] = ["alice", "bob"]
     std::vector<std::string> names = {"alice", "bob"};
-    //     x = names[Int32(0)]  # tpyc: type(str)
+    // x = names[Int32(0)]  # tpyc: type(str)
     std::string x = ::tpy::__getitem__(names, 0);
-    //     names.append("carol")
+    // names.append("carol")
     names.push_back("carol");
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_list_reassign_fallback() -> None:
 void test_list_reassign_fallback() {
-    //     names: list[str] = ["alice", "bob"]
+    // names: list[str] = ["alice", "bob"]
     std::vector<std::string> __slot_1 = {"alice", "bob"};
     std::optional<std::vector<std::string>> __slot_2;
     std::vector<std::string>* names = &__slot_1;
-    //     x = names[Int32(0)]  # tpyc: type(str)
+    // x = names[Int32(0)]  # tpyc: type(str)
     std::string x = ::tpy::__getitem__((*names), 0);
-    //     names = ["dave"]
+    // names = ["dave"]
     names = &*(__slot_2 = {"dave"});
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_list_subscript_write_fallback() -> None:
 void test_list_subscript_write_fallback() {
-    //     names: list[str] = ["alice", "bob"]
+    // names: list[str] = ["alice", "bob"]
     std::vector<std::string> names = {"alice", "bob"};
-    //     x = names[Int32(0)]  # tpyc: type(str)
+    // x = names[Int32(0)]  # tpyc: type(str)
     std::string x = ::tpy::__getitem__(names, 0);
-    //     names[Int32(0)] = "eve"
+    // names[Int32(0)] = "eve"
     ::tpy::__setitem__(names, 0, "eve");
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_list_pop_fallback() -> None:
 void test_list_pop_fallback() {
-    //     names: list[str] = ["alice", "bob"]
+    // names: list[str] = ["alice", "bob"]
     std::vector<std::string> names = {"alice", "bob"};
-    //     x = names[Int32(0)]  # tpyc: type(str)
+    // x = names[Int32(0)]  # tpyc: type(str)
     std::string x = ::tpy::__getitem__(names, 0);
-    //     names.pop(Int32(1))
+    // names.pop(Int32(1))
     ::tpy::list_pop_at(names, 1);
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 

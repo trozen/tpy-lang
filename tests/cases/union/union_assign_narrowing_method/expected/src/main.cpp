@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c: Circle | Rect = Circle(5.0)
+    // c: Circle | Rect = Circle(5.0)
     std::variant<Circle, Rect> __slot_1 = Circle(5.0);
     std::variant<Circle*, Rect*> c = ::tpy::to_ptr_variant(__slot_1);
-    //     print(c.area())
+    // print(c.area())
     std::cout << ::tpy::print_float((*std::get<Circle*>(c)).area()) << "\n";
-    //     r: Circle | Rect = Rect(3.0, 4.0)
+    // r: Circle | Rect = Rect(3.0, 4.0)
     std::variant<Circle, Rect> __slot_2 = Rect(3.0, 4.0);
     std::variant<Circle*, Rect*> r = ::tpy::to_ptr_variant(__slot_2);
-    //     print(r.area())
+    // print(r.area())
     std::cout << ::tpy::print_float((*std::get<Rect*>(r)).area()) << "\n";
 }
 

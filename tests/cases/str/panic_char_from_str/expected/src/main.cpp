@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main():
 void main() {
-    //     s = "hello"
+    // s = "hello"
     std::string_view s = "hello";
-    //     c = Char(s)
+    // c = Char(s)
     char c = ::tpy::char_from_str(s);
-    //     print(c)
+    // print(c)
     std::cout << c << "\n";
 }
 

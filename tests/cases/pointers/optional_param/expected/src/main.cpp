@@ -10,30 +10,30 @@ Point* result{};
 
 // def describe(p: Point | None) -> Int32:
 int32_t describe(Point* p) {
-    //     if p is not None:
+    // if p is not None:
     if ((p != nullptr)) {
-        //         return p.mag()
+        // return p.mag()
         return p->mag();
     }
-    //     return -1
+    // return -1
     return -1;
 }
 
 // def find(points: list[Point], target: Int32) -> Point | None:
 Point* find(std::vector<Point>& points, int32_t target) {
-    //     for p in points:
+    // for p in points:
     auto& __obj_0 = points;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        //         if p.x == target:
+        // if p.x == target:
         if ((p.x == target)) {
-            //             return p
+            // return p
             return &(p);
         }
     }
-    //     return None
+    // return None
     return nullptr;
 }
 

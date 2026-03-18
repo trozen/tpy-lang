@@ -13,33 +13,33 @@ void main();
 
 // class MyList:
 struct MyList {
-    //     _data: list[Int32]
+    // _data: list[Int32]
     std::vector<int32_t> _data;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     MyList() : _data({10, 20, 30, 40, 50}) {}
 
-    //     @overload
-    //     def __getitem__(self, index: Int32) -> Int32: ...  # tpyc: ok
+    // @overload
+    // def __getitem__(self, index: Int32) -> Int32: ...  # tpyc: ok
     int32_t __getitem__(int32_t index) const {
-        //         if isinstance(index, slice):
-        //             return self._data[index]
+        // if isinstance(index, slice):
+        // return self._data[index]
         return ::tpy::__getitem__(this->_data, index);
     }
 
-    //     @overload
-    //     def __getitem__(self, index: slice) -> Span[readonly[Int32]]: ...  # tpyc: ok
+    // @overload
+    // def __getitem__(self, index: slice) -> Span[readonly[Int32]]: ...  # tpyc: ok
     std::span<const int32_t> __getitem__(::tpy::Slice index) const {
-        //         if isinstance(index, slice):
-        //             s_start = index.start
+        // if isinstance(index, slice):
+        // s_start = index.start
         std::optional<int32_t> s_start = index.start;
-        //             s_stop = index.stop
+        // s_stop = index.stop
         std::optional<int32_t> s_stop = index.stop;
-        //             start: Int32 = s_start if s_start is not None else Int32(0)
+        // start: Int32 = s_start if s_start is not None else Int32(0)
         int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
-        //             stop: Int32 = s_stop if s_stop is not None else Int32(len(self._data))
+        // stop: Int32 = s_stop if s_stop is not None else Int32(len(self._data))
         int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
-        //             return self._data[start:stop]
+        // return self._data[start:stop]
         return ::tpy::list_slice(this->_data, start, stop);
     }
 

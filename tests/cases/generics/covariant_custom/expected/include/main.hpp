@@ -50,16 +50,16 @@ void main();
 
 // class Dog(Animal):
 struct Dog : Animal {
-    //     _name: str
+    // _name: str
     std::string _name;
 
-    //     def __init__(self, n: str) -> None:
+    // def __init__(self, n: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view n) : _name(n) {}
 
-    //     def name(self) -> str:
+    // def name(self) -> str:
     std::string name() override {
-        //         return self._name
+        // return self._name
         return this->_name;
     }
 };
@@ -73,16 +73,16 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 // class Cat(Animal):
 struct Cat : Animal {
-    //     _name: str
+    // _name: str
     std::string _name;
 
-    //     def __init__(self, n: str) -> None:
+    // def __init__(self, n: str) -> None:
     Cat() = default;
     explicit Cat(std::string_view n) : _name(n) {}
 
-    //     def name(self) -> str:
+    // def name(self) -> str:
     std::string name() override {
-        //         return self._name
+        // return self._name
         return this->_name;
     }
 };
@@ -99,18 +99,18 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // class Tagged[T, N](Covariant[T]):
 template<typename T, typename N>
 struct Tagged {
-    //     _ptr: Ptr[T]
+    // _ptr: Ptr[T]
     T* _ptr;
-    //     _tag: N
+    // _tag: N
     N _tag;
-    //     _owned: bool
+    // _owned: bool
     bool _owned;
     bool __tpy_owned_ = true;
 
-    //     def __init__(self, val: Own[T], tag: N) -> None:
+    // def __init__(self, val: Own[T], tag: N) -> None:
     Tagged() = default;
     explicit Tagged(T&& val, const N& tag) : _ptr(static_cast<T*>(::operator new(sizeof(T), std::align_val_t(alignof(T))))), _tag(tag), _owned(true) {
-        //         unsafe_init(self._ptr, val)
+        // unsafe_init(self._ptr, val)
         ::new(static_cast<void*>(this->_ptr)) T(std::move(val));
     }
     Tagged(const Tagged&) = delete;
@@ -125,15 +125,15 @@ struct Tagged {
         }
         return *this;
     }
-    //     def __del__(self) -> None:
+    // def __del__(self) -> None:
 
     ~Tagged() {
         if (!__tpy_owned_) return;
-        //         if self._owned:
+        // if self._owned:
         if (this->_owned) {
-            //             unsafe_drop(self._ptr)
+            // unsafe_drop(self._ptr)
             ::tpy::destroy_at(this->_ptr);
-            //             unsafe_free(self._ptr)
+            // unsafe_free(self._ptr)
             ::operator delete(this->_ptr, std::align_val_t(alignof(T)));
         }
     }
@@ -145,15 +145,15 @@ struct Tagged {
     }
     template<typename, typename> friend struct Tagged;
 
-    //     def get(self) -> T:
+    // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get() {
-        //         return self._ptr
+        // return self._ptr
         return ::tpy::deref_check(this->_ptr);
     }
 
-    //     def tag(self) -> N:
+    // def tag(self) -> N:
     ::tpy::val_or_ref_t<N> tag() {
-        //         return self._tag
+        // return self._tag
         return this->_tag;
     }
 };

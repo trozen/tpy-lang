@@ -6,36 +6,36 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     d = Dog("Rex")
+    // d = Dog("Rex")
     Dog d = Dog("Rex");
-    //     pet: Dog | Cat = d
+    // pet: Dog | Cat = d
     std::variant<Cat*, Dog*> pet{&(d)};
-    //     z = Zoo(pet, "test")
+    // z = Zoo(pet, "test")
     Zoo z = Zoo(pet, "test");
-    //     print(z.tag)
+    // print(z.tag)
     std::cout << z.tag << "\n";
-    //     p = z.pet
+    // p = z.pet
     std::variant<Cat*, Dog*> p = ::tpy::to_ptr_variant(z.pet);
-    //     if isinstance(p, Dog):
+    // if isinstance(p, Dog):
     if (std::holds_alternative<Dog*>(p)) {
         auto& __p = *std::get<Dog*>(p);
-        //         print(p.name)
+        // print(p.name)
         std::cout << __p.name << "\n";
     }
-    //     c = Cat("Whiskers")
+    // c = Cat("Whiskers")
     Cat c = Cat("Whiskers");
-    //     pet2: Dog | Cat = c
+    // pet2: Dog | Cat = c
     std::variant<Cat*, Dog*> pet2{&(c)};
-    //     z2 = Zoo(pet2, "cats")
+    // z2 = Zoo(pet2, "cats")
     Zoo z2 = Zoo(pet2, "cats");
-    //     print(z2.tag)
+    // print(z2.tag)
     std::cout << z2.tag << "\n";
-    //     p2 = z2.pet
+    // p2 = z2.pet
     std::variant<Cat*, Dog*> p2 = ::tpy::to_ptr_variant(z2.pet);
-    //     if isinstance(p2, Cat):
+    // if isinstance(p2, Cat):
     if (std::holds_alternative<Cat*>(p2)) {
         auto& __p2 = *std::get<Cat*>(p2);
-        //         print(p2.name)
+        // print(p2.name)
         std::cout << __p2.name << "\n";
     }
 }

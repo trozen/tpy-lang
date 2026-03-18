@@ -14,7 +14,7 @@ int32_t test(Point* a);
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
 
 };

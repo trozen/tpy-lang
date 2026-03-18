@@ -6,16 +6,16 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     d = Dual()
+    // d = Dual()
     Dual d = Dual();
-    //     for x in d:
+    // for x in d:
     auto& __src_0 = d;
     auto __itr_0 = __src_0.__iter__();
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = *__r_1;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
 }

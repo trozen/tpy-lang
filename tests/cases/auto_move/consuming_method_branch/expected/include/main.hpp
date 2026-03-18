@@ -13,23 +13,23 @@ void test_branch(bool flag);
 
 // class Wrapper:
 struct Wrapper {
-    //     _value: int
+    // _value: int
     ::tpy::BigInt _value;
 
-    //     def __init__(self, value: int):
+    // def __init__(self, value: int):
     Wrapper() = default;
     explicit Wrapper(const ::tpy::BigInt& value) : _value(value) {}
 
-    //     def take(self: Own[Self]) -> int:
+    // def take(self: Own[Self]) -> int:
     ::tpy::BigInt take() && {
-        //         return self._value
+        // return self._value
         return std::move(this->_value);
     }
 
-    //     @readonly
-    //     def get(self) -> int:
+    // @readonly
+    // def get(self) -> int:
     ::tpy::BigInt get() const {
-        //         return self._value
+        // return self._value
         return this->_value;
     }
 };

@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def consume(h: Own[Holder[Handle]]) -> Int32:
 int32_t consume(Holder<Handle>&& h) {
-    //     return h.item.fd
+    // return h.item.fd
     return h.item.fd;
 }
 
 // def main():
 void main() {
-    //     h = Holder[Handle](Handle(42))
+    // h = Holder[Handle](Handle(42))
     Holder<Handle> h = Holder<Handle>(Handle(42));
-    //     result = consume(h)  # tpyc: ok
+    // result = consume(h)  # tpyc: ok
     int32_t result = consume(std::move(h));
-    //     print(result)
+    // print(result)
     std::cout << result << "\n";
 }
 

@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def twice(x: Int32) -> Int32:
 int32_t twice(int32_t x) {
-    //     return x * 2
+    // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // def main():
 void main() {
-    //     p = Pair(5)
+    // p = Pair(5)
     Pair p = Pair(5);
-    //     print(p.a)
+    // print(p.a)
     std::cout << p.a << "\n";
-    //     print(p.b)
+    // print(p.b)
     std::cout << p.b << "\n";
 }
 

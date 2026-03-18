@@ -7,16 +7,16 @@ namespace tpy_user::main {
 // @readonly
 // def observe_field(flag: bool, p: Box) -> None:
 void observe_field(bool flag, const Box& p) {
-    //     x = None
+    // x = None
     const Box* x = nullptr;
-    //     if flag:
+    // if flag:
     if (flag) {
-        //         x = p
+        // x = p
         x = &(p);
     }
-    //     if x is not None:
+    // if x is not None:
     if ((x != nullptr)) {
-        //         print(x.v)
+        // print(x.v)
         std::cout << x->v << "\n";
     }
 }
@@ -24,16 +24,16 @@ void observe_field(bool flag, const Box& p) {
 // @readonly
 // def observe_method(flag: bool, p: Box) -> None:
 void observe_method(bool flag, const Box& p) {
-    //     x = None
+    // x = None
     const Box* x = nullptr;
-    //     if flag:
+    // if flag:
     if (flag) {
-        //         x = p
+        // x = p
         x = &(p);
     }
-    //     if x is not None:
+    // if x is not None:
     if ((x != nullptr)) {
-        //         print(x.get_v())
+        // print(x.get_v())
         std::cout << x->get_v() << "\n";
     }
 }

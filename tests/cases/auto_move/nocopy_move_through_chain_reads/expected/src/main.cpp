@@ -6,23 +6,23 @@ namespace tpy_user::main {
 
 // def chain_reads() -> Own[Handle]:
 Handle chain_reads() {
-    //     h = Handle(33)
+    // h = Handle(33)
     Handle h = Handle(33);
-    //     a = h
+    // a = h
     Handle a = std::move(h);
-    //     print(a.fd)
+    // print(a.fd)
     std::cout << a.fd << "\n";
-    //     b = a
+    // b = a
     Handle b = std::move(a);
-    //     return b
+    // return b
     return b;
 }
 
 // def main():
 void main() {
-    //     r = chain_reads()
+    // r = chain_reads()
     Handle r = chain_reads();
-    //     print(r.fd)
+    // print(r.fd)
     std::cout << r.fd << "\n";
 }
 

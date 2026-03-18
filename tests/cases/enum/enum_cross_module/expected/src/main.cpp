@@ -6,21 +6,21 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c = Color.Red
+    // c = Color.Red
     ::tpy_user::colors::Color c = ::tpy_user::colors::Color::Red;
-    //     print(c)
+    // print(c)
     std::cout << c << "\n";
-    //     print(c.name)
+    // print(c.name)
     std::cout << ::tpy::EnumUtil<::tpy_user::colors::Color>::name(c) << "\n";
-    //     print(color_value(c))
+    // print(color_value(c))
     std::cout << ::tpy_user::colors::color_value(c) << "\n";
-    //     g = Color.Green
+    // g = Color.Green
     ::tpy_user::colors::Color g = ::tpy_user::colors::Color::Green;
-    //     print(c == g)
+    // print(c == g)
     std::cout << ::tpy::print_bool((c == g)) << "\n";
-    //     print(c != g)
+    // print(c != g)
     std::cout << ::tpy::print_bool((c != g)) << "\n";
-    //     print(c == Color.Red)
+    // print(c == Color.Red)
     std::cout << ::tpy::print_bool((c == ::tpy_user::colors::Color::Red)) << "\n";
 }
 

@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     single = (Int32(42),)
+    // single = (Int32(42),)
     std::tuple<int32_t> single = std::tuple<int32_t>{42};
-    //     print(single)
+    // print(single)
     std::cout << ::tpy::TuplePrinter(single) << "\n";
-    //     print(single[0])
+    // print(single[0])
     std::cout << std::get<0>(single) << "\n";
-    //     single_str = ("only",)
+    // single_str = ("only",)
     std::tuple<std::string> single_str = std::tuple<std::string>{"only"};
-    //     print(single_str)
+    // print(single_str)
     std::cout << ::tpy::TuplePrinter(single_str) << "\n";
 }
 

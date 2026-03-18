@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main():
 void main() {
-    //     s = Sized(Int32(42))
+    // s = Sized(Int32(42))
     Sized s = Sized(42);
-    //     print(s.val)
+    // print(s.val)
     std::cout << s.val << "\n";
 }
 

@@ -6,45 +6,45 @@ namespace tpy_user::main {
 
 // def find(items: list[Int32], target: Int32, default: Optional[Int32] = None) -> Optional[Int32]:
 std::optional<int32_t> find(const std::vector<int32_t>& items, int32_t target, std::optional<int32_t> default_) {
-    //     for item in items:
+    // for item in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t item = *__beg_0;
-        //         if item == target:
+        // if item == target:
         if ((item == target)) {
-            //             return item
+            // return item
             return item;
         }
     }
-    //     return default
+    // return default
     return default_;
 }
 
 // def main() -> None:
 void main() {
-    //     items: list[Int32] = [Int32(10), Int32(20), Int32(30)]
+    // items: list[Int32] = [Int32(10), Int32(20), Int32(30)]
     std::vector<int32_t> items = {10, 20, 30};
-    //     r1 = find(items, Int32(20))
+    // r1 = find(items, Int32(20))
     std::optional<int32_t> r1 = find(items, 20);
-    //     if r1 is not None:
+    // if r1 is not None:
     if ((r1.has_value())) {
-        //         print(r1)
+        // print(r1)
         std::cout << ::tpy::print_optional_val(r1) << "\n";
     }
-    //     r2 = find(items, Int32(99))
+    // r2 = find(items, Int32(99))
     std::optional<int32_t> r2 = find(items, 99);
-    //     if r2 is None:
+    // if r2 is None:
     if ((!r2.has_value())) {
-        //         print("not found")
+        // print("not found")
         std::cout << "not found" << "\n";
     }
-    //     r3 = find(items, Int32(99), Int32(-1))
+    // r3 = find(items, Int32(99), Int32(-1))
     std::optional<int32_t> r3 = find(items, 99, -1);
-    //     if r3 is not None:
+    // if r3 is not None:
     if ((r3.has_value())) {
-        //         print(r3)
+        // print(r3)
         std::cout << ::tpy::print_optional_val(r3) << "\n";
     }
 }

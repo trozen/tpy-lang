@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def describe(s: Shape) -> str:
 std::string describe(const std::variant<::tpy_user::shapes::Circle*, ::tpy_user::shapes::Rect*> s) {
-    //     return "shape"
+    // return "shape"
     return "shape";
 }
 
 // def main() -> None:
 void main() {
-    //     print("ok")
+    // print("ok")
     std::cout << "ok" << "\n";
 }
 

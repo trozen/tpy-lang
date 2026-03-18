@@ -7,75 +7,75 @@ namespace tpy_user::main {
 // # (a) Generic call registers ELEMENT borrow: mutation must warn.
 // def test_borrow_warn() -> None:
 void test_borrow_warn() {
-    //     pts = [Point(1, 2), Point(3, 4)]
+    // pts = [Point(1, 2), Point(3, 4)]
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
-    //     p = first(pts)
+    // p = first(pts)
     Point& p = first<Point>(pts);
-    //     pts.append(Point(5, 6))  # tpyc: warning(/Mutation of 'pts' while borrowed/)
+    // pts.append(Point(5, 6))  # tpyc: warning(/Mutation of 'pts' while borrowed/)
     pts.push_back(Point(5, 6));
-    //     print(len(pts))           # 3
+    // print(len(pts))           # 3
     std::cout << ::tpy::__len__(pts) << "\n";
 }
 
 // # (b) Return-through-local: non-generic caller -- p borrows from items via 8b contract.
 // def get_first_concrete(items: list[Point]) -> Point:
 Point& get_first_concrete(std::vector<Point>& items) {
-    //     p = first(items)
+    // p = first(items)
     Point& p = first<Point>(items);
-    //     return p  # tpyc: ok
+    // return p  # tpyc: ok
     return p;
 }
 
 // def test_return_through_local() -> None:
 void test_return_through_local() {
-    //     pts = [Point(1, 2), Point(3, 4)]
+    // pts = [Point(1, 2), Point(3, 4)]
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
-    //     a = get_first_concrete(pts)
+    // a = get_first_concrete(pts)
     Point& a = get_first_concrete(pts);
-    //     b = get_first_generic(pts)
+    // b = get_first_generic(pts)
     Point& b = get_first_generic<Point>(pts);
-    //     print(a.x)   # 1
+    // print(a.x)   # 1
     std::cout << a.x << "\n";
-    //     print(b.x)   # 1
+    // print(b.x)   # 1
     std::cout << b.x << "\n";
 }
 
 // # (d1) val_or_ref_t<T> reference semantics: mutation through p affects box's data.
 // def test_method_ref_semantics() -> None:
 void test_method_ref_semantics() {
-    //     pts: list[Point] = [Point(1, 2), Point(3, 4)]
+    // pts: list[Point] = [Point(1, 2), Point(3, 4)]
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
-    //     box = Box(pts)
+    // box = Box(pts)
     Box<Point> box = Box<Point>(pts);
-    //     p = box.first()  # tpyc: type(Point)  -- val_or_ref_t<Point>: Point& for records
+    // p = box.first()  # tpyc: type(Point)  -- val_or_ref_t<Point>: Point& for records
     Point& p = box.first();
-    //     p.x = 99
+    // p.x = 99
     p.x = 99;
-    //     print(box._items[0].x)   # 99: p is a reference into box._items, not a copy
+    // print(box._items[0].x)   # 99: p is a reference into box._items, not a copy
     std::cout << ::tpy::__getitem__(box._items, 0).x << "\n";
 }
 
 // def test_method_return_through_local() -> None:
 void test_method_return_through_local() {
-    //     pts: list[Point] = [Point(1, 2), Point(3, 4)]
+    // pts: list[Point] = [Point(1, 2), Point(3, 4)]
     std::vector<Point> pts = {Point(1, 2), Point(3, 4)};
-    //     box = Box(pts)
+    // box = Box(pts)
     Box<Point> box = Box<Point>(pts);
-    //     result = get_first_from_box(box)
+    // result = get_first_from_box(box)
     Point& result = get_first_from_box<Point>(box);
-    //     print(result.x)   # 1
+    // print(result.x)   # 1
     std::cout << result.x << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     test_borrow_warn()
+    // test_borrow_warn()
     test_borrow_warn();
-    //     test_return_through_local()
+    // test_return_through_local()
     test_return_through_local();
-    //     test_method_ref_semantics()
+    // test_method_ref_semantics()
     test_method_ref_semantics();
-    //     test_method_return_through_local()
+    // test_method_return_through_local()
     test_method_return_through_local();
 }
 

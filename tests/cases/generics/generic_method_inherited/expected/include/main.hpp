@@ -15,17 +15,17 @@ void main();
 // class Base[T]:
 template<typename T>
 struct Base {
-    //     val: T
+    // val: T
     T val;
 
-    //     def __init__(self, val: T):
+    // def __init__(self, val: T):
     Base() = default;
     explicit Base(const T& val) : val(val) {}
 
-    //     def transform[U](self, other: U) -> U:
+    // def transform[U](self, other: U) -> U:
     template<typename U>
     ::tpy::val_or_cref_t<U> transform(const U& other) const {
-        //         return other
+        // return other
         return other;
     }
 };
@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Base<T>& obj) {
 template<typename T>
 struct Child : Base<T> {
 
-    //     def __init__(self, val: T):
+    // def __init__(self, val: T):
     Child() = default;
     explicit Child(const T& val) : Base<T>(val) {}
 };

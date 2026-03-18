@@ -6,33 +6,33 @@ namespace tpy_user::main {
 
 // def greet(a: Animal) -> None:
 void greet(const Animal& a) {
-    //     print(a.name)
+    // print(a.name)
     std::cout << a.name << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     d: Dog = Dog("Rex", "Lab")
+    // d: Dog = Dog("Rex", "Lab")
     Dog d = Dog("Rex", "Lab");
-    //     # Direct upcast
-    //     a: Animal = Dog("Buddy", "Poodle")
+    // # Direct upcast
+    // a: Animal = Dog("Buddy", "Poodle")
     Animal a = Dog("Buddy", "Poodle");
-    //     print(a.name)
+    // print(a.name)
     std::cout << a.name << "\n";
-    //     # Param passing (const ref binding, no slicing)
-    //     greet(d)
+    // # Param passing (const ref binding, no slicing)
+    // greet(d)
     greet(d);
-    //     greet(Dog("Max", "Beagle"))
+    // greet(Dog("Max", "Beagle"))
     Animal __tmp_1 = Dog("Max", "Beagle");
     greet(__tmp_1);
-    //     # Multi-level upcast (grandchild -> grandparent)
-    //     p: Puppy = Puppy("Tiny", "Corgi", 8)
+    // # Multi-level upcast (grandchild -> grandparent)
+    // p: Puppy = Puppy("Tiny", "Corgi", 8)
     Puppy p = Puppy("Tiny", "Corgi", ::tpy::BigInt(8));
-    //     greet(p)
+    // greet(p)
     greet(p);
-    //     a2: Animal = p
+    // a2: Animal = p
     Animal a2 = std::move(p);
-    //     print(a2.name)
+    // print(a2.name)
     std::cout << a2.name << "\n";
 }
 

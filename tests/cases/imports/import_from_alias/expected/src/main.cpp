@@ -6,12 +6,12 @@ namespace tpy_user::main {
 
 // def main():
 void main() {
-    //     # Just verify the alias works - don't print actual time (varies between runs)
-    //     t: float = get_time()
+    // # Just verify the alias works - don't print actual time (varies between runs)
+    // t: float = get_time()
     double t = ::tpy::time_time();
-    //     if t > 0.0:
+    // if t > 0.0:
     if ((t > 0.0)) {
-        //         print("time alias works")
+        // print("time alias works")
         std::cout << "time alias works" << "\n";
     }
 }

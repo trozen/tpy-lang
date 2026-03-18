@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def forward_via_alias(h: Own[Handle]) -> Own[Handle]:
 Handle forward_via_alias(Handle&& h) {
-    //     alias = h
+    // alias = h
     Handle alias = std::move(h);
-    //     return alias
+    // return alias
     return alias;
 }
 
 // def main():
 void main() {
-    //     r = forward_via_alias(Handle(55))
+    // r = forward_via_alias(Handle(55))
     Handle r = forward_via_alias(Handle(55));
-    //     print(r.fd)
+    // print(r.fd)
     std::cout << r.fd << "\n";
 }
 

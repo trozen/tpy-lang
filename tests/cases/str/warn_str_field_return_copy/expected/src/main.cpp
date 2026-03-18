@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def main():
 void main() {
-    //     item = Item("widget", "a useful widget", "WDG-001")
+    // item = Item("widget", "a useful widget", "WDG-001")
     Item item = Item("widget", "a useful widget", "WDG-001");
-    //     print(item.get_name())
+    // print(item.get_name())
     std::cout << item.get_name() << "\n";
-    //     print(item.get_desc())
+    // print(item.get_desc())
     std::cout << item.get_desc() << "\n";
-    //     print(item.get_label())
+    // print(item.get_label())
     std::cout << item.get_label() << "\n";
-    //     print(item)
+    // print(item)
     std::cout << item << "\n";
 }
 

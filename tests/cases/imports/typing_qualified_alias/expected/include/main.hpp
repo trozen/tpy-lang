@@ -23,16 +23,16 @@ void main();
 
 // class Person:
 struct Person {
-    //     name: str
+    // name: str
     std::string name;
 
-    //     def __init__(self, n: str):
+    // def __init__(self, n: str):
     Person() = default;
     explicit Person(std::string_view n) : name(n) {}
 
-    //     def greet(self) -> str:
+    // def greet(self) -> str:
     std::string greet() const {
-        //         return self.name
+        // return self.name
         return this->name;
     }
 };
@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Person& obj) {
 // def hello(g: Greetable) -> None:
 template<Greetable T_g>
 void hello(T_g& g) {
-    //     print(g.greet())
+    // print(g.greet())
     std::cout << g.greet() << "\n";
 }
 

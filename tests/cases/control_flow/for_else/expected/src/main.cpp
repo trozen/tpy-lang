@@ -6,23 +6,23 @@ namespace tpy_user::main {
 
 // def search_break(items: list[Int32], target: Int32) -> None:
 void search_break(const std::vector<int32_t>& items, int32_t target) {
-    //     for item in items:
+    // for item in items:
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t item = *__beg_1;
-        //         if item == target:
+        // if item == target:
         if ((item == target)) {
-            //             print("found")
+            // print("found")
             std::cout << "found" << "\n";
-            //             break
+            // break
             goto __after_else_0;
         }
     }
-    //     else:
+    // else:
     {
-        //         print("not found")
+        // print("not found")
         std::cout << "not found" << "\n";
     }
     __after_else_0:;
@@ -30,14 +30,14 @@ void search_break(const std::vector<int32_t>& items, int32_t target) {
 
 // def no_break() -> None:
 void no_break() {
-    //     for i in range(Int32(3)):
+    // for i in range(Int32(3)):
     for (int32_t i = 0; i < 3; ++i) {
-        //         print(i)
+        // print(i)
         std::cout << i << "\n";
     }
-    //     else:
+    // else:
     {
-        //         print("complete")
+        // print("complete")
         std::cout << "complete" << "\n";
     }
     __after_else_0:;
@@ -45,25 +45,25 @@ void no_break() {
 
 // def with_continue() -> None:
 void with_continue() {
-    //     items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    // items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
-    //     for x in items:
+    // for x in items:
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        //         if x == Int32(2):
+        // if x == Int32(2):
         if ((x == 2)) {
-            //             continue
+            // continue
             continue;
         }
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
-    //     else:
+    // else:
     {
-        //         print("done")
+        // print("done")
         std::cout << "done" << "\n";
     }
     __after_else_0:;
@@ -71,45 +71,45 @@ void with_continue() {
 
 // def nested_inner_else() -> None:
 void nested_inner_else() {
-    //     for i in range(Int32(3)):
+    // for i in range(Int32(3)):
     for (int32_t i = 0; i < 3; ++i) {
-        //         for j in range(Int32(3)):
+        // for j in range(Int32(3)):
         for (int32_t j = 0; j < 3; ++j) {
-            //             if j == Int32(1):
+            // if j == Int32(1):
             if ((j == 1)) {
-                //                 break
+                // break
                 goto __after_else_1;
             }
         }
-        //         else:
+        // else:
         {
-            //             print("inner complete")
+            // print("inner complete")
             std::cout << "inner complete" << "\n";
         }
         __after_else_1:;
-        //         print(i)
+        // print(i)
         std::cout << i << "\n";
     }
 }
 
 // def nested_outer_else() -> None:
 void nested_outer_else() {
-    //     for i in range(Int32(3)):
+    // for i in range(Int32(3)):
     for (int32_t i = 0; i < 3; ++i) {
-        //         for j in range(Int32(3)):
+        // for j in range(Int32(3)):
         for (int32_t j = 0; j < 3; ++j) {
-            //             if j == Int32(1):
+            // if j == Int32(1):
             if ((j == 1)) {
-                //                 break
+                // break
                 break;
             }
         }
-        //         print(i)
+        // print(i)
         std::cout << i << "\n";
     }
-    //     else:
+    // else:
     {
-        //         print("outer complete")
+        // print("outer complete")
         std::cout << "outer complete" << "\n";
     }
     __after_else_0:;
@@ -117,28 +117,28 @@ void nested_outer_else() {
 
 // def nested_both_else() -> None:
 void nested_both_else() {
-    //     for i in range(Int32(3)):
+    // for i in range(Int32(3)):
     for (int32_t i = 0; i < 3; ++i) {
-        //         for j in range(Int32(3)):
+        // for j in range(Int32(3)):
         for (int32_t j = 0; j < 3; ++j) {
-            //             if j == Int32(1):
+            // if j == Int32(1):
             if ((j == 1)) {
-                //                 break
+                // break
                 goto __after_else_2;
             }
         }
-        //         else:
+        // else:
         {
-            //             print("inner complete")
+            // print("inner complete")
             std::cout << "inner complete" << "\n";
         }
         __after_else_2:;
-        //         print(i)
+        // print(i)
         std::cout << i << "\n";
     }
-    //     else:
+    // else:
     {
-        //         print("outer complete")
+        // print("outer complete")
         std::cout << "outer complete" << "\n";
     }
     __after_else_0:;
@@ -146,20 +146,20 @@ void nested_both_else() {
 
 // def empty_iterable() -> None:
 void empty_iterable() {
-    //     items: list[Int32] = []
+    // items: list[Int32] = []
     std::vector<int32_t> items = std::vector<int32_t>{};
-    //     for x in items:
+    // for x in items:
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t x = *__beg_1;
-        //         break
+        // break
         goto __after_else_0;
     }
-    //     else:
+    // else:
     {
-        //         print("empty else")
+        // print("empty else")
         std::cout << "empty else" << "\n";
     }
     __after_else_0:;
@@ -167,25 +167,25 @@ void empty_iterable() {
 
 // def var_decl_in_else() -> None:
 void var_decl_in_else() {
-    //     items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    // items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
-    //     for item in items:
+    // for item in items:
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         int32_t item = *__beg_1;
-        //         if item == Int32(99):
+        // if item == Int32(99):
         if ((item == 99)) {
-            //             break
+            // break
             goto __after_else_0;
         }
     }
-    //     else:
+    // else:
     {
-        //         msg: str = "all checked"
+        // msg: str = "all checked"
         std::string_view msg = "all checked";
-        //         print(msg)
+        // print(msg)
         std::cout << msg << "\n";
     }
     __after_else_0:;
@@ -193,25 +193,25 @@ void var_decl_in_else() {
 
 // def main() -> None:
 void main() {
-    //     nums: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    // nums: list[Int32] = [Int32(1), Int32(2), Int32(3)]
     std::vector<int32_t> nums = {1, 2, 3};
-    //     search_break(nums, Int32(2))
+    // search_break(nums, Int32(2))
     search_break(nums, 2);
-    //     search_break(nums, Int32(99))
+    // search_break(nums, Int32(99))
     search_break(nums, 99);
-    //     no_break()
+    // no_break()
     no_break();
-    //     with_continue()
+    // with_continue()
     with_continue();
-    //     nested_inner_else()
+    // nested_inner_else()
     nested_inner_else();
-    //     nested_outer_else()
+    // nested_outer_else()
     nested_outer_else();
-    //     nested_both_else()
+    // nested_both_else()
     nested_both_else();
-    //     empty_iterable()
+    // empty_iterable()
     empty_iterable();
-    //     var_decl_in_else()
+    // var_decl_in_else()
     var_decl_in_else();
 }
 

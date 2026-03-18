@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     s = Square(Int32(4))
+    // s = Square(Int32(4))
     Square s = Square(4);
-    //     print(s.area())
+    // print(s.area())
     std::cout << s.area() << "\n";
-    //     print(s.describe())
+    // print(s.describe())
     std::cout << s.describe() << "\n";
 }
 

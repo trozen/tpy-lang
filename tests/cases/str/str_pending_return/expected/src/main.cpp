@@ -7,17 +7,17 @@ namespace tpy_user::main {
 // # Test returning a view local from a str-returning function
 // def make_greeting(name: str) -> str:
 std::string make_greeting(std::string_view name) {
-    //     result = "hello " + name  # tpyc: type(String)
+    // result = "hello " + name  # tpyc: type(String)
     std::string result = (::tpy::str_concat("hello ", name));
-    //     return result
+    // return result
     return result;
 }
 
 // def echo(msg: str) -> str:
 std::string echo(std::string_view msg) {
-    //     s = msg  # tpyc: type(StrView)
+    // s = msg  # tpyc: type(StrView)
     std::string_view s = msg;
-    //     return s
+    // return s
     return std::string(s);
 }
 

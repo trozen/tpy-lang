@@ -18,10 +18,10 @@ void test_subscript_to_ptr();
 
 // class Inner:
 struct Inner {
-    //     x: Int32
+    // x: Int32
     int32_t x;
 
-    //     def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: Int32) -> None:
     Inner() = default;
     explicit Inner(int32_t x) : x(x) {}
 };
@@ -35,10 +35,10 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
 
 // class Outer:
 struct Outer {
-    //     inner: Inner
+    // inner: Inner
     Inner inner;
 
-    //     def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: Int32) -> None:
     Outer() = default;
     explicit Outer(int32_t x) : inner(Inner(x)) {}
 };

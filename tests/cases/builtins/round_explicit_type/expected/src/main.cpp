@@ -6,19 +6,19 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Explicit type parameter
-    //     a: Int64 = round[Int64](7.7)
+    // # Explicit type parameter
+    // a: Int64 = round[Int64](7.7)
     int64_t a = ::tpy::round_to<int64_t>(7.7);
-    //     print(a)
+    // print(a)
     std::cout << a << "\n";
-    //     b: Int32 = round[Int32](2.5)
+    // b: Int32 = round[Int32](2.5)
     int32_t b = ::tpy::round_to<int32_t>(2.5);
-    //     print(b)
+    // print(b)
     std::cout << b << "\n";
-    //     # round[T] with default_int inference
-    //     c: Int64 = round(99.9)
+    // # round[T] with default_int inference
+    // c: Int64 = round(99.9)
     int64_t c = ::tpy::round_to<int64_t>(99.9);
-    //     print(c)
+    // print(c)
     std::cout << c << "\n";
 }
 

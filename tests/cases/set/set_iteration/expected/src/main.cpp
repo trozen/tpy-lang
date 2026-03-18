@@ -6,28 +6,28 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     s: set[Int32] = {10, 20, 30}
+    // s: set[Int32] = {10, 20, 30}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({10, 20, 30});
-    //     for x in s:
+    // for x in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
-    //     # Truthiness
-    //     empty: set[Int32] = set()
+    // # Truthiness
+    // empty: set[Int32] = set()
     ::tpy::ordered_set<int32_t> empty = ::tpy::ordered_set<int32_t>();
-    //     if s:
+    // if s:
     if ((::tpy::__len__(s) != 0)) {
-        //         print("non-empty")
+        // print("non-empty")
         std::cout << "non-empty" << "\n";
     }
-    //     if not empty:
+    // if not empty:
     if ((!((::tpy::__len__(empty) != 0)))) {
-        //         print("empty is falsy")
+        // print("empty is falsy")
         std::cout << "empty is falsy" << "\n";
     }
 }

@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     print(frame_count)
+    // print(frame_count)
     std::cout << g_frame_count << "\n";
-    //     print(tick)
+    // print(tick)
     std::cout << tick << "\n";
 }
 

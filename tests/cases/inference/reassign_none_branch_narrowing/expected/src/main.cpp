@@ -6,45 +6,45 @@ namespace tpy_user::main {
 
 // def make_box() -> Own[Box]:
 Box make_box() {
-    //     return Box(Int32(42))
+    // return Box(Int32(42))
     return Box(42);
 }
 
 // def test_if_branch() -> None:
 void test_if_branch() {
-    //     b = None
+    // b = None
     std::optional<Box> __slot_1;
     Box* b = nullptr;
-    //     if True:
+    // if True:
     if (true) {
-        //         b = make_box()
+        // b = make_box()
         b = &*(__slot_1 = make_box());
     }
-    //     if b is not None:
+    // if b is not None:
     if ((b != nullptr)) {
-        //         print(b.v)
+        // print(b.v)
         std::cout << b->v << "\n";
     }
 }
 
 // def test_elif_branch() -> None:
 void test_elif_branch() {
-    //     b = None
+    // b = None
     std::optional<Box> __slot_1;
     Box* b = nullptr;
-    //     x = 1
+    // x = 1
     int32_t x = 1;
-    //     if x == 0:
+    // if x == 0:
     if ((x == 0)) {
-        //         pass
-    //     elif x == 1:
+        // pass
+    // elif x == 1:
     } else if ((x == 1)) {
-        //         b = make_box()
+        // b = make_box()
         b = &*(__slot_1 = make_box());
     }
-    //     if b is not None:
+    // if b is not None:
     if ((b != nullptr)) {
-        //         print(b.v)
+        // print(b.v)
         std::cout << b->v << "\n";
     }
 }

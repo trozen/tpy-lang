@@ -6,30 +6,30 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     a: Int32 = make_default[Int32]()
+    // a: Int32 = make_default[Int32]()
     int32_t a = make_default<int32_t>();
-    //     print(a)
+    // print(a)
     std::cout << a << "\n";
-    //     b: str = make_default[str]()
+    // b: str = make_default[str]()
     std::string b = make_default<std::string>();
-    //     print(b)
+    // print(b)
     std::cout << b << "\n";
-    //     print(len(b))
+    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
-    //     c: bool = make_default[bool]()
+    // c: bool = make_default[bool]()
     bool c = make_default<bool>();
-    //     print(c)
+    // print(c)
     std::cout << ::tpy::print_bool(c) << "\n";
-    //     d: Int32 = make_default[Int32](42)
+    // d: Int32 = make_default[Int32](42)
     int32_t __tmp_1 = 42;
     int32_t d = make_default<int32_t>(__tmp_1);
-    //     print(d)
+    // print(d)
     std::cout << d << "\n";
-    //     # T inferred from arg
-    //     e: Int32 = make_default(42)
+    // # T inferred from arg
+    // e: Int32 = make_default(42)
     int32_t __tmp_2 = 42;
     int32_t e = make_default<int32_t>(__tmp_2);
-    //     print(e)
+    // print(e)
     std::cout << e << "\n";
 }
 

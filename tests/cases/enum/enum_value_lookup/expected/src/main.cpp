@@ -48,28 +48,28 @@ namespace tpy_user::main {
 
 // def lookup(v: Int32) -> Color:
 Color lookup(int32_t v) {
-    //     return Color(v)
+    // return Color(v)
     return ::tpy::EnumUtil<Color>::from_value(v);
 }
 
 // def from_int(v: int) -> Color:
 Color from_int(const ::tpy::BigInt& v) {
-    //     return Color(v)
+    // return Color(v)
     return ::tpy::EnumUtil<Color>::from_value((v).to_fixed_check<int32_t>());
 }
 
 // def main() -> None:
 void main() {
-    //     print(Color(0))
+    // print(Color(0))
     std::cout << ::tpy::EnumUtil<Color>::from_value(0) << "\n";
-    //     print(Color(1))
+    // print(Color(1))
     std::cout << ::tpy::EnumUtil<Color>::from_value(1) << "\n";
-    //     print(Color(2))
+    // print(Color(2))
     std::cout << ::tpy::EnumUtil<Color>::from_value(2) << "\n";
-    //     print(lookup(1))
+    // print(lookup(1))
     std::cout << lookup(1) << "\n";
-    //     # BigInt (int) coerces to underlying type
-    //     print(from_int(2))
+    // # BigInt (int) coerces to underlying type
+    // print(from_int(2))
     std::cout << from_int(::tpy::BigInt(2)) << "\n";
 }
 

@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def eq_proven(x: Int32 | None, y: Int32) -> bool:
 bool eq_proven(std::optional<int32_t> x, int32_t y) {
-    //     assert x is not None
+    // assert x is not None
     if (!((x.has_value()))) ::tpy::tpy_panic("assertion failed");
-    //     return x == y  # tpyc: ok
+    // return x == y  # tpyc: ok
     return ((*x) == y);
 }
 

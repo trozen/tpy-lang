@@ -18,50 +18,50 @@ void main();
 // def count_chars(text: NativeIterable[Char]) -> Int32:
 template<::tpy::NativeIterable<char> T_text>
 int32_t count_chars(T_text& text) {
-    //     count: Int32 = 0
+    // count: Int32 = 0
     int32_t count = 0;
-    //     for c in text:
+    // for c in text:
     auto& __obj_0 = text;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char c = *__beg_0;
-        //         count += 1
+        // count += 1
         count = ::tpy::add_check<int32_t>(count, 1);
     }
-    //     return count
+    // return count
     return count;
 }
 // def first_char(text: NativeIterable[Char]) -> Char:
 template<::tpy::NativeIterable<char> T_text>
 char first_char(T_text& text) {
-    //     for c in text:
+    // for c in text:
     auto& __obj_0 = text;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         char c = *__beg_0;
-        //         return c
+        // return c
         return c;
     }
-    //     return chr(0)
+    // return chr(0)
     return static_cast<char>(0);
 }
 // def sum_span(items: NativeIterable[Int32]) -> Int32:
 template<::tpy::NativeIterable<int32_t> T_items>
 int32_t sum_span(T_items& items) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     for x in items:
+    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         total += x
+        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    //     return total
+    // return total
     return total;
 }
 

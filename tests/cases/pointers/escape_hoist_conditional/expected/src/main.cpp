@@ -9,20 +9,20 @@ namespace tpy_user::main {
 // def conditional_hoist() -> None:
 void conditional_hoist() {
   std::optional<Point> __slot_2;
-    //     saved: Point = Point(0, 0)
+    // saved: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    //     for i in range(5):
+    // for i in range(5):
     for (int32_t i = 0; i < 5; ++i) {
-        //         p: Point = Point(i, i * 3)
+        // p: Point = Point(i, i * 3)
         Point* p = &*(__slot_2 = Point(i, (::tpy::mul_check<int32_t>(i, 3))));
-        //         if i > 2:
+        // if i > 2:
         if ((i > 2)) {
-            //             saved = p  # tpyc: warning(/hoisted to function scope/)
+            // saved = p  # tpyc: warning(/hoisted to function scope/)
             saved = p;
         }
     }
-    //     print(saved.x, saved.y)
+    // print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 

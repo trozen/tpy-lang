@@ -6,7 +6,7 @@ namespace tpy_user::pkg::consumer {
 
 // def compute() -> Int32:
 int32_t compute() {
-    //     return utils.root_func()
+    // return utils.root_func()
     return ::tpy_user::utils::root_func();
 }
 

@@ -8,7 +8,7 @@ Timer* time{};
 
 // def f():
 void f() {
-    //     print(time.x)
+    // print(time.x)
     std::cout << time->x << "\n";
 }
 

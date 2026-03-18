@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     print(BASE)
+    // print(BASE)
     std::cout << BASE << "\n";
-    //     print(ALIAS)
+    // print(ALIAS)
     std::cout << ALIAS << "\n";
 }
 

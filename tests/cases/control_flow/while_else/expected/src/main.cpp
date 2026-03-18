@@ -6,18 +6,18 @@ namespace tpy_user::main {
 
 // def no_break() -> None:
 void no_break() {
-    //     i: Int32 = Int32(0)
+    // i: Int32 = Int32(0)
     int32_t i = 0;
-    //     while i < Int32(3):
+    // while i < Int32(3):
     while ((i < 3)) {
-        //         print(i)
+        // print(i)
         std::cout << i << "\n";
-        //         i += Int32(1)
+        // i += Int32(1)
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    //     else:
+    // else:
     {
-        //         print("done")
+        // print("done")
         std::cout << "done" << "\n";
     }
     __after_else_0:;
@@ -25,23 +25,23 @@ void no_break() {
 
 // def with_break() -> None:
 void with_break() {
-    //     i: Int32 = Int32(0)
+    // i: Int32 = Int32(0)
     int32_t i = 0;
-    //     while i < Int32(10):
+    // while i < Int32(10):
     while ((i < 10)) {
-        //         if i == Int32(5):
+        // if i == Int32(5):
         if ((i == 5)) {
-            //             print("broke")
+            // print("broke")
             std::cout << "broke" << "\n";
-            //             break
+            // break
             goto __after_else_0;
         }
-        //         i += Int32(1)
+        // i += Int32(1)
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    //     else:
+    // else:
     {
-        //         print("completed")
+        // print("completed")
         std::cout << "completed" << "\n";
     }
     __after_else_0:;
@@ -49,57 +49,57 @@ void with_break() {
 
 // def nested_inner_else() -> None:
 void nested_inner_else() {
-    //     i: Int32 = Int32(0)
+    // i: Int32 = Int32(0)
     int32_t i = 0;
-    //     while i < Int32(3):
+    // while i < Int32(3):
     while ((i < 3)) {
-        //         j: Int32 = Int32(0)
+        // j: Int32 = Int32(0)
         int32_t j = 0;
-        //         while j < Int32(3):
+        // while j < Int32(3):
         while ((j < 3)) {
-            //             if j == Int32(1):
+            // if j == Int32(1):
             if ((j == 1)) {
-                //                 break
+                // break
                 goto __after_else_0;
             }
-            //             j += Int32(1)
+            // j += Int32(1)
             j = ::tpy::add_check<int32_t>(j, 1);
         }
-        //         else:
+        // else:
         {
-            //             print("inner done")
+            // print("inner done")
             std::cout << "inner done" << "\n";
         }
         __after_else_0:;
-        //         i += Int32(1)
+        // i += Int32(1)
         i = ::tpy::add_check<int32_t>(i, 1);
     }
 }
 
 // def nested_outer_else() -> None:
 void nested_outer_else() {
-    //     i: Int32 = Int32(0)
+    // i: Int32 = Int32(0)
     int32_t i = 0;
-    //     while i < Int32(3):
+    // while i < Int32(3):
     while ((i < 3)) {
-        //         j: Int32 = Int32(0)
+        // j: Int32 = Int32(0)
         int32_t j = 0;
-        //         while j < Int32(3):
+        // while j < Int32(3):
         while ((j < 3)) {
-            //             if j == Int32(1):
+            // if j == Int32(1):
             if ((j == 1)) {
-                //                 break
+                // break
                 break;
             }
-            //             j += Int32(1)
+            // j += Int32(1)
             j = ::tpy::add_check<int32_t>(j, 1);
         }
-        //         i += Int32(1)
+        // i += Int32(1)
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    //     else:
+    // else:
     {
-        //         print("outer done")
+        // print("outer done")
         std::cout << "outer done" << "\n";
     }
     __after_else_0:;
@@ -107,14 +107,14 @@ void nested_outer_else() {
 
 // def false_condition() -> None:
 void false_condition() {
-    //     while False:
+    // while False:
     while (false) {
-        //         break
+        // break
         goto __after_else_0;
     }
-    //     else:
+    // else:
     {
-        //         print("false else")
+        // print("false else")
         std::cout << "false else" << "\n";
     }
     __after_else_0:;
@@ -122,23 +122,23 @@ void false_condition() {
 
 // def var_decl_in_else() -> None:
 void var_decl_in_else() {
-    //     i: Int32 = Int32(0)
+    // i: Int32 = Int32(0)
     int32_t i = 0;
-    //     while i < Int32(10):
+    // while i < Int32(10):
     while ((i < 10)) {
-        //         if i == Int32(5):
+        // if i == Int32(5):
         if ((i == 5)) {
-            //             break
+            // break
             goto __after_else_0;
         }
-        //         i += Int32(1)
+        // i += Int32(1)
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    //     else:
+    // else:
     {
-        //         msg: str = "completed"
+        // msg: str = "completed"
         std::string_view msg = "completed";
-        //         print(msg)
+        // print(msg)
         std::cout << msg << "\n";
     }
     __after_else_0:;
@@ -146,17 +146,17 @@ void var_decl_in_else() {
 
 // def main() -> None:
 void main() {
-    //     no_break()
+    // no_break()
     no_break();
-    //     with_break()
+    // with_break()
     with_break();
-    //     nested_inner_else()
+    // nested_inner_else()
     nested_inner_else();
-    //     nested_outer_else()
+    // nested_outer_else()
     nested_outer_else();
-    //     false_condition()
+    // false_condition()
     false_condition();
-    //     var_decl_in_else()
+    // var_decl_in_else()
     var_decl_in_else();
 }
 

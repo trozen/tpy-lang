@@ -15,16 +15,16 @@ void main();
 // class Container[T: Sized]:
 template<::tpy_user::typing::Sized T>
 struct Container {
-    //     item: T
+    // item: T
     T item;
 
-    //     def __init__(self, item: T):
+    // def __init__(self, item: T):
     Container() = default;
     explicit Container(const T& item) : item(item) {}
 
-    //     def get_item(self) -> T:
+    // def get_item(self) -> T:
     ::tpy::val_or_ref_t<T> get_item() {
-        //         return self.item
+        // return self.item
         return this->item;
     }
 };

@@ -6,41 +6,41 @@ namespace tpy_user::main {
 
 // def update_same_name(a: Int32, b: Int32) -> None:
 void update_same_name(int32_t a, int32_t b) {
-    //     global opentop
-    //     if a < b:
+    // global opentop
+    // if a < b:
     if ((a < b)) {
-        //         opentop = a
+        // opentop = a
         opentop = a;
-    //     else:
+    // else:
     } else {
-        //         opentop = b
+        // opentop = b
         opentop = b;
     }
 }
 
 // def update_renamed(a: Int32, b: Int32) -> None:
 void update_renamed(int32_t a, int32_t b) {
-    //     global counter
-    //     if a < b:
+    // global counter
+    // if a < b:
     if ((a < b)) {
-        //         counter = a
+        // counter = a
         g_counter = a;
-    //     else:
+    // else:
     } else {
-        //         counter = b
+        // counter = b
         g_counter = b;
     }
 }
 
 // def main() -> None:
 void main() {
-    //     update_same_name(Int32(10), Int32(20))
+    // update_same_name(Int32(10), Int32(20))
     update_same_name(10, 20);
-    //     print(opentop)
+    // print(opentop)
     std::cout << opentop << "\n";
-    //     update_renamed(Int32(30), Int32(40))
+    // update_renamed(Int32(30), Int32(40))
     update_renamed(30, 40);
-    //     print(counter)
+    // print(counter)
     std::cout << g_counter << "\n";
 }
 

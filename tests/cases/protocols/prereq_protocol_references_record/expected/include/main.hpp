@@ -17,10 +17,10 @@ concept Convertible = requires(T& t) {
 // # A record that will be referenced by a prereq protocol
 // class Result:
 struct Result {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: Int32) -> None:
     Result() = default;
     explicit Result(int32_t value) : value(value) {}
 };
@@ -35,16 +35,16 @@ inline std::ostream& operator<<(std::ostream& os, const Result& obj) {
 // # Record that implements Convertible
 // class Message:
 struct Message {
-    //     text: str
+    // text: str
     std::string text;
 
-    //     def __init__(self, text: str) -> None:
+    // def __init__(self, text: str) -> None:
     Message() = default;
     explicit Message(std::string_view text) : text(text) {}
 
-    //     def to_result(self) -> Own[Result]:
+    // def to_result(self) -> Own[Result]:
     Result to_result() const {
-        //         return Result(Int32(42))
+        // return Result(Int32(42))
         return Result(42);
     }
 };
@@ -76,16 +76,16 @@ void main();
 // class Wrapper[T: Convertible]:
 template<Convertible T>
 struct Wrapper {
-    //     value: T
+    // value: T
     T value;
 
-    //     def __init__(self, value: T) -> None:
+    // def __init__(self, value: T) -> None:
     Wrapper() = default;
     explicit Wrapper(const T& value) : value(value) {}
 
-    //     def get_result(self) -> Own[Result]:
+    // def get_result(self) -> Own[Result]:
     Result get_result() {
-        //         return self.value.to_result()
+        // return self.value.to_result()
         return this->value.to_result();
     }
 };
@@ -103,9 +103,9 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
 struct DefaultWrapperMaker {
 
 
-    //     def make(self, text: str) -> Own[Wrapper[Message]]:
+    // def make(self, text: str) -> Own[Wrapper[Message]]:
     Wrapper<Message> make(std::string_view text) const {
-        //         return Wrapper(Message(text))
+        // return Wrapper(Message(text))
         return Wrapper<Message>(Message(text));
     }
 };
@@ -120,16 +120,16 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultWrapperMaker& obj
 // class Container[T: WrapperMaker]:
 template<WrapperMaker T>
 struct Container {
-    //     factory: T
+    // factory: T
     T factory;
 
-    //     def __init__(self, factory: T) -> None:
+    // def __init__(self, factory: T) -> None:
     Container() = default;
     explicit Container(const T& factory) : factory(factory) {}
 
-    //     def create_wrapper(self, text: str) -> Own[Wrapper[Message]]:
+    // def create_wrapper(self, text: str) -> Own[Wrapper[Message]]:
     Wrapper<Message> create_wrapper(std::string_view text) {
-        //         return self.factory.make(text)
+        // return self.factory.make(text)
         return this->factory.make(text);
     }
 };

@@ -7,20 +7,20 @@ namespace tpy_user::main {
 // # Tuple unpacking reassignment inside a loop (variables declared before loop)
 // def main() -> None:
 void main() {
-    //     x, y = 0.0, 0.0
+    // x, y = 0.0, 0.0
     auto __tup_1 = std::tuple<double, double>{0.0, 0.0};
     double x = std::get<0>(__tup_1);
     double y = std::get<1>(__tup_1);
-    //     for i in range(3):
+    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        //         x, y = x + 1.0, y + 2.0
+        // x, y = x + 1.0, y + 2.0
         auto __tup_2 = std::tuple<double, double>{((x) + (1.0)), ((y) + (2.0))};
         x = std::get<0>(__tup_2);
         y = std::get<1>(__tup_2);
     }
-    //     print(x)
+    // print(x)
     std::cout << ::tpy::print_float(x) << "\n";
-    //     print(y)
+    // print(y)
     std::cout << ::tpy::print_float(y) << "\n";
 }
 

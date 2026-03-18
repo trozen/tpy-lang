@@ -19,10 +19,10 @@ void main();
 // class WithArray[T, N: int]:
 template<typename T, std::size_t N>
 struct WithArray {
-    //     data: Array[T, N]
+    // data: Array[T, N]
     std::array<T, N> data;
 
-    //     def __init__(self):
+    // def __init__(self):
     WithArray() : data(std::array<T, N>()) {}
 };
 
@@ -37,10 +37,10 @@ inline std::ostream& operator<<(std::ostream& os, const WithArray<T, N>& obj) {
 // class WithList[T]:
 template<typename T>
 struct WithList {
-    //     items: list[T]
+    // items: list[T]
     std::vector<T> items;
 
-    //     def __init__(self):
+    // def __init__(self):
     WithList() : items(std::vector<T>()) {}
 };
 
@@ -55,10 +55,10 @@ inline std::ostream& operator<<(std::ostream& os, const WithList<T>& obj) {
 // class WithDict[K, V]:
 template<typename K, typename V>
 struct WithDict {
-    //     data: dict[K, V]
+    // data: dict[K, V]
     ::tpy::ordered_map<K, V> data;
 
-    //     def __init__(self):
+    // def __init__(self):
     WithDict() : data(::tpy::ordered_map<K, V>()) {}
 };
 
@@ -73,14 +73,14 @@ inline std::ostream& operator<<(std::ostream& os, const WithDict<K, V>& obj) {
 // class WithHeapStorage[T]:
 template<typename T>
 struct WithHeapStorage {
-    //     _storage: UninitHeapStorage[T]
+    // _storage: UninitHeapStorage[T]
     ::tpy::UninitHeapStorage<T> _storage;
     bool __tpy_owned_ = true;
 
-    //     def __init__(self, val: Own[T]):
+    // def __init__(self, val: Own[T]):
     WithHeapStorage() = default;
     explicit WithHeapStorage(T&& val) : _storage(::tpy::UninitHeapStorage<T>(1)) {
-        //         self._storage.init0(val)
+        // self._storage.init0(val)
         this->_storage.init0(std::move(val));
     }
     // non-copyable (field '_storage')
@@ -96,17 +96,17 @@ struct WithHeapStorage {
         }
         return *this;
     }
-    //     def __del__(self):
+    // def __del__(self):
 
     ~WithHeapStorage() {
         if (!__tpy_owned_) return;
-        //         self._storage.drop0()
+        // self._storage.drop0()
         this->_storage.drop0();
     }
 
-    //     def get(self) -> T:
+    // def get(self) -> T:
     ::tpy::val_or_cref_t<T> get() const {
-        //         return self._storage.load0()
+        // return self._storage.load0()
         return this->_storage.load0();
     }
 };

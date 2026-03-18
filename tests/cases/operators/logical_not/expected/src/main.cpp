@@ -7,155 +7,155 @@ namespace tpy_user::main {
 // # Test the 'not' logical operator
 // def test_not_with_bool_literals() -> None:
 void test_not_with_bool_literals() {
-    //     a: bool = True
+    // a: bool = True
     bool a = true;
-    //     b: bool = False
+    // b: bool = False
     bool b = false;
-    //     # Direct negation
-    //     if not a:
+    // # Direct negation
+    // if not a:
     if ((!(a))) {
-        //         print("not True: yes")
+        // print("not True: yes")
         std::cout << "not True: yes" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("not True: no")
+        // print("not True: no")
         std::cout << "not True: no" << "\n";
     }
-    //     if not b:
+    // if not b:
     if ((!(b))) {
-        //         print("not False: yes")
+        // print("not False: yes")
         std::cout << "not False: yes" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("not False: no")
+        // print("not False: no")
         std::cout << "not False: no" << "\n";
     }
 }
 
 // def test_not_with_comparisons() -> None:
 void test_not_with_comparisons() {
-    //     x: Int32 = 5
+    // x: Int32 = 5
     int32_t x = 5;
-    //     y: Int32 = 10
+    // y: Int32 = 10
     int32_t y = 10;
-    //     # not with comparison
-    //     if not (x > y):
+    // # not with comparison
+    // if not (x > y):
     if ((!((x > y)))) {
-        //         print("not (5 > 10): yes")
+        // print("not (5 > 10): yes")
         std::cout << "not (5 > 10): yes" << "\n";
     }
-    //     if not (x == y):
+    // if not (x == y):
     if ((!((x == y)))) {
-        //         print("not (5 == 10): yes")
+        // print("not (5 == 10): yes")
         std::cout << "not (5 == 10): yes" << "\n";
     }
-    //     if not (x < 0):
+    // if not (x < 0):
     if ((!((x < 0)))) {
-        //         print("not (5 < 0): yes")
+        // print("not (5 < 0): yes")
         std::cout << "not (5 < 0): yes" << "\n";
     }
 }
 
 // def test_not_in_conditions() -> None:
 void test_not_in_conditions() {
-    //     a: bool = True
+    // a: bool = True
     bool a = true;
-    //     b: bool = False
+    // b: bool = False
     bool b = false;
-    //     # not with and
-    //     if not a and b:
+    // # not with and
+    // if not a and b:
     if (((!(a)) && b)) {
-        //         print("not True and False: yes")
+        // print("not True and False: yes")
         std::cout << "not True and False: yes" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("not True and False: no")
+        // print("not True and False: no")
         std::cout << "not True and False: no" << "\n";
     }
-    //     # not with or
-    //     if not b or a:
+    // # not with or
+    // if not b or a:
     if (((!(b)) || a)) {
-        //         print("not False or True: yes")
+        // print("not False or True: yes")
         std::cout << "not False or True: yes" << "\n";
     }
-    //     # Parenthesized not
-    //     if not (a and b):
+    // # Parenthesized not
+    // if not (a and b):
     if ((!((a && b)))) {
-        //         print("not (True and False): yes")
+        // print("not (True and False): yes")
         std::cout << "not (True and False): yes" << "\n";
     }
-    //     if not (a or b):
+    // if not (a or b):
     if ((!((a || b)))) {
-        //         print("not (True or False): yes")
+        // print("not (True or False): yes")
         std::cout << "not (True or False): yes" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("not (True or False): no")
+        // print("not (True or False): no")
         std::cout << "not (True or False): no" << "\n";
     }
 }
 
 // def test_double_negation() -> None:
 void test_double_negation() {
-    //     flag: bool = True
+    // flag: bool = True
     bool flag = true;
-    //     if not not flag:
+    // if not not flag:
     if ((!((!(flag))))) {
-        //         print("not not True: yes")
+        // print("not not True: yes")
         std::cout << "not not True: yes" << "\n";
     }
-    //     if not not False:
+    // if not not False:
     if ((!((!(false))))) {
-        //         print("not not False: yes")
+        // print("not not False: yes")
         std::cout << "not not False: yes" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("not not False: no")
+        // print("not not False: no")
         std::cout << "not not False: no" << "\n";
     }
 }
 
 // def is_valid(x: Int32) -> bool:
 bool is_valid(int32_t x) {
-    //     return x > 0
+    // return x > 0
     return (x > 0);
 }
 
 // def test_not_with_function_call() -> None:
 void test_not_with_function_call() {
-    //     if not is_valid(-5):
+    // if not is_valid(-5):
     if ((!(is_valid(-5)))) {
-        //         print("not is_valid(-5): yes")
+        // print("not is_valid(-5): yes")
         std::cout << "not is_valid(-5): yes" << "\n";
     }
-    //     if not is_valid(5):
+    // if not is_valid(5):
     if ((!(is_valid(5)))) {
-        //         print("not is_valid(5): yes")
+        // print("not is_valid(5): yes")
         std::cout << "not is_valid(5): yes" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("not is_valid(5): no")
+        // print("not is_valid(5): no")
         std::cout << "not is_valid(5): no" << "\n";
     }
 }
 
 // def test_not_in_while() -> None:
 void test_not_in_while() {
-    //     done: bool = False
+    // done: bool = False
     bool done = false;
-    //     count: Int32 = 0
+    // count: Int32 = 0
     int32_t count = 0;
-    //     while not done:
+    // while not done:
     while ((!(done))) {
-        //         count += 1
+        // count += 1
         count = ::tpy::add_check<int32_t>(count, 1);
-        //         if count >= 3:
+        // if count >= 3:
         if ((count >= 3)) {
-            //             done = True
+            // done = True
             done = true;
         }
     }
-    //     print(count)
+    // print(count)
     std::cout << count << "\n";
 }
 

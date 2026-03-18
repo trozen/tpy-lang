@@ -6,27 +6,27 @@ namespace tpy_user::main {
 
 // def set_same_name(val: Int32) -> None:
 void set_same_name(int32_t val) {
-    //     global opentop
-    //     opentop = val
+    // global opentop
+    // opentop = val
     opentop = val;
 }
 
 // def set_renamed(val: Int32) -> None:
 void set_renamed(int32_t val) {
-    //     global counter
-    //     counter = val
+    // global counter
+    // counter = val
     g_counter = val;
 }
 
 // def main() -> None:
 void main() {
-    //     set_same_name(Int32(10))
+    // set_same_name(Int32(10))
     set_same_name(10);
-    //     print(opentop)
+    // print(opentop)
     std::cout << opentop << "\n";
-    //     set_renamed(Int32(20))
+    // set_renamed(Int32(20))
     set_renamed(20);
-    //     print(counter)
+    // print(counter)
     std::cout << g_counter << "\n";
 }
 

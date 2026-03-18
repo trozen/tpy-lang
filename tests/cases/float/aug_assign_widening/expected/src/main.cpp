@@ -6,55 +6,55 @@ namespace tpy_user::main {
 
 // def bigint_widen() -> float:
 double bigint_widen() {
-    //     x = 14         # tpyc: type(float)   -- widens to float because x *= 1.3 follows
+    // x = 14         # tpyc: type(float)   -- widens to float because x *= 1.3 follows
     double x = 14;
-    //     x *= 1.3
+    // x *= 1.3
     x = static_cast<double>(x) * (1.3);
-    //     return x
+    // return x
     return static_cast<double>(x);
 }
 
 // def int32_literal_widen() -> float:
 double int32_literal_widen() {
-    //     y = 10         # tpyc: type(float)   -- widens to float because y += 0.5 follows
+    // y = 10         # tpyc: type(float)   -- widens to float because y += 0.5 follows
     double y = 10;
-    //     y += 0.5
+    // y += 0.5
     y = static_cast<double>(y) + (0.5);
-    //     return y
+    // return y
     return static_cast<double>(y);
 }
 
 // def chain_widen() -> float:
 double chain_widen() {
-    //     z = 5          # tpyc: type(float)   -- widens to float because z += 0.5 follows
+    // z = 5          # tpyc: type(float)   -- widens to float because z += 0.5 follows
     double z = 5;
-    //     z += 0.5
+    // z += 0.5
     z = static_cast<double>(z) + (0.5);
-    //     z *= 2.0
+    // z *= 2.0
     z = static_cast<double>(z) * (2.0);
-    //     return z
+    // return z
     return static_cast<double>(z);
 }
 
 // def use_after_widen() -> float:
 double use_after_widen() {
-    //     # Subsequent use of x must see the widened float type, not the original int
-    //     x = 14
+    // # Subsequent use of x must see the widened float type, not the original int
+    // x = 14
     double x = 14;
-    //     x *= 1.3
+    // x *= 1.3
     x = static_cast<double>(x) * (1.3);
-    //     return x + 1.0   # should be 19.2, not 19.0
+    // return x + 1.0   # should be 19.2, not 19.0
     return (static_cast<double>(x) + (1.0));
 }
 
 // def float32_stays() -> Float32:
 float float32_stays() {
-    //     # Float32 variable stays Float32 when multiplied by a float literal (2.0 adapts to context)
-    //     x = Float32(1.5)   # tpyc: type(Float32) -- stays Float32 because 2.0 is a literal that adapts
+    // # Float32 variable stays Float32 when multiplied by a float literal (2.0 adapts to context)
+    // x = Float32(1.5)   # tpyc: type(Float32) -- stays Float32 because 2.0 is a literal that adapts
     float x = 1.5f;
-    //     x *= 2.0
+    // x *= 2.0
     x = (x) * (2.0f);
-    //     return x
+    // return x
     return x;
 }
 

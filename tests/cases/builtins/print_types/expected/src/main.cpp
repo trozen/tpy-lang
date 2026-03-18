@@ -25,9 +25,9 @@ std::optional<double> z;
 
 // def print_range() -> None:
 void print_range() {
-    //     r = range(3)
+    // r = range(3)
     ::tpy::Range<int32_t> r = ::tpy::Range<int32_t>(3);
-    //     print(r)
+    // print(r)
     std::cout << r << "\n";
 }
 

@@ -6,23 +6,23 @@ namespace tpy_user::main {
 
 // def takes_list(x: list[int]) -> None:
 void takes_list(std::vector<::tpy::BigInt>& x) {
-    //     x.append(42)
+    // x.append(42)
     x.push_back(42);
-    //     print(len(x))
+    // print(len(x))
     std::cout << ::tpy::__len__(x) << "\n";
 }
 
 // def takes_list_int32(x: list[Int32]) -> None:
 void takes_list_int32(std::vector<int32_t>& x) {
-    //     x.append(Int32(99))
+    // x.append(Int32(99))
     x.push_back(99);
-    //     print(len(x))
+    // print(len(x))
     std::cout << ::tpy::__len__(x) << "\n";
 }
 
 // def takes_array(x: Array[Int32, 3]) -> None:
 void takes_array(const std::array<int32_t, 3>& x) {
-    //     print(x[0])
+    // print(x[0])
     std::cout << ::tpy::__getitem__(x, 0) << "\n";
 }
 

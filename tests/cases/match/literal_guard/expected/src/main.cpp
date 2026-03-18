@@ -7,71 +7,71 @@ namespace tpy_user::main {
 // # match/case guards on string and float literal patterns
 // def greet(s: str, formal: bool) -> str:
 std::string greet(std::string_view s, bool formal) {
-    //     match s:
+    // match s:
     auto& __match_subject = s;
-    //         case "hello" if formal:
+    // case "hello" if formal:
     if (__match_subject == "hello" && formal) {
-        //             return "Good day"
+        // return "Good day"
         return "Good day";
-    //         case "hello":
+    // case "hello":
     } else if (__match_subject == "hello") {
-        //             return "Hey"
+        // return "Hey"
         return "Hey";
-    //         case "bye" if formal:
+    // case "bye" if formal:
     } else if (__match_subject == "bye" && formal) {
-        //             return "Farewell"
+        // return "Farewell"
         return "Farewell";
-    //         case "bye":
+    // case "bye":
     } else if (__match_subject == "bye") {
-        //             return "Later"
+        // return "Later"
         return "Later";
-    //         case _:
+    // case _:
     } else {
-        //             return "?"
+        // return "?"
         return "?";
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def bucket(x: float) -> str:
 std::string bucket(double x) {
-    //     match x:
+    // match x:
     auto& __match_subject = x;
-    //         case 0.0 if True:
+    // case 0.0 if True:
     if (__match_subject == 0.0 && true) {
-        //             return "zero"
+        // return "zero"
         return "zero";
-    //         case 1.0:
+    // case 1.0:
     } else if (__match_subject == 1.0) {
-        //             return "one"
+        // return "one"
         return "one";
-    //         case _:
+    // case _:
     } else {
-        //             return "other"
+        // return "other"
         return "other";
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def main() -> None:
 void main() {
-    //     print(greet("hello", True))
+    // print(greet("hello", True))
     std::cout << greet("hello", true) << "\n";
-    //     print(greet("hello", False))
+    // print(greet("hello", False))
     std::cout << greet("hello", false) << "\n";
-    //     print(greet("bye", True))
+    // print(greet("bye", True))
     std::cout << greet("bye", true) << "\n";
-    //     print(greet("bye", False))
+    // print(greet("bye", False))
     std::cout << greet("bye", false) << "\n";
-    //     print(greet("ok", False))
+    // print(greet("ok", False))
     std::cout << greet("ok", false) << "\n";
-    //     print(bucket(0.0))
+    // print(bucket(0.0))
     std::cout << bucket(0.0) << "\n";
-    //     print(bucket(1.0))
+    // print(bucket(1.0))
     std::cout << bucket(1.0) << "\n";
-    //     print(bucket(2.0))
+    // print(bucket(2.0))
     std::cout << bucket(2.0) << "\n";
 }
 

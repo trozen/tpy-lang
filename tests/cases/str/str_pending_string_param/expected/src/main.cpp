@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def takes_string(s: String) -> None:
 void takes_string(const std::string& s) {
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_string_param() -> None:
 void test_string_param() {
-    //     s = "hello"  # tpyc: type(str)
+    // s = "hello"  # tpyc: type(str)
     std::string s = "hello";
-    //     takes_string(s)
+    // takes_string(s)
     takes_string(s);
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 

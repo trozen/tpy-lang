@@ -16,12 +16,12 @@ void main();
 
 // class Dog:
 struct Dog {
-    //     name: str
+    // name: str
     std::string name;
-    //     age: Int32
+    // age: Int32
     int32_t age;
 
-    //     def __init__(self, name: str, age: Int32) -> None:
+    // def __init__(self, name: str, age: Int32) -> None:
     Dog() = default;
     explicit Dog(std::string_view name, int32_t age) : name(name), age(age) {}
 };
@@ -37,12 +37,12 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 // class Cat:
 struct Cat {
-    //     name: str
+    // name: str
     std::string name;
-    //     lives: Int32
+    // lives: Int32
     int32_t lives;
 
-    //     def __init__(self, name: str, lives: Int32) -> None:
+    // def __init__(self, name: str, lives: Int32) -> None:
     Cat() = default;
     explicit Cat(std::string_view name, int32_t lives) : name(name), lives(lives) {}
 };

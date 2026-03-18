@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     wp: Wrapper[Pair] = Wrapper(Pair(1, 2))
+    // wp: Wrapper[Pair] = Wrapper(Pair(1, 2))
     Wrapper<Pair> wp = Wrapper<Pair>(Pair(1, 2));
-    //     print(str(wp))
+    // print(str(wp))
     std::cout << std::string(::tpy::__str__(wp)) << "\n";
-    //     print(repr(wp))
+    // print(repr(wp))
     std::cout << std::string(::tpy::__repr__(wp)) << "\n";
-    //     print(wp)
+    // print(wp)
     std::cout << wp << "\n";
-    //     print(f"val = {wp}")
+    // print(f"val = {wp}")
     std::cout << std::format("val = {}", ::tpy::__str__(wp)) << "\n";
-    //     print(f"debug: {wp!r}")
+    // print(f"debug: {wp!r}")
     std::cout << std::format("debug: {}", ::tpy::__repr__(wp)) << "\n";
 }
 

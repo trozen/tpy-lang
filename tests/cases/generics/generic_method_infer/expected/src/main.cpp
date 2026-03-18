@@ -6,19 +6,19 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     b = Box[Int32](Int32(10))
+    // b = Box[Int32](Int32(10))
     Box<int32_t> b = Box<int32_t>(10);
-    //     r1 = b.transform(42)
+    // r1 = b.transform(42)
     int32_t r1 = b.transform<int32_t>(42);
-    //     print(r1)
+    // print(r1)
     std::cout << r1 << "\n";
-    //     r2 = b.transform("hello")
+    // r2 = b.transform("hello")
     std::string_view r2 = b.transform<std::string_view>("hello");
-    //     print(r2)
+    // print(r2)
     std::cout << r2 << "\n";
-    //     r3 = b.transform(True)
+    // r3 = b.transform(True)
     bool r3 = b.transform<bool>(true);
-    //     print(r3)
+    // print(r3)
     std::cout << ::tpy::print_bool(r3) << "\n";
 }
 

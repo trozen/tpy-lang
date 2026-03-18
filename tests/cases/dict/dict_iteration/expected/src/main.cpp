@@ -7,15 +7,15 @@ namespace tpy_user::main {
 // # Dict for-each iterates keys in insertion order
 // def main() -> None:
 void main() {
-    //     d = {"alpha": 1, "beta": 2, "gamma": 3}
+    // d = {"alpha": 1, "beta": 2, "gamma": 3}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"alpha", 1}, {"beta", 2}, {"gamma", 3}});
-    //     for k in d:
+    // for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        //         print(k, d[k])
+        // print(k, d[k])
         std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n";
     }
 }

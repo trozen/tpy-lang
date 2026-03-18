@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     x = 0
+    // x = 0
     int32_t x = 0;
-    //     x += Int32(5)
+    // x += Int32(5)
     x = ::tpy::add_check<int32_t>(x, 5);
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 

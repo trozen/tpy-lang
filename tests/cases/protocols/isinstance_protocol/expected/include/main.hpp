@@ -17,26 +17,26 @@ void main();
 // def describe(items: Sized) -> None:
 template<::tpy_user::typing::Sized T_items>
 void describe(const T_items& items) {
-    //     if isinstance(items, Sized):
+    // if isinstance(items, Sized):
     if constexpr (::tpy_user::typing::Sized<T_items>) {
-        //         print("sized:", len(items))
+        // print("sized:", len(items))
         std::cout << "sized:" << " " << ::tpy::__len__(items) << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("not sized")
+        // print("not sized")
         std::cout << "not sized" << "\n";
     }
 }
 // def check_not(items: Sized) -> None:
 template<::tpy_user::typing::Sized T_items>
 void check_not(const T_items& items) {
-    //     if not isinstance(items, Sized):
+    // if not isinstance(items, Sized):
     if constexpr ((!(::tpy_user::typing::Sized<T_items>))) {
-        //         print("not sized")
+        // print("not sized")
         std::cout << "not sized" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("sized:", len(items))
+        // print("sized:", len(items))
         std::cout << "sized:" << " " << ::tpy::__len__(items) << "\n";
     }
 }

@@ -6,53 +6,53 @@ namespace tpy_user::main {
 
 // def test_list_inferred() -> None:
 void test_list_inferred() {
-    //     xs = [1.5, 2.5, 3.5]  # tpyc: type(list[float])
+    // xs = [1.5, 2.5, 3.5]  # tpyc: type(list[float])
     std::vector<double> xs = {1.5, 2.5, 3.5};
-    //     xs.append(4.5)
+    // xs.append(4.5)
     xs.push_back(4.5);
-    //     print(xs)
+    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_list_annotated_float32() -> None:
 void test_list_annotated_float32() {
-    //     xs: list[Float32] = [1.0, 2.0, 3.0]  # tpyc: type(list[Float32])
+    // xs: list[Float32] = [1.0, 2.0, 3.0]  # tpyc: type(list[Float32])
     std::vector<float> xs = {1.0, 2.0, 3.0};
-    //     print(xs)
+    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_dict_inferred() -> None:
 void test_dict_inferred() {
-    //     d = {"a": 1.5, "b": 2.5}  # tpyc: type(dict[str, float])
+    // d = {"a": 1.5, "b": 2.5}  # tpyc: type(dict[str, float])
     ::tpy::ordered_map<std::string, double> d = ::tpy::ordered_map<std::string, double>({{"a", 1.5}, {"b", 2.5}});
-    //     print(d)
+    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
 // def test_set_inferred() -> None:
 void test_set_inferred() {
-    //     s = {1.5, 2.5, 3.5}  # tpyc: type(set[float])
+    // s = {1.5, 2.5, 3.5}  # tpyc: type(set[float])
     ::tpy::ordered_set<double> s = ::tpy::ordered_set<double>({1.5, 2.5, 3.5});
-    //     print(s)
+    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
 }
 
 // def test_ternary_float_literal() -> None:
 void test_ternary_float_literal() {
-    //     x: Float32 = Float32(1.0)
+    // x: Float32 = Float32(1.0)
     float x = 1.0f;
-    //     y = x if True else 2.0  # tpyc: type(Float32)
+    // y = x if True else 2.0  # tpyc: type(Float32)
     float y = ((true) ? (x) : (2.0f));
-    //     print(y)
+    // print(y)
     std::cout << ::tpy::print_float(static_cast<double>(y)) << "\n";
 }
 
 // def test_annotated_float64() -> None:
 void test_annotated_float64() {
-    //     b: float = 5.0  # tpyc: type(float)
+    // b: float = 5.0  # tpyc: type(float)
     double b = 5.0;
-    //     print(b)
+    // print(b)
     std::cout << ::tpy::print_float(b) << "\n";
 }
 

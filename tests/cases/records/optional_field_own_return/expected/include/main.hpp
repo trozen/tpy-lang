@@ -16,12 +16,12 @@ void test();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32):
+    // def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -37,10 +37,10 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Holder:
 struct Holder {
-    //     value: Point | None
+    // value: Point | None
     std::optional<Point> value;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Holder() : value(std::nullopt) {}
 };
 

@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // @extern_c
 // def app_init() -> None:
 extern "C" void app_init() {
-    //     pass
+    // pass
 }
 
 void __tpy_init() {

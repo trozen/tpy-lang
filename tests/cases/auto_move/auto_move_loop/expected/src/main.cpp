@@ -6,22 +6,22 @@ namespace tpy_user::main {
 
 // def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point&& p) {
-    //     return p.x
+    // return p.x
     return p.x;
 }
 
 // def main():
 void main() {
-    //     for i in range(3):
+    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        //         p = Point()
+        // p = Point()
         Point p = Point();
-        //         p.x = i
+        // p.x = i
         p.x = i;
-        //         p.y = 0
+        // p.y = 0
         p.y = 0;
-        //         # p is last use per iteration -- auto-move
-        //         print(consume(p))
+        // # p is last use per iteration -- auto-move
+        // print(consume(p))
         std::cout << consume(std::move(p)) << "\n";
     }
 }

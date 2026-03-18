@@ -14,12 +14,12 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -35,30 +35,30 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class PointList:
 struct PointList {
-    //     data: list[Point]
+    // data: list[Point]
     std::vector<Point> data;
 
-    //     def __init__(self, pts: list[Point]) -> None:
+    // def __init__(self, pts: list[Point]) -> None:
     PointList() = default;
     explicit PointList(const std::vector<Point>& pts) : data(pts) {}
 
-    //     def __len__(self) -> Int32:
+    // def __len__(self) -> Int32:
     int32_t __len__() const {
-        //         return len(self.data)
+        // return len(self.data)
         return ::tpy::__len__(this->data);
     }
 
-    //     @auto_readonly
-    //     def __getitem__(self, index: Int32) -> Point:
+    // @auto_readonly
+    // def __getitem__(self, index: Int32) -> Point:
     Point& __getitem__(int32_t index) {
-        //         return self.data[index]
+        // return self.data[index]
         return ::tpy::__getitem__(this->data, index);
     }
 
-    //     @auto_readonly
-    //     def __getitem__(self, index: Int32) -> Point:
+    // @auto_readonly
+    // def __getitem__(self, index: Int32) -> Point:
     const Point& __getitem__(int32_t index) const {
-        //         return self.data[index]
+        // return self.data[index]
         return ::tpy::__getitem__(this->data, index);
     }
 

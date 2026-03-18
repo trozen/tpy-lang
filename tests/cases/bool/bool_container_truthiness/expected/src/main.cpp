@@ -7,50 +7,50 @@ namespace tpy_user::main {
 // # Test truthiness for built-in container types (list, str) in if/not/and/or
 // def check_list(items: list[int], empty: list[int]) -> None:
 void check_list(const std::vector<::tpy::BigInt>& items, const std::vector<::tpy::BigInt>& empty) {
-    //     if items:
+    // if items:
     if ((::tpy::__len__(items) != 0)) {
-        //         print("list truthy")
+        // print("list truthy")
         std::cout << "list truthy" << "\n";
     }
-    //     if not empty:
+    // if not empty:
     if ((!((::tpy::__len__(empty) != 0)))) {
-        //         print("list falsy")
+        // print("list falsy")
         std::cout << "list falsy" << "\n";
     }
 }
 
 // def check_str(s: str, e: str) -> None:
 void check_str(std::string_view s, std::string_view e) {
-    //     if s:
+    // if s:
     if ((!s.empty())) {
-        //         print("str truthy")
+        // print("str truthy")
         std::cout << "str truthy" << "\n";
     }
-    //     if not e:
+    // if not e:
     if ((!((!e.empty())))) {
-        //         print("str falsy")
+        // print("str falsy")
         std::cout << "str falsy" << "\n";
     }
 }
 
 // def check_and_or(items: list[int], empty: list[int]) -> None:
 void check_and_or(const std::vector<::tpy::BigInt>& items, const std::vector<::tpy::BigInt>& empty) {
-    //     if items and not empty:
+    // if items and not empty:
     if (((::tpy::__len__(items) != 0) && (!((::tpy::__len__(empty) != 0))))) {
-        //         print("and/or works")
+        // print("and/or works")
         std::cout << "and/or works" << "\n";
     }
 }
 
 // def main() -> None:
 void main() {
-    //     check_list([1, 2, 3], [])
+    // check_list([1, 2, 3], [])
     std::vector<::tpy::BigInt> __tmp_1 = {1, 2, 3};
     std::vector<::tpy::BigInt> __tmp_2 = std::vector<::tpy::BigInt>{};
     check_list(__tmp_1, __tmp_2);
-    //     check_str("hello", "")
+    // check_str("hello", "")
     check_str("hello", "");
-    //     check_and_or([1], [])
+    // check_and_or([1], [])
     std::vector<::tpy::BigInt> __tmp_3 = {1};
     std::vector<::tpy::BigInt> __tmp_4 = std::vector<::tpy::BigInt>{};
     check_and_or(__tmp_3, __tmp_4);

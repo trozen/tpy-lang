@@ -8,20 +8,20 @@ Point* g{};
 
 // def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point&& p) {
-    //     return p.x
+    // return p.x
     return p.x;
 }
 
 // def test() -> Int32:
 int32_t test() {
-    //     p = Point()
+    // p = Point()
     Point __slot_1 = Point();
     Point* p = &__slot_1;
-    //     p.x = 10
+    // p.x = 10
     p->x = 10;
-    //     p = g  # rebind to global alias -> lvalue reassignment
+    // p = g  # rebind to global alias -> lvalue reassignment
     p = g;
-    //     return consume(p)  # tpyc: warning(/copies.*into owned storage/)
+    // return consume(p)  # tpyc: warning(/copies.*into owned storage/)
     auto __tmp_1 = (*p);
     return consume(std::move(__tmp_1));
 }

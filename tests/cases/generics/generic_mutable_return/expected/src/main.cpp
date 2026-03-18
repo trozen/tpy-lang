@@ -6,24 +6,24 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Box containing a list (object type)
-    //     items: list[Int32] = [1, 2, 3]
+    // # Box containing a list (object type)
+    // items: list[Int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
-    //     box: Box[list[Int32]] = Box[list[Int32]](items)
+    // box: Box[list[Int32]] = Box[list[Int32]](items)
     Box<std::vector<int32_t>> box = Box<std::vector<int32_t>>(items);
-    //     # This should work: get() returns T& for object types, allowing mutation
-    //     box.get().append(4)
+    // # This should work: get() returns T& for object types, allowing mutation
+    // box.get().append(4)
     box.get().push_back(4);
-    //     box.get().append(5)
+    // box.get().append(5)
     box.get().push_back(5);
-    //     # Verify the mutations persisted
-    //     for x in box.get():
+    // # Verify the mutations persisted
+    // for x in box.get():
     auto& __obj_0 = box.get();
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
 }

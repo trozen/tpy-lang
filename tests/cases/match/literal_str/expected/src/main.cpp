@@ -7,31 +7,31 @@ namespace tpy_user::main {
 // # match/case on str subject with literal patterns
 // def handle(cmd: str) -> str:
 std::string handle(std::string_view cmd) {
-    //     match cmd:
+    // match cmd:
     auto& __match_subject = cmd;
-    //         case "quit":
+    // case "quit":
     if (__match_subject == "quit") {
-        //             return "quitting"
+        // return "quitting"
         return "quitting";
-    //         case "help":
+    // case "help":
     } else if (__match_subject == "help") {
-        //             return "showing help"
+        // return "showing help"
         return "showing help";
-    //         case other:
+    // case other:
     } else {
         auto& other = __match_subject;
-        //             return "unknown: " + other
+        // return "unknown: " + other
         return (::tpy::str_concat("unknown: ", other));
     }
 }
 
 // def main() -> None:
 void main() {
-    //     print(handle("quit"))
+    // print(handle("quit"))
     std::cout << handle("quit") << "\n";
-    //     print(handle("help"))
+    // print(handle("help"))
     std::cout << handle("help") << "\n";
-    //     print(handle("foo"))
+    // print(handle("foo"))
     std::cout << handle("foo") << "\n";
 }
 

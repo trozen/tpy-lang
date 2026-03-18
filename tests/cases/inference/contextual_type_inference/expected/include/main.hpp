@@ -20,7 +20,7 @@ void main();
 // class Container[T]:
 template<typename T>
 struct Container {
-    //     val: T
+    // val: T
     T val;
 
 };
@@ -36,12 +36,12 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 // class Pair[A, B]:
 template<typename A, typename B>
 struct Pair {
-    //     first: A
+    // first: A
     A first;
-    //     second: B
+    // second: B
     B second;
 
-    //     def __init__(self, a: A) -> None:
+    // def __init__(self, a: A) -> None:
     Pair() = default;
     explicit Pair(const A& a) : first(a) {}
 };
@@ -59,13 +59,13 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
 // def make_box[T]() -> Own[Container[T]]:
 template<typename T>
 Container<T> make_box() {
-    //     return Container[T]()
+    // return Container[T]()
     return Container<T>();
 }
 // def identity[T](x: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x) {
-    //     return x
+    // return x
     return x;
 }
 

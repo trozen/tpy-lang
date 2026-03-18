@@ -6,12 +6,12 @@ namespace tpy_user::main {
 
 // def add_after_guard(x: Int32 | None) -> Int32:
 int32_t add_after_guard(std::optional<int32_t> x) {
-    //     if x is not None:
+    // if x is not None:
     if ((x.has_value())) {
-        //         return x + 1  # tpyc: ok
+        // return x + 1  # tpyc: ok
         return (::tpy::add_check<int32_t>((*x), 1));
     }
-    //     return 0
+    // return 0
     return 0;
 }
 

@@ -7,35 +7,35 @@ namespace tpy_user::main {
 // # Dict methods: get, pop, pop with default, clear
 // def main() -> None:
 void main() {
-    //     d = {"a": 10, "b": 20, "c": 30}
+    // d = {"a": 10, "b": 20, "c": 30}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 10}, {"b", 20}, {"c", 30}});
-    //     # get returns Optional
-    //     v = d.get("a")
+    // # get returns Optional
+    // v = d.get("a")
     int32_t* v = ::tpy::dict_get(d, "a");
-    //     print(v)
+    // print(v)
     std::cout << ::tpy::print_optional(v) << "\n";
-    //     v2 = d.get("missing")
+    // v2 = d.get("missing")
     int32_t* v2 = ::tpy::dict_get(d, "missing");
-    //     print(v2)
+    // print(v2)
     std::cout << ::tpy::print_optional(v2) << "\n";
-    //     # pop removes and returns
-    //     p = d.pop("c")
+    // # pop removes and returns
+    // p = d.pop("c")
     int32_t p = ::tpy::dict_pop(d, "c");
-    //     print(p)
+    // print(p)
     std::cout << p << "\n";
-    //     print(len(d))
+    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
-    //     # pop with default
-    //     p2 = d.pop("missing", 99)
+    // # pop with default
+    // p2 = d.pop("missing", 99)
     int32_t p2 = ::tpy::dict_pop_default(d, "missing", 99);
-    //     print(p2)
+    // print(p2)
     std::cout << p2 << "\n";
-    //     # clear
-    //     d.clear()
+    // # clear
+    // d.clear()
     d.clear();
-    //     print(len(d))
+    // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
-    //     print(d)
+    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 

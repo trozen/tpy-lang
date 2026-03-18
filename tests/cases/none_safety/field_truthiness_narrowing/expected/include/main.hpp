@@ -16,12 +16,12 @@ void main();
 
 // class Config:
 struct Config {
-    //     name: Optional[str]
+    // name: Optional[str]
     std::optional<std::string> name;
-    //     port: Optional[int]
+    // port: Optional[int]
     std::optional<::tpy::BigInt> port;
 
-    //     def __init__(self, name: Optional[str], port: Optional[int]) -> None:
+    // def __init__(self, name: Optional[str], port: Optional[int]) -> None:
     Config() = default;
     explicit Config(std::optional<std::string_view> name, std::optional<::tpy::BigInt> port) : name(name ? std::make_optional(std::string(*name)) : std::nullopt), port(port) {}
 };

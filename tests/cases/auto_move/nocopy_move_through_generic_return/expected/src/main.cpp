@@ -6,19 +6,19 @@ namespace tpy_user::main {
 
 // def transfer() -> Own[Holder[Handle]]:
 Holder<Handle> transfer() {
-    //     h = Holder[Handle](Handle(42))
+    // h = Holder[Handle](Handle(42))
     Holder<Handle> h = Holder<Handle>(Handle(42));
-    //     alias = h
+    // alias = h
     Holder<Handle> alias = std::move(h);
-    //     return alias
+    // return alias
     return alias;
 }
 
 // def main():
 void main() {
-    //     r = transfer()
+    // r = transfer()
     Holder<Handle> r = transfer();
-    //     print(r.item.fd)
+    // print(r.item.fd)
     std::cout << r.item.fd << "\n";
 }
 

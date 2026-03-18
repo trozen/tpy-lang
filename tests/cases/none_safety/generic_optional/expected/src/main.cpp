@@ -6,76 +6,76 @@ namespace tpy_user::main {
 
 // def maybe_val(x: Optional[Int32]) -> Optional[Int32]:
 std::optional<int32_t> maybe_val(std::optional<int32_t> x) {
-    //     return x
+    // return x
     return x;
 }
 
 // def main():
 void main() {
-    //     # Generic Optional with value type
-    //     c = Container[Int32](Int32(42))
+    // # Generic Optional with value type
+    // c = Container[Int32](Int32(42))
     int32_t __tmp_1 = 42;
     Container<int32_t> c = Container<int32_t>(&(__tmp_1));
-    //     v = c.get()
+    // v = c.get()
     int32_t* v = c.get();
-    //     if v is not None:
+    // if v is not None:
     if ((v != nullptr)) {
-        //         print("got:", v)
+        // print("got:", v)
         std::cout << "got:" << " " << ::tpy::print_optional(v) << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("got: None")
+        // print("got: None")
         std::cout << "got: None" << "\n";
     }
-    //     c.set(None)
+    // c.set(None)
     c.set(nullptr);
-    //     v2 = c.get()
+    // v2 = c.get()
     int32_t* v2 = c.get();
-    //     if v2 is not None:
+    // if v2 is not None:
     if ((v2 != nullptr)) {
-        //         print("after set:", v2)
+        // print("after set:", v2)
         std::cout << "after set:" << " " << ::tpy::print_optional(v2) << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("after set: None")
+        // print("after set: None")
         std::cout << "after set: None" << "\n";
     }
-    //     c.set(Int32(99))
+    // c.set(Int32(99))
     int32_t __tmp_2 = 99;
     c.set(&(__tmp_2));
-    //     v3 = c.get()
+    // v3 = c.get()
     int32_t* v3 = c.get();
-    //     if v3 is not None:
+    // if v3 is not None:
     if ((v3 != nullptr)) {
-        //         print("restored:", v3)
+        // print("restored:", v3)
         std::cout << "restored:" << " " << ::tpy::print_optional(v3) << "\n";
     }
-    //     # None-initialized container
-    //     c2 = Container[Int32](None)
+    // # None-initialized container
+    // c2 = Container[Int32](None)
     Container<int32_t> c2 = Container<int32_t>(nullptr);
-    //     v4 = c2.get()
+    // v4 = c2.get()
     int32_t* v4 = c2.get();
-    //     if v4 is None:
+    // if v4 is None:
     if ((v4 == nullptr)) {
-        //         print("none init: ok")
+        // print("none init: ok")
         std::cout << "none init: ok" << "\n";
     }
-    //     # Optional[T] from typing (equivalent to T | None)
-    //     r = maybe_val(Int32(7))
+    // # Optional[T] from typing (equivalent to T | None)
+    // r = maybe_val(Int32(7))
     std::optional<int32_t> r = maybe_val(7);
-    //     if r is not None:
+    // if r is not None:
     if ((r.has_value())) {
-        //         print("maybe:", r)
+        // print("maybe:", r)
         std::cout << "maybe:" << " " << ::tpy::print_optional_val(r) << "\n";
     }
-    //     r2 = maybe_val(None)
+    // r2 = maybe_val(None)
     std::optional<int32_t> r2 = maybe_val(std::nullopt);
-    //     if r2 is None:
+    // if r2 is None:
     if ((!r2.has_value())) {
-        //         print("maybe None: ok")
+        // print("maybe None: ok")
         std::cout << "maybe None: ok" << "\n";
     }
-    //     print("done")
+    // print("done")
     std::cout << "done" << "\n";
 }
 

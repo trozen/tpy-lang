@@ -6,23 +6,23 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     arr: Array[Int32, 3] = [10, 20, 30]
+    // arr: Array[Int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    //     i: Int32 = -1
+    // i: Int32 = -1
     int32_t i = -1;
-    //     print(arr[i])
+    // print(arr[i])
     std::cout << ::tpy::__getitem__(arr, i) << "\n";
-    //     nums: list[Int32] = [1, 2, 3, 4, 5]
+    // nums: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> nums = {1, 2, 3, 4, 5};
-    //     j: Int32 = -2
+    // j: Int32 = -2
     int32_t j = -2;
-    //     print(nums[j])
+    // print(nums[j])
     std::cout << ::tpy::__getitem__(nums, j) << "\n";
-    //     s: str = "hello"
+    // s: str = "hello"
     std::string_view s = "hello";
-    //     k: Int32 = -3
+    // k: Int32 = -3
     int32_t k = -3;
-    //     print(s[k])
+    // print(s[k])
     std::cout << ::tpy::__getitem__(s, k) << "\n";
 }
 

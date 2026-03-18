@@ -13,10 +13,10 @@ int32_t stale_after_rebind(Box& b, Box& other);
 
 // class Box:
 struct Box {
-    //     value: Int32 | None
+    // value: Int32 | None
     std::optional<int32_t> value;
 
-    //     def __init__(self, value: Int32):
+    // def __init__(self, value: Int32):
     Box() = default;
     explicit Box(int32_t value) : value(value) {}
 };

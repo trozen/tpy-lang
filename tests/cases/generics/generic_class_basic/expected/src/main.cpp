@@ -6,28 +6,28 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Test with Int32
-    //     box_int: Box[Int32] = Box[Int32](42)
+    // # Test with Int32
+    // box_int: Box[Int32] = Box[Int32](42)
     Box<int32_t> box_int = Box<int32_t>(42);
-    //     print(box_int.get())
+    // print(box_int.get())
     std::cout << box_int.get() << "\n";
-    //     box_int.set(100)
+    // box_int.set(100)
     box_int.set(100);
-    //     print(box_int.get())
+    // print(box_int.get())
     std::cout << box_int.get() << "\n";
-    //     # Test with str
-    //     box_str: Box[str] = Box[str]("hello")
+    // # Test with str
+    // box_str: Box[str] = Box[str]("hello")
     Box<std::string> box_str = Box<std::string>("hello");
-    //     print(box_str.get())
+    // print(box_str.get())
     std::cout << box_str.get() << "\n";
-    //     box_str.set("world")
+    // box_str.set("world")
     box_str.set("world");
-    //     print(box_str.get())
+    // print(box_str.get())
     std::cout << box_str.get() << "\n";
-    //     # Test type deduction (no explicit annotation)
-    //     box_deduced = Box[Int32](999)
+    // # Test type deduction (no explicit annotation)
+    // box_deduced = Box[Int32](999)
     Box<int32_t> box_deduced = Box<int32_t>(999);
-    //     print(box_deduced.get())
+    // print(box_deduced.get())
     std::cout << box_deduced.get() << "\n";
 }
 

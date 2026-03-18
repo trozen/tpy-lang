@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main() -> Int32:
 int32_t main() {
-    //     p = Point(Int32(1), Int32(2))
+    // p = Point(Int32(1), Int32(2))
     ::tpy_user::utils::Point p = ::tpy_user::utils::Point(1, 2);
-    //     result = add(p.x, p.y)
+    // result = add(p.x, p.y)
     int32_t result = ::tpy_user::utils::add(p.x, p.y);
-    //     print(result)
+    // print(result)
     std::cout << result << "\n";
-    //     return Int32(0)
+    // return Int32(0)
     return 0;
 }
 

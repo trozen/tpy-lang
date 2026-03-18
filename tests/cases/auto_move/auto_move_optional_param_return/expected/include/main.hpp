@@ -17,12 +17,12 @@ void main();
 
 // class Payload:
 struct Payload {
-    //     data: String
+    // data: String
     std::string data;
-    //     count: int
+    // count: int
     ::tpy::BigInt count;
 
-    //     def __init__(self, data: String, count: int):
+    // def __init__(self, data: String, count: int):
     Payload() = default;
     explicit Payload(const std::string& data, const ::tpy::BigInt& count) : data(data), count(count) {}
 };

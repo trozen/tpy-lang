@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def test() -> None:
 void test() {
-    //     b = Box[Point](Point(1))
+    // b = Box[Point](Point(1))
     ::tpy_user::tplib::Box<Point> b = ::tpy_user::tplib::Box<Point>(Point(::tpy::BigInt(1)));
-    //     process(b)
+    // process(b)
     process<Point>(b);
-    //     print(b.get().x)  # 11: mutation in process() was visible, so item was a ref not a copy
+    // print(b.get().x)  # 11: mutation in process() was visible, so item was a ref not a copy
     std::cout << b.get().x << "\n";
 }
 

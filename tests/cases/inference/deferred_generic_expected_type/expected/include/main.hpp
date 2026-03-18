@@ -18,23 +18,23 @@ void main();
 // class Container[T]:
 template<typename T>
 struct Container {
-    //     val: T
+    // val: T
     T val;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Container() {
-        //         pass
+        // pass
     }
 
-    //     def set(self, val: T) -> None:
+    // def set(self, val: T) -> None:
     void set(::tpy::param_val_or_ref_t<T> val) {
-        //         self.val = val
+        // self.val = val
         this->val = val;
     }
 
-    //     def get(self) -> T:
+    // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get() {
-        //         return self.val
+        // return self.val
         return this->val;
     }
 };
@@ -50,25 +50,25 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 // class Pair[T, U]:
 template<typename T, typename U>
 struct Pair {
-    //     a: T
+    // a: T
     T a;
-    //     b: U
+    // b: U
     U b;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Pair() {
-        //         pass
+        // pass
     }
 
-    //     def get_a(self) -> T:
+    // def get_a(self) -> T:
     ::tpy::val_or_ref_t<T> get_a() {
-        //         return self.a
+        // return self.a
         return this->a;
     }
 
-    //     def get_b(self) -> U:
+    // def get_b(self) -> U:
     ::tpy::val_or_ref_t<U> get_b() {
-        //         return self.b
+        // return self.b
         return this->b;
     }
 };

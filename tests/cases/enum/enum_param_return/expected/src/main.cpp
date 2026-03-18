@@ -48,39 +48,39 @@ namespace tpy_user::main {
 
 // def next_color(c: Color) -> Color:
 Color next_color(Color c) {
-    //     if c.value == 0:
+    // if c.value == 0:
     if ((static_cast<int32_t>(c) == 0)) {
-        //         return Color.Green
+        // return Color.Green
         return Color::Green;
     }
-    //     if c.value == 1:
+    // if c.value == 1:
     if ((static_cast<int32_t>(c) == 1)) {
-        //         return Color.Blue
+        // return Color.Blue
         return Color::Blue;
     }
-    //     return Color.Red
+    // return Color.Red
     return Color::Red;
 }
 
 // def print_color(c: Color) -> None:
 void print_color(Color c) {
-    //     print(c)
+    // print(c)
     std::cout << c << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     c: Color = Color.Red
+    // c: Color = Color.Red
     Color c = Color::Red;
-    //     print_color(c)
+    // print_color(c)
     print_color(c);
-    //     c = next_color(c)
+    // c = next_color(c)
     c = next_color(c);
-    //     print_color(c)
+    // print_color(c)
     print_color(c);
-    //     c = next_color(c)
+    // c = next_color(c)
     c = next_color(c);
-    //     print_color(c)
+    // print_color(c)
     print_color(c);
 }
 

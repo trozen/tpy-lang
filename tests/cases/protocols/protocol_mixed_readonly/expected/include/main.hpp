@@ -24,23 +24,23 @@ int32_t use_both(T_m& m);
 
 // class Impl:
 struct Impl {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: Int32) -> None:
     Impl() = default;
     explicit Impl(int32_t value) : value(value) {}
 
-    //     @readonly
-    //     def read(self) -> Int32:
+    // @readonly
+    // def read(self) -> Int32:
     int32_t read() const {
-        //         return self.value
+        // return self.value
         return this->value;
     }
 
-    //     def write(self, v: Int32) -> None:
+    // def write(self, v: Int32) -> None:
     void write(int32_t v) {
-        //         self.value = v
+        // self.value = v
         this->value = v;
     }
 };
@@ -56,15 +56,15 @@ inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
 // def safe_read(m: Mixed) -> Int32:
 template<Mixed T_m>
 int32_t safe_read(const T_m& m) {
-    //     return m.read()
+    // return m.read()
     return m.read();
 }
 // def use_both(m: Mixed) -> Int32:
 template<Mixed T_m>
 int32_t use_both(T_m& m) {
-    //     m.write(10)
+    // m.write(10)
     m.write(10);
-    //     return m.read()
+    // return m.read()
     return m.read();
 }
 

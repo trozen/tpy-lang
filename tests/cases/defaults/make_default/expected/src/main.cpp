@@ -6,53 +6,53 @@ namespace tpy_user::main {
 
 // def test_explicit() -> None:
 void test_explicit() {
-    //     a = make_default[Int32]()
+    // a = make_default[Int32]()
     int32_t a = int32_t{};
-    //     print(a)
+    // print(a)
     std::cout << a << "\n";
-    //     b = make_default[str]()
+    // b = make_default[str]()
     std::string b = std::string{};
-    //     print(b)
+    // print(b)
     std::cout << b << "\n";
-    //     print(len(b))
+    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
-    //     c = make_default[bool]()
+    // c = make_default[bool]()
     bool c = bool{};
-    //     print(c)
+    // print(c)
     std::cout << ::tpy::print_bool(c) << "\n";
 }
 
 // def test_inferred() -> None:
 void test_inferred() {
-    //     x: Int32 = make_default()
+    // x: Int32 = make_default()
     int32_t x = int32_t{};
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
-    //     s: str = make_default()
+    // s: str = make_default()
     std::string s = std::string{};
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
-    //     print(len(s))
+    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
 }
 
 // def test_record() -> None:
 void test_record() {
-    //     p = make_default[Point]()
+    // p = make_default[Point]()
     Point p = Point{};
-    //     print(p.x)
+    // print(p.x)
     std::cout << p.x << "\n";
-    //     print(p.y)
+    // print(p.y)
     std::cout << p.y << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     test_explicit()
+    // test_explicit()
     test_explicit();
-    //     test_inferred()
+    // test_inferred()
     test_inferred();
-    //     test_record()
+    // test_record()
     test_record();
 }
 

@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c = Circle(5.0)
+    // c = Circle(5.0)
     Circle c = Circle(5.0);
-    //     print(c.name())
+    // print(c.name())
     std::cout << c.name() << "\n";
-    //     print(c.area())
+    // print(c.area())
     std::cout << ::tpy::print_float(c.area()) << "\n";
-    //     c.scale(2.0)
+    // c.scale(2.0)
     c.scale(2.0);
-    //     print(c.area())
+    // print(c.area())
     std::cout << ::tpy::print_float(c.area()) << "\n";
 }
 

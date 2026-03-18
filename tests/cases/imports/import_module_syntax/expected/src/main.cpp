@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> Int32:
 int32_t main() {
-    //     print(helper.get_value())
+    // print(helper.get_value())
     std::cout << ::tpy_user::helper::get_value() << "\n";
-    //     return Int32(0)
+    // return Int32(0)
     return 0;
 }
 

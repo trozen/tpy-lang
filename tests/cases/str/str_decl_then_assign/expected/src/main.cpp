@@ -8,25 +8,25 @@ namespace tpy_user::main {
 // # PendingStrType inference on uninit declarations.
 // def make_str() -> str:
 std::string make_str() {
-    //     return "owned"
+    // return "owned"
     return "owned";
 }
 
 // def main() -> None:
 void main() {
-    //     # Owned source -> resolves to std::string
-    //     x: str
+    // # Owned source -> resolves to std::string
+    // x: str
     std::string x;
-    //     x = make_str()
+    // x = make_str()
     x = make_str();
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
-    //     # View-compatible source -> resolves to std::string_view
-    //     y: str
+    // # View-compatible source -> resolves to std::string_view
+    // y: str
     std::string_view y;
-    //     y = "hello"
+    // y = "hello"
     y = "hello";
-    //     print(y)
+    // print(y)
     std::cout << y << "\n";
 }
 

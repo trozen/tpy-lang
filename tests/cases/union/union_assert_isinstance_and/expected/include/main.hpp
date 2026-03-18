@@ -15,10 +15,10 @@ void main();
 
 // class Circle:
 struct Circle {
-    //     radius: Int32
+    // radius: Int32
     int32_t radius;
 
-    //     def __init__(self, r: Int32) -> None:
+    // def __init__(self, r: Int32) -> None:
     Circle() = default;
     explicit Circle(int32_t r) : radius(r) {}
 };
@@ -32,10 +32,10 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
 
 // class Rect:
 struct Rect {
-    //     width: Int32
+    // width: Int32
     int32_t width;
 
-    //     def __init__(self, w: Int32) -> None:
+    // def __init__(self, w: Int32) -> None:
     Rect() = default;
     explicit Rect(int32_t w) : width(w) {}
 };

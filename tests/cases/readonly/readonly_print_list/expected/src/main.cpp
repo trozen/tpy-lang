@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def show(l: readonly[list[Int32]]) -> None:
 void show(const std::vector<int32_t>& l) {
-    //     print(l)
+    // print(l)
     std::cout << ::tpy::ListPrinter(l) << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     nums: list[Int32] = [1, 2, 3]
+    // nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    //     show(nums)
+    // show(nums)
     show(nums);
 }
 

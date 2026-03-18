@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     xs: list[Shape] = []
+    // xs: list[Shape] = []
     std::vector<Shape> xs = std::vector<Shape>{};
-    //     xs.append(Circle(Int32(1)))
+    // xs.append(Circle(Int32(1)))
     xs.push_back(::tpy_user::shapes::Circle(1));
-    //     xs.append(Rect(Int32(2)))
+    // xs.append(Rect(Int32(2)))
     xs.push_back(::tpy_user::shapes::Rect(2));
-    //     print(len(xs))
+    // print(len(xs))
     std::cout << ::tpy::__len__(xs) << "\n";
 }
 

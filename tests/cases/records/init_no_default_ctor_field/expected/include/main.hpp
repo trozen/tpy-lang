@@ -15,10 +15,10 @@ void main();
 // @nocopy
 // class Handle:
 struct Handle {
-    //     id: Int32
+    // id: Int32
     int32_t id;
 
-    //     def __init__(self, id: Int32):
+    // def __init__(self, id: Int32):
     Handle() = default;
     explicit Handle(int32_t id) : id(id) {}
     // non-copyable (@nocopy)
@@ -37,12 +37,12 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
 
 // class Owner:
 struct Owner {
-    //     h: Handle
+    // h: Handle
     Handle h;
-    //     tag: Int32
+    // tag: Int32
     int32_t tag;
 
-    //     def __init__(self, id: Int32, tag: Int32):
+    // def __init__(self, id: Int32, tag: Int32):
     Owner() = default;
     explicit Owner(int32_t id, int32_t tag) : h(Handle(id)), tag(tag) {}
     // non-copyable (field 'h')

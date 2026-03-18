@@ -27,23 +27,23 @@ void main();
 
 // class Processor:
 struct Processor {
-    //     count: int
+    // count: int
     ::tpy::BigInt count;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Processor() : count(::tpy::BigInt(0)) {}
 
-    //     def process(self, items: Measurable | Walkable) -> None:
+    // def process(self, items: Measurable | Walkable) -> None:
     template<typename T_items>
   requires (Measurable<T_items> || Walkable<T_items>)
     void process(T_items& items) {
-        //         if isinstance(items, Measurable):
+        // if isinstance(items, Measurable):
         if constexpr (Measurable<T_items>) {
-            //             self.count = items.measure()
+            // self.count = items.measure()
             this->count = items.measure();
-        //         elif isinstance(items, Walkable):
+        // elif isinstance(items, Walkable):
         } else if constexpr (Walkable<T_items>) {
-            //             self.count = items.walk()
+            // self.count = items.walk()
             this->count = items.walk();
         }
     }
@@ -60,9 +60,9 @@ inline std::ostream& operator<<(std::ostream& os, const Processor& obj) {
 struct Ruler {
 
 
-    //     def measure(self) -> int:
+    // def measure(self) -> int:
     ::tpy::BigInt measure() const {
-        //         return 5
+        // return 5
         return ::tpy::BigInt(5);
     }
 };
@@ -77,9 +77,9 @@ inline std::ostream& operator<<(std::ostream& os, const Ruler& obj) {
 struct Walker {
 
 
-    //     def walk(self) -> int:
+    // def walk(self) -> int:
     ::tpy::BigInt walk() const {
-        //         return 99
+        // return 99
         return ::tpy::BigInt(99);
     }
 };

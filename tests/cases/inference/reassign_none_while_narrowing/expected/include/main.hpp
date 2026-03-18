@@ -14,10 +14,10 @@ void test_while();
 
 // class Box:
 struct Box {
-    //     v: Int32
+    // v: Int32
     int32_t v;
 
-    //     def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: Int32) -> None:
     Box() = default;
     explicit Box(int32_t v) : v(v) {}
 };

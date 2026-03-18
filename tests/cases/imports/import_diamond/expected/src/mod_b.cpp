@@ -6,7 +6,7 @@ namespace tpy_user::mod_b {
 
 // def b_value() -> Int32:
 int32_t b_value() {
-    //     return d_value() + Int32(10)
+    // return d_value() + Int32(10)
     return (::tpy::add_check<int32_t>(::tpy_user::mod_d::d_value(), 10));
 }
 

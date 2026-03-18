@@ -6,36 +6,36 @@ namespace tpy_user::main {
 
 // def wrap_dog(d: Dog) -> Dog | Cat:
 std::variant<Cat*, Dog*> wrap_dog(Dog& d) {
-    //     return d
+    // return d
     return &(d);
 }
 
 // def wrap_cat(c: Cat) -> Dog | Cat:
 std::variant<Cat*, Dog*> wrap_cat(Cat& c) {
-    //     return c
+    // return c
     return &(c);
 }
 
 // def main() -> None:
 void main() {
-    //     d = Dog("Rex", 5)
+    // d = Dog("Rex", 5)
     Dog d = Dog("Rex", 5);
-    //     result = wrap_dog(d)
+    // result = wrap_dog(d)
     std::variant<Cat*, Dog*> result = wrap_dog(d);
-    //     if isinstance(result, Dog):
+    // if isinstance(result, Dog):
     if (std::holds_alternative<Dog*>(result)) {
         auto& __result = *std::get<Dog*>(result);
-        //         print(result.name, result.age)
+        // print(result.name, result.age)
         std::cout << __result.name << " " << __result.age << "\n";
     }
-    //     c = Cat("Whiskers", 9)
+    // c = Cat("Whiskers", 9)
     Cat c = Cat("Whiskers", 9);
-    //     result2 = wrap_cat(c)
+    // result2 = wrap_cat(c)
     std::variant<Cat*, Dog*> result2 = wrap_cat(c);
-    //     if isinstance(result2, Cat):
+    // if isinstance(result2, Cat):
     if (std::holds_alternative<Cat*>(result2)) {
         auto& __result2 = *std::get<Cat*>(result2);
-        //         print(result2.name, result2.lives)
+        // print(result2.name, result2.lives)
         std::cout << __result2.name << " " << __result2.lives << "\n";
     }
 }

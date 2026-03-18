@@ -6,29 +6,29 @@ namespace tpy_user::main {
 
 // def print_pair(p: tuple[Int32, str]) -> None:
 void print_pair(const std::tuple<int32_t, std::string>& p) {
-    //     print(p[0])
+    // print(p[0])
     std::cout << std::get<0>(p) << "\n";
-    //     print(p[1])
+    // print(p[1])
     std::cout << std::get<1>(p) << "\n";
 }
 
 // def sum_triple(t: tuple[Int32, Int32, Int32]) -> Int32:
 int32_t sum_triple(const std::tuple<int32_t, int32_t, int32_t>& t) {
-    //     return t[0] + t[1] + t[2]
+    // return t[0] + t[1] + t[2]
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(std::get<0>(t), std::get<1>(t))), std::get<2>(t)));
 }
 
 // def main() -> None:
 void main() {
-    //     pair = (Int32(5), "five")
+    // pair = (Int32(5), "five")
     std::tuple<int32_t, std::string> pair = std::tuple<int32_t, std::string>{5, "five"};
-    //     print_pair(pair)
+    // print_pair(pair)
     print_pair(pair);
-    //     nums = (Int32(10), Int32(20), Int32(30))
+    // nums = (Int32(10), Int32(20), Int32(30))
     std::tuple<int32_t, int32_t, int32_t> nums = std::tuple<int32_t, int32_t, int32_t>{10, 20, 30};
-    //     result = sum_triple(nums)
+    // result = sum_triple(nums)
     int32_t result = sum_triple(nums);
-    //     print(result)
+    // print(result)
     std::cout << result << "\n";
 }
 

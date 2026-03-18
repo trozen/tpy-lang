@@ -13,18 +13,18 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    //     def __repr__(self) -> str:
+    // def __repr__(self) -> str:
     std::string __repr__() const {
-        //         return "Point(x=" + str(self.x) + ", y=" + str(self.y) + ")"
+        // return "Point(x=" + str(self.x) + ", y=" + str(self.y) + ")"
         return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("Point(x=", ::tpy::fixed_to_str<int32_t>(this->x))), ", y=")), ::tpy::fixed_to_str<int32_t>(this->y))), ")"));
     }
 };

@@ -20,12 +20,12 @@ Point* find_point(std::vector<Point>& points, int32_t target);
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32):
+    // def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -41,30 +41,30 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Line:
 struct Line {
-    //     start: Point
+    // start: Point
     Point start;
-    //     end: Point | None
+    // end: Point | None
     std::optional<Point> end;
 
-    //     def __init__(self, s: Point):
+    // def __init__(self, s: Point):
     Line() = default;
     explicit Line(const Point& s) : start(s), end(std::nullopt) {}
 
-    //     def set_end(self, e: Point) -> None:
+    // def set_end(self, e: Point) -> None:
     void set_end(const Point& e) {
-        //         self.end = copy(e)
+        // self.end = copy(e)
         this->end = Point(e);
     }
 
-    //     def has_end(self) -> bool:
+    // def has_end(self) -> bool:
     bool has_end() const {
-        //         return self.end is not None
+        // return self.end is not None
         return (this->end.has_value());
     }
 
-    //     def get_end(self) -> Point | None:
+    // def get_end(self) -> Point | None:
     Point* get_end() {
-        //         return self.end
+        // return self.end
         return ::tpy::optional_to_ptr(this->end);
     }
 };

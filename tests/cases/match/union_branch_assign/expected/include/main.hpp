@@ -15,10 +15,10 @@ void main();
 
 // class Dog:
 struct Dog {
-    //     age: Int32
+    // age: Int32
     int32_t age;
 
-    //     def __init__(self, age: Int32) -> None:
+    // def __init__(self, age: Int32) -> None:
     Dog() = default;
     explicit Dog(int32_t age) : age(age) {}
 };
@@ -32,10 +32,10 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 // class Cat:
 struct Cat {
-    //     age: Int32
+    // age: Int32
     int32_t age;
 
-    //     def __init__(self, age: Int32) -> None:
+    // def __init__(self, age: Int32) -> None:
     Cat() = default;
     explicit Cat(int32_t age) : age(age) {}
 };

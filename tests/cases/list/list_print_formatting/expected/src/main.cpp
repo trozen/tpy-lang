@@ -6,55 +6,55 @@ namespace tpy_user::main {
 
 // def test_bool_list() -> None:
 void test_bool_list() {
-    //     bools: list[bool] = [True, False, True]
+    // bools: list[bool] = [True, False, True]
     std::vector<bool> bools = {true, false, true};
-    //     print(bools)
+    // print(bools)
     std::cout << ::tpy::ListPrinter(bools) << "\n";
 }
 
 // def test_float_list() -> None:
 void test_float_list() {
-    //     floats: list[float] = [1.0, 2.5, 0.0, -3.0]
+    // floats: list[float] = [1.0, 2.5, 0.0, -3.0]
     std::vector<double> floats = {1.0, 2.5, 0.0, -(3.0)};
-    //     print(floats)
+    // print(floats)
     std::cout << ::tpy::ListPrinter(floats) << "\n";
 }
 
 // def test_str_list() -> None:
 void test_str_list() {
-    //     strs: list[str] = ["hello", "world"]
+    // strs: list[str] = ["hello", "world"]
     std::vector<std::string> strs = {"hello", "world"};
-    //     print(strs)
+    // print(strs)
     std::cout << ::tpy::ListPrinter(strs) << "\n";
 }
 
 // def test_bool_array() -> None:
 void test_bool_array() {
-    //     arr: Array[bool, 3] = [True, False, True]
+    // arr: Array[bool, 3] = [True, False, True]
     std::array<bool, 3> arr = {true, false, true};
-    //     print(arr)
+    // print(arr)
     std::cout << ::tpy::ListPrinter(arr) << "\n";
 }
 
 // def test_nested_bool() -> None:
 void test_nested_bool() {
-    //     nested: list[list[bool]] = [[True, False], [False, True]]
+    // nested: list[list[bool]] = [[True, False], [False, True]]
     std::vector<std::vector<bool>> nested = {{true, false}, {false, true}};
-    //     print(nested)
+    // print(nested)
     std::cout << ::tpy::ListPrinter(nested) << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     test_bool_list()
+    // test_bool_list()
     test_bool_list();
-    //     test_float_list()
+    // test_float_list()
     test_float_list();
-    //     test_str_list()
+    // test_str_list()
     test_str_list();
-    //     test_bool_array()
+    // test_bool_array()
     test_bool_array();
-    //     test_nested_bool()
+    // test_nested_bool()
     test_nested_bool();
 }
 

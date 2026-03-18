@@ -16,7 +16,7 @@ void main();
 // @dataclass
 // class A:
 struct A {
-    //     x: Int32
+    // x: Int32
     int32_t x;
 
     A() = default;
@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 // @dataclass
 // class B(A):
 struct B : A {
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
     B() = default;
@@ -80,7 +80,7 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 // @dataclass
 // class C(B):
 struct C : B {
-    //     z: Int32
+    // z: Int32
     int32_t z;
 
     C() = default;

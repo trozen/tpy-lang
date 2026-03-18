@@ -15,12 +15,12 @@ void test();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -36,24 +36,24 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Ref:
 struct Ref {
-    //     _target: Point
+    // _target: Point
     Point _target;
 
-    //     def __init__(self, target: Point) -> None:
+    // def __init__(self, target: Point) -> None:
     Ref() = default;
     explicit Ref(const Point& target) : _target(target) {}
 
-    //     @auto_readonly
-    //     def __deref__(self) -> Point:
+    // @auto_readonly
+    // def __deref__(self) -> Point:
     Point& __deref__() {
-        //         return self._target
+        // return self._target
         return this->_target;
     }
 
-    //     @auto_readonly
-    //     def __deref__(self) -> Point:
+    // @auto_readonly
+    // def __deref__(self) -> Point:
     const Point& __deref__() const {
-        //         return self._target
+        // return self._target
         return this->_target;
     }
 

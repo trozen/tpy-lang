@@ -6,73 +6,73 @@ namespace tpy_user::main {
 
 // def test_int32_to_int64_append() -> None:
 void test_int32_to_int64_append() {
-    //     xs = [Int32(1), Int32(2)]  # tpyc: type(list[Int64])
+    // xs = [Int32(1), Int32(2)]  # tpyc: type(list[Int64])
     std::vector<int64_t> xs = {1, 2};
-    //     xs.append(Int64(3))
+    // xs.append(Int64(3))
     xs.push_back(3);
-    //     v: Int64 = xs[0]
+    // v: Int64 = xs[0]
     int64_t v = ::tpy::__getitem__(xs, 0);
-    //     print(v)
+    // print(v)
     std::cout << v << "\n";
-    //     print(xs)
+    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_literal_to_int64_append() -> None:
 void test_literal_to_int64_append() {
-    //     xs = [1, 2]  # tpyc: type(list[Int64])
+    // xs = [1, 2]  # tpyc: type(list[Int64])
     std::vector<int64_t> xs = {1, 2};
-    //     xs.append(Int64(3))
+    // xs.append(Int64(3))
     xs.push_back(3);
-    //     v: Int64 = xs[0]
+    // v: Int64 = xs[0]
     int64_t v = ::tpy::__getitem__(xs, 0);
-    //     print(v)
+    // print(v)
     std::cout << v << "\n";
-    //     print(xs)
+    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_literal_to_float_append() -> None:
 void test_literal_to_float_append() {
-    //     xs = [1, 2, 3]  # tpyc: type(list[float])
+    // xs = [1, 2, 3]  # tpyc: type(list[float])
     std::vector<double> xs = {1, 2, 3};
-    //     xs.append(3.14)
+    // xs.append(3.14)
     xs.push_back(3.14);
-    //     print(xs[3])
+    // print(xs[3])
     std::cout << ::tpy::print_float(::tpy::__getitem__(xs, 3)) << "\n";
 }
 
 // def test_int32_to_int64_insert() -> None:
 void test_int32_to_int64_insert() {
-    //     xs = [Int32(1), Int32(2)]  # tpyc: type(list[Int64])
+    // xs = [Int32(1), Int32(2)]  # tpyc: type(list[Int64])
     std::vector<int64_t> xs = {1, 2};
-    //     xs.insert(0, Int64(99))
+    // xs.insert(0, Int64(99))
     ::tpy::list_insert(xs, 0, 99);
-    //     v: Int64 = xs[0]
+    // v: Int64 = xs[0]
     int64_t v = ::tpy::__getitem__(xs, 0);
-    //     print(v)
+    // print(v)
     std::cout << v << "\n";
 }
 
 // def test_same_type_no_widen() -> None:
 void test_same_type_no_widen() {
-    //     xs = [Int32(1), Int32(2)]  # tpyc: type(list[Int32])
+    // xs = [Int32(1), Int32(2)]  # tpyc: type(list[Int32])
     std::vector<int32_t> xs = {1, 2};
-    //     xs.append(Int32(3))
+    // xs.append(Int32(3))
     xs.push_back(3);
-    //     print(xs)
+    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 
 // def test_multiple_widens() -> None:
 void test_multiple_widens() {
-    //     xs = [Int32(1)]  # tpyc: type(list[Int64])
+    // xs = [Int32(1)]  # tpyc: type(list[Int64])
     std::vector<int64_t> xs = {1};
-    //     xs.append(Int32(2))
+    // xs.append(Int32(2))
     xs.push_back(2);
-    //     xs.append(Int64(3))
+    // xs.append(Int64(3))
     xs.push_back(3);
-    //     print(xs)
+    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 

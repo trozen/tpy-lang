@@ -8,67 +8,67 @@ namespace tpy_user::main {
 // # reassignment inside an if-branch should keep BigInt after the branch.
 // def get_big() -> int:
 ::tpy::BigInt get_big() {
-    //     return 42
+    // return 42
     return ::tpy::BigInt(42);
 }
 
 // def test_augassign() -> None:
 void test_augassign() {
-    //     x = 0
+    // x = 0
     ::tpy::BigInt x = ::tpy::BigInt(0);
-    //     if True:
+    // if True:
     if (true) {
-        //         x = get_big()
+        // x = get_big()
         x = get_big();
     }
-    //     x += 1
+    // x += 1
     x = (x) + (::tpy::BigInt(1));
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 
 // def test_binop() -> None:
 void test_binop() {
-    //     x = 0
+    // x = 0
     ::tpy::BigInt x = ::tpy::BigInt(0);
-    //     if True:
+    // if True:
     if (true) {
-        //         x = get_big()
+        // x = get_big()
         x = get_big();
     }
-    //     y: int = x + 10
+    // y: int = x + 10
     ::tpy::BigInt y = ((x) + (::tpy::BigInt(10)));
-    //     print(y)
+    // print(y)
     std::cout << y << "\n";
 }
 
 // def test_elif_chain() -> None:
 void test_elif_chain() {
-    //     x = 0
+    // x = 0
     ::tpy::BigInt x = ::tpy::BigInt(0);
-    //     c = '>'
+    // c = '>'
     std::string_view c = ">";
-    //     if c == '>':
+    // if c == '>':
     if ((c == ">")) {
-        //         pass
-    //     elif c == '[':
+        // pass
+    // elif c == '[':
     } else if ((c == "[")) {
-        //         if True:
+        // if True:
         if (true) {
-            //             x = get_big()
+            // x = get_big()
             x = get_big();
         }
-    //     elif c == ']':
+    // elif c == ']':
     } else if ((c == "]")) {
-        //         if True:
+        // if True:
         if (true) {
-            //             x = get_big()
+            // x = get_big()
             x = get_big();
         }
     }
-    //     x += 1
+    // x += 1
     x = (x) + (::tpy::BigInt(1));
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 

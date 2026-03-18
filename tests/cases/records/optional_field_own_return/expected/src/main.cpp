@@ -10,29 +10,29 @@ Holder* h{};
 // # Own[T] | None returns std::optional<T> by value — no aliasing concern
 // def maybe_make(x: Int32) -> Own[Point] | None:
 std::optional<Point> maybe_make(int32_t x) {
-    //     if x > 0:
+    // if x > 0:
     if ((x > 0)) {
-        //         return Point(x, x)
+        // return Point(x, x)
         return Point(x, x);
     }
-    //     return None
+    // return None
     return std::nullopt;
 }
 
 // # Function-scope field assignment from Own[T] | None
 // def test() -> None:
 void test() {
-    //     h2 = Holder()
+    // h2 = Holder()
     Holder h2 = Holder();
-    //     h2.value = maybe_make(3)   # tpyc: ok
+    // h2.value = maybe_make(3)   # tpyc: ok
     h2.value = maybe_make(3);
-    //     print(h2.value is None)
+    // print(h2.value is None)
     std::cout << ::tpy::print_bool((!h2.value.has_value())) << "\n";
-    //     print(h2.value.x)
+    // print(h2.value.x)
     std::cout << ::tpy::deref_optional_check(h2.value).x << "\n";
-    //     h2.value = maybe_make(-1)  # tpyc: ok
+    // h2.value = maybe_make(-1)  # tpyc: ok
     h2.value = maybe_make(-1);
-    //     print(h2.value is None)
+    // print(h2.value is None)
     std::cout << ::tpy::print_bool((!h2.value.has_value())) << "\n";
 }
 

@@ -16,16 +16,16 @@ void main();
 
 // class Base:
 struct Base {
-    //     _ptr: Ptr[Int32]
+    // _ptr: Ptr[Int32]
     int32_t* _ptr;
     bool __tpy_owned_ = true;
 
-    //     def __init__(self, value: Int32):
+    // def __init__(self, value: Int32):
     Base() = default;
     explicit Base(int32_t value) : _ptr(static_cast<int32_t*>(::operator new(sizeof(int32_t), std::align_val_t(alignof(int32_t))))) {
-        //         print("Base.init", value)
+        // print("Base.init", value)
         std::cout << "Base.init" << " " << value << "\n";
-        //         unsafe_init(self._ptr, value)
+        // unsafe_init(self._ptr, value)
         ::new(static_cast<void*>(this->_ptr)) int32_t(std::move(value));
     }
     Base(const Base&) = delete;
@@ -40,15 +40,15 @@ struct Base {
         }
         return *this;
     }
-    //     def __del__(self):
+    // def __del__(self):
 
     ~Base() {
         if (!__tpy_owned_) return;
-        //         print("Base.del")
+        // print("Base.del")
         std::cout << "Base.del" << "\n";
-        //         unsafe_drop(self._ptr)
+        // unsafe_drop(self._ptr)
         ::tpy::destroy_at(this->_ptr);
-        //         unsafe_free(self._ptr)
+        // unsafe_free(self._ptr)
         ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
     }
 };
@@ -62,13 +62,13 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 
 // class Child(Base):
 struct Child : Base {
-    //     _extra: Int32
+    // _extra: Int32
     int32_t _extra;
 
-    //     def __init__(self, value: Int32, extra: Int32):
+    // def __init__(self, value: Int32, extra: Int32):
     Child() = default;
     explicit Child(int32_t value, int32_t extra) : Base(value), _extra(extra) {
-        //         print("Child.init", extra)
+        // print("Child.init", extra)
         std::cout << "Child.init" << " " << extra << "\n";
     }
     Child(const Child&) = delete;
@@ -83,24 +83,24 @@ struct Child : Base {
         }
         return *this;
     }
-    //     def __del__(self):
+    // def __del__(self):
 
     ~Child() {
         if (!__tpy_owned_) return;
-        //         print("Child.del")
+        // print("Child.del")
         std::cout << "Child.del" << "\n";
     }
 
-    //     def take(self: Own[Self]) -> Int32:
+    // def take(self: Own[Self]) -> Int32:
     int32_t take() && {
         this->__tpy_owned_ = false;
-        //         print("take")
+        // print("take")
         std::cout << "take" << "\n";
-        //         val: Int32 = unsafe_move_out(self._ptr)
+        // val: Int32 = unsafe_move_out(self._ptr)
         int32_t val = std::move(*this->_ptr);
-        //         unsafe_free(self._ptr)
+        // unsafe_free(self._ptr)
         ::operator delete(this->_ptr, std::align_val_t(alignof(int32_t)));
-        //         return val
+        // return val
         return val;
     }
 };

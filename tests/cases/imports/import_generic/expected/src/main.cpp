@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> Int32:
 int32_t main() {
-    //     b: Box[Int32] = Box(Int32(42))
+    // b: Box[Int32] = Box(Int32(42))
     ::tpy_user::container::Box<int32_t> b = ::tpy_user::container::Box<int32_t>(42);
-    //     print(b.value)
+    // print(b.value)
     std::cout << b.value << "\n";
-    //     return Int32(0)
+    // return Int32(0)
     return 0;
 }
 

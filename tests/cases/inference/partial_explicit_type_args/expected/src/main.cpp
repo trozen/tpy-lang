@@ -6,18 +6,18 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # unsafe_cast with explicit target type, source inferred from arg
-    //     nums: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    // # unsafe_cast with explicit target type, source inferred from arg
+    // nums: list[Int32] = [Int32(1), Int32(2), Int32(3)]
     std::vector<int32_t> nums = {1, 2, 3};
-    //     p: Ptr[Int32] = unsafe_ptr(nums)
+    // p: Ptr[Int32] = unsafe_ptr(nums)
     int32_t* p = nums.data();
-    //     q = unsafe_cast[UInt32](p)  # T=UInt32 explicit, U=Int32 from arg
+    // q = unsafe_cast[UInt32](p)  # T=UInt32 explicit, U=Int32 from arg
     uint32_t* q = reinterpret_cast<uint32_t*>(p);
-    //     print(unsafe_load(q, UInt32(0)))
+    // print(unsafe_load(q, UInt32(0)))
     std::cout << q[0] << "\n";
-    //     print(unsafe_load(q, UInt32(1)))
+    // print(unsafe_load(q, UInt32(1)))
     std::cout << q[1] << "\n";
-    //     print("done")
+    // print("done")
     std::cout << "done" << "\n";
 }
 

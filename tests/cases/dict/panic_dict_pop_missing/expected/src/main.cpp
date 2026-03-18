@@ -7,9 +7,9 @@ namespace tpy_user::main {
 // # Pop on missing key without default should panic
 // def main() -> None:
 void main() {
-    //     d = {"x": 1}
+    // d = {"x": 1}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 1}});
-    //     d.pop("missing")
+    // d.pop("missing")
     ::tpy::dict_pop(d, "missing");
 }
 

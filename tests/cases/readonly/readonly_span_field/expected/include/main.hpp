@@ -14,10 +14,10 @@ void main();
 
 // class Box:
 struct Box {
-    //     items: Span[Int32]
+    // items: Span[Int32]
     std::span<int32_t> items;
 
-    //     def __init__(self, items: Span[Int32]) -> None:
+    // def __init__(self, items: Span[Int32]) -> None:
     Box() = default;
     explicit Box(std::span<int32_t> items) : items(items) {}
 };

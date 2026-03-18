@@ -24,9 +24,9 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
 };
@@ -44,9 +44,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 struct MyHolder {
 
 
-    //     def store(self, p: Own[Point]) -> None:
+    // def store(self, p: Own[Point]) -> None:
     void store(Point&& p) const {
-        //         print(p.x)
+        // print(p.x)
         std::cout << p.x << "\n";
     }
 };
@@ -61,10 +61,10 @@ inline std::ostream& operator<<(std::ostream& os, const MyHolder& obj) {
 struct Factory {
 
 
-    //     @staticmethod
-    //     def consume(p: Own[Point]) -> Int32:
+    // @staticmethod
+    // def consume(p: Own[Point]) -> Int32:
     static int32_t consume(Point&& p) {
-        //         return p.x
+        // return p.x
         return p.x;
     }
 };

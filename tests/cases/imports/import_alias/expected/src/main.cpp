@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def main() -> Int32:
 int32_t main() {
-    //     p = Pt(Int32(3), Int32(4))
+    // p = Pt(Int32(3), Int32(4))
     ::tpy_user::utils::Point p = ::tpy_user::utils::Point(3, 4);
-    //     print(p.x)
+    // print(p.x)
     std::cout << p.x << "\n";
-    //     print(MAX)
+    // print(MAX)
     std::cout << ::tpy_user::utils::MAX_VALUE << "\n";
-    //     print(sum_nums(Int32(10), Int32(20)))
+    // print(sum_nums(Int32(10), Int32(20)))
     std::cout << ::tpy_user::utils::add(10, 20) << "\n";
-    //     return Int32(0)
+    // return Int32(0)
     return 0;
 }
 

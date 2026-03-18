@@ -16,12 +16,12 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Point() : x(0), y(0) {}
 };
 

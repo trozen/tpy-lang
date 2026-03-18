@@ -6,69 +6,69 @@ namespace tpy_user::main {
 
 // def describe(v: Int32 | Dog | None) -> str:
 std::string describe(const std::variant<std::monostate, Dog*, int32_t*> v) {
-    //     if v is None:
+    // if v is None:
     if ((std::holds_alternative<std::monostate>(v))) {
-        //         return "nothing"
+        // return "nothing"
         return "nothing";
     }
-    //     if isinstance(v, Int32):
+    // if isinstance(v, Int32):
     if (std::holds_alternative<int32_t*>(v)) {
         auto& __v = *std::get<int32_t*>(v);
-        //         return "int"
+        // return "int"
         return "int";
-    //     else:
+    // else:
     } else {
         auto& __v = *std::get<Dog*>(v);
-        //         return "dog"
+        // return "dog"
         return "dog";
     }
 }
 
 // def process(v: Int32 | Dog | None) -> None:
 void process(const std::variant<std::monostate, Dog*, int32_t*> v) {
-    //     if v is not None:
+    // if v is not None:
     if ((!std::holds_alternative<std::monostate>(v))) {
-        //         if isinstance(v, Int32):
+        // if isinstance(v, Int32):
         if (std::holds_alternative<int32_t*>(v)) {
             auto& __v = *std::get<int32_t*>(v);
-            //             print("got int")
+            // print("got int")
             std::cout << "got int" << "\n";
-        //         else:
+        // else:
         } else {
             auto& __v = *std::get<Dog*>(v);
-            //             print("got dog")
+            // print("got dog")
             std::cout << "got dog" << "\n";
         }
-    //     else:
+    // else:
     } else {
-        //         print("got none")
+        // print("got none")
         std::cout << "got none" << "\n";
     }
 }
 
 // def main() -> None:
 void main() {
-    //     a: Int32 | Dog | None = Int32(42)
+    // a: Int32 | Dog | None = Int32(42)
     std::variant<std::monostate, Dog, int32_t> __slot_1 = 42;
     std::variant<std::monostate, Dog*, int32_t*> a = ::tpy::to_ptr_variant(__slot_1);
-    //     b: Int32 | Dog | None = Dog("Rex")
+    // b: Int32 | Dog | None = Dog("Rex")
     std::variant<std::monostate, Dog, int32_t> __slot_2 = Dog("Rex");
     std::variant<std::monostate, Dog*, int32_t*> b = ::tpy::to_ptr_variant(__slot_2);
-    //     c: Int32 | Dog | None = None
+    // c: Int32 | Dog | None = None
     std::variant<std::monostate, Dog*, int32_t*> c = std::monostate{};
-    //     print(describe(a))
+    // print(describe(a))
     std::cout << describe(a) << "\n";
-    //     print(describe(b))
+    // print(describe(b))
     std::cout << describe(b) << "\n";
-    //     print(describe(c))
+    // print(describe(c))
     std::cout << describe(c) << "\n";
-    //     process(Int32(1))
+    // process(Int32(1))
     int32_t __tmp_1 = 1;
     process(std::variant<std::monostate, Dog*, int32_t*>{&__tmp_1});
-    //     process(Dog("Buddy"))
+    // process(Dog("Buddy"))
     Dog __tmp_2 = Dog("Buddy");
     process(std::variant<std::monostate, Dog*, int32_t*>{&__tmp_2});
-    //     process(None)
+    // process(None)
     process(std::variant<std::monostate, Dog*, int32_t*>{std::monostate{}});
 }
 

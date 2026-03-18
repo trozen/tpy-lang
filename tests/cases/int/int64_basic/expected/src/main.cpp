@@ -6,46 +6,46 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Int64 constructors and large values
-    //     a: Int64 = Int64(9223372036854775807)  # Max Int64
+    // # Int64 constructors and large values
+    // a: Int64 = Int64(9223372036854775807)  # Max Int64
     int64_t a = 9223372036854775807;
-    //     print(a)
+    // print(a)
     std::cout << a << "\n";
-    //     b: Int64 = Int64(-9223372036854775808)  # Min Int64
+    // b: Int64 = Int64(-9223372036854775808)  # Min Int64
     int64_t b = -9223372036854775808;
-    //     print(b)
+    // print(b)
     std::cout << b << "\n";
-    //     # Int64 arithmetic
-    //     x: Int64 = Int64(1000000000)
+    // # Int64 arithmetic
+    // x: Int64 = Int64(1000000000)
     int64_t x = 1000000000;
-    //     y: Int64 = Int64(2000000000)
+    // y: Int64 = Int64(2000000000)
     int64_t y = 2000000000;
-    //     print(x + y)
+    // print(x + y)
     std::cout << (::tpy::add_check<int64_t>(x, y)) << "\n";
-    //     print(x * Int64(3))
+    // print(x * Int64(3))
     std::cout << (::tpy::mul_check<int64_t>(x, 3)) << "\n";
-    //     # UInt64 constructors
-    //     c: UInt64 = UInt64(0)
+    // # UInt64 constructors
+    // c: UInt64 = UInt64(0)
     uint64_t c = 0;
-    //     d: UInt64 = UInt64(18446744073709551615)  # Max UInt64
+    // d: UInt64 = UInt64(18446744073709551615)  # Max UInt64
     uint64_t d = 18446744073709551615;
-    //     print(c)
+    // print(c)
     std::cout << c << "\n";
-    //     print(d)
+    // print(d)
     std::cout << d << "\n";
-    //     # UInt64 arithmetic
-    //     u: UInt64 = UInt64(10000000000)
+    // # UInt64 arithmetic
+    // u: UInt64 = UInt64(10000000000)
     uint64_t u = 10000000000;
-    //     v: UInt64 = UInt64(5000000000)
+    // v: UInt64 = UInt64(5000000000)
     uint64_t v = 5000000000;
-    //     print(u + v)
+    // print(u + v)
     std::cout << (::tpy::add_check<uint64_t>(u, v)) << "\n";
-    //     print(u - v)
+    // print(u - v)
     std::cout << (::tpy::sub_check<uint64_t>(u, v)) << "\n";
-    //     # Conversion to BigInt
-    //     big: int = int(a)
+    // # Conversion to BigInt
+    // big: int = int(a)
     ::tpy::BigInt big = ::tpy::BigInt(static_cast<int64_t>(a));
-    //     print(big)
+    // print(big)
     std::cout << big << "\n";
 }
 

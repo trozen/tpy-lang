@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // @readonly
 // def add_one(x: Int32) -> Int32:
 int32_t add_one(int32_t x) {
-    //     return Ops.plus_one(x)  # tpyc: ok
+    // return Ops.plus_one(x)  # tpyc: ok
     return Ops::plus_one(x);
 }
 

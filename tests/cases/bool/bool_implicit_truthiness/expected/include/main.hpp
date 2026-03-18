@@ -14,16 +14,16 @@ void main();
 // # Test implicit truthiness via __bool__() in if/while/not/and/or
 // class Container:
 struct Container {
-    //     count: int
+    // count: int
     ::tpy::BigInt count;
 
-    //     def __init__(self, count: int) -> None:
+    // def __init__(self, count: int) -> None:
     Container() = default;
     explicit Container(const ::tpy::BigInt& count) : count(count) {}
 
-    //     def __bool__(self) -> bool:
+    // def __bool__(self) -> bool:
     bool __bool__() const {
-        //         return self.count != 0
+        // return self.count != 0
         return (this->count != 0);
     }
 };

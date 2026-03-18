@@ -21,18 +21,18 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    //     def to_string(self) -> str:
+    // def to_string(self) -> str:
     std::string to_string() const {
-        //         return "Point"
+        // return "Point"
         return "Point";
     }
 };
@@ -49,9 +49,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // def print_item[T: Printable](item: T) -> None:
 template<Printable T>
 void print_item(::tpy::param_val_or_ref_t<T> item) {
-    //     # Note: Can't call item.to_string() inside generic yet
-    //     # This tests that the bound is validated during inference
-    //     print("got printable")
+    // # Note: Can't call item.to_string() inside generic yet
+    // # This tests that the bound is validated during inference
+    // print("got printable")
     std::cout << "got printable" << "\n";
 }
 

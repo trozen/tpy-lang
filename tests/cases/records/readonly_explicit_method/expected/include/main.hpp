@@ -13,24 +13,24 @@ void main();
 
 // class Counter:
 struct Counter {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: Int32) -> None:
     Counter() = default;
     explicit Counter(int32_t v) : value(v) {}
 
-    //     @readonly
-    //     def get_value(self) -> Int32:
+    // @readonly
+    // def get_value(self) -> Int32:
     int32_t get_value() const {
-        //         return self.value
+        // return self.value
         return this->value;
     }
 
-    //     @readonly
-    //     def doubled(self) -> Int32:
+    // @readonly
+    // def doubled(self) -> Int32:
     int32_t doubled() const {
-        //         return self.value + self.value
+        // return self.value + self.value
         return (::tpy::add_check<int32_t>(this->value, this->value));
     }
 };

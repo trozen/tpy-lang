@@ -18,10 +18,10 @@ void test_extend_rvalue_no_warn();
 
 // class Node:
 struct Node {
-    //     val: Int32
+    // val: Int32
     int32_t val;
 
-    //     def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: Int32) -> None:
     Node() = default;
     explicit Node(int32_t val) : val(val) {}
 };

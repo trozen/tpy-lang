@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     b = Box[Int32](42)
+    // b = Box[Int32](42)
     ::tpy_user::tplib::Box<int32_t> b = ::tpy_user::tplib::Box<int32_t>(42);
-    //     print(b.get())
+    // print(b.get())
     std::cout << b.get() << "\n";
-    //     b.set(100)
+    // b.set(100)
     b.set(100);
-    //     print(b.get())
+    // print(b.get())
     std::cout << b.get() << "\n";
 }
 

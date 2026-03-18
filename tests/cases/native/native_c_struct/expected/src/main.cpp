@@ -8,23 +8,23 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     p = Point(Int32(10), Int32(20))
+    // p = Point(Int32(10), Int32(20))
     Point p = Point{10, 20};
-    //     print(p.x)
+    // print(p.x)
     std::cout << p.x << "\n";
-    //     print(p.y)
+    // print(p.y)
     std::cout << p.y << "\n";
-    //     print(point_sum(Ptr(p)))
+    // print(point_sum(Ptr(p)))
     std::cout << point_sum(&p) << "\n";
-    //     print(p.manhattan())
+    // print(p.manhattan())
     std::cout << p.manhattan() << "\n";
-    //     r = MyRect(Int32(0), Int32(0), Int32(800), Int32(600))
+    // r = MyRect(Int32(0), Int32(0), Int32(800), Int32(600))
     Rect r = Rect{0, 0, 800, 600};
-    //     print(r.w)
+    // print(r.w)
     std::cout << r.w << "\n";
-    //     print(rect_area(Ptr(r)))
+    // print(rect_area(Ptr(r)))
     std::cout << rect_area(&r) << "\n";
-    //     print(r.area())
+    // print(r.area())
     std::cout << r.area() << "\n";
 }
 

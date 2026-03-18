@@ -20,7 +20,7 @@ void main();
 // def count(items: Measurable) -> Int32:
 template<Measurable T_items>
 int32_t count(const T_items& items) {
-    //     return len(items)
+    // return len(items)
     return ::tpy::__len__(items);
 }
 

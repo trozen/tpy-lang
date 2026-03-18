@@ -6,12 +6,12 @@ namespace tpy_user::main {
 
 // def score(x: float | None) -> Int32:
 int32_t score(std::optional<double> x) {
-    //     if x:  # tpyc: warning(/Truthiness check on optional value/)  # tpyc: warning(/variable 'x'/)
+    // if x:  # tpyc: warning(/Truthiness check on optional value/)  # tpyc: warning(/variable 'x'/)
     if (::tpy::is_truthy(x)) {
-        //         return 1
+        // return 1
         return 1;
     }
-    //     return 0
+    // return 0
     return 0;
 }
 

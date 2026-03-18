@@ -48,20 +48,20 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     print(SmallEnum.A)
+    // print(SmallEnum.A)
     std::cout << SmallEnum::A << "\n";
-    //     print(SmallEnum.C)
+    // print(SmallEnum.C)
     std::cout << SmallEnum::C << "\n";
-    //     # Arithmetic gives Int8
-    //     x: Int8 = SmallEnum.B + Int8(10)
+    // # Arithmetic gives Int8
+    // x: Int8 = SmallEnum.B + Int8(10)
     int8_t x = (::tpy::add_check<int8_t>(static_cast<int8_t>(SmallEnum::B), 10));
-    //     print(x)
+    // print(x)
     std::cout << static_cast<int>(x) << "\n";
-    //     # Ordering
-    //     print(SmallEnum.A < SmallEnum.C)
+    // # Ordering
+    // print(SmallEnum.A < SmallEnum.C)
     std::cout << ::tpy::print_bool((static_cast<int8_t>(SmallEnum::A) < static_cast<int8_t>(SmallEnum::C))) << "\n";
-    //     # Int comparison
-    //     print(SmallEnum.B == Int8(1))
+    // # Int comparison
+    // print(SmallEnum.B == Int8(1))
     std::cout << ::tpy::print_bool((static_cast<int8_t>(SmallEnum::B) == 1)) << "\n";
 }
 

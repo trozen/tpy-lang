@@ -6,21 +6,21 @@ namespace tpy_user::main {
 
 // def consume(h: Own[Handle]) -> None:
 void consume(Handle&& h) {
-    //     print("use", h.id)
+    // print("use", h.id)
     std::cout << "use" << " " << h.id << "\n";
 }
 
 // def main():
 void main() {
-    //     h = Handle(1)
+    // h = Handle(1)
     Handle h = Handle(1);
-    //     consume(h)
+    // consume(h)
     consume(std::move(h));
-    //     print("---")
+    // print("---")
     std::cout << "---" << "\n";
-    //     consume(Handle(2))
+    // consume(Handle(2))
     consume(Handle(2));
-    //     print("done")
+    // print("done")
     std::cout << "done" << "\n";
 }
 

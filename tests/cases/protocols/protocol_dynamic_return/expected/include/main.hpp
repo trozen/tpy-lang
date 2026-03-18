@@ -50,9 +50,9 @@ void main();
 struct Dog : Pet {
 
 
-    //     def name(self) -> str:
+    // def name(self) -> str:
     std::string name() override {
-        //         return "Rex"
+        // return "Rex"
         return "Rex";
     }
 };
@@ -67,9 +67,9 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 struct Cat : Pet {
 
 
-    //     def name(self) -> str:
+    // def name(self) -> str:
     std::string name() override {
-        //         return "Whiskers"
+        // return "Whiskers"
         return "Whiskers";
     }
 };

@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c: Counter = Counter(21)
+    // c: Counter = Counter(21)
     Counter c = Counter(21);
-    //     print(c.get_value())
+    // print(c.get_value())
     std::cout << c.get_value() << "\n";
-    //     print(c.doubled())
+    // print(c.doubled())
     std::cout << c.doubled() << "\n";
 }
 

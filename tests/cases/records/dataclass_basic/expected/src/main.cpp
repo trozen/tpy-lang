@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     p = Point(1, 2)
+    // p = Point(1, 2)
     Point p = Point(1, 2);
-    //     print(p)
+    // print(p)
     std::cout << p << "\n";
-    //     print(p.x, p.y)
+    // print(p.x, p.y)
     std::cout << p.x << " " << p.y << "\n";
-    //     print(repr(p))
+    // print(repr(p))
     std::cout << std::string(::tpy::__repr__(p)) << "\n";
-    //     p2 = Point(x=10, y=20)
+    // p2 = Point(x=10, y=20)
     Point p2 = Point(10, 20);
-    //     print(p2)
+    // print(p2)
     std::cout << p2 << "\n";
 }
 

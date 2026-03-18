@@ -6,19 +6,19 @@ namespace tpy_user::main {
 
 // def test() -> None:
 void test() {
-    //     h = Holder()
+    // h = Holder()
     Holder h = Holder();
-    //     # Mutable method: result should be Inner& (lvalue ref), not a copy
-    //     x = h.get()
+    // # Mutable method: result should be Inner& (lvalue ref), not a copy
+    // x = h.get()
     Inner& x = h.get();
-    //     x.mutate()
+    // x.mutate()
     x.mutate();
-    //     print(h.inner.val)   # 11 (mutation visible through ref)
+    // print(h.inner.val)   # 11 (mutation visible through ref)
     std::cout << h.inner.val << "\n";
-    //     # Readonly method: result should be const Inner& (const lvalue ref)
-    //     y = h.get_ro()
+    // # Readonly method: result should be const Inner& (const lvalue ref)
+    // y = h.get_ro()
     const Inner& y = h.get_ro();
-    //     print(y.val)         # 11
+    // print(y.val)         # 11
     std::cout << y.val << "\n";
 }
 

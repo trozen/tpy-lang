@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def main():
 void main() {
-    //     p = Point()
+    // p = Point()
     Point p = Point();
-    //     p.x = Int32(1)
+    // p.x = Int32(1)
     p.x = 1;
-    //     p.y = Int32(2)
+    // p.y = Int32(2)
     p.y = 2;
-    //     w = Wrapper(p, Int32(42))
+    // w = Wrapper(p, Int32(42))
     Wrapper w = Wrapper(std::move(p), 42);
-    //     print(w.tag)
+    // print(w.tag)
     std::cout << w.tag << "\n";
 }
 

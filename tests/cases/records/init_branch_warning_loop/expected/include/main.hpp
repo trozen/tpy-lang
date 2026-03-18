@@ -13,19 +13,19 @@ void main();
 
 // class Accum:
 struct Accum {
-    //     total: Int32
+    // total: Int32
     int32_t total;
 
-    //     def __init__(self, n: Int32):
+    // def __init__(self, n: Int32):
     Accum() = default;
     explicit Accum(int32_t n) : total(0) {
-        //         i: Int32 = Int32(0)
+        // i: Int32 = Int32(0)
         int32_t i = 0;
-        //         while i < n:
+        // while i < n:
         while ((i < n)) {
-            //             self.total = self.total + i  # tpyc: ok
+            // self.total = self.total + i  # tpyc: ok
             this->total = (::tpy::add_check<int32_t>(this->total, i));
-            //             i = i + Int32(1)
+            // i = i + Int32(1)
             i = (::tpy::add_check<int32_t>(i, 1));
         }
     }

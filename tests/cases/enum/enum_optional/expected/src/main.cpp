@@ -48,29 +48,29 @@ namespace tpy_user::main {
 
 // def maybe_color(flag: bool) -> Color | None:
 std::optional<Color> maybe_color(bool flag) {
-    //     if flag:
+    // if flag:
     if (flag) {
-        //         return Color.Red
+        // return Color.Red
         return Color::Red;
     }
-    //     return None
+    // return None
     return std::nullopt;
 }
 
 // def main() -> None:
 void main() {
-    //     c: Color | None = maybe_color(True)
+    // c: Color | None = maybe_color(True)
     std::optional<Color> c = maybe_color(true);
-    //     if c is not None:
+    // if c is not None:
     if ((c.has_value())) {
-        //         print(c)
+        // print(c)
         std::cout << ::tpy::print_optional_val(c) << "\n";
     }
-    //     c = maybe_color(False)
+    // c = maybe_color(False)
     c = maybe_color(false);
-    //     if c is None:
+    // if c is None:
     if ((!c.has_value())) {
-        //         print("no color")
+        // print("no color")
         std::cout << "no color" << "\n";
     }
 }

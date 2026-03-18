@@ -14,45 +14,45 @@ void main();
 // class Pair[T, U]:
 template<typename T, typename U>
 struct Pair {
-    //     a: T
+    // a: T
     T a;
-    //     b: U
+    // b: U
     U b;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Pair() {
-        //         pass
+        // pass
     }
 
-    //     def set_a(self, val: T) -> None:
+    // def set_a(self, val: T) -> None:
     void set_a(::tpy::param_val_or_ref_t<T> val) {
-        //         self.a = val
+        // self.a = val
         this->a = val;
     }
 
-    //     def set_b(self, val: U) -> None:
+    // def set_b(self, val: U) -> None:
     void set_b(::tpy::param_val_or_ref_t<U> val) {
-        //         self.b = val
+        // self.b = val
         this->b = val;
     }
 
-    //     def set_both(self, a: T, b: U) -> None:
+    // def set_both(self, a: T, b: U) -> None:
     void set_both(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
-        //         self.a = a
+        // self.a = a
         this->a = a;
-        //         self.b = b
+        // self.b = b
         this->b = b;
     }
 
-    //     def get_a(self) -> T:
+    // def get_a(self) -> T:
     ::tpy::val_or_ref_t<T> get_a() {
-        //         return self.a
+        // return self.a
         return this->a;
     }
 
-    //     def get_b(self) -> U:
+    // def get_b(self) -> U:
     ::tpy::val_or_ref_t<U> get_b() {
-        //         return self.b
+        // return self.b
         return this->b;
     }
 };

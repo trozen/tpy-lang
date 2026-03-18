@@ -16,7 +16,7 @@ void main();
 // @nocopy
 // class Handle:
 struct Handle {
-    //     fd: Int32
+    // fd: Int32
     int32_t fd;
 
     Handle() = default;
@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
 
 // class Holder:
 struct Holder {
-    //     h: Handle
+    // h: Handle
     Handle h;
 
     Holder() = default;
@@ -46,9 +46,9 @@ struct Holder {
     Holder(Holder&&) = default;
     Holder& operator=(Holder&&) = default;
 
-    //     def take(self, h: Own[Handle]) -> None:
+    // def take(self, h: Own[Handle]) -> None:
     void take(Handle&& h) {
-        //         self.h = h
+        // self.h = h
         this->h = std::move(h);
     }
 };
@@ -63,16 +63,16 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // class GenericHolder[T]:
 template<typename T>
 struct GenericHolder {
-    //     item: T
+    // item: T
     T item;
 
-    //     def __init__(self, item: Own[T]):
+    // def __init__(self, item: Own[T]):
     GenericHolder() = default;
     explicit GenericHolder(T&& item) : item(std::move(item)) {}
 
-    //     def replace(self, item: Own[T]) -> None:
+    // def replace(self, item: Own[T]) -> None:
     void replace(T&& item) {
-        //         self.item = item
+        // self.item = item
         this->item = std::move(item);
     }
 };

@@ -6,16 +6,16 @@ namespace tpy_user::main {
 
 // def use_after_rebind(a: Box, b: Box) -> Int32:
 int32_t use_after_rebind(Box& a, Box& b) {
-    //     local = a
+    // local = a
     Box* local = &(a);
-    //     if local.value is not None:
+    // if local.value is not None:
     if ((local->value.has_value())) {
-        //         local = b
+        // local = b
         local = &(b);
-        //         return local.value + 1  # tpyc: warning(/Potential None access/)
+        // return local.value + 1  # tpyc: warning(/Potential None access/)
         return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(local->value), 1));
     }
-    //     return 0
+    // return 0
     return 0;
 }
 

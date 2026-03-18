@@ -7,15 +7,15 @@ namespace tpy_user::main {
 // # 3-hop alias chain: mutation on c propagates through b to a
 // def main() -> None:
 void main() {
-    //     a = [1, 2, 3]  # tpyc: type(/list/)
+    // a = [1, 2, 3]  # tpyc: type(/list/)
     std::vector<int32_t> a = {1, 2, 3};
-    //     b = a           # tpyc: type(/list/)
+    // b = a           # tpyc: type(/list/)
     std::vector<int32_t>& b = a;
-    //     c = b           # tpyc: type(/list/)
+    // c = b           # tpyc: type(/list/)
     std::vector<int32_t>& c = b;
-    //     c.append(4)
+    // c.append(4)
     c.push_back(4);
-    //     print(len(a))
+    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }
 

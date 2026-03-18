@@ -14,22 +14,22 @@ void main();
 // class Grid[T, N: int]:
 template<typename T, std::size_t N>
 struct Grid {
-    //     _value: T
+    // _value: T
     T _value;
 
-    //     def __init__(self, value: T) -> None:
+    // def __init__(self, value: T) -> None:
     Grid() = default;
     explicit Grid(const T& value) : _value(value) {}
 
-    //     def copy(self) -> Own[Grid[T, N]]:
+    // def copy(self) -> Own[Grid[T, N]]:
     Grid<T, N> copy() const {
-        //         return Grid[T, N](self._value)
+        // return Grid[T, N](self._value)
         return Grid<T, N>(this->_value);
     }
 
-    //     def with_value(self, value: T) -> Own[Grid[T, N]]:
+    // def with_value(self, value: T) -> Own[Grid[T, N]]:
     Grid<T, N> with_value(const T& value) const {
-        //         return Grid[T, N](value)
+        // return Grid[T, N](value)
         return Grid<T, N>(value);
     }
 };

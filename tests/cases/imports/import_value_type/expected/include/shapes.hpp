@@ -11,9 +11,9 @@ inline constexpr std::string_view __name__ = "shapes";
 
 // class Vec2(ValueType):
 struct Vec2 {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
 };

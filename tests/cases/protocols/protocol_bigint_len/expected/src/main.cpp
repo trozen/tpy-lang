@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c = MyCollection(42)
+    // c = MyCollection(42)
     MyCollection c = MyCollection(::tpy::BigInt(42));
-    //     print(count(c))
+    // print(count(c))
     std::cout << count(c) << "\n";
 }
 

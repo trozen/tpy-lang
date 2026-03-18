@@ -6,18 +6,18 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     a = ArrayList[Int32, 8]()
+    // a = ArrayList[Int32, 8]()
     ::tpy_user::tplib::array_list::ArrayList<int32_t, 8> a = ::tpy_user::tplib::array_list::ArrayList<int32_t, 8>();
-    //     a.append(Int32(1))
+    // a.append(Int32(1))
     a.append(1);
-    //     a.append(Int32(2))
+    // a.append(Int32(2))
     a.append(2);
-    //     a.append(Int32(3))
+    // a.append(Int32(3))
     a.append(3);
-    //     # Direct __iter__() returns SpanIter
-    //     it: SpanIter[Int32] = a.__iter__()
+    // # Direct __iter__() returns SpanIter
+    // it: SpanIter[Int32] = a.__iter__()
     ::tpy::SpanIter<int32_t> it = a.__iter__();
-    //     consume(it)
+    // consume(it)
     consume(it);
 }
 

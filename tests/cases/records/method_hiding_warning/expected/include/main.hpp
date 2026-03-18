@@ -15,15 +15,15 @@ inline constexpr std::string_view __name__ = "__main__";
 struct Animal {
 
 
-    //     def speak(self) -> None:
+    // def speak(self) -> None:
     void speak() const {
-        //         print("...")
+        // print("...")
         std::cout << "..." << "\n";
     }
 
-    //     def make_noise(self) -> None:
+    // def make_noise(self) -> None:
     void make_noise() const {
-        //         self.speak()
+        // self.speak()
         speak();
     }
 };
@@ -38,9 +38,9 @@ inline std::ostream& operator<<(std::ostream& os, const Animal& obj) {
 struct Dog : Animal {
 
 
-    //     def speak(self) -> None:
+    // def speak(self) -> None:
     void speak() const {
-        //         print("Woof!")
+        // print("Woof!")
         std::cout << "Woof!" << "\n";
     }
 };

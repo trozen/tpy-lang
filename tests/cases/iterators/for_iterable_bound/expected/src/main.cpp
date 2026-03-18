@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     r = MyRange(1, 6)
+    // r = MyRange(1, 6)
     MyRange r = MyRange(1, 6);
-    //     print(sum_all(r))
+    // print(sum_all(r))
     std::cout << sum_all<MyRange>(r) << "\n";
 }
 

@@ -46,10 +46,10 @@ void main();
 // class Tagged[T]:
 template<typename T>
 struct Tagged {
-    //     tag: Int32
+    // tag: Int32
     int32_t tag;
 
-    //     def __init__(self, tag: Int32):
+    // def __init__(self, tag: Int32):
     Tagged() = default;
     explicit Tagged(int32_t tag) : tag(tag) {}
 };
@@ -64,10 +64,10 @@ inline std::ostream& operator<<(std::ostream& os, const Tagged<T>& obj) {
 
 // class Owner:
 struct Owner {
-    //     item: Tagged[Greeter]
+    // item: Tagged[Greeter]
     Tagged<Greeter> item;
 
-    //     def __init__(self, item: Tagged[Greeter]):
+    // def __init__(self, item: Tagged[Greeter]):
     Owner() = default;
     explicit Owner(const Tagged<Greeter>& item) : item(item) {}
 };

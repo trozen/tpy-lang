@@ -20,9 +20,9 @@ void main();
 struct Dog : ::tpy_user::pet::Pet {
 
 
-    //     def speak(self) -> str:
+    // def speak(self) -> str:
     std::string speak() override {
-        //         return "Woof"
+        // return "Woof"
         return "Woof";
     }
 };
@@ -38,9 +38,9 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 struct Cat {
 
 
-    //     def speak(self) -> str:
+    // def speak(self) -> str:
     std::string speak() const {
-        //         return "Meow"
+        // return "Meow"
         return "Meow";
     }
 };

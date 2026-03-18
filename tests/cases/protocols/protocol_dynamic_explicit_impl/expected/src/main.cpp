@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     item = Item("Widget", 42)
+    // item = Item("Widget", 42)
     Item item = Item("Widget", 42);
-    //     print(item.describe())
+    // print(item.describe())
     std::cout << item.describe() << "\n";
-    //     print(item.id())
+    // print(item.id())
     std::cout << item.id() << "\n";
 }
 

@@ -17,14 +17,14 @@ void main();
 // def consume(it: Iterable[Int32]) -> None:
 template<::tpy_user::typing::Iterable<int32_t> T_it>
 void consume(T_it& it) {
-    //     for x in it:
+    // for x in it:
     auto& __src_0 = it;
     auto __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = *__r_1;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
 }

@@ -14,11 +14,11 @@ void main();
 
 // class Tracker:
 struct Tracker {
-    //     name: str
+    // name: str
     std::string name;
     bool __tpy_owned_ = true;
 
-    //     def __init__(self, name: str):
+    // def __init__(self, name: str):
     Tracker() = default;
     explicit Tracker(std::string_view name) : name(name) {}
     Tracker(const Tracker&) = delete;
@@ -33,11 +33,11 @@ struct Tracker {
         }
         return *this;
     }
-    //     def __del__(self):
+    // def __del__(self):
 
     ~Tracker() {
         if (!__tpy_owned_) return;
-        //         print("drop", self.name)
+        // print("drop", self.name)
         std::cout << "drop" << " " << this->name << "\n";
     }
 };

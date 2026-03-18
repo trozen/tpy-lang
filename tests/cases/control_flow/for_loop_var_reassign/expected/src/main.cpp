@@ -7,14 +7,14 @@ namespace tpy_user::main {
 // # Test reassigning for-loop variable inside loop body
 // def main() -> None:
 void main() {
-    //     for i in range(5):
+    // for i in range(5):
     for (int32_t i = 0; i < 5; ++i) {
-        //         print(i)
+        // print(i)
         std::cout << i << "\n";
-        //         i = i + 100
+        // i = i + 100
         i = (::tpy::add_check<int32_t>(i, 100));
     }
-    //     print("done")
+    // print("done")
     std::cout << "done" << "\n";
 }
 

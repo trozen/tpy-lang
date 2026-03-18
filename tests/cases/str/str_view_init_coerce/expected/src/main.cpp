@@ -10,60 +10,60 @@ namespace tpy_user::main {
 // # an explicit conversion when assigning to a std::string variable.
 // def from_param(a: str) -> None:
 void from_param(std::string_view a) {
-    //     # a is std::string_view at runtime; x gets promoted to str due to +=
-    //     x = a  # tpyc: type(str)
+    // # a is std::string_view at runtime; x gets promoted to str due to +=
+    // x = a  # tpyc: type(str)
     std::string x = std::string(a);
-    //     x += "!"
+    // x += "!"
     x += "!";
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 
 // def from_param_return(a: str) -> str:
 std::string from_param_return(std::string_view a) {
-    //     # return a or b where both are str params: result is string_view at runtime
-    //     x = a or "default"  # tpyc: type(str)
+    // # return a or b where both are str params: result is string_view at runtime
+    // x = a or "default"  # tpyc: type(str)
     std::string_view __tmp_1 = "default";
     std::string x = std::string(((!a.empty()) ? a : __tmp_1));
-    //     x += "."
+    // x += "."
     x += ".";
-    //     return x
+    // return x
     return x;
 }
 
 // def from_or_params(a: str, b: str) -> None:
 void from_or_params(std::string_view a, std::string_view b) {
-    //     # a or b is string_view at runtime; x promoted to str via +=
-    //     x = a or b  # tpyc: type(str)
+    // # a or b is string_view at runtime; x promoted to str via +=
+    // x = a or b  # tpyc: type(str)
     std::string x = std::string(((!a.empty()) ? a : b));
-    //     x += "!"
+    // x += "!"
     x += "!";
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 
 // def from_ternary_params(a: str, b: str, cond: bool) -> None:
 void from_ternary_params(std::string_view a, std::string_view b, bool cond) {
-    //     # ternary of str params is string_view at runtime; x promoted to str via +=
-    //     x = a if cond else b  # tpyc: type(str)
+    // # ternary of str params is string_view at runtime; x promoted to str via +=
+    // x = a if cond else b  # tpyc: type(str)
     std::string x = std::string(((cond) ? (a) : (b)));
-    //     x += "!"
+    // x += "!"
     x += "!";
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 
 // def return_or_params(a: str, b: str) -> str:
 std::string return_or_params(std::string_view a, std::string_view b) {
-    //     # return a or b: both are string_view at runtime, result must be owned string
-    //     return a or b
+    // # return a or b: both are string_view at runtime, result must be owned string
+    // return a or b
     return std::string(((!a.empty()) ? a : b));
 }
 
 // def return_ternary_params(a: str, b: str, cond: bool) -> str:
 std::string return_ternary_params(std::string_view a, std::string_view b, bool cond) {
-    //     # return ternary of str params: result must be owned string
-    //     return a if cond else b
+    // # return ternary of str params: result must be owned string
+    // return a if cond else b
     return std::string(((cond) ? (a) : (b)));
 }
 

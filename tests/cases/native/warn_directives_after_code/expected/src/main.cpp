@@ -7,7 +7,7 @@ namespace tpy_user::main {
 // # Test that # tpy: directives after code produce a warning
 // def main() -> None:
 void main() {
-    //     pass
+    // pass
 }
 
 void __tpy_init() {

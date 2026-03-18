@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def main():
 void main() {
-    //     b1 = Box()
+    // b1 = Box()
     Box b1 = Box();
-    //     b1.value = 10
+    // b1.value = 10
     b1.value = 10;
-    //     b2 = Box()
+    // b2 = Box()
     Box b2 = Box();
-    //     b2.value = 20
+    // b2.value = 20
     b2.value = 20;
-    //     mixed[Box](b1, b2)
+    // mixed[Box](b1, b2)
     mixed<Box>(std::move(b1), b2);
-    //     print("done")
+    // print("done")
     std::cout << "done" << "\n";
 }
 

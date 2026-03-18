@@ -6,34 +6,34 @@ namespace tpy_user::main {
 
 // def describe(s: MaybeShape) -> str:
 std::string describe(const std::variant<std::monostate, Circle*, Rect*> s) {
-    //     if s is None:
+    // if s is None:
     if ((std::holds_alternative<std::monostate>(s))) {
-        //         return "nothing"
+        // return "nothing"
         return "nothing";
     }
-    //     if isinstance(s, Circle):
+    // if isinstance(s, Circle):
     if (std::holds_alternative<Circle*>(s)) {
         auto& __s = *std::get<Circle*>(s);
-        //         return "circle"
+        // return "circle"
         return "circle";
     }
-    //     assert isinstance(s, Rect)
+    // assert isinstance(s, Rect)
     if (!(std::holds_alternative<Rect*>(s))) ::tpy::tpy_panic("assertion failed");
     auto& __s = *std::get<Rect*>(s);
-    //     return "rect"
+    // return "rect"
     return "rect";
 }
 
 // def main() -> None:
 void main() {
-    //     a: MaybeShape = Circle(Int32(1))
+    // a: MaybeShape = Circle(Int32(1))
     MaybeShape __slot_1 = Circle(1);
     std::variant<std::monostate, Circle*, Rect*> a = ::tpy::to_ptr_variant(__slot_1);
-    //     b: MaybeShape = None
+    // b: MaybeShape = None
     std::variant<std::monostate, Circle*, Rect*> b = std::monostate{};
-    //     print(describe(a))
+    // print(describe(a))
     std::cout << describe(a) << "\n";
-    //     print(describe(b))
+    // print(describe(b))
     std::cout << describe(b) << "\n";
 }
 

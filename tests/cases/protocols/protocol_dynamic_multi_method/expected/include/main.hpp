@@ -52,28 +52,28 @@ void main();
 
 // class Circle(Shape):
 struct Circle : Shape {
-    //     radius: float
+    // radius: float
     double radius;
 
-    //     def __init__(self, radius: float) -> None:
+    // def __init__(self, radius: float) -> None:
     Circle() = default;
     explicit Circle(double radius) : radius(radius) {}
 
-    //     def area(self) -> float:
+    // def area(self) -> float:
     double area() override {
-        //         return 3.14159 * self.radius * self.radius
+        // return 3.14159 * self.radius * self.radius
         return ((((3.14159) * (this->radius))) * (this->radius));
     }
 
-    //     def name(self) -> str:
+    // def name(self) -> str:
     std::string name() override {
-        //         return "Circle"
+        // return "Circle"
         return "Circle";
     }
 
-    //     def scale(self, factor: float) -> None:
+    // def scale(self, factor: float) -> None:
     void scale(double factor) override {
-        //         self.radius = self.radius * factor
+        // self.radius = self.radius * factor
         this->radius = ((this->radius) * (factor));
     }
 };

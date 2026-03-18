@@ -7,182 +7,182 @@ namespace tpy_user::main {
 // # --- Leaf functions with known mutation behavior ---
 // def sum_points(items: list[Point]) -> Int32:
 int32_t sum_points(const std::vector<Point>& items) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     for p in items:
+    // for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        //         total += p.x
+        // total += p.x
         total = ::tpy::add_check<int32_t>(total, p.x);
     }
-    //     return total
+    // return total
     return total;
 }
 
 // def first_x(items: list[Point]) -> Int32:
 int32_t first_x(const std::vector<Point>& items) {
-    //     return items[Int32(0)].x
+    // return items[Int32(0)].x
     return ::tpy::__getitem__(items, 0).x;
 }
 
 // def add_point(items: list[Point], p: Point) -> None:
 void add_point(std::vector<Point>& items, const Point& p) {
-    //     items.append(p)
+    // items.append(p)
     auto __tmp_1 = p;
     items.push_back(std::move(__tmp_1));
 }
 
 // def replace_first(items: list[Point], p: Point) -> None:
 void replace_first(std::vector<Point>& items, const Point& p) {
-    //     items[Int32(0)] = p
+    // items[Int32(0)] = p
     ::tpy::__setitem__(items, 0, p);
 }
 
 // def remove_first(items: list[Point]) -> None:
 void remove_first(std::vector<Point>& items) {
-    //     del items[Int32(0)]
+    // del items[Int32(0)]
     ::tpy::__delitem__(items, 0);
 }
 
 // def read_point(p: Point) -> Int32:
 int32_t read_point(const Point& p) {
-    //     return p.x
+    // return p.x
     return p.x;
 }
 
 // def mutate_point(p: Point, val: Int32) -> None:
 void mutate_point(Point& p, int32_t val) {
-    //     p.x = val
+    // p.x = val
     p.x = val;
 }
 
 // # --- Test: non-mutating callee does NOT trigger warning ---
 // def test_non_mutating_no_warn() -> None:
 void test_non_mutating_no_warn() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    //     sum_points(items)  # tpyc: ok
+    // sum_points(items)  # tpyc: ok
     sum_points(items);
-    //     print(v.x)
+    // print(v.x)
     std::cout << v.x << "\n";
 }
 
 // def test_non_mutating_subscript_read() -> None:
 void test_non_mutating_subscript_read() {
-    //     items: list[Point] = [Point(Int32(3), Int32(4))]
+    // items: list[Point] = [Point(Int32(3), Int32(4))]
     std::vector<Point> items = {Point(3, 4)};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    //     first_x(items)  # tpyc: ok
+    // first_x(items)  # tpyc: ok
     first_x(items);
-    //     print(v.x)
+    // print(v.x)
     std::cout << v.x << "\n";
 }
 
 // # --- Test: mutating callee DOES trigger warning ---
 // def test_mutating_append_warns() -> None:
 void test_mutating_append_warns() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    //     add_point(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
+    // add_point(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
     Point __tmp_2 = Point(9, 9);
     add_point(items, __tmp_2);
-    //     print(len(items))
+    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_mutating_subscript_write_no_warn() -> None:
 void test_mutating_subscript_write_no_warn() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    //     replace_first(items, Point(Int32(9), Int32(9)))  # tpyc: ok
+    // replace_first(items, Point(Int32(9), Int32(9)))  # tpyc: ok
     Point __tmp_3 = Point(9, 9);
     replace_first(items, __tmp_3);
-    //     print(items[Int32(0)].x)
+    // print(items[Int32(0)].x)
     std::cout << ::tpy::__getitem__(items, 0).x << "\n";
 }
 
 // def test_mutating_del_warns() -> None:
 void test_mutating_del_warns() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    // items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    //     remove_first(items)  # tpyc: warning(/Passing borrowed container 'items'/)
+    // remove_first(items)  # tpyc: warning(/Passing borrowed container 'items'/)
     remove_first(items);
-    //     print(len(items))
+    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // # --- Test: second param not mutated ---
 // def test_second_param_not_mutated() -> None:
 void test_second_param_not_mutated() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    //     others: list[Point] = [Point(Int32(5), Int32(6))]
+    // others: list[Point] = [Point(Int32(5), Int32(6))]
     std::vector<Point> others = {Point(5, 6)};
-    //     v = others[Int32(0)]
+    // v = others[Int32(0)]
     Point& v = ::tpy::__getitem__(others, 0);
-    //     add_point(items, v)  # tpyc: ok
+    // add_point(items, v)  # tpyc: ok
     add_point(items, v);
-    //     print(v.x)
+    // print(v.x)
     std::cout << v.x << "\n";
 }
 
 // # --- Test: no borrow active = no warn regardless ---
 // def test_no_borrow_no_warn() -> None:
 void test_no_borrow_no_warn() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    //     add_point(items, Point(Int32(9), Int32(9)))  # tpyc: ok
+    // add_point(items, Point(Int32(9), Int32(9)))  # tpyc: ok
     Point __tmp_4 = Point(9, 9);
     add_point(items, __tmp_4);
-    //     print(len(items))
+    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // # --- Test: loop variable mutation inference ---
 // def test_loop_var_non_mutating_callee() -> None:
 void test_loop_var_non_mutating_callee() {
-    //     items: list[Int32] = [1, 2, 3]
+    // items: list[Int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
-    //     for x in items:
+    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         sum_points([])  # tpyc: ok
+        // sum_points([])  # tpyc: ok
         std::vector<Point> __tmp_5 = std::vector<Point>{};
         sum_points(__tmp_5);
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
 }
 
 // def test_loop_var_mutating_callee() -> None:
 void test_loop_var_mutating_callee() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    //     for p in items:
+    // for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        //         add_point(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
+        // add_point(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
         Point __tmp_6 = Point(9, 9);
         add_point(items, __tmp_6);
-        //         break
+        // break
         break;
     }
 }
@@ -190,127 +190,127 @@ void test_loop_var_mutating_callee() {
 // # --- Test: transitive mutation (Phase 2 graph propagation) ---
 // def add_point_wrapper(items: list[Point], p: Point) -> None:
 void add_point_wrapper(std::vector<Point>& items, const Point& p) {
-    //     add_point(items, p)
+    // add_point(items, p)
     add_point(items, p);
 }
 
 // def read_wrapper(items: list[Point]) -> Int32:
 int32_t read_wrapper(const std::vector<Point>& items) {
-    //     return sum_points(items)
+    // return sum_points(items)
     return sum_points(items);
 }
 
 // def test_transitive_mutation_warns() -> None:
 void test_transitive_mutation_warns() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    //     add_point_wrapper(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
+    // add_point_wrapper(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
     Point __tmp_7 = Point(9, 9);
     add_point_wrapper(items, __tmp_7);
-    //     print(len(items))
+    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_transitive_read_no_warn() -> None:
 void test_transitive_read_no_warn() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    //     read_wrapper(items)  # tpyc: ok
+    // read_wrapper(items)  # tpyc: ok
     read_wrapper(items);
-    //     print(v.x)
+    // print(v.x)
     std::cout << v.x << "\n";
 }
 
 // # --- Test: forward call (callee defined after caller) ---
 // def test_forward_mutation_warns() -> None:
 void test_forward_mutation_warns() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    //     forward_mutator(items)  # tpyc: warning(/Passing borrowed container 'items'/)
+    // forward_mutator(items)  # tpyc: warning(/Passing borrowed container 'items'/)
     forward_mutator(items);
-    //     print(len(items))
+    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def forward_mutator(items: list[Point]) -> None:
 void forward_mutator(std::vector<Point>& items) {
-    //     items.append(Point(Int32(7), Int32(8)))
+    // items.append(Point(Int32(7), Int32(8)))
     items.push_back(Point(7, 8));
 }
 
 // def test_forward_read_no_warn() -> None:
 void test_forward_read_no_warn() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    //     forward_reader(items)  # tpyc: ok
+    // forward_reader(items)  # tpyc: ok
     forward_reader(items);
-    //     print(v.x)
+    // print(v.x)
     std::cout << v.x << "\n";
 }
 
 // def forward_reader(items: list[Point]) -> Int32:
 int32_t forward_reader(const std::vector<Point>& items) {
-    //     return sum_points(items)
+    // return sum_points(items)
     return sum_points(items);
 }
 
 // # --- Test: mutual recursion (cycle fixpoint) ---
 // def cycle_a(items: list[Point], p: Point) -> None:
 void cycle_a(std::vector<Point>& items, const Point& p) {
-    //     if len(items) < Int32(5):
+    // if len(items) < Int32(5):
     if ((::tpy::__len__(items) < 5)) {
-        //         items.append(p)
+        // items.append(p)
         auto __tmp_8 = p;
         items.push_back(std::move(__tmp_8));
-        //         cycle_b(items, p)
+        // cycle_b(items, p)
         cycle_b(items, p);
     }
 }
 
 // def cycle_b(items: list[Point], p: Point) -> None:
 void cycle_b(std::vector<Point>& items, const Point& p) {
-    //     cycle_a(items, p)
+    // cycle_a(items, p)
     cycle_a(items, p);
 }
 
 // def test_cycle_mutation_warns() -> None:
 void test_cycle_mutation_warns() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    //     cycle_b(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
+    // cycle_b(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
     Point __tmp_9 = Point(9, 9);
     cycle_b(items, __tmp_9);
-    //     print(len(items))
+    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // # --- Test: multi-hop transitive chain (A -> B -> C) ---
 // def deep_wrapper(items: list[Point], p: Point) -> None:
 void deep_wrapper(std::vector<Point>& items, const Point& p) {
-    //     add_point_wrapper(items, p)
+    // add_point_wrapper(items, p)
     add_point_wrapper(items, p);
 }
 
 // def test_multi_hop_mutation_warns() -> None:
 void test_multi_hop_mutation_warns() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    //     deep_wrapper(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
+    // deep_wrapper(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
     Point __tmp_10 = Point(9, 9);
     deep_wrapper(items, __tmp_10);
-    //     print(len(items))
+    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 

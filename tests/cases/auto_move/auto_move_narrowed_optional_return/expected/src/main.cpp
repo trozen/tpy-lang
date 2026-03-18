@@ -6,22 +6,22 @@ namespace tpy_user::main {
 
 // def extract() -> Own[Handle]:
 Handle extract() {
-    //     h: Handle | None = Handle()
+    // h: Handle | None = Handle()
     Handle __slot_1 = Handle();
     Handle* h = &__slot_1;
-    //     h.value = Int32(99)
+    // h.value = Int32(99)
     h->value = 99;
-    //     assert h is not None
+    // assert h is not None
     if (!((h != nullptr))) ::tpy::tpy_panic("assertion failed");
-    //     return h  # tpyc: ok
+    // return h  # tpyc: ok
     return std::move((*h));
 }
 
 // def main():
 void main() {
-    //     result = extract()
+    // result = extract()
     Handle result = extract();
-    //     print(result.value)
+    // print(result.value)
     std::cout << result.value << "\n";
 }
 

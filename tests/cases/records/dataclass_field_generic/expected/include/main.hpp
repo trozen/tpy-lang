@@ -15,17 +15,17 @@ void main();
 // class Pair[T]:
 template<typename T>
 struct Pair {
-    //     first: T
+    // first: T
     T first;
-    //     second: T
+    // second: T
     T second;
 
-    //     def __init__(self, first: T = T(), second: T = T()) -> None:
+    // def __init__(self, first: T = T(), second: T = T()) -> None:
     explicit Pair(const T& first = T{}, const T& second = T{}) : first(first), second(second) {}
 
-    //     def __eq__(self, other: Pair[T]) -> bool:
+    // def __eq__(self, other: Pair[T]) -> bool:
     bool __eq__(const Pair<T>& other) const {
-        //         return self.first == other.first and self.second == other.second
+        // return self.first == other.first and self.second == other.second
         return ((this->first == other.first) && (this->second == other.second));
     }
 
@@ -47,9 +47,9 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
 // @dataclass
 // class Wrapper:
 struct Wrapper {
-    //     name: str
+    // name: str
     std::string name;
-    //     pair: Pair[Int32] = field(default_factory=Pair)
+    // pair: Pair[Int32] = field(default_factory=Pair)
     Pair<int32_t> pair = Pair<int32_t>();
 
     Wrapper() = default;

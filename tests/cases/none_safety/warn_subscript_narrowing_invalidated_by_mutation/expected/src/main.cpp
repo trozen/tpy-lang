@@ -8,14 +8,14 @@ std::vector<std::optional<int32_t>>* vals{};
 
 // def use_after_write(items: list[Int32 | None], i: Int32) -> Int32:
 int32_t use_after_write(std::vector<std::optional<int32_t>>& items, int32_t i) {
-    //     if items[i] is not None:
+    // if items[i] is not None:
     if ((::tpy::__getitem__(items, i).has_value())) {
-        //         items[i] = items[0]
+        // items[i] = items[0]
         ::tpy::__setitem__(items, i, ::tpy::__getitem__(items, 0));
-        //         return items[i] + 1  # tpyc: warning(/Potential None access/)
+        // return items[i] + 1  # tpyc: warning(/Potential None access/)
         return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(::tpy::__getitem__(items, i)), 1));
     }
-    //     return 0
+    // return 0
     return 0;
 }
 

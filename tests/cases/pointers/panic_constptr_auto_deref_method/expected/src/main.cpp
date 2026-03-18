@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     p: Ptr[readonly[Counter]] = Ptr[readonly[Counter]]()
+    // p: Ptr[readonly[Counter]] = Ptr[readonly[Counter]]()
     const Counter* p = static_cast<const Counter*>(nullptr);
-    //     print(p.__len__())
+    // print(p.__len__())
     std::cout << ::tpy::deref_check(p).__len__() << "\n";
 }
 

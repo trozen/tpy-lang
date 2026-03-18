@@ -7,14 +7,14 @@ namespace tpy_user::main {
 // # Cross-variable same-size reassignment without mutation stays Array
 // def main() -> None:
 void main() {
-    //     a = [1, 2, 3]  # tpyc: type(/Array/)
+    // a = [1, 2, 3]  # tpyc: type(/Array/)
     std::array<int32_t, 3> __slot_1 = {1, 2, 3};
     std::array<int32_t, 3>* a = &__slot_1;
-    //     b = [4, 5, 6]  # tpyc: type(/Array/)
+    // b = [4, 5, 6]  # tpyc: type(/Array/)
     std::array<int32_t, 3> b = {4, 5, 6};
-    //     a = b
+    // a = b
     a = &(b);
-    //     print(len(a))
+    // print(len(a))
     std::cout << ::tpy::__len__((*a)) << "\n";
 }
 

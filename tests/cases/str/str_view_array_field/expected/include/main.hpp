@@ -23,25 +23,25 @@ void test_multiple_views_one_source();
 
 // class Person:
 struct Person {
-    //     name: str
+    // name: str
     std::string name;
-    //     age: Int32
+    // age: Int32
     int32_t age;
 
-    //     def __init__(self, name: str, age: Int32) -> None:
+    // def __init__(self, name: str, age: Int32) -> None:
     Person() = default;
     explicit Person(std::string_view name, int32_t age) : name(name), age(age) {}
 
-    //     def rename(self, new_name: str) -> None:
+    // def rename(self, new_name: str) -> None:
     void rename(std::string_view new_name) {
-        //         self.name = new_name
+        // self.name = new_name
         this->name = new_name;
     }
 
-    //     @readonly
-    //     def greeting(self) -> str:
+    // @readonly
+    // def greeting(self) -> str:
     std::string greeting() const {
-        //         return "Hi, " + self.name
+        // return "Hi, " + self.name
         return (::tpy::str_concat("Hi, ", this->name));
     }
 };

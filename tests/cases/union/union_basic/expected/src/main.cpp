@@ -6,29 +6,29 @@ namespace tpy_user::main {
 
 // def accept_two(x: Int32 | str) -> None:
 void accept_two(const std::variant<int32_t, std::string>& x) {
-    //     pass
+    // pass
 }
 
 // def accept_three(x: Int32 | str | bool) -> None:
 void accept_three(const std::variant<int32_t, bool, std::string>& x) {
-    //     pass
+    // pass
 }
 
 // def test() -> None:
 void test() {
-    //     a: Int32 | str = Int32(10)
+    // a: Int32 | str = Int32(10)
     std::variant<int32_t, std::string> a = 10;
-    //     b: Int32 | str = "hello"
+    // b: Int32 | str = "hello"
     std::variant<int32_t, std::string> b = "hello";
-    //     accept_two(a)
+    // accept_two(a)
     accept_two(a);
-    //     accept_two(b)
+    // accept_two(b)
     accept_two(b);
-    //     c: Int32 | str | bool = True
+    // c: Int32 | str | bool = True
     std::variant<int32_t, bool, std::string> c = true;
-    //     accept_three(c)
+    // accept_three(c)
     accept_three(c);
-    //     print("ok")
+    // print("ok")
     std::cout << "ok" << "\n";
 }
 

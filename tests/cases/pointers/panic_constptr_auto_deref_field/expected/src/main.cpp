@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     p: Ptr[readonly[Point]] = Ptr[readonly[Point]]()
+    // p: Ptr[readonly[Point]] = Ptr[readonly[Point]]()
     const Point* p = static_cast<const Point*>(nullptr);
-    //     print(p.x)
+    // print(p.x)
     std::cout << ::tpy::deref_check(p).x << "\n";
 }
 

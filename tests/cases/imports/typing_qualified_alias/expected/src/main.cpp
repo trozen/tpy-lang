@@ -6,22 +6,22 @@ namespace tpy_user::main {
 
 // def safe_inc(x: t.Optional[Int32]) -> Int32:
 int32_t safe_inc(std::optional<int32_t> x) {
-    //     if x is not None:
+    // if x is not None:
     if ((x.has_value())) {
-        //         return x + Int32(1)
+        // return x + Int32(1)
         return (::tpy::add_check<int32_t>((*x), 1));
     }
-    //     return Int32(0)
+    // return Int32(0)
     return 0;
 }
 
 // def main():
 void main() {
-    //     print(safe_inc(Int32(9)))
+    // print(safe_inc(Int32(9)))
     std::cout << safe_inc(9) << "\n";
-    //     print(safe_inc(None))
+    // print(safe_inc(None))
     std::cout << safe_inc(std::nullopt) << "\n";
-    //     hello(Person("Alice"))
+    // hello(Person("Alice"))
     auto __tmp_1 = Person("Alice");
     hello(__tmp_1);
 }

@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     t = Tagged[Greeter](42)
+    // t = Tagged[Greeter](42)
     Tagged<Greeter> t = Tagged<Greeter>(42);
-    //     o = Owner(t)
+    // o = Owner(t)
     Owner o = Owner(t);
-    //     print(o.item.tag)
+    // print(o.item.tag)
     std::cout << o.item.tag << "\n";
 }
 

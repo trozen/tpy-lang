@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     h = IntListHolder([1, 2, 3])
+    // h = IntListHolder([1, 2, 3])
     IntListHolder h = IntListHolder({1, 2, 3});
-    //     w = Wrapper[IntListHolder](h)
+    // w = Wrapper[IntListHolder](h)
     Wrapper<IntListHolder> w = Wrapper<IntListHolder>(h);
-    //     result = w.get_holder()
+    // result = w.get_holder()
     IntListHolder& result = w.get_holder();
-    //     print(len(result.items()))
+    // print(len(result.items()))
     std::cout << ::tpy::__len__(result.items()) << "\n";
 }
 

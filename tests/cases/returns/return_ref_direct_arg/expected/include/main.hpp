@@ -17,10 +17,10 @@ void test();
 // # Test: ref-returning call passed directly as mutable ref arg -- no copy, mutation propagates
 // class Point:
 struct Point {
-    //     x: int
+    // x: int
     ::tpy::BigInt x;
 
-    //     def __init__(self, x: int) -> None:
+    // def __init__(self, x: int) -> None:
     Point() = default;
     explicit Point(const ::tpy::BigInt& x) : x(x) {}
 };
@@ -34,15 +34,15 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Holder:
 struct Holder {
-    //     inner: Point
+    // inner: Point
     Point inner;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Holder() : inner(Point(::tpy::BigInt(5))) {}
 
-    //     def get(self) -> Point:
+    // def get(self) -> Point:
     Point& get() {
-        //         return self.inner
+        // return self.inner
         return this->inner;
     }
 };

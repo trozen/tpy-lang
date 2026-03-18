@@ -6,71 +6,71 @@ namespace tpy_user::main {
 
 // def get_ptr(p: Ptr[Point]) -> Ptr[Point]:
 Point* get_ptr(Point* p) {
-    //     return p
+    // return p
     return p;
 }
 
 // def main() -> None:
 void main() {
-    //     a: Point = Point(Int32(1), Int32(2))
+    // a: Point = Point(Int32(1), Int32(2))
     Point a = Point(1, 2);
-    //     b: Point = Point(Int32(3), Int32(4))
+    // b: Point = Point(Int32(3), Int32(4))
     Point b = Point(3, 4);
-    //     # --- Branch: both sides non-null → intersection keeps non-null ---
-    //     p: Ptr[Point] = Ptr(a)
+    // # --- Branch: both sides non-null → intersection keeps non-null ---
+    // p: Ptr[Point] = Ptr(a)
     Point* p = &a;
-    //     if a.x > Int32(0):
+    // if a.x > Int32(0):
     if ((a.x > 0)) {
-        //         p = Ptr(b)
+        // p = Ptr(b)
         p = &b;
-    //     else:
+    // else:
     } else {
-        //         p = Ptr(a)
+        // p = Ptr(a)
         p = &a;
     }
-    //     # Both branches assign from Ptr(lvalue), so p is still non-null
-    //     print(p.x)  # tpyc: ok
+    // # Both branches assign from Ptr(lvalue), so p is still non-null
+    // print(p.x)  # tpyc: ok
     std::cout << p->x << "\n";
-    //     # --- Branch: one side unknown → intersection clears ---
-    //     q: Ptr[Point] = Ptr(a)
+    // # --- Branch: one side unknown → intersection clears ---
+    // q: Ptr[Point] = Ptr(a)
     Point* q = &a;
-    //     if a.x > Int32(0):
+    // if a.x > Int32(0):
     if ((a.x > 0)) {
-        //         q = get_ptr(q)
+        // q = get_ptr(q)
         q = get_ptr(q);
     }
-    //     # Then-branch: unknown. Else-branch (implicit): still non-null.
-    //     # Intersection → cleared.
-    //     print(q.x)  # tpyc: ok
+    // # Then-branch: unknown. Else-branch (implicit): still non-null.
+    // # Intersection → cleared.
+    // print(q.x)  # tpyc: ok
     std::cout << ::tpy::deref_check(q).x << "\n";
-    //     # --- Loop: non-null before loop, not reassigned inside → preserved ---
-    //     r: Ptr[Point] = Ptr(a)
+    // # --- Loop: non-null before loop, not reassigned inside → preserved ---
+    // r: Ptr[Point] = Ptr(a)
     Point* r = &a;
-    //     i: Int32 = Int32(0)
+    // i: Int32 = Int32(0)
     int32_t i = 0;
-    //     while i < Int32(3):
+    // while i < Int32(3):
     while ((i < 3)) {
-        //         print(r.x)  # tpyc: ok
+        // print(r.x)  # tpyc: ok
         std::cout << r->x << "\n";
-        //         i = i + Int32(1)
+        // i = i + Int32(1)
         i = (::tpy::add_check<int32_t>(i, 1));
     }
-    //     # --- Loop: reassigned from unknown inside → cleared ---
-    //     s: Ptr[Point] = Ptr(a)
+    // # --- Loop: reassigned from unknown inside → cleared ---
+    // s: Ptr[Point] = Ptr(a)
     Point* s = &a;
-    //     j: Int32 = Int32(0)
+    // j: Int32 = Int32(0)
     int32_t j = 0;
-    //     while j < Int32(3):
+    // while j < Int32(3):
     while ((j < 3)) {
-        //         print(s.x)  # tpyc: ok
+        // print(s.x)  # tpyc: ok
         std::cout << s->x << "\n";
-        //         s = get_ptr(s)
+        // s = get_ptr(s)
         s = get_ptr(s);
-        //         j = j + Int32(1)
+        // j = j + Int32(1)
         j = (::tpy::add_check<int32_t>(j, 1));
     }
-    //     # After loop: s was reassigned from unknown inside body
-    //     print(s.x)  # tpyc: ok
+    // # After loop: s was reassigned from unknown inside body
+    // print(s.x)  # tpyc: ok
     std::cout << ::tpy::deref_check(s).x << "\n";
 }
 

@@ -6,100 +6,100 @@ namespace tpy_user::main {
 
 // def test_str_concat() -> None:
 void test_str_concat() {
-    //     a: str = "hello"
+    // a: str = "hello"
     std::string_view a = "hello";
-    //     b: str = " world"
+    // b: str = " world"
     std::string_view b = " world";
-    //     c: String = a + b
+    // c: String = a + b
     std::string c = (::tpy::str_concat(a, b));
-    //     print(c)  # hello world
+    // print(c)  # hello world
     std::cout << c << "\n";
 }
 
 // def test_str_plus_eq() -> None:
 void test_str_plus_eq() {
-    //     s: String = String("hello")
+    // s: String = String("hello")
     std::string s = std::string("hello");
-    //     s += " world"
+    // s += " world"
     s += " world";
-    //     print(s)  # hello world
+    // print(s)  # hello world
     std::cout << s << "\n";
 }
 
 // def test_str_multiconcat() -> None:
 void test_str_multiconcat() {
-    //     s: String = String("a") + "b" + "c"
+    // s: String = String("a") + "b" + "c"
     std::string s = (::tpy::str_concat((::tpy::str_concat(std::string("a"), "b")), "c"));
-    //     print(s)  # abc
+    // print(s)  # abc
     std::cout << s << "\n";
 }
 
 // def test_literal_concat() -> None:
 void test_literal_concat() {
-    //     s: String = "foo" + "bar"
+    // s: String = "foo" + "bar"
     std::string s = (::tpy::str_concat("foo", "bar"));
-    //     print(s)  # foobar
+    // print(s)  # foobar
     std::cout << s << "\n";
 }
 
 // def test_cross_type_concat() -> None:
 void test_cross_type_concat() {
-    //     a: str = str("hello")
+    // a: str = str("hello")
     std::string a = std::string("hello");
-    //     b: String = String(" world")
+    // b: String = String(" world")
     std::string b = std::string(" world");
-    //     # str + String
-    //     print(a + b)  # hello world
+    // # str + String
+    // print(a + b)  # hello world
     std::cout << (::tpy::str_concat(a, b)) << "\n";
-    //     # String + str
-    //     print(b + a)  #  worldhello
+    // # String + str
+    // print(b + a)  #  worldhello
     std::cout << (::tpy::str_concat(b, a)) << "\n";
-    //     # str += with str target
-    //     a += " end"
+    // # str += with str target
+    // a += " end"
     a += " end";
-    //     print(a)  # hello end
+    // print(a)  # hello end
     std::cout << a << "\n";
 }
 
 // def test_reassign_concat() -> None:
 void test_reassign_concat() {
-    //     # x = x + y should use in-place append
-    //     s: String = String("hello")
+    // # x = x + y should use in-place append
+    // s: String = String("hello")
     std::string s = std::string("hello");
-    //     s = s + " world"
+    // s = s + " world"
     s += " world";
-    //     print(s)  # hello world
+    // print(s)  # hello world
     std::cout << s << "\n";
-    //     # str type
-    //     a: str = str("a")
+    // # str type
+    // a: str = str("a")
     std::string a = std::string("a");
-    //     a = a + "b"
+    // a = a + "b"
     a += "b";
-    //     print(a)  # ab
+    // print(a)  # ab
     std::cout << a << "\n";
-    //     # with str() conversion
-    //     n: Int32 = 42
+    // # with str() conversion
+    // n: Int32 = 42
     int32_t n = 42;
-    //     a = a + str(n)
+    // a = a + str(n)
     a += ::tpy::fixed_to_str<int32_t>(n);
-    //     print(a)  # ab42
+    // print(a)  # ab42
     std::cout << a << "\n";
 }
 
 // def test_loop_concat() -> None:
 void test_loop_concat() {
-    //     s: String = String("")
+    // s: String = String("")
     std::string s = std::string("");
-    //     i: Int32 = 0
+    // i: Int32 = 0
     int32_t i = 0;
-    //     while i < 5:
+    // while i < 5:
     while ((i < 5)) {
-        //         s += str(i)
+        // s += str(i)
         s += ::tpy::fixed_to_str<int32_t>(i);
-        //         i += 1
+        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    //     print(s)  # 01234
+    // print(s)  # 01234
     std::cout << s << "\n";
 }
 

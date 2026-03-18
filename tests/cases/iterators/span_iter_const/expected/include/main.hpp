@@ -13,10 +13,10 @@ void main();
 
 // class Stack:
 struct Stack {
-    //     _data: list[Int32]
+    // _data: list[Int32]
     std::vector<int32_t> _data;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Stack() : _data(std::vector<int32_t>{}) {}
 
     auto begin() { return __iter__().begin(); }
@@ -24,86 +24,86 @@ struct Stack {
     auto begin() const { return __iter__().begin(); }
     auto end() const { return __iter__().end(); }
 
-    //     def push(self, val: Int32) -> None:
+    // def push(self, val: Int32) -> None:
     void push(int32_t val) {
-        //         self._data.append(val)
+        // self._data.append(val)
         auto __tmp_1 = val;
         this->_data.push_back(std::move(__tmp_1));
     }
 
-    //     @auto_readonly
-    //     def __span__(self) -> Span[auto_readonly[Int32]]:
+    // @auto_readonly
+    // def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<int32_t> __span__() {
-        //         return self._data
+        // return self._data
         return ::tpy::as_mut_span(this->_data);
     }
 
-    //     @auto_readonly
-    //     def __span__(self) -> Span[auto_readonly[Int32]]:
+    // @auto_readonly
+    // def __span__(self) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> __span__() const {
-        //         return self._data
+        // return self._data
         return ::tpy::as_span(this->_data);
     }
 
-    //     @auto_readonly
-    //     def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
+    // @auto_readonly
+    // def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
     ::tpy::SpanIter<int32_t> __iter__() {
-        //         return SpanIter(self.__span__())
+        // return SpanIter(self.__span__())
         return ::tpy::SpanIter<int32_t>(__span__());
     }
 
-    //     @auto_readonly
-    //     def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
+    // @auto_readonly
+    // def __iter__(self) -> SpanIter[auto_readonly[Int32]]:
     ::tpy::SpanIter<const int32_t> __iter__() const {
-        //         return SpanIter(self.__span__())
+        // return SpanIter(self.__span__())
         return ::tpy::SpanIter<const int32_t>(__span__());
     }
 
-    //     @readonly
-    //     def sum(self) -> Int32:
+    // @readonly
+    // def sum(self) -> Int32:
     int32_t sum() const {
-        //         total: Int32 = 0
+        // total: Int32 = 0
         int32_t total = 0;
-        //         for x in self:
+        // for x in self:
         auto& __src_0 = (*this);
         auto __obj_0 = __src_0.__iter__();
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            //             total += x
+            // total += x
             total = ::tpy::add_check<int32_t>(total, x);
         }
-        //         return total
+        // return total
         return total;
     }
 
-    //     def __repr__(self) -> str:
+    // def __repr__(self) -> str:
     std::string __repr__() const {
-        //         s = "Stack("
+        // s = "Stack("
         std::string s = "Stack(";
-        //         first = True
+        // first = True
         bool first = true;
-        //         for x in self:
+        // for x in self:
         auto& __src_0 = (*this);
         auto __obj_0 = __src_0.__iter__();
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            //             if not first:
+            // if not first:
             if ((!(first))) {
-                //                 s += ", "
+                // s += ", "
                 s += ", ";
             }
-            //             first = False
+            // first = False
             first = false;
-            //             s += str(x)
+            // s += str(x)
             s += ::tpy::fixed_to_str<int32_t>(x);
         }
-        //         s += ")"
+        // s += ")"
         s += ")";
-        //         return s
+        // return s
         return s;
     }
 };

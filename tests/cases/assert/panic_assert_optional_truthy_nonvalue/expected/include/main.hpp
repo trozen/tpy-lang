@@ -12,10 +12,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // class C:
 struct C {
-    //     v: Int32
+    // v: Int32
     int32_t v;
 
-    //     def __init__(self, v: Int32):
+    // def __init__(self, v: Int32):
     C() = default;
     explicit C(int32_t v) : v(v) {}
 };

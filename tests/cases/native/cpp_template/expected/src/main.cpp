@@ -9,11 +9,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     print(to_char(65))
+    // print(to_char(65))
     std::cout << static_cast<char>(65) << "\n";
-    //     print(to_int("Z"))
+    // print(to_int("Z"))
     std::cout << static_cast<int32_t>(static_cast<unsigned char>('Z')) << "\n";
-    //     print(add(10, 32))
+    // print(add(10, 32))
     std::cout << 10 + 32 << "\n";
 }
 

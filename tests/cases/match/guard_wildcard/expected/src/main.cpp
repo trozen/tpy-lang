@@ -6,61 +6,61 @@ namespace tpy_user::main {
 
 // def classify(x: Int32) -> str:
 std::string classify(int32_t x) {
-    //     match x:
+    // match x:
     auto& __match_subject = x;
     switch (__match_subject) {
-    //         case _ if x > 10:
+    // case _ if x > 10:
     default: {
         if ((x > 10)) {
-            //             return "big"
+            // return "big"
             return "big";
         } else if ((x > 5)) {
-            //             return "medium"
+            // return "medium"
             return "medium";
         } else {
-            //             return "small"
+            // return "small"
             return "small";
         }
         break;
     }
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def describe(x: Int32) -> str:
 std::string describe(int32_t x) {
-    //     match x:
+    // match x:
     auto& __match_subject = x;
     switch (__match_subject) {
-    //         case n if n == 0:
+    // case n if n == 0:
     default: {
         auto& n = __match_subject;
         if ((n == 0)) {
-            //             return "zero"
+            // return "zero"
             return "zero";
         } else {
-            //             return "nonzero: " + str(n)
+            // return "nonzero: " + str(n)
             return (::tpy::str_concat("nonzero: ", ::tpy::fixed_to_str<int32_t>(n)));
         }
         break;
     }
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def main() -> None:
 void main() {
-    //     print(classify(Int32(20)))
+    // print(classify(Int32(20)))
     std::cout << classify(20) << "\n";
-    //     print(classify(Int32(7)))
+    // print(classify(Int32(7)))
     std::cout << classify(7) << "\n";
-    //     print(classify(Int32(3)))
+    // print(classify(Int32(3)))
     std::cout << classify(3) << "\n";
-    //     print(describe(Int32(0)))
+    // print(describe(Int32(0)))
     std::cout << describe(0) << "\n";
-    //     print(describe(Int32(42)))
+    // print(describe(Int32(42)))
     std::cout << describe(42) << "\n";
 }
 

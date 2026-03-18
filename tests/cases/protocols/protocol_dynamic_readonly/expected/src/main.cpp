@@ -6,27 +6,27 @@ namespace tpy_user::main {
 
 // def greet(pet: Pet) -> None:
 void greet(const Pet& pet) {
-    //     print(pet.name())
+    // print(pet.name())
     std::cout << pet.name() << "\n";
 }
 
 // def main() -> None:
 void main() {
   std::optional<::tpy::Adapter<Pet, Cat>> __slot_2;
-    //     pet: Pet = Dog()
+    // pet: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    //     print(pet.name())
+    // print(pet.name())
     std::cout << pet->name() << "\n";
-    //     pet = Cat()
+    // pet = Cat()
     __slot_2.emplace(Cat());
     pet = &*__slot_2;
-    //     print(pet.name())
+    // print(pet.name())
     std::cout << pet->name() << "\n";
-    //     greet(Dog())
+    // greet(Dog())
     Dog __tmp_1{Dog()};
     greet(__tmp_1);
-    //     greet(Cat())
+    // greet(Cat())
     ::tpy::Adapter<Pet, Cat> __tmp_2{Cat()};
     greet(__tmp_2);
 }

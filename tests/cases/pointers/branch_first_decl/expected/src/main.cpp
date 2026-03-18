@@ -9,155 +9,155 @@ std::vector<Point>* pts{};
 // # Value type first declared in both branches
 // def value_type_branches(cond: bool) -> Int32:
 int32_t value_type_branches(bool cond) {
-    //     if cond:
+    // if cond:
     int32_t x;
     if (cond) {
-        //         x: Int32 = 10
+        // x: Int32 = 10
         x = 10;
-    //     else:
+    // else:
     } else {
-        //         x = 20
+        // x = 20
         x = 20;
     }
-    //     return x
+    // return x
     return x;
 }
 
 // # One branch declares, other terminates
 // def else_returns(cond: bool) -> Int32:
 int32_t else_returns(bool cond) {
-    //     if cond:
+    // if cond:
     int32_t x;
     if (cond) {
-        //         x: Int32 = 42
+        // x: Int32 = 42
         x = 42;
-    //     else:
+    // else:
     } else {
-        //         return 0
+        // return 0
         return 0;
     }
-    //     return x
+    // return x
     return x;
 }
 
 // # Multiple variables first declared in same if
 // def multi_var(cond: bool) -> Int32:
 int32_t multi_var(bool cond) {
-    //     if cond:
+    // if cond:
     int32_t a;
     int32_t b;
     if (cond) {
-        //         a: Int32 = 1
+        // a: Int32 = 1
         a = 1;
-        //         b: Int32 = 2
+        // b: Int32 = 2
         b = 2;
-    //     else:
+    // else:
     } else {
-        //         a = 3
+        // a = 3
         a = 3;
-        //         b = 4
+        // b = 4
         b = 4;
     }
-    //     return a + b
+    // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
 // # Non-value type with rvalue init (needs rebind slot)
 // def rvalue_branch(cond: bool) -> None:
 void rvalue_branch(bool cond) {
-    //     if cond:
+    // if cond:
     std::optional<Point> __slot_1;
     Point* p;
     if (cond) {
-        //         p = Point(1, 2)
+        // p = Point(1, 2)
         p = &*(__slot_1 = Point(1, 2));
-    //     else:
+    // else:
     } else {
-        //         p = Point(3, 4)
+        // p = Point(3, 4)
         p = &*(__slot_1 = Point(3, 4));
     }
-    //     print(p.x, p.y)
+    // print(p.x, p.y)
     std::cout << p->x << " " << p->y << "\n";
 }
 
 // # Branch-declared variable reassigned after the if
 // def reassign_after(cond: bool) -> None:
 void reassign_after(bool cond) {
-    //     if cond:
+    // if cond:
     int32_t x;
     if (cond) {
-        //         x: Int32 = 10
+        // x: Int32 = 10
         x = 10;
-    //     else:
+    // else:
     } else {
-        //         x = 20
+        // x = 20
         x = 20;
     }
-    //     x = x + 1
+    // x = x + 1
     x = (::tpy::add_check<int32_t>(x, 1));
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
 }
 
 // # Nested if — inner if has branch declarations
 // def nested_if(a: bool, b: bool) -> Int32:
 int32_t nested_if(bool a, bool b) {
-    //     if a:
+    // if a:
     int32_t y;
     if (a) {
-        //         if b:
+        // if b:
         int32_t x;
         if (b) {
-            //             x: Int32 = 1
+            // x: Int32 = 1
             x = 1;
-        //         else:
+        // else:
         } else {
-            //             x = 2
+            // x = 2
             x = 2;
         }
-        //         y: Int32 = x + 10
+        // y: Int32 = x + 10
         y = (::tpy::add_check<int32_t>(x, 10));
-    //     else:
+    // else:
     } else {
-        //         y = 99
+        // y = 99
         y = 99;
     }
-    //     return y
+    // return y
     return y;
 }
 
 // # Non-value type from param in branches (pointer-local)
 // def param_branch(points: list[Point], cond: bool) -> None:
 void param_branch(std::vector<Point>& points, bool cond) {
-    //     if cond:
+    // if cond:
     Point* p;
     if (cond) {
-        //         p = points[0]
+        // p = points[0]
         p = &(::tpy::__getitem__(points, 0));
-    //     else:
+    // else:
     } else {
-        //         p = points[1]
+        // p = points[1]
         p = &(::tpy::__getitem__(points, 1));
     }
-    //     print(p.x, p.y)
+    // print(p.x, p.y)
     std::cout << p->x << " " << p->y << "\n";
 }
 
 // # Branch-declared non-value type with rvalue in one branch, lvalue in other
 // def mixed_init(points: list[Point], cond: bool) -> None:
 void mixed_init(std::vector<Point>& points, bool cond) {
-    //     if cond:
+    // if cond:
     std::optional<Point> __slot_1;
     Point* p;
     if (cond) {
-        //         p = points[0]
+        // p = points[0]
         p = &(::tpy::__getitem__(points, 0));
-    //     else:
+    // else:
     } else {
-        //         p = Point(70, 80)
+        // p = Point(70, 80)
         p = &*(__slot_1 = Point(70, 80));
     }
-    //     print(p.x, p.y)
+    // print(p.x, p.y)
     std::cout << p->x << " " << p->y << "\n";
 }
 

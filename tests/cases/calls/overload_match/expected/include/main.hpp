@@ -16,10 +16,10 @@ void main();
 
 // class Circle:
 struct Circle {
-    //     radius: float
+    // radius: float
     double radius;
 
-    //     def __init__(self, radius: float) -> None:
+    // def __init__(self, radius: float) -> None:
     Circle() = default;
     explicit Circle(double radius) : radius(radius) {}
 };
@@ -33,10 +33,10 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
 
 // class Square:
 struct Square {
-    //     side: float
+    // side: float
     double side;
 
-    //     def __init__(self, side: float) -> None:
+    // def __init__(self, side: float) -> None:
     Square() = default;
     explicit Square(double side) : side(side) {}
 };

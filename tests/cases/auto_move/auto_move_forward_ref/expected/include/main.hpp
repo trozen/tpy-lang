@@ -18,7 +18,7 @@ void main();
 
 // class Box:
 struct Box {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
 };
@@ -33,12 +33,12 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // def sink[T](x: Own[T]) -> None:
 template<typename T>
 void sink(std::type_identity_t<T>&& x) {
-    //     pass
+    // pass
 }
 // def wrapper[T](x: Own[T]) -> None:
 template<typename T>
 void wrapper(std::type_identity_t<T>&& x) {
-    //     sink[T](x)  # std::move(x) at last use
+    // sink[T](x)  # std::move(x) at last use
     sink<T>(std::move(x));
 }
 

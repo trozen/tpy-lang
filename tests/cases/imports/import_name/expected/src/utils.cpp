@@ -6,7 +6,7 @@ namespace tpy_user::utils {
 
 // def get_name() -> str:
 std::string get_name() {
-    //     return __name__
+    // return __name__
     return std::string(__name__);
 }
 

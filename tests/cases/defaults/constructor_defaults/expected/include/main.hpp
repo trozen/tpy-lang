@@ -14,12 +14,12 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32 = Int32(0), y: Int32 = Int32(0)) -> None:
+    // def __init__(self, x: Int32 = Int32(0), y: Int32 = Int32(0)) -> None:
     explicit Point(int32_t x = 0, int32_t y = 0) : x(x), y(y) {}
 };
 
@@ -34,12 +34,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Named:
 struct Named {
-    //     name: str
+    // name: str
     std::string name;
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, name: str, value: Int32 = Int32(42)) -> None:
+    // def __init__(self, name: str, value: Int32 = Int32(42)) -> None:
     Named() = default;
     explicit Named(std::string_view name, int32_t value = 42) : name(name), value(value) {}
 };

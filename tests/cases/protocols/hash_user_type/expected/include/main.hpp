@@ -15,18 +15,18 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: int
+    // x: int
     ::tpy::BigInt x;
-    //     y: int
+    // y: int
     ::tpy::BigInt y;
 
-    //     def __init__(self, x: int, y: int) -> None:
+    // def __init__(self, x: int, y: int) -> None:
     Point() = default;
     explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 
-    //     def __hash__(self) -> UInt64:
+    // def __hash__(self) -> UInt64:
     uint64_t __hash__() const {
-        //         return hash(self.x) ^ hash(self.y)
+        // return hash(self.x) ^ hash(self.y)
         return (static_cast<uint64_t>(::tpy::__hash__(this->x) ^ ::tpy::__hash__(this->y)));
     }
 };
@@ -53,7 +53,7 @@ namespace tpy_user::main {
 // def get_hash(x: Hashable) -> UInt64:
 template<::tpy::Hashable T_x>
 uint64_t get_hash(const T_x& x) {
-    //     return hash(x)
+    // return hash(x)
     return ::tpy::__hash__(x);
 }
 

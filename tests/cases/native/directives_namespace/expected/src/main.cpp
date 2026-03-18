@@ -8,13 +8,13 @@ namespace myproject::core {
 // # tpy: cpp_namespace("myproject::core")
 // def greet(name: str) -> str:
 std::string greet(std::string_view name) {
-    //     return "hello " + name
+    // return "hello " + name
     return (::tpy::str_concat("hello ", name));
 }
 
 // def main() -> None:
 void main() {
-    //     print(greet("world"))
+    // print(greet("world"))
     std::cout << greet("world") << "\n";
 }
 

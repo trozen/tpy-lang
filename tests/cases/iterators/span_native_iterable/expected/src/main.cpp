@@ -6,26 +6,26 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # ArrayList has __iter__() -> SpanIter -> auto NativeIterable
-    //     a = ArrayList[Int32, 8]()
+    // # ArrayList has __iter__() -> SpanIter -> auto NativeIterable
+    // a = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> a = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    //     a.append(1)
+    // a.append(1)
     a.append(1);
-    //     a.append(2)
+    // a.append(2)
     a.append(2);
-    //     a.append(3)
+    // a.append(3)
     a.append(3);
-    //     print(sum_items(a))
+    // print(sum_items(a))
     std::cout << sum_items(a) << "\n";
-    //     # For loop over ArrayList
-    //     for x in a:
+    // # For loop over ArrayList
+    // for x in a:
     auto& __src_0 = a;
     auto __obj_0 = __src_0.__iter__();
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
 }

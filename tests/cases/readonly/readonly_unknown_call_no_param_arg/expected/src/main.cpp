@@ -6,18 +6,18 @@ namespace tpy_user::main {
 
 // def mutate(b: Box) -> None:
 void mutate(Box& b) {
-    //     b.value = b.value + 1
+    // b.value = b.value + 1
     b.value = (::tpy::add_check<int32_t>(b.value, 1));
 }
 
 // @readonly
 // def ok(b: Box) -> Int32:
 int32_t ok(const Box& b) {
-    //     local = Box(b.value)
+    // local = Box(b.value)
     Box local = Box(b.value);
-    //     mutate(local)  # tpyc: ok
+    // mutate(local)  # tpyc: ok
     mutate(local);
-    //     return local.value
+    // return local.value
     return local.value;
 }
 

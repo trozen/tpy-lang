@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c: MyContainer = MyContainer(42)
+    // c: MyContainer = MyContainer(42)
     MyContainer c = MyContainer(42);
-    //     print(count(c))
+    // print(count(c))
     std::cout << count(c) << "\n";
 }
 

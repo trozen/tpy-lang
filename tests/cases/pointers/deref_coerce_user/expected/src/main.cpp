@@ -6,18 +6,18 @@ namespace tpy_user::main {
 
 // def print_point(p: Point) -> None:
 void print_point(const Point& p) {
-    //     print(p.x, p.y)
+    // print(p.x, p.y)
     std::cout << p.x << " " << p.y << "\n";
 }
 
 // def test() -> None:
 void test() {
-    //     pt: Point = Point(10, 20)
+    // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    //     r: Ref = Ref(pt)
+    // r: Ref = Ref(pt)
     Ref r = Ref(pt);
-    //     # Ref has __deref__() -> Point, so it should auto-coerce to Point
-    //     print_point(r)
+    // # Ref has __deref__() -> Point, so it should auto-coerce to Point
+    // print_point(r)
     Point __tmp_1 = r.__deref__();
     print_point(__tmp_1);
 }

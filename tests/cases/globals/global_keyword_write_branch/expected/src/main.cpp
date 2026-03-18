@@ -8,14 +8,14 @@ namespace tpy_user::main {
 
 // def update(val: int) -> None:
 void update(const ::tpy::BigInt& val) {
-    //     global x
-    //     if val > 0:
+    // global x
+    // if val > 0:
     if ((val > 0)) {
-        //         x = val
+        // x = val
         x = val;
-    //     else:
+    // else:
     } else {
-        //         x = 0
+        // x = 0
         x = 0;
     }
 }

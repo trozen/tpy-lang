@@ -13,27 +13,27 @@ void main();
 
 // class CachingContainer:
 struct CachingContainer {
-    //     data: Int32
+    // data: Int32
     int32_t data;
-    //     last_access: Int32
+    // last_access: Int32
     int32_t last_access;
 
-    //     def __init__(self, data: Int32) -> None:
+    // def __init__(self, data: Int32) -> None:
     CachingContainer() = default;
     explicit CachingContainer(int32_t data) : data(data), last_access(-1) {}
 
-    //     @readonly(False)
-    //     def __getitem__(self, index: Int32) -> Int32:
+    // @readonly(False)
+    // def __getitem__(self, index: Int32) -> Int32:
     int32_t __getitem__(int32_t index) {
-        //         self.last_access = index
+        // self.last_access = index
         this->last_access = index;
-        //         return self.data
+        // return self.data
         return this->data;
     }
 
-    //     def __len__(self) -> Int32:
+    // def __len__(self) -> Int32:
     int32_t __len__() const {
-        //         return 1
+        // return 1
         return 1;
     }
 

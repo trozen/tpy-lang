@@ -24,10 +24,10 @@ void test_warn_update_generic(::tpy::ordered_map<std::string, V>& a, ::tpy::orde
 
 // class Node:
 struct Node {
-    //     val: Int32
+    // val: Int32
     int32_t val;
 
-    //     def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: Int32) -> None:
     Node() = default;
     explicit Node(int32_t val) : val(val) {}
 };
@@ -42,9 +42,9 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 // def test_warn_update_generic[V](a: dict[str, V], b: dict[str, V]) -> None:
 template<typename V>
 void test_warn_update_generic(::tpy::ordered_map<std::string, V>& a, ::tpy::ordered_map<std::string, V>& b) {
-    //     a.update(b)  # tpyc: warning(/may copy V elements/)
+    // a.update(b)  # tpyc: warning(/may copy V elements/)
     ::tpy::dict_update(a, b);
-    //     print(len(b))
+    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 

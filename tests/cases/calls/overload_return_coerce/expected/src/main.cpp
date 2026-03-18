@@ -10,16 +10,16 @@ namespace tpy_user::main {
 // @overload
 // def get_val(obj: A) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_val(const A& obj) {
-    //     if isinstance(obj, A):
-    //         return obj.x  # Int32, stub -> int (not float)
+    // if isinstance(obj, A):
+    // return obj.x  # Int32, stub -> int (not float)
     return obj.x;
 }
 
 // @overload
 // def get_val(obj: B) -> float: ...  # tpyc: ok
 double get_val(const B& obj) {
-    //     if isinstance(obj, A):
-    //         return obj.y
+    // if isinstance(obj, A):
+    // return obj.y
     return obj.y;
 }
 
@@ -30,16 +30,16 @@ double get_val(const B& obj) {
 // @overload
 // def get_big(obj: C) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_big(const C& obj) {
-    //     if isinstance(obj, C):
-    //         return obj.z  # Int64, stub -> int (not float)
+    // if isinstance(obj, C):
+    // return obj.z  # Int64, stub -> int (not float)
     return obj.z;
 }
 
 // @overload
 // def get_big(obj: B) -> float: ...  # tpyc: ok
 double get_big(const B& obj) {
-    //     if isinstance(obj, C):
-    //         return obj.y
+    // if isinstance(obj, C):
+    // return obj.y
     return obj.y;
 }
 
@@ -50,16 +50,16 @@ double get_big(const B& obj) {
 // @overload
 // def get_wide(obj: A) -> Int64: ...  # tpyc: ok
 int64_t get_wide(const A& obj) {
-    //     if isinstance(obj, A):
-    //         return obj.x  # Int32, stub -> Int64 (not float)
+    // if isinstance(obj, A):
+    // return obj.x  # Int32, stub -> Int64 (not float)
     return obj.x;
 }
 
 // @overload
 // def get_wide(obj: B) -> float: ...  # tpyc: ok
 double get_wide(const B& obj) {
-    //     if isinstance(obj, A):
-    //         return obj.y
+    // if isinstance(obj, A):
+    // return obj.y
     return obj.y;
 }
 
@@ -70,44 +70,44 @@ double get_wide(const B& obj) {
 // @overload
 // def get_cast(obj: A) -> float: ...  # tpyc: ok
 double get_cast(const A& obj) {
-    //     if isinstance(obj, A):
-    //         return obj.x  # Int32, stub -> float (not int)
+    // if isinstance(obj, A):
+    // return obj.x  # Int32, stub -> float (not int)
     return obj.x;
 }
 
 // @overload
 // def get_cast(obj: C) -> int: ...  # tpyc: ok
 ::tpy::BigInt get_cast(const C& obj) {
-    //     if isinstance(obj, A):
-    //         return obj.z
+    // if isinstance(obj, A):
+    // return obj.z
     return obj.z;
 }
 
 
 // def main() -> None:
 void main() {
-    //     a = A(Int32(42))
+    // a = A(Int32(42))
     A a = A(42);
-    //     b = B(3.14)
+    // b = B(3.14)
     B b = B(3.14);
-    //     c = C(Int64(100))
+    // c = C(Int64(100))
     C c = C(100);
-    //     print(get_val(a))
+    // print(get_val(a))
     std::cout << get_val(a) << "\n";
-    //     print(get_val(b))
+    // print(get_val(b))
     std::cout << ::tpy::print_float(get_val(b)) << "\n";
-    //     print(get_big(c))
+    // print(get_big(c))
     std::cout << get_big(c) << "\n";
-    //     print(get_big(b))
+    // print(get_big(b))
     std::cout << ::tpy::print_float(get_big(b)) << "\n";
-    //     print(get_wide(a))
+    // print(get_wide(a))
     std::cout << get_wide(a) << "\n";
-    //     print(get_wide(b))
+    // print(get_wide(b))
     std::cout << ::tpy::print_float(get_wide(b)) << "\n";
-    //     # int() normalizes output: TPy returns float (via stub), CPython returns Int32
-    //     print(int(get_cast(a)))
+    // # int() normalizes output: TPy returns float (via stub), CPython returns Int32
+    // print(int(get_cast(a)))
     std::cout << ::tpy::BigInt::from_float(get_cast(a)) << "\n";
-    //     print(get_cast(c))
+    // print(get_cast(c))
     std::cout << get_cast(c) << "\n";
 }
 

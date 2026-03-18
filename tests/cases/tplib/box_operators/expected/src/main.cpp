@@ -6,65 +6,65 @@ namespace tpy_user::main {
 
 // def test_eq() -> None:
 void test_eq() {
-    //     a = Box(Int32(1))
+    // a = Box(Int32(1))
     ::tpy_user::tplib::Box<int32_t> a = ::tpy_user::tplib::Box<int32_t>(1);
-    //     b = Box(Int32(1))
+    // b = Box(Int32(1))
     ::tpy_user::tplib::Box<int32_t> b = ::tpy_user::tplib::Box<int32_t>(1);
-    //     c = Box(Int32(2))
+    // c = Box(Int32(2))
     ::tpy_user::tplib::Box<int32_t> c = ::tpy_user::tplib::Box<int32_t>(2);
-    //     print(a == b)
+    // print(a == b)
     std::cout << ::tpy::print_bool((a == b)) << "\n";
-    //     print(a == c)
+    // print(a == c)
     std::cout << ::tpy::print_bool((a == c)) << "\n";
-    //     print(a != b)
+    // print(a != b)
     std::cout << ::tpy::print_bool((a != b)) << "\n";
-    //     print(a != c)
+    // print(a != c)
     std::cout << ::tpy::print_bool((a != c)) << "\n";
 }
 
 // def test_comparisons() -> None:
 void test_comparisons() {
-    //     a = Box(Int32(1))
+    // a = Box(Int32(1))
     ::tpy_user::tplib::Box<int32_t> a = ::tpy_user::tplib::Box<int32_t>(1);
-    //     b = Box(Int32(2))
+    // b = Box(Int32(2))
     ::tpy_user::tplib::Box<int32_t> b = ::tpy_user::tplib::Box<int32_t>(2);
-    //     c = Box(Int32(1))
+    // c = Box(Int32(1))
     ::tpy_user::tplib::Box<int32_t> c = ::tpy_user::tplib::Box<int32_t>(1);
-    //     print(a < b)
+    // print(a < b)
     std::cout << ::tpy::print_bool((a < b)) << "\n";
-    //     print(b < a)
+    // print(b < a)
     std::cout << ::tpy::print_bool((b < a)) << "\n";
-    //     print(a <= c)
+    // print(a <= c)
     std::cout << ::tpy::print_bool((a <= c)) << "\n";
-    //     print(a <= b)
+    // print(a <= b)
     std::cout << ::tpy::print_bool((a <= b)) << "\n";
-    //     print(b > a)
+    // print(b > a)
     std::cout << ::tpy::print_bool((b > a)) << "\n";
-    //     print(a > b)
+    // print(a > b)
     std::cout << ::tpy::print_bool((a > b)) << "\n";
-    //     print(a >= c)
+    // print(a >= c)
     std::cout << ::tpy::print_bool((a >= c)) << "\n";
-    //     print(b >= a)
+    // print(b >= a)
     std::cout << ::tpy::print_bool((b >= a)) << "\n";
 }
 
 // def test_hash() -> None:
 void test_hash() {
-    //     a = Box(Int32(42))
+    // a = Box(Int32(42))
     ::tpy_user::tplib::Box<int32_t> a = ::tpy_user::tplib::Box<int32_t>(42);
-    //     b = Box(Int32(42))
+    // b = Box(Int32(42))
     ::tpy_user::tplib::Box<int32_t> b = ::tpy_user::tplib::Box<int32_t>(42);
-    //     print(hash(a) == hash(b))
+    // print(hash(a) == hash(b))
     std::cout << ::tpy::print_bool((::tpy::__hash__(a) == ::tpy::__hash__(b))) << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     test_eq()
+    // test_eq()
     test_eq();
-    //     test_comparisons()
+    // test_comparisons()
     test_comparisons();
-    //     test_hash()
+    // test_hash()
     test_hash();
 }
 

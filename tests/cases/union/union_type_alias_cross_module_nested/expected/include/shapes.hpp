@@ -12,10 +12,10 @@ inline constexpr std::string_view __name__ = "shapes";
 
 // class Circle:
 struct Circle {
-    //     radius: Int32
+    // radius: Int32
     int32_t radius;
 
-    //     def __init__(self, radius: Int32) -> None:
+    // def __init__(self, radius: Int32) -> None:
     Circle() = default;
     explicit Circle(int32_t radius) : radius(radius) {}
 };
@@ -29,10 +29,10 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
 
 // class Rect:
 struct Rect {
-    //     width: Int32
+    // width: Int32
     int32_t width;
 
-    //     def __init__(self, width: Int32) -> None:
+    // def __init__(self, width: Int32) -> None:
     Rect() = default;
     explicit Rect(int32_t width) : width(width) {}
 };

@@ -48,9 +48,9 @@ void main();
 struct Dog : Pet {
 
 
-    //     def make_noise(self) -> str:
+    // def make_noise(self) -> str:
     std::string make_noise() override {
-        //         return "Woof"
+        // return "Woof"
         return "Woof";
     }
 };
@@ -65,9 +65,9 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 struct Cat : Pet {
 
 
-    //     def make_noise(self) -> str:
+    // def make_noise(self) -> str:
     std::string make_noise() override {
-        //         return "Meow"
+        // return "Meow"
         return "Meow";
     }
 };

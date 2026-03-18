@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     nums: list[Int32] = [10, 20, 30]
+    // nums: list[Int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
-    //     print(maybe_total(nums))    # 60
+    // print(maybe_total(nums))    # 60
     std::cout << maybe_total(&(nums)) << "\n";
-    //     print(maybe_total(None))    # -1
+    // print(maybe_total(None))    # -1
     std::cout << maybe_total(static_cast<std::nullptr_t*>(nullptr)) << "\n";
 }
 

@@ -14,17 +14,17 @@ void main();
 // class Wrapper[T]:
 template<typename T>
 struct Wrapper {
-    //     val: T
+    // val: T
     T val;
 
-    //     def __init__(self, val: T):
+    // def __init__(self, val: T):
     Wrapper() = default;
     explicit Wrapper(const T& val) : val(val) {}
 
-    //     def is_less[U: Comparable](self, a: U, b: U) -> bool:
+    // def is_less[U: Comparable](self, a: U, b: U) -> bool:
     template<::tpy::Comparable U>
     bool is_less(const U& a, const U& b) const {
-        //         return a < b
+        // return a < b
         return (a < b);
     }
 };

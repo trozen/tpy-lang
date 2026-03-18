@@ -15,7 +15,7 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
 
 };
@@ -29,7 +29,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Container:
 struct Container {
-    //     items: list[Point]
+    // items: list[Point]
     std::vector<Point> items;
 
 };

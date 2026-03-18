@@ -6,39 +6,39 @@ namespace tpy_user::main {
 
 // def get_value(o: Outer) -> int:
 ::tpy::BigInt get_value(const Outer& o) {
-    //     if o.inner.value is not None:
+    // if o.inner.value is not None:
     if ((o.inner.value.has_value())) {
-        //         return o.inner.value  # tpyc: ok
+        // return o.inner.value  # tpyc: ok
         return (*o.inner.value);
     }
-    //     return 0
+    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def get_value_truthy(o: Outer) -> int:
 ::tpy::BigInt get_value_truthy(const Outer& o) {
-    //     if o.inner.value:
+    // if o.inner.value:
     if (::tpy::is_truthy(o.inner.value)) {
-        //         return o.inner.value  # tpyc: ok
+        // return o.inner.value  # tpyc: ok
         return (*o.inner.value);
     }
-    //     return 0
+    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def main() -> None:
 void main() {
-    //     o1 = Outer(Inner(42))
+    // o1 = Outer(Inner(42))
     Outer o1 = Outer(Inner(42));
-    //     o2 = Outer(Inner(None))
+    // o2 = Outer(Inner(None))
     Outer o2 = Outer(Inner(std::nullopt));
-    //     print(get_value(o1))
+    // print(get_value(o1))
     std::cout << get_value(o1) << "\n";
-    //     print(get_value(o2))
+    // print(get_value(o2))
     std::cout << get_value(o2) << "\n";
-    //     print(get_value_truthy(o1))
+    // print(get_value_truthy(o1))
     std::cout << get_value_truthy(o1) << "\n";
-    //     print(get_value_truthy(o2))
+    // print(get_value_truthy(o2))
     std::cout << get_value_truthy(o2) << "\n";
 }
 

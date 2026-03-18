@@ -48,19 +48,19 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     a: Color = Color.Red
+    // a: Color = Color.Red
     Color a = Color::Red;
-    //     b: Color = Color.Red
+    // b: Color = Color.Red
     Color b = Color::Red;
-    //     c: Color = Color.Blue
+    // c: Color = Color.Blue
     Color c = Color::Blue;
-    //     print(a == b)
+    // print(a == b)
     std::cout << ::tpy::print_bool((a == b)) << "\n";
-    //     print(a == c)
+    // print(a == c)
     std::cout << ::tpy::print_bool((a == c)) << "\n";
-    //     print(a != b)
+    // print(a != b)
     std::cout << ::tpy::print_bool((a != b)) << "\n";
-    //     print(a != c)
+    // print(a != c)
     std::cout << ::tpy::print_bool((a != c)) << "\n";
 }
 

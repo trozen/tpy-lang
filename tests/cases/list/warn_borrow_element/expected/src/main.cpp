@@ -6,104 +6,104 @@ namespace tpy_user::main {
 
 // def test_element_borrow_append() -> None:
 void test_element_borrow_append() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    // items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    //     items.append(Point(Int32(5), Int32(6)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
+    // items.append(Point(Int32(5), Int32(6)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     items.push_back(Point(5, 6));
-    //     print(len(items))
+    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_element_borrow_subscript_assign() -> None:
 void test_element_borrow_subscript_assign() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    // items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    //     items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: ok
+    // items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: ok
     ::tpy::__setitem__(items, 0, Point(9, 9));
-    //     print(items[Int32(0)].x)
+    // print(items[Int32(0)].x)
     std::cout << ::tpy::__getitem__(items, 0).x << "\n";
 }
 
 // def test_alias_no_warn() -> None:
 void test_alias_no_warn() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
-    //     alias = items
+    // alias = items
     std::vector<Point>& alias = items;
-    //     items.append(Point(Int32(3), Int32(4)))  # tpyc: ok
+    // items.append(Point(Int32(3), Int32(4)))  # tpyc: ok
     items.push_back(Point(3, 4));
-    //     print(len(alias))
+    // print(len(alias))
     std::cout << ::tpy::__len__(alias) << "\n";
 }
 
 // def test_value_type_no_borrow() -> None:
 void test_value_type_no_borrow() {
-    //     items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    // items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     int32_t v = ::tpy::__getitem__(items, 0);
-    //     items.append(Int32(4))  # tpyc: ok
+    // items.append(Int32(4))  # tpyc: ok
     items.push_back(4);
-    //     print(v)
+    // print(v)
     std::cout << v << "\n";
 }
 
 // def test_reassign_clears_borrows() -> None:
 void test_reassign_clears_borrows() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2))]
+    // items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> __slot_1 = {Point(1, 2)};
     std::optional<std::vector<Point>> __slot_2;
     std::vector<Point>* items = &__slot_1;
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__((*items), 0);
-    //     items = [Point(Int32(3), Int32(4))]
+    // items = [Point(Int32(3), Int32(4))]
     items = &*(__slot_2 = {Point(3, 4)});
-    //     items.append(Point(Int32(5), Int32(6)))  # tpyc: ok
+    // items.append(Point(Int32(5), Int32(6)))  # tpyc: ok
     (*items).push_back(Point(5, 6));
-    //     print(len(items))
+    // print(len(items))
     std::cout << ::tpy::__len__((*items)) << "\n";
 }
 
 // def test_reassign_borrower_clears() -> None:
 void test_reassign_borrower_clears() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    // items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     std::optional<Point> __slot_1;
     Point* v = &(::tpy::__getitem__(items, 0));
-    //     v = Point(Int32(9), Int32(9))
+    // v = Point(Int32(9), Int32(9))
     v = &*(__slot_1 = Point(9, 9));
-    //     items.append(Point(Int32(5), Int32(6)))  # tpyc: ok
+    // items.append(Point(Int32(5), Int32(6)))  # tpyc: ok
     items.push_back(Point(5, 6));
-    //     print(v.x)
+    // print(v.x)
     std::cout << v->x << "\n";
 }
 
 // def test_element_borrow_del() -> None:
 void test_element_borrow_del() {
-    //     items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
+    // items: list[Point] = [Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))]
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
-    //     v = items[Int32(0)]
+    // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
-    //     del items[Int32(0)]  # tpyc: warning(/'del' may invalidate references/)
+    // del items[Int32(0)]  # tpyc: warning(/'del' may invalidate references/)
     ::tpy::__delitem__(items, 0);
-    //     print(len(items))
+    // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
 
 // def test_field_borrow_write() -> None:
 void test_field_borrow_write() {
-    //     p = Point(Int32(1), Int32(2))
+    // p = Point(Int32(1), Int32(2))
     Point p = Point(1, 2);
-    //     ref = p
+    // ref = p
     Point& ref = p;
-    //     p.x = Int32(10)  # tpyc: ok (alias borrow, not field borrow)
+    // p.x = Int32(10)  # tpyc: ok (alias borrow, not field borrow)
     p.x = 10;
-    //     print(ref.x)
+    // print(ref.x)
     std::cout << ref.x << "\n";
 }
 

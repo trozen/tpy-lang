@@ -7,51 +7,51 @@ namespace tpy_user::main {
 // # Test comparison between int (BigInt) and float variables
 // def test_eq() -> None:
 void test_eq() {
-    //     a: int = 5
+    // a: int = 5
     ::tpy::BigInt a = ::tpy::BigInt(5);
-    //     b: float = 5.0
+    // b: float = 5.0
     double b = 5.0;
-    //     print(a == b)
+    // print(a == b)
     std::cout << ::tpy::print_bool((static_cast<double>(a) == b)) << "\n";
-    //     print(a != b)
+    // print(a != b)
     std::cout << ::tpy::print_bool((static_cast<double>(a) != b)) << "\n";
 }
 
 // def test_ordering() -> None:
 void test_ordering() {
-    //     x: int = 3
+    // x: int = 3
     ::tpy::BigInt x = ::tpy::BigInt(3);
-    //     y: float = 3.5
+    // y: float = 3.5
     double y = 3.5;
-    //     print(x < y)
+    // print(x < y)
     std::cout << ::tpy::print_bool((static_cast<double>(x) < y)) << "\n";
-    //     print(x > y)
+    // print(x > y)
     std::cout << ::tpy::print_bool((static_cast<double>(x) > y)) << "\n";
-    //     print(x <= y)
+    // print(x <= y)
     std::cout << ::tpy::print_bool((static_cast<double>(x) <= y)) << "\n";
-    //     print(x >= y)
+    // print(x >= y)
     std::cout << ::tpy::print_bool((static_cast<double>(x) >= y)) << "\n";
 }
 
 // def test_float_gt_int() -> None:
 void test_float_gt_int() {
-    //     f: float = 10.0
+    // f: float = 10.0
     double f = 10.0;
-    //     i: int = 7
+    // i: int = 7
     ::tpy::BigInt i = ::tpy::BigInt(7);
-    //     print(f > i)
+    // print(f > i)
     std::cout << ::tpy::print_bool((f > static_cast<double>(i))) << "\n";
-    //     print(f < i)
+    // print(f < i)
     std::cout << ::tpy::print_bool((f < static_cast<double>(i))) << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     test_eq()
+    // test_eq()
     test_eq();
-    //     test_ordering()
+    // test_ordering()
     test_ordering();
-    //     test_float_gt_int()
+    // test_float_gt_int()
     test_float_gt_int();
 }
 

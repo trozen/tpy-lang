@@ -15,10 +15,10 @@ void main();
 
 // class Box:
 struct Box {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: Int32) -> None:
     Box() = default;
     explicit Box(int32_t value) : value(value) {}
 };
@@ -33,15 +33,15 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // def collect[T](a: T, b: T) -> Own[list[T]]:
 template<typename T>
 std::vector<T> collect(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    //     result: list[T] = []
+    // result: list[T] = []
     std::vector<T> result = std::vector<T>{};
-    //     result.append(a)
+    // result.append(a)
     auto __tmp_1 = a;
     result.push_back(std::move(__tmp_1));
-    //     result.append(b)
+    // result.append(b)
     auto __tmp_2 = b;
     result.push_back(std::move(__tmp_2));
-    //     return result
+    // return result
     return result;
 }
 

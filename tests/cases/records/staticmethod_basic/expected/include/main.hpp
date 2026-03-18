@@ -12,30 +12,30 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // class Counter:
 struct Counter {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, start: Int32):
+    // def __init__(self, start: Int32):
     Counter() = default;
     explicit Counter(int32_t start) : value(start) {}
 
-    //     @staticmethod
-    //     def zero() -> Int32:
+    // @staticmethod
+    // def zero() -> Int32:
     static int32_t zero() {
-        //         return 0
+        // return 0
         return 0;
     }
 
-    //     @staticmethod
-    //     def add(a: Int32, b: Int32) -> Int32:
+    // @staticmethod
+    // def add(a: Int32, b: Int32) -> Int32:
     static int32_t add(int32_t a, int32_t b) {
-        //         return a + b
+        // return a + b
         return (::tpy::add_check<int32_t>(a, b));
     }
 
-    //     def get(self) -> Int32:
+    // def get(self) -> Int32:
     int32_t get() const {
-        //         return self.value
+        // return self.value
         return this->value;
     }
 };

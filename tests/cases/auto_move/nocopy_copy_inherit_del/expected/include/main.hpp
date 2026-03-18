@@ -14,14 +14,14 @@ void main();
 
 // class Resource:
 struct Resource {
-    //     id: Int32
+    // id: Int32
     int32_t id;
     bool __tpy_owned_ = true;
 
-    //     def __init__(self, id: Int32):
+    // def __init__(self, id: Int32):
     Resource() = default;
     explicit Resource(int32_t id) : id(id) {
-        //         print("alloc", id)
+        // print("alloc", id)
         std::cout << "alloc" << " " << id << "\n";
     }
     Resource(const Resource&) = delete;
@@ -36,11 +36,11 @@ struct Resource {
         }
         return *this;
     }
-    //     def __del__(self):
+    // def __del__(self):
 
     ~Resource() {
         if (!__tpy_owned_) return;
-        //         print("free", self.id)
+        // print("free", self.id)
         std::cout << "free" << " " << this->id << "\n";
     }
 };
@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
 // class CopyableResource(Resource):
 struct CopyableResource : Resource {
 
-    //     def __init__(self, id: Int32):
+    // def __init__(self, id: Int32):
     CopyableResource() = default;
     explicit CopyableResource(int32_t id) : Resource(id) {}
     // copyable via __copy__
@@ -67,9 +67,9 @@ struct CopyableResource : Resource {
     CopyableResource(CopyableResource&&) = default;
     CopyableResource& operator=(CopyableResource&&) = default;
 
-    //     def __copy__(self) -> Own[CopyableResource]:
+    // def __copy__(self) -> Own[CopyableResource]:
     CopyableResource __copy__() const {
-        //         return CopyableResource(self.id + 100)
+        // return CopyableResource(self.id + 100)
         return CopyableResource((::tpy::add_check<int32_t>(this->id, 100)));
     }
 };

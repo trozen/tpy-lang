@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def observe(items: readonly[list[Int32]]) -> None:
 void observe(const std::vector<int32_t>& items) {
-    //     print(get_len(items))
+    // print(get_len(items))
     std::cout << get_len(items) << "\n";
-    //     print(get_first(items))
+    // print(get_first(items))
     std::cout << get_first(items) << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     xs: list[Int32] = [Int32(10), Int32(20), Int32(30)]
+    // xs: list[Int32] = [Int32(10), Int32(20), Int32(30)]
     std::vector<int32_t> xs = {10, 20, 30};
-    //     observe(xs)
+    // observe(xs)
     observe(xs);
 }
 

@@ -15,7 +15,7 @@ namespace tpy_user::main {
 // # tpy: cpp_namespace("1bad-ns")
 // def main() -> None:
 void main() {
-    //     pass
+    // pass
 }
 
 void __tpy_init() {

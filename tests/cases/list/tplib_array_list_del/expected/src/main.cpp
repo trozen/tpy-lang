@@ -6,49 +6,49 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     a = ArrayList[Int32, 8]()
+    // a = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> a = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    //     a.append(10)
+    // a.append(10)
     a.append(10);
-    //     a.append(20)
+    // a.append(20)
     a.append(20);
-    //     a.append(30)
+    // a.append(30)
     a.append(30);
-    //     a.append(40)
+    // a.append(40)
     a.append(40);
-    //     print(len(a))       # 4
+    // print(len(a))       # 4
     std::cout << ::tpy::__len__(a) << "\n";
-    //     # Delete middle element
-    //     del a[1]
+    // # Delete middle element
+    // del a[1]
     ::tpy::__delitem__(a, 1);
-    //     print(len(a))       # 3
+    // print(len(a))       # 3
     std::cout << ::tpy::__len__(a) << "\n";
-    //     print(a[0])         # 10
+    // print(a[0])         # 10
     std::cout << a[0] << "\n";
-    //     print(a[1])         # 30
+    // print(a[1])         # 30
     std::cout << a[1] << "\n";
-    //     print(a[2])         # 40
+    // print(a[2])         # 40
     std::cout << a[2] << "\n";
-    //     # Delete first element
-    //     del a[0]
+    // # Delete first element
+    // del a[0]
     ::tpy::__delitem__(a, 0);
-    //     print(len(a))       # 2
+    // print(len(a))       # 2
     std::cout << ::tpy::__len__(a) << "\n";
-    //     print(a[0])         # 30
+    // print(a[0])         # 30
     std::cout << a[0] << "\n";
-    //     print(a[1])         # 40
+    // print(a[1])         # 40
     std::cout << a[1] << "\n";
-    //     # Delete last element
-    //     del a[1]
+    // # Delete last element
+    // del a[1]
     ::tpy::__delitem__(a, 1);
-    //     print(len(a))       # 1
+    // print(len(a))       # 1
     std::cout << ::tpy::__len__(a) << "\n";
-    //     print(a[0])         # 30
+    // print(a[0])         # 30
     std::cout << a[0] << "\n";
-    //     # Delete only remaining element
-    //     del a[0]
+    // # Delete only remaining element
+    // del a[0]
     ::tpy::__delitem__(a, 0);
-    //     print(len(a))       # 0
+    // print(len(a))       # 0
     std::cout << ::tpy::__len__(a) << "\n";
 }
 

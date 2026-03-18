@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     nums: list[Int32] = [10, 20, 30]
+    // nums: list[Int32] = [10, 20, 30]
     std::vector<int32_t> nums = {10, 20, 30};
-    //     describe(nums)
+    // describe(nums)
     describe(nums);
-    //     check_not(nums)
+    // check_not(nums)
     check_not(nums);
 }
 

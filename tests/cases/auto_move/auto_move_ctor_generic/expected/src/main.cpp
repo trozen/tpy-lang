@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main():
 void main() {
-    //     inner = Inner()
+    // inner = Inner()
     Inner inner = Inner();
-    //     inner.value = 42
+    // inner.value = 42
     inner.value = 42;
-    //     box = Box[Inner](inner)
+    // box = Box[Inner](inner)
     Box<Inner> box = Box<Inner>(std::move(inner));
-    //     print(box.item.value)
+    // print(box.item.value)
     std::cout << box.item.value << "\n";
 }
 

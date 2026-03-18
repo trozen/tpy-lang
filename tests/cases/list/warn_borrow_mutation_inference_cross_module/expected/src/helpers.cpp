@@ -6,37 +6,37 @@ namespace tpy_user::helpers {
 
 // def sum_points(items: list[Point]) -> Int32:
 int32_t sum_points(const std::vector<Point>& items) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     for p in items:
+    // for p in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        //         total += p.x
+        // total += p.x
         total = ::tpy::add_check<int32_t>(total, p.x);
     }
-    //     return total
+    // return total
     return total;
 }
 
 // def add_point(items: list[Point], p: Point) -> None:
 void add_point(std::vector<Point>& items, const Point& p) {
-    //     items.append(p)
+    // items.append(p)
     auto __tmp_1 = p;
     items.push_back(std::move(__tmp_1));
 }
 
 // def add_point_wrapper(items: list[Point], p: Point) -> None:
 void add_point_wrapper(std::vector<Point>& items, const Point& p) {
-    //     add_point(items, p)
+    // add_point(items, p)
     add_point(items, p);
 }
 
 // def read_wrapper(items: list[Point]) -> Int32:
 int32_t read_wrapper(const std::vector<Point>& items) {
-    //     return sum_points(items)
+    // return sum_points(items)
     return sum_points(items);
 }
 

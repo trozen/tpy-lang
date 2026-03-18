@@ -23,16 +23,16 @@ void main();
 
 // class Dog:
 struct Dog {
-    //     _name: str
+    // _name: str
     std::string _name;
 
-    //     def __init__(self, n: str):
+    // def __init__(self, n: str):
     Dog() = default;
     explicit Dog(std::string_view n) : _name(n) {}
 
-    //     def name(self) -> str:
+    // def name(self) -> str:
     std::string name() const {
-        //         return self._name
+        // return self._name
         return this->_name;
     }
 };
@@ -46,16 +46,16 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 // class Cat:
 struct Cat {
-    //     _name: str
+    // _name: str
     std::string _name;
 
-    //     def __init__(self, n: str):
+    // def __init__(self, n: str):
     Cat() = default;
     explicit Cat(std::string_view n) : _name(n) {}
 
-    //     def name(self) -> StrView:
+    // def name(self) -> StrView:
     std::string_view name() const {
-        //         return self._name
+        // return self._name
         return this->_name;
     }
 };
@@ -69,16 +69,16 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 // class Bird:
 struct Bird {
-    //     _name: str
+    // _name: str
     std::string _name;
 
-    //     def __init__(self, n: str):
+    // def __init__(self, n: str):
     Bird() = default;
     explicit Bird(std::string_view n) : _name(n) {}
 
-    //     def name(self) -> String:
+    // def name(self) -> String:
     std::string name() const {
-        //         return self._name
+        // return self._name
         return this->_name;
     }
 };
@@ -93,7 +93,7 @@ inline std::ostream& operator<<(std::ostream& os, const Bird& obj) {
 // def greet(x: Named) -> None:
 template<Named T_x>
 void greet(T_x& x) {
-    //     print(x.name())
+    // print(x.name())
     std::cout << x.name() << "\n";
 }
 

@@ -47,10 +47,10 @@ void main();
 struct Dog : Speaker {
 
 
-    //     @override
-    //     def speak(self) -> str:  # tpyc: ok
+    // @override
+    // def speak(self) -> str:  # tpyc: ok
     std::string speak() override {
-        //         return "woof"
+        // return "woof"
         return "woof";
     }
 };

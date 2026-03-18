@@ -10,21 +10,21 @@ namespace tpy_user::main {
 // # the function-scoped slot instead of creating loop-scoped storage.
 // def rebind_gap() -> None:
 void rebind_gap() {
-    //     p: Point = Point(0, 0)
+    // p: Point = Point(0, 0)
     Point __slot_1 = Point(0, 0);
     std::optional<Point> __slot_2;
     Point* p = &__slot_1;
-    //     saved: Point = Point(0, 0)
+    // saved: Point = Point(0, 0)
     Point __slot_3 = Point(0, 0);
     Point* saved = &__slot_3;
-    //     for i in range(3):
+    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        //         p = Point(i, i)
+        // p = Point(i, i)
         p = &*(__slot_2 = Point(i, i));
-        //         saved = p
+        // saved = p
         saved = p;
     }
-    //     print(saved.x, saved.y)
+    // print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
 

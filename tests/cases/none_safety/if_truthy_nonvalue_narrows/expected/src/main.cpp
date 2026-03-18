@@ -8,12 +8,12 @@ Point* pt{};
 
 // def score(p: Point | None) -> Int32:
 int32_t score(Point* p) {
-    //     if p:  # tpyc: ok
+    // if p:  # tpyc: ok
     if (p) {
-        //         return p.x + 1  # tpyc: ok
+        // return p.x + 1  # tpyc: ok
         return (::tpy::add_check<int32_t>(p->x, 1));
     }
-    //     return 0
+    // return 0
     return 0;
 }
 

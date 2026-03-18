@@ -6,43 +6,43 @@ namespace tpy_user::main {
 
 // def accept_opt(p: Point | None) -> None:
 void accept_opt(Point* p) {
-    //     if p is not None:
+    // if p is not None:
     if ((p != nullptr)) {
-        //         print(p.x)
+        // print(p.x)
         std::cout << p->x << "\n";
     }
 }
 
 // def main() -> None:
 void main() {
-    //     c = Container[Point](Point(1, 2))
+    // c = Container[Point](Point(1, 2))
     Container<Point> c = Container<Point>(Point(::tpy::BigInt(1), ::tpy::BigInt(2)));
-    //     p = c.get()
+    // p = c.get()
     Point* p = c.get();
-    //     # Field access on narrowed std::optional
-    //     if p is not None:
+    // # Field access on narrowed std::optional
+    // if p is not None:
     if ((p != nullptr)) {
-        //         print(p.x)
+        // print(p.x)
         std::cout << p->x << "\n";
-        //         print(p.y)
+        // print(p.y)
         std::cout << p->y << "\n";
-        //         # Method call on narrowed std::optional
-        //         print(p.sum())
+        // # Method call on narrowed std::optional
+        // print(p.sum())
         std::cout << p->sum() << "\n";
     }
-    //     # Pass generic Optional return to function expecting Optional[Point]
-    //     p2 = c.get()
+    // # Pass generic Optional return to function expecting Optional[Point]
+    // p2 = c.get()
     Point* p2 = c.get();
-    //     accept_opt(p2)
+    // accept_opt(p2)
     accept_opt(p2);
-    //     # Also test with value type (should still work)
-    //     c2 = Container[int](42)
+    // # Also test with value type (should still work)
+    // c2 = Container[int](42)
     Container<::tpy::BigInt> c2 = Container<::tpy::BigInt>(42);
-    //     v = c2.get()
+    // v = c2.get()
     ::tpy::BigInt* v = c2.get();
-    //     if v is not None:
+    // if v is not None:
     if ((v != nullptr)) {
-        //         print(v)
+        // print(v)
         std::cout << ::tpy::print_optional(v) << "\n";
     }
 }

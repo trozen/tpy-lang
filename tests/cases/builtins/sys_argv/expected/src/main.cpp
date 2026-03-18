@@ -6,14 +6,14 @@ namespace tpy_user::main {
 
 // def main():
 void main() {
-    //     # sys.argv should at least contain the program name
-    //     if len(sys.argv) >= 1:
+    // # sys.argv should at least contain the program name
+    // if len(sys.argv) >= 1:
     if ((::tpy::__len__((*tpy_user::sys::argv)) >= 1)) {
-        //         print("ok")
+        // print("ok")
         std::cout << "ok" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("error: sys.argv is empty")
+        // print("error: sys.argv is empty")
         std::cout << "error: sys.argv is empty" << "\n";
     }
 }

@@ -6,16 +6,16 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     b = Box[Int32](Int32(42))
+    // b = Box[Int32](Int32(42))
     Box<int32_t> b = Box<int32_t>(42);
-    //     # A=Box[Int32] explicit, B=Int32 inferred from second arg
-    //     w = wrap_with_tag[Box[Int32]](b, Int32(99))
+    // # A=Box[Int32] explicit, B=Int32 inferred from second arg
+    // w = wrap_with_tag[Box[Int32]](b, Int32(99))
     Wrapper<Box<int32_t>, int32_t> w = wrap_with_tag<Box<int32_t>, int32_t>(std::move(b), 99);
-    //     print(w.inner.val)
+    // print(w.inner.val)
     std::cout << w.inner.val << "\n";
-    //     print(w.tag)
+    // print(w.tag)
     std::cout << w.tag << "\n";
-    //     print("done")
+    // print("done")
     std::cout << "done" << "\n";
 }
 

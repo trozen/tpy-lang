@@ -16,11 +16,11 @@ std::vector<int32_t>* nums{};
 // # Span methods (via function parameter)
 // def span_ops(sp: Span[Int32]) -> None:
 void span_ops(std::span<int32_t> sp) {
-    //     print(len(sp))
+    // print(len(sp))
     std::cout << ::tpy::__len__(sp) << "\n";
-    //     print(sp[0])
+    // print(sp[0])
     std::cout << ::tpy::__getitem__(sp, 0) << "\n";
-    //     print(sp[1])
+    // print(sp[1])
     std::cout << ::tpy::__getitem__(sp, 1) << "\n";
 }
 

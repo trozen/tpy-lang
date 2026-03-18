@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     factory = DefaultWrapperMaker()
+    // factory = DefaultWrapperMaker()
     DefaultWrapperMaker factory = DefaultWrapperMaker();
-    //     container = Container(factory)
+    // container = Container(factory)
     Container<DefaultWrapperMaker> container = Container<DefaultWrapperMaker>(factory);
-    //     wrapper = container.create_wrapper("Hello from wrapper")
+    // wrapper = container.create_wrapper("Hello from wrapper")
     Wrapper<Message> wrapper = container.create_wrapper("Hello from wrapper");
-    //     wrapper.print_wrapped()
+    // wrapper.print_wrapped()
     wrapper.print_wrapped();
 }
 

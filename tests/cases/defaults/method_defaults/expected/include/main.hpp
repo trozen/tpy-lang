@@ -13,21 +13,21 @@ void main();
 
 // class Counter:
 struct Counter {
-    //     count: Int32
+    // count: Int32
     int32_t count;
 
-    //     def __init__(self, start: Int32 = Int32(0)) -> None:
+    // def __init__(self, start: Int32 = Int32(0)) -> None:
     explicit Counter(int32_t start = 0) : count(start) {}
 
-    //     def increment(self, amount: Int32 = Int32(1)) -> None:
+    // def increment(self, amount: Int32 = Int32(1)) -> None:
     void increment(int32_t amount = 1) {
-        //         self.count = self.count + amount
+        // self.count = self.count + amount
         this->count = (::tpy::add_check<int32_t>(this->count, amount));
     }
 
-    //     def display(self, prefix: str = "count") -> None:
+    // def display(self, prefix: str = "count") -> None:
     void display(std::string_view prefix = "count") const {
-        //         print(f"{prefix}: {self.count}")
+        // print(f"{prefix}: {self.count}")
         std::cout << std::format("{}: {}", prefix, this->count) << "\n";
     }
 };

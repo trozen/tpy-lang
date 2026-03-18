@@ -9,17 +9,17 @@ namespace tpy_user::main {
 // def field_access_escape() -> None:
 void field_access_escape() {
   std::optional<Outer> __slot_2;
-    //     saved: Inner = Inner(0)
+    // saved: Inner = Inner(0)
     Inner __slot_1 = Inner(0);
     Inner* saved = &__slot_1;
-    //     for i in range(3):
+    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        //         o: Outer = Outer(Inner(i))
+        // o: Outer = Outer(Inner(i))
         Outer* o = &*(__slot_2 = Outer(Inner(i)));
-        //         saved = o.inner  # tpyc: warning(/hoisted to function scope/)
+        // saved = o.inner  # tpyc: warning(/hoisted to function scope/)
         saved = &(o->inner);
     }
-    //     print(saved.value)
+    // print(saved.value)
     std::cout << saved->value << "\n";
 }
 

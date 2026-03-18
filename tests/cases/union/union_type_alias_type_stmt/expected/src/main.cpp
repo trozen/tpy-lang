@@ -6,30 +6,30 @@ namespace tpy_user::main {
 
 // def describe(p: Pet) -> str:
 std::string describe(const std::variant<Cat*, Dog*> p) {
-    //     if isinstance(p, Dog):
+    // if isinstance(p, Dog):
     if (std::holds_alternative<Dog*>(p)) {
         auto& __p = *std::get<Dog*>(p);
-        //         return "dog"
+        // return "dog"
         return "dog";
     }
-    //     assert isinstance(p, Cat)
+    // assert isinstance(p, Cat)
     if (!(std::holds_alternative<Cat*>(p))) ::tpy::tpy_panic("assertion failed");
     auto& __p = *std::get<Cat*>(p);
-    //     return "cat"
+    // return "cat"
     return "cat";
 }
 
 // def main() -> None:
 void main() {
-    //     d: Pet = Dog(Int32(3))
+    // d: Pet = Dog(Int32(3))
     Pet __slot_1 = Dog(3);
     std::variant<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    //     c: Pet = Cat(Int32(5))
+    // c: Pet = Cat(Int32(5))
     Pet __slot_2 = Cat(5);
     std::variant<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
-    //     print(describe(d))
+    // print(describe(d))
     std::cout << describe(d) << "\n";
-    //     print(describe(c))
+    // print(describe(c))
     std::cout << describe(c) << "\n";
 }
 

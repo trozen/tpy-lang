@@ -6,12 +6,12 @@ namespace tpy_user::main {
 
 // def reduce_to_zero(x: Int32 | None) -> Int32:
 int32_t reduce_to_zero(std::optional<int32_t> x) {
-    //     while x:  # tpyc: warning(/Truthiness check on optional value/)
+    // while x:  # tpyc: warning(/Truthiness check on optional value/)
     while (::tpy::is_truthy(x)) {
-        //         x = x - 1  # tpyc: ok
+        // x = x - 1  # tpyc: ok
         x = (::tpy::sub_check<int32_t>((*x), 1));
     }
-    //     return 0
+    // return 0
     return 0;
 }
 

@@ -48,7 +48,7 @@ namespace tpy_user::colors {
 
 // def color_value(c: Color) -> Int32:
 int32_t color_value(Color c) {
-    //     return c.value
+    // return c.value
     return static_cast<int32_t>(c);
 }
 

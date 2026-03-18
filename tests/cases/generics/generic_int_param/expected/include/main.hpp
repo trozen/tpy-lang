@@ -14,10 +14,10 @@ void main();
 // class Container[T, N: int]:
 template<typename T, std::size_t N>
 struct Container {
-    //     value: T
+    // value: T
     T value;
 
-    //     def __init__(self, v: T) -> None:
+    // def __init__(self, v: T) -> None:
     Container() = default;
     explicit Container(const T& v) : value(v) {}
 };

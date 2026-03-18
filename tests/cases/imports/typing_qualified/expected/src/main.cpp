@@ -6,22 +6,22 @@ namespace tpy_user::main {
 
 // def maybe_add(x: typing.Optional[Int32], y: Int32) -> Int32:
 int32_t maybe_add(std::optional<int32_t> x, int32_t y) {
-    //     if x is not None:
+    // if x is not None:
     if ((x.has_value())) {
-        //         return x + y
+        // return x + y
         return (::tpy::add_check<int32_t>((*x), y));
     }
-    //     return y
+    // return y
     return y;
 }
 
 // def main():
 void main() {
-    //     print(maybe_add(Int32(3), Int32(4)))
+    // print(maybe_add(Int32(3), Int32(4)))
     std::cout << maybe_add(3, 4) << "\n";
-    //     print(maybe_add(None, Int32(10)))
+    // print(maybe_add(None, Int32(10)))
     std::cout << maybe_add(std::nullopt, 10) << "\n";
-    //     show(Wrapper(Int32(42)))
+    // show(Wrapper(Int32(42)))
     auto __tmp_1 = Wrapper(42);
     show(__tmp_1);
 }

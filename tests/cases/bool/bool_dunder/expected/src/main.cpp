@@ -6,20 +6,20 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Non-empty container -> True
-    //     c1 = Container(3)
+    // # Non-empty container -> True
+    // c1 = Container(3)
     Container c1 = Container(::tpy::BigInt(3));
-    //     print(bool(c1))  # True
+    // print(bool(c1))  # True
     std::cout << ::tpy::print_bool(::tpy::__bool__(c1)) << "\n";
-    //     # Empty container -> False
-    //     c2 = Container(0)
+    // # Empty container -> False
+    // c2 = Container(0)
     Container c2 = Container(::tpy::BigInt(0));
-    //     print(bool(c2))  # False
+    // print(bool(c2))  # False
     std::cout << ::tpy::print_bool(::tpy::__bool__(c2)) << "\n";
-    //     # Direct __bool__() call
-    //     print(c1.__bool__())  # True
+    // # Direct __bool__() call
+    // print(c1.__bool__())  # True
     std::cout << ::tpy::print_bool(c1.__bool__()) << "\n";
-    //     print(c2.__bool__())  # False
+    // print(c2.__bool__())  # False
     std::cout << ::tpy::print_bool(c2.__bool__()) << "\n";
 }
 

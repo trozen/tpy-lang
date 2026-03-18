@@ -16,16 +16,16 @@ int32_t main();
 
 // class Message:
 struct Message {
-    //     text: str
+    // text: str
     std::string text;
 
-    //     def __init__(self, text: str):
+    // def __init__(self, text: str):
     Message() = default;
     explicit Message(std::string_view text) : text(text) {}
 
-    //     def to_string(self) -> str:
+    // def to_string(self) -> str:
     std::string to_string() const {
-        //         return self.text
+        // return self.text
         return this->text;
     }
 };
@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
 // def show(p: Printable) -> None:
 template<::tpy_user::traits::Printable T_p>
 void show(T_p& p) {
-    //     print(p.to_string())
+    // print(p.to_string())
     std::cout << p.to_string() << "\n";
 }
 

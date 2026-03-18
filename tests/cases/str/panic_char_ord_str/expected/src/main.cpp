@@ -7,9 +7,9 @@ namespace tpy_user::main {
 // # ord(str) panics when string length != 1.
 // def main():
 void main() {
-    //     s = "hello"
+    // s = "hello"
     std::string_view s = "hello";
-    //     print(ord(s))
+    // print(ord(s))
     std::cout << ::tpy::ord_str(s) << "\n";
 }
 

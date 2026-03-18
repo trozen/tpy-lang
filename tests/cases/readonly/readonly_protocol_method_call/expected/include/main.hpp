@@ -16,7 +16,7 @@ int32_t get_len(const T_s& s);
 // def get_len(s: Sized) -> Int32:
 template<::tpy_user::typing::Sized T_s>
 int32_t get_len(const T_s& s) {
-    //     return len(s)  # tpyc: ok
+    // return len(s)  # tpyc: ok
     return ::tpy::__len__(s);
 }
 

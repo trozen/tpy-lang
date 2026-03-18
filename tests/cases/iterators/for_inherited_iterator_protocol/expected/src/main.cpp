@@ -6,21 +6,21 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Child passed to Iterator[T] param
-    //     print(consume(DoubleCounter(3)))
+    // # Child passed to Iterator[T] param
+    // print(consume(DoubleCounter(3)))
     auto __tmp_1 = DoubleCounter(3);
     std::cout << consume(__tmp_1) << "\n";
-    //     # Grandchild passed to Iterator[T] param
-    //     print(consume(GrandChild(2)))
+    // # Grandchild passed to Iterator[T] param
+    // print(consume(GrandChild(2)))
     auto __tmp_2 = GrandChild(2);
     std::cout << consume(__tmp_2) << "\n";
-    //     # list() from inherited iterator
-    //     print(list(DoubleCounter(2)))
+    // # list() from inherited iterator
+    // print(list(DoubleCounter(2)))
     std::cout << ::tpy::ListPrinter(::tpy::collect<std::vector<int32_t>>(DoubleCounter(2))) << "\n";
-    //     # set() from inherited iterator
-    //     s = set(DoubleCounter(2))
+    // # set() from inherited iterator
+    // s = set(DoubleCounter(2))
     ::tpy::ordered_set<int32_t> s = ::tpy::set_collect<int32_t>(DoubleCounter(2));
-    //     print(len(s))
+    // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
 }
 

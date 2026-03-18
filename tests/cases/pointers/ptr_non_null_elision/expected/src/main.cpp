@@ -6,66 +6,66 @@ namespace tpy_user::main {
 
 // def get_ptr(p: Ptr[Point]) -> Ptr[Point]:
 Point* get_ptr(Point* p) {
-    //     return p
+    // return p
     return p;
 }
 
 // # Function parameter: provenance unknown, must null-check
 // def read_via_param(p: Ptr[Point]) -> None:
 void read_via_param(Point* p) {
-    //     print(p.x)
+    // print(p.x)
     std::cout << ::tpy::deref_check(p).x << "\n";
-    //     print(p.sum())
+    // print(p.sum())
     std::cout << ::tpy::deref_check(p).sum() << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     pt: Point = Point(Int32(10), Int32(20))
+    // pt: Point = Point(Int32(10), Int32(20))
     Point pt = Point(10, 20);
-    //     # Local Ptr from lvalue: provably non-null, skip null check
-    //     p: Ptr[Point] = Ptr(pt)
+    // # Local Ptr from lvalue: provably non-null, skip null check
+    // p: Ptr[Point] = Ptr(pt)
     Point* p = &pt;
-    //     print(p.x)
+    // print(p.x)
     std::cout << p->x << "\n";
-    //     print(p.y)
+    // print(p.y)
     std::cout << p->y << "\n";
-    //     print(p.sum())
+    // print(p.sum())
     std::cout << p->sum() << "\n";
-    //     # Local Ptr[readonly[...]] from lvalue: provably non-null, skip null check
-    //     cp: Ptr[readonly[Point]] = Ptr(pt)
+    // # Local Ptr[readonly[...]] from lvalue: provably non-null, skip null check
+    // cp: Ptr[readonly[Point]] = Ptr(pt)
     const Point* cp = &pt;
-    //     print(cp.x)
+    // print(cp.x)
     std::cout << cp->x << "\n";
-    //     # Coercion: Ptr[T] -> Ptr[readonly[T]] preserves non-null provenance
-    //     cp2: Ptr[readonly[Point]] = p
+    // # Coercion: Ptr[T] -> Ptr[readonly[T]] preserves non-null provenance
+    // cp2: Ptr[readonly[Point]] = p
     const Point* cp2 = p;
-    //     print(cp2.y)
+    // print(cp2.y)
     std::cout << cp2->y << "\n";
-    //     # Propagated provenance: q copies from known non-null p
-    //     q: Ptr[Point] = p
+    // # Propagated provenance: q copies from known non-null p
+    // q: Ptr[Point] = p
     Point* q = p;
-    //     print(q.y)
+    // print(q.y)
     std::cout << q->y << "\n";
-    //     # Unknown source: function return clears non-null provenance
-    //     r: Ptr[Point] = get_ptr(p)
+    // # Unknown source: function return clears non-null provenance
+    // r: Ptr[Point] = get_ptr(p)
     Point* r = get_ptr(p);
-    //     print(r.x)
+    // print(r.x)
     std::cout << ::tpy::deref_check(r).x << "\n";
-    //     # Reassignment from unknown clears provenance
-    //     p = get_ptr(q)
+    // # Reassignment from unknown clears provenance
+    // p = get_ptr(q)
     p = get_ptr(q);
-    //     print(p.x)
+    // print(p.x)
     std::cout << ::tpy::deref_check(p).x << "\n";
-    //     # Re-establish provenance
-    //     pt2: Point = Point(Int32(30), Int32(40))
+    // # Re-establish provenance
+    // pt2: Point = Point(Int32(30), Int32(40))
     Point pt2 = Point(30, 40);
-    //     p = Ptr(pt2)
+    // p = Ptr(pt2)
     p = &pt2;
-    //     print(p.x)
+    // print(p.x)
     std::cout << p->x << "\n";
-    //     # Pass to function (param has unknown provenance inside)
-    //     read_via_param(p)
+    // # Pass to function (param has unknown provenance inside)
+    // read_via_param(p)
     read_via_param(p);
 }
 

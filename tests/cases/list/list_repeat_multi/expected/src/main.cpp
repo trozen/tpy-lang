@@ -30,7 +30,7 @@ void __tpy_init() {
     // for i in range(len(repeated)):
     int32_t __stop_0 = ::tpy::__len__((*repeated));
     for (int32_t i = 0; i < __stop_0; ++i) {
-        //     print(repeated[i])
+        // print(repeated[i])
         std::cout << (*repeated)[i] << "\n";
     }
     // # Multi-element with list
@@ -42,7 +42,7 @@ void __tpy_init() {
     // for i in range(len(nums)):
     int32_t __stop_1 = ::tpy::__len__((*nums));
     for (int32_t i = 0; i < __stop_1; ++i) {
-        //     print(nums[i])
+        // print(nums[i])
         std::cout << (*nums)[i] << "\n";
     }
     // # Empty list repetition (always produces empty list)

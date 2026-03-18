@@ -6,24 +6,24 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     t: tuple[Int32, Int32] = (Int32(10), Int32(20))
+    // t: tuple[Int32, Int32] = (Int32(10), Int32(20))
     std::tuple<int32_t, int32_t> t = std::tuple<int32_t, int32_t>{10, 20};
-    //     print(t)
+    // print(t)
     std::cout << ::tpy::TuplePrinter(t) << "\n";
-    //     # Single-element tuple (trailing comma)
-    //     s: tuple[Int32] = (Int32(42),)
+    // # Single-element tuple (trailing comma)
+    // s: tuple[Int32] = (Int32(42),)
     std::tuple<int32_t> s = std::tuple<int32_t>{42};
-    //     print(s)
+    // print(s)
     std::cout << ::tpy::TuplePrinter(s) << "\n";
-    //     # Record with tuple field
-    //     p = Pair(Int32(1), "hello")
+    // # Record with tuple field
+    // p = Pair(Int32(1), "hello")
     Pair p = Pair(1, "hello");
-    //     print(p)
+    // print(p)
     std::cout << p << "\n";
-    //     # Nested tuple
-    //     n: tuple[tuple[Int32, Int32], str] = ((Int32(3), Int32(4)), "xy")
+    // # Nested tuple
+    // n: tuple[tuple[Int32, Int32], str] = ((Int32(3), Int32(4)), "xy")
     std::tuple<std::tuple<int32_t, int32_t>, std::string> n = std::tuple<std::tuple<int32_t, int32_t>, std::string>{std::tuple<int32_t, int32_t>{3, 4}, "xy"};
-    //     print(n)
+    // print(n)
     std::cout << ::tpy::TuplePrinter(n) << "\n";
 }
 

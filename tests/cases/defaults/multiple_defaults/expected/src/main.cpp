@@ -6,25 +6,25 @@ namespace tpy_user::main {
 
 // def create(name: str, width: Int32 = Int32(100), height: Int32 = Int32(50), visible: bool = True) -> None:
 void create(std::string_view name, int32_t width, int32_t height, bool visible) {
-    //     print(name)
+    // print(name)
     std::cout << name << "\n";
-    //     print(width)
+    // print(width)
     std::cout << width << "\n";
-    //     print(height)
+    // print(height)
     std::cout << height << "\n";
-    //     print(visible)
+    // print(visible)
     std::cout << ::tpy::print_bool(visible) << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     create("a")
+    // create("a")
     create("a");
-    //     create("b", Int32(200))
+    // create("b", Int32(200))
     create("b", 200);
-    //     create("c", Int32(200), Int32(300))
+    // create("c", Int32(200), Int32(300))
     create("c", 200, 300);
-    //     create("d", Int32(200), Int32(300), False)
+    // create("d", Int32(200), Int32(300), False)
     create("d", 200, 300, false);
 }
 

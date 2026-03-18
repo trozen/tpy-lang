@@ -6,35 +6,35 @@ namespace tpy_user::main {
 
 // def test_static() -> None:
 void test_static() {
-    //     p: Point = Point()
+    // p: Point = Point()
     Point p = Point();
-    //     p.x = 10
+    // p.x = 10
     p.x = 10;
-    //     # copy() at last use -- should warn unnecessary
-    //     result: Int32 = Factory.consume(copy(p))  # tpyc: warning(/unnecessary copy/)
+    // # copy() at last use -- should warn unnecessary
+    // result: Int32 = Factory.consume(copy(p))  # tpyc: warning(/unnecessary copy/)
     int32_t result = Factory::consume(Point(p));
-    //     print(result)
+    // print(result)
     std::cout << result << "\n";
 }
 
 // def test_protocol() -> None:
 void test_protocol() {
-    //     h: MyHolder = MyHolder()
+    // h: MyHolder = MyHolder()
     MyHolder h = MyHolder();
-    //     p: Point = Point()
+    // p: Point = Point()
     Point p = Point();
-    //     p.x = 20
+    // p.x = 20
     p.x = 20;
-    //     # copy() at last use -- should warn unnecessary
-    //     h.store(copy(p))  # tpyc: warning(/unnecessary copy/)
+    // # copy() at last use -- should warn unnecessary
+    // h.store(copy(p))  # tpyc: warning(/unnecessary copy/)
     h.store(Point(p));
 }
 
 // def main() -> None:
 void main() {
-    //     test_static()
+    // test_static()
     test_static();
-    //     test_protocol()
+    // test_protocol()
     test_protocol();
 }
 

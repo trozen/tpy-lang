@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def test_append() -> None:
 void test_append() {
-    //     items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    // items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
-    //     for x in items:
+    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         items.append(x)  # tpyc: warning(/Mutation of 'items'.*'append'/)
+        // items.append(x)  # tpyc: warning(/Mutation of 'items'.*'append'/)
         auto __tmp_1 = x;
         items.push_back(std::move(__tmp_1));
     }
@@ -22,149 +22,149 @@ void test_append() {
 
 // def test_pop() -> None:
 void test_pop() {
-    //     items: list[Int32] = [Int32(1), Int32(2)]
+    // items: list[Int32] = [Int32(1), Int32(2)]
     std::vector<int32_t> items = {1, 2};
-    //     for x in items:
+    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         items.pop()  # tpyc: warning(/Mutation of 'items'.*'pop'/)
+        // items.pop()  # tpyc: warning(/Mutation of 'items'.*'pop'/)
         ::tpy::pop_back(items);
     }
 }
 
 // def test_insert() -> None:
 void test_insert() {
-    //     items: list[Int32] = [Int32(1), Int32(2)]
+    // items: list[Int32] = [Int32(1), Int32(2)]
     std::vector<int32_t> items = {1, 2};
-    //     for x in items:
+    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         items.insert(Int32(0), Int32(9))  # tpyc: warning(/Mutation of 'items'.*'insert'/)
+        // items.insert(Int32(0), Int32(9))  # tpyc: warning(/Mutation of 'items'.*'insert'/)
         ::tpy::list_insert(items, 0, 9);
     }
 }
 
 // def test_remove() -> None:
 void test_remove() {
-    //     items: list[Int32] = [Int32(1), Int32(2)]
+    // items: list[Int32] = [Int32(1), Int32(2)]
     std::vector<int32_t> items = {1, 2};
-    //     for x in items:
+    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         items.remove(Int32(1))  # tpyc: warning(/Mutation of 'items'.*'remove'/)
+        // items.remove(Int32(1))  # tpyc: warning(/Mutation of 'items'.*'remove'/)
         ::tpy::list_remove(items, 1);
     }
 }
 
 // def test_clear() -> None:
 void test_clear() {
-    //     items: list[Int32] = [Int32(1), Int32(2)]
+    // items: list[Int32] = [Int32(1), Int32(2)]
     std::vector<int32_t> items = {1, 2};
-    //     for x in items:
+    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         items.clear()  # tpyc: warning(/Mutation of 'items'.*'clear'/)
+        // items.clear()  # tpyc: warning(/Mutation of 'items'.*'clear'/)
         items.clear();
     }
 }
 
 // def test_extend() -> None:
 void test_extend() {
-    //     items: list[Int32] = [Int32(1), Int32(2)]
+    // items: list[Int32] = [Int32(1), Int32(2)]
     std::vector<int32_t> items = {1, 2};
-    //     other: list[Int32] = [Int32(3)]
+    // other: list[Int32] = [Int32(3)]
     std::vector<int32_t> other = {3};
-    //     for x in items:
+    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         items.extend(other)  # tpyc: warning(/Mutation of 'items'.*'extend'/)
+        // items.extend(other)  # tpyc: warning(/Mutation of 'items'.*'extend'/)
         ::tpy::list_extend(items, other);
     }
 }
 
 // def test_reverse() -> None:
 void test_reverse() {
-    //     items: list[Int32] = [Int32(1), Int32(2)]
+    // items: list[Int32] = [Int32(1), Int32(2)]
     std::vector<int32_t> items = {1, 2};
-    //     for x in items:
+    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         items.reverse()  # tpyc: warning(/Mutation of 'items'.*'reverse'/)
+        // items.reverse()  # tpyc: warning(/Mutation of 'items'.*'reverse'/)
         ::tpy::list_reverse(items);
     }
 }
 
 // def test_sort() -> None:
 void test_sort() {
-    //     items: list[Int32] = [Int32(3), Int32(1)]
+    // items: list[Int32] = [Int32(3), Int32(1)]
     std::vector<int32_t> items = {3, 1};
-    //     for x in items:
+    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         items.sort()  # tpyc: warning(/Mutation of 'items'.*'sort'/)
+        // items.sort()  # tpyc: warning(/Mutation of 'items'.*'sort'/)
         std::stable_sort(items.begin(), items.end());
     }
 }
 
 // def test_del() -> None:
 void test_del() {
-    //     items: list[Int32] = [Int32(1), Int32(2)]
+    // items: list[Int32] = [Int32(1), Int32(2)]
     std::vector<int32_t> items = {1, 2};
-    //     for x in items:
+    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         del items[Int32(0)]  # tpyc: warning(/Mutation of 'items'.*'del'/)
+        // del items[Int32(0)]  # tpyc: warning(/Mutation of 'items'.*'del'/)
         ::tpy::__delitem__(items, 0);
     }
 }
 
 // def test_nested_loops() -> None:
 void test_nested_loops() {
-    //     outer: list[Int32] = [Int32(1)]
+    // outer: list[Int32] = [Int32(1)]
     std::vector<int32_t> outer = {1};
-    //     inner: list[Int32] = [Int32(2)]
+    // inner: list[Int32] = [Int32(2)]
     std::vector<int32_t> inner = {2};
-    //     for x in outer:
+    // for x in outer:
     auto& __obj_0 = outer;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         for y in inner:
+        // for y in inner:
         auto& __obj_1 = inner;
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             int32_t y = *__beg_1;
-            //             inner.append(y)  # tpyc: warning(/Mutation of 'inner'/)
+            // inner.append(y)  # tpyc: warning(/Mutation of 'inner'/)
             auto __tmp_2 = y;
             inner.push_back(std::move(__tmp_2));
         }
-        //         outer.append(x)  # tpyc: warning(/Mutation of 'outer'/)
+        // outer.append(x)  # tpyc: warning(/Mutation of 'outer'/)
         auto __tmp_3 = x;
         outer.push_back(std::move(__tmp_3));
     }
@@ -172,17 +172,17 @@ void test_nested_loops() {
 
 // def test_conditional_mutation() -> None:
 void test_conditional_mutation() {
-    //     items: list[Int32] = [Int32(1), Int32(2)]
+    // items: list[Int32] = [Int32(1), Int32(2)]
     std::vector<int32_t> items = {1, 2};
-    //     for x in items:
+    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         if x > Int32(0):
+        // if x > Int32(0):
         if ((x > 0)) {
-            //             items.append(x)  # tpyc: warning(/Mutation of 'items'/)
+            // items.append(x)  # tpyc: warning(/Mutation of 'items'/)
             auto __tmp_4 = x;
             items.push_back(std::move(__tmp_4));
         }
@@ -191,52 +191,52 @@ void test_conditional_mutation() {
 
 // def test_subscript_assign_ok() -> None:
 void test_subscript_assign_ok() {
-    //     items: list[Int32] = [Int32(1), Int32(2)]
+    // items: list[Int32] = [Int32(1), Int32(2)]
     std::vector<int32_t> items = {1, 2};
-    //     for x in items:
+    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         items[Int32(0)] = Int32(9)  # tpyc: ok
+        // items[Int32(0)] = Int32(9)  # tpyc: ok
         ::tpy::__setitem__(items, 0, 9);
     }
 }
 
 // def test_no_warn_after_loop() -> None:
 void test_no_warn_after_loop() {
-    //     items: list[Int32] = [Int32(1), Int32(2)]
+    // items: list[Int32] = [Int32(1), Int32(2)]
     std::vector<int32_t> items = {1, 2};
-    //     for x in items:
+    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         pass
+        // pass
     }
-    //     items.append(Int32(3))  # tpyc: ok
+    // items.append(Int32(3))  # tpyc: ok
     items.push_back(3);
 }
 
 // def test_read_only_ok() -> None:
 void test_read_only_ok() {
-    //     items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
+    // items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
-    //     total: Int32 = Int32(0)
+    // total: Int32 = Int32(0)
     int32_t total = 0;
-    //     for x in items:
+    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         total += x        # tpyc: ok
+        // total += x        # tpyc: ok
         total = ::tpy::add_check<int32_t>(total, x);
-        //         _ = len(items)    # tpyc: ok
+        // _ = len(items)    # tpyc: ok
         int32_t _ = ::tpy::__len__(items);
-        //         _ = items[Int32(0)]  # tpyc: ok
+        // _ = items[Int32(0)]  # tpyc: ok
         _ = ::tpy::__getitem__(items, 0);
     }
 }

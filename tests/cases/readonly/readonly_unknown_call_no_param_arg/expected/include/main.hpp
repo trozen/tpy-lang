@@ -14,10 +14,10 @@ int32_t ok(const Box& b);
 
 // class Box:
 struct Box {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, v: Int32):
+    // def __init__(self, v: Int32):
     Box() = default;
     explicit Box(int32_t v) : value(v) {}
 };

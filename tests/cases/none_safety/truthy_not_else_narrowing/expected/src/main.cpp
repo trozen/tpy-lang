@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def use_else(x: Int32 | None) -> Int32:
 int32_t use_else(std::optional<int32_t> x) {
-    //     if not x:  # tpyc: warning(/Truthiness check on optional value/)
+    // if not x:  # tpyc: warning(/Truthiness check on optional value/)
     if ((!(::tpy::is_truthy(x)))) {
-        //         return 0
+        // return 0
         return 0;
-    //     else:
+    // else:
     } else {
-        //         return x + 1  # tpyc: ok
+        // return x + 1  # tpyc: ok
         return (::tpy::add_check<int32_t>((*x), 1));
     }
 }

@@ -39,64 +39,64 @@ int32_t result6{};
 // # 1. Function parameter: BigInt passed to Int32 param
 // def takes_int32(x: Int32) -> Int32:
 int32_t takes_int32(int32_t x) {
-    //     return x
+    // return x
     return x;
 }
 
 // # 2. Return statement: BigInt returned as Int32
 // def return_as_int32(x: int) -> Int32:
 int32_t return_as_int32(const ::tpy::BigInt& x) {
-    //     return x
+    // return x
     return (x).to_fixed_check<int32_t>();
 }
 
 // # 3. Variable declaration: BigInt assigned to Int32 var
 // def var_decl_test(x: int) -> Int32:
 int32_t var_decl_test(const ::tpy::BigInt& x) {
-    //     result: Int32 = x
+    // result: Int32 = x
     int32_t result = (x).to_fixed_check<int32_t>();
-    //     return result
+    // return result
     return result;
 }
 
 // # 4. Assignment: BigInt assigned to Int32 var
 // def assign_test(x: int) -> Int32:
 int32_t assign_test(const ::tpy::BigInt& x) {
-    //     result: Int32 = 0
+    // result: Int32 = 0
     int32_t result = 0;
-    //     result = x
+    // result = x
     result = (x).to_fixed_check<int32_t>();
-    //     return result
+    // return result
     return result;
 }
 
 // # 5. For loop with BigInt bound
 // def loop_test(n: int) -> Int32:
 int32_t loop_test(const ::tpy::BigInt& n) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     for i in range(n):
+    // for i in range(n):
     ::tpy::BigInt __stop_0 = n;
     for (::tpy::BigInt i = 0; i < __stop_0; ++i) {
-        //         total += 1
+        // total += 1
         total = ::tpy::add_check<int32_t>(total, 1);
     }
-    //     return total
+    // return total
     return total;
 }
 
 // # 6. Int32() constructor from BigInt
 // def constructor_test(x: int) -> Int32:
 int32_t constructor_test(const ::tpy::BigInt& x) {
-    //     return Int32(x)
+    // return Int32(x)
     return (x).to_fixed_check<int32_t>();
 }
 
 // def literal_ops_local() -> Int32:
 int32_t literal_ops_local() {
-    //     x: Int32 = 100 + 200
+    // x: Int32 = 100 + 200
     int32_t x = ::tpy::add_check<int32_t>(100, 200);
-    //     return x
+    // return x
     return x;
 }
 

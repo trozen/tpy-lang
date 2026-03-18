@@ -18,10 +18,10 @@ void main();
 // class Box[T]:
 template<typename T>
 struct Box {
-    //     val: T
+    // val: T
     T val;
 
-    //     def __init__(self, val: Own[T]) -> None:
+    // def __init__(self, val: Own[T]) -> None:
     Box() = default;
     explicit Box(T&& val) : val(std::move(val)) {}
 };
@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 // def wrap[T](v: T) -> Own[Box[T]]:
 template<typename T>
 Box<T> wrap(::tpy::param_val_or_ref_t<T> v) {
-    //     return Box[T](v)
+    // return Box[T](v)
     auto __tmp_1 = v;
     return Box<T>(std::move(__tmp_1));
 }

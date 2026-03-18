@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point&& p) {
-    //     return p.x
+    // return p.x
     return p.x;
 }
 
 // def test(a: Point | None) -> Int32:
 int32_t test(Point* a) {
-    //     q: Point | None = a
+    // q: Point | None = a
     Point* q = a;
-    //     assert q is not None
+    // assert q is not None
     if (!((q != nullptr))) ::tpy::tpy_panic("assertion failed");
-    //     return consume(q)  # tpyc: warning(/copies.*into owned storage/)
+    // return consume(q)  # tpyc: warning(/copies.*into owned storage/)
     auto __tmp_1 = (*q);
     return consume(std::move(__tmp_1));
 }

@@ -39,7 +39,7 @@ void __tpy_init() {
     // # range() should use BigInt loop variable.
     // for i in range(3):
     for (::tpy::BigInt i = 0; i < ::tpy::BigInt(3); ++i) {
-        //     print(i)
+        // print(i)
         std::cout << i << "\n";
     }
     // # List literal elements should be BigInt.

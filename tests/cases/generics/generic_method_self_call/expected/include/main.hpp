@@ -14,23 +14,23 @@ void main();
 // class Processor[T]:
 template<typename T>
 struct Processor {
-    //     val: T
+    // val: T
     T val;
 
-    //     def __init__(self, val: T):
+    // def __init__(self, val: T):
     Processor() = default;
     explicit Processor(const T& val) : val(val) {}
 
-    //     def wrap[U](self, x: U) -> U:
+    // def wrap[U](self, x: U) -> U:
     template<typename U>
     ::tpy::val_or_cref_t<U> wrap(const U& x) const {
-        //         return x
+        // return x
         return x;
     }
 
-    //     def process(self) -> Int32:
+    // def process(self) -> Int32:
     int32_t process() {
-        //         return self.wrap(Int32(99))
+        // return self.wrap(Int32(99))
         return wrap<int32_t>(99);
     }
 };

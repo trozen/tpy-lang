@@ -34,12 +34,12 @@ inline constexpr std::string_view __name__ = "__main__";
 // # Test 8: Global pointer field access
 // class Point:
 struct Point {
-    //     a: Int32
+    // a: Int32
     int32_t a;
-    //     b: Int32
+    // b: Int32
     int32_t b;
 
-    //     def __init__(self, a: Int32, b: Int32) -> None:
+    // def __init__(self, a: Int32, b: Int32) -> None:
     Point() = default;
     explicit Point(int32_t a, int32_t b) : a(a), b(b) {}
 };
@@ -56,17 +56,17 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // # Test 11: Method parameter shadows global
 // class Counter:
 struct Counter {
-    //     val: Int32
+    // val: Int32
     int32_t val;
 
-    //     def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: Int32) -> None:
     Counter() = default;
     explicit Counter(int32_t val) : val(val) {}
 
-    //     def add(self, a: Int32) -> Int32:
+    // def add(self, a: Int32) -> Int32:
     int32_t add(int32_t a) const {
-        //         # 'a' param shadows global 'a' above - should NOT deref
-        //         return self.val + a
+        // # 'a' param shadows global 'a' above - should NOT deref
+        // return self.val + a
         return (::tpy::add_check<int32_t>(this->val, a));
     }
 };

@@ -6,23 +6,23 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     d = {Int32(1): "one", Int32(2): "two", Int32(3): "three"}
+    // d = {Int32(1): "one", Int32(2): "two", Int32(3): "three"}
     ::tpy::ordered_map<int32_t, std::string> d = ::tpy::ordered_map<int32_t, std::string>({{1, "one"}, {2, "two"}, {3, "three"}});
-    //     print(d)
+    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
-    //     print(d[Int32(2)])
+    // print(d[Int32(2)])
     std::cout << ::tpy::__getitem__(d, 2) << "\n";
-    //     print(Int32(1) in d)
+    // print(Int32(1) in d)
     std::cout << ::tpy::print_bool((d.contains(1))) << "\n";
-    //     print(Int32(99) in d)
+    // print(Int32(99) in d)
     std::cout << ::tpy::print_bool((d.contains(99))) << "\n";
-    //     for k in d:
+    // for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t k = *__beg_0;
-        //         print(k, d[k])
+        // print(k, d[k])
         std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n";
     }
 }

@@ -14,12 +14,12 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -36,23 +36,23 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // class Container[T]:
 template<typename T>
 struct Container {
-    //     _value: T
+    // _value: T
     T _value;
-    //     _has: bool
+    // _has: bool
     bool _has;
 
-    //     def __init__(self, value: T) -> None:
+    // def __init__(self, value: T) -> None:
     Container() = default;
     explicit Container(const T& value) : _value(value), _has(true) {}
 
-    //     def get(self) -> T | None:
+    // def get(self) -> T | None:
     T* get() {
-        //         if self._has:
+        // if self._has:
         if (this->_has) {
-            //             return self._value
+            // return self._value
             return &(this->_value);
         }
-        //         return None
+        // return None
         return nullptr;
     }
 };

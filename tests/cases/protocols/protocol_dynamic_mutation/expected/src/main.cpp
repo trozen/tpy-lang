@@ -6,44 +6,44 @@ namespace tpy_user::main {
 
 // def bump(c: Counter) -> None:
 void bump(Counter& c) {
-    //     c.increment()
+    // c.increment()
     c.increment();
 }
 
 // def main() -> None:
 void main() {
-    //     # 1. Direct inheritance: mutation visible (pass by ref, implicit upcast)
-    //     mc = MyCounter()
+    // # 1. Direct inheritance: mutation visible (pass by ref, implicit upcast)
+    // mc = MyCounter()
     MyCounter mc = MyCounter();
-    //     bump(mc)
+    // bump(mc)
     bump(mc);
-    //     print(mc.value())      # 1
+    // print(mc.value())      # 1
     std::cout << mc.value() << "\n";
-    //     # 2. Structural conformance lvalue: mutation visible (ref adapter)
-    //     t = Tally()
+    // # 2. Structural conformance lvalue: mutation visible (ref adapter)
+    // t = Tally()
     Tally t = Tally();
-    //     bump(t)
+    // bump(t)
     ::tpy::RefAdapter<Counter, Tally> __tmp_1{t};
     bump(__tmp_1);
-    //     print(t.value())       # 1
+    // print(t.value())       # 1
     std::cout << t.value() << "\n";
-    //     # 3. Local owning: mutation visible (modifying through pointer to owned slot)
-    //     c: Counter = MyCounter()
+    // # 3. Local owning: mutation visible (modifying through pointer to owned slot)
+    // c: Counter = MyCounter()
     MyCounter __slot_1{MyCounter()};
     Counter* c = &__slot_1;
-    //     c.increment()
+    // c.increment()
     c->increment();
-    //     c.increment()
+    // c.increment()
     c->increment();
-    //     print(c.value())       # 2
+    // print(c.value())       # 2
     std::cout << c->value() << "\n";
-    //     # 4. Local owning, structural: same behavior
-    //     c2: Counter = Tally()
+    // # 4. Local owning, structural: same behavior
+    // c2: Counter = Tally()
     ::tpy::Adapter<Counter, Tally> __slot_2{Tally()};
     Counter* c2 = &__slot_2;
-    //     c2.increment()
+    // c2.increment()
     c2->increment();
-    //     print(c2.value())      # 1
+    // print(c2.value())      # 1
     std::cout << c2->value() << "\n";
 }
 

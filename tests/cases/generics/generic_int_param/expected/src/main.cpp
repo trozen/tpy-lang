@@ -6,18 +6,18 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Test basic integer type parameter
-    //     c1: Container[str, 10] = Container[str, 10]("hello")
+    // # Test basic integer type parameter
+    // c1: Container[str, 10] = Container[str, 10]("hello")
     Container<std::string, 10> c1 = Container<std::string, 10>("hello");
-    //     print(c1.value)
+    // print(c1.value)
     std::cout << c1.value << "\n";
-    //     c2: Container[Int32, 5] = Container[Int32, 5](Int32(42))
+    // c2: Container[Int32, 5] = Container[Int32, 5](Int32(42))
     Container<int32_t, 5> c2 = Container<int32_t, 5>(42);
-    //     print(c2.value)
+    // print(c2.value)
     std::cout << c2.value << "\n";
-    //     c3: Container[str, 100] = Container[str, 100]("world")
+    // c3: Container[str, 100] = Container[str, 100]("world")
     Container<std::string, 100> c3 = Container<std::string, 100>("world");
-    //     print(c3.value)
+    // print(c3.value)
     std::cout << c3.value << "\n";
 }
 

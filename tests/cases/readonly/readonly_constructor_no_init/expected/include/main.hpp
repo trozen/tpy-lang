@@ -14,10 +14,10 @@ inline constexpr std::string_view __name__ = "__main__";
 // class Logger:
 struct Logger {
 
-    //     @readonly(False)
-    //     def __init__(self) -> None:
+    // @readonly(False)
+    // def __init__(self) -> None:
     Logger() {
-        //         pass
+        // pass
     }
 };
 

@@ -6,39 +6,39 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # round(float) -> default int (Int32)
-    //     print(round(3.7))
+    // # round(float) -> default int (Int32)
+    // print(round(3.7))
     std::cout << ::tpy::round_to<int32_t>(3.7) << "\n";
-    //     print(round(-1.5))
+    // print(round(-1.5))
     std::cout << ::tpy::round_to<int32_t>(-(1.5)) << "\n";
-    //     print(round(0.5))
+    // print(round(0.5))
     std::cout << ::tpy::round_to<int32_t>(0.5) << "\n";
-    //     # Banker's rounding (round half to even)
-    //     print(round(2.5))
+    // # Banker's rounding (round half to even)
+    // print(round(2.5))
     std::cout << ::tpy::round_to<int32_t>(2.5) << "\n";
-    //     print(round(3.5))
+    // print(round(3.5))
     std::cout << ::tpy::round_to<int32_t>(3.5) << "\n";
-    //     print(round(4.5))
+    // print(round(4.5))
     std::cout << ::tpy::round_to<int32_t>(4.5) << "\n";
-    //     # round with ndigits
-    //     print(round(3.14159, 2))
+    // # round with ndigits
+    // print(round(3.14159, 2))
     std::cout << ::tpy::print_float(::tpy::round_float(3.14159, 2)) << "\n";
-    //     print(round(2.71828, 3))
+    // print(round(2.71828, 3))
     std::cout << ::tpy::print_float(::tpy::round_float(2.71828, 3)) << "\n";
-    //     # round with context inference
-    //     x: Int64 = round(9.9)
+    // # round with context inference
+    // x: Int64 = round(9.9)
     int64_t x = ::tpy::round_to<int64_t>(9.9);
-    //     print(x)
+    // print(x)
     std::cout << x << "\n";
-    //     # round(int) is identity
-    //     n: Int32 = Int32(42)
+    // # round(int) is identity
+    // n: Int32 = Int32(42)
     int32_t n = 42;
-    //     print(round(n))
+    // print(round(n))
     std::cout << (n) << "\n";
-    //     # round(int, ndigits) with negative ndigits
-    //     m: Int32 = Int32(1250)
+    // # round(int, ndigits) with negative ndigits
+    // m: Int32 = Int32(1250)
     int32_t m = 1250;
-    //     print(round(m, Int32(-2)))
+    // print(round(m, Int32(-2)))
     std::cout << ::tpy::round_fixed<int32_t>(m, -2) << "\n";
 }
 

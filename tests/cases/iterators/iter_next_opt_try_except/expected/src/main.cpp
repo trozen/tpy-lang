@@ -6,14 +6,14 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c = Counter(3)
+    // c = Counter(3)
     Counter c = Counter(3);
-    //     while True:
+    // while True:
     while (true) {
-        //         try:
+        // try:
         int32_t v;
         {
-            //             v = c.__next__()
+            // v = c.__next__()
             {
                 auto __try_tmp_2 = c.__next__();
                 if (!__try_tmp_2.has_value()) goto __except_1;
@@ -21,32 +21,32 @@ void main() {
             }
             goto __after_try_1;
             __except_1:;
-            //             break
+            // break
             break;
             __after_try_1:;
         }
-        //         print(v)
+        // print(v)
         std::cout << v << "\n";
     }
-    //     # Verify exhaustion
-    //     exhausted = False
+    // # Verify exhaustion
+    // exhausted = False
     bool exhausted = false;
-    //     try:
+    // try:
     {
-        //         c.__next__()
+        // c.__next__()
         {
             auto __try_tmp_4 = c.__next__();
             if (!__try_tmp_4.has_value()) goto __except_3;
         }
         goto __after_try_3;
         __except_3:;
-        //         exhausted = True
+        // exhausted = True
         exhausted = true;
         __after_try_3:;
     }
-    //     if exhausted:
+    // if exhausted:
     if (exhausted) {
-        //         print("exhausted")
+        // print("exhausted")
         std::cout << "exhausted" << "\n";
     }
 }

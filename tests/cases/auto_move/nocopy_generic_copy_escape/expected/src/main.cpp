@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main():
 void main() {
-    //     v = TaggedValue[Handle](42)
+    // v = TaggedValue[Handle](42)
     TaggedValue<Handle> v = TaggedValue<Handle>(42);
-    //     v2 = copy(v)  # tpyc: ok
+    // v2 = copy(v)  # tpyc: ok
     TaggedValue<Handle> v2 = TaggedValue<Handle>(v);
-    //     print(v.data)
+    // print(v.data)
     std::cout << v.data << "\n";
-    //     print(v2.data)
+    // print(v2.data)
     std::cout << v2.data << "\n";
 }
 

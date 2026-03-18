@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def insert(d: dict[str, Int32], key: str, val: Int32) -> None:
 void insert(::tpy::ordered_map<std::string, int32_t>& d, std::string_view key, int32_t val) {
-    //     d[key] = val
+    // d[key] = val
     ::tpy::__setitem__(d, key, val);
 }
 
 // def main() -> None:
 void main() {
-    //     d = {"a": 1}
+    // d = {"a": 1}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    //     insert(d, "b", 2)
+    // insert(d, "b", 2)
     insert(d, "b", 2);
-    //     print(d)
+    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 

@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     s: set[Int32] = set()
+    // s: set[Int32] = set()
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>();
-    //     s.pop()
+    // s.pop()
     ::tpy::set_pop(s);
 }
 

@@ -7,15 +7,15 @@ namespace tpy_user::main {
 // # Keyword arguments in different order than parameters
 // def point_str(x: int, y: int, z: int) -> str:
 std::string point_str(const ::tpy::BigInt& x, const ::tpy::BigInt& y, const ::tpy::BigInt& z) {
-    //     return f"({x}, {y}, {z})"
+    // return f"({x}, {y}, {z})"
     return std::format("({}, {}, {})", (x).to_string(), (y).to_string(), (z).to_string());
 }
 
 // def main() -> None:
 void main() {
-    //     print(point_str(z=3, x=1, y=2))
+    // print(point_str(z=3, x=1, y=2))
     std::cout << point_str(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)) << "\n";
-    //     print(point_str(y=20, z=30, x=10))
+    // print(point_str(y=20, z=30, x=10))
     std::cout << point_str(::tpy::BigInt(10), ::tpy::BigInt(20), ::tpy::BigInt(30)) << "\n";
 }
 

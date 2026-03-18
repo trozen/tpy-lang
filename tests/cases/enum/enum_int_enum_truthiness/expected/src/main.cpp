@@ -48,30 +48,30 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Value 0 is falsy
-    //     if Status.Off:
+    // # Value 0 is falsy
+    // if Status.Off:
     if ((static_cast<int32_t>(Status::Off) != 0)) {
-        //         print("off is truthy")
+        // print("off is truthy")
         std::cout << "off is truthy" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("off is falsy")
+        // print("off is falsy")
         std::cout << "off is falsy" << "\n";
     }
-    //     # Non-zero is truthy
-    //     if Status.On:
+    // # Non-zero is truthy
+    // if Status.On:
     if ((static_cast<int32_t>(Status::On) != 0)) {
-        //         print("on is truthy")
+        // print("on is truthy")
         std::cout << "on is truthy" << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("on is falsy")
+        // print("on is falsy")
         std::cout << "on is falsy" << "\n";
     }
-    //     # not operator
-    //     print(not Status.Off)
+    // # not operator
+    // print(not Status.Off)
     std::cout << ::tpy::print_bool((!((static_cast<int32_t>(Status::Off) != 0)))) << "\n";
-    //     print(not Status.On)
+    // print(not Status.On)
     std::cout << ::tpy::print_bool((!((static_cast<int32_t>(Status::On) != 0)))) << "\n";
 }
 

@@ -76,15 +76,15 @@ void main();
 struct Dog : Describable, Noise {
 
 
-    //     def describe(self) -> str:
+    // def describe(self) -> str:
     std::string describe() override {
-        //         return "a dog"
+        // return "a dog"
         return "a dog";
     }
 
-    //     def make_noise(self) -> str:
+    // def make_noise(self) -> str:
     std::string make_noise() override {
-        //         return "Woof"
+        // return "Woof"
         return "Woof";
     }
 };
@@ -99,15 +99,15 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 struct Cat : Describable, Noise {
 
 
-    //     def describe(self) -> str:
+    // def describe(self) -> str:
     std::string describe() override {
-        //         return "a cat"
+        // return "a cat"
         return "a cat";
     }
 
-    //     def make_noise(self) -> str:
+    // def make_noise(self) -> str:
     std::string make_noise() override {
-        //         return "Meow"
+        // return "Meow"
         return "Meow";
     }
 };

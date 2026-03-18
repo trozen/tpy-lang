@@ -6,25 +6,25 @@ namespace tpy_user::main {
 
 // def modify(v: Vec2) -> None:
 void modify(::tpy_user::shapes::Vec2 v) {
-    //     v.x = 99
+    // v.x = 99
     v.x = 99;
 }
 
 // def main() -> None:
 void main() {
-    //     a = Vec2(1, 2)
+    // a = Vec2(1, 2)
     ::tpy_user::shapes::Vec2 a = ::tpy_user::shapes::Vec2(1, 2);
-    //     b = a
+    // b = a
     ::tpy_user::shapes::Vec2 b = a;
-    //     b.x = 10
+    // b.x = 10
     b.x = 10;
-    //     print(a.x)
+    // print(a.x)
     std::cout << a.x << "\n";
-    //     print(b.x)
+    // print(b.x)
     std::cout << b.x << "\n";
-    //     modify(a)
+    // modify(a)
     modify(a);
-    //     print(a.x)
+    // print(a.x)
     std::cout << a.x << "\n";
 }
 

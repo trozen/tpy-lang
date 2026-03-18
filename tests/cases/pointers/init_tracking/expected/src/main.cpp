@@ -7,70 +7,70 @@ namespace tpy_user::main {
 // # Direct assignment then use — OK
 // def direct_assign() -> None:
 void direct_assign() {
-    //     x: Point = Point(7, 8)
+    // x: Point = Point(7, 8)
     Point x = Point(7, 8);
-    //     print(x.x, x.y)  # tpyc: ok
+    // print(x.x, x.y)  # tpyc: ok
     std::cout << x.x << " " << x.y << "\n";
 }
 
 // # Param usage — OK
 // def param_use(p: Point) -> None:
 void param_use(const Point& p) {
-    //     print(p.x, p.y)  # tpyc: ok
+    // print(p.x, p.y)  # tpyc: ok
     std::cout << p.x << " " << p.y << "\n";
 }
 
 // # Value type with init — OK
 // def value_init() -> None:
 void value_init() {
-    //     x: Int32 = 42
+    // x: Int32 = 42
     int32_t x = 42;
-    //     print(x)  # tpyc: ok
+    // print(x)  # tpyc: ok
     std::cout << x << "\n";
 }
 
 // # Assign before if, use after — OK
 // def assign_before_if(cond: bool) -> None:
 void assign_before_if(bool cond) {
-    //     x: Point = Point(1, 2)
+    // x: Point = Point(1, 2)
     Point __slot_1 = Point(1, 2);
     std::optional<Point> __slot_2;
     Point* x = &__slot_1;
-    //     if cond:
+    // if cond:
     if (cond) {
-        //         x = Point(3, 4)
+        // x = Point(3, 4)
         x = &*(__slot_2 = Point(3, 4));
     }
-    //     print(x.x, x.y)  # tpyc: ok
+    // print(x.x, x.y)  # tpyc: ok
     std::cout << x->x << " " << x->y << "\n";
 }
 
 // # Then-branch returns — code after if only reachable from else
 // def then_returns(cond: bool) -> None:
 void then_returns(bool cond) {
-    //     if cond:
+    // if cond:
     if (cond) {
-        //         return
+        // return
         return;
     }
-    //     x: Point = Point(5, 6)
+    // x: Point = Point(5, 6)
     Point x = Point(5, 6);
-    //     print(x.x, x.y)  # tpyc: ok
+    // print(x.x, x.y)  # tpyc: ok
     std::cout << x.x << " " << x.y << "\n";
 }
 
 // # Both branches return — dead code after is fine
 // def both_return(cond: bool) -> Int32:
 int32_t both_return(bool cond) {
-    //     if cond:
+    // if cond:
     if (cond) {
-        //         x: Int32 = 1
+        // x: Int32 = 1
         int32_t x = 1;
-        //         return x
+        // return x
         return x;
-    //     else:
+    // else:
     } else {
-        //         return 0
+        // return 0
         return 0;
     }
 }
@@ -78,66 +78,66 @@ int32_t both_return(bool cond) {
 // # Both branches assign (value type) — OK after if
 // def both_branches_assign(cond: bool) -> None:
 void both_branches_assign(bool cond) {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     if cond:
+    // if cond:
     if (cond) {
-        //         x = 1
+        // x = 1
         x = 1;
-    //     else:
+    // else:
     } else {
-        //         x = 2
+        // x = 2
         x = 2;
     }
-    //     print(x)  # tpyc: ok
+    // print(x)  # tpyc: ok
     std::cout << x << "\n";
 }
 
 // # Else-branch returns, then assigns — OK after if
 // def else_returns(cond: bool) -> None:
 void else_returns(bool cond) {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     if cond:
+    // if cond:
     if (cond) {
-        //         x = 10
+        // x = 10
         x = 10;
-    //     else:
+    // else:
     } else {
-        //         return
+        // return
         return;
     }
-    //     print(x)  # tpyc: ok
+    // print(x)  # tpyc: ok
     std::cout << x << "\n";
 }
 
 // # Bare decl then unconditional assign — OK
 // def decl_then_assign() -> None:
 void decl_then_assign() {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     x = 42
+    // x = 42
     x = 42;
-    //     print(x)  # tpyc: ok
+    // print(x)  # tpyc: ok
     std::cout << x << "\n";
 }
 
 // # Loop var shadows assigned outer var — outer stays assigned after loop
 // def loop_shadow_outer() -> None:
 void loop_shadow_outer() {
-    //     items: list[Int32] = [10, 20, 30]
+    // items: list[Int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    //     x: Int32 = 99
+    // x: Int32 = 99
     int32_t x = 99;
-    //     for x in items:
+    // for x in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         pass
+        // pass
     }
-    //     print(x)  # tpyc: ok
+    // print(x)  # tpyc: ok
     std::cout << x << "\n";
 }
 

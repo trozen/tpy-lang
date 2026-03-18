@@ -14,34 +14,34 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // class Counter:
 struct Counter {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, start: Int32):
+    // def __init__(self, start: Int32):
     Counter() = default;
     explicit Counter(int32_t start) : value(start) {}
 
-    //     def increment(self) -> None:
+    // def increment(self) -> None:
     void increment() {
-        //         self.value = self.value + 1
+        // self.value = self.value + 1
         this->value = (::tpy::add_check<int32_t>(this->value, 1));
     }
 
-    //     def add(self, n: Int32) -> None:
+    // def add(self, n: Int32) -> None:
     void add(int32_t n) {
-        //         self.value = self.value + n
+        // self.value = self.value + n
         this->value = (::tpy::add_check<int32_t>(this->value, n));
     }
 
-    //     def get(self) -> Int32:
+    // def get(self) -> Int32:
     int32_t get() const {
-        //         return self.value
+        // return self.value
         return this->value;
     }
 
-    //     def reset(self) -> None:
+    // def reset(self) -> None:
     void reset() {
-        //         self.value = 0
+        // self.value = 0
         this->value = 0;
     }
 };

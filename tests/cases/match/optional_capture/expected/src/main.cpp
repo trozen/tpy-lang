@@ -6,19 +6,19 @@ namespace tpy_user::main {
 
 // def classify(x: Optional[Int32]) -> str:
 std::string classify(std::optional<int32_t> x) {
-    //     match x:
+    // match x:
     auto& __match_subject = x;
-    //         case None:
+    // case None:
     if (!__match_subject.has_value()) {
-        //             return "none"
+        // return "none"
         return "none";
     } else {
         auto& __match_inner = (*__match_subject);
         switch (__match_inner) {
-        //         case v:
+        // case v:
         default: {
             auto& v = __match_inner;
-            //             return str(v)
+            // return str(v)
             return ::tpy::fixed_to_str<int32_t>(v);
             break;
         }
@@ -28,18 +28,18 @@ std::string classify(std::optional<int32_t> x) {
 
 // def describe(x: Optional[str]) -> str:
 std::string describe(std::optional<std::string_view> x) {
-    //     match x:
+    // match x:
     auto& __match_subject = x;
-    //         case None:
+    // case None:
     if (!__match_subject.has_value()) {
-        //             return "empty"
+        // return "empty"
         return "empty";
     } else {
         auto& __match_inner = (*__match_subject);
-        //         case s:
+        // case s:
         {
             auto& s = __match_inner;
-            //             return "got: " + s
+            // return "got: " + s
             return (::tpy::str_concat("got: ", s));
         }
     }
@@ -47,13 +47,13 @@ std::string describe(std::optional<std::string_view> x) {
 
 // def main() -> None:
 void main() {
-    //     print(classify(None))
+    // print(classify(None))
     std::cout << classify(std::nullopt) << "\n";
-    //     print(classify(Int32(42)))
+    // print(classify(Int32(42)))
     std::cout << classify(42) << "\n";
-    //     print(describe(None))
+    // print(describe(None))
     std::cout << describe(std::nullopt) << "\n";
-    //     print(describe("hello"))
+    // print(describe("hello"))
     std::cout << describe("hello") << "\n";
 }
 

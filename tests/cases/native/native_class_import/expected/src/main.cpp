@@ -7,21 +7,21 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     v = Vec2(Int32(3), Int32(7))
+    // v = Vec2(Int32(3), Int32(7))
     ns::Vec2 v = ns::Vec2(3, 7);
-    //     print(v.x)
+    // print(v.x)
     std::cout << v.x << "\n";
-    //     print(vec2_sum(Ptr(v)))
+    // print(vec2_sum(Ptr(v)))
     std::cout << vec2_sum(&v) << "\n";
-    //     print(v.sum())
+    // print(v.sum())
     std::cout << v.sum() << "\n";
-    //     r = MyRect(Int32(0), Int32(0), Int32(40), Int32(30))
+    // r = MyRect(Int32(0), Int32(0), Int32(40), Int32(30))
     Rect r = Rect{0, 0, 40, 30};
-    //     print(r.w)
+    // print(r.w)
     std::cout << r.w << "\n";
-    //     print(rect_area(Ptr(r)))
+    // print(rect_area(Ptr(r)))
     std::cout << rect_area(&r) << "\n";
-    //     print(r.area())
+    // print(r.area())
     std::cout << r.area() << "\n";
 }
 

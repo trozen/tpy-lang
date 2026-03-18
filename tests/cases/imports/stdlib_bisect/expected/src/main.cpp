@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     a: list[Int32] = [1, 3, 5, 7]
+    // a: list[Int32] = [1, 3, 5, 7]
     std::vector<int32_t> a = {1, 3, 5, 7};
-    //     print(bisect_left(a, Int32(4)))
+    // print(bisect_left(a, Int32(4)))
     int32_t __tmp_1 = 4;
     std::cout << ::tpy_user::bisect::bisect_left<int32_t>(a, __tmp_1) << "\n";
-    //     insort_left(a, Int32(4))
+    // insort_left(a, Int32(4))
     int32_t __tmp_2 = 4;
     ::tpy_user::bisect::insort_left<int32_t>(a, __tmp_2);
-    //     print(len(a))
+    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }
 

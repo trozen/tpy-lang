@@ -20,16 +20,16 @@ void main();
 
 // class IntBox:
 struct IntBox {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, v: Int32) -> None:
+    // def __init__(self, v: Int32) -> None:
     IntBox() = default;
     explicit IntBox(int32_t v) : value(v) {}
 
-    //     def get(self) -> Int32:
+    // def get(self) -> Int32:
     int32_t get() const {
-        //         return self.value
+        // return self.value
         return this->value;
     }
 };
@@ -45,16 +45,16 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
 // class Holder[V: Container[Int32]]:
 template<Container<int32_t> V>
 struct Holder {
-    //     item: V
+    // item: V
     V item;
 
-    //     def __init__(self, item: V) -> None:
+    // def __init__(self, item: V) -> None:
     Holder() = default;
     explicit Holder(const V& item) : item(item) {}
 
-    //     def get_item(self) -> V:
+    // def get_item(self) -> V:
     ::tpy::val_or_ref_t<V> get_item() {
-        //         return self.item
+        // return self.item
         return this->item;
     }
 };

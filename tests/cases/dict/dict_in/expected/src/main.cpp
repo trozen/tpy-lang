@@ -7,15 +7,15 @@ namespace tpy_user::main {
 // # Dict membership: in and not in
 // def main() -> None:
 void main() {
-    //     d = {"x": 1, "y": 2}
+    // d = {"x": 1, "y": 2}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"x", 1}, {"y", 2}});
-    //     print("x" in d)
+    // print("x" in d)
     std::cout << ::tpy::print_bool((d.contains("x"))) << "\n";
-    //     print("z" in d)
+    // print("z" in d)
     std::cout << ::tpy::print_bool((d.contains("z"))) << "\n";
-    //     print("x" not in d)
+    // print("x" not in d)
     std::cout << ::tpy::print_bool((!(d.contains("x")))) << "\n";
-    //     print("z" not in d)
+    // print("z" not in d)
     std::cout << ::tpy::print_bool((!(d.contains("z")))) << "\n";
 }
 

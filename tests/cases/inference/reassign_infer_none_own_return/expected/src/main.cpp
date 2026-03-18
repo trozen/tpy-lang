@@ -8,7 +8,7 @@ Point* x{};
 
 // def make_owned_point() -> Own[Point]:
 Point make_owned_point() {
-    //     return Point(11)
+    // return Point(11)
     return Point(11);
 }
 

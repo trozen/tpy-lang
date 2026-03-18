@@ -14,7 +14,7 @@ Sink* sink{};
 
 // def take_ptr(p: Ptr[None]) -> Int32:
 int32_t take_ptr(void* p) {
-    //     return Int32(10)
+    // return Int32(10)
     return 10;
 }
 

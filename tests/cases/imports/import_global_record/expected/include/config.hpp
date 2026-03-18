@@ -12,18 +12,18 @@ inline constexpr std::string_view __name__ = "config";
 
 // class Settings:
 struct Settings {
-    //     width: Int32
+    // width: Int32
     int32_t width;
-    //     height: Int32
+    // height: Int32
     int32_t height;
 
-    //     def __init__(self, width: Int32, height: Int32) -> None:
+    // def __init__(self, width: Int32, height: Int32) -> None:
     Settings() = default;
     explicit Settings(int32_t width, int32_t height) : width(width), height(height) {}
 
-    //     def area(self) -> Int32:
+    // def area(self) -> Int32:
     int32_t area() const {
-        //         return self.width * self.height
+        // return self.width * self.height
         return (::tpy::mul_check<int32_t>(this->width, this->height));
     }
 };

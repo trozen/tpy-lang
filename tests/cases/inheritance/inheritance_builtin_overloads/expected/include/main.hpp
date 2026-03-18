@@ -16,10 +16,10 @@ inline constexpr std::string_view __name__ = "__main__";
 // # User class inheriting from list
 // class MyList(list[Int32]):
 struct MyList : std::vector<int32_t> {
-    //     name: str
+    // name: str
     std::string name;
 
-    //     def __init__(self, name: str) -> None:
+    // def __init__(self, name: str) -> None:
     MyList() = default;
     explicit MyList(std::string_view name) : name(name) {}
 };

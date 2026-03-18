@@ -6,7 +6,7 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     print(BIG_VALUE)
+    // print(BIG_VALUE)
     std::cout << ::tpy_user::constants::BIG_VALUE << "\n";
 }
 

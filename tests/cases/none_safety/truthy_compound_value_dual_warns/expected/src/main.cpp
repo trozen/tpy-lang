@@ -6,12 +6,12 @@ namespace tpy_user::main {
 
 // def add_if_both(a: Int32 | None, b: Int32 | None) -> Int32:
 int32_t add_if_both(std::optional<int32_t> a, std::optional<int32_t> b) {
-    //     if a and b:  # tpyc: warning(/variable 'a'/)  # tpyc: warning(/variable 'b'/)
+    // if a and b:  # tpyc: warning(/variable 'a'/)  # tpyc: warning(/variable 'b'/)
     if ((::tpy::is_truthy(a) && ::tpy::is_truthy(b))) {
-        //         return a + b  # tpyc: ok
+        // return a + b  # tpyc: ok
         return (::tpy::add_check<int32_t>((*a), (*b)));
     }
-    //     return 0
+    // return 0
     return 0;
 }
 

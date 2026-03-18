@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     data = [1, 2, 3]
+    // data = [1, 2, 3]
     std::array<int32_t, 3> data = {1, 2, 3};
-    //     s: Span[Int32] = data
+    // s: Span[Int32] = data
     std::span<int32_t> s = ::tpy::as_mut_span(data);
-    //     print(s[0])
+    // print(s[0])
     std::cout << ::tpy::__getitem__(s, 0) << "\n";
-    //     print(s[2])
+    // print(s[2])
     std::cout << ::tpy::__getitem__(s, 2) << "\n";
 }
 

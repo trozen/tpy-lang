@@ -16,16 +16,16 @@ void main();
 
 // class MyCollection:
 struct MyCollection {
-    //     size: int
+    // size: int
     ::tpy::BigInt size;
 
-    //     def __init__(self, n: int) -> None:
+    // def __init__(self, n: int) -> None:
     MyCollection() = default;
     explicit MyCollection(const ::tpy::BigInt& n) : size(n) {}
 
-    //     def __len__(self) -> int:
+    // def __len__(self) -> int:
     ::tpy::BigInt __len__() const {
-        //         return self.size
+        // return self.size
         return this->size;
     }
 };
@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const MyCollection& obj) {
 // def count(items: Sized) -> int:
 template<::tpy_user::typing::Sized T_items>
 ::tpy::BigInt count(const T_items& items) {
-    //     return len(items)
+    // return len(items)
     return ::tpy::BigInt(::tpy::__len__(items));
 }
 

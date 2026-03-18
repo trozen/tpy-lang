@@ -15,10 +15,10 @@ Factory get_factory();
 
 // class Product:
 struct Product {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: Int32) -> None:
     Product() = default;
     explicit Product(int32_t value) : value(value) {}
 };
@@ -34,9 +34,9 @@ inline std::ostream& operator<<(std::ostream& os, const Product& obj) {
 struct Factory {
 
 
-    //     def create(self) -> Own[Product]:
+    // def create(self) -> Own[Product]:
     Product create() const {
-        //         return Product(Int32(9))
+        // return Product(Int32(9))
         return Product(9);
     }
 };

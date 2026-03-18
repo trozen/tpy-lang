@@ -7,11 +7,11 @@ namespace tpy_user::main {
 // # List alias without mutation stays Array
 // def main() -> None:
 void main() {
-    //     a = [1, 2, 3]  # tpyc: type(/Array/)
+    // a = [1, 2, 3]  # tpyc: type(/Array/)
     std::array<int32_t, 3> a = {1, 2, 3};
-    //     b = a           # tpyc: type(/Array/)
+    // b = a           # tpyc: type(/Array/)
     std::array<int32_t, 3> b = std::move(a);
-    //     print(len(b))
+    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 

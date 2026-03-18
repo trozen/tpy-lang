@@ -14,12 +14,12 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -35,16 +35,16 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Container:
 struct Container {
-    //     data: tuple[Point, Int32]
+    // data: tuple[Point, Int32]
     std::tuple<Point, int32_t> data;
 
-    //     def __init__(self, p: Point, n: Int32) -> None:
+    // def __init__(self, p: Point, n: Int32) -> None:
     Container() = default;
     explicit Container(const Point& p, int32_t n) : data(std::tuple<Point, int32_t>{Point(p), n}) {}
 
-    //     def __repr__(self) -> str:
+    // def __repr__(self) -> str:
     std::string __repr__() const {
-        //         return "Container"
+        // return "Container"
         return "Container";
     }
 };

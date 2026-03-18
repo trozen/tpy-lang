@@ -6,40 +6,40 @@ namespace tpy_user::main {
 
 // def sum_span(s: Span[readonly[Int32]]) -> Int32:
 int32_t sum_span(std::span<const int32_t> s) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     for x in s:
+    // for x in s:
     auto& __obj_0 = s;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         total += x
+        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    //     return total
+    // return total
     return total;
 }
 
 // def main() -> None:
 void main() {
-    //     a = ArrayList[Int32, 8]()
+    // a = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> a = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    //     a.append(10)
+    // a.append(10)
     a.append(10);
-    //     a.append(20)
+    // a.append(20)
     a.append(20);
-    //     a.append(30)
+    // a.append(30)
     a.append(30);
-    //     # __str__ via str()
-    //     print(str(a))
+    // # __str__ via str()
+    // print(str(a))
     std::cout << std::string(::tpy::__str__(a)) << "\n";
-    //     # __span__ returns mutable Span
-    //     s: Span[Int32] = a.__span__()
+    // # __span__ returns mutable Span
+    // s: Span[Int32] = a.__span__()
     std::span<int32_t> s = a.__span__();
-    //     print(len(s))       # 3
+    // print(len(s))       # 3
     std::cout << ::tpy::__len__(s) << "\n";
-    //     print(sum_span(s))  # 60
+    // print(sum_span(s))  # 60
     std::cout << sum_span(s) << "\n";
 }
 

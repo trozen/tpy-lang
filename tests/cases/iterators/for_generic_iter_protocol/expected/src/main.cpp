@@ -6,33 +6,33 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     s = SimpleList[Int32, 8]()
+    // s = SimpleList[Int32, 8]()
     SimpleList<int32_t, 8> s = SimpleList<int32_t, 8>();
-    //     s.add(10)
+    // s.add(10)
     s.add(10);
-    //     s.add(20)
+    // s.add(20)
     s.add(20);
-    //     s.add(30)
+    // s.add(30)
     s.add(30);
-    //     for x in s:
+    // for x in s:
     auto& __src_0 = s;
     auto __itr_0 = __src_0.__iter__();
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = *__r_1;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
-    //     # iterate again
-    //     for x in s:
+    // # iterate again
+    // for x in s:
     auto& __src_2 = s;
     auto __itr_2 = __src_2.__iter__();
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
         int32_t x = *__r_3;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
 }

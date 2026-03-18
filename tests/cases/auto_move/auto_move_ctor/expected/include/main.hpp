@@ -14,7 +14,7 @@ void main();
 
 // class Inner:
 struct Inner {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
 };
@@ -28,16 +28,16 @@ inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
 
 // class Outer:
 struct Outer {
-    //     inner: Inner
+    // inner: Inner
     Inner inner;
 
-    //     def __init__(self, inner: Own[Inner]):
+    // def __init__(self, inner: Own[Inner]):
     Outer() = default;
     explicit Outer(Inner&& inner) : inner(std::move(inner)) {}
 
-    //     def get_value(self) -> Int32:
+    // def get_value(self) -> Int32:
     int32_t get_value() const {
-        //         return self.inner.value
+        // return self.inner.value
         return this->inner.value;
     }
 };

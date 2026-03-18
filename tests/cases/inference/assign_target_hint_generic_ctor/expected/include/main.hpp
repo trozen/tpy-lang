@@ -16,14 +16,14 @@ void main();
 // class Wrapper[T]:
 template<typename T>
 struct Wrapper {
-    //     _storage: UninitHeapStorage[T]
+    // _storage: UninitHeapStorage[T]
     ::tpy::UninitHeapStorage<T> _storage;
     bool __tpy_owned_ = true;
 
-    //     def __init__(self, val: Own[T]):
+    // def __init__(self, val: Own[T]):
     Wrapper() = default;
     explicit Wrapper(T&& val) : _storage(::tpy::UninitHeapStorage<T>(1)) {
-        //         self._storage.init0(val)
+        // self._storage.init0(val)
         this->_storage.init0(std::move(val));
     }
     // non-copyable (field '_storage')
@@ -39,17 +39,17 @@ struct Wrapper {
         }
         return *this;
     }
-    //     def __del__(self):
+    // def __del__(self):
 
     ~Wrapper() {
         if (!__tpy_owned_) return;
-        //         self._storage.drop0()
+        // self._storage.drop0()
         this->_storage.drop0();
     }
 
-    //     def get(self) -> T:
+    // def get(self) -> T:
     ::tpy::val_or_cref_t<T> get() const {
-        //         return self._storage.load0()
+        // return self._storage.load0()
         return this->_storage.load0();
     }
 };

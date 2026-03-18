@@ -6,52 +6,52 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # list.extend with Iterable param
-    //     nums: list[Int32] = [1, 2]
+    // # list.extend with Iterable param
+    // nums: list[Int32] = [1, 2]
     std::vector<int32_t> nums = {1, 2};
-    //     more: list[Int32] = [3, 4, 5]
+    // more: list[Int32] = [3, 4, 5]
     std::vector<int32_t> more = {3, 4, 5};
-    //     extend_from(nums, more)
+    // extend_from(nums, more)
     extend_from(nums, more);
-    //     print(nums)
+    // print(nums)
     std::cout << ::tpy::ListPrinter(nums) << "\n";
-    //     # list.extend with list literal
-    //     nums2: list[Int32] = [10]
+    // # list.extend with list literal
+    // nums2: list[Int32] = [10]
     std::vector<int32_t> nums2 = {10};
-    //     extend_from(nums2, [20, 30])
+    // extend_from(nums2, [20, 30])
     auto __tmp_1 = {20, 30};
     extend_from(nums2, __tmp_1);
-    //     print(nums2)
+    // print(nums2)
     std::cout << ::tpy::ListPrinter(nums2) << "\n";
-    //     # list.extend with another list via Iterable
-    //     target: list[Int32] = [100]
+    // # list.extend with another list via Iterable
+    // target: list[Int32] = [100]
     std::vector<int32_t> target = {100};
-    //     vals: list[Int32] = [200, 300]
+    // vals: list[Int32] = [200, 300]
     std::vector<int32_t> vals = {200, 300};
-    //     extend_from(target, vals)
+    // extend_from(target, vals)
     extend_from(target, vals);
-    //     print(target)
+    // print(target)
     std::cout << ::tpy::ListPrinter(target) << "\n";
-    //     # str.join with Iterable param
-    //     words: list[str] = ["a", "b", "c"]
+    // # str.join with Iterable param
+    // words: list[str] = ["a", "b", "c"]
     std::vector<std::string> words = {"a", "b", "c"};
-    //     print(join_from("-", words))
+    // print(join_from("-", words))
     std::cout << join_from("-", words) << "\n";
-    //     # list() from Iterable param
-    //     src: list[Int32] = [7, 8, 9]
+    // # list() from Iterable param
+    // src: list[Int32] = [7, 8, 9]
     std::vector<int32_t> src = {7, 8, 9};
-    //     result = list_from(src)
+    // result = list_from(src)
     std::vector<int32_t> result = list_from(src);
-    //     print(result)
+    // print(result)
     std::cout << ::tpy::ListPrinter(result) << "\n";
-    //     # Direct calls (not through Iterable param)
-    //     direct: list[Int32] = [1]
+    // # Direct calls (not through Iterable param)
+    // direct: list[Int32] = [1]
     std::vector<int32_t> direct = {1};
-    //     direct.extend([2, 3])
+    // direct.extend([2, 3])
     ::tpy::list_extend(direct, {2, 3});
-    //     print(direct)
+    // print(direct)
     std::cout << ::tpy::ListPrinter(direct) << "\n";
-    //     print(",".join(["x", "y"]))
+    // print(",".join(["x", "y"]))
     std::cout << ::tpy::str_join(",", {"x", "y"}) << "\n";
 }
 

@@ -6,62 +6,62 @@ namespace tpy_user::main {
 
 // def test_bool():
 void test_bool() {
-    //     # Boolean literals with explicit type
-    //     a: bool = True
+    // # Boolean literals with explicit type
+    // a: bool = True
     bool a = true;
-    //     b: bool = False
+    // b: bool = False
     bool b = false;
-    //     # Type inference for bool
-    //     inferred_true = True
+    // # Type inference for bool
+    // inferred_true = True
     bool inferred_true = true;
-    //     inferred_false = False
+    // inferred_false = False
     bool inferred_false = false;
-    //     # Print bools (as 0/1 in if conditions)
-    //     if a:
+    // # Print bools (as 0/1 in if conditions)
+    // if a:
     if (a) {
-        //         print(1)
+        // print(1)
         std::cout << 1 << "\n";
-    //     else:
+    // else:
     } else {
-        //         print(0)
+        // print(0)
         std::cout << 0 << "\n";
     }
-    //     if b:
+    // if b:
     if (b) {
-        //         print(1)
+        // print(1)
         std::cout << 1 << "\n";
-    //     else:
+    // else:
     } else {
-        //         print(0)
+        // print(0)
         std::cout << 0 << "\n";
     }
-    //     # Inferred bools work the same
-    //     if inferred_true:
+    // # Inferred bools work the same
+    // if inferred_true:
     if (inferred_true) {
-        //         print(1)
+        // print(1)
         std::cout << 1 << "\n";
     }
-    //     if inferred_false:
+    // if inferred_false:
     if (inferred_false) {
-        //         print(0)
+        // print(0)
         std::cout << 0 << "\n";
     }
-    //     # Boolean in while condition (inferred type)
-    //     flag = True
+    // # Boolean in while condition (inferred type)
+    // flag = True
     bool flag = true;
-    //     count: Int32 = 0
+    // count: Int32 = 0
     int32_t count = 0;
-    //     while flag:
+    // while flag:
     while (flag) {
-        //         count = count + 1
+        // count = count + 1
         count = (::tpy::add_check<int32_t>(count, 1));
-        //         if count == 3:
+        // if count == 3:
         if ((count == 3)) {
-            //             flag = False
+            // flag = False
             flag = false;
         }
     }
-    //     print(count)
+    // print(count)
     std::cout << count << "\n";
 }
 

@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Narrowed Optional — flow analysis proves non-None
-    //     r: Ref | None = Ref(Point(10, 20))
+    // # Narrowed Optional — flow analysis proves non-None
+    // r: Ref | None = Ref(Point(10, 20))
     Ref __slot_1 = Ref(Point(10, 20));
     Ref* r = &__slot_1;
-    //     print(r.x)
+    // print(r.x)
     std::cout << r->__deref__().x << "\n";
-    //     print(r.sum())
+    // print(r.sum())
     std::cout << r->__deref__().sum() << "\n";
 }
 

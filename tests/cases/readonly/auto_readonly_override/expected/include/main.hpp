@@ -16,23 +16,23 @@ void main();
 
 // class Base:
 struct Base {
-    //     _data: list[Int32]
+    // _data: list[Int32]
     std::vector<int32_t> _data;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Base() : _data({1, 2}) {}
 
-    //     @auto_readonly
-    //     def items(self) -> Span[auto_readonly[Int32]]:
+    // @auto_readonly
+    // def items(self) -> Span[auto_readonly[Int32]]:
     std::span<int32_t> items() {
-        //         return self._data
+        // return self._data
         return ::tpy::as_mut_span(this->_data);
     }
 
-    //     @auto_readonly
-    //     def items(self) -> Span[auto_readonly[Int32]]:
+    // @auto_readonly
+    // def items(self) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> items() const {
-        //         return self._data
+        // return self._data
         return ::tpy::as_span(this->_data);
     }
 };
@@ -46,25 +46,25 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 
 // class Child(Base):
 struct Child : Base {
-    //     _extra: list[Int32]
+    // _extra: list[Int32]
     std::vector<int32_t> _extra;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Child() : Base(), _extra({3, 4}) {}
 
-    //     @override
-    //     @auto_readonly
-    //     def items(self) -> Span[auto_readonly[Int32]]:  # tpyc: warning(/non-polymorphic/)
+    // @override
+    // @auto_readonly
+    // def items(self) -> Span[auto_readonly[Int32]]:  # tpyc: warning(/non-polymorphic/)
     std::span<int32_t> items() {
-        //         return self._extra
+        // return self._extra
         return ::tpy::as_mut_span(this->_extra);
     }
 
-    //     @override
-    //     @auto_readonly
-    //     def items(self) -> Span[auto_readonly[Int32]]:  # tpyc: warning(/non-polymorphic/)
+    // @override
+    // @auto_readonly
+    // def items(self) -> Span[auto_readonly[Int32]]:  # tpyc: warning(/non-polymorphic/)
     std::span<const int32_t> items() const {
-        //         return self._extra
+        // return self._extra
         return ::tpy::as_span(this->_extra);
     }
 };

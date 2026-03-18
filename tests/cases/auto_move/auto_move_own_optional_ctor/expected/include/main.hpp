@@ -14,9 +14,9 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
 };
@@ -32,19 +32,19 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Wrapper:
 struct Wrapper {
-    //     tag: Int32
+    // tag: Int32
     int32_t tag;
 
-    //     def __init__(self, p: Own[Point] | None, tag: Int32):
+    // def __init__(self, p: Own[Point] | None, tag: Int32):
     Wrapper() = default;
     explicit Wrapper(std::optional<Point> p, int32_t tag) {
-        //         if p is not None:
+        // if p is not None:
         if ((p.has_value())) {
-            //             self.tag = tag
+            // self.tag = tag
             this->tag = tag;
-        //         else:
+        // else:
         } else {
-            //             self.tag = Int32(-1)
+            // self.tag = Int32(-1)
             this->tag = -1;
         }
     }

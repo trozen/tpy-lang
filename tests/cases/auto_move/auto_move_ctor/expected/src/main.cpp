@@ -6,14 +6,14 @@ namespace tpy_user::main {
 
 // def main():
 void main() {
-    //     inner = Inner()
+    // inner = Inner()
     Inner inner = Inner();
-    //     inner.value = 99
+    // inner.value = 99
     inner.value = 99;
-    //     # inner is at last use -- auto-moved into Outer constructor
-    //     outer = Outer(inner)
+    // # inner is at last use -- auto-moved into Outer constructor
+    // outer = Outer(inner)
     Outer outer = Outer(std::move(inner));
-    //     print(outer.get_value())
+    // print(outer.get_value())
     std::cout << outer.get_value() << "\n";
 }
 

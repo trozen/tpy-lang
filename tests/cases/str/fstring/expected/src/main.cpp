@@ -6,135 +6,135 @@ namespace tpy_user::main {
 
 // def test_basic() -> None:
 void test_basic() {
-    //     name: str = "world"
+    // name: str = "world"
     std::string_view name = "world";
-    //     print(f"hello {name}")
+    // print(f"hello {name}")
     std::cout << std::format("hello {}", name) << "\n";
-    //     print(f"")
+    // print(f"")
     std::cout << std::string("") << "\n";
-    //     print(f"just text")
+    // print(f"just text")
     std::cout << std::string("just text") << "\n";
 }
 
 // def test_types() -> None:
 void test_types() {
-    //     x: int = 42
+    // x: int = 42
     ::tpy::BigInt x = ::tpy::BigInt(42);
-    //     pi: float = 3.14159
+    // pi: float = 3.14159
     double pi = 3.14159;
-    //     flag: bool = True
+    // flag: bool = True
     bool flag = true;
-    //     ch: str = "A"
+    // ch: str = "A"
     std::string_view ch = "A";
-    //     print(f"int={x}")
+    // print(f"int={x}")
     std::cout << std::format("int={}", (x).to_string()) << "\n";
-    //     print(f"float={pi}")
+    // print(f"float={pi}")
     std::cout << std::format("float={}", ::tpy::float_to_str(pi)) << "\n";
-    //     print(f"bool={flag}")
+    // print(f"bool={flag}")
     std::cout << std::format("bool={}", ::tpy::bool_to_str(flag)) << "\n";
-    //     print(f"str={ch}")
+    // print(f"str={ch}")
     std::cout << std::format("str={}", ch) << "\n";
 }
 
 // def test_expressions() -> None:
 void test_expressions() {
-    //     a: int = 10
+    // a: int = 10
     ::tpy::BigInt a = ::tpy::BigInt(10);
-    //     b: int = 20
+    // b: int = 20
     ::tpy::BigInt b = ::tpy::BigInt(20);
-    //     print(f"{a} + {b} = {a + b}")
+    // print(f"{a} + {b} = {a + b}")
     std::cout << std::format("{} + {} = {}", (a).to_string(), (b).to_string(), (((a) + (b))).to_string()) << "\n";
-    //     print(f"len({'hello'}) = {len('hello')}")
+    // print(f"len({'hello'}) = {len('hello')}")
     std::cout << std::format("len({}) = {}", "hello", ::tpy::__len__("hello")) << "\n";
 }
 
 // def test_format_spec() -> None:
 void test_format_spec() {
-    //     val: float = 3.14159
+    // val: float = 3.14159
     double val = 3.14159;
-    //     print(f"{val:.2f}")
+    // print(f"{val:.2f}")
     std::cout << std::format("{:.2f}", val) << "\n";
-    //     n: Int32 = Int32(255)
+    // n: Int32 = Int32(255)
     int32_t n = 255;
-    //     print(f"{n:#x}")
+    // print(f"{n:#x}")
     std::cout << std::format("{:#x}", n) << "\n";
-    //     print(f"{n:>10}")
+    // print(f"{n:>10}")
     std::cout << std::format("{:>10}", n) << "\n";
-    //     # '=' and '_' as fill characters (not alignment/grouping)
-    //     print(f"{n:=<10}")
+    // # '=' and '_' as fill characters (not alignment/grouping)
+    // print(f"{n:=<10}")
     std::cout << std::format("{:=<10}", n) << "\n";
-    //     print(f"{n:_>10}")
+    // print(f"{n:_>10}")
     std::cout << std::format("{:_>10}", n) << "\n";
 }
 
 // def test_braces() -> None:
 void test_braces() {
-    //     x: int = 42
+    // x: int = 42
     ::tpy::BigInt x = ::tpy::BigInt(42);
-    //     print(f"{{{x}}}")
+    // print(f"{{{x}}}")
     std::cout << std::format("{{{}}}", (x).to_string()) << "\n";
-    //     # Pure-literal braces (no interpolation)
-    //     print(f"{{literal}}")
+    // # Pure-literal braces (no interpolation)
+    // print(f"{{literal}}")
     std::cout << std::string("{literal}") << "\n";
 }
 
 // def test_multiple() -> None:
 void test_multiple() {
-    //     a: str = "hello"
+    // a: str = "hello"
     std::string_view a = "hello";
-    //     b: int = 42
+    // b: int = 42
     ::tpy::BigInt b = ::tpy::BigInt(42);
-    //     c: bool = False
+    // c: bool = False
     bool c = false;
-    //     print(f"{a} {b} {c}")
+    // print(f"{a} {b} {c}")
     std::cout << std::format("{} {} {}", a, (b).to_string(), ::tpy::bool_to_str(c)) << "\n";
 }
 
 // def test_adjacent() -> None:
 void test_adjacent() {
-    //     a: int = 1
+    // a: int = 1
     ::tpy::BigInt a = ::tpy::BigInt(1);
-    //     b: int = 2
+    // b: int = 2
     ::tpy::BigInt b = ::tpy::BigInt(2);
-    //     print(f"{a}{b}")
+    // print(f"{a}{b}")
     std::cout << std::format("{}{}", (a).to_string(), (b).to_string()) << "\n";
 }
 
 // def test_fstring_var() -> None:
 void test_fstring_var() {
-    //     x: int = 99
+    // x: int = 99
     ::tpy::BigInt x = ::tpy::BigInt(99);
-    //     s: str = f"value={x}"
+    // s: str = f"value={x}"
     std::string s = std::format("value={}", (x).to_string());
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
-    //     print(f"s={s}")
+    // print(f"s={s}")
     std::cout << std::format("s={}", s) << "\n";
 }
 
 // def test_str_conversion() -> None:
 void test_str_conversion() {
-    //     x: int = 42
+    // x: int = 42
     ::tpy::BigInt x = ::tpy::BigInt(42);
-    //     print(f"{x!s}")
+    // print(f"{x!s}")
     std::cout << std::format("{}", (x).to_string()) << "\n";
 }
 
 // def test_bool_format() -> None:
 void test_bool_format() {
-    //     flag: bool = True
+    // flag: bool = True
     bool flag = true;
-    //     print(f"{flag}")
+    // print(f"{flag}")
     std::cout << std::format("{}", ::tpy::bool_to_str(flag)) << "\n";
-    //     print(f"{flag:>10}")
+    // print(f"{flag:>10}")
     std::cout << std::format("{:>10}", static_cast<int>(flag)) << "\n";
-    //     print(f"{flag:d}")
+    // print(f"{flag:d}")
     std::cout << std::format("{:d}", static_cast<int>(flag)) << "\n";
-    //     off: bool = False
+    // off: bool = False
     bool off = false;
-    //     print(f"{off}")
+    // print(f"{off}")
     std::cout << std::format("{}", ::tpy::bool_to_str(off)) << "\n";
-    //     print(f"{off:>10}")
+    // print(f"{off:>10}")
     std::cout << std::format("{:>10}", static_cast<int>(off)) << "\n";
 }
 

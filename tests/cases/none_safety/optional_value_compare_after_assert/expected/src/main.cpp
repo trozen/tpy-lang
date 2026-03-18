@@ -6,14 +6,14 @@ namespace tpy_user::main {
 
 // def is_large(x: Int32 | None) -> Int32:
 int32_t is_large(std::optional<int32_t> x) {
-    //     assert x is not None
+    // assert x is not None
     if (!((x.has_value()))) ::tpy::tpy_panic("assertion failed");
-    //     if x > 10:  # tpyc: ok
+    // if x > 10:  # tpyc: ok
     if (((*x) > 10)) {
-        //         return 1
+        // return 1
         return 1;
     }
-    //     return 0
+    // return 0
     return 0;
 }
 

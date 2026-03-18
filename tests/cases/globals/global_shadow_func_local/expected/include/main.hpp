@@ -15,12 +15,12 @@ void foo(bool cond);
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32):
+    // def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -37,27 +37,27 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // # Record with method that has pointer-local `p` (tests method→global path)
 // class Picker:
 struct Picker {
-    //     val: Int32
+    // val: Int32
     int32_t val;
 
-    //     def __init__(self, val: Int32):
+    // def __init__(self, val: Int32):
     Picker() = default;
     explicit Picker(int32_t val) : val(val) {}
 
-    //     def pick(self, cond: bool) -> None:
+    // def pick(self, cond: bool) -> None:
     void pick(bool cond) const {
-        //         if cond:
+        // if cond:
         std::optional<Point> __slot_1;
         Point* p;
         if (cond) {
-            //             p = Point(self.val, self.val)
+            // p = Point(self.val, self.val)
             p = &*(__slot_1 = Point(this->val, this->val));
-        //         else:
+        // else:
         } else {
-            //             p = Point(0, 0)
+            // p = Point(0, 0)
             p = &*(__slot_1 = Point(0, 0));
         }
-        //         print(p.x, p.y)
+        // print(p.x, p.y)
         std::cout << p->x << " " << p->y << "\n";
     }
 };

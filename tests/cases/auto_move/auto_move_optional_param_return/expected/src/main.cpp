@@ -6,59 +6,59 @@ namespace tpy_user::main {
 
 // def unwrap_record(x: Optional[Own[Payload]]) -> Own[Payload]:
 Payload unwrap_record(std::optional<Payload> x) {
-    //     if x is not None:
+    // if x is not None:
     if ((x.has_value())) {
-        //         return x
+        // return x
         return std::move((*x));
     }
-    //     return Payload("default", 0)
+    // return Payload("default", 0)
     return Payload("default", ::tpy::BigInt(0));
 }
 
 // def unwrap_string(x: Optional[String]) -> String:
 std::string unwrap_string(std::optional<std::string> x) {
-    //     if x is not None:
+    // if x is not None:
     if ((x.has_value())) {
-        //         return x
+        // return x
         return std::move((*x));
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def unwrap_bigint(x: Optional[int]) -> int:
 ::tpy::BigInt unwrap_bigint(std::optional<::tpy::BigInt> x) {
-    //     if x is not None:
+    // if x is not None:
     if ((x.has_value())) {
-        //         return x
+        // return x
         return std::move((*x));
     }
-    //     return 0
+    // return 0
     return ::tpy::BigInt(0);
 }
 
 // def unwrap_string_with_print(x: Optional[String]) -> String:
 std::string unwrap_string_with_print(std::optional<std::string> x) {
-    //     if x is not None:
+    // if x is not None:
     if ((x.has_value())) {
-        //         print(x)  # non-last use -- should NOT move
+        // print(x)  # non-last use -- should NOT move
         std::cout << ::tpy::print_optional_val(x) << "\n";
-        //         return x  # last use -- should move
+        // return x  # last use -- should move
         return std::move((*x));
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def main():
 void main() {
-    //     print(unwrap_record(Payload("hello", 42)).data)
+    // print(unwrap_record(Payload("hello", 42)).data)
     std::cout << unwrap_record(Payload("hello", ::tpy::BigInt(42))).data << "\n";
-    //     print(unwrap_string("world"))
+    // print(unwrap_string("world"))
     std::cout << unwrap_string("world") << "\n";
-    //     print(unwrap_bigint(100))
+    // print(unwrap_bigint(100))
     std::cout << unwrap_bigint(100) << "\n";
-    //     print(unwrap_string_with_print("test"))
+    // print(unwrap_string_with_print("test"))
     std::cout << unwrap_string_with_print("test") << "\n";
 }
 

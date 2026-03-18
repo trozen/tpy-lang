@@ -6,7 +6,7 @@ namespace tpy_user::helper {
 
 // def get_value() -> Int32:
 int32_t get_value() {
-    //     return Int32(55)
+    // return Int32(55)
     return 55;
 }
 

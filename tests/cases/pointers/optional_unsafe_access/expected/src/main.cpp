@@ -10,25 +10,25 @@ std::vector<Point>* points{};
 // # Compiles with warning and inserts a runtime null check.
 // def use_without_check(p: Point | None) -> Int32:
 int32_t use_without_check(Point* p) {
-    //     return p.mag()  # tpyc: warning(/Potential None access on optional value/)
+    // return p.mag()  # tpyc: warning(/Potential None access on optional value/)
     return ::tpy::deref_check(p).mag();
 }
 
 // def find(pts: list[Point], target: Int32) -> Point | None:
 Point* find(std::vector<Point>& pts, int32_t target) {
-    //     for pt in pts:
+    // for pt in pts:
     auto& __obj_0 = pts;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& pt = *__beg_0;
-        //         if pt.x == target:
+        // if pt.x == target:
         if ((pt.x == target)) {
-            //             return pt
+            // return pt
             return &(pt);
         }
     }
-    //     return None
+    // return None
     return nullptr;
 }
 

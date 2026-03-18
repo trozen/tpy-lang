@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c: Container[str, 42] = Container[str, 42]()
+    // c: Container[str, 42] = Container[str, 42]()
     Container<std::string, 42> c = Container<std::string, 42>();
-    //     size: int = c.get_size_as_bigint()
+    // size: int = c.get_size_as_bigint()
     ::tpy::BigInt size = c.get_size_as_bigint();
-    //     print(size)
+    // print(size)
     std::cout << size << "\n";
 }
 

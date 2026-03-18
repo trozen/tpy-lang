@@ -6,19 +6,19 @@ namespace tpy_user::main {
 
 // def make(val: Int32) -> Own[Handle]:
 Handle make(int32_t val) {
-    //     h = Handle()
+    // h = Handle()
     Handle h = Handle();
-    //     h.fd = val
+    // h.fd = val
     h.fd = val;
-    //     return h
+    // return h
     return h;
 }
 
 // def main():
 void main() {
-    //     h = make(99)
+    // h = make(99)
     Handle h = make(99);
-    //     print(h.fd)
+    // print(h.fd)
     std::cout << h.fd << "\n";
 }
 

@@ -19,12 +19,12 @@ Pair<A, B> create_pair(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t
 // class Pair[A, B]:
 template<typename A, typename B>
 struct Pair {
-    //     first: A
+    // first: A
     A first;
-    //     second: B
+    // second: B
     B second;
 
-    //     def __init__(self, first: A, second: B) -> None:
+    // def __init__(self, first: A, second: B) -> None:
     Pair() = default;
     explicit Pair(const A& first, const B& second) : first(first), second(second) {}
 };
@@ -42,13 +42,13 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
 // def swap_pair[A, B](p: Pair[A, B]) -> Own[Pair[B, A]]:
 template<typename A, typename B>
 Pair<B, A> swap_pair(Pair<A, B>& p) {
-    //     return Pair[B, A](p.second, p.first)
+    // return Pair[B, A](p.second, p.first)
     return Pair<B, A>(p.second, p.first);
 }
 // def create_pair[A, B](a: A, b: B) -> Own[Pair[A, B]]:
 template<typename A, typename B>
 Pair<A, B> create_pair(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t<B> b) {
-    //     return Pair[A, B](a, b)
+    // return Pair[A, B](a, b)
     return Pair<A, B>(a, b);
 }
 

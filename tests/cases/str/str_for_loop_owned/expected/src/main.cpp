@@ -7,18 +7,18 @@ namespace tpy_user::main {
 // # For-loop str variable stays std::string when mutated via augassign
 // def main() -> None:
 void main() {
-    //     words: list[str] = ["hello", "world"]
+    // words: list[str] = ["hello", "world"]
     std::vector<std::string> words = {"hello", "world"};
-    //     # Augmented assignment forces string ownership
-    //     for w in words:
+    // # Augmented assignment forces string ownership
+    // for w in words:
     auto& __obj_0 = words;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string w = *__beg_0;
-        //         w += "!"
+        // w += "!"
         w += "!";
-        //         print(w)
+        // print(w)
         std::cout << w << "\n";
     }
 }

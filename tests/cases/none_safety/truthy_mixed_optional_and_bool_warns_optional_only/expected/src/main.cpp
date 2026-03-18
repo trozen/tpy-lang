@@ -6,12 +6,12 @@ namespace tpy_user::main {
 
 // def pick(x: Int32 | None, flag: bool) -> Int32:
 int32_t pick(std::optional<int32_t> x, bool flag) {
-    //     if x and flag:  # tpyc: warning(/variable 'x'/)
+    // if x and flag:  # tpyc: warning(/variable 'x'/)
     if ((::tpy::is_truthy(x) && flag)) {
-        //         return x + 1  # tpyc: ok
+        // return x + 1  # tpyc: ok
         return (::tpy::add_check<int32_t>((*x), 1));
     }
-    //     return 0
+    // return 0
     return 0;
 }
 

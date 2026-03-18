@@ -6,52 +6,52 @@ namespace tpy_user::main {
 
 // def greet(name: str, greeting: str = "Hello") -> None:
 void greet(std::string_view name, std::string_view greeting) {
-    //     print(f"{greeting}, {name}!")
+    // print(f"{greeting}, {name}!")
     std::cout << std::format("{}, {}!", greeting, name) << "\n";
 }
 
 // def add(a: Int32, b: Int32 = Int32(0)) -> Int32:
 int32_t add(int32_t a, int32_t b) {
-    //     return a + b
+    // return a + b
     return (::tpy::add_check<int32_t>(a, b));
 }
 
 // def scale(value: float, factor: float = 1.0) -> float:
 double scale(double value, double factor) {
-    //     return value * factor
+    // return value * factor
     return ((value) * (factor));
 }
 
 // def log(msg: str, verbose: bool = False) -> None:
 void log(std::string_view msg, bool verbose) {
-    //     if verbose:
+    // if verbose:
     if (verbose) {
-        //         print(f"[V] {msg}")
+        // print(f"[V] {msg}")
         std::cout << std::format("[V] {}", msg) << "\n";
-    //     else:
+    // else:
     } else {
-        //         print(msg)
+        // print(msg)
         std::cout << msg << "\n";
     }
 }
 
 // def main() -> None:
 void main() {
-    //     greet("World")
+    // greet("World")
     greet("World");
-    //     greet("World", "Hi")
+    // greet("World", "Hi")
     greet("World", "Hi");
-    //     print(add(Int32(5)))
+    // print(add(Int32(5)))
     std::cout << add(5) << "\n";
-    //     print(add(Int32(5), Int32(3)))
+    // print(add(Int32(5), Int32(3)))
     std::cout << add(5, 3) << "\n";
-    //     print(scale(2.5))
+    // print(scale(2.5))
     std::cout << ::tpy::print_float(scale(2.5)) << "\n";
-    //     print(scale(2.5, 3.0))
+    // print(scale(2.5, 3.0))
     std::cout << ::tpy::print_float(scale(2.5, 3.0)) << "\n";
-    //     log("info")
+    // log("info")
     log("info");
-    //     log("debug", True)
+    // log("debug", True)
     log("debug", true);
 }
 

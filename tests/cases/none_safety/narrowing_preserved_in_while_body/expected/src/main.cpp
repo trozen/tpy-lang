@@ -6,115 +6,115 @@ namespace tpy_user::main {
 
 // def simple_while(x: Int32 | None, n: Int32) -> Int32:
 int32_t simple_while(std::optional<int32_t> x, int32_t n) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     if x is not None:
+    // if x is not None:
     if ((x.has_value())) {
-        //         i: Int32 = 0
+        // i: Int32 = 0
         int32_t i = 0;
-        //         while i < n:
+        // while i < n:
         while ((i < n)) {
-            //             total = total + x  # tpyc: ok
+            // total = total + x  # tpyc: ok
             total = (::tpy::add_check<int32_t>(total, (*x)));
-            //             i = i + 1
+            // i = i + 1
             i = (::tpy::add_check<int32_t>(i, 1));
         }
     }
-    //     return total
+    // return total
     return total;
 }
 
 // def multiple_optionals(a: Int32 | None, b: Int32 | None, n: Int32) -> Int32:
 int32_t multiple_optionals(std::optional<int32_t> a, std::optional<int32_t> b, int32_t n) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     if a is not None:
+    // if a is not None:
     if ((a.has_value())) {
-        //         if b is not None:
+        // if b is not None:
         if ((b.has_value())) {
-            //             i: Int32 = 0
+            // i: Int32 = 0
             int32_t i = 0;
-            //             while i < n:
+            // while i < n:
             while ((i < n)) {
-                //                 total = total + a + b  # tpyc: ok
+                // total = total + a + b  # tpyc: ok
                 total = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(total, (*a))), (*b)));
-                //                 i = i + 1
+                // i = i + 1
                 i = (::tpy::add_check<int32_t>(i, 1));
             }
         }
     }
-    //     return total
+    // return total
     return total;
 }
 
 // def outer_if_inner_while_narrowing(
 int32_t outer_if_inner_while_narrowing(std::optional<int32_t> x, const std::vector<std::optional<int32_t>>& items) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     if x is not None:
+    // if x is not None:
     if ((x.has_value())) {
-        //         i: Int32 = 0
+        // i: Int32 = 0
         int32_t i = 0;
-        //         while i < len(items):
+        // while i < len(items):
         while ((i < ::tpy::__len__(items))) {
-            //             y: Int32 | None = items[i]
+            // y: Int32 | None = items[i]
             std::optional<int32_t> y = items[i];
-            //             if y is not None:
+            // if y is not None:
             if ((y.has_value())) {
-                //                 total = total + x + y  # tpyc: ok
+                // total = total + x + y  # tpyc: ok
                 total = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(total, (*x))), (*y)));
             }
-            //             i = i + 1
+            // i = i + 1
             i = (::tpy::add_check<int32_t>(i, 1));
         }
     }
-    //     return total
+    // return total
     return total;
 }
 
 // def for_loop_variant(x: Int32 | None, items: list[Int32]) -> Int32:
 int32_t for_loop_variant(std::optional<int32_t> x, const std::vector<int32_t>& items) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     if x is not None:
+    // if x is not None:
     if ((x.has_value())) {
-        //         for item in items:
+        // for item in items:
         auto& __obj_0 = items;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t item = *__beg_0;
-            //             total = total + item + x  # tpyc: ok
+            // total = total + item + x  # tpyc: ok
             total = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(total, item)), (*x)));
         }
     }
-    //     return total
+    // return total
     return total;
 }
 
 // def main() -> None:
 void main() {
-    //     print(simple_while(10, 3))
+    // print(simple_while(10, 3))
     std::cout << simple_while(10, 3) << "\n";
-    //     print(simple_while(None, 3))
+    // print(simple_while(None, 3))
     std::cout << simple_while(std::nullopt, 3) << "\n";
-    //     print(multiple_optionals(2, 3, 4))
+    // print(multiple_optionals(2, 3, 4))
     std::cout << multiple_optionals(2, 3, 4) << "\n";
-    //     print(multiple_optionals(None, 3, 4))
+    // print(multiple_optionals(None, 3, 4))
     std::cout << multiple_optionals(std::nullopt, 3, 4) << "\n";
-    //     print(multiple_optionals(2, None, 4))
+    // print(multiple_optionals(2, None, 4))
     std::cout << multiple_optionals(2, std::nullopt, 4) << "\n";
-    //     items: list[Int32 | None] = [1, None, 3]
+    // items: list[Int32 | None] = [1, None, 3]
     std::vector<std::optional<int32_t>> items = {1, std::nullopt, 3};
-    //     print(outer_if_inner_while_narrowing(10, items))
+    // print(outer_if_inner_while_narrowing(10, items))
     std::cout << outer_if_inner_while_narrowing(10, items) << "\n";
-    //     print(outer_if_inner_while_narrowing(None, items))
+    // print(outer_if_inner_while_narrowing(None, items))
     std::cout << outer_if_inner_while_narrowing(std::nullopt, items) << "\n";
-    //     nums: list[Int32] = [1, 2, 3]
+    // nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
-    //     print(for_loop_variant(5, nums))
+    // print(for_loop_variant(5, nums))
     std::cout << for_loop_variant(5, nums) << "\n";
-    //     print(for_loop_variant(None, nums))
+    // print(for_loop_variant(None, nums))
     std::cout << for_loop_variant(std::nullopt, nums) << "\n";
 }
 

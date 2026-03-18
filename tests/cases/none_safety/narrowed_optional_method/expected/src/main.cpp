@@ -7,24 +7,24 @@ namespace tpy_user::main {
 // # Test calling methods on narrowed Optional[str] values.
 // def greet(name: str | None) -> None:
 void greet(std::optional<std::string_view> name) {
-    //     if name is not None:
+    // if name is not None:
     if ((name.has_value())) {
-        //         print(name.upper())
+        // print(name.upper())
         std::cout << ::tpy::str_upper((*name)) << "\n";
-        //         print(name.startswith("A"))
+        // print(name.startswith("A"))
         std::cout << ::tpy::print_bool(::tpy::str_startswith((*name), "A")) << "\n";
-    //     else:
+    // else:
     } else {
-        //         print("no name")
+        // print("no name")
         std::cout << "no name" << "\n";
     }
 }
 
 // def main() -> None:
 void main() {
-    //     greet("alice")
+    // greet("alice")
     greet("alice");
-    //     greet(None)
+    // greet(None)
     greet(std::nullopt);
 }
 

@@ -6,10 +6,10 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     print(sum_iter(Counter(5)))
+    // print(sum_iter(Counter(5)))
     auto __tmp_1 = Counter(5);
     std::cout << sum_iter(__tmp_1) << "\n";
-    //     print(sum_iter(Counter(0)))
+    // print(sum_iter(Counter(0)))
     auto __tmp_2 = Counter(0);
     std::cout << sum_iter(__tmp_2) << "\n";
 }

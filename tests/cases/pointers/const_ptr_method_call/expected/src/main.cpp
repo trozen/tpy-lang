@@ -6,12 +6,12 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c: Counter = Counter(42)
+    // c: Counter = Counter(42)
     Counter c = Counter(42);
-    //     cp: Ptr[readonly[Counter]] = Ptr(c)
+    // cp: Ptr[readonly[Counter]] = Ptr(c)
     const Counter* cp = &c;
-    //     # Const-safe dunder method call through Ptr[readonly[...]] auto-deref
-    //     print(cp.__len__())
+    // # Const-safe dunder method call through Ptr[readonly[...]] auto-deref
+    // print(cp.__len__())
     std::cout << cp->__len__() << "\n";
 }
 

@@ -13,12 +13,12 @@ inline constexpr std::string_view __name__ = "__main__";
 // class Pair[A, B]:
 template<typename A, typename B>
 struct Pair {
-    //     first: A
+    // first: A
     A first;
-    //     second: B
+    // second: B
     B second;
 
-    //     def __init__(self, first: A, second: B) -> None:
+    // def __init__(self, first: A, second: B) -> None:
     Pair() = default;
     explicit Pair(const A& first, const B& second) : first(first), second(second) {}
 };

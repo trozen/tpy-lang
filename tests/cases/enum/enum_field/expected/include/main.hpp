@@ -36,14 +36,14 @@ void main();
 
 // class Pixel:
 struct Pixel {
-    //     x: int
+    // x: int
     ::tpy::BigInt x;
-    //     y: int
+    // y: int
     ::tpy::BigInt y;
-    //     color: Color
+    // color: Color
     Color color;
 
-    //     def __init__(self, x: int, y: int, color: Color) -> None:
+    // def __init__(self, x: int, y: int, color: Color) -> None:
     Pixel() = default;
     explicit Pixel(const ::tpy::BigInt& x, const ::tpy::BigInt& y, Color color) : x(x), y(y), color(color) {}
 };

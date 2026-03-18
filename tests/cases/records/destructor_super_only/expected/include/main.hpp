@@ -30,11 +30,11 @@ struct Base {
         }
         return *this;
     }
-    //     def __del__(self):
+    // def __del__(self):
 
     ~Base() {
         if (!__tpy_owned_) return;
-        //         print("Base destroyed")
+        // print("Base destroyed")
         std::cout << "Base destroyed" << "\n";
     }
 };
@@ -61,7 +61,7 @@ struct Child : Base {
         }
         return *this;
     }
-    //     def __del__(self):
+    // def __del__(self):
 
     ~Child() {
         if (!__tpy_owned_) return;

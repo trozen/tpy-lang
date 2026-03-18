@@ -8,7 +8,7 @@ Product* x{};
 
 // def get_factory() -> Own[Factory]:
 Factory get_factory() {
-    //     return Factory()
+    // return Factory()
     return Factory();
 }
 

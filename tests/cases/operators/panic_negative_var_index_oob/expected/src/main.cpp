@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     arr: Array[Int32, 3] = [10, 20, 30]
+    // arr: Array[Int32, 3] = [10, 20, 30]
     std::array<int32_t, 3> arr = {10, 20, 30};
-    //     i: Int32 = -4
+    // i: Int32 = -4
     int32_t i = -4;
-    //     print(arr[i])
+    // print(arr[i])
     std::cout << ::tpy::__getitem__(arr, i) << "\n";
 }
 

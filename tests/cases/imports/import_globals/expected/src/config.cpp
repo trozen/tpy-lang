@@ -8,7 +8,7 @@ int32_t MAX_VALUE{};
 
 // def get_max() -> Int32:
 int32_t get_max() {
-    //     return MAX_VALUE
+    // return MAX_VALUE
     return MAX_VALUE;
 }
 

@@ -15,13 +15,13 @@ void __tpy_init() {
     x = nullptr;
     // for i in range(0, 2):
     for (int32_t i = 0; i < 2; ++i) {
-        //     x = Point(i)
+        // x = Point(i)
         Point __global_slot_1 = Point(i);
         x = &__global_slot_1;
     }
     // if x is not None:
     if ((x != nullptr)) {
-        //     print(x.x)
+        // print(x.x)
         std::cout << x->x << "\n";
     }
 }

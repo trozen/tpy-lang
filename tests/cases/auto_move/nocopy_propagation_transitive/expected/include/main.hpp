@@ -17,10 +17,10 @@ void main();
 // @nocopy
 // class Resource:
 struct Resource {
-    //     id: Int32
+    // id: Int32
     int32_t id;
 
-    //     def __init__(self, id: Int32):
+    // def __init__(self, id: Int32):
     Resource() = default;
     explicit Resource(int32_t id) : id(id) {}
     // non-copyable (@nocopy)
@@ -39,10 +39,10 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
 
 // class Wrapper:
 struct Wrapper {
-    //     res: Resource
+    // res: Resource
     Resource res;
 
-    //     def __init__(self, res: Own[Resource]):
+    // def __init__(self, res: Own[Resource]):
     Wrapper() = default;
     explicit Wrapper(Resource&& res) : res(std::move(res)) {}
     // non-copyable (field 'res')
@@ -61,10 +61,10 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 
 // class Outer:
 struct Outer {
-    //     w: Wrapper
+    // w: Wrapper
     Wrapper w;
 
-    //     def __init__(self, w: Own[Wrapper]):
+    // def __init__(self, w: Own[Wrapper]):
     Outer() = default;
     explicit Outer(Wrapper&& w) : w(std::move(w)) {}
     // non-copyable (field 'w')

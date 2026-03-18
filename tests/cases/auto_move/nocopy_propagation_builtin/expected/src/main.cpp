@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def consume(s: Own[Storage]) -> Int32:
 int32_t consume(Storage&& s) {
-    //     return s.get()
+    // return s.get()
     return s.get();
 }
 
 // def main():
 void main() {
-    //     s = Storage()
+    // s = Storage()
     Storage s = Storage();
-    //     print(consume(s))  # tpyc: ok
+    // print(consume(s))  # tpyc: ok
     std::cout << consume(std::move(s)) << "\n";
 }
 

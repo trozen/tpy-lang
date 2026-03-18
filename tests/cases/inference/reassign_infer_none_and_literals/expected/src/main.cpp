@@ -16,13 +16,13 @@ std::optional<bool> flag;
 
 // def make_point() -> Own[Point]:
 Point make_point() {
-    //     return Point(7)
+    // return Point(7)
     return Point(7);
 }
 
 // def get_flag() -> bool:
 bool get_flag() {
-    //     return True
+    // return True
     return true;
 }
 

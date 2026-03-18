@@ -29,14 +29,14 @@ std::vector<int32_t>* from_arr{};
 
 // def test_local_list() -> None:
 void test_local_list() {
-    //     # Local list without annotation
-    //     local_nums = list[Int32]()
+    // # Local list without annotation
+    // local_nums = list[Int32]()
     std::vector<int32_t> local_nums = std::vector<int32_t>();
-    //     local_nums.append(100)
+    // local_nums.append(100)
     local_nums.push_back(100);
-    //     local_nums.append(200)
+    // local_nums.append(200)
     local_nums.push_back(200);
-    //     print(len(local_nums))
+    // print(len(local_nums))
     std::cout << ::tpy::__len__(local_nums) << "\n";
 }
 

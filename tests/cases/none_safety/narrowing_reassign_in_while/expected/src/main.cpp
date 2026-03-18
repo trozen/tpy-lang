@@ -6,23 +6,23 @@ namespace tpy_user::main {
 
 // def narrowing_cleared_on_reassign(x: Int32 | None, other: Int32 | None, n: Int32) -> Int32:
 int32_t narrowing_cleared_on_reassign(std::optional<int32_t> x, std::optional<int32_t> other, int32_t n) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     if x is not None:
+    // if x is not None:
     if ((x.has_value())) {
-        //         i: Int32 = 0
+        // i: Int32 = 0
         int32_t i = 0;
-        //         while i < n:
+        // while i < n:
         while ((i < n)) {
-            //             x = other
+            // x = other
             x = other;
-            //             total = total + x  # tpyc: warning(/Potential None access/)
+            // total = total + x  # tpyc: warning(/Potential None access/)
             total = (::tpy::add_check<int32_t>(total, ::tpy::deref_optional_check(x)));
-            //             i = i + 1
+            // i = i + 1
             i = (::tpy::add_check<int32_t>(i, 1));
         }
     }
-    //     return total
+    // return total
     return total;
 }
 

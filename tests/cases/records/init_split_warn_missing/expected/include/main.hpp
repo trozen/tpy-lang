@@ -13,17 +13,17 @@ void main();
 
 // class Config:
 struct Config {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32          # not initialized in init section -> warning at split point
+    // y: Int32          # not initialized in init section -> warning at split point
     int32_t y;
-    //     z: Int32 = Int32(0)  # has class-level default -> silent
+    // z: Int32 = Int32(0)  # has class-level default -> silent
     int32_t z = 0;
 
-    //     def __init__(self, x: Int32):
+    // def __init__(self, x: Int32):
     Config() = default;
     explicit Config(int32_t x) : x(x) {
-        //         print("init")          # tpyc: warning(/y.*is not initialized before the constructor body/)
+        // print("init")          # tpyc: warning(/y.*is not initialized before the constructor body/)
         std::cout << "init" << "\n";
     }
 };

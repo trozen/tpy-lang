@@ -19,10 +19,10 @@ bool get_flag();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
 
-    //     def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x) : x(x) {}
 };

@@ -7,19 +7,19 @@ namespace tpy_user::main {
 // def nested_loop_escape() -> None:
 void nested_loop_escape() {
   std::optional<Point> __slot_2;
-    //     for i in range(3):
+    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        //         outer: Point = Point(i, 0)
+        // outer: Point = Point(i, 0)
         Point __slot_1 = Point(i, 0);
         Point* outer = &__slot_1;
-        //         for j in range(3):
+        // for j in range(3):
         for (int32_t j = 0; j < 3; ++j) {
-            //             inner: Point = Point(j, j)
+            // inner: Point = Point(j, j)
             Point* inner = &*(__slot_2 = Point(j, j));
-            //             outer = inner  # tpyc: warning(/hoisted to function scope/)
+            // outer = inner  # tpyc: warning(/hoisted to function scope/)
             outer = inner;
         }
-        //         print(outer.x, outer.y)
+        // print(outer.x, outer.y)
         std::cout << outer->x << " " << outer->y << "\n";
     }
 }

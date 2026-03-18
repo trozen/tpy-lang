@@ -48,13 +48,13 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c: Color = Color.Red
+    // c: Color = Color.Red
     Color c = Color::Red;
-    //     print(c)
+    // print(c)
     std::cout << c << "\n";
-    //     c = Color.Blue
+    // c = Color.Blue
     c = Color::Blue;
-    //     print(c)
+    // print(c)
     std::cout << c << "\n";
 }
 

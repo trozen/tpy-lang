@@ -14,7 +14,7 @@ void main();
 // def make_default[T](x: T = T()) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> make_default(::tpy::param_val_or_ref_t<T> x) {
-    //     return x
+    // return x
     return x;
 }
 

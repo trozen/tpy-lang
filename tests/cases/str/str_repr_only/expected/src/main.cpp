@@ -6,19 +6,19 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     t: Tag = Tag("hello")
+    // t: Tag = Tag("hello")
     Tag t = Tag("hello");
-    //     print(repr(t))
+    // print(repr(t))
     std::cout << std::string(::tpy::__repr__(t)) << "\n";
-    //     print(f"{t!r}")
+    // print(f"{t!r}")
     std::cout << std::format("{}", ::tpy::__repr__(t)) << "\n";
-    //     print(t)
+    // print(t)
     std::cout << t << "\n";
-    //     print(str(t))
+    // print(str(t))
     std::cout << std::string(::tpy::__repr__(t)) << "\n";
-    //     print(f"{t}")
+    // print(f"{t}")
     std::cout << std::format("{}", ::tpy::__str__(t)) << "\n";
-    //     print(f"{t!s}")
+    // print(f"{t!s}")
     std::cout << std::format("{}", ::tpy::__str__(t)) << "\n";
 }
 

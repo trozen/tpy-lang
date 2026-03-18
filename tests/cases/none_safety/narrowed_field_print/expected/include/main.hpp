@@ -15,16 +15,16 @@ void main();
 
 // class Config:
 struct Config {
-    //     port: Optional[Int32]
+    // port: Optional[Int32]
     std::optional<int32_t> port;
-    //     name: Optional[str]
+    // name: Optional[str]
     std::optional<std::string> name;
-    //     flag: Optional[bool]
+    // flag: Optional[bool]
     std::optional<bool> flag;
-    //     ratio: Optional[float]
+    // ratio: Optional[float]
     std::optional<double> ratio;
 
-    //     def __init__(self, port: Optional[Int32], name: Optional[str],
+    // def __init__(self, port: Optional[Int32], name: Optional[str],
     Config() = default;
     explicit Config(std::optional<int32_t> port, std::optional<std::string_view> name, std::optional<bool> flag, std::optional<double> ratio) : port(port), name(name ? std::make_optional(std::string(*name)) : std::nullopt), flag(flag), ratio(ratio) {}
 };

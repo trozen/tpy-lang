@@ -6,54 +6,54 @@ namespace tpy_user::main {
 
 // def test_value_types():
 void test_value_types() {
-    //     # Value type on ArrayList - get_value (copy semantics)
-    //     nums = ArrayList[Int32, 4]()
+    // # Value type on ArrayList - get_value (copy semantics)
+    // nums = ArrayList[Int32, 4]()
     ::tpy_user::tplib::ArrayList<int32_t, 4> nums = ::tpy_user::tplib::ArrayList<int32_t, 4>();
-    //     nums.append(10)
+    // nums.append(10)
     nums.append(10);
-    //     nums.append(20)
+    // nums.append(20)
     nums.append(20);
-    //     val: Int32 = nums[0]
+    // val: Int32 = nums[0]
     int32_t val = nums[0];
-    //     print(val)  # 10
+    // print(val)  # 10
     std::cout << val << "\n";
-    //     # Modifying val doesn't affect nums[0] (value semantics)
-    //     val = 99
+    // # Modifying val doesn't affect nums[0] (value semantics)
+    // val = 99
     val = 99;
-    //     print(nums[0])  # Still 10
+    // print(nums[0])  # Still 10
     std::cout << nums[0] << "\n";
-    //     # Test with list[T] as well
-    //     int_list: list[Int32] = [5, 6, 7]
+    // # Test with list[T] as well
+    // int_list: list[Int32] = [5, 6, 7]
     std::vector<int32_t> int_list = {5, 6, 7};
-    //     v: Int32 = int_list[1]  # get_value for Int32 element
+    // v: Int32 = int_list[1]  # get_value for Int32 element
     int32_t v = ::tpy::__getitem__(int_list, 1);
-    //     print(v)  # 6
+    // print(v)  # 6
     std::cout << v << "\n";
 }
 
 // def test_object_types():
 void test_object_types() {
-    //     # Object type on ArrayList - get_ref (reference semantics)
-    //     points = ArrayList[Point, 4]()
+    // # Object type on ArrayList - get_ref (reference semantics)
+    // points = ArrayList[Point, 4]()
     ::tpy_user::tplib::ArrayList<Point, 4> points = ::tpy_user::tplib::ArrayList<Point, 4>();
-    //     points.append(Point(1, 2))
+    // points.append(Point(1, 2))
     points.append(Point(1, 2));
-    //     points.append(Point(3, 4))
+    // points.append(Point(3, 4))
     points.append(Point(3, 4));
-    //     # Accessing object field through subscript
-    //     print(points[0].x)  # 1
+    // # Accessing object field through subscript
+    // print(points[0].x)  # 1
     std::cout << points[0].x << "\n";
-    //     # Modifying object through subscript reference
-    //     points[0].x = 100
+    // # Modifying object through subscript reference
+    // points[0].x = 100
     points[0].x = 100;
-    //     print(points[0].x)  # 100
+    // print(points[0].x)  # 100
     std::cout << points[0].x << "\n";
-    //     # Test with list[Point] as well
-    //     obj_list: list[Point] = [Point(10, 20)]
+    // # Test with list[Point] as well
+    // obj_list: list[Point] = [Point(10, 20)]
     std::vector<Point> obj_list = {Point(10, 20)};
-    //     obj_list[0].y = 200  # get_ref for Point element
+    // obj_list[0].y = 200  # get_ref for Point element
     ::tpy::__getitem__(obj_list, 0).y = 200;
-    //     print(obj_list[0].y)  # 200
+    // print(obj_list[0].y)  # 200
     std::cout << ::tpy::__getitem__(obj_list, 0).y << "\n";
 }
 

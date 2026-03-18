@@ -48,15 +48,15 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # User Comparable protocol works (explicit implementation)
-    //     w = Widget(42)
+    // # User Comparable protocol works (explicit implementation)
+    // w = Widget(42)
     Widget w = Widget(42);
-    //     print(use_user_comparable(w))
+    // print(use_user_comparable(w))
     std::cout << use_user_comparable(w) << "\n";
-    //     # Builtin Comparable still works (IntEnum comparison)
-    //     print(Priority.LOW < Priority.HIGH)
+    // # Builtin Comparable still works (IntEnum comparison)
+    // print(Priority.LOW < Priority.HIGH)
     std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::LOW) < static_cast<int32_t>(Priority::HIGH))) << "\n";
-    //     print(Priority.HIGH < Priority.LOW)
+    // print(Priority.HIGH < Priority.LOW)
     std::cout << ::tpy::print_bool((static_cast<int32_t>(Priority::HIGH) < static_cast<int32_t>(Priority::LOW))) << "\n";
 }
 

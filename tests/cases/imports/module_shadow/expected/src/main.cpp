@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main():
 void main() {
-    //     time: Timer = Timer()
+    // time: Timer = Timer()
     Timer time = Timer();
-    //     time.x = 42
+    // time.x = 42
     time.x = 42;
-    //     print(time.x)
+    // print(time.x)
     std::cout << time.x << "\n";
 }
 

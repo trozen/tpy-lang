@@ -15,7 +15,7 @@ void main();
 
 // class Handle:
 struct Handle {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
 };

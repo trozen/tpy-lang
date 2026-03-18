@@ -15,18 +15,18 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: int
+    // x: int
     ::tpy::BigInt x;
-    //     y: int
+    // y: int
     ::tpy::BigInt y;
 
-    //     def __init__(self, x: int, y: int) -> None:
+    // def __init__(self, x: int, y: int) -> None:
     Point() = default;
     explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 
-    //     def sum(self) -> int:
+    // def sum(self) -> int:
     ::tpy::BigInt sum() const {
-        //         return self.x + self.y
+        // return self.x + self.y
         return ((this->x) + (this->y));
     }
 };
@@ -43,23 +43,23 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // class Container[T]:
 template<typename T>
 struct Container {
-    //     _value: T
+    // _value: T
     T _value;
-    //     _has: bool
+    // _has: bool
     bool _has;
 
-    //     def __init__(self, value: Own[T]) -> None:
+    // def __init__(self, value: Own[T]) -> None:
     Container() = default;
     explicit Container(T&& value) : _value(std::move(value)), _has(true) {}
 
-    //     def get(self) -> T | None:
+    // def get(self) -> T | None:
     T* get() {
-        //         if self._has:
+        // if self._has:
         if (this->_has) {
-            //             return self._value
+            // return self._value
             return &(this->_value);
         }
-        //         return None
+        // return None
         return nullptr;
     }
 };

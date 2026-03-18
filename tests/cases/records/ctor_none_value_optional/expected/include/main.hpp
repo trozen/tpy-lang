@@ -13,10 +13,10 @@ void main();
 
 // class Holder:
 struct Holder {
-    //     value: Int32 | None
+    // value: Int32 | None
     std::optional<int32_t> value;
 
-    //     def __init__(self, value: Int32 | None):
+    // def __init__(self, value: Int32 | None):
     Holder() = default;
     explicit Holder(std::optional<int32_t> value) : value(value) {}
 };

@@ -6,16 +6,16 @@ namespace tpy_user::main {
 
 // def consume(h: Own[Handles]) -> None:
 void consume(Handles&& h) {
-    //     pass
+    // pass
 }
 
 // def main():
 void main() {
-    //     h = Handles()
+    // h = Handles()
     Handles h = Handles();
-    //     consume(h)  # tpyc: ok
+    // consume(h)  # tpyc: ok
     consume(std::move(h));
-    //     print("ok")
+    // print("ok")
     std::cout << "ok" << "\n";
 }
 

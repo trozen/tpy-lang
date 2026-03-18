@@ -7,7 +7,7 @@ const ::tpy::BigInt BIG_VALUE = ::tpy::BigInt(1000000);
 
 // def main() -> None:
 void main() {
-    //     print(BIG_VALUE)
+    // print(BIG_VALUE)
     std::cout << BIG_VALUE << "\n";
 }
 

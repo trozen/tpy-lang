@@ -14,31 +14,31 @@ void main();
 // class Container[T]:
 template<typename T>
 struct Container {
-    //     count: Int32
+    // count: Int32
     int32_t count;
-    //     val: T
+    // val: T
     T val;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Container() : count(0) {}
 
-    //     def set(self, val: T) -> None:
+    // def set(self, val: T) -> None:
     void set(::tpy::param_val_or_ref_t<T> val) {
-        //         self.val = val
+        // self.val = val
         this->val = val;
-        //         self.count = self.count + Int32(1)
+        // self.count = self.count + Int32(1)
         this->count = (::tpy::add_check<int32_t>(this->count, 1));
     }
 
-    //     def get(self) -> T:
+    // def get(self) -> T:
     ::tpy::val_or_ref_t<T> get() {
-        //         return self.val
+        // return self.val
         return this->val;
     }
 
-    //     def get_count(self) -> Int32:
+    // def get_count(self) -> Int32:
     int32_t get_count() const {
-        //         return self.count
+        // return self.count
         return this->count;
     }
 };

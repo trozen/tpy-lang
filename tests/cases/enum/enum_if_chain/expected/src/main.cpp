@@ -48,30 +48,30 @@ namespace tpy_user::main {
 
 // def color_name(c: Color) -> str:
 std::string color_name(Color c) {
-    //     if c == Color.Red:
+    // if c == Color.Red:
     if ((c == Color::Red)) {
-        //         return "red"
+        // return "red"
         return "red";
-    //     elif c == Color.Green:
+    // elif c == Color.Green:
     } else if ((c == Color::Green)) {
-        //         return "green"
+        // return "green"
         return "green";
-    //     elif c == Color.Blue:
+    // elif c == Color.Blue:
     } else if ((c == Color::Blue)) {
-        //         return "blue"
+        // return "blue"
         return "blue";
     }
-    //     return "unknown"
+    // return "unknown"
     return "unknown";
 }
 
 // def main() -> None:
 void main() {
-    //     print(color_name(Color.Red))
+    // print(color_name(Color.Red))
     std::cout << color_name(Color::Red) << "\n";
-    //     print(color_name(Color.Green))
+    // print(color_name(Color.Green))
     std::cout << color_name(Color::Green) << "\n";
-    //     print(color_name(Color.Blue))
+    // print(color_name(Color.Blue))
     std::cout << color_name(Color::Blue) << "\n";
 }
 

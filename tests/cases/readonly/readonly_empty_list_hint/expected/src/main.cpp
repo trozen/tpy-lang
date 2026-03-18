@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def f(l: readonly[list[Int32]]) -> None:
 void f(const std::vector<int32_t>& l) {
-    //     print(len(l))
+    // print(len(l))
     std::cout << ::tpy::__len__(l) << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     f(list())
+    // f(list())
     f(std::vector<int32_t>());
-    //     f([])
+    // f([])
     f(std::vector<int32_t>{});
 }
 

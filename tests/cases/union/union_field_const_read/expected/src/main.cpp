@@ -6,41 +6,41 @@ namespace tpy_user::main {
 
 // def get_pet_name(z: Zoo) -> str:
 std::string get_pet_name(const Zoo& z) {
-    //     p = z.pet
+    // p = z.pet
     std::variant<const Cat*, const Dog*> p = ::tpy::to_const_ptr_variant(z.pet);
-    //     if isinstance(p, Dog):
+    // if isinstance(p, Dog):
     if (std::holds_alternative<const Dog*>(p)) {
         auto& __p = *std::get<const Dog*>(p);
-        //         return p.name
+        // return p.name
         return __p.name;
     }
-    //     if isinstance(p, Cat):
+    // if isinstance(p, Cat):
     if (std::holds_alternative<const Cat*>(p)) {
         auto& __p = *std::get<const Cat*>(p);
-        //         return p.name
+        // return p.name
         return __p.name;
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def main() -> None:
 void main() {
-    //     d = Dog("Rex")
+    // d = Dog("Rex")
     Dog d = Dog("Rex");
-    //     pet: Dog | Cat = d
+    // pet: Dog | Cat = d
     std::variant<Cat*, Dog*> pet{&(d)};
-    //     z = Zoo(pet, "test")
+    // z = Zoo(pet, "test")
     Zoo z = Zoo(pet, "test");
-    //     print(get_pet_name(z))
+    // print(get_pet_name(z))
     std::cout << get_pet_name(z) << "\n";
-    //     c = Cat("Whiskers")
+    // c = Cat("Whiskers")
     Cat c = Cat("Whiskers");
-    //     pet2: Dog | Cat = c
+    // pet2: Dog | Cat = c
     std::variant<Cat*, Dog*> pet2{&(c)};
-    //     z2 = Zoo(pet2, "cats")
+    // z2 = Zoo(pet2, "cats")
     Zoo z2 = Zoo(pet2, "cats");
-    //     print(get_pet_name(z2))
+    // print(get_pet_name(z2))
     std::cout << get_pet_name(z2) << "\n";
 }
 

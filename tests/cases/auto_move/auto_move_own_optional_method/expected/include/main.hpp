@@ -14,9 +14,9 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
 };
@@ -32,19 +32,19 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Container:
 struct Container {
-    //     val: Int32
+    // val: Int32
     int32_t val;
 
 
-    //     def take(self, p: Own[Point] | None) -> None:
+    // def take(self, p: Own[Point] | None) -> None:
     void take(std::optional<Point> p) {
-        //         if p is not None:
+        // if p is not None:
         if ((p.has_value())) {
-            //             self.val = Int32(1)
+            // self.val = Int32(1)
             this->val = 1;
-        //         else:
+        // else:
         } else {
-            //             self.val = Int32(0)
+            // self.val = Int32(0)
             this->val = 0;
         }
     }

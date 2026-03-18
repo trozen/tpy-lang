@@ -18,22 +18,22 @@ void test_set_ctor_rvalue_no_warn();
 
 // class Node:
 struct Node {
-    //     val: Int32
+    // val: Int32
     int32_t val;
 
-    //     def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: Int32) -> None:
     Node() = default;
     explicit Node(int32_t val) : val(val) {}
 
-    //     def __hash__(self) -> Int32:
+    // def __hash__(self) -> Int32:
     int32_t __hash__() const {
-        //         return self.val
+        // return self.val
         return this->val;
     }
 
-    //     def __eq__(self, other: Node) -> bool:
+    // def __eq__(self, other: Node) -> bool:
     bool __eq__(const Node& other) const {
-        //         return self.val == other.val
+        // return self.val == other.val
         return (this->val == other.val);
     }
 

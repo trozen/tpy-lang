@@ -16,13 +16,13 @@ namespace tpy_user::main {
 
 // def show_mul(label: str, a: int, b: int) -> None:
 void show_mul(std::string_view label, const ::tpy::BigInt& a, const ::tpy::BigInt& b) {
-    //     print(label)
+    // print(label)
     std::cout << label << "\n";
-    //     print(a)
+    // print(a)
     std::cout << a << "\n";
-    //     print(b)
+    // print(b)
     std::cout << b << "\n";
-    //     print(a * b)
+    // print(a * b)
     std::cout << ((a) * (b)) << "\n";
 }
 

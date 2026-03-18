@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     d = {"a": Int32(1)}
+    // d = {"a": Int32(1)}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
-    //     del d["missing"]
+    // del d["missing"]
     ::tpy::__delitem__(d, "missing");
 }
 

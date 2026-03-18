@@ -33,7 +33,7 @@ void __tpy_init() {
     // # Global reassign inside branch
     // if True:
     if (true) {
-        //     pet = Parrot()
+        // pet = Parrot()
         __global_slot_3.emplace(Parrot());
         pet = &*__global_slot_3;
     }
@@ -44,10 +44,10 @@ void __tpy_init() {
     i = 0;
     // while i < 2:
     while ((i < 2)) {
-        //     pet = Dog()
+        // pet = Dog()
         __global_slot_4.emplace(Dog());
         pet = &*__global_slot_4;
-        //     i = i + 1
+        // i = i + 1
         i = (::tpy::add_check<int32_t>(i, 1));
     }
     // print(pet.name())

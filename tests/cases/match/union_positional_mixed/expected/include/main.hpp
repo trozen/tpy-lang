@@ -16,11 +16,11 @@ void main();
 // @dataclass
 // class Point:
 struct Point {
-    //     x: float
+    // x: float
     double x;
-    //     y: float
+    // y: float
     double y;
-    //     z: float
+    // z: float
     double z;
 
     Point() = default;
@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // @dataclass
 // class Label:
 struct Label {
-    //     text: str
+    // text: str
     std::string text;
 
     Label() = default;

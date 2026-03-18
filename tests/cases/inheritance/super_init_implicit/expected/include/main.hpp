@@ -25,10 +25,10 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 
 // class Child(Base):
 struct Child : Base {
-    //     value: int
+    // value: int
     ::tpy::BigInt value;
 
-    //     def __init__(self, value: int) -> None:
+    // def __init__(self, value: int) -> None:
     Child() = default;
     explicit Child(const ::tpy::BigInt& value) : Base(), value(value) {}
 };

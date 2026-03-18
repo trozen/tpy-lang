@@ -6,20 +6,20 @@ namespace tpy_user::main {
 
 // def check(v: Int32 | None) -> str:
 std::string check(std::optional<int32_t> v) {
-    //     if v is None:
+    // if v is None:
     if ((!v.has_value())) {
-        //         return "none"
+        // return "none"
         return "none";
     }
-    //     return "has value"
+    // return "has value"
     return "has value";
 }
 
 // def main() -> None:
 void main() {
-    //     print(check(Int32(42)))
+    // print(check(Int32(42)))
     std::cout << check(42) << "\n";
-    //     print(check(None))
+    // print(check(None))
     std::cout << check(std::nullopt) << "\n";
 }
 

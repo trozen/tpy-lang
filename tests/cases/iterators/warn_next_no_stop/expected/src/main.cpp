@@ -6,23 +6,23 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c = InfiniteCounter()
+    // c = InfiniteCounter()
     InfiniteCounter c = InfiniteCounter();
-    //     count: Int32 = 0
+    // count: Int32 = 0
     int32_t count = 0;
-    //     for x in c:
+    // for x in c:
     auto& __iter_0 = c;
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
         int32_t x = *__r_0;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
-        //         count += 1
+        // count += 1
         count = ::tpy::add_check<int32_t>(count, 1);
-        //         if count >= 3:
+        // if count >= 3:
         if ((count >= 3)) {
-            //             break
+            // break
             break;
         }
     }

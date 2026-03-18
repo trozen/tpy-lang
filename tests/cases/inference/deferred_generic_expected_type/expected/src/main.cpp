@@ -6,64 +6,64 @@ namespace tpy_user::main {
 
 // def consume(c: Container[Int32]) -> None:
 void consume(Container<int32_t>& c) {
-    //     c.set(Int32(99))
+    // c.set(Int32(99))
     c.set(99);
-    //     print(c.get())
+    // print(c.get())
     std::cout << c.get() << "\n";
 }
 
 // def make_container() -> Own[Container[Int64]]:
 Container<int64_t> make_container() {
-    //     c = Container()  # tpyc: type(/Container\[Int64\]/)
+    // c = Container()  # tpyc: type(/Container\[Int64\]/)
     Container<int64_t> c = Container<int64_t>();
-    //     return c
+    // return c
     return c;
 }
 
 // def setup_pair(p: Pair[Int32, Int64]) -> None:
 void setup_pair(Pair<int32_t, int64_t>& p) {
-    //     p.a = Int32(10)
+    // p.a = Int32(10)
     p.a = 10;
-    //     p.b = Int64(20)
+    // p.b = Int64(20)
     p.b = 20;
 }
 
 // def main() -> None:
 void main() {
-    //     # Parameter passing resolves T
-    //     c = Container()  # tpyc: type(/Container\[Int32\]/)
+    // # Parameter passing resolves T
+    // c = Container()  # tpyc: type(/Container\[Int32\]/)
     Container<int32_t> c = Container<int32_t>();
-    //     consume(c)
+    // consume(c)
     consume(c);
-    //     print(c.get())
+    // print(c.get())
     std::cout << c.get() << "\n";
-    //     # Return type resolves T
-    //     c2 = make_container()
+    // # Return type resolves T
+    // c2 = make_container()
     Container<int64_t> c2 = make_container();
-    //     c2.set(Int64(42))
+    // c2.set(Int64(42))
     c2.set(42);
-    //     print(c2.get())
+    // print(c2.get())
     std::cout << c2.get() << "\n";
-    //     # Multi-param: parameter passing resolves T and U
-    //     p = Pair()  # tpyc: type(/Pair\[Int32, Int64\]/)
+    // # Multi-param: parameter passing resolves T and U
+    // p = Pair()  # tpyc: type(/Pair\[Int32, Int64\]/)
     Pair<int32_t, int64_t> p = Pair<int32_t, int64_t>();
-    //     setup_pair(p)
+    // setup_pair(p)
     setup_pair(p);
-    //     print(p.get_a())
+    // print(p.get_a())
     std::cout << p.get_a() << "\n";
-    //     print(p.get_b())
+    // print(p.get_b())
     std::cout << p.get_b() << "\n";
-    //     # Method calls before param passing (partial + expected-type)
-    //     c3 = Container()  # tpyc: type(/Container\[Int32\]/)
+    // # Method calls before param passing (partial + expected-type)
+    // c3 = Container()  # tpyc: type(/Container\[Int32\]/)
     Container<int32_t> c3 = Container<int32_t>();
-    //     c3.set(Int32(7))
+    // c3.set(Int32(7))
     c3.set(7);
-    //     consume(c3)
+    // consume(c3)
     consume(c3);
-    //     print(c3.get())
+    // print(c3.get())
     std::cout << c3.get() << "\n";
-    //     # Inline: no variable, resolved from param type
-    //     consume(Container())
+    // # Inline: no variable, resolved from param type
+    // consume(Container())
     Container<int32_t> __tmp_1 = Container<int32_t>();
     consume(__tmp_1);
 }

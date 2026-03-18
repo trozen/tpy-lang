@@ -6,7 +6,7 @@ namespace tpy_user::pkg::consumer {
 
 // def compute() -> Int32:
 int32_t compute() {
-    //     return get_value()
+    // return get_value()
     return ::tpy_user::pkg::my__helper::get_value();
 }
 

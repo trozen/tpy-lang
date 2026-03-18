@@ -7,13 +7,13 @@ namespace tpy_user::main {
 // # Empty list int-to-float widening: append(int) then append(float) widens to list[float]
 // def test() -> None:
 void test() {
-    //     xs = []  # tpyc: type(list[float])
+    // xs = []  # tpyc: type(list[float])
     std::vector<double> xs = std::vector<double>{};
-    //     xs.append(1)
+    // xs.append(1)
     xs.push_back(1);
-    //     xs.append(2.0)
+    // xs.append(2.0)
     xs.push_back(2.0);
-    //     print(xs)
+    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
 }
 

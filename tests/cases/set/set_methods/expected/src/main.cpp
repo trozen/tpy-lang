@@ -6,46 +6,46 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     s: set[Int32] = {10, 20, 30}
+    // s: set[Int32] = {10, 20, 30}
     ::tpy::ordered_set<int32_t> s = ::tpy::ordered_set<int32_t>({10, 20, 30});
-    //     # discard (no error if missing)
-    //     s.discard(20)
+    // # discard (no error if missing)
+    // s.discard(20)
     s.erase(20);
-    //     print(s)
+    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    //     s.discard(99)  # no error
+    // s.discard(99)  # no error
     s.erase(99);
-    //     print(s)
+    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    //     # remove (panics if missing, tested separately)
-    //     s.remove(10)
+    // # remove (panics if missing, tested separately)
+    // s.remove(10)
     ::tpy::set_remove(s, 10);
-    //     print(s)
+    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    //     # pop (removes first element)
-    //     val: Int32 = s.pop()
+    // # pop (removes first element)
+    // val: Int32 = s.pop()
     int32_t val = ::tpy::set_pop(s);
-    //     print(val)
+    // print(val)
     std::cout << val << "\n";
-    //     print(s)
+    // print(s)
     std::cout << ::tpy::SetPrinter(s) << "\n";
-    //     # copy
-    //     a: set[Int32] = {1, 2, 3}
+    // # copy
+    // a: set[Int32] = {1, 2, 3}
     ::tpy::ordered_set<int32_t> a = ::tpy::ordered_set<int32_t>({1, 2, 3});
-    //     b: set[Int32] = a.copy()
+    // b: set[Int32] = a.copy()
     ::tpy::ordered_set<int32_t> b = ::tpy::set_copy(a);
-    //     b.add(4)
+    // b.add(4)
     b.insert(4);
-    //     print(a)
+    // print(a)
     std::cout << ::tpy::SetPrinter(a) << "\n";
-    //     print(b)
+    // print(b)
     std::cout << ::tpy::SetPrinter(b) << "\n";
-    //     # clear
-    //     a.clear()
+    // # clear
+    // a.clear()
     a.clear();
-    //     print(a)
+    // print(a)
     std::cout << ::tpy::SetPrinter(a) << "\n";
-    //     print(len(a))
+    // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }
 

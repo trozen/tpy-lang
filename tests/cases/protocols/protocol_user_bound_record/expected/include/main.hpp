@@ -15,16 +15,16 @@ concept Printable = requires(T& t) {
 // # Implementation of Printable
 // class Message:
 struct Message {
-    //     text: str
+    // text: str
     std::string text;
 
-    //     def __init__(self, text: str) -> None:
+    // def __init__(self, text: str) -> None:
     Message() = default;
     explicit Message(std::string_view text) : text(text) {}
 
-    //     def to_str(self) -> str:
+    // def to_str(self) -> str:
     std::string to_str() const {
-        //         return self.text
+        // return self.text
         return this->text;
     }
 };
@@ -57,16 +57,16 @@ void main();
 // class Container[T: Printable]:
 template<Printable T>
 struct Container {
-    //     value: T
+    // value: T
     T value;
 
-    //     def __init__(self, value: T) -> None:
+    // def __init__(self, value: T) -> None:
     Container() = default;
     explicit Container(const T& value) : value(value) {}
 
-    //     def print_value(self) -> None:
+    // def print_value(self) -> None:
     void print_value() {
-        //         print(self.value.to_str())
+        // print(self.value.to_str())
         std::cout << this->value.to_str() << "\n";
     }
 };
@@ -84,9 +84,9 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 struct DefaultFactory {
 
 
-    //     def make(self, text: str) -> Own[Container[Message]]:
+    // def make(self, text: str) -> Own[Container[Message]]:
     Container<Message> make(std::string_view text) const {
-        //         return Container(Message(text))
+        // return Container(Message(text))
         return Container<Message>(Message(text));
     }
 };
@@ -101,7 +101,7 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultFactory& obj) {
 // def create_container[F: ContainerFactory](factory: F, text: str) -> Own[Container[Message]]:
 template<ContainerFactory F>
 Container<Message> create_container(::tpy::param_val_or_ref_t<F> factory, std::string_view text) {
-    //     return factory.make(text)
+    // return factory.make(text)
     return factory.make(text);
 }
 

@@ -16,10 +16,10 @@ void main();
 
 // class Box:
 struct Box {
-    //     value: Int32
+    // value: Int32
     int32_t value;
 
-    //     def __init__(self, value: Int32) -> None:
+    // def __init__(self, value: Int32) -> None:
     Box() = default;
     explicit Box(int32_t value) : value(value) {}
 };
@@ -34,15 +34,15 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // class Container[T]:
 template<typename T>
 struct Container {
-    //     items: list[T]
+    // items: list[T]
     std::vector<T> items;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Container() : items(std::vector<T>{}) {}
 
-    //     def push(self, item: Own[T]) -> None:
+    // def push(self, item: Own[T]) -> None:
     void push(T&& item) {
-        //         self.items.append(item)
+        // self.items.append(item)
         this->items.push_back(std::move(item));
     }
 };

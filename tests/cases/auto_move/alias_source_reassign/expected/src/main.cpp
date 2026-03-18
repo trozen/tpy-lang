@@ -6,33 +6,33 @@ namespace tpy_user::main {
 
 // def consume(p: Own[Point]) -> Int32:
 int32_t consume(Point&& p) {
-    //     return p.x + p.y
+    // return p.x + p.y
     return (::tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // def main():
 void main() {
-    //     p = Point()
+    // p = Point()
     Point __slot_1 = Point();
     std::optional<Point> __slot_2;
     Point* p = &__slot_1;
-    //     p.x = 1
+    // p.x = 1
     p->x = 1;
-    //     p.y = 2
+    // p.y = 2
     p->y = 2;
-    //     alias = p
+    // alias = p
     Point& alias = (*p);
-    //     print(alias.x)
+    // print(alias.x)
     std::cout << alias.x << "\n";
-    //     p = Point()         # reassign p -- alias detached
+    // p = Point()         # reassign p -- alias detached
     p = &*(__slot_2 = Point());
-    //     p.x = 10
+    // p.x = 10
     p->x = 10;
-    //     p.y = 20
+    // p.y = 20
     p->y = 20;
-    //     print(consume(p))   # tpyc: ok (auto-move, alias doesn't constrain)
+    // print(consume(p))   # tpyc: ok (auto-move, alias doesn't constrain)
     std::cout << consume(std::move((*p))) << "\n";
-    //     print(alias.x)
+    // print(alias.x)
     std::cout << alias.x << "\n";
 }
 

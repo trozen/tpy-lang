@@ -16,10 +16,10 @@ void main();
 // # Test passing concrete types to functions expecting union parameters
 // class A:
 struct A {
-    //     x: int
+    // x: int
     ::tpy::BigInt x;
 
-    //     def __init__(self, x: int) -> None:
+    // def __init__(self, x: int) -> None:
     A() = default;
     explicit A(const ::tpy::BigInt& x) : x(x) {}
 };
@@ -33,10 +33,10 @@ inline std::ostream& operator<<(std::ostream& os, const A& obj) {
 
 // class B:
 struct B {
-    //     y: str
+    // y: str
     std::string y;
 
-    //     def __init__(self, y: str) -> None:
+    // def __init__(self, y: str) -> None:
     B() = default;
     explicit B(std::string_view y) : y(y) {}
 };

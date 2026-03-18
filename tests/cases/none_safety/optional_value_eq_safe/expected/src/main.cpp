@@ -6,7 +6,7 @@ namespace tpy_user::main {
 
 // def eq_check(x: Int32 | None, y: Int32) -> bool:
 bool eq_check(std::optional<int32_t> x, int32_t y) {
-    //     return x == y  # tpyc: ok
+    // return x == y  # tpyc: ok
     return (x == y);
 }
 

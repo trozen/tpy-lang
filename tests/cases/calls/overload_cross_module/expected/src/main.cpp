@@ -6,13 +6,13 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     d = Dog("Rex")
+    // d = Dog("Rex")
     ::tpy_user::animals::Dog d = ::tpy_user::animals::Dog("Rex");
-    //     c = Cat(9)
+    // c = Cat(9)
     ::tpy_user::animals::Cat c = ::tpy_user::animals::Cat(::tpy::BigInt(9));
-    //     print(describe(d))
+    // print(describe(d))
     std::cout << ::tpy_user::animals::describe(d) << "\n";
-    //     print(describe(c))
+    // print(describe(c))
     std::cout << ::tpy_user::animals::describe(c) << "\n";
 }
 

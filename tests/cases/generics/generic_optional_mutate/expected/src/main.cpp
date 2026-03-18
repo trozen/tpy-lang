@@ -6,45 +6,45 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c = Container[Point](Point(1, 2))
+    // c = Container[Point](Point(1, 2))
     Container<Point> c = Container<Point>(Point(1, 2));
-    //     p = c.get()
+    // p = c.get()
     Point* p = c.get();
-    //     if p is not None:
+    // if p is not None:
     if ((p != nullptr)) {
-        //         print(p.x, p.y)
+        // print(p.x, p.y)
         std::cout << p->x << " " << p->y << "\n";
-        //         # Mutate through the returned pointer -- should modify the original
-        //         p.x = 10
+        // # Mutate through the returned pointer -- should modify the original
+        // p.x = 10
         p->x = 10;
-        //         p.y = 20
+        // p.y = 20
         p->y = 20;
     }
-    //     # Verify the original was mutated
-    //     p2 = c.get()
+    // # Verify the original was mutated
+    // p2 = c.get()
     Point* p2 = c.get();
-    //     if p2 is not None:
+    // if p2 is not None:
     if ((p2 != nullptr)) {
-        //         print(p2.x, p2.y)
+        // print(p2.x, p2.y)
         std::cout << p2->x << " " << p2->y << "\n";
     }
-    //     # Also test via dict.get()
-    //     d: dict[str, Point] = {"a": Point(3, 4)}
+    // # Also test via dict.get()
+    // d: dict[str, Point] = {"a": Point(3, 4)}
     ::tpy::ordered_map<std::string, Point> d = ::tpy::ordered_map<std::string, Point>({{"a", Point(3, 4)}});
-    //     dp = d.get("a")
+    // dp = d.get("a")
     Point* dp = ::tpy::dict_get(d, "a");
-    //     if dp is not None:
+    // if dp is not None:
     if ((dp != nullptr)) {
-        //         dp.x = 30
+        // dp.x = 30
         dp->x = 30;
-        //         dp.y = 40
+        // dp.y = 40
         dp->y = 40;
     }
-    //     dp2 = d.get("a")
+    // dp2 = d.get("a")
     Point* dp2 = ::tpy::dict_get(d, "a");
-    //     if dp2 is not None:
+    // if dp2 is not None:
     if ((dp2 != nullptr)) {
-        //         print(dp2.x, dp2.y)
+        // print(dp2.x, dp2.y)
         std::cout << dp2->x << " " << dp2->y << "\n";
     }
 }

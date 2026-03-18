@@ -13,10 +13,10 @@ int32_t make();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
 
-    //     def __init__(self, x: Int32):
+    // def __init__(self, x: Int32):
     Point() = default;
     explicit Point(int32_t x) : x(x) {}
 };

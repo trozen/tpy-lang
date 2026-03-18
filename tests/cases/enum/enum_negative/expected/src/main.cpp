@@ -48,17 +48,17 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     s: Signal = Signal.Error
+    // s: Signal = Signal.Error
     Signal s = Signal::Error;
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
-    //     print(s.value)
+    // print(s.value)
     std::cout << static_cast<int32_t>(s) << "\n";
-    //     s = Signal.Ok
+    // s = Signal.Ok
     s = Signal::Ok;
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
-    //     print(s.value)
+    // print(s.value)
     std::cout << static_cast<int32_t>(s) << "\n";
 }
 

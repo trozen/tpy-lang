@@ -6,70 +6,70 @@ namespace tpy_user::main {
 
 // def classify(x: Optional[Int32]) -> str:
 std::string classify(std::optional<int32_t> x) {
-    //     match x:
+    // match x:
     auto& __match_subject = x;
-    //         case None:
+    // case None:
     if (!__match_subject.has_value()) {
-        //             return "nothing"
+        // return "nothing"
         return "nothing";
     } else {
         auto& __match_inner = (*__match_subject);
         switch (__match_inner) {
-        //         case 0:
+        // case 0:
         case 0: {
-            //             return "zero"
+            // return "zero"
             return "zero";
             break;
         }
-        //         case _:
+        // case _:
         default: {
-            //             return "something"
+            // return "something"
             return "something";
             break;
         }
         }
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def describe(s: Optional[str]) -> str:
 std::string describe(std::optional<std::string_view> s) {
-    //     match s:
+    // match s:
     auto& __match_subject = s;
-    //         case None:
+    // case None:
     if (!__match_subject.has_value()) {
-        //             return "none"
+        // return "none"
         return "none";
     } else {
         auto& __match_inner = (*__match_subject);
-        //         case "hello":
+        // case "hello":
         if (__match_inner == "hello") {
-            //             return "greeting"
+            // return "greeting"
             return "greeting";
-        //         case _:
+        // case _:
         } else {
-            //             return "other: " + s
+            // return "other: " + s
             return (::tpy::str_concat("other: ", (*s)));
         }
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def main() -> None:
 void main() {
-    //     print(classify(None))
+    // print(classify(None))
     std::cout << classify(std::nullopt) << "\n";
-    //     print(classify(Int32(0)))
+    // print(classify(Int32(0)))
     std::cout << classify(0) << "\n";
-    //     print(classify(Int32(42)))
+    // print(classify(Int32(42)))
     std::cout << classify(42) << "\n";
-    //     print(describe(None))
+    // print(describe(None))
     std::cout << describe(std::nullopt) << "\n";
-    //     print(describe("hello"))
+    // print(describe("hello"))
     std::cout << describe("hello") << "\n";
-    //     print(describe("world"))
+    // print(describe("world"))
     std::cout << describe("world") << "\n";
 }
 

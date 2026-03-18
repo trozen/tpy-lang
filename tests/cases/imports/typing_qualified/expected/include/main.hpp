@@ -23,16 +23,16 @@ void main();
 
 // class Wrapper:
 struct Wrapper {
-    //     val: Int32
+    // val: Int32
     int32_t val;
 
-    //     def __init__(self, v: Int32):
+    // def __init__(self, v: Int32):
     Wrapper() = default;
     explicit Wrapper(int32_t v) : val(v) {}
 
-    //     def get_val(self) -> Int32:
+    // def get_val(self) -> Int32:
     int32_t get_val() const {
-        //         return self.val
+        // return self.val
         return this->val;
     }
 };
@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper& obj) {
 // def show(item: Printable) -> None:
 template<Printable T_item>
 void show(T_item& item) {
-    //     print(item.get_val())
+    // print(item.get_val())
     std::cout << item.get_val() << "\n";
 }
 

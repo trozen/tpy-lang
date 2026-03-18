@@ -19,24 +19,24 @@ void main();
 // def first(items: Sequence[Int32]) -> Int32:
 template<::tpy_user::typing::Sequence<int32_t> T_items>
 int32_t first(const T_items& items) {
-    //     return items[0]
+    // return items[0]
     return ::tpy::__getitem__(items, 0);
 }
 // def sum_all(items: Sequence[Int32]) -> Int32:
 template<::tpy_user::typing::Sequence<int32_t> T_items>
 int32_t sum_all(const T_items& items) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     i: Int32 = 0
+    // i: Int32 = 0
     int32_t i = 0;
-    //     while i < len(items):
+    // while i < len(items):
     while ((i < ::tpy::__len__(items))) {
-        //         total += items[i]
+        // total += items[i]
         total = ::tpy::add_check<int32_t>(total, items[i]);
-        //         i += 1
+        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    //     return total
+    // return total
     return total;
 }
 

@@ -22,12 +22,12 @@ void test_local_list();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32 = 0, y: Int32 = 0):
+    // def __init__(self, x: Int32 = 0, y: Int32 = 0):
     explicit Point(int32_t x = 0, int32_t y = 0) : x(x), y(y) {}
 };
 

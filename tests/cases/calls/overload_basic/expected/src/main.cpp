@@ -9,29 +9,29 @@ namespace tpy_user::main {
 // @overload
 // def describe(animal: Dog) -> str: ...  # tpyc: ok
 std::string describe(const Dog& animal) {
-    //     if isinstance(animal, Dog):
-    //         return "Dog: " + animal.name
+    // if isinstance(animal, Dog):
+    // return "Dog: " + animal.name
     return (::tpy::str_concat("Dog: ", animal.name));
 }
 
 // @overload
 // def describe(animal: Cat) -> str: ...  # tpyc: ok
 std::string describe(const Cat& animal) {
-    //     if isinstance(animal, Dog):
-    //         return "Cat with " + str(animal.lives) + " lives"
+    // if isinstance(animal, Dog):
+    // return "Cat with " + str(animal.lives) + " lives"
     return (::tpy::str_concat((::tpy::str_concat("Cat with ", (animal.lives).to_string())), " lives"));
 }
 
 
 // def main() -> None:
 void main() {
-    //     d = Dog("Rex")
+    // d = Dog("Rex")
     Dog d = Dog("Rex");
-    //     c = Cat(9)
+    // c = Cat(9)
     Cat c = Cat(::tpy::BigInt(9));
-    //     print(describe(d))
+    // print(describe(d))
     std::cout << describe(d) << "\n";
-    //     print(describe(c))
+    // print(describe(c))
     std::cout << describe(c) << "\n";
 }
 

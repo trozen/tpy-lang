@@ -6,34 +6,34 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     nums: list[int] = [10, 20, 30]
+    // nums: list[int] = [10, 20, 30]
     std::vector<::tpy::BigInt> nums = {10, 20, 30};
-    //     # process: with arg, explicit None, omitted
-    //     print(process(nums))
+    // # process: with arg, explicit None, omitted
+    // print(process(nums))
     std::cout << process(&(nums)) << "\n";
-    //     print(process(None))
+    // print(process(None))
     std::cout << process(static_cast<std::nullptr_t*>(nullptr)) << "\n";
-    //     print(process())
+    // print(process())
     std::cout << process() << "\n";
-    //     # with_else: else branch fires for None / omitted
-    //     print(with_else(nums))
+    // # with_else: else branch fires for None / omitted
+    // print(with_else(nums))
     std::cout << with_else(&(nums)) << "\n";
-    //     print(with_else(None))
+    // print(with_else(None))
     std::cout << with_else(static_cast<std::nullptr_t*>(nullptr)) << "\n";
-    //     print(with_else())
+    // print(with_else())
     std::cout << with_else() << "\n";
-    //     # Constructor with protocol union + None
-    //     h1 = Holder(nums)
+    // # Constructor with protocol union + None
+    // h1 = Holder(nums)
     Holder h1 = Holder(&(nums));
-    //     print(h1.count)
+    // print(h1.count)
     std::cout << h1.count << "\n";
-    //     h2 = Holder(None)
+    // h2 = Holder(None)
     Holder h2 = Holder(static_cast<std::nullptr_t*>(nullptr));
-    //     print(h2.count)
+    // print(h2.count)
     std::cout << h2.count << "\n";
-    //     h3 = Holder()
+    // h3 = Holder()
     Holder h3 = Holder();
-    //     print(h3.count)
+    // print(h3.count)
     std::cout << h3.count << "\n";
 }
 

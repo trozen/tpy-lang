@@ -6,49 +6,49 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # extend from another ArrayList (ReadOnlySpanLike)
-    //     a = ArrayList[Int32, 16]()
+    // # extend from another ArrayList (ReadOnlySpanLike)
+    // a = ArrayList[Int32, 16]()
     ::tpy_user::tplib::ArrayList<int32_t, 16> a = ::tpy_user::tplib::ArrayList<int32_t, 16>();
-    //     a.append(1)
+    // a.append(1)
     a.append(1);
-    //     a.append(2)
+    // a.append(2)
     a.append(2);
-    //     b = ArrayList[Int32, 16]()
+    // b = ArrayList[Int32, 16]()
     ::tpy_user::tplib::ArrayList<int32_t, 16> b = ::tpy_user::tplib::ArrayList<int32_t, 16>();
-    //     b.append(10)
+    // b.append(10)
     b.append(10);
-    //     b.append(20)
+    // b.append(20)
     b.append(20);
-    //     b.append(30)
+    // b.append(30)
     b.append(30);
-    //     a.extend(b)
+    // a.extend(b)
     a.extend(b);
-    //     print(len(a))       # 5
+    // print(len(a))       # 5
     std::cout << ::tpy::__len__(a) << "\n";
-    //     for x in a:
+    // for x in a:
     auto& __src_0 = a;
     auto __obj_0 = __src_0.__iter__();
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
-    //     # extend from Array/Span
-    //     c = ArrayList[Int32, 8]()
+    // # extend from Array/Span
+    // c = ArrayList[Int32, 8]()
     ::tpy_user::tplib::ArrayList<int32_t, 8> c = ::tpy_user::tplib::ArrayList<int32_t, 8>();
-    //     arr: Array[Int32, 3] = [100, 200, 300]
+    // arr: Array[Int32, 3] = [100, 200, 300]
     std::array<int32_t, 3> arr = {100, 200, 300};
-    //     s: Span[Int32] = arr
+    // s: Span[Int32] = arr
     std::span<int32_t> s = ::tpy::as_mut_span(arr);
-    //     c.extend(s)
+    // c.extend(s)
     c.extend(s);
-    //     print(len(c))       # 3
+    // print(len(c))       # 3
     std::cout << ::tpy::__len__(c) << "\n";
-    //     print(c[0])         # 100
+    // print(c[0])         # 100
     std::cout << c[0] << "\n";
-    //     print(c[2])         # 300
+    // print(c[2])         # 300
     std::cout << c[2] << "\n";
 }
 

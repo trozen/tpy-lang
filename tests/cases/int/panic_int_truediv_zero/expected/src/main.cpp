@@ -7,13 +7,13 @@ namespace tpy_user::main {
 // # int true division by zero panics (matches Python's ZeroDivisionError)
 // def main() -> None:
 void main() {
-    //     x: int = 10
+    // x: int = 10
     ::tpy::BigInt x = ::tpy::BigInt(10);
-    //     y: int = 0
+    // y: int = 0
     ::tpy::BigInt y = ::tpy::BigInt(0);
-    //     z: float = x / y
+    // z: float = x / y
     double z = (::tpy::truediv(static_cast<double>(x), static_cast<double>(y)));
-    //     print(z)
+    // print(z)
     std::cout << ::tpy::print_float(z) << "\n";
 }
 

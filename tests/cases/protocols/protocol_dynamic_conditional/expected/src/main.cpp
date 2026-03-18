@@ -8,35 +8,35 @@ namespace tpy_user::main {
 void branch_init(bool cond) {
   std::optional<Dog> __slot_1;
   std::optional<::tpy::Adapter<Pet, Cat>> __slot_2;
-    //     if cond:
+    // if cond:
     Pet* pet;
     if (cond) {
-        //         pet: Pet = Dog()
+        // pet: Pet = Dog()
         __slot_1.emplace(Dog());
         pet = &*__slot_1;
-    //     else:
+    // else:
     } else {
-        //         pet = Cat()
+        // pet = Cat()
         __slot_2.emplace(Cat());
         pet = &*__slot_2;
     }
-    //     print(pet.name())
+    // print(pet.name())
     std::cout << pet->name() << "\n";
 }
 
 // def branch_reassign(cond: bool) -> None:
 void branch_reassign(bool cond) {
   std::optional<::tpy::Adapter<Pet, Cat>> __slot_2;
-    //     pet: Pet = Dog()
+    // pet: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    //     if cond:
+    // if cond:
     if (cond) {
-        //         pet = Cat()
+        // pet = Cat()
         __slot_2.emplace(Cat());
         pet = &*__slot_2;
     }
-    //     print(pet.name())
+    // print(pet.name())
     std::cout << pet->name() << "\n";
 }
 
@@ -44,44 +44,44 @@ void branch_reassign(bool cond) {
 void nested_branches(bool a, bool b) {
   std::optional<::tpy::Adapter<Pet, Cat>> __slot_2;
   std::optional<::tpy::Adapter<Pet, Parrot>> __slot_3;
-    //     pet: Pet = Dog()
+    // pet: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    //     if a:
+    // if a:
     if (a) {
-        //         if b:
+        // if b:
         if (b) {
-            //             pet = Cat()
+            // pet = Cat()
             __slot_2.emplace(Cat());
             pet = &*__slot_2;
-        //         else:
+        // else:
         } else {
-            //             pet = Parrot()
+            // pet = Parrot()
             __slot_3.emplace(Parrot());
             pet = &*__slot_3;
         }
     }
-    //     print(pet.name())
+    // print(pet.name())
     std::cout << pet->name() << "\n";
 }
 
 // def loop_reassign(n: Int32) -> None:
 void loop_reassign(int32_t n) {
   std::optional<::tpy::Adapter<Pet, Cat>> __slot_2;
-    //     pet: Pet = Dog()
+    // pet: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    //     i: Int32 = 0
+    // i: Int32 = 0
     int32_t i = 0;
-    //     while i < n:
+    // while i < n:
     while ((i < n)) {
-        //         pet = Cat()
+        // pet = Cat()
         __slot_2.emplace(Cat());
         pet = &*__slot_2;
-        //         i = i + 1
+        // i = i + 1
         i = (::tpy::add_check<int32_t>(i, 1));
     }
-    //     print(pet.name())
+    // print(pet.name())
     std::cout << pet->name() << "\n";
 }
 
@@ -89,56 +89,56 @@ void loop_reassign(int32_t n) {
 void branch_in_loop(int32_t n) {
   std::optional<::tpy::Adapter<Pet, Cat>> __slot_2;
   std::optional<::tpy::Adapter<Pet, Parrot>> __slot_3;
-    //     pet: Pet = Dog()
+    // pet: Pet = Dog()
     Dog __slot_1{Dog()};
     Pet* pet = &__slot_1;
-    //     i: Int32 = 0
+    // i: Int32 = 0
     int32_t i = 0;
-    //     while i < n:
+    // while i < n:
     while ((i < n)) {
-        //         if i == 1:
+        // if i == 1:
         if ((i == 1)) {
-            //             pet = Cat()
+            // pet = Cat()
             __slot_2.emplace(Cat());
             pet = &*__slot_2;
-        //         else:
+        // else:
         } else {
-            //             pet = Parrot()
+            // pet = Parrot()
             __slot_3.emplace(Parrot());
             pet = &*__slot_3;
         }
-        //         i = i + 1
+        // i = i + 1
         i = (::tpy::add_check<int32_t>(i, 1));
     }
-    //     print(pet.name())
+    // print(pet.name())
     std::cout << pet->name() << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     branch_init(True)
+    // branch_init(True)
     branch_init(true);
-    //     branch_init(False)
+    // branch_init(False)
     branch_init(false);
-    //     branch_reassign(True)
+    // branch_reassign(True)
     branch_reassign(true);
-    //     branch_reassign(False)
+    // branch_reassign(False)
     branch_reassign(false);
-    //     nested_branches(True, True)
+    // nested_branches(True, True)
     nested_branches(true, true);
-    //     nested_branches(True, False)
+    // nested_branches(True, False)
     nested_branches(true, false);
-    //     nested_branches(False, True)
+    // nested_branches(False, True)
     nested_branches(false, true);
-    //     loop_reassign(0)
+    // loop_reassign(0)
     loop_reassign(0);
-    //     loop_reassign(3)
+    // loop_reassign(3)
     loop_reassign(3);
-    //     branch_in_loop(1)
+    // branch_in_loop(1)
     branch_in_loop(1);
-    //     branch_in_loop(2)
+    // branch_in_loop(2)
     branch_in_loop(2);
-    //     branch_in_loop(3)
+    // branch_in_loop(3)
     branch_in_loop(3);
 }
 

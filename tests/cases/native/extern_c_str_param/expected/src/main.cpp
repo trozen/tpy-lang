@@ -8,7 +8,7 @@ namespace tpy_user::main {
 // @extern_c
 // def greet(name: str) -> None:
 extern "C" void greet(const char* name) {
-    //     puts(name)
+    // puts(name)
     puts(name);
 }
 

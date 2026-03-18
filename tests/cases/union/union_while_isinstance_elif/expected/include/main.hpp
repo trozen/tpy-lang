@@ -16,10 +16,10 @@ void main();
 
 // class Circle:
 struct Circle {
-    //     radius: float
+    // radius: float
     double radius;
 
-    //     def __init__(self, radius: float) -> None:
+    // def __init__(self, radius: float) -> None:
     Circle() = default;
     explicit Circle(double radius) : radius(radius) {}
 };
@@ -33,12 +33,12 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
 
 // class Rect:
 struct Rect {
-    //     width: float
+    // width: float
     double width;
-    //     height: float
+    // height: float
     double height;
 
-    //     def __init__(self, width: float, height: float) -> None:
+    // def __init__(self, width: float, height: float) -> None:
     Rect() = default;
     explicit Rect(double width, double height) : width(width), height(height) {}
 };
@@ -54,10 +54,10 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 
 // class Triangle:
 struct Triangle {
-    //     base: float
+    // base: float
     double base;
 
-    //     def __init__(self, base: float) -> None:
+    // def __init__(self, base: float) -> None:
     Triangle() = default;
     explicit Triangle(double base) : base(base) {}
 };

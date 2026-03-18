@@ -14,10 +14,10 @@ inline constexpr std::string_view __name__ = "__main__";
 struct Base {
 
 
-    //     @readonly
-    //     def value(self) -> Int32:
+    // @readonly
+    // def value(self) -> Int32:
     int32_t value() const {
-        //         return 7
+        // return 7
         return 7;
     }
 };
@@ -32,10 +32,10 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 struct Child : Base {
 
 
-    //     @readonly
-    //     def value_plus_one(self) -> Int32:
+    // @readonly
+    // def value_plus_one(self) -> Int32:
     int32_t value_plus_one() const {
-        //         return super().value() + 1  # tpyc: ok
+        // return super().value() + 1  # tpyc: ok
         return (::tpy::add_check<int32_t>(Base::value(), 1));
     }
 };

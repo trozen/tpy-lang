@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main():
 void main() {
-    //     c = Child("hello")
+    // c = Child("hello")
     Child c = Child("hello");
-    //     print("alive")
+    // print("alive")
     std::cout << "alive" << "\n";
 }
 

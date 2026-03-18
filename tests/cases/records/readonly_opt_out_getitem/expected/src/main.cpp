@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     c: CachingContainer = CachingContainer(42)
+    // c: CachingContainer = CachingContainer(42)
     CachingContainer c = CachingContainer(42);
-    //     print(c[0])
+    // print(c[0])
     std::cout << c[0] << "\n";
-    //     print(c.last_access)
+    // print(c.last_access)
     std::cout << c.last_access << "\n";
 }
 

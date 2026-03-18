@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     x: Int8 = Int8(1) << Int8(7)
+    // x: Int8 = Int8(1) << Int8(7)
     int8_t x = (::tpy::lshift_check<int8_t>(1, 7));
-    //     print(x)
+    // print(x)
     std::cout << static_cast<int>(x) << "\n";
 }
 

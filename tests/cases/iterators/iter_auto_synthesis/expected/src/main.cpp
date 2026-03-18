@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Auto-synthesized __iter__ enables for-loop
-    //     for x in SimpleIter(4):
+    // # Auto-synthesized __iter__ enables for-loop
+    // for x in SimpleIter(4):
     auto __iter_0 = SimpleIter(4);
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
         int32_t x = *__r_0;
-        //         print(x)
+        // print(x)
         std::cout << x << "\n";
     }
-    //     print("done")
+    // print("done")
     std::cout << "done" << "\n";
 }
 

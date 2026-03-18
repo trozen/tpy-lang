@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     w = Wrapper("test")
+    // w = Wrapper("test")
     Wrapper w = Wrapper("test");
-    //     print(w.pair.first)
+    // print(w.pair.first)
     std::cout << w.pair.first << "\n";
-    //     print(w.pair.second)
+    // print(w.pair.second)
     std::cout << w.pair.second << "\n";
-    //     w2 = Wrapper("test2", Pair(10, 20))
+    // w2 = Wrapper("test2", Pair(10, 20))
     Wrapper w2 = Wrapper("test2", Pair<int32_t>(10, 20));
-    //     print(w2.pair.first)
+    // print(w2.pair.first)
     std::cout << w2.pair.first << "\n";
-    //     print(w2.pair.second)
+    // print(w2.pair.second)
     std::cout << w2.pair.second << "\n";
 }
 

@@ -16,15 +16,15 @@ void main();
 struct Shape {
 
 
-    //     def area(self) -> Int32:
+    // def area(self) -> Int32:
     int32_t area() const {
-        //         return Int32(0)
+        // return Int32(0)
         return 0;
     }
 
-    //     def describe(self) -> str:
+    // def describe(self) -> str:
     std::string describe() const {
-        //         return "shape"
+        // return "shape"
         return "shape";
     }
 };
@@ -37,24 +37,24 @@ inline std::ostream& operator<<(std::ostream& os, const Shape& obj) {
 
 // class Square(Shape):
 struct Square : Shape {
-    //     side: Int32
+    // side: Int32
     int32_t side;
 
-    //     def __init__(self, side: Int32) -> None:
+    // def __init__(self, side: Int32) -> None:
     Square() = default;
     explicit Square(int32_t side) : side(side) {}
 
-    //     @override
-    //     def area(self) -> Int32:  # tpyc: warning(/non-polymorphic/)
+    // @override
+    // def area(self) -> Int32:  # tpyc: warning(/non-polymorphic/)
     int32_t area() const {
-        //         return self.side * self.side
+        // return self.side * self.side
         return (::tpy::mul_check<int32_t>(this->side, this->side));
     }
 
-    //     @override
-    //     def describe(self) -> str:  # tpyc: warning(/non-polymorphic/)
+    // @override
+    // def describe(self) -> str:  # tpyc: warning(/non-polymorphic/)
     std::string describe() const {
-        //         return "square"
+        // return "square"
         return "square";
     }
 };

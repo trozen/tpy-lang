@@ -6,8 +6,8 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Transform with range
-    //     squares: list[Int32] = [x * x for x in range(5)]
+    // # Transform with range
+    // squares: list[Int32] = [x * x for x in range(5)]
     std::vector<int32_t> squares = [&]() {
         std::vector<int32_t> __result;
         const int32_t __stop_0 = 5;
@@ -17,12 +17,12 @@ void main() {
         }
         return __result;
     }();
-    //     print(squares)
+    // print(squares)
     std::cout << ::tpy::ListPrinter(squares) << "\n";
-    //     # Identity comprehension from list
-    //     items: list[Int32] = [10, 20, 30]
+    // # Identity comprehension from list
+    // items: list[Int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    //     copy = [x for x in items]
+    // copy = [x for x in items]
     std::vector<int32_t> copy = [&]() {
         std::vector<int32_t> __result;
         auto& __obj_1 = items;
@@ -35,12 +35,12 @@ void main() {
         }
         return __result;
     }();
-    //     print(copy)
+    // print(copy)
     std::cout << ::tpy::ListPrinter(copy) << "\n";
-    //     # Two-arg range (non-literal stop to stay on list path)
-    //     stop: Int32 = 7
+    // # Two-arg range (non-literal stop to stay on list path)
+    // stop: Int32 = 7
     int32_t stop = 7;
-    //     shifted = [x for x in range(3, stop)]
+    // shifted = [x for x in range(3, stop)]
     std::vector<int32_t> shifted = [&]() {
         std::vector<int32_t> __result;
         const int32_t __start_2 = 3;
@@ -51,12 +51,12 @@ void main() {
         }
         return __result;
     }();
-    //     print(shifted)
+    // print(shifted)
     std::cout << ::tpy::ListPrinter(shifted) << "\n";
-    //     # Record field access
-    //     points: list[Point] = [Point(1, 2), Point(3, 4), Point(5, 6)]
+    // # Record field access
+    // points: list[Point] = [Point(1, 2), Point(3, 4), Point(5, 6)]
     std::vector<Point> points = {Point(1, 2), Point(3, 4), Point(5, 6)};
-    //     xs = [p.x for p in points]
+    // xs = [p.x for p in points]
     std::vector<int32_t> xs = [&]() {
         std::vector<int32_t> __result;
         auto& __obj_4 = points;
@@ -69,10 +69,10 @@ void main() {
         }
         return __result;
     }();
-    //     print(xs)
+    // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
-    //     # Comprehension as function argument
-    //     print([x + 1 for x in range(3)])
+    // # Comprehension as function argument
+    // print([x + 1 for x in range(3)])
     std::cout << ::tpy::ListPrinter([&]() {
         std::vector<int32_t> __result;
         const int32_t __stop_5 = 3;
@@ -82,10 +82,10 @@ void main() {
         }
         return __result;
     }()) << "\n";
-    //     # String comprehension
-    //     words: list[str] = ["hello", "world"]
+    // # String comprehension
+    // words: list[str] = ["hello", "world"]
     std::vector<std::string> words = {"hello", "world"};
-    //     upper = [str(len(w)) for w in words]
+    // upper = [str(len(w)) for w in words]
     std::vector<std::string> upper = [&]() {
         std::vector<std::string> __result;
         auto& __obj_6 = words;
@@ -98,15 +98,15 @@ void main() {
         }
         return __result;
     }();
-    //     print(upper)
+    // print(upper)
     std::cout << ::tpy::ListPrinter(upper) << "\n";
-    //     # Comprehension as return value
-    //     print(make_list(4))
+    // # Comprehension as return value
+    // print(make_list(4))
     std::cout << ::tpy::ListPrinter(make_list(4)) << "\n";
-    //     # Three-arg range (non-literal step to stay on list path)
-    //     step: Int32 = 3
+    // # Three-arg range (non-literal step to stay on list path)
+    // step: Int32 = 3
     int32_t step = 3;
-    //     stepped = [x for x in range(0, 10, step)]
+    // stepped = [x for x in range(0, 10, step)]
     std::vector<int32_t> stepped = [&]() {
         std::vector<int32_t> __result;
         auto __obj_7 = ::tpy::Range<int32_t>(0, 10, step);
@@ -118,13 +118,13 @@ void main() {
         }
         return __result;
     }();
-    //     print(stepped)
+    // print(stepped)
     std::cout << ::tpy::ListPrinter(stepped) << "\n";
 }
 
 // def make_list(n: Int32) -> Own[list[Int32]]:
 std::vector<int32_t> make_list(int32_t n) {
-    //     return [x * 10 for x in range(n)]
+    // return [x * 10 for x in range(n)]
     return [&]() {
         std::vector<int32_t> __result;
         const int32_t __stop_0 = n;

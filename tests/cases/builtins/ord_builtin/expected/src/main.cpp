@@ -6,25 +6,25 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     # Basic ASCII
-    //     c: Char = chr(65)
+    // # Basic ASCII
+    // c: Char = chr(65)
     char c = static_cast<char>(65);
-    //     print(ord(c))
+    // print(ord(c))
     std::cout << static_cast<int32_t>(static_cast<unsigned char>(c)) << "\n";
-    //     # Lowercase letter
-    //     d: Char = chr(122)
+    // # Lowercase letter
+    // d: Char = chr(122)
     char d = static_cast<char>(122);
-    //     print(ord(d))
+    // print(ord(d))
     std::cout << static_cast<int32_t>(static_cast<unsigned char>(d)) << "\n";
-    //     # Null character
-    //     zero: Char = chr(0)
+    // # Null character
+    // zero: Char = chr(0)
     char zero = static_cast<char>(0);
-    //     print(ord(zero))
+    // print(ord(zero))
     std::cout << static_cast<int32_t>(static_cast<unsigned char>(zero)) << "\n";
-    //     # ord/chr roundtrip
-    //     n: Int32 = 97
+    // # ord/chr roundtrip
+    // n: Int32 = 97
     int32_t n = 97;
-    //     print(ord(chr(n)))
+    // print(ord(chr(n)))
     std::cout << static_cast<int32_t>(static_cast<unsigned char>(static_cast<char>(n))) << "\n";
 }
 

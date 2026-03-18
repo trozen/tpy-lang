@@ -14,18 +14,18 @@ void main();
 
 // class Pair:
 struct Pair {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: Int32, y: Int32) -> None:
     Pair() = default;
     explicit Pair(int32_t x, int32_t y) : x(x), y(y) {}
 
-    //     def __str__(self) -> str:
+    // def __str__(self) -> str:
     std::string __str__() const {
-        //         return f"({self.x}, {self.y})"
+        // return f"({self.x}, {self.y})"
         return std::format("({}, {})", this->x, this->y);
     }
 };
@@ -38,22 +38,22 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 // class Wrapper[T: Stringable]:
 template<::tpy::Stringable T>
 struct Wrapper {
-    //     value: T
+    // value: T
     T value;
 
-    //     def __init__(self, value: T) -> None:
+    // def __init__(self, value: T) -> None:
     Wrapper() = default;
     explicit Wrapper(const T& value) : value(value) {}
 
-    //     def __str__(self) -> str:
+    // def __str__(self) -> str:
     std::string __str__() const {
-        //         return f"Wrapper({self.value})"
+        // return f"Wrapper({self.value})"
         return std::format("Wrapper({})", ::tpy::__str__(this->value));
     }
 
-    //     def __repr__(self) -> str:
+    // def __repr__(self) -> str:
     std::string __repr__() const {
-        //         return f"Wrapper(value={self.value})"
+        // return f"Wrapper(value={self.value})"
         return std::format("Wrapper(value={})", ::tpy::__str__(this->value));
     }
 };

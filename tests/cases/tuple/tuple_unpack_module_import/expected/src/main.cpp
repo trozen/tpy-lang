@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def show() -> None:
 void show() {
-    //     print(lo)
+    // print(lo)
     std::cout << ::tpy_user::config::lo << "\n";
-    //     print(hi)
+    // print(hi)
     std::cout << ::tpy_user::config::hi << "\n";
 }
 

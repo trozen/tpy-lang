@@ -7,79 +7,79 @@ namespace tpy_user::main {
 // # Test 'pass' statement in various contexts
 // def empty_function() -> None:
 void empty_function() {
-    //     pass
+    // pass
 }
 
 // def function_with_pass_branch(x: Int32) -> Int32:
 int32_t function_with_pass_branch(int32_t x) {
-    //     if x > 0:
+    // if x > 0:
     if ((x > 0)) {
-        //         pass
-    //     else:
+        // pass
+    // else:
     } else {
-        //         return -1
+        // return -1
         return -1;
     }
-    //     return x * 2
+    // return x * 2
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // def pass_in_loop() -> Int32:
 int32_t pass_in_loop() {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     i: Int32 = 0
+    // i: Int32 = 0
     int32_t i = 0;
-    //     while i < 10:
+    // while i < 10:
     while ((i < 10)) {
-        //         if i % 2 == 0:
+        // if i % 2 == 0:
         if (((::tpy::mod_floor<int32_t>(i, 2)) == 0)) {
-            //             pass
-        //         else:
+            // pass
+        // else:
         } else {
-            //             total += i
+            // total += i
             total = ::tpy::add_check<int32_t>(total, i);
         }
-        //         i += 1
+        // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    //     return total
+    // return total
     return total;
 }
 
 // def pass_in_elif(x: Int32) -> Int32:
 int32_t pass_in_elif(int32_t x) {
-    //     if x < 0:
+    // if x < 0:
     if ((x < 0)) {
-        //         return -1
+        // return -1
         return -1;
-    //     elif x == 0:
+    // elif x == 0:
     } else if ((x == 0)) {
-        //         pass
-    //     else:
+        // pass
+    // else:
     } else {
-        //         return 1
+        // return 1
         return 1;
     }
-    //     return 0
+    // return 0
     return 0;
 }
 
 // def test_class_with_pass() -> None:
 void test_class_with_pass() {
-    //     obj: Counter = Counter(10)
+    // obj: Counter = Counter(10)
     Counter obj = Counter(10);
-    //     obj.do_nothing()
+    // obj.do_nothing()
     obj.do_nothing();
-    //     print(obj.value)
+    // print(obj.value)
     std::cout << obj.value << "\n";
-    //     obj.maybe_increment(1)
+    // obj.maybe_increment(1)
     obj.maybe_increment(1);
-    //     print(obj.value)
+    // print(obj.value)
     std::cout << obj.value << "\n";
-    //     obj.maybe_increment(0)
+    // obj.maybe_increment(0)
     obj.maybe_increment(0);
-    //     print(obj.value)
+    // print(obj.value)
     std::cout << obj.value << "\n";
 }
 

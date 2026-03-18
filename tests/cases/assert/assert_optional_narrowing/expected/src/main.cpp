@@ -8,17 +8,17 @@ Point* q{};
 
 // def get_x(p: Point | None) -> Int32:
 int32_t get_x(Point* p) {
-    //     assert p is not None
+    // assert p is not None
     if (!((p != nullptr))) ::tpy::tpy_panic("assertion failed");
-    //     return p.x
+    // return p.x
     return p->x;
 }
 
 // def get_mag(p: Point | None) -> Int32:
 int32_t get_mag(Point* p) {
-    //     assert p is not None, "point required"
+    // assert p is not None, "point required"
     if (!((p != nullptr))) ::tpy::tpy_panic("point required");
-    //     return p.mag()
+    // return p.mag()
     return p->mag();
 }
 

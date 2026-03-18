@@ -14,23 +14,23 @@ void main();
 
 // class Buffer:
 struct Buffer {
-    //     _data: list[Int32]
+    // _data: list[Int32]
     std::vector<int32_t> _data;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Buffer() : _data({10, 20, 30}) {}
 
-    //     @auto_readonly
-    //     def as_span(self) -> Span[auto_readonly[Int32]]:
+    // @auto_readonly
+    // def as_span(self) -> Span[auto_readonly[Int32]]:
     std::span<int32_t> as_span() {
-        //         return self._data
+        // return self._data
         return ::tpy::as_mut_span(this->_data);
     }
 
-    //     @auto_readonly
-    //     def as_span(self) -> Span[auto_readonly[Int32]]:
+    // @auto_readonly
+    // def as_span(self) -> Span[auto_readonly[Int32]]:
     std::span<const int32_t> as_span() const {
-        //         return self._data
+        // return self._data
         return ::tpy::as_span(this->_data);
     }
 };

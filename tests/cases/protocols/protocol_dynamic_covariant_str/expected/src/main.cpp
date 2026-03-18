@@ -6,22 +6,22 @@ namespace tpy_user::main {
 
 // def greet(x: Named) -> None:
 void greet(Named& x) {
-    //     print(x.name())
+    // print(x.name())
     std::cout << x.name() << "\n";
 }
 
 // def main():
 void main() {
-    //     greet(Dog("Rex"))
+    // greet(Dog("Rex"))
     ::tpy::Adapter<Named, Dog> __tmp_1{Dog("Rex")};
     greet(__tmp_1);
-    //     greet(Cat("Whiskers"))
+    // greet(Cat("Whiskers"))
     ::tpy::Adapter<Named, Cat> __tmp_2{Cat("Whiskers")};
     greet(__tmp_2);
-    //     greet(Bird("Tweety"))
+    // greet(Bird("Tweety"))
     Bird __tmp_3{Bird("Tweety")};
     greet(__tmp_3);
-    //     greet(Fish("Nemo"))
+    // greet(Fish("Nemo"))
     Fish __tmp_4{Fish("Nemo")};
     greet(__tmp_4);
 }

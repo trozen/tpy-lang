@@ -79,15 +79,15 @@ void main();
 struct Dog : NamedPet {
 
 
-    //     def make_noise(self) -> str:
+    // def make_noise(self) -> str:
     std::string make_noise() override {
-        //         return "Woof"
+        // return "Woof"
         return "Woof";
     }
 
-    //     def name(self) -> str:
+    // def name(self) -> str:
     std::string name() override {
-        //         return "Rex"
+        // return "Rex"
         return "Rex";
     }
 };
@@ -102,15 +102,15 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 struct Parrot {
 
 
-    //     def make_noise(self) -> str:
+    // def make_noise(self) -> str:
     std::string make_noise() const {
-        //         return "Squawk"
+        // return "Squawk"
         return "Squawk";
     }
 
-    //     def name(self) -> str:
+    // def name(self) -> str:
     std::string name() const {
-        //         return "Polly"
+        // return "Polly"
         return "Polly";
     }
 };

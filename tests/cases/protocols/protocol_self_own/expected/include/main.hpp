@@ -21,18 +21,18 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    //     def __add__(self, other: Point) -> Own[Point]:
+    // def __add__(self, other: Point) -> Own[Point]:
     Point __add__(const Point& other) const {
-        //         return Point(self.x + other.x, self.y + other.y)
+        // return Point(self.x + other.x, self.y + other.y)
         return Point((::tpy::add_check<int32_t>(this->x, other.x)), (::tpy::add_check<int32_t>(this->y, other.y)));
     }
 
@@ -53,8 +53,8 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // def add_points(a: Addable, b: Addable) -> None:
 template<Addable T_a, Addable T_b>
 void add_points(const T_a& a, const T_b& b) {
-    //     # Verify that a + b compiles (the protocol constraint allows it)
-    //     result = a + b
+    // # Verify that a + b compiles (the protocol constraint allows it)
+    // result = a + b
     auto result = (a + b);
 }
 

@@ -6,33 +6,33 @@ namespace tpy_user::main {
 
 // def make_point(x: Int32, y: Int32) -> Own[Point]:
 Point make_point(int32_t x, int32_t y) {
-    //     return Point(x, y)
+    // return Point(x, y)
     return Point(x, y);
 }
 
 // def use_owned_point(p: Own[Point]) -> Int32:
 int32_t use_owned_point(Point&& p) {
-    //     # Field access on Own[T] parameter
-    //     return p.x + p.y
+    // # Field access on Own[T] parameter
+    // return p.x + p.y
     return (::tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // def main():
 void main() {
-    //     # Direct field access on function returning Own[T]
-    //     print(make_point(10, 20).x)
+    // # Direct field access on function returning Own[T]
+    // print(make_point(10, 20).x)
     std::cout << make_point(10, 20).x << "\n";
-    //     print(make_point(30, 40).y)
+    // print(make_point(30, 40).y)
     std::cout << make_point(30, 40).y << "\n";
-    //     # Field access through Own[T] parameter
-    //     print(use_owned_point(make_point(50, 60)))
+    // # Field access through Own[T] parameter
+    // print(use_owned_point(make_point(50, 60)))
     std::cout << use_owned_point(make_point(50, 60)) << "\n";
-    //     # Chained: return value assigned to Point, then accessed
-    //     pt: Point = make_point(70, 80)
+    // # Chained: return value assigned to Point, then accessed
+    // pt: Point = make_point(70, 80)
     Point pt = make_point(70, 80);
-    //     print(pt.x)
+    // print(pt.x)
     std::cout << pt.x << "\n";
-    //     print(pt.y)
+    // print(pt.y)
     std::cout << pt.y << "\n";
 }
 

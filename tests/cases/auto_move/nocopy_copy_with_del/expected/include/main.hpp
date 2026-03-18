@@ -13,14 +13,14 @@ void main();
 
 // class Resource:
 struct Resource {
-    //     id: Int32
+    // id: Int32
     int32_t id;
     bool __tpy_owned_ = true;
 
-    //     def __init__(self, id: Int32):
+    // def __init__(self, id: Int32):
     Resource() = default;
     explicit Resource(int32_t id) : id(id) {
-        //         print("alloc", id)
+        // print("alloc", id)
         std::cout << "alloc" << " " << id << "\n";
     }
     // copyable via __copy__
@@ -39,17 +39,17 @@ struct Resource {
         }
         return *this;
     }
-    //     def __del__(self):
+    // def __del__(self):
 
     ~Resource() {
         if (!__tpy_owned_) return;
-        //         print("free", self.id)
+        // print("free", self.id)
         std::cout << "free" << " " << this->id << "\n";
     }
 
-    //     def __copy__(self) -> Own[Resource]:
+    // def __copy__(self) -> Own[Resource]:
     Resource __copy__() const {
-        //         return Resource(self.id + 100)
+        // return Resource(self.id + 100)
         return Resource((::tpy::add_check<int32_t>(this->id, 100)));
     }
 };

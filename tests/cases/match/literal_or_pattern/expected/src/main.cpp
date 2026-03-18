@@ -6,106 +6,106 @@ namespace tpy_user::main {
 
 // def classify_num(x: Int32) -> str:
 std::string classify_num(int32_t x) {
-    //     match x:
+    // match x:
     auto& __match_subject = x;
     switch (__match_subject) {
-    //         case 1 | 2 | 3:
+    // case 1 | 2 | 3:
     case 1:
     case 2:
     case 3:
     {
-        //             return "small"
+        // return "small"
         return "small";
         break;
     }
-    //         case 4 | 5:
+    // case 4 | 5:
     case 4:
     case 5:
     {
-        //             return "medium"
+        // return "medium"
         return "medium";
         break;
     }
-    //         case _:
+    // case _:
     default: {
-        //             return "large"
+        // return "large"
         return "large";
         break;
     }
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def classify_str(s: str) -> str:
 std::string classify_str(std::string_view s) {
-    //     match s:
+    // match s:
     auto& __match_subject = s;
-    //         case "hello" | "hi":
+    // case "hello" | "hi":
     if (__match_subject == "hello" || __match_subject == "hi") {
-        //             return "greeting"
+        // return "greeting"
         return "greeting";
-    //         case "bye" | "goodbye":
+    // case "bye" | "goodbye":
     } else if (__match_subject == "bye" || __match_subject == "goodbye") {
-        //             return "farewell"
+        // return "farewell"
         return "farewell";
-    //         case _:
+    // case _:
     } else {
-        //             return "unknown"
+        // return "unknown"
         return "unknown";
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def classify_as(x: Int32) -> str:
 std::string classify_as(int32_t x) {
-    //     match x:
+    // match x:
     auto& __match_subject = x;
     switch (__match_subject) {
-    //         case 1 | 2 as n:
+    // case 1 | 2 as n:
     case 1:
     case 2:
     {
         auto& n = __match_subject;
-        //             return "small: " + str(n)
+        // return "small: " + str(n)
         return (::tpy::str_concat("small: ", ::tpy::fixed_to_str<int32_t>(n)));
         break;
     }
-    //         case _:
+    // case _:
     default: {
-        //             return "other"
+        // return "other"
         return "other";
         break;
     }
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def main() -> None:
 void main() {
-    //     print(classify_num(Int32(1)))
+    // print(classify_num(Int32(1)))
     std::cout << classify_num(1) << "\n";
-    //     print(classify_num(Int32(3)))
+    // print(classify_num(Int32(3)))
     std::cout << classify_num(3) << "\n";
-    //     print(classify_num(Int32(5)))
+    // print(classify_num(Int32(5)))
     std::cout << classify_num(5) << "\n";
-    //     print(classify_num(Int32(9)))
+    // print(classify_num(Int32(9)))
     std::cout << classify_num(9) << "\n";
-    //     print(classify_str("hello"))
+    // print(classify_str("hello"))
     std::cout << classify_str("hello") << "\n";
-    //     print(classify_str("hi"))
+    // print(classify_str("hi"))
     std::cout << classify_str("hi") << "\n";
-    //     print(classify_str("goodbye"))
+    // print(classify_str("goodbye"))
     std::cout << classify_str("goodbye") << "\n";
-    //     print(classify_str("wow"))
+    // print(classify_str("wow"))
     std::cout << classify_str("wow") << "\n";
-    //     print(classify_as(Int32(1)))
+    // print(classify_as(Int32(1)))
     std::cout << classify_as(1) << "\n";
-    //     print(classify_as(Int32(2)))
+    // print(classify_as(Int32(2)))
     std::cout << classify_as(2) << "\n";
-    //     print(classify_as(Int32(9)))
+    // print(classify_as(Int32(9)))
     std::cout << classify_as(9) << "\n";
 }
 

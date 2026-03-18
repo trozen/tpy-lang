@@ -14,7 +14,7 @@ template<typename T>
 // def first[T](items: list[T]) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> first(std::vector<T>& items) {
-    //     return items[0]
+    // return items[0]
     return ::tpy::__getitem__(items, 0);
 }
 

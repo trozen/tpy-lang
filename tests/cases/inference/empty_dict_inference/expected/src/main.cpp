@@ -6,92 +6,92 @@ namespace tpy_user::main {
 
 // def test_literal() -> None:
 void test_literal() {
-    //     d = {}  # tpyc: type(dict[str, Int32])
+    // d = {}  # tpyc: type(dict[str, Int32])
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
-    //     d["hello"] = 42
+    // d["hello"] = 42
     ::tpy::__setitem__(d, "hello", 42);
-    //     print(d)
+    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
 // def test_dict_ctor() -> None:
 void test_dict_ctor() {
-    //     d = dict()  # tpyc: type(dict[Int32, str])
+    // d = dict()  # tpyc: type(dict[Int32, str])
     ::tpy::ordered_map<int32_t, std::string> d = ::tpy::ordered_map<int32_t, std::string>();
-    //     d[1] = "a"
+    // d[1] = "a"
     ::tpy::__setitem__(d, 1, "a");
-    //     d[2] = "b"
+    // d[2] = "b"
     ::tpy::__setitem__(d, 2, "b");
-    //     print(d)
+    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
 // def test_multiple() -> None:
 void test_multiple() {
-    //     d = {}  # tpyc: type(dict[str, Int32])
+    // d = {}  # tpyc: type(dict[str, Int32])
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
-    //     d["x"] = 10
+    // d["x"] = 10
     ::tpy::__setitem__(d, "x", 10);
-    //     d["y"] = 20
+    // d["y"] = 20
     ::tpy::__setitem__(d, "y", 20);
-    //     d["z"] = 30
+    // d["z"] = 30
     ::tpy::__setitem__(d, "z", 30);
-    //     print(d)
+    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
 // def test_numeric_widen() -> None:
 void test_numeric_widen() {
-    //     d = {}  # tpyc: type(dict[str, Int64])
+    // d = {}  # tpyc: type(dict[str, Int64])
     ::tpy::ordered_map<std::string, int64_t> d = ::tpy::ordered_map<std::string, int64_t>();
-    //     d["a"] = Int32(1)
+    // d["a"] = Int32(1)
     ::tpy::__setitem__(d, "a", 1);
-    //     d["b"] = Int64(2)
+    // d["b"] = Int64(2)
     ::tpy::__setitem__(d, "b", 2);
-    //     print(d)
+    // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
 }
 
 // def test_getitem_after_infer() -> None:
 void test_getitem_after_infer() {
-    //     d = {}  # tpyc: type(dict[str, Int32])
+    // d = {}  # tpyc: type(dict[str, Int32])
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
-    //     d["x"] = 10
+    // d["x"] = 10
     ::tpy::__setitem__(d, "x", 10);
-    //     v: Int32 = d["x"]
+    // v: Int32 = d["x"]
     int32_t v = ::tpy::__getitem__(d, "x");
-    //     print(v)
+    // print(v)
     std::cout << v << "\n";
 }
 
 // def takes_dict(d: dict[str, Int32]) -> None:
 void takes_dict(const ::tpy::ordered_map<std::string, int32_t>& d) {
-    //     for k in d:
+    // for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view k = *__beg_0;
-        //         print(k, d[k])
+        // print(k, d[k])
         std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n";
     }
 }
 
 // def test_param_context() -> None:
 void test_param_context() {
-    //     d = {}  # tpyc: type(dict[str, Int32])
+    // d = {}  # tpyc: type(dict[str, Int32])
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
-    //     d["a"] = 1
+    // d["a"] = 1
     ::tpy::__setitem__(d, "a", 1);
-    //     takes_dict(d)
+    // takes_dict(d)
     takes_dict(d);
 }
 
 // def test_param_only() -> None:
 void test_param_only() {
-    //     d = dict()  # tpyc: type(dict[str, Int32])
+    // d = dict()  # tpyc: type(dict[str, Int32])
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>();
-    //     takes_dict(d)
+    // takes_dict(d)
     takes_dict(d);
 }
 

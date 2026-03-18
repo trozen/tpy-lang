@@ -28,24 +28,24 @@ inline constexpr std::string_view __name__ = "__main__";
 // # Class implementing protocols defined in same file
 // class Person(Printable, Describable):
 struct Person {
-    //     name: str
+    // name: str
     std::string name;
-    //     age: Int32
+    // age: Int32
     int32_t age;
 
-    //     def __init__(self, name: str, age: Int32) -> None:
+    // def __init__(self, name: str, age: Int32) -> None:
     Person() = default;
     explicit Person(std::string_view name, int32_t age) : name(name), age(age) {}
 
-    //     def __str__(self) -> str:
+    // def __str__(self) -> str:
     std::string __str__() const {
-        //         return self.name
+        // return self.name
         return this->name;
     }
 
-    //     def describe(self) -> str:
+    // def describe(self) -> str:
     std::string describe() const {
-        //         return "A person"
+        // return "A person"
         return "A person";
     }
 };

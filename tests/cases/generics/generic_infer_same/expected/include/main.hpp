@@ -13,12 +13,12 @@ inline constexpr std::string_view __name__ = "__main__";
 // class Same[T]:
 template<typename T>
 struct Same {
-    //     a: T
+    // a: T
     T a;
-    //     b: T
+    // b: T
     T b;
 
-    //     def __init__(self, a: T, b: T) -> None:
+    // def __init__(self, a: T, b: T) -> None:
     Same() = default;
     explicit Same(const T& a, const T& b) : a(a), b(b) {}
 };

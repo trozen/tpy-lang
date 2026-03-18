@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     b = Box(Int32(42))
+    // b = Box(Int32(42))
     Box b = Box(42);
-    //     print(b.measure())
+    // print(b.measure())
     std::cout << b.measure() << "\n";
 }
 

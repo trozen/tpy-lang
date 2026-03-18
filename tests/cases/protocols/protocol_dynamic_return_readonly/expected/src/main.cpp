@@ -8,23 +8,23 @@ Pet* global_pet{};
 
 // def echo_readonly(pet: readonly[Pet]) -> readonly[Pet]:
 const Pet& echo_readonly(const Pet& pet) {
-    //     return pet
+    // return pet
     return pet;
 }
 
 // def get_global_readonly() -> readonly[Pet]:
 const Pet& get_global_readonly() {
-    //     return global_pet
+    // return global_pet
     return (*global_pet);
 }
 
 // def main() -> None:
 void main() {
-    //     dog = Dog()
+    // dog = Dog()
     Dog dog = Dog();
-    //     print(echo_readonly(dog).name())
+    // print(echo_readonly(dog).name())
     std::cout << echo_readonly(dog).name() << "\n";
-    //     print(get_global_readonly().name())
+    // print(get_global_readonly().name())
     std::cout << get_global_readonly().name() << "\n";
 }
 

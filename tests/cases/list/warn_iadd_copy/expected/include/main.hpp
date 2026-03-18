@@ -22,10 +22,10 @@ void test_iadd_generic_warns(std::vector<T>& a, const std::vector<T>& b);
 
 // class Node:
 struct Node {
-    //     val: Int32
+    // val: Int32
     int32_t val;
 
-    //     def __init__(self, val: Int32) -> None:
+    // def __init__(self, val: Int32) -> None:
     Node() = default;
     explicit Node(int32_t val) : val(val) {}
 };
@@ -40,9 +40,9 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 // def test_iadd_generic_warns[T](a: list[T], b: list[T]) -> None:
 template<typename T>
 void test_iadd_generic_warns(std::vector<T>& a, const std::vector<T>& b) {
-    //     a += b  # tpyc: warning(/may copy T elements/)
+    // a += b  # tpyc: warning(/may copy T elements/)
     ::tpy::list_extend(a, b);
-    //     print(len(b))
+    // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
 

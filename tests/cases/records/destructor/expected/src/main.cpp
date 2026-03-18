@@ -8,9 +8,9 @@ Resource* g{};
 
 // def main():
 void main() {
-    //     r = Resource("local")
+    // r = Resource("local")
     Resource r = Resource("local");
-    //     print("alive")
+    // print("alive")
     std::cout << "alive" << "\n";
 }
 

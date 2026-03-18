@@ -6,59 +6,59 @@ namespace tpy_user::main {
 
 // def test_straight():
 void test_straight() {
-    //     r = Resource("a")
+    // r = Resource("a")
     Resource __slot_1 = Resource("a");
     std::optional<Resource> __slot_2;
     Resource* r = &__slot_1;
-    //     r = Resource("b")
+    // r = Resource("b")
     r = &*(__slot_2 = Resource("b"));
-    //     r = Resource("c")
+    // r = Resource("c")
     r = &*(__slot_2 = Resource("c"));
-    //     print("alive:", r.name)
+    // print("alive:", r.name)
     std::cout << "alive:" << " " << r->name << "\n";
 }
 
 // def test_loop():
 void test_loop() {
-    //     r = Resource("init")
+    // r = Resource("init")
     Resource __slot_1 = Resource("init");
     std::optional<Resource> __slot_2;
     Resource* r = &__slot_1;
-    //     for i in range(3):
+    // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        //         r = Resource("loop")
+        // r = Resource("loop")
         r = &*(__slot_2 = Resource("loop"));
     }
-    //     print("alive:", r.name)
+    // print("alive:", r.name)
     std::cout << "alive:" << " " << r->name << "\n";
 }
 
 // def test_conditional(flag: Int32):
 void test_conditional(int32_t flag) {
-    //     r = Resource("start")
+    // r = Resource("start")
     Resource __slot_1 = Resource("start");
     std::optional<Resource> __slot_2;
     Resource* r = &__slot_1;
-    //     if flag > 0:
+    // if flag > 0:
     if ((flag > 0)) {
-        //         r = Resource("branch")
+        // r = Resource("branch")
         r = &*(__slot_2 = Resource("branch"));
     }
-    //     print("alive:", r.name)
+    // print("alive:", r.name)
     std::cout << "alive:" << " " << r->name << "\n";
 }
 
 // def test_inherit():
 void test_inherit() {
-    //     c = Child("x")
+    // c = Child("x")
     Child __slot_1 = Child("x");
     std::optional<Child> __slot_2;
     Child* c = &__slot_1;
-    //     c = Child("y")
+    // c = Child("y")
     c = &*(__slot_2 = Child("y"));
-    //     c = Child("z")
+    // c = Child("z")
     c = &*(__slot_2 = Child("z"));
-    //     print("alive:", c.tag)
+    // print("alive:", c.tag)
     std::cout << "alive:" << " " << c->tag << "\n";
 }
 

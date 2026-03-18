@@ -13,10 +13,10 @@ int32_t build();
 
 // class Box:
 struct Box {
-    //     x: Int32
+    // x: Int32
     int32_t x;
 
-    //     def __init__(self, x: Int32) -> None:
+    // def __init__(self, x: Int32) -> None:
     Box() = default;
     explicit Box(int32_t x) : x(x) {}
 };

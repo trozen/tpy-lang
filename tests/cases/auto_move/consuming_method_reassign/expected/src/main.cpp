@@ -6,19 +6,19 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     w = Wrapper(42)
+    // w = Wrapper(42)
     Wrapper __slot_1 = Wrapper(::tpy::BigInt(42));
     std::optional<Wrapper> __slot_2;
     Wrapper* w = &__slot_1;
-    //     r1 = w.take()
+    // r1 = w.take()
     ::tpy::BigInt r1 = std::move(*w).take();
-    //     w = Wrapper(99)
+    // w = Wrapper(99)
     w = &*(__slot_2 = Wrapper(::tpy::BigInt(99)));
-    //     r2 = w.take()
+    // r2 = w.take()
     ::tpy::BigInt r2 = std::move(*w).take();
-    //     print(r1)
+    // print(r1)
     std::cout << r1 << "\n";
-    //     print(r2)
+    // print(r2)
     std::cout << r2 << "\n";
 }
 

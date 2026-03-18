@@ -26,94 +26,94 @@ void main();
 // def sum_items(items: Iterable[Int32]) -> Int32:
 template<::tpy_user::typing::Iterable<int32_t> T_items>
 int32_t sum_items(T_items& items) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     for x in items:
+    // for x in items:
     auto& __src_0 = items;
     auto __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = *__r_1;
-        //         total += x
+        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    //     return total
+    // return total
     return total;
 }
 // def count_chars(items: Iterable[Char]) -> Int32:
 template<::tpy_user::typing::Iterable<char> T_items>
 int32_t count_chars(T_items& items) {
-    //     n: Int32 = 0
+    // n: Int32 = 0
     int32_t n = 0;
-    //     for c in items:
+    // for c in items:
     auto& __src_0 = items;
     auto __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         char c = *__r_1;
-        //         n += 1
+        // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
     }
-    //     return n
+    // return n
     return n;
 }
 // def sum_strs(items: Iterable[str]) -> str:
 template<::tpy_user::typing::Iterable<std::string> T_items>
 std::string sum_strs(T_items& items) {
-    //     result: str = ""
+    // result: str = ""
     std::string result = "";
-    //     for s in items:
+    // for s in items:
     auto& __src_0 = items;
     auto __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         std::string_view s = *__r_1;
-        //         result = result + s + " "
+        // result = result + s + " "
         result = (::tpy::str_concat((::tpy::str_concat(result, s)), " "));
     }
-    //     return result
+    // return result
     return result;
 }
 // def test_iter_on_protocol(items: Iterable[Int32]) -> None:
 template<::tpy_user::typing::Iterable<int32_t> T_items>
 void test_iter_on_protocol(T_items& items) {
-    //     # __iter__() on a protocol-typed variable
-    //     it = items.__iter__()
+    // # __iter__() on a protocol-typed variable
+    // it = items.__iter__()
     auto it = ::tpy::__iter__(items);
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     for x in it:
+    // for x in it:
     auto& __iter_0 = it;
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
         int32_t x = *__r_0;
-        //         total += x
+        // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }
-    //     print(total)
+    // print(total)
     std::cout << total << "\n";
 }
 // def sum_bigints(items: Iterable[int]) -> int:
 template<::tpy_user::typing::Iterable<::tpy::BigInt> T_items>
 ::tpy::BigInt sum_bigints(T_items& items) {
-    //     # Iterable[int] (BigInt) -- expensive value type, const ref when unmutated
-    //     total: int = 0
+    // # Iterable[int] (BigInt) -- expensive value type, const ref when unmutated
+    // total: int = 0
     ::tpy::BigInt total = ::tpy::BigInt(0);
-    //     for x in items:
+    // for x in items:
     auto& __src_0 = items;
     auto __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const ::tpy::BigInt& x = *__r_1;
-        //         total = total + x
+        // total = total + x
         total = ((total) + (x));
     }
-    //     return total
+    // return total
     return total;
 }
 

@@ -6,9 +6,9 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     p = Point(1, 2)
+    // p = Point(1, 2)
     Point p = Point(1, 2);
-    //     print(p.x, p.y)
+    // print(p.x, p.y)
     std::cout << p.x << " " << p.y << "\n";
 }
 

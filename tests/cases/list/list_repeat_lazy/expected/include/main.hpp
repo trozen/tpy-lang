@@ -18,19 +18,19 @@ void test_print_lazy_repeat();
 // def consume(items: Iterable[Int32]) -> None:
 template<::tpy_user::typing::Iterable<int32_t> T_items>
 void consume(T_items& items) {
-    //     total: Int32 = 0
+    // total: Int32 = 0
     int32_t total = 0;
-    //     for v in items:
+    // for v in items:
     auto& __src_0 = items;
     auto __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         int32_t v = *__r_1;
-        //         total += v
+        // total += v
         total = ::tpy::add_check<int32_t>(total, v);
     }
-    //     print(total)
+    // print(total)
     std::cout << total << "\n";
 }
 

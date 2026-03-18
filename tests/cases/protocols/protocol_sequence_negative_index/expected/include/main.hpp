@@ -17,13 +17,13 @@ void main();
 // def seq_at(s: Sequence[Int32], i: Int32) -> Int32:
 template<::tpy_user::typing::Sequence<int32_t> T_s>
 int32_t seq_at(const T_s& s, int32_t i) {
-    //     return s[i]
+    // return s[i]
     return ::tpy::__getitem__(s, i);
 }
 // def seq_str_at(s: Sequence[str], i: Int32) -> str:
 template<::tpy_user::typing::Sequence<std::string> T_s>
 std::string seq_str_at(const T_s& s, int32_t i) {
-    //     return s[i]
+    // return s[i]
     return ::tpy::__getitem__(s, i);
 }
 

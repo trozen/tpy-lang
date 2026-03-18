@@ -24,7 +24,7 @@ void __tpy_init() {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
         int32_t x = *__r_0;
-        //     print(x)
+        // print(x)
         std::cout << x << "\n";
     }
     // # Second loop over same iterator should produce nothing
@@ -36,7 +36,7 @@ void __tpy_init() {
         auto __r_1 = __iter_1.__next__();
         if (!__r_1.has_value()) break;
         int32_t x = *__r_1;
-        //     print(x)
+        // print(x)
         std::cout << x << "\n";
     }
     // print("done")

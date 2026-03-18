@@ -6,115 +6,115 @@ namespace tpy_user::main {
 
 // def describe(p: Point) -> str:
 std::string describe(const Point& p) {
-    //     match p:
+    // match p:
     auto& __match_subject = p;
-    //         case Point(x=0, y=0):
+    // case Point(x=0, y=0):
     if (__match_subject.x == 0 && __match_subject.y == 0) {
-        //             return "origin"
+        // return "origin"
         return "origin";
-    //         case Point(x=x, y=0):
+    // case Point(x=x, y=0):
     } else if (__match_subject.y == 0) {
         auto& x = __match_subject.x;
-        //             return "x-axis: " + str(x)
+        // return "x-axis: " + str(x)
         return (::tpy::str_concat("x-axis: ", ::tpy::fixed_to_str<int32_t>(x)));
-    //         case Point(x=0, y=y):
+    // case Point(x=0, y=y):
     } else if (__match_subject.x == 0) {
         auto& y = __match_subject.y;
-        //             return "y-axis: " + str(y)
+        // return "y-axis: " + str(y)
         return (::tpy::str_concat("y-axis: ", ::tpy::fixed_to_str<int32_t>(y)));
-    //         case Point(x=x, y=y):
+    // case Point(x=x, y=y):
     } else {
         auto& x = __match_subject.x;
         auto& y = __match_subject.y;
-        //             return "(" + str(x) + ", " + str(y) + ")"
+        // return "(" + str(x) + ", " + str(y) + ")"
         return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", ::tpy::fixed_to_str<int32_t>(x))), ", ")), ::tpy::fixed_to_str<int32_t>(y))), ")"));
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def check_quadrant(p: Point) -> str:
 std::string check_quadrant(const Point& p) {
-    //     match p:
+    // match p:
     auto& __match_subject = p;
-    //         case Point(x=0, y=0):
+    // case Point(x=0, y=0):
     if (__match_subject.x == 0 && __match_subject.y == 0) {
-        //             return "origin"
+        // return "origin"
         return "origin";
-    //         case _:
+    // case _:
     } else {
-        //             return "not origin"
+        // return "not origin"
         return "not origin";
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def positional(p: Point) -> str:
 std::string positional(const Point& p) {
-    //     match p:
+    // match p:
     auto& __match_subject = p;
-    //         case Point(0, 0):
+    // case Point(0, 0):
     if (__match_subject.x == 0 && __match_subject.y == 0) {
-        //             return "origin"
+        // return "origin"
         return "origin";
-    //         case Point(_, 0):
+    // case Point(_, 0):
     } else if (__match_subject.y == 0) {
-        //             return "x-axis"
+        // return "x-axis"
         return "x-axis";
-    //         case _:
+    // case _:
     } else {
-        //             return "other"
+        // return "other"
         return "other";
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def with_capture(p: Point) -> str:
 std::string with_capture(const Point& p) {
-    //     match p:
+    // match p:
     auto& __match_subject = p;
-    //         case Point() as q:
+    // case Point() as q:
     {
         auto& q = __match_subject;
-        //             return "point: " + str(q.x) + ", " + str(q.y)
+        // return "point: " + str(q.x) + ", " + str(q.y)
         return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("point: ", ::tpy::fixed_to_str<int32_t>(q.x))), ", ")), ::tpy::fixed_to_str<int32_t>(q.y)));
     }
-    //     return ""
+    // return ""
     return "";
 }
 
 // def main() -> None:
 void main() {
-    //     print(describe(Point(Int32(0), Int32(0))))
+    // print(describe(Point(Int32(0), Int32(0))))
     Point __tmp_1 = Point(0, 0);
     std::cout << describe(__tmp_1) << "\n";
-    //     print(describe(Point(Int32(3), Int32(0))))
+    // print(describe(Point(Int32(3), Int32(0))))
     Point __tmp_2 = Point(3, 0);
     std::cout << describe(__tmp_2) << "\n";
-    //     print(describe(Point(Int32(0), Int32(5))))
+    // print(describe(Point(Int32(0), Int32(5))))
     Point __tmp_3 = Point(0, 5);
     std::cout << describe(__tmp_3) << "\n";
-    //     print(describe(Point(Int32(3), Int32(4))))
+    // print(describe(Point(Int32(3), Int32(4))))
     Point __tmp_4 = Point(3, 4);
     std::cout << describe(__tmp_4) << "\n";
-    //     print(check_quadrant(Point(Int32(0), Int32(0))))
+    // print(check_quadrant(Point(Int32(0), Int32(0))))
     Point __tmp_5 = Point(0, 0);
     std::cout << check_quadrant(__tmp_5) << "\n";
-    //     print(check_quadrant(Point(Int32(1), Int32(2))))
+    // print(check_quadrant(Point(Int32(1), Int32(2))))
     Point __tmp_6 = Point(1, 2);
     std::cout << check_quadrant(__tmp_6) << "\n";
-    //     print(positional(Point(Int32(0), Int32(0))))
+    // print(positional(Point(Int32(0), Int32(0))))
     Point __tmp_7 = Point(0, 0);
     std::cout << positional(__tmp_7) << "\n";
-    //     print(positional(Point(Int32(5), Int32(0))))
+    // print(positional(Point(Int32(5), Int32(0))))
     Point __tmp_8 = Point(5, 0);
     std::cout << positional(__tmp_8) << "\n";
-    //     print(positional(Point(Int32(1), Int32(2))))
+    // print(positional(Point(Int32(1), Int32(2))))
     Point __tmp_9 = Point(1, 2);
     std::cout << positional(__tmp_9) << "\n";
-    //     print(with_capture(Point(Int32(7), Int32(8))))
+    // print(with_capture(Point(Int32(7), Int32(8))))
     Point __tmp_10 = Point(7, 8);
     std::cout << with_capture(__tmp_10) << "\n";
 }

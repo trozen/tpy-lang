@@ -15,10 +15,10 @@ void main();
 // @nocopy
 // class Handle:
 struct Handle {
-    //     fd: Int32
+    // fd: Int32
     int32_t fd;
 
-    //     def __init__(self, fd: Int32):
+    // def __init__(self, fd: Int32):
     Handle() = default;
     explicit Handle(int32_t fd) : fd(fd) {}
     // non-copyable (@nocopy)
@@ -38,10 +38,10 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
 // class TaggedValue[T]:
 template<typename T>
 struct TaggedValue {
-    //     data: Int32
+    // data: Int32
     int32_t data;
 
-    //     def __init__(self, data: Int32):
+    // def __init__(self, data: Int32):
     TaggedValue() = default;
     explicit TaggedValue(int32_t data) : data(data) {}
     // copyable via __copy__
@@ -53,9 +53,9 @@ struct TaggedValue {
     TaggedValue(TaggedValue&&) = default;
     TaggedValue& operator=(TaggedValue&&) = default;
 
-    //     def __copy__(self) -> Own[TaggedValue[T]]:
+    // def __copy__(self) -> Own[TaggedValue[T]]:
     TaggedValue<T> __copy__() const {
-        //         return TaggedValue[T](self.data)
+        // return TaggedValue[T](self.data)
         return TaggedValue<T>(this->data);
     }
 };

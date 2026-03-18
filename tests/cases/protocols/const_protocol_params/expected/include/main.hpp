@@ -65,19 +65,19 @@ void main();
 
 // class Rect:
 struct Rect {
-    //     _w: Int32
+    // _w: Int32
     int32_t _w;
-    //     _h: Int32
+    // _h: Int32
     int32_t _h;
 
-    //     def __init__(self, w: Int32, h: Int32) -> None:
+    // def __init__(self, w: Int32, h: Int32) -> None:
     Rect() = default;
     explicit Rect(int32_t w, int32_t h) : _w(w), _h(h) {}
 
-    //     @readonly
-    //     def area(self) -> Int32:
+    // @readonly
+    // def area(self) -> Int32:
     int32_t area() const {
-        //         return self._w * self._h
+        // return self._w * self._h
         return (::tpy::mul_check<int32_t>(this->_w, this->_h));
     }
 };
@@ -93,23 +93,23 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 
 // class Box:
 struct Box {
-    //     _side: Int32
+    // _side: Int32
     int32_t _side;
 
-    //     def __init__(self, side: Int32) -> None:
+    // def __init__(self, side: Int32) -> None:
     Box() = default;
     explicit Box(int32_t side) : _side(side) {}
 
-    //     @readonly
-    //     def measure(self) -> Int32:
+    // @readonly
+    // def measure(self) -> Int32:
     int32_t measure() const {
-        //         return self._side
+        // return self._side
         return this->_side;
     }
 
-    //     def resize(self, v: Int32) -> None:
+    // def resize(self, v: Int32) -> None:
     void resize(int32_t v) {
-        //         self._side = v
+        // self._side = v
         this->_side = v;
     }
 };
@@ -125,23 +125,23 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // def get_measure(p: Measurable) -> Int32:
 template<Measurable T_p>
 int32_t get_measure(const T_p& p) {
-    //     return p.measure()
+    // return p.measure()
     return p.measure();
 }
 // # Mutated static protocol param -> T_p& (resize modifies p)
 // def double_resize(p: Resizable) -> Int32:
 template<Resizable T_p>
 int32_t double_resize(T_p& p) {
-    //     p.resize(p.measure() * 2)
+    // p.resize(p.measure() * 2)
     p.resize((::tpy::mul_check<int32_t>(p.measure(), 2)));
-    //     return p.measure()
+    // return p.measure()
     return p.measure();
 }
 // # Two params: src is non-mutated (const T&), dst is mutated (T&)
 // def copy_measure(src: Resizable, dst: Resizable) -> None:
 template<Resizable T_src, Resizable T_dst>
 void copy_measure(const T_src& src, T_dst& dst) {
-    //     dst.resize(src.measure())
+    // dst.resize(src.measure())
     dst.resize(src.measure());
 }
 

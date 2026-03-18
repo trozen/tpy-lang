@@ -15,7 +15,7 @@ void main();
 // def show[T](x: T) -> None:
 template<typename T>
 void show(::tpy::param_val_or_ref_t<T> x) {
-    //     print(x)
+    // print(x)
     std::cout << ::tpy::ValuePrinter(x) << "\n";
 }
 

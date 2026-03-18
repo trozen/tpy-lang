@@ -15,10 +15,10 @@ void main();
 
 // class Dog:
 struct Dog {
-    //     name: str
+    // name: str
     std::string name;
 
-    //     def __init__(self, name: str) -> None:
+    // def __init__(self, name: str) -> None:
     Dog() = default;
     explicit Dog(std::string_view name) : name(name) {}
 };
@@ -32,10 +32,10 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 
 // class Cat:
 struct Cat {
-    //     lives: int
+    // lives: int
     ::tpy::BigInt lives;
 
-    //     def __init__(self, lives: int) -> None:
+    // def __init__(self, lives: int) -> None:
     Cat() = default;
     explicit Cat(const ::tpy::BigInt& lives) : lives(lives) {}
 };
@@ -49,29 +49,29 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 
 // class Vet:
 struct Vet {
-    //     count: int
+    // count: int
     ::tpy::BigInt count;
 
-    //     def __init__(self) -> None:
+    // def __init__(self) -> None:
     Vet() : count(::tpy::BigInt(0)) {}
 
-    //     @overload
-    //     def treat(self, animal: Dog) -> str: ...
+    // @overload
+    // def treat(self, animal: Dog) -> str: ...
     std::string treat(Dog& animal) {
-        //         self.count = self.count + 1
+        // self.count = self.count + 1
         this->count = ((this->count) + (::tpy::BigInt(1)));
-        //         if isinstance(animal, Dog):
-        //             return "Treated dog: " + animal.name
+        // if isinstance(animal, Dog):
+        // return "Treated dog: " + animal.name
         return (::tpy::str_concat("Treated dog: ", animal.name));
     }
 
-    //     @overload
-    //     def treat(self, animal: Cat) -> str: ...
+    // @overload
+    // def treat(self, animal: Cat) -> str: ...
     std::string treat(Cat& animal) {
-        //         self.count = self.count + 1
+        // self.count = self.count + 1
         this->count = ((this->count) + (::tpy::BigInt(1)));
-        //         if isinstance(animal, Dog):
-        //             return "Treated cat with " + str(animal.lives) + " lives"
+        // if isinstance(animal, Dog):
+        // return "Treated cat with " + str(animal.lives) + " lives"
         return (::tpy::str_concat((::tpy::str_concat("Treated cat with ", (animal.lives).to_string())), " lives"));
     }
 };

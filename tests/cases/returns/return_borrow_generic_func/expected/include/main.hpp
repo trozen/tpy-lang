@@ -25,12 +25,12 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -49,16 +49,16 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // class Box[T]:
 template<typename T>
 struct Box {
-    //     _items: list[T]
+    // _items: list[T]
     std::vector<T> _items;
 
-    //     def __init__(self, items: list[T]) -> None:
+    // def __init__(self, items: list[T]) -> None:
     Box() = default;
     explicit Box(const std::vector<T>& items) : _items(items) {}
 
-    //     def first(self) -> T:
+    // def first(self) -> T:
     ::tpy::val_or_ref_t<T> first() {
-        //         return self._items[0]  # borrows from self
+        // return self._items[0]  # borrows from self
         return ::tpy::__getitem__(this->_items, 0);
     }
 };
@@ -74,25 +74,25 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 // def first[T](items: list[T]) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> first(std::vector<T>& items) {
-    //     return items[0]
+    // return items[0]
     return ::tpy::__getitem__(items, 0);
 }
 // # (c) Return-through-local: generic caller -- p is val_or_ref_t<T>, param-derived.
 // def get_first_generic[T](items: list[T]) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> get_first_generic(std::vector<T>& items) {
-    //     p = first(items)
+    // p = first(items)
     ::tpy::val_or_ref_t<T> p = first<T>(items);
-    //     return p  # tpyc: ok
+    // return p  # tpyc: ok
     return p;
 }
 // # (d2) Return-through-local: generic method caller (TpyMethodCall in is_param_derived_expr).
 // def get_first_from_box[T](box: Box[T]) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> get_first_from_box(Box<T>& box) {
-    //     p = box.first()
+    // p = box.first()
     ::tpy::val_or_ref_t<T> p = box.first();
-    //     return p  # tpyc: ok
+    // return p  # tpyc: ok
     return p;
 }
 

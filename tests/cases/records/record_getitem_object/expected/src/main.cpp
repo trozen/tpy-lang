@@ -6,21 +6,21 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     p1: Point = Point(10, 20)
+    // p1: Point = Point(10, 20)
     Point p1 = Point(10, 20);
-    //     p2: Point = Point(30, 40)
+    // p2: Point = Point(30, 40)
     Point p2 = Point(30, 40);
-    //     pts: list[Point] = [p1, p2]
+    // pts: list[Point] = [p1, p2]
     std::vector<Point> pts = {p1, p2};
-    //     plist: PointList = PointList(pts)
+    // plist: PointList = PointList(pts)
     PointList plist = PointList(pts);
-    //     # Access via __getitem__ (returns const Point& in C++)
-    //     print(plist[0].x)   # 10
+    // # Access via __getitem__ (returns const Point& in C++)
+    // print(plist[0].x)   # 10
     std::cout << plist[0].x << "\n";
-    //     print(plist[1].y)   # 40
+    // print(plist[1].y)   # 40
     std::cout << plist[1].y << "\n";
-    //     # Access via operator[] (also returns const Point&)
-    //     print(plist[-1].x)  # 30
+    // # Access via operator[] (also returns const Point&)
+    // print(plist[-1].x)  # 30
     std::cout << plist[-1].x << "\n";
 }
 

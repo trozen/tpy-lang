@@ -21,9 +21,9 @@ void __tpy_init() {
     saved = &__global_slot_1;
     // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
-        //     p: Point = Point(i, i)
+        // p: Point = Point(i, i)
         Point* p = &*(__global_slot_2 = Point(i, i));
-        //     saved = p  # tpyc: warning(/hoisted to function scope/)
+        // saved = p  # tpyc: warning(/hoisted to function scope/)
         saved = p;
     }
     // print(saved.x, saved.y)

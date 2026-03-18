@@ -6,23 +6,23 @@ namespace tpy_user::main {
 
 // def make_point(x: Int32, y: Int32) -> Own[Point]:
 Point make_point(int32_t x, int32_t y) {
-    //     p = Point()
+    // p = Point()
     Point p = Point();
-    //     p.x = x
+    // p.x = x
     p.x = x;
-    //     p.y = y
+    // p.y = y
     p.y = y;
-    //     return p  # last use of p -> auto-move (no copy needed)
+    // return p  # last use of p -> auto-move (no copy needed)
     return p;
 }
 
 // def main():
 void main() {
-    //     pt = make_point(10, 20)
+    // pt = make_point(10, 20)
     Point pt = make_point(10, 20);
-    //     print(pt.x)
+    // print(pt.x)
     std::cout << pt.x << "\n";
-    //     print(pt.y)
+    // print(pt.y)
     std::cout << pt.y << "\n";
 }
 

@@ -14,24 +14,24 @@ void main();
 // class Pair[A, B]:
 template<typename A, typename B>
 struct Pair {
-    //     first: A
+    // first: A
     A first;
-    //     second: B
+    // second: B
     B second;
 
-    //     def __init__(self, first: A, second: B) -> None:
+    // def __init__(self, first: A, second: B) -> None:
     Pair() = default;
     explicit Pair(const A& first, const B& second) : first(first), second(second) {}
 
-    //     def get_first(self) -> A:
+    // def get_first(self) -> A:
     ::tpy::val_or_ref_t<A> get_first() {
-        //         return self.first
+        // return self.first
         return this->first;
     }
 
-    //     def get_second(self) -> B:
+    // def get_second(self) -> B:
     ::tpy::val_or_ref_t<B> get_second() {
-        //         return self.second
+        // return self.second
         return this->second;
     }
 };

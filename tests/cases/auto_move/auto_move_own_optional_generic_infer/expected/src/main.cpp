@@ -6,15 +6,15 @@ namespace tpy_user::main {
 
 // def main():
 void main() {
-    //     b = Box()
+    // b = Box()
     Box b = Box();
-    //     b.value = Int32(42)
+    // b.value = Int32(42)
     b.value = 42;
-    //     # T inferred as Box from the bare Box arg coerced to Own[Box] | None
-    //     print(take_optional(b, Int32(99)))
+    // # T inferred as Box from the bare Box arg coerced to Own[Box] | None
+    // print(take_optional(b, Int32(99)))
     std::cout << take_optional<Box>(std::move(b), 99) << "\n";
-    //     # None arg: T must be explicit since it can't be inferred from None
-    //     print(take_optional[Box](None, Int32(77)))
+    // # None arg: T must be explicit since it can't be inferred from None
+    // print(take_optional[Box](None, Int32(77)))
     std::cout << take_optional<Box>(std::nullopt, 77) << "\n";
 }
 

@@ -13,19 +13,19 @@ void main();
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32):
+    // def __init__(self, x: Int32, y: Int32):
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {
     }
 
-    //     def magnitude_sq(self) -> Int32:
+    // def magnitude_sq(self) -> Int32:
     int32_t magnitude_sq() const {
-        //         return self.x * self.x + self.y * self.y
+        // return self.x * self.x + self.y * self.y
         return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(this->x, this->x)), (::tpy::mul_check<int32_t>(this->y, this->y))));
     }
 };

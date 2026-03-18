@@ -7,20 +7,20 @@ namespace tpy_user::main {
 // # Multiple same-size cross-variable reassignments promote all to list
 // def main() -> None:
 void main() {
-    //     a = [1, 2, 3]  # tpyc: type(/list/)
+    // a = [1, 2, 3]  # tpyc: type(/list/)
     std::vector<int32_t> __slot_1 = {1, 2, 3};
     std::vector<int32_t>* a = &__slot_1;
-    //     b = [4, 5, 6]  # tpyc: type(/list/)
+    // b = [4, 5, 6]  # tpyc: type(/list/)
     std::vector<int32_t> b = {4, 5, 6};
-    //     c = [7, 8, 9]  # tpyc: type(/list/)
+    // c = [7, 8, 9]  # tpyc: type(/list/)
     std::vector<int32_t> c = {7, 8, 9};
-    //     a = b
+    // a = b
     a = &(b);
-    //     a = c
+    // a = c
     a = &(c);
-    //     a.append(10)
+    // a.append(10)
     (*a).push_back(10);
-    //     print(len(c))
+    // print(len(c))
     std::cout << ::tpy::__len__(c) << "\n";
 }
 

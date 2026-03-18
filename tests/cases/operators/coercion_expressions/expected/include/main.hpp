@@ -23,22 +23,22 @@ void test_literal_expr_to_int32();
 
 // class Counter:
 struct Counter {
-    //     value: int
+    // value: int
     ::tpy::BigInt value;
 
-    //     def __init__(self, v: int) -> None:
+    // def __init__(self, v: int) -> None:
     Counter() = default;
     explicit Counter(const ::tpy::BigInt& v) : value(v) {}
 
-    //     def get(self) -> int:
+    // def get(self) -> int:
     ::tpy::BigInt get() const {
-        //         return self.value
+        // return self.value
         return this->value;
     }
 
-    //     def add(self, x: int) -> int:
+    // def add(self, x: int) -> int:
     ::tpy::BigInt add(const ::tpy::BigInt& x) const {
-        //         return self.value + x
+        // return self.value + x
         return ((this->value) + (x));
     }
 };
@@ -52,12 +52,12 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 
 // class Point:
 struct Point {
-    //     x: Int32
+    // x: Int32
     int32_t x;
-    //     y: Int32
+    // y: Int32
     int32_t y;
 
-    //     def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 };
@@ -73,10 +73,10 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // class Container:
 struct Container {
-    //     pt: Point
+    // pt: Point
     Point pt;
 
-    //     def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: Int32, y: Int32) -> None:
     Container() = default;
     explicit Container(int32_t x, int32_t y) : pt(Point(x, y)) {}
 };
@@ -90,10 +90,10 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 
 // class Outer:
 struct Outer {
-    //     inner: Container
+    // inner: Container
     Container inner;
 
-    //     def __init__(self, x: Int32, y: Int32) -> None:
+    // def __init__(self, x: Int32, y: Int32) -> None:
     Outer() = default;
     explicit Outer(int32_t x, int32_t y) : inner(Container(x, y)) {}
 };

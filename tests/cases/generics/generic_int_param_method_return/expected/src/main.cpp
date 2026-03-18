@@ -6,17 +6,17 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     g = Grid[Int32, 4](10)
+    // g = Grid[Int32, 4](10)
     Grid<int32_t, 4> g = Grid<int32_t, 4>(10);
-    //     g2 = g.copy()
+    // g2 = g.copy()
     Grid<int32_t, 4> g2 = g.copy();
-    //     g3 = g.with_value(99)
+    // g3 = g.with_value(99)
     Grid<int32_t, 4> g3 = g.with_value(99);
-    //     print(g._value)
+    // print(g._value)
     std::cout << g._value << "\n";
-    //     print(g2._value)
+    // print(g2._value)
     std::cout << g2._value << "\n";
-    //     print(g3._value)
+    // print(g3._value)
     std::cout << g3._value << "\n";
 }
 

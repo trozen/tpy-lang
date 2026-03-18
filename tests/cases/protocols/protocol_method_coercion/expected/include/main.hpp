@@ -22,22 +22,22 @@ void main();
 
 // class SimpleCalc:
 struct SimpleCalc {
-    //     base: Int32
+    // base: Int32
     int32_t base;
 
-    //     def __init__(self, b: Int32) -> None:
+    // def __init__(self, b: Int32) -> None:
     SimpleCalc() = default;
     explicit SimpleCalc(int32_t b) : base(b) {}
 
-    //     def add(self, x: Int32) -> Int32:
+    // def add(self, x: Int32) -> Int32:
     int32_t add(int32_t x) const {
-        //         return self.base + x
+        // return self.base + x
         return (::tpy::add_check<int32_t>(this->base, x));
     }
 
-    //     def multiply(self, x: Int32, y: Int32) -> Int32:
+    // def multiply(self, x: Int32, y: Int32) -> Int32:
     int32_t multiply(int32_t x, int32_t y) const {
-        //         return x * y
+        // return x * y
         return (::tpy::mul_check<int32_t>(x, y));
     }
 };
@@ -52,14 +52,14 @@ inline std::ostream& operator<<(std::ostream& os, const SimpleCalc& obj) {
 // def use_calc(c: Calculator) -> None:
 template<Calculator T_c>
 void use_calc(T_c& c) {
-    //     # Test: Literal coercion to Int32 in protocol method calls
-    //     result1 = c.add(10)
+    // # Test: Literal coercion to Int32 in protocol method calls
+    // result1 = c.add(10)
     int32_t result1 = c.add(10);
-    //     print(result1)
+    // print(result1)
     std::cout << result1 << "\n";
-    //     result2 = c.multiply(6, 7)
+    // result2 = c.multiply(6, 7)
     int32_t result2 = c.multiply(6, 7);
-    //     print(result2)
+    // print(result2)
     std::cout << result2 << "\n";
 }
 

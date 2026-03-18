@@ -7,29 +7,29 @@ namespace tpy_user::main {
 // @readonly
 // def maybe_read(b: Box, flag: bool) -> Int32:
 int32_t maybe_read(const Box& b, bool flag) {
-    //     x: Box | None = None
+    // x: Box | None = None
     const Box* x = nullptr;
-    //     if flag:
+    // if flag:
     if (flag) {
-        //         x = b
+        // x = b
         x = &(b);
     }
-    //     if x is not None:
+    // if x is not None:
     if ((x != nullptr)) {
-        //         return x.get_value()
+        // return x.get_value()
         return x->get_value();
     }
-    //     return Int32(0)
+    // return Int32(0)
     return 0;
 }
 
 // def main() -> None:
 void main() {
-    //     b = Box(Int32(42))
+    // b = Box(Int32(42))
     Box b = Box(42);
-    //     print(maybe_read(b, True))
+    // print(maybe_read(b, True))
     std::cout << maybe_read(b, true) << "\n";
-    //     print(maybe_read(b, False))
+    // print(maybe_read(b, False))
     std::cout << maybe_read(b, false) << "\n";
 }
 

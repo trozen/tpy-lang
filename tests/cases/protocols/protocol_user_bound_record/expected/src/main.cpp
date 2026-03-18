@@ -6,11 +6,11 @@ namespace tpy_user::main {
 
 // def main() -> None:
 void main() {
-    //     factory = DefaultFactory()
+    // factory = DefaultFactory()
     DefaultFactory factory = DefaultFactory();
-    //     container = create_container(factory, "Hello from container")
+    // container = create_container(factory, "Hello from container")
     Container<Message> container = create_container<DefaultFactory>(factory, "Hello from container");
-    //     container.print_value()
+    // container.print_value()
     container.print_value();
 }
 

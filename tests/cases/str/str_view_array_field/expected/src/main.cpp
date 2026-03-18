@@ -6,127 +6,127 @@ namespace tpy_user::main {
 
 // def test_array_subscript_view() -> None:
 void test_array_subscript_view() {
-    //     arr: Array[str, 3] = ["hello", "world", "test"]
+    // arr: Array[str, 3] = ["hello", "world", "test"]
     std::array<std::string, 3> arr = {"hello", "world", "test"};
-    //     s = arr[Int32(0)]  # tpyc: type(StrView)
+    // s = arr[Int32(0)]  # tpyc: type(StrView)
     std::string_view s = ::tpy::__getitem__(arr, 0);
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_array_subscript_mutated() -> None:
 void test_array_subscript_mutated() {
-    //     arr: Array[str, 2] = ["old", "value"]
+    // arr: Array[str, 2] = ["old", "value"]
     std::array<std::string, 2> arr = {"old", "value"};
-    //     s = arr[Int32(0)]  # tpyc: type(str)
+    // s = arr[Int32(0)]  # tpyc: type(str)
     std::string s = ::tpy::__getitem__(arr, 0);
-    //     arr[Int32(0)] = "new"
+    // arr[Int32(0)] = "new"
     ::tpy::__setitem__(arr, 0, "new");
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_record_field_view() -> None:
 void test_record_field_view() {
-    //     p = Person("Alice", Int32(30))
+    // p = Person("Alice", Int32(30))
     Person p = Person("Alice", 30);
-    //     s = p.name  # tpyc: type(StrView)
+    // s = p.name  # tpyc: type(StrView)
     std::string_view s = p.name;
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_record_field_mutated() -> None:
 void test_record_field_mutated() {
-    //     p = Person("Bob", Int32(25))
+    // p = Person("Bob", Int32(25))
     Person p = Person("Bob", 25);
-    //     s = p.name  # tpyc: type(str)
+    // s = p.name  # tpyc: type(str)
     std::string s = p.name;
-    //     p.name = "Charlie"
+    // p.name = "Charlie"
     p.name = "Charlie";
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_record_reassigned() -> None:
 void test_record_reassigned() {
-    //     p = Person("Dave", Int32(40))
+    // p = Person("Dave", Int32(40))
     Person __slot_1 = Person("Dave", 40);
     std::optional<Person> __slot_2;
     Person* p = &__slot_1;
-    //     s = p.name  # tpyc: type(str)
+    // s = p.name  # tpyc: type(str)
     std::string s = p->name;
-    //     p = Person("Eve", Int32(35))
+    // p = Person("Eve", Int32(35))
     p = &*(__slot_2 = Person("Eve", 35));
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_record_method_mutates() -> None:
 void test_record_method_mutates() {
-    //     p = Person("Frank", Int32(50))
+    // p = Person("Frank", Int32(50))
     Person p = Person("Frank", 50);
-    //     s = p.name  # tpyc: type(str)
+    // s = p.name  # tpyc: type(str)
     std::string s = p.name;
-    //     p.rename("Grace")
+    // p.rename("Grace")
     p.rename("Grace");
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_readonly_method_preserves_view() -> None:
 void test_readonly_method_preserves_view() {
-    //     p = Person("Helen", Int32(60))
+    // p = Person("Helen", Int32(60))
     Person p = Person("Helen", 60);
-    //     s = p.name  # tpyc: type(StrView)
+    // s = p.name  # tpyc: type(StrView)
     std::string_view s = p.name;
-    //     g = p.greeting()
+    // g = p.greeting()
     std::string g = p.greeting();
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_field_aug_assign_mutates() -> None:
 void test_field_aug_assign_mutates() {
-    //     p = Person("Iris", Int32(70))
+    // p = Person("Iris", Int32(70))
     Person p = Person("Iris", 70);
-    //     s = p.name  # tpyc: type(str)
+    // s = p.name  # tpyc: type(str)
     std::string s = p.name;
-    //     p.name += "!"
+    // p.name += "!"
     p.name += "!";
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 
 // def test_array_passed_to_func(arr: Array[str, 2]) -> None:
 void test_array_passed_to_func(std::array<std::string, 2>& arr) {
-    //     s = arr[Int32(0)]  # tpyc: type(str)
+    // s = arr[Int32(0)]  # tpyc: type(str)
     std::string s = ::tpy::__getitem__(arr, 0);
-    //     mutate_array(arr)
+    // mutate_array(arr)
     mutate_array(arr);
-    //     print(s)
+    // print(s)
     std::cout << s << "\n";
 }
 
 // def mutate_array(arr: Array[str, 2]) -> None:
 void mutate_array(std::array<std::string, 2>& arr) {
-    //     arr[Int32(0)] = "mutated"
+    // arr[Int32(0)] = "mutated"
     ::tpy::__setitem__(arr, 0, "mutated");
 }
 
 // def test_multiple_views_one_source() -> None:
 void test_multiple_views_one_source() {
-    //     p = Person("X", Int32(1))
+    // p = Person("X", Int32(1))
     Person p = Person("X", 1);
-    //     a = p.name  # tpyc: type(str)
+    // a = p.name  # tpyc: type(str)
     std::string a = p.name;
-    //     b = p.name  # tpyc: type(str)
+    // b = p.name  # tpyc: type(str)
     std::string b = p.name;
-    //     p.name = "Y"
+    // p.name = "Y"
     p.name = "Y";
-    //     print(a)
+    // print(a)
     std::cout << a << "\n";
-    //     print(b)
+    // print(b)
     std::cout << b << "\n";
 }
 

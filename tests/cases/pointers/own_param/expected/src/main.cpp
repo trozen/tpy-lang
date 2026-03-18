@@ -6,29 +6,29 @@ namespace tpy_user::main {
 
 // def make_point(x: Int32, y: Int32) -> Own[Point]:
 Point make_point(int32_t x, int32_t y) {
-    //     p: Point = Point()
+    // p: Point = Point()
     Point p = Point();
-    //     p.x = x
+    // p.x = x
     p.x = x;
-    //     p.y = y
+    // p.y = y
     p.y = y;
-    //     return copy(p)  # tpyc: warning(/unnecessary copy/)
+    // return copy(p)  # tpyc: warning(/unnecessary copy/)
     return Point(p);
 }
 
 // def take_point(p: Own[Point]) -> Int32:
 int32_t take_point(Point&& p) {
-    //     # Field access on Own[T] should work - unwraps to the underlying type
-    //     return p.x + p.y
+    // # Field access on Own[T] should work - unwraps to the underlying type
+    // return p.x + p.y
     return (::tpy::add_check<int32_t>(p.x, p.y));
 }
 
 // def main():
 void main() {
-    //     # Pass Own[Point] directly to Own[Point] param - should work
-    //     result: Int32 = take_point(make_point(10, 20))
+    // # Pass Own[Point] directly to Own[Point] param - should work
+    // result: Int32 = take_point(make_point(10, 20))
     int32_t result = take_point(make_point(10, 20));
-    //     print(result)
+    // print(result)
     std::cout << result << "\n";
 }
 

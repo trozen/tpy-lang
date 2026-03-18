@@ -6,16 +6,16 @@ namespace tpy_user::main {
 
 // def greet(n: DynNamed) -> None:
 void greet(DynNamed& n) {
-    //     print(n.name())
+    // print(n.name())
     std::cout << n.name() << "\n";
 }
 
 // def main() -> None:
 void main() {
-    //     greet(Dog())
+    // greet(Dog())
     Dog __tmp_1{Dog()};
     greet(__tmp_1);
-    //     greet(Cat())
+    // greet(Cat())
     ::tpy::Adapter<DynNamed, Cat> __tmp_2{Cat()};
     greet(__tmp_2);
 }

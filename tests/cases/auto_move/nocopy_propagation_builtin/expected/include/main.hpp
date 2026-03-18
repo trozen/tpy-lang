@@ -16,13 +16,13 @@ void main();
 
 // class Storage:
 struct Storage {
-    //     buf: UninitHeapStorage[Int32]
+    // buf: UninitHeapStorage[Int32]
     ::tpy::UninitHeapStorage<int32_t> buf;
     bool __tpy_owned_ = true;
 
-    //     def __init__(self):
+    // def __init__(self):
     Storage() : buf(::tpy::UninitHeapStorage<int32_t>(1)) {
-        //         self.buf.init0(42)
+        // self.buf.init0(42)
         this->buf.init0(42);
     }
     // non-copyable (field 'buf')
@@ -38,17 +38,17 @@ struct Storage {
         }
         return *this;
     }
-    //     def __del__(self):
+    // def __del__(self):
 
     ~Storage() {
         if (!__tpy_owned_) return;
-        //         self.buf.drop0()
+        // self.buf.drop0()
         this->buf.drop0();
     }
 
-    //     def get(self) -> Int32:
+    // def get(self) -> Int32:
     int32_t get() const {
-        //         return self.buf.load0()
+        // return self.buf.load0()
         return this->buf.load0();
     }
 };

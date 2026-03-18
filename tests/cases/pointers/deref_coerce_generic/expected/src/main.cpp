@@ -6,21 +6,21 @@ namespace tpy_user::main {
 
 // def print_point(p: Point) -> None:
 void print_point(const Point& p) {
-    //     print(p.x, p.y)
+    // print(p.x, p.y)
     std::cout << p.x << " " << p.y << "\n";
 }
 
 // def test() -> None:
 void test() {
-    //     b: Box[Point] = Box(Point(5, 15))
+    // b: Box[Point] = Box(Point(5, 15))
     Box<Point> b = Box<Point>(Point(5, 15));
-    //     # Field access through generic deref: Box[Point].__deref__() -> Point
-    //     print(b.x)
+    // # Field access through generic deref: Box[Point].__deref__() -> Point
+    // print(b.x)
     std::cout << b.__deref__().x << "\n";
-    //     print(b.y)
+    // print(b.y)
     std::cout << b.__deref__().y << "\n";
-    //     # Coercion: Box[Point] passed where Point expected
-    //     print_point(b)
+    // # Coercion: Box[Point] passed where Point expected
+    // print_point(b)
     Point __tmp_1 = b.__deref__();
     print_point(__tmp_1);
 }

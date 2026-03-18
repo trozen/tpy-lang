@@ -17,12 +17,12 @@ void main();
 // # warning: non-exhaustive match on record (guarded and literal-field arms only)
 // class Point:
 struct Point {
-    //     x: int
+    // x: int
     ::tpy::BigInt x;
-    //     y: int
+    // y: int
     ::tpy::BigInt y;
 
-    //     def __init__(self, x: int, y: int) -> None:
+    // def __init__(self, x: int, y: int) -> None:
     Point() = default;
     explicit Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y) : x(x), y(y) {}
 };
