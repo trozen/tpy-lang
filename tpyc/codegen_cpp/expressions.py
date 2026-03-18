@@ -156,6 +156,37 @@ class ExpressionGenerator:
             return f"&({tmp})"
         return f"&({gen})"
 
+    def _gen_union_arg(self, arg: TpyExpr, ptype: TpyType) -> str | None:
+        """Generate argument for a union-typed param, or None if not applicable."""
+        ptype_union = unwrap_readonly(ptype) if ptype else ptype
+        if not isinstance(ptype_union, UnionType):
+            return None
+        arg_type = self.ctx.get_expr_type(arg)
+        cpp_decl = self._get_cpp_declared_type(arg)
+        already_union = (
+            isinstance(arg_type, UnionType)
+            or (cpp_decl is not None and isinstance(cpp_decl, UnionType))
+        )
+        if ptype_union.uses_pointer_repr():
+            if isinstance(arg, TpyNoneLiteral):
+                pv_cpp = self.types.type_to_cpp_ptr_variant(ptype_union)
+                return f"{pv_cpp}{{std::monostate{{}}}}"
+            if arg_type is not None and not already_union:
+                pv_cpp = self.types.type_to_cpp_ptr_variant(ptype_union)
+                arg_expr = self.gen_expr_deref(arg, arg_type)
+                if self.ctx.is_rvalue_source(arg):
+                    temp = self.ctx.temps.create(arg_type, arg_expr)
+                    return f"{pv_cpp}{{&{temp}}}"
+                return f"{pv_cpp}{{&({arg_expr})}}"
+            return None  # already a union -- use default gen_call_arg
+        else:
+            if arg_type is not None and not already_union:
+                variant_cpp = self.types.type_to_cpp(ptype_union)
+                arg_expr = self.gen_expr_deref(arg, arg_type)
+                arg_expr = self._maybe_move(arg, arg_expr)
+                return self.ctx.temps.create_typed(variant_cpp, arg_expr, brace_init=False)
+            return None  # already a union -- use default gen_call_arg
+
     def gen_expr_deref(self, expr: TpyExpr, target_type: TpyType = None) -> str:
         """Generate an expression, dereferencing globals.
 
@@ -1399,41 +1430,8 @@ class ExpressionGenerator:
                     temp_name = self.ctx.temps.create(resolved_ptype, init_expr)
                     gen_args.append(temp_name)
                 # Union params: wrap concrete member type in variant
-                elif isinstance(unwrap_readonly(resolved_ptype), UnionType):
-                    ptype_union = unwrap_readonly(resolved_ptype)
-                    arg_type = self.ctx.get_expr_type(arg)
-                    cpp_decl = self._get_cpp_declared_type(arg)
-                    already_union = (
-                        isinstance(arg_type, UnionType)
-                        or (cpp_decl is not None and isinstance(cpp_decl, UnionType))
-                    )
-                    if ptype_union.uses_pointer_repr():
-                        # Pointer-variant param: wrap concrete value as variant<T*,...>{&expr}
-                        if isinstance(arg, TpyNoneLiteral):
-                            # None -> monostate (not a pointer)
-                            pv_cpp = self.types.type_to_cpp_ptr_variant(ptype_union)
-                            gen_args.append(f"{pv_cpp}{{std::monostate{{}}}}")
-                        elif arg_type is not None and not already_union:
-                            pv_cpp = self.types.type_to_cpp_ptr_variant(ptype_union)
-                            arg_expr = self.gen_expr_deref(arg, arg_type)
-                            if self.ctx.is_rvalue_source(arg):
-                                # Rvalue: materialize temp first, then take address
-                                temp = self.ctx.temps.create(arg_type, arg_expr)
-                                gen_args.append(f"{pv_cpp}{{&{temp}}}")
-                            else:
-                                gen_args.append(f"{pv_cpp}{{&({arg_expr})}}")
-                        else:
-                            gen_args.append(self.gen_call_arg(arg, resolved_ptype))
-                    else:
-                        # Value-type union: wrap concrete member in value variant temp
-                        if arg_type is not None and not already_union:
-                            variant_cpp = self.types.type_to_cpp(ptype_union)
-                            arg_expr = self.gen_expr_deref(arg, arg_type)
-                            arg_expr = self._maybe_move(arg, arg_expr)
-                            temp_name = self.ctx.temps.create_typed(variant_cpp, arg_expr, brace_init=False)
-                            gen_args.append(temp_name)
-                        else:
-                            gen_args.append(self.gen_call_arg(arg, resolved_ptype))
+                elif (union_arg := self._gen_union_arg(arg, resolved_ptype)) is not None:
+                    gen_args.append(union_arg)
                 else:
                     gen_args.append(self.gen_call_arg(arg, resolved_ptype))
 
@@ -1552,6 +1550,8 @@ class ExpressionGenerator:
                     gen_args.append(proto_arg)
                 elif (opt_arg := self._gen_optional_ptr_arg(a, ptype)) is not None:
                     gen_args.append(opt_arg)
+                elif (union_arg := self._gen_union_arg(a, ptype)) is not None:
+                    gen_args.append(union_arg)
                 else:
                     gen_args.append(self.gen_call_arg(a, ptype))
             args = ", ".join(gen_args)
@@ -1615,6 +1615,10 @@ class ExpressionGenerator:
                     opt_arg = self._gen_optional_ptr_arg(arg, ptype)
                     if opt_arg is not None:
                         gen_args.append(opt_arg)
+                        continue
+                    union_arg = self._gen_union_arg(arg, ptype)
+                    if union_arg is not None:
+                        gen_args.append(union_arg)
                         continue
                     gen_args.append(self.gen_call_arg(arg, ptype))
             args = ", ".join(gen_args)
@@ -1827,6 +1831,8 @@ class ExpressionGenerator:
                                 gen_args.append(proto_arg)
                             elif (opt_arg := self._gen_optional_ptr_arg(arg, rptype)) is not None:
                                 gen_args.append(opt_arg)
+                            elif (union_arg := self._gen_union_arg(arg, rptype)) is not None:
+                                gen_args.append(union_arg)
                             else:
                                 # None literals need target type to decide nullptr vs std::nullopt
                                 arg_target = rptype if isinstance(arg, TpyNoneLiteral) else None
