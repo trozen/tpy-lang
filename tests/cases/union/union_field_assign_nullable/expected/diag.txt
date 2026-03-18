@@ -1,0 +1,2 @@
+main.py:16: warning: copies None | Cat | Dog into field; use copy() to make this explicit
+main.py:33: warning: Mutation of 's.pet' while borrowed (field assignment may invalidate references)

@@ -1253,9 +1253,10 @@ class StatementGenerator:
             cpp_type = self.types.type_to_cpp(target_type) if target_type else "auto"
             return self._gen_pointer_local_rebind(stmt.target.name, cpp_type, stmt.value, target_type, indent)
 
-        # Assignment to optional field: std::optional<T> storage needs boundary conversion
+        # Field assignment: boundary conversions for optional/union pointer repr
         if isinstance(stmt.target, TpyFieldAccess):
             target_type = self.ctx.get_expr_type(stmt.target)
+            # Optional field: std::optional<T> storage needs boundary conversion
             if isinstance(target_type, OptionalType) and target_type.uses_pointer_repr():
                 target = self.expressions.gen_expr(stmt.target)
                 # Value source is T* (pointer-local, function returning Optional) -> wrap
@@ -1278,6 +1279,16 @@ class StatementGenerator:
                 # Direct value or optional-to-optional (field-to-field) works without conversion
                 value = self.expressions.gen_expr_deref(stmt.value, target_type)
                 value = self.expressions._maybe_move(stmt.value, value)
+                return f"{indent}{target} = {value};\n"
+            # Union field: pointer-variant source -> value-variant field conversion
+            if isinstance(target_type, UnionType) and target_type.uses_pointer_repr():
+                target = self.expressions.gen_expr(stmt.target)
+                value = self.expressions.gen_expr(stmt.value)
+                if self._is_ptr_variant_source(stmt.value):
+                    val_cpp = self.types.type_to_cpp(target_type)
+                    value = f"::tpy::to_value_variant<{val_cpp}>({value})"
+                else:
+                    value = self.expressions._maybe_move(stmt.value, value)
                 return f"{indent}{target} = {value};\n"
 
         # Default: simple assignment (includes field assignments like self.x = val)

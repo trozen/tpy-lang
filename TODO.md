@@ -8,8 +8,11 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 
 ## Bugs
-- Union field assignment: `owner.pet = new_pet` where `new_pet` is a pointer variant (`variant<T*...>`) and `pet` is a value-variant field (`variant<T...>`) needs `to_value_variant` conversion at the assignment site. Currently only handled in constructor member init lists.
 - Pointer-variant union reassignment from const source: `p = z.pet` where `p` was declared as `variant<T*...>` (mutable) but `z.pet` is const. The types are incompatible (`variant<T*...>` vs `variant<const T*...>`). Needs copy materialization into a mutable slot on reassignment from const source.
+- `copy()` on pointer-variant union: `copy(x)` where `x: Dog | Cat` (pointer-variant local) generates `Cat(x)` instead of properly copying through the variant. Needs variant-aware copy codegen.
+- `None` assignment to nullable union value-variant field: `s.pet = None` where `pet: Dog | Cat | None` generates `s.pet = nullptr;` but the field is `std::variant<std::monostate, Cat, Dog>` which needs `std::monostate{}`.
+- Constructor rvalue passed to function expecting pointer-variant union: `f(Dog("Rex"))` where `f` takes `Dog | Cat` (pointer-variant param) fails because `Dog` rvalue can't convert to `variant<Dog*, Cat*>`. Needs storage slot + `to_ptr_variant` at the call site.
+- Missing "copies into field" warning for function-return union assignment: `z.pet = identity(new_pet)` copies via `to_value_variant` but sema doesn't emit the copy warning (only "Mutation while borrowed"). Direct local assignment (`z.pet = new_pet`) correctly warns.
 
 ## Fuzzy Testing Findings (2026-03-12)
 
