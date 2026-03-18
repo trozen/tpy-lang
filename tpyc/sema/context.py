@@ -415,10 +415,11 @@ class SemanticContext:
     super_init_call: TpyMethodCall | None = None
     super_del_call: TpyMethodCall | None = None
     # Variables from loop scopes that may be referenced after the loop.
-    # Maps var_name -> (type, for_stmt, orig_for_stmt) for lazy promotion.
-    # for_stmt: outermost loop to pre-declare before. orig_for_stmt: loop
-    # that originally declared the variable (for hoist_loop_var flag).
-    pending_loop_vars: dict[str, tuple[TpyType, 'TpyForEach', 'TpyForEach']] = field(default_factory=dict)
+    # Maps var_name -> (type, loop_stmt, orig_loop_stmt) for lazy promotion.
+    # loop_stmt: outermost loop to pre-declare before.
+    # orig_loop_stmt: the TpyForEach that declared the loop iteration variable
+    # (used to set hoist_loop_var); None for body-declared variables.
+    pending_loop_vars: dict[str, tuple[TpyType, TpyStmt, TpyStmt | None]] = field(default_factory=dict)
     loop_vars: set[str] = field(default_factory=set)
     mutated_loop_vars: set[str] = field(default_factory=set)
     loop_var_iterable: dict[str, str] = field(default_factory=dict)  # var_name -> iterable_name

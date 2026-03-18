@@ -380,18 +380,8 @@ class ExpressionAnalyzer:
             if expr.name in self.ctx.builtin_names:
                 return self.ctx.builtin_names[expr.name]
             # Lazy promotion of loop-scoped variables referenced after the loop
-            pending = self.ctx.pending_loop_vars.pop(expr.name, None)
-            if pending is not None:
-                var_type, for_stmt, orig_stmt = pending
-                self.ctx.current_scope.define(expr.name, var_type)
-                self.ctx.definitely_assigned.add(expr.name)
-                # Register for codegen pre-declaration
-                decls = self.ctx.if_branch_decls.setdefault(id(for_stmt), {})
-                decls[expr.name] = var_type
-                # Mark the original loop's var for hoisted codegen (hidden counter)
-                if expr.name == orig_stmt.var:
-                    orig_stmt.hoist_loop_var = True
-                typ = var_type
+            if self._promote_pending_loop_var(expr.name):
+                typ = self.ctx.current_scope.lookup(expr.name)
             else:
                 raise self.ctx.error(f"Undefined variable: '{expr.name}'", expr)
         self._check_definitely_assigned(expr)
@@ -405,6 +395,27 @@ class ExpressionAnalyzer:
                 and expr.name not in self.ctx.definitely_assigned):
             raise self.ctx.error(
                 f"variable '{expr.name}' may not be assigned at this point", expr)
+
+    def _promote_pending_loop_var(self, name: str) -> bool:
+        """Promote a pending for-loop-scoped variable if present.
+
+        Returns True if the variable was promoted (added to scope and
+        definitely_assigned, registered for codegen pre-declaration).
+        """
+        pending = self.ctx.pending_loop_vars.pop(name, None)
+        if pending is None:
+            return False
+        var_type, loop_stmt, orig_stmt = pending
+        self.ctx.current_scope.define(name, var_type)
+        self.ctx.definitely_assigned.add(name)
+        # Register for codegen pre-declaration
+        decls = self.ctx.if_branch_decls.setdefault(id(loop_stmt), {})
+        decls[name] = var_type
+        # Mark the original for-loop's var for hoisted codegen (hidden counter)
+        from ..parse import TpyForEach
+        if isinstance(orig_stmt, TpyForEach) and name == orig_stmt.var:
+            orig_stmt.hoist_loop_var = True
+        return True
 
     def _normalize_pending_container(self, t: TpyType) -> TpyType:
         """Normalize a pending container type to a concrete type with resolved IntLiteralType elements.
