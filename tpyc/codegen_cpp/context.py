@@ -346,6 +346,11 @@ class CodeGenContext:
 
     # --- Hoisted variable tracking (scope escape phase 2) ---
     hoisted_vars: set[str] = field(default_factory=set)
+
+    # --- Comprehension-local variable names ---
+    # Loop variables inside comprehensions shadow globals during element
+    # expression codegen.  Checked early in is_global_name().
+    comp_local_names: set[str] = field(default_factory=set)
     pending_hoist_decls: list[str] = field(default_factory=list)
 
     # --- Union type narrowing (isinstance -> std::get) ---
@@ -426,6 +431,7 @@ class CodeGenContext:
         self.movable_locals = set()
         self.move_through_vars = set()
         self.hoisted_vars = set()
+        self.comp_local_names = set()
         self.pending_hoist_decls = []
         self.current_ns = None
         self.indent_level = 0
@@ -679,6 +685,9 @@ class CodeGenContext:
         if not isinstance(expr, TpyName):
             return False
 
+        if expr.name in self.comp_local_names:
+            return False
+
         # Use namespace if available
         if self.current_ns:
             # Check if it's a global variable
@@ -720,6 +729,8 @@ class CodeGenContext:
         imported pointer variables -- all use -> for field/method access
         and (*x) for value dereference.
         """
+        if isinstance(expr, TpyName) and expr.name in self.comp_local_names:
+            return False
         if self._is_pointer_global(expr) or self.is_pointer_local(expr):
             return True
         if isinstance(expr, TpyName) and expr.name in self.user_imported_variables:

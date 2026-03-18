@@ -2088,105 +2088,121 @@ class ExpressionGenerator:
         if isinstance(target_type, ArrayType):
             return self._gen_array_comprehension(expr, elem_type, cpp_elem, target_type.size)
 
-        elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
-        insert_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
-        return self._gen_comprehension_iife(
-            expr.generator, f"std::vector<{cpp_elem}>",
-            f"__result.push_back({insert_code})", skip_reserve=False)
+        comp_names = self._enter_comp_scope(expr.generator)
+        try:
+            elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
+            insert_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
+            return self._gen_comprehension_iife(
+                expr.generator, f"std::vector<{cpp_elem}>",
+                f"__result.push_back({insert_code})", skip_reserve=False)
+        finally:
+            self._exit_comp_scope(comp_names)
 
     def _gen_array_comprehension(self, expr: TpyListComprehension,
                                   elem_type: TpyType, cpp_elem: str,
                                   size: int) -> str:
         """Generate comprehension as IIFE producing std::array with indexed assignment."""
         gen = expr.generator
-        elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
-        insert_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
+        comp_names = self._enter_comp_scope(gen)
+        try:
+            elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
+            insert_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
 
-        stmt_ind = INDENT * self.ctx.indent_level
-        ind1 = stmt_ind + INDENT
-        ind2 = ind1 + INDENT
+            stmt_ind = INDENT * self.ctx.indent_level
+            ind1 = stmt_ind + INDENT
+            ind2 = ind1 + INDENT
 
-        buf = io.StringIO()
-        buf.write(f"[&]() {{\n")
-        buf.write(f"{ind1}std::array<{cpp_elem}, {size}> __result;\n")
+            buf = io.StringIO()
+            buf.write(f"[&]() {{\n")
+            buf.write(f"{ind1}std::array<{cpp_elem}, {size}> __result;\n")
 
-        is_range = isinstance(gen.iterable, TpyCall) and gen.iterable.func == "range"
-        nargs = len(gen.iterable.args) if is_range else 0
-        cpp_var = escape_cpp_name(gen.var)
+            is_range = isinstance(gen.iterable, TpyCall) and gen.iterable.func == "range"
+            nargs = len(gen.iterable.args) if is_range else 0
+            cpp_var = escape_cpp_name(gen.var)
 
-        if is_range and nargs <= 2:
-            sema_elem = self.types.get_resolved_type(gen.iterable).get_iteration_element_type()
-            if sema_elem is not None and isinstance(sema_elem, IntLiteralType):
-                sema_elem = self.ctx.analyzer.ctx.default_int_type
-            if sema_elem is None:
-                sema_elem = self.ctx.analyzer.ctx.default_int_type
-            cpp_iter_type = sema_elem.to_cpp()
+            if is_range and nargs <= 2:
+                sema_elem = self.types.get_resolved_type(gen.iterable).get_iteration_element_type()
+                if sema_elem is not None and isinstance(sema_elem, IntLiteralType):
+                    sema_elem = self.ctx.analyzer.ctx.default_int_type
+                if sema_elem is None:
+                    sema_elem = self.ctx.analyzer.ctx.default_int_type
+                cpp_iter_type = sema_elem.to_cpp()
 
-            if nargs == 1:
-                buf.write(f"{ind1}for ({cpp_iter_type} {cpp_var} = 0; {cpp_var} < {size}; ++{cpp_var}) {{\n")
+                if nargs == 1:
+                    buf.write(f"{ind1}for ({cpp_iter_type} {cpp_var} = 0; {cpp_var} < {size}; ++{cpp_var}) {{\n")
+                else:
+                    start_code = self.gen_expr_deref(gen.iterable.args[0])
+                    buf.write(f"{ind1}const {cpp_iter_type} __start_0 = {start_code};\n")
+                    buf.write(f"{ind1}for ({cpp_iter_type} {cpp_var} = __start_0, __idx_0 = 0;"
+                              f" __idx_0 < {size}; ++{cpp_var}, ++__idx_0) {{\n")
+                idx_expr = cpp_var if nargs == 1 else "__idx_0"
+                buf.write(f"{ind2}__result[{idx_expr}] = {insert_code};\n")
             else:
-                start_code = self.gen_expr_deref(gen.iterable.args[0])
-                buf.write(f"{ind1}const {cpp_iter_type} __start_0 = {start_code};\n")
-                buf.write(f"{ind1}for ({cpp_iter_type} {cpp_var} = __start_0, __idx_0 = 0;"
-                          f" __idx_0 < {size}; ++{cpp_var}, ++__idx_0) {{\n")
-            idx_expr = cpp_var if nargs == 1 else "__idx_0"
-            buf.write(f"{ind2}__result[{idx_expr}] = {insert_code};\n")
-        else:
-            # Array/container source -- begin/end loop with index counter
-            n = self.ctx.iter_counter
-            self.ctx.iter_counter += 1
-            iterable_code = self.gen_expr_deref(gen.iterable)
-            is_lvalue = self._comp_is_lvalue(gen.iterable)
-            obj_binding = "auto&" if is_lvalue else "auto"
+                # Array/container source -- begin/end loop with index counter
+                n = self.ctx.iter_counter
+                self.ctx.iter_counter += 1
+                iterable_code = self.gen_expr_deref(gen.iterable)
+                is_lvalue = self._comp_is_lvalue(gen.iterable)
+                obj_binding = "auto&" if is_lvalue else "auto"
 
-            sema_elem = self.types.get_resolved_type(gen.iterable).get_iteration_element_type()
-            if sema_elem is not None and isinstance(sema_elem, IntLiteralType):
-                sema_elem = self.ctx.analyzer.ctx.default_int_type
-            if sema_elem is None:
-                sema_elem = self.ctx.analyzer.ctx.default_int_type
+                sema_elem = self.types.get_resolved_type(gen.iterable).get_iteration_element_type()
+                if sema_elem is not None and isinstance(sema_elem, IntLiteralType):
+                    sema_elem = self.ctx.analyzer.ctx.default_int_type
+                if sema_elem is None:
+                    sema_elem = self.ctx.analyzer.ctx.default_int_type
 
-            buf.write(f"{ind1}{obj_binding} __obj_{n} = {iterable_code};\n")
-            buf.write(f"{ind1}auto __beg_{n} = __obj_{n}.begin();\n")
-            buf.write(f"{ind1}auto __end_{n} = __obj_{n}.end();\n")
-            buf.write(f"{ind1}for (size_t __idx_{n} = 0; __beg_{n} != __end_{n}; ++__beg_{n}, ++__idx_{n}) {{\n")
+                buf.write(f"{ind1}{obj_binding} __obj_{n} = {iterable_code};\n")
+                buf.write(f"{ind1}auto __beg_{n} = __obj_{n}.begin();\n")
+                buf.write(f"{ind1}auto __end_{n} = __obj_{n}.end();\n")
+                buf.write(f"{ind1}for (size_t __idx_{n} = 0; __beg_{n} != __end_{n}; ++__beg_{n}, ++__idx_{n}) {{\n")
 
-            if gen.unpack_vars is not None:
-                self._gen_comp_tuple_unpack(buf, gen, sema_elem, ind2, n)
-            elif sema_elem.is_value_type():
-                cpp_iter_elem = sema_elem.to_cpp()
-                buf.write(f"{ind2}{cpp_iter_elem} {cpp_var} = *__beg_{n};\n")
-            else:
-                buf.write(f"{ind2}auto&& {cpp_var} = *__beg_{n};\n")
+                if gen.unpack_vars is not None:
+                    self._gen_comp_tuple_unpack(buf, gen, sema_elem, ind2, n)
+                elif sema_elem.is_value_type():
+                    cpp_iter_elem = sema_elem.to_cpp()
+                    buf.write(f"{ind2}{cpp_iter_elem} {cpp_var} = *__beg_{n};\n")
+                else:
+                    buf.write(f"{ind2}auto&& {cpp_var} = *__beg_{n};\n")
 
-            buf.write(f"{ind2}__result[__idx_{n}] = {insert_code};\n")
+                buf.write(f"{ind2}__result[__idx_{n}] = {insert_code};\n")
 
-        buf.write(f"{ind1}}}\n")
-        buf.write(f"{ind1}return __result;\n")
-        buf.write(f"{stmt_ind}}}()")
+            buf.write(f"{ind1}}}\n")
+            buf.write(f"{ind1}return __result;\n")
+            buf.write(f"{stmt_ind}}}()")
 
-        return buf.getvalue()
+            return buf.getvalue()
+        finally:
+            self._exit_comp_scope(comp_names)
 
     def _gen_dict_comprehension(self, expr: TpyDictComprehension) -> str:
         key_type = self._resolve_int_literal(expr.result_key_type)
         value_type = self._resolve_int_literal(expr.result_value_type)
         cpp_key = self.types.type_to_cpp(key_type)
         cpp_val = self.types.type_to_cpp(value_type)
-        key_resolved = self.types.get_resolved_type(expr.key_expr, key_type)
-        key_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.key_expr, key_type), key_resolved, key_type)
-        value_resolved = self.types.get_resolved_type(expr.value_expr, value_type)
-        value_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.value_expr, value_type), value_resolved, value_type)
-        return self._gen_comprehension_iife(
-            expr.generator, f"::tpy::ordered_map<{cpp_key}, {cpp_val}>",
-            f"__result.insert_or_assign({key_code}, {value_code})", skip_reserve=True)
+        comp_names = self._enter_comp_scope(expr.generator)
+        try:
+            key_resolved = self.types.get_resolved_type(expr.key_expr, key_type)
+            key_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.key_expr, key_type), key_resolved, key_type)
+            value_resolved = self.types.get_resolved_type(expr.value_expr, value_type)
+            value_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.value_expr, value_type), value_resolved, value_type)
+            return self._gen_comprehension_iife(
+                expr.generator, f"::tpy::ordered_map<{cpp_key}, {cpp_val}>",
+                f"__result.insert_or_assign({key_code}, {value_code})", skip_reserve=True)
+        finally:
+            self._exit_comp_scope(comp_names)
 
     def _gen_set_comprehension(self, expr: TpySetComprehension) -> str:
         elem_type = self._resolve_int_literal(expr.result_elem_type)
         cpp_elem = self.types.type_to_cpp(elem_type)
-        elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
-        insert_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
-        return self._gen_comprehension_iife(
-            expr.generator, f"::tpy::ordered_set<{cpp_elem}>",
-            f"__result.insert({insert_code})", skip_reserve=True)
+        comp_names = self._enter_comp_scope(expr.generator)
+        try:
+            elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
+            insert_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
+            return self._gen_comprehension_iife(
+                expr.generator, f"::tpy::ordered_set<{cpp_elem}>",
+                f"__result.insert({insert_code})", skip_reserve=True)
+        finally:
+            self._exit_comp_scope(comp_names)
 
     def _gen_generator_expression(self, expr: TpyGeneratorExpression) -> str:
         gen = expr.generator
@@ -2194,86 +2210,91 @@ class ExpressionGenerator:
         cpp_elem = self.types.type_to_cpp(elem_type)
         cpp_var = escape_cpp_name(gen.var)
 
+        comp_names = self._enter_comp_scope(gen)
+
         stmt_ind = INDENT * self.ctx.indent_level
         ind1 = stmt_ind + INDENT
         ind2 = ind1 + INDENT
         ind3 = ind2 + INDENT
 
-        iterable_code = self.gen_expr_deref(gen.iterable)
-        iterable_type = self.types.get_resolved_type(gen.iterable)
-        yield_code = self.gen_expr_deref(expr.element_expr, elem_type)
+        try:
+            iterable_code = self.gen_expr_deref(gen.iterable)
+            iterable_type = self.types.get_resolved_type(gen.iterable)
+            yield_code = self.gen_expr_deref(expr.element_expr, elem_type)
 
-        sema_elem = iterable_type.get_iteration_element_type()
-        if sema_elem is not None and isinstance(sema_elem, IntLiteralType):
-            sema_elem = self.ctx.analyzer.ctx.default_int_type
-        if sema_elem is None:
-            sema_elem = self.ctx.analyzer.ctx.default_int_type
+            sema_elem = iterable_type.get_iteration_element_type()
+            if sema_elem is not None and isinstance(sema_elem, IntLiteralType):
+                sema_elem = self.ctx.analyzer.ctx.default_int_type
+            if sema_elem is None:
+                sema_elem = self.ctx.analyzer.ctx.default_int_type
 
-        buf = io.StringIO()
+            buf = io.StringIO()
 
-        is_range = isinstance(gen.iterable, TpyCall) and gen.iterable.func == "range"
-        nargs = len(gen.iterable.args) if is_range else 0
+            is_range = isinstance(gen.iterable, TpyCall) and gen.iterable.func == "range"
+            nargs = len(gen.iterable.args) if is_range else 0
 
-        # Simple range (1 or 2 args): counter state fits in lambda init-captures
-        if is_range and nargs <= 2:
-            self._gen_genexpr_counter_lambda(buf, gen, sema_elem, cpp_var, cpp_elem,
-                                             yield_code, stmt_ind, ind1, ind2, ind3)
+            # Simple range (1 or 2 args): counter state fits in lambda init-captures
+            if is_range and nargs <= 2:
+                self._gen_genexpr_counter_lambda(buf, gen, sema_elem, cpp_var, cpp_elem,
+                                                 yield_code, stmt_ind, ind1, ind2, ind3)
+                return buf.getvalue()
+
+            # Begin/end sources (3-arg range, containers): wrap in IIFE so that
+            # begin/end iterators are computed before the lambda and captured by
+            # value into the lambda's init-capture list.
+            is_lvalue = self._comp_is_lvalue(gen.iterable)
+            buf.write(f"[&]() {{\n")
+
+            if is_range:
+                cpp_iter = sema_elem.to_cpp()
+                start_code = self.gen_expr_deref(gen.iterable.args[0], sema_elem)
+                stop_code = self.gen_expr_deref(gen.iterable.args[1], sema_elem)
+                step_code = self.gen_expr_deref(gen.iterable.args[2], sema_elem)
+                buf.write(f"{ind1}auto __src = ::tpy::Range<{cpp_iter}>({start_code}, {stop_code}, {step_code});\n")
+            elif is_lvalue:
+                buf.write(f"{ind1}auto& __src = {iterable_code};\n")
+            else:
+                buf.write(f"{ind1}auto __src = {iterable_code};\n")
+
+            buf.write(f"{ind1}return ::tpy::make_generator<{cpp_elem}>(\n")
+
+            ind2i = ind2 + INDENT
+            ind3i = ind2i + INDENT
+            # Capture begin/end by value in the lambda's init-capture
+            buf.write(f"{ind2}[__beg = __src.begin(), __end = __src.end()]"
+                      f"() mutable -> std::optional<{cpp_elem}> {{\n")
+            buf.write(f"{ind2i}while (__beg != __end) {{\n")
+
+            if gen.unpack_vars is not None:
+                assert isinstance(sema_elem, TupleType)
+                self.ctx.unpack_counter += 1
+                tmp = f"__tup_{self.ctx.unpack_counter}"
+                buf.write(f"{ind3i}const auto& {tmp} = *__beg++;\n")
+                for i, uvar in enumerate(gen.unpack_vars):
+                    if uvar is None:
+                        continue
+                    utype = sema_elem.element_types[i]
+                    cpp_utype = self.types.type_to_cpp(utype)
+                    cpp_name = escape_cpp_name(uvar)
+                    if utype.is_value_type():
+                        buf.write(f"{ind3i}{cpp_utype} {cpp_name} = std::get<{i}>({tmp});\n")
+                    else:
+                        buf.write(f"{ind3i}const auto& {cpp_name} = std::get<{i}>({tmp});\n")
+            elif sema_elem.is_value_type():
+                cpp_iter_elem = sema_elem.to_cpp()
+                buf.write(f"{ind3i}{cpp_iter_elem} {cpp_var} = *__beg++;\n")
+            else:
+                buf.write(f"{ind3i}auto&& {cpp_var} = *__beg++;\n")
+
+            self._gen_genexpr_yield(buf, gen, yield_code, cpp_elem, ind3i, ind3i + INDENT)
+            buf.write(f"{ind2i}}}\n")
+            buf.write(f"{ind2i}return std::nullopt;\n")
+            buf.write(f"{ind2}}}\n")
+            buf.write(f"{ind1});\n")
+            buf.write(f"{stmt_ind}}}()")
             return buf.getvalue()
-
-        # Begin/end sources (3-arg range, containers): wrap in IIFE so that
-        # begin/end iterators are computed before the lambda and captured by
-        # value into the lambda's init-capture list.
-        is_lvalue = self._comp_is_lvalue(gen.iterable)
-        buf.write(f"[&]() {{\n")
-
-        if is_range:
-            cpp_iter = sema_elem.to_cpp()
-            start_code = self.gen_expr_deref(gen.iterable.args[0], sema_elem)
-            stop_code = self.gen_expr_deref(gen.iterable.args[1], sema_elem)
-            step_code = self.gen_expr_deref(gen.iterable.args[2], sema_elem)
-            buf.write(f"{ind1}auto __src = ::tpy::Range<{cpp_iter}>({start_code}, {stop_code}, {step_code});\n")
-        elif is_lvalue:
-            buf.write(f"{ind1}auto& __src = {iterable_code};\n")
-        else:
-            buf.write(f"{ind1}auto __src = {iterable_code};\n")
-
-        buf.write(f"{ind1}return ::tpy::make_generator<{cpp_elem}>(\n")
-
-        ind2i = ind2 + INDENT
-        ind3i = ind2i + INDENT
-        # Capture begin/end by value in the lambda's init-capture
-        buf.write(f"{ind2}[__beg = __src.begin(), __end = __src.end()]"
-                  f"() mutable -> std::optional<{cpp_elem}> {{\n")
-        buf.write(f"{ind2i}while (__beg != __end) {{\n")
-
-        if gen.unpack_vars is not None:
-            assert isinstance(sema_elem, TupleType)
-            self.ctx.unpack_counter += 1
-            tmp = f"__tup_{self.ctx.unpack_counter}"
-            buf.write(f"{ind3i}const auto& {tmp} = *__beg++;\n")
-            for i, uvar in enumerate(gen.unpack_vars):
-                if uvar is None:
-                    continue
-                utype = sema_elem.element_types[i]
-                cpp_utype = self.types.type_to_cpp(utype)
-                cpp_name = escape_cpp_name(uvar)
-                if utype.is_value_type():
-                    buf.write(f"{ind3i}{cpp_utype} {cpp_name} = std::get<{i}>({tmp});\n")
-                else:
-                    buf.write(f"{ind3i}const auto& {cpp_name} = std::get<{i}>({tmp});\n")
-        elif sema_elem.is_value_type():
-            cpp_iter_elem = sema_elem.to_cpp()
-            buf.write(f"{ind3i}{cpp_iter_elem} {cpp_var} = *__beg++;\n")
-        else:
-            buf.write(f"{ind3i}auto&& {cpp_var} = *__beg++;\n")
-
-        self._gen_genexpr_yield(buf, gen, yield_code, cpp_elem, ind3i, ind3i + INDENT)
-        buf.write(f"{ind2i}}}\n")
-        buf.write(f"{ind2i}return std::nullopt;\n")
-        buf.write(f"{ind2}}}\n")
-        buf.write(f"{ind1});\n")
-        buf.write(f"{stmt_ind}}}()")
-        return buf.getvalue()
+        finally:
+            self._exit_comp_scope(comp_names)
 
     def _gen_genexpr_counter_lambda(
         self, buf: io.StringIO, gen: TpyComprehensionGenerator,
@@ -2478,6 +2499,19 @@ class ExpressionGenerator:
             self._gen_comp_begin_end_loop(buf, gen, elem_type, ind1, ind2, cpp_var,
                                           iterable_code, skip_reserve=skip_reserve)
             return
+
+    def _enter_comp_scope(self, gen: TpyComprehensionGenerator) -> set[str]:
+        """Register comprehension loop variables so they shadow globals in codegen."""
+        names: set[str] = {gen.var}
+        if gen.unpack_vars:
+            names.update(v for v in gen.unpack_vars if v is not None)
+        self.ctx.comp_local_names |= names
+        return names
+
+    def _exit_comp_scope(self, names: set[str]) -> None:
+        # Safe as set-difference because sema rejects nested comprehensions,
+        # so no name can appear in two active comp scopes simultaneously.
+        self.ctx.comp_local_names -= names
 
     def _comp_is_lvalue(self, expr: TpyExpr) -> bool:
         """Check if an iterable expression is a C++ lvalue (for comprehensions).

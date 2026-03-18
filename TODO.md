@@ -9,7 +9,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 ## Bugs
 - `@readonly` union param codegen uses `const variant<T*...>` (shallow const) instead of `variant<const T*...>` (deep const): sema now correctly blocks mutation through narrowed readonly union params, but the C++ type still allows it at the C++ level. Fixing requires updating all isinstance codegen paths (`std::get<T*>`, `holds_alternative<T*>`) to use `const T*` when the source is readonly.
 - `@readonly` narrowed union param passed to mutable function: `rename_dog(pet)` where `pet: readonly[Dog | Cat]` is narrowed to `Dog` by isinstance, then passed to `def rename_dog(d: Dog)` which mutates `d`. Sema doesn't see `ReadonlyType` on the narrowed expr type, so type compatibility doesn't block the call. Needs `is_readonly_name` check in the argument-passing compatibility path.
-- List comprehension loop variable doesn't shadow same-named global: `x = [x**2 for x in range(20)]` generates `(*x)` (global pointer deref) inside the lambda instead of the loop-local `x`. The comprehension's loop variable should shadow the outer scope within the generated lambda.
 
 ## Fuzzy Testing Findings (2026-03-12)
 
