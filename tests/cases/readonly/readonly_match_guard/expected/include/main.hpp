@@ -9,13 +9,10 @@ namespace tpyapp::main {
 
 struct Dog;
 struct Cat;
-struct Zoo;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string get_pet_name(const Zoo& z);
-std::string get_pet_name_ro(const Zoo& z);
-std::string greet_pet(std::variant<const Cat*, const Dog*> pet);
+std::string describe(std::variant<const Cat*, const Dog*> pet);
 void main();
 
 // class Dog:
@@ -48,28 +45,6 @@ struct Cat {
 inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     os << "Cat("
        << "name=" << "'" << obj.name << "'"
-       << ")";
-    return os;
-}
-
-// class Zoo:
-struct Zoo {
-    // pet: Dog | Cat
-    std::variant<Cat, Dog> pet;
-    // tag: str
-    std::string tag;
-
-    // def __init__(self, pet: Dog | Cat, tag: str) -> None:
-    explicit Zoo(const std::variant<Cat*, Dog*> pet, std::string_view tag) : pet(::tpy::to_value_variant<std::variant<Cat, Dog>>(pet)), tag(tag) {}
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Zoo& obj) {
-    os << "Zoo("
-       << "pet=";
-    std::visit([&](const auto& __v) { os << __v; }, obj.pet);
-    os
-       << ", "
-       << "tag=" << "'" << obj.tag << "'"
        << ")";
     return os;
 }

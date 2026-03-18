@@ -156,8 +156,10 @@ class ExpressionGenerator:
             return f"&({tmp})"
         return f"&({gen})"
 
-    def _gen_union_arg(self, arg: TpyExpr, ptype: TpyType) -> str | None:
+    def _gen_union_arg(self, arg: TpyExpr, ptype: TpyType,
+                       is_readonly_target: bool = False) -> str | None:
         """Generate argument for a union-typed param, or None if not applicable."""
+        is_readonly_param = is_readonly_target or isinstance(ptype, ReadonlyType)
         ptype_union = unwrap_readonly(ptype) if ptype else ptype
         if not isinstance(ptype_union, UnionType):
             return None
@@ -168,16 +170,25 @@ class ExpressionGenerator:
             or (cpp_decl is not None and isinstance(cpp_decl, UnionType))
         )
         if ptype_union.uses_pointer_repr():
-            if isinstance(arg, TpyNoneLiteral):
+            if is_readonly_param:
+                pv_cpp = self.types.type_to_cpp_const_ptr_variant(ptype_union)
+            else:
                 pv_cpp = self.types.type_to_cpp_ptr_variant(ptype_union)
+            if isinstance(arg, TpyNoneLiteral):
                 return f"{pv_cpp}{{std::monostate{{}}}}"
             if arg_type is not None and not already_union:
-                pv_cpp = self.types.type_to_cpp_ptr_variant(ptype_union)
                 arg_expr = self.gen_expr_deref(arg, arg_type)
                 if self.ctx.is_rvalue_source(arg):
                     temp = self.ctx.temps.create(arg_type, arg_expr)
                     return f"{pv_cpp}{{&{temp}}}"
                 return f"{pv_cpp}{{&({arg_expr})}}"
+            # Mutable ptr-variant arg -> const ptr-variant param: explicit conversion
+            if is_readonly_param and already_union:
+                # Skip if the arg is isinstance-narrowed to a concrete type
+                is_narrowed = isinstance(arg, TpyName) and arg.name in self.ctx.narrowed_vars
+                if not is_narrowed:
+                    arg_expr = self.gen_expr_deref(arg)
+                    return f"::tpy::ptr_variant_to_const<{pv_cpp}>({arg_expr})"
             return None  # already a union -- use default gen_call_arg
         else:
             if arg_type is not None and not already_union:
@@ -1421,7 +1432,8 @@ class ExpressionGenerator:
                     temp_name = self.ctx.temps.create(resolved_ptype, init_expr)
                     gen_args.append(temp_name)
                 # Union params: wrap concrete member type in variant
-                elif (union_arg := self._gen_union_arg(arg, resolved_ptype)) is not None:
+                elif (union_arg := self._gen_union_arg(arg, resolved_ptype,
+                                                        is_readonly_target=func_info.is_readonly)) is not None:
                     gen_args.append(union_arg)
                 else:
                     gen_args.append(self.gen_call_arg(arg, resolved_ptype))
@@ -1818,7 +1830,8 @@ class ExpressionGenerator:
                                 gen_args.append(proto_arg)
                             elif (opt_arg := self._gen_optional_ptr_arg(arg, rptype)) is not None:
                                 gen_args.append(opt_arg)
-                            elif (union_arg := self._gen_union_arg(arg, rptype)) is not None:
+                            elif (union_arg := self._gen_union_arg(arg, rptype,
+                                                                    is_readonly_target=method_info.is_readonly)) is not None:
                                 gen_args.append(union_arg)
                             else:
                                 # None literals need target type to decide nullptr vs std::nullopt

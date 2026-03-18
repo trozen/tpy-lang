@@ -117,6 +117,7 @@ class FunctionGenerator:
     def gen_params(self, params: list[tuple[str, TpyType]],
                    func_type_params: list[str] | None = None,
                    *, const_params: bool = False,
+                   use_readonly_params: bool = False,
                    reassigned_params: set[str] | None = None,
                    mutated_params: frozenset[int] | None = None,
                    defaults: list | None = None,
@@ -152,24 +153,30 @@ class FunctionGenerator:
                 # Rename param so the body can declare a mutable local with the original name
                 part = ptype.to_cpp_param(f"__param_{cpp_pname}")
             elif const_params:
-                part = ptype.to_cpp_const_param(cpp_pname)
+                if (use_readonly_params
+                        and isinstance(own, UnionType) and own.uses_pointer_repr()):
+                    part = f"{own.to_cpp_const_ptr_variant()} {cpp_pname}"
+                else:
+                    part = ptype.to_cpp_const_param(cpp_pname)
             elif (mutated_params is not None and i not in mutated_params
                     and (ptype.is_ref_param()
-                         or (isinstance(ptype, UnionType) and ptype.uses_pointer_repr()))
+                         or (isinstance(own, UnionType) and own.uses_pointer_repr()))
                     and not isinstance(ptype, TypeParamRef)
                     and not (reassigned_params and pname in reassigned_params)):
                 # Param is provably not mutated and not rebound -- safe to use const.
                 # For ref params: T& -> const T&.
-                # For pointer-variant unions: variant<T*...> -> const variant<T*...>
-                # (const on the variant, not on the pointers -- no conversion issues).
-                # TypeParamRef excluded: its to_cpp_param() uses ::tpy::param_val_or_ref_t<T>
-                # (trait-based), not T& directly; to_cpp_const_param() gives const T& which
-                # differs in ABI for value-type instantiations.
-                # Guard on reassigned_params: rebinding (param = x) would generate p = x
-                # in C++, which is copy-assignment through the reference on a const ref --
-                # a compile error. Only skip this guard for types that copy on reassign
-                # (BigInt, str), which are already handled by param_needs_copy_for_reassign.
-                part = ptype.to_cpp_const_param(cpp_pname)
+                # For pointer-variant unions: shallow const (const variant<T*...>)
+                # to avoid conversion issues at call sites. Deep const
+                # (variant<const T*...>) is used only for @readonly params
+                # where call-site codegen generates the const variant type.
+                if isinstance(own, UnionType) and own.uses_pointer_repr():
+                    if use_readonly_params:
+                        part = f"{own.to_cpp_const_ptr_variant()} {cpp_pname}"
+                    else:
+                        cpp = own.to_cpp_ptr_variant()
+                        part = f"const {cpp} {cpp_pname}"
+                else:
+                    part = ptype.to_cpp_const_param(cpp_pname)
             else:
                 part = ptype.to_cpp_param(cpp_pname)
             # Own[T] where T is a class-level type param: std::type_identity_t is
@@ -203,6 +210,7 @@ class FunctionGenerator:
     def gen_params_with_protocols(self, params: list[tuple[str, TpyType]],
                                    func_type_params: list[str] | None = None,
                                    *, const_params: bool = False,
+                                   use_readonly_params: bool = False,
                                    mutated_params: frozenset[int] | None = None,
                                    defaults: list | None = None,
                                    emit_defaults: bool = False) -> str:
@@ -246,7 +254,13 @@ class FunctionGenerator:
                     else:
                         part = f"{base_type}& {cpp_pname}"
                 else:
-                    part = ptype.to_cpp_const_param(cpp_pname) if const_params else ptype.to_cpp_param(cpp_pname)
+                    own = unwrap_readonly(ptype)
+                    if const_params and use_readonly_params and isinstance(own, UnionType) and own.uses_pointer_repr():
+                        part = f"{own.to_cpp_const_ptr_variant()} {cpp_pname}"
+                    elif const_params:
+                        part = ptype.to_cpp_const_param(cpp_pname)
+                    else:
+                        part = ptype.to_cpp_param(cpp_pname)
             if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
                 part += f" = {self.default_to_cpp(defaults[i], ptype)}"
             result.append(part)
@@ -423,7 +437,8 @@ class FunctionGenerator:
                                                      defaults=dfl, emit_defaults=True)
                       if has_proto_params or has_dynamic
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp,
-                                           mutated_params=mp, defaults=dfl, emit_defaults=True))
+                                           mutated_params=mp, defaults=dfl, emit_defaults=True,
+                                           use_readonly_params=func.is_readonly))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params});\n")
         else:
             ret_type = self._resolve_return_type(func.return_type, error_return=func.error_return)
@@ -432,7 +447,8 @@ class FunctionGenerator:
                                                      defaults=dfl, emit_defaults=True)
                       if has_dynamic
                       else self.gen_params(func.params, func.type_params, reassigned_params=rp,
-                                           mutated_params=mp, defaults=dfl, emit_defaults=True))
+                                           mutated_params=mp, defaults=dfl, emit_defaults=True,
+                                           use_readonly_params=func.is_readonly))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params});\n")
 
     def gen_function_decl(self, out: TextIO, func: TpyFunction) -> bool:
@@ -488,10 +504,12 @@ class FunctionGenerator:
                 ))
                 ret_type = self._resolve_return_type(func.return_type)
                 params = (self.gen_params_with_protocols(func.params, func.type_params,
-                                                         mutated_params=mp)
+                                                         mutated_params=mp,
+                                                         use_readonly_params=func.is_readonly)
                           if has_proto_params or has_dynamic
                           else self.gen_params(func.params, func.type_params,
-                                               reassigned_params=rp, mutated_params=mp))
+                                               reassigned_params=rp, mutated_params=mp,
+                                               use_readonly_params=func.is_readonly))
                 out.write(f"{ret_type} {escape_cpp_name(func.name)}({params});\n")
             else:
                 self.gen_function_def(out, func)
@@ -501,9 +519,11 @@ class FunctionGenerator:
         if not func.is_stub:
             return False
         ret_type = self._resolve_return_type(func.return_type, error_return=func.error_return)
-        params = (self.gen_params_with_protocols(func.params, mutated_params=mp) if has_dynamic
+        params = (self.gen_params_with_protocols(func.params, mutated_params=mp,
+                                                use_readonly_params=func.is_readonly) if has_dynamic
                   else self.gen_params(func.params, func.type_params,
-                                       reassigned_params=rp, mutated_params=mp))
+                                       reassigned_params=rp, mutated_params=mp,
+                                       use_readonly_params=func.is_readonly))
         out.write(f"{ret_type} {escape_cpp_name(func.name)}({params});\n")
         return True
 
@@ -577,13 +597,15 @@ class FunctionGenerator:
                                                      mutated_params=mp)
                       if has_proto_params or has_dynamic
                       else self.gen_params(func.params, func.type_params,
-                                           reassigned_params=rp, mutated_params=mp))
+                                           reassigned_params=rp, mutated_params=mp,
+                                           use_readonly_params=func.is_readonly))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params}) {{\n")
         else:
             ret_type = self._resolve_return_type(func.return_type, error_return=func.error_return)
             params = (self.gen_params_with_protocols(func.params, mutated_params=mp) if has_dynamic
                       else self.gen_params(func.params, func.type_params,
-                                           reassigned_params=rp, mutated_params=mp))
+                                           reassigned_params=rp, mutated_params=mp,
+                                           use_readonly_params=func.is_readonly))
             out.write(f"{ret_type} {escape_cpp_name(func.name)}({params}) {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
@@ -632,13 +654,15 @@ class FunctionGenerator:
                                                      mutated_params=mp)
                       if has_proto_params or has_dynamic
                       else self.gen_params(stub.params, impl.type_params,
-                                           reassigned_params=rp, mutated_params=mp))
+                                           reassigned_params=rp, mutated_params=mp,
+                                           use_readonly_params=stub.is_readonly))
             out.write(f"{ret_type} {escape_cpp_name(stub.name)}({params}) {{\n")
         else:
             ret_type = self._resolve_return_type(stub.return_type)
             params = (self.gen_params_with_protocols(stub.params, mutated_params=mp) if has_dynamic
                       else self.gen_params(stub.params, impl.type_params,
-                                           reassigned_params=rp, mutated_params=mp))
+                                           reassigned_params=rp, mutated_params=mp,
+                                           use_readonly_params=stub.is_readonly))
             out.write(f"{ret_type} {escape_cpp_name(stub.name)}({params}) {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
@@ -802,6 +826,7 @@ class FunctionGenerator:
             if use_const_params:
                 params = self.gen_params_with_protocols(method.params, method.type_params,
                                                         const_params=True,
+                                                        use_readonly_params=const,
                                                         defaults=dfl, emit_defaults=True)
             else:
                 params = self.gen_params_with_protocols(method.params, method.type_params,
@@ -811,11 +836,13 @@ class FunctionGenerator:
             ctp = class_type_params or None
             if use_const_params:
                 params = self.gen_params(method.params, method.type_params, const_params=True,
+                                         use_readonly_params=const,
                                          defaults=dfl, emit_defaults=True,
                                          class_type_params=ctp)
             else:
                 params = self.gen_params(method.params, method.type_params,
                                          reassigned_params=rp, mutated_params=mp,
+                                         use_readonly_params=const,
                                          defaults=dfl, emit_defaults=True,
                                          class_type_params=ctp)
         const_suffix = " const" if const else ""

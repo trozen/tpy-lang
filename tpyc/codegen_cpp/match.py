@@ -69,9 +69,12 @@ class MatchGenerator:
         out.write(f"{indent}{binding} __match_subject = {subject_code};\n")
 
         if isinstance(subject_type, UnionType):
+            is_const = (isinstance(stmt.subject, TpyName)
+                        and stmt.subject.name in self.ctx.const_indirect_locals)
             has_guard = any(c.guard is not None for c in stmt.cases)
             if has_guard:
-                self._gen_match_guarded_union(out, stmt, subject_type, indent)
+                self._gen_match_guarded_union(out, stmt, subject_type, indent,
+                                              is_const_subject=is_const)
             else:
                 self._gen_match_switch_union(out, stmt, subject_type, indent)
         elif isinstance(subject_type, EnumType):
@@ -509,6 +512,7 @@ class MatchGenerator:
 
     def _gen_match_guarded_union(
         self, out: TextIO, stmt: TpyMatch, subject_type: UnionType, indent: str,
+        is_const_subject: bool = False,
     ) -> None:
         """Generate guarded match on union using goto for fallthrough.
 
@@ -529,12 +533,14 @@ class MatchGenerator:
                     out, pattern, i, indent, inner, case.body,
                     case.guard, as_name, as_raw_name, case.type_facts, end_label,
                     subject_type=subject_type,
+                    is_const_subject=is_const_subject,
                 )
 
             elif isinstance(pattern, TpyOrPattern):
                 self._gen_guarded_union_or_arm(
                     out, pattern, i, indent, inner, case.body,
                     case.guard, subject_type, case.type_facts, end_label,
+                    is_const_subject=is_const_subject,
                 )
 
             elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
@@ -568,13 +574,15 @@ class MatchGenerator:
         type_facts: dict[str, TpyType] | None,
         end_label: str,
         subject_type: UnionType | None = None,
+        is_const_subject: bool = False,
     ) -> None:
         """Generate a class-pattern arm for guarded union match (goto-based fallthrough)."""
         assert pattern.resolved_type is not None
         cpp_type = self.types.type_to_cpp(pattern.resolved_type)
         is_ptr_var = subject_type is not None and subject_type.uses_pointer_repr()
 
-        holds_type = f"{cpp_type}*" if is_ptr_var else cpp_type
+        const_pfx = "const " if is_const_subject else ""
+        holds_type = f"{const_pfx}{cpp_type}*" if is_ptr_var else cpp_type
         out.write(f"{indent}if (std::holds_alternative<{holds_type}>(__match_subject)) {{\n")
         case_var: str | None = None
         if pattern.keywords or type_facts or as_name is not None:
@@ -614,6 +622,7 @@ class MatchGenerator:
         guard: TpyExpr | None, subject_type: UnionType,
         type_facts: dict[str, TpyType] | None,
         end_label: str,
+        is_const_subject: bool = False,
     ) -> None:
         """Generate an or-pattern arm for guarded union match (goto-based fallthrough)."""
         has_bindings = any(
@@ -622,13 +631,14 @@ class MatchGenerator:
         )
 
         is_ptr_var = subject_type.uses_pointer_repr()
+        const_pfx = "const " if is_const_subject else ""
         if not has_bindings:
             conds = []
             for alt in pattern.patterns:
                 if isinstance(alt, TpyClassPattern):
                     assert alt.resolved_type is not None
                     cpp_type = self.types.type_to_cpp(alt.resolved_type)
-                    holds_type = f"{cpp_type}*" if is_ptr_var else cpp_type
+                    holds_type = f"{const_pfx}{cpp_type}*" if is_ptr_var else cpp_type
                     conds.append(f"std::holds_alternative<{holds_type}>(__match_subject)")
                 elif isinstance(alt, (TpyWildcardPattern, TpyCapturePattern)):
                     conds.append("true")
@@ -653,6 +663,7 @@ class MatchGenerator:
                         out, alt, f"{arm_idx}_{j}", indent, inner, body,
                         guard, None, None, type_facts, end_label,
                         subject_type=subject_type,
+                        is_const_subject=is_const_subject,
                     )
                 else:
                     raise CodeGenError(f"Unsupported or-pattern alternative with bindings: {type(alt).__name__}")

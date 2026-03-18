@@ -47,16 +47,16 @@ std::string get_pet_name_ro(const Zoo& z) {
 
 // @readonly
 // def greet_pet(pet: Dog | Cat) -> str:
-std::string greet_pet(const std::variant<Cat*, Dog*> pet) {
+std::string greet_pet(std::variant<const Cat*, const Dog*> pet) {
     // if isinstance(pet, Dog):
-    if (std::holds_alternative<Dog*>(pet)) {
-        auto& __pet = *std::get<Dog*>(pet);
+    if (std::holds_alternative<const Dog*>(pet)) {
+        auto& __pet = *std::get<const Dog*>(pet);
         // return pet.name
         return __pet.name;
     } else {
         // elif isinstance(pet, Cat):
-        if (std::holds_alternative<Cat*>(pet)) {
-            auto& __pet = *std::get<Cat*>(pet);
+        if (std::holds_alternative<const Cat*>(pet)) {
+            auto& __pet = *std::get<const Cat*>(pet);
             // return pet.name
             return __pet.name;
         }
@@ -88,7 +88,7 @@ void main() {
     std::cout << get_pet_name_ro(z) << "\n";
     // # @readonly function with direct union param
     // print(greet_pet(pet))
-    std::cout << greet_pet(pet) << "\n";
+    std::cout << greet_pet(::tpy::ptr_variant_to_const<std::variant<const Cat*, const Dog*>>(pet)) << "\n";
 }
 
 void __tpy_init() {

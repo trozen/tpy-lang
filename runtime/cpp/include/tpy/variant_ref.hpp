@@ -72,6 +72,23 @@ to_const_ptr_variant(const std::variant<Ts...>& v) {
     return detail::to_ptr_variant_impl<Result>(v, std::index_sequence_for<Ts...>{});
 }
 
+// Convert mutable pointer variant to const pointer variant:
+// std::variant<T*...> -> std::variant<const T*...>
+// Handles monostate (nullable unions) by passing it through.
+namespace detail {
+template<typename Result>
+struct to_const_visitor {
+    template<typename T>
+    Result operator()(T* p) const { return static_cast<const T*>(p); }
+    Result operator()(std::monostate m) const { return m; }
+};
+} // namespace detail
+
+template<typename Result, typename... Alts>
+Result ptr_variant_to_const(const std::variant<Alts...>& v) {
+    return std::visit(detail::to_const_visitor<Result>{}, v);
+}
+
 // Reverse: convert pointer variant to value variant (copies active member).
 // Used when storing into fields/containers that own their values.
 // ValueVariant = target type (e.g. std::variant<Dog, Cat>)

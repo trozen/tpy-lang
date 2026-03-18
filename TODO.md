@@ -3,11 +3,11 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
+- Guarded match on union uses if/holds_alternative chain instead of switch: when any arm has a guard, the entire match falls back to goto-based if-chain (`holds_alternative` per arm). This duplicates type checks -- e.g. two `case Dog` arms (one guarded, one not) emit `holds_alternative<Dog*>` twice. Should generate `switch (subject.index())` with guards inside `case` blocks and `goto` fallthrough on guard failure.
 - continue moving builtins and builtin modules to .py files
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 
 ## Bugs
-- `@readonly` union param codegen uses `const variant<T*...>` (shallow const) instead of `variant<const T*...>` (deep const): sema now correctly blocks mutation through narrowed readonly union params, but the C++ type still allows it at the C++ level. Fixing requires updating all isinstance codegen paths (`std::get<T*>`, `holds_alternative<T*>`) to use `const T*` when the source is readonly.
 
 ## Fuzzy Testing Findings (2026-03-12)
 
@@ -69,6 +69,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - language restriction documentation
 
 ## Refactor
+- `tpy::ptr_variant<Ts...>` wrapper: replace `std::variant<Ts*...>` in param signatures with a thin wrapper that has an implicit converting constructor from `ptr_variant<T*...>` to `ptr_variant<const T*...>`. This would let deduced-const (non-mutated) params use deep const consistently with `@readonly`, without breaking callers. Currently deduced-const uses shallow const (`const variant<T*...>`) which doesn't prevent mutation through the pointer at the C++ level. Start with param signatures only; locals/fields/returns can stay `std::variant`.
 - Inline `and`/`or` chains for side-effect-free operands: `a or b or c` currently emits an intermediate temp (`auto&& __tmp = (a ? a : b); result = (__tmp ? __tmp : c)`) to avoid double-evaluation. When all operands are provably side-effect-free (variables, literals), the temp is unnecessary and the chain can be emitted as a single nested ternary (`!a.empty() ? a : !b.empty() ? b : c`), which is more readable.
 - Unify rvalue materialization: two overlapping mechanisms exist for extending rvalue lifetimes -- the slot system (`std::optional<T>` slots in `_gen_pointer_local_init`, tied to var decl infrastructure) and TempState (`auto&&` temps, expression-level). Both solve the same problem at different abstraction levels. Consider exposing a lower-level "materialize this rvalue" API that both var decls and expression-level temps (e.g. `and`/`or` ternaries) can share.
 

@@ -142,6 +142,8 @@ class StatementGenerator:
             # Non-value union params are pointer variants (variant<T*...>)
             elif isinstance(actual, UnionType) and actual.uses_pointer_repr():
                 self.ctx.ptr_variant_locals.add(pname)
+                if isinstance(ptype, ReadonlyType):
+                    self.ctx.const_indirect_locals.add(pname)
             # Own[T] and Own[T] | None params are movable (caller gave up ownership)
             own_actual = unwrap_optional_own(actual)
             if own_actual is not None and not own_actual.wrapped.is_value_type():
