@@ -8,7 +8,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Bugs
 - Pointer-variant union reassignment from const source: `p = z.pet` where `p` was declared as `variant<T*...>` (mutable) but `z.pet` is const. The types are incompatible (`variant<T*...>` vs `variant<const T*...>`). Needs copy materialization into a mutable slot on reassignment from const source.
-- `copy()` on pointer-variant union: `copy(x)` where `x: Dog | Cat` (pointer-variant local) generates `Cat(x)` instead of properly copying through the variant. Needs variant-aware copy codegen.
 - Constructor rvalue passed to function expecting pointer-variant union: `f(Dog("Rex"))` where `f` takes `Dog | Cat` (pointer-variant param) fails because `Dog` rvalue can't convert to `variant<Dog*, Cat*>`. Needs storage slot + `to_ptr_variant` at the call site.
 
 ## Fuzzy Testing Findings (2026-03-12)

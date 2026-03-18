@@ -741,6 +741,16 @@ class CallAnalyzer:
         # Unwrap OwnType if already wrapped
         if isinstance(arg_type, OwnType):
             arg_type = arg_type.wrapped
+        # Use declared union type instead of narrowed member type so copy()
+        # preserves the full union (e.g. copy(pet) where pet: Dog | Cat is
+        # narrowed to Dog still returns Own[Dog | Cat])
+        arg = expr.args[0]
+        if isinstance(arg, TpyName) and self.ctx.current_scope:
+            binding_type = self.ctx.current_scope.lookup(arg.name)
+            if binding_type is not None:
+                bt = binding_type.wrapped if isinstance(binding_type, OwnType) else binding_type
+                if isinstance(bt, UnionType) and not isinstance(arg_type, UnionType):
+                    arg_type = bt
         # @nocopy types cannot be copied
         if self.ctx.is_type_nocopy(arg_type):
             reason = self.ctx.nocopy_reason(arg_type)

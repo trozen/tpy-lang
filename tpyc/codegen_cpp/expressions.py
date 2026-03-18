@@ -273,6 +273,12 @@ class ExpressionGenerator:
         arg_type = self.ctx.get_expr_type(arg)
         if isinstance(arg_type, OptionalType) and arg_type.uses_pointer_repr():
             return self.gen_expr(arg)
+        # Pointer-variant union locals: visit variant and copy active member
+        if isinstance(arg, TpyName) and arg.name in self.ctx.ptr_variant_locals:
+            var_type = self.ctx.var_types.get(arg.name)
+            if isinstance(var_type, UnionType) and var_type.uses_pointer_repr():
+                val_cpp = self.types.type_to_cpp(var_type)
+                return f"::tpy::to_value_variant<{val_cpp}>({arg.name})"
         arg_expr = self.gen_expr_deref(arg)
         # Record constructors are prvalues — already an rvalue, no copy needed
         if isinstance(arg, TpyCall) and self.ctx.analyzer.registry.get_record(arg.func):
