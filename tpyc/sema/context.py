@@ -504,6 +504,19 @@ class SemanticContext:
     # --- Diagnostics ---
     diagnostics: list[Diagnostic] = field(default_factory=list)
 
+    def is_readonly_name(self, name: str) -> bool:
+        """Check if a variable has readonly provenance in its declared scope type.
+
+        isinstance narrowing updates narrowed_types (not scope bindings), so the
+        scope binding preserves ReadonlyType even when the expr type is narrowed
+        to a concrete member. Reassignment updates the scope binding, so a
+        non-readonly reassignment correctly clears this.
+        """
+        if self.current_scope is None:
+            return False
+        declared = self.current_scope.lookup(name)
+        return declared is not None and isinstance(declared, ReadonlyType)
+
     def error(self, message: str, node: TpyExpr | TpyStmt | None = None) -> SemanticError:
         """Create a SemanticError with location from a node."""
         loc = getattr(node, 'loc', None) if node else None

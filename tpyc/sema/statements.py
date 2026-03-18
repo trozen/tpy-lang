@@ -403,6 +403,10 @@ class StatementAnalyzer:
                     check_type = check_type.inner
                 if isinstance(check_type, ReadonlyType):
                     raise self.ctx.error("Cannot mutate readonly reference", target)
+                # isinstance narrowing strips ReadonlyType from the expr type;
+                # the scope binding preserves it, so check there.
+                if isinstance(target.obj, TpyName) and self.ctx.is_readonly_name(target.obj.name):
+                    raise self.ctx.error("Cannot mutate readonly reference", target)
                 # Frozen dataclass: reject field assignment except self.field in __init__
                 if isinstance(target, TpyFieldAccess):
                     actual = unwrap_readonly(check_type)

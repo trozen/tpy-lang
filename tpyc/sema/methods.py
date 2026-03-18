@@ -327,8 +327,12 @@ class MethodAnalyzer:
         if isinstance(obj_type, PendingGenericInstanceType):
             return self._analyze_pending_generic_method_call(expr, obj_type)
 
-        # Unwrap ReadonlyType, remembering the flag for enforcement
+        # Unwrap ReadonlyType, remembering the flag for enforcement.
+        # Also check declared scope type: isinstance narrowing may strip ReadonlyType
+        # from the expr type while the scope binding preserves it.
         is_readonly_receiver = isinstance(obj_type, ReadonlyType)
+        if not is_readonly_receiver and isinstance(expr.obj, TpyName):
+            is_readonly_receiver = self.ctx.is_readonly_name(expr.obj.name)
         if isinstance(obj_type, ReadonlyType):
             obj_type = obj_type.wrapped
 

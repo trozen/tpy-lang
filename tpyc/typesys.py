@@ -1475,7 +1475,9 @@ class UnionType(TpyType):
     def to_cpp_const_param(self, name: str) -> str:
         if self.uses_pointer_repr():
             # const on the variant itself, not on the pointers inside.
-            # Tells the optimizer the discriminant won't change.
+            # Sema enforces readonly at the Python level; deep-const pointers
+            # (variant<const T*...>) would require updating all isinstance
+            # codegen paths (std::get<T*>, holds_alternative<T*>).
             return f"const {self.to_cpp_ptr_variant()} {name}"
         return f"const {self.to_cpp()}& {name}"
 
