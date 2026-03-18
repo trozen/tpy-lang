@@ -13,6 +13,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // import tpy as t
     // s: str = "hello"
     s = "hello";
     // u = t.copy(s)

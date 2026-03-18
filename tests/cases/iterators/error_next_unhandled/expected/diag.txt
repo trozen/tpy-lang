@@ -1,0 +1,1 @@
+main.py:23: error: call to 'next' may return 'StopIteration' which must be handled with try/except

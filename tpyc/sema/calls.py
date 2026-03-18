@@ -1514,6 +1514,8 @@ class CallAnalyzer:
                                        subclass_checker=self.ctx.registry.is_subclass_of)
             if matched is not None:
                 expr.resolved_function_info = matched
+                self._check_error_return_handled(expr, matched)
+                self._record_mutation_call_edges(expr)
                 for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, matched.params)):
                     self.check_own_param(arg, arg_t, pname, ptype)
                     if arg_t != ptype:
@@ -1543,6 +1545,8 @@ class CallAnalyzer:
                                                protocol_checker, n_explicit)
                 resolved = self.type_ops.substitute_method_type_params(overload, type_subst)
                 expr.resolved_function_info = resolved
+                self._check_error_return_handled(expr, resolved)
+                self._record_mutation_call_edges(expr)
                 expr.inferred_type_args = tuple(type_subst[p] for p in overload.type_params)
                 for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, resolved.params)):
                     self.check_own_param(arg, arg_t, pname, ptype)

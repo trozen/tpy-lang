@@ -295,10 +295,8 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | `builtins.py` | Built-in types (`list`, `dict`, `str`, `int`, etc.) and functions with special handling (`print`, `isinstance`, `round`, `range`, `iter`) |
 | `resolver.py` | User module resolution |
 | `helpers.py` | Helper utilities for type definitions |
-| `tpy.py` | TurboPython-specific types (`Int32`, `Array`, `Span`, etc.) and `copy`/`try_parse` functions. Protocols defined in `lib/tpy/tpy/__init__.py` |
+| `tpy.py` | TurboPython-specific types (`Int32`, `Array`, `Span`, etc.) and `copy`/`try_parse` functions. Protocols and `span`/`deref`/`make_default` defined in `lib/tpy/tpy/__init__.py` |
 | `extern.py` | `tpy.extern` module -- native global variable declarations |
-| `dataclasses.py` | `dataclasses` module (decorator, frozen, order, etc.) |
-| `enum.py` | `enum` module (Enum, auto(), comparison) |
 
 ### Runtime (`runtime/`)
 
@@ -343,10 +341,10 @@ Library search roots and CPython stubs:
 | Directory | Purpose |
 |-----------|---------|
 | `tpy/` | Single search root for all library modules |
-| `tpy/tpy/` | TPy package: `__init__.py` defines protocols (`Comparable`, `Truthy`, `ValueType`, etc.). Implicitly compiled. |
+| `tpy/tpy/` | TPy package: `__init__.py` defines protocols (`Comparable`, `Truthy`, `ValueType`, `AnyFixedInt`, etc.) and functions (`span`, `deref`, `make_default`). Implicitly compiled. |
 | `tpy/tplib/` | TPy standard library: `Box[T]`, custom collections |
 | `tpy/typing.py` | `typing` protocols (`Sized`, `Sequence`, etc.). Implicitly compiled. |
-| `tpy/builtins.py` | Builtin functions (`len`, `repr`, `hash`, `chr`, `ord`, `abs`, `min`, `max`, `pow`, `divmod`) and exception classes (`BaseException`, `Exception`, `StopIteration`). Implicitly compiled. |
+| `tpy/builtins.py` | Builtin functions (`len`, `repr`, `hash`, `chr`, `ord`, `abs`, `min`, `max`, `pow`, `divmod`, `next`) and exception classes (`BaseException`, `Exception`, `StopIteration`). Implicitly compiled. |
 | `tpy/math.py`, `time.py`, `sys.py`, `bisect.py` | Python stdlib analogs |
 | `cpy/tpy/` | CPython stubs ONLY (not seen by tpyc): `Int32`, `Ptr`, `Array`, decorators; submodules: `mem`, `unsafe` |
 | `cpy/tplib` | Symlink to `tpy/tplib/` so CPython tests can find tplib |

@@ -25,6 +25,12 @@ struct BaseException : std::exception {};
 struct Exception : BaseException {};
 struct StopIteration : Exception {};
 
+// next(iterator) -- forwards __next__() result (std::expected<T, StopIteration>)
+template<typename Iter>
+auto next(Iter& it) -> decltype(it.__next__()) {
+    return it.__next__();
+}
+
 /**
  * Panic and abort - called on fatal runtime errors.
  */

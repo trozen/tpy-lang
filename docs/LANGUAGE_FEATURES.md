@@ -2382,7 +2382,7 @@ class NumberRange:
 **Rules**:
 - Direct `obj.__next__()` calls require `try/except StopIteration` (compile error if unhandled, since `__next__` is `@error_return(StopIteration)`)
 - `raise StopIteration` is only allowed inside `__next__` methods (or functions with `@error_return(StopIteration)`)
-- The `next()` builtin is not yet supported
+- `next(it)` builtin supported -- calls `it.__next__()`, requires `try/except StopIteration` like direct `__next__()` calls
 
 #### Working: `Iterator[T]` and `Iterable[T]` Protocols
 
@@ -3767,7 +3767,7 @@ class Car(Vehicle, Printable, Measurable):
 
 ## Built-in Functions
 
-- **Working**: `print()`, `len()`, `hash()`, `range()`, `chr()`, `ord()`, `pow()`, `round()`, `divmod()`, `copy()` -- most builtins (`len`, `repr`, `hash`, `chr`, `ord`, `abs`, `min`, `max`, `pow`, `divmod`) defined in `lib/tpy/builtins.py` via `@native`/`@cpp_template`
+- **Working**: `print()`, `len()`, `hash()`, `range()`, `chr()`, `ord()`, `pow()`, `round()`, `divmod()`, `next()`, `copy()` -- most builtins (`len`, `repr`, `hash`, `chr`, `ord`, `abs`, `min`, `max`, `pow`, `divmod`, `next`) defined in `lib/tpy/builtins.py` via `@native`/`@cpp_template`
   - `print("x", end="")` supported (`end` must be a string literal; dynamic `end` not yet supported)
   - Container printing matches Python format: bools as `True`/`False`, floats with `.0`, strings in `'quotes'`
 - **Working**: `str()`, `repr()`, f-strings on containers (tuple, list, dict, Array, Span) -- uses runtime to_str helpers matching `print()` format

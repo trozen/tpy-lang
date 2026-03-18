@@ -18,7 +18,17 @@ from .nodes import (
 # Modules not listed here are always resolved as user files.
 PARSER_KEYWORDS: dict[str, frozenset[str] | None] = {
     # None means ALL names are parser keywords (module cannot be shadowed by .py)
-    "tpy": None,
+    "tpy": frozenset({
+        # Types used in annotations at parse time
+        "Int8", "Int16", "Int32", "Int64",
+        "UInt8", "UInt16", "UInt32", "UInt64",
+        "Float32", "Float64",
+        "Array", "Span", "SpanIter", "Ptr", "Own", "Char",
+        "String", "StrView", "ReadOnlyPtr",
+        # Decorators/modifiers
+        "readonly", "noalloc", "nocopy", "dynamic", "pure",
+        "auto_readonly", "error_return",
+    }),
     "builtins": None,
     "__future__": None,  # no-op, never resolved as .py
     "typing": frozenset({"Protocol", "Optional", "Final", "overload", "override", "Self"}),

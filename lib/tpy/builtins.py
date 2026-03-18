@@ -1,12 +1,13 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
-from typing import overload, Sized
+from typing import overload, Sized, Iterator
 from tpy import (
     Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64,
     Char, String, StrView, pure, readonly,
 )
 from tpy import Hashable, Representable
 from tpy.extern import native, cpp_template
+from tpy import error_return
 
 
 # Python exception hierarchy (maps to ::tpy:: runtime structs in core.hpp)
@@ -288,3 +289,8 @@ def divmod(a: UInt32, b: UInt32) -> tuple[UInt32, UInt32]: ...
 @readonly
 @native("tpy::divmod_fixed<uint64_t>")
 def divmod(a: UInt64, b: UInt64) -> tuple[UInt64, UInt64]: ...
+
+
+@error_return(StopIteration)
+@native("tpy::next")
+def next[T](it: Iterator[T]) -> T: ...

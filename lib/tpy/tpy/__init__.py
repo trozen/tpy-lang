@@ -1,8 +1,8 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::tpy")
 from typing import Protocol, Self
-from tpy import UInt64, Span, readonly
-from tpy.extern import native
+from tpy import UInt64, Span, Own, readonly, pure
+from tpy.extern import native, cpp_template
 
 
 # --- Structural protocols (concept generated from method signatures) ---
@@ -78,3 +78,19 @@ class AnyFixedSigned(Protocol): ...
 
 @native("::tpy::AnyFixedUnsigned")
 class AnyFixedUnsigned(Protocol): ...
+
+
+# --- Functions ---
+
+@pure
+@readonly
+@native("tpy::as_span")
+def span[T](x: ReadOnlySpanLike[T]) -> Span[readonly[T]]: ...
+
+@pure
+@readonly
+@native("tpy::deref_check")
+def deref[T](x: Deref[T]) -> T: ...
+
+@cpp_template("{T}{{}}")
+def make_default[T: Default]() -> Own[T]: ...

@@ -690,31 +690,6 @@ def init_module() -> BuiltinModule:
     # try_parse(EnumType, str) -> Optional[EnumType]
     module.function("try_parse", overloads=[], special_handling=True)
 
-    # span(x) -- get ReadOnlySpan[T] from a ReadOnlySpanLike[T]
-    module.function("span", overloads=[
-        MethodDef(
-            params=[ParamDef("x", NamedType("ReadOnlySpanLike", (T,), is_protocol=True))],
-            returns=SpanType(T, is_readonly=True),
-            cpp="::tpy::as_span({0})",
-            is_readonly=True, is_pure=True,
-        ),
-    ], type_params=["T"])
-
-    # deref(x) -- dereference a Deref[T] to get T
-    module.function("deref", overloads=[
-        MethodDef(
-            params=[ParamDef("x", NamedType("Deref", (T,), is_protocol=True))],
-            returns=T,
-            cpp="::tpy::deref_check({0})",
-            is_readonly=True, is_pure=True,
-        ),
-    ], type_params=["T"])
-
-    # make_default() -- portable default construction for generic T
-    module.function("make_default", overloads=[
-        MethodDef(params=[], returns=OwnType(T), cpp="{T}{{}}"),
-    ], type_params=["T"],
-       type_param_bounds={"T": NamedType("Default", (), is_protocol=True)})
 
     # Float64: alias for float (double precision) with its own constructor overloads.
     from tpyc.modules import BuiltinTypeDef

@@ -952,7 +952,10 @@ class TypeOperations:
             is_builtin_function=method.is_builtin_function,
             type_params=method.type_params,
             type_param_bounds=substituted_bounds if substituted_bounds else method.type_param_bounds,
-            cpp_template=method.cpp_template,  # Preserve cpp_template for codegen
+            linkage=method.linkage,
+            native_name=method.native_name,
+            cpp_template=method.cpp_template,
+            error_return_type=method.error_return_type,
             qualified_name=method.qualified_name,
             # Preserve analysis-derived facts -- indices are positional (unaffected by
             # type substitution) and needed by call-site borrow/mutation checks.
