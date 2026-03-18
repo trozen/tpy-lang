@@ -26,12 +26,12 @@ void test_list_membership() {
     }
     // # 'not in' operator
     // if 99 not in nums:
-    if ((!(std::find(nums.begin(), nums.end(), 99) != nums.end()))) {
+    if ((std::find(nums.begin(), nums.end(), 99) == nums.end())) {
         // print("99 not in list: yes")
         std::cout << "99 not in list: yes" << "\n";
     }
     // if 30 not in nums:
-    if ((!(std::find(nums.begin(), nums.end(), 30) != nums.end()))) {
+    if ((std::find(nums.begin(), nums.end(), 30) == nums.end())) {
         // print("30 not in list: yes")
         std::cout << "30 not in list: yes" << "\n";
     // else:
@@ -60,7 +60,7 @@ void test_array_membership() {
         std::cout << "5 in array: no" << "\n";
     }
     // if 5 not in arr:
-    if ((!(std::find(arr.begin(), arr.end(), 5) != arr.end()))) {
+    if ((std::find(arr.begin(), arr.end(), 5) == arr.end())) {
         // print("5 not in array: yes")
         std::cout << "5 not in array: yes" << "\n";
     }
@@ -128,12 +128,12 @@ void test_string_membership() {
     }
     // # 'not in' for string
     // if "z" not in text:
-    if ((!(text.find("z") != std::string::npos))) {
+    if ((text.find("z") == std::string::npos)) {
         // print("'z' not in string: yes")
         std::cout << "'z' not in string: yes" << "\n";
     }
     // if "e" not in text:
-    if ((!(text.find("e") != std::string::npos))) {
+    if ((text.find("e") == std::string::npos)) {
         // print("'e' not in string: yes")
         std::cout << "'e' not in string: yes" << "\n";
     // else:
@@ -161,7 +161,7 @@ void test_membership_in_conditions() {
     }
     // # Negation combined
     // if 1 in nums and 99 not in nums:
-    if (((std::find(nums.begin(), nums.end(), 1) != nums.end()) && (!(std::find(nums.begin(), nums.end(), 99) != nums.end())))) {
+    if (((std::find(nums.begin(), nums.end(), 1) != nums.end()) && (std::find(nums.begin(), nums.end(), 99) == nums.end()))) {
         // print("1 in and 99 not in list")
         std::cout << "1 in and 99 not in list" << "\n";
     }
@@ -181,7 +181,7 @@ void test_membership_with_variables() {
         std::cout << "target found" << "\n";
     }
     // if missing not in nums:
-    if ((!(std::find(nums.begin(), nums.end(), missing) != nums.end()))) {
+    if ((std::find(nums.begin(), nums.end(), missing) == nums.end())) {
         // print("missing not found")
         std::cout << "missing not found" << "\n";
     }

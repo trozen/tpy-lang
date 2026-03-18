@@ -27,7 +27,8 @@ void __tpy_init() {
     // for i in range(base, base + 10, 3):
     ::tpy::BigInt __start_1 = base;
     ::tpy::BigInt __stop_1 = ((base) + (::tpy::BigInt(10)));
-    for (::tpy::BigInt i = __start_1; i < __stop_1; i += ::tpy::BigInt(3)) {
+    ::tpy::BigInt __step_1 = ::tpy::BigInt(3);
+    for (::tpy::BigInt i = __start_1; i < __stop_1; i += __step_1) {
         // print(i)
         std::cout << i << "\n";
     }

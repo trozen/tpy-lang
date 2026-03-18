@@ -14,7 +14,7 @@ void main() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::tuple<int32_t, std::string> __for_tup_0 = *__beg_0;
+        const std::tuple<int32_t, std::string>& __for_tup_0 = *__beg_0;
         // for n, s in items:
         const auto& __tup_1 = __for_tup_0;
         int32_t n = std::get<0>(__tup_1);
@@ -46,7 +46,7 @@ void main() {
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
-        std::tuple<std::string, std::string> __for_tup_2 = *__beg_2;
+        const std::tuple<std::string, std::string>& __for_tup_2 = *__beg_2;
         // for full, initial in names:
         const auto& __tup_3 = __for_tup_2;
         std::string_view full = std::get<0>(__tup_3);

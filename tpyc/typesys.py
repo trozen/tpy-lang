@@ -379,6 +379,9 @@ class StrType(TpyType):
     def is_value_type(self) -> bool:
         return True
 
+    def is_expensive_copy(self) -> bool:
+        return True
+
     def to_cpp_param(self, name: str) -> str:
         return f"std::string_view {name}"
 

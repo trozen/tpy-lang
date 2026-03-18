@@ -2561,6 +2561,10 @@ class StatementGenerator:
                           f"{var} < {stop_expr}; ++{var}) {{\n")
             else:
                 step_cpp = gen_args[2]
+                if isinstance(elem_type, BigIntType):
+                    step_temp = f"__step_{n}"
+                    out.write(f"{indent}{cpp_elem} {step_temp} = {step_cpp};\n")
+                    step_cpp = step_temp
                 self._gen_range_overflow_check(out, indent, start_expr, stop_expr, step_cpp, elem_type)
                 out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
                           f"{var} < {stop_expr}; "
@@ -2571,6 +2575,10 @@ class StatementGenerator:
                           f"{var} > {stop_expr}; --{var}) {{\n")
             else:
                 step_cpp = gen_args[2]
+                if isinstance(elem_type, BigIntType):
+                    step_temp = f"__step_{n}"
+                    out.write(f"{indent}{cpp_elem} {step_temp} = {step_cpp};\n")
+                    step_cpp = step_temp
                 self._gen_range_overflow_check(out, indent, start_expr, stop_expr, step_cpp, elem_type)
                 out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
                           f"{var} > {stop_expr}; "

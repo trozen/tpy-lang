@@ -17,9 +17,15 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 ### Quality / optimization (correct output, but suboptimal codegen)
 - **[LOW]** None-seeded variable assigned in all branches stays `Optional[T]`: when `x = None` is followed by assignment in both the `if` and `else` branches (so every path guarantees a value), `x` is still typed `std::optional<T>` after the if/else block. Post-dominance analysis could demote it to `T` and skip the optional wrapper. Not a correctness issue -- output is identical -- but adds unnecessary runtime cost and less readable C++.
 
-## C++ Codegen Review Findings (2026-03-12)
+## C++ Codegen Review Findings (2026-03-12, updated 2026-03-18)
 
 ### Systematic suboptimalities
+- **[HIGH effort]** Double subscript in augmented assignment: `a[i] += v` emits `__setitem__(a, i, add_check(__getitem__(a, i), v))` -- two separate bounds checks + index normalization. Hand-written C++ would use a single indexed access. Fix needs a reference-based codegen path (e.g. `__getitem_ref__` or direct `operator[]`).
+- **[MEDIUM effort]** Comprehension loop var copies `string` by value: iterating `vector<string>` in list/set/dict comprehensions binds with `std::string w = *__beg` (heap copy per element) when the element is only read. Plain for-loops already use `const auto&` via `const_loop_var`. Comprehension codegen needs the same read-only analysis.
+- **[LOW effort]** Copy-then-move for `list.append(v)`: `auto __tmp = v; items.push_back(std::move(__tmp))` instead of `items.push_back(v)`. The intermediate `__tmp` is generated for copy-warning tracking but is redundant for simple variables and literals. Skip when source is a plain name or literal.
+- **[MEDIUM effort]** `static_cast<double>(BigInt(n))` for int literals in mixed int/float expressions: `1 + 2.0` generates `static_cast<double>(BigInt(1)) + 2.0` because sema resolves the literal to BigInt (as `int`) before the float coercion fires. Fix: in sema, coerce int literals directly to float in binary ops with float operands, bypassing BigInt.
+- **[HIGH effort]** Inherited fields body-assigned instead of member initializer list: child constructors without `super()` assign inherited `std::string`/container fields in the body (default-construct then assign) instead of via MIL or base-class constructor delegation. Adds an extra default construction per non-trivial inherited field.
+- **[MEDIUM effort]** `__param_` copy for reassigned parameters: when a parameter is reassigned in the function body, codegen takes it by `const&` then copies into a mutable local. For BigInt/string params, taking by value instead would let the caller move.
 
 ### Missed optimizations
 - **[LOW]** String concat chain produces N-1 intermediate allocations: `a + b + c + d` emits left-associative nested `str_concat` calls, each allocating a temporary `std::string`. A codegen optimization detecting a chain of `+` on string-view operands could emit a single `reserve` + N `append` calls.

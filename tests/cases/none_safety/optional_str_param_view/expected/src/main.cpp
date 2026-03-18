@@ -30,7 +30,7 @@ std::string unwrap(std::optional<std::string_view> s) {
     // if s is not None:
     if ((s.has_value())) {
         // return s
-        return std::string((*s));
+        return std::string(std::move((*s)));
     }
     // return "default"
     return "default";
@@ -39,8 +39,7 @@ std::string unwrap(std::optional<std::string_view> s) {
 // def append_to_list(items: list[Optional[str]], s: Optional[str]) -> None:
 void append_to_list(std::vector<std::optional<std::string>>& items, std::optional<std::string_view> s) {
     // items.append(s)
-    auto __tmp_1 = s ? std::make_optional(std::string(*s)) : std::nullopt;
-    items.push_back(std::move(__tmp_1));
+    items.push_back(std::move(s ? std::make_optional(std::string(*s)) : std::nullopt));
 }
 
 // def normalize(s: Optional[str]) -> Optional[str]:

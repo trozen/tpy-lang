@@ -13,7 +13,7 @@ void main() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::tuple<std::string, Point> item = *__beg_0;
+        const std::tuple<std::string, Point>& item = *__beg_0;
         // print(item)
         std::cout << ::tpy::TuplePrinter(item) << "\n";
     }

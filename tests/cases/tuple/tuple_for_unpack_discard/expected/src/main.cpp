@@ -13,7 +13,7 @@ void main() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::tuple<int32_t, std::string> __for_tup_0 = *__beg_0;
+        const std::tuple<int32_t, std::string>& __for_tup_0 = *__beg_0;
         // for _, name in items:
         const auto& __tup_1 = __for_tup_0;
         std::string_view name = std::get<1>(__tup_1);

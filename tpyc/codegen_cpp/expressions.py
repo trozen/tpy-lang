@@ -748,6 +748,7 @@ class ExpressionGenerator:
             # Dereference globals for .begin()/.end() calls
             if self.ctx.is_indirect_name(expr.right):
                 right = f"(*{right})"
+            negate = expr.op == "not in"
             if expr.resolved_contains:
                 if expr.resolved_contains.cpp_template:
                     # Builtin __contains__ with template (dict, set, dict_keys)
@@ -755,17 +756,17 @@ class ExpressionGenerator:
                 else:
                     # User-defined __contains__ method
                     find_expr = f"({right}.__contains__({left}))"
+                return f"(!{find_expr})" if negate else find_expr
             elif is_any_str_type(self.types.get_resolved_type(expr.right)):
                 # String contains: use .find(). Wrap string literals in
                 # std::string_view since C string literals lack .find().
                 rhs = f"std::string_view({right})" if isinstance(expr.right, TpyStrLiteral) else right
-                find_expr = f"({rhs}.find({left}) != std::string::npos)"
+                op = "==" if negate else "!="
+                return f"({rhs}.find({left}) {op} std::string::npos)"
             else:
                 # Collection: use std::find
-                find_expr = f"(std::find({right}.begin(), {right}.end(), {left}) != {right}.end())"
-            if expr.op == "not in":
-                return f"(!{find_expr})"
-            return find_expr
+                op = "==" if negate else "!="
+                return f"(std::find({right}.begin(), {right}.end(), {left}) {op} {right}.end())"
 
         # Identity operators (is / is not) -- nullable comparison
         if expr.op in ("is", "is not"):
