@@ -158,21 +158,32 @@ class BuiltinGenerator:
     def gen_builtin_function_overloads(self, expr: TpyCall, overloads: list[FunctionInfo]) -> str:
         """Generate C++ code for a builtin function call using unified FunctionInfo overloads."""
         fi = expr.resolved_function_info
-        if fi and fi.cpp_template:
-            template = fi.cpp_template
-            # Resolve type param placeholders (e.g. {T} -> int32_t) at codegen
-            # time so native C++ names (_native_cpp_names) are available.
-            if expr.inferred_type_args and fi.type_params:
-                for name, typ in zip(fi.type_params, expr.inferred_type_args):
-                    placeholder = f"{{{name}}}"
-                    if placeholder in template and hasattr(typ, "to_cpp"):
-                        template = template.replace(placeholder, typ.to_cpp())
+        if fi and (fi.cpp_template or fi.native_name):
             gen_args = [self._gen_expr_deref(arg, ptype)
                         for arg, (_, ptype) in zip(expr.args, fi.params)]
-            return template.format(*gen_args)
+            if fi.cpp_template:
+                template = fi.cpp_template
+                # Resolve type param placeholders (e.g. {T} -> int32_t) at codegen
+                # time so native C++ names (_native_cpp_names) are available.
+                if expr.inferred_type_args and fi.type_params:
+                    for name, typ in zip(fi.type_params, expr.inferred_type_args):
+                        placeholder = f"{{{name}}}"
+                        if placeholder in template and hasattr(typ, "to_cpp"):
+                            template = template.replace(placeholder, typ.to_cpp())
+                return template.format(*gen_args)
+            # @native: simple function call
+            name = fi.native_name
+            if "::" in name and not name.startswith("::"):
+                name = f"::{name}"
+            return f"{name}({', '.join(gen_args)})"
         # Fallback: re-resolve (shouldn't normally be needed)
         overload, gen_args = self._match_overload_args(expr, overloads)
-        return overload.cpp_template.format(*gen_args)
+        if overload.cpp_template:
+            return overload.cpp_template.format(*gen_args)
+        name = overload.native_name or overload.name
+        if "::" in name and not name.startswith("::"):
+            name = f"::{name}"
+        return f"{name}({', '.join(gen_args)})"
 
     def _builtin_codegen_type_matches(self, arg: TpyExpr, arg_type: TpyType, param_type: TpyType) -> bool:
         """Check if an argument matches a parameter type for codegen purposes."""

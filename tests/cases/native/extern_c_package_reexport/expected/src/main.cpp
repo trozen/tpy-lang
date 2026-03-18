@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def app_init() -> None:
 extern "C" void app_init() {
     // abs(Int32(0))
-    std::abs(0);
+    abs(0);
     // x: Int32 = get_clock()
     int32_t x = tpy_clock();
     // print(x)

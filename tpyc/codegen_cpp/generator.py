@@ -858,9 +858,14 @@ class CodeGenerator:
             out.write('\n')
         # Include implicit stdlib module headers (typing, tpy) -- they define
         # protocols used by builtins and user code even without explicit import.
+        # Skip native_module modules: they only bind to existing C++ functions
+        # and generate no declarations that other modules need to include.
         included = set()
         for implicit_mod in sorted(self.ctx.implicit_stdlib_modules):
             if implicit_mod == self.ctx.module_name:
+                continue
+            mod_info = self.analyzer.registry.get_module(implicit_mod)
+            if mod_info and mod_info.is_native_module and not mod_info.protocols:
                 continue
             if implicit_mod in self.ctx.all_user_modules:
                 include_path = self._module_to_include_path(implicit_mod)

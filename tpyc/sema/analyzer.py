@@ -361,13 +361,15 @@ class SemanticAnalyzer:
         for name in python_builtin_types:
             self.ctx.builtins_ns.bind_imported_name(name, "builtins", name)
 
-        # Python builtin functions
-        # All go through namespace; special handling is in IMPORTED_NAME handler
-        python_builtin_functions = ["len", "chr", "abs", "min", "max", "ord",
-                                    "print", "range", "enumerate", "zip",
-                                    "isinstance"]
+        # Python builtin functions -- available without import (like CPython).
+        # Registered in both builtins_ns (for sema lookup) and imported_names
+        # (for codegen to resolve to the lib/tpy/builtins.py module functions).
+        python_builtin_functions = ["len", "repr", "hash", "chr", "abs", "min",
+                                    "max", "ord", "print", "range", "enumerate",
+                                    "zip", "isinstance", "iter"]
         for name in python_builtin_functions:
             self.ctx.builtins_ns.bind_imported_name(name, "builtins", name)
+            self.ctx.imported_names[name] = ("builtins", name)
 
     def analyze(self, module: TpyModule, module_name: str = "__main__") -> None:
         """Analyze a module for semantic correctness.

@@ -25,18 +25,18 @@ void __tpy_init() {
     // x: Int32 = -42
     x = -42;
     // print(abs(x))
-    std::cout << std::abs(x) << "\n";
+    std::cout << ::std::abs(x) << "\n";
     // print(abs(Int32(10)))
-    std::cout << std::abs(10) << "\n";
+    std::cout << ::std::abs(10) << "\n";
     // print(abs(Int32(0)))
-    std::cout << std::abs(0) << "\n";
+    std::cout << ::std::abs(0) << "\n";
     // # Test abs with BigInt (default int)
     // y = -100
     y = -100;
     // print(abs(y))
-    std::cout << std::abs(y) << "\n";
+    std::cout << ::std::abs(y) << "\n";
     // print(abs(99))
-    std::cout << std::abs(99) << "\n";
+    std::cout << ::std::abs(99) << "\n";
     // # Large BigInt
     // big = int(-1000000)
     big = ::tpy::BigInt(static_cast<int64_t>(-1000000));
@@ -46,11 +46,11 @@ void __tpy_init() {
     // z: float = -3.14
     z = -(3.14);
     // print(abs(z))
-    std::cout << ::tpy::print_float(std::fabs(z)) << "\n";
+    std::cout << ::tpy::print_float(::std::fabs(z)) << "\n";
     // print(abs(2.5))
-    std::cout << ::tpy::print_float(std::fabs(2.5)) << "\n";
+    std::cout << ::tpy::print_float(::std::fabs(2.5)) << "\n";
     // print(abs(-0.0))
-    std::cout << ::tpy::print_float(std::fabs(-(0.0))) << "\n";
+    std::cout << ::tpy::print_float(::std::fabs(-(0.0))) << "\n";
 }
 
 } // namespace tpyapp::main

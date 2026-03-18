@@ -42,22 +42,22 @@ void __tpy_init() {
     // b: Int32 = 20
     b = 20;
     // print(min(a, b))
-    std::cout << std::min(a, b) << "\n";
+    std::cout << ::std::min(a, b) << "\n";
     // print(max(a, b))
-    std::cout << std::max(a, b) << "\n";
+    std::cout << ::std::max(a, b) << "\n";
     // print(min(b, a))
-    std::cout << std::min(b, a) << "\n";
+    std::cout << ::std::min(b, a) << "\n";
     // print(max(b, a))
-    std::cout << std::max(b, a) << "\n";
+    std::cout << ::std::max(b, a) << "\n";
     // # Test min/max with BigInt (default int)
     // x = 100
     x = 100;
     // y = -50
     y = -50;
     // print(min(x, y))
-    std::cout << std::min(x, y) << "\n";
+    std::cout << ::std::min(x, y) << "\n";
     // print(max(x, y))
-    std::cout << std::max(x, y) << "\n";
+    std::cout << ::std::max(x, y) << "\n";
     // # Use int() for large values to avoid literal issues
     // big1 = int(-1000000)
     big1 = ::tpy::BigInt(static_cast<int64_t>(-1000000));
@@ -73,9 +73,9 @@ void __tpy_init() {
     // f2: float = 2.71
     f2 = 2.71;
     // print(min(f1, f2))
-    std::cout << ::tpy::print_float(std::fmin(f1, f2)) << "\n";
+    std::cout << ::tpy::print_float(::std::fmin(f1, f2)) << "\n";
     // print(max(f1, f2))
-    std::cout << ::tpy::print_float(std::fmax(f1, f2)) << "\n";
+    std::cout << ::tpy::print_float(::std::fmax(f1, f2)) << "\n";
     // # Test 3-argument min/max
     // c: Int32 = 5
     c = 5;

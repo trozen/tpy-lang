@@ -59,75 +59,6 @@ def init_module() -> BuiltinModule:
     """Initialize and return the builtins module."""
     module = BuiltinModule(NAME)
 
-    module.function("len", overloads=[
-        MethodDef(
-            params=[ParamDef("x", SIZED)],
-            returns=INT32,
-            cpp="::tpy::__len__({0})",
-            is_readonly=True, is_pure=True,
-        ),
-    ])
-
-    module.function("repr", overloads=[
-        MethodDef(
-            params=[ParamDef("x", REPRESENTABLE)],
-            returns=STR,
-            cpp="std::string(::tpy::__repr__({0}))",
-            is_readonly=True, is_pure=True,
-        ),
-    ])
-
-    module.function("hash", overloads=[
-        MethodDef(
-            params=[ParamDef("x", HASHABLE)],
-            returns=UINT64,
-            cpp="::tpy::__hash__({0})",
-            is_readonly=True, is_pure=True,
-        ),
-    ])
-
-    module.function("chr", overloads=[
-        MethodDef(
-            params=[ParamDef("i", INT32)],
-            returns=CHAR,
-            cpp="static_cast<char>({0})",
-            is_readonly=True, is_pure=True,
-        ),
-        MethodDef(
-            params=[ParamDef("i", BIGINT)],
-            returns=CHAR,
-            cpp="static_cast<char>(({0}).to_fixed_check<int32_t>())",
-            is_readonly=True, is_pure=True,
-        ),
-    ])
-
-    module.function("ord", overloads=[
-        MethodDef(
-            params=[ParamDef("c", CHAR)],
-            returns=INT32,
-            cpp="static_cast<int32_t>(static_cast<unsigned char>({0}))",
-            is_readonly=True, is_pure=True,
-        ),
-        MethodDef(
-            params=[ParamDef("s", STR)],
-            returns=INT32,
-            cpp="::tpy::ord_str({0})",
-            is_readonly=True,
-        ),
-        MethodDef(
-            params=[ParamDef("s", STRING)],
-            returns=INT32,
-            cpp="::tpy::ord_str({0})",
-            is_readonly=True,
-        ),
-        MethodDef(
-            params=[ParamDef("s", STRVIEW)],
-            returns=INT32,
-            cpp="::tpy::ord_str({0})",
-            is_readonly=True,
-        ),
-    ])
-
     pow_overloads = [
         MethodDef(params=[ParamDef("x", BIGINT), ParamDef("y", BIGINT)],
                   returns=BIGINT, cpp="({0}).pow({1})", is_readonly=True, is_pure=True),
@@ -189,104 +120,6 @@ def init_module() -> BuiltinModule:
         ))
     module.function("divmod", overloads=divmod_overloads)
 
-    module.function("abs", overloads=[
-        MethodDef(
-            params=[ParamDef("x", INT32)],
-            returns=INT32,
-            cpp="std::abs({0})",
-            is_readonly=True, is_pure=True,
-        ),
-        MethodDef(
-            params=[ParamDef("x", BIGINT)],
-            returns=BIGINT,
-            cpp="::tpy::BigInt::abs({0})",
-            is_readonly=True, is_pure=True,
-        ),
-        MethodDef(
-            params=[ParamDef("x", FLOAT)],
-            returns=FLOAT,
-            cpp="std::fabs({0})",
-            is_readonly=True, is_pure=True,
-        ),
-    ])
-
-    module.function("min", overloads=[
-        MethodDef(
-            params=[ParamDef("a", INT32), ParamDef("b", INT32)],
-            returns=INT32,
-            cpp="std::min({0}, {1})",
-            is_readonly=True, is_pure=True,
-        ),
-        MethodDef(
-            params=[ParamDef("a", INT32), ParamDef("b", INT32), ParamDef("c", INT32)],
-            returns=INT32,
-            cpp="std::min(std::min({0}, {1}), {2})",
-            is_readonly=True, is_pure=True,
-        ),
-        MethodDef(
-            params=[ParamDef("a", BIGINT), ParamDef("b", BIGINT)],
-            returns=BIGINT,
-            cpp="(({0}) < ({1}) ? ({0}) : ({1}))",
-            is_readonly=True, is_pure=True,
-        ),
-        MethodDef(
-            params=[ParamDef("a", BIGINT), ParamDef("b", BIGINT), ParamDef("c", BIGINT)],
-            returns=BIGINT,
-            cpp="::tpy::bigint_min({0}, {1}, {2})",
-            is_readonly=True, is_pure=True,
-        ),
-        MethodDef(
-            params=[ParamDef("a", FLOAT), ParamDef("b", FLOAT)],
-            returns=FLOAT,
-            cpp="std::fmin({0}, {1})",
-            is_readonly=True, is_pure=True,
-        ),
-        MethodDef(
-            params=[ParamDef("a", FLOAT), ParamDef("b", FLOAT), ParamDef("c", FLOAT)],
-            returns=FLOAT,
-            cpp="std::fmin(std::fmin({0}, {1}), {2})",
-            is_readonly=True, is_pure=True,
-        ),
-    ])
-
-    module.function("max", overloads=[
-        MethodDef(
-            params=[ParamDef("a", INT32), ParamDef("b", INT32)],
-            returns=INT32,
-            cpp="std::max({0}, {1})",
-            is_readonly=True, is_pure=True,
-        ),
-        MethodDef(
-            params=[ParamDef("a", INT32), ParamDef("b", INT32), ParamDef("c", INT32)],
-            returns=INT32,
-            cpp="std::max(std::max({0}, {1}), {2})",
-            is_readonly=True, is_pure=True,
-        ),
-        MethodDef(
-            params=[ParamDef("a", BIGINT), ParamDef("b", BIGINT)],
-            returns=BIGINT,
-            cpp="(({0}) > ({1}) ? ({0}) : ({1}))",
-            is_readonly=True, is_pure=True,
-        ),
-        MethodDef(
-            params=[ParamDef("a", BIGINT), ParamDef("b", BIGINT), ParamDef("c", BIGINT)],
-            returns=BIGINT,
-            cpp="::tpy::bigint_max({0}, {1}, {2})",
-            is_readonly=True, is_pure=True,
-        ),
-        MethodDef(
-            params=[ParamDef("a", FLOAT), ParamDef("b", FLOAT)],
-            returns=FLOAT,
-            cpp="std::fmax({0}, {1})",
-            is_readonly=True, is_pure=True,
-        ),
-        MethodDef(
-            params=[ParamDef("a", FLOAT), ParamDef("b", FLOAT), ParamDef("c", FLOAT)],
-            returns=FLOAT,
-            cpp="std::fmax(std::fmax({0}, {1}), {2})",
-            is_readonly=True, is_pure=True,
-        ),
-    ])
 
     # list[T]: Dynamic list backed by std::vector<T>
     # Methods use TypeParamRef("T") which gets resolved to element_type at lookup time
@@ -1221,6 +1054,7 @@ def init_module() -> BuiltinModule:
     module.function("range", overloads=range_overloads)
 
     # iter(x) -- calls x.__iter__(), returns Iterator[T]
+    # Stays hardcoded: return type is a protocol (not expressible in .py)
     module.function("iter", overloads=[
         MethodDef(
             params=[ParamDef("x", NamedType("Iterable", (T,), is_protocol=True))],

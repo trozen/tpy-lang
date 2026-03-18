@@ -372,7 +372,7 @@ class Compiler:
 
     # Stdlib modules that are always compiled (even without explicit import).
     # These provide protocol definitions used by builtins (e.g. Sized for len()).
-    _IMPLICIT_STDLIB = ["tpy", "typing"]
+    _IMPLICIT_STDLIB = ["tpy", "typing", "builtins"]
 
     def _discover_implicit_stdlib(self) -> None:
         """Discover implicit stdlib modules that builtins depend on."""
@@ -919,11 +919,6 @@ class Compiler:
         for func_name, fn_def in builtin.functions.items():
             if func_name not in module_info.functions:
                 module_info.functions[func_name] = builtin_function_to_info(
-                    fn_def, module_info.name)
-            else:
-                # Merge: add builtin overloads not covered by .py definitions
-                existing = module_info.functions[func_name]
-                module_info.functions[func_name] = existing + builtin_function_to_info(
                     fn_def, module_info.name)
         # Merge protocols from builtin (.py takes precedence)
         for protocol_info in get_all_protocols_for_module(module_info.name):

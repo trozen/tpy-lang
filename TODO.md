@@ -3,7 +3,8 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
-- move builtins and builtin modules to .py files
+- unify codegen paths for builtin and native functions (gen_builtin_function_overloads vs regular native call path)
+- continue moving builtins and builtin modules to .py files
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 
 ## Bugs
@@ -25,6 +26,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - **[MEDIUM effort]** `static_cast<double>(BigInt(n))` for int literals in mixed int/float expressions: `1 + 2.0` generates `static_cast<double>(BigInt(1)) + 2.0` because sema resolves the literal to BigInt (as `int`) before the float coercion fires. Fix: in sema, coerce int literals directly to float in binary ops with float operands, bypassing BigInt.
 - **[HIGH effort]** Inherited fields body-assigned instead of member initializer list: child constructors without `super()` assign inherited `std::string`/container fields in the body (default-construct then assign) instead of via MIL or base-class constructor delegation. Adds an extra default construction per non-trivial inherited field.
 - **[MEDIUM effort]** `__param_` copy for reassigned parameters: when a parameter is reassigned in the function body, codegen takes it by `const&` then copies into a mutable local. For BigInt/string params, taking by value instead would let the caller move.
+- **[LOW effort]** BigInt `min`/`max` 2-arg ternary evaluates arguments twice: `(({0}) < ({1}) ? ({0}) : ({1}))` in `lib/tpy/builtins.py`. Use `tpy::bigint_min`/`tpy::bigint_max` for 2-arg case too (consistent with 3-arg).
 
 ### Missed optimizations
 - **[LOW]** String concat chain produces N-1 intermediate allocations: `a + b + c + d` emits left-associative nested `str_concat` calls, each allocating a temporary `std::string`. A codegen optimization detecting a chain of `+` on string-view operands could emit a single `reserve` + N `append` calls.

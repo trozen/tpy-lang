@@ -292,17 +292,11 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 
 | Module | Purpose |
 |--------|---------|
-| `builtins.py` | Built-in functions (`print`, `len`, `str`, `int`, `bool`, etc.) |
+| `builtins.py` | Built-in types (`list`, `dict`, `str`, `int`, etc.) and functions with special handling (`print`, `isinstance`, `pow`, `round`, `divmod`, `range`, `iter`) |
 | `resolver.py` | User module resolution |
 | `helpers.py` | Helper utilities for type definitions |
-| `typing.py` | `typing` module (shell -- protocols defined in `lib/tpy/typing.py`) |
 | `tpy.py` | TurboPython-specific types (`Int32`, `Array`, `Span`, etc.) and `copy`/`try_parse` functions. Protocols defined in `lib/tpy/tpy/__init__.py` |
-| `unsafe.py` | `tpy.unsafe` module -- unsafe pointer operations |
-| `mem.py` | `tpy.mem` module -- uninitialized storage primitives |
 | `extern.py` | `tpy.extern` module -- native global variable declarations |
-| `math.py` | `math` module |
-| `sys.py` | `sys` module |
-| `time.py` | `time` module |
 | `dataclasses.py` | `dataclasses` module (decorator, frozen, order, etc.) |
 | `enum.py` | `enum` module (Enum, auto(), comparison) |
 
@@ -352,6 +346,7 @@ Library search roots and CPython stubs:
 | `tpy/tpy/` | TPy package: `__init__.py` defines protocols (`Comparable`, `Truthy`, `ValueType`, etc.). Implicitly compiled. |
 | `tpy/tplib/` | TPy standard library: `Box[T]`, custom collections |
 | `tpy/typing.py` | `typing` protocols (`Sized`, `Sequence`, etc.). Implicitly compiled. |
+| `tpy/builtins.py` | Builtin functions (`len`, `repr`, `hash`, `chr`, `ord`, `abs`, `min`, `max`). Implicitly compiled. |
 | `tpy/math.py`, `time.py`, `sys.py`, `bisect.py` | Python stdlib analogs |
 | `cpy/tpy/` | CPython stubs ONLY (not seen by tpyc): `Int32`, `Ptr`, `Array`, decorators; submodules: `mem`, `unsafe` |
 | `cpy/tplib` | Symlink to `tpy/tplib/` so CPython tests can find tplib |
