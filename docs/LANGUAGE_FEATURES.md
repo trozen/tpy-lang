@@ -2621,7 +2621,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Negative (else-branch) narrowing: remaining union members after isinstance check
   - Chained elif isinstance for multi-way branching (3+ member unions) -- full codegen support for 2-way, 3-way, and n-way elif chains
   - Narrowed variables can be used for field access, method calls, and passed to functions expecting the member type
-  - Implicit union wrapping at call sites: passing `A` to a parameter of type `A | B` auto-wraps into `std::variant`
+  - Implicit union wrapping at call sites: passing `A` to a parameter of type `A | B` auto-wraps into `std::variant`, including rvalue constructors (e.g. `f(Dog("Rex"))` materializes a temp slot for the rvalue)
   - `std::get<T>` extraction emitted once at block entry for efficient narrowed access
   - `while isinstance(x, T)` narrows `x` to `T` inside the loop body (same extraction as if-blocks)
   - Assignment narrowing: `v: A | B = A(...)` narrows `v` to `A` so field access works without isinstance; uses inline `std::get<T>()` at access points (not aliased, so `v` can still be passed to functions expecting the full union)
@@ -2630,6 +2630,9 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Nullable unions: `A | B | None` maps to `std::variant<A, B, std::monostate>`
   - `v is None` / `v is not None` on nullable unions: `std::holds_alternative<std::monostate>(v)`
   - `is not None` narrows to remaining non-None members; chained isinstance further narrows
+  - Field assignment: `obj.field = local` where field is value-variant and local is pointer-variant auto-converts via `::tpy::to_value_variant()` (copies the active member into field storage, emits copy warning)
+  - `None` assignment to nullable union field: `obj.field = None` emits `std::monostate{}` (not `nullptr`)
+  - `copy()` on pointer-variant union locals: variant-aware deep copy via `::tpy::to_value_variant()`, preserving the full union type even when narrowed
   - `v == None` / `v != None` on nullable unions errors with hint to use `is`/`is not`
   - Type aliases: `Shape = Circle | Rect` (old-style assignment) and `type Shape = Circle | Rect` (Python 3.12 `type` statement)
   - Aliases resolve eagerly at parse time to the underlying union type; sema and codegen see the expanded type

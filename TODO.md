@@ -8,7 +8,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 
 ## Bugs
-- Pointer-variant union reassignment from const source: `p = z.pet` where `p` was declared as `variant<T*...>` (mutable) but `z.pet` is const. The types are incompatible (`variant<T*...>` vs `variant<const T*...>`). Needs copy materialization into a mutable slot on reassignment from const source.
+- `@readonly` mutation not enforced for narrowed union params: `pet.name = "Bad"` inside `@readonly def f(pet: Dog | Cat)` after `isinstance(pet, Dog)` is not rejected by sema. The `ReadonlyType` wrapper is lost after isinstance narrowing, so mutation through the narrowed type goes unchecked. C++ codegen produces `const variant<T*...>` (const on variant, mutable inner pointers) which also doesn't prevent mutation. Both sema enforcement and codegen need fixes: sema should track readonly provenance through narrowing, codegen should use `variant<const T*...>` for readonly union params.
 
 ## Fuzzy Testing Findings (2026-03-12)
 
@@ -50,6 +50,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - type(); (in future `T = type(x); z = T()`)
 - tpy.ctypes.CInt32
 - ptr() function? Auto-select Ptr vs Ptr[readonly[T]] based on binding mutability. Needs sema-level magic (mutability not in type, it's in binding context).
+- `tpy.unsafe.unsafe_address_of(x) -> int`: return the memory address of an object as an integer. Useful for identity comparison in tests (proving reference semantics vs silent copy). C++ codegen: `reinterpret_cast<uintptr_t>(&x)`.
 
 ## Python features
 - Any

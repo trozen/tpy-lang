@@ -306,9 +306,10 @@ class FunctionGenerator:
         result: set[str] = set()
         if use_const_params:
             for pname, ptype in params:
-                if ((ptype.is_ref_param()
-                     or (isinstance(ptype, UnionType) and ptype.uses_pointer_repr()))
-                        and not isinstance(ptype, TypeParamRef)):
+                unwrapped = unwrap_readonly(ptype)
+                if ((unwrapped.is_ref_param()
+                     or (isinstance(unwrapped, UnionType) and unwrapped.uses_pointer_repr()))
+                        and not isinstance(unwrapped, TypeParamRef)):
                     result.add(pname)
             return result
         if mutated_params is None:
@@ -588,9 +589,11 @@ class FunctionGenerator:
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         for pname, ptype in func.params:
             local_ns.bind_variable(pname, ptype)
+        crp = self._build_const_ref_params(
+            func.params, mp, rp, use_const_params=func.is_readonly)
         self.statements.gen_body(out, func.body, func.params, func.return_type,
                                  func, local_ns,
-                                 const_ref_params=self._build_const_ref_params(func.params, mp, rp))
+                                 const_ref_params=crp)
 
         out.write("}\n")
 
@@ -647,7 +650,8 @@ class FunctionGenerator:
         try:
             self.statements.gen_body(out, impl.body, stub.params, stub.return_type,
                                      impl, local_ns,
-                                     const_ref_params=self._build_const_ref_params(stub.params, mp, rp))
+                                     const_ref_params=self._build_const_ref_params(
+                                         stub.params, mp, rp, use_const_params=stub.is_readonly))
         finally:
             self.ctx.overload_param_types = {}
 
@@ -860,11 +864,14 @@ class FunctionGenerator:
 
         prev_consuming = self.ctx.in_consuming_method
         self.ctx.in_consuming_method = method.is_consuming
+        method_crp = self._build_const_ref_params(
+            method.params, mp, rp, use_const_params)
+        if use_const_params and not static:
+            method_crp.add("self")
         self.statements.gen_body(out, method.body, method.params, method.return_type,
                                  method, local_ns, indent_level=2, is_method=True,
                                  record_type_param_bounds=record_type_param_bounds,
-                                 const_ref_params=self._build_const_ref_params(
-                                     method.params, mp, rp, use_const_params))
+                                 const_ref_params=method_crp)
         self.ctx.in_consuming_method = prev_consuming
 
         out.write(f"{INDENT}}}\n")

@@ -191,7 +191,7 @@ tests/
    - `panic_{name}/` - tests for runtime panics
 2. Add source file: `src/main.py` with a short comment (1-2 lines) at the very top explaining what the test covers -- test names alone are often not enough context
    - Prefer putting test logic inside functions (e.g. `def main(): ...` + `main()`) rather than as top-level statements. Top-level codegen differs from function codegen (globals use pointer slots, different variable model), so use top-level statements only when specifically testing global variable behavior.
-3. Add `# tpyc:` annotations on lines that test specific compiler behavior:
+3. Add `# tpyc:` annotations on lines that test specific compiler behavior. Multiple annotations per line are supported (e.g. `# tpyc: warning(/a/) warning(/b/)`):
    - `# tpyc: ok` - line should compile without error or warning
    - `# tpyc: error(/regex/)` - line should produce an error matching the regex
    - `# tpyc: warning(/regex/)` - line should produce a warning matching the regex

@@ -14,9 +14,10 @@ struct Zoo;
 inline constexpr std::string_view __name__ = "__main__";
 
 std::string get_pet_name(const Zoo& z);
+std::string get_pet_name_ro(const Zoo& z);
+std::string greet_pet(const std::variant<Cat*, Dog*> pet);
 void main();
 
-// # Read non-value union field from non-mutated param (const context)
 // class Dog:
 struct Dog {
     // name: str

@@ -24,6 +24,47 @@ std::string get_pet_name(const Zoo& z) {
     return "";
 }
 
+// @readonly
+// def get_pet_name_ro(z: Zoo) -> str:
+std::string get_pet_name_ro(const Zoo& z) {
+    // p = z.pet
+    std::variant<const Cat*, const Dog*> p = ::tpy::to_const_ptr_variant(z.pet);
+    // if isinstance(p, Dog):
+    if (std::holds_alternative<const Dog*>(p)) {
+        auto& __p = *std::get<const Dog*>(p);
+        // return p.name
+        return __p.name;
+    }
+    // if isinstance(p, Cat):
+    if (std::holds_alternative<const Cat*>(p)) {
+        auto& __p = *std::get<const Cat*>(p);
+        // return p.name
+        return __p.name;
+    }
+    // return ""
+    return "";
+}
+
+// @readonly
+// def greet_pet(pet: Dog | Cat) -> str:
+std::string greet_pet(const std::variant<Cat*, Dog*> pet) {
+    // if isinstance(pet, Dog):
+    if (std::holds_alternative<Dog*>(pet)) {
+        auto& __pet = *std::get<Dog*>(pet);
+        // return pet.name
+        return __pet.name;
+    } else {
+        // elif isinstance(pet, Cat):
+        if (std::holds_alternative<Cat*>(pet)) {
+            auto& __pet = *std::get<Cat*>(pet);
+            // return pet.name
+            return __pet.name;
+        }
+    }
+    // return ""
+    return "";
+}
+
 // def main() -> None:
 void main() {
     // d = Dog("Rex")
@@ -42,6 +83,12 @@ void main() {
     Zoo z2 = Zoo(pet2, "cats");
     // print(get_pet_name(z2))
     std::cout << get_pet_name(z2) << "\n";
+    // # @readonly function accessing union field on record
+    // print(get_pet_name_ro(z))
+    std::cout << get_pet_name_ro(z) << "\n";
+    // # @readonly function with direct union param
+    // print(greet_pet(pet))
+    std::cout << greet_pet(pet) << "\n";
 }
 
 void __tpy_init() {
