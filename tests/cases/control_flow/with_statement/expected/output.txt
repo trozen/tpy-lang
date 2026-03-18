@@ -30,3 +30,13 @@ enter R
 [R] before return
 exit R
 result
+---
+enter S
+exit S
+10
+hello
+---
+enter T
+[inner] inside
+exit T
+[inner] after

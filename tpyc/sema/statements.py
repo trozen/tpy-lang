@@ -1041,9 +1041,23 @@ class StatementAnalyzer:
                 self.ctx.current_scope.define(item.target, resolved)
                 self.init.mark_assigned(item.target)
 
-        # Analyze the body
+        # Analyze the body -- track new variable declarations so codegen
+        # can pre-declare them outside the guard {} scope (C++ scoping).
+        scope_before = set(self.ctx.current_scope.bindings.keys())
+
         for s in stmt.body:
             self.analyze_stmt(s)
+
+        # All variables first declared inside the body need pre-declaration
+        # since codegen wraps the body in {} for WithGuard RAII.
+        branch_new = set(self.ctx.current_scope.bindings.keys()) - scope_before
+        predecl = branch_new - self.ctx.global_declarations
+        if predecl:
+            self.ctx.if_branch_decls[id(stmt)] = {
+                name: self.ctx.current_scope.lookup(name)
+                for name in sorted(predecl)
+                if name in self.ctx.current_scope.bindings
+            }
 
     def _analyze_global_stmt(self, stmt: TpyGlobal) -> None:
         """Analyze a `global x, y` statement."""

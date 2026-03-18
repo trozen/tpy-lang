@@ -223,6 +223,7 @@ class StatementGenerator:
             self._gen_try_except(out, stmt, indent)
         elif isinstance(stmt, TpyWith):
             self.ctx.emit_source_comment(out, stmt.loc, indent)
+            self._emit_branch_decls(out, stmt, indent)
             self._gen_with(out, stmt, indent)
         else:
             # Simple statements - single flush point for all

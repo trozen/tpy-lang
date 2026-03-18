@@ -75,6 +75,23 @@ def test_early_return() -> None:
     print(val)
 
 
+def test_body_var_survives_scope() -> None:
+    """Variables declared inside with body must be visible after the block."""
+    with Logger("S") as s:
+        x = 10
+        y = "hello"
+    print(x)
+    print(y)
+
+
+def test_body_record_var_survives_scope() -> None:
+    """Non-value type declared in body exercises pointer-local pre-decl path."""
+    with Logger("T") as t:
+        inner = Logger("inner")
+        inner.log("inside")
+    inner.log("after")
+
+
 test_basic()
 print("---")
 test_no_as()
@@ -86,3 +103,7 @@ print("---")
 test_variable_visible_after()
 print("---")
 test_early_return()
+print("---")
+test_body_var_survives_scope()
+print("---")
+test_body_record_var_survives_scope()

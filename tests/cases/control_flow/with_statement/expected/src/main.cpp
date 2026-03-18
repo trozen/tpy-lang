@@ -103,6 +103,43 @@ void test_early_return() {
     std::cout << val << "\n";
 }
 
+// def test_body_var_survives_scope() -> None:
+void test_body_var_survives_scope() {
+    // with Logger("S") as s:
+    int32_t x;
+    std::string_view y;
+    auto __ctx_8 = Logger("S");
+    auto& s = __ctx_8.__enter__();
+    {
+        ::tpy::WithGuard __guard_8{__ctx_8};
+        // x = 10
+        x = 10;
+        // y = "hello"
+        y = "hello";
+    }
+    // print(x)
+    std::cout << x << "\n";
+    // print(y)
+    std::cout << y << "\n";
+}
+
+// def test_body_record_var_survives_scope() -> None:
+void test_body_record_var_survives_scope() {
+    // with Logger("T") as t:
+    Logger inner;
+    auto __ctx_9 = Logger("T");
+    auto& t = __ctx_9.__enter__();
+    {
+        ::tpy::WithGuard __guard_9{__ctx_9};
+        // inner = Logger("inner")
+        inner = Logger("inner");
+        // inner.log("inside")
+        inner.log("inside");
+    }
+    // inner.log("after")
+    inner.log("after");
+}
+
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -130,6 +167,14 @@ void __tpy_init() {
     std::cout << "---" << "\n";
     // test_early_return()
     test_early_return();
+    // print("---")
+    std::cout << "---" << "\n";
+    // test_body_var_survives_scope()
+    test_body_var_survives_scope();
+    // print("---")
+    std::cout << "---" << "\n";
+    // test_body_record_var_survives_scope()
+    test_body_record_var_survives_scope();
 }
 
 } // namespace tpyapp::main

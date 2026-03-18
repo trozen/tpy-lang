@@ -19,6 +19,8 @@ void test_multiple_ctx_managers();
 void test_variable_visible_after();
 std::string early_return_helper();
 void test_early_return();
+void test_body_var_survives_scope();
+void test_body_record_var_survives_scope();
 
 // class Logger:
 struct Logger {
