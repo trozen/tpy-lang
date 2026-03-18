@@ -2119,7 +2119,7 @@ class Parser:
                     value=TpyName(synth_var, loc=loc),
                     loc=loc,
                 )
-                return TpyForEach(synth_var, iterable, [unpack] + body, orelse=orelse, loc=loc)
+                return TpyForEach(synth_var, iterable, [unpack] + body, orelse=orelse, loc=loc, is_tuple_unpack=True)
             if not isinstance(node.target, ast.Name):
                 raise ParseError("For loop target must be a simple variable", node)
             var = node.target.id

@@ -379,7 +379,21 @@ class ExpressionAnalyzer:
             # Check built-in names (like __name__)
             if expr.name in self.ctx.builtin_names:
                 return self.ctx.builtin_names[expr.name]
-            raise self.ctx.error(f"Undefined variable: '{expr.name}'", expr)
+            # Lazy promotion of loop-scoped variables referenced after the loop
+            pending = self.ctx.pending_loop_vars.pop(expr.name, None)
+            if pending is not None:
+                var_type, for_stmt, orig_stmt = pending
+                self.ctx.current_scope.define(expr.name, var_type)
+                self.ctx.definitely_assigned.add(expr.name)
+                # Register for codegen pre-declaration
+                decls = self.ctx.if_branch_decls.setdefault(id(for_stmt), {})
+                decls[expr.name] = var_type
+                # Mark the original loop's var for hoisted codegen (hidden counter)
+                if expr.name == orig_stmt.var:
+                    orig_stmt.hoist_loop_var = True
+                typ = var_type
+            else:
+                raise self.ctx.error(f"Undefined variable: '{expr.name}'", expr)
         self._check_definitely_assigned(expr)
         return self.narrowing.narrow_name_type(expr.name, typ)
 

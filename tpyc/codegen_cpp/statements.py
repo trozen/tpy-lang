@@ -207,6 +207,7 @@ class StatementGenerator:
             self._gen_while(out, stmt, indent)
         elif isinstance(stmt, TpyForEach):
             self.ctx.emit_source_comment(out, stmt.loc, indent)
+            self._emit_branch_decls(out, stmt, indent)
             self._gen_for_each(out, stmt, indent)
         elif isinstance(stmt, TpyAssert):
             self.ctx.emit_source_comment(out, stmt.loc, indent)
@@ -2195,6 +2196,10 @@ class StatementGenerator:
                 else:
                     out.write(f"{indent}{cpp_type} {name};\n")
 
+    def _is_loop_var_hoisted(self, stmt: TpyForEach) -> bool:
+        """Check if the loop variable was hoisted for post-loop use."""
+        return stmt.hoist_loop_var
+
     def _gen_while(self, out: TextIO, stmt: TpyWhile, indent: str) -> None:
         """Generate a while loop."""
         has_else = bool(stmt.orelse)
@@ -2232,13 +2237,19 @@ class StatementGenerator:
             out.write(f"{indent}{label}:;\n")
 
     def _gen_loop_body(self, out: TextIO, stmt: TpyForEach, indent: str,
-                        elem_type: TpyType | None) -> None:
+                        elem_type: TpyType | None,
+                        range_counter: str | None = None) -> None:
         """Generate loop body statements with namespace/scope tracking.
 
         Shared by _gen_begin_end_loop, _gen_range_counter_loop, and _gen_for_each.
         Writes the body statements, the closing brace, and cleans up the loop
         variable from var_types.
+
+        range_counter: when the loop variable is hoisted, this is the hidden
+        counter name; emit `var = counter;` at the start of the body so the
+        user variable holds the current (not post-increment) value.
         """
+        was_declared = stmt.var in self.ctx.declared_vars
         self.ctx.local_scope_names.add(stmt.var)
         self.ctx.declared_vars.add(stmt.var)
         if elem_type:
@@ -2249,6 +2260,9 @@ class StatementGenerator:
             inner_ns.bind_variable(stmt.var, elem_type)
             self.ctx.current_ns = inner_ns
         self.ctx.indent_level += 1
+        if range_counter is not None:
+            var = escape_cpp_name(stmt.var)
+            out.write(f"{self.ctx.indent()}{var} = {range_counter};\n")
         for s in stmt.body:
             self.gen_stmt(out, s)
         self.ctx.emit_block_trailing_comments(out, stmt.body, self.ctx.indent())
@@ -2260,6 +2274,11 @@ class StatementGenerator:
 
         if stmt.var in self.ctx.var_types:
             del self.ctx.var_types[stmt.var]
+        # Non-hoisted loop vars are scoped to the for block; remove from
+        # declared_vars so a later loop reusing the same name can re-declare.
+        # Keep if it was already declared before the loop (e.g. global vars).
+        if not stmt.hoist_loop_var and not was_declared:
+            self.ctx.declared_vars.discard(stmt.var)
 
     def _gen_begin_end_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
                             iterable_expr: str, elem_type: TpyType,
@@ -2296,7 +2315,11 @@ class StatementGenerator:
 
         inner_indent = indent + INDENT
         cpp_var = escape_cpp_name(stmt.var)
-        if stmt.const_loop_var and elem_type.is_value_type():
+        hoisted = self._is_loop_var_hoisted(stmt)
+        if hoisted:
+            # Loop var pre-declared outside loop -- assign, don't re-declare
+            out.write(f"{inner_indent}{cpp_var} = *{beg_name};\n")
+        elif stmt.const_loop_var and elem_type.is_value_type():
             cpp_elem = elem_type.to_cpp()
             out.write(f"{inner_indent}const {cpp_elem}& {cpp_var} = *{beg_name};\n")
         elif stmt.const_loop_var:
@@ -2350,7 +2373,10 @@ class StatementGenerator:
         out.write(f"{inner_indent}auto {r_name} = {iter_name}{call};\n")
         out.write(f"{inner_indent}if (!{r_name}.has_value()) break;\n")
 
-        if stmt.const_loop_var and elem_type and elem_type.is_value_type():
+        hoisted = self._is_loop_var_hoisted(stmt)
+        if hoisted:
+            out.write(f"{inner_indent}{cpp_var} = *{r_name};\n")
+        elif stmt.const_loop_var and elem_type and elem_type.is_value_type():
             cpp_elem = elem_type.to_cpp()
             out.write(f"{inner_indent}const {cpp_elem}& {cpp_var} = *{r_name};\n")
         elif stmt.const_loop_var:
@@ -2536,6 +2562,16 @@ class StatementGenerator:
 
         var = escape_cpp_name(stmt.var)
         cpp_elem = elem_type.to_cpp()
+        # If loop var was pre-declared (hoisted for post-loop use), use a
+        # hidden counter and assign the user variable inside the body so it
+        # holds the last-yielded value (not the post-increment overshoot).
+        hoisted = self._is_loop_var_hoisted(stmt)
+        if hoisted:
+            counter = f"__range_{n}"
+            var_decl = f"{cpp_elem} {counter}"
+        else:
+            counter = var
+            var_decl = f"{cpp_elem} {var}"
 
         # Pre-evaluate non-literal args into temps (left-to-right, matching
         # Python's argument evaluation order).  Literals are safe to inline
@@ -2554,12 +2590,12 @@ class StatementGenerator:
             stop_expr = temp_name
 
         if step_kind == "plus_one":
-            out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
-                      f"{var} < {stop_expr}; ++{var}) {{\n")
+            out.write(f"{indent}for ({var_decl} = {start_expr}; "
+                      f"{counter} < {stop_expr}; ++{counter}) {{\n")
         elif step_kind == "literal_pos":
             if step_val == 1:
-                out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
-                          f"{var} < {stop_expr}; ++{var}) {{\n")
+                out.write(f"{indent}for ({var_decl} = {start_expr}; "
+                          f"{counter} < {stop_expr}; ++{counter}) {{\n")
             else:
                 step_cpp = gen_args[2]
                 if isinstance(elem_type, BigIntType):
@@ -2567,13 +2603,13 @@ class StatementGenerator:
                     out.write(f"{indent}{cpp_elem} {step_temp} = {step_cpp};\n")
                     step_cpp = step_temp
                 self._gen_range_overflow_check(out, indent, start_expr, stop_expr, step_cpp, elem_type)
-                out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
-                          f"{var} < {stop_expr}; "
-                          f"{var} += {step_cpp}) {{\n")
+                out.write(f"{indent}for ({var_decl} = {start_expr}; "
+                          f"{counter} < {stop_expr}; "
+                          f"{counter} += {step_cpp}) {{\n")
         elif step_kind == "literal_neg":
             if step_val == -1:
-                out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
-                          f"{var} > {stop_expr}; --{var}) {{\n")
+                out.write(f"{indent}for ({var_decl} = {start_expr}; "
+                          f"{counter} > {stop_expr}; --{counter}) {{\n")
             else:
                 step_cpp = gen_args[2]
                 if isinstance(elem_type, BigIntType):
@@ -2581,9 +2617,9 @@ class StatementGenerator:
                     out.write(f"{indent}{cpp_elem} {step_temp} = {step_cpp};\n")
                     step_cpp = step_temp
                 self._gen_range_overflow_check(out, indent, start_expr, stop_expr, step_cpp, elem_type)
-                out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
-                          f"{var} > {stop_expr}; "
-                          f"{var} += {step_cpp}) {{\n")
+                out.write(f"{indent}for ({var_decl} = {start_expr}; "
+                          f"{counter} > {stop_expr}; "
+                          f"{counter} += {step_cpp}) {{\n")
         else:
             # Variable step -- capture, zero-check, upfront overflow check, ternary condition
             step_cpp = gen_args[2]
@@ -2592,11 +2628,12 @@ class StatementGenerator:
             step_cpp = step_temp
             out.write(f'{indent}if ({step_cpp} == 0) ::tpy::tpy_panic("range() arg 3 must not be zero");\n')
             self._gen_range_overflow_check(out, indent, start_expr, stop_expr, step_cpp, elem_type)
-            out.write(f"{indent}for ({cpp_elem} {var} = {start_expr}; "
-                      f"{step_cpp} > 0 ? {var} < {stop_expr} : {var} > {stop_expr}; "
-                      f"{var} += {step_cpp}) {{\n")
+            out.write(f"{indent}for ({var_decl} = {start_expr}; "
+                      f"{step_cpp} > 0 ? {counter} < {stop_expr} : {counter} > {stop_expr}; "
+                      f"{counter} += {step_cpp}) {{\n")
 
-        self._gen_loop_body(out, stmt, indent, elem_type)
+        self._gen_loop_body(out, stmt, indent, elem_type,
+                            range_counter=counter if hoisted else None)
         return True
 
     def _gen_range_overflow_check(self, out: TextIO, indent: str,

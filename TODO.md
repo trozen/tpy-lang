@@ -34,6 +34,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 ## Safety
 - `Span[str]` subscript view: `SpanType.subscript_borrows()` is intentionally not overridden because `v = s[0]` registers `s` as the str-borrow source, but mutations to the backing container (`arr[0] = "x"` where `s = Span[str](arr)`) call `mark_str_borrowers_mutated("arr")` -- missing `s`. Fix requires `mark_str_borrowers_mutated` to chase the borrow tracker's alias chain so backing-container mutations also invalidate views borrowed through spans.
 - View type borrow tracking for user types: currently only built-in view types (Span, Ptr) are tracked as borrows. Likely needed when designing tpy stdlib types. See escape analysis design doc (Future Extensions) for field-level vs class-level annotation tradeoffs.
+- Hoisted non-value loop variable as view: `for s in items: ... print(s)` where `s` is `std::string_view` -- the hoisted `s` is a view into the container, not a copy. If the container is mutated between loop exit and use of `s`, the view dangles. Same concern exists with `const auto&` loop vars. Consider emitting a value copy for hoisted non-value loop variables.
 - `own()` builtin: explicit `T -> Own[T]` conversion (analogous to `span()` -> `Span[T]`); near-term bridge until `__iter__(self: Own[Self])` auto-dispatch is implemented. See `docs/CONSUMING_ITERATION_DESIGN.md`.
 - Consuming iteration: `__iter__(self: Own[Self]) -> Iterator[Own[T]]` overload for zero-copy element moves; `OwnIter[T]` runtime type for list drain; user-defined drain iterators (e.g. `ArrayListDrainIter`) as view types with borrow tracking. See `docs/CONSUMING_ITERATION_DESIGN.md`.
 
@@ -63,7 +64,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Allow `@runtime_checkable` decorator on protocols (no-op in tpyc, enables CPython compatibility for isinstance checks on user-defined protocols)
 - `del x` (variable unbinding): complex in compiled context -- needs lifetime/scope analysis. Low priority.
 - allow type annotation to use "" (forward decl)
-- for-each: preserve loop variable after loop exit (if used after the loop)
 - C-style for loop: reassigning loop variable affects iteration (differs from Python)
 
 ## Documentation
@@ -122,9 +122,10 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Module-level tuple unpack: missing `declared_var_types` tracking (`# tpyc: type()` test annotations won't validate on unpack lines)
 
 ## Known Limitations
+- Tuple-unpack loop variable hoisting: `for i, s in items: ... print(i)` -- the unpack codegen re-declares `i` inside the loop body (shadowing the hoisted pre-declaration), so the outer `i` is never assigned. Fix: `TpyTupleUnpack` codegen should emit assignment (not declaration) when the target is already in `declared_vars`.
+- `while` loop body variable hoisting: variables declared inside `while` bodies don't escape to the parent scope (unlike `for` loops which now hoist). Lower priority since `while` loops with post-loop variable access are less common than `for` loops.
 - Subscript narrowing: `if items[i] is not None:` does not narrow `items[i]`. Hard to make sound due to index aliasing and container mutation; would need invalidation on any container write.
 - Pointer-local slot reuse: reassigned T* pointer-locals allocate a fresh `std::optional<T>` slot per assignment. The initial slot could be reused after reassignment instead of allocating a new one.
-- Top-level block scoping differs from Python: Variables declared inside `if`/`while`/`for` at module level are visible outside the block in Python but block-scoped in C++. Example: `if cond: x = 1` followed by `print(x)` works in Python but `x` is out of scope in generated C++. Fix requires hoisting declarations to module scope. (Note: `if`/`else` in functions is fixed — branch-declared vars are pre-declared before the if-statement.)
 - Inherited constructor forwarding: multi-level inheritance (`Child -> Mid -> Base`) where intermediate classes have no `__init__` doesn't forward the base constructor. C++ generates `Child() = default;` only, so `Child(args)` fails. Workaround: add explicit `__init__` + `super().__init__()` at each level.
 - INT type params on functions: parsing works (`def foo[T, N: int]`) but codegen crashes for non-stub functions -- `inferred_type_args` contains `int` values that `type_to_cpp()` can't handle. Need `type_param_kinds` on `FunctionInfo` + codegen fixes. Stubs (`@cpp_template`/`@native`) work fine.
 - `readonly[T]` field mutation: sema enforces readonly on assignment targets, but codegen may not emit `const` for `readonly[str]` fields. Verify codegen emits `const` qualifier.

@@ -414,6 +414,11 @@ class SemanticContext:
     is_top_level: bool = False
     super_init_call: TpyMethodCall | None = None
     super_del_call: TpyMethodCall | None = None
+    # Variables from loop scopes that may be referenced after the loop.
+    # Maps var_name -> (type, for_stmt, orig_for_stmt) for lazy promotion.
+    # for_stmt: outermost loop to pre-declare before. orig_for_stmt: loop
+    # that originally declared the variable (for hoist_loop_var flag).
+    pending_loop_vars: dict[str, tuple[TpyType, 'TpyForEach', 'TpyForEach']] = field(default_factory=dict)
     loop_vars: set[str] = field(default_factory=set)
     mutated_loop_vars: set[str] = field(default_factory=set)
     loop_var_iterable: dict[str, str] = field(default_factory=dict)  # var_name -> iterable_name
@@ -628,6 +633,7 @@ class SemanticContext:
         self.pending_str_resolutions.clear()
         self.super_init_call = None
         self.super_del_call = None
+        self.pending_loop_vars.clear()
         self.loop_vars.clear()
         self.mutated_loop_vars.clear()
         self.loop_var_iterable.clear()

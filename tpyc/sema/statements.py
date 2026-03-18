@@ -680,6 +680,7 @@ class StatementAnalyzer:
                 self.ctx.non_null_ptr_vars &= body_end_nn_ptr
                 self._restore_ns_var_types(ns_types_before_foreach)
                 self._sync_promoted_var_types()
+                self._propagate_loop_scope(stmt, inner_scope, elem_type)
                 for s in stmt.orelse:
                     self.analyze_stmt(s)
             else:
@@ -791,7 +792,7 @@ class StatementAnalyzer:
                 worth_const_ref = (not unwrapped.is_value_type()
                                    or unwrapped.is_expensive_copy())
                 needs_mut_unpack = False
-                if stmt.var.startswith("__for_tup_") and stmt.body:
+                if stmt.is_tuple_unpack and stmt.body:
                     first = stmt.body[0]
                     if isinstance(first, TpyTupleUnpack) and any(first.is_ref):
                         needs_mut_unpack = True
@@ -806,6 +807,7 @@ class StatementAnalyzer:
                 self.ctx.non_null_ptr_vars &= body_end_nn_ptr
                 self._restore_ns_var_types(ns_types_before_foreach)
                 self._sync_promoted_var_types()
+                self._propagate_loop_scope(stmt, inner_scope, elem_type)
                 for s in stmt.orelse:
                     self.analyze_stmt(s)
         elif isinstance(stmt, TpyBreak):
@@ -1058,6 +1060,46 @@ class StatementAnalyzer:
                 for name in sorted(predecl)
                 if name in self.ctx.current_scope.bindings
             }
+
+    def _propagate_loop_scope(self, stmt: TpyForEach,
+                               inner_scope: 'Scope',
+                               elem_type: TpyType) -> None:
+        """Store loop variable and body-declared variables as pending.
+
+        After a for loop, Python keeps the loop variable and any variables
+        declared inside the body visible. We store them in pending_loop_vars
+        so they can be lazily promoted to the parent scope when first
+        referenced after the loop. This avoids unnecessary hoisting for
+        variables only used inside the loop.
+        """
+        def _resolve_literal(t: TpyType) -> TpyType:
+            if isinstance(t, IntLiteralType):
+                return self.ctx.default_int_for_literal(t)
+            if isinstance(t, FloatLiteralType):
+                return FLOAT
+            return t
+
+        # Loop variable (skip synthetic tuple-unpack vars)
+        var_name = stmt.var
+        if (not stmt.is_tuple_unpack
+                and var_name not in self.ctx.global_declarations):
+            resolved = _resolve_literal(elem_type)
+            self.ctx.pending_loop_vars[var_name] = (resolved, stmt, stmt)
+
+        # Body-declared variables
+        for name, var_type in inner_scope.bindings.items():
+            if name == var_name:
+                continue
+            if name in self.ctx.global_declarations:
+                continue
+            resolved = _resolve_literal(var_type)
+            self.ctx.pending_loop_vars[name] = (resolved, stmt, stmt)
+
+        # Re-parent any pending vars from nested loops to this (outer) loop,
+        # so they get pre-declared before this loop if referenced after it.
+        for name, (vtype, for_stmt, orig_stmt) in list(self.ctx.pending_loop_vars.items()):
+            if for_stmt is not stmt and name not in inner_scope.bindings:
+                self.ctx.pending_loop_vars[name] = (vtype, stmt, orig_stmt)
 
     def _analyze_global_stmt(self, stmt: TpyGlobal) -> None:
         """Analyze a `global x, y` statement."""

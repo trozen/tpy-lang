@@ -452,7 +452,9 @@ class TpyForEach(TpyStmt):
     orelse: list[TpyStmt] = field(default_factory=list)
     enum_iterable: 'EnumType | None' = None  # set by sema when iterating over enum type
     elem_type: 'TpyType | None' = None  # set by sema: resolved element type for codegen
+    is_tuple_unpack: bool = False  # set by parser: synthetic loop var for tuple destructuring
     const_loop_var: bool = False  # set by sema: loop var is never mutated, safe for const auto&
+    hoist_loop_var: bool = False  # set by sema: loop var used after loop, needs pre-declaration
 
 
 @dataclass

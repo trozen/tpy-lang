@@ -2766,6 +2766,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: Reassigning loop variables inside for-loop body (compiles as assignment, not redeclaration; note: affects iteration unlike Python)
 - **Working**: Const-ref loop variable binding -- when the loop body never mutates the loop variable (no field writes, no non-`@readonly` method calls, no passing to mutable parameters, no address-of), codegen emits `const auto&` instead of `auto&&`. Value types always use typed copies regardless. Parameter mutation inference (see [Implementation Notes](#parameter-mutation-inference-partial)) refines "passing to mutable parameters": if the callee is known not to mutate a specific parameter, passing the loop variable there does not force mutable binding.
 - **Working**: `for/else`, `while/else` -- else block runs when loop completes without `break`; `break` emits `goto` past the else body
+- **Working**: Loop variable and body-declared variables visible after the loop (matching CPython scoping). Only hoisted when actually referenced after the loop -- no codegen change for variables used only inside the loop. Range counter loops use a hidden counter so the user variable holds the last-yielded value (not the C++ post-increment overshoot).
 
 ### `with` Statement (Context Managers)
 - **Working**: `with expr as var:` -- duck-typed context manager protocol via `__enter__`/`__exit__` methods
