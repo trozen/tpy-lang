@@ -8,6 +8,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Bugs
 - `@readonly` mutation not enforced for narrowed union params: `pet.name = "Bad"` inside `@readonly def f(pet: Dog | Cat)` after `isinstance(pet, Dog)` is not rejected by sema. The `ReadonlyType` wrapper is lost after isinstance narrowing, so mutation through the narrowed type goes unchecked. C++ codegen produces `const variant<T*...>` (const on variant, mutable inner pointers) which also doesn't prevent mutation. Both sema enforcement and codegen need fixes: sema should track readonly provenance through narrowing, codegen should use `variant<const T*...>` for readonly union params.
+- List comprehension loop variable doesn't shadow same-named global: `x = [x**2 for x in range(20)]` generates `(*x)` (global pointer deref) inside the lambda instead of the loop-local `x`. The comprehension's loop variable should shadow the outer scope within the generated lambda.
 
 ## Fuzzy Testing Findings (2026-03-12)
 

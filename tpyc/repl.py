@@ -25,6 +25,7 @@ from .parse import ParseError, TpyExprStmt
 from .sema import SemanticError, DiagnosticLevel
 from .typesys import VoidType, CharType, is_any_str_type
 from .compiler import Compiler
+from .codegen_cpp.context import get_include_path
 from .repl_backends import (
     REPLBackend, BackendResult, detect_backend, _fmt_ms,
 )
@@ -192,6 +193,7 @@ class REPLSession:
                 if self._needs_continuation(full_input):
                     in_block = full_input.rstrip().endswith(":")
                     indent_level = 1  # Start with one indent level
+                    cont_stripped = ""
                     while True:
                         try:
                             indent = "\t" * indent_level
@@ -203,7 +205,15 @@ class REPLSession:
                                     continue  # Don't add empty line, just reduce indent
                                 else:
                                     break  # At first block level (or zero), end block
-                            full_input += "\n" + indent + cont_line
+                            # else/elif/except/finally belong at the outer
+                            # block level (no extra indent)
+                            cont_stripped = cont_line.strip()
+                            if cont_stripped.split()[0].rstrip(":") in (
+                                "else", "elif", "except", "finally",
+                            ):
+                                full_input += "\n" + cont_line.strip()
+                            else:
+                                full_input += "\n" + indent + cont_line
                         except EOFError:
                             break
                         # For blocks (def/class/if/etc), require empty line to end
@@ -211,7 +221,7 @@ class REPLSession:
                         if not in_block and not self._needs_continuation(full_input):
                             break
                         # Adjust indent based on what user typed
-                        if cont_line.rstrip().endswith(":"):
+                        if cont_stripped.endswith(":"):
                             indent_level += 1
 
                 self._process_input(full_input)
@@ -416,16 +426,24 @@ class REPLSession:
         for mod in compiled_modules:
             hpp_code, cpp_code = compiler.generate_code_to_strings(mod)
 
-            # Write files preserving directory structure for #include
-            mod_parts = mod.name.split('.')
-            if len(mod_parts) > 1:
-                hpp_subdir = self.temp_dir / Path(*mod_parts[:-1])
-                hpp_subdir.mkdir(parents=True, exist_ok=True)
-                hpp_path = hpp_subdir / f"{mod_parts[-1]}.hpp"
-                cpp_path = hpp_subdir / f"{mod_parts[-1]}.cpp"
+            # Write files matching the include path the codegen emits
+            include_path = get_include_path(mod.name)
+            if include_path is not None:
+                # e.g. "tpystd/tpy.hpp" -> write to {temp}/tpystd/tpy.{hpp,cpp}
+                rel = Path(include_path)
+                hpp_path = self.temp_dir / rel
+                cpp_path = self.temp_dir / rel.with_suffix('.cpp')
+                hpp_path.parent.mkdir(parents=True, exist_ok=True)
             else:
-                hpp_path = self.temp_dir / f"{mod.name}.hpp"
-                cpp_path = self.temp_dir / f"{mod.name}.cpp"
+                mod_parts = mod.name.split('.')
+                if len(mod_parts) > 1:
+                    hpp_subdir = self.temp_dir / Path(*mod_parts[:-1])
+                    hpp_subdir.mkdir(parents=True, exist_ok=True)
+                    hpp_path = hpp_subdir / f"{mod_parts[-1]}.hpp"
+                    cpp_path = hpp_subdir / f"{mod_parts[-1]}.cpp"
+                else:
+                    hpp_path = self.temp_dir / f"{mod.name}.hpp"
+                    cpp_path = self.temp_dir / f"{mod.name}.cpp"
 
             hpp_path.write_text(hpp_code)
             cpp_path.write_text(cpp_code)

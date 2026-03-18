@@ -4571,15 +4571,16 @@ Send/Sync rules for built-in types:
 
 ## Interactive REPL
 
-- **Working**: `tpyc --repl` launches an interactive session
+- **Working**: `tpyc -i` launches an interactive session
 - Supports function and class definitions that persist across inputs
 - Expressions are evaluated and printed automatically
-- Multi-line input with automatic continuation detection
+- Multi-line input with automatic continuation detection (`if`/`else`/`elif`/`except`/`finally`)
+- Paste mode (`.paste` or `.p`) for multi-line blocks
 - Configurable backends via `--backend`:
-  - `clang-repl` -- incremental JIT, fastest for iteration (~20-80ms per expression)
+  - `clang-repl` -- incremental JIT, fastest for iteration (~20-80ms per expression); auto-restarts after JIT crashes
   - `clang` -- compile-and-run via clang++ with PCH caching
   - `gcc` -- compile-and-run via g++ with PCH caching
-  - `auto` (default) -- picks clang-repl if available, falls back to clang/gcc
+  - `auto` (default) -- picks the highest-versioned available compiler (clang-repl > clang > gcc)
 
 ---
 

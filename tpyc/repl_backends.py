@@ -12,7 +12,10 @@ Auto-detection order: clang-repl -> clang++ -> g++
 from __future__ import annotations
 import abc
 import difflib
+import glob
 import hashlib
+import os
+import re
 import shutil
 import subprocess
 import sys
@@ -258,11 +261,12 @@ class ClangReplBackend(REPLBackend):
     def name(self) -> str:
         return self._binary
 
-    def startup(self) -> None:
+    def startup(self, silent: bool = False) -> None:
         self._flat_header = self._build_flat_header()
         runtime_dir = get_runtime_dir()
 
-        print("Starting clang-repl...", end="", flush=True)
+        if not silent:
+            print("Starting clang-repl...", end="", flush=True)
         t0 = time.monotonic()
         self._proc = subprocess.Popen(
             [
@@ -284,7 +288,8 @@ class ClangReplBackend(REPLBackend):
         # Wait for startup by sending a no-op
         self._send_sync("int __tpy_startup = 0;")
         elapsed = time.monotonic() - t0
-        print(f" done ({_fmt_ms(elapsed)})")
+        if not silent:
+            print(f" done ({_fmt_ms(elapsed)})")
 
     def execute(
         self,
@@ -294,7 +299,13 @@ class ClangReplBackend(REPLBackend):
         all_cpp_paths: list[Path],
     ) -> BackendResult:
         if self._proc is None or self._proc.poll() is not None:
-            return BackendResult(False, stderr="clang-repl process not running\n")
+            # Auto-restart after crash
+            try:
+                self.startup(silent=True)
+                self._resend_prev_state()
+            except Exception as e:
+                return BackendResult(False,
+                                     stderr=f"clang-repl restart failed: {e}\n")
 
         t_build_start = time.monotonic()
 
@@ -330,9 +341,10 @@ class ClangReplBackend(REPLBackend):
 
         # Detect if the process died (e.g. tpy_panic -> std::exit)
         if self._proc.poll() is not None:
-            error = stderr_output.strip() if stderr_output.strip() else "runtime panic"
+            # Don't update _prev_cpp_body_lines so the failing statement
+            # isn't replayed on restart
             return BackendResult(False,
-                                 stderr=f"clang-repl process exited ({error})\n",
+                                 stderr="clang-repl crashed (will restart on next input)\n",
                                  t_build=t_build, t_run=t_run)
 
         if stderr_output and "error:" in stderr_output.lower():
@@ -351,6 +363,17 @@ class ClangReplBackend(REPLBackend):
                 self._proc.wait(timeout=2)
             except Exception:
                 self._proc.kill()
+
+    def _resend_prev_state(self) -> None:
+        """Replay previously-accepted declarations after a restart."""
+        for decl in self._prev_hpp_lines:
+            err = self._send_sync(decl)
+            if err and "error:" in err.lower():
+                raise RuntimeError(f"State replay failed:\n{err}")
+        for stmt in self._prev_cpp_body_lines:
+            err = self._send_sync(stmt)
+            if err and "error:" in err.lower():
+                raise RuntimeError(f"State replay failed:\n{err}")
 
     # -- Internal helpers --
 
@@ -521,7 +544,11 @@ class ClangReplBackend(REPLBackend):
             if collecting:
                 current_block.append(stripped)
                 brace_depth += stripped.count("{") - stripped.count("}")
-                if brace_depth <= 0 and current_block:
+                # A block is complete when braces are balanced AND the last
+                # line looks like a statement/definition end (';' or '}').
+                # This keeps `template<typename T>` attached to what follows.
+                if (brace_depth <= 0 and current_block
+                        and (stripped.endswith(";") or stripped.endswith("}"))):
                     block = "\n".join(current_block)
                     if block.strip():
                         result.append(block)
@@ -574,6 +601,10 @@ class ClangReplBackend(REPLBackend):
                 # clang-repl executes at top level where lambdas can't use
                 # capture-default. Variables are global so [] suffices.
                 stmt = stmt.replace("[&]()", "[]()")
+                # Hoist immediately-invoked lambdas into temp variables so
+                # clang-repl JIT-compiles them in isolation (avoids stack
+                # overflow from deeply nested template instantiation).
+                stmt = self._hoist_lambdas(stmt, result)
                 result.append(stmt)
                 current = []
                 depth = 0
@@ -583,6 +614,47 @@ class ClangReplBackend(REPLBackend):
             result.append(" ".join(current))
 
         return result
+
+    @staticmethod
+    def _hoist_lambdas(stmt: str, result: list[str]) -> str:
+        """Extract immediately-invoked lambdas into temp variables.
+
+        Transforms `...f([]() { body }())...` into:
+            auto __lam_N = []() { body }();
+            ...f(__lam_N)...
+        """
+        counter = len(result)
+        while True:
+            # Match [](){ ... }() -- an immediately-invoked lambda
+            # Find the start: []() {
+            m = re.search(r'\[\]\(\)\s*\{', stmt)
+            if not m:
+                break
+            lam_start = m.start()
+            # Find matching closing brace by tracking depth
+            brace_start = m.end() - 1  # position of opening {
+            depth = 1
+            i = brace_start + 1
+            while i < len(stmt) and depth > 0:
+                if stmt[i] == '{':
+                    depth += 1
+                elif stmt[i] == '}':
+                    depth -= 1
+                i += 1
+            if depth != 0:
+                break
+            # Check for () invocation after closing brace
+            rest = stmt[i:]
+            inv = re.match(r'\s*\(\)', rest)
+            if not inv:
+                break
+            lam_end = i + inv.end()
+            lam_expr = stmt[lam_start:lam_end]
+            var_name = f"__lam_{counter}"
+            counter += 1
+            result.append(f"auto {var_name} = {lam_expr};")
+            stmt = stmt[:lam_start] + var_name + stmt[lam_end:]
+        return stmt
 
     def _diff_lines(self, old: list[str], new: list[str],
                      insert_only: bool = False) -> list[str]:
@@ -611,16 +683,26 @@ class ClangReplBackend(REPLBackend):
 # Auto-detection
 # ---------------------------------------------------------------------------
 
-_CLANG_REPL_CANDIDATES = ["clang-repl-18", "clang-repl-19", "clang-repl"]
-_CLANGPP_CANDIDATES = ["clang++-18", "clang++-19", "clang++"]
-_GPP_CANDIDATES = ["g++-14", "g++-13", "g++"]
-
-
-def _find_binary(candidates: list[str]) -> str | None:
-    for name in candidates:
-        if shutil.which(name):
-            return name
-    return None
+def _find_best_versioned(prefix: str) -> str | None:
+    """Find the highest-versioned binary matching prefix (e.g. 'clang-repl-')."""
+    # Check PATH directories for prefix-N binaries
+    best_ver = -1
+    best_name: str | None = None
+    for d in os.environ.get("PATH", "").split(os.pathsep):
+        for path in glob.glob(os.path.join(d, f"{prefix}-*")):
+            name = os.path.basename(path)
+            suffix = name[len(prefix) + 1:]
+            try:
+                ver = int(suffix)
+            except ValueError:
+                continue
+            if ver > best_ver and shutil.which(name):
+                best_ver = ver
+                best_name = name
+    # Also check unversioned
+    if best_name is None and shutil.which(prefix):
+        best_name = prefix
+    return best_name
 
 
 def detect_backend(
@@ -642,7 +724,7 @@ def detect_backend(
         return _auto_detect(temp_dir, module_name)
 
     if requested == "clang-repl":
-        binary = _find_binary(_CLANG_REPL_CANDIDATES)
+        binary = _find_best_versioned("clang-repl")
         if not binary:
             print("Warning: clang-repl not found, falling back to auto-detect",
                   file=sys.stderr)
@@ -650,7 +732,7 @@ def detect_backend(
         return ClangReplBackend(binary, temp_dir, module_name)
 
     if requested == "clang":
-        binary = _find_binary(_CLANGPP_CANDIDATES)
+        binary = _find_best_versioned("clang++")
         if not binary:
             print("Warning: clang++ not found, falling back to auto-detect",
                   file=sys.stderr)
@@ -658,7 +740,7 @@ def detect_backend(
         return CompileBackend(binary, temp_dir, module_name)
 
     if requested == "gcc":
-        binary = _find_binary(_GPP_CANDIDATES)
+        binary = _find_best_versioned("g++")
         if not binary:
             print("Warning: g++ not found, falling back to auto-detect",
                   file=sys.stderr)
@@ -673,19 +755,19 @@ def detect_backend(
 def _auto_detect(temp_dir: Path, module_name: str) -> REPLBackend:
     """Auto-detect the best available backend."""
     # Prefer clang-repl for fastest incremental compilation
-    clang_repl = _find_binary(_CLANG_REPL_CANDIDATES)
+    clang_repl = _find_best_versioned("clang-repl")
     if clang_repl:
         return ClangReplBackend(clang_repl, temp_dir, module_name)
 
     # Fall back to clang++
-    clangpp = _find_binary(_CLANGPP_CANDIDATES)
+    clangpp = _find_best_versioned("clang++")
     if clangpp:
         print(f"Warning: clang-repl not found, using {clangpp} (slower)",
               file=sys.stderr)
         return CompileBackend(clangpp, temp_dir, module_name)
 
     # Fall back to g++
-    gpp = _find_binary(_GPP_CANDIDATES)
+    gpp = _find_best_versioned("g++")
     if gpp:
         print(f"Warning: clang-repl not found, using {gpp} (slower)",
               file=sys.stderr)
