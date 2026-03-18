@@ -239,7 +239,6 @@ class SemanticAnalyzer:
             info = builtin_modules.protocol_def_to_info(protocol_def, module_name)
             self.ctx.registry.register_protocol(info)
         self.registrar.register_builtin_types()
-        self.registrar.register_builtin_functions()
         self.registrar.register_builtin_modules()
         self._validate_builtin_extends()
 
@@ -364,9 +363,10 @@ class SemanticAnalyzer:
         # Python builtin functions -- available without import (like CPython).
         # Registered in both builtins_ns (for sema lookup) and imported_names
         # (for codegen to resolve to the lib/tpy/builtins.py module functions).
-        python_builtin_functions = ["len", "repr", "hash", "chr", "abs", "min",
-                                    "max", "ord", "print", "range", "enumerate",
-                                    "zip", "isinstance", "iter"]
+        python_builtin_functions = ["len", "repr", "hash", "chr", "ord", "abs",
+                                    "min", "max", "pow", "round", "divmod",
+                                    "print", "range", "enumerate", "zip",
+                                    "isinstance", "iter"]
         for name in python_builtin_functions:
             self.ctx.builtins_ns.bind_imported_name(name, "builtins", name)
             self.ctx.imported_names[name] = ("builtins", name)

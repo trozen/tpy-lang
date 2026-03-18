@@ -31,7 +31,7 @@ from ..parse import (
 )
 from ..prescan import match_is_none
 from ..namespace import BindingKind
-from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, expand_cpp_template
+from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, expand_cpp_template, qualify_native_name
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -1341,17 +1341,8 @@ class ExpressionGenerator:
         # print() maps to std::printf
         if expr.func == "print":
             return self.builtins.gen_print(expr.args, expr.kwargs)
-        # Check registry for built-in functions
-        if overloads := self.ctx.analyzer.registry.get_builtin_function_overloads(expr.func):
-            if not overloads[0].special_handling:
-                # Skip builtin codegen if sema resolved to a non-builtin function
-                # (user functions shadow builtins). Sema has a parallel check via
-                # namespace lookup (see sema/calls.py analyze_call).
-                fi = expr.resolved_function_info
-                if fi is None or fi.is_builtin_function:
-                    return self.builtins.gen_builtin_function_overloads(expr, overloads)
-        # Check for imported function (from X import Y -> Y())
-        # Only if not shadowed by a variable, user-defined function, or record
+        # Check for imported function (builtins or from X import Y -> Y())
+        # Builtins (len, pow, etc.) are registered in imported_names by the analyzer.
         if expr.func in self.ctx.analyzer.imported_names:
             is_shadowed = (expr.func in self.ctx.declared_vars or
                            expr.func in self.ctx.global_names or
@@ -1365,7 +1356,7 @@ class ExpressionGenerator:
                 # Check for module function
                 module_info = self.ctx.analyzer.registry.get_module(module_name)
                 if module_info and func_name in module_info.functions:
-                    return self.builtins.gen_builtin_function_overloads(expr, module_info.functions[func_name])
+                    return self.builtins.gen_template_or_native_call(expr, module_info.functions[func_name])
                 # Check for type constructor (e.g., Int32 from tpy, int from builtins)
                 qname = f"{module_name}.{func_name}"
                 if record_info := self.ctx.analyzer.registry.get_builtin_record(qname):
@@ -1389,7 +1380,7 @@ class ExpressionGenerator:
 
             # @cpp_template functions: expand the C++ expression template directly
             if func_info.cpp_template:
-                return self.builtins.gen_builtin_function_overloads(expr, [func_info])
+                return self.builtins.gen_template_or_native_call(expr, [func_info])
 
             gen_args = []
             for arg, (pname, ptype) in zip(expr.args, func_info.params):
@@ -1442,9 +1433,7 @@ class ExpressionGenerator:
                 # For @native_c, the calling module's header has a local re-declaration
                 # so no namespace qualification is needed (works for same-module,
                 # cross-module, and package re-export cases).
-                func_cpp_name = func_info.native_name or func_info.name
-                if "::" in func_cpp_name and not func_cpp_name.startswith("::"):
-                    func_cpp_name = f"::{func_cpp_name}"
+                func_cpp_name = qualify_native_name(func_info.native_name or func_info.name)
             elif expr.func in self.ctx.user_imported_functions:
                 source_module, original_name = self.ctx.user_imported_functions[expr.func]
                 func_cpp_name = qualified_cpp_name(source_module, original_name)
@@ -1634,15 +1623,13 @@ class ExpressionGenerator:
                 temp_call = TpyCall(func=expr.method, args=expr.args, kwargs=expr.kwargs, loc=expr.loc)
                 temp_call.resolved_function_info = fi
                 temp_call.inferred_type_args = expr.inferred_type_args
-                return self.builtins.gen_builtin_function_overloads(temp_call, [fi])
+                return self.builtins.gen_template_or_native_call(temp_call, [fi])
             if fi and (fi.is_native_import or fi.is_extern_c):
                 func_name = fi.native_name or fi.name
                 # Qualified native names (e.g. "::tpy::math::log_base") are absolute
                 # C++ symbols -- prefix with :: and don't wrap in the user module namespace.
                 if "::" in func_name:
-                    if not func_name.startswith("::"):
-                        func_name = f"::{func_name}"
-                    return f"{func_name}({args})"
+                    return f"{qualify_native_name(func_name)}({args})"
                 return f"{qualified_cpp_name(expr.user_module_call, func_name)}({args})"
             # Emit explicit template args for generic user-module calls
             if fi and fi.is_generic() and expr.inferred_type_args:
@@ -1675,7 +1662,7 @@ class ExpressionGenerator:
                 temp_call = TpyCall(func=expr.method, args=expr.args, kwargs=expr.kwargs, loc=expr.loc)
                 temp_call.resolved_function_info = expr.resolved_function_info
                 temp_call.inferred_type_args = expr.inferred_type_args
-                return self.builtins.gen_builtin_function_overloads(temp_call, module_info.functions[expr.method])
+                return self.builtins.gen_template_or_native_call(temp_call, module_info.functions[expr.method])
             # Check for type constructor (e.g., tpy.Int32)
             qname = f"{module_name}.{expr.method}"
             if record_info := self.ctx.analyzer.registry.get_builtin_record(qname):
@@ -1758,7 +1745,7 @@ class ExpressionGenerator:
                         # Create a temp call for code generation
                         from ..parse import TpyCall
                         temp_call = TpyCall(func=expr.method, args=expr.args, kwargs=expr.kwargs, loc=expr.loc)
-                        return self.builtins.gen_builtin_function_overloads(temp_call, module_info.functions[expr.method])
+                        return self.builtins.gen_template_or_native_call(temp_call, module_info.functions[expr.method])
         obj = self.gen_expr(expr.obj)
         obj, is_assign_narrowed = self._apply_assign_narrowing(expr.obj, obj)
         obj_type = self.types.get_resolved_type(expr.obj)

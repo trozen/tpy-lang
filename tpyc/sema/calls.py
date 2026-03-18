@@ -425,18 +425,6 @@ class CallAnalyzer:
                 return expr.call_type
             # Otherwise fall through to function handling (type_args will be used)
 
-        # Check registry for built-in functions (global builtins like chr)
-        # Skip if namespace has a user-defined (non-builtin) function binding.
-        # Codegen has a parallel check via resolved_function_info.is_builtin_function
-        # (see codegen_cpp/expressions.py gen_call).
-        ns_binding = self.ctx.current_ns.lookup(expr.func) if self.ctx.current_ns else None
-        has_user_fn = (ns_binding is not None and ns_binding.kind == BindingKind.FUNCTION
-                       and ns_binding.func_infos is not None and not ns_binding.func_infos[0].is_builtin_function)
-        if not has_user_fn:
-            if overloads := self.ctx.registry.get_builtin_function_overloads(expr.func):
-                if not overloads[0].special_handling:
-                    return self._analyze_builtin_function_overloads(expr, overloads)
-
         # Track if we found an imported generic type (allows fallthrough to generic handling)
         # Stores the original name (not alias) for lookup_generic_type
         imported_generic_name: str | None = None

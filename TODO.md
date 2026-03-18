@@ -3,7 +3,6 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
-- unify codegen paths for builtin and native functions (gen_builtin_function_overloads vs regular native call path)
 - continue moving builtins and builtin modules to .py files
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 

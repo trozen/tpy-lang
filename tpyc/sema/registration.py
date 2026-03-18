@@ -109,17 +109,6 @@ class TypeRegistrar:
         self.ctx.registry.register_record(exc)
         self.ctx.registry.register_record(stop_iter)
 
-    def register_builtin_functions(self) -> None:
-        """Register builtin functions for unified function lookup.
-
-        This converts BuiltinFunctionDef entries from the default modules
-        (builtins + tpy) into FunctionInfo entries in the registry.
-        """
-        for module in [builtin_modules.get_builtins(), builtin_modules.get_tpy()]:
-            for name, fn_def in module.functions.items():
-                overloads = builtin_modules.builtin_function_to_info(fn_def, module.name)
-                self.ctx.registry.register_builtin_function_overloads(name, overloads)
-
     def register_builtin_modules(self) -> None:
         """Register builtin modules for unified module lookup.
 

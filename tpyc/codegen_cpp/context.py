@@ -151,6 +151,17 @@ def qualified_cpp_name(module_name: str, name: str) -> str:
     return f"::{module_to_cpp_namespace(module_name)}::{escape_cpp_name(name)}"
 
 
+def qualify_native_name(name: str) -> str:
+    """Ensure a C++ native name is fully qualified (prefixed with ::).
+
+    Names already starting with :: or without :: are returned as-is.
+    Example: "tpy::__len__" -> "::tpy::__len__", "abs" -> "abs"
+    """
+    if "::" in name and not name.startswith("::"):
+        return f"::{name}"
+    return name
+
+
 DUNDER_TO_BINARY_OP: dict[str, str] = {
     "__add__": "+", "__sub__": "-", "__mul__": "*",
     "__truediv__": "/", "__floordiv__": "/", "__mod__": "%",
@@ -823,9 +834,6 @@ class CodeGenContext:
                 return True
             if self.analyzer.registry.get_function(expr.func) is not None:
                 return not self._call_returns_cpp_ref(expr.resolved_function_info)
-            # Builtin functions -> rvalue
-            if self.analyzer.registry.get_builtin_function_overloads(expr.func):
-                return True
             # copy() -> rvalue
             if expr.func in self.analyzer.imported_names:
                 module_name, func_name = self.analyzer.imported_names[expr.func]

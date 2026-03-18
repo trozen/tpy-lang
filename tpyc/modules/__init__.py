@@ -265,8 +265,8 @@ def get_all_modules() -> list[BuiltinModule]:
 
 
 def get_importable_modules() -> list[BuiltinModule]:
-    """Get modules that require explicit import (excludes builtins)."""
-    return [m for m in get_all_modules() if m.name != "builtins"]
+    """Get all modules (used by register_builtin_modules)."""
+    return get_all_modules()
 
 
 # C++ expression templates for Python dunder methods.

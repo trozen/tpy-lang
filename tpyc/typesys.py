@@ -2762,7 +2762,6 @@ class TypeRegistry:
         self.records: dict[str, RecordInfo] = {}
         self.builtin_records: dict[str, RecordInfo] = {}  # By qualified name (e.g., "builtins.list")
         self.functions: dict[str, list[FunctionInfo]] = {}  # User-defined functions (single or @overload group)
-        self.builtin_function_overloads: dict[str, list[FunctionInfo]] = {}  # Builtin function overloads
         self.protocols: dict[str, ProtocolInfo] = {}
         self.modules: dict[str, ModuleInfo] = {}  # module_name -> ModuleInfo
         self.type_aliases: dict[str, 'TpyType'] = {}  # alias_name -> resolved type
@@ -2795,14 +2794,6 @@ class TypeRegistry:
     def get_function(self, name: str) -> list[FunctionInfo] | None:
         """Get function(s) by name, or None if not found."""
         return self.functions.get(name)
-
-    def register_builtin_function_overloads(self, name: str, overloads: list[FunctionInfo]) -> None:
-        """Register builtin function overloads by name."""
-        self.builtin_function_overloads[name] = overloads
-
-    def get_builtin_function_overloads(self, name: str) -> list[FunctionInfo]:
-        """Get builtin function overloads by name."""
-        return self.builtin_function_overloads.get(name, [])
 
     def register_protocol(self, info: ProtocolInfo, name: str | None = None) -> None:
         """Register a protocol type.
