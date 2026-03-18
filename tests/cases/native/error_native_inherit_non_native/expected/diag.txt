@@ -1,0 +1,1 @@
+main.py:8: error: @native class 'Bar' can only inherit from other @native classes

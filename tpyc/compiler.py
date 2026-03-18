@@ -715,6 +715,10 @@ class Compiler:
                 analyzer.registry.register_module(module_info)
                 for proto in module_info.protocols.values():
                     analyzer.registry.register_protocol(proto)
+                # Register records (e.g. exception classes) in the flat registry
+                # so get_record() finds them by bare name during inheritance checks.
+                for record in module_info.records.values():
+                    analyzer.registry.register_record(record)
 
         # Set module name for __name__
         module_name = "__main__" if compiled.is_entry_point else compiled.name

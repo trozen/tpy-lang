@@ -4516,7 +4516,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - Current limitation: assert message must be a string literal
 - **Working**: `@error_return(E)` -- zero-cost error returns via `std::expected<T, E>`
   - Error types inherit from `Exception` for CPython compatibility (`class MyError(Exception): pass`)
-  - `Exception`/`BaseException` are registered as empty records (real C++ inheritance)
+  - `Exception`/`BaseException`/`StopIteration` defined as `@native` classes in `lib/tpy/builtins.py`, mapping to `::tpy::` runtime structs (inherit from `std::exception`)
   - Decorator on functions: `raise E` compiles to `return std::unexpected(E{})`
   - Callers must use `try/except E` -- compile error if unhandled
   - `try/except/else` supported

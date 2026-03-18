@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <exception>
 #include <expected>
 #include <optional>
 #include <string>
@@ -18,8 +19,9 @@
 
 namespace tpy {
 
-// Python exception hierarchy (zero-size sentinels for std::expected<T, E>)
-struct BaseException {};
+// Python exception hierarchy -- inherits from std::exception so future
+// try/except/raise can use C++ exception machinery.
+struct BaseException : std::exception {};
 struct Exception : BaseException {};
 struct StopIteration : Exception {};
 

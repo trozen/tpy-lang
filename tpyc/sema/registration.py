@@ -96,19 +96,6 @@ class TypeRegistrar:
                 info = builtin_modules.builtin_type_to_record_info(qname, type_def)
                 self.ctx.registry.register_builtin_record(qname, info)
 
-        # Register Python exception base classes as empty records.
-        # These are no-op in C++ codegen but allow CPython-compatible
-        # error types: class MyError(Exception): pass
-        base_exc = RecordInfo(name="BaseException", fields=[], is_value_type=True,
-                              is_builtin_exception=True)
-        exc = RecordInfo(name="Exception", fields=[], is_value_type=True,
-                         parent=NamedType("BaseException"), is_builtin_exception=True)
-        stop_iter = RecordInfo(name="StopIteration", fields=[], is_value_type=True,
-                               parent=NamedType("Exception"), is_builtin_exception=True)
-        self.ctx.registry.register_record(base_exc)
-        self.ctx.registry.register_record(exc)
-        self.ctx.registry.register_record(stop_iter)
-
     def register_builtin_modules(self) -> None:
         """Register builtin modules for unified module lookup.
 
@@ -763,12 +750,17 @@ class TypeRegistrar:
         if record_info is None:
             return
 
-        # Native records cannot have bases
+        # Native records can only inherit from other native records
+        # (the C++ inheritance already exists, we just track it for type checking)
         if record_info.is_native and record.bases:
-            raise SemanticError(
-                f"@{record.linkage.value} class '{record.name}' cannot have base classes",
-                record.loc
-            )
+            for base in record.bases:
+                if isinstance(base, NamedType):
+                    base_record = self.ctx.registry.get_record(base.name)
+                    if not base_record or not base_record.is_native:
+                        raise SemanticError(
+                            f"@{record.linkage.value} class '{record.name}' can only inherit from other @native classes",
+                            record.loc
+                        )
 
         # Classify bases into parent class vs protocol implementations
         # We do this here (not in register_record) so forward-referenced protocols are recognized

@@ -6,6 +6,17 @@ from tpy import Hashable, Representable
 from tpy.extern import native, cpp_template
 
 
+# Python exception hierarchy (maps to ::tpy:: runtime structs in core.hpp)
+@native("tpy::BaseException")
+class BaseException: ...
+
+@native("tpy::Exception")
+class Exception(BaseException): ...
+
+@native("tpy::StopIteration")
+class StopIteration(Exception): ...
+
+
 @pure
 @readonly
 @native("tpy::__len__")

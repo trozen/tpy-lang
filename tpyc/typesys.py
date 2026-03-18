@@ -36,9 +36,12 @@ def qualify_exception_name(name: str, registry: 'TypeRegistry') -> str:
     """
     if name not in BUILTIN_EXCEPTION_NAMES:
         return name
-    record = registry.get_record(name)
-    if record and not record.is_builtin_exception:
-        return name
+    # Check if user shadowed the builtin by defining their own class
+    builtins_mod = registry.get_module("builtins")
+    if builtins_mod and name in builtins_mod.records:
+        record = registry.get_record(name)
+        if record is not None and record is not builtins_mod.records[name]:
+            return name  # user-defined shadow
     return f"builtins.{name}"
 
 
@@ -2506,7 +2509,6 @@ class RecordInfo:
     is_value_type: bool = False   # True for ValueType marker protocol
     has_del: bool = False           # True if class declares __del__ (needs drop flag)
     has_copy: bool = False          # True if class defines __copy__ (custom copy semantics)
-    is_builtin_exception: bool = False  # True for pre-registered BaseException/Exception/StopIteration
 
     def get_method(self, name: str) -> Optional['FunctionInfo']:
         """Get first overload of a method (for single-overload cases)."""
