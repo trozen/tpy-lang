@@ -795,9 +795,10 @@ Multi-hop chains are supported — if `Box.__deref__() -> Ref` and `Ref.__deref_
 
 - Constructor: `p = Ptr(x)` (pointer to a local variable)
 - Condition narrowing: `if p is not None:` / `if p is None: return` / `assert p is not None` / `while p is not None:`
+- Field-path narrowing: `if self.ptr_field is not None:` / `if obj.field is not None:` (dotted paths at any depth)
 - Assignment from a known non-null variable
 
-Narrowing supports negation and `and`/`or` composition. Branch merging uses intersection (non-null only if all paths agree). Reassignment from an unknown source (e.g., function return) clears non-null provenance.
+Narrowing supports negation and `and`/`or` composition. Branch merging uses intersection (non-null only if all paths agree). Reassignment from an unknown source (e.g., function return) clears non-null provenance. Field-path narrowing is invalidated by method calls on the receiver object, field writes, or passing the object to a function by mutable reference.
 
 **C++ interop:** User-defined types with `__deref__()` get `operator*()` generated in C++, enabling `*box` syntax from C++ code.
 

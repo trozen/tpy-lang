@@ -505,7 +505,7 @@ class NonNullAnnotation:
 def parse_non_null_annotations(source: str) -> list[NonNullAnnotation]:
     """Parse # tpyc: non_null(var) and # tpyc: nullable(var) annotations."""
     annotations = []
-    pattern = re.compile(r'#\s*tpyc:\s*(non_null|nullable)\(\s*(\w+)\s*\)')
+    pattern = re.compile(r'#\s*tpyc:\s*(non_null|nullable)\(\s*([\w.]+)\s*\)')
 
     for lineno, line in enumerate(source.splitlines(), start=1):
         stripped = line.lstrip()

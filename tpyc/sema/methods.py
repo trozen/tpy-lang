@@ -20,6 +20,7 @@ from ..parse import (
 )
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
+from ..prescan import _expr_to_narrowing_key
 from .diagnostics import OPTIONAL_NONE_ACCESS_WARNING
 from .overloads import resolve_overload
 from .calls import (
@@ -423,15 +424,15 @@ class MethodAnalyzer:
             result = self._try_resolve_method(expr, current_type, is_readonly_receiver)
             if result is not None:
                 expr.deref_depth = deref_depth
-                if (deref_depth > 0
-                        and isinstance(original_type, PtrType)
-                        and isinstance(expr.obj, TpyName)):
-                    if expr.obj.name in self.ctx.non_null_ptr_vars:
-                        expr.ptr_non_null = True
-                    if expr.loc:
-                        self.ctx.ptr_deref_facts[
-                            (expr.loc.line, expr.obj.name)
-                        ] = expr.ptr_non_null
+                if deref_depth > 0 and isinstance(original_type, PtrType):
+                    obj_key = _expr_to_narrowing_key(expr.obj)
+                    if obj_key is not None:
+                        if obj_key in self.ctx.non_null_ptr_vars:
+                            expr.ptr_non_null = True
+                        if expr.loc:
+                            self.ctx.ptr_deref_facts[
+                                (expr.loc.line, obj_key)
+                            ] = expr.ptr_non_null
                 # Enforce readonly: cannot call non-readonly method on readonly receiver
                 if is_readonly_receiver:
                     info = expr.resolved_function_info

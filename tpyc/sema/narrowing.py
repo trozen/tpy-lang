@@ -306,13 +306,15 @@ class NarrowingTracker:
         match = match_is_none(expr)
         if match is not None:
             key, is_not_none = match
-            if "." not in key:
+            if "." in key:
+                declared = self._resolve_field_path_type(key)
+            else:
                 declared = self.declared_type_for_name(key)
-                if isinstance(declared, PtrType):
-                    if is_not_none:
-                        return {key}, set()
-                    else:
-                        return set(), {key}
+            if isinstance(declared, PtrType):
+                if is_not_none:
+                    return {key}, set()
+                else:
+                    return set(), {key}
 
         if isinstance(expr, TpyUnaryOp) and expr.op == "!":
             non_null, null = self._ptr_null_facts(expr.operand)
@@ -557,15 +559,19 @@ class NarrowingTracker:
         stale = [k for k in self.ctx.narrowed_types if k.startswith(prefix)]
         for k in stale:
             del self.ctx.narrowed_types[k]
+        stale_ptr = [k for k in self.ctx.non_null_ptr_vars if k.startswith(prefix)]
+        for k in stale_ptr:
+            self.ctx.non_null_ptr_vars.discard(k)
 
     def invalidate_for_field_write(self, target: TpyExpr) -> None:
         """Invalidate narrowing facts for sub-paths when a field is written.
 
-        When `obj.inner = ...` is written, clears narrowing facts for deeper
-        paths like `obj.inner.value` (the new object may have different field
-        values). Does NOT clear the fact for the written field itself -- that
-        is managed by the enclosing `is not None` guard (the write doesn't
-        change whether the field was proven non-None by a condition check).
+        When `obj.inner = ...` is written, clears Optional narrowing facts for
+        deeper paths like `obj.inner.value` (the new object may have different
+        field values). Does NOT clear the Optional fact for the written field
+        itself -- that is managed by the enclosing `is not None` guard.
+        Ptr non-null facts ARE cleared for the written key itself, since a
+        field write always introduces a potentially-null pointer value.
         """
         key = _expr_to_narrowing_key(target)
         if key is None or "." not in key:
@@ -574,6 +580,10 @@ class NarrowingTracker:
         stale = [k for k in self.ctx.narrowed_types if k.startswith(prefix)]
         for k in stale:
             del self.ctx.narrowed_types[k]
+        self.ctx.non_null_ptr_vars.discard(key)
+        stale_ptr = [k for k in self.ctx.non_null_ptr_vars if k.startswith(prefix)]
+        for k in stale_ptr:
+            self.ctx.non_null_ptr_vars.discard(k)
 
     def _invalidate_len_ranges(self, name: str) -> None:
         """Remove range facts whose symbolic bound references len(name)."""
@@ -609,9 +619,14 @@ class NarrowingTracker:
         may change the container's length, e.g. pop/clear/insert).
         Also invalidates for any non-value-type arguments.
         """
-        if isinstance(call.obj, TpyName) and not call.is_static_call:
-            self._invalidate_field_facts(call.obj.name)
-            self._invalidate_len_ranges(call.obj.name)
+        if not call.is_static_call:
+            if isinstance(call.obj, TpyName):
+                self._invalidate_field_facts(call.obj.name)
+                self._invalidate_len_ranges(call.obj.name)
+            else:
+                obj_key = _expr_to_narrowing_key(call.obj)
+                if obj_key is not None:
+                    self._invalidate_field_facts(obj_key)
         for arg in call.args:
             if not isinstance(arg, TpyName):
                 continue

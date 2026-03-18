@@ -1158,15 +1158,15 @@ class ExpressionAnalyzer:
             result = self._try_find_field(current_type, expr)
             if result is not None:
                 expr.deref_depth = deref_depth
-                if (deref_depth > 0
-                        and isinstance(actual_type, PtrType)
-                        and isinstance(expr.obj, TpyName)):
-                    if expr.obj.name in self.ctx.non_null_ptr_vars:
-                        expr.ptr_non_null = True
-                    if expr.loc:
-                        self.ctx.ptr_deref_facts[
-                            (expr.loc.line, expr.obj.name)
-                        ] = expr.ptr_non_null
+                if deref_depth > 0 and isinstance(actual_type, PtrType):
+                    obj_key = _expr_to_narrowing_key(expr.obj)
+                    if obj_key is not None:
+                        if obj_key in self.ctx.non_null_ptr_vars:
+                            expr.ptr_non_null = True
+                        if expr.loc:
+                            self.ctx.ptr_deref_facts[
+                                (expr.loc.line, obj_key)
+                            ] = expr.ptr_non_null
                 # Propagate readonly: accessing a non-value field through a
                 # readonly reference yields a readonly result.
                 # Ptr[T] fields become Ptr[readonly[T]], Span[T] -> Span[readonly[T]].
