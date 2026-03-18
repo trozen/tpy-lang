@@ -3,7 +3,6 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
-- `@error_return` qualified exception names: the entire `error_return` system uses bare names (`"StopIteration"`), so a user-defined class with the same name could clash. Parser, sema, and codegen should resolve to qualified names (e.g. `"tpy.StopIteration"`) to avoid ambiguity.
 - move builtins and builtin modules to .py files
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 

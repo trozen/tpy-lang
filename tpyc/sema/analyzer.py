@@ -127,7 +127,11 @@ def _type_contains_type_param(typ: TpyType) -> bool:
 
 
 def _body_has_raise(stmts: list[TpyStmt], exception_type: str) -> bool:
-    """Return True if any path in *stmts* contains ``raise <exception_type>``."""
+    """Return True if any path in *stmts* contains ``raise <exception_type>``.
+
+    Called after body analysis, so TpyRaise.exception_type is already
+    qualified (e.g. 'builtins.StopIteration').
+    """
     for stmt in stmts:
         if isinstance(stmt, TpyRaise) and stmt.exception_type == exception_type:
             return True
@@ -1113,7 +1117,7 @@ class SemanticAnalyzer:
                 self.stmts.analyze_stmt(stmt)
 
             # Warn if __next__ has no raise StopIteration (likely infinite loop)
-            if method.name == "__next__" and not _body_has_raise(method.body, "StopIteration"):
+            if method.name == "__next__" and not _body_has_raise(method.body, "builtins.StopIteration"):
                 self.ctx.warning(
                     "__next__() has no 'raise StopIteration' -- "
                     "iterator will loop forever if caller exhausts it",

@@ -909,6 +909,8 @@ class StatementAnalyzer:
         if not self.ctx.registry.get_record(stmt.exception_type):
             raise self.ctx.error(
                 f"Unknown error type '{stmt.exception_type}'", stmt)
+        # Propagate qualified name to AST for consistency with TpyFunction.error_return
+        stmt.exception_type = qualified_exc
         self.init.mark_terminated()
 
     def _analyze_try_except(self, stmt: TpyTryExcept) -> None:
