@@ -1613,10 +1613,15 @@ class StatementGenerator:
                 get_expr = f"std::move({get_expr})"
 
             if stmt.is_new[i]:
+                # Variable pre-declared for loop hoisting -- emit assignment,
+                # not re-declaration.
+                already_declared = name in self.ctx.loop_hoisted_vars
                 self.ctx.declared_vars.add(name)
                 self.ctx.local_scope_names.add(name)
                 self.ctx.var_types[name] = target_type
-                if stmt.is_ref[i]:
+                if already_declared:
+                    out.write(f"{indent}{cpp_name} = {get_expr};\n")
+                elif stmt.is_ref[i]:
                     if name in self.ctx.reassigned_vars or name in self.ctx.hoisted_vars:
                         self.ctx.pointer_locals.add(name)
                         out.write(f"{indent}{cpp_type}* {cpp_name} = "
@@ -2171,6 +2176,8 @@ class StatementGenerator:
                     resolve_type = resolve_type.wrapped
                 cpp_type = self.types.type_to_cpp(resolve_type)
                 self.ctx.declared_vars.add(name)
+                if isinstance(stmt, TpyForEach):
+                    self.ctx.loop_hoisted_vars.add(name)
                 self.ctx.local_scope_names.add(name)
                 self.ctx.var_types[name] = var_type
                 if self.ctx.current_ns and var_type:

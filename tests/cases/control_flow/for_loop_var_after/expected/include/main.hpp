@@ -17,6 +17,9 @@ void test_nested();
 void test_record_in_body();
 void test_sequential_same_var();
 void test_str_loop_var();
+void test_tuple_unpack();
+void test_tuple_unpack_partial();
+void test_tuple_unpack_second_func();
 
 void __tpy_init();
 } // namespace tpyapp::main

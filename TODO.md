@@ -123,7 +123,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Module-level tuple unpack: missing `declared_var_types` tracking (`# tpyc: type()` test annotations won't validate on unpack lines)
 
 ## Known Limitations
-- Tuple-unpack loop variable hoisting: `for i, s in items: ... print(i)` -- the unpack codegen re-declares `i` inside the loop body (shadowing the hoisted pre-declaration), so the outer `i` is never assigned. Fix: `TpyTupleUnpack` codegen should emit assignment (not declaration) when the target is already in `declared_vars`.
 - `while` loop body variable hoisting: variables declared inside `while` bodies don't escape to the parent scope (unlike `for` loops which now hoist). Lower priority since `while` loops with post-loop variable access are less common than `for` loops.
 - Subscript narrowing: `if items[i] is not None:` does not narrow `items[i]`. Hard to make sound due to index aliasing and container mutation; would need invalidation on any container write.
 - Pointer-local slot reuse: reassigned T* pointer-locals allocate a fresh `std::optional<T>` slot per assignment. The initial slot could be reused after reassignment instead of allocating a new one.

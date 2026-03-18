@@ -58,6 +58,31 @@ def test_str_loop_var() -> None:
     print(s)
 
 
+def test_tuple_unpack() -> None:
+    items: list[tuple[int, str]] = [(1, "a"), (2, "b"), (3, "c")]
+    for i, s in items:
+        pass
+    print(i)
+    print(s)
+
+
+def test_tuple_unpack_partial() -> None:
+    """Only one unpack var used after loop."""
+    items: list[tuple[int, str]] = [(1, "a"), (2, "b")]
+    for i, s in items:
+        pass
+    print(i)
+
+
+def test_tuple_unpack_second_func() -> None:
+    """Ensures loop_hoisted_vars is reset between functions."""
+    items: list[tuple[int, str]] = [(10, "x"), (20, "y")]
+    for i, s in items:
+        pass
+    print(i)
+    print(s)
+
+
 test_range_var()
 test_body_var()
 test_list_iteration()
@@ -66,3 +91,6 @@ test_nested()
 test_record_in_body()
 test_sequential_same_var()
 test_str_loop_var()
+test_tuple_unpack()
+test_tuple_unpack_partial()
+test_tuple_unpack_second_func()

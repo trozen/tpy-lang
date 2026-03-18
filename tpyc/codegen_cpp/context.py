@@ -372,6 +372,8 @@ class CodeGenContext:
 
     # --- with statement ---
     with_counter: int = 0
+    # Variables pre-declared by _emit_branch_decls for for-loop hoisting
+    loop_hoisted_vars: set[str] = field(default_factory=set)
 
     # --- Match/case label counter (for goto-based guard fallthrough) ---
     match_counter: int = 0
@@ -441,6 +443,7 @@ class CodeGenContext:
         self.iter_counter = 0
         self.unpack_counter = 0
         self.loop_else_labels = []
+        self.loop_hoisted_vars = set()
 
     def indent(self) -> str:
         """Get current indentation string."""

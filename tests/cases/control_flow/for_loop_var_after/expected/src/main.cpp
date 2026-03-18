@@ -132,6 +132,75 @@ void test_str_loop_var() {
     std::cout << s << "\n";
 }
 
+// def test_tuple_unpack() -> None:
+void test_tuple_unpack() {
+    // items: list[tuple[int, str]] = [(1, "a"), (2, "b"), (3, "c")]
+    std::vector<std::tuple<::tpy::BigInt, std::string>> items = {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(1), "a"}, std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(2), "b"}, std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(3), "c"}};
+    // for i, s in items:
+    ::tpy::BigInt i;
+    std::string_view s;
+    auto& __obj_0 = items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const std::tuple<::tpy::BigInt, std::string>& __for_tup_0 = *__beg_0;
+        // for i, s in items:
+        const auto& __tup_1 = __for_tup_0;
+        i = std::get<0>(__tup_1);
+        s = std::get<1>(__tup_1);
+        // pass
+    }
+    // print(i)
+    std::cout << i << "\n";
+    // print(s)
+    std::cout << s << "\n";
+}
+
+// def test_tuple_unpack_partial() -> None:
+void test_tuple_unpack_partial() {
+    // items: list[tuple[int, str]] = [(1, "a"), (2, "b")]
+    std::vector<std::tuple<::tpy::BigInt, std::string>> items = {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(1), "a"}, std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(2), "b"}};
+    // for i, s in items:
+    ::tpy::BigInt i;
+    auto& __obj_0 = items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const std::tuple<::tpy::BigInt, std::string>& __for_tup_1 = *__beg_0;
+        // for i, s in items:
+        const auto& __tup_1 = __for_tup_1;
+        i = std::get<0>(__tup_1);
+        std::string_view s = std::get<1>(__tup_1);
+        // pass
+    }
+    // print(i)
+    std::cout << i << "\n";
+}
+
+// def test_tuple_unpack_second_func() -> None:
+void test_tuple_unpack_second_func() {
+    // items: list[tuple[int, str]] = [(10, "x"), (20, "y")]
+    std::vector<std::tuple<::tpy::BigInt, std::string>> items = {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(10), "x"}, std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(20), "y"}};
+    // for i, s in items:
+    ::tpy::BigInt i;
+    std::string_view s;
+    auto& __obj_0 = items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const std::tuple<::tpy::BigInt, std::string>& __for_tup_2 = *__beg_0;
+        // for i, s in items:
+        const auto& __tup_1 = __for_tup_2;
+        i = std::get<0>(__tup_1);
+        s = std::get<1>(__tup_1);
+        // pass
+    }
+    // print(i)
+    std::cout << i << "\n";
+    // print(s)
+    std::cout << s << "\n";
+}
+
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -153,6 +222,12 @@ void __tpy_init() {
     test_sequential_same_var();
     // test_str_loop_var()
     test_str_loop_var();
+    // test_tuple_unpack()
+    test_tuple_unpack();
+    // test_tuple_unpack_partial()
+    test_tuple_unpack_partial();
+    // test_tuple_unpack_second_func()
+    test_tuple_unpack_second_func();
 }
 
 } // namespace tpyapp::main
