@@ -1048,7 +1048,9 @@ control-flow-exception pattern from the general exception model (C1/C2).
 **Current state**: Done. All three phases complete: generic `@error_return(E)` mechanism
 (Phase 1), auto-add on `__next__` with `StopIteration` built-in type (Phase 2), and
 cleanup with unified `__next__()` -> `std::expected` and direct for-loop codegen
-(Phase 3). See `docs/ERROR_RETURN_DESIGN.md` for full design.
+(Phase 3). Built-in exceptions (`StopIteration`, `Exception`, `BaseException`) use
+qualified names internally and emit as `::tpy::X` in C++ to avoid clashes with
+user-defined classes of the same name. See `docs/ERROR_RETURN_DESIGN.md` for full design.
 
 **Dependencies**: None for the basic annotation. Interacts with the general exception model
 (C1/C2) but can be implemented independently.
