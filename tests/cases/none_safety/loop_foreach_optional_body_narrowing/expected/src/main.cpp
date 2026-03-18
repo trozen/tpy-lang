@@ -37,9 +37,9 @@ void __tpy_init() {
     static std::vector<std::optional<int32_t>> __global_slot_1 = std::vector<std::optional<int32_t>>();
     vals = &__global_slot_1;
     // vals.append(3)
-    (*vals).push_back(3);
+    vals->push_back(3);
     // vals.append(4)
-    (*vals).push_back(4);
+    vals->push_back(4);
     // print(sum_non_none(vals))
     std::cout << sum_non_none((*vals)) << "\n";
 }

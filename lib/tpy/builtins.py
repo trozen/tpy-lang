@@ -1,11 +1,14 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
-from typing import overload, Sized, Iterator
+from typing import overload, Sized, Iterator, Iterable
 from tpy import (
     Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64,
-    Char, String, StrView, pure, readonly,
+    Char, String, StrView, Own, Span, readonly, pure,
 )
-from tpy import Hashable, Representable
+from tpy import (
+    Hashable, Representable, Equatable, Comparable,
+    ReadOnlySpanLike, NativeIterable, NativeRangeConstructible,
+)
 from tpy.extern import native, cpp_template
 from tpy import error_return
 
@@ -19,6 +22,92 @@ class Exception(BaseException): ...
 
 @native("tpy::StopIteration")
 class StopIteration(Exception): ...
+
+
+@native("std::vector")
+class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], ReadOnlySpanLike[T]):
+    @cpp_template("::tpy::__iter__({self})")
+    @pure
+    @readonly
+    def __iter__(self) -> Iterator[T]: ...
+
+    @cpp_template("static_cast<int32_t>({self}.size())")
+    @pure
+    @readonly
+    def __len__(self) -> Int32: ...
+
+    @native("push_back")
+    def append(self, value: Own[T]) -> None: ...
+
+    @overload
+    @native("tpy::pop_back", function=True)
+    def pop(self) -> T: ...
+
+    @overload
+    @native("tpy::list_pop_at", function=True)
+    def pop(self, index: Int32) -> T: ...
+
+    @native
+    def clear(self) -> None: ...
+
+    @cpp_template("{self}[{0}]")
+    @pure
+    @readonly
+    def unchecked_get(self, index: Int32) -> T: ...
+
+    @native("tpy::__getitem__", function=True)
+    @pure
+    @readonly
+    def __getitem__(self, index: Int32) -> T: ...
+
+    @native("tpy::__setitem__", function=True)
+    def __setitem__(self, index: Int32, value: Own[T]) -> None: ...
+
+    @native("tpy::__delitem__", function=True)
+    def __delitem__(self, index: Int32) -> None: ...
+
+    @native("tpy::list_insert", function=True)
+    def insert(self, index: Int32, value: Own[T]) -> None: ...
+
+    @native("tpy::list_remove", function=True)
+    def remove[T: Equatable](self, value: T) -> None: ...
+
+    @native("tpy::list_extend", function=True)
+    def extend(self, other: Iterable[Own[T]]) -> None: ...
+
+    @native("tpy::list_index", function=True)
+    @pure
+    @readonly
+    def index[T: Equatable](self, value: T) -> Int32: ...
+
+    @native("tpy::list_count", function=True)
+    @pure
+    @readonly
+    def count[T: Equatable](self, value: T) -> Int32: ...
+
+    @native("tpy::list_reverse", function=True)
+    def reverse(self) -> None: ...
+
+    @cpp_template("std::stable_sort({self}.begin(), {self}.end())")
+    def sort[T: Comparable](self) -> None: ...
+
+    @native("tpy::list_copy", function=True)
+    @pure
+    @readonly
+    def copy(self) -> Own[list[T]]: ...
+
+    @cpp_template("::tpy::list_concat({self}, {0})")
+    @pure
+    @readonly
+    def __add__(self, other: list[T]) -> list[T]: ...
+
+    @cpp_template("::tpy::list_extend({self}, {0})")
+    def __iadd__(self, other: Iterable[Own[T]]) -> list[T]: ...
+
+    @native("tpy::as_span", function=True)
+    @pure
+    @readonly
+    def __span__(self) -> Span[readonly[T]]: ...
 
 
 @pure

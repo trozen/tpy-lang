@@ -32,7 +32,7 @@ from ..namespace import Namespace
 from ..sema.context import PENDING_CONTAINER_TYPES
 from ..sema.diagnostics import SemanticError
 
-from .context import INDENT, CodeGenError, escape_cpp_name, qualified_cpp_name, expand_cpp_template
+from .context import INDENT, CodeGenError, escape_cpp_name, qualified_cpp_name, expand_cpp_template, qualify_native_name
 from .type_resolution import resolve_stmt_binding_type
 from ..prescan import match_is_none
 from .match import MatchGenerator
@@ -1351,6 +1351,8 @@ class StatementGenerator:
             if inplace.method.cpp_template:
                 result = self.expressions._gen_binop_from_result(inplace, target, value)
                 return f"{indent}{result};\n"
+            elif inplace.method.native_function and inplace.method.native_name:
+                return f"{indent}{qualify_native_name(inplace.method.native_name)}({target}, {value});\n"
             else:
                 # User-defined in-place method (no cpp_template)
                 return f"{indent}{target}.{inplace.method.name}({value});\n"

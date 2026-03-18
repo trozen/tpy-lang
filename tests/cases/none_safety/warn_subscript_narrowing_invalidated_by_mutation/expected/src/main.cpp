@@ -28,7 +28,7 @@ void __tpy_init() {
     static std::vector<std::optional<int32_t>> __global_slot_1 = std::vector<std::optional<int32_t>>();
     vals = &__global_slot_1;
     // vals.append(9)
-    (*vals).push_back(9);
+    vals->push_back(9);
     // print(use_after_write(vals, 0))
     std::cout << use_after_write((*vals), 0) << "\n";
 }

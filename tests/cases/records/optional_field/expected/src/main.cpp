@@ -73,9 +73,9 @@ void __tpy_init() {
     static std::vector<Point> __global_slot_3 = std::vector<Point>();
     pts = &__global_slot_3;
     // pts.append(Point(5, 50))
-    (*pts).push_back(Point(5, 50));
+    pts->push_back(Point(5, 50));
     // pts.append(Point(7, 70))
-    (*pts).push_back(Point(7, 70));
+    pts->push_back(Point(7, 70));
     // line2 = Line(Point(0, 0))
     static Line __global_slot_4 = Line(Point(0, 0));
     line2 = &__global_slot_4;

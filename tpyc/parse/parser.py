@@ -682,7 +682,15 @@ class Parser:
         if isinstance(dec, ast.Call):
             func_node = dec.func
             if dec.keywords:
-                arg_value = self._BAD_ARGS
+                # @native("name", function=True) -- positional + keyword args
+                if len(dec.args) == 1 and isinstance(dec.args[0], ast.Constant):
+                    kw_dict: dict[str, object] = {}
+                    for kw in dec.keywords:
+                        if isinstance(kw.value, ast.Constant):
+                            kw_dict[kw.arg] = kw.value.value
+                    arg_value = (dec.args[0].value, kw_dict)
+                else:
+                    arg_value = self._BAD_ARGS
             elif not dec.args:
                 arg_value = self._EMPTY_CALL
             elif len(dec.args) == 1 and isinstance(dec.args[0], ast.Constant):
@@ -1331,6 +1339,8 @@ class Parser:
         error_return: str | None = None
         method_linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
+        native_function: bool = False
+        cpp_template: str | None = None
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"method '{node.name}'")
             if qname == "builtins.staticmethod":
@@ -1358,10 +1368,24 @@ class Parser:
                 if not isinstance(arg, _NameArg):
                     raise ParseError("@error_return() requires a single error type argument, e.g. @error_return(MyError)", dec)
                 error_return = arg.name
+            elif qname == "tpy.extern.cpp_template":
+                if not isinstance(arg, str):
+                    raise ParseError("@cpp_template() requires a string argument", dec)
+                cpp_template = arg
             elif qname in self._METHOD_LINKAGE_MAP:
                 method_linkage = self._METHOD_LINKAGE_MAP[qname]
                 if isinstance(arg, str):
                     native_name = arg
+                elif isinstance(arg, tuple) and len(arg) == 2 and isinstance(arg[0], str):
+                    native_name, raw_kwargs = arg[0], arg[1]
+                    for key in raw_kwargs:
+                        if key != "function":
+                            dec_name = self._decorator_local_name(dec)
+                            raise ParseError(f"@{dec_name}() got unexpected keyword argument '{key}'", dec)
+                    if not isinstance(raw_kwargs.get("function", False), bool):
+                        dec_name = self._decorator_local_name(dec)
+                        raise ParseError(f"@{dec_name}(function=...) expects bool", dec)
+                    native_function = raw_kwargs.get("function", False)
                 elif arg is not None:
                     dec_name = self._decorator_local_name(dec)
                     raise ParseError(f"@{dec_name}() on method requires a single string argument", dec)
@@ -1467,9 +1491,13 @@ class Parser:
         if node.name != "__init__" and node.returns:
             return_type = self._parse_type_annotation(node.returns, type_param_scope)
 
+        if cpp_template is not None:
+            if not self._is_stub_body(node.body):
+                raise ParseError(
+                    f"@cpp_template method '{node.name}' must have `...` body", node)
         is_stub_body = self._is_stub_body(node.body)
         is_overload_stub_body = is_stub_body or self._is_pass_body(node.body)
-        is_stub = is_stub_body and not is_overload_stub
+        is_stub = (is_stub_body and not is_overload_stub) or cpp_template is not None
         if is_overload_stub:
             if not is_overload_stub_body:
                 raise ParseError(f"@overload method '{node.name}' must have `...` or `pass` body", node)
@@ -1500,6 +1528,8 @@ class Parser:
             is_stub=is_overload_stub_body if is_overload_stub else is_stub,
             linkage=method_linkage,
             native_name=native_name,
+            native_function=native_function,
+            cpp_template=cpp_template,
             type_params=method_type_params,
             type_param_bounds=method_type_param_bounds,
             defaults=defaults,

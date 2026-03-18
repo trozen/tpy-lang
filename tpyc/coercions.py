@@ -11,6 +11,7 @@ from .typesys import (
     FloatLiteralType,
     NamedType, PtrType, is_readonly_ptr, CharType, StrType, StringType, StrViewType,
     SpanType, is_readonly_span, PendingListType, TypeParamRef, TypeParamKind, ReadonlyType,
+    ListType, ArrayType,
 )
 
 
@@ -69,17 +70,9 @@ def _spanlike_to_span_match(actual: TpyType, expected: TpyType) -> bool:
             return True
         return False
 
-    # Check if actual extends ReadOnlySpanLike[T] with matching element type.
-    # Inline check via BuiltinTypeDef.extends (no registry needed -- Span coercion
-    # only applies to builtin types).
-    from tpyc.modules import lookup_type, extract_type_params
-    type_def = lookup_type(actual)
-    if type_def is None:
-        return False
-    has_spanlike = any(
-        ext.startswith("ReadOnlySpanLike[") for ext in type_def.extends
-    )
-    if not has_spanlike:
+    # Check if actual is a builtin type that implements ReadOnlySpanLike[T].
+    # These are compiler-internal types with known span coercion support.
+    if not isinstance(actual, (ListType, ArrayType, SpanType)):
         return False
     if actual_elem == expected_elem:
         return True

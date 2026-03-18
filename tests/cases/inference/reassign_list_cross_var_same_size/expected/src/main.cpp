@@ -15,7 +15,7 @@ void main() {
     // a = b
     a = &(b);
     // a.append(7)
-    (*a).push_back(7);
+    a->push_back(7);
     // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }

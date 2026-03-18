@@ -1601,8 +1601,9 @@ class ExpressionGenerator:
         # - cpp_template methods: handled by gen_method_from_function_info
         # - user-record methods with known method: handled by TypeParamRef temp path
         # Running the first-pass AND a later path creates duplicate TempState entries.
-        _skip_first_pass = (expr.resolved_function_info is not None
-                            and expr.resolved_function_info.cpp_template is not None)
+        _fi = expr.resolved_function_info
+        _skip_first_pass = (_fi is not None
+                            and (_fi.cpp_template is not None or _fi.native_function))
         if not _skip_first_pass:
             # self.method() returns early before the user-record TypeParamRef path,
             # so it needs the first-pass args with full protocol/covariant handling.
@@ -1613,7 +1614,8 @@ class ExpressionGenerator:
                     _ri = self.ctx.analyzer.registry.get_record_for_type(_obj_type)
                     if _ri and _ri.get_method(expr.method):
                         _skip_first_pass = True
-        if not _skip_first_pass and expr.resolved_function_info:
+        _is_native_stub = _fi is not None and bool(_fi.native_name or _fi.cpp_template)
+        if not _skip_first_pass and _fi:
             params = expr.resolved_function_info.params
             gen_args = []
             for i, arg in enumerate(expr.args):
@@ -1644,7 +1646,8 @@ class ExpressionGenerator:
                     if union_arg is not None:
                         gen_args.append(union_arg)
                         continue
-                    gen_args.append(self.gen_call_arg(arg, ptype))
+                    gen_args.append(self.gen_call_arg(arg, ptype,
+                                                      inline_template=_is_native_stub))
             args = ", ".join(gen_args)
         else:
             args = ", ".join(self.gen_expr_deref(a) for a in expr.args)
@@ -1706,28 +1709,25 @@ class ExpressionGenerator:
                     temp_call = TpyCall(func=expr.method, args=expr.args, kwargs=expr.kwargs, loc=expr.loc)
                     return self.builtins.gen_builtin_constructor(temp_call, record_info)
 
-        # Check for inherited builtin method with cpp_template first
+        # Check for builtin method with native_function or cpp_template first
         # This must be checked before the self.method() shortcut because
-        # inherited builtin methods need the cpp_template substitution
+        # inherited builtin methods need special codegen
         if expr.resolved_function_info:
             method_info = expr.resolved_function_info
+            if method_info.native_function and method_info.native_name:
+                receiver = self._gen_builtin_method_receiver(expr)
+                gen_args = [self.builtins._gen_call_arg(arg, method_info.params[i].type if i < len(method_info.params) else None,
+                                                        inline_template=True)
+                            for i, arg in enumerate(expr.args)]
+                return f"{qualify_native_name(method_info.native_name)}({', '.join([receiver] + gen_args)})"
             if method_info.cpp_template:
                 # Static method on builtin type — no receiver, just args
                 if expr.is_static_call:
                     gen_args = [self.builtins._gen_expr_deref(arg, ptype)
                                 for arg, (_, ptype) in zip(expr.args, method_info.params)]
                     return method_info.cpp_template.format(*gen_args)
-                # For self.inherited_method(), use (*this) as the receiver
-                if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
-                    return self.builtins.gen_method_from_function_info("(*this)", expr.args, method_info)
-                obj = self.gen_expr(expr.obj)
-                obj, an = self._apply_assign_narrowing(expr.obj, obj)
-                # Dereference Ptr-typed fields when method was resolved through deref chain
-                is_ptr_deref = expr.deref_depth > 0 and self.types.get_resolved_type(expr.obj).is_pointer()
-                needs_deref = (self.ctx.is_indirect_name(expr.obj) and not an) or is_ptr_deref
-                method_obj = f"(*{obj})" if needs_deref else obj
-                method_obj = self._maybe_unwrap_narrowed_optional(expr.obj, method_obj, needs_deref)
-                return self.builtins.gen_method_from_function_info(method_obj, expr.args, method_info)
+                receiver = self._gen_builtin_method_receiver(expr)
+                return self.builtins.gen_method_from_function_info(receiver, expr.args, method_info)
 
         # Build explicit template args for generic method calls
         method_targs = ""
@@ -1859,7 +1859,10 @@ class ExpressionGenerator:
                             else:
                                 # None literals need target type to decide nullptr vs std::nullopt
                                 arg_target = rptype if isinstance(arg, TpyNoneLiteral) else None
-                                gen_args.append(self.gen_call_arg(arg, rptype, target_type=arg_target))
+                                # @native stub methods: skip redundant copy-then-move
+                                is_native_stub = bool(method_info.native_name or method_info.cpp_template)
+                                gen_args.append(self.gen_call_arg(arg, rptype, target_type=arg_target,
+                                                                  inline_template=is_native_stub))
                     args = ", ".join(gen_args)
 
         # Use -> for pointer-locals/globals (T*) and pointer-typed expressions
@@ -1896,6 +1899,17 @@ class ExpressionGenerator:
         # Use native method name if available (for @native/@native_c class methods)
         cpp_method = expr.resolved_function_info.native_name if expr.resolved_function_info and expr.resolved_function_info.native_name else expr.method
         return f"{obj}{accessor}{cpp_method}{method_targs}({args})"
+
+    def _gen_builtin_method_receiver(self, expr: TpyMethodCall) -> str:
+        """Generate the receiver expression for a builtin method call (cpp_template or native_function)."""
+        if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
+            return "(*this)"
+        obj = self.gen_expr(expr.obj)
+        obj, an = self._apply_assign_narrowing(expr.obj, obj)
+        is_ptr_deref = expr.deref_depth > 0 and self.types.get_resolved_type(expr.obj).is_pointer()
+        needs_deref = (self.ctx.is_indirect_name(expr.obj) and not an) or is_ptr_deref
+        receiver = f"(*{obj})" if needs_deref else obj
+        return self._maybe_unwrap_narrowed_optional(expr.obj, receiver, needs_deref)
 
     def _apply_assign_narrowing(self, expr_obj: TpyExpr, obj_code: str) -> tuple[str, bool]:
         """Apply inline std::get wrapping for assignment-narrowed union vars.
@@ -2802,11 +2816,14 @@ class ExpressionGenerator:
         """
         wrapped_left = binop_result.left_wrapper.replace("{self}", left).replace("{expr}", left)
         wrapped_right = binop_result.right_wrapper.replace("{self}", right).replace("{expr}", right)
-        cpp_template = binop_result.method.cpp_template
+        method = binop_result.method
+        cpp_tmpl = method.cpp_template
+        if not cpp_tmpl and method.native_function and method.native_name:
+            cpp_tmpl = f"{qualify_native_name(method.native_name)}({{self}}, {{0}})"
         if binop_result.is_reverse:
-            return expand_cpp_template(cpp_template, wrapped_right, wrapped_left)
+            return expand_cpp_template(cpp_tmpl, wrapped_right, wrapped_left)
         else:
-            return expand_cpp_template(cpp_template, wrapped_left, wrapped_right)
+            return expand_cpp_template(cpp_tmpl, wrapped_left, wrapped_right)
 
     def _gen_span_coercion(self, expr: TpyExpr, span_type: SpanType, gen_inner: str) -> str:
         """Generate std::span conversion for supported container types."""

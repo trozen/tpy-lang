@@ -41,7 +41,7 @@ void __tpy_init() {
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     points = &__global_slot_1;
     // points.append(Point(3, 4))
-    (*points).push_back(Point(3, 4));
+    points->push_back(Point(3, 4));
     // # Safe at runtime because we know the value exists
     // print(use_without_check(find(points, 3)))
     std::cout << use_without_check(find((*points), 3)) << "\n";

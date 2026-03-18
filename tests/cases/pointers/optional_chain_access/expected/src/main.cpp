@@ -33,9 +33,9 @@ void __tpy_init() {
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     points = &__global_slot_1;
     // points.append(Point(3, 4))
-    (*points).push_back(Point(3, 4));
+    points->push_back(Point(3, 4));
     // points.append(Point(5, 6))
-    (*points).push_back(Point(5, 6));
+    points->push_back(Point(5, 6));
     // # Chain field/method access on Optional-returning expression
     // print(find(points, 3).x)      # tpyc: warning(/Potential None access on optional value/)
     std::cout << ::tpy::deref_check(find((*points), 3)).x << "\n";

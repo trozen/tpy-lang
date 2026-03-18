@@ -68,7 +68,7 @@ void __tpy_init() {
     static std::vector<int32_t> __global_slot_3 = {1, 2, 3};
     nums = &__global_slot_3;
     // nums.append(4)
-    (*nums).push_back(4);
+    nums->push_back(4);
     // print(len(nums))
     std::cout << ::tpy::__len__((*nums)) << "\n";
     // print(nums[0])

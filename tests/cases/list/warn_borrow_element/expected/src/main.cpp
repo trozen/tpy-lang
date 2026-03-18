@@ -63,7 +63,7 @@ void test_reassign_clears_borrows() {
     // items = [Point(Int32(3), Int32(4))]
     items = &*(__slot_2 = {Point(3, 4)});
     // items.append(Point(Int32(5), Int32(6)))  # tpyc: ok
-    (*items).push_back(Point(5, 6));
+    items->push_back(Point(5, 6));
     // print(len(items))
     std::cout << ::tpy::__len__((*items)) << "\n";
 }

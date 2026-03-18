@@ -718,7 +718,23 @@ class Compiler:
                 # Register records (e.g. exception classes) in the flat registry
                 # so get_record() finds them by bare name during inheritance checks.
                 for record in module_info.records.values():
-                    analyzer.registry.register_record(record)
+                    # Merge .py-defined methods into builtin type RecordInfo.
+                    # Skip registering in records dict to avoid shadowing the
+                    # builtin type (which has constructors and type_factory).
+                    builtin_qname = f"{implicit_mod}.{record.name}"
+                    builtin_rec = analyzer.registry.builtin_records.get(builtin_qname)
+                    if builtin_rec is not None:
+                        for method_name, overloads in record.methods.items():
+                            if method_name not in builtin_rec.methods:
+                                builtin_rec.methods[method_name] = overloads
+                        # Convert .py protocol bases to extends_protocols strings
+                        # (matches the format used by the protocol checker).
+                        for proto in record.implemented_protocols:
+                            ext_str = str(proto)
+                            if ext_str not in builtin_rec.extends_protocols:
+                                builtin_rec.extends_protocols.append(ext_str)
+                    else:
+                        analyzer.registry.register_record(record)
 
         # Set module name for __name__
         module_name = "__main__" if compiled.is_entry_point else compiled.name

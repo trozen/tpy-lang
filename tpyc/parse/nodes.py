@@ -701,6 +701,7 @@ class TpyFunction:
     is_auto_readonly_mutable_clone: bool = False
     linkage: FunctionLinkage = FunctionLinkage.DEFAULT
     native_name: str | None = None
+    native_function: bool = False
     cpp_template: str | None = None
     is_stub: bool = False
     type_params: list[str] = field(default_factory=list)

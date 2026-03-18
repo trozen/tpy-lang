@@ -19,7 +19,7 @@ void main() {
     // a = c
     a = &(c);
     // a.append(10)
-    (*a).push_back(10);
+    a->push_back(10);
     // print(len(c))
     std::cout << ::tpy::__len__(c) << "\n";
 }

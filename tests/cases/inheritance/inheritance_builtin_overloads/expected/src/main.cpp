@@ -24,13 +24,13 @@ void __tpy_init() {
     static MyList __global_slot_1 = MyList("test");
     ml = &__global_slot_1;
     // ml.append(10)
-    (*ml).push_back(10);
+    ml->push_back(10);
     // ml.append(20)
-    (*ml).push_back(20);
+    ml->push_back(20);
     // ml.append(30)
-    (*ml).push_back(30);
+    ml->push_back(30);
     // ml.append(40)
-    (*ml).push_back(40);
+    ml->push_back(40);
     // # Test pop() with no args - should remove and return last element
     // last: Int32 = ml.pop()
     last = ::tpy::pop_back((*ml));

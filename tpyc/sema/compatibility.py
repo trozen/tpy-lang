@@ -521,8 +521,8 @@ class TypeCompatibility:
                     if self.ctx.registry.is_subclass_of(actual, expected.inner_pointee):
                         coercion = UPCAST_TO_CONST_PTR
         if coercion is None:
-            # __span__() method coercion: user type with __span__() -> Span[T] coerces to Span/Span[readonly[T]]
-            if isinstance(actual, NamedType) and actual.is_user_record and isinstance(expected, SpanType):
+            # __span__() method coercion: type with __span__() -> Span[T] coerces to Span/Span[readonly[T]]
+            if isinstance(actual, NamedType) and isinstance(expected, SpanType):
                 from tpyc.modules import get_span_return_type
                 span_ret = get_span_return_type(actual, registry=self.ctx.registry)
                 if span_ret is not None and span_ret.inner_element_type == expected.inner_element_type:

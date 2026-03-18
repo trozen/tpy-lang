@@ -35,9 +35,9 @@ void __tpy_init() {
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     pts = &__global_slot_1;
     // pts.append(Point(1, 10))
-    (*pts).push_back(Point(1, 10));
+    pts->push_back(Point(1, 10));
     // pts.append(Point(2, 20))
-    (*pts).push_back(Point(2, 20));
+    pts->push_back(Point(2, 20));
     // h = Holder()
     static Holder __global_slot_2 = Holder();
     h = &__global_slot_2;

@@ -80,11 +80,11 @@ void __tpy_init() {
     // print(test_list_constructor_int32())
     std::cout << test_list_constructor_int32() << "\n";
     // global_list.append(100)
-    (*global_list).push_back(100);
+    global_list->push_back(100);
     // print(len(global_list))
     std::cout << ::tpy::__len__((*global_list)) << "\n";
     // global_list2.append(Int32(50))
-    (*global_list2).push_back(50);
+    global_list2->push_back(50);
     // print(len(global_list2))
     std::cout << ::tpy::__len__((*global_list2)) << "\n";
 }

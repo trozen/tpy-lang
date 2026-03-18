@@ -43,9 +43,9 @@ void __tpy_init() {
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     pts = &__global_slot_1;
     // pts.append(Point(5, 50))
-    (*pts).push_back(Point(5, 50));
+    pts->push_back(Point(5, 50));
     // pts.append(Point(3, 30))
-    (*pts).push_back(Point(3, 30));
+    pts->push_back(Point(3, 30));
     // e1 = Edge(None)
     static Edge __global_slot_2 = Edge(nullptr);
     e1 = &__global_slot_2;

@@ -954,6 +954,7 @@ class TypeOperations:
             type_param_bounds=substituted_bounds if substituted_bounds else method.type_param_bounds,
             linkage=method.linkage,
             native_name=method.native_name,
+            native_function=method.native_function,
             cpp_template=method.cpp_template,
             error_return_type=method.error_return_type,
             qualified_name=method.qualified_name,

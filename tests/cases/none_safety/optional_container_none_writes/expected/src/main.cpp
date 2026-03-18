@@ -32,7 +32,7 @@ void __tpy_init() {
     static std::vector<std::optional<int32_t>> __global_slot_1 = std::vector<std::optional<int32_t>>();
     vals = &__global_slot_1;
     // vals.append(7)
-    (*vals).push_back(7);
+    vals->push_back(7);
     // print(write_none(vals))
     std::cout << write_none((*vals)) << "\n";
 }

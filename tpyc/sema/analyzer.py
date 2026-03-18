@@ -789,6 +789,9 @@ class SemanticAnalyzer:
                 self._validate_method_overload_group(method, stubs, record.name)
                 self.overload_groups[id(method)] = stubs
         for name, stubs in pending_stubs.items():
+            # @native/@cpp_template overload stubs are complete declarations
+            if all(s.linkage.name in ("NATIVE", "NATIVE_C") or s.cpp_template for s in stubs):
+                continue
             raise SemanticError(
                 f"@overload stubs for '{record.name}.{name}' have no implementation method",
                 stubs[0].loc or record.loc,

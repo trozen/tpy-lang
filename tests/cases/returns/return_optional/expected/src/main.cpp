@@ -35,11 +35,11 @@ void __tpy_init() {
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     points = &__global_slot_1;
     // points.append(Point(1, 10))
-    (*points).push_back(Point(1, 10));
+    points->push_back(Point(1, 10));
     // points.append(Point(2, 20))
-    (*points).push_back(Point(2, 20));
+    points->push_back(Point(2, 20));
     // points.append(Point(3, 30))
-    (*points).push_back(Point(3, 30));
+    points->push_back(Point(3, 30));
     // result = find(points, 2)
     result = find((*points), 2);
     // if result is not None:

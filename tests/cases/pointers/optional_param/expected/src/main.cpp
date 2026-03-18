@@ -46,9 +46,9 @@ void __tpy_init() {
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     points = &__global_slot_1;
     // points.append(Point(3, 4))
-    (*points).push_back(Point(3, 4));
+    points->push_back(Point(3, 4));
     // points.append(Point(5, 6))
-    (*points).push_back(Point(5, 6));
+    points->push_back(Point(5, 6));
     // result = find(points, 3)
     result = find((*points), 3);
     // print(describe(result))

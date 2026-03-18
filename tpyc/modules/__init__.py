@@ -394,7 +394,6 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
         type_params=type_def.type_params,
         type_param_kinds=type_def.param_kinds,
         extends_protocols=type_def.extends,
-        cpp_type=type_def.cpp_type,
         is_nocopy=type_def.is_nocopy,
     )
 
@@ -903,13 +902,15 @@ def get_span_return_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "Span
     """If type has __span__() -> Span[T] or Span[readonly[T]], return the full SpanType."""
     from tpyc.typesys import NamedType, SpanType, TypeParamRef
 
-    if not (isinstance(tpy_type, NamedType) and tpy_type.is_user_record):
-        return None
-    record = registry.get_record(tpy_type.name)
+    if isinstance(tpy_type, NamedType) and tpy_type.is_user_record:
+        record = registry.get_record(tpy_type.name)
+    else:
+        # Builtin types (list, Array, Span, etc.)
+        record = registry.get_record_for_type(tpy_type)
     if record is None:
         return None
     type_subst: dict[str, "TpyType"] = {}
-    if record.type_params and tpy_type.type_args:
+    if record.type_params and isinstance(tpy_type, NamedType) and tpy_type.type_args:
         type_subst = dict(zip(record.type_params, tpy_type.type_args))
     return _find_span_method_return_type(record, type_subst, registry)
 

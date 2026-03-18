@@ -4394,7 +4394,8 @@ Generated C++:
 - `@native_c` classes use aggregate initialization: `Point{5, 6}`
 - Renamed types use the native name everywhere, including composite types like `Ptr[Rect]` → `SDL_Rect*`
 - Methods on native classes must have `...` body (stub declarations); methods with real bodies produce a parse error
-- `@native("cpp_name")` on methods allows renaming individual methods
+- `@native("cpp_name")` on methods allows renaming individual methods (generates `obj.cpp_name(args)`)
+- `@native("ns::func", function=True)` on methods generates a free function call with self as first arg: `::ns::func(obj, args)`
 
 ### Final Constants (Working)
 

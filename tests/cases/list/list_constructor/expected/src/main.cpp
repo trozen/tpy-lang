@@ -50,9 +50,9 @@ void __tpy_init() {
     static std::vector<int32_t> __global_slot_1 = std::vector<int32_t>();
     nums = &__global_slot_1;
     // nums.append(1)
-    (*nums).push_back(1);
+    nums->push_back(1);
     // nums.append(2)
-    (*nums).push_back(2);
+    nums->push_back(2);
     // print(len(nums))
     std::cout << ::tpy::__len__((*nums)) << "\n";
     // # Constructor with matching LHS annotation
@@ -60,7 +60,7 @@ void __tpy_init() {
     static std::vector<int32_t> __global_slot_2 = std::vector<int32_t>();
     other = &__global_slot_2;
     // other.append(3)
-    (*other).push_back(3);
+    other->push_back(3);
     // print(len(other))
     std::cout << ::tpy::__len__((*other)) << "\n";
     // # List of records without annotation (tests header ordering)
@@ -68,7 +68,7 @@ void __tpy_init() {
     static std::vector<Point> __global_slot_3 = std::vector<Point>();
     points = &__global_slot_3;
     // points.append(Point(10, 20))
-    (*points).push_back(Point(10, 20));
+    points->push_back(Point(10, 20));
     // print(len(points))
     std::cout << ::tpy::__len__((*points)) << "\n";
     // print(points[0].x)
@@ -81,9 +81,9 @@ void __tpy_init() {
     static std::vector<Point> __global_slot_5 = std::vector<Point>();
     inner = &__global_slot_5;
     // inner.append(Point(99, 88))
-    (*inner).push_back(Point(99, 88));
+    inner->push_back(Point(99, 88));
     // nested.append(inner)
-    (*nested).push_back((*inner));
+    nested->push_back((*inner));
     // print(len(nested))
     std::cout << ::tpy::__len__((*nested)) << "\n";
     // print(nested[0][0].x)
@@ -110,7 +110,7 @@ void __tpy_init() {
     // print(copy)
     std::cout << ::tpy::ListPrinter((*copy)) << "\n";
     // copy.append(400)
-    (*copy).push_back(400);
+    copy->push_back(400);
     // print(len(src))  # Original unchanged
     std::cout << ::tpy::__len__((*src)) << "\n";
     // print(len(copy))

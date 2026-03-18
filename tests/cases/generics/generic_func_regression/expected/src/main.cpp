@@ -51,7 +51,7 @@ void __tpy_init() {
     static std::vector<int32_t> __global_slot_3 = std::vector<int32_t>();
     items = &__global_slot_3;
     // items.append(100)
-    (*items).push_back(100);
+    items->push_back(100);
     // print(len(items))
     std::cout << ::tpy::__len__((*items)) << "\n";
     // # Test 4: Same generic function with different types

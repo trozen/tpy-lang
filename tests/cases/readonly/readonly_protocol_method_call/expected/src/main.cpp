@@ -16,11 +16,11 @@ void __tpy_init() {
     static std::vector<int32_t> __global_slot_1 = std::vector<int32_t>{};
     items = &__global_slot_1;
     // items.append(1)
-    (*items).push_back(1);
+    items->push_back(1);
     // items.append(2)
-    (*items).push_back(2);
+    items->push_back(2);
     // items.append(3)
-    (*items).push_back(3);
+    items->push_back(3);
     // print(get_len(items))
     std::cout << get_len((*items)) << "\n";
 }

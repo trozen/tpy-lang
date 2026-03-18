@@ -917,6 +917,8 @@ class ExpressionAnalyzer:
                                 params=[ParamInfo(n, t) for n, t in method.params],
                                 return_type=ret_type,
                                 cpp_template=cpp,
+                                native_name=method.native_name,
+                                native_function=method.native_function,
                                 is_method=True,
                             )
                             expr.resolved_binop = ResolvedBinop(

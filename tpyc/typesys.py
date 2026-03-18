@@ -2575,9 +2575,8 @@ class RecordInfo:
     - implemented_protocols stores explicitly declared protocol implementations
 
     For builtin types:
-    - cpp_type stores the C++ type template (e.g., "std::vector<{T}>")
     - extends_protocols stores protocol implementations (e.g., ["NativeIterable[T]"])
-    - Methods have cpp_template for codegen
+    - Methods have cpp_template or native_function for codegen
     - constructors stores constructor overloads with cpp_template
     """
     name: str
@@ -2592,7 +2591,6 @@ class RecordInfo:
     parent: Optional['TpyType'] = None  # Parent type (NamedType or builtin TpyType)
     implemented_protocols: list['NamedType'] = field(default_factory=list)  # Explicit protocol implementations
     extends_protocols: list[str] = field(default_factory=list)  # Protocol extensions: ["NativeIterable[T]"]
-    cpp_type: Optional[str] = None  # C++ type template for builtins
     native_name: Optional[str] = None  # C++ name for @native/@native_c records (e.g., "SDL_Rect")
     is_native: bool = False       # True for @native or @native_c records
     is_native_c: bool = False     # True for @native_c specifically
@@ -2683,6 +2681,7 @@ class FunctionInfo:
     is_staticmethod: bool = False
     linkage: FunctionLinkage = FunctionLinkage.DEFAULT
     native_name: Optional[str] = None
+    native_function: bool = False  # @native("func", function=True) -> generates func(self, args)
     type_params: list[str] = field(default_factory=list)
     type_param_bounds: dict[str, 'NamedType'] = field(default_factory=dict)
     type_param_defaults: dict[str, str] = field(default_factory=dict)  # e.g. {"T": "DEFAULT_INT"}

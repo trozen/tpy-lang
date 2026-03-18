@@ -9,8 +9,9 @@ def test_print_types_includes_readonly_annotations(capsys):
     dump_builtin_types()
     out = capsys.readouterr().out
 
-    assert "`@pure __getitem__(index: Int32) -> T`" in out
-    assert "`append(value: Own[T]) -> None`" in out
+    # list methods are now in .py, so check dict methods (still hardcoded)
+    assert "`@pure __getitem__(key: K) -> V`" in out
+    assert "`__setitem__(key: K, value: Own[V]) -> None`" in out
 
 
 def test_format_signature_renders_all_supported_annotations():

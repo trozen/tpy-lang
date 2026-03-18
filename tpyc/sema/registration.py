@@ -493,10 +493,12 @@ class TypeRegistrar:
             if not self.type_ops.is_type_param_ref(method_return):
                 self.type_ops.validate_type(method_return, allow_type_param_ref=allow_tpref, loc=record.loc)
             # Protocol types cannot be used as method return types.
-            # Exception: @dynamic protocols can be returned as Base& (same as free functions).
+            # Exceptions: @dynamic protocols, and @native/@cpp_template stub methods
+            # (C++ handles the actual return type).
             if is_protocol_type(method_return):
                 pi = self.ctx.registry.get_protocol(method_return.name)
-                if not (pi and pi.is_dynamic):
+                is_native_stub = method.is_stub and (method.native_name or method.cpp_template)
+                if not (pi and pi.is_dynamic) and not is_native_stub:
                     raise SemanticError(
                         f"Protocol type '{method_return.name}' cannot be used as a return type in '{record.name}.{method.name}'. "
                         f"Only @dynamic protocols can be used as return types",
@@ -576,7 +578,8 @@ class TypeRegistrar:
                 is_staticmethod=method.is_staticmethod,
                 linkage=method.linkage,
                 native_name=method.native_name,
-                cpp_template=DUNDER_CPP_TEMPLATES.get(method.name),
+                native_function=method.native_function,
+                cpp_template=method.cpp_template or DUNDER_CPP_TEMPLATES.get(method.name),
                 type_params=list(method.type_params),
                 type_param_bounds=method_type_param_bounds,
                 error_return_type=(qualify_exception_name(method.error_return, self.ctx.registry)
@@ -759,11 +762,14 @@ class TypeRegistrar:
         if record_info is None:
             return
 
-        # Native records can only inherit from other native records
+        # Native records can only inherit from other native records or protocols.
         # (the C++ inheritance already exists, we just track it for type checking)
         if record_info.is_native and record.bases:
             for base in record.bases:
                 if isinstance(base, NamedType):
+                    # Protocols are fine (express interface conformance, not C++ inheritance)
+                    if self.ctx.registry.get_protocol(base.name):
+                        continue
                     base_record = self.ctx.registry.get_record(base.name)
                     if not base_record or not base_record.is_native:
                         raise SemanticError(

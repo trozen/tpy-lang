@@ -36,7 +36,7 @@ void __tpy_init() {
     static std::vector<Point> __global_slot_1 = std::vector<Point>();
     points = &__global_slot_1;
     // points.append(Point(3, 4))
-    (*points).push_back(Point(3, 4));
+    points->push_back(Point(3, 4));
     // # Print Optional from function return
     // print(find(points, 3))
     std::cout << ::tpy::print_optional(find((*points), 3)) << "\n";

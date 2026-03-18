@@ -68,6 +68,11 @@ class BuiltinGenerator:
                 )
             if overloads and overloads[0].cpp_template:
                 return overloads[0].cpp_template
+            if overloads and overloads[0].native_function and overloads[0].native_name:
+                fi = overloads[0]
+                name = qualify_native_name(fi.native_name)
+                placeholders = ", ".join(["{self}"] + [f"{{{i}}}" for i in range(len(fi.params))])
+                return f"{name}({placeholders})"
         # Check dunder method C++ templates (e.g., __getitem__ -> ::tpy::__getitem__)
         if is_protocol_type(tpy_type):
             from ..modules import get_dunder_cpp_template
