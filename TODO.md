@@ -12,7 +12,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - `copy()` on pointer-variant union: `copy(x)` where `x: Dog | Cat` (pointer-variant local) generates `Cat(x)` instead of properly copying through the variant. Needs variant-aware copy codegen.
 - `None` assignment to nullable union value-variant field: `s.pet = None` where `pet: Dog | Cat | None` generates `s.pet = nullptr;` but the field is `std::variant<std::monostate, Cat, Dog>` which needs `std::monostate{}`.
 - Constructor rvalue passed to function expecting pointer-variant union: `f(Dog("Rex"))` where `f` takes `Dog | Cat` (pointer-variant param) fails because `Dog` rvalue can't convert to `variant<Dog*, Cat*>`. Needs storage slot + `to_ptr_variant` at the call site.
-- Missing "copies into field" warning for function-return union assignment: `z.pet = identity(new_pet)` copies via `to_value_variant` but sema doesn't emit the copy warning (only "Mutation while borrowed"). Direct local assignment (`z.pet = new_pet`) correctly warns.
 
 ## Fuzzy Testing Findings (2026-03-12)
 

@@ -350,11 +350,15 @@ def parse_annotations(source: str) -> list[Annotation]:
       # tpyc: warning(/pattern/)
       # tpyc: ok
 
+    Multiple annotations per line: # tpyc: warning(/a/) warning(/b/)
     Inline annotations (after code) apply to their own line.
     Standalone annotations (comment-only lines) apply to the next line.
     """
     annotations = []
-    pattern = re.compile(r'#\s*tpyc:\s*(error|warning|ok)(?:\s*\(\s*/(.+?)/\s*\))?')
+    # Matches the first annotation (with # tpyc: prefix) to locate the start
+    prefix_re = re.compile(r'#\s*tpyc:\s')
+    # Matches each annotation item (no prefix needed)
+    item_re = re.compile(r'\b(error|warning|ok)\b(?:\s*\(\s*/(.+?)/\s*\))?')
 
     standalone_re = re.compile(r'^#\s*tpyc:\s')
 
@@ -363,16 +367,21 @@ def parse_annotations(source: str) -> list[Annotation]:
         if stripped.startswith('#'):
             # Standalone annotation (e.g. "# tpyc: warning(...)") applies to next line
             if standalone_re.match(stripped):
-                for match in pattern.finditer(line):
+                m = prefix_re.search(line)
+                tail = line[m.end():]
+                for match in item_re.finditer(tail):
                     level = match.group(1)
                     regex = match.group(2)
                     annotations.append(Annotation(line=lineno + 1, level=level, pattern=regex))
             # Skip other comment-only lines (e.g. commented-out code)
             continue
-        for match in pattern.finditer(line):
-            level = match.group(1)
-            regex = match.group(2)
-            annotations.append(Annotation(line=lineno, level=level, pattern=regex))
+        m = prefix_re.search(line)
+        if m:
+            tail = line[m.end():]
+            for match in item_re.finditer(tail):
+                level = match.group(1)
+                regex = match.group(2)
+                annotations.append(Annotation(line=lineno, level=level, pattern=regex))
 
     return annotations
 

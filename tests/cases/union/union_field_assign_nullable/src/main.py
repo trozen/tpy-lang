@@ -15,6 +15,9 @@ class Shelter:
     def __init__(self, pet: Dog | Cat | None) -> None:
         self.pet = pet  # tpyc: warning(/copies/)
 
+def identity(pet: Dog | Cat | None) -> Dog | Cat | None:
+    return pet
+
 def main() -> None:
     d = Dog("Rex")
     init_pet: Dog | Cat | None = d
@@ -28,12 +31,19 @@ def main() -> None:
         if isinstance(p, Cat):
             print(p.name)
 
+    # Assign from function returning pointer-variant
+    s.pet = identity(new_pet)  # tpyc: warning(/copies.*into field/) warning(/Mutation.*while borrowed/)
+    p2 = s.pet
+    if p2 is not None:
+        if isinstance(p2, Cat):
+            print(p2.name)
+
     # Assign again from pointer-variant local
     another: Dog | Cat | None = Dog("Buddy")
     s.pet = another  # tpyc: warning(/Mutation.*while borrowed/)
-    p2 = s.pet
-    if p2 is not None:
-        if isinstance(p2, Dog):
-            print(p2.name)
+    p3 = s.pet
+    if p3 is not None:
+        if isinstance(p3, Dog):
+            print(p3.name)
 
 main()

@@ -4,6 +4,12 @@
 namespace tpy_user::main {
 
 
+// def identity(pet: Dog | Cat | None) -> Dog | Cat | None:
+std::variant<std::monostate, Cat*, Dog*> identity(std::variant<std::monostate, Cat*, Dog*> pet) {
+    // return pet
+    return pet;
+}
+
 // def main() -> None:
 void main() {
     // d = Dog("Rex")
@@ -29,21 +35,35 @@ void main() {
             std::cout << __p.name << "\n";
         }
     }
+    // # Assign from function returning pointer-variant
+    // s.pet = identity(new_pet)  # tpyc: warning(/copies.*into field/) warning(/Mutation.*while borrowed/)
+    s.pet = ::tpy::to_value_variant<std::variant<std::monostate, Cat, Dog>>(identity(new_pet));
+    // p2 = s.pet
+    std::variant<std::monostate, Cat*, Dog*> p2 = ::tpy::to_ptr_variant(s.pet);
+    // if p2 is not None:
+    if ((!std::holds_alternative<std::monostate>(p2))) {
+        // if isinstance(p2, Cat):
+        if (std::holds_alternative<Cat*>(p2)) {
+            auto& __p2 = *std::get<Cat*>(p2);
+            // print(p2.name)
+            std::cout << __p2.name << "\n";
+        }
+    }
     // # Assign again from pointer-variant local
     // another: Dog | Cat | None = Dog("Buddy")
     std::variant<std::monostate, Cat, Dog> __slot_2 = Dog("Buddy");
     std::variant<std::monostate, Cat*, Dog*> another = ::tpy::to_ptr_variant(__slot_2);
     // s.pet = another  # tpyc: warning(/Mutation.*while borrowed/)
     s.pet = ::tpy::to_value_variant<std::variant<std::monostate, Cat, Dog>>(another);
-    // p2 = s.pet
-    std::variant<std::monostate, Cat*, Dog*> p2 = ::tpy::to_ptr_variant(s.pet);
-    // if p2 is not None:
-    if ((!std::holds_alternative<std::monostate>(p2))) {
-        // if isinstance(p2, Dog):
-        if (std::holds_alternative<Dog*>(p2)) {
-            auto& __p2 = *std::get<Dog*>(p2);
-            // print(p2.name)
-            std::cout << __p2.name << "\n";
+    // p3 = s.pet
+    std::variant<std::monostate, Cat*, Dog*> p3 = ::tpy::to_ptr_variant(s.pet);
+    // if p3 is not None:
+    if ((!std::holds_alternative<std::monostate>(p3))) {
+        // if isinstance(p3, Dog):
+        if (std::holds_alternative<Dog*>(p3)) {
+            auto& __p3 = *std::get<Dog*>(p3);
+            // print(p3.name)
+            std::cout << __p3.name << "\n";
         }
     }
 }

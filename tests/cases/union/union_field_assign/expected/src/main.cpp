@@ -33,7 +33,7 @@ void main() {
         std::cout << __p.name << "\n";
     }
     // # Reassign field from a function returning pointer-variant
-    // z.pet = identity(new_pet)  # tpyc: warning(/Mutation.*while borrowed/)
+    // z.pet = identity(new_pet)  # tpyc: warning(/copies.*into field/) warning(/Mutation.*while borrowed/)
     z.pet = ::tpy::to_value_variant<std::variant<Cat, Dog>>(identity(new_pet));
     // p2 = z.pet
     std::variant<Cat*, Dog*> p2 = ::tpy::to_ptr_variant(z.pet);

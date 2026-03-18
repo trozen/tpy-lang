@@ -33,7 +33,7 @@ def main() -> None:
         print(p.name)
 
     # Reassign field from a function returning pointer-variant
-    z.pet = identity(new_pet)  # tpyc: warning(/Mutation.*while borrowed/)
+    z.pet = identity(new_pet)  # tpyc: warning(/copies.*into field/) warning(/Mutation.*while borrowed/)
     p2 = z.pet
     if isinstance(p2, Cat):
         print(p2.name)

@@ -1,4 +1,5 @@
 main.py:17: warning: copies Cat | Dog into field; use copy() to make this explicit
 main.py:30: warning: copies Cat into field; use copy() to make this explicit
 main.py:36: warning: Mutation of 'z.pet' while borrowed (field assignment may invalidate references)
+main.py:36: warning: copies Cat | Dog into field; use copy() to make this explicit
 main.py:42: warning: Mutation of 'z.pet' while borrowed (field assignment may invalidate references)

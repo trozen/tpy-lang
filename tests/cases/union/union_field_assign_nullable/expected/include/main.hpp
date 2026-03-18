@@ -13,6 +13,7 @@ struct Shelter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+std::variant<std::monostate, Cat*, Dog*> identity(std::variant<std::monostate, Cat*, Dog*> pet);
 void main();
 
 // # Nullable union field assignment: pointer-variant with None (monostate)

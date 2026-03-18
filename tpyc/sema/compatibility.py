@@ -876,6 +876,11 @@ class TypeCompatibility:
             val_type = self.ctx.get_expr_type(expr)
             if isinstance(val_type, OptionalType) and not val_type.inner.is_value_type():
                 return True
+        # Non-value union function returns: pointer-variant -> value-variant field copies
+        if isinstance(target_type, UnionType) and target_type.uses_pointer_repr():
+            val_type = self.ctx.get_expr_type(expr)
+            if isinstance(val_type, UnionType) and val_type.uses_pointer_repr():
+                return True
         return False
 
     def is_mutable_lvalue(self, expr: TpyExpr) -> bool:
