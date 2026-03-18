@@ -22,6 +22,37 @@ class TypeParamKind(Enum):
     INT = "int"    # An integer literal like N
 
 
+# Built-in exception types available without import.
+# Used to qualify bare names (e.g. "StopIteration" -> "builtins.StopIteration")
+# so user-defined classes with the same name don't clash.
+BUILTIN_EXCEPTION_NAMES = frozenset({"BaseException", "Exception", "StopIteration"})
+
+
+def qualify_exception_name(name: str, registry: 'TypeRegistry') -> str:
+    """Qualify a bare exception name to avoid ambiguity.
+
+    Built-in exceptions get a 'builtins.' prefix unless the user has
+    defined a record with the same name (shadowing).
+    """
+    if name not in BUILTIN_EXCEPTION_NAMES:
+        return name
+    record = registry.get_record(name)
+    if record and not record.is_builtin_exception:
+        return name
+    return f"builtins.{name}"
+
+
+def error_return_to_cpp(name: str) -> str:
+    """Map a qualified exception name to C++.
+
+    'builtins.X' -> '::tpy::X' (runtime-defined exceptions).
+    Bare names are emitted as-is (user-defined types in the local namespace).
+    """
+    if name.startswith("builtins."):
+        return f"::tpy::{name[len('builtins.'):]}"
+    return name
+
+
 # Native C++ name mapping for @native/@native_c records.
 # Maps Python class name -> C++ name (e.g., "Rect" -> "SDL_Rect").
 # Used by NamedType.to_cpp() so composite types like Ptr[Rect] resolve correctly.
@@ -2466,6 +2497,7 @@ class RecordInfo:
     is_value_type: bool = False   # True for ValueType marker protocol
     has_del: bool = False           # True if class declares __del__ (needs drop flag)
     has_copy: bool = False          # True if class defines __copy__ (custom copy semantics)
+    is_builtin_exception: bool = False  # True for pre-registered BaseException/Exception/StopIteration
 
     def get_method(self, name: str) -> Optional['FunctionInfo']:
         """Get first overload of a method (for single-overload cases)."""

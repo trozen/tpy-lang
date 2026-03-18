@@ -15,6 +15,7 @@ from ..typesys import (
     INT32, BIGINT, FLOAT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType,
     local_var_is_movable, resolve_int_literals,
+    error_return_to_cpp,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
@@ -155,7 +156,8 @@ class StatementGenerator:
         self.ctx.current_ns = local_ns
         self.ctx.indent_level = indent_level
         self.ctx.current_return_type = return_type
-        self.ctx.current_error_return = getattr(func, 'error_return', None)
+        raw_error_return = getattr(func, 'error_return', None)
+        self.ctx.current_error_return = error_return_to_cpp(raw_error_return) if raw_error_return else None
         self.ctx.current_func_params = {pname: ptype for pname, ptype in params}
         self.ctx.current_type_param_bounds = dict(record_type_param_bounds) if record_type_param_bounds else {}
         if func.type_param_bounds:
@@ -371,7 +373,8 @@ class StatementGenerator:
         elif isinstance(stmt, TpyGlobal):
             return ""  # No C++ output -- just a sema directive
         elif isinstance(stmt, TpyRaise):
-            return f"{indent}return std::unexpected({stmt.exception_type}{{}});\n"
+            assert self.ctx.current_error_return is not None
+            return f"{indent}return std::unexpected({self.ctx.current_error_return}{{}});\n"
         elif isinstance(stmt, TpyImport):
             # Only emit __tpy_init() for user modules that have runtime init.
             # Skip builtins (no .cpp) and native_module (binding-only, no .cpp).

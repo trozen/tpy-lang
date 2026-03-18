@@ -777,7 +777,7 @@ def _find_error_return_next_element(
         type_subst = dict(zip(record.type_params, type_args))
 
     for method in record.get_method_overloads("__next__"):
-        if method.error_return_type == "StopIteration" and len(method.params) == 0:
+        if method.error_return_type == "builtins.StopIteration" and len(method.params) == 0:
             inner = method.return_type
             if isinstance(inner, OwnType):
                 inner = inner.wrapped

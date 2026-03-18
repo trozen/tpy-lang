@@ -13,6 +13,7 @@ from ..typesys import (
     BIGINT, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
     Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType, StrType, is_any_str_type, SpanType,
     resolve_int_literals, CONST_PARAMS_METHODS,
+    error_return_to_cpp,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import (
@@ -268,6 +269,7 @@ class FunctionGenerator:
 
         If error_return is set, wraps the return type in std::expected<T, E>.
         """
+        cpp_error = error_return_to_cpp(error_return) if error_return else None
         unwrapped = unwrap_readonly(return_type)
         if is_protocol_type(unwrapped) and isinstance(unwrapped, NamedType):
             pi = self.ctx.analyzer.registry.get_protocol(unwrapped.name)
@@ -277,15 +279,15 @@ class FunctionGenerator:
                     ret = f"const {base}&"
                 else:
                     ret = f"{base}&"
-                if error_return:
-                    return f"std::expected<{ret}, {error_return}>"
+                if cpp_error:
+                    return f"std::expected<{ret}, {cpp_error}>"
                 return ret
         if const:
             ret = return_type.to_cpp_return_const()
         else:
             ret = return_type.to_cpp_return()
-        if error_return:
-            return f"std::expected<{ret}, {error_return}>"
+        if cpp_error:
+            return f"std::expected<{ret}, {cpp_error}>"
         return ret
 
     def _build_const_ref_params(

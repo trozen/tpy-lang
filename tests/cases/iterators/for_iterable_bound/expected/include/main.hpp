@@ -29,7 +29,7 @@ struct RangeIter {
     auto& __iter__() { return *this; }
 
     // def __next__(self) -> Int32:
-    std::expected<int32_t, StopIteration> __next__() {
+    std::expected<int32_t, ::tpy::StopIteration> __next__() {
         // if self.current < self.limit:
         if ((this->current < this->limit)) {
             // result = self.current
@@ -40,7 +40,7 @@ struct RangeIter {
             return result;
         }
         // raise StopIteration
-        return std::unexpected(StopIteration{});
+        return std::unexpected(::tpy::StopIteration{});
     }
 };
 

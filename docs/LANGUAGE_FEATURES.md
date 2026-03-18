@@ -4512,6 +4512,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - Goto-based dispatch: error_return calls inside nested if/for work correctly
   - Branch-aware flow analysis (narrowing, init tracking, variable hoisting)
   - `__next__` methods auto-apply `@error_return(StopIteration)` -- for-loops use direct `std::expected` check
+  - Built-in exceptions (`StopIteration`, `Exception`, `BaseException`) emit as `::tpy::X` in C++ to avoid clashes with user-defined classes of the same name
   - See `docs/ERROR_RETURN_DESIGN.md` for full design
 - **Open**: General `try`/`except` for C++ exceptions (separate from `@error_return`)
 - **Open**: Warning when exceptions are used for control flow (e.g., `try: Color(99) except ValueError` to test validity) -- prefer safe alternatives like `try_parse()`

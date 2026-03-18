@@ -1750,8 +1750,12 @@ class CallAnalyzer:
         ctx_error_type = self.ctx.try_except_error_type
         if ctx_error_type == func.error_return_type:
             return
+        # Strip internal 'builtins.' prefix for user-facing message
+        display_name = func.error_return_type
+        if display_name.startswith("builtins."):
+            display_name = display_name[len("builtins."):]
         raise self.ctx.error(
-            f"call to '{func.name}' may return '{func.error_return_type}' "
+            f"call to '{func.name}' may return '{display_name}' "
             f"which must be handled with try/except",
             expr,
         )

@@ -29,7 +29,7 @@ struct PairIter {
     }
 
     // def __next__(self) -> tuple[str, Int32]:
-    std::expected<std::tuple<std::string, int32_t>, StopIteration> __next__() {
+    std::expected<std::tuple<std::string, int32_t>, ::tpy::StopIteration> __next__() {
         // if self.current < self.limit:
         if ((this->current < this->limit)) {
             // key = str(self.current)
@@ -42,7 +42,7 @@ struct PairIter {
             return std::tuple<std::string, int32_t>{key, val};
         }
         // raise StopIteration
-        return std::unexpected(StopIteration{});
+        return std::unexpected(::tpy::StopIteration{});
     }
 };
 

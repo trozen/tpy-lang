@@ -1152,7 +1152,7 @@ class MethodAnalyzer:
         # __next__ on Iterator protocol has implicit @error_return(StopIteration)
         error_return_type = None
         if method_name == "__next__":
-            error_return_type = "StopIteration"
+            error_return_type = "builtins.StopIteration"
         return FunctionInfo(
             name=method_name, params=params, return_type=return_type,
             is_method=True,

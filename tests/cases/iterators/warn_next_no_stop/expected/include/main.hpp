@@ -27,7 +27,7 @@ struct InfiniteCounter {
 
     // # tpyc: warning(/no 'raise StopIteration'/)
     // def __next__(self) -> Int32:
-    std::expected<int32_t, StopIteration> __next__() {
+    std::expected<int32_t, ::tpy::StopIteration> __next__() {
         // val = self.current
         int32_t val = this->current;
         // self.current += 1

@@ -15,6 +15,7 @@ from ..typesys import (
     register_value_type_record, register_send_record, register_sync_record,
     attach_type_param_bounds,
     has_auto_readonly,
+    qualify_exception_name,
 )
 from ..parse import (
     TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
@@ -98,11 +99,12 @@ class TypeRegistrar:
         # Register Python exception base classes as empty records.
         # These are no-op in C++ codegen but allow CPython-compatible
         # error types: class MyError(Exception): pass
-        base_exc = RecordInfo(name="BaseException", fields=[], is_value_type=True)
+        base_exc = RecordInfo(name="BaseException", fields=[], is_value_type=True,
+                              is_builtin_exception=True)
         exc = RecordInfo(name="Exception", fields=[], is_value_type=True,
-                         parent=NamedType("BaseException"))
+                         parent=NamedType("BaseException"), is_builtin_exception=True)
         stop_iter = RecordInfo(name="StopIteration", fields=[], is_value_type=True,
-                               parent=NamedType("Exception"))
+                               parent=NamedType("Exception"), is_builtin_exception=True)
         self.ctx.registry.register_record(base_exc)
         self.ctx.registry.register_record(exc)
         self.ctx.registry.register_record(stop_iter)
@@ -577,8 +579,12 @@ class TypeRegistrar:
                 cpp_template=DUNDER_CPP_TEMPLATES.get(method.name),
                 type_params=list(method.type_params),
                 type_param_bounds=method_type_param_bounds,
-                error_return_type=method.error_return,
+                error_return_type=(qualify_exception_name(method.error_return, self.ctx.registry)
+                                   if method.error_return else None),
             )
+            # Propagate qualified name back to AST so codegen can use it directly
+            if method.error_return:
+                method.error_return = func_info.error_return_type
             if method.is_overload_stub:
                 # Accumulate overload stubs for this method name
                 methods.setdefault(method.name, []).append(func_info)
@@ -1342,9 +1348,13 @@ class TypeRegistrar:
             cpp_template=func.cpp_template,
             type_params=func.type_params,
             type_param_bounds=type_param_bounds,
-            error_return_type=func.error_return,
+            error_return_type=(qualify_exception_name(func.error_return, self.ctx.registry)
+                               if func.error_return else None),
             qualified_name=f"{self.ctx.module_name}.{func.name}",
         )
+        # Propagate qualified name back to AST so codegen can use it directly
+        if func.error_return:
+            func.error_return = info.error_return_type
 
         # Check for duplicate extern symbol names
         if fi_linkage != FunctionLinkage.DEFAULT:

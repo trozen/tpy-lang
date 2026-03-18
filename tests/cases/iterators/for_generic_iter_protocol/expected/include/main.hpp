@@ -31,7 +31,7 @@ struct StorageIter {
     auto& __iter__() { return *this; }
 
     // def __next__(self) -> Own[T]:
-    std::expected<T, StopIteration> __next__() {
+    std::expected<T, ::tpy::StopIteration> __next__() {
         // if self._index < self._size:
         if ((this->_index < this->_size)) {
             // val = self._storage.load(UInt32(self._index))
@@ -42,7 +42,7 @@ struct StorageIter {
             return val;
         }
         // raise StopIteration
-        return std::unexpected(StopIteration{});
+        return std::unexpected(::tpy::StopIteration{});
     }
 };
 

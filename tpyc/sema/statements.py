@@ -15,6 +15,7 @@ from ..typesys import (
     EnumType, unwrap_readonly, is_any_str_type, TupleType,
     PendingGenericInstanceType,
     INT32, VOID, BIGINT, FLOAT, STRVIEW, is_protocol_type, is_protocol_union,
+    qualify_exception_name,
 )
 from ..parse import (
     TpyExpr,
@@ -900,10 +901,11 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 f"'raise {stmt.exception_type}' requires "
                 f"@error_return({stmt.exception_type}) on the enclosing function", stmt)
-        if func.error_return != stmt.exception_type:
+        qualified_exc = qualify_exception_name(stmt.exception_type, self.ctx.registry)
+        if func.error_return != qualified_exc:
             raise self.ctx.error(
                 f"'raise {stmt.exception_type}' does not match "
-                f"@error_return({func.error_return})", stmt)
+                f"@error_return({stmt.exception_type})", stmt)
         if not self.ctx.registry.get_record(stmt.exception_type):
             raise self.ctx.error(
                 f"Unknown error type '{stmt.exception_type}'", stmt)
@@ -928,9 +930,11 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 f"Unknown error type '{stmt.exception_type}'", stmt)
 
-        # Set try context so call analysis can allow error_return calls
+        # Set try context so call analysis can allow error_return calls.
+        # Qualify the name so it matches FunctionInfo.error_return_type.
         prev_try_error = self.ctx.try_except_error_type
-        self.ctx.try_except_error_type = stmt.exception_type
+        self.ctx.try_except_error_type = qualify_exception_name(
+            stmt.exception_type, self.ctx.registry)
 
         # Analyze try body (success path)
         for s in stmt.try_body:
