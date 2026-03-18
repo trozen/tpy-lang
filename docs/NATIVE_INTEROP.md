@@ -80,7 +80,7 @@ def get_clock() -> Int32: ...
 
 Generated C++ (header):
 ```cpp
-namespace tpy_user::main {
+namespace tpyapp::main {
 extern "C" int32_t abs(int32_t x);
 extern "C" int32_t clock();
 }

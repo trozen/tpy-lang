@@ -2,13 +2,13 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::constants {
+namespace tpyapp::constants {
 
 inline constexpr std::string_view __name__ = "constants";
 extern const ::tpy::BigInt BIG_VALUE;
 
 void __tpy_init();
-} // namespace tpy_user::constants
+} // namespace tpyapp::constants

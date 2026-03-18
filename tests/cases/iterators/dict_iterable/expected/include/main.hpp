@@ -2,23 +2,23 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy_user::typing::Iterable<std::string> T_items>
+template<::tpystd::typing::Iterable<std::string> T_items>
 void collect_items(T_items& items);
-template<::tpy_user::typing::Iterable<int32_t> T_items>
+template<::tpystd::typing::Iterable<int32_t> T_items>
 void collect_ints(T_items& items);
-template<::tpy_user::typing::Iterable<std::tuple<std::string, int32_t>> T_items>
+template<::tpystd::typing::Iterable<std::tuple<std::string, int32_t>> T_items>
 void collect_pairs(T_items& items);
 void main();
 
 // def collect_items(items: Iterable[str]) -> None:
-template<::tpy_user::typing::Iterable<std::string> T_items>
+template<::tpystd::typing::Iterable<std::string> T_items>
 void collect_items(T_items& items) {
     // for x in items:
     auto& __src_0 = items;
@@ -32,7 +32,7 @@ void collect_items(T_items& items) {
     }
 }
 // def collect_ints(items: Iterable[Int32]) -> None:
-template<::tpy_user::typing::Iterable<int32_t> T_items>
+template<::tpystd::typing::Iterable<int32_t> T_items>
 void collect_ints(T_items& items) {
     // for x in items:
     auto& __src_0 = items;
@@ -46,7 +46,7 @@ void collect_ints(T_items& items) {
     }
 }
 // def collect_pairs(items: Iterable[tuple[str, Int32]]) -> None:
-template<::tpy_user::typing::Iterable<std::tuple<std::string, int32_t>> T_items>
+template<::tpystd::typing::Iterable<std::tuple<std::string, int32_t>> T_items>
 void collect_pairs(T_items& items) {
     // for pair in items:
     auto& __src_0 = items;
@@ -65,4 +65,4 @@ void collect_pairs(T_items& items) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

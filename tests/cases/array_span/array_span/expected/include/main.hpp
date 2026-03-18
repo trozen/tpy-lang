@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 extern std::array<int32_t, 3>* nums;
 extern std::array<int32_t, 3>* arr;
@@ -15,4 +15,4 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t sum_span(std::span<int32_t> values);
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

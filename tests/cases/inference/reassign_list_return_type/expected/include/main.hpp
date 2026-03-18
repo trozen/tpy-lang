@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 extern std::vector<::tpy::BigInt>* items;
 inline constexpr std::string_view __name__ = "__main__";
@@ -13,4 +13,4 @@ inline constexpr std::string_view __name__ = "__main__";
 std::vector<::tpy::BigInt> get_items();
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

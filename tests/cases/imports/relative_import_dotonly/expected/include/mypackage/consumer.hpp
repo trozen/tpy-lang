@@ -2,16 +2,16 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 #include "mypackage.hpp"
 #include "mypackage/utils.hpp"
 
-namespace tpy_user::mypackage::consumer {
+namespace tpyapp::mypackage::consumer {
 
 inline constexpr std::string_view __name__ = "mypackage.consumer";
 
 int32_t compute();
 
 void __tpy_init();
-} // namespace tpy_user::mypackage::consumer
+} // namespace tpyapp::mypackage::consumer

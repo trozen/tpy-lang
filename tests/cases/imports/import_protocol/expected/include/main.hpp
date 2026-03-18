@@ -2,17 +2,17 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 #include "traits.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Message;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy_user::traits::Printable T_p>
+template<::tpyapp::traits::Printable T_p>
 void show(T_p& p);
 int32_t main();
 
@@ -40,11 +40,11 @@ inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
 }
 
 // def show(p: Printable) -> None:
-template<::tpy_user::traits::Printable T_p>
+template<::tpyapp::traits::Printable T_p>
 void show(T_p& p) {
     // print(p.to_string())
     std::cout << p.to_string() << "\n";
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

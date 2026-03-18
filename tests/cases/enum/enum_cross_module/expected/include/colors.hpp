@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::colors {
+namespace tpyapp::colors {
 
 enum class Color : int32_t {
     Red = 0,
@@ -13,18 +13,18 @@ enum class Color : int32_t {
     Blue = 2,
 };
 
-} // namespace tpy_user::colors
+} // namespace tpyapp::colors
 
 template<>
-struct tpy::EnumUtil<tpy_user::colors::Color> {
-    static std::string_view name(tpy_user::colors::Color e);
-    static const std::array<tpy_user::colors::Color, 3> members;
-    static tpy_user::colors::Color from_value(int32_t v);
-    static tpy_user::colors::Color from_name(std::string_view s);
-    static std::optional<tpy_user::colors::Color> try_parse(std::string_view s);
+struct tpy::EnumUtil<tpyapp::colors::Color> {
+    static std::string_view name(tpyapp::colors::Color e);
+    static const std::array<tpyapp::colors::Color, 3> members;
+    static tpyapp::colors::Color from_value(int32_t v);
+    static tpyapp::colors::Color from_name(std::string_view s);
+    static std::optional<tpyapp::colors::Color> try_parse(std::string_view s);
 };
 
-namespace tpy_user::colors {
+namespace tpyapp::colors {
 
 inline std::ostream& operator<<(std::ostream& __os, Color __e) {
     return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
@@ -35,4 +35,4 @@ inline constexpr std::string_view __name__ = "colors";
 int32_t color_value(Color c);
 
 void __tpy_init();
-} // namespace tpy_user::colors
+} // namespace tpyapp::colors

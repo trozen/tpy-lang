@@ -1,4 +1,5 @@
 # tpy: native_module
+# tpy: cpp_namespace("tpystd::typing")
 from typing import Protocol, Self
 from tpy import Int32, readonly
 

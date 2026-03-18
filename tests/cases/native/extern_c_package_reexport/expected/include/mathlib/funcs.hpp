@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::mathlib::funcs {
+namespace tpyapp::mathlib::funcs {
 
 inline constexpr std::string_view __name__ = "mathlib.funcs";
 
@@ -13,4 +13,4 @@ extern "C" int32_t abs(int32_t x);
 extern "C" int32_t tpy_clock();
 
 void __tpy_init();
-} // namespace tpy_user::mathlib::funcs
+} // namespace tpyapp::mathlib::funcs

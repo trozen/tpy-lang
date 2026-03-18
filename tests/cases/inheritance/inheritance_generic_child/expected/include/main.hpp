@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Animal;
 template<typename T> struct Box;
@@ -111,4 +111,4 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<U>& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

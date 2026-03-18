@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 // @dynamic
 // class Greeter(Protocol):
@@ -19,24 +19,24 @@ struct Greeter {
     virtual ~Greeter() = default;
 };
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
-template<tpy_user::main::__Greeter_Concept__ T>
-struct tpy::Adapter<tpy_user::main::Greeter, T> : tpy_user::main::Greeter {
+template<tpyapp::main::__Greeter_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Greeter, T> : tpyapp::main::Greeter {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     std::string greet() override { return std::string(inner.greet()); }
 };
 
-template<tpy_user::main::__Greeter_Concept__ T>
-struct tpy::RefAdapter<tpy_user::main::Greeter, T> : tpy_user::main::Greeter {
+template<tpyapp::main::__Greeter_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Greeter, T> : tpyapp::main::Greeter {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
     std::string greet() override { return std::string(inner.greet()); }
 };
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 template<typename T> struct Tagged;
 struct Owner;
@@ -82,4 +82,4 @@ inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

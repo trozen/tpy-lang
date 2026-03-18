@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::config {
+namespace tpyapp::config {
 
 extern int32_t MAX_VALUE;
 inline constexpr std::string_view __name__ = "config";
@@ -13,4 +13,4 @@ inline constexpr std::string_view __name__ = "config";
 int32_t get_max();
 
 void __tpy_init();
-} // namespace tpy_user::config
+} // namespace tpyapp::config

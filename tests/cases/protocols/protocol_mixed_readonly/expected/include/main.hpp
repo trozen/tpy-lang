@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 // class Mixed(Protocol):
 template<typename T>
@@ -71,4 +71,4 @@ int32_t use_both(T_m& m) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

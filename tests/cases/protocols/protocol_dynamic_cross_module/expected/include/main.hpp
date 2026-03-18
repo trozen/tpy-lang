@@ -2,24 +2,24 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 #include "pet.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Dog;
 struct Cat;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void greet(::tpy_user::pet::Pet& pet);
-::tpy_user::pet::Pet& echo(::tpy_user::pet::Pet& pet);
+void greet(::tpyapp::pet::Pet& pet);
+::tpyapp::pet::Pet& echo(::tpyapp::pet::Pet& pet);
 void main();
 
 // # Direct inheritance (C++ struct Dog : Pet)
 // class Dog(Pet):
-struct Dog : ::tpy_user::pet::Pet {
+struct Dog : ::tpyapp::pet::Pet {
 
 
     // def speak(self) -> str:
@@ -54,4 +54,4 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

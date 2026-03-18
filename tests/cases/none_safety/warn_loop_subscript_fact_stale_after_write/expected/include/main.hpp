@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 extern std::vector<std::optional<int32_t>>* vals;
 inline constexpr std::string_view __name__ = "__main__";
@@ -13,4 +13,4 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t stale_after_write(std::vector<std::optional<int32_t>>& items, int32_t i);
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

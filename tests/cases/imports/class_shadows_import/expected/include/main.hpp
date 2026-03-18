@@ -2,11 +2,11 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
-#include "time.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
+#include "tpystd/time.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct time;
 
@@ -32,4 +32,4 @@ inline std::ostream& operator<<(std::ostream& os, const time& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

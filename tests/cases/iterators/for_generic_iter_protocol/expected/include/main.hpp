@@ -2,11 +2,11 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
-#include "tpy/mem.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
+#include "tpystd/tpy/mem.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 template<typename T, std::size_t N> struct StorageIter;
 template<typename T, std::size_t N> struct SimpleList;
@@ -121,4 +121,4 @@ inline std::ostream& operator<<(std::ostream& os, const SimpleList<T, N>& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

@@ -2,14 +2,14 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy_user::typing::Iterable<int32_t> T_items>
+template<::tpystd::typing::Iterable<int32_t> T_items>
 void consume(T_items& items);
 void test_lazy_variable_count();
 void test_lazy_for_loop();
@@ -17,7 +17,7 @@ void test_direct_iterable_arg();
 void test_print_lazy_repeat();
 
 // def consume(items: Iterable[Int32]) -> None:
-template<::tpy_user::typing::Iterable<int32_t> T_items>
+template<::tpystd::typing::Iterable<int32_t> T_items>
 void consume(T_items& items) {
     // total: Int32 = 0
     int32_t total = 0;
@@ -36,4 +36,4 @@ void consume(T_items& items) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

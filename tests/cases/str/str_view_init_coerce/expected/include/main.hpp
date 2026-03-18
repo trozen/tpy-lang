@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -17,4 +17,4 @@ std::string return_or_params(std::string_view a, std::string_view b);
 std::string return_ternary_params(std::string_view a, std::string_view b, bool cond);
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

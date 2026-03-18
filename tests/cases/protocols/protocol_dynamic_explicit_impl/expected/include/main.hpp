@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 // @dynamic
 // class Describable(Protocol):
@@ -21,10 +21,10 @@ struct Describable {
     virtual ~Describable() = default;
 };
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
-template<tpy_user::main::__Describable_Concept__ T>
-struct tpy::Adapter<tpy_user::main::Describable, T> : tpy_user::main::Describable {
+template<tpyapp::main::__Describable_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Describable, T> : tpyapp::main::Describable {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
@@ -32,15 +32,15 @@ struct tpy::Adapter<tpy_user::main::Describable, T> : tpy_user::main::Describabl
     int32_t id() override { return inner.id(); }
 };
 
-template<tpy_user::main::__Describable_Concept__ T>
-struct tpy::RefAdapter<tpy_user::main::Describable, T> : tpy_user::main::Describable {
+template<tpyapp::main::__Describable_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Describable, T> : tpyapp::main::Describable {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
     std::string describe() override { return std::string(inner.describe()); }
     int32_t id() override { return inner.id(); }
 };
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Item;
 
@@ -82,4 +82,4 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

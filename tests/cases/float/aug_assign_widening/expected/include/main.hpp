@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -16,4 +16,4 @@ double use_after_widen();
 float float32_stays();
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

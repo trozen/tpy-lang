@@ -2,11 +2,11 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
-#include "tplib.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
+#include "tpystd/tplib.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -17,4 +17,4 @@ void from_readonly_span();
 void from_arraylist();
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

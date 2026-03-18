@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Version;
 
@@ -60,15 +60,15 @@ inline std::ostream& operator<<(std::ostream& os, const Version& obj) {
     return os;
 }
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
-template<> struct std::hash<tpy_user::main::Version> {
-    size_t operator()(const tpy_user::main::Version& val) const noexcept {
+template<> struct std::hash<tpyapp::main::Version> {
+    size_t operator()(const tpyapp::main::Version& val) const noexcept {
         return static_cast<size_t>(val.__hash__());
     }
 };
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

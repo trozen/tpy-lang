@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 // # @dynamic protocol with a non-dynamic parent: the concrete class that implements
 // # DynValued must keep value() non-const so it matches the C++ pure virtual signature.
@@ -29,24 +29,24 @@ struct DynValued {
     virtual ~DynValued() = default;
 };
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
-template<tpy_user::main::__DynValued_Concept__ T>
-struct tpy::Adapter<tpy_user::main::DynValued, T> : tpy_user::main::DynValued {
+template<tpyapp::main::__DynValued_Concept__ T>
+struct tpy::Adapter<tpyapp::main::DynValued, T> : tpyapp::main::DynValued {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     int32_t value() override { return inner.value(); }
 };
 
-template<tpy_user::main::__DynValued_Concept__ T>
-struct tpy::RefAdapter<tpy_user::main::DynValued, T> : tpy_user::main::DynValued {
+template<tpyapp::main::__DynValued_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::DynValued, T> : tpyapp::main::DynValued {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
     int32_t value() override { return inner.value(); }
 };
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Counter;
 struct Box;
@@ -200,4 +200,4 @@ inline std::ostream& operator<<(std::ostream& os, const Valued& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

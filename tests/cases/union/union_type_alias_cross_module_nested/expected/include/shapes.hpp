@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::shapes {
+namespace tpyapp::shapes {
 
 struct Circle;
 struct Rect;
@@ -49,4 +49,4 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
 using Shape = std::variant<Circle, Rect>;
 
 void __tpy_init();
-} // namespace tpy_user::shapes
+} // namespace tpyapp::shapes

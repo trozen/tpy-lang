@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 template<typename T> struct Box;
 template<typename T, typename U> struct Pair;
@@ -149,4 +149,4 @@ template<typename A, typename B, typename C>
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

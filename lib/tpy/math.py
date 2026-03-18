@@ -1,4 +1,5 @@
 # tpy: native_module
+# tpy: cpp_namespace("tpystd::math")
 from typing import overload
 from tpy.extern import native
 

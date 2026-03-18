@@ -2,18 +2,18 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct MyInt;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy_user::tpy::Comparable T>
+template<::tpystd::tpy::Comparable T>
 bool is_less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
-template<::tpy_user::tpy::Comparable T>
+template<::tpystd::tpy::Comparable T>
 ::tpy::val_or_ref_t<T> find_min(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 void main();
 
@@ -55,13 +55,13 @@ inline std::ostream& operator<<(std::ostream& os, const MyInt& obj) {
 }
 
 // def is_less[T: Comparable](a: T, b: T) -> bool:
-template<::tpy_user::tpy::Comparable T>
+template<::tpystd::tpy::Comparable T>
 bool is_less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     // return a < b
     return (a < b);
 }
 // def find_min[T: Comparable](a: T, b: T) -> T:
-template<::tpy_user::tpy::Comparable T>
+template<::tpystd::tpy::Comparable T>
 ::tpy::val_or_ref_t<T> find_min(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     // if a < b:
     if ((a < b)) {
@@ -73,4 +73,4 @@ template<::tpy_user::tpy::Comparable T>
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

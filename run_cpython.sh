@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run a TurboPython file with CPython using lib/tpy
+# Run a TurboPython file with CPython using lib/cpy stubs
 # Usage: ./run_cpython.sh examples/game_of_life.py
 
 if [ -z "$1" ]; then

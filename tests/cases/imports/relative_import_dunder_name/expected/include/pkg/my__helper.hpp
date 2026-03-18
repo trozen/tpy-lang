@@ -2,14 +2,14 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::pkg::my__helper {
+namespace tpyapp::pkg::my__helper {
 
 inline constexpr std::string_view __name__ = "pkg.my__helper";
 
 int32_t get_value();
 
 void __tpy_init();
-} // namespace tpy_user::pkg::my__helper
+} // namespace tpyapp::pkg::my__helper

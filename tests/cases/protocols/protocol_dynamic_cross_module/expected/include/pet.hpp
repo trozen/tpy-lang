@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::pet {
+namespace tpyapp::pet {
 
 // @dynamic
 // class Pet(Protocol):
@@ -19,26 +19,26 @@ struct Pet {
     virtual ~Pet() = default;
 };
 
-} // namespace tpy_user::pet
+} // namespace tpyapp::pet
 
-template<tpy_user::pet::__Pet_Concept__ T>
-struct tpy::Adapter<tpy_user::pet::Pet, T> : tpy_user::pet::Pet {
+template<tpyapp::pet::__Pet_Concept__ T>
+struct tpy::Adapter<tpyapp::pet::Pet, T> : tpyapp::pet::Pet {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     std::string speak() override { return std::string(inner.speak()); }
 };
 
-template<tpy_user::pet::__Pet_Concept__ T>
-struct tpy::RefAdapter<tpy_user::pet::Pet, T> : tpy_user::pet::Pet {
+template<tpyapp::pet::__Pet_Concept__ T>
+struct tpy::RefAdapter<tpyapp::pet::Pet, T> : tpyapp::pet::Pet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
     std::string speak() override { return std::string(inner.speak()); }
 };
 
-namespace tpy_user::pet {
+namespace tpyapp::pet {
 
 inline constexpr std::string_view __name__ = "pet";
 
 void __tpy_init();
-} // namespace tpy_user::pet
+} // namespace tpyapp::pet

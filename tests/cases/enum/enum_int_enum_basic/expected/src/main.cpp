@@ -3,39 +3,39 @@
 
 namespace tpy {
 
-std::string_view EnumUtil<tpy_user::main::Priority>::name(tpy_user::main::Priority __e) {
+std::string_view EnumUtil<tpyapp::main::Priority>::name(tpyapp::main::Priority __e) {
     switch (__e) {
-        case tpy_user::main::Priority::Low: return "Low";
-        case tpy_user::main::Priority::Medium: return "Medium";
-        case tpy_user::main::Priority::High: return "High";
+        case tpyapp::main::Priority::Low: return "Low";
+        case tpyapp::main::Priority::Medium: return "Medium";
+        case tpyapp::main::Priority::High: return "High";
         default: tpy_panic("invalid enum value");
     }
 }
 
-const std::array<tpy_user::main::Priority, 3>
-EnumUtil<tpy_user::main::Priority>::members = {
-    tpy_user::main::Priority::Low,
-    tpy_user::main::Priority::Medium,
-    tpy_user::main::Priority::High,
+const std::array<tpyapp::main::Priority, 3>
+EnumUtil<tpyapp::main::Priority>::members = {
+    tpyapp::main::Priority::Low,
+    tpyapp::main::Priority::Medium,
+    tpyapp::main::Priority::High,
 };
 
-tpy_user::main::Priority EnumUtil<tpy_user::main::Priority>::from_value(int32_t __v) {
+tpyapp::main::Priority EnumUtil<tpyapp::main::Priority>::from_value(int32_t __v) {
     switch (__v) {
-        case 0: return tpy_user::main::Priority::Low;
-        case 1: return tpy_user::main::Priority::Medium;
-        case 2: return tpy_user::main::Priority::High;
+        case 0: return tpyapp::main::Priority::Low;
+        case 1: return tpyapp::main::Priority::Medium;
+        case 2: return tpyapp::main::Priority::High;
         default: tpy_panic("invalid value for enum 'Priority'");
     }
 }
 
-std::optional<tpy_user::main::Priority> EnumUtil<tpy_user::main::Priority>::try_parse(std::string_view __name) {
-    if (__name == "Low") return tpy_user::main::Priority::Low;
-    if (__name == "Medium") return tpy_user::main::Priority::Medium;
-    if (__name == "High") return tpy_user::main::Priority::High;
+std::optional<tpyapp::main::Priority> EnumUtil<tpyapp::main::Priority>::try_parse(std::string_view __name) {
+    if (__name == "Low") return tpyapp::main::Priority::Low;
+    if (__name == "Medium") return tpyapp::main::Priority::Medium;
+    if (__name == "High") return tpyapp::main::Priority::High;
     return std::nullopt;
 }
 
-tpy_user::main::Priority EnumUtil<tpy_user::main::Priority>::from_name(std::string_view __name) {
+tpyapp::main::Priority EnumUtil<tpyapp::main::Priority>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
     if (!__result.has_value()) tpy_panic("invalid name for enum 'Priority'");
     return *__result;
@@ -43,7 +43,7 @@ tpy_user::main::Priority EnumUtil<tpy_user::main::Priority>::from_name(std::stri
 
 } // namespace tpy
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 
 // def main() -> None:
@@ -94,10 +94,10 @@ void __tpy_init() {
     main();
 }
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
 int main(int argc, char* argv[]) {
     ::tpy::init_sys_argv(argc, argv);
-    tpy_user::main::__tpy_init();
+    tpyapp::main::__tpy_init();
     return 0;
 }

@@ -427,11 +427,11 @@ enum class Color : int32_t { Red = 0, Green = 1, Blue = 2 };
 
 // (namespace closes, then at global scope:)
 template<>
-struct tpy::EnumUtil<tpy_user::main::Color> {
-    static std::string_view name(tpy_user::main::Color e);
-    static const std::array<tpy_user::main::Color, 3> members;
-    static tpy_user::main::Color from_value(int32_t v);
-    static std::optional<tpy_user::main::Color> try_parse(std::string_view s);
+struct tpy::EnumUtil<tpyapp::main::Color> {
+    static std::string_view name(tpyapp::main::Color e);
+    static const std::array<tpyapp::main::Color, 3> members;
+    static tpyapp::main::Color from_value(int32_t v);
+    static std::optional<tpyapp::main::Color> try_parse(std::string_view s);
 };
 
 // (namespace reopens:)
@@ -441,10 +441,10 @@ inline std::ostream& operator<<(std::ostream& os, Color e) {
 
 // --- Source: EnumUtil definitions ---
 namespace tpy {
-std::string_view EnumUtil<tpy_user::main::Color>::name(...) { switch ... }
-const std::array<...> EnumUtil<tpy_user::main::Color>::members = { ... };
-tpy_user::main::Color EnumUtil<tpy_user::main::Color>::from_value(int32_t v) { ... }
-std::optional<...> EnumUtil<tpy_user::main::Color>::try_parse(std::string_view s) { ... }
+std::string_view EnumUtil<tpyapp::main::Color>::name(...) { switch ... }
+const std::array<...> EnumUtil<tpyapp::main::Color>::members = { ... };
+tpyapp::main::Color EnumUtil<tpyapp::main::Color>::from_value(int32_t v) { ... }
+std::optional<...> EnumUtil<tpyapp::main::Color>::try_parse(std::string_view s) { ... }
 }
 ```
 
@@ -499,7 +499,7 @@ c: Color = Color.Red
 The import resolution in `sema/analyzer.py` checks `module_info.enums` (the new
 category) to find the `EnumType`. The codegen qualifies imported enum types using
 `qualified_name()` (following the `NamedType` pattern), producing
-`tpy_user::colors::Color` in C++.
+`tpyapp::colors::Color` in C++.
 
 Member access (`Color.Red`) resolves through the imported `EnumType` -- the
 expression analyzer's enum branch handles it the same way as local enums.

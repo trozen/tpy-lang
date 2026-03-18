@@ -2,19 +2,19 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
-template<::tpy_user::typing::Sized T> struct Container;
+template<::tpystd::typing::Sized T> struct Container;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
 // class Container[T: Sized]:
-template<::tpy_user::typing::Sized T>
+template<::tpystd::typing::Sized T>
 struct Container {
     // item: T
     T item;
@@ -39,4 +39,4 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

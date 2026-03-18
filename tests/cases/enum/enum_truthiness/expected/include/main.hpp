@@ -2,28 +2,28 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 enum class Signal : int32_t {
     Off = 0,
     On = 1,
 };
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
 template<>
-struct tpy::EnumUtil<tpy_user::main::Signal> {
-    static std::string_view name(tpy_user::main::Signal e);
-    static const std::array<tpy_user::main::Signal, 2> members;
-    static tpy_user::main::Signal from_value(int32_t v);
-    static tpy_user::main::Signal from_name(std::string_view s);
-    static std::optional<tpy_user::main::Signal> try_parse(std::string_view s);
+struct tpy::EnumUtil<tpyapp::main::Signal> {
+    static std::string_view name(tpyapp::main::Signal e);
+    static const std::array<tpyapp::main::Signal, 2> members;
+    static tpyapp::main::Signal from_value(int32_t v);
+    static tpyapp::main::Signal from_name(std::string_view s);
+    static std::optional<tpyapp::main::Signal> try_parse(std::string_view s);
 };
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Signal __e) {
     return __os << "Signal." << ::tpy::EnumUtil<Signal>::name(__e);
@@ -35,4 +35,4 @@ void check(Signal s);
 void main();
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

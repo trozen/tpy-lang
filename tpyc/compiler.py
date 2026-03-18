@@ -21,7 +21,8 @@ from .sema import SemanticAnalyzer, SemanticError, DiagnosticLevel
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names
 from .codegen_cpp import CodeGenerator, CodeGenOptions
-from .codegen_cpp.context import module_to_cpp_namespace, set_namespace_map, clear_namespace_map
+from .codegen_cpp.context import module_to_cpp_namespace, set_namespace_map, set_include_path_map, get_include_path, clear_namespace_map
+import warnings
 from .typesys import TpyType, INT32, INT64, BIGINT, clear_all_compilation_state
 
 if TYPE_CHECKING:
@@ -97,6 +98,9 @@ class BuildLayout:
 
     def hpp_path(self, module_name: str) -> Path:
         """Path to the generated header for a module."""
+        override = get_include_path(module_name)
+        if override is not None:
+            return self.include_dir / override
         parts = module_name.split('.')
         if len(parts) == 1:
             return self.include_dir / f"{parts[0]}.hpp"
@@ -104,6 +108,9 @@ class BuildLayout:
 
     def cpp_path(self, module_name: str) -> Path:
         """Path to the generated source for a module."""
+        override = get_include_path(module_name)
+        if override is not None:
+            return self.src_dir / (override.removesuffix('.hpp') + '.cpp')
         parts = module_name.split('.')
         if len(parts) == 1:
             return self.src_dir / f"{parts[0]}.cpp"
@@ -332,7 +339,9 @@ class Compiler:
             else:
                 self.compile_order = [entry_name]
 
-            set_namespace_map(self._build_namespace_map())
+            ns_map = self._build_namespace_map()
+            set_namespace_map(ns_map)
+            set_include_path_map(self._build_include_path_map(ns_map))
             for name in self.compile_order:
                 self._analyze_module(self.modules[name])
             return [self.modules[name] for name in self.compile_order]
@@ -348,8 +357,10 @@ class Compiler:
         # 2. Compute compilation order (topological sort)
         self._compute_compile_order()
 
-        # 3. Build namespace map from # tpy: namespace directives
-        set_namespace_map(self._build_namespace_map())
+        # 3. Build namespace and include path maps from # tpy: directives
+        ns_map = self._build_namespace_map()
+        set_namespace_map(ns_map)
+        set_include_path_map(self._build_include_path_map(ns_map))
 
         # 4. Parse and analyze in dependency order
         for module_name in self.compile_order:
@@ -1010,7 +1021,7 @@ class Compiler:
         - Direct directive: module uses the specified namespace as-is.
         - Package inheritance: if __init__.py has a directive, child modules
           use "parent_ns::relative_child" (most-specific parent wins).
-        - No directive: default "tpy_user::module_name".
+        - No directive: default "tpyapp::module_name".
         """
         # Collect direct namespace overrides
         direct: dict[str, str] = {}
@@ -1039,9 +1050,52 @@ class Compiler:
                     resolved = f"{package_overrides[parent]}::{relative}"
                     break
 
-            ns_map[name] = resolved or f"tpy_user::{name.replace('.', '::')}"
+            if resolved:
+                ns_map[name] = resolved
+            else:
+                ns_map[name] = f"tpyapp::{name.replace('.', '::')}"
+                # Warn if a library module has no namespace override
+                compiled = self.modules[name]
+                if self._is_lib_module(compiled):
+                    warnings.warn(
+                        f"{compiled.path}: library module '{name}' has no "
+                        f"# tpy: cpp_namespace directive (will use default '{ns_map[name]}')")
 
         return ns_map
+
+    def _is_lib_module(self, compiled: 'CompiledModule') -> bool:
+        """Check if a module comes from a library search path (not user code)."""
+        if not self.resolver or not compiled.path.is_absolute():
+            return False
+        for lib_dir in self.resolver.extra_dirs:
+            try:
+                compiled.path.relative_to(lib_dir)
+                return True
+            except ValueError:
+                continue
+        return False
+
+    def _build_include_path_map(self, ns_map: dict[str, str]) -> dict[str, str]:
+        """Build module_name -> include path mapping.
+
+        For modules with cpp_include_path directive, uses the explicit value.
+        For modules with cpp_namespace override, derives from namespace
+        (e.g. "tpystd::tpy" -> "tpystd/tpy.hpp").
+        Modules without overrides use the default module-name-based path.
+        """
+        ip_map: dict[str, str] = {}
+        for name, compiled in self.modules.items():
+            # Explicit override takes priority
+            explicit = compiled.ast.directives.cpp_include_path
+            if explicit is not None:
+                ip_map[name] = explicit
+                continue
+            # Derive from namespace if it differs from the default
+            ns = ns_map[name]
+            default_ns = f"tpyapp::{name.replace('.', '::')}"
+            if ns != default_ns:
+                ip_map[name] = ns.replace('::', '/') + '.hpp'
+        return ip_map
 
     def collect_link_flags(self) -> list[str]:
         """Collect -l linker flags from all compiled modules' link directives.

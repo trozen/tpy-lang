@@ -2,16 +2,16 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy_user::tpy::Hashable T_x>
+template<::tpystd::tpy::Hashable T_x>
 uint64_t get_hash(const T_x& x);
 void main();
 
@@ -42,22 +42,22 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
-template<> struct std::hash<tpy_user::main::Point> {
-    size_t operator()(const tpy_user::main::Point& val) const noexcept {
+template<> struct std::hash<tpyapp::main::Point> {
+    size_t operator()(const tpyapp::main::Point& val) const noexcept {
         return static_cast<size_t>(val.__hash__());
     }
 };
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 // def get_hash(x: Hashable) -> UInt64:
-template<::tpy_user::tpy::Hashable T_x>
+template<::tpystd::tpy::Hashable T_x>
 uint64_t get_hash(const T_x& x) {
     // return hash(x)
     return ::tpy::__hash__(x);
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

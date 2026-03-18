@@ -100,6 +100,8 @@ def escape_cpp_char(value: str) -> str:
 
 # Namespace map: module_name -> C++ namespace (set by Compiler before codegen)
 _namespace_map: dict[str, str] = {}
+# Include path map: module_name -> header path (derived from namespace or explicit override)
+_include_path_map: dict[str, str] = {}
 
 
 def set_namespace_map(ns_map: dict[str, str]) -> None:
@@ -108,10 +110,22 @@ def set_namespace_map(ns_map: dict[str, str]) -> None:
     _namespace_map = ns_map
 
 
+def set_include_path_map(ip_map: dict[str, str]) -> None:
+    """Set the module-to-include-path mapping for codegen."""
+    global _include_path_map
+    _include_path_map = ip_map
+
+
+def get_include_path(module_name: str) -> str | None:
+    """Get the include path override for a module, or None for default."""
+    return _include_path_map.get(module_name)
+
+
 def clear_namespace_map() -> None:
-    """Clear the namespace map (called between compilations)."""
-    global _namespace_map
+    """Clear the namespace and include path maps (called between compilations)."""
+    global _namespace_map, _include_path_map
     _namespace_map = {}
+    _include_path_map = {}
 
 
 # Mapping from Python dunder methods to C++ binary operators.
@@ -122,17 +136,17 @@ def module_to_cpp_namespace(module_name: str) -> str:
     """Convert a dotted module name to a C++ namespace.
 
     Checks the namespace map first (for # tpy: namespace overrides),
-    falls back to "tpy_user::{module_name}".
+    falls back to "tpyapp::{module_name}".
     """
     if module_name in _namespace_map:
         return _namespace_map[module_name]
-    return f"tpy_user::{module_name.replace('.', '::')}"
+    return f"tpyapp::{module_name.replace('.', '::')}"
 
 
 def qualified_cpp_name(module_name: str, name: str) -> str:
     """Build an absolute-qualified C++ name for cross-module references.
 
-    Example: ("shapes", "Circle") -> "::tpy_user::shapes::Circle"
+    Example: ("shapes", "Circle") -> "::tpyapp::shapes::Circle"
     """
     return f"::{module_to_cpp_namespace(module_name)}::{escape_cpp_name(name)}"
 

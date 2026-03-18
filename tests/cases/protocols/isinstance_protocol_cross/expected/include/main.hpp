@@ -2,22 +2,22 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy_user::typing::Sequence<int32_t> T_items>
+template<::tpystd::typing::Sequence<int32_t> T_items>
 void cross_protocol(const T_items& items);
 void main();
 
 // def cross_protocol(items: Sequence[Int32]) -> None:
-template<::tpy_user::typing::Sequence<int32_t> T_items>
+template<::tpystd::typing::Sequence<int32_t> T_items>
 void cross_protocol(const T_items& items) {
     // if isinstance(items, Hashable):
-    if constexpr (::tpy_user::tpy::Hashable<T_items>) {
+    if constexpr (::tpystd::tpy::Hashable<T_items>) {
         // print("hashable sequence of", len(items))
         std::cout << "hashable sequence of" << " " << ::tpy::__len__(items) << "\n";
     // else:
@@ -28,4 +28,4 @@ void cross_protocol(const T_items& items) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

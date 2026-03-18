@@ -2,14 +2,14 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::outer::utils {
+namespace tpyapp::outer::utils {
 
 inline constexpr std::string_view __name__ = "outer.utils";
 
 int32_t add(int32_t a, int32_t b);
 
 void __tpy_init();
-} // namespace tpy_user::outer::utils
+} // namespace tpyapp::outer::utils

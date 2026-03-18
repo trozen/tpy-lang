@@ -303,7 +303,7 @@ class TypeResolver:
         """Convert a type to its C++ representation, qualifying imported types.
 
         For imported record types from user modules, generates fully qualified names
-        like tpy_user::utils::Point or tpy_user::pkg::mod::Point for packages.
+        like tpyapp::utils::Point or tpyapp::pkg::mod::Point for packages.
         Native records use their native C++ name directly (no namespace qualification).
         @dynamic protocol types map to the base class name.
         """

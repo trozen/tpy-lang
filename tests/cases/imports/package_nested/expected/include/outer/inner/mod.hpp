@@ -2,14 +2,14 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::outer::inner::mod {
+namespace tpyapp::outer::inner::mod {
 
 inline constexpr std::string_view __name__ = "outer.inner.mod";
 
 void func();
 
 void __tpy_init();
-} // namespace tpy_user::outer::inner::mod
+} // namespace tpyapp::outer::inner::mod

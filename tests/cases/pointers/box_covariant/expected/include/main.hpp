@@ -2,11 +2,11 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
-#include "tplib.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
+#include "tpystd/tplib.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 // @dynamic
 // class Shape(Protocol):
@@ -20,32 +20,32 @@ struct Shape {
     virtual ~Shape() = default;
 };
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
-template<tpy_user::main::__Shape_Concept__ T>
-struct tpy::Adapter<tpy_user::main::Shape, T> : tpy_user::main::Shape {
+template<tpyapp::main::__Shape_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     double area() override { return inner.area(); }
 };
 
-template<tpy_user::main::__Shape_Concept__ T>
-struct tpy::RefAdapter<tpy_user::main::Shape, T> : tpy_user::main::Shape {
+template<tpyapp::main::__Shape_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
     double area() override { return inner.area(); }
 };
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Circle;
 struct Square;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void print_area(::tpy_user::tplib::Box<Shape>& b);
-::tpy_user::tplib::Box<Shape> make_shape();
+void print_area(::tpystd::tplib::Box<Shape>& b);
+::tpystd::tplib::Box<Shape> make_shape();
 void main();
 
 // class Circle(Shape):
@@ -95,4 +95,4 @@ inline std::ostream& operator<<(std::ostream& os, const Square& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

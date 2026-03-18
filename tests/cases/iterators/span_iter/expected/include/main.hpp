@@ -2,19 +2,19 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy_user::typing::Iterator<int32_t> T_it>
+template<::tpystd::typing::Iterator<int32_t> T_it>
 void consume(T_it& it);
 void main();
 
 // def consume(it: Iterator[Int32]) -> None:
-template<::tpy_user::typing::Iterator<int32_t> T_it>
+template<::tpystd::typing::Iterator<int32_t> T_it>
 void consume(T_it& it) {
     // for x in it:
     auto& __iter_0 = it;
@@ -28,4 +28,4 @@ void consume(T_it& it) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 extern int32_t a;
 extern int32_t b;
@@ -24,4 +24,4 @@ std::tuple<int32_t, int32_t, int32_t> get_triple();
 void use_globals();
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

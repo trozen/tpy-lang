@@ -2,23 +2,23 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy_user::typing::Sized T>
+template<::tpystd::typing::Sized T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> item);
 void main();
 
 // def identity[T: Sized](item: T) -> T:
-template<::tpy_user::typing::Sized T>
+template<::tpystd::typing::Sized T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> item) {
     // return item
     return item;
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

@@ -219,7 +219,7 @@ calls or expressions:
 ```python
 f"Type '{name}' not found"
 f"{self.to_cpp()}&"
-f"tpy_user::{module_name.replace('.', '::')}"
+f"tpyapp::{module_name.replace('.', '::')}"
 ```
 
 Implementation: desugar to string concatenation + `str()` conversion. Complex

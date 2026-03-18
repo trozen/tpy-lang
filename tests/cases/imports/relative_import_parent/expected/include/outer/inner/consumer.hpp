@@ -2,16 +2,16 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 #include "outer.hpp"
 #include "outer/utils.hpp"
 
-namespace tpy_user::outer::inner::consumer {
+namespace tpyapp::outer::inner::consumer {
 
 inline constexpr std::string_view __name__ = "outer.inner.consumer";
 
 int32_t compute();
 
 void __tpy_init();
-} // namespace tpy_user::outer::inner::consumer
+} // namespace tpyapp::outer::inner::consumer

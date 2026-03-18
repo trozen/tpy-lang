@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 extern std::vector<int32_t>* items;
 extern int32_t total;
@@ -18,4 +18,4 @@ void print_span(std::span<int32_t> data);
 int32_t nested_sum();
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

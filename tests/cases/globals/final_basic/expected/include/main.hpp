@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 inline constexpr int32_t MAX_SIZE = 100;
@@ -20,4 +20,4 @@ int32_t twice(int32_t x);
 void main();
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

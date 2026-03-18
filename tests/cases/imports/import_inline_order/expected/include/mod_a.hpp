@@ -2,15 +2,15 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 #include "mod_c.hpp"
 
-namespace tpy_user::mod_a {
+namespace tpyapp::mod_a {
 
 inline constexpr std::string_view __name__ = "mod_a";
 
 void func_a();
 
 void __tpy_init();
-} // namespace tpy_user::mod_a
+} // namespace tpyapp::mod_a

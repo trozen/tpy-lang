@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 extern std::vector<int32_t>* nums32;
 extern int32_t result;
@@ -24,4 +24,4 @@ template<typename T>
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

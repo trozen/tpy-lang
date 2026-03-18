@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 extern ::tpy::BigInt B;
 extern ::tpy::BigInt SMALL_MAX;
@@ -24,4 +24,4 @@ inline constexpr std::string_view __name__ = "__main__";
 void probe(std::string_view label, const ::tpy::BigInt& a, const ::tpy::BigInt& b, int32_t shift);
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

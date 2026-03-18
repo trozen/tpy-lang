@@ -1040,10 +1040,10 @@ class FunctionGenerator:
         out.write("}\n")
 
     def gen_extern_cpp_source_def(self, out: TextIO, func: TpyFunction) -> None:
-        """Generate an extern_cpp export definition outside the tpy_user namespace (in source).
+        """Generate an extern_cpp export definition outside the tpyapp namespace (in source).
 
         Wraps the definition in the appropriate namespace and adds a using-directive
-        to access the tpy_user module symbols.
+        to access the tpyapp module symbols.
         """
         if func.is_stub:
             return

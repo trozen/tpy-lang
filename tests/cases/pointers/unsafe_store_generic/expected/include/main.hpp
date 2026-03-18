@@ -2,11 +2,11 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
-#include "tpy/unsafe.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
+#include "tpystd/tpy/unsafe.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Point;
 
@@ -45,4 +45,4 @@ void store_at(T* p, uint32_t idx, ::tpy::param_val_or_ref_t<T> val) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

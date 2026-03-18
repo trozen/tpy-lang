@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 template<typename T> struct Container;
 template<typename A, typename B> struct Pair;
@@ -72,4 +72,4 @@ template<typename T>
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

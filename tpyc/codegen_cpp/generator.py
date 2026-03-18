@@ -823,12 +823,19 @@ class CodeGenerator:
     def _module_to_include_path(self, module_name: str) -> str:
         """Convert dotted module name to include path.
 
+        Checks include path map first (derived from cpp_namespace or explicit
+        cpp_include_path directive), falls back to module-name-based path.
+
         Args:
             module_name: Dotted module name (e.g., "mypackage.submod").
 
         Returns:
-            Include path (e.g., "mypackage/submod.hpp").
+            Include path (e.g., "tpystd/tpy.hpp" or "mypackage/submod.hpp").
         """
+        from .context import get_include_path
+        override = get_include_path(module_name)
+        if override is not None:
+            return override
         parts = module_name.split('.')
         if len(parts) == 1:
             return f"{parts[0]}.hpp"
@@ -883,7 +890,7 @@ class CodeGenerator:
                 included.add(user_mod)
         out.write("\n")
 
-        # Native global extern declarations go before the tpy_user namespace
+        # Native global extern declarations go before the tpyapp namespace
         if native_globals:
             for stmt in native_globals:
                 cpp_name = stmt.native_name or stmt.name

@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::utils {
+namespace tpyapp::utils {
 
 struct Point;
 
@@ -35,4 +35,4 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::utils
+} // namespace tpyapp::utils

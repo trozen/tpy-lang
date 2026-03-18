@@ -2,17 +2,17 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct CounterIter;
 struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy_user::typing::Iterable<int32_t> T_items>
+template<::tpystd::typing::Iterable<int32_t> T_items>
 int32_t sum_items(T_items& items);
 void main();
 
@@ -82,7 +82,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 // def sum_items(items: Iterable[Int32]) -> Int32:
-template<::tpy_user::typing::Iterable<int32_t> T_items>
+template<::tpystd::typing::Iterable<int32_t> T_items>
 int32_t sum_items(T_items& items) {
     // total: Int32 = 0
     int32_t total = 0;
@@ -101,4 +101,4 @@ int32_t sum_items(T_items& items) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

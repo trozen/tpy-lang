@@ -4,13 +4,13 @@
 #include <tpy/tpy.hpp>
 #include <SDL2/SDL.h>
 
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
 extern "C" int32_t SDL_Init(int32_t flags);
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main

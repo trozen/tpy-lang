@@ -2,11 +2,11 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 #include "pet.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 // @dynamic
 // class NamedPet(Pet, Protocol):
@@ -16,15 +16,15 @@ concept __NamedPet_Concept__ = requires(T& t) {
     { t.speak() } -> std::convertible_to<std::string_view>;
 };
 
-struct NamedPet : ::tpy_user::pet::Pet {
+struct NamedPet : ::tpyapp::pet::Pet {
     virtual std::string name() = 0;
     virtual ~NamedPet() = default;
 };
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
-template<tpy_user::main::__NamedPet_Concept__ T>
-struct tpy::Adapter<tpy_user::main::NamedPet, T> : tpy_user::main::NamedPet {
+template<tpyapp::main::__NamedPet_Concept__ T>
+struct tpy::Adapter<tpyapp::main::NamedPet, T> : tpyapp::main::NamedPet {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
@@ -32,22 +32,22 @@ struct tpy::Adapter<tpy_user::main::NamedPet, T> : tpy_user::main::NamedPet {
     std::string speak() override { return std::string(inner.speak()); }
 };
 
-template<tpy_user::main::__NamedPet_Concept__ T>
-struct tpy::RefAdapter<tpy_user::main::NamedPet, T> : tpy_user::main::NamedPet {
+template<tpyapp::main::__NamedPet_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::NamedPet, T> : tpyapp::main::NamedPet {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
     std::string name() override { return std::string(inner.name()); }
     std::string speak() override { return std::string(inner.speak()); }
 };
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Dog;
 struct Parrot;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void greet_pet(::tpy_user::pet::Pet& pet);
+void greet_pet(::tpyapp::pet::Pet& pet);
 void greet_named(NamedPet& pet);
 void main();
 
@@ -98,4 +98,4 @@ inline std::ostream& operator<<(std::ostream& os, const Parrot& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

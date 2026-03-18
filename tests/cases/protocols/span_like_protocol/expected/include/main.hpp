@@ -2,19 +2,19 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Buffer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy_user::tpy::ReadOnlySpanLike<int32_t> T_c>
+template<::tpystd::tpy::ReadOnlySpanLike<int32_t> T_c>
 int32_t sum_span(const T_c& c);
 int32_t accept_ro(std::span<const int32_t> s);
-template<::tpy_user::tpy::ReadOnlySpanLike<int32_t> T_c>
+template<::tpystd::tpy::ReadOnlySpanLike<int32_t> T_c>
 int32_t test_pass_to_ro_span(const T_c& c);
 void main();
 
@@ -49,7 +49,7 @@ inline std::ostream& operator<<(std::ostream& os, const Buffer& obj) {
 }
 
 // def sum_span(c: ReadOnlySpanLike[Int32]) -> Int32:
-template<::tpy_user::tpy::ReadOnlySpanLike<int32_t> T_c>
+template<::tpystd::tpy::ReadOnlySpanLike<int32_t> T_c>
 int32_t sum_span(const T_c& c) {
     // total: Int32 = 0
     int32_t total = 0;
@@ -67,11 +67,11 @@ int32_t sum_span(const T_c& c) {
     return total;
 }
 // def test_pass_to_ro_span(c: ReadOnlySpanLike[Int32]) -> Int32:
-template<::tpy_user::tpy::ReadOnlySpanLike<int32_t> T_c>
+template<::tpystd::tpy::ReadOnlySpanLike<int32_t> T_c>
 int32_t test_pass_to_ro_span(const T_c& c) {
     // return accept_ro(c)
     return accept_ro(::tpy::as_span(c));
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

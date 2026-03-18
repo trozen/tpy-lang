@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Container;
 struct MixedContainer;
@@ -13,14 +13,14 @@ template<typename T> struct GenericContainer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy_user::typing::Sized T_items, typename T_extra = std::nullptr_t>
-  requires (std::same_as<T_extra, std::nullptr_t> || ::tpy_user::typing::Sized<T_extra>)
+template<::tpystd::typing::Sized T_items, typename T_extra = std::nullptr_t>
+  requires (std::same_as<T_extra, std::nullptr_t> || ::tpystd::typing::Sized<T_extra>)
 ::tpy::BigInt count_items(const T_items& items, const T_extra* extra = nullptr);
 template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
 ::tpy::BigInt only_optional(const T_items* items = nullptr);
-template<::tpy_user::typing::Sequence<::tpy::BigInt> T_items, typename T_extra = std::nullptr_t>
-  requires (std::same_as<T_extra, std::nullptr_t> || ::tpy_user::typing::Sequence<T_extra, ::tpy::BigInt>)
+template<::tpystd::typing::Sequence<::tpy::BigInt> T_items, typename T_extra = std::nullptr_t>
+  requires (std::same_as<T_extra, std::nullptr_t> || ::tpystd::typing::Sequence<T_extra, ::tpy::BigInt>)
 ::tpy::BigInt sum_optional(const T_items& items, const T_extra* extra = nullptr);
 void main();
 
@@ -32,7 +32,7 @@ struct Container {
     // def __init__(self, items: Optional[Sized] = None) -> None:
     Container() : Container(static_cast<std::nullptr_t*>(nullptr)) {}
     template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
     explicit Container(const T_items* items = nullptr) {
         // if items is not None:
         if constexpr (!std::same_as<T_items, std::nullptr_t>) {
@@ -46,8 +46,8 @@ struct Container {
     }
 
     // def update(self, items: Sized, extra: Optional[Sized] = None) -> None:
-    template<::tpy_user::typing::Sized T_items, typename T_extra = std::nullptr_t>
-  requires (std::same_as<T_extra, std::nullptr_t> || ::tpy_user::typing::Sized<T_extra>)
+    template<::tpystd::typing::Sized T_items, typename T_extra = std::nullptr_t>
+  requires (std::same_as<T_extra, std::nullptr_t> || ::tpystd::typing::Sized<T_extra>)
     void update(const T_items& items, const T_extra* extra = nullptr) {
         // self.count = len(items)
         this->count = ::tpy::BigInt(::tpy::__len__(items));
@@ -74,8 +74,8 @@ struct MixedContainer {
 
     // def __init__(self, items: Sized, extra: Optional[Sized] = None) -> None:
     MixedContainer() = default;
-    template<::tpy_user::typing::Sized T_items, typename T_extra = std::nullptr_t>
-  requires (std::same_as<T_extra, std::nullptr_t> || ::tpy_user::typing::Sized<T_extra>)
+    template<::tpystd::typing::Sized T_items, typename T_extra = std::nullptr_t>
+  requires (std::same_as<T_extra, std::nullptr_t> || ::tpystd::typing::Sized<T_extra>)
     explicit MixedContainer(const T_items& items, const T_extra* extra = nullptr) : count(::tpy::BigInt(::tpy::__len__(items))) {
         // if extra is not None:
         if constexpr (!std::same_as<T_extra, std::nullptr_t>) {
@@ -102,7 +102,7 @@ struct GenericContainer {
     // def __init__(self, items: Optional[Sized] = None) -> None:
     GenericContainer() : GenericContainer(static_cast<std::nullptr_t*>(nullptr)) {}
     template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
     explicit GenericContainer(const T_items* items = nullptr) {
         // if items is not None:
         if constexpr (!std::same_as<T_items, std::nullptr_t>) {
@@ -125,8 +125,8 @@ inline std::ostream& operator<<(std::ostream& os, const GenericContainer<T>& obj
 }
 
 // def count_items(items: Sized, extra: Optional[Sized] = None) -> int:
-template<::tpy_user::typing::Sized T_items, typename T_extra>
-  requires (std::same_as<T_extra, std::nullptr_t> || ::tpy_user::typing::Sized<T_extra>)
+template<::tpystd::typing::Sized T_items, typename T_extra>
+  requires (std::same_as<T_extra, std::nullptr_t> || ::tpystd::typing::Sized<T_extra>)
 ::tpy::BigInt count_items(const T_items& items, const T_extra* extra) {
     // result: int = len(items)
     ::tpy::BigInt result = ::tpy::BigInt(::tpy::__len__(items));
@@ -140,7 +140,7 @@ template<::tpy_user::typing::Sized T_items, typename T_extra>
 }
 // def only_optional(items: Optional[Sized] = None) -> int:
 template<typename T_items>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
 ::tpy::BigInt only_optional(const T_items* items) {
     // if items is not None:
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
@@ -152,8 +152,8 @@ template<typename T_items>
 }
 // # Generic Optional[Protocol] param: Optional[Sequence[int]]
 // def sum_optional(items: Sequence[int], extra: Optional[Sequence[int]] = None) -> int:
-template<::tpy_user::typing::Sequence<::tpy::BigInt> T_items, typename T_extra>
-  requires (std::same_as<T_extra, std::nullptr_t> || ::tpy_user::typing::Sequence<T_extra, ::tpy::BigInt>)
+template<::tpystd::typing::Sequence<::tpy::BigInt> T_items, typename T_extra>
+  requires (std::same_as<T_extra, std::nullptr_t> || ::tpystd::typing::Sequence<T_extra, ::tpy::BigInt>)
 ::tpy::BigInt sum_optional(const T_items& items, const T_extra* extra) {
     // result: int = 0
     ::tpy::BigInt result = ::tpy::BigInt(0);
@@ -183,4 +183,4 @@ template<::tpy_user::typing::Sequence<::tpy::BigInt> T_items, typename T_extra>
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

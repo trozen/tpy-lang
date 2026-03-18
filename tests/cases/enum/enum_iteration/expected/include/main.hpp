@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 enum class Color : int32_t {
     Red = 0,
@@ -19,27 +19,27 @@ enum class Status : int32_t {
     Pending = 3,
 };
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
 template<>
-struct tpy::EnumUtil<tpy_user::main::Color> {
-    static std::string_view name(tpy_user::main::Color e);
-    static const std::array<tpy_user::main::Color, 3> members;
-    static tpy_user::main::Color from_value(int32_t v);
-    static tpy_user::main::Color from_name(std::string_view s);
-    static std::optional<tpy_user::main::Color> try_parse(std::string_view s);
+struct tpy::EnumUtil<tpyapp::main::Color> {
+    static std::string_view name(tpyapp::main::Color e);
+    static const std::array<tpyapp::main::Color, 3> members;
+    static tpyapp::main::Color from_value(int32_t v);
+    static tpyapp::main::Color from_name(std::string_view s);
+    static std::optional<tpyapp::main::Color> try_parse(std::string_view s);
 };
 
 template<>
-struct tpy::EnumUtil<tpy_user::main::Status> {
-    static std::string_view name(tpy_user::main::Status e);
-    static const std::array<tpy_user::main::Status, 3> members;
-    static tpy_user::main::Status from_value(int32_t v);
-    static tpy_user::main::Status from_name(std::string_view s);
-    static std::optional<tpy_user::main::Status> try_parse(std::string_view s);
+struct tpy::EnumUtil<tpyapp::main::Status> {
+    static std::string_view name(tpyapp::main::Status e);
+    static const std::array<tpyapp::main::Status, 3> members;
+    static tpyapp::main::Status from_value(int32_t v);
+    static tpyapp::main::Status from_name(std::string_view s);
+    static std::optional<tpyapp::main::Status> try_parse(std::string_view s);
 };
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Color __e) {
     return __os << "Color." << ::tpy::EnumUtil<Color>::name(__e);
@@ -56,4 +56,4 @@ void count_members();
 void main();
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

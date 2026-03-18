@@ -2,12 +2,12 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
-#include "tpy/mem.hpp"
-#include "tpy/unsafe.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
+#include "tpystd/tpy/mem.hpp"
+#include "tpystd/tpy/unsafe.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Point;
 
@@ -40,4 +40,4 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

@@ -2,8 +2,8 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 #include "mypkg.hpp"
 #include "mypkg/utils.hpp"
 

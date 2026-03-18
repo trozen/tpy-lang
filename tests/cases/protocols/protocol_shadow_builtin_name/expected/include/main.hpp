@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 // class Comparable(Protocol):
 template<typename T>
@@ -19,18 +19,18 @@ enum class Priority : int32_t {
     HIGH = 3,
 };
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
 template<>
-struct tpy::EnumUtil<tpy_user::main::Priority> {
-    static std::string_view name(tpy_user::main::Priority e);
-    static const std::array<tpy_user::main::Priority, 3> members;
-    static tpy_user::main::Priority from_value(int32_t v);
-    static tpy_user::main::Priority from_name(std::string_view s);
-    static std::optional<tpy_user::main::Priority> try_parse(std::string_view s);
+struct tpy::EnumUtil<tpyapp::main::Priority> {
+    static std::string_view name(tpyapp::main::Priority e);
+    static const std::array<tpyapp::main::Priority, 3> members;
+    static tpyapp::main::Priority from_value(int32_t v);
+    static tpyapp::main::Priority from_name(std::string_view s);
+    static std::optional<tpyapp::main::Priority> try_parse(std::string_view s);
 };
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Priority __e) {
     return __os << "Priority." << ::tpy::EnumUtil<Priority>::name(__e);
@@ -75,4 +75,4 @@ int32_t use_user_comparable(T_x& x) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

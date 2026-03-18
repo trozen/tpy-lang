@@ -2,15 +2,15 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
-#include "tpy/mem.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
+#include "tpystd/tpy/mem.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 extern UninitArrayStorage<int32_t, 2>* a;
 extern UninitHeapStorage<int32_t>* h;
 inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 enum class Direction : int32_t {
     North = 0,
@@ -16,18 +16,18 @@ enum class Direction : int32_t {
     Down = 5,
 };
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
 template<>
-struct tpy::EnumUtil<tpy_user::main::Direction> {
-    static std::string_view name(tpy_user::main::Direction e);
-    static const std::array<tpy_user::main::Direction, 6> members;
-    static tpy_user::main::Direction from_value(int32_t v);
-    static tpy_user::main::Direction from_name(std::string_view s);
-    static std::optional<tpy_user::main::Direction> try_parse(std::string_view s);
+struct tpy::EnumUtil<tpyapp::main::Direction> {
+    static std::string_view name(tpyapp::main::Direction e);
+    static const std::array<tpyapp::main::Direction, 6> members;
+    static tpyapp::main::Direction from_value(int32_t v);
+    static tpyapp::main::Direction from_name(std::string_view s);
+    static std::optional<tpyapp::main::Direction> try_parse(std::string_view s);
 };
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Direction __e) {
     return __os << "Direction." << ::tpy::EnumUtil<Direction>::name(__e);
@@ -39,4 +39,4 @@ void try_it(std::string_view name);
 void main();
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

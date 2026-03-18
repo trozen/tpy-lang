@@ -2,11 +2,11 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
-#include "tpy/unsafe.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
+#include "tpystd/tpy/unsafe.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Base;
 struct Child;
@@ -114,4 +114,4 @@ inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

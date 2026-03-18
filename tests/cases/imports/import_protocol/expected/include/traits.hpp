@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::traits {
+namespace tpyapp::traits {
 
 // class Printable(Protocol):
 template<typename T>
@@ -16,4 +16,4 @@ concept Printable = requires(T& t) {
 inline constexpr std::string_view __name__ = "traits";
 
 void __tpy_init();
-} // namespace tpy_user::traits
+} // namespace tpyapp::traits

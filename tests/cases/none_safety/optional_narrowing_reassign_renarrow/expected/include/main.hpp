@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -14,4 +14,4 @@ int32_t test_truthiness_short_circuit(std::optional<int32_t> a, std::optional<in
 int32_t test_is_not_none_short_circuit(std::optional<int32_t> a, std::optional<int32_t> b);
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Node;
 
@@ -70,4 +70,4 @@ void test_dict_ctor_nested_generic_warns(const std::vector<std::tuple<K, std::tu
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 extern ::tpy::ordered_set<int32_t>* s1;
 extern ::tpy::ordered_set<int32_t>* s2;
@@ -23,4 +23,4 @@ void test_literal_ternary(bool cond);
 void test_ternary_alias(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b, bool cond);
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

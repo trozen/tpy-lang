@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::helpers {
+namespace tpyapp::helpers {
 
 inline constexpr std::string_view __name__ = "helpers";
 
@@ -28,4 +28,4 @@ int32_t length(const std::vector<T>& items) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::helpers
+} // namespace tpyapp::helpers

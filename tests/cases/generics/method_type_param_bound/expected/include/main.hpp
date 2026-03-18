@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 template<typename T> struct Pair;
 
@@ -27,7 +27,7 @@ struct Pair {
 
     // def min_val[T: Comparable](self) -> T:
     ::tpy::val_or_ref_t<T> min_val()
-      requires ::tpy_user::tpy::Comparable<T> {
+      requires ::tpystd::tpy::Comparable<T> {
         // if self.a < self.b:
         if ((this->a < this->b)) {
             // return self.a
@@ -56,4 +56,4 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

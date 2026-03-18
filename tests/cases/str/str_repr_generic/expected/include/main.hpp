@@ -2,13 +2,13 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Pair;
-template<::tpy_user::tpy::Stringable T> struct Wrapper;
+template<::tpystd::tpy::Stringable T> struct Wrapper;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
 }
 
 // class Wrapper[T: Stringable]:
-template<::tpy_user::tpy::Stringable T>
+template<::tpystd::tpy::Stringable T>
 struct Wrapper {
     // value: T
     T value;
@@ -67,4 +67,4 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

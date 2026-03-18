@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 // @dynamic
 // class Counter(Protocol):
@@ -21,10 +21,10 @@ struct Counter {
     virtual ~Counter() = default;
 };
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
-template<tpy_user::main::__Counter_Concept__ T>
-struct tpy::Adapter<tpy_user::main::Counter, T> : tpy_user::main::Counter {
+template<tpyapp::main::__Counter_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Counter, T> : tpyapp::main::Counter {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
@@ -32,15 +32,15 @@ struct tpy::Adapter<tpy_user::main::Counter, T> : tpy_user::main::Counter {
     int32_t value() override { return inner.value(); }
 };
 
-template<tpy_user::main::__Counter_Concept__ T>
-struct tpy::RefAdapter<tpy_user::main::Counter, T> : tpy_user::main::Counter {
+template<tpyapp::main::__Counter_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Counter, T> : tpyapp::main::Counter {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
     void increment() override { inner.increment(); }
     int32_t value() override { return inner.value(); }
 };
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct MyCounter;
 struct Tally;
@@ -109,4 +109,4 @@ inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

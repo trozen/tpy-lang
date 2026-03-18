@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 extern std::vector<::tpy::BigInt>* result;
 inline constexpr std::string_view __name__ = "__main__";
@@ -22,4 +22,4 @@ void test_param_overrides_inferred();
 void test_alias_inference();
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

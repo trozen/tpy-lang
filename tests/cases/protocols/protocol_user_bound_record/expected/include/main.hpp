@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 // # User-defined protocol
 // class Printable(Protocol):
@@ -108,4 +108,4 @@ Container<Message> create_container(::tpy::param_val_or_ref_t<F> factory, std::s
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

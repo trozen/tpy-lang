@@ -2,24 +2,24 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy_user::typing::Sized T_items>
+template<::tpystd::typing::Sized T_items>
 void describe(const T_items& items);
-template<::tpy_user::typing::Sized T_items>
+template<::tpystd::typing::Sized T_items>
 void check_not(const T_items& items);
 void main();
 
 // def describe(items: Sized) -> None:
-template<::tpy_user::typing::Sized T_items>
+template<::tpystd::typing::Sized T_items>
 void describe(const T_items& items) {
     // if isinstance(items, Sized):
-    if constexpr (::tpy_user::typing::Sized<T_items>) {
+    if constexpr (::tpystd::typing::Sized<T_items>) {
         // print("sized:", len(items))
         std::cout << "sized:" << " " << ::tpy::__len__(items) << "\n";
     // else:
@@ -29,10 +29,10 @@ void describe(const T_items& items) {
     }
 }
 // def check_not(items: Sized) -> None:
-template<::tpy_user::typing::Sized T_items>
+template<::tpystd::typing::Sized T_items>
 void check_not(const T_items& items) {
     // if not isinstance(items, Sized):
-    if constexpr ((!(::tpy_user::typing::Sized<T_items>))) {
+    if constexpr ((!(::tpystd::typing::Sized<T_items>))) {
         // print("not sized")
         std::cout << "not sized" << "\n";
     // else:
@@ -43,4 +43,4 @@ void check_not(const T_items& items) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

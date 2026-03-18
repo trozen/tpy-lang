@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 template<typename A, typename B> struct Pair;
 
@@ -55,4 +55,4 @@ Pair<A, B> create_pair(::tpy::param_val_or_ref_t<A> a, ::tpy::param_val_or_ref_t
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

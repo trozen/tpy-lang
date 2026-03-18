@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 template<typename T> struct Container;
 
@@ -31,7 +31,7 @@ struct Container {
 
     // def is_sorted[T: Comparable](self) -> bool:
     bool is_sorted() const
-      requires ::tpy_user::tpy::Comparable<T> {
+      requires ::tpystd::tpy::Comparable<T> {
         // i: Int32 = Int32(1)
         int32_t i = 1;
         // while i < Int32(len(self.items)):
@@ -58,4 +58,4 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Counter;
 struct DoubleCounter;
@@ -13,7 +13,7 @@ struct GrandChild;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy_user::typing::Iterator<int32_t> T_it>
+template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t consume(T_it& it);
 void main();
 
@@ -88,7 +88,7 @@ inline std::ostream& operator<<(std::ostream& os, const GrandChild& obj) {
 }
 
 // def consume(it: Iterator[Int32]) -> Int32:
-template<::tpy_user::typing::Iterator<int32_t> T_it>
+template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t consume(T_it& it) {
     // total: Int32 = 0
     int32_t total = 0;
@@ -106,4 +106,4 @@ int32_t consume(T_it& it) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

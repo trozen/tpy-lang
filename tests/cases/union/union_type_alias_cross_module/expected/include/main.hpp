@@ -2,18 +2,18 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 #include "shapes.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-using ::tpy_user::shapes::Shape;
+using ::tpyapp::shapes::Shape;
 
-std::string describe(const std::variant<::tpy_user::shapes::Circle*, ::tpy_user::shapes::Rect*> s);
+std::string describe(const std::variant<::tpyapp::shapes::Circle*, ::tpyapp::shapes::Rect*> s);
 void main();
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

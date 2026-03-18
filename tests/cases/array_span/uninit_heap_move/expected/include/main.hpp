@@ -2,11 +2,11 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
-#include "tpy/mem.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
+#include "tpystd/tpy/mem.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 extern ::tpy::UninitHeapStorage<int32_t>* storage;
 inline constexpr std::string_view __name__ = "__main__";
@@ -16,4 +16,4 @@ int32_t consume(::tpy::UninitHeapStorage<int32_t>&& s);
 void test_pass_own();
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

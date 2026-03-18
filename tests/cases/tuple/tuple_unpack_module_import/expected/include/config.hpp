@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::config {
+namespace tpyapp::config {
 
 extern int32_t lo;
 extern int32_t hi;
@@ -14,4 +14,4 @@ inline constexpr std::string_view __name__ = "config";
 std::tuple<int32_t, int32_t> get_bounds();
 
 void __tpy_init();
-} // namespace tpy_user::config
+} // namespace tpyapp::config

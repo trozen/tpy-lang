@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -14,4 +14,4 @@ void test_augassign();
 void test_reassign_from_owned();
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

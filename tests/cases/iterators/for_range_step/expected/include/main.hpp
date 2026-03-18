@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 extern int32_t n;
 inline constexpr std::string_view __name__ = "__main__";
@@ -13,4 +13,4 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t sum_range_step(int32_t start, int32_t stop, int32_t step);
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

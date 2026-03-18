@@ -2,15 +2,15 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
-#include "tplib.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
+#include "tpystd/tplib.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy_user::tpy::ReadOnlySpanLike<int32_t> T_c>
+template<::tpystd::tpy::ReadOnlySpanLike<int32_t> T_c>
 int32_t sum_span(const T_c& c);
 void test_list();
 void test_array();
@@ -19,7 +19,7 @@ void test_ro_span();
 void test_arraylist();
 
 // def sum_span(c: ReadOnlySpanLike[Int32]) -> Int32:
-template<::tpy_user::tpy::ReadOnlySpanLike<int32_t> T_c>
+template<::tpystd::tpy::ReadOnlySpanLike<int32_t> T_c>
 int32_t sum_span(const T_c& c) {
     // total: Int32 = 0
     int32_t total = 0;
@@ -38,4 +38,4 @@ int32_t sum_span(const T_c& c) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

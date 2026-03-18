@@ -2,16 +2,16 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy_user::tpy::Deref<int32_t> T_p>
+template<::tpystd::tpy::Deref<int32_t> T_p>
 int32_t deref_protocol(const T_p& p);
 void main();
 
@@ -43,11 +43,11 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 // def deref_protocol(p: Deref[Int32]) -> Int32:
-template<::tpy_user::tpy::Deref<int32_t> T_p>
+template<::tpystd::tpy::Deref<int32_t> T_p>
 int32_t deref_protocol(const T_p& p) {
     // return deref(p)
     return ::tpy::deref_check(p);
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

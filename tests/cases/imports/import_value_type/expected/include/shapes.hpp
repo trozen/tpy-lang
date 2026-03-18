@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::shapes {
+namespace tpyapp::shapes {
 
 struct Vec2;
 
@@ -29,11 +29,11 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
     return os;
 }
 
-} // namespace tpy_user::shapes
+} // namespace tpyapp::shapes
 
-template<> struct tpy::is_value_type<tpy_user::shapes::Vec2> : std::true_type {};
+template<> struct tpy::is_value_type<tpyapp::shapes::Vec2> : std::true_type {};
 
-namespace tpy_user::shapes {
+namespace tpyapp::shapes {
 
 void __tpy_init();
-} // namespace tpy_user::shapes
+} // namespace tpyapp::shapes

@@ -2,27 +2,27 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
 int32_t count_if_sized(const T_items* items = nullptr);
 template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::tpy::ReadOnlySpanLike<T_items, int32_t>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::tpy::ReadOnlySpanLike<T_items, int32_t>)
 int32_t sum_span(const T_items* items = nullptr);
 template<typename T_items = std::nullptr_t>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
 int32_t check_not(const T_items* items = nullptr);
 void main();
 
 // def count_if_sized(items: Sized | None = None) -> Int32:
 template<typename T_items>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
 int32_t count_if_sized(const T_items* items) {
     // if isinstance(items, Sized):
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
@@ -34,7 +34,7 @@ int32_t count_if_sized(const T_items* items) {
 }
 // def sum_span(items: ReadOnlySpanLike[Int32] | None = None) -> Int32:
 template<typename T_items>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::tpy::ReadOnlySpanLike<T_items, int32_t>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::tpy::ReadOnlySpanLike<T_items, int32_t>)
 int32_t sum_span(const T_items* items) {
     // if isinstance(items, ReadOnlySpanLike):
     if constexpr (!std::same_as<T_items, std::nullptr_t>) {
@@ -57,7 +57,7 @@ int32_t sum_span(const T_items* items) {
 }
 // def check_not(items: Sized | None = None) -> Int32:
 template<typename T_items>
-  requires (std::same_as<T_items, std::nullptr_t> || ::tpy_user::typing::Sized<T_items>)
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
 int32_t check_not(const T_items* items) {
     // if not isinstance(items, Sized):
     if constexpr (std::same_as<T_items, std::nullptr_t>) {
@@ -69,4 +69,4 @@ int32_t check_not(const T_items* items) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 extern int32_t call_count;
 inline constexpr std::string_view __name__ = "__main__";
@@ -26,4 +26,4 @@ void test_single_eval();
 void test_short_circuit_operands();
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

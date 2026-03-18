@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 // # Test 2: User-defined protocol
 // class Stringable(Protocol):
@@ -37,21 +37,21 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy_user::typing::Sized T>
+template<::tpystd::typing::Sized T>
 int32_t get_length(::tpy::param_val_or_ref_t<T> item);
 template<Stringable T>
 std::string stringify(::tpy::param_val_or_ref_t<T> item);
-template<::tpy_user::typing::Sized T, Stringable U>
+template<::tpystd::typing::Sized T, Stringable U>
 int32_t process_both(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b);
 template<MultiMethod T>
 void use_multi(::tpy::param_val_or_ref_t<T> item);
-template<::tpy_user::typing::Sized T>
+template<::tpystd::typing::Sized T>
 int32_t inner_len(::tpy::param_val_or_ref_t<T> x);
-template<::tpy_user::typing::Sized T>
+template<::tpystd::typing::Sized T>
 int32_t outer_len(::tpy::param_val_or_ref_t<T> x);
 template<Clonable T>
 T clone_it(::tpy::param_val_or_ref_t<T> item);
-template<::tpy_user::tpy::Comparable T>
+template<::tpystd::tpy::Comparable T>
 bool is_less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 void main();
 
@@ -200,7 +200,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // # Test 1: Builtin protocol (Sized) method call inside generic function
 // def get_length[T: Sized](item: T) -> Int32:
-template<::tpy_user::typing::Sized T>
+template<::tpystd::typing::Sized T>
 int32_t get_length(::tpy::param_val_or_ref_t<T> item) {
     // return len(item)
     return ::tpy::__len__(item);
@@ -214,7 +214,7 @@ std::string stringify(::tpy::param_val_or_ref_t<T> item) {
 }
 // # Test 6: Multiple type params with different bounds
 // def process_both[T: Sized, U: Stringable](a: T, b: U) -> Int32:
-template<::tpy_user::typing::Sized T, Stringable U>
+template<::tpystd::typing::Sized T, Stringable U>
 int32_t process_both(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
     // print(b.to_str())
     std::cout << b.to_str() << "\n";
@@ -231,13 +231,13 @@ void use_multi(::tpy::param_val_or_ref_t<T> item) {
 }
 // # Test 8: Nested bounded calls (passing bounded param to another bounded function)
 // def inner_len[T: Sized](x: T) -> Int32:
-template<::tpy_user::typing::Sized T>
+template<::tpystd::typing::Sized T>
 int32_t inner_len(::tpy::param_val_or_ref_t<T> x) {
     // return len(x)
     return ::tpy::__len__(x);
 }
 // def outer_len[T: Sized](x: T) -> Int32:
-template<::tpy_user::typing::Sized T>
+template<::tpystd::typing::Sized T>
 int32_t outer_len(::tpy::param_val_or_ref_t<T> x) {
     // return inner_len(x)
     return inner_len<T>(x);
@@ -250,11 +250,11 @@ T clone_it(::tpy::param_val_or_ref_t<T> item) {
 }
 // # Test 10: Builtin protocol with Self (Comparable has __lt__(Self) -> bool)
 // def is_less[T: Comparable](a: T, b: T) -> bool:
-template<::tpy_user::tpy::Comparable T>
+template<::tpystd::tpy::Comparable T>
 bool is_less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     // return a < b  # Uses __lt__ which takes Self parameter
     return (a < b);
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

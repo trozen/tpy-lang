@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 // @dynamic
 // class Speaker(Protocol):
@@ -19,24 +19,24 @@ struct Speaker {
     virtual ~Speaker() = default;
 };
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
-template<tpy_user::main::__Speaker_Concept__ T>
-struct tpy::Adapter<tpy_user::main::Speaker, T> : tpy_user::main::Speaker {
+template<tpyapp::main::__Speaker_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Speaker, T> : tpyapp::main::Speaker {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     std::string speak() override { return std::string(inner.speak()); }
 };
 
-template<tpy_user::main::__Speaker_Concept__ T>
-struct tpy::RefAdapter<tpy_user::main::Speaker, T> : tpy_user::main::Speaker {
+template<tpyapp::main::__Speaker_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Speaker, T> : tpyapp::main::Speaker {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
     std::string speak() override { return std::string(inner.speak()); }
 };
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Dog;
 
@@ -64,4 +64,4 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

@@ -2119,7 +2119,7 @@ def bad() -> Pet:
 
 **`Optional[Pet]` rejection** -- `Optional` of a `@dynamic` protocol is a sema error (until `Box[P]` exists for heap-owned dynamic values).
 
-**Cross-module** -- `@dynamic` protocols can be defined in one module and imported in another. The compiler generates fully qualified C++ names (e.g., `::tpy_user::pets::Pet`).
+**Cross-module** -- `@dynamic` protocols can be defined in one module and imported in another. The compiler generates fully qualified C++ names (e.g., `::tpyapp::pets::Pet`).
 
 **Protocol inheritance** -- a `@dynamic` protocol can extend another `@dynamic` protocol. The base class inherits from the parent's base (`struct NamedPet : Pet`), so a `NamedPet`-typed value can be passed to a `Pet`-typed parameter via implicit C++ upcast:
 
@@ -3035,13 +3035,13 @@ def duplicate[T: Clonable](item: T) -> Own[T]:
 
 Generated C++ (concept-constrained templates):
 ```cpp
-// Protocols from typing/tpy generate concepts in tpy_user::typing/tpy_user::tpy namespaces
-template<tpy_user::typing::Sized T>
+// Stdlib protocols generate concepts in the tpystd:: namespace
+template<tpystd::typing::Sized T>
 int32_t get_length(const T& items) {
     return ::tpy::__len__(items);
 }
 
-template<tpy_user::tpy::Comparable T>
+template<tpystd::tpy::Comparable T>
 struct SortedContainer {
     std::vector<T> data;
     void add(const T& item) { ... }
@@ -4016,7 +4016,7 @@ Each module initializes only once (double-init guard prevents diamond dependency
 main.py:1: warning: import 'math' shadows builtin module
 ```
 
-**C++ mapping:** Each module gets its own namespace (`tpy_user::utils::Point`). Cross-module references use fully qualified names. Package modules use nested namespaces (`tpy_user::mypackage::submod::func`).
+**C++ mapping:** Each module gets its own namespace (`tpyapp::utils::Point`). Cross-module references use fully qualified names. Package modules use nested namespaces (`tpyapp::mypackage::submod::func`).
 
 ### Packages (Working)
 
@@ -4050,8 +4050,8 @@ from mypackage.inner.core import helper
 **Package initialization:** Parent package `__init__` files are discovered and initialized before submodules, matching Python import semantics. When importing `from mypackage.submod import X`, the `mypackage/__init__` is executed first (side effects like `print()` run), then the submodule is initialized.
 
 **C++ mapping:**
-- `mypackage/__init__.py` → `namespace tpy_user::mypackage`
-- `mypackage/utils.py` → `namespace tpy_user::mypackage::utils`
+- `mypackage/__init__.py` → `namespace tpyapp::mypackage`
+- `mypackage/utils.py` → `namespace tpyapp::mypackage::utils`
 - Output structure: `__tpyc__/mypackage/utils.d/utils.{hpp,cpp}`
 
 ### Relative Imports (Working)
@@ -4123,18 +4123,18 @@ print(VERSION)         # Package variable
 **C++ implementation:** Re-exported items use `using` declarations and reference aliases:
 ```cpp
 // mypackage.hpp (generated)
-namespace tpy_user::mypackage {
-  using tpy_user::mypackage::utils::add;    // Re-exported function
-  using tpy_user::mypackage::utils::Point;  // Re-exported record
-  inline auto& counter = tpy_user::mypackage::utils::counter;  // Re-exported variable
+namespace tpyapp::mypackage {
+  using tpyapp::mypackage::utils::add;    // Re-exported function
+  using tpyapp::mypackage::utils::Point;  // Re-exported record
+  inline auto& counter = tpyapp::mypackage::utils::counter;  // Re-exported variable
   extern int32_t VERSION;                    // Package's own variable
 }
 ```
 
 **Aliased re-exports:** When using import aliases (`from .utils import func as f`), different C++ constructs are used:
 ```cpp
-inline auto& f = tpy_user::mypackage::utils::func;    // Function alias
-using Pt = tpy_user::mypackage::utils::Point;         // Record alias
+inline auto& f = tpyapp::mypackage::utils::func;    // Function alias
+using Pt = tpyapp::mypackage::utils::Point;         // Record alias
 ```
 
 ### Standard Library Infrastructure (Working)
@@ -4460,7 +4460,7 @@ Compiler directives are special comments that must appear in the file preamble (
 - **`include(path)`** -- adds a C/C++ `#include` to the generated header. Quoted paths use `#include "..."`, angle-bracket paths (`<...>`) use `#include <...>`.
 - **`link(lib)` / `link(lib, platform=name)`** -- adds `-llib` linker flag. Optional `platform` filter: `"linux"`, `"macos"`, `"windows"`.
 - **`native_module`** -- marks the module as binding-only: only a `.hpp` header is generated (no `.cpp`). Use for modules that only declare `@native_c` function bindings.
-- **`cpp_namespace(name)`** -- overrides the C++ namespace for the module (replaces the default `tpy_user::module_name`). In `__init__.py`, child modules inherit the namespace with their relative name appended (e.g., `cpp_namespace("mypkg")` in `__init__.py` makes `pkg/foo.py` use `mypkg::foo`).
+- **`cpp_namespace(name)`** -- overrides the C++ namespace for the module (replaces the default `tpyapp::module_name`). In `__init__.py`, child modules inherit the namespace with their relative name appended (e.g., `cpp_namespace("mypkg")` in `__init__.py` makes `pkg/foo.py` use `mypkg::foo`).
 
 Unknown directives produce a warning. Directives after the first line of code produce a warning and are ignored.
 

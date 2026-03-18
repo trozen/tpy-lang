@@ -2,20 +2,20 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy_user::typing::Iterator<int32_t> T_it>
+template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t sum_iter(T_it& it);
-template<::tpy_user::typing::Iterator<int32_t> T_it>
+template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t count_iter(T_it& it);
-template<::tpy_user::typing::Iterator<int32_t> T_it>
+template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t first_or_fallback(T_it& it, int32_t fallback);
 
 // class Counter:
@@ -61,7 +61,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 // def sum_iter(it: Iterator[Int32]) -> Int32:
-template<::tpy_user::typing::Iterator<int32_t> T_it>
+template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t sum_iter(T_it& it) {
     // total: Int32 = 0
     int32_t total = 0;
@@ -78,7 +78,7 @@ int32_t sum_iter(T_it& it) {
     return total;
 }
 // def count_iter(it: Iterator[Int32]) -> Int32:
-template<::tpy_user::typing::Iterator<int32_t> T_it>
+template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t count_iter(T_it& it) {
     // n: Int32 = 0
     int32_t n = 0;
@@ -95,7 +95,7 @@ int32_t count_iter(T_it& it) {
     return n;
 }
 // def first_or_fallback(it: Iterator[Int32], fallback: Int32) -> Int32:
-template<::tpy_user::typing::Iterator<int32_t> T_it>
+template<::tpystd::typing::Iterator<int32_t> T_it>
 int32_t first_or_fallback(T_it& it, int32_t fallback) {
     // for x in it:
     auto& __iter_0 = it;
@@ -111,4 +111,4 @@ int32_t first_or_fallback(T_it& it, int32_t fallback) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

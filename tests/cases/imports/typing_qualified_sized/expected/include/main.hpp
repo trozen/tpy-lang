@@ -2,23 +2,23 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy_user::typing::Sized T_items>
+template<::tpystd::typing::Sized T_items>
 int32_t count(const T_items& items);
 void main();
 
 // def count(items: typing.Sized) -> Int32:
-template<::tpy_user::typing::Sized T_items>
+template<::tpystd::typing::Sized T_items>
 int32_t count(const T_items& items) {
     // return len(items)
     return ::tpy::__len__(items);
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

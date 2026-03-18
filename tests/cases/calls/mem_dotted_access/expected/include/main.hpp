@@ -2,11 +2,11 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
-#include "tpy/unsafe.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
+#include "tpystd/tpy/unsafe.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 extern std::array<int32_t, 4>* arr;
 extern int32_t* p;
@@ -15,4 +15,4 @@ extern int32_t val2;
 inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

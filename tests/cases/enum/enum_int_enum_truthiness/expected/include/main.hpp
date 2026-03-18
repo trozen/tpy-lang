@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 enum class Status : int32_t {
     Off = 0,
@@ -13,18 +13,18 @@ enum class Status : int32_t {
     Standby = 2,
 };
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
 template<>
-struct tpy::EnumUtil<tpy_user::main::Status> {
-    static std::string_view name(tpy_user::main::Status e);
-    static const std::array<tpy_user::main::Status, 3> members;
-    static tpy_user::main::Status from_value(int32_t v);
-    static tpy_user::main::Status from_name(std::string_view s);
-    static std::optional<tpy_user::main::Status> try_parse(std::string_view s);
+struct tpy::EnumUtil<tpyapp::main::Status> {
+    static std::string_view name(tpyapp::main::Status e);
+    static const std::array<tpyapp::main::Status, 3> members;
+    static tpyapp::main::Status from_value(int32_t v);
+    static tpyapp::main::Status from_name(std::string_view s);
+    static std::optional<tpyapp::main::Status> try_parse(std::string_view s);
 };
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, Status __e) {
     return __os << "Status." << ::tpy::EnumUtil<Status>::name(__e);
@@ -35,4 +35,4 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

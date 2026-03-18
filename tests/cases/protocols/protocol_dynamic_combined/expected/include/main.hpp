@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 // @dynamic
 // class Describable(Protocol):
@@ -31,39 +31,39 @@ struct Noise {
     virtual ~Noise() = default;
 };
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
-template<tpy_user::main::__Describable_Concept__ T>
-struct tpy::Adapter<tpy_user::main::Describable, T> : tpy_user::main::Describable {
+template<tpyapp::main::__Describable_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Describable, T> : tpyapp::main::Describable {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     std::string describe() override { return std::string(inner.describe()); }
 };
 
-template<tpy_user::main::__Describable_Concept__ T>
-struct tpy::RefAdapter<tpy_user::main::Describable, T> : tpy_user::main::Describable {
+template<tpyapp::main::__Describable_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Describable, T> : tpyapp::main::Describable {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
     std::string describe() override { return std::string(inner.describe()); }
 };
 
-template<tpy_user::main::__Noise_Concept__ T>
-struct tpy::Adapter<tpy_user::main::Noise, T> : tpy_user::main::Noise {
+template<tpyapp::main::__Noise_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Noise, T> : tpyapp::main::Noise {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     std::string make_noise() override { return std::string(inner.make_noise()); }
 };
 
-template<tpy_user::main::__Noise_Concept__ T>
-struct tpy::RefAdapter<tpy_user::main::Noise, T> : tpy_user::main::Noise {
+template<tpyapp::main::__Noise_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Noise, T> : tpyapp::main::Noise {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
     std::string make_noise() override { return std::string(inner.make_noise()); }
 };
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Dog;
 struct Cat;
@@ -121,4 +121,4 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

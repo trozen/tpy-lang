@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 // @dynamic
 // class Shape(Protocol):
@@ -23,10 +23,10 @@ struct Shape {
     virtual ~Shape() = default;
 };
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
-template<tpy_user::main::__Shape_Concept__ T>
-struct tpy::Adapter<tpy_user::main::Shape, T> : tpy_user::main::Shape {
+template<tpyapp::main::__Shape_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
@@ -35,8 +35,8 @@ struct tpy::Adapter<tpy_user::main::Shape, T> : tpy_user::main::Shape {
     void scale(double factor) override { inner.scale(factor); }
 };
 
-template<tpy_user::main::__Shape_Concept__ T>
-struct tpy::RefAdapter<tpy_user::main::Shape, T> : tpy_user::main::Shape {
+template<tpyapp::main::__Shape_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
     double area() override { return inner.area(); }
@@ -44,7 +44,7 @@ struct tpy::RefAdapter<tpy_user::main::Shape, T> : tpy_user::main::Shape {
     void scale(double factor) override { inner.scale(factor); }
 };
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Circle;
 
@@ -88,4 +88,4 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

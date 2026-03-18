@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Node;
 
@@ -51,4 +51,4 @@ void test_warn_update_generic(::tpy::ordered_map<std::string, V>& a, ::tpy::orde
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

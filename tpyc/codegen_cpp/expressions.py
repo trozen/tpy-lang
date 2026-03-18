@@ -1614,7 +1614,7 @@ class ExpressionGenerator:
         else:
             args = ", ".join(self.gen_expr_deref(a) for a in expr.args)
 
-        # Handle user module function calls: module.func() -> ::tpy_user::module::func()
+        # Handle user module function calls: module.func() -> ::tpyapp::module::func()
         if expr.user_module_call is not None:
             fi = expr.resolved_function_info
             # @cpp_template: expand inline regardless of module origin

@@ -2,20 +2,20 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy_user::typing::Iterable<int32_t> T_it>
+template<::tpystd::typing::Iterable<int32_t> T_it>
 int32_t sum_iterable(T_it& it);
 int32_t sum_readonly(std::span<const int32_t> rs);
 void main();
 
 // def sum_iterable(it: Iterable[Int32]) -> Int32:
-template<::tpy_user::typing::Iterable<int32_t> T_it>
+template<::tpystd::typing::Iterable<int32_t> T_it>
 int32_t sum_iterable(T_it& it) {
     // total: Int32 = 0
     int32_t total = 0;
@@ -34,4 +34,4 @@ int32_t sum_iterable(T_it& it) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

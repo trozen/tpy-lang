@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 extern char a;
 extern char b;
@@ -19,4 +19,4 @@ bool ne_left(std::optional<char> o, char c);
 bool ne_right(char c, std::optional<char> o);
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

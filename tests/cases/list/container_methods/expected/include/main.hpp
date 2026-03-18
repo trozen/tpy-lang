@@ -2,13 +2,13 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
-#include "tplib.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
+#include "tpystd/tplib.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
-extern ::tpy_user::tplib::ArrayList<int32_t, 8>* al;
+extern ::tpystd::tplib::ArrayList<int32_t, 8>* al;
 extern std::array<int32_t, 3>* arr;
 extern std::vector<int32_t>* nums;
 inline constexpr std::string_view __name__ = "__main__";
@@ -16,4 +16,4 @@ inline constexpr std::string_view __name__ = "__main__";
 void span_ops(std::span<int32_t> sp);
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

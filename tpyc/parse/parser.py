@@ -152,10 +152,11 @@ _DIRECTIVE_LINE_RE = re.compile(r'^#\s*tpy:\s+(\w.+)$')
 # Schema: (positional arg types, allowed keyword arg types)
 # Keys are the known directive names; unknown names produce a warning.
 _DIRECTIVE_SPECS: dict[str, tuple[list[type], dict[str, type]]] = {
-    "native_module": ([], {}),
-    "include":       ([str], {}),
-    "link":          ([str], {"platform": str}),
-    "cpp_namespace": ([str], {}),
+    "native_module":    ([], {}),
+    "include":          ([str], {}),
+    "link":             ([str], {"platform": str}),
+    "cpp_namespace":    ([str], {}),
+    "cpp_include_path": ([str], {}),
 }
 
 _CPP_NAMESPACE_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*(::[A-Za-z_][A-Za-z0-9_]*)*$')
@@ -218,6 +219,7 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
     link_libs: list[tuple[str, str | None]] = []
     native_module = False
     cpp_namespace: str | None = None
+    cpp_include_path: str | None = None
     warnings: list[ParseWarning] = []
 
     preamble_ended = False
@@ -266,9 +268,11 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
                 warnings.append(ParseWarning(
                     f"duplicate 'cpp_namespace' directive (previous: {cpp_namespace!r})", loc))
             cpp_namespace = ns_value
+        elif name == "cpp_include_path":
+            cpp_include_path = args[0]
 
     return ModuleDirectives(includes=includes, link_libs=link_libs, native_module=native_module,
-                            cpp_namespace=cpp_namespace), warnings
+                            cpp_namespace=cpp_namespace, cpp_include_path=cpp_include_path), warnings
 
 
 def _collect_bitor_arms(node: ast.BinOp) -> list[ast.expr]:

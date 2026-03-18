@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 enum class SmallEnum : int8_t {
     A = 0,
@@ -13,18 +13,18 @@ enum class SmallEnum : int8_t {
     C = 127,
 };
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
 template<>
-struct tpy::EnumUtil<tpy_user::main::SmallEnum> {
-    static std::string_view name(tpy_user::main::SmallEnum e);
-    static const std::array<tpy_user::main::SmallEnum, 3> members;
-    static tpy_user::main::SmallEnum from_value(int8_t v);
-    static tpy_user::main::SmallEnum from_name(std::string_view s);
-    static std::optional<tpy_user::main::SmallEnum> try_parse(std::string_view s);
+struct tpy::EnumUtil<tpyapp::main::SmallEnum> {
+    static std::string_view name(tpyapp::main::SmallEnum e);
+    static const std::array<tpyapp::main::SmallEnum, 3> members;
+    static tpyapp::main::SmallEnum from_value(int8_t v);
+    static tpyapp::main::SmallEnum from_name(std::string_view s);
+    static std::optional<tpyapp::main::SmallEnum> try_parse(std::string_view s);
 };
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline std::ostream& operator<<(std::ostream& __os, SmallEnum __e) {
     return __os << "SmallEnum." << ::tpy::EnumUtil<SmallEnum>::name(__e);
@@ -35,4 +35,4 @@ inline constexpr std::string_view __name__ = "__main__";
 void main();
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

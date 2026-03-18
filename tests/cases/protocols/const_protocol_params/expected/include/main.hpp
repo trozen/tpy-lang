@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 // class Measurable(Protocol):
 template<typename T>
@@ -32,24 +32,24 @@ struct Shape {
     virtual ~Shape() = default;
 };
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
-template<tpy_user::main::__Shape_Concept__ T>
-struct tpy::Adapter<tpy_user::main::Shape, T> : tpy_user::main::Shape {
+template<tpyapp::main::__Shape_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
     T inner;
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     int32_t area() const override { return inner.area(); }
 };
 
-template<tpy_user::main::__Shape_Concept__ T>
-struct tpy::RefAdapter<tpy_user::main::Shape, T> : tpy_user::main::Shape {
+template<tpyapp::main::__Shape_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
     int32_t area() const override { return inner.area(); }
 };
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 struct Rect;
 struct Box;
@@ -148,4 +148,4 @@ void copy_measure(const T_src& src, T_dst& dst) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 extern std::vector<int32_t>* pure_literals;
 extern std::vector<int32_t>* mixed_int32;
@@ -22,4 +22,4 @@ int32_t test_local_span();
 ::tpy::BigInt sum_span_bigint(std::span<::tpy::BigInt> nums);
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

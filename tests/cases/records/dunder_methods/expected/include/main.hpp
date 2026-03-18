@@ -2,16 +2,16 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
-#include "tplib.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
+#include "tpystd/tplib.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 extern std::vector<int32_t>* items;
-extern ::tpy_user::tplib::ArrayList<int32_t, 10>* al;
+extern ::tpystd::tplib::ArrayList<int32_t, 10>* al;
 extern std::array<int32_t, 3>* arr;
 inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

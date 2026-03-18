@@ -776,8 +776,10 @@ class ModuleDirectives:
     # Each entry: (lib_name, platform_filter_or_None)
     link_libs: list[tuple[str, str | None]] = field(default_factory=list)
     native_module: bool = False
-    # Override C++ namespace (replaces tpy_user::module_name)
+    # Override C++ namespace (replaces tpyapp::module_name)
     cpp_namespace: str | None = None
+    # Override C++ include path (default: derived from cpp_namespace or module name)
+    cpp_include_path: str | None = None
 
 
 @dataclass

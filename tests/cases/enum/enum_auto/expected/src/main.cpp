@@ -3,43 +3,43 @@
 
 namespace tpy {
 
-std::string_view EnumUtil<tpy_user::main::Direction>::name(tpy_user::main::Direction __e) {
+std::string_view EnumUtil<tpyapp::main::Direction>::name(tpyapp::main::Direction __e) {
     switch (__e) {
-        case tpy_user::main::Direction::North: return "North";
-        case tpy_user::main::Direction::South: return "South";
-        case tpy_user::main::Direction::East: return "East";
-        case tpy_user::main::Direction::West: return "West";
+        case tpyapp::main::Direction::North: return "North";
+        case tpyapp::main::Direction::South: return "South";
+        case tpyapp::main::Direction::East: return "East";
+        case tpyapp::main::Direction::West: return "West";
         default: tpy_panic("invalid enum value");
     }
 }
 
-const std::array<tpy_user::main::Direction, 4>
-EnumUtil<tpy_user::main::Direction>::members = {
-    tpy_user::main::Direction::North,
-    tpy_user::main::Direction::South,
-    tpy_user::main::Direction::East,
-    tpy_user::main::Direction::West,
+const std::array<tpyapp::main::Direction, 4>
+EnumUtil<tpyapp::main::Direction>::members = {
+    tpyapp::main::Direction::North,
+    tpyapp::main::Direction::South,
+    tpyapp::main::Direction::East,
+    tpyapp::main::Direction::West,
 };
 
-tpy_user::main::Direction EnumUtil<tpy_user::main::Direction>::from_value(int32_t __v) {
+tpyapp::main::Direction EnumUtil<tpyapp::main::Direction>::from_value(int32_t __v) {
     switch (__v) {
-        case 1: return tpy_user::main::Direction::North;
-        case 2: return tpy_user::main::Direction::South;
-        case 3: return tpy_user::main::Direction::East;
-        case 4: return tpy_user::main::Direction::West;
+        case 1: return tpyapp::main::Direction::North;
+        case 2: return tpyapp::main::Direction::South;
+        case 3: return tpyapp::main::Direction::East;
+        case 4: return tpyapp::main::Direction::West;
         default: tpy_panic("invalid value for enum 'Direction'");
     }
 }
 
-std::optional<tpy_user::main::Direction> EnumUtil<tpy_user::main::Direction>::try_parse(std::string_view __name) {
-    if (__name == "North") return tpy_user::main::Direction::North;
-    if (__name == "South") return tpy_user::main::Direction::South;
-    if (__name == "East") return tpy_user::main::Direction::East;
-    if (__name == "West") return tpy_user::main::Direction::West;
+std::optional<tpyapp::main::Direction> EnumUtil<tpyapp::main::Direction>::try_parse(std::string_view __name) {
+    if (__name == "North") return tpyapp::main::Direction::North;
+    if (__name == "South") return tpyapp::main::Direction::South;
+    if (__name == "East") return tpyapp::main::Direction::East;
+    if (__name == "West") return tpyapp::main::Direction::West;
     return std::nullopt;
 }
 
-tpy_user::main::Direction EnumUtil<tpy_user::main::Direction>::from_name(std::string_view __name) {
+tpyapp::main::Direction EnumUtil<tpyapp::main::Direction>::from_name(std::string_view __name) {
     auto __result = try_parse(__name);
     if (!__result.has_value()) tpy_panic("invalid name for enum 'Direction'");
     return *__result;
@@ -47,7 +47,7 @@ tpy_user::main::Direction EnumUtil<tpy_user::main::Direction>::from_name(std::st
 
 } // namespace tpy
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 
 // def main() -> None:
@@ -75,10 +75,10 @@ void __tpy_init() {
     main();
 }
 
-} // namespace tpy_user::main
+} // namespace tpyapp::main
 
 int main(int argc, char* argv[]) {
     ::tpy::init_sys_argv(argc, argv);
-    tpy_user::main::__tpy_init();
+    tpyapp::main::__tpy_init();
     return 0;
 }

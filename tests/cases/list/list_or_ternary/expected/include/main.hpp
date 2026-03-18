@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -25,4 +25,4 @@ void test_or_chain_alias(std::vector<int32_t>& a, std::vector<int32_t>& b, std::
 void test_ternary_alias(std::vector<int32_t>& a, std::vector<int32_t>& b, bool cond);
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

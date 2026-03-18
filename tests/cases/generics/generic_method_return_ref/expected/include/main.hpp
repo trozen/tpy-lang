@@ -2,11 +2,11 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
-#include "tplib.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
+#include "tpystd/tplib.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 // class Mutable(Protocol):
 template<typename T>
@@ -19,7 +19,7 @@ struct Point;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<Mutable T>
-void process(::tpy_user::tplib::Box<T>& box);
+void process(::tpystd::tplib::Box<T>& box);
 void test();
 
 // class Point:
@@ -47,7 +47,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 
 // def process[T: Mutable](box: Box[T]) -> None:
 template<Mutable T>
-void process(::tpy_user::tplib::Box<T>& box) {
+void process(::tpystd::tplib::Box<T>& box) {
     // item = box.get()  # tpyc: type(T)  -- val_or_ref_t<T>: Point& for records
     ::tpy::val_or_ref_t<T> item = box.get();
     // item.mutate()     # mutation through the reference
@@ -55,4 +55,4 @@ void process(::tpy_user::tplib::Box<T>& box) {
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

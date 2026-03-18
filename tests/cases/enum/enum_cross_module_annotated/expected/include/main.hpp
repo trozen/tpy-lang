@@ -2,17 +2,17 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 #include "colors.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string describe(::tpy_user::colors::Color c);
-::tpy_user::colors::Color default_color();
+std::string describe(::tpyapp::colors::Color c);
+::tpyapp::colors::Color default_color();
 void main();
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

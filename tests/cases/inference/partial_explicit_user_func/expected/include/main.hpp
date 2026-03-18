@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 template<typename T> struct Box;
 template<typename A, typename B> struct Wrapper;
@@ -66,4 +66,4 @@ Wrapper<A, B> wrap_with_tag(std::type_identity_t<A>&& inner, std::type_identity_
 }
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

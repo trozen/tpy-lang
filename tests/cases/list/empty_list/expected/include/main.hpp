@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 extern std::vector<::tpy::BigInt>* global_list;
 extern std::vector<int32_t>* global_list2;
@@ -17,4 +17,4 @@ int32_t test_empty_list_int32();
 int32_t test_list_constructor_int32();
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

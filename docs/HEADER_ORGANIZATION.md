@@ -41,10 +41,10 @@ references, and incomplete-type contexts.
 ```cpp
 #pragma once
 
-namespace tpy_user::container {
+namespace tpyapp::container {
 struct Point;
 template<typename T> struct Box;
-} // namespace tpy_user::container
+} // namespace tpyapp::container
 ```
 
 **Include this when:** a dependency's types appear only as pointer/reference
@@ -60,7 +60,7 @@ globals.
 #pragma once
 #include "module_fwd.hpp"
 
-namespace tpy_user::container {
+namespace tpyapp::container {
 
 struct Point {
   int32_t x;
@@ -78,7 +78,7 @@ inline int32_t point_sum(const Point& p) { return p.x + p.y; }
 extern std::string_view __name__;
 
 void __tpy_init();
-} // namespace tpy_user::container
+} // namespace tpyapp::container
 ```
 
 **Include this when:** a dependency's non-template types are used by value
@@ -97,7 +97,7 @@ bodies.
 #pragma once
 #include "module.hpp"
 
-namespace tpy_user::container {
+namespace tpyapp::container {
 
 template<typename T>
 struct Box {
@@ -113,7 +113,7 @@ struct Box {
 template<typename T>
 T identity(const T& x);
 
-} // namespace tpy_user::container
+} // namespace tpyapp::container
 ```
 
 **Include this when:** a dependency's template types are embedded by value in
@@ -130,7 +130,7 @@ instantiate templates.
 #pragma once
 #include "module_templ.hpp"
 
-namespace tpy_user::container {
+namespace tpyapp::container {
 
 template<typename T>
 Box<T>::Box(const T& value) : value(value) {}
@@ -141,7 +141,7 @@ T Box<T>::get() const { return value; }
 template<typename T>
 T identity(const T& x) { return x; }
 
-} // namespace tpy_user::container
+} // namespace tpyapp::container
 ```
 
 **Include this when:** a dependency's template functions are called, template
@@ -155,7 +155,7 @@ initialization, `main()` (entry point only).
 ```cpp
 #include "module_impl.hpp"  // gets all headers transitively
 
-namespace tpy_user::container {
+namespace tpyapp::container {
 
 std::string_view __name__;
 
@@ -169,7 +169,7 @@ void __tpy_init() {
   initialized = true;
   __name__ = "container";
 }
-} // namespace tpy_user::container
+} // namespace tpyapp::container
 ```
 
 ## Include Hierarchy

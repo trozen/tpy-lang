@@ -2,11 +2,11 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 #include "lib.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -15,4 +15,4 @@ extern "C" int32_t abs(int32_t x);
 extern "C" int32_t tpy_clock();
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main

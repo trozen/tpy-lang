@@ -2,10 +2,10 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
-#include "tpy.hpp"
-#include "typing.hpp"
+#include "tpystd/tpy.hpp"
+#include "tpystd/typing.hpp"
 
-namespace tpy_user::main {
+namespace tpyapp::main {
 
 extern int32_t count;
 extern int32_t n;
@@ -17,4 +17,4 @@ void test_all_args_snapshot();
 int32_t get_stop(int32_t n);
 
 void __tpy_init();
-} // namespace tpy_user::main
+} // namespace tpyapp::main
