@@ -7,7 +7,7 @@ Shared state and utilities for C++ code generation.
 from __future__ import annotations
 import re
 from dataclasses import dataclass, field
-from typing import TextIO, TYPE_CHECKING
+from typing import Callable, TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NamedType, SelfType,
@@ -160,6 +160,59 @@ def qualify_native_name(name: str) -> str:
     if "::" in name and not name.startswith("::"):
         return f"::{name}"
     return name
+
+
+def loop_var_binding(
+    elem_type: TpyType, cpp_var: str, deref_expr: str,
+    const_loop_var: bool, hoisted: bool = False,
+) -> str:
+    """Return the C++ loop variable binding line (no trailing newline).
+
+    Shared by for-loop and comprehension codegen to avoid duplicating the
+    const_loop_var / value_type / auto&& decision tree.
+    """
+    if hoisted:
+        return f"{cpp_var} = {deref_expr};"
+    if const_loop_var and elem_type.is_value_type():
+        return f"const {elem_type.to_cpp()}& {cpp_var} = {deref_expr};"
+    if const_loop_var:
+        return f"const auto& {cpp_var} = {deref_expr};"
+    if elem_type.is_value_type():
+        return f"{elem_type.to_cpp()} {cpp_var} = {deref_expr};"
+    return f"auto&& {cpp_var} = {deref_expr};"
+
+
+def is_lvalue_iterable(
+    expr: TpyExpr,
+    get_record: Callable[[str], object | None],
+    get_type: Callable[[TpyExpr], TpyType],
+) -> bool:
+    """Check if an iterable expression is a C++ lvalue.
+
+    Lvalue expressions get ``auto&`` to preserve consumption semantics.
+    Rvalue expressions (constructors, value-returning calls, literals)
+    get ``auto`` to own the temporary safely.
+
+    get_record: look up a record by name (e.g. registry.get_record).
+    get_type:   resolve the C++ result type of an expression.
+    """
+    while isinstance(expr, TpyCoerce):
+        expr = expr.expr
+    if isinstance(expr, TpyName):
+        return True
+    if isinstance(expr, TpyFieldAccess):
+        return is_lvalue_iterable(expr.obj, get_record, get_type)
+    if isinstance(expr, TpySubscript):
+        return is_lvalue_iterable(expr.obj, get_record, get_type)
+    if isinstance(expr, (TpyMethodCall, TpyCall)):
+        if isinstance(expr, TpyCall) and expr.call_type is not None:
+            return False
+        if isinstance(expr, TpyCall) and get_record(expr.func):
+            return False
+        ret_type = get_type(expr)
+        return (not ret_type.is_value_type()
+                and not isinstance(ret_type, (OptionalType, UnionType)))
+    return False
 
 
 DUNDER_TO_BINARY_OP: dict[str, str] = {

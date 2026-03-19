@@ -52,7 +52,7 @@ void main() {
         auto __beg_3 = __obj_3.begin();
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
-            std::string n = *__beg_3;
+            const std::string& n = *__beg_3;
             __result.insert(n);
         }
         return __result;

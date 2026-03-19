@@ -32,7 +32,7 @@ from ..namespace import Namespace
 from ..sema.context import PENDING_CONTAINER_TYPES
 from ..sema.diagnostics import SemanticError
 
-from .context import INDENT, CodeGenError, escape_cpp_name, qualified_cpp_name
+from .context import INDENT, CodeGenError, escape_cpp_name, qualified_cpp_name, loop_var_binding, is_lvalue_iterable
 from .type_resolution import resolve_stmt_binding_type
 from ..prescan import match_is_none
 from .match import MatchGenerator
@@ -2321,19 +2321,9 @@ class StatementGenerator:
         inner_indent = indent + INDENT
         cpp_var = escape_cpp_name(stmt.var)
         hoisted = self._is_loop_var_hoisted(stmt)
-        if hoisted:
-            # Loop var pre-declared outside loop -- assign, don't re-declare
-            out.write(f"{inner_indent}{cpp_var} = *{beg_name};\n")
-        elif stmt.const_loop_var and elem_type.is_value_type():
-            cpp_elem = elem_type.to_cpp()
-            out.write(f"{inner_indent}const {cpp_elem}& {cpp_var} = *{beg_name};\n")
-        elif stmt.const_loop_var:
-            out.write(f"{inner_indent}const auto& {cpp_var} = *{beg_name};\n")
-        elif elem_type.is_value_type():
-            cpp_elem = elem_type.to_cpp()
-            out.write(f"{inner_indent}{cpp_elem} {cpp_var} = *{beg_name};\n")
-        else:
-            out.write(f"{inner_indent}auto&& {cpp_var} = *{beg_name};\n")
+        binding = loop_var_binding(elem_type, cpp_var, f"*{beg_name}",
+                                   stmt.const_loop_var, hoisted)
+        out.write(f"{inner_indent}{binding}\n")
 
         self._gen_loop_body(out, stmt, indent, elem_type)
 
@@ -2380,19 +2370,13 @@ class StatementGenerator:
 
         hoisted = self._is_loop_var_hoisted(stmt)
         if hoisted:
-            out.write(f"{inner_indent}{cpp_var} = *{r_name};\n")
-        elif stmt.const_loop_var and elem_type and elem_type.is_value_type():
-            cpp_elem = elem_type.to_cpp()
-            out.write(f"{inner_indent}const {cpp_elem}& {cpp_var} = *{r_name};\n")
-        elif stmt.const_loop_var:
-            out.write(f"{inner_indent}const auto& {cpp_var} = *{r_name};\n")
-        elif elem_type and elem_type.is_value_type():
-            cpp_elem = elem_type.to_cpp()
-            out.write(f"{inner_indent}{cpp_elem} {cpp_var} = *{r_name};\n")
+            binding = f"{cpp_var} = *{r_name};"
         elif elem_type:
-            out.write(f"{inner_indent}auto&& {cpp_var} = *{r_name};\n")
+            binding = loop_var_binding(elem_type, cpp_var, f"*{r_name}",
+                                       stmt.const_loop_var)
         else:
-            out.write(f"{inner_indent}auto {cpp_var} = *{r_name};\n")
+            binding = f"auto {cpp_var} = *{r_name};"
+        out.write(f"{inner_indent}{binding}\n")
 
         self._gen_loop_body(out, stmt, indent, elem_type)
 
@@ -2452,38 +2436,10 @@ class StatementGenerator:
         return expr
 
     def _is_lvalue_iterable(self, expr: TpyExpr) -> bool:
-        """Check if the iterable expression is a C++ lvalue.
-
-        Lvalue expressions get auto& to preserve consumption semantics.
-        Rvalue expressions (constructors, value-returning calls, literals)
-        get auto to own the temporary safely.
-        """
-        expr = self._unwrap_coerce(expr)
-        if isinstance(expr, TpyName):
-            return True
-        if isinstance(expr, TpyFieldAccess):
-            return self._is_lvalue_iterable(expr.obj)
-        if isinstance(expr, TpySubscript):
-            return self._is_lvalue_iterable(expr.obj)
-        # Method/function calls returning non-value types use T& in C++ (lvalue).
-        # Constructors always produce rvalues.
-        # Optional returns use T* (pointer by value, rvalue).
-        if isinstance(expr, TpyMethodCall):
-            return self._returns_by_ref(expr)
-        if isinstance(expr, TpyCall):
-            # Constructor calls (generic instantiation or record name) are rvalues
-            if expr.call_type is not None:
-                return False
-            if self.ctx.analyzer.registry.get_record(expr.func):
-                return False
-            return self._returns_by_ref(expr)
-        return False
-
-    def _returns_by_ref(self, expr: TpyExpr) -> bool:
-        """Check if a call expression returns by reference (T&) in C++."""
-        ret_type = self.types.get_resolved_type(expr)
-        return (not ret_type.is_value_type()
-                and not isinstance(ret_type, (OptionalType, UnionType)))
+        """Check if the iterable expression is a C++ lvalue."""
+        return is_lvalue_iterable(
+            expr, self.ctx.analyzer.registry.get_record,
+            self.types.get_resolved_type)
 
     @staticmethod
     def _is_literal_range_arg(expr: TpyExpr) -> bool:

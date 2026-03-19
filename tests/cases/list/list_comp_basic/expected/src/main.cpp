@@ -64,7 +64,7 @@ void main() {
         auto __beg_4 = __obj_4.begin();
         auto __end_4 = __obj_4.end();
         for (; __beg_4 != __end_4; ++__beg_4) {
-            auto&& p = *__beg_4;
+            const auto& p = *__beg_4;
             __result.push_back(p.x);
         }
         return __result;
@@ -93,7 +93,7 @@ void main() {
         auto __beg_6 = __obj_6.begin();
         auto __end_6 = __obj_6.end();
         for (; __beg_6 != __end_6; ++__beg_6) {
-            std::string w = *__beg_6;
+            const std::string& w = *__beg_6;
             __result.push_back(::tpy::fixed_to_str<int32_t>(::tpy::__len__(w)));
         }
         return __result;

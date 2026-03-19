@@ -35,7 +35,7 @@ void main() {
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
-            std::string n = *__beg_2;
+            const std::string& n = *__beg_2;
             __result.insert_or_assign(n, ::tpy::__len__(n));
         }
         return __result;

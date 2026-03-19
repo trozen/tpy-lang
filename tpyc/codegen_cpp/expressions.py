@@ -32,7 +32,7 @@ from ..parse import (
 )
 from ..prescan import match_is_none
 from ..namespace import BindingKind
-from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, expand_cpp_template, qualify_native_name
+from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, expand_cpp_template, qualify_native_name, loop_var_binding, is_lvalue_iterable
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -2477,11 +2477,10 @@ class ExpressionGenerator:
 
         if gen.unpack_vars is not None:
             self._gen_comp_tuple_unpack(buf, gen, elem_type, ind2, n)
-        elif elem_type.is_value_type():
-            cpp_elem = elem_type.to_cpp()
-            buf.write(f"{ind2}{cpp_elem} {cpp_var} = *__beg_{n};\n")
         else:
-            buf.write(f"{ind2}auto&& {cpp_var} = *__beg_{n};\n")
+            binding = loop_var_binding(elem_type, cpp_var, f"*__beg_{n}",
+                                       gen.const_loop_var)
+            buf.write(f"{ind2}{binding}\n")
 
     def _gen_comp_tuple_unpack(self, buf: io.StringIO, gen: TpyComprehensionGenerator,
                                 elem_type: TpyType, ind: str, iter_n: int) -> None:
@@ -2574,26 +2573,10 @@ class ExpressionGenerator:
         self.ctx.comp_local_names -= names
 
     def _comp_is_lvalue(self, expr: TpyExpr) -> bool:
-        """Check if an iterable expression is a C++ lvalue (for comprehensions).
-
-        Mirrors _is_lvalue_iterable in StatementGenerator.
-        """
-        while isinstance(expr, TpyCoerce):
-            expr = expr.expr
-        if isinstance(expr, TpyName):
-            return True
-        if isinstance(expr, TpyFieldAccess):
-            return self._comp_is_lvalue(expr.obj)
-        if isinstance(expr, TpySubscript):
-            return self._comp_is_lvalue(expr.obj)
-        if isinstance(expr, (TpyMethodCall, TpyCall)):
-            if isinstance(expr, TpyCall) and expr.call_type is not None:
-                return False
-            if isinstance(expr, TpyCall) and self.ctx.analyzer.registry.get_record(expr.func):
-                return False
-            ret_type = self.types.get_resolved_type(expr)
-            return not ret_type.is_value_type() and not isinstance(ret_type, OptionalType)
-        return False
+        """Check if an iterable expression is a C++ lvalue."""
+        return is_lvalue_iterable(
+            expr, self.ctx.analyzer.registry.get_record,
+            self.types.get_resolved_type)
 
     @staticmethod
     def _is_sized_type(typ: TpyType) -> bool:

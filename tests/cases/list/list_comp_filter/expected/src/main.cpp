@@ -67,7 +67,7 @@ void main() {
         auto __beg_3 = __obj_3.begin();
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
-            std::string w = *__beg_3;
+            const std::string& w = *__beg_3;
             if ((::tpy::__len__(w) <= 3)) {
                 __result.push_back(w);
             }

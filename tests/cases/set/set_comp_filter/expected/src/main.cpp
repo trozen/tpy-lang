@@ -37,7 +37,7 @@ void main() {
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
-            std::string w = *__beg_2;
+            const std::string& w = *__beg_2;
             if ((::tpy::__len__(w) > 2)) {
                 __result.insert(w);
             }

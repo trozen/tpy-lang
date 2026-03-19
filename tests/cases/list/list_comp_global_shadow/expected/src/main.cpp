@@ -64,7 +64,7 @@ void __tpy_init() {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            std::string x = *__beg_0;
+            const std::string& x = *__beg_0;
             __result.push_back(::tpy::__len__(x));
         }
         return __result;
@@ -78,7 +78,7 @@ void __tpy_init() {
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
-            std::string x = *__beg_1;
+            const std::string& x = *__beg_1;
             __result.insert(::tpy::__len__(x));
         }
         return __result;
@@ -92,7 +92,7 @@ void __tpy_init() {
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
-            std::string x = *__beg_2;
+            const std::string& x = *__beg_2;
             __result.insert_or_assign(x, ::tpy::__len__(x));
         }
         return __result;
@@ -122,7 +122,7 @@ void __tpy_init() {
         auto __beg_3 = __obj_3.begin();
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
-            std::string x = *__beg_3;
+            const std::string& x = *__beg_3;
             if ((::tpy::__len__(x) > 1)) {
                 __result.push_back(::tpy::__len__(x));
             }

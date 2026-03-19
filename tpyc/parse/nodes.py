@@ -274,6 +274,7 @@ class TpyComprehensionGenerator:
     iterable: TpyExpr
     conditions: list[TpyExpr]
     unpack_vars: list[str | None] | None = None  # Phase 3: tuple unpacking
+    const_loop_var: bool = False
 
 
 @dataclass

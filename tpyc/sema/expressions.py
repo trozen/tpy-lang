@@ -1972,6 +1972,11 @@ class ExpressionAnalyzer:
         elem_type: TpyType,
         hint: TpyType | tuple[TpyType | None, TpyType | None] | None,
     ) -> TpyType | tuple[TpyType, TpyType]:
+        # Comprehension loop vars are never mutated -- use const ref for
+        # non-value types and expensive-to-copy value types (str, BigInt).
+        unwrapped = unwrap_readonly(elem_type)
+        if not unwrapped.is_value_type() or unwrapped.is_expensive_copy():
+            gen.const_loop_var = True
         with self.scopes.comprehension_scope() as inner_scope:
             if gen.unpack_vars is not None:
                 if not isinstance(elem_type, TupleType):

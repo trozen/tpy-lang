@@ -21,7 +21,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ### Systematic suboptimalities
 - **[HIGH effort]** Double subscript in augmented assignment: `a[i] += v` emits `__setitem__(a, i, add_check(__getitem__(a, i), v))` -- two separate bounds checks + index normalization. Hand-written C++ would use a single indexed access. Fix needs a reference-based codegen path (e.g. `__getitem_ref__` or direct `operator[]`).
-- **[MEDIUM effort]** Comprehension loop var copies `string` by value: iterating `vector<string>` in list/set/dict comprehensions binds with `std::string w = *__beg` (heap copy per element) when the element is only read. Plain for-loops already use `const auto&` via `const_loop_var`. Comprehension codegen needs the same read-only analysis.
 - **[HIGH effort]** Inherited fields body-assigned instead of member initializer list: child constructors without `super()` assign inherited `std::string`/container fields in the body (default-construct then assign) instead of via MIL or base-class constructor delegation. Adds an extra default construction per non-trivial inherited field.
 ### Missed optimizations
 - **[LOW]** String concat chain produces N-1 intermediate allocations: `a + b + c + d` emits left-associative nested `str_concat` calls, each allocating a temporary `std::string`. A codegen optimization detecting a chain of `+` on string-view operands could emit a single `reserve` + N `append` calls.
