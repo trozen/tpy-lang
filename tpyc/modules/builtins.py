@@ -88,11 +88,6 @@ def init_module() -> BuiltinModule:
     module.function("round", overloads=round_overloads,
                     type_params=["T"], type_param_defaults={"T": "DEFAULT_INT"})
 
-    # list[T]: Methods, extends, and constructors defined in lib/tpy/builtins.py.
-    module.type("list", cpp_type="std::vector<{T}>", type_params=["T"],
-                param_kinds=[TypeParamKind.TYPE],
-                type_factory=lambda t: ListType(t))
-
     # dict[K, V]: Ordered hash map backed by ::tpy::ordered_map<K, V>
     K = TypeParamRef("K")
     V = TypeParamRef("V")

@@ -2642,6 +2642,7 @@ class RecordInfo:
     type_params: list[str] = field(default_factory=list)  # ["T", "U"] for class Stack[T, U]
     type_param_kinds: list[TypeParamKind] = field(default_factory=list)  # [TYPE, INT] for class Matrix[T, N: int]
     type_param_bounds: dict[str, 'NamedType'] = field(default_factory=dict)  # {"T": Comparable} (must be protocols)
+    type_factory: "Optional[Callable[..., TpyType]]" = None  # Factory to create concrete type from params
     parent: Optional['TpyType'] = None  # Parent type (NamedType or builtin TpyType)
     implemented_protocols: list['NamedType'] = field(default_factory=list)  # Explicit protocol implementations
     extends_protocols: list[str] = field(default_factory=list)  # Protocol extensions: ["NativeIterable[T]"]
@@ -3065,11 +3066,11 @@ class TypeRegistry:
             return True
         if name in self.records or name in self.protocols or name in self.type_aliases or name in self.enums:
             return True
-        # Check module system for registered types
-        from tpyc.modules import get_builtins, get_tpy
+        # Check module system for registered types and type factory mapping
+        from tpyc.modules import get_builtins, get_tpy, get_type_factory
         for module in [get_builtins(), get_tpy()]:
             qualified = f"{module.name}.{name}"
-            if qualified in module.types:
+            if qualified in module.types or get_type_factory(qualified) is not None:
                 return True
         return False
 

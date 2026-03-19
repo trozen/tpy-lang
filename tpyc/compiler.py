@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 from .parse import Parser, ParseError, TpyModule, TpyImport, RelativeImportKey, SourceLocation, is_parser_keyword_module
 from .sema import SemanticAnalyzer, SemanticError, DiagnosticLevel
 from .modules.resolver import ModuleResolver, ResolvedModule
-from .modules import get_builtin_module_names
+from .modules import get_builtin_module_names, get_type_factory as _get_type_factory
 from .codegen_cpp import CodeGenerator, CodeGenOptions
 from .codegen_cpp.context import module_to_cpp_namespace, set_namespace_map, set_include_path_map, get_include_path, clear_namespace_map
 import warnings
@@ -727,21 +727,25 @@ class Compiler:
                 # Register records (e.g. exception classes) in the flat registry
                 # so get_record() finds them by bare name during inheritance checks.
                 for record in module_info.records.values():
-                    # Merge .py-defined methods into builtin type RecordInfo.
-                    # Skip registering in records dict to avoid shadowing the
-                    # builtin type (which has __init__ overloads and type_factory).
                     builtin_qname = f"{implicit_mod}.{record.name}"
                     builtin_rec = analyzer.registry.builtin_records.get(builtin_qname)
                     if builtin_rec is not None:
+                        # Merge .py-defined methods into existing builtin RecordInfo.
                         for method_name, overloads in record.methods.items():
                             if method_name not in builtin_rec.methods:
                                 builtin_rec.methods[method_name] = overloads
-                        # Convert .py protocol bases to extends_protocols strings
-                        # (matches the format used by the protocol checker).
                         for proto in record.implemented_protocols:
                             ext_str = str(proto)
                             if ext_str not in builtin_rec.extends_protocols:
                                 builtin_rec.extends_protocols.append(ext_str)
+                    elif (factory := _get_type_factory(builtin_qname)):
+                        # Type fully defined in .py with a type_factory bridge.
+                        record.type_factory = factory
+                        for proto in record.implemented_protocols:
+                            ext_str = str(proto)
+                            if ext_str not in record.extends_protocols:
+                                record.extends_protocols.append(ext_str)
+                        analyzer.registry.register_builtin_record(builtin_qname, record)
                     else:
                         analyzer.registry.register_record(record)
 

@@ -375,6 +375,7 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
         methods=methods,
         type_params=type_def.type_params,
         type_param_kinds=type_def.param_kinds,
+        type_factory=type_def.type_factory,
         extends_protocols=type_def.extends,
         is_nocopy=type_def.is_nocopy,
     )
@@ -494,26 +495,69 @@ def _resolve_extends_type_arg(type_str: str, type_params: dict[str, "TpyType"]) 
     return _resolve_concrete_type_name(type_str)
 
 
-def lookup_type(type_or_name: "TpyType | str") -> BuiltinTypeDef | None:
-    """Lookup a type by type object or qualified name string."""
-    if isinstance(type_or_name, str):
-        qname = type_or_name
-    else:
-        qname = type_or_name.qualified_name()
-        if qname is None:
-            return None
-    for module_name in _MODULE_FACTORIES:
-        module = get_module(module_name)
-        if module and (typ := module.types.get(qname)):
-            return typ
-    return None
-
 
 @dataclass
 class GenericTypeLookup:
     """Result of looking up a generic type by name."""
-    type_def: BuiltinTypeDef
+    type_def: BuiltinTypeDef | None
     qualified_name: str
+
+
+# Type factories: the bridge between .py type definitions and compiler-internal
+# type classes. For types fully defined in .py, this is the only hardcoded piece.
+# Keyed by qualified name. param_kinds is needed by the parser to validate
+# type arguments (TYPE vs INT).
+_type_factories: dict[str, tuple[list[TypeParamKind], "Callable[..., TpyType]"]] | None = None
+
+
+def _get_type_factories() -> dict[str, tuple[list[TypeParamKind], "Callable[..., TpyType]"]]:
+    """Lazily initialize the type factory mapping (avoids circular imports)."""
+    global _type_factories
+    if _type_factories is None:
+        from tpyc.typesys import (
+            ListType, DictType, DictKeysViewType, DictValuesViewType,
+            DictItemsViewType, SetType, ArrayType, SpanType, SpanIterType,
+            PtrType, RangeType,
+        )
+        TYPE = TypeParamKind.TYPE
+        INT = TypeParamKind.INT
+        _type_factories = {
+            "builtins.list": ([TYPE], lambda t: ListType(t)),
+            "builtins.dict": ([TYPE, TYPE], lambda k, v: DictType(k, v)),
+            "builtins.dict_keys": ([TYPE, TYPE], lambda k, v: DictKeysViewType(k, v)),
+            "builtins.dict_values": ([TYPE, TYPE], lambda k, v: DictValuesViewType(k, v)),
+            "builtins.dict_items": ([TYPE, TYPE], lambda k, v: DictItemsViewType(k, v)),
+            "builtins.set": ([TYPE], lambda t: SetType(t)),
+            "builtins.Range": ([TYPE], lambda t: RangeType(t)),
+            "tpy.Array": ([TYPE, INT], lambda t, n: ArrayType(t, n)),
+            "tpy.Span": ([TYPE], lambda t: SpanType(t)),
+            "tpy.SpanIter": ([TYPE], lambda t: SpanIterType(t)),
+            "tpy.Ptr": ([TYPE], lambda t: PtrType(t)),
+        }
+    return _type_factories
+
+
+def get_type_factory(qname: str) -> "Callable[..., TpyType] | None":
+    """Get the type factory for a qualified type name."""
+    entry = _get_type_factories().get(qname)
+    return entry[1] if entry else None
+
+
+def _make_factory_type_def(param_kinds: list[TypeParamKind], factory: "Callable[..., TpyType]") -> BuiltinTypeDef:
+    """Create a minimal BuiltinTypeDef from the type factory mapping.
+
+    Used for types fully defined in .py that have no hardcoded BuiltinTypeDef.
+    """
+    # Placeholder names -- only param_kinds matters to the parser caller
+    type_params = [chr(ord('A') + i) if len(param_kinds) > 1 else "T"
+                   for i in range(len(param_kinds))]
+    return BuiltinTypeDef(
+        type_obj=None,
+        cpp_type="",
+        type_params=type_params,
+        param_kinds=param_kinds,
+        type_factory=factory,
+    )
 
 
 def lookup_generic_type(name: str) -> GenericTypeLookup | None:
@@ -529,6 +573,9 @@ def lookup_generic_type(name: str) -> GenericTypeLookup | None:
         if typ := module.types.get(qualified):
             if typ.type_params and typ.type_factory:
                 return GenericTypeLookup(typ, qualified)
+        # Check type factory mapping for types fully defined in .py
+        if entry := _get_type_factories().get(qualified):
+            return GenericTypeLookup(_make_factory_type_def(*entry), qualified)
     return None
 
 
@@ -544,6 +591,9 @@ def lookup_generic_type_in_module(name: str, module_name: str) -> GenericTypeLoo
     if typ := module.types.get(qualified):
         if typ.type_params and typ.type_factory:
             return GenericTypeLookup(typ, qualified)
+    # Check type factory mapping for types fully defined in .py
+    if entry := _get_type_factories().get(qualified):
+        return GenericTypeLookup(_make_factory_type_def(*entry), qualified)
     return None
 
 
@@ -699,17 +749,17 @@ def get_extends_protocol_type_arg(
     Checks builtin type extends strings first, then user record
     implemented_protocols if a registry is provided.
     """
-    type_def = lookup_type(tpy_type)
-    if type_def is not None:
-        type_params = extract_type_params(tpy_type)
-        for ext in type_def.extends:
-            match = re.match(r"(\w+)\[(.+)\]", ext)
-            if match and match.group(1) == protocol_name:
-                return _resolve_extends_type_arg(match.group(2), type_params)
+    type_params = extract_type_params(tpy_type)
 
+    # Check RecordInfo extends_protocols
     if registry is not None:
         record_info = registry.get_record_for_type(tpy_type)
         if record_info is not None:
+            for ext in record_info.extends_protocols:
+                match = re.match(r"(\w+)\[(.+)\]", ext)
+                if match and match.group(1) == protocol_name:
+                    return _resolve_extends_type_arg(match.group(2), type_params)
+            # Fallback: check implemented_protocols (NamedType objects)
             target_qname = get_protocol_qname(protocol_name)
             for impl_proto in record_info.implemented_protocols:
                 if impl_proto_matches_name(impl_proto, protocol_name, target_qname) and impl_proto.type_args:
@@ -785,14 +835,13 @@ def get_iter_info(tpy_type: "TpyType", registry: "TypeRegistry") -> "IterInfo | 
             if result is not None:
                 return result
 
-    # Try builtin types
-    type_def = lookup_type(tpy_type)
-    if type_def is not None:
+    # Try builtin types via registry
+    record = registry.get_record_for_type(tpy_type)
+    if record is not None:
         type_subst_b: dict[str, "TpyType"] = {}
-        if type_def.type_params and hasattr(tpy_type, 'type_args') and tpy_type.type_args:
-            type_subst_b = dict(zip(type_def.type_params, tpy_type.type_args))
-        iter_methods = type_def.methods.get("__iter__", [])
-        result = _find_iter_method_info(iter_methods, type_subst_b, registry)
+        if record.type_params and hasattr(tpy_type, 'type_args') and tpy_type.type_args:
+            type_subst_b = dict(zip(record.type_params, tpy_type.type_args))
+        result = _find_record_iter_info(record, type_subst_b, registry)
         if result is not None:
             return result
 

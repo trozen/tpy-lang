@@ -564,14 +564,15 @@ class CallAnalyzer:
         if imported_generic_name and imported_generic_module and (
             lookup := builtin_modules.lookup_generic_type_in_module(imported_generic_name, imported_generic_module)
         ):
-            type_def = lookup.type_def
-            params = ", ".join(type_def.type_params)
+            record_info = self.ctx.registry.get_builtin_record(lookup.qualified_name)
+            if not record_info:
+                raise self.ctx.error(f"Unknown type '{expr.func}'", expr)
+            params = ", ".join(record_info.type_params)
 
             # Check for constructors that can infer type from arguments
             if expr.args:
                 arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-                record_info = self.ctx.registry.get_builtin_record(lookup.qualified_name)
-                init_overloads = record_info.get_method_overloads("__init__") if record_info else []
+                init_overloads = record_info.get_method_overloads("__init__")
                 if init_overloads:
                     for ctor in init_overloads:
                         if len(ctor.params) != len(arg_types):
@@ -580,15 +581,15 @@ class CallAnalyzer:
                         inferred_params = self.type_ops.match_generic_constructor(ctor.params, arg_types)
                         if inferred_params is not None:
                             # Use type_factory to create the result type
-                            if (all(p in inferred_params for p in type_def.type_params)
-                                    and type_def.type_factory):
+                            if (all(p in inferred_params for p in record_info.type_params)
+                                    and record_info.type_factory):
                                 factory_args = []
-                                for p in type_def.type_params:
+                                for p in record_info.type_params:
                                     t = inferred_params[p]
                                     if isinstance(t, IntLiteralType):
                                         t = self.ctx.default_int_for_literal(t)
                                     factory_args.append(t)
-                                result_type = type_def.type_factory(*factory_args)
+                                result_type = record_info.type_factory(*factory_args)
                                 expr.call_type = result_type
                                 if isinstance(result_type, PtrType):
                                     self._validate_ptr_constructor(expr)
@@ -598,7 +599,7 @@ class CallAnalyzer:
                                 self._check_ctor_arg_compatibility(expr, ctor, arg_types, inferred_params)
                                 return result_type
                             # T not inferred from args; try assignment target hint
-                            if type_def.type_factory and self.ctx.expr_type_hint is not None:
+                            if record_info.type_factory and self.ctx.expr_type_hint is not None:
                                 hint = self.ctx.expr_type_hint
                                 if isinstance(hint, OwnType):
                                     hint = hint.wrapped
@@ -629,7 +630,7 @@ class CallAnalyzer:
             # unknown element type (same as []) if in function scope.
             if (expr.func == "list"
                     and isinstance(self.ctx.current_function, TpyFunction)
-                    and type_def.type_factory):
+                    and record_info.type_factory):
                 literal_id = self.ctx.literal_counter
                 self.ctx.literal_counter += 1
                 info = ListLiteralInfo(
@@ -647,7 +648,7 @@ class CallAnalyzer:
             # dict() with no args -- create empty dict with unknown key/value types.
             if (expr.func == "dict"
                     and isinstance(self.ctx.current_function, TpyFunction)
-                    and type_def.type_factory):
+                    and record_info.type_factory):
                 literal_id = self.ctx.literal_counter
                 self.ctx.literal_counter += 1
                 info = DictLiteralInfo(
@@ -664,7 +665,7 @@ class CallAnalyzer:
             # set() with no args -- create empty set with unknown element type.
             if (expr.func == "set"
                     and isinstance(self.ctx.current_function, TpyFunction)
-                    and type_def.type_factory):
+                    and record_info.type_factory):
                 literal_id = self.ctx.literal_counter
                 self.ctx.literal_counter += 1
                 info = SetLiteralInfo(
@@ -1096,9 +1097,9 @@ class CallAnalyzer:
             # Try looking up via call_type's qualified name (for types from submodules)
             qname = expr.call_type.qualified_name() if expr.call_type else None
             if qname:
-                type_def = builtin_modules.lookup_type(qname)
-                if type_def and type_def.type_params and type_def.type_factory:
-                    lookup = builtin_modules.GenericTypeLookup(type_def, qname)
+                rec = self.ctx.registry.get_builtin_record(qname)
+                if rec and rec.type_params and rec.type_factory:
+                    lookup = builtin_modules.GenericTypeLookup(None, qname)
         record_info = self.ctx.registry.get_builtin_record(lookup.qualified_name) if lookup else None
         if not record_info:
             return

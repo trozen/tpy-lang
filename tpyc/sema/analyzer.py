@@ -301,32 +301,33 @@ class SemanticAnalyzer:
         from ..typesys import TypeParamKind
         for module in builtin_modules.get_all_modules():
             for qname, type_def in module.types.items():
-                if not type_def.extends:
+                record_info = self.ctx.registry.get_builtin_record(qname)
+                if not record_info or not record_info.extends_protocols:
                     continue
                 simple_name = qname.split(".")[-1]
 
                 # Build a TpyType for this builtin (with TypeParamRef args for generics)
                 if type_def.type_obj is not None:
                     actual_type = type_def.type_obj
-                elif type_def.type_factory and type_def.type_params:
+                elif record_info.type_factory and record_info.type_params:
                     args = []
-                    for tp, kind in zip(type_def.type_params, type_def.param_kinds):
+                    for tp, kind in zip(record_info.type_params, record_info.type_param_kinds):
                         if kind == TypeParamKind.INT:
                             args.append(1)  # placeholder int value
                         else:
                             args.append(TypeParamRef(tp))
-                    actual_type = type_def.type_factory(*args)
+                    actual_type = record_info.type_factory(*args)
                 else:
                     continue
 
                 # Build type_params dict for resolving extends args
                 tp_dict: dict[str, TpyType] = {}
-                if type_def.type_params:
-                    for tp, kind in zip(type_def.type_params, type_def.param_kinds):
+                if record_info.type_params:
+                    for tp, kind in zip(record_info.type_params, record_info.type_param_kinds):
                         if kind != TypeParamKind.INT:
                             tp_dict[tp] = TypeParamRef(tp)
 
-                for ext_str in type_def.extends:
+                for ext_str in record_info.extends_protocols:
                     match = re.match(r"(\w+)(?:\[(.+)\])?", ext_str)
                     if not match:
                         continue
