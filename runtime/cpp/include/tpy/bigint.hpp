@@ -1244,15 +1244,6 @@ inline uint64_t __hash__(const BigInt& val) {
     return val.hash();
 }
 
-inline BigInt bigint_min(const BigInt& a, const BigInt& b, const BigInt& c) {
-    const auto& m = a < b ? a : b;
-    return m < c ? m : c;
-}
-
-inline BigInt bigint_max(const BigInt& a, const BigInt& b, const BigInt& c) {
-    const auto& m = a > b ? a : b;
-    return m > c ? m : c;
-}
 
 } // namespace tpy
 

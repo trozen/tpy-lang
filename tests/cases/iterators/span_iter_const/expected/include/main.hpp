@@ -29,8 +29,7 @@ struct Stack {
     // def push(self, val: Int32) -> None:
     void push(int32_t val) {
         // self._data.append(val)
-        auto __tmp_1 = val;
-        this->_data.push_back(std::move(__tmp_1));
+        this->_data.push_back(val);
     }
 
     // @auto_readonly

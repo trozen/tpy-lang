@@ -25,8 +25,7 @@ struct Container {
     // def add(self, item: T) -> None:
     void add(::tpy::param_val_or_ref_t<T> item) {
         // self.items.append(item)
-        auto __tmp_1 = item;
-        this->items.push_back(std::move(__tmp_1));
+        this->items.push_back(item);
     }
 
     // def is_sorted[T: Comparable](self) -> bool:

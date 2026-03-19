@@ -13,8 +13,7 @@ namespace tpyapp::main {
 // def add_to_set(s: set[Int32], val: Int32) -> None:
 void add_to_set(::tpy::ordered_set<int32_t>& s, int32_t val) {
     // s.add(val)
-    auto __tmp_1 = val;
-    s.insert(std::move(__tmp_1));
+    s.insert(val);
 }
 
 // def get_size(s: set[Int32]) -> Int32:

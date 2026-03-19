@@ -102,19 +102,19 @@ def min(a: Int32, b: Int32) -> Int32: ...
 @overload
 @pure
 @readonly
-@cpp_template("std::min(std::min({0}, {1}), {2})")
+@native("tpy::min3")
 def min(a: Int32, b: Int32, c: Int32) -> Int32: ...
 
 @overload
 @pure
 @readonly
-@cpp_template("(({0}) < ({1}) ? ({0}) : ({1}))")
+@native("std::min")
 def min(a: int, b: int) -> int: ...
 
 @overload
 @pure
 @readonly
-@native("tpy::bigint_min")
+@native("tpy::min3")
 def min(a: int, b: int, c: int) -> int: ...
 
 @overload
@@ -139,19 +139,19 @@ def max(a: Int32, b: Int32) -> Int32: ...
 @overload
 @pure
 @readonly
-@cpp_template("std::max(std::max({0}, {1}), {2})")
+@native("tpy::max3")
 def max(a: Int32, b: Int32, c: Int32) -> Int32: ...
 
 @overload
 @pure
 @readonly
-@cpp_template("(({0}) > ({1}) ? ({0}) : ({1}))")
+@native("std::max")
 def max(a: int, b: int) -> int: ...
 
 @overload
 @pure
 @readonly
-@native("tpy::bigint_max")
+@native("tpy::max3")
 def max(a: int, b: int, c: int) -> int: ...
 
 @overload

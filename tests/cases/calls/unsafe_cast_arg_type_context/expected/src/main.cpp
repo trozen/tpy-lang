@@ -33,8 +33,7 @@ void __tpy_init() {
     // carg_ptr: Ptr[None] = unsafe_cast(unsafe_ptr(carg))
     carg_ptr = reinterpret_cast<void*>((*carg).data());
     // parg_list.append(carg_ptr)
-    auto __tmp_1 = carg_ptr;
-    (*parg_list).push_back(std::move(__tmp_1));
+    (*parg_list).push_back(carg_ptr);
     // parg_list.append(unsafe_cast(unsafe_ptr(carg)))  # tpyc: ok
     (*parg_list).push_back(reinterpret_cast<void*>((*carg).data()));
     // print(take_ptr(unsafe_cast(unsafe_ptr(carg))))  # tpyc: ok

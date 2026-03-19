@@ -82,7 +82,8 @@ class BuiltinGenerator:
         """
         if method.cpp_template is None:
             raise CodeGenError(f"Method '{method.name}' has no C++ template")
-        gen_args = [self._gen_call_arg(arg, method.params[i].type if i < len(method.params) else None)
+        gen_args = [self._gen_call_arg(arg, method.params[i].type if i < len(method.params) else None,
+                                       inline_template=True)
                     for i, arg in enumerate(args)]
         return expand_cpp_template(method.cpp_template, obj, *gen_args)
 

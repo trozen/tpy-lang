@@ -24,8 +24,7 @@ int32_t sum_points(const std::vector<Point>& items) {
 // def add_point(items: list[Point], p: Point) -> None:
 void add_point(std::vector<Point>& items, const Point& p) {
     // items.append(p)
-    auto __tmp_1 = p;
-    items.push_back(std::move(__tmp_1));
+    items.push_back(p);
 }
 
 // def add_point_wrapper(items: list[Point], p: Point) -> None:

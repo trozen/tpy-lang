@@ -15,8 +15,7 @@ void test_append() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         // items.append(x)  # tpyc: warning(/Mutation of 'items'.*'append'/)
-        auto __tmp_1 = x;
-        items.push_back(std::move(__tmp_1));
+        items.push_back(x);
     }
 }
 
@@ -161,12 +160,10 @@ void test_nested_loops() {
         for (; __beg_1 != __end_1; ++__beg_1) {
             int32_t y = *__beg_1;
             // inner.append(y)  # tpyc: warning(/Mutation of 'inner'/)
-            auto __tmp_2 = y;
-            inner.push_back(std::move(__tmp_2));
+            inner.push_back(y);
         }
         // outer.append(x)  # tpyc: warning(/Mutation of 'outer'/)
-        auto __tmp_3 = x;
-        outer.push_back(std::move(__tmp_3));
+        outer.push_back(x);
     }
 }
 
@@ -183,8 +180,7 @@ void test_conditional_mutation() {
         // if x > Int32(0):
         if ((x > 0)) {
             // items.append(x)  # tpyc: warning(/Mutation of 'items'/)
-            auto __tmp_4 = x;
-            items.push_back(std::move(__tmp_4));
+            items.push_back(x);
         }
     }
 }

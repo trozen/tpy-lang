@@ -148,4 +148,17 @@ inline std::tuple<BigInt, BigInt> divmod_bigint(const BigInt& a, const BigInt& b
     return a.floor_divmod(b);
 }
 
+// 3-arg min/max: returns const& to avoid copies for expensive types (BigInt)
+template<typename T>
+const T& min3(const T& a, const T& b, const T& c) {
+    const auto& m = a < b ? a : b;
+    return m < c ? m : c;
+}
+
+template<typename T>
+const T& max3(const T& a, const T& b, const T& c) {
+    const auto& m = a > b ? a : b;
+    return m > c ? m : c;
+}
+
 } // namespace tpy

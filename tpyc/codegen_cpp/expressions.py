@@ -388,13 +388,19 @@ class ExpressionGenerator:
         return self.ctx.temps.create_typed(target_cpp, arg_expr)
 
     def gen_call_arg(self, arg: TpyExpr, ptype: TpyType | None,
-                     target_type: TpyType | None | _Unset = _UNSET) -> str:
+                     target_type: TpyType | None | _Unset = _UNSET,
+                     inline_template: bool = False) -> str:
         """Generate a call argument with auto-move at last use for Own[T] params.
 
         target_type overrides ptype as the hint passed to gen_expr_deref.
         Pass None explicitly to suppress the target hint (e.g. record method
         args where the resolved param type should only drive the move check,
         not literal coercion).
+
+        inline_template: when True, the callee is a cpp_template expansion
+        (e.g. push_back), not a real C++ function with T&& param. The callee
+        natively accepts lvalues, so the copy-into-temp + move is unnecessary
+        for plain names and literals.
         """
         gen_arg = self.gen_expr_deref(arg, ptype if target_type is _UNSET else target_type)
         if ptype is not None:
@@ -402,6 +408,12 @@ class ExpressionGenerator:
             if own is not None:
                 moved = self._maybe_move(arg, gen_arg)
                 if moved is gen_arg and _is_simple_lvalue(arg):
+                    # cpp_template callees (push_back, insert, etc.) accept
+                    # lvalues natively -- skip the redundant copy+move.
+                    # Exclude str: locals are string_view but containers
+                    # store string, so the copy is a needed conversion.
+                    if inline_template and not is_any_str_type(own.wrapped):
+                        return gen_arg
                     # For TpyCoerce: real conversions produce rvalue expressions that
                     # bind to T&& directly. Identity coercions (same C++ type) leave
                     # the expression as an lvalue and still need a copy-temp.

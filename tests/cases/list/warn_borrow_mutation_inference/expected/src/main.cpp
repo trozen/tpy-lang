@@ -31,8 +31,7 @@ int32_t first_x(const std::vector<Point>& items) {
 // def add_point(items: list[Point], p: Point) -> None:
 void add_point(std::vector<Point>& items, const Point& p) {
     // items.append(p)
-    auto __tmp_1 = p;
-    items.push_back(std::move(__tmp_1));
+    items.push_back(p);
 }
 
 // def replace_first(items: list[Point], p: Point) -> None:
@@ -92,8 +91,8 @@ void test_mutating_append_warns() {
     // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
     // add_point(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
-    Point __tmp_2 = Point(9, 9);
-    add_point(items, __tmp_2);
+    Point __tmp_1 = Point(9, 9);
+    add_point(items, __tmp_1);
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
@@ -105,8 +104,8 @@ void test_mutating_subscript_write_no_warn() {
     // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
     // replace_first(items, Point(Int32(9), Int32(9)))  # tpyc: ok
-    Point __tmp_3 = Point(9, 9);
-    replace_first(items, __tmp_3);
+    Point __tmp_2 = Point(9, 9);
+    replace_first(items, __tmp_2);
     // print(items[Int32(0)].x)
     std::cout << ::tpy::__getitem__(items, 0).x << "\n";
 }
@@ -144,8 +143,8 @@ void test_no_borrow_no_warn() {
     // items: list[Point] = [Point(Int32(1), Int32(2))]
     std::vector<Point> items = {Point(1, 2)};
     // add_point(items, Point(Int32(9), Int32(9)))  # tpyc: ok
-    Point __tmp_4 = Point(9, 9);
-    add_point(items, __tmp_4);
+    Point __tmp_3 = Point(9, 9);
+    add_point(items, __tmp_3);
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
@@ -162,8 +161,8 @@ void test_loop_var_non_mutating_callee() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
         // sum_points([])  # tpyc: ok
-        std::vector<Point> __tmp_5 = std::vector<Point>{};
-        sum_points(__tmp_5);
+        std::vector<Point> __tmp_4 = std::vector<Point>{};
+        sum_points(__tmp_4);
         // print(x)
         std::cout << x << "\n";
     }
@@ -180,8 +179,8 @@ void test_loop_var_mutating_callee() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
         // add_point(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
-        Point __tmp_6 = Point(9, 9);
-        add_point(items, __tmp_6);
+        Point __tmp_5 = Point(9, 9);
+        add_point(items, __tmp_5);
         // break
         break;
     }
@@ -207,8 +206,8 @@ void test_transitive_mutation_warns() {
     // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
     // add_point_wrapper(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
-    Point __tmp_7 = Point(9, 9);
-    add_point_wrapper(items, __tmp_7);
+    Point __tmp_6 = Point(9, 9);
+    add_point_wrapper(items, __tmp_6);
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
@@ -268,8 +267,7 @@ void cycle_a(std::vector<Point>& items, const Point& p) {
     // if len(items) < Int32(5):
     if ((::tpy::__len__(items) < 5)) {
         // items.append(p)
-        auto __tmp_8 = p;
-        items.push_back(std::move(__tmp_8));
+        items.push_back(p);
         // cycle_b(items, p)
         cycle_b(items, p);
     }
@@ -288,8 +286,8 @@ void test_cycle_mutation_warns() {
     // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
     // cycle_b(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
-    Point __tmp_9 = Point(9, 9);
-    cycle_b(items, __tmp_9);
+    Point __tmp_7 = Point(9, 9);
+    cycle_b(items, __tmp_7);
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }
@@ -308,8 +306,8 @@ void test_multi_hop_mutation_warns() {
     // v = items[Int32(0)]
     Point& v = ::tpy::__getitem__(items, 0);
     // deep_wrapper(items, Point(Int32(9), Int32(9)))  # tpyc: warning(/Passing borrowed container 'items'/)
-    Point __tmp_10 = Point(9, 9);
-    deep_wrapper(items, __tmp_10);
+    Point __tmp_8 = Point(9, 9);
+    deep_wrapper(items, __tmp_8);
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
 }

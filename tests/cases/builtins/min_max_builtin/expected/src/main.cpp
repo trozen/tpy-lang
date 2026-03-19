@@ -64,9 +64,9 @@ void __tpy_init() {
     // big2 = int(1000000)
     big2 = ::tpy::BigInt(static_cast<int64_t>(1000000));
     // print(min(big1, big2))
-    std::cout << ((big1) < (big2) ? (big1) : (big2)) << "\n";
+    std::cout << ::std::min(big1, big2) << "\n";
     // print(max(big1, big2))
-    std::cout << ((big1) > (big2) ? (big1) : (big2)) << "\n";
+    std::cout << ::std::max(big1, big2) << "\n";
     // # Test min/max with float
     // f1: float = 3.14
     f1 = 3.14;
@@ -80,15 +80,15 @@ void __tpy_init() {
     // c: Int32 = 5
     c = 5;
     // print(min(a, b, c))
-    std::cout << std::min(std::min(a, b), c) << "\n";
+    std::cout << ::tpy::min3(a, b, c) << "\n";
     // print(max(a, b, c))
-    std::cout << std::max(std::max(a, b), c) << "\n";
+    std::cout << ::tpy::max3(a, b, c) << "\n";
     // z = 200
     z = 200;
     // print(min(x, y, z))
-    std::cout << std::min(std::min(x, y), z) << "\n";
+    std::cout << ::tpy::min3(x, y, z) << "\n";
     // print(max(x, y, z))
-    std::cout << std::max(std::max(x, y), z) << "\n";
+    std::cout << ::tpy::max3(x, y, z) << "\n";
     // f3: float = 1.0
     f3 = 1.0;
     // print(min(f1, f2, f3))

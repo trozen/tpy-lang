@@ -16,11 +16,9 @@ void main() {
     std::vector<Point> items = std::vector<Point>{};
     // # lvalue into container method — warns (implicit copy)
     // items.append(p)           # tpyc: warning(/copies Point into owned storage/)
-    auto __tmp_1 = p;
-    items.push_back(std::move(__tmp_1));
+    items.push_back(p);
     // items.insert(0, p)        # tpyc: warning(/copies Point into owned storage/)
-    auto __tmp_2 = p;
-    ::tpy::list_insert(items, 0, std::move(__tmp_2));
+    ::tpy::list_insert(items, 0, p);
     // # lvalue into subscript assignment — warns
     // items[0] = p              # tpyc: warning(/copies Point into container/)
     ::tpy::__setitem__(items, 0, p);
@@ -42,8 +40,7 @@ void main() {
     // x: Int32 = 42
     int32_t x = 42;
     // nums.append(x)            # tpyc: ok
-    auto __tmp_3 = x;
-    nums.push_back(std::move(__tmp_3));
+    nums.push_back(x);
     // nums[0] = x               # tpyc: ok
     ::tpy::__setitem__(nums, 0, x);
     // print(len(items))
