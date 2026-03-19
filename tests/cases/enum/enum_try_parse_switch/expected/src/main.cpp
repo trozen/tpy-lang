@@ -120,6 +120,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # try_parse with 5+ members triggers switch-based dispatch
+    // from enum import Enum
     // main()
     main();
 }

@@ -87,6 +87,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # match/case on enum subject with value patterns (Color.RED)
+    // from enum import Enum
     // main()
     main();
 }

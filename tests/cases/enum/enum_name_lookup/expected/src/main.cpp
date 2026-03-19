@@ -69,6 +69,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Test enum name lookup via subscript: Color["Red"]
+    // from enum import Enum
     // main()
     main();
 }

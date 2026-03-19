@@ -228,6 +228,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # match/case or-patterns and guards on enum subjects
+    // from enum import Enum, auto
     // main()
     main();
 }

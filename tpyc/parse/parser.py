@@ -998,7 +998,7 @@ class Parser:
                 if item.value is not None:
                     default_expr = self._parse_expr(item.value)
                     # Resolve import origin for call expressions (e.g. field() or dataclasses.field())
-                    if isinstance(default_expr, (TpyCall, TpyMethodCall)) and not default_expr.resolved_import:
+                    if isinstance(default_expr, (TpyCall, TpyMethodCall)):
                         self._resolve_call_import(default_expr, item.value)
                     default_val = self._get_default_value(item.value)
                 fields.append(FieldInfo(field_name, field_type, default_val, default_expr=default_expr, loc=self._loc(item)))

@@ -101,6 +101,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # hash() on Enum and IntEnum types
+    // from enum import Enum, IntEnum
     // main()
     main();
 }

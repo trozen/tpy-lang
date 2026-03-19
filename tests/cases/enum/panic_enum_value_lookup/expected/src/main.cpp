@@ -59,6 +59,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Test enum value lookup panic on invalid value
+    // from enum import Enum
     // main()
     main();
 }

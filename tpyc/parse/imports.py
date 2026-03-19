@@ -34,7 +34,6 @@ PARSER_KEYWORDS: dict[str, frozenset[str] | None] = {
     "builtins": None,
     "__future__": None,  # no-op, never resolved as .py
     "typing": frozenset({"Protocol", "Optional", "Final", "overload", "override", "Self", "Callable"}),
-    "enum": frozenset({"Enum", "IntEnum", "auto"}),
 }
 
 # Types from tpy that require explicit import (not auto-available like Python builtins)

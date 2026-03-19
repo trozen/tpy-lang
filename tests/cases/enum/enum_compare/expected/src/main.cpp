@@ -69,6 +69,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Enum equality and inequality comparison
+    // from enum import Enum
     // main()
     main();
 }

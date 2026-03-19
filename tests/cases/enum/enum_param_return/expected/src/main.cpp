@@ -89,6 +89,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Enum as function parameter and return type
+    // from enum import Enum
     // main()
     main();
 }

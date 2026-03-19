@@ -81,6 +81,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # warning: non-exhaustive match on enum (missing member)
+    // from enum import Enum, auto
     // main()
     main();
 }

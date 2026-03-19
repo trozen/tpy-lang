@@ -80,6 +80,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # IntEnum truthiness: value 0 is falsy, non-zero is truthy
+    // from enum import IntEnum
     // main()
     main();
 }

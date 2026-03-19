@@ -70,6 +70,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # IntEnum with explicit Int8 underlying type via mixin syntax
+    // from enum import Enum
     // main()
     main();
 }

@@ -80,6 +80,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Enum if/elif chain with comparison
+    // from enum import Enum
     // main()
     main();
 }

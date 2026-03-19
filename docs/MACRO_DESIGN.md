@@ -24,7 +24,7 @@
 | `macro_note()` | Informational diagnostic hint (shown with related errors) |
 | Macro ordering / composition | Multiple macros on one class, inner-to-outer application order |
 | FieldInfo.metadata | Typed metadata for macro-specific field annotations (e.g. `proto.Field`) |
-| Replace codegen special cases | Move `__repr__`/`__hash__`/`operator<=>` generation from codegen into macro-generated AST |
+| Replace codegen special cases | Macros generate full `__repr__`/`__hash__`/ordering bodies as AST, not stubs. Requires `repr()` builtin that codegen maps to type-aware formatting |
 
 ---
 
@@ -43,6 +43,7 @@
 | `tpyc/macro_api.py` | Public API: `ClassInfo`, `FieldInfo`, `TypeInfo`, `class_macro`, `build_init`, `build_eq`, `expr_to_cpp_default` |
 | `tpyc/macro_loader.py` | `MacroRegistry`, `validate_and_call_macro`, `call_macro_field_function` |
 | `lib/tpy/dataclasses.py` | `@dataclass` macro, `Field` descriptor, `field()` function |
+| `lib/tpy/enum.py` | `Enum`, `IntEnum`, `auto()` -- resolved via import tracking, not yet macro-driven |
 
 ### How It Works
 

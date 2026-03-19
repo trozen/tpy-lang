@@ -121,6 +121,7 @@ void __tpy_init() {
     initialized = true;
 
     // from dataclasses import dataclass
+    // from enum import Enum, auto
     // main()
     main();
 }

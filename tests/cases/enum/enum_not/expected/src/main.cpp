@@ -65,6 +65,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # not operator on enum values (all enums are truthy, so not is always False)
+    // from enum import Enum
     // main()
     main();
 }

@@ -63,6 +63,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Basic enum: define, assign, print
+    // from enum import Enum
     // main()
     main();
 }

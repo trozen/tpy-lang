@@ -80,6 +80,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Optional enum (Color | None)
+    // from enum import Enum
     // main()
     main();
 }

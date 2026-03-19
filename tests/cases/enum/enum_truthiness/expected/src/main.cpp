@@ -68,6 +68,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # All enum values are truthy (even value 0)
+    // from enum import Enum
     // main()
     main();
 }

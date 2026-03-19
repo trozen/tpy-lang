@@ -63,6 +63,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Enum as record field type
+    // from enum import Enum
     // main()
     main();
 }

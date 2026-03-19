@@ -292,10 +292,10 @@ cross-module import resolution (alongside existing `records`, `protocols`,
 
 ### Module Recognition
 
-Add `"enum"` to `PARSER_KEYWORDS` in `parse/imports.py` (alongside `"typing"`,
-`"tpy"`, etc.). This enables `_resolve_type_name()` to track names imported
-via `from enum import Enum, auto`. Without this, `Enum` and `auto` are
-unresolvable -- the same mechanism used for `from typing import Protocol`.
+`lib/tpy/enum.py` is a `# tpy: macro_module` that defines `Enum`, `IntEnum`,
+and `auto`. It is discovered via normal module resolution (same as
+`dataclasses`). `_resolve_type_name()` tracks names imported via
+`from enum import Enum, auto` through the standard import system.
 
 ### Detection
 

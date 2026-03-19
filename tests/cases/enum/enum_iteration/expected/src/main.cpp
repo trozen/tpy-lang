@@ -127,6 +127,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Test enum iteration with for-each loop
+    // from enum import Enum
     // main()
     main();
 }

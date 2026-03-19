@@ -71,6 +71,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Enum with auto() values (start at 1, matching CPython)
+    // from enum import Enum, auto
     // main()
     main();
 }

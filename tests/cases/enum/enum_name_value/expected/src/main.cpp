@@ -67,6 +67,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Enum .name and .value properties
+    // from enum import Enum
     // main()
     main();
 }

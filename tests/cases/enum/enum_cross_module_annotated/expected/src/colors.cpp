@@ -51,6 +51,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Defines an enum type for cross-module import
+    // from enum import Enum
 }
 
 } // namespace tpyapp::colors

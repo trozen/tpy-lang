@@ -49,6 +49,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Panic: Color["Purple"] should panic on invalid name
+    // from enum import Enum
     // main()
     main();
 }

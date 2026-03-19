@@ -69,6 +69,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Enum identity operators (is / is not) lowered to == / !=
+    // from enum import Enum
     // main()
     main();
 }

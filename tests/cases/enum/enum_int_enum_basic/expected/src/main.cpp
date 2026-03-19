@@ -90,6 +90,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # IntEnum: arithmetic, ordering, and int comparison
+    // from enum import IntEnum
     // main()
     main();
 }

@@ -80,6 +80,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Test try_parse() free function for safe name-to-enum conversion
+    // from enum import Enum
     // main()
     main();
 }

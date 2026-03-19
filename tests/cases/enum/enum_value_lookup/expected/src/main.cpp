@@ -78,6 +78,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Test enum construction from integer value
+    // from enum import Enum
     // main()
     main();
 }

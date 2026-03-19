@@ -68,6 +68,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Enum values stored in a list
+    // from enum import Enum
     // main()
     main();
 }
