@@ -8,24 +8,49 @@ namespace tpyapp::main {
 std::string describe(const std::variant<Bird*, Cat*, Dog*> a, bool verbose) {
     // match a:
     auto& __match_subject = a;
-    // case Dog() | Cat() if verbose:
-    if ((std::holds_alternative<Dog*>(__match_subject) || std::holds_alternative<Cat*>(__match_subject)) && verbose) {
-        // return "verbose pet"
-        return "verbose pet";
-        goto __match_end_1;
-    }
-    // case Dog() | Cat():
-    if (std::holds_alternative<Dog*>(__match_subject) || std::holds_alternative<Cat*>(__match_subject)) {
-        // return "pet"
-        return "pet";
-        goto __match_end_1;
-    }
-    // case Bird():
-    if (std::holds_alternative<Bird*>(__match_subject)) {
-        auto& __case_2 = *std::get<Bird*>(__match_subject);
+    switch (__match_subject.index()) {
+    case 0: {
+        auto& __case_0 = *std::get<0>(__match_subject);
+        // case Bird():
         // return "bird"
         return "bird";
         goto __match_end_1;
+        break;
+    }
+    case 1: {
+        // case Dog() | Cat() if verbose:
+        {
+            if (verbose) {
+                // return "verbose pet"
+                return "verbose pet";
+                goto __match_end_1;
+            }
+        }
+        // case Dog() | Cat():
+        {
+            // return "pet"
+            return "pet";
+            goto __match_end_1;
+        }
+        break;
+    }
+    case 2: {
+        // case Dog() | Cat() if verbose:
+        {
+            if (verbose) {
+                // return "verbose pet"
+                return "verbose pet";
+                goto __match_end_1;
+            }
+        }
+        // case Dog() | Cat():
+        {
+            // return "pet"
+            return "pet";
+            goto __match_end_1;
+        }
+        break;
+    }
     }
 __match_end_1:;
     // return ""
@@ -36,47 +61,56 @@ __match_end_1:;
 std::string find(const std::variant<Bird*, Cat*, Dog*> a) {
     // match a:
     auto& __match_subject = a;
-    // case Dog(name=n) | Cat(name=n) if n == "Rex":
-    if (std::holds_alternative<Dog*>(__match_subject)) {
-        auto& __case_0_0 = *std::get<Dog*>(__match_subject);
-        auto& n = __case_0_0.name;
-        if ((n == "Rex")) {
-            // return "found Rex"
-            return "found Rex";
-            goto __match_end_2;
-        }
-    }
-    if (std::holds_alternative<Cat*>(__match_subject)) {
-        auto& __case_0_1 = *std::get<Cat*>(__match_subject);
-        auto& n = __case_0_1.name;
-        if ((n == "Rex")) {
-            // return "found Rex"
-            return "found Rex";
-            goto __match_end_2;
-        }
-    }
-    // case Dog(name=n) | Cat(name=n):
-    if (std::holds_alternative<Dog*>(__match_subject)) {
-        auto& __case_1_0 = *std::get<Dog*>(__match_subject);
-        auto& n = __case_1_0.name;
-        // return "other pet: " + n
-        return (::tpy::str_concat("other pet: ", n));
-        goto __match_end_2;
-    }
-    if (std::holds_alternative<Cat*>(__match_subject)) {
-        auto& __case_1_1 = *std::get<Cat*>(__match_subject);
-        auto& n = __case_1_1.name;
-        // return "other pet: " + n
-        return (::tpy::str_concat("other pet: ", n));
-        goto __match_end_2;
-    }
-    // case Bird(name=n):
-    if (std::holds_alternative<Bird*>(__match_subject)) {
-        auto& __case_2 = *std::get<Bird*>(__match_subject);
-        auto& n = __case_2.name;
+    switch (__match_subject.index()) {
+    case 0: {
+        auto& __case_0 = *std::get<0>(__match_subject);
+        // case Bird(name=n):
+        auto& n = __case_0.name;
         // return "bird: " + n
         return (::tpy::str_concat("bird: ", n));
         goto __match_end_2;
+        break;
+    }
+    case 1: {
+        auto& __case_1 = *std::get<1>(__match_subject);
+        // case Dog(name=n) | Cat(name=n) if n == "Rex":
+        {
+            auto& n = __case_1.name;
+            if ((n == "Rex")) {
+                // return "found Rex"
+                return "found Rex";
+                goto __match_end_2;
+            }
+        }
+        // case Dog(name=n) | Cat(name=n):
+        {
+            auto& n = __case_1.name;
+            // return "other pet: " + n
+            return (::tpy::str_concat("other pet: ", n));
+            goto __match_end_2;
+        }
+        break;
+    }
+    case 2: {
+        auto& __case_2 = *std::get<2>(__match_subject);
+        // case Dog(name=n) | Cat(name=n) if n == "Rex":
+        {
+            auto& n = __case_2.name;
+            if ((n == "Rex")) {
+                // return "found Rex"
+                return "found Rex";
+                goto __match_end_2;
+            }
+        }
+        // case Dog(name=n) | Cat(name=n):
+        {
+            auto& n = __case_2.name;
+            // return "other pet: " + n
+            return (::tpy::str_concat("other pet: ", n));
+            goto __match_end_2;
+        }
+        break;
+    }
     }
 __match_end_2:;
     // return ""

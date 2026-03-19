@@ -1,0 +1,8 @@
+Rex!
+strict other
+other
+strict other
+other
+dog: Rex
+Buddy the dog
+cat: Luna

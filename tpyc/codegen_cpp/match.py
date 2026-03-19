@@ -69,12 +69,9 @@ class MatchGenerator:
         out.write(f"{indent}{binding} __match_subject = {subject_code};\n")
 
         if isinstance(subject_type, UnionType):
-            is_const = (isinstance(stmt.subject, TpyName)
-                        and stmt.subject.name in self.ctx.const_indirect_locals)
             has_guard = any(c.guard is not None for c in stmt.cases)
             if has_guard:
-                self._gen_match_guarded_union(out, stmt, subject_type, indent,
-                                              is_const_subject=is_const)
+                self._gen_match_guarded_union(out, stmt, subject_type, indent)
             else:
                 self._gen_match_switch_union(out, stmt, subject_type, indent)
         elif isinstance(subject_type, EnumType):
@@ -512,161 +509,197 @@ class MatchGenerator:
 
     def _gen_match_guarded_union(
         self, out: TextIO, stmt: TpyMatch, subject_type: UnionType, indent: str,
-        is_const_subject: bool = False,
     ) -> None:
-        """Generate guarded match on union using goto for fallthrough.
+        """Generate guarded match on union using switch(index()) with guards inside case blocks.
 
-        Uses standalone if-blocks per arm with goto to skip remaining arms
-        after a match. This avoids do/while which would capture break/continue
-        from user code inside match bodies.
+        Groups arms by variant type so each type is checked exactly once via
+        switch, instead of duplicating holds_alternative per arm.
         """
         self.ctx.match_counter += 1
         end_label = f"__match_end_{self.ctx.match_counter}"
         inner = INDENT * (self.ctx.indent_level + 1)
+        inner2 = INDENT * (self.ctx.indent_level + 2)
+        is_ptr_var = subject_type.uses_pointer_repr()
 
-        for i, case in enumerate(stmt.cases):
-            self.ctx.emit_source_comment(out, case.loc, indent)
+        # Collect arms per variant type index.
+        # Each entry: (case, pattern_for_this_type, as_name, as_raw_name)
+        type_arms: dict[int, list[tuple[TpyMatchCase, TpyPattern, str | None, str | None]]] = {
+            i: [] for i in range(len(subject_type.members))
+        }
+
+        for case in stmt.cases:
             pattern, as_name, as_raw_name = self._unwrap_as_pattern(case.pattern)
 
             if isinstance(pattern, TpyClassPattern):
-                self._gen_guarded_union_class_arm(
-                    out, pattern, i, indent, inner, case.body,
-                    case.guard, as_name, as_raw_name, case.type_facts, end_label,
-                    subject_type=subject_type,
-                    is_const_subject=is_const_subject,
-                )
+                assert pattern.resolved_type is not None
+                idx = self._variant_index(subject_type, pattern.resolved_type)
+                type_arms[idx].append((case, pattern, as_name, as_raw_name))
 
             elif isinstance(pattern, TpyOrPattern):
-                self._gen_guarded_union_or_arm(
-                    out, pattern, i, indent, inner, case.body,
-                    case.guard, subject_type, case.type_facts, end_label,
-                    is_const_subject=is_const_subject,
-                )
+                # Track which indices got a class alt from this or-pattern
+                # so wildcard alts don't duplicate into the same index
+                or_covered: set[int] = set()
+                for alt in pattern.patterns:
+                    if isinstance(alt, TpyClassPattern):
+                        assert alt.resolved_type is not None
+                        idx = self._variant_index(subject_type, alt.resolved_type)
+                        type_arms[idx].append((case, alt, as_name, as_raw_name))
+                        or_covered.add(idx)
+                    elif isinstance(alt, (TpyWildcardPattern, TpyCapturePattern)):
+                        for idx in type_arms:
+                            if idx not in or_covered:
+                                type_arms[idx].append((case, alt, as_name, as_raw_name))
+                    else:
+                        raise CodeGenError(
+                            f"Unsupported or-pattern alternative: {type(alt).__name__}")
 
             elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
-                if isinstance(pattern, TpyCapturePattern):
-                    self._emit_binding(out, escape_cpp_name(pattern.name), pattern.name, "__match_subject", indent)
-                self._emit_binding(out, as_name, as_raw_name, "__match_subject", indent)
-                if case.guard is not None:
-                    guard_code = self.expressions.gen_expr(case.guard)
-                    self.ctx.temps.flush(out, indent)
-                    out.write(f"{indent}if ({guard_code}) {{\n")
-                    self.ctx.indent_level += 1
-                    for s in case.body:
-                        self.stmts.gen_stmt(out, s)
-                    out.write(f"{INDENT * self.ctx.indent_level}goto {end_label};\n")
-                    self.ctx.indent_level -= 1
-                    out.write(f"{indent}}}\n")
-                else:
-                    for s in case.body:
-                        self.stmts.gen_stmt(out, s)
+                for idx in type_arms:
+                    type_arms[idx].append((case, pattern, as_name, as_raw_name))
 
             else:
-                raise CodeGenError(f"Unsupported pattern in guarded union match: {type(pattern).__name__}")
+                raise CodeGenError(
+                    f"Unsupported pattern in guarded union match: {type(pattern).__name__}")
 
+        # Truncate each type's arm list after the first unguarded arm
+        # (anything after an unguarded arm is unreachable)
+        for idx in type_arms:
+            truncated: list[tuple[TpyMatchCase, TpyPattern, str | None, str | None]] = []
+            for entry in type_arms[idx]:
+                truncated.append(entry)
+                if entry[0].guard is None:
+                    break
+            type_arms[idx] = truncated
+
+        # Types whose arms are ALL wildcards/captures can share default:.
+        # All such indices have identical arm lists because wildcard/capture arms
+        # are always broadcast to every index uniformly during collection above.
+        default_indices: set[int] = set()
+        default_arms: list[tuple[TpyMatchCase, TpyPattern, str | None, str | None]] | None = None
+        for idx, arms in type_arms.items():
+            if arms and all(isinstance(a[1], (TpyWildcardPattern, TpyCapturePattern))
+                           for a in arms):
+                default_indices.add(idx)
+                if default_arms is None:
+                    default_arms = arms
+
+        out.write(f"{indent}switch (__match_subject.index()) {{\n")
+
+        for idx in range(len(subject_type.members)):
+            if idx in default_indices:
+                continue
+            arms = type_arms[idx]
+            if not arms:
+                continue
+
+            out.write(f"{indent}case {idx}: {{\n")
+
+            # Extract variant value once for this case block
+            needs_extraction = any(
+                isinstance(a[1], TpyClassPattern)
+                and (a[1].keywords or a[0].type_facts or a[2] is not None)
+                for a in arms
+            )
+            case_var = f"__case_{idx}"
+            if needs_extraction:
+                get_expr = (f"*std::get<{idx}>(__match_subject)" if is_ptr_var
+                            else f"std::get<{idx}>(__match_subject)")
+                out.write(f"{inner}auto& {case_var} = {get_expr};\n")
+
+            use_scope = len(arms) > 1
+            for arm_case, arm_pattern, as_name, as_raw_name in arms:
+                self.ctx.emit_source_comment(out, arm_case.loc, inner)
+                self._gen_guarded_switch_arm_action(
+                    out, arm_case, arm_pattern, case_var if needs_extraction else None,
+                    as_name, as_raw_name, inner, inner2, end_label,
+                    needs_scope=use_scope,
+                )
+
+            out.write(f"{inner}break;\n")
+            out.write(f"{indent}}}\n")
+
+        if default_indices and default_arms:
+            out.write(f"{indent}default: {{\n")
+            use_scope = len(default_arms) > 1
+            for arm_case, arm_pattern, as_name, as_raw_name in default_arms:
+                self.ctx.emit_source_comment(out, arm_case.loc, inner)
+                self._gen_guarded_switch_arm_action(
+                    out, arm_case, arm_pattern, None,
+                    as_name, as_raw_name, inner, inner2, end_label,
+                    needs_scope=use_scope,
+                )
+            out.write(f"{inner}break;\n")
+            out.write(f"{indent}}}\n")
+
+        out.write(f"{indent}}}\n")
         out.write(f"{end_label}:;\n")
 
-    def _gen_guarded_union_class_arm(
-        self, out: TextIO, pattern: TpyClassPattern, arm_idx: int | str,
-        indent: str, inner: str, body: list[TpyStmt],
-        guard: TpyExpr | None,
+    def _gen_guarded_switch_arm_action(
+        self, out: TextIO, arm_case: TpyMatchCase, pattern: TpyPattern,
+        case_var: str | None,
         as_name: str | None, as_raw_name: str | None,
-        type_facts: dict[str, TpyType] | None,
-        end_label: str,
-        subject_type: UnionType | None = None,
-        is_const_subject: bool = False,
+        inner: str, inner2: str, end_label: str,
+        needs_scope: bool = False,
     ) -> None:
-        """Generate a class-pattern arm for guarded union match (goto-based fallthrough)."""
-        assert pattern.resolved_type is not None
-        cpp_type = self.types.type_to_cpp(pattern.resolved_type)
-        is_ptr_var = subject_type is not None and subject_type.uses_pointer_repr()
+        """Emit a single arm action within a switch case block.
 
-        const_pfx = "const " if is_const_subject else ""
-        holds_type = f"{const_pfx}{cpp_type}*" if is_ptr_var else cpp_type
-        out.write(f"{indent}if (std::holds_alternative<{holds_type}>(__match_subject)) {{\n")
-        case_var: str | None = None
-        if pattern.keywords or type_facts or as_name is not None:
-            case_var = f"__case_{arm_idx}"
-            get_expr = f"*std::get<{holds_type}>(__match_subject)" if is_ptr_var else f"std::get<{cpp_type}>(__match_subject)"
-            out.write(f"{inner}auto& {case_var} = {get_expr};\n")
-        if pattern.keywords:
-            self._gen_match_field_bindings(out, pattern, case_var, inner)
-        self._emit_binding(out, as_name, as_raw_name, case_var, inner)
+        When needs_scope is True, wraps bindings+body in { } to avoid name
+        conflicts with other arms in the same case block.
+        """
+        bind_indent = inner2 if needs_scope else inner
+
+        if needs_scope:
+            out.write(f"{inner}{{\n")
+
+        # Emit bindings
+        if isinstance(pattern, TpyClassPattern):
+            if pattern.keywords:
+                self._gen_match_field_bindings(out, pattern, case_var, bind_indent)
+            self._emit_binding(out, as_name, as_raw_name, case_var, bind_indent)
+        elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
+            if isinstance(pattern, TpyCapturePattern):
+                self._emit_binding(
+                    out, escape_cpp_name(pattern.name), pattern.name,
+                    "__match_subject", bind_indent)
+            self._emit_binding(out, as_name, as_raw_name, "__match_subject", bind_indent)
+        else:
+            raise CodeGenError(
+                f"Unsupported pattern in guarded switch arm: {type(pattern).__name__}")
+
+        # Emit guarded/unguarded body with goto
+        has_narrowing = isinstance(pattern, TpyClassPattern)
+        saved: dict[str, str | None] = {}
+        guard = arm_case.guard
 
         if guard is not None:
             guard_code = self.expressions.gen_expr(guard)
-            self.ctx.temps.flush(out, inner)
-            out.write(f"{inner}if ({guard_code}) {{\n")
-            saved_narrow = self._apply_narrowing(type_facts, case_var)
-            self.ctx.indent_level += 2
-            for s in body:
+            self.ctx.temps.flush(out, bind_indent)
+            out.write(f"{bind_indent}if ({guard_code}) {{\n")
+            if has_narrowing:
+                saved = self._apply_narrowing(arm_case.type_facts, case_var)
+            extra = 3 if needs_scope else 2
+            self.ctx.indent_level += extra
+            for s in arm_case.body:
                 self.stmts.gen_stmt(out, s)
             out.write(f"{INDENT * self.ctx.indent_level}goto {end_label};\n")
-            self.ctx.indent_level -= 2
-            self.stmts.ctx.restore_narrowed_vars(saved_narrow)
+            self.ctx.indent_level -= extra
+            if has_narrowing:
+                self.stmts.ctx.restore_narrowed_vars(saved)
+            out.write(f"{bind_indent}}}\n")
+        else:
+            if has_narrowing:
+                saved = self._apply_narrowing(arm_case.type_facts, case_var)
+            extra = 2 if needs_scope else 1
+            self.ctx.indent_level += extra
+            for s in arm_case.body:
+                self.stmts.gen_stmt(out, s)
+            out.write(f"{INDENT * self.ctx.indent_level}goto {end_label};\n")
+            self.ctx.indent_level -= extra
+            if has_narrowing:
+                self.stmts.ctx.restore_narrowed_vars(saved)
+
+        if needs_scope:
             out.write(f"{inner}}}\n")
-        else:
-            saved_narrow = self._apply_narrowing(type_facts, case_var)
-            self.ctx.indent_level += 1
-            for s in body:
-                self.stmts.gen_stmt(out, s)
-            out.write(f"{INDENT * self.ctx.indent_level}goto {end_label};\n")
-            self.ctx.indent_level -= 1
-            self.stmts.ctx.restore_narrowed_vars(saved_narrow)
-
-        out.write(f"{indent}}}\n")
-
-    def _gen_guarded_union_or_arm(
-        self, out: TextIO, pattern: TpyOrPattern, arm_idx: int,
-        indent: str, inner: str, body: list[TpyStmt],
-        guard: TpyExpr | None, subject_type: UnionType,
-        type_facts: dict[str, TpyType] | None,
-        end_label: str,
-        is_const_subject: bool = False,
-    ) -> None:
-        """Generate an or-pattern arm for guarded union match (goto-based fallthrough)."""
-        has_bindings = any(
-            isinstance(alt, TpyClassPattern) and alt.keywords
-            for alt in pattern.patterns
-        )
-
-        is_ptr_var = subject_type.uses_pointer_repr()
-        const_pfx = "const " if is_const_subject else ""
-        if not has_bindings:
-            conds = []
-            for alt in pattern.patterns:
-                if isinstance(alt, TpyClassPattern):
-                    assert alt.resolved_type is not None
-                    cpp_type = self.types.type_to_cpp(alt.resolved_type)
-                    holds_type = f"{const_pfx}{cpp_type}*" if is_ptr_var else cpp_type
-                    conds.append(f"std::holds_alternative<{holds_type}>(__match_subject)")
-                elif isinstance(alt, (TpyWildcardPattern, TpyCapturePattern)):
-                    conds.append("true")
-                else:
-                    raise CodeGenError(f"Unsupported or-pattern alternative: {type(alt).__name__}")
-            cond = " || ".join(conds)
-            if guard is not None:
-                guard_code = self.expressions.gen_expr(guard)
-                self.ctx.temps.flush(out, indent)
-                cond = f"({cond}) && {guard_code}"
-            out.write(f"{indent}if ({cond}) {{\n")
-            self.ctx.indent_level += 1
-            for s in body:
-                self.stmts.gen_stmt(out, s)
-            out.write(f"{INDENT * self.ctx.indent_level}goto {end_label};\n")
-            self.ctx.indent_level -= 1
-            out.write(f"{indent}}}\n")
-        else:
-            for j, alt in enumerate(pattern.patterns):
-                if isinstance(alt, TpyClassPattern):
-                    self._gen_guarded_union_class_arm(
-                        out, alt, f"{arm_idx}_{j}", indent, inner, body,
-                        guard, None, None, type_facts, end_label,
-                        subject_type=subject_type,
-                        is_const_subject=is_const_subject,
-                    )
-                else:
-                    raise CodeGenError(f"Unsupported or-pattern alternative with bindings: {type(alt).__name__}")
 
     def _apply_narrowing(
         self, type_facts: dict[str, TpyType] | None, case_var: str | None,

@@ -8,36 +8,46 @@ namespace tpyapp::main {
 std::string describe(const std::variant<Cat*, Dog*> a) {
     // match a:
     auto& __match_subject = a;
-    // case Dog(name=n) if n == "Rex":
-    if (std::holds_alternative<Dog*>(__match_subject)) {
-        auto& __case_0 = *std::get<Dog*>(__match_subject);
-        auto& n = __case_0.name;
-        if ((n == "Rex")) {
-            // return "Rex the dog!"
-            return "Rex the dog!";
+    switch (__match_subject.index()) {
+    case 0: {
+        auto& __case_0 = *std::get<0>(__match_subject);
+        // case Cat(name=n) if n == "Whiskers":
+        {
+            auto& n = __case_0.name;
+            if ((n == "Whiskers")) {
+                // return "Whiskers the cat!"
+                return "Whiskers the cat!";
+                goto __match_end_1;
+            }
+        }
+        // case _:
+        {
+            // return "other"
+            return "other";
             goto __match_end_1;
         }
+        break;
     }
-    // case Dog():
-    if (std::holds_alternative<Dog*>(__match_subject)) {
-        auto& __case_1 = *std::get<Dog*>(__match_subject);
-        // return "some dog"
-        return "some dog";
-        goto __match_end_1;
-    }
-    // case Cat(name=n) if n == "Whiskers":
-    if (std::holds_alternative<Cat*>(__match_subject)) {
-        auto& __case_2 = *std::get<Cat*>(__match_subject);
-        auto& n = __case_2.name;
-        if ((n == "Whiskers")) {
-            // return "Whiskers the cat!"
-            return "Whiskers the cat!";
+    case 1: {
+        auto& __case_1 = *std::get<1>(__match_subject);
+        // case Dog(name=n) if n == "Rex":
+        {
+            auto& n = __case_1.name;
+            if ((n == "Rex")) {
+                // return "Rex the dog!"
+                return "Rex the dog!";
+                goto __match_end_1;
+            }
+        }
+        // case Dog():
+        {
+            // return "some dog"
+            return "some dog";
             goto __match_end_1;
         }
+        break;
     }
-    // case _:
-    // return "other"
-    return "other";
+    }
 __match_end_1:;
     // return ""
     return "";

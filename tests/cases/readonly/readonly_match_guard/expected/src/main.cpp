@@ -9,31 +9,36 @@ namespace tpyapp::main {
 std::string describe(std::variant<const Cat*, const Dog*> pet) {
     // match pet:
     auto& __match_subject = pet;
-    // case Dog(name=n) if len(n) > 3:
-    if (std::holds_alternative<const Dog*>(__match_subject)) {
-        auto& __case_0 = *std::get<const Dog*>(__match_subject);
+    switch (__match_subject.index()) {
+    case 0: {
+        auto& __case_0 = *std::get<0>(__match_subject);
+        // case Cat(name=n):
         auto& n = __case_0.name;
-        if ((::tpy::__len__(n) > 3)) {
-            // return "long-named dog: " + n
-            return (::tpy::str_concat("long-named dog: ", n));
-            goto __match_end_1;
-        }
-    }
-    // case Dog(name=n):
-    if (std::holds_alternative<const Dog*>(__match_subject)) {
-        auto& __case_1 = *std::get<const Dog*>(__match_subject);
-        auto& n = __case_1.name;
-        // return "dog: " + n
-        return (::tpy::str_concat("dog: ", n));
-        goto __match_end_1;
-    }
-    // case Cat(name=n):
-    if (std::holds_alternative<const Cat*>(__match_subject)) {
-        auto& __case_2 = *std::get<const Cat*>(__match_subject);
-        auto& n = __case_2.name;
         // return "cat: " + n
         return (::tpy::str_concat("cat: ", n));
         goto __match_end_1;
+        break;
+    }
+    case 1: {
+        auto& __case_1 = *std::get<1>(__match_subject);
+        // case Dog(name=n) if len(n) > 3:
+        {
+            auto& n = __case_1.name;
+            if ((::tpy::__len__(n) > 3)) {
+                // return "long-named dog: " + n
+                return (::tpy::str_concat("long-named dog: ", n));
+                goto __match_end_1;
+            }
+        }
+        // case Dog(name=n):
+        {
+            auto& n = __case_1.name;
+            // return "dog: " + n
+            return (::tpy::str_concat("dog: ", n));
+            goto __match_end_1;
+        }
+        break;
+    }
     }
 __match_end_1:;
 }
