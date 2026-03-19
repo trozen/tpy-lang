@@ -3,7 +3,6 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
-- `__iter__` on list still uses `@cpp_template` because `iter()` builtin codegen has variable binding differences when using `@native(function=True)`.
 - Decorator signature schema: positional and keyword args for decorators (`@native`, `@cpp_template`, `@readonly`, etc.) are validated ad-hoc in `_parse_method`, `_parse_function`, and class decorator parsing. Define a single schema that covers both positional and keyword args per decorator, with centralized validation.
 - Continue moving builtins to .py: migrate dict (+views), set, Array, Span, Ptr, Range types
 - Eliminate BuiltinTypeDef: move `type_factory` to a hardcoded mapping (`{"builtins.list": lambda t: ListType(t), ...}`), derive `type_params`/`param_kinds` from .py class generics, move constructors to .py as `__init__` overloads (needs unifying constructor vs `__init__` semantics)
