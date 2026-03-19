@@ -14,7 +14,7 @@ from ..typesys import (
     DictKeysViewType, DictValuesViewType, DictItemsViewType,
     PendingListType, ListRepeatType,
     SpanType, SpanIterType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
-    EnumType, IntEnumType, TupleType, FnType,
+    EnumType, IntEnumType, TupleType, FnType, CallableType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, container_to_str_template,
     ResolvedBinop, get_covariant_params,
 )
@@ -1597,6 +1597,23 @@ class ExpressionGenerator:
 
     def _gen_method_call(self, expr: TpyMethodCall) -> str:
         """Generate method call code."""
+        # Callable-typed field invocation: obj.field(args) -> obj.field(args)
+        if expr.is_callable_field:
+            obj_code = self.gen_expr_deref(expr.obj)
+            field_name = escape_cpp_name(expr.method)
+            args = ", ".join(self.gen_expr(a) for a in expr.args)
+            # Check if the field is Optional[Callable] -- need .value() to unwrap
+            obj_type = self.types.get_resolved_type(expr.obj)
+            if isinstance(obj_type, NamedType):
+                rec = self.ctx.analyzer.registry.get_record(obj_type.name)
+                if rec:
+                    for fld in rec.fields:
+                        if fld.name == expr.method:
+                            if isinstance(fld.type, OptionalType):
+                                return f"{obj_code}.{field_name}.value()({args})"
+                            break
+            return f"{obj_code}.{field_name}({args})"
+
         # Skip upfront arg generation when a later path will regenerate args:
         # - cpp_template methods: handled by gen_method_from_function_info
         # - user-record methods with known method: handled by TypeParamRef temp path
@@ -3078,7 +3095,14 @@ class ExpressionGenerator:
         """Generate a C++ lambda expression from a TpyLambda."""
         params = []
         for pname, ptype in zip(expr.param_names, expr.inferred_param_types):
-            cpp_type = ptype.to_cpp_param(escape_cpp_name(pname))
+            cpp_name = escape_cpp_name(pname)
+            if expr.captures_by_value:
+                # Callable context: lambda params must match std::function signature
+                # (const ref for non-value types, not mutable ref)
+                cpp_type_str = CallableType._callable_param_cpp(ptype)
+                cpp_type = f"{cpp_type_str} {cpp_name}"
+            else:
+                cpp_type = ptype.to_cpp_param(cpp_name)
             params.append(cpp_type)
         params_str = ", ".join(params)
 
@@ -3092,7 +3116,10 @@ class ExpressionGenerator:
             self.ctx.local_scope_names = saved_locals
 
         if expr.captured_names:
-            refs = ", ".join(f"&{escape_cpp_name(n)}" for n in expr.captured_names)
+            if expr.captures_by_value:
+                refs = ", ".join(escape_cpp_name(n) for n in expr.captured_names)
+            else:
+                refs = ", ".join(f"&{escape_cpp_name(n)}" for n in expr.captured_names)
             capture = f"[{refs}]"
         else:
             capture = "[]"

@@ -192,6 +192,7 @@ class TpyMethodCall(TpyExpr):
     inferred_type_args: tuple[TpyType, ...] | None = None  # Set by sema for generic builtin module calls
     deref_depth: int = 0  # Set by sema: number of __deref__ steps applied before method resolution
     ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr (or Ptr[readonly[T]])
+    is_callable_field: bool = False  # Set by sema: method name is a Callable-typed field
 
 
 @dataclass
@@ -293,6 +294,7 @@ class TpyLambda(TpyExpr):
     inferred_param_types: list['TpyType'] = field(default_factory=list)
     inferred_return_type: 'TpyType | None' = None
     captured_names: list[str] = field(default_factory=list)
+    captures_by_value: bool = False  # True for Callable context (captures escape)
 
 
 @dataclass

@@ -68,9 +68,8 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
-| D1a | `Fn` type + non-capturing lambda | M | Done | [VI](#closures--nested-functions) |
-| D1b | Capturing lambdas (non-escaping closures) | M | Not started | [VI](#closures--nested-functions) |
-| D1c | `Callable` type (`std::function`, escaping) | M | Not started | [I](#callable--function-pointer-types) |
+| D1a | `Fn` type + lambda expressions (including captures) | M | Done | [VI](#closures--nested-functions) |
+| D1b | `Callable` type (`std::function`, type-erased) | M | Done | [I](#callable--function-pointer-types) |
 | D2 | Named function references as values | S | Not started | [I](#callable--function-pointer-types) |
 | D3 | f-strings | M | Done | [VII](#f-strings) |
 | D4 | with statement | M | Done | [VI](#with-statement-context-managers) |

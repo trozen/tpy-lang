@@ -12,7 +12,7 @@ from ..typesys import (
     DictType, SetType,
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly, UnknownElementType,
-    PendingGenericInstanceType, IntLiteralType,
+    PendingGenericInstanceType, IntLiteralType, CallableType,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt,
@@ -274,7 +274,71 @@ class MethodAnalyzer:
         result = self._analyze_protocol_or_bound_method(expr, obj_type)
         if result is not None:
             return result
+        # Callable-typed field invocation: obj.field(args) where field is Callable
+        result = self._try_callable_field_call(expr, obj_type)
+        if result is not None:
+            return result
         return None
+
+    def _try_callable_field_call(self, expr: TpyMethodCall, obj_type: TpyType) -> TpyType | None:
+        """Check if expr.method is a Callable-typed field and analyze the call."""
+        if not isinstance(obj_type, NamedType):
+            return None
+        rec = self.ctx.registry.get_record(obj_type.name)
+        if rec is None:
+            return None
+        callable_type = None
+        is_optional_field = False
+        for fld in rec.fields:
+            if fld.name == expr.method:
+                fld_type = fld.type
+                if isinstance(fld_type, CallableType):
+                    callable_type = fld_type
+                elif isinstance(fld_type, OptionalType) and isinstance(fld_type.inner, CallableType):
+                    callable_type = fld_type.inner
+                    is_optional_field = True
+                break
+        if callable_type is None:
+            return None
+        # Warn if calling Optional[Callable] field without narrowing
+        if is_optional_field:
+            narrowing_key = _expr_to_narrowing_key(expr.obj)
+            if narrowing_key is not None:
+                narrowing_key = f"{narrowing_key}.{expr.method}"
+            if narrowing_key is None or narrowing_key not in self.ctx.narrowed_types:
+                self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
+                expr.needs_optional_runtime_check = True
+        if expr.kwargs:
+            raise self.ctx.error(
+                "Keyword arguments are not supported for Callable-typed fields "
+                "(Callable types have no parameter names)", expr)
+        if len(expr.args) != len(callable_type.param_types):
+            raise self.ctx.error(
+                f"Callable field '{expr.method}' expects {len(callable_type.param_types)} argument(s), "
+                f"got {len(expr.args)}",
+                expr
+            )
+        for i, (arg, expected_type) in enumerate(zip(expr.args, callable_type.param_types)):
+            arg_type = self.expr.analyze_expr_with_hint(arg, expected_type)
+            if arg_type != expected_type:
+                from .context import SemanticError
+                try:
+                    self.compat.check_type_compatible(
+                        arg_type, expected_type,
+                        f"argument {i + 1}", loc=expr.loc, source_expr=arg)
+                except SemanticError:
+                    raise self.ctx.error(
+                        f"Argument {i + 1}: expected '{expected_type}', got '{arg_type}'",
+                        expr
+                    )
+        expr.resolved_function_info = FunctionInfo(
+            name=expr.method,
+            params=[ParamInfo(f"__a{i}", t) for i, t in enumerate(callable_type.param_types)],
+            return_type=callable_type.return_type,
+            is_readonly=True,
+        )
+        expr.is_callable_field = True
+        return callable_type.return_type
 
     def analyze_method_call(self, expr: TpyMethodCall) -> TpyType:
         """Analyze a method call."""

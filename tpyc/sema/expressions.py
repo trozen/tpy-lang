@@ -16,7 +16,7 @@ from ..typesys import (
     FixedIntType, StringType, StrViewType, make_union,
     ResolvedBinop, FunctionInfo, ParamInfo, UnknownElementType, UNKNOWN_ELEMENT,
     PendingDictType, PendingSetType, DictLiteralInfo,
-    resolve_int_literals, FnType,
+    resolve_int_literals, FnType, CallableType,
     INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, SLICE, is_protocol_type, container_to_str_template,
     PendingGenericInstanceType, SliceType,
 )
@@ -74,8 +74,11 @@ def _walk_names(node: TpyExpr, out: set[str]) -> None:
     elif isinstance(node, TpyUnaryOp):
         _walk_names(node.operand, out)
     elif isinstance(node, TpyCall):
+        out.add(node.func)
         for arg in node.args:
             _walk_names(arg, out)
+        for v in node.kwargs.values():
+            _walk_names(v, out)
     elif isinstance(node, TpyMethodCall):
         _walk_names(node.obj, out)
         for arg in node.args:
@@ -99,6 +102,52 @@ def _walk_names(node: TpyExpr, out: set[str]) -> None:
                 _walk_names(part.expr, out)
     elif isinstance(node, TpyCoerce):
         _walk_names(node.expr, out)
+    elif isinstance(node, TpyArrayLiteral):
+        for elem in node.elements:
+            _walk_names(elem, out)
+    elif isinstance(node, TpyTupleLiteral):
+        for elem in node.elements:
+            _walk_names(elem, out)
+    elif isinstance(node, TpyListRepeat):
+        for elem in node.elements:
+            _walk_names(elem, out)
+        _walk_names(node.count, out)
+    elif isinstance(node, TpyListComprehension):
+        _walk_names(node.element_expr, out)
+        _walk_comprehension_gen(node.generator, out)
+    elif isinstance(node, TpySetComprehension):
+        _walk_names(node.element_expr, out)
+        _walk_comprehension_gen(node.generator, out)
+    elif isinstance(node, TpyDictComprehension):
+        _walk_names(node.key_expr, out)
+        _walk_names(node.value_expr, out)
+        _walk_comprehension_gen(node.generator, out)
+    elif isinstance(node, TpyGeneratorExpression):
+        _walk_names(node.element_expr, out)
+        _walk_comprehension_gen(node.generator, out)
+    elif isinstance(node, TpySetLiteral):
+        for elem in node.elements:
+            _walk_names(elem, out)
+    elif isinstance(node, TpyDictLiteral):
+        for k in node.keys:
+            _walk_names(k, out)
+        for v in node.values:
+            _walk_names(v, out)
+    elif isinstance(node, TpySlice):
+        if node.lower:
+            _walk_names(node.lower, out)
+        if node.upper:
+            _walk_names(node.upper, out)
+    elif isinstance(node, TpyNamedExpr):
+        _walk_names(node.value, out)
+
+
+def _walk_comprehension_gen(gen: 'TpyComprehensionGenerator', out: set[str]) -> None:
+    """Walk a comprehension generator, collecting name refs from iterable and conditions.
+    The loop variable itself is NOT added (it's local to the comprehension)."""
+    _walk_names(gen.iterable, out)
+    for cond in gen.conditions:
+        _walk_names(cond, out)
 
 
 class ExpressionAnalyzer:
@@ -213,8 +262,8 @@ class ExpressionAnalyzer:
         if type_hint is None:
             return self.analyze_expr(expr)
 
-        # Lambda with Fn type hint: infer param types from the hint
-        if isinstance(expr, TpyLambda) and isinstance(type_hint, FnType):
+        # Lambda with Fn/Callable type hint: infer param types from the hint
+        if isinstance(expr, TpyLambda) and isinstance(type_hint, (FnType, CallableType)):
             typ = self._analyze_lambda_with_fn_hint(expr, type_hint)
             self.ctx.set_expr_type(expr, typ)
             return typ
@@ -2299,20 +2348,24 @@ class ExpressionAnalyzer:
         """Analyze a lambda without a type hint -- error (types cannot be inferred)."""
         raise self.ctx.error(
             "Lambda parameter types cannot be inferred without context. "
-            "Pass the lambda to a function that accepts Fn[...] type",
+            "Pass the lambda to a function that accepts Fn[...] or Callable[...] type",
             expr
         )
 
-    def _analyze_lambda_with_fn_hint(self, expr: TpyLambda, fn_type: FnType) -> FnType:
-        """Analyze a lambda with a Fn type hint providing parameter types."""
+    def _analyze_lambda_with_fn_hint(self, expr: TpyLambda, fn_type: FnType | CallableType) -> FnType | CallableType:
+        """Analyze a lambda with a Fn/Callable type hint providing parameter types."""
+        type_name = "Fn" if isinstance(fn_type, FnType) else "Callable"
         if len(expr.param_names) != len(fn_type.param_types):
             raise self.ctx.error(
                 f"Lambda has {len(expr.param_names)} parameter(s) but "
-                f"Fn type expects {len(fn_type.param_types)}",
+                f"{type_name} type expects {len(fn_type.param_types)}",
                 expr
             )
 
         expr.inferred_param_types = list(fn_type.param_types)
+
+        # Save outer scope locals for capture filtering
+        outer_locals = set(self.ctx.definitely_assigned)
 
         with self.scopes.lambda_scope() as scope:
             for pname, ptype in zip(expr.param_names, fn_type.param_types):
@@ -2323,11 +2376,15 @@ class ExpressionAnalyzer:
 
             body_type = self.analyze_expr(expr.body)
 
-        # Detect captures: names in body that resolve from the outer scope
+        # Detect captures: names in body that are local variables from the outer scope
+        # (not lambda params, not global functions, not builtins)
         param_set = set(expr.param_names)
         free_names = _collect_name_refs(expr.body)
-        captured = sorted(free_names - param_set)
+        captured = sorted((free_names - param_set) & outer_locals)
         expr.captured_names = captured
+        # Callable context: captures must be by value (std::function can escape)
+        if isinstance(fn_type, CallableType):
+            expr.captures_by_value = True
 
         # Check return type compatibility (allow implicit coercions like int literal -> Int32)
         if body_type != fn_type.return_type:

@@ -4595,10 +4595,18 @@ Send/Sync rules for built-in types:
       return f(x)
   apply(lambda x: x + 1, 42)  # lambda inlined, zero overhead
   ```
-- **Working**: Lambda expressions `lambda x: expr` -- parameter types inferred from `Fn` context via bidirectional inference. Non-capturing lambdas generate `[]`, capturing lambdas generate explicit capture lists (`[&var]`).
-- **Working**: Capturing lambdas -- outer variables captured by reference. Safe for non-escaping `Fn` params (template-based, lifetime bounded by the call).
+- **Working**: Lambda expressions `lambda x: expr` -- parameter types inferred from `Fn` or `Callable` context via bidirectional inference. Non-capturing lambdas generate `[]`, capturing lambdas generate explicit capture lists (`[&var]` for `Fn`, `[var]` by value for `Callable`).
+- **Working**: Capturing lambdas -- `Fn` captures by reference (non-escaping, template-based), `Callable` captures by value (safe for escaping via `std::function`).
 - **Working**: `Fn` in method parameters -- generates per-method template with `requires` constraint.
-- **Open**: `Callable[[A, B], R]` type -- type-erased callable (`std::function`). For fields, returns, containers, reassigned locals.
+- **Working**: `Callable[[A, B], R]` type -- type-erased callable (`std::function`). Valid in all positions: params (`const std::function<...>&`), fields, returns, containers, locals. `Callable | None` maps to `std::optional<std::function<...>>`.
+  ```python
+  from typing import Callable
+  from tpy import Int32
+  def make_adder(n: Int32) -> Callable[[Int32], Int32]:
+      return lambda x: x + n  # captures n by value
+  class Button:
+      on_click: Callable[[Int32], None]
+  ```
 - **Open**: Named function references as callable values (`apply(double, 42)`)
 - **Open**: Nested `def` with captures, `nonlocal` keyword
 - **Open**: Generator functions (`yield`) -- manual state machine transformation
@@ -4908,5 +4916,5 @@ c.items.append(Point(7, 8))  # warning: Mutation of 'c.items' while borrowed
 2. **Container element storage**: How to spell "list of values" vs "list of pointers"?
 3. **String semantics**: When does `str` allocate vs use SSO?
 4. **Exceptions**: Error codes, `std::expected`, or actual exceptions?
-5. **Lambda efficiency**: Always template? Configurable? Type-erased fallback?
+5. **Lambda efficiency**: Resolved -- `Fn` (zero-cost template) vs `Callable` (type-erased `std::function`), explicit choice by user.
 6. **Macro system scope**: How much compile-time Python execution? Safety limits?

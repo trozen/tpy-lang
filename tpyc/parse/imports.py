@@ -33,7 +33,7 @@ PARSER_KEYWORDS: dict[str, frozenset[str] | None] = {
     }),
     "builtins": None,
     "__future__": None,  # no-op, never resolved as .py
-    "typing": frozenset({"Protocol", "Optional", "Final", "overload", "override", "Self"}),
+    "typing": frozenset({"Protocol", "Optional", "Final", "overload", "override", "Self", "Callable"}),
     "enum": frozenset({"Enum", "IntEnum", "auto"}),
     "dataclasses": frozenset({"dataclass", "field"}),
 }
@@ -56,7 +56,7 @@ TPY_TYPES = {
 PYTHON_BUILTINS = frozenset({"int", "float", "bool", "str", "None", "tuple", "slice", "Exception", "BaseException"})
 
 # Names from typing that require explicit import
-TYPING_NAMES = frozenset({"Optional", "Protocol", "Self", "Sized", "Sequence", "MutableSequence", "Iterator", "Iterable", "Final", "override", "overload"})
+TYPING_NAMES = frozenset({"Optional", "Protocol", "Self", "Sized", "Sequence", "MutableSequence", "Iterator", "Iterable", "Final", "override", "overload", "Callable"})
 
 # All tpy type names (union of TPY_TYPES + decorators/modifiers)
 TPY_TYPE_NAMES = TPY_TYPES | {"Char", "readonly", "noalloc", "nocopy", "dynamic", "pure", "auto_readonly", "error_return"}

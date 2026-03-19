@@ -15,7 +15,7 @@ from typing import NoReturn, Optional
 from ..typesys import (
     TpyType, NamedType, PtrType, OwnType, ReadonlyType, AutoReadonlyType, FinalType, SelfType,
     strip_auto_readonly, apply_auto_readonly,
-    TypeParamRef, OptionalType, VoidType, make_union, EnumType, TupleType, FnType,
+    TypeParamRef, OptionalType, VoidType, make_union, EnumType, TupleType, FnType, CallableType,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BOOL, FLOAT, FLOAT32, BIGINT, SELF, SLICE, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo, TypeParamKind,
     INT8, INT16, INT64, UINT8, UINT16, UINT32, UINT64, ALL_FIXED_INTS,
@@ -1836,6 +1836,21 @@ class Parser:
                     elif original == "Final":
                         inner = self._parse_type_annotation(node.slice, type_param_scope)
                         return FinalType(inner)
+                    elif original == "Callable":
+                        slices = _extract_subscript_slices(node)
+                        if len(slices) != 2:
+                            raise ParseError(
+                                "Callable requires exactly 2 arguments: Callable[[ParamTypes...], ReturnType]", node)
+                        param_list_node, return_node = slices
+                        if not isinstance(param_list_node, ast.List):
+                            raise ParseError(
+                                "Callable parameter types must be a list: Callable[[Int32, str], bool]", node)
+                        param_types = tuple(
+                            self._parse_type_annotation(p, type_param_scope)
+                            for p in param_list_node.elts
+                        )
+                        return_type = self._parse_type_annotation(return_node, type_param_scope)
+                        return CallableType(param_types, return_type)
             else:
                 # Qualified name with missing module import
                 if isinstance(node.value, ast.Attribute):

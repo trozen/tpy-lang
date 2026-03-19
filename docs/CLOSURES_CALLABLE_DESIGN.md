@@ -4,9 +4,8 @@
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 1a | `Fn` type + non-capturing lambda expressions | Done |
-| 1b | Capturing lambdas (non-escaping closures) | Not started |
-| 1c | `Callable` type (`std::function`, escaping closures) | Not started |
+| 1a | `Fn` type + lambda expressions (including captures) | Done |
+| 1b | `Callable` type (`std::function`, type-erased callable) | Done |
 | 2 | Named function references as values (`apply(double, 42)`) | Not started |
 | 3 | Nested `def` with captures, `nonlocal` keyword | Not started |
 | 4 | Generator functions (`yield`) | Not started |

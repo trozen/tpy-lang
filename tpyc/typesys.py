@@ -2280,6 +2280,61 @@ def contains_fn_type(typ: TpyType) -> bool:
     return any(contains_fn_type(inner) for inner in typ.inner_types())
 
 
+@dataclass(frozen=True)
+class CallableType(TpyType):
+    """Callable[[ParamType, ...], ReturnType] -- type-erased callable (std::function).
+
+    Valid in all positions: params, fields, returns, containers, locals.
+    """
+    param_types: tuple[TpyType, ...]
+    return_type: TpyType
+
+    @staticmethod
+    def _callable_param_cpp(t: 'TpyType') -> str:
+        """C++ type for a parameter in a std::function signature.
+
+        Uses to_cpp_param_type() for types that override it (str -> string_view,
+        BigInt -> const BigInt&), but ensures non-value types get const ref
+        (regular function params can be mutable ref, but std::function params
+        must accept rvalues and const-qualified arguments).
+        """
+        cpp = t.to_cpp_param_type()
+        # Ensure non-value types are const ref, not mutable ref
+        if not t.is_value_type() and not cpp.startswith("const "):
+            return f"const {t.to_cpp()}&"
+        return cpp
+
+    def _std_function_sig(self) -> str:
+        ret = "void" if isinstance(self.return_type, VoidType) else self.return_type.to_cpp()
+        params = ", ".join(self._callable_param_cpp(t) for t in self.param_types)
+        return f"std::function<{ret}({params})>"
+
+    def to_cpp(self) -> str:
+        return self._std_function_sig()
+
+    def to_cpp_param_type(self) -> str:
+        return f"const {self._std_function_sig()}&"
+
+    def to_cpp_param(self, name: str) -> str:
+        return f"const {self._std_function_sig()}& {name}"
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def inner_types(self) -> tuple[TpyType, ...]:
+        return self.param_types + (self.return_type,)
+
+    def with_inner_types(self, types: tuple[TpyType, ...]) -> 'TpyType':
+        return CallableType(types[:-1], types[-1])
+
+    def __str__(self) -> str:
+        params = ", ".join(str(t) for t in self.param_types)
+        return f"Callable[[{params}], {self.return_type}]"
+
+    def qualified_name(self) -> Optional[str]:
+        return None
+
+
 @dataclass
 class ListLiteralInfo:
     """Tracks usage information for a list literal to determine its resolved type."""
