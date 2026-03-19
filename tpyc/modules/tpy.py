@@ -83,8 +83,9 @@ def _register_fixed_int(module: BuiltinModule, typ: FixedIntType) -> None:
 
     methods["__hash__"] = [MethodDef(params=[], returns=UINT64, cpp="::tpy::__hash__({self})", is_readonly=True, is_pure=True)]
     methods["__lt__"] = [MethodDef(params=[ParamDef("other", typ)], returns=BOOL, cpp="{self} < {0}", is_readonly=True, is_pure=True)]
+    methods["__init__"] = constructors
 
-    module.register_type(typ, cpp_type=cpp_t, constructors=constructors, methods=methods, extends=["Comparable", "Equatable"])
+    module.register_type(typ, cpp_type=cpp_t, methods=methods, extends=["Comparable", "Equatable"])
 
 
 def init_module() -> BuiltinModule:
@@ -109,7 +110,7 @@ def init_module() -> BuiltinModule:
             MethodDef(params=[ParamDef("x", _fit)], returns=FLOAT32,
                       cpp="static_cast<float>({0})")
         )
-    module.register_type(FLOAT32, cpp_type="float", constructors=_f32_constructors, methods={
+    module.register_type(FLOAT32, cpp_type="float", methods={"__init__": _f32_constructors,
         # Float32 + Float32 -> Float32
         "__add__": [
             MethodDef(params=[ParamDef("other", FLOAT32)], returns=FLOAT32, cpp="({self}) + ({0})"),
@@ -248,15 +249,15 @@ def init_module() -> BuiltinModule:
                 param_kinds=[TypeParamKind.TYPE],
                 type_factory=lambda t: SpanType(t),
                 extends=["NativeIterable[T]", "ReadOnlySpanLike[T]", "Iterable[T]"],
-                constructors=[
-                    MethodDef(params=[ParamDef("ptr", PtrType(T)), ParamDef("length", INT32)],
-                              returns=VOID,
-                              cpp="{cpp}({0}, static_cast<size_t>({1}))"),
-                    MethodDef(params=[ParamDef("source", SpanType(T))],
-                              returns=VOID,
-                              cpp="{cpp}({0})"),
-                ],
                 methods={
+        "__init__": [
+            MethodDef(params=[ParamDef("ptr", PtrType(T)), ParamDef("length", INT32)],
+                      returns=VOID,
+                      cpp="{cpp}({0}, static_cast<size_t>({1}))"),
+            MethodDef(params=[ParamDef("source", SpanType(T))],
+                      returns=VOID,
+                      cpp="{cpp}({0})"),
+        ],
         "__iter__": [MethodDef(
             params=[],
             returns=NamedType("Iterator", (T,), is_protocol=True),
@@ -305,12 +306,12 @@ def init_module() -> BuiltinModule:
                 type_factory=lambda t: SpanIterType(t),
                 extends=["NativeIterable[T]", "Iterable[T]", "Iterator[T]"],
                 is_nocopy=True,
-                constructors=[
-                    MethodDef(params=[ParamDef("source", SpanType(T))],
-                              returns=VOID,
-                              cpp="{cpp}({0})"),
-                ],
                 methods={
+        "__init__": [
+            MethodDef(params=[ParamDef("source", SpanType(T))],
+                      returns=VOID,
+                      cpp="{cpp}({0})"),
+        ],
         "__iter__": [MethodDef(
             params=[], returns=SELF,
             cpp="{self}.__iter__()",
@@ -323,11 +324,11 @@ def init_module() -> BuiltinModule:
                 param_kinds=[TypeParamKind.TYPE],
                 type_factory=lambda t: PtrType(t),
                 extends=["Deref[T]"],
-                constructors=[
-                    MethodDef(params=[], returns=VOID, cpp="nullptr"),
-                    MethodDef(params=[ParamDef("x", T, requires_mutable=True)], returns=T, cpp="&{0}"),
-                ],
                 methods={
+                    "__init__": [
+                        MethodDef(params=[], returns=VOID, cpp="nullptr"),
+                        MethodDef(params=[ParamDef("x", T, requires_mutable=True)], returns=T, cpp="&{0}"),
+                    ],
                     "__deref__": [MethodDef(params=[], returns=T, cpp="::tpy::deref_check({self})")],
                     "span": [MethodDef(params=[ParamDef("length", INT32)], returns=SpanType(Tspan),
                                        cpp="std::span({self}, static_cast<size_t>({0}))",
@@ -337,7 +338,8 @@ def init_module() -> BuiltinModule:
     # String: Explicit owned string type (std::string)
     module.register_type(STRING, cpp_type="std::string",
         extends=["NativeIterable[Char]", "Iterable[Char]", "Equatable"],
-        constructors=[
+        methods={
+        "__init__": [
             MethodDef(params=[], returns=STRING, cpp="std::string()"),
             MethodDef(params=[ParamDef("x", STR)], returns=STRING, cpp="std::string({0})"),
             MethodDef(params=[ParamDef("x", STRING)], returns=STRING, cpp="std::string({0})"),
@@ -351,7 +353,6 @@ def init_module() -> BuiltinModule:
             MethodDef(params=[ParamDef("x", FLOAT)], returns=STRING, cpp="::tpy::float_to_str({0})"),
             MethodDef(params=[ParamDef("x", FLOAT32)], returns=STRING, cpp="::tpy::float_to_str(static_cast<double>({0}))"),
         ],
-        methods={
         "__iter__": [MethodDef(
             params=[],
             returns=NamedType("Iterator", (CHAR,), is_protocol=True),
@@ -513,13 +514,13 @@ def init_module() -> BuiltinModule:
     # StrView: Explicit string view type (std::string_view)
     module.register_type(STRVIEW, cpp_type="std::string_view",
         extends=["NativeIterable[Char]", "Iterable[Char]", "Equatable"],
-        constructors=[
+        methods={
+        "__init__": [
             MethodDef(params=[], returns=STRVIEW, cpp='std::string_view()'),
             MethodDef(params=[ParamDef("x", STR)], returns=STRVIEW, cpp="std::string_view({0})"),
             MethodDef(params=[ParamDef("x", STRING)], returns=STRVIEW, cpp="std::string_view({0})"),
             MethodDef(params=[ParamDef("x", STRVIEW)], returns=STRVIEW, cpp="{0}"),
         ],
-        methods={
         "__iter__": [MethodDef(
             params=[],
             returns=NamedType("Iterator", (CHAR,), is_protocol=True),
@@ -709,8 +710,7 @@ def init_module() -> BuiltinModule:
     module.types["tpy.Float64"] = BuiltinTypeDef(
         type_obj=FLOAT,
         cpp_type="double",
-        constructors=_f64_constructors,
-        methods={},
+        methods={"__init__": _f64_constructors},
         extends=["Comparable", "Equatable"],
     )
 

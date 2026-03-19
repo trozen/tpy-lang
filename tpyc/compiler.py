@@ -729,7 +729,7 @@ class Compiler:
                 for record in module_info.records.values():
                     # Merge .py-defined methods into builtin type RecordInfo.
                     # Skip registering in records dict to avoid shadowing the
-                    # builtin type (which has constructors and type_factory).
+                    # builtin type (which has __init__ overloads and type_factory).
                     builtin_qname = f"{implicit_mod}.{record.name}"
                     builtin_rec = analyzer.registry.builtin_records.get(builtin_qname)
                     if builtin_rec is not None:

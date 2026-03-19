@@ -88,27 +88,10 @@ def init_module() -> BuiltinModule:
     module.function("round", overloads=round_overloads,
                     type_params=["T"], type_param_defaults={"T": "DEFAULT_INT"})
 
-    # list[T]: Methods and extends defined in lib/tpy/builtins.py, merged at compile time.
+    # list[T]: Methods, extends, and constructors defined in lib/tpy/builtins.py.
     module.type("list", cpp_type="std::vector<{T}>", type_params=["T"],
                 param_kinds=[TypeParamKind.TYPE],
-                type_factory=lambda t: ListType(t),
-                constructors=[
-        # list(iterator) - create list from Iterator (user-defined iterators)
-        # Checked first: Iterator types also match Iterable, so must be tried before.
-        MethodDef(
-            params=[ParamDef("x", NamedType("Iterator", (T,), is_protocol=True))],
-            returns=T,
-            cpp="::tpy::collect<std::vector<{T}>>({0})",
-            is_readonly=True, is_pure=True,
-        ),
-        # list(iterable) - create list from any iterable, inferring element type
-        MethodDef(
-            params=[ParamDef("x", NamedType("Iterable", (OwnType(T),), is_protocol=True))],
-            returns=T,  # Placeholder - sema infers actual list[T] from argument
-            cpp="::tpy::from_range<std::vector<{T}>>({0})",
-            is_readonly=True, is_pure=True,
-        ),
-    ])
+                type_factory=lambda t: ListType(t))
 
     # dict[K, V]: Ordered hash map backed by ::tpy::ordered_map<K, V>
     K = TypeParamRef("K")
@@ -217,23 +200,24 @@ def init_module() -> BuiltinModule:
             cpp="::tpy::dict_items({self})",
             is_readonly=True, is_pure=True,
         )],
-    }, constructors=[
-        # dict(iterator) - create dict from Iterator of tuple[K, V]
-        # Checked first: Iterator types also match Iterable, so must be tried before.
-        MethodDef(
-            params=[ParamDef("x", NamedType("Iterator", (TupleType((K, V)),), is_protocol=True))],
-            returns=V,  # Placeholder - sema infers actual dict[K,V] from argument
-            cpp="::tpy::dict_collect_pairs<{K}, {V}>({0})",
-            is_readonly=True, is_pure=True,
-        ),
-        # dict(iterable) - create dict from iterable of tuple[K, V]
-        MethodDef(
-            params=[ParamDef("x", NamedType("Iterable", (OwnType(TupleType((K, V))),), is_protocol=True))],
-            returns=V,  # Placeholder - sema infers actual dict[K,V] from argument
-            cpp="::tpy::dict_from_pairs<{K}, {V}>({0})",
-            is_readonly=True, is_pure=True,
-        ),
-    ])
+        "__init__": [
+            # dict(iterator) - create dict from Iterator of tuple[K, V]
+            # Checked first: Iterator types also match Iterable, so must be tried before.
+            MethodDef(
+                params=[ParamDef("x", NamedType("Iterator", (TupleType((K, V)),), is_protocol=True))],
+                returns=V,  # Placeholder - sema infers actual dict[K,V] from argument
+                cpp="::tpy::dict_collect_pairs<{K}, {V}>({0})",
+                is_readonly=True, is_pure=True,
+            ),
+            # dict(iterable) - create dict from iterable of tuple[K, V]
+            MethodDef(
+                params=[ParamDef("x", NamedType("Iterable", (OwnType(TupleType((K, V))),), is_protocol=True))],
+                returns=V,  # Placeholder - sema infers actual dict[K,V] from argument
+                cpp="::tpy::dict_from_pairs<{K}, {V}>({0})",
+                is_readonly=True, is_pure=True,
+            ),
+        ],
+    })
 
     # dict_keys[K, V]: Keys view backed by ::tpy::dict_keys_view<K, V>
     module.type("dict_keys", cpp_type="::tpy::dict_keys_view<{K}, {V}>",
@@ -468,26 +452,28 @@ def init_module() -> BuiltinModule:
             returns=VOID,
             cpp="::tpy::set_symmetric_difference_update({self}, {0})",
         )],
-    }, constructors=[
-        # set(iterator) from Iterator
-        MethodDef(
-            params=[ParamDef("x", NamedType("Iterator", (T,), is_protocol=True))],
-            returns=T,
-            cpp="::tpy::set_collect<{T}>({0})",
-            is_readonly=True, is_pure=True,
-        ),
-        # set(iterable) from any iterable
-        MethodDef(
-            params=[ParamDef("x", NamedType("Iterable", (OwnType(T),), is_protocol=True))],
-            returns=T,
-            cpp="::tpy::set_from_range<{T}>({0})",
-            is_readonly=True, is_pure=True,
-        ),
-    ])
+        "__init__": [
+            # set(iterator) from Iterator
+            MethodDef(
+                params=[ParamDef("x", NamedType("Iterator", (T,), is_protocol=True))],
+                returns=T,
+                cpp="::tpy::set_collect<{T}>({0})",
+                is_readonly=True, is_pure=True,
+            ),
+            # set(iterable) from any iterable
+            MethodDef(
+                params=[ParamDef("x", NamedType("Iterable", (OwnType(T),), is_protocol=True))],
+                returns=T,
+                cpp="::tpy::set_from_range<{T}>({0})",
+                is_readonly=True, is_pure=True,
+            ),
+        ],
+    })
 
     module.register_type(STR, cpp_type="std::string",
         extends=["NativeIterable[Char]", "Iterable[Char]", "Equatable"],
-        constructors=[
+        methods={
+        "__init__": [
             MethodDef(params=[], returns=STR, cpp='std::string()'),
             MethodDef(params=[ParamDef("x", STR)], returns=STR, cpp="std::string({0})"),
             MethodDef(params=[ParamDef("x", BOOL)], returns=STR, cpp="std::string(::tpy::bool_to_str({0}))"),
@@ -503,7 +489,6 @@ def init_module() -> BuiltinModule:
             MethodDef(params=[ParamDef("x", REPRESENTABLE)], returns=STR,
                       cpp="std::string(::tpy::__repr__({0}))", is_readonly=True, is_pure=True),
         ],
-        methods={
         "__iter__": [MethodDef(
             params=[],
             returns=NamedType("Iterator", (CHAR,), is_protocol=True),
@@ -669,17 +654,18 @@ def init_module() -> BuiltinModule:
 
     # int: arbitrary precision integer (BigInt)
     # Uses C++ operator overloads defined in ::tpy::BigInt
-    module.register_type(BIGINT, cpp_type="::tpy::BigInt", constructors=[
-        MethodDef(params=[], returns=BIGINT, cpp="::tpy::BigInt(0)"),
-        *[MethodDef(params=[ParamDef("x", t)], returns=BIGINT,
-                    cpp=f"::tpy::BigInt(static_cast<{'int64_t' if t.signed else 'uint64_t'}>({{0}}))")
-          for t in ALL_FIXED_INTS],
-        MethodDef(params=[ParamDef("x", BIGINT)], returns=BIGINT, cpp="::tpy::BigInt({0})"),
-        MethodDef(params=[ParamDef("x", FLOAT)], returns=BIGINT, cpp="::tpy::BigInt::from_float({0})"),
-        MethodDef(params=[ParamDef("x", STR)], returns=BIGINT, cpp="::tpy::BigInt::from_str({0})"),
-        MethodDef(params=[ParamDef("x", BOOL)], returns=BIGINT, cpp="::tpy::BigInt(static_cast<int32_t>({0}))"),
-        MethodDef(params=[ParamDef("x", CHAR)], returns=BIGINT, cpp="::tpy::BigInt(static_cast<int32_t>({0}))"),
-    ], methods={
+    module.register_type(BIGINT, cpp_type="::tpy::BigInt", methods={
+        "__init__": [
+            MethodDef(params=[], returns=BIGINT, cpp="::tpy::BigInt(0)"),
+            *[MethodDef(params=[ParamDef("x", t)], returns=BIGINT,
+                        cpp=f"::tpy::BigInt(static_cast<{'int64_t' if t.signed else 'uint64_t'}>({{0}}))")
+              for t in ALL_FIXED_INTS],
+            MethodDef(params=[ParamDef("x", BIGINT)], returns=BIGINT, cpp="::tpy::BigInt({0})"),
+            MethodDef(params=[ParamDef("x", FLOAT)], returns=BIGINT, cpp="::tpy::BigInt::from_float({0})"),
+            MethodDef(params=[ParamDef("x", STR)], returns=BIGINT, cpp="::tpy::BigInt::from_str({0})"),
+            MethodDef(params=[ParamDef("x", BOOL)], returns=BIGINT, cpp="::tpy::BigInt(static_cast<int32_t>({0}))"),
+            MethodDef(params=[ParamDef("x", CHAR)], returns=BIGINT, cpp="::tpy::BigInt(static_cast<int32_t>({0}))"),
+        ],
         **make_binop_methods({
             "__add__": ("({self}) + ({0})", BIGINT),
             "__sub__": ("({self}) - ({0})", BIGINT),
@@ -702,15 +688,16 @@ def init_module() -> BuiltinModule:
     }, extends=["Comparable", "Equatable"])
 
     # float: 64-bit IEEE 754 double precision floating point
-    module.register_type(FLOAT, cpp_type="double", constructors=[
-        MethodDef(params=[], returns=FLOAT, cpp="0.0"),
-        MethodDef(params=[ParamDef("x", FLOAT)], returns=FLOAT, cpp="static_cast<double>({0})"),
-        MethodDef(params=[ParamDef("x", INT32)], returns=FLOAT, cpp="static_cast<double>({0})"),
-        MethodDef(params=[ParamDef("x", BIGINT)], returns=FLOAT, cpp="static_cast<double>({0})"),
-        MethodDef(params=[ParamDef("x", BOOL)], returns=FLOAT, cpp="static_cast<double>({0})"),
-        MethodDef(params=[ParamDef("x", FLOAT32)], returns=FLOAT, cpp="static_cast<double>({0})"),
-        MethodDef(params=[ParamDef("x", STR)], returns=FLOAT, cpp="::tpy::float_from_str({0})"),
-    ], methods={
+    module.register_type(FLOAT, cpp_type="double", methods={
+        "__init__": [
+            MethodDef(params=[], returns=FLOAT, cpp="0.0"),
+            MethodDef(params=[ParamDef("x", FLOAT)], returns=FLOAT, cpp="static_cast<double>({0})"),
+            MethodDef(params=[ParamDef("x", INT32)], returns=FLOAT, cpp="static_cast<double>({0})"),
+            MethodDef(params=[ParamDef("x", BIGINT)], returns=FLOAT, cpp="static_cast<double>({0})"),
+            MethodDef(params=[ParamDef("x", BOOL)], returns=FLOAT, cpp="static_cast<double>({0})"),
+            MethodDef(params=[ParamDef("x", FLOAT32)], returns=FLOAT, cpp="static_cast<double>({0})"),
+            MethodDef(params=[ParamDef("x", STR)], returns=FLOAT, cpp="::tpy::float_from_str({0})"),
+        ],
         # Binary arithmetic operators (float, float)
         "__add__": [
             MethodDef(params=[ParamDef("other", FLOAT)], returns=FLOAT, cpp="({self}) + ({0})"),
@@ -793,28 +780,30 @@ def init_module() -> BuiltinModule:
     }, extends=["Comparable", "Equatable"])
 
     # bool: Boolean type
-    module.register_type(BOOL, cpp_type="bool", constructors=[
-        MethodDef(params=[], returns=BOOL, cpp="false"),
-        MethodDef(params=[ParamDef("x", BOOL)], returns=BOOL, cpp="{0}"),
-        MethodDef(params=[ParamDef("x", INT32)], returns=BOOL, cpp="({0} != 0)"),
-        MethodDef(params=[ParamDef("x", BIGINT)], returns=BOOL, cpp="({0} != 0)"),
-        MethodDef(params=[ParamDef("x", FLOAT)], returns=BOOL, cpp="({0} != 0.0)"),
-        MethodDef(params=[ParamDef("x", FLOAT32)], returns=BOOL, cpp="({0} != 0.0f)"),
-        MethodDef(params=[ParamDef("x", STR)], returns=BOOL, cpp="(std::string_view({0}).size() != 0)"),
-        MethodDef(params=[ParamDef("x", TRUTHY)], returns=BOOL, cpp="::tpy::__bool__({0})", is_readonly=True, is_pure=True),
-    ], methods={
+    module.register_type(BOOL, cpp_type="bool", methods={
+        "__init__": [
+            MethodDef(params=[], returns=BOOL, cpp="false"),
+            MethodDef(params=[ParamDef("x", BOOL)], returns=BOOL, cpp="{0}"),
+            MethodDef(params=[ParamDef("x", INT32)], returns=BOOL, cpp="({0} != 0)"),
+            MethodDef(params=[ParamDef("x", BIGINT)], returns=BOOL, cpp="({0} != 0)"),
+            MethodDef(params=[ParamDef("x", FLOAT)], returns=BOOL, cpp="({0} != 0.0)"),
+            MethodDef(params=[ParamDef("x", FLOAT32)], returns=BOOL, cpp="({0} != 0.0f)"),
+            MethodDef(params=[ParamDef("x", STR)], returns=BOOL, cpp="(std::string_view({0}).size() != 0)"),
+            MethodDef(params=[ParamDef("x", TRUTHY)], returns=BOOL, cpp="::tpy::__bool__({0})", is_readonly=True, is_pure=True),
+        ],
         "__hash__": [MethodDef(params=[], returns=UINT64, cpp="::tpy::__hash__({self})", is_readonly=True, is_pure=True)],
     }, extends=["Equatable"])
 
     # Char: Single character type (str-like: supports concat, repeat, len, ord)
-    module.register_type(CHAR, cpp_type="char", constructors=[
-        MethodDef(params=[], returns=CHAR, cpp="'\\0'"),
-        MethodDef(params=[ParamDef("x", INT32)], returns=CHAR, cpp="static_cast<char>({0})"),
-        MethodDef(params=[ParamDef("x", BIGINT)], returns=CHAR, cpp="static_cast<char>(({0}).to_fixed_check<int32_t>())"),
-        MethodDef(params=[ParamDef("s", STR)], returns=CHAR, cpp="::tpy::char_from_str({0})"),
-        MethodDef(params=[ParamDef("s", STRING)], returns=CHAR, cpp="::tpy::char_from_str({0})"),
-        MethodDef(params=[ParamDef("s", STRVIEW)], returns=CHAR, cpp="::tpy::char_from_str({0})"),
-    ], methods={
+    module.register_type(CHAR, cpp_type="char", methods={
+        "__init__": [
+            MethodDef(params=[], returns=CHAR, cpp="'\\0'"),
+            MethodDef(params=[ParamDef("x", INT32)], returns=CHAR, cpp="static_cast<char>({0})"),
+            MethodDef(params=[ParamDef("x", BIGINT)], returns=CHAR, cpp="static_cast<char>(({0}).to_fixed_check<int32_t>())"),
+            MethodDef(params=[ParamDef("s", STR)], returns=CHAR, cpp="::tpy::char_from_str({0})"),
+            MethodDef(params=[ParamDef("s", STRING)], returns=CHAR, cpp="::tpy::char_from_str({0})"),
+            MethodDef(params=[ParamDef("s", STRVIEW)], returns=CHAR, cpp="::tpy::char_from_str({0})"),
+        ],
         "__hash__": [MethodDef(params=[], returns=UINT64, cpp="::tpy::__hash__({self})", is_readonly=True, is_pure=True)],
         "__add__": [
             MethodDef(params=[ParamDef("other", CHAR)], returns=STRING,

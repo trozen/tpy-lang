@@ -777,7 +777,7 @@ class MethodAnalyzer:
 
         qname = f"{module_name}.{expr.method}"
         if record_info := self.ctx.registry.get_builtin_record(qname):
-            if record_info.constructors and not record_info.type_params:
+            if record_info.get_method_overloads("__init__") and not record_info.type_params:
                 expr.builtin_module_call = module_name
                 temp_call = TpyCall(func=expr.method, args=expr.args, kwargs=expr.kwargs, loc=expr.loc)
                 result = self.calls._check_builtin_constructor(temp_call, record_info)
@@ -1287,14 +1287,9 @@ class MethodAnalyzer:
             # Track this call for later validation (must be first statement)
             self.ctx.super_init_call = expr
 
-            # Check for __init__ method or constructors (builtin types use constructors)
             init_overloads = parent_info.get_method_overloads("__init__")
-            if not init_overloads and parent_info.constructors:
-                # Builtin type with constructors - use those as overloads
-                init_overloads = parent_info.constructors
-
             if not init_overloads:
-                # Parent has no explicit __init__ or constructors, allow with no arguments
+                # Parent has no __init__, allow with no arguments
                 if expr.args:
                     raise self.ctx.error(
                         f"Parent class '{parent_type}' has no __init__, "

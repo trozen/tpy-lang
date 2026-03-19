@@ -58,7 +58,6 @@ class BuiltinTypeDef:
     type_obj: "TpyType | None"  # The type object (e.g., INT32), None for parameterized types
     cpp_type: str
     methods: dict[str, list[MethodDef]] = field(default_factory=dict)
-    constructors: list[MethodDef] = field(default_factory=list)
     type_params: list[str] = field(default_factory=list)  # ["T"], ["T", "N"], etc.
     param_kinds: list[TypeParamKind] = field(default_factory=list)  # Kind of each type param
     type_factory: "Callable[..., TpyType] | None" = None  # Factory to create TpyType from params
@@ -137,7 +136,6 @@ class BuiltinModule:
 
     def register_type(self, type_obj: "TpyType", cpp_type: str,
                       methods: dict[str, list[MethodDef]] | None = None,
-                      constructors: list[MethodDef] | None = None,
                       extends: list[str] | None = None,
                       is_nocopy: bool = False):
         """Register a built-in type using its type object. Preferred for non-parameterized types."""
@@ -147,14 +145,12 @@ class BuiltinModule:
             type_obj=type_obj,
             cpp_type=cpp_type,
             methods=methods or {},
-            constructors=constructors or [],
             extends=extends or [],
             is_nocopy=is_nocopy,
         )
 
     def type(self, name: str, cpp_type: str,
              methods: dict[str, list[MethodDef]] | None = None,
-             constructors: list[MethodDef] | None = None,
              type_params: list[str] | None = None,
              param_kinds: list[TypeParamKind] | None = None,
              type_factory: "Callable[..., TpyType] | None" = None,
@@ -187,7 +183,6 @@ class BuiltinModule:
             type_obj=None,  # Parameterized type, no single instance
             cpp_type=cpp_type,
             methods=methods or {},
-            constructors=constructors or [],
             type_params=type_params,
             param_kinds=param_kinds,
             type_factory=type_factory,
@@ -352,13 +347,14 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
     methods = {}
     for method_name, overloads in type_def.methods.items():
         resolved_readonly = method_name in IMPLICIT_READONLY_METHODS
+        is_ctor = method_name == "__init__"
         # Store all overloads as list of FunctionInfo
         methods[method_name] = [
             FunctionInfo(
                 name=method_name,
                 params=[ParamInfo(p.name, p.type, p.requires_lvalue, p.requires_mutable) for p in method.params],
                 return_type=method.returns,
-                is_method=True,
+                is_method=not is_ctor,
                 is_staticmethod=method.is_static,
                 is_noalloc=method.is_noalloc,
                 is_readonly=method.is_readonly or resolved_readonly,
@@ -370,19 +366,6 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
             for method in overloads
         ]
 
-    # Convert constructors -- builtin type constructors are always readonly
-    constructors = []
-    for ctor in type_def.constructors:
-        constructors.append(FunctionInfo(
-            name="__init__",
-            params=[ParamInfo(p.name, p.type, p.requires_lvalue, p.requires_mutable) for p in ctor.params],
-            return_type=ctor.returns,
-            is_noalloc=ctor.is_noalloc,
-            is_readonly=ctor.is_readonly,
-            is_pure=ctor.is_pure,
-            cpp_template=ctor.cpp,
-        ))
-
     # Extract simple name from qualified name
     simple_name = qname.split(".")[-1]
 
@@ -390,7 +373,6 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
         name=simple_name,
         fields=[],
         methods=methods,
-        constructors=constructors,
         type_params=type_def.type_params,
         type_param_kinds=type_def.param_kinds,
         extends_protocols=type_def.extends,

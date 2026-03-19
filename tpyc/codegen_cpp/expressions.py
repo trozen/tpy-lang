@@ -1373,7 +1373,7 @@ class ExpressionGenerator:
         for module_name in ["builtins", "tpy"]:
             qname = f"{module_name}.{expr.func}"
             if record_info := self.ctx.analyzer.registry.get_builtin_record(qname):
-                if record_info.constructors and not record_info.type_params:
+                if record_info.get_method_overloads("__init__") and not record_info.type_params:
                     return self.builtins.gen_builtin_constructor(expr, record_info)
         # print() maps to std::printf
         if expr.func == "print":
@@ -1397,7 +1397,7 @@ class ExpressionGenerator:
                 # Check for type constructor (e.g., Int32 from tpy, int from builtins)
                 qname = f"{module_name}.{func_name}"
                 if record_info := self.ctx.analyzer.registry.get_builtin_record(qname):
-                    if record_info.constructors and not record_info.type_params:
+                    if record_info.get_method_overloads("__init__") and not record_info.type_params:
                         return self.builtins.gen_builtin_constructor(expr, record_info)
         # Check if this is a function call that needs argument conversion
         func_infos = self.ctx.analyzer.registry.get_function(expr.func)
@@ -1724,7 +1724,7 @@ class ExpressionGenerator:
             # Check for type constructor (e.g., tpy.Int32)
             qname = f"{module_name}.{expr.method}"
             if record_info := self.ctx.analyzer.registry.get_builtin_record(qname):
-                if record_info.constructors and not record_info.type_params:
+                if record_info.get_method_overloads("__init__") and not record_info.type_params:
                     from ..parse import TpyCall
                     temp_call = TpyCall(func=expr.method, args=expr.args, kwargs=expr.kwargs, loc=expr.loc)
                     return self.builtins.gen_builtin_constructor(temp_call, record_info)

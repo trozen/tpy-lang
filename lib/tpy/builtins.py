@@ -26,6 +26,18 @@ class StopIteration(Exception): ...
 
 @native("std::vector")
 class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], ReadOnlySpanLike[T]):
+    @overload
+    @pure
+    @readonly
+    @cpp_template("::tpy::collect<std::vector<{T}>>({0})")
+    def __init__(self, x: Iterator[T]) -> None: ...
+
+    @overload
+    @pure
+    @readonly
+    @cpp_template("::tpy::from_range<std::vector<{T}>>({0})")
+    def __init__(self, x: Iterable[Own[T]]) -> None: ...
+
     @native("tpy::__iter__", function=True)
     @pure
     @readonly

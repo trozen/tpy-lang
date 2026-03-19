@@ -42,7 +42,6 @@ if TYPE_CHECKING:
     from ..parse.nodes import SourceLocation
 
 from tpyc import modules as builtin_modules
-from tpyc.modules import MethodDef
 
 
 def _tp_in_record_type(name: str, typ: TpyType) -> bool:
@@ -173,17 +172,6 @@ def resolve_kwargs_init_params(
     """
     params = [ParamInfo(name, ptype, default_expr=default) for name, ptype, default in init_params]
     return resolve_kwargs(expr_args, expr_kwargs, params, func_name, error_fn, call_loc=call_loc)
-
-
-def _method_def_to_function_info(m: MethodDef) -> FunctionInfo:
-    """Convert a MethodDef (module-level constructor) to FunctionInfo for resolved_function_info."""
-    return FunctionInfo(
-        name="__init__",
-        params=[ParamInfo(p.name, p.type, p.requires_lvalue, p.requires_mutable) for p in m.params],
-        return_type=m.returns,
-        is_readonly=m.is_readonly,
-        cpp_template=m.cpp,
-    )
 
 
 def _has_type_param_ref(t: TpyType) -> bool:
@@ -425,10 +413,12 @@ class CallAnalyzer:
                     # Set resolved constructor for codegen (the &{0} template)
                     lookup = builtin_modules.lookup_generic_type(expr.func)
                     if lookup:
-                        for ctor in lookup.type_def.constructors:
-                            if len(ctor.params) == len(expr.args) and ctor.cpp:
-                                expr.resolved_function_info = _method_def_to_function_info(ctor)
-                                break
+                        rec = self.ctx.registry.get_builtin_record(lookup.qualified_name)
+                        if rec:
+                            for ctor in rec.get_method_overloads("__init__"):
+                                if len(ctor.params) == len(expr.args) and ctor.cpp_template:
+                                    expr.resolved_function_info = ctor
+                                    break
                     self._validate_lvalue_params(expr)
                 # Builtin type constructors -- not readonly (constructor calls
                 # are not allowed in readonly contexts; see READONLY_DESIGN.md)
@@ -522,7 +512,7 @@ class CallAnalyzer:
                     # Check for type constructor (e.g., Int32 from tpy, int from builtins)
                     qname = f"{module_name}.{func_name}"
                     if record_info := self.ctx.registry.get_builtin_record(qname):
-                        if record_info.constructors and not record_info.type_params:
+                        if record_info.get_method_overloads("__init__") and not record_info.type_params:
                             return self._check_builtin_constructor(expr, record_info)
                     # Generic types (Array, list) - mark as found and fall through
                     if builtin_modules.lookup_generic_type_in_module(func_name, module_name):
@@ -543,7 +533,7 @@ class CallAnalyzer:
         if imported_generic_name is None:
             tpy_qname = f"tpy.{expr.func}"
             if record_info := self.ctx.registry.get_builtin_record(tpy_qname):
-                if record_info.constructors and not record_info.type_params:
+                if record_info.get_method_overloads("__init__") and not record_info.type_params:
                     raise self.ctx.error(
                         f"'{expr.func}' requires: from tpy import {expr.func}",
                         expr
@@ -580,8 +570,10 @@ class CallAnalyzer:
             # Check for constructors that can infer type from arguments
             if expr.args:
                 arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-                if type_def.constructors:
-                    for ctor in type_def.constructors:
+                record_info = self.ctx.registry.get_builtin_record(lookup.qualified_name)
+                init_overloads = record_info.get_method_overloads("__init__") if record_info else []
+                if init_overloads:
+                    for ctor in init_overloads:
                         if len(ctor.params) != len(arg_types):
                             continue
                         # Try to match and infer type parameters
@@ -600,8 +592,8 @@ class CallAnalyzer:
                                 expr.call_type = result_type
                                 if isinstance(result_type, PtrType):
                                     self._validate_ptr_constructor(expr)
-                                if ctor.cpp:
-                                    expr.resolved_function_info = _method_def_to_function_info(ctor)
+                                if ctor.cpp_template:
+                                    expr.resolved_function_info = ctor
                                 self._validate_lvalue_params(expr)
                                 self._check_ctor_arg_compatibility(expr, ctor, arg_types, inferred_params)
                                 return result_type
@@ -613,8 +605,8 @@ class CallAnalyzer:
                                 hint = unwrap_readonly(hint)
                                 if hint.qualified_name() == lookup.qualified_name:
                                     expr.call_type = hint
-                                    if ctor.cpp:
-                                        expr.resolved_function_info = _method_def_to_function_info(ctor)
+                                    if ctor.cpp_template:
+                                        expr.resolved_function_info = ctor
                                     self._validate_lvalue_params(expr)
                                     self._check_ctor_arg_compatibility(expr, ctor, arg_types, inferred_params)
                                     return hint
@@ -1107,9 +1099,13 @@ class CallAnalyzer:
                 type_def = builtin_modules.lookup_type(qname)
                 if type_def and type_def.type_params and type_def.type_factory:
                     lookup = builtin_modules.GenericTypeLookup(type_def, qname)
-        if lookup is None or not lookup.type_def.constructors:
+        record_info = self.ctx.registry.get_builtin_record(lookup.qualified_name) if lookup else None
+        if not record_info:
             return
-        for ctor in lookup.type_def.constructors:
+        init_overloads = record_info.get_method_overloads("__init__")
+        if not init_overloads:
+            return
+        for ctor in init_overloads:
             if len(ctor.params) != len(arg_types):
                 continue
             rejected = False
@@ -1150,8 +1146,8 @@ class CallAnalyzer:
                     rejected = True
                     break
             if not rejected:
-                if fully_checked and ctor.cpp:
-                    expr.resolved_function_info = _method_def_to_function_info(ctor)
+                if fully_checked and ctor.cpp_template:
+                    expr.resolved_function_info = ctor
                 return
         # No constructor matched -- emit error for single-arg case
         if len(arg_types) == 1:
@@ -1163,7 +1159,7 @@ class CallAnalyzer:
     def _check_ctor_arg_compatibility(
         self,
         expr: TpyCall,
-        ctor: MethodDef,
+        ctor: FunctionInfo,
         arg_types: list[TpyType],
         inferred: dict[str, TpyType],
     ) -> None:
@@ -1354,13 +1350,13 @@ class CallAnalyzer:
             self.ctx.mark_loop_var_mutated(arg.name)
 
     def _check_builtin_constructor(self, expr: TpyCall, record_info: RecordInfo) -> TpyType:
-        """Check a builtin type constructor call using unified RecordInfo.constructors."""
+        """Check a builtin type constructor call using __init__ overloads."""
         self._reject_kwargs_for_builtin(expr, expr.func)
         type_name = expr.func
         arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
 
         # Find a matching constructor overload
-        for ctor in record_info.constructors:
+        for ctor in record_info.get_method_overloads("__init__"):
             if len(ctor.params) != len(arg_types):
                 continue
             if all(type_matches_numeric(arg_type, ptype)
@@ -1382,7 +1378,7 @@ class CallAnalyzer:
 
         # Fallback: try protocol-aware overload resolution (e.g. bool(obj) via Truthy)
         matched = resolve_overload(
-            record_info.constructors, arg_types,
+            record_info.get_method_overloads("__init__"), arg_types,
             protocol_checker=self.protocols.type_conforms_to_protocol,
             subclass_checker=self.ctx.registry.is_subclass_of,
         )
@@ -1421,7 +1417,7 @@ class CallAnalyzer:
                 return STR
 
         # No matching overload found
-        if not record_info.constructors:
+        if not record_info.get_method_overloads("__init__"):
             raise self.ctx.error(f"{type_name}() is not callable", expr)
         elif len(arg_types) == 0:
             raise self.ctx.error(f"{type_name}() requires an argument", expr)

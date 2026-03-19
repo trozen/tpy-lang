@@ -77,16 +77,19 @@ def _print_type_doc(qname: str, type_def) -> None:
     if type_def.extends:
         print(f"Extends: {', '.join(type_def.extends)}\n")
 
-    if type_def.constructors:
+    init_overloads = type_def.methods.get("__init__")
+    if init_overloads:
         print("**Constructors:**\n")
         base_name = qname.split(".")[-1]
-        for ctor in type_def.constructors:
+        for ctor in init_overloads:
             _print_signature_item(base_name, ctor)
         print()
 
     if type_def.methods:
         print("**Methods:**\n")
         for method_name, overloads in type_def.methods.items():
+            if method_name == "__init__":
+                continue
             for ovl in overloads:
                 _print_signature_item(method_name, ovl)
         print()

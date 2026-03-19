@@ -2632,14 +2632,13 @@ class RecordInfo:
     For builtin types:
     - extends_protocols stores protocol implementations (e.g., ["NativeIterable[T]"])
     - Methods have cpp_template or native_function for codegen
-    - constructors stores constructor overloads with cpp_template
+    - __init__ overloads in methods store constructor signatures with cpp_template
     """
     name: str
     fields: list[FieldInfo]
     has_init: bool = False
     init_params: list[tuple[str, TpyType, Optional[str]]] = field(default_factory=list)  # (name, type, default)
     methods: dict[str, list['FunctionInfo']] = field(default_factory=dict)  # method_name -> list of overloads
-    constructors: list['FunctionInfo'] = field(default_factory=list)  # Constructor overloads (for unified handling)
     type_params: list[str] = field(default_factory=list)  # ["T", "U"] for class Stack[T, U]
     type_param_kinds: list[TypeParamKind] = field(default_factory=list)  # [TYPE, INT] for class Matrix[T, N: int]
     type_param_bounds: dict[str, 'NamedType'] = field(default_factory=dict)  # {"T": Comparable} (must be protocols)

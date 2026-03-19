@@ -110,7 +110,7 @@ class BuiltinGenerator:
         return self.gen_call_from_fi(method, obj, gen_args)
 
     def gen_builtin_constructor(self, expr: TpyCall, record_info: RecordInfo) -> str:
-        """Generate C++ code for a builtin type constructor using unified RecordInfo.constructors."""
+        """Generate C++ code for a builtin type constructor using __init__ overloads."""
         fi = expr.resolved_function_info
         if fi and fi.cpp_template:
             gen_args = [self._gen_expr_deref(arg, ptype)
@@ -120,7 +120,7 @@ class BuiltinGenerator:
         # Fallback for synthetic calls (e.g. module-aliased constructors like t.Int32(42))
         args = expr.args
         arg_types = [self.ctx.get_expr_type(arg) for arg in args]
-        for ctor in record_info.constructors:
+        for ctor in record_info.get_method_overloads("__init__"):
             if len(ctor.params) != len(args):
                 continue
             if all(self._builtin_codegen_type_matches(arg, arg_t, ptype)
