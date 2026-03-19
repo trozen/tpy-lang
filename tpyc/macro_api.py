@@ -16,16 +16,21 @@ from typing import Any, Callable, TYPE_CHECKING
 from .typesys import (
     TpyType, NamedType, OwnType, VoidType, BoolType, StrType, FunctionInfo,
     FieldInfo as InternalFieldInfo,
-    UINT64,
+    UINT64, ALL_FIXED_INTS,
 )
 from .parse import (
     TpyRecord, TpyFunction, TpyExpr, TpyStmt,
     TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn,
     TpyMethodCall, TpyCall, TpyExprStmt,
+    TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral,
+    TpyNoneLiteral, TpyUnaryOp,
 )
 
 if TYPE_CHECKING:
     from .sema.context import SemanticContext
+
+
+_FIXED_INT_NAMES: frozenset[str] = frozenset(str(t) for t in ALL_FIXED_INTS)
 
 
 # ---------------------------------------------------------------------------
@@ -93,6 +98,7 @@ class FieldInfo:
     default_expr: TpyExpr | None = None
     is_factory_default: bool = False
     loc: Any = None
+    default_obj: Any = None
     _internal: InternalFieldInfo | None = None
 
     @staticmethod
@@ -106,6 +112,17 @@ class FieldInfo:
             loc=fld.loc,
             _internal=fld,
         )
+
+    def set_default(self, expr: TpyExpr | None, default_value: str | None = None,
+                    is_factory: bool = False) -> None:
+        """Replace this field's default expression (updates the underlying record)."""
+        self.default_expr = expr
+        self.has_default = expr is not None
+        self.is_factory_default = is_factory
+        if self._internal is not None:
+            self._internal.default_expr = expr
+            self._internal.default_value = default_value
+            self._internal.is_factory_default = is_factory
 
     def to_internal(self) -> InternalFieldInfo:
         """Return the underlying compiler FieldInfo."""
@@ -401,3 +418,28 @@ def build_eq(cls: ClassInfo, all_fields: list[FieldInfo]) -> TpyFunction:
         body=[TpyReturn(value=eq_expr)],
         is_method=True,
     )
+
+
+def expr_to_cpp_default(expr: TpyExpr) -> str | None:
+    """Convert a TpyExpr to a C++ default value literal string, or None."""
+    if isinstance(expr, TpyIntLiteral):
+        return str(expr.value)
+    if isinstance(expr, TpyFloatLiteral):
+        return str(expr.value)
+    if isinstance(expr, TpyBoolLiteral):
+        return "true" if expr.value else "false"
+    if isinstance(expr, TpyStrLiteral):
+        escaped = expr.value.replace('\\', '\\\\').replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
+        return f'"{escaped}"'
+    if isinstance(expr, TpyNoneLiteral):
+        return "std::nullopt"
+    if isinstance(expr, TpyUnaryOp) and expr.op == "-":
+        inner = expr_to_cpp_default(expr.operand)
+        if inner is not None:
+            return f"-{inner}"
+    if isinstance(expr, TpyCall) and expr.func in _FIXED_INT_NAMES:
+        if not expr.args:
+            return "0"
+        if len(expr.args) == 1:
+            return expr_to_cpp_default(expr.args[0])
+    return None

@@ -6,7 +6,7 @@
 |-------|-------------|--------|
 | 1 | Class macros: `@class_macro` decorator, `ClassInfo`/`FieldInfo`/`TypeInfo` API, `# tpy: macro_module` directive, `@dataclass` replacement | Done |
 | 1b | Macro kwargs validation: typed macro signatures with automatic validation via `inspect.signature` | Done |
-| 1c | Generic `field()` handling: move `_try_parse_dataclass_field` from parser into macro via field default post-processing | Not started |
+| 1c | Generic `field()` handling: `Field` descriptor + `field()` function in macro module, `call_macro_field_function` infrastructure | Done |
 | 2 | Call-site macros: `@macro` on functions, `Expr`/`Stmt` AST node arguments | Not started |
 | 3 | Quote templates: `quote()` syntactic sugar for less verbose macro authoring | Not started |
 | 4 | String-based method generation: `add_method_from_source` (parse TPy source strings) | Not started |
@@ -40,9 +40,9 @@
 
 | File | Purpose |
 |------|---------|
-| `tpyc/macro_api.py` | Public API: `ClassInfo`, `FieldInfo`, `TypeInfo`, `class_macro`, `build_init`, `build_eq` |
-| `tpyc/macro_loader.py` | `MacroRegistry` -- CPython `importlib` loading of `# tpy: macro_module` files |
-| `lib/tpy/dataclasses.py` | `@dataclass` implemented as a `@class_macro` |
+| `tpyc/macro_api.py` | Public API: `ClassInfo`, `FieldInfo`, `TypeInfo`, `class_macro`, `build_init`, `build_eq`, `expr_to_cpp_default` |
+| `tpyc/macro_loader.py` | `MacroRegistry`, `validate_and_call_macro`, `call_macro_field_function` |
+| `lib/tpy/dataclasses.py` | `@dataclass` macro, `Field` descriptor, `field()` function |
 
 ### How It Works
 
@@ -51,9 +51,13 @@
 3. Before parsing, checks for `# tpy: macro_module` -- detects it
 4. Loads it via CPython into `MacroRegistry` (not compiled to C++)
 5. During sema registration, `_apply_class_macros()` looks up the macro and invokes it
-6. The macro receives a `ClassInfo` wrapper, adds methods, sets flags
-7. `ClassInfo.apply_to_record()` writes mutations back to the `TpyRecord`
-8. Registration and codegen proceed normally
+6. Field defaults that are calls to macro-module functions (e.g. `field()`) are
+   called via `call_macro_field_function`, returning descriptor objects (e.g. `Field`)
+   stored on `FieldInfo.default_obj`
+7. The macro receives a `ClassInfo` wrapper, inspects `default_obj` on fields,
+   adds methods, sets flags
+8. `ClassInfo.apply_to_record()` writes mutations back to the `TpyRecord`
+9. Registration and codegen proceed normally
 
 ### Macro API
 

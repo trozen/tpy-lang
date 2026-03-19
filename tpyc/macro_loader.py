@@ -32,6 +32,37 @@ def is_macro_module_source(source: str) -> bool:
     return False
 
 
+def call_macro_field_function(
+    registry: Any,
+    call: Any,
+    loc: Any,
+) -> Any | None:
+    """Call a macro-module function from a field default and return the result.
+
+    If the call's resolved_import points to a loaded macro module, looks up
+    the function, extracts kwargs, and calls it. Returns None if not resolvable.
+    """
+    from .sema.diagnostics import SemanticError
+
+    resolved = getattr(call, 'resolved_import', None)
+    if resolved is None:
+        return None
+    mod_name, func_name = resolved
+    func = registry.get_export(mod_name, func_name)
+    if func is None:
+        return None
+
+    if call.args:
+        raise SemanticError(
+            f"{func_name}() does not accept positional arguments", loc)
+
+    # Pass TpyExpr kwargs directly -- the function stores them as-is
+    try:
+        return func(**call.kwargs)
+    except TypeError as e:
+        raise SemanticError(f"{func_name}(): {e}", loc) from e
+
+
 def validate_and_call_macro(
     macro_fn: Callable,
     cls_info: Any,
@@ -132,6 +163,7 @@ class MacroRegistry:
 
     def __init__(self) -> None:
         self._macros: dict[tuple[str, str], Callable] = {}
+        self._modules: dict[str, Any] = {}
         self._loaded_modules: set[str] = set()
 
     def register(self, module: str, name: str, func: Callable) -> None:
@@ -139,6 +171,13 @@ class MacroRegistry:
 
     def get_macro(self, module: str, name: str) -> Callable | None:
         return self._macros.get((module, name))
+
+    def get_export(self, module: str, name: str) -> Any | None:
+        """Look up any exported name from a loaded macro module."""
+        mod = self._modules.get(module)
+        if mod is None:
+            return None
+        return getattr(mod, name, None)
 
     def is_loaded(self, module_name: str) -> bool:
         return module_name in self._loaded_modules
@@ -171,6 +210,8 @@ class MacroRegistry:
             raise RuntimeError(
                 f"Error executing macro module '{module_name}' ({file_path}): {e}"
             ) from e
+
+        self._modules[module_name] = mod
 
         # Scan for @class_macro decorated functions
         for attr_name in dir(mod):

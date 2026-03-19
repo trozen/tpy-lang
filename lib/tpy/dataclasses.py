@@ -7,9 +7,29 @@ It is loaded by the compiler via CPython (not compiled to C++).
 
 from tpyc.macro_api import (
     ClassInfo, FieldInfo, class_macro,
-    build_init, build_eq,
+    build_init, build_eq, expr_to_cpp_default,
 )
+from tpyc.parse import TpyCall, TpyName
 from tpyc.typesys import NamedType, BoolType, StrType, UINT64
+
+_MISSING = object()
+
+
+class Field:
+    """Descriptor returned by field(). Inspected by @dataclass macro."""
+
+    def __init__(self, *, default=_MISSING, default_factory=_MISSING):
+        if default is not _MISSING and default_factory is not _MISSING:
+            raise TypeError("cannot specify both 'default' and 'default_factory'")
+        if default is _MISSING and default_factory is _MISSING:
+            raise TypeError("requires 'default' or 'default_factory'")
+        self.default = default
+        self.default_factory = default_factory
+
+
+def field(*, default=_MISSING, default_factory=_MISSING) -> Field:
+    """Declare field metadata in @dataclass classes."""
+    return Field(default=default, default_factory=default_factory)
 
 
 @class_macro
@@ -18,6 +38,8 @@ def dataclass(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> N
     cls.is_dataclass = True
     cls.is_frozen = frozen
     cls.is_ordered = order
+
+    _process_field_defaults(cls)
 
     parent_fields = cls.get_parent_fields()
     all_fields = parent_fields + cls.fields
@@ -64,6 +86,25 @@ def dataclass(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> N
         _synthesize_order_stubs(cls)
 
     cls.set_dataclass_fields(all_fields)
+
+
+def _process_field_defaults(cls: ClassInfo) -> None:
+    """Unwrap Field descriptors set by field() calls."""
+    for fld in cls.fields:
+        if not isinstance(fld.default_obj, Field):
+            continue
+        spec = fld.default_obj
+        if spec.default is not _MISSING:
+            fld.set_default(spec.default, default_value=expr_to_cpp_default(spec.default))
+        elif spec.default_factory is not _MISSING:
+            if not isinstance(spec.default_factory, TpyName):
+                cls.error(
+                    "default_factory must be a type name (e.g., list, dict, MyRecord)",
+                    loc=fld.loc,
+                )
+            factory_call = TpyCall(func=spec.default_factory.name, args=[])
+            factory_call.loc = fld.loc
+            fld.set_default(factory_call, is_factory=True)
 
 
 def _validate_frozen_consistency(cls: ClassInfo, frozen: bool) -> None:

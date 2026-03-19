@@ -1,1 +1,1 @@
-main.py:7: error: field() cannot specify both 'default' and 'default_factory'
+main.py:7: error: field(): cannot specify both 'default' and 'default_factory'

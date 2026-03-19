@@ -185,6 +185,7 @@ class TpyCall(TpyExpr):
     inferred_type_args: tuple[TpyType, ...] | None = None  # Set by sema for generic function calls
     type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
     kwargs: dict[str, TpyExpr] = field(default_factory=dict)  # Keyword arguments (limited support)
+    resolved_import: tuple[str, str] | None = None  # Set by parser: (module, name) for resolved imports
     resolved_function_info: FunctionInfo | None = None  # Set by sema for resolved function overloads
     enum_from_value: EnumType | None = None  # Set by sema for enum value lookup: Color(0)
     enum_try_parse: EnumType | None = None   # Set by sema for tpy.try_parse(Color, "Red")
@@ -203,6 +204,7 @@ class TpyMethodCall(TpyExpr):
     method: str
     args: list[TpyExpr]
     kwargs: dict[str, TpyExpr] = field(default_factory=dict)
+    resolved_import: tuple[str, str] | None = None  # Set by parser: (module, name) for resolved imports
     type_args: tuple[TpyType, ...] = ()  # Explicit type args for module.func[T](args) syntax
     type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
     is_static_call: bool = False  # Set by sema for ClassName.staticmethod() calls

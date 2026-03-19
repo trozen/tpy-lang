@@ -26,7 +26,7 @@ from ..namespace import NameBinding, BindingKind
 from .diagnostics import SemanticError
 from .operators import DUNDER_CPP_TEMPLATES
 from ..macro_api import ClassInfo
-from ..macro_loader import validate_and_call_macro
+from ..macro_loader import validate_and_call_macro, call_macro_field_function
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -50,6 +50,22 @@ def _contains_self_type(typ: TpyType) -> bool:
     return any(_contains_self_type(inner) for inner in typ.inner_types())
 
 
+
+
+def _validate_const_field_default(expr: TpyExpr, loc: object) -> None:
+    """Validate that a field default expression is a compile-time constant."""
+    from ..macro_api import expr_to_cpp_default
+    if expr_to_cpp_default(expr) is not None:
+        return
+    # Resolved call from a macro module (e.g. field()) used outside its macro
+    if isinstance(expr, (TpyCall, TpyMethodCall)) and getattr(expr, 'resolved_import', None) is not None:
+        mod, name = expr.resolved_import
+        raise SemanticError(
+            f"{mod}.{name}() can only be used in classes decorated with "
+            f"a macro from '{mod}'", loc)
+    raise SemanticError(
+        "Default field value must be a constant expression "
+        "(literal, None, or fixed-int constructor like Int32(5))", loc)
 
 
 def build_record_self_type(record: TpyRecord) -> NamedType:
@@ -302,6 +318,11 @@ class TypeRegistrar:
 
         # Apply class macros (e.g. @dataclass)
         self._apply_class_macros(record)
+
+        # Validate field defaults are const (after macros have transformed them)
+        for fld in record.fields:
+            if fld.default_expr is not None and not fld.is_factory_default:
+                _validate_const_field_default(fld.default_expr, fld.loc)
 
         # Collect inherited fields from parent @dataclass (for RecordInfo)
         parent_dc_fields = self._get_parent_dataclass_fields(record)
@@ -989,6 +1010,14 @@ class TypeRegistrar:
             if macro_fn is None:
                 raise SemanticError(f"Unknown macro '{qname}'", record.loc)
             cls_info = ClassInfo(record, self.ctx)
+            # Call macro-module functions in field defaults (e.g. field() -> Field)
+            if registry:
+                for fld in cls_info.fields:
+                    if fld.default_expr is not None and isinstance(fld.default_expr, (TpyCall, TpyMethodCall)):
+                        result = call_macro_field_function(
+                            registry, fld.default_expr, fld.loc)
+                        if result is not None:
+                            fld.default_obj = result
             validate_and_call_macro(macro_fn, cls_info, kwargs, qname, record.loc)
             cls_info.apply_to_record()
             record._macro_cls_info = cls_info  # type: ignore[attr-defined]
