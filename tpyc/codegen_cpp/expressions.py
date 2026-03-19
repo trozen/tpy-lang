@@ -3104,12 +3104,16 @@ class ExpressionGenerator:
     def _gen_function_ref(self, expr: TpyName) -> str:
         """Generate C++ code for a named function used as a value."""
         fi = expr.function_ref_info
+        # Build template args suffix for generic function refs
+        targs = ""
+        if expr.function_ref_type_args:
+            targs = "<" + ", ".join(self.types.type_to_cpp(t) for t in expr.function_ref_type_args) + ">"
         # Cross-module: use qualified name
         if expr.name in self.ctx.user_imported_functions:
             source_module, original_name = self.ctx.user_imported_functions[expr.name]
-            return qualified_cpp_name(source_module, original_name)
+            return qualified_cpp_name(source_module, original_name) + targs
         # Native functions: use native C++ name
         if fi.is_native_import or fi.is_extern_c:
-            return qualify_native_name(fi.native_name or fi.name)
+            return qualify_native_name(fi.native_name or fi.name) + targs
         # Same-module function
-        return escape_cpp_name(expr.name)
+        return escape_cpp_name(expr.name) + targs

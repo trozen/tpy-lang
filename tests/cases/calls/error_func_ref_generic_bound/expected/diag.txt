@@ -1,0 +1,1 @@
+main.py:18: error: Cannot use 'max_val' as function reference: inferred type argument Blob for T does not satisfy bound 'Comparable'

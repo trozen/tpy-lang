@@ -2379,14 +2379,24 @@ class ExpressionAnalyzer:
         """Find a function overload matching the Fn/Callable hint signature.
 
         Returns the matched FunctionInfo or raises an error if ambiguous.
+        For generic functions, infers type parameters from the hint and stores
+        the inferred type args on the expr node.
         """
         hint_params = hint.param_types
         hint_return = hint.return_type
-        candidates: list[FunctionInfo] = []
+        # Each candidate is (FunctionInfo, inferred_type_args_or_None)
+        candidates: list[tuple[FunctionInfo, tuple[TpyType, ...] | None]] = []
+        # Track generic rejection for diagnostics (last one wins)
+        generic_rejection: str | None = None
         for fi in func_infos:
-            if fi.is_generic():
-                continue  # generic functions deferred
             if len(fi.params) != len(hint_params):
+                continue
+            if fi.is_generic():
+                type_args, rejection = self._infer_generic_ref_type_args(fi, hint)
+                if type_args is not None:
+                    candidates.append((fi, type_args))
+                elif rejection is not None:
+                    generic_rejection = rejection
                 continue
             match = True
             for (_, ptype), htype in zip(fi.params, hint_params):
@@ -2408,12 +2418,56 @@ class ExpressionAnalyzer:
                         self.compat.check_type_compatible(fi.return_type, hint_return, "return")
                     except SemanticError:
                         continue
-            candidates.append(fi)
+            candidates.append((fi, None))
         if len(candidates) == 1:
-            return candidates[0]
+            fi, type_args = candidates[0]
+            if type_args is not None:
+                expr.function_ref_type_args = type_args
+            return fi
         if len(candidates) > 1:
             raise self.ctx.error(
                 f"Ambiguous function reference: multiple overloads of '{expr.name}' "
                 f"match {hint}", expr)
-        # No match -- return None to fall through (might be a variable, not a function)
+        # No match -- emit generic rejection diagnostic if we have one
+        if generic_rejection is not None:
+            raise self.ctx.error(generic_rejection, expr)
+        # Return None to fall through (might be a variable, not a function)
         return None
+
+    def _infer_generic_ref_type_args(
+        self, fi: FunctionInfo, hint: FnType | CallableType,
+    ) -> tuple[tuple[TpyType, ...] | None, str | None]:
+        """Try to infer type parameters for a generic function from an Fn/Callable hint.
+
+        Returns (inferred_type_args, None) on success,
+        (None, rejection_message) on bound or inference failure,
+        (None, None) on type mismatch (not a candidate at all).
+        """
+        inferred: dict[str, TpyType] = {}
+        # Match each function param type against the hint param type
+        for (_, ptype), htype in zip(fi.params, hint.param_types):
+            if not self.type_ops.match_type_with_inference(ptype, htype, inferred):
+                return None, None
+        # Match return type (unless hint is void -- any return is acceptable)
+        if not isinstance(hint.return_type, VoidType):
+            if not self.type_ops.match_type_with_inference(fi.return_type, hint.return_type, inferred):
+                return None, None
+        # Check all type params were inferred
+        unresolved = [tp for tp in fi.type_params if tp not in inferred]
+        if unresolved:
+            return None, (
+                f"Cannot use '{fi.name}' as function reference: "
+                f"cannot infer type parameter(s) {', '.join(unresolved)} "
+                f"from {hint}"
+            )
+        # Validate type parameter bounds
+        for param_name, type_arg in inferred.items():
+            if param_name in fi.type_param_bounds:
+                bound = fi.type_param_bounds[param_name]
+                if not self.protocols.type_conforms_to_protocol(type_arg, bound):
+                    return None, (
+                        f"Cannot use '{fi.name}' as function reference: "
+                        f"inferred type argument {type_arg} for {param_name} "
+                        f"does not satisfy bound '{bound.name}'"
+                    )
+        return tuple(inferred[tp] for tp in fi.type_params), None

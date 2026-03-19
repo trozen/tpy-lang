@@ -121,6 +121,7 @@ class TpyName(TpyExpr):
     name: str
     is_function_ref: bool = False  # Set by sema: name resolves to a function used as a value
     function_ref_info: 'FunctionInfo | None' = None  # Set by sema: resolved function for codegen
+    function_ref_type_args: 'tuple[TpyType, ...] | None' = None  # Set by sema: inferred type args for generic function refs
 
 
 @dataclass

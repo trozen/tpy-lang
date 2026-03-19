@@ -460,24 +460,20 @@ For `Callable` params or fields, the function is wrapped in `std::function`:
 std::function<int32_t(int32_t)> cb = double;  // wraps function pointer
 ```
 
-**Generic function references** are harder:
+**Generic function references** (implemented): When a generic function is used as a
+value, the compiler infers type parameters from the `Fn`/`Callable` hint signature
+using `match_type_with_inference`. Bounded type params are validated against protocol
+conformance. The codegen emits explicit template instantiation:
 
 ```python
 def identity[T](x: T) -> T:
     return x
 
-apply(identity, 42)  # which instantiation of identity?
+apply(identity, 42)  # hint Fn[[Int32], Int32] -> infers T=Int32
 ```
 
-When a generic function is used as a value, the compiler must instantiate it with
-concrete types inferred from context. If the context provides `Fn[[Int32], Int32]`,
-the compiler instantiates `identity<int32_t>` and passes that. If context is
-insufficient, it's an error.
-
-A lambda wrapper may be needed in C++ to defer instantiation:
-
 ```cpp
-apply([](int32_t x) { return identity(x); }, int32_t(42));
+apply(identity<int32_t>, int32_t(42));  // explicit template instantiation
 ```
 
 ### Method References
@@ -883,14 +879,14 @@ similar patterns. Both `Fn` (template) and `Callable` (`std::function`) paths.
 non-param position (error), type inference for lambda params, non-capturing
 and capturing lambdas, `Callable` field, error cases.
 
-### Phase 2: Named Function References (S effort)
+### Phase 2: Named Function References (S effort) -- Done
 
 **Goal**: `apply(double, 42)` where `double` is a named function.
 
 - Allow function names as expressions (currently only valid in call position)
 - Type: infer `CallableType` from the function's signature
 - Codegen: pass the function name directly (C++ templates handle it)
-- Generic functions: instantiate with inferred types or wrap in a lambda
+- Generic functions: type params inferred from Fn/Callable hint, bounded params validated, codegen emits explicit template instantiation (`identity<int32_t>`)
 
 ### Phase 3: Escaping Closures (M effort)
 
