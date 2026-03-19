@@ -61,6 +61,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # match/case or-patterns on unions with variable bindings
+    // from dataclasses import dataclass
     // main()
     main();
 }

@@ -25,6 +25,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # field(default_factory=...) with generic user type
+    // from dataclasses import dataclass, field
     // main()
     main();
 }

@@ -19,6 +19,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # @dataclass with user-defined __repr__ suppresses auto-generation
+    // from dataclasses import dataclass
     // main()
     main();
 }

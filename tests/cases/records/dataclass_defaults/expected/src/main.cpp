@@ -25,6 +25,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # @dataclass with field default values
+    // from dataclasses import dataclass
     // main()
     main();
 }

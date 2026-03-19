@@ -42,6 +42,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # warning: non-exhaustive match on union (missing member)
+    // from dataclasses import dataclass
     // main()
     main();
 }

@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, FieldInfo, FunctionInfo,
@@ -755,6 +755,7 @@ class TpyRecord:
     is_dataclass: bool = False
     is_frozen: bool = False
     is_ordered: bool = False
+    pending_macros: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
     loc: SourceLocation | None = None
 
     @property

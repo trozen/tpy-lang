@@ -40,6 +40,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # @dataclass auto-generated __eq__ (field-by-field comparison)
+    // from dataclasses import dataclass
     // main()
     main();
 }

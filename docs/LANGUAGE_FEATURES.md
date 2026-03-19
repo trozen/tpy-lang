@@ -4630,13 +4630,19 @@ Send/Sync rules for built-in types:
       name: str
       value: Int32
   ```
-- **Open**: Macro system running Python during C++ generation
-  - Inspect types, generate methods, transform AST
-  - Similar to Rust's proc_macro or C++ template metaprogramming
+- **Phase 1 done**: Class macro system running Python during compilation
+  - `# tpy: macro_module` directive marks modules as compile-time-only
+  - `@class_macro` functions receive `ClassInfo` and add/modify methods
+  - `@dataclass` reimplemented as a class macro (`lib/tpy/dataclasses.py`)
+  - `tpyc/macro_api.py` provides public API (`ClassInfo`, `FieldInfo`, `TypeInfo`)
+  - `tpyc/macro_loader.py` loads macro modules via CPython `importlib`
+  - Remaining: call-site macros, quote templates, hygiene, CPython compat
 
-### Compile-Time Hooks (Extensible Metaprogramming)
+### Compile-Time Hooks (Extensible Metaprogramming -- Future Design)
 
-The compiler shouldn't hardcode special classes like `Model`. Instead, classes can define compile-time hooks that the compiler calls during generation:
+Phase 1 uses `@class_macro` decorators on standalone functions (see above). The
+inheritance-based `@compile_time` / `__generate__` design below is a future alternative
+for when the macro system supports class-based macro definitions:
 
 ```python
 # tpy/model.py - library code, not compiler magic

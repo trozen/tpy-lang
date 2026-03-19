@@ -21,6 +21,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # @dataclass with Optional fields and None defaults
+    // from dataclasses import dataclass
     // main()
     main();
 }

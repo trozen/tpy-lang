@@ -34,6 +34,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # 3-level @dataclass inheritance chain: grandparent -> parent -> child
+    // from dataclasses import dataclass
     // main()
     main();
 }

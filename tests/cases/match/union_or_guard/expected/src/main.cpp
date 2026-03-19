@@ -149,6 +149,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # match/case or-patterns combined with guards on union subjects
+    // from dataclasses import dataclass
     // main()
     main();
 }

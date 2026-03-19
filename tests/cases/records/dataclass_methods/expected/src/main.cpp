@@ -25,6 +25,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # @dataclass with user-defined methods alongside auto-generated __init__
+    // from dataclasses import dataclass
     // main()
     main();
 }

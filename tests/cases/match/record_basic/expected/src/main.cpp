@@ -124,6 +124,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # match/case on concrete record subjects with field-value matching
+    // from dataclasses import dataclass
     // main()
     main();
 }

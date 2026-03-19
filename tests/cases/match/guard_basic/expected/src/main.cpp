@@ -82,6 +82,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # match/case with guard clauses (if conditions)
+    // from dataclasses import dataclass
     // main()
     main();
 }

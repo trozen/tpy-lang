@@ -49,6 +49,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # field(default=...) and field(default_factory=...) for @dataclass
+    // from dataclasses import dataclass, field
     // main()
     main();
 }

@@ -1,13 +1,123 @@
-# Macro System Design (Draft)
+# Macro System Design
 
-Status: early design, not yet planned for implementation.
+## Progress
+
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 1 | Class macros: `@class_macro` decorator, `ClassInfo`/`FieldInfo`/`TypeInfo` API, `# tpy: macro_module` directive, `@dataclass` replacement | Done |
+| 1b | Macro kwargs validation: typed macro signatures with compiler error wrapping (currently `**kwargs` with manual checks) | Not started |
+| 1c | Generic `field()` handling: move `_try_parse_dataclass_field` from parser into macro via field default post-processing | Not started |
+| 2 | Call-site macros: `@macro` on functions, `Expr`/`Stmt` AST node arguments | Not started |
+| 3 | Quote templates: `quote()` syntactic sugar for less verbose macro authoring | Not started |
+| 4 | String-based method generation: `add_method_from_source` (parse TPy source strings) | Not started |
+| 5 | CPython compatibility: dual `__init_subclass__` / `@class_macro` path | Not started |
+| 6 | TpyMini VM: tree-walking interpreter for self-hosted compiler | Not started |
+
+### Future Extensions
+
+| Feature | Notes |
+|---------|-------|
+| Hygiene | Macro-generated names get unique internal names to avoid shadowing. Opt-out via `unhygienic(name)` |
+| `--expand-macros` flag | CLI flag to dump macro expansions for debugging |
+| Macro expansion trace in errors | Diagnostics include trace pointing to the macro that generated invalid code |
+| `static_read()` | Compile-time file I/O (e.g. reading `.proto` schemas). Needs caching/rebuild triggers |
+| `macro_note()` | Informational diagnostic hint (shown with related errors) |
+| Macro ordering / composition | Multiple macros on one class, inner-to-outer application order |
+| FieldInfo.metadata | Typed metadata for macro-specific field annotations (e.g. `proto.Field`) |
+| Replace codegen special cases | Move `__repr__`/`__hash__`/`operator<=>` generation from codegen into macro-generated AST |
+
+---
 
 ## Goals
 
 - Enable library-level code generation without compiler changes
 - All macro definitions must be valid Python (runnable in CPython)
-- Hygienic by default (macro-generated names don't leak into caller scope)
-- Two macro kinds: class macros and call-site macros
+- Two macro kinds: class macros (Phase 1) and call-site macros (Phase 2)
+
+## Architecture (Phase 1)
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `tpyc/macro_api.py` | Public API: `ClassInfo`, `FieldInfo`, `TypeInfo`, `class_macro`, `build_init`, `build_eq` |
+| `tpyc/macro_loader.py` | `MacroRegistry` -- CPython `importlib` loading of `# tpy: macro_module` files |
+| `lib/tpy/dataclasses.py` | `@dataclass` implemented as a `@class_macro` |
+
+### How It Works
+
+1. Parser sees `from dataclasses import dataclass` -- treats it as a regular file import
+2. Compiler discovers `lib/tpy/dataclasses.py` via normal module resolution
+3. Before parsing, checks for `# tpy: macro_module` -- detects it
+4. Loads it via CPython into `MacroRegistry` (not compiled to C++)
+5. During sema registration, `_apply_class_macros()` looks up the macro and invokes it
+6. The macro receives a `ClassInfo` wrapper, adds methods, sets flags
+7. `ClassInfo.apply_to_record()` writes mutations back to the `TpyRecord`
+8. Registration and codegen proceed normally
+
+### Macro API
+
+Macros receive type info through thin public wrappers over compiler internals:
+
+```python
+from tpyc.macro_api import ClassInfo, FieldInfo, TypeInfo, class_macro
+
+class TypeInfo:
+    name: str                      # "Int32", "list", "str"
+    type_args: list[TypeInfo]
+    is_optional: bool
+    is_value_type: bool
+    is_record: bool
+    _tpy_type: TpyType             # escape hatch for round-tripping
+
+class FieldInfo:
+    name: str
+    type: TypeInfo
+    has_default: bool
+    default_expr: TpyExpr | None   # raw AST for programmatic use
+    is_factory_default: bool
+    loc: SourceLocation | None
+
+class ClassInfo:
+    name: str
+    fields: list[FieldInfo]        # own fields only
+    type_params: list[str]
+    parent: TypeInfo | None
+    is_dataclass: bool             # settable
+    is_frozen: bool                # settable
+    is_ordered: bool               # settable
+
+    def add_method(self, func: TpyFunction) -> None: ...
+    def add_method_stub(self, name, params, return_type, is_readonly=False) -> None: ...
+    def has_method(self, name: str) -> bool: ...
+    def get_parent_fields(self) -> list[FieldInfo]: ...
+    def set_dataclass_fields(self, fields: list[FieldInfo]) -> None: ...
+    def warning(self, msg: str, loc=None) -> None: ...
+    def error(self, msg: str, loc=None) -> NoReturn: ...
+```
+
+`add_method` injects a `TpyFunction` AST node (power user API). `add_method_stub`
+registers a `FunctionInfo` signature without a body -- codegen generates the C++
+(used for `__repr__`, `__hash__`, ordering where codegen has type-aware formatting).
+
+### Macro Module Format
+
+```python
+# tpy: macro_module
+from tpyc.macro_api import ClassInfo, class_macro, build_init, build_eq
+
+@class_macro
+def my_decorator(cls: ClassInfo, *, option: bool = False) -> None:
+    # inspect cls.fields, cls.type_params, etc.
+    # add methods via cls.add_method() or cls.add_method_stub()
+    # set flags via cls.is_dataclass, cls.is_frozen, etc.
+    # emit diagnostics via cls.warning() or cls.error()
+    pass
+```
+
+Macro modules use `# tpy: macro_module` directive. They are executed via CPython
+during compilation and never compiled to C++. They can import from `tpyc.macro_api`
+and Python stdlib only.
 
 ## Use Cases
 
@@ -37,47 +147,15 @@ class TradeMessage:
     price: Float64 = proto.Field(3, optional=True)
 ```
 
-`proto.Field()` carries metadata (field number, wire type hints,
-`optional`/`repeated` flags). The macro accesses it via `field.metadata`.
-Namespaced under `proto` to avoid collision with model's `Field()` and
-to allow related types like `proto.Enum`, `proto.OneOf`.
-
-Generates `serialize() -> bytes` and `deserialize(data: bytes) -> TradeMessage`
-with wire-format encoding. The macro reads field types + metadata and emits
-type-specific encode/decode calls.
-
-### 3. Zero-alloc logging
+### 3. Zero-alloc logging (call-site macro, Phase 2)
 
 ```python
 log(INFO, "user {} traded {} @ {}", user_id, symbol, price)
 ```
 
-Expands at compile time to type-aware writes into a fixed buffer:
+Expands at compile time to type-aware writes into a fixed buffer.
 
-```python
-# generated:
-buf = FixedBuffer(256)
-buf.write_str("user ")
-buf.write_int(user_id)
-buf.write_str(" traded ")
-buf.write_fixstr(symbol)
-buf.write_str(" @ ")
-buf.write_float(price)
-logger.submit(buf)
-```
-
-No intermediate string allocation. Suitable for `@noalloc` hot paths.
-
-### 4. Format strings (like Rust's `format!`)
-
-```python
-s = fmt("{} + {} = {}", a, b, a + b)
-```
-
-Parses format string at compile time, generates type-checked formatting calls.
-No `str()` boxing of each argument.
-
-### 5. Derive-style method generation
+### 4. Derive-style method generation
 
 ```python
 @derive(Eq, Hash, Repr)
@@ -86,10 +164,7 @@ class Point:
     y: Int32
 ```
 
-Generalizes what `@dataclass` does as a hardcoded compiler feature into a
-user-extensible system.
-
-### 6. Builder pattern
+### 5. Builder pattern
 
 ```python
 @builder
@@ -97,90 +172,32 @@ class Config:
     host: str
     port: Int32 = 8080
     timeout: Float64 = 30.0
-    max_retries: Int32 = 3
-
-# usage:
-cfg = Config.builder().host("localhost").timeout(5.0).build()
 ```
 
-Generates a fluent builder API for objects with many optional fields.
-The macro creates a `ConfigBuilder` class with setter methods that return
-`self`, and a `build()` that validates required fields and constructs
-the final object.
-
-### 7. Compile-time regex validation
+### 6. Compile-time regex validation (call-site macro, Phase 2)
 
 ```python
 r = regex("[a-z]+")       # ok
 r2 = regex("[invalid(")   # compile error: malformed regex pattern
 ```
 
-Call-site macro that parses the regex pattern at compile time. If the
-pattern is malformed, it's a compile error (not a runtime crash).
-Can also generate an optimized matcher instead of interpreting the
-pattern at runtime.
-
-### 8. Test mocks
-
-```python
-@mock
-class MockDatabase(DatabaseProtocol):
-    pass
-
-# generates stub methods matching DatabaseProtocol:
-#   query() -> records calls, returns default
-#   insert() -> records calls, returns default
-# plus: mock.assert_called("query", times=2)
-```
-
-Inspects a protocol's method signatures and generates stub
-implementations that record calls for assertion. Useful for unit testing
-without manual mock boilerplate.
-
-### 9. Compile-time lookup tables
-
-```python
-@constexpr
-def crc32_table() -> Array[UInt32, 256]:
-    table = [UInt32(0)] * 256
-    for i in range(256):
-        crc = UInt32(i)
-        for _ in range(8):
-            if crc & 1:
-                crc = (crc >> 1) ^ UInt32(0xEDB88320)
-            else:
-                crc >>= 1
-        table[i] = crc
-    return table
-
-TABLE: Final = crc32_table()  # embedded in binary, zero runtime cost
-```
-
-Overlaps with the `@constexpr` feature (see TODO.md). Macros could
-provide the more complex cases where C++ `constexpr` alone isn't enough.
-
 ## Two Macro Kinds
 
-### Class macros (decorator macros)
+### Class macros (decorator macros) -- Phase 1, done
 
-Applied as decorators on class or function definitions.
+Applied as decorators on class definitions. The compiler loads the macro module
+via CPython, invokes the function with a `ClassInfo` wrapper, and applies the
+mutations back to the class AST before sema registration.
 
 ```python
-@macro
-def model(cls: ClassInfo) -> ClassInfo:
+@class_macro
+def model(cls: ClassInfo) -> None:
     for field in cls.fields:
         ...  # inspect field.name, field.type
     cls.add_method(...)
-    return cls
 ```
 
-The compiler:
-1. Resolves the class fields and types (post-sema)
-2. Sees the decorator was defined with `@macro`
-3. Invokes the macro function, passing class metadata
-4. Incorporates returned methods/modifications into codegen
-
-### Call-site macros (expression/statement macros)
+### Call-site macros (expression/statement macros) -- Phase 2
 
 Look like function calls but expand inline at the call site.
 
@@ -197,18 +214,14 @@ The compiler:
 2. Passes argument AST nodes (not evaluated values) to the macro
 3. Replaces the call with the returned AST
 
-The call site looks like normal Python -- no special syntax needed.
-
 ## Execution Model
 
 ### Current (compiler in Python)
 
 Macros execute as regular Python functions inside the compiler process.
-The "macro VM" is just CPython. Trivial to implement.
+The "macro VM" is just CPython.
 
-### Self-hosted (compiler in TPy)
-
-Macros need a compile-time execution environment. Options:
+### Self-hosted (compiler in TPy) -- Phase 6
 
 **TpyMini VM** (preferred): A tree-walking interpreter embedded in the compiler
 that supports a restricted subset of TPy:
@@ -224,82 +237,22 @@ Not supported:
 - Generics, type parameters (macros don't need to be generic)
 - Ptr/Own/Span and the memory model
 - C++ interop
-- Imports beyond a blessed set of compile-time modules
 
-The VM doesn't need to support generics itself -- it only needs to
-*inspect* generic types in the target code.
+## Custom Diagnostics
 
-Unsupported features produce clear errors:
-"generics not supported in compile-time macros"
-
-## Macro API
-
-### Type introspection
-
-Macros receive type info through a high-level API, not raw AST:
+Macros emit their own compile errors and warnings via `ClassInfo`:
 
 ```python
-class FieldInfo:
-    name: str
-    type: TypeInfo
-    default: Expr | None
-    has_default: bool
-
-class TypeInfo:
-    name: str              # "Int32", "list", "Optional", etc.
-    type_args: list[TypeInfo]  # e.g. list[Int32] -> [TypeInfo("Int32")]
-    is_optional: bool
-    is_generic: bool
-    is_record: bool
-
-class ClassInfo:
-    name: str
-    fields: list[FieldInfo]
-    methods: list[MethodInfo]
-    base_classes: list[TypeInfo]
-    # mutation:
-    def add_method(self, method: MethodDef) -> None: ...
-    def add_field(self, field: FieldInfo) -> None: ...
+@class_macro
+def model(cls: ClassInfo) -> None:
+    for field in cls.fields:
+        if field.type.name == "str" and not field.has_default:
+            cls.error("str fields in @model must have a default", loc=field.loc)
+        if field.type.name == "list":
+            cls.warning("consider using Array[T, N] for fixed-size data", loc=field.loc)
 ```
 
-### AST builder (Phase 1)
-
-Explicit builder calls. Verbose but unambiguous and valid Python:
-
-```python
-@macro
-def assert_eq(a: Expr, b: Expr) -> Stmt:
-    msg = f"Expected {a.source()} == {b.source()}"
-    return ast.If(
-        test=ast.NotEq(a, b),
-        body=[ast.Call("panic", [ast.Str(msg)])]
-    )
-```
-
-### Quote templates (Phase 2 -- syntactic sugar)
-
-A `quote()` helper that parses a template string with `$` splicing:
-
-```python
-@macro
-def assert_eq(a: Expr, b: Expr) -> Stmt:
-    msg = f"Expected {a.source()} == {b.source()}"
-    return quote("if $a != $b: panic($msg)", a=a, b=b, msg=ast.Str(msg))
-```
-
-`quote()` parses the template at macro definition time and substitutes
-splice points. This is purely syntactic sugar over the AST builder --
-no new language constructs needed.
-
-## Hygiene
-
-Macros are hygienic by default:
-- Variables introduced by the macro get unique internal names
-- They don't shadow or conflict with variables at the expansion site
-- The macro author can opt out with `unhygienic(name)` for intentional
-  name injection (e.g. a macro that defines `self.field_name`)
-
-## CPython Compatibility
+## CPython Compatibility (Phase 5)
 
 Same source, two execution paths:
 
@@ -310,159 +263,17 @@ class Model:
         super().__init_subclass__(**kwargs)
         fields = get_fields(cls)
         cls.to_json = make_to_json(fields)
-        cls.from_json = classmethod(make_from_json(fields))
 
-    # tpyc path: @macro runs during compilation
-    @macro
+    # tpyc path: @class_macro runs during compilation
+    @class_macro
     @classmethod
-    def __generate__(cls, info: ClassInfo) -> ClassInfo:
+    def __generate__(cls, info: ClassInfo) -> None:
         for field in info.fields:
             ...
-        return info
 ```
 
-The `@macro` decorator is a no-op in CPython (just returns the function
-unchanged). The `__init_subclass__` path is ignored by tpyc (it sees the
-`@macro` hook instead).
-
-## Phasing
-
-### Phase 1: Class macros with AST builder
-- `@macro` on class decorators
-- ClassInfo/FieldInfo/TypeInfo API
-- Explicit AST builder
-- Runs in CPython (compiler is Python)
-- Sufficient for: @model, @protobuf, @derive
-
-### Phase 2: Call-site macros
-- `@macro` on function definitions
-- Expr/Stmt AST node arguments
-- Sufficient for: log(), fmt(), static_assert()
-
-### Phase 3: Quote templates
-- `quote()` syntactic sugar
-- Makes macro authoring less verbose
-
-### Phase 4: TpyMini VM (for self-hosting)
-- Tree-walking interpreter for macro execution
-- Restricted TPy subset
-- Only needed if/when compiler is self-hosted
-
-## Custom Diagnostics
-
-Macros need a way to emit their own compile errors and warnings. Without
-this, mistakes surface as cryptic failures in generated code.
-
-```python
-@macro
-def model(cls: ClassInfo) -> ClassInfo:
-    for field in cls.fields:
-        if field.type.name == "str" and not field.has_default:
-            macro_error(field, "str fields in @model must have a default")
-        if field.type.name == "list":
-            macro_warning(field, "consider using Array[T, N] for fixed-size data")
-    ...
-```
-
-API:
-- `macro_error(node, message)` -- abort compilation with error at the node's location
-- `macro_warning(node, message)` -- emit warning, continue compilation
-- `macro_note(node, message)` -- informational hint (shown with related errors)
-
-The `node` parameter provides source location so the diagnostic points at
-the user's code, not the macro internals.
-
-## Interaction with Other TPy Features
-
-### @noalloc
-
-Macro-generated methods can carry effect annotations:
-
-```python
-@macro
-def model(cls: ClassInfo) -> ClassInfo:
-    # generated serialize() is noalloc-safe if all fields are fixed-size
-    if all(is_fixed_size(f.type) for f in cls.fields):
-        cls.add_method(serialize_method, decorators=["noalloc"])
-    else:
-        cls.add_method(serialize_method)
-    ...
-```
-
-The compiler validates `@noalloc` on macro-generated methods the same way
-as on hand-written ones. No special treatment.
-
-### Generics
-
-Macros can generate code that uses generic types, but the macro function
-itself doesn't need to be generic. The macro inspects `TypeInfo.type_args`
-and emits the appropriate specialized code:
-
-```python
-# user writes:
-@model
-class Pair:
-    items: list[Int32]
-
-# macro sees: field.type.name == "list", field.type.type_args == [TypeInfo("Int32")]
-# macro emits: serialize code that iterates and writes Int32 elements
-```
-
-### Protocols
-
-A macro can add protocol conformance to a class by generating the
-required methods:
-
-```python
-@codable  # generates encode()/decode(), adds Codable conformance
-class User:
-    name: str
-    age: Int32
-```
-
-The macro generates methods that satisfy the `Codable` protocol. The
-compiler's normal protocol checking validates correctness after expansion.
-
-## Debugging and Introspection
-
-Seeing what a macro generated is critical for adoption and debugging.
-
-### --expand-macros flag
-
-```bash
-# dump all macro expansions
-uv run tpyc --expand-macros src/main.py
-
-# filter by macro name
-uv run tpyc --expand-macros=model src/main.py
-
-# combine with --dump-code to see final C++
-uv run tpyc --expand-macros --dump-code src/main.py
-```
-
-Output shows the class before and after macro expansion, with generated
-methods clearly marked:
-
-```
-@model class Order:
-  + generated __init__(self, symbol: FixStr[8], price: Float64, quantity: Int32)
-  + generated to_json(self) -> str
-  + generated from_json(data: JsonValue) -> Order
-  + generated __eq__(self, other: Order) -> bool
-```
-
-### Macro expansion trace in errors
-
-When a macro generates invalid code, the diagnostic includes a trace:
-
-```
-error: type 'FixStr[8]' has no method 'to_string'
-  --> src/main.py:3:5
-   |
-3  |     symbol: FixStr[8]
-   |     ^^^^^^
-   = in method 'to_json' generated by @model (macros/model.py:42)
-```
+The `@class_macro` decorator is a no-op in CPython (just returns the function
+unchanged). The `__init_subclass__` path is ignored by tpyc.
 
 ## Limitations
 
@@ -471,67 +282,30 @@ Macros explicitly can NOT:
 - **Create new syntax** -- macro calls and decorators must be valid Python
 - **Modify code outside their scope** -- a class macro can only modify the
   decorated class, not other classes or module-level code
-- **Run at runtime** -- macros are strictly compile-time; the `@macro`
-  decorator is a no-op in the generated binary
-- **Access the filesystem** (Phase 1) -- no file I/O during compilation;
-  may be relaxed in later phases with `static_read()` (see open questions)
-- **Perform I/O or network calls** -- macros are pure code transformations
+- **Run at runtime** -- macros are strictly compile-time
 - **Depend on runtime values** -- macro inputs must be statically known
-  (types, literals, AST structure); they can't branch on a variable's
-  runtime value
 
 ## Open Questions
 
-1. **Macro discovery**: How does the compiler find macro definitions? Import-based
-   (must import the module that defines the macro)? Or scan for `@macro`?
-   Import-based is simpler and more explicit.
-
-2. **Macro ordering**: Can macros compose? If a class has both `@model` and
-   `@protobuf`, what's the application order? (Probably: inner-to-outer,
+1. **Macro ordering**: Can macros compose? If a class has both `@model` and
+   `@proto.message`, what's the application order? (Probably: inner-to-outer,
    like Python decorators.)
 
-3. **Error reporting**: When a macro generates invalid code, how do we trace
-   the error back to the macro source? Need a "macro expansion trace" in
-   diagnostics (see Debugging section above for proposed design).
+2. **Compile-time file I/O**: Should macros be able to read files (e.g. a
+   `.proto` schema)? Useful but needs caching/rebuild triggers.
 
-4. **Compile-time file I/O**: Should macros be able to read files (e.g. a
-   `.proto` schema)? Nim has `staticRead`. This is useful but opens a can
-   of worms (caching, rebuild triggers).
-
-5. **Macro testing**: How do users test their macros? Probably: write a class
-   that uses the macro, compile it, verify the output. The `--expand-macros`
-   flag helps, but a dedicated macro test harness (assert on generated AST)
-   would be better.
-
-6. **Performance budget**: Macros run during compilation. Should there be
-   limits (max execution time, max AST size) to prevent runaway macros?
-
-7. **FieldInfo.metadata shape**: What's the type of `field.metadata`? A generic
-   `dict[str, Any]`? Or macro-specific typed metadata (e.g. `proto.Field`
-   returns a `ProtoFieldMeta`)? Typed metadata is safer but requires the
-   macro API to understand metadata types.
+3. **Performance budget**: Should there be limits (max execution time, max AST
+   size) to prevent runaway macros?
 
 ## Prior Art
 
 - **Rust proc_macro**: Three kinds (derive, attribute, function-like). Operate
-  on token streams. Separate crate requirement. Hygienic for `macro_rules!`,
-  unhygienic for proc macros. [Reference](https://doc.rust-lang.org/reference/procedural-macros.html)
-
+  on token streams. Separate crate requirement.
 - **Nim macros/templates**: Written in Nim itself, operate on typed AST.
-  Templates are simple substitution, macros are full AST rewriting. Executed
-  by an embedded VM (nimvm). Unhygienic by default with opt-in `genSym`.
-  [Tutorial](https://nim-lang.org/docs/tut3.html)
-
+  Executed by an embedded VM (nimvm).
 - **Zig comptime**: No separate macro language -- same Zig code runs at compile
-  time. Types are first-class values at comptime. Can generate structs, lookup
-  tables, validate inputs. Limited: no allocation, no I/O, no recursion depth
-  beyond limit. [Guide](https://zig.guide/language-basics/comptime/)
-
+  time. Types are first-class values at comptime.
 - **Swift macros** (5.9+): Freestanding and attached macros. Operate on
-  SwiftSyntax trees (structured AST, not tokens). Written in Swift, run as
-  compiler plugins. Type-checked expansions. [Docs](https://docs.swift.org/swift-book/documentation/the-swift-programming-language/macros/)
-
-- **C++26 reflection** (P2996): Not macros per se, but `consteval` functions
-  that inspect types via `std::meta::info`. Can iterate struct members, generate
-  code. Will likely reduce the need for macro-based codegen in C++.
-  [Proposal](https://isocpp.org/files/papers/P2996R4.html)
+  SwiftSyntax trees. Written in Swift, run as compiler plugins.
+- **C++26 reflection** (P2996): `consteval` functions that inspect types via
+  `std::meta::info`. Can iterate struct members, generate code.

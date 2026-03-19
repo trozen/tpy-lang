@@ -31,6 +31,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # @dataclass(frozen=True) inheritance: both parent and child frozen
+    // from dataclasses import dataclass
     // main()
     main();
 }

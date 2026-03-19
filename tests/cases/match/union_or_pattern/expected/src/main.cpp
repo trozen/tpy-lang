@@ -80,6 +80,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # match/case or-patterns on union subjects (no bindings)
+    // from dataclasses import dataclass
     // main()
     main();
 }

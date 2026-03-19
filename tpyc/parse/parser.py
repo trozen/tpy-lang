@@ -10,7 +10,7 @@ import ast
 import copy
 import dataclasses
 import re
-from typing import NoReturn, Optional
+from typing import Any, NoReturn, Optional
 
 from ..typesys import (
     TpyType, NamedType, PtrType, OwnType, ReadonlyType, AutoReadonlyType, FinalType, SelfType,
@@ -153,6 +153,7 @@ _DIRECTIVE_LINE_RE = re.compile(r'^#\s*tpy:\s+(\w.+)$')
 # Keys are the known directive names; unknown names produce a warning.
 _DIRECTIVE_SPECS: dict[str, tuple[list[type], dict[str, type]]] = {
     "native_module":    ([], {}),
+    "macro_module":     ([], {}),
     "include":          ([str], {}),
     "link":             ([str], {"platform": str}),
     "cpp_namespace":    ([str], {}),
@@ -747,26 +748,37 @@ class Parser:
             return (arg, not arg)
         raise ParseError("@readonly() requires a single bool argument (True or False)", dec)
 
-    def _extract_dataclass_kwargs(self, call: ast.Call) -> dict[str, bool]:
-        """Extract keyword args from @dataclass(...).
+    def _extract_decorator_kwargs(self, dec: ast.expr, arg: object, class_name: str) -> dict[str, Any]:
+        """Extract keyword arguments from a macro decorator call.
 
-        Supported kwargs: frozen, order. All must be bool literals.
-        Raises ParseError with specific message for unsupported or invalid args.
+        Handles bare ``@name``, empty ``@name()``, and ``@name(k=v, ...)``.
+        Positional arguments are rejected. Kwarg values must be literals.
         """
-        _SUPPORTED = {"frozen", "order"}
-        result: dict[str, bool] = {}
-        for kw in call.keywords:
-            if kw.arg not in _SUPPORTED:
+        if arg is None or arg is self._EMPTY_CALL:
+            return {}
+        if arg is not self._BAD_ARGS:
+            dec_name = self._decorator_local_name(dec) or "?"
+            raise ParseError(f"@{dec_name} does not take positional arguments", dec)
+        if not isinstance(dec, ast.Call):
+            return {}
+        if dec.args:
+            dec_name = self._decorator_local_name(dec) or "?"
+            raise ParseError(f"@{dec_name} does not take positional arguments", dec)
+        result: dict[str, Any] = {}
+        for kw in dec.keywords:
+            if kw.arg is None:
+                dec_name = self._decorator_local_name(dec) or "?"
+                raise ParseError(f"@{dec_name} does not support **kwargs", dec)
+            try:
+                result[kw.arg] = ast.literal_eval(kw.value)
+            except (ValueError, TypeError):
+                dec_name = self._decorator_local_name(dec) or "?"
                 raise ParseError(
-                    f"@dataclass got unsupported keyword argument '{kw.arg}'", call)
-            if not (isinstance(kw.value, ast.Constant) and isinstance(kw.value.value, bool)):
-                raise ParseError(
-                    f"@dataclass: '{kw.arg}' must be True or False", call)
-            result[kw.arg] = kw.value.value
+                    f"@{dec_name}: keyword '{kw.arg}' must be a literal value", dec)
         return result
 
     def _try_parse_dataclass_field(self, node: ast.expr,
-                                       is_dataclass: bool) -> tuple[str | None, TpyExpr, bool] | None:
+                                       has_dataclass_macro: bool) -> tuple[str | None, TpyExpr, bool] | None:
         """Try to parse a field(default=...) or field(default_factory=...) call.
 
         Returns (default_value_cpp, default_expr, is_factory) if this is a field() call,
@@ -787,7 +799,7 @@ class Parser:
         else:
             return None
 
-        if not is_dataclass:
+        if not has_dataclass_macro:
             raise ParseError("field() can only be used in @dataclass classes", node)
         if node.args:
             raise ParseError("field() does not accept positional arguments", node)
@@ -869,13 +881,11 @@ class Parser:
             if has_protocol:
                 return self._parse_protocol(node)
 
-        # Parse record decorators (@native, @native_c, @nocopy, @dataclass)
+        # Parse record decorators (@native, @native_c, @nocopy, macro decorators)
         linkage = RecordLinkage.DEFAULT
         native_name: str | None = None
         is_nocopy = False
-        is_dataclass = False
-        is_frozen = False
-        is_ordered = False
+        pending_macros: list[tuple[str, dict[str, Any]]] = []
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"class '{node.name}'")
             if qname in self._RECORD_LINKAGE_MAP:
@@ -893,21 +903,10 @@ class Parser:
                 if arg is not None:
                     raise ParseError("@nocopy does not take arguments", dec)
                 is_nocopy = True
-            elif qname == "dataclasses.dataclass":
-                is_dataclass = True
-                if arg is self._BAD_ARGS:
-                    if isinstance(dec, ast.Call) and not dec.args:
-                        dc_kwargs = self._extract_dataclass_kwargs(dec)
-                        is_frozen = dc_kwargs.get("frozen", False)
-                        is_ordered = dc_kwargs.get("order", False)
-                    else:
-                        raise ParseError(
-                            "@dataclass does not take positional arguments", dec)
-                elif arg is not None and arg is not self._EMPTY_CALL:
-                    raise ParseError("@dataclass does not take positional arguments", dec)
             else:
-                dec_name = self._decorator_local_name(dec) or "?"
-                raise ParseError(f"Unknown decorator '{dec_name}' on class '{node.name}'", dec)
+                # Treat as a macro decorator -- extract kwargs and store for later
+                macro_kwargs = self._extract_decorator_kwargs(dec, arg, node.name)
+                pending_macros.append((qname, macro_kwargs))
 
         # Extract type parameters FIRST so they're in scope when parsing bases
         # Python 3.12+ syntax: class Foo[T, U]:
@@ -951,6 +950,7 @@ class Parser:
 
         fields = []
         methods = []
+        has_dataclass_macro = any(qn == "dataclasses.dataclass" for qn, _ in pending_macros)
 
         for item in node.body:
             if isinstance(item, ast.AnnAssign):
@@ -963,7 +963,7 @@ class Parser:
                 default_expr = None
                 is_factory = False
                 if item.value is not None:
-                    field_result = self._try_parse_dataclass_field(item.value, is_dataclass)
+                    field_result = self._try_parse_dataclass_field(item.value, has_dataclass_macro)
                     if field_result is not None:
                         default_val, default_expr, is_factory = field_result
                     else:
@@ -1033,7 +1033,7 @@ class Parser:
 
         # Restore the scope
         self._type_param_scope = old_scope
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, is_dataclass=is_dataclass, is_frozen=is_frozen, is_ordered=is_ordered, loc=self._loc(node))
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, pending_macros=pending_macros, loc=self._loc(node))
 
     def _auto_declare_fields_from_init(
         self,

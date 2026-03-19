@@ -24,6 +24,7 @@ from .codegen_cpp import CodeGenerator, CodeGenOptions
 from .codegen_cpp.context import module_to_cpp_namespace, set_namespace_map, set_include_path_map, get_include_path, clear_namespace_map
 import warnings
 from .typesys import TpyType, INT32, INT64, BIGINT, clear_all_compilation_state
+from .macro_loader import MacroRegistry, is_macro_module_source
 
 if TYPE_CHECKING:
     from .typesys import FunctionInfo, RecordInfo, ProtocolInfo, EnumType, ModuleInfo, ModuleVarInfo
@@ -284,6 +285,7 @@ class Compiler:
         self.compile_order: list[str] = []
         self.shadowed_builtins: dict[str, set[tuple[str, int]]] = {}
         self._source_input: tuple[str, str] | None = None
+        self._macro_registry = MacroRegistry()
 
     @classmethod
     def from_source(
@@ -413,10 +415,16 @@ class Compiler:
         if module_name in self.modules:
             return
 
+        # Check for macro module directive before parsing (macro modules
+        # contain Python code that the TPy parser can't handle)
+        source = path.read_text()
+        if is_macro_module_source(source):
+            self._macro_registry.load_module(module_name, path)
+            return
+
         # Parse the module
         parser = Parser()
         try:
-            source = path.read_text()
             ast = parser.parse(source)
         except ParseError as e:
             raise CompileError(e.message, module_name, path, lineno=e.lineno)
@@ -676,6 +684,7 @@ class Compiler:
         """
         # Create analyzer
         analyzer = SemanticAnalyzer(default_int_type=self.default_int_type)
+        analyzer.ctx.macro_registry = self._macro_registry
 
         # Register already-analyzed user modules in this analyzer's registry
         # This must happen before analyze() so _register_user_module_import can find them

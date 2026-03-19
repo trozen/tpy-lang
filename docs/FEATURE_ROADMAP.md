@@ -111,7 +111,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
 | F1 | Compile-time evaluation | XL | Not started | [V](#compile-time-evaluation-constexpr--comptime) |
-| F2 | Macro system | XL | Designed | [V](#macro-system--metaprogramming) |
+| F2 | Macro system | XL | Phase 1 done | [V](#macro-system--metaprogramming) |
 | F3 | Generators / yield | L-XL | Not started | [VI](#generators-yield) |
 | F4 | Typestate | XL | Research | [VIII](#typestate-object-lifecycle) |
 | F5 | Self-interpret (TPy eval in tpyc) | XL | Not started | [V](#self-interpret-tpy-eval-in-tpyc) |
@@ -1344,11 +1344,24 @@ See LANGUAGE_FEATURES.md "Compile-Time Hooks" for detailed design (`@compile_tim
 **Why it matters**: Eliminates boilerplate, enables library-level code generation without
 compiler changes. Similar to Rust proc_macro, Zig comptime, Python metaclasses.
 
-**Current state**: Designed in LANGUAGE_FEATURES.md, not implemented.
+**Current state**: Phase 1 done. Class macro infrastructure implemented. `@dataclass`
+reimplemented as a class macro (`lib/tpy/dataclasses.py`) using the `# tpy: macro_module`
+directive. The macro is loaded via CPython during compilation and uses the public
+`ClassInfo`/`FieldInfo`/`TypeInfo` API (`tpyc/macro_api.py`) to inspect fields and add
+methods. Both AST builder (`add_method` with `TpyFunction`) and method stub
+(`add_method_stub` for codegen-generated methods) approaches are supported.
+`tpyc/macro_loader.py` handles CPython import of macro modules via `MacroRegistry`.
+See `docs/MACRO_DESIGN.md` for the full design.
 
-**Dependencies**: Compile-time evaluation. `@dataclass` is the first practical use case.
+Remaining (Phase 2+): call-site macros, string-based method generation
+(`add_method_from_source`), quote templates, hygiene, CPython compatibility
+(dual `__init_subclass__` / `@macro` path), replace codegen special cases
+(`__repr__`/`__hash__`/`operator<=>`) with macro-generated AST.
 
-**Effort**: XL
+**Dependencies**: None for Phase 1 (done). Compile-time evaluation (F1) needed for
+Phase 4 (TpyMini VM). `@dataclass` replacement validates the API.
+
+**Effort**: XL total (Phase 1: M, done; remaining phases incremental)
 
 ---
 

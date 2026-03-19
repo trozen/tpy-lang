@@ -36,6 +36,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # @dataclass(order=True) inheritance: comparison uses parent + child fields
+    // from dataclasses import dataclass
     // main()
     main();
 }

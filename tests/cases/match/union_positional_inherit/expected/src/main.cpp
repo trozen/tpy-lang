@@ -49,6 +49,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # positional patterns on inherited @dataclass (parent + own fields)
+    // from dataclasses import dataclass
     // main()
     main();
 }

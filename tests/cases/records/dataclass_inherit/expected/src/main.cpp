@@ -42,6 +42,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # @dataclass inheritance: child includes parent fields in __init__ and __eq__
+    // from dataclasses import dataclass
     // main()
     main();
 }

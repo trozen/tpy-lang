@@ -25,6 +25,7 @@ from ..parse import (
 from ..namespace import NameBinding, BindingKind
 from .diagnostics import SemanticError
 from .operators import DUNDER_CPP_TEMPLATES
+from ..macro_api import ClassInfo
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -298,122 +299,12 @@ class TypeRegistrar:
                     del_method.loc or record.loc,
                 )
 
-        # Collect inherited fields from parent @dataclass (if any)
+        # Apply class macros (e.g. @dataclass)
+        self._apply_class_macros(record)
+
+        # Collect inherited fields from parent @dataclass (for RecordInfo)
         parent_dc_fields = self._get_parent_dataclass_fields(record)
-        # All fields for __eq__/__hash__/order: parent fields first, then own
         all_dc_fields = parent_dc_fields + record.fields
-
-        # Validate frozen consistency in dataclass inheritance (CPython raises TypeError)
-        if record.is_dataclass and parent_dc_fields:
-            for base in record.bases:
-                if not isinstance(base, NamedType):
-                    continue
-                parent_info = self.ctx.registry.get_record(base.name)
-                if parent_info is not None and parent_info.is_dataclass:
-                    if parent_info.is_frozen and not record.is_frozen:
-                        raise SemanticError(
-                            f"Cannot inherit non-frozen @dataclass '{record.name}' "
-                            f"from frozen @dataclass '{base.name}'",
-                            record.loc,
-                        )
-                    if not parent_info.is_frozen and record.is_frozen:
-                        raise SemanticError(
-                            f"Cannot inherit frozen @dataclass '{record.name}' "
-                            f"from non-frozen @dataclass '{base.name}'",
-                            record.loc,
-                        )
-                    break
-
-        # Synthesize __init__ for @dataclass classes without explicit __init__
-        if record.is_dataclass and record.init_method:
-            self.ctx.warning_from_loc(
-                f"@dataclass class '{record.name}' has an explicit __init__; "
-                f"@dataclass will not generate __init__",
-                record.init_method.loc or record.loc,
-            )
-        elif record.is_dataclass and not record.init_method:
-            if not all_dc_fields:
-                raise SemanticError(
-                    f"@dataclass class '{record.name}' must have at least one field annotation",
-                    record.loc,
-                )
-            # Validate field ordering across parent + child: no non-default after default
-            seen_default = False
-            for fld in all_dc_fields:
-                if fld.default_expr is not None:
-                    seen_default = True
-                elif seen_default:
-                    raise SemanticError(
-                        f"Field '{fld.name}' without default follows field with default "
-                        f"in @dataclass class '{record.name}'",
-                        fld.loc or record.loc,
-                    )
-            # Build synthetic __init__ from field annotations
-            params: list[tuple[str, TpyType]] = []
-            defaults: list[TpyExpr | None] = []
-            body: list[TpyStmt] = []
-            # Parent fields come first as params; forwarded via super().__init__()
-            for fld in parent_dc_fields:
-                param_type = fld.type if fld.type.is_value_type() else OwnType(fld.type)
-                params.append((fld.name, param_type))
-                defaults.append(fld.default_expr)
-            if parent_dc_fields:
-                super_args = [TpyName(fld.name) for fld in parent_dc_fields]
-                super_call = TpyMethodCall(
-                    obj=TpyCall(func="super", args=[]),
-                    method="__init__",
-                    args=super_args,
-                )
-                body.append(TpyExprStmt(expr=super_call))
-            # Own fields
-            for fld in record.fields:
-                param_type = fld.type if fld.type.is_value_type() else OwnType(fld.type)
-                params.append((fld.name, param_type))
-                defaults.append(fld.default_expr)
-                body.append(TpyAssign(
-                    target=TpyFieldAccess(obj=TpyName("self"), field=fld.name),
-                    value=TpyName(fld.name),
-                ))
-            init_fn = TpyFunction(
-                name="__init__",
-                params=params,
-                return_type=VoidType(),
-                body=body,
-                is_method=True,
-                defaults=defaults,
-            )
-            record.methods.insert(0, init_fn)
-
-        # Synthesize __eq__ for @dataclass classes without explicit __eq__
-        if record.is_dataclass and all_dc_fields:
-            eq_method = next((m for m in record.methods if m.name == "__eq__"), None)
-            if eq_method is not None:
-                self.ctx.warning_from_loc(
-                    f"@dataclass class '{record.name}' has an explicit __eq__; "
-                    f"@dataclass will not generate __eq__",
-                    eq_method.loc or record.loc,
-                )
-            else:
-                other_type = NamedType(record.name)
-                comparisons = [
-                    TpyBinOp(
-                        left=TpyFieldAccess(obj=TpyName("self"), field=fld.name),
-                        op="==",
-                        right=TpyFieldAccess(obj=TpyName("other"), field=fld.name),
-                    )
-                    for fld in all_dc_fields
-                ]
-                eq_expr: TpyExpr = comparisons[0]
-                for cmp in comparisons[1:]:
-                    eq_expr = TpyBinOp(left=eq_expr, op="&&", right=cmp)
-                eq_fn = TpyFunction(
-                    name="__eq__",
-                    params=[("other", other_type)],
-                    return_type=BoolType(),
-                    body=[TpyReturn(value=eq_expr)],
-                    is_method=True,
-                )
-                record.methods.append(eq_fn)
 
         init_params = []
         if record.init_method:
@@ -659,45 +550,17 @@ class TypeRegistrar:
                     copy_loc,
                 )
 
-        # Synthesize __repr__ for @dataclass without explicit __repr__
-        if record.is_dataclass and all_dc_fields and "__repr__" not in methods:
-            methods["__repr__"] = [FunctionInfo(
-                name="__repr__",
-                params=[],
-                return_type=StrType(),
-                is_method=True,
-                is_readonly=True,
-            )]
-
-        # Synthesize __hash__ for frozen dataclasses without explicit __hash__
-        if record.is_frozen and all_dc_fields and "__hash__" not in methods:
-            methods["__hash__"] = [FunctionInfo(
-                name="__hash__",
-                params=[],
-                return_type=UINT64,
-                is_method=True,
-                is_readonly=True,
-            )]
-
-        # Synthesize ordering methods for @dataclass(order=True)
-        _ORDER_DUNDERS = ("__lt__", "__le__", "__gt__", "__ge__")
-        if record.is_ordered and all_dc_fields:
-            for dunder in _ORDER_DUNDERS:
-                if dunder in methods:
-                    raise SemanticError(
-                        f"@dataclass(order=True) cannot overwrite '{dunder}' "
-                        f"defined in class '{record.name}'",
-                        record.loc,
-                    )
-            other_type = NamedType(record.name)
-            for dunder in _ORDER_DUNDERS:
-                methods[dunder] = [FunctionInfo(
-                    name=dunder,
-                    params=[("other", other_type)],
-                    return_type=BoolType(),
-                    is_method=True,
-                    is_readonly=True,
-                )]
+        # Apply method stubs from class macros (e.g. __repr__, __hash__, ordering)
+        if hasattr(record, '_macro_cls_info') and record._macro_cls_info is not None:
+            for stub in record._macro_cls_info.get_method_stubs():
+                if stub.name not in methods:
+                    methods[stub.name] = [FunctionInfo(
+                        name=stub.name,
+                        params=stub.params,
+                        return_type=stub.return_type,
+                        is_method=True,
+                        is_readonly=stub.is_readonly,
+                    )]
 
         # Don't classify bases here - defer to validate_record_inheritance
         # (so forward-referenced protocols are properly recognized)
@@ -717,7 +580,12 @@ class TypeRegistrar:
             is_native_c=is_native_c,
             is_nocopy=record.is_nocopy,
             is_dataclass=record.is_dataclass,
-            dataclass_fields=all_dc_fields,
+            dataclass_fields=(
+                record._macro_cls_info.get_dataclass_fields()
+                if hasattr(record, '_macro_cls_info') and record._macro_cls_info is not None
+                   and record._macro_cls_info.get_dataclass_fields() is not None
+                else all_dc_fields
+            ),
             is_frozen=record.is_frozen,
             is_ordered=record.is_ordered,
             has_del=record.del_method is not None,
@@ -1104,6 +972,24 @@ class TypeRegistrar:
                 return self._find_ancestor_with_method(parent_info, method_name)
 
         return None
+
+    def _apply_class_macros(self, record: TpyRecord) -> None:
+        """Apply class macros (from pending_macros) to a record before registration."""
+        if not record.pending_macros:
+            return
+        registry = self.ctx.macro_registry
+        for qname, kwargs in record.pending_macros:
+            parts = qname.rsplit(".", 1)
+            if len(parts) != 2:
+                raise SemanticError(f"Invalid macro name '{qname}'", record.loc)
+            mod_name, func_name = parts
+            macro_fn = registry.get_macro(mod_name, func_name) if registry else None
+            if macro_fn is None:
+                raise SemanticError(f"Unknown macro '{qname}'", record.loc)
+            cls_info = ClassInfo(record, self.ctx)
+            macro_fn(cls_info, **kwargs)
+            cls_info.apply_to_record()
+            record._macro_cls_info = cls_info  # type: ignore[attr-defined]
 
     def _get_parent_dataclass_fields(self, record: TpyRecord) -> list[FieldInfo]:
         """Get inherited fields from parent @dataclass chain.

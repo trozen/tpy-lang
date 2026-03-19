@@ -41,6 +41,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # @dataclass(order=True) generates comparison operators via operator<=>
+    // from dataclasses import dataclass
     // main()
     main();
 }

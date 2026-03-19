@@ -27,6 +27,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # @dataclass(frozen=True): immutable instances with auto __init__ and __eq__
+    // from dataclasses import dataclass
     // main()
     main();
 }

@@ -120,6 +120,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // from dataclasses import dataclass
     // main()
     main();
 }

@@ -25,6 +25,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Basic @dataclass: auto-generated __init__ from field annotations
+    // from dataclasses import dataclass
     // main()
     main();
 }

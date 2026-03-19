@@ -38,6 +38,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # @dataclass(frozen=True, order=True) combines ordering, equality, and hashing
+    // from dataclasses import dataclass
     // main()
     main();
 }

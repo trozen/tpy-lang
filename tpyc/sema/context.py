@@ -7,6 +7,10 @@ Contains the shared state that is passed to all semantic analysis components.
 from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..macro_loader import MacroRegistry
 
 from ..typesys import (
     TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, StrVarInfo, TypeParamKind, IntLiteralType,
@@ -308,6 +312,8 @@ class SemanticContext:
     global_scope: Scope
     # Default concrete type used for unannotated integer literal deduction.
     default_int_type: TpyType = field(default_factory=lambda: INT32)
+    # Macro registry (populated by compiler from loaded macro modules)
+    macro_registry: MacroRegistry | None = None
 
     # --- Analysis state ---
     current_scope: Scope | None = None

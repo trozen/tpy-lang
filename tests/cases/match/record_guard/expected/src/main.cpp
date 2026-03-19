@@ -77,6 +77,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # match/case on concrete record with guards and or-patterns
+    // from dataclasses import dataclass
     // main()
     main();
 }

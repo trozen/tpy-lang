@@ -134,6 +134,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # match/case with wildcard guard and as-pattern on union subjects
+    // from dataclasses import dataclass
     // main()
     main();
 }

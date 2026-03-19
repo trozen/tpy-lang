@@ -47,6 +47,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # match/case with positional class patterns via __match_args__
+    // from dataclasses import dataclass
     // main()
     main();
 }
