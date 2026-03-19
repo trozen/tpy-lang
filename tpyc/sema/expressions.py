@@ -2386,7 +2386,7 @@ class ExpressionAnalyzer:
         hint_return = hint.return_type
         # Each candidate is (FunctionInfo, inferred_type_args_or_None)
         candidates: list[tuple[FunctionInfo, tuple[TpyType, ...] | None]] = []
-        # Track generic rejection for diagnostics (last one wins)
+        # Track first generic rejection for diagnostics
         generic_rejection: str | None = None
         for fi in func_infos:
             if len(fi.params) != len(hint_params):
@@ -2395,7 +2395,7 @@ class ExpressionAnalyzer:
                 type_args, rejection = self._infer_generic_ref_type_args(fi, hint)
                 if type_args is not None:
                     candidates.append((fi, type_args))
-                elif rejection is not None:
+                elif rejection is not None and generic_rejection is None:
                     generic_rejection = rejection
                 continue
             match = True
@@ -2470,4 +2470,22 @@ class ExpressionAnalyzer:
                         f"inferred type argument {type_arg} for {param_name} "
                         f"does not satisfy bound '{bound.name}'"
                     )
+        # Check for C++ param type mismatch (e.g. str: string_view vs const string&).
+        # Generic functions use param_val_or_ref_t<T> which resolves based on the
+        # storage type, but some types have a different param convention (str uses
+        # string_view). This causes C++ compilation errors when the function is
+        # passed through Fn/Callable.
+        for param_name, type_arg in inferred.items():
+            cpp_storage = type_arg.to_cpp()
+            cpp_param = type_arg.to_cpp_param_type()
+            # param_val_or_ref_t<T> resolves to const T& (value) or T& (object).
+            # Accept T, T&, or const T& -- all compatible with the template.
+            # Reject types with a different convention (e.g. str: string_view).
+            if cpp_param not in (cpp_storage, f"{cpp_storage}&", f"const {cpp_storage}&"):
+                return None, (
+                    f"Cannot use '{fi.name}' as function reference with "
+                    f"{param_name}={type_arg}: generic functions use a different "
+                    f"C++ parameter convention than {type_arg} "
+                    f"(use a lambda instead)"
+                )
         return tuple(inferred[tp] for tp in fi.type_params), None

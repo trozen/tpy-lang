@@ -476,6 +476,12 @@ apply(identity, 42)  # hint Fn[[Int32], Int32] -> infers T=Int32
 apply(identity<int32_t>, int32_t(42));  // explicit template instantiation
 ```
 
+**Limitation**: Generic function refs with `str` type args are rejected. The `str`
+type uses `string_view` for params while generic functions use `param_val_or_ref_t<T>`
+which resolves to `const string&`. These are incompatible C++ types and any bridge
+would require a hidden heap allocation. Use a lambda instead:
+`apply_str(lambda x: identity(x), "hello")`.
+
 ### Method References
 
 Method references (`obj.method` as a value) are deferred. They require partial
