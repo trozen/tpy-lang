@@ -105,7 +105,7 @@ def type_matches_numeric(
     triggering general type coercions (e.g., Int32->BigInt promotion).
 
     - Exact equality
-    - IntLiteralType matches IntLiteralType, Int32Type, or BigIntType
+    - IntLiteralType matches IntLiteralType, Int32Type, BigIntType, FloatType, or Float32Type
     - INT TypeParamRef matches Int32Type or BigIntType
     """
     if arg_type == param_type:
@@ -116,6 +116,8 @@ def type_matches_numeric(
                 return True  # Unknown value -- can't range-check, allow match
             return param_type.min_value <= arg_type.value <= param_type.max_value
         if isinstance(param_type, (BigIntType, IntLiteralType)):
+            return True
+        if isinstance(param_type, (FloatType, Float32Type)):
             return True
     if isinstance(arg_type, FloatLiteralType):
         if isinstance(param_type, (FloatType, Float32Type, FloatLiteralType)):

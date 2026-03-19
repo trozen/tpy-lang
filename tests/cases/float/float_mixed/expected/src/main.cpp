@@ -18,11 +18,11 @@ void __tpy_init() {
 
     // # Mixed int/float operations (auto-promotion to float)
     // a = 1 + 2.0
-    a = (static_cast<double>(::tpy::BigInt(1)) + (2.0));
+    a = ((1) + (2.0));
     // b = 3.14 * 2
-    b = ((3.14) * static_cast<double>(::tpy::BigInt(2)));
+    b = ((3.14) * (2));
     // c = 10 - 1.5
-    c = (static_cast<double>(::tpy::BigInt(10)) - (1.5));
+    c = ((10) - (1.5));
     // print(a)
     std::cout << ::tpy::print_float(a) << "\n";
     // print(b)
