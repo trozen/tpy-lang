@@ -2749,6 +2749,7 @@ class FunctionInfo:
     linkage: FunctionLinkage = FunctionLinkage.DEFAULT
     native_name: Optional[str] = None
     native_function: bool = False  # @native("func", function=True) -> generates func(self, args)
+    native_preserves_refs: bool = False  # non-readonly but doesn't invalidate iterators/refs
     type_params: list[str] = field(default_factory=list)
     type_param_bounds: dict[str, 'NamedType'] = field(default_factory=dict)
     type_param_defaults: dict[str, str] = field(default_factory=dict)  # e.g. {"T": "DEFAULT_INT"}

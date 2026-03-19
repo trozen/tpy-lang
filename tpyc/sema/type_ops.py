@@ -955,6 +955,7 @@ class TypeOperations:
             linkage=method.linkage,
             native_name=method.native_name,
             native_function=method.native_function,
+            native_preserves_refs=method.native_preserves_refs,
             cpp_template=method.cpp_template,
             error_return_type=method.error_return_type,
             qualified_name=method.qualified_name,

@@ -9,7 +9,7 @@ from tpy import (
     Hashable, Representable, Equatable, Comparable,
     ReadOnlySpanLike, NativeIterable, NativeRangeConstructible,
 )
-from tpy.extern import native, cpp_template
+from tpy.extern import native, cpp_template, native_preserves_refs
 from tpy import error_return
 
 
@@ -73,6 +73,7 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], ReadO
     def __getitem__(self, index: Int32) -> T: ...
 
     @native("tpy::__setitem__", function=True)
+    @native_preserves_refs
     def __setitem__(self, index: Int32, value: Own[T]) -> None: ...
 
     @native("tpy::__delitem__", function=True)

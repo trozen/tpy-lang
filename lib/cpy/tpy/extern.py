@@ -19,6 +19,18 @@ native_c = _ExternLinkage()
 extern_c = _ExternLinkage()
 
 
+def cpp_template(template: str):
+    """C++ code template. No-op in CPython."""
+    def decorator(func):
+        return func
+    return decorator
+
+
+def native_preserves_refs(func):
+    """Marks a native method as not invalidating iterators/references. No-op in CPython."""
+    return func
+
+
 def native_c_global(name: str = ""):
     """Declare a native C global variable. No-op in CPython."""
     return None

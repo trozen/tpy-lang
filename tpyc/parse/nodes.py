@@ -782,6 +782,7 @@ class TpyFunction:
     linkage: FunctionLinkage = FunctionLinkage.DEFAULT
     native_name: str | None = None
     native_function: bool = False
+    native_preserves_refs: bool = False
     cpp_template: str | None = None
     is_stub: bool = False
     type_params: list[str] = field(default_factory=list)

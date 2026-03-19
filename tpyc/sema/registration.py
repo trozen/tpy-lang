@@ -489,6 +489,7 @@ class TypeRegistrar:
                 linkage=method.linkage,
                 native_name=method.native_name,
                 native_function=method.native_function,
+                native_preserves_refs=method.native_preserves_refs,
                 cpp_template=method.cpp_template or (DUNDER_CPP_TEMPLATES.get(method.name)
                              if not method.native_function else None),
                 type_params=list(method.type_params),

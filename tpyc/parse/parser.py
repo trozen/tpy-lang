@@ -317,6 +317,7 @@ _DECORATOR_ARG_SCHEMAS: dict[str, _DecoratorArgSchema] = {
     "tpy.dynamic":            _DecoratorArgSchema(),
     "tpy.nocopy":             _DecoratorArgSchema(),
     "tpy.auto_readonly":      _DecoratorArgSchema(),
+    "tpy.extern.native_preserves_refs": _DecoratorArgSchema(),
     "typing.override":        _DecoratorArgSchema(),
     "typing.overload":        _DecoratorArgSchema(),
     "builtins.staticmethod":  _DecoratorArgSchema(),
@@ -1371,6 +1372,7 @@ class Parser:
         method_linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
         native_function: bool = False
+        native_preserves_refs: bool = False
         cpp_template: str | None = None
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"method '{node.name}'")
@@ -1392,6 +1394,8 @@ class Parser:
                 error_return = pos.name
             elif qname == "tpy.extern.cpp_template":
                 cpp_template = pos
+            elif qname == "tpy.extern.native_preserves_refs":
+                native_preserves_refs = True
             elif qname in self._METHOD_LINKAGE_MAP:
                 method_linkage = self._METHOD_LINKAGE_MAP[qname]
                 native_name = pos
@@ -1536,6 +1540,7 @@ class Parser:
             linkage=method_linkage,
             native_name=native_name,
             native_function=native_function,
+            native_preserves_refs=native_preserves_refs,
             cpp_template=cpp_template,
             type_params=method_type_params,
             type_param_bounds=method_type_param_bounds,

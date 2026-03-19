@@ -5,7 +5,7 @@ Method call and super() analysis.
 """
 
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingDictType, PendingSetType,
@@ -38,7 +38,6 @@ if TYPE_CHECKING:
     from .calls import CallAnalyzer
     from ..typesys import PendingGenericInstanceInfo
 
-from tpyc.modules.builtins import LIST_MUTATION_METHODS, LIST_ITER_INVALIDATING, DICT_MUTATION_METHODS, SET_MUTATION_METHODS
 from .context import _storage_key
 
 
@@ -128,6 +127,98 @@ class MethodAnalyzer:
         """Wire circular dependencies (must be called before analyze_method_call)."""
         self.expr = expr
         self.calls = calls
+
+    def _is_readonly_method(self, obj_type: TpyType, method_name: str) -> bool:
+        """Check if a method is readonly on the given type (via RecordInfo)."""
+        record = self.ctx.registry.get_record_for_type(obj_type)
+        if record is None:
+            return False
+        overloads = record.get_method_overloads(method_name)
+        return bool(overloads) and all(m.is_readonly for m in overloads)
+
+    def _is_invalidating_method(self, obj_type: TpyType, method_name: str) -> bool:
+        """Check if a method invalidates iterators/references on a builtin container.
+
+        A method invalidates if it is non-readonly AND not marked with
+        @native_preserves_refs. Only applies to builtin types (list, dict, set,
+        etc.) -- user types use the general mutation tracking in the deref chain.
+        """
+        qname = obj_type.qualified_name()
+        if not qname:
+            return False
+        record = self.ctx.registry.get_builtin_record(qname)
+        if record is None:
+            return False
+        overloads = record.get_method_overloads(method_name)
+        if not overloads:
+            return False
+        return any(not m.is_readonly and not m.native_preserves_refs for m in overloads)
+
+    def _infer_pending_container_element(
+        self,
+        expr: TpyMethodCall,
+        obj_type: TpyType,
+        builtin_qname: str,
+        literal_id: int,
+        infer_fn: Callable,
+        make_pending: Callable,
+        literals_dict: dict,
+    ) -> TpyType | None:
+        """Infer element type for a pending container from method arg types.
+
+        Looks up the method's FunctionInfo, finds params that involve the
+        container's type parameters, pre-analyzes the corresponding args,
+        and infers element types. Returns the updated obj_type if changed.
+        """
+        record = self.ctx.registry.get_builtin_record(builtin_qname)
+        if not record or not record.type_params:
+            return None
+        type_param_names = set(record.type_params)
+        overloads = record.get_method_overloads(expr.method)
+        if not overloads:
+            return None
+
+        # Find an overload with matching arity that has type-param-bearing params
+        for overload in overloads:
+            if len(overload.params) != len(expr.args):
+                continue
+            # Identify which args correspond to type-parameter-bearing params
+            inferring_indices: list[int] = []
+            for i, param in enumerate(overload.params):
+                if _contains_type_param_ref_type(param.type, type_param_names):
+                    inferring_indices.append(i)
+            if not inferring_indices:
+                continue
+
+            # Pre-analyze all args (needed for _check_and_coerce_args reuse)
+            pre_analyzed = [self.expr.analyze_expr(arg) for arg in expr.args]
+
+            # Infer element type from params that directly carry a type param
+            # (T or Own[T]). Params with nested type params like Iterable[Own[T]]
+            # are detected by _contains_type_param_ref_type but not handled here --
+            # inference from those would need protocol-level element type extraction.
+            for i in inferring_indices:
+                arg_type = pre_analyzed[i]
+                param_type = overload.params[i].type
+                if isinstance(param_type, OwnType) and isinstance(param_type.wrapped, TypeParamRef):
+                    infer_fn(expr.obj, arg_type)
+                elif isinstance(param_type, TypeParamRef):
+                    infer_fn(expr.obj, arg_type)
+
+            # Update obj_type if element type changed
+            info = literals_dict.get(literal_id)
+            if info and not isinstance(info.element_type, UnknownElementType):
+                if info.element_type != obj_type.get_element_type():
+                    obj_type = make_pending(info.element_type, literal_id)
+                    self.ctx.set_expr_type(expr.obj, obj_type)
+                    if isinstance(expr.obj, TpyName):
+                        if self.ctx.current_scope:
+                            self.ctx.current_scope.define(expr.obj.name, obj_type)
+                        if self.ctx.current_ns:
+                            self.ctx.current_ns.bind_variable(expr.obj.name, obj_type)
+            self.ctx.pre_analyzed_method_args[id(expr)] = pre_analyzed
+            return obj_type
+        return None
 
     def _check_and_coerce_args(
         self, expr: TpyMethodCall,
@@ -414,53 +505,27 @@ class MethodAnalyzer:
 
         # List mutation tracking (before deref chain -- applies to direct list types only)
         if isinstance(obj_type, (PendingListType, ListType)):
-            if expr.method in LIST_MUTATION_METHODS:
+            if not self._is_readonly_method(obj_type, expr.method):
                 self.deduction.mark_list_mutated(expr.obj)
 
-            # Infer/widen element type for empty list literals from mutation method args.
-            # Pre-analyze the value arg to determine its type for inference,
-            # then store all pre-analyzed arg types so _check_and_coerce_args
-            # can reuse them (avoiding double-analysis).
-            if isinstance(obj_type, PendingListType) and expr.args:
-                pre_analyzed: list[TpyType] | None = None
-                if expr.method == "append" and len(expr.args) == 1:
-                    arg_type = self.expr.analyze_expr(expr.args[0])
-                    self.deduction.infer_empty_list_element_type(expr.obj, arg_type)
-                    pre_analyzed = [arg_type]
-                elif expr.method == "insert" and len(expr.args) == 2:
-                    idx_type = self.expr.analyze_expr(expr.args[0])
-                    val_type = self.expr.analyze_expr(expr.args[1])
-                    self.deduction.infer_empty_list_element_type(expr.obj, val_type)
-                    pre_analyzed = [idx_type, val_type]
-                # Update obj_type if element type changed (initial inference or widening)
-                if pre_analyzed is not None:
-                    info = self.ctx.list_literals.get(obj_type.literal_id)
-                    if info and not isinstance(info.element_type, UnknownElementType):
-                        if info.element_type != obj_type.element_type:
-                            obj_type = PendingListType(info.element_type, obj_type.size, obj_type.literal_id)
-                            self.ctx.set_expr_type(expr.obj, obj_type)
-                            if isinstance(expr.obj, TpyName):
-                                if self.ctx.current_scope:
-                                    self.ctx.current_scope.define(expr.obj.name, obj_type)
-                                if self.ctx.current_ns:
-                                    self.ctx.current_ns.bind_variable(expr.obj.name, obj_type)
-                    self.ctx.pre_analyzed_method_args[id(expr)] = pre_analyzed
-
-        # Set element type inference from mutation methods on PendingSetType.
-        if isinstance(obj_type, PendingSetType) and expr.method in ("add", "discard", "remove") and len(expr.args) == 1:
-            arg_type = self.expr.analyze_expr(expr.args[0])
-            self.deduction.infer_set_element_type(expr.obj, arg_type)
-            info = self.ctx.set_literals.get(obj_type.literal_id)
-            if info and not isinstance(info.element_type, UnknownElementType):
-                if info.element_type != obj_type.element_type:
-                    obj_type = PendingSetType(info.element_type, obj_type.literal_id)
-                    self.ctx.set_expr_type(expr.obj, obj_type)
-                    if isinstance(expr.obj, TpyName):
-                        if self.ctx.current_scope:
-                            self.ctx.current_scope.define(expr.obj.name, obj_type)
-                        if self.ctx.current_ns:
-                            self.ctx.current_ns.bind_variable(expr.obj.name, obj_type)
-            self.ctx.pre_analyzed_method_args[id(expr)] = [arg_type]
+        # Pending container element type inference from method args.
+        # For any method on a pending container, check if params involve the
+        # container's type parameters. If so, pre-analyze the args and infer
+        # the element type (generalizes append/insert/add/etc.).
+        if isinstance(obj_type, PendingListType) and expr.args:
+            obj_type = self._infer_pending_container_element(
+                expr, obj_type, "builtins.list", obj_type.literal_id,
+                self.deduction.infer_empty_list_element_type,
+                lambda elem, lid: PendingListType(elem, obj_type.size, lid),
+                self.ctx.list_literals,
+            ) or obj_type
+        elif isinstance(obj_type, PendingSetType) and expr.args:
+            obj_type = self._infer_pending_container_element(
+                expr, obj_type, "builtins.set", obj_type.literal_id,
+                self.deduction.infer_set_element_type,
+                lambda elem, lid: PendingSetType(elem, lid),
+                self.ctx.set_literals,
+            ) or obj_type
 
         # Borrow conflict: structural mutation on a container with element-level borrows.
         # Resolves aliases so that alias.append() warns when items has element borrows.
@@ -471,13 +536,7 @@ class MethodAnalyzer:
             storage = _storage_key(expr.obj)
         if storage is not None:
             if self.ctx.borrow_tracker.has_element_borrow(storage):
-                is_mutation = False
-                if isinstance(obj_type, (PendingListType, ListType)):
-                    is_mutation = expr.method in LIST_ITER_INVALIDATING
-                elif isinstance(obj_type, (DictType, PendingDictType)):
-                    is_mutation = expr.method in DICT_MUTATION_METHODS
-                elif isinstance(obj_type, (SetType, PendingSetType)):
-                    is_mutation = expr.method in SET_MUTATION_METHODS
+                is_mutation = self._is_invalidating_method(obj_type, expr.method)
                 if is_mutation:
                     if self.ctx.borrow_tracker.has_iter_borrow(storage):
                         msg = (f"Mutation of '{storage}' while iterating over it"
@@ -535,17 +594,9 @@ class MethodAnalyzer:
                         )
                         if not is_direct_self_call:
                             self.ctx.mark_param_mutated(obj_root)
-                            # Structural mutation: only invalidating methods that can
-                            # reallocate storage (append/insert/clear/etc.), not
-                            # element reads or field writes.
-                            is_struct_mutation = False
-                            if isinstance(obj_type, (PendingListType, ListType)):
-                                is_struct_mutation = expr.method in LIST_ITER_INVALIDATING
-                            elif isinstance(obj_type, (DictType, PendingDictType)):
-                                is_struct_mutation = expr.method in DICT_MUTATION_METHODS
-                            elif isinstance(obj_type, (SetType, PendingSetType)):
-                                is_struct_mutation = expr.method in SET_MUTATION_METHODS
-                            if is_struct_mutation:
+                            # Structural mutation: non-readonly methods that can
+                            # invalidate iterators/references (not @native_preserves_refs).
+                            if self._is_invalidating_method(obj_type, expr.method):
                                 self.ctx.mark_param_structurally_mutated(obj_root)
                         storage = self.ctx.borrow_tracker.effective_storage(obj_root)
                         self.ctx.mark_str_borrowers_mutated(storage)

@@ -32,29 +32,6 @@ HASHABLE = NamedType("Hashable", is_protocol=True)
 
 NAME = "builtins"
 
-# Methods that mutate the list (used by sema to track list literal mutation)
-LIST_MUTATION_METHODS = frozenset({
-    "append", "pop", "insert", "remove", "clear", "extend", "reverse", "sort",
-    "__setitem__", "__delitem__",
-})
-
-# Subset that invalidates std::vector iterators (size-changing operations).
-# __setitem__ is excluded: element replacement doesn't invalidate iterators.
-LIST_ITER_INVALIDATING = frozenset({
-    "append", "pop", "insert", "remove", "clear", "extend", "reverse", "sort",
-    "__delitem__",
-})
-
-# Reserved for future dict literal type deduction (cf. LIST_MUTATION_METHODS)
-DICT_MUTATION_METHODS = frozenset({
-    "__setitem__", "__delitem__", "pop", "clear", "update", "setdefault",
-})
-
-SET_MUTATION_METHODS = frozenset({
-    "add", "remove", "discard", "pop", "clear", "update",
-})
-
-
 def init_module() -> BuiltinModule:
     """Initialize and return the builtins module."""
     module = BuiltinModule(NAME)
