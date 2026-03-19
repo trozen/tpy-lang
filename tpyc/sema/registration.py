@@ -15,7 +15,7 @@ from ..typesys import (
     register_value_type_record, register_send_record, register_sync_record,
     attach_type_param_bounds,
     has_auto_readonly,
-    qualify_exception_name,
+    qualify_exception_name, ensure_qualified,
     FnType, contains_fn_type,
 )
 from ..parse import (
@@ -595,7 +595,7 @@ class TypeRegistrar:
             type_param_bounds=record.type_param_bounds,
             parent=None,
             implemented_protocols=[],
-            native_name=record.native_name,
+            native_name=ensure_qualified(record.native_name) if record.native_name else None,
             is_native=is_native,
             is_native_c=is_native_c,
             is_nocopy=record.is_nocopy,

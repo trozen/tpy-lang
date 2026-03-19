@@ -2,7 +2,7 @@
 from tpy.extern import native
 from tpy import Ptr, Own, UInt32, Span, nocopy, readonly
 
-@native("::tpy::UninitArrayStorage")
+@native("tpy::UninitArrayStorage")
 @nocopy
 class UninitArrayStorage[T, N: int]:
     """Inline uninitialized storage for N elements of type T."""
@@ -25,7 +25,7 @@ class UninitArrayStorage[T, N: int]:
     @readonly
     def ptr(self) -> Ptr[T]: ...
 
-@native("::tpy::UninitHeapStorage")
+@native("tpy::UninitHeapStorage")
 @nocopy
 class UninitHeapStorage[T]:
     """Heap-allocated uninitialized storage with dynamic capacity."""

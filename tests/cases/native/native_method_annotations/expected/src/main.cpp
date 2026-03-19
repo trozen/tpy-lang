@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // v: Vec[Int32] = Vec[Int32]()
-    std::vector<int32_t> v = std::vector<int32_t>();
+    ::std::vector<int32_t> v = ::std::vector<int32_t>();
     // v.add(10)
     v.push_back(10);
     // v.add(20)

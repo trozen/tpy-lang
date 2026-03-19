@@ -48,35 +48,35 @@ class ReadOnlySpanLike[T](Protocol):
 
 # --- Marker protocols (no methods, map to runtime C++ concepts) ---
 
-@native("::tpy::NativeIterable")
+@native("tpy::NativeIterable")
 class NativeIterable[T](Protocol): ...
 
-@native("::tpy::NativeRangeConstructible")
+@native("tpy::NativeRangeConstructible")
 class NativeRangeConstructible[T](Protocol): ...
 
-@native("::tpy::ValueType")
+@native("tpy::ValueType")
 class ValueType(Protocol): ...
 
-@native("::tpy::Send")
+@native("tpy::Send")
 class Send(Protocol): ...
 
-@native("::tpy::Sync")
+@native("tpy::Sync")
 class Sync(Protocol): ...
 
 @native("std::default_initializable")
 class Default(Protocol): ...
 
-@native("::tpy::Covariant")
+@native("tpy::Covariant")
 class Covariant[T](Protocol): ...
 
 # Fixed-width integer constraints (for generic functions over Int8..UInt64)
-@native("::tpy::AnyFixedInt")
+@native("tpy::AnyFixedInt")
 class AnyFixedInt(Protocol): ...
 
-@native("::tpy::AnyFixedSigned")
+@native("tpy::AnyFixedSigned")
 class AnyFixedSigned(Protocol): ...
 
-@native("::tpy::AnyFixedUnsigned")
+@native("tpy::AnyFixedUnsigned")
 class AnyFixedUnsigned(Protocol): ...
 
 

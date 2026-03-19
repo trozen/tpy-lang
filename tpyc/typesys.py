@@ -70,9 +70,21 @@ _sync_record_names: set[str] = set()
 _protocol_modules: dict[str, str] = {}  # protocol_name -> module_name
 
 
+def ensure_qualified(name: str) -> str:
+    """Ensure a namespaced C++ name is fully qualified (prefixed with ::).
+
+    Names without :: (e.g. "abs") are returned as-is.
+    Names already starting with :: are returned as-is.
+    Other namespaced names get :: prepended (e.g. "tpy::Foo" -> "::tpy::Foo").
+    """
+    if "::" in name and not name.startswith("::"):
+        return f"::{name}"
+    return name
+
+
 def register_native_cpp_name(py_name: str, cpp_name: str) -> None:
     """Register a mapping from a Python class name to its native C++ name."""
-    _native_cpp_names[py_name] = cpp_name
+    _native_cpp_names[py_name] = ensure_qualified(cpp_name)
 
 
 def register_union_alias(members: tuple['TpyType', ...], alias_name: str) -> None:
@@ -2864,7 +2876,7 @@ class ProtocolInfo:
     - type_params stores the type parameter names (e.g., ["T"])
 
     For builtin protocols:
-    - cpp_concept stores the C++ concept name (e.g., "::tpy::Sized")
+    - cpp_concept stores the C++ concept name (e.g., "tpy::Sized", auto-qualified to "::tpy::Sized")
     - is_marker indicates protocols with no methods (require explicit extends)
 
     For protocol inheritance:

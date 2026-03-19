@@ -14,7 +14,7 @@ from typing import Any, NoReturn, Optional
 
 from ..typesys import (
     TpyType, NamedType, PtrType, OwnType, ReadonlyType, AutoReadonlyType, FinalType, SelfType,
-    strip_auto_readonly, apply_auto_readonly,
+    strip_auto_readonly, apply_auto_readonly, ensure_qualified,
     TypeParamRef, OptionalType, VoidType, make_union, EnumType, TupleType, FnType, CallableType,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BOOL, FLOAT, FLOAT32, BIGINT, SELF, SLICE, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo, TypeParamKind,
@@ -1151,7 +1151,7 @@ class Parser:
             if qname == "tpy.extern.native":
                 if not isinstance(pos, str):
                     raise ParseError("@native on protocol requires a C++ concept name string argument", dec)
-                cpp_concept = pos
+                cpp_concept = ensure_qualified(pos)
                 continue
             dec_name = self._decorator_local_name(dec) or "?"
             raise ParseError(

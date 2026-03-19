@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // v = Vec2(Int32(3), Int32(7))
-    ns::Vec2 v = ns::Vec2(3, 7);
+    ::ns::Vec2 v = ::ns::Vec2(3, 7);
     // print(v.x)
     std::cout << v.x << "\n";
     // print(vec2_sum(Ptr(v)))

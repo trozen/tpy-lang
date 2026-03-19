@@ -12,7 +12,7 @@ from typing import Callable, TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NamedType, SelfType,
     BigIntType, BoolType, IntLiteralType, TypeParamRef, UnionType, FunctionInfo,
-    is_protocol_type, unwrap_readonly,
+    is_protocol_type, unwrap_readonly, ensure_qualified,
 )
 from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -157,9 +157,7 @@ def qualify_native_name(name: str) -> str:
     Names already starting with :: or without :: are returned as-is.
     Example: "tpy::__len__" -> "::tpy::__len__", "abs" -> "abs"
     """
-    if "::" in name and not name.startswith("::"):
-        return f"::{name}"
-    return name
+    return ensure_qualified(name)
 
 
 def loop_var_binding(

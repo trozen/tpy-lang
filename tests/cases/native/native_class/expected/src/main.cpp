@@ -27,7 +27,7 @@ void main() {
     // print(z.y)
     std::cout << z.y << "\n";
     // c = Color(Int32(100), Int32(150), Int32(200))
-    ns::Color c = ns::Color(100, 150, 200);
+    ::ns::Color c = ::ns::Color(100, 150, 200);
     // print(c.r)
     std::cout << c.r << "\n";
     // print(color_brightness(Ptr(c)))
