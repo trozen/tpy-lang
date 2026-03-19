@@ -26,6 +26,7 @@ from ..namespace import NameBinding, BindingKind
 from .diagnostics import SemanticError
 from .operators import DUNDER_CPP_TEMPLATES
 from ..macro_api import ClassInfo
+from ..macro_loader import validate_and_call_macro
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -987,7 +988,7 @@ class TypeRegistrar:
             if macro_fn is None:
                 raise SemanticError(f"Unknown macro '{qname}'", record.loc)
             cls_info = ClassInfo(record, self.ctx)
-            macro_fn(cls_info, **kwargs)
+            validate_and_call_macro(macro_fn, cls_info, kwargs, qname, record.loc)
             cls_info.apply_to_record()
             record._macro_cls_info = cls_info  # type: ignore[attr-defined]
 

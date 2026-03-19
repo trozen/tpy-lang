@@ -9,8 +9,10 @@ time only.
 from __future__ import annotations
 
 import importlib.util
+import inspect
 import re
 import sys
+import typing
 from pathlib import Path
 from typing import Any, Callable
 
@@ -28,6 +30,97 @@ def is_macro_module_source(source: str) -> bool:
         if _MACRO_MODULE_RE.match(line):
             return True
     return False
+
+
+def validate_and_call_macro(
+    macro_fn: Callable,
+    cls_info: Any,
+    kwargs: dict[str, Any],
+    macro_name: str,
+    loc: Any,
+) -> None:
+    """Validate kwargs against macro signature and invoke the macro.
+
+    Inspects the macro function's signature to check for unknown kwargs,
+    missing required kwargs, and type mismatches. Wraps errors as
+    SemanticError with the decorator's source location.
+    """
+    # Deferred: sema.registration imports macro_loader, so importing
+    # diagnostics at module level would create a circular import.
+    from .sema.diagnostics import SemanticError
+
+    sig = inspect.signature(macro_fn)
+    params = sig.parameters
+
+    # Skip the first parameter (cls: ClassInfo)
+    param_list = list(params.values())
+    if not param_list:
+        raise SemanticError(
+            f"@{macro_name}: macro function must accept a ClassInfo parameter",
+            loc,
+        )
+    _SKIP_KINDS = (inspect.Parameter.VAR_KEYWORD, inspect.Parameter.VAR_POSITIONAL)
+    macro_params = {p.name: p for p in param_list[1:] if p.kind not in _SKIP_KINDS}
+
+    # Check for **kwargs -- if present, skip unknown-kwarg validation
+    has_var_keyword = any(
+        p.kind == inspect.Parameter.VAR_KEYWORD for p in param_list[1:]
+    )
+
+    # Reject unknown kwargs
+    if not has_var_keyword:
+        for key in kwargs:
+            if key not in macro_params:
+                if macro_params:
+                    known = "(supported: " + ", ".join(sorted(macro_params)) + ")"
+                else:
+                    known = "(takes no keyword arguments)"
+                raise SemanticError(
+                    f"@{macro_name}: unknown keyword argument '{key}' {known}",
+                    loc,
+                )
+
+    # Check for missing required kwargs (no default value)
+    for name, param in macro_params.items():
+        if param.default is inspect.Parameter.empty and name not in kwargs:
+            raise SemanticError(
+                f"@{macro_name}: missing required keyword argument '{name}'",
+                loc,
+            )
+
+    # Resolve annotations (handles `from __future__ import annotations`
+    # which turns annotations into strings at runtime)
+    try:
+        hints = typing.get_type_hints(macro_fn)
+    except Exception:
+        hints = {}
+
+    # Type-check values against annotations
+    for key, value in kwargs.items():
+        if key not in macro_params:
+            continue
+        ann = hints.get(key)
+        if ann is None:
+            continue
+        if not isinstance(ann, type):
+            continue
+        if not isinstance(value, ann):
+            raise SemanticError(
+                f"@{macro_name}: '{key}' must be {ann.__name__}, "
+                f"got {type(value).__name__} ({value!r})",
+                loc,
+            )
+
+    # Call the macro, wrapping unexpected exceptions
+    try:
+        macro_fn(cls_info, **kwargs)
+    except SemanticError:
+        raise
+    except Exception as e:
+        raise SemanticError(
+            f"@{macro_name}: macro raised {type(e).__name__}: {e}",
+            loc,
+        ) from e
 
 
 class MacroRegistry:

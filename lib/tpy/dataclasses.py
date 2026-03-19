@@ -13,17 +13,8 @@ from tpyc.typesys import NamedType, BoolType, StrType, UINT64
 
 
 @class_macro
-def dataclass(cls: ClassInfo, **kwargs) -> None:
+def dataclass(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> None:
     """Transform a class into a dataclass with auto-generated methods."""
-    _SUPPORTED = {"frozen", "order"}
-    for k in kwargs:
-        if k not in _SUPPORTED:
-            cls.error(f"@dataclass got unsupported keyword argument '{k}'")
-    for k, v in kwargs.items():
-        if not isinstance(v, bool):
-            cls.error(f"@dataclass: '{k}' must be True or False")
-    frozen = kwargs.get("frozen", False)
-    order = kwargs.get("order", False)
     cls.is_dataclass = True
     cls.is_frozen = frozen
     cls.is_ordered = order

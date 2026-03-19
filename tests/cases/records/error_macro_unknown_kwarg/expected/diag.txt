@@ -1,0 +1,1 @@
+main.py:6: error: @dataclasses.dataclass: unknown keyword argument 'slots' (supported: frozen, order)

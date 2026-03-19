@@ -5,7 +5,7 @@
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Class macros: `@class_macro` decorator, `ClassInfo`/`FieldInfo`/`TypeInfo` API, `# tpy: macro_module` directive, `@dataclass` replacement | Done |
-| 1b | Macro kwargs validation: typed macro signatures with compiler error wrapping (currently `**kwargs` with manual checks) | Not started |
+| 1b | Macro kwargs validation: typed macro signatures with automatic validation via `inspect.signature` | Done |
 | 1c | Generic `field()` handling: move `_try_parse_dataclass_field` from parser into macro via field default post-processing | Not started |
 | 2 | Call-site macros: `@macro` on functions, `Expr`/`Stmt` AST node arguments | Not started |
 | 3 | Quote templates: `quote()` syntactic sugar for less verbose macro authoring | Not started |
