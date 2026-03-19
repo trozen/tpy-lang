@@ -398,19 +398,19 @@ def init_module() -> BuiltinModule:
         "split": [
             MethodDef(
                 params=[],
-                returns=ListType(STR),
+                returns=OwnType(ListType(STR)),
                 cpp="::tpy::str_split_whitespace({self})",
                 is_readonly=True, is_pure=True,
             ),
             MethodDef(
                 params=[ParamDef("sep", STR)],
-                returns=ListType(STR),
+                returns=OwnType(ListType(STR)),
                 cpp="::tpy::str_split({self}, {0})",
                 is_readonly=True, is_pure=True,
             ),
             MethodDef(
                 params=[ParamDef("sep", STR), ParamDef("maxsplit", INT32)],
-                returns=ListType(STR),
+                returns=OwnType(ListType(STR)),
                 cpp="::tpy::str_split({self}, {0}, {1})",
                 is_readonly=True, is_pure=True,
             ),
@@ -504,7 +504,7 @@ def init_module() -> BuiltinModule:
             returns=INT32, cpp="::tpy::str_rindex({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "splitlines": [MethodDef(
-            params=[], returns=ListType(STR),
+            params=[], returns=OwnType(ListType(STR)),
             cpp="::tpy::str_splitlines({self})", is_readonly=True, is_pure=True,
         )],
         "__hash__": [MethodDef(params=[], returns=UINT64, cpp="::tpy::__hash__({self})", is_readonly=True, is_pure=True)],
@@ -566,19 +566,19 @@ def init_module() -> BuiltinModule:
         "split": [
             MethodDef(
                 params=[],
-                returns=ListType(STR),
+                returns=OwnType(ListType(STR)),
                 cpp="::tpy::str_split_whitespace({self})",
                 is_readonly=True, is_pure=True,
             ),
             MethodDef(
                 params=[ParamDef("sep", STR)],
-                returns=ListType(STR),
+                returns=OwnType(ListType(STR)),
                 cpp="::tpy::str_split({self}, {0})",
                 is_readonly=True, is_pure=True,
             ),
             MethodDef(
                 params=[ParamDef("sep", STR), ParamDef("maxsplit", INT32)],
-                returns=ListType(STR),
+                returns=OwnType(ListType(STR)),
                 cpp="::tpy::str_split({self}, {0}, {1})",
                 is_readonly=True, is_pure=True,
             ),
@@ -672,7 +672,7 @@ def init_module() -> BuiltinModule:
             returns=INT32, cpp="::tpy::str_rindex({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "splitlines": [MethodDef(
-            params=[], returns=ListType(STR),
+            params=[], returns=OwnType(ListType(STR)),
             cpp="::tpy::str_splitlines({self})", is_readonly=True, is_pure=True,
         )],
         "__hash__": [MethodDef(params=[], returns=UINT64, cpp="::tpy::__hash__({self})", is_readonly=True, is_pure=True)],

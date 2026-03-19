@@ -770,10 +770,10 @@ class CodeGenContext:
 
         User-defined functions/methods with non-value, non-generic, non-owning
         return types emit T& in C++ (via to_cpp_return()). Everything else --
-        builtins (cpp_template), native imports, @native record methods,
-        TypeParamRef (val_or_ref_t<T>), Own[T], Optional[T] -- uses value semantics.
+        native imports, @native record methods, TypeParamRef (val_or_ref_t<T>),
+        Own[T], Optional[T] -- uses value semantics.
         """
-        if fi is None or fi.cpp_template is not None or fi.is_native_import:
+        if fi is None or fi.is_native_import:
             return False
         if obj is not None:
             # Methods on @native records have unknown C++ return convention.
@@ -789,7 +789,8 @@ class CodeGenContext:
         rt = fi.return_type
         return (rt is not None
                 and not rt.is_value_type()
-                and not isinstance(rt, (TypeParamRef, OwnType, OptionalType, UnionType)))
+                and not isinstance(rt, (TypeParamRef, OwnType, OptionalType, UnionType))
+                and not is_protocol_type(rt))
 
     def is_rvalue_source(self, expr: TpyExpr) -> bool:
         """Check if an expression produces an rvalue (needs a stack slot).

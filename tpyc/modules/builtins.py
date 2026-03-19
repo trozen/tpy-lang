@@ -162,7 +162,7 @@ def init_module() -> BuiltinModule:
             ),
             MethodDef(
                 params=[ParamDef("key", K), ParamDef("default", V)],
-                returns=V,
+                returns=OwnType(V),
                 cpp="::tpy::dict_get_default({self}, {0}, {1})",
                 is_readonly=True, is_pure=True,
             ),
@@ -170,12 +170,12 @@ def init_module() -> BuiltinModule:
         "pop": [
             MethodDef(
                 params=[ParamDef("key", K)],
-                returns=V,
+                returns=OwnType(V),
                 cpp="::tpy::dict_pop({self}, {0})",
             ),
             MethodDef(
                 params=[ParamDef("key", K), ParamDef("default", V)],
-                returns=V,
+                returns=OwnType(V),
                 cpp="::tpy::dict_pop_default({self}, {0}, {1})",
             ),
         ],
@@ -196,7 +196,7 @@ def init_module() -> BuiltinModule:
         )],
         "setdefault": [MethodDef(
             params=[ParamDef("key", K), ParamDef("default", OwnType(V))],
-            returns=V,
+            returns=OwnType(V),
             cpp="::tpy::dict_setdefault({self}, {0}, {1})",
         )],
         "keys": [MethodDef(
@@ -346,7 +346,7 @@ def init_module() -> BuiltinModule:
         )],
         "pop": [MethodDef(
             params=[],
-            returns=T,
+            returns=OwnType(T),
             cpp="::tpy::set_pop({self})",
         )],
         "clear": [MethodDef(
@@ -356,31 +356,31 @@ def init_module() -> BuiltinModule:
         )],
         "copy": [MethodDef(
             params=[],
-            returns=SetType(T),
+            returns=OwnType(SetType(T)),
             cpp="::tpy::set_copy({self})",
             is_readonly=True, is_pure=True,
         )],
         "union": [MethodDef(
             params=[ParamDef("other", SetType(T))],
-            returns=SetType(T),
+            returns=OwnType(SetType(T)),
             cpp="::tpy::set_union({self}, {0})",
             is_readonly=True, is_pure=True,
         )],
         "intersection": [MethodDef(
             params=[ParamDef("other", SetType(T))],
-            returns=SetType(T),
+            returns=OwnType(SetType(T)),
             cpp="::tpy::set_intersection({self}, {0})",
             is_readonly=True, is_pure=True,
         )],
         "difference": [MethodDef(
             params=[ParamDef("other", SetType(T))],
-            returns=SetType(T),
+            returns=OwnType(SetType(T)),
             cpp="::tpy::set_difference({self}, {0})",
             is_readonly=True, is_pure=True,
         )],
         "symmetric_difference": [MethodDef(
             params=[ParamDef("other", SetType(T))],
-            returns=SetType(T),
+            returns=OwnType(SetType(T)),
             cpp="::tpy::set_symmetric_difference({self}, {0})",
             is_readonly=True, is_pure=True,
         )],
@@ -425,25 +425,25 @@ def init_module() -> BuiltinModule:
         # Operators
         "__or__": [MethodDef(
             params=[ParamDef("other", SetType(T))],
-            returns=SetType(T),
+            returns=OwnType(SetType(T)),
             cpp="::tpy::set_union({self}, {0})",
             is_readonly=True, is_pure=True,
         )],
         "__and__": [MethodDef(
             params=[ParamDef("other", SetType(T))],
-            returns=SetType(T),
+            returns=OwnType(SetType(T)),
             cpp="::tpy::set_intersection({self}, {0})",
             is_readonly=True, is_pure=True,
         )],
         "__sub__": [MethodDef(
             params=[ParamDef("other", SetType(T))],
-            returns=SetType(T),
+            returns=OwnType(SetType(T)),
             cpp="::tpy::set_difference({self}, {0})",
             is_readonly=True, is_pure=True,
         )],
         "__xor__": [MethodDef(
             params=[ParamDef("other", SetType(T))],
-            returns=SetType(T),
+            returns=OwnType(SetType(T)),
             cpp="::tpy::set_symmetric_difference({self}, {0})",
             is_readonly=True, is_pure=True,
         )],
@@ -555,19 +555,19 @@ def init_module() -> BuiltinModule:
         "split": [
             MethodDef(
                 params=[],
-                returns=ListType(STR),
+                returns=OwnType(ListType(STR)),
                 cpp="::tpy::str_split_whitespace({self})",
                 is_readonly=True, is_pure=True,
             ),
             MethodDef(
                 params=[ParamDef("sep", STR)],
-                returns=ListType(STR),
+                returns=OwnType(ListType(STR)),
                 cpp="::tpy::str_split({self}, {0})",
                 is_readonly=True, is_pure=True,
             ),
             MethodDef(
                 params=[ParamDef("sep", STR), ParamDef("maxsplit", INT32)],
-                returns=ListType(STR),
+                returns=OwnType(ListType(STR)),
                 cpp="::tpy::str_split({self}, {0}, {1})",
                 is_readonly=True, is_pure=True,
             ),
@@ -661,7 +661,7 @@ def init_module() -> BuiltinModule:
             returns=INT32, cpp="::tpy::str_rindex({self}, {0})", is_readonly=True, is_pure=True,
         )],
         "splitlines": [MethodDef(
-            params=[], returns=ListType(STR),
+            params=[], returns=OwnType(ListType(STR)),
             cpp="::tpy::str_splitlines({self})", is_readonly=True, is_pure=True,
         )],
         "__hash__": [MethodDef(params=[], returns=UINT64, cpp="::tpy::__hash__({self})", is_readonly=True, is_pure=True)],
