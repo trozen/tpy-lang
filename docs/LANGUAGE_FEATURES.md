@@ -2836,6 +2836,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   - `readonly[Int32]` (value types) is a no-op -- copies are always safe
   - `readonly[T | None]` and `readonly[T] | None` normalize to the same C++ type (`const T*`)
   - `readonly[Protocol]` generates `const T_name&` for template protocol params
+  - `readonly[T]` on a field declaration makes the field immutable after `__init__` -- assignment outside `__init__` is rejected at sema time (C++ codegen does not emit `const` on the field, since const fields break move/copy assignment)
   - See `docs/READONLY_DESIGN.md` for full design rationale
 - **Working**: `@pure` (no observable side effects -- no mutation of non-local state, no I/O)
   - Trusted annotation (Phase 1): no enforcement, metadata only for future borrow checker / escape analysis
@@ -4498,9 +4499,9 @@ Unknown directives produce a warning. Directives after the first line of code pr
 
 - **Working**: Binary/unary ops, calls, field access
 - **Working**: Ternary `x if cond else y` (see [Conditionals](#conditionals))
-- **Working**: List comprehensions `[expr for x in iterable if cond]` -> IIFE with loop. When output size is compile-time known (`range()` with literal args, `Array[T,N]` source, no filter), produces `std::array<T, N>` (zero heap allocation). Otherwise `std::vector<T>` with `push_back` and `reserve()` for Sized iterables. Supports tuple unpacking, annotation propagation
-- **Working**: Dict comprehensions `{key: value for x in iterable if cond}` -> IIFE with loop + `insert_or_assign`. Supports tuple unpacking, annotation propagation, all iteration strategies
-- **Working**: Set comprehensions `{expr for x in iterable if cond}` -> IIFE with loop + `insert`. Supports tuple unpacking, annotation propagation, all iteration strategies
+- **Working**: List comprehensions `[expr for x in iterable if cond]` -> IIFE with loop. When output size is compile-time known (`range()` with literal args, `Array[T,N]` source, no filter), produces `std::array<T, N>` (zero heap allocation). Otherwise `std::vector<T>` with `push_back` and `reserve()` for Sized iterables. Supports tuple unpacking, annotation propagation. Loop variables use `const auto&` for non-value and expensive-to-copy types (matching for-loop const-ref optimization).
+- **Working**: Dict comprehensions `{key: value for x in iterable if cond}` -> IIFE with loop + `insert_or_assign`. Supports tuple unpacking, annotation propagation, all iteration strategies, const-ref loop variable binding
+- **Working**: Set comprehensions `{expr for x in iterable if cond}` -> IIFE with loop + `insert`. Supports tuple unpacking, annotation propagation, all iteration strategies, const-ref loop variable binding
 - **Working**: Lambda expressions `lambda x: expr` with `Fn` type inference (see Lambda / Closures section)
 - **Working**: String slice `s[start:end]` -> `std::string_view` (clamping, negative indices)
 - **Working**: Container slice `items[start:end]` -> `std::span<T>` (zero-copy view, clamping, negative indices). Supports list, Array, Span, Span[readonly[T]]. Step not yet supported

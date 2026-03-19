@@ -394,7 +394,7 @@ class StatementAnalyzer:
             self._sync_ns_var_type(name, target)
 
     def _enforce_readonly_assignment_target(self, target: TpyExpr) -> None:
-        """Reject assignments through readonly references and frozen fields."""
+        """Reject assignments through readonly references, frozen fields, and readonly field declarations."""
         if isinstance(target, (TpyFieldAccess, TpySubscript)):
             obj_type = self.ctx.get_expr_type(target.obj)
             if obj_type is not None:
@@ -407,12 +407,12 @@ class StatementAnalyzer:
                 # the scope binding preserves it, so check there.
                 if isinstance(target.obj, TpyName) and self.ctx.is_readonly_name(target.obj.name):
                     raise self.ctx.error("Cannot mutate readonly reference", target)
-                # Frozen dataclass: reject field assignment except self.field in __init__
+                # Frozen dataclass / readonly field: reject assignment except self.field in __init__
                 if isinstance(target, TpyFieldAccess):
                     actual = unwrap_readonly(check_type)
                     if isinstance(actual, NamedType):
                         info = self.ctx.registry.get_record(actual.name)
-                        if info is not None and info.is_frozen:
+                        if info is not None:
                             cur = self.ctx.current_function
                             rec = self.ctx.record_ctx.record
                             in_own_init = (
@@ -420,11 +420,30 @@ class StatementAnalyzer:
                                 and isinstance(target.obj, TpyName) and target.obj.name == "self"
                                 and rec is not None and rec.name == actual.name
                             )
-                            if not in_own_init:
+                            if info.is_frozen and not in_own_init:
                                 raise self.ctx.error(
                                     f"Cannot assign to field '{target.field}' of frozen dataclass '{actual.name}'",
                                     target,
                                 )
+                            # Walk the class hierarchy to find readonly fields
+                            # (own and inherited). __init__ of the declaring
+                            # class or any subclass is exempt.
+                            in_any_init = (
+                                isinstance(cur, TpyFunction) and cur.name == "__init__"
+                                and isinstance(target.obj, TpyName) and target.obj.name == "self"
+                                and rec is not None
+                            )
+                            if not in_any_init:
+                                check = info
+                                while check is not None:
+                                    for fld in check.fields:
+                                        if fld.name == target.field and isinstance(fld.type, ReadonlyType):
+                                            raise self.ctx.error(
+                                                f"Cannot assign to readonly field '{target.field}'",
+                                                target,
+                                            )
+                                    check = (self.ctx.registry.get_record_for_type(check.parent)
+                                             if check.parent is not None else None)
 
     def _resolve_enum_iterable(self, stmt: TpyForEach) -> EnumType | None:
         """Check if for-each iterates over an enum type (e.g. `for c in Color`).
