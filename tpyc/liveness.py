@@ -19,10 +19,7 @@ from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
     TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyAssert, TpyRaise,
     TpyExprStmt, TpyMatch,
-    TpyName, TpyCall, TpyMethodCall, TpyBinOp, TpyChainedCompare, TpyUnaryOp,
-    TpyTypeParamConstruct,
-    TpyFieldAccess, TpySubscript, TpyArrayLiteral, TpyListRepeat,
-    TpyCoerce, TpyIfExpr, TpyNamedExpr,
+    TpyName, TpyFieldAccess, TpySubscript, TpyNamedExpr,
 )
 
 # source_name -> set[alias_name] reverse map
@@ -576,82 +573,20 @@ def _process_reads(
 
 def _collect_reads_expr(expr: TpyExpr,
                         walrus_defs: set[str] | None = None) -> list[TpyName]:
-    """Recursively collect all TpyName nodes that are read in an expression.
+    """Collect TpyName nodes read (not defined) in an expression.
 
-    If walrus_defs is provided, also collects walrus (:=) target names into it.
+    Uses TpyExpr.children() for iterative traversal.
+    If walrus_defs is provided, also records walrus (:=) target names into it
+    (those are definitions, not reads, and are excluded from the returned list).
     """
-    if isinstance(expr, TpyName):
-        return [expr]
-
-    elif isinstance(expr, TpyCall):
-        result: list[TpyName] = []
-        for arg in expr.args:
-            result.extend(_collect_reads_expr(arg, walrus_defs))
-        for kwarg in expr.kwargs.values():
-            result.extend(_collect_reads_expr(kwarg, walrus_defs))
-        return result
-
-    elif isinstance(expr, TpyMethodCall):
-        result = _collect_reads_expr(expr.obj, walrus_defs)
-        for arg in expr.args:
-            result.extend(_collect_reads_expr(arg, walrus_defs))
-        for kwarg in expr.kwargs.values():
-            result.extend(_collect_reads_expr(kwarg, walrus_defs))
-        return result
-
-    elif isinstance(expr, TpyBinOp):
-        return (_collect_reads_expr(expr.left, walrus_defs)
-                + _collect_reads_expr(expr.right, walrus_defs))
-
-    elif isinstance(expr, TpyChainedCompare):
-        result = _collect_reads_expr(expr.left, walrus_defs)
-        for comp in expr.comparators:
-            result.extend(_collect_reads_expr(comp, walrus_defs))
-        return result
-
-    elif isinstance(expr, TpyUnaryOp):
-        return _collect_reads_expr(expr.operand, walrus_defs)
-
-    elif isinstance(expr, TpyFieldAccess):
-        return _collect_reads_expr(expr.obj, walrus_defs)
-
-    elif isinstance(expr, TpySubscript):
-        return (_collect_reads_expr(expr.obj, walrus_defs)
-                + _collect_reads_expr(expr.index, walrus_defs))
-
-    elif isinstance(expr, TpyArrayLiteral):
-        result = []
-        for elem in expr.elements:
-            result.extend(_collect_reads_expr(elem, walrus_defs))
-        return result
-
-    elif isinstance(expr, TpyListRepeat):
-        result = []
-        for elem in expr.elements:
-            result.extend(_collect_reads_expr(elem, walrus_defs))
-        result.extend(_collect_reads_expr(expr.count, walrus_defs))
-        return result
-
-    elif isinstance(expr, TpyCoerce):
-        return _collect_reads_expr(expr.expr, walrus_defs)
-
-    elif isinstance(expr, TpyIfExpr):
-        # Flat collection: a var in both branches counts >= 2 -> no move
-        # (conservative but correct; only one branch evaluates at runtime).
-        result = _collect_reads_expr(expr.condition, walrus_defs)
-        result.extend(_collect_reads_expr(expr.then_expr, walrus_defs))
-        result.extend(_collect_reads_expr(expr.else_expr, walrus_defs))
-        return result
-
-    elif isinstance(expr, TpyNamedExpr):
-        # Walrus: collect reads from value (the target is a write, not a read)
-        if walrus_defs is not None:
-            walrus_defs.add(expr.target)
-        return _collect_reads_expr(expr.value, walrus_defs)
-
-    elif isinstance(expr, TpyTypeParamConstruct):
-        return []
-
-    # Literals (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
-    # TpyBoolLiteral, TpyNoneLiteral): no reads
-    return []
+    result: list[TpyName] = []
+    stack: list[TpyExpr] = [expr]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, TpyName):
+            result.append(node)
+            continue
+        if isinstance(node, TpyNamedExpr) and walrus_defs is not None:
+            walrus_defs.add(node.target)
+        stack.extend(node.children())
+    return result

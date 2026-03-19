@@ -51,6 +51,10 @@ class TpyExpr:
     """Base class for expressions."""
     loc: SourceLocation | None = field(default=None, kw_only=True)
 
+    def children(self) -> list['TpyExpr']:
+        """Return child expression nodes for generic tree walking."""
+        return []
+
 
 if TYPE_CHECKING:
     from ..coercions import Coercion
@@ -95,6 +99,9 @@ class TpyFString(TpyExpr):
     """F-string: f"text {expr:spec} more text"."""
     parts: list[str | TpyFStringValue]
 
+    def children(self) -> list[TpyExpr]:
+        return [p.expr for p in self.parts if isinstance(p, TpyFStringValue)]
+
 
 @dataclass
 class TpyBoolLiteral(TpyExpr):
@@ -126,6 +133,9 @@ class TpyBinOp(TpyExpr):
     int_enum_coercion: 'IntEnumType | None' = None  # Set by sema: IntEnum arithmetic coerced to underlying type
     divisor_non_zero: bool = False  # Set by sema: divisor provably non-zero, skip div-zero check
 
+    def children(self) -> list[TpyExpr]:
+        return [self.left, self.right]
+
 
 @dataclass
 class TpyChainedCompare(TpyExpr):
@@ -136,6 +146,9 @@ class TpyChainedCompare(TpyExpr):
     # Set by sema: synthetic TpyBinOp for each comparison pair
     pairs: list['TpyBinOp'] | None = None
 
+    def children(self) -> list[TpyExpr]:
+        return [self.left] + self.comparators
+
 
 @dataclass
 class TpyUnaryOp(TpyExpr):
@@ -143,6 +156,9 @@ class TpyUnaryOp(TpyExpr):
     op: str  # '-', 'not'
     operand: TpyExpr
     resolved_unaryop: 'ResolvedUnaryop | None' = None  # Set by sema for builtin ops
+
+    def children(self) -> list[TpyExpr]:
+        return [self.operand]
 
 
 @dataclass
@@ -173,6 +189,9 @@ class TpyCall(TpyExpr):
     isinstance_type: TpyType | None = None   # Set by sema: resolved type being checked for
     isinstance_is_protocol: bool = False     # Set by sema: protocol isinstance (if constexpr)
 
+    def children(self) -> list[TpyExpr]:
+        return list(self.args) + list(self.kwargs.values())
+
 
 @dataclass
 class TpyMethodCall(TpyExpr):
@@ -194,6 +213,9 @@ class TpyMethodCall(TpyExpr):
     ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr (or Ptr[readonly[T]])
     is_callable_field: bool = False  # Set by sema: method name is a Callable-typed field
 
+    def children(self) -> list[TpyExpr]:
+        return [self.obj] + list(self.args) + list(self.kwargs.values())
+
 
 @dataclass
 class TpyFieldAccess(TpyExpr):
@@ -204,11 +226,17 @@ class TpyFieldAccess(TpyExpr):
     deref_depth: int = 0  # Set by sema: number of __deref__ steps applied before field lookup
     ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr (or Ptr[readonly[T]])
 
+    def children(self) -> list[TpyExpr]:
+        return [self.obj]
+
 
 @dataclass
 class TpyArrayLiteral(TpyExpr):
     """Array literal: [expr, expr, ...]"""
     elements: list[TpyExpr]
+
+    def children(self) -> list[TpyExpr]:
+        return list(self.elements)
 
 
 class TupleElemCapture(IntEnum):
@@ -225,12 +253,18 @@ class TpyTupleLiteral(TpyExpr):
     # Set by sema: per-element capture mode
     elem_capture: list[TupleElemCapture] = field(default_factory=list)
 
+    def children(self) -> list[TpyExpr]:
+        return list(self.elements)
+
 
 @dataclass
 class TpyListRepeat(TpyExpr):
     """List repetition: [elements...] * count -> sequence repeated count times"""
     elements: list[TpyExpr]
     count: TpyExpr
+
+    def children(self) -> list[TpyExpr]:
+        return list(self.elements) + [self.count]
 
 
 @dataclass
@@ -249,6 +283,9 @@ class TpyListComprehension(TpyExpr):
     generator: TpyComprehensionGenerator
     result_elem_type: 'TpyType | None' = None  # set by sema
 
+    def children(self) -> list[TpyExpr]:
+        return [self.element_expr, self.generator.iterable] + self.generator.conditions
+
 
 @dataclass
 class TpyDictComprehension(TpyExpr):
@@ -259,12 +296,18 @@ class TpyDictComprehension(TpyExpr):
     result_key_type: 'TpyType | None' = None  # set by sema
     result_value_type: 'TpyType | None' = None  # set by sema
 
+    def children(self) -> list[TpyExpr]:
+        return [self.key_expr, self.value_expr, self.generator.iterable] + self.generator.conditions
+
 
 @dataclass
 class TpyDictLiteral(TpyExpr):
     """Dict literal: {key: value, key: value, ...}"""
     keys: list[TpyExpr]
     values: list[TpyExpr]
+
+    def children(self) -> list[TpyExpr]:
+        return list(self.keys) + list(self.values)
 
 
 @dataclass
@@ -274,6 +317,9 @@ class TpySetComprehension(TpyExpr):
     generator: TpyComprehensionGenerator
     result_elem_type: 'TpyType | None' = None  # set by sema
 
+    def children(self) -> list[TpyExpr]:
+        return [self.element_expr, self.generator.iterable] + self.generator.conditions
+
 
 @dataclass
 class TpyGeneratorExpression(TpyExpr):
@@ -281,6 +327,9 @@ class TpyGeneratorExpression(TpyExpr):
     element_expr: TpyExpr
     generator: TpyComprehensionGenerator
     result_elem_type: 'TpyType | None' = None  # set by sema
+
+    def children(self) -> list[TpyExpr]:
+        return [self.element_expr, self.generator.iterable] + self.generator.conditions
 
 
 @dataclass
@@ -296,11 +345,19 @@ class TpyLambda(TpyExpr):
     captured_names: list[str] = field(default_factory=list)
     captures_by_value: bool = False  # True for Callable context (captures escape)
 
+    def children(self) -> list[TpyExpr]:
+        # Lambda creates its own scope; outer walks should not recurse into
+        # the body. Lambda analysis in sema recurses into body explicitly.
+        return []
+
 
 @dataclass
 class TpySetLiteral(TpyExpr):
     """Set literal: {value, value, ...}"""
     elements: list[TpyExpr]
+
+    def children(self) -> list[TpyExpr]:
+        return list(self.elements)
 
 
 @dataclass
@@ -309,6 +366,9 @@ class TpySlice(TpyExpr):
     lower: TpyExpr | None = None
     upper: TpyExpr | None = None
     step: TpyExpr | None = None  # reserved for future step support
+
+    def children(self) -> list[TpyExpr]:
+        return [x for x in (self.lower, self.upper, self.step) if x is not None]
 
 
 @dataclass
@@ -320,6 +380,9 @@ class TpySubscript(TpyExpr):
     enum_from_name: 'EnumType | None' = None    # Set by sema for Color["Red"] name lookup
     bounds_safe: bool = False  # Set by sema: index provably in [0, len(obj)), skip bounds check
     user_slice_getitem: bool = False  # Set by sema: slice dispatches to user __getitem__(slice)
+
+    def children(self) -> list[TpyExpr]:
+        return [self.obj, self.index]
 
 
 @dataclass
@@ -333,6 +396,9 @@ class TpyCoerce(TpyExpr):
     context_msg: str
     runtime_bigint: bool = False
 
+    def children(self) -> list[TpyExpr]:
+        return [self.expr]
+
 
 @dataclass
 class TpyIfExpr(TpyExpr):
@@ -341,12 +407,18 @@ class TpyIfExpr(TpyExpr):
     then_expr: TpyExpr
     else_expr: TpyExpr
 
+    def children(self) -> list[TpyExpr]:
+        return [self.condition, self.then_expr, self.else_expr]
+
 
 @dataclass
 class TpyNamedExpr(TpyExpr):
     """Walrus operator: (x := expr)."""
     target: str
     value: TpyExpr
+
+    def children(self) -> list[TpyExpr]:
+        return [self.value]
 
 
 @dataclass

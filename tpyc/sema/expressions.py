@@ -55,99 +55,24 @@ from tpyc import modules as builtin_modules
 
 
 def _collect_name_refs(expr: TpyExpr) -> set[str]:
-    """Collect all TpyName references in an expression tree.
+    """Collect all name references in an expression tree.
 
-    TODO: replace with TpyExpr.children() generic walk -- same pattern
-    exists in liveness.py:_collect_reads_expr (~90 lines).
+    Uses TpyExpr.children() for generic traversal. Also collects
+    TpyCall.func (a str, not a child TpyExpr) since callable variables
+    must be captured in lambda closures.
     """
     names: set[str] = set()
-    _walk_names(expr, names)
+    stack: list[TpyExpr] = [expr]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, TpyName):
+            names.add(node.name)
+        elif isinstance(node, TpyCall):
+            names.add(node.func)
+            stack.extend(node.children())
+        else:
+            stack.extend(node.children())
     return names
-
-
-def _walk_names(node: TpyExpr, out: set[str]) -> None:
-    if isinstance(node, TpyName):
-        out.add(node.name)
-    elif isinstance(node, TpyBinOp):
-        _walk_names(node.left, out)
-        _walk_names(node.right, out)
-    elif isinstance(node, TpyUnaryOp):
-        _walk_names(node.operand, out)
-    elif isinstance(node, TpyCall):
-        out.add(node.func)
-        for arg in node.args:
-            _walk_names(arg, out)
-        for v in node.kwargs.values():
-            _walk_names(v, out)
-    elif isinstance(node, TpyMethodCall):
-        _walk_names(node.obj, out)
-        for arg in node.args:
-            _walk_names(arg, out)
-    elif isinstance(node, TpyFieldAccess):
-        _walk_names(node.obj, out)
-    elif isinstance(node, TpySubscript):
-        _walk_names(node.obj, out)
-        _walk_names(node.index, out)
-    elif isinstance(node, TpyIfExpr):
-        _walk_names(node.condition, out)
-        _walk_names(node.then_expr, out)
-        _walk_names(node.else_expr, out)
-    elif isinstance(node, TpyChainedCompare):
-        _walk_names(node.left, out)
-        for comp in node.comparators:
-            _walk_names(comp, out)
-    elif isinstance(node, TpyFString):
-        for part in node.parts:
-            if isinstance(part, TpyFStringValue):
-                _walk_names(part.expr, out)
-    elif isinstance(node, TpyCoerce):
-        _walk_names(node.expr, out)
-    elif isinstance(node, TpyArrayLiteral):
-        for elem in node.elements:
-            _walk_names(elem, out)
-    elif isinstance(node, TpyTupleLiteral):
-        for elem in node.elements:
-            _walk_names(elem, out)
-    elif isinstance(node, TpyListRepeat):
-        for elem in node.elements:
-            _walk_names(elem, out)
-        _walk_names(node.count, out)
-    elif isinstance(node, TpyListComprehension):
-        _walk_names(node.element_expr, out)
-        _walk_comprehension_gen(node.generator, out)
-    elif isinstance(node, TpySetComprehension):
-        _walk_names(node.element_expr, out)
-        _walk_comprehension_gen(node.generator, out)
-    elif isinstance(node, TpyDictComprehension):
-        _walk_names(node.key_expr, out)
-        _walk_names(node.value_expr, out)
-        _walk_comprehension_gen(node.generator, out)
-    elif isinstance(node, TpyGeneratorExpression):
-        _walk_names(node.element_expr, out)
-        _walk_comprehension_gen(node.generator, out)
-    elif isinstance(node, TpySetLiteral):
-        for elem in node.elements:
-            _walk_names(elem, out)
-    elif isinstance(node, TpyDictLiteral):
-        for k in node.keys:
-            _walk_names(k, out)
-        for v in node.values:
-            _walk_names(v, out)
-    elif isinstance(node, TpySlice):
-        if node.lower:
-            _walk_names(node.lower, out)
-        if node.upper:
-            _walk_names(node.upper, out)
-    elif isinstance(node, TpyNamedExpr):
-        _walk_names(node.value, out)
-
-
-def _walk_comprehension_gen(gen: 'TpyComprehensionGenerator', out: set[str]) -> None:
-    """Walk a comprehension generator, collecting name refs from iterable and conditions.
-    The loop variable itself is NOT added (it's local to the comprehension)."""
-    _walk_names(gen.iterable, out)
-    for cond in gen.conditions:
-        _walk_names(cond, out)
 
 
 class ExpressionAnalyzer:
