@@ -295,6 +295,42 @@ class _NameArg:
         self.name = name
 
 
+@dataclasses.dataclass(frozen=True)
+class _DecoratorArgSchema:
+    """Schema for a decorator's positional and keyword arguments.
+
+    pos_type: expected type for the positional arg (str, bool, _NameArg), or None = bare only
+    pos_required: whether the positional arg must be provided
+    kwargs: allowed keyword arg names -> expected types (None = no kwargs)
+    """
+    pos_type: type | None = None
+    pos_required: bool = False
+    kwargs: dict[str, type] | None = None
+
+
+# Argument schemas for all known decorators. Decorators not listed here
+# (macro decorators, etc.) are validated by their own paths.
+_DECORATOR_ARG_SCHEMAS: dict[str, _DecoratorArgSchema] = {
+    # Bare-only (no arguments allowed)
+    "tpy.pure":               _DecoratorArgSchema(),
+    "tpy.noalloc":            _DecoratorArgSchema(),
+    "tpy.dynamic":            _DecoratorArgSchema(),
+    "tpy.nocopy":             _DecoratorArgSchema(),
+    "tpy.auto_readonly":      _DecoratorArgSchema(),
+    "typing.override":        _DecoratorArgSchema(),
+    "typing.overload":        _DecoratorArgSchema(),
+    "builtins.staticmethod":  _DecoratorArgSchema(),
+    # Optional positional
+    # tpy.readonly is validated by _parse_readonly_arg (has custom semantics)
+    "tpy.extern.native":      _DecoratorArgSchema(pos_type=str, kwargs={"function": bool}),
+    "tpy.extern.native_c":    _DecoratorArgSchema(pos_type=str),
+    "tpy.extern.extern_c":    _DecoratorArgSchema(pos_type=str),
+    # Required positional
+    "tpy.extern.cpp_template": _DecoratorArgSchema(pos_type=str, pos_required=True),
+    "tpy.error_return":       _DecoratorArgSchema(pos_type=_NameArg, pos_required=True),
+}
+
+
 class Parser:
     """Parser for TurboPython source code."""
 
@@ -748,6 +784,57 @@ class Parser:
             return (arg, not arg)
         raise ParseError("@readonly() requires a single bool argument (True or False)", dec)
 
+    def _validate_decorator_args(
+        self, qname: str, arg: object, dec: ast.expr,
+    ) -> tuple[object, dict[str, object]]:
+        """Validate decorator args against schema. Returns (positional, kwargs).
+
+        positional is the validated positional arg value, or None if not provided
+        (both bare @name and empty @name() normalize to None for optional args).
+        kwargs is a dict of validated keyword arg values (empty if none).
+        """
+        schema = _DECORATOR_ARG_SCHEMAS.get(qname)
+        if schema is None:
+            return (arg, {})
+        dec_name = self._decorator_local_name(dec) or qname.rsplit(".", 1)[-1]
+
+        # Handle tuple form: (positional, {kwargs}) from @native("name", function=True)
+        pos_arg = arg
+        raw_kwargs: dict[str, object] = {}
+        if isinstance(arg, tuple) and len(arg) == 2 and isinstance(arg[1], dict):
+            pos_arg, raw_kwargs = arg
+
+        # Validate positional arg
+        if schema.pos_type is None:
+            if pos_arg is not None:
+                raise ParseError(f"@{dec_name} does not take arguments", dec)
+        elif schema.pos_required:
+            if not isinstance(pos_arg, schema.pos_type):
+                type_desc = {str: "a string", bool: "a bool", _NameArg: "a type name"}
+                expected = type_desc.get(schema.pos_type, "an argument")
+                raise ParseError(f"@{dec_name}() requires {expected} argument", dec)
+        else:
+            if pos_arg is not None and pos_arg is not self._EMPTY_CALL and not isinstance(pos_arg, schema.pos_type):
+                type_desc = {str: "a single string", bool: "a single bool"}
+                expected = type_desc.get(schema.pos_type, "a valid")
+                raise ParseError(f"@{dec_name}() requires {expected} argument", dec)
+            if pos_arg is self._EMPTY_CALL:
+                pos_arg = None
+
+        # Validate keyword args
+        if raw_kwargs:
+            if schema.kwargs is None:
+                raise ParseError(f"@{dec_name} does not accept keyword arguments", dec)
+            for key, val in raw_kwargs.items():
+                if key not in schema.kwargs:
+                    raise ParseError(f"@{dec_name}() got unexpected keyword argument '{key}'", dec)
+                expected_type = schema.kwargs[key]
+                if not isinstance(val, expected_type):
+                    raise ParseError(f"@{dec_name}({key}=...) expects {expected_type.__name__}", dec)
+
+        validated_kwargs = raw_kwargs if schema.kwargs else {}
+        return (pos_arg, validated_kwargs)
+
     def _extract_decorator_kwargs(self, dec: ast.expr, arg: object, class_name: str) -> dict[str, Any]:
         """Extract keyword arguments from a macro decorator call.
 
@@ -889,19 +976,15 @@ class Parser:
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"class '{node.name}'")
             if qname in self._RECORD_LINKAGE_MAP:
+                pos, kw = self._validate_decorator_args(qname, arg, dec)
                 new_linkage = self._RECORD_LINKAGE_MAP[qname]
                 if linkage != RecordLinkage.DEFAULT:
                     raise ParseError(
                         f"Class '{node.name}' cannot have both @{linkage.value} and @{new_linkage.value}", node)
                 linkage = new_linkage
-                if isinstance(arg, str):
-                    native_name = arg
-                elif arg is not None:
-                    dec_name = self._decorator_local_name(dec)
-                    raise ParseError(f"@{dec_name}() requires a single string argument", dec)
+                native_name = pos
             elif qname == "tpy.nocopy":
-                if arg is not None:
-                    raise ParseError("@nocopy does not take arguments", dec)
+                self._validate_decorator_args(qname, arg, dec)
                 is_nocopy = True
             else:
                 # Treat as a macro decorator -- extract kwargs and store for later
@@ -1113,15 +1196,14 @@ class Parser:
         cpp_concept: str | None = None
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"protocol '{node.name}'")
+            pos, kw = self._validate_decorator_args(qname, arg, dec)
             if qname == "tpy.dynamic":
-                if arg is not None:
-                    raise ParseError("@dynamic does not take arguments", dec)
                 is_dynamic = True
                 continue
             if qname == "tpy.extern.native":
-                if not isinstance(arg, str):
+                if not isinstance(pos, str):
                     raise ParseError("@native on protocol requires a C++ concept name string argument", dec)
-                cpp_concept = arg
+                cpp_concept = pos
                 continue
             dec_name = self._decorator_local_name(dec) or "?"
             raise ParseError(
@@ -1175,6 +1257,7 @@ class Parser:
                 readonly_opt_out = False
                 for dec in item.decorator_list:
                     qname, arg = self._require_decorator(dec, f"protocol method '{item.name}'")
+                    self._validate_decorator_args(qname, arg, dec)
                     if qname == "tpy.readonly":
                         is_readonly, readonly_opt_out = self._parse_readonly_arg(arg, dec)
                     else:
@@ -1343,52 +1426,28 @@ class Parser:
         cpp_template: str | None = None
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"method '{node.name}'")
+            pos, kw = self._validate_decorator_args(qname, arg, dec)
             if qname == "builtins.staticmethod":
                 is_staticmethod = True
             elif qname == "tpy.pure":
-                if arg is not None:
-                    raise ParseError("@pure does not take arguments", dec)
                 is_pure = True
             elif qname == "typing.override":
-                if arg is not None:
-                    raise ParseError("@override does not take arguments", dec)
                 is_override = True
             elif qname == "typing.overload":
-                if arg is not None:
-                    raise ParseError("@overload does not take arguments", dec)
                 is_overload_stub = True
             elif qname == "tpy.readonly":
                 is_readonly, readonly_opt_out = self._parse_readonly_arg(arg, dec)
             elif qname == "tpy.auto_readonly":
-                if arg is not None:
-                    raise ParseError("@auto_readonly does not take arguments", dec)
                 auto_readonly = True
                 auto_readonly_dec = dec
             elif qname == "tpy.error_return":
-                if not isinstance(arg, _NameArg):
-                    raise ParseError("@error_return() requires a single error type argument, e.g. @error_return(MyError)", dec)
-                error_return = arg.name
+                error_return = pos.name
             elif qname == "tpy.extern.cpp_template":
-                if not isinstance(arg, str):
-                    raise ParseError("@cpp_template() requires a string argument", dec)
-                cpp_template = arg
+                cpp_template = pos
             elif qname in self._METHOD_LINKAGE_MAP:
                 method_linkage = self._METHOD_LINKAGE_MAP[qname]
-                if isinstance(arg, str):
-                    native_name = arg
-                elif isinstance(arg, tuple) and len(arg) == 2 and isinstance(arg[0], str):
-                    native_name, raw_kwargs = arg[0], arg[1]
-                    for key in raw_kwargs:
-                        if key != "function":
-                            dec_name = self._decorator_local_name(dec)
-                            raise ParseError(f"@{dec_name}() got unexpected keyword argument '{key}'", dec)
-                    if not isinstance(raw_kwargs.get("function", False), bool):
-                        dec_name = self._decorator_local_name(dec)
-                        raise ParseError(f"@{dec_name}(function=...) expects bool", dec)
-                    native_function = raw_kwargs.get("function", False)
-                elif arg is not None:
-                    dec_name = self._decorator_local_name(dec)
-                    raise ParseError(f"@{dec_name}() on method requires a single string argument", dec)
+                native_name = pos
+                native_function = kw.get("function", False)
             else:
                 dec_name = self._decorator_local_name(dec) or "?"
                 raise ParseError(f"Unknown decorator '{dec_name}' on method '{node.name}'", dec)
@@ -1588,41 +1647,31 @@ class Parser:
         cpp_template: str | None = None
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"function '{node.name}'")
+            pos, kw = self._validate_decorator_args(qname, arg, dec)
             if qname == "tpy.noalloc":
-                if arg is not None:
-                    raise ParseError("@noalloc does not take arguments", dec)
                 is_noalloc = True
             elif qname == "tpy.pure":
-                if arg is not None:
-                    raise ParseError("@pure does not take arguments", dec)
                 is_pure = True
             elif qname == "tpy.readonly":
                 is_readonly, readonly_opt_out = self._parse_readonly_arg(arg, dec)
             elif qname == "tpy.auto_readonly":
                 raise ParseError("@auto_readonly is only valid on methods, not free functions", dec)
             elif qname == "typing.overload":
-                if arg is not None:
-                    raise ParseError("@overload does not take arguments", dec)
                 is_overload_stub = True
             elif qname == "tpy.error_return":
-                if not isinstance(arg, _NameArg):
-                    raise ParseError("@error_return() requires a single error type argument, e.g. @error_return(MyError)", dec)
-                error_return = arg.name
+                error_return = pos.name
             elif qname == "tpy.extern.cpp_template":
-                if not isinstance(arg, str):
-                    raise ParseError("@cpp_template() requires a string argument", dec)
-                cpp_template = arg
+                cpp_template = pos
             elif qname in self._FUNCTION_LINKAGE_MAP:
                 new_linkage = self._FUNCTION_LINKAGE_MAP[qname]
                 if linkage != FunctionLinkage.DEFAULT:
                     raise ParseError(
                         f"Function '{node.name}' cannot have both @{linkage.value} and @{new_linkage.value}", node)
-                linkage = new_linkage
-                if isinstance(arg, str):
-                    native_name = arg
-                elif arg is not None:
+                if kw.get("function"):
                     dec_name = self._decorator_local_name(dec)
-                    raise ParseError(f"@{dec_name}() requires a single string argument", dec)
+                    raise ParseError(f"@{dec_name}(function=...) is only valid on methods, not free functions", dec)
+                linkage = new_linkage
+                native_name = pos
             else:
                 dec_name = self._decorator_local_name(dec) or "?"
                 raise ParseError(f"Unknown decorator '{dec_name}' on function '{node.name}'", dec)

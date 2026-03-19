@@ -116,6 +116,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | F4 | Typestate | XL | Research | [VIII](#typestate-object-lifecycle) |
 | F5 | Self-interpret (TPy eval in tpyc) | XL | Not started | [V](#self-interpret-tpy-eval-in-tpyc) |
 | F6 | Alternative backends | XL | Not started | [V](#alternative-backends) |
+| F7 | Decorator definitions in library code | M-L | Phase 1 done | [V](#decorator-definitions-in-library-code) |
 
 ### Phase G: Concurrency (Future)
 
@@ -1362,6 +1363,31 @@ Remaining (Phase 2+): call-site macros, string-based method generation
 Phase 4 (TpyMini VM). `@dataclass` replacement validates the API.
 
 **Effort**: XL total (Phase 1: M, done; remaining phases incremental)
+
+---
+
+### Decorator Definitions in Library Code
+
+Move built-in decorator definitions (`@native`, `@cpp_template`, `@readonly`, `@pure`,
+`@noalloc`, `@error_return`, etc.) from hardcoded parser logic to `.py` library files.
+Decorators would declare their argument schemas (positional/keyword types, valid targets,
+combination constraints) as data, and the parser would validate against these schemas
+instead of ad-hoc per-site checks.
+
+Currently, decorator arg validation uses a centralized `_DECORATOR_ARG_SCHEMAS` dict in the
+parser (Phase 1, done). The next step is moving these schemas to `.py` definitions so that
+new decorators can be added without compiler changes. Ties closely with the macro system --
+macro decorators already use a separate path (`_extract_decorator_kwargs`), and unifying
+both under a single schema mechanism is the end goal.
+
+**Current state**: Phase 1 done. `_DecoratorArgSchema` + `_validate_decorator_args` provide
+centralized arg validation for all built-in decorators. Target validation and combination
+constraints remain in parse methods.
+
+**Dependencies**: Macro system (F2) for user-defined decorators with compile-time hooks.
+
+**Effort**: M (Phase 2: target validation + combination constraints in schema),
+L (Phase 3: decorator definitions in `.py` files)
 
 ---
 
