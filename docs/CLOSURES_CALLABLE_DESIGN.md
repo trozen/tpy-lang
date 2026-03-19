@@ -6,7 +6,7 @@
 |-------|-------------|--------|
 | 1a | `Fn` type + lambda expressions (including captures) | Done |
 | 1b | `Callable` type (`std::function`, type-erased callable) | Done |
-| 2 | Named function references as values (`apply(double, 42)`) | Not started |
+| 2 | Named function references as values (`apply(double, 42)`) | Done |
 | 3 | Nested `def` with captures, `nonlocal` keyword | Not started |
 | 4 | Generator functions (`yield`) | Not started |
 | 5 | `@noalloc` enforcement, `FnOnce` semantics for `Own[T]` captures | Not started |

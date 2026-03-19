@@ -11,7 +11,7 @@ from typing import Literal, TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, BoolType, StrType, CharType,
     NamedType, PtrType, OwnType, ListType, DictType, SetType, ArrayType, PendingListType, ListRepeatType, GenExprType, TupleType, SpanType,
-    TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType,
+    TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType, VoidType,
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
     FixedIntType, StringType, StrViewType, make_union,
     ResolvedBinop, FunctionInfo, ParamInfo, UnknownElementType, UNKNOWN_ELEMENT,
@@ -192,6 +192,13 @@ class ExpressionAnalyzer:
             typ = self._analyze_lambda_with_fn_hint(expr, type_hint)
             self.ctx.set_expr_type(expr, typ)
             return typ
+
+        # Named function reference with Fn/Callable hint: resolve as function value
+        if isinstance(expr, TpyName) and isinstance(type_hint, (FnType, CallableType)):
+            result = self._try_resolve_function_ref(expr, type_hint)
+            if result is not None:
+                self.ctx.set_expr_type(expr, result)
+                return result
 
         # Ternary expression: propagate hint to both branches
         if isinstance(expr, TpyIfExpr):
@@ -2331,3 +2338,82 @@ class ExpressionAnalyzer:
 
         expr.inferred_return_type = fn_type.return_type
         return fn_type
+
+    # --- Function references ---
+
+    def _try_resolve_function_ref(
+        self, expr: TpyName, hint: FnType | CallableType,
+    ) -> FnType | CallableType | None:
+        """Try to resolve a name as a function reference matching an Fn/Callable hint.
+
+        Returns the hint type if a matching function is found, None to fall through
+        to normal name analysis.
+        """
+        # Look up in namespace -- variables shadow functions
+        if self.ctx.current_ns:
+            binding = self.ctx.current_ns.lookup(expr.name)
+            if binding:
+                if binding.kind == BindingKind.VARIABLE:
+                    return None  # local variable shadows any function
+                if binding.kind == BindingKind.FUNCTION and binding.func_infos:
+                    matched = self._match_function_to_hint(binding.func_infos, hint, expr)
+                    if matched is not None:
+                        expr.is_function_ref = True
+                        expr.function_ref_info = matched
+                        return hint
+
+        # Check registry (covers imported functions not yet in namespace)
+        func_infos = self.ctx.registry.get_function(expr.name)
+        if func_infos:
+            matched = self._match_function_to_hint(func_infos, hint, expr)
+            if matched is not None:
+                expr.is_function_ref = True
+                expr.function_ref_info = matched
+                return hint
+
+        return None
+
+    def _match_function_to_hint(
+        self, func_infos: list[FunctionInfo], hint: FnType | CallableType, expr: TpyName,
+    ) -> FunctionInfo | None:
+        """Find a function overload matching the Fn/Callable hint signature.
+
+        Returns the matched FunctionInfo or raises an error if ambiguous.
+        """
+        hint_params = hint.param_types
+        hint_return = hint.return_type
+        candidates: list[FunctionInfo] = []
+        for fi in func_infos:
+            if fi.is_generic():
+                continue  # generic functions deferred
+            if len(fi.params) != len(hint_params):
+                continue
+            match = True
+            for (_, ptype), htype in zip(fi.params, hint_params):
+                if ptype != htype:
+                    try:
+                        self.compat.check_type_compatible(htype, ptype, "param")
+                    except SemanticError:
+                        match = False
+                        break
+            if not match:
+                continue
+            if fi.return_type != hint_return:
+                if isinstance(hint_return, VoidType):
+                    # Python semantics: any return type satisfies a void hint
+                    # (callers discard the return value)
+                    pass
+                else:
+                    try:
+                        self.compat.check_type_compatible(fi.return_type, hint_return, "return")
+                    except SemanticError:
+                        continue
+            candidates.append(fi)
+        if len(candidates) == 1:
+            return candidates[0]
+        if len(candidates) > 1:
+            raise self.ctx.error(
+                f"Ambiguous function reference: multiple overloads of '{expr.name}' "
+                f"match {hint}", expr)
+        # No match -- return None to fall through (might be a variable, not a function)
+        return None

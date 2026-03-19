@@ -70,7 +70,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 |---|---------|--------|--------|---------|
 | D1a | `Fn` type + lambda expressions (including captures) | M | Done | [VI](#closures--nested-functions) |
 | D1b | `Callable` type (`std::function`, type-erased) | M | Done | [I](#callable--function-pointer-types) |
-| D2 | Named function references as values | S | Not started | [I](#callable--function-pointer-types) |
+| D2 | Named function references as values | S | Done | [I](#callable--function-pointer-types) |
 | D3 | f-strings | M | Done | [VII](#f-strings) |
 | D4 | with statement | M | Done | [VI](#with-statement-context-managers) |
 | D5 | Nested `def` with captures, `nonlocal` | M-L | Not started | [VI](#closures--nested-functions) |

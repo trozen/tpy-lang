@@ -4607,7 +4607,13 @@ Send/Sync rules for built-in types:
   class Button:
       on_click: Callable[[Int32], None]
   ```
-- **Open**: Named function references as callable values (`apply(double, 42)`)
+- **Working**: Named function references as callable values -- pass functions by name to `Fn`/`Callable` params or assign to `Callable` locals/fields. Overload resolution selects the matching signature. Cross-module functions use qualified C++ names. Generic function references deferred.
+  ```python
+  def double(x: Int32) -> Int32:
+      return x * 2
+  apply(double, 42)  # pass by name, no lambda wrapper needed
+  f: Callable[[Int32], Int32] = double  # assign to Callable local
+  ```
 - **Open**: Nested `def` with captures, `nonlocal` keyword
 - **Open**: Generator functions (`yield`) -- manual state machine transformation
 - See `docs/CLOSURES_CALLABLE_DESIGN.md` for full design and phasing.

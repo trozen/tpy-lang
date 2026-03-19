@@ -505,6 +505,9 @@ class ExpressionGenerator:
             return f'"{escape_cpp_string(expr.value)}"'
 
         elif isinstance(expr, TpyName):
+            # Function reference: generate qualified C++ function name
+            if expr.is_function_ref and expr.function_ref_info is not None:
+                return self._gen_function_ref(expr)
             # Union type narrowing: use the std::get-extracted local
             if expr.name in self.ctx.narrowed_vars:
                 return self.ctx.narrowed_vars[expr.name]
@@ -3097,3 +3100,16 @@ class ExpressionGenerator:
         if isinstance(expr.inferred_return_type, VoidType):
             return f"{capture}({params_str}) {{ {body_code}; }}"
         return f"{capture}({params_str}) {{ return {body_code}; }}"
+
+    def _gen_function_ref(self, expr: TpyName) -> str:
+        """Generate C++ code for a named function used as a value."""
+        fi = expr.function_ref_info
+        # Cross-module: use qualified name
+        if expr.name in self.ctx.user_imported_functions:
+            source_module, original_name = self.ctx.user_imported_functions[expr.name]
+            return qualified_cpp_name(source_module, original_name)
+        # Native functions: use native C++ name
+        if fi.is_native_import or fi.is_extern_c:
+            return qualify_native_name(fi.native_name or fi.name)
+        # Same-module function
+        return escape_cpp_name(expr.name)
