@@ -32,7 +32,7 @@ from ..namespace import Namespace
 from ..sema.context import PENDING_CONTAINER_TYPES
 from ..sema.diagnostics import SemanticError
 
-from .context import INDENT, CodeGenError, escape_cpp_name, qualified_cpp_name, expand_cpp_template, qualify_native_name
+from .context import INDENT, CodeGenError, escape_cpp_name, qualified_cpp_name
 from .type_resolution import resolve_stmt_binding_type
 from ..prescan import match_is_none
 from .match import MatchGenerator
@@ -1250,9 +1250,9 @@ class StatementGenerator:
                 return f"{indent}{subscript_obj}[{index_expr}] = {value};\n"
 
             # Use registry lookup for __setitem__
-            cpp_template = self.builtins.get_type_method_template(obj_type, "__setitem__")
-            if cpp_template:
-                code = expand_cpp_template(cpp_template, subscript_obj, index_expr, value)
+            fi = self.builtins.get_type_method_fi(obj_type, "__setitem__")
+            if fi:
+                code = self.builtins.gen_call_from_fi(fi, subscript_obj, [index_expr, value])
                 return f"{indent}{code};\n"
             else:
                 return f"{indent}::tpy::__setitem__({subscript_obj}, {index_expr}, {value});\n"
@@ -1322,9 +1322,9 @@ class StatementGenerator:
             subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(subscript.obj) else obj
             index_expr = self.expressions.gen_index_expr(subscript.index, index_type)
 
-            cpp_template = self.builtins.get_type_method_template(obj_type, "__delitem__")
-            if cpp_template:
-                code = expand_cpp_template(cpp_template, subscript_obj, index_expr)
+            fi = self.builtins.get_type_method_fi(obj_type, "__delitem__")
+            if fi:
+                code = self.builtins.gen_call_from_fi(fi, subscript_obj, [index_expr])
                 parts.append(f"{indent}{code};\n")
             else:
                 parts.append(f"{indent}::tpy::__delitem__({subscript_obj}, {index_expr});\n")
@@ -1348,14 +1348,8 @@ class StatementGenerator:
             receiver_type = self.ctx.get_expr_type(stmt.target)
             if isinstance(stmt.value, TpyArrayLiteral) and isinstance(receiver_type, ListType):
                 value = f"{self.types.type_to_cpp(receiver_type)}{value}"
-            if inplace.method.cpp_template:
-                result = self.expressions._gen_binop_from_result(inplace, target, value)
-                return f"{indent}{result};\n"
-            elif inplace.method.native_function and inplace.method.native_name:
-                return f"{indent}{qualify_native_name(inplace.method.native_name)}({target}, {value});\n"
-            else:
-                # User-defined in-place method (no cpp_template)
-                return f"{indent}{target}.{inplace.method.name}({value});\n"
+            result = self.builtins.gen_call_from_fi(inplace.method, target, [value])
+            return f"{indent}{result};\n"
 
         target = self.expressions.gen_expr(stmt.target)
         target_type = self.ctx.get_expr_type(stmt.target)
@@ -1410,9 +1404,9 @@ class StatementGenerator:
             )
 
         # Generate read expression using registry lookup for __getitem__
-        get_template = self.builtins.get_type_method_template(obj_type, "__getitem__")
-        if get_template:
-            read_expr = expand_cpp_template(get_template, subscript_obj, index_expr)
+        get_fi = self.builtins.get_type_method_fi(obj_type, "__getitem__")
+        if get_fi:
+            read_expr = self.builtins.gen_call_from_fi(get_fi, subscript_obj, [index_expr])
         else:
             read_expr = f"{subscript_obj}[{index_expr}]"
 
@@ -1435,9 +1429,9 @@ class StatementGenerator:
             result_expr = f"{read_expr} {cpp_op} {value}"
 
         # Generate write using registry lookup for __setitem__
-        set_template = self.builtins.get_type_method_template(obj_type, "__setitem__")
-        if set_template:
-            code = expand_cpp_template(set_template, subscript_obj, index_expr, result_expr)
+        set_fi = self.builtins.get_type_method_fi(obj_type, "__setitem__")
+        if set_fi:
+            code = self.builtins.gen_call_from_fi(set_fi, subscript_obj, [index_expr, result_expr])
             return f"{indent}{code};\n"
         else:
             return f"{indent}::tpy::__setitem__({subscript_obj}, {index_expr}, {result_expr});\n"

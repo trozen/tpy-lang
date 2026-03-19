@@ -47,50 +47,67 @@ class BuiltinGenerator:
         self._gen_call_arg = gen_call_arg
         self._get_cpp_declared_type = get_cpp_declared_type
 
-    def get_type_method_template(self, tpy_type: TpyType, method_name: str) -> str | None:
-        """Look up a method's cpp_template from the registry.
+    def gen_call_from_fi(self, fi: FunctionInfo, receiver: str | None,
+                         gen_args: list[str]) -> str:
+        """Generate a call from a resolved FunctionInfo.
 
-        Returns the cpp_template string if found, None otherwise.
-        Requires single overload - errors if multiple overloads exist.
-        For methods with multiple overloads, sema should resolve and attach
-        the correct FunctionInfo to the AST node.
+        Unified entry point for cpp_template, native_function, and native member calls.
+        receiver is None for free function calls (no self).
+        """
+        if fi.cpp_template:
+            if receiver is not None:
+                return expand_cpp_template(fi.cpp_template, receiver, *gen_args)
+            return fi.cpp_template.format(*gen_args)
+        if fi.native_function and fi.native_name:
+            all_args = [receiver] + gen_args if receiver is not None else gen_args
+            return f"{qualify_native_name(fi.native_name)}({', '.join(all_args)})"
+        if fi.native_name:
+            args_str = ", ".join(gen_args)
+            if receiver is not None:
+                return f"{receiver}.{fi.native_name}({args_str})"
+            return f"{qualify_native_name(fi.native_name)}({args_str})"
+        args_str = ", ".join(gen_args)
+        if receiver is not None:
+            return f"{receiver}.{fi.name}({args_str})"
+        return f"{fi.name}({args_str})"
+
+    def get_type_method_fi(self, tpy_type: TpyType, method_name: str) -> FunctionInfo | None:
+        """Look up a single-overload method's FunctionInfo from the registry.
+
+        Returns None for multi-overload methods (use resolved_function_info instead).
+        Falls back to dunder protocol templates for protocol types.
         """
         record_info = self.ctx.analyzer.registry.get_record_for_type(tpy_type)
         if record_info:
             overloads = record_info.get_method_overloads(method_name)
             if len(overloads) > 1:
-                # __getitem__ multi-overloads use operator[] (generated per stub)
                 if method_name == "__getitem__":
                     return None
                 raise RuntimeError(
-                    f"get_type_method_template called for multi-overload method "
+                    f"get_type_method_fi called for multi-overload method "
                     f"'{method_name}' on {tpy_type}; use resolved_function_info instead"
                 )
-            if overloads and overloads[0].cpp_template:
-                return overloads[0].cpp_template
-            if overloads and overloads[0].native_function and overloads[0].native_name:
+            if overloads:
                 fi = overloads[0]
-                name = qualify_native_name(fi.native_name)
-                placeholders = ", ".join(["{self}"] + [f"{{{i}}}" for i in range(len(fi.params))])
-                return f"{name}({placeholders})"
-        # Check dunder method C++ templates (e.g., __getitem__ -> ::tpy::__getitem__)
+                if fi.cpp_template or fi.native_function or fi.native_name:
+                    return fi
+        # Dunder protocol templates (e.g., __getitem__ -> ::tpy::__getitem__)
         if is_protocol_type(tpy_type):
             from ..modules import get_dunder_cpp_template
-            return get_dunder_cpp_template(method_name)
+            tmpl = get_dunder_cpp_template(method_name)
+            if tmpl:
+                from ..typesys import VOID
+                return FunctionInfo(name=method_name, params=[], return_type=VOID,
+                                    cpp_template=tmpl)
         return None
 
     def gen_method_from_function_info(self, obj: str, args: list[TpyExpr],
                                       method: FunctionInfo) -> str:
-        """Generate method call code from a FunctionInfo with cpp_template.
-
-        Substitutes {self} with obj and {0}, {1}, etc. with generated args.
-        """
-        if method.cpp_template is None:
-            raise CodeGenError(f"Method '{method.name}' has no C++ template")
+        """Generate method call code from a FunctionInfo with pre-generated args."""
         gen_args = [self._gen_call_arg(arg, method.params[i].type if i < len(method.params) else None,
                                        inline_template=True)
                     for i, arg in enumerate(args)]
-        return expand_cpp_template(method.cpp_template, obj, *gen_args)
+        return self.gen_call_from_fi(method, obj, gen_args)
 
     def gen_builtin_constructor(self, expr: TpyCall, record_info: RecordInfo) -> str:
         """Generate C++ code for a builtin type constructor using unified RecordInfo.constructors."""

@@ -471,7 +471,8 @@ class TypeRegistrar:
                 linkage=method.linkage,
                 native_name=method.native_name,
                 native_function=method.native_function,
-                cpp_template=method.cpp_template or DUNDER_CPP_TEMPLATES.get(method.name),
+                cpp_template=method.cpp_template or (DUNDER_CPP_TEMPLATES.get(method.name)
+                             if not method.native_function else None),
                 type_params=list(method.type_params),
                 type_param_bounds=method_type_param_bounds,
                 error_return_type=(qualify_exception_name(method.error_return, self.ctx.registry)

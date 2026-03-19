@@ -883,7 +883,7 @@ class ExpressionAnalyzer:
                             # Build ResolvedBinop so codegen uses the method's
                             # cpp_template instead of raw C++ operator syntax.
                             cpp = method.cpp_template
-                            if not cpp:
+                            if not cpp and not method.native_function:
                                 from .operators import DUNDER_CPP_TEMPLATES
                                 cpp = DUNDER_CPP_TEMPLATES.get(method_name)
                             resolved_method = FunctionInfo(

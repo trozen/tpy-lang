@@ -976,9 +976,9 @@ class ExpressionGenerator:
             # Use registry to get the fixed-int binary operator
             method_name = builtin_modules.BINOP_TO_METHOD.get(expr.op)
             if method_name:
-                cpp_template = self.builtins.get_type_method_template(target_type, method_name)
-                if cpp_template:
-                    return expand_cpp_template(cpp_template, left, right)
+                fi = self.builtins.get_type_method_fi(target_type, method_name)
+                if fi:
+                    return self.builtins.gen_call_from_fi(fi, left, [right])
             # Fallback for operators not in module system (bitwise operators)
             return f"({left} {expr.op} {right})"
 
@@ -1731,19 +1731,12 @@ class ExpressionGenerator:
         # inherited builtin methods need special codegen
         if expr.resolved_function_info:
             method_info = expr.resolved_function_info
-            if method_info.native_function and method_info.native_name:
+            if method_info.native_function or method_info.cpp_template:
                 receiver = self._gen_builtin_method_receiver(expr)
-                gen_args = [self.builtins._gen_call_arg(arg, method_info.params[i].type if i < len(method_info.params) else None,
-                                                        inline_template=True)
-                            for i, arg in enumerate(expr.args)]
-                return f"{qualify_native_name(method_info.native_name)}({', '.join([receiver] + gen_args)})"
-            if method_info.cpp_template:
-                # Static method on builtin type — no receiver, just args
-                if expr.is_static_call:
+                if expr.is_static_call and method_info.cpp_template:
                     gen_args = [self.builtins._gen_expr_deref(arg, ptype)
                                 for arg, (_, ptype) in zip(expr.args, method_info.params)]
                     return method_info.cpp_template.format(*gen_args)
-                receiver = self._gen_builtin_method_receiver(expr)
                 return self.builtins.gen_method_from_function_info(receiver, expr.args, method_info)
 
         # Build explicit template args for generic method calls
@@ -2745,9 +2738,9 @@ class ExpressionGenerator:
             return f"{subscript_obj}[{index_expr}]"
 
         # Use registry lookup for __getitem__
-        cpp_template = self.builtins.get_type_method_template(obj_type, "__getitem__")
-        if cpp_template:
-            return expand_cpp_template(cpp_template, subscript_obj, index_expr)
+        fi = self.builtins.get_type_method_fi(obj_type, "__getitem__")
+        if fi:
+            return self.builtins.gen_call_from_fi(fi, subscript_obj, [index_expr])
         # Fallback: operator[] (user records generate const operator[] from __getitem__)
         return f"{subscript_obj}[{index_expr}]"
 
@@ -2833,14 +2826,9 @@ class ExpressionGenerator:
         """
         wrapped_left = binop_result.left_wrapper.replace("{self}", left).replace("{expr}", left)
         wrapped_right = binop_result.right_wrapper.replace("{self}", right).replace("{expr}", right)
-        method = binop_result.method
-        cpp_tmpl = method.cpp_template
-        if not cpp_tmpl and method.native_function and method.native_name:
-            cpp_tmpl = f"{qualify_native_name(method.native_name)}({{self}}, {{0}})"
         if binop_result.is_reverse:
-            return expand_cpp_template(cpp_tmpl, wrapped_right, wrapped_left)
-        else:
-            return expand_cpp_template(cpp_tmpl, wrapped_left, wrapped_right)
+            return self.builtins.gen_call_from_fi(binop_result.method, wrapped_right, [wrapped_left])
+        return self.builtins.gen_call_from_fi(binop_result.method, wrapped_left, [wrapped_right])
 
     def _gen_span_coercion(self, expr: TpyExpr, span_type: SpanType, gen_inner: str) -> str:
         """Generate std::span conversion for supported container types."""

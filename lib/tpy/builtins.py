@@ -96,12 +96,12 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], ReadO
     @readonly
     def copy(self) -> Own[list[T]]: ...
 
-    @cpp_template("::tpy::list_concat({self}, {0})")
+    @native("tpy::list_concat", function=True)
     @pure
     @readonly
     def __add__(self, other: list[T]) -> list[T]: ...
 
-    @cpp_template("::tpy::list_extend({self}, {0})")
+    @native("tpy::list_extend", function=True)
     def __iadd__(self, other: Iterable[Own[T]]) -> list[T]: ...
 
     @native("tpy::as_span", function=True)
