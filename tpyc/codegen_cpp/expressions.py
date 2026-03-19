@@ -426,7 +426,14 @@ class ExpressionGenerator:
                             if gen_arg != escape_cpp_name(inner.name):
                                 needs_copy = False  # real conversion -> rvalue
                     if needs_copy:
-                        tmp = self.ctx.temps.create_typed("auto", gen_arg)
+                        # Use explicit type instead of auto when Own[T]
+                        # wrapping requires a conversion (e.g. string_view
+                        # -> string): auto would deduce the source type.
+                        if is_any_str_type(own.wrapped):
+                            tmp = self.ctx.temps.create_typed(
+                                own.wrapped.to_cpp(), gen_arg, brace_init=True)
+                        else:
+                            tmp = self.ctx.temps.create_typed("auto", gen_arg)
                         gen_arg = f"std::move({tmp})"
                 else:
                     gen_arg = moved
