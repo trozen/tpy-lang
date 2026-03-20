@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <iostream>
 #include <optional>
@@ -136,6 +137,7 @@ struct dict_values_view {
     auto begin() const { return map_->values_begin(); }
     auto end() const { return map_->values_end(); }
     int32_t size() const { return map_->size(); }
+    bool contains(const V& value) const { return std::find(begin(), end(), value) != end(); }
 
     auto __iter__() const {
         return native_iterator<decltype(begin()), V>{begin(), end()};
@@ -148,6 +150,7 @@ struct dict_items_view {
     auto begin() const { return map_->tuple_items_begin(); }
     auto end() const { return map_->tuple_items_end(); }
     int32_t size() const { return map_->size(); }
+    bool contains(const std::tuple<K, V>& item) const { return std::find(begin(), end(), item) != end(); }
 
     auto __iter__() const {
         return native_iterator<decltype(begin()), std::tuple<K, V>>{begin(), end()};

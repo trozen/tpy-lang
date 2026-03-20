@@ -21,9 +21,9 @@ void main() {
     // print(len(d.values()))
     std::cout << ::tpy::__len__(::tpy::dict_values(d)) << "\n";
     // print(20 in d.values())
-    std::cout << ::tpy::print_bool((std::find(::tpy::dict_values(d).begin(), ::tpy::dict_values(d).end(), 20) != ::tpy::dict_values(d).end())) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::dict_values(d).contains(20))) << "\n";
     // print(99 in d.values())
-    std::cout << ::tpy::print_bool((std::find(::tpy::dict_values(d).begin(), ::tpy::dict_values(d).end(), 99) != ::tpy::dict_values(d).end())) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::dict_values(d).contains(99))) << "\n";
 }
 
 void __tpy_init() {

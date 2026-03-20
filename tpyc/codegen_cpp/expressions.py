@@ -818,12 +818,7 @@ class ExpressionGenerator:
                 right = f"(*{right})"
             negate = expr.op == "not in"
             if expr.resolved_contains:
-                if expr.resolved_contains.cpp_template:
-                    # Builtin __contains__ with template (dict, set, dict_keys)
-                    find_expr = f"({expand_cpp_template(expr.resolved_contains.cpp_template, right, left)})"
-                else:
-                    # User-defined __contains__ method
-                    find_expr = f"({right}.__contains__({left}))"
+                find_expr = f"({self.builtins.gen_call_from_fi(expr.resolved_contains, right, [left])})"
                 return f"(!{find_expr})" if negate else find_expr
             elif is_any_str_type(self.types.get_resolved_type(expr.right)):
                 # String contains: use .find(). Wrap string literals in

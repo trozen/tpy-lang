@@ -3,8 +3,8 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
-- Continue moving builtins to .py: migrate dict (+views), set, Array, Span, Ptr, Range types
-- Eliminate BuiltinTypeDef: move `type_factory` to a hardcoded mapping (`{"builtins.list": lambda t: ListType(t), ...}`), derive `type_params`/`param_kinds` from .py class generics, move constructors to .py as `__init__` overloads (needs unifying constructor vs `__init__` semantics)
+- Continue moving builtins to .py: migrate set, Array, Span, Ptr, Range types (same pattern as list/dict -- move methods/extends/constructors to .py, remove BuiltinTypeDef, keep type_factory bridge)
+- Eliminate concrete type classes (ListType, DictType, etc.): replace `isinstance(t, ListType)` checks with name-based or annotation-driven checks. ~60 references for ListType alone across type inference, codegen, and compatibility. Enables treating all types uniformly as NamedType + RecordInfo. Lower priority -- current type classes work fine, this is about uniformity.
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 
 ## Bugs
@@ -63,9 +63,11 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - language restriction documentation
 
 ## Refactor
+- Inplace operator C++ return type: `__iadd__`/`__ior__` etc. declare returning self type (Python semantics) but the C++ helpers (`list_extend`, `dict_update`) return `void`. Add thin wrappers that return `T&` (e.g. `list_extend_inplace`, `dict_update_inplace`) so the declared return type matches the C++ signature. Affects list and dict.
 - `tpy::ptr_variant<Ts...>` wrapper: replace `std::variant<Ts*...>` in param signatures with a thin wrapper that has an implicit converting constructor from `ptr_variant<T*...>` to `ptr_variant<const T*...>`. This would let deduced-const (non-mutated) params use deep const consistently with `@readonly`, without breaking callers. Currently deduced-const uses shallow const (`const variant<T*...>`) which doesn't prevent mutation through the pointer at the C++ level. Start with param signatures only; locals/fields/returns can stay `std::variant`.
 - Inline `and`/`or` chains for side-effect-free operands: `a or b or c` currently emits an intermediate temp (`auto&& __tmp = (a ? a : b); result = (__tmp ? __tmp : c)`) to avoid double-evaluation. When all operands are provably side-effect-free (variables, literals), the temp is unnecessary and the chain can be emitted as a single nested ternary (`!a.empty() ? a : !b.empty() ? b : c`), which is more readable.
 - `tpy::tpy_callable<F, R(Args...)>` concept: replace verbose `requires requires(__F0& __fn, ...) { { __fn(...) } -> std::convertible_to<R>; }` blocks with a compact `tpy::tpy_callable<__F0, R(Args...)>` concept in the runtime. Same `R(Args...)` notation as `std::function`. Needs a helper trait with partial specialization (`std::invocable` + `std::convertible_to` for return, void special case). Cosmetic improvement -- only worth prioritizing if it measurably speeds up C++ compilation for template-heavy Fn usage.
+- Route codegen through `gen_call_from_fi`: ~32 places in `expressions.py` directly check `fi.cpp_template`/`fi.native_name`/`fi.native_function` or call `expand_cpp_template` instead of using the unified `gen_call_from_fi` dispatch. Also a few in `builtins.py` (constructor paths).
 - Unify rvalue materialization: two overlapping mechanisms exist for extending rvalue lifetimes -- the slot system (`std::optional<T>` slots in `_gen_pointer_local_init`, tied to var decl infrastructure) and TempState (`auto&&` temps, expression-level). Both solve the same problem at different abstraction levels. Consider exposing a lower-level "materialize this rvalue" API that both var decls and expression-level temps (e.g. `and`/`or` ternaries) can share.
 
 ## Random items

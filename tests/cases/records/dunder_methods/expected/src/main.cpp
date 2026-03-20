@@ -32,7 +32,7 @@ void __tpy_init() {
     items->push_back(30);
     // # Explicit __len__
     // print(items.__len__())  # 3
-    std::cout << static_cast<int32_t>((*items).size()) << "\n";
+    std::cout << ::tpy::__len__((*items)) << "\n";
     // # Explicit __getitem__
     // print(items.__getitem__(Int32(0)))  # 10
     std::cout << ::tpy::__getitem__((*items), 0) << "\n";
