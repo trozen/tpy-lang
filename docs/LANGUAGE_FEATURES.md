@@ -4615,7 +4615,27 @@ Send/Sync rules for built-in types:
   apply(double, 42)  # pass by name, no lambda wrapper needed
   f: Callable[[Int32], Int32] = double  # assign to Callable local
   ```
-- **Open**: Nested `def` with captures, `nonlocal` keyword
+- **Working**: Nested `def` with captures and `nonlocal` keyword. Nested functions compile to
+  C++ lambdas with auto-inferred captures. Non-escaping closures capture by reference;
+  escaping closures (returned as `Callable` or passed to `Callable` params) capture by value.
+  `nonlocal` enables mutable captures (non-escaping only). Restrictions: no decorators,
+  no type parameters, no nested-in-nested, no recursive nested defs. Escaping closures that
+  capture `str` parameters emit a warning (string_view may dangle).
+  ```python
+  def make_adder(n: Int32) -> Callable[[Int32], Int32]:
+      def add(x: Int32) -> Int32:
+          return x + n  # captures 'n' by value (escaping)
+      return add
+
+  def process(items: list[Int32]) -> Int32:
+      total: Int32 = 0
+      def accumulate(x: Int32) -> None:
+          nonlocal total
+          total += x  # mutable capture by reference
+      for item in items:
+          accumulate(item)
+      return total
+  ```
 - **Open**: Generator functions (`yield`) -- manual state machine transformation
 - See `docs/CLOSURES_CALLABLE_DESIGN.md` for full design and phasing.
 

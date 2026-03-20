@@ -1,0 +1,1 @@
+main.py:7: error: nonlocal 'count' in escaping closure 'increment' is not supported (the closure is returned or stored; use a class instead)

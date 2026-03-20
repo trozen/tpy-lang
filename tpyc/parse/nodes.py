@@ -581,6 +581,12 @@ class TpyGlobal(TpyStmt):
 
 
 @dataclass
+class TpyNonlocal(TpyStmt):
+    """nonlocal x, y -- declares names as mutable captures from enclosing scope."""
+    names: list[str]
+
+
+@dataclass
 class TpyRaise(TpyStmt):
     """raise E -- returns error from @error_return function."""
     exception_type: str  # e.g. "NotFound"
@@ -610,6 +616,20 @@ class TpyWith(TpyStmt):
     """with statement (context managers)."""
     items: list[TpyWithItem]
     body: list[TpyStmt]
+
+
+@dataclass
+class TpyNestedDef(TpyStmt):
+    """Nested function definition inside a function body.
+
+    Compiles to a C++ lambda assigned to a local auto variable.
+    Capture analysis is performed by sema.
+    """
+    func: 'TpyFunction'
+    # Set by sema:
+    captured_names: list[str] = field(default_factory=list)
+    nonlocal_names: set[str] = field(default_factory=set)
+    escapes: bool = False
 
 
 # -- Pattern matching nodes --

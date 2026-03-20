@@ -7,7 +7,7 @@
 | 1a | `Fn` type + lambda expressions (including captures) | Done |
 | 1b | `Callable` type (`std::function`, type-erased callable) | Done |
 | 2 | Named function references as values (`apply(double, 42)`) | Done |
-| 3 | Nested `def` with captures, `nonlocal` keyword | Not started |
+| 3 | Nested `def` with captures, `nonlocal` keyword | Done |
 | 4 | Generator functions (`yield`) | Not started |
 | 5 | `@noalloc` enforcement, `FnOnce` semantics for `Own[T]` captures | Not started |
 
@@ -18,9 +18,13 @@
 | `yield from` / delegating generators | Forward to sub-iterator; useful for recursive generators (tree traversal) |
 | `gen.send(value)` / `gen.throw(exc)` | Two-way generator communication; rarely used outside async frameworks |
 | `async`/`await` | Reuses state machine infrastructure from generators |
-| Recursive closures | Closure calling itself -- needs naming or `std::function` self-reference (Phase 4+) |
+| Recursive closures | Closure calling itself -- needs `std::function` self-reference. Currently gives confusing "Unknown function" error; should have a dedicated diagnostic. |
+| Nested-in-nested `def` | `def` inside `def` inside `def`. Currently rejected. Requires saving/restoring more sema state in `nested_def_scope`. |
+| Escaping `str` param capture fix | Escaping closure capturing a `str` parameter copies `string_view` (may dangle). Codegen should emit `name = std::string(name)` for `str`-typed captures. Currently emits a warning. |
+| Escape detection for field/container storage | `self.field = nested_func` and `container.append(nested_func)` don't trigger escape detection. Only `return` and `Callable` param passing do. |
+| Escaping `nonlocal` via `Rc[T]` | `Rc[T]` (`std::shared_ptr<T>`) would allow mutable shared state between closure and enclosing scope, enabling `nonlocal` in escaping closures. |
 | Variadic `Callable` | `Callable[..., R]` accepting any args -- needs `*args` (D17) |
-| Method references | `obj.method` as a value -- partial application binding `self` (Phase 4+) |
+| Method references | `obj.method` as a value -- partial application binding `self` |
 | `Fn \| None` (optional zero-cost) | Template-based optional callable via `Optional[Protocol]` pattern (`std::nullptr_t` default). Currently an error -- use `Callable \| None` instead. |
 | `Fn` as local variable annotation | `f: Fn[[Int32], Int32] = lambda x: x + 1` -- use `Fn` as type context for a named lambda, codegen as `auto` (zero-cost). Only valid when not reassigned (reassignment would need `std::function`). Currently an error. |
 
@@ -499,7 +503,7 @@ apply(fmt.format, 42)  # captures 'fmt', binds 'self'
 
 ---
 
-## V. Nested `def` with Captures (Phase 4)
+## V. Nested `def` with Captures (Phase 3)
 
 ### Syntax
 
@@ -595,9 +599,29 @@ std::function<int32_t(int32_t)> make_adder(int32_t n) {
 }
 ```
 
+### Known Limitations (Phase 3)
+
+- **No decorators or type parameters** on nested defs. Rejected at parse time.
+- **No nested-in-nested**: `def` inside `def` inside `def` is rejected. Requires
+  more thorough sema state isolation in `nested_def_scope`.
+- **No recursive nested defs**: The name is bound after the `def` statement, so the
+  body cannot reference itself. Gives "Unknown function" error (should be improved).
+- **Escape detection is incomplete**: Only `return inner` and passing to `Callable`
+  params trigger escape marking. Storing in a field (`self.f = inner`) or appending
+  to a container does not. These cases produce by-ref captures in a stored
+  `std::function`, which is UB.
+- **Escaping `str` parameter capture**: An escaping closure that captures a `str`
+  function parameter copies the `string_view` (non-owning). After the enclosing
+  function returns, the view may dangle. A warning is emitted. Fix: codegen should
+  emit `name = std::string(name)` for `str`-typed captures in escaping closures.
+- **Codegen context sharing**: The nested def body reuses the outer function's
+  codegen context (pointer_locals, reassigned_vars, etc.) rather than having its
+  own isolated context. Works for simple cases but may cause issues with
+  pointer-slot variables captured by nested defs.
+
 ---
 
-## VI. Generator Functions (`yield`) -- Phase 5
+## VI. Generator Functions (`yield`) -- Phase 4
 
 ### Relationship to Closures
 
@@ -817,7 +841,7 @@ machine transformation (struct + switch) is needed only for generators with
 multiple yield points or complex control flow.
 
 **Decision**: Start with the lambda/wrapper approach for simple generators
-(Phase 5a), add the full state machine for complex generators (Phase 5b).
+(Phase 4a), add the full state machine for complex generators (Phase 4b).
 
 ---
 
@@ -894,28 +918,20 @@ and capturing lambdas, `Callable` field, error cases.
 - Codegen: pass the function name directly (C++ templates handle it)
 - Generic functions: type params inferred from Fn/Callable hint, bounded params validated, codegen emits explicit template instantiation (`identity<int32_t>`)
 
-### Phase 3: Escaping Closures (M effort)
+### Phase 3: Nested `def` + Escaping Closures + `nonlocal` (Done)
 
-**Goal**: Store closures in fields, return from functions.
+**Goal**: Full nested function support with captures and mutable state.
 
-- Escaping analysis in sema (field storage, return context, container storage)
-- `std::function` codegen for escaping callable types
-- `std::move_only_function` when captures include `Own[T]` / `@nocopy`
-- Move capture for escaping closures with owned values
-- Variable invalidation after move-capture
-- Dangling reference detection for escaping view-type captures
-
-### Phase 4: Nested `def` + `nonlocal` (M-L effort)
-
-**Goal**: Full closure support with mutable captures.
-
-- Remove `nonlocal` from `FORBIDDEN_CONSTRUCTS`
 - Parse nested `def` as closure (capture free variables)
+- Escaping analysis in sema (return context, Callable param passing)
+- Non-escaping: capture by reference; escaping: capture by value
 - `nonlocal` declaration: mark captured variables as mutable
 - Non-escaping mutable captures: `[&var]`
 - Escaping mutable captures: reject with diagnostic (recommend class-based pattern)
+- Assignment to outer variable without `nonlocal`: error
+- See Known Limitations (Phase 3) in Section V for remaining gaps
 
-### Phase 5: Generator Functions (L effort)
+### Phase 4: Generator Functions (L effort)
 
 **5a -- Simple generators (lambda-based):**
 - Detect `yield` in function body at parse time
@@ -928,7 +944,7 @@ and capturing lambdas, `Callable` field, error cases.
 - State machine struct generation with `__next__()` method
 - Control flow flattening (yield in loops, conditionals)
 
-### Phase 6: `@noalloc` Enforcement (S-M effort)
+### Phase 5: `@noalloc` Enforcement (S-M effort)
 
 - Check callable context in `@noalloc` functions
 - Reject `std::function` usage (escaping closures, callable fields)
@@ -971,8 +987,9 @@ in CPython. No `no_cpython.txt` should be needed for generator tests.
    passed where `Callable` is expected (wrapped in `std::function`). The reverse
    is not possible (type is erased).
 
-5. **Recursive closures**: Deferred to Phase 4+ (nested `def`). C++ requires
-   `std::function` for self-reference.
+5. **Recursive closures**: Not supported. The nested def name is bound after
+   the `def` statement, so the body cannot reference itself. C++ `auto`
+   lambdas can't capture themselves; would need `std::function` self-reference.
 
 6. **Generator `send()` and `throw()`**: Future extension. Rarely used outside
    async frameworks.

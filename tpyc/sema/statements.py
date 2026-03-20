@@ -16,13 +16,14 @@ from ..typesys import (
     PendingGenericInstanceType, FnType, contains_fn_type,
     INT32, VOID, BIGINT, FLOAT, STRVIEW, is_protocol_type, is_protocol_union,
     qualify_exception_name,
+    FunctionInfo, ParamInfo,
 )
 from ..parse import (
     TpyExpr,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert,
     TpyRaise, TpyTryExcept, TpyWith,
-    TpyGlobal,
+    TpyGlobal, TpyNonlocal, TpyNestedDef,
     TpyCall, TpyMethodCall, TpyArrayLiteral, TpyListComprehension, TpyDictLiteral, TpyCoerce,
     TpySubscript, TpySlice, TpyStrLiteral, TpyName, TpyTupleLiteral,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyUnaryOp,
@@ -31,6 +32,8 @@ from ..parse import (
 )
 from ..coercions import CoercionContext
 from ..namespace import BindingKind
+from ..prescan import scan_reassigned_vars
+from ..liveness import analyze_last_uses
 from ..parse.nodes import VarLinkage
 from .context import addr_taken_roots
 from .diagnostics import SemanticError
@@ -512,6 +515,9 @@ class StatementAnalyzer:
                 # Mark both loop vars and params so they keep T& (not const T&/const T*).
                 if isinstance(stmt.value, TpyName):
                     self.ctx.mark_loop_var_mutated(stmt.value.name)
+                    # Escape tracking: returning a nested def marks it as escaping
+                    if stmt.value.name in self.ctx.nested_def_names:
+                        self.ctx.nested_def_escapes.add(stmt.value.name)
                 if expected is not None and not expected.is_value_type():
                     for ret_root in addr_taken_roots(stmt.value):
                         self.ctx.mark_param_mutated(ret_root)
@@ -865,6 +871,10 @@ class StatementAnalyzer:
             self.match.analyze_match(stmt)
         elif isinstance(stmt, TpyWith):
             self._analyze_with(stmt)
+        elif isinstance(stmt, TpyNonlocal):
+            self._analyze_nonlocal(stmt)
+        elif isinstance(stmt, TpyNestedDef):
+            self._analyze_nested_def(stmt)
 
     def _apply_range_facts(self, facts: dict[str, 'ValueRange']) -> None:
         """Apply integer range facts, intersecting with any existing ranges."""
@@ -1084,6 +1094,145 @@ class StatementAnalyzer:
                 if name in self.ctx.current_scope.bindings
             }
 
+    # --- Nested def / nonlocal ---
+
+    def _analyze_nonlocal(self, stmt: TpyNonlocal) -> None:
+        """Analyze a nonlocal declaration."""
+        if not self.ctx.in_nested_def:
+            raise self.ctx.error(
+                "'nonlocal' is only valid inside a nested function", stmt)
+        for name in stmt.names:
+            if name not in self.ctx.outer_scope_locals:
+                raise self.ctx.error(
+                    f"No binding for nonlocal '{name}' found in enclosing scope",
+                    stmt)
+            self.ctx.current_nonlocal_names.add(name)
+
+    def _analyze_nested_def(self, stmt: TpyNestedDef) -> None:
+        """Analyze a nested function definition.
+
+        TODO: scope setup / prescan / liveness / body analysis here
+        duplicates _analyze_function in analyzer.py. Refactor to share
+        a common core.
+        """
+        from .expressions import _collect_body_name_refs, _collect_body_local_defs
+
+        func = stmt.func
+
+        if self.ctx.in_nested_def:
+            raise self.ctx.error(
+                "Nested functions cannot contain further nested functions",
+                stmt)
+
+        # Collect outer locals available for capture
+        outer_locals = self.ctx.definitely_assigned.copy()
+
+        # Pre-scan nonlocal declarations (at any nesting depth) to bind
+        # them in the inner scope before body analysis begins.
+        nonlocal_names: set[str] = set()
+        self._collect_nonlocal_names(func.body, nonlocal_names)
+
+        # Resolve param types
+        params: list[tuple[str, TpyType]] = []
+        for pname, ptype in func.params:
+            resolved = self.type_ops.resolve_type(ptype)
+            params.append((pname, resolved))
+        param_names = {pname for pname, _ in params}
+
+        # Resolve return type
+        return_type = self.type_ops.resolve_type(func.return_type)
+
+        # Analyze body in isolated scope
+        with self.scopes.nested_def_scope(func) as inner_scope:
+            self.ctx.outer_scope_locals = outer_locals
+
+            # Run prescan on nested body
+            pre_declared = {pname for pname, _ in params}
+            scan = scan_reassigned_vars(func.body, pre_declared)
+            self.ctx.current_reassigned_vars = scan.reassigned
+            self.ctx.current_lvalue_reassigned = scan.lvalue_reassigned
+            self.ctx.current_aug_assigned_vars = scan.aug_assigned
+            self.ctx.all_last_uses |= analyze_last_uses(
+                func.body, scan.alias_sources)
+
+            # Add params to inner scope
+            for pname, ptype in params:
+                inner_scope.define(pname, ptype)
+                self.ctx.definitely_assigned.add(pname)
+                if self.ctx.current_ns:
+                    self.ctx.current_ns.bind_variable(pname, ptype)
+
+            # Add nonlocal names to inner scope with types from outer
+            for name in nonlocal_names:
+                outer_type = self.ctx.current_scope.parent.lookup(name) if self.ctx.current_scope.parent else None
+                if outer_type is not None:
+                    inner_scope.define(name, outer_type)
+                    self.ctx.definitely_assigned.add(name)
+                    if self.ctx.current_ns:
+                        self.ctx.current_ns.bind_variable(name, outer_type)
+
+            # Analyze body statements
+            for s in func.body:
+                self.analyze_stmt(s)
+
+            # Use the authoritative nonlocal set from body analysis
+            # (covers nonlocal declarations at any nesting depth)
+            nonlocal_names = self.ctx.current_nonlocal_names.copy()
+        stmt.nonlocal_names = nonlocal_names
+
+        # Compute captures: free variables that come from outer scope
+        free_names = _collect_body_name_refs(func.body)
+        local_defs = _collect_body_local_defs(func.body)
+        captured = sorted(
+            (free_names - param_names - local_defs - nonlocal_names) & outer_locals
+        )
+        # Nonlocal names are also captures (mutable references)
+        for name in sorted(nonlocal_names):
+            if name not in captured:
+                captured.append(name)
+        stmt.captured_names = captured
+
+        # Create FunctionInfo and register as local function
+        param_infos = [ParamInfo(name=pname, type=ptype) for pname, ptype in params]
+        fi = FunctionInfo(
+            name=func.name,
+            params=param_infos,
+            return_type=return_type,
+        )
+
+        # Bind as FUNCTION in the local namespace
+        if self.ctx.current_ns:
+            self.ctx.current_ns.bind_function(fi)
+        self.ctx.definitely_assigned.add(func.name)
+
+        # Track for escape analysis
+        self.ctx.nested_def_names.add(func.name)
+        self.ctx.nested_def_nodes[func.name] = stmt
+
+    def _collect_nonlocal_names(self, stmts: list, names: set[str]) -> None:
+        """Recursively collect nonlocal declarations from all nesting depths."""
+        for s in stmts:
+            if isinstance(s, TpyNonlocal):
+                for name in s.names:
+                    names.add(name)
+            elif isinstance(s, TpyIf):
+                self._collect_nonlocal_names(s.then_body, names)
+                self._collect_nonlocal_names(s.else_body, names)
+            elif isinstance(s, (TpyWhile, TpyForEach)):
+                self._collect_nonlocal_names(s.body, names)
+                if hasattr(s, 'orelse'):
+                    self._collect_nonlocal_names(s.orelse, names)
+            elif isinstance(s, TpyWith):
+                self._collect_nonlocal_names(s.body, names)
+            elif isinstance(s, TpyTryExcept):
+                self._collect_nonlocal_names(s.try_body, names)
+                self._collect_nonlocal_names(s.except_body, names)
+                self._collect_nonlocal_names(s.else_body, names)
+            elif isinstance(s, TpyMatch):
+                for case in s.cases:
+                    self._collect_nonlocal_names(case.body, names)
+            # Don't recurse into TpyNestedDef (separate scope)
+
     def _resolve_literal_type(self, t: TpyType) -> TpyType:
         """Resolve IntLiteralType/FloatLiteralType to concrete types."""
         if isinstance(t, IntLiteralType):
@@ -1273,6 +1422,14 @@ class StatementAnalyzer:
 
     def _analyze_var_decl(self, stmt: TpyVarDecl) -> None:
         """Analyze a variable declaration."""
+        # In nested defs, assigning to an outer variable requires nonlocal
+        if (self.ctx.in_nested_def
+                and stmt.name in self.ctx.outer_scope_locals
+                and stmt.name not in self.ctx.current_nonlocal_names):
+            raise self.ctx.error(
+                f"Cannot assign to '{stmt.name}' in nested function"
+                f" without 'nonlocal' declaration",
+                stmt)
         # Resolve type aliases in annotation (for cross-module imported aliases)
         # Recursive to handle nested types like list[Shape], Optional[Shape]
         if stmt.type and self.ctx.registry.type_aliases:
@@ -2038,6 +2195,15 @@ class StatementAnalyzer:
 
     def _analyze_assign(self, stmt: TpyAssign) -> None:
         """Analyze an assignment."""
+        # In nested defs, assigning to an outer variable requires nonlocal
+        if (self.ctx.in_nested_def
+                and isinstance(stmt.target, TpyName)
+                and stmt.target.name in self.ctx.outer_scope_locals
+                and stmt.target.name not in self.ctx.current_nonlocal_names):
+            raise self.ctx.error(
+                f"Cannot assign to '{stmt.target.name}' in nested function"
+                f" without 'nonlocal' declaration",
+                stmt)
         # Slice assignment: a[x:y] = rhs -- handled separately
         if isinstance(stmt.target, TpySubscript) and isinstance(stmt.target.index, TpySlice):
             self._analyze_slice_assign(stmt)
@@ -2373,6 +2539,15 @@ class StatementAnalyzer:
 
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
         """Analyze an augmented assignment (+=, -=, etc.)."""
+        # In nested defs, aug-assign to an outer variable requires nonlocal
+        if (self.ctx.in_nested_def
+                and isinstance(stmt.target, TpyName)
+                and stmt.target.name in self.ctx.outer_scope_locals
+                and stmt.target.name not in self.ctx.current_nonlocal_names):
+            raise self.ctx.error(
+                f"Cannot modify '{stmt.target.name}' in nested function"
+                f" without 'nonlocal' declaration",
+                stmt)
         # Block augmented assignment of Final globals at module level
         if isinstance(stmt.target, TpyName) and self.ctx.is_top_level and stmt.target.name in self.ctx.final_globals:
             raise self.ctx.error(

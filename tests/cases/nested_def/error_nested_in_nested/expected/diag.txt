@@ -1,0 +1,1 @@
+main.py:6: error: Nested functions cannot contain further nested functions

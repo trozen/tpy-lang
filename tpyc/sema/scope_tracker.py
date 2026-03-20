@@ -73,6 +73,27 @@ class ScopeTracker:
             self.ctx.current_ns = old_ns
 
     @contextmanager
+    def nested_def_scope(self, func_node: object) -> Iterator[Scope]:
+        """Create an isolated scope for a nested function definition.
+
+        Saves and restores all per-function state so the nested def analysis
+        doesn't interfere with the enclosing function.
+        """
+        saved = self.ctx.save_function_state()
+        inner_scope = Scope(self.ctx.current_scope)
+        inner_ns = Namespace(parent=self.ctx.current_ns) if self.ctx.current_ns else None
+
+        self.ctx.reset_function_tracking()
+        self.ctx.current_scope = inner_scope
+        self.ctx.current_ns = inner_ns
+        self.ctx.current_function = func_node
+        self.ctx.in_nested_def = True
+        try:
+            yield inner_scope
+        finally:
+            self.ctx.restore_function_state(saved)
+
+    @contextmanager
     def loop_var(self, scope: Scope, name: str, var_type: TpyType,
                  depth: int, is_foreach: bool = False) -> Iterator[None]:
         """Bind a loop variable in scope/namespace and track its depth."""

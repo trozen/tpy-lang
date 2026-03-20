@@ -155,6 +155,7 @@ tests/
 │   ├── none_safety/          # Optional types, narrowing
 │   ├── operators/            # Operators, coercion, assignment, subscript
 │   ├── auto_move/            # Auto-move at last use, forwarding refs
+│   ├── nested_def/           # Nested function definitions, captures, nonlocal
 │   ├── pointers/             # Ptr, Ptr[readonly[T]], Own, dangling references
 │   ├── protocols/            # Protocol definition and implementation
 │   ├── readonly/             # @readonly decorator, readonly[T] type modifier

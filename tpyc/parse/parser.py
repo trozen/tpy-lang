@@ -33,7 +33,8 @@ from .nodes import (
     TpyIfExpr, TpyNamedExpr, TpyLambda,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
-    TpyPassStmt, TpyGlobal, TpyRaise, TpyTryExcept, TpyWithItem, TpyWith,
+    TpyPassStmt, TpyGlobal, TpyNonlocal, TpyRaise, TpyTryExcept, TpyWithItem, TpyWith,
+    TpyNestedDef,
     TpyPattern, TpyWildcardPattern, TpyCapturePattern, TpyClassPattern,
     TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
     TpyMatchCase, TpyMatch,
@@ -338,7 +339,7 @@ class Parser:
 
     FORBIDDEN_CONSTRUCTS = {
         "with", "async", "await",
-        "yield", "nonlocal",
+        "yield",
     }
 
     def __init__(self):
@@ -2225,6 +2226,12 @@ class Parser:
         elif isinstance(node, ast.With):
             return self._parse_with(node, loc)
 
+        elif isinstance(node, ast.Nonlocal):
+            return TpyNonlocal(node.names, loc=loc)
+
+        elif isinstance(node, ast.FunctionDef):
+            return self._parse_nested_def(node, loc)
+
         else:
             raise ParseError(f"Unsupported statement: {type(node).__name__}", node)
 
@@ -2286,6 +2293,17 @@ class Parser:
             items.append(TpyWithItem(context_expr, target, loc=item_loc))
         body = [self._parse_stmt(s) for s in node.body]
         return TpyWith(items, body, loc=loc)
+
+    def _parse_nested_def(self, node: ast.FunctionDef, loc: SourceLocation | None) -> TpyNestedDef:
+        """Parse a nested function definition inside a function body."""
+        if node.decorator_list:
+            raise ParseError(
+                f"Decorators are not supported on nested functions", node)
+        if hasattr(node, 'type_params') and node.type_params:
+            raise ParseError(
+                f"Type parameters are not supported on nested functions", node)
+        func = self._parse_function(node)
+        return TpyNestedDef(func=func, loc=loc)
 
     def _parse_delete(self, node: ast.Delete, loc: SourceLocation | None) -> TpyStmt:
         """Parse a del statement. Only subscript targets are supported."""

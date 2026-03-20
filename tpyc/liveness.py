@@ -18,7 +18,7 @@ from __future__ import annotations
 from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
     TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyAssert, TpyRaise,
-    TpyExprStmt, TpyMatch,
+    TpyExprStmt, TpyMatch, TpyNestedDef,
     TpyName, TpyFieldAccess, TpySubscript, TpyNamedExpr,
 )
 
@@ -274,7 +274,16 @@ def _analyze_stmt(
     elif isinstance(stmt, TpyRaise):
         live.clear()
 
-    # TpyBreak, TpyContinue, TpyPassStmt, TpyGlobal, TpyImport: no reads
+    elif isinstance(stmt, TpyNestedDef):
+        # Captured vars are referenced by the closure (by-ref or by-value).
+        # They must stay live so earlier uses aren't incorrectly marked as
+        # last-use (which would cause std::move before the capture).
+        if stmt.captured_names:
+            for name in stmt.captured_names:
+                live.add(name)
+        live.discard(stmt.func.name)
+
+    # TpyBreak, TpyContinue, TpyPassStmt, TpyGlobal, TpyNonlocal, TpyImport: no reads
 
 
 def _analyze_if(
@@ -531,6 +540,12 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
 
     elif isinstance(stmt, TpyRaise):
         live.clear()
+
+    elif isinstance(stmt, TpyNestedDef):
+        if stmt.captured_names:
+            for name in stmt.captured_names:
+                live.add(name)
+        live.discard(stmt.func.name)
 
 
 # -- Read collection ----------------------------------------------------------

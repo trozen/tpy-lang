@@ -15,7 +15,7 @@ from .parse import (
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat,
     TpyCoerce, TpyFieldAccess, TpyIfExpr, TpyNamedExpr,
-    TpyExprStmt, TpyReturn, TpyAssert,
+    TpyExprStmt, TpyReturn, TpyAssert, TpyNestedDef,
     TpyFStringValue, TpyComprehensionGenerator,
     TpyDictLiteral, TpySetLiteral, TpyTupleLiteral, TpyFString,
 )
@@ -209,6 +209,14 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
         elif isinstance(stmt, TpyAugAssign):
             if isinstance(stmt.target, TpyName) and stmt.target.name in declared:
                 result.aug_assigned.add(stmt.target.name)
+        elif isinstance(stmt, TpyNestedDef):
+            name = stmt.func.name
+            if name in declared:
+                result.reassigned.add(name)
+                result.rvalue_reassigned.add(name)
+            else:
+                declared.add(name)
+            # Do NOT recurse into nested body (separate scope)
         if isinstance(stmt, TpyIf):
             _scan_stmts(stmt.then_body, declared, result)
             _scan_stmts(stmt.else_body, declared, result)

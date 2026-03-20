@@ -1,0 +1,1 @@
+main.py:6: error: No binding for nonlocal 'z' found in enclosing scope

@@ -21,7 +21,7 @@ from ..parse import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt,
     TpyRaise, TpyTryExcept, TpyWith,
-    TpyGlobal,
+    TpyGlobal, TpyNonlocal, TpyNestedDef,
     TpyImport, TpySubscript, TpySlice, TpyStrLiteral, TpyNoneLiteral, TpyName, TpyExpr, TpyFunction,
     TpyAssert, TpyBoolLiteral, TpyArrayLiteral,
     TpyFieldAccess, TpyMethodCall,
@@ -228,6 +228,10 @@ class StatementGenerator:
             self.ctx.emit_source_comment(out, stmt.loc, indent)
             self._emit_branch_decls(out, stmt, indent)
             self._gen_with(out, stmt, indent)
+        elif isinstance(stmt, TpyNestedDef):
+            self.ctx.emit_source_comment(out, stmt.loc, indent)
+            self.ctx.temps.flush(out, indent)
+            self._gen_nested_def(out, stmt, indent)
         else:
             # Simple statements - single flush point for all
             code = self._gen_simple_stmt(stmt, indent)
@@ -379,6 +383,8 @@ class StatementGenerator:
             return ""  # No-op - emit nothing
         elif isinstance(stmt, TpyGlobal):
             return ""  # No C++ output -- just a sema directive
+        elif isinstance(stmt, TpyNonlocal):
+            return ""  # No C++ output -- capture mode handles it
         elif isinstance(stmt, TpyRaise):
             assert self.ctx.current_error_return is not None
             return f"{indent}return ::tpy::make_unexpected({self.ctx.current_error_return}{{}});\n"
@@ -1714,6 +1720,63 @@ class StatementGenerator:
         for _ in guard_ids:
             self.ctx.indent_level -= 1
             out.write(f"{self.ctx.indent()}}}\n")
+
+    def _gen_nested_def(self, out: TextIO, stmt: TpyNestedDef, indent: str) -> None:
+        """Generate a C++ lambda for a nested function definition."""
+
+        func = stmt.func
+        name = escape_cpp_name(func.name)
+
+        # Build capture list
+        if stmt.captured_names:
+            if stmt.escapes:
+                refs = ", ".join(escape_cpp_name(n) for n in stmt.captured_names)
+            else:
+                refs = ", ".join(f"&{escape_cpp_name(n)}" for n in stmt.captured_names)
+            capture = f"[{refs}]"
+        else:
+            capture = "[]"
+
+        # Build parameter list
+        params = []
+        for pname, ptype in func.params:
+            resolved = self.types.resolve_type(ptype)
+            cpp_name = escape_cpp_name(pname)
+            cpp_type = resolved.to_cpp_param(cpp_name)
+            params.append(cpp_type)
+        params_str = ", ".join(params)
+
+        # Return type
+        return_type = self.types.resolve_type(func.return_type)
+        if isinstance(return_type, VoidType):
+            ret_annotation = ""
+        else:
+            ret_cpp = self.types.type_to_cpp(return_type)
+            ret_annotation = f" -> {ret_cpp}"
+
+        # Save outer codegen scope so lambda body declarations don't leak
+        scope_snap = self.ctx.snapshot_local_scope()
+        for pname, _ in func.params:
+            self.ctx.local_scope_names.add(pname)
+        self.ctx.local_scope_names.add(func.name)
+        self.ctx.nested_def_locals.add(func.name)
+
+        # Emit lambda header
+        out.write(f"{indent}auto {name} = {capture}({params_str}){ret_annotation} {{\n")
+
+        # Increase indent and generate body
+        self.ctx.indent_level += 1
+        try:
+            for s in func.body:
+                self.gen_stmt(out, s)
+        finally:
+            self.ctx.indent_level -= 1
+            self.ctx.restore_local_scope(scope_snap)
+            # Re-add nested def name (must survive into outer scope)
+            self.ctx.nested_def_locals.add(func.name)
+            self.ctx.local_scope_names.add(func.name)
+
+        out.write(f"{indent}}};\n")
 
     def _gen_try_except(self, out: TextIO, stmt: TpyTryExcept, indent: str) -> None:
         """Generate a try/except block using goto-based error dispatch.

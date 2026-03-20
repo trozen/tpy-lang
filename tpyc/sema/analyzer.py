@@ -11,7 +11,7 @@ from typing import Optional
 from ..typesys import (
     TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, VoidType,
     INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
-    EnumType,
+    EnumType, is_any_str_type,
 )
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call
@@ -733,6 +733,9 @@ class SemanticAnalyzer:
             self.stmts.analyze_stmt(stmt)
         self.deduction.resolve_all()
 
+        # Finalize nested def escape analysis
+        self._finalize_nested_def_escapes()
+
         # Store Phase 1 local mutation facts (resolved by Phase 2 propagation)
         func_overloads = self.ctx.registry.get_function(func.name)
         func_info = func_overloads[-1] if func_overloads else None
@@ -773,6 +776,33 @@ class SemanticAnalyzer:
         self.ctx.current_function = None
         self.ctx.current_scope = None
         self.ctx.current_ns = None
+
+    def _finalize_nested_def_escapes(self) -> None:
+        """Finalize escape analysis for nested defs after the enclosing function is analyzed."""
+        # Outer function's parameter names (str params use string_view)
+        outer_param_names = {pname for pname, _ in self.ctx.current_function.params} if self.ctx.current_function else set()
+        for name in self.ctx.nested_def_escapes:
+            node = self.ctx.nested_def_nodes.get(name)
+            if node is None:
+                continue
+            node.escapes = True
+            # Reject nonlocal in escaping closures
+            if node.nonlocal_names:
+                nl_list = ", ".join(f"'{n}'" for n in sorted(node.nonlocal_names))
+                self.ctx.emit_error(
+                    f"nonlocal {nl_list} in escaping closure '{name}' is not supported"
+                    f" (the closure is returned or stored; use a class instead)",
+                    node)
+            # Warn about str parameter captures (string_view dangles after return)
+            for cap_name in node.captured_names:
+                if cap_name in outer_param_names:
+                    cap_type = self.ctx.current_scope.lookup(cap_name) if self.ctx.current_scope else None
+                    if cap_type is not None and is_any_str_type(cap_type):
+                        self.ctx.warning(
+                            f"Escaping closure '{name}' captures str parameter"
+                            f" '{cap_name}' by value (string_view copy may dangle;"
+                            f" consider passing str as a local variable instead)",
+                            node)
 
     def _collect_method_overload_groups(self, record: TpyRecord) -> None:
         """Identify and validate @overload groups among a record's methods.

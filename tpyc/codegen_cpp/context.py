@@ -355,6 +355,7 @@ class CodeGenContext:
     declared_vars: set[str] = field(default_factory=set)
     var_types: dict[str, TpyType] = field(default_factory=dict)
     local_scope_names: set[str] = field(default_factory=set)
+    nested_def_locals: set[str] = field(default_factory=set)
     # Walrus pre-declarations already emitted (not snapshot/restored across branches)
     walrus_pre_declared: set[str] = field(default_factory=set)
     global_names: set[str] = field(default_factory=set)
@@ -469,6 +470,7 @@ class CodeGenContext:
         self.declared_vars = set()
         self.var_types = {}
         self.local_scope_names = set()
+        self.nested_def_locals = set()
         self.global_declared_vars = set()
         self.pointer_locals = set()
         self.ptr_variant_locals = set()

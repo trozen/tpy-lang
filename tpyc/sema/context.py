@@ -5,7 +5,8 @@ Contains the shared state that is passed to all semantic analysis components.
 """
 
 from __future__ import annotations
-from dataclasses import dataclass, field
+from copy import deepcopy
+from dataclasses import dataclass, field, fields as dc_fields
 from enum import Enum
 from typing import TYPE_CHECKING
 
@@ -23,6 +24,7 @@ from ..namespace import Namespace
 from ..parse import (
     TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall,
     TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp, TpyIfExpr,
+    TpyNestedDef,
 )
 from .diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
 
@@ -304,89 +306,161 @@ class RecordContext:
 
 
 @dataclass
+class FunctionTrackingState:
+    """Per-function analysis state that is reset between functions and
+    saved/restored for nested def isolation.
+
+    SemanticContext delegates attribute access to an instance of this class
+    via __getattr__/__setattr__, so all fields are accessible directly on
+    ctx without callsite changes.
+    """
+
+    # --- Analysis state (per-function) ---
+    current_scope: Scope | None = None
+    current_function: TpyFunction | _ModuleInitSentinel | None = None
+    current_ns: Namespace | None = None
+    loop_depth: int = 0
+
+    # --- List/dict/set literal tracking ---
+    variable_to_literal: dict[str, int] = field(default_factory=dict)
+    pending_resolutions: list[int] = field(default_factory=list)
+    pre_analyzed_method_args: dict[int, list[TpyType]] = field(default_factory=dict)
+    variable_to_dict_literal: dict[str, int] = field(default_factory=dict)
+    pending_dict_resolutions: list[int] = field(default_factory=list)
+    variable_to_set_literal: dict[str, int] = field(default_factory=dict)
+    pending_set_resolutions: list[int] = field(default_factory=list)
+
+    # --- Pending generic instance tracking ---
+    pending_generic_instances: dict[int, PendingGenericInstanceInfo] = field(default_factory=dict)
+    variable_to_generic_instance: dict[str, int] = field(default_factory=dict)
+
+    # --- String local tracking ---
+    variable_to_str_var: dict[str, int] = field(default_factory=dict)
+    str_source_borrows: dict[str, set[int]] = field(default_factory=dict)
+    pending_str_resolutions: list[int] = field(default_factory=list)
+
+    # --- Control flow ---
+    super_init_call: TpyMethodCall | None = None
+    super_del_call: TpyMethodCall | None = None
+    pending_loop_vars: dict[str, tuple[TpyType, TpyStmt, TpyStmt | None]] = field(default_factory=dict)
+    loop_vars: set[str] = field(default_factory=set)
+    mutated_loop_vars: set[str] = field(default_factory=set)
+    loop_var_iterable: dict[str, str] = field(default_factory=dict)
+
+    # --- Scope escape tracking ---
+    var_scope_depth: dict[str, int] = field(default_factory=dict)
+    hoisted_vars: set[str] = field(default_factory=set)
+    rvalue_vars: set[str] = field(default_factory=set)
+    move_through_vars: set[str] = field(default_factory=set)
+
+    # --- Prescan / last-use ---
+    current_reassigned_vars: set[str] = field(default_factory=set)
+    current_lvalue_reassigned: set[str] = field(default_factory=set)
+    current_aug_assigned_vars: set[str] = field(default_factory=set)
+
+    # --- Definite-assignment tracking ---
+    definitely_assigned: set[str] = field(default_factory=set)
+    init_terminated: bool = False
+    narrowed_types: dict[str, TpyType] = field(default_factory=dict)
+
+    # --- Reassignment inference tracking ---
+    literal_default_vars: set[str] = field(default_factory=set)
+    literal_values: dict[str, list[int]] = field(default_factory=dict)
+    unresolved_none_vars: set[str] = field(default_factory=set)
+    write_history: dict[str, list[tuple[TpyType, TpyExpr]]] = field(default_factory=dict)
+    authoritative_types: dict[str, TpyType] = field(default_factory=dict)
+    authoritative_type_lines: dict[str, int] = field(default_factory=dict)
+
+    # --- Global declaration tracking ---
+    global_declarations: set[str] = field(default_factory=set)
+
+    # --- Nested def tracking ---
+    in_nested_def: bool = False
+    outer_scope_locals: set[str] = field(default_factory=set)
+    current_nonlocal_names: set[str] = field(default_factory=set)
+    nested_def_names: set[str] = field(default_factory=set)
+    nested_def_escapes: set[str] = field(default_factory=set)
+    nested_def_nodes: dict[str, 'TpyNestedDef'] = field(default_factory=dict)
+
+    # --- Pointer provenance tracking ---
+    param_provenance_vars: set[str] = field(default_factory=set)
+    non_null_ptr_vars: set[str] = field(default_factory=set)
+
+    # --- Consumed variable tracking ---
+    consumed_vars: set[str] = field(default_factory=set)
+
+    # --- Integer value range tracking ---
+    value_ranges: dict[str, 'ValueRange'] = field(default_factory=dict)
+
+    # --- Borrow tracking ---
+    borrow_tracker: BorrowTracker = field(default_factory=BorrowTracker)
+
+    # --- Parameter mutation inference ---
+    current_param_names: set[str] = field(default_factory=set)
+    current_param_name_to_idx: dict[str, int] = field(default_factory=dict)
+    current_mutated_param_names: set[str] = field(default_factory=set)
+    current_rebound_params: set[str] = field(default_factory=set)
+    current_call_edges: list = field(default_factory=list)
+    current_self_mutated: bool = False
+    current_struct_mutated_param_names: set[str] = field(default_factory=set)
+    current_returned_param_names: set[str] = field(default_factory=set)
+    current_consumed_own_params: set[str] = field(default_factory=set)
+
+
+# Field names on FunctionTrackingState, cached for __getattr__/__setattr__.
+_FUNC_STATE_FIELDS: frozenset[str] = frozenset(
+    f.name for f in dc_fields(FunctionTrackingState)
+)
+
+
+@dataclass
 class SemanticContext:
-    """Shared state for all semantic analysis components."""
+    """Shared state for all semantic analysis components.
+
+    Per-function state lives in _func (FunctionTrackingState). Attribute access
+    is forwarded transparently so callers use ctx.definitely_assigned etc.
+    """
 
     # --- Core ---
     registry: TypeRegistry
     global_scope: Scope
-    # Default concrete type used for unannotated integer literal deduction.
     default_int_type: TpyType = field(default_factory=lambda: INT32)
-    # Macro registry (populated by compiler from loaded macro modules)
     macro_registry: MacroRegistry | None = None
 
-    # --- Analysis state ---
-    current_scope: Scope | None = None
-    current_function: TpyFunction | _ModuleInitSentinel | None = None
+    # --- Per-function state (composed, forwarded via __getattr__/__setattr__) ---
+    _func: FunctionTrackingState = field(default_factory=FunctionTrackingState)
+
+    # --- Record context ---
     record_ctx: RecordContext = field(default_factory=RecordContext)
 
     # --- Type cache ---
     expr_types: dict[int, TpyType] = field(default_factory=dict)
     var_types: dict[int, TpyType] = field(default_factory=dict)
 
-    # --- List literal tracking ---
+    # --- Literal tracking (counters + registries persist across functions) ---
     literal_counter: int = 0
     list_literals: dict[int, ListLiteralInfo] = field(default_factory=dict)
-    variable_to_literal: dict[str, int] = field(default_factory=dict)
-    pending_resolutions: list[int] = field(default_factory=list)
-    pre_analyzed_method_args: dict[int, list[TpyType]] = field(default_factory=dict)
     dict_literals: dict[int, DictLiteralInfo] = field(default_factory=dict)
-    variable_to_dict_literal: dict[str, int] = field(default_factory=dict)
-    pending_dict_resolutions: list[int] = field(default_factory=list)
     set_literals: dict[int, SetLiteralInfo] = field(default_factory=dict)
-    variable_to_set_literal: dict[str, int] = field(default_factory=dict)
-    pending_set_resolutions: list[int] = field(default_factory=list)
     var_decl_by_name: dict[str, TpyVarDecl] = field(default_factory=dict)
-
-    # --- Resolved types for variable declarations (for test annotations) ---
-    # Keyed by (line, varname). Persists across functions (NOT cleared in
-    # reset_function_tracking) so the test framework can query after full compilation.
-    declared_var_types: dict[tuple[int, str], TpyType] = field(default_factory=dict)
-
-    # --- Ptr deref facts (for test annotations) ---
-    # Records whether each ptr dereference (field access / method call) skips
-    # deref_check. Keyed by (line, varname). True = non-null proven.
-    ptr_deref_facts: dict[tuple[int, str], bool] = field(default_factory=dict)
-
-    # --- Subscript bounds facts (for test annotations) ---
-    # Records whether each subscript access skips bounds checking.
-    # Keyed by (line, container_varname). True = bounds-safe proven.
-    subscript_bounds_facts: dict[tuple[int, str], bool] = field(default_factory=dict)
-
-    # --- Division non-zero facts (for test annotations) ---
-    # Records whether each division/modulo skips zero-check.
-    # Keyed by (line, divisor_varname). True = non-zero proven.
-    div_zero_facts: dict[tuple[int, str], bool] = field(default_factory=dict)
-
-    # --- Cast safety facts (for test annotations) ---
-    # Records whether each int cast skips range checking.
-    # Keyed by (line, target_type_name). True = cast proven safe.
-    cast_safe_facts: dict[tuple[int, str], bool] = field(default_factory=dict)
-
-    # --- Pending generic instance tracking (Phase 7a) ---
     pending_generic_counter: int = 0
-    pending_generic_instances: dict[int, PendingGenericInstanceInfo] = field(default_factory=dict)
-    variable_to_generic_instance: dict[str, int] = field(default_factory=dict)
-
-    # --- String local tracking (PendingStrType inference) ---
     str_var_counter: int = 0
     str_vars: dict[int, StrVarInfo] = field(default_factory=dict)
-    variable_to_str_var: dict[str, int] = field(default_factory=dict)
-    str_source_borrows: dict[str, set[int]] = field(default_factory=dict)  # storage -> str_var_ids
-    pending_str_resolutions: list[int] = field(default_factory=list)
+
+    # --- Test annotation facts (persist across functions) ---
+    declared_var_types: dict[tuple[int, str], TpyType] = field(default_factory=dict)
+    ptr_deref_facts: dict[tuple[int, str], bool] = field(default_factory=dict)
+    subscript_bounds_facts: dict[tuple[int, str], bool] = field(default_factory=dict)
+    div_zero_facts: dict[tuple[int, str], bool] = field(default_factory=dict)
+    cast_safe_facts: dict[tuple[int, str], bool] = field(default_factory=dict)
 
     # --- Import tracking ---
-    # imports: module_name -> set of (original_name, local_name) tuples (for "from X import Y [as Z]")
-    #          module_name -> "*" (for "from X import *")
     imports: dict[str, set[tuple[str, str]] | None | str] = field(default_factory=dict)
-    # Modules that had bare `import X` statements (for module.func() routing in codegen)
     bare_module_imports: set[str] = field(default_factory=set)
-    # imported_names: name -> (module_name, function_name) for direct function access
     imported_names: dict[str, tuple[str, str]] = field(default_factory=dict)
 
     # --- Cross-module support ---
     module_name: str = "__main__"
-    # Maps local_name -> (source_module, original_name) to support import aliases
     user_imported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_protocols: dict[str, tuple[str, str]] = field(default_factory=dict)
@@ -402,114 +476,42 @@ class SemanticContext:
     # --- Builtins ---
     builtin_names: dict[str, TpyType] = field(default_factory=dict)
 
-    # --- Namespace hierarchy ---
+    # --- Namespace hierarchy (global/builtins persist) ---
     builtins_ns: Namespace | None = None
     global_ns: Namespace | None = None
-    current_ns: Namespace | None = None
 
-    # --- Control flow ---
-    loop_depth: int = 0
+    # --- Control flow (persistent) ---
     in_comprehension: int = 0
-    # Walrus vars from short-circuit RHS, split by operator:
-    # - and_walrus: RHS of && (safe in then-body, not in else-body)
-    # - or_walrus: RHS of || (safe in else-body, not in then-body)
     sc_and_walrus: set[str] = field(default_factory=set)
     sc_or_walrus: set[str] = field(default_factory=set)
-    # Set when inside a try/except block -- the exception type being caught
     try_except_error_type: str | None = None
     is_top_level: bool = False
-    super_init_call: TpyMethodCall | None = None
-    super_del_call: TpyMethodCall | None = None
-    # Variables from loop scopes that may be referenced after the loop.
-    # Maps var_name -> (type, loop_stmt, orig_loop_stmt) for lazy promotion.
-    # loop_stmt: outermost loop to pre-declare before.
-    # orig_loop_stmt: the TpyForEach that declared the loop iteration variable
-    # (used to set hoist_loop_var); None for body-declared variables.
-    pending_loop_vars: dict[str, tuple[TpyType, TpyStmt, TpyStmt | None]] = field(default_factory=dict)
-    loop_vars: set[str] = field(default_factory=set)
-    mutated_loop_vars: set[str] = field(default_factory=set)
-    loop_var_iterable: dict[str, str] = field(default_factory=dict)  # var_name -> iterable_name
-    # Parameter mutation inference (8a)
-    current_param_names: set[str] = field(default_factory=set)
-    current_param_name_to_idx: dict[str, int] = field(default_factory=dict)
-    current_mutated_param_names: set[str] = field(default_factory=set)
-    current_rebound_params: set[str] = field(default_factory=set)
-    current_call_edges: list = field(default_factory=list)  # list[MutationCallEdge]
-    current_self_mutated: bool = False  # True if self is directly mutated in current method
-    # Structural mutation inference: param names whose containers are structurally mutated
-    # (append/insert/clear/del/etc.) -- excludes element-ref taking and field writes.
-    current_struct_mutated_param_names: set[str] = field(default_factory=set)
-    # Return borrow inference (8b): param names whose storage the return value borrows from
-    current_returned_param_names: set[str] = field(default_factory=set)
-    # Own[T] consumption tracking: params that are stored, forwarded, or returned
-    current_consumed_own_params: set[str] = field(default_factory=set)
 
-    # --- Scope escape tracking ---
-    var_scope_depth: dict[str, int] = field(default_factory=dict)
-    hoisted_vars: set[str] = field(default_factory=set)
-    rvalue_vars: set[str] = field(default_factory=set)
-    move_through_vars: set[str] = field(default_factory=set)
-
-    # --- Last-use tracking for auto-move ---
+    # --- Last-use tracking (shared with codegen, persists across functions) ---
     all_last_uses: set[int] = field(default_factory=set)
-    # Prescan reassigned vars for current function (needed by _is_movable_var)
-    current_reassigned_vars: set[str] = field(default_factory=set)
-    # Reassigned vars with at least one lvalue (non-rvalue) reassignment
-    current_lvalue_reassigned: set[str] = field(default_factory=set)
-    # Vars targeted by augmented assignment (+=, -=, etc.)
-    current_aug_assigned_vars: set[str] = field(default_factory=set)
 
-    # --- Definite-assignment tracking ---
-    definitely_assigned: set[str] = field(default_factory=set)
-    init_terminated: bool = False
-    # Union/Optional type narrowing: var_name -> narrowed member type.
-    narrowed_types: dict[str, TpyType] = field(default_factory=dict)
-
-    # --- Reassignment inference tracking ---
-    # Vars initialized from int literals without annotation (defaulted to
-    # default_int_type) and still eligible for reassignment-based refinement.
-    literal_default_vars: set[str] = field(default_factory=set)
-    # Tracks values of literal writes for range checks during potential narrowing.
-    literal_values: dict[str, list[int]] = field(default_factory=dict)
-    # Vars initialized with None without annotation and awaiting concrete type.
-    unresolved_none_vars: set[str] = field(default_factory=set)
-    # Types from prior writes (for retro-validation when a later annotation appears).
-    write_history: dict[str, list[tuple[TpyType, TpyExpr]]] = field(default_factory=dict)
-    # Authoritative annotation set by an explicit typed write.
-    authoritative_types: dict[str, TpyType] = field(default_factory=dict)
-    # Source line for the authoritative explicit annotation.
-    authoritative_type_lines: dict[str, int] = field(default_factory=dict)
-
-    # --- Global declaration tracking (per-function `global x` statements) ---
-    global_declarations: set[str] = field(default_factory=set)
-
-    # --- Pointer provenance tracking ---
-    param_provenance_vars: set[str] = field(default_factory=set)
-    non_null_ptr_vars: set[str] = field(default_factory=set)
-
-    # --- Consumed variable tracking (use-after-consume detection) ---
-    consumed_vars: set[str] = field(default_factory=set)
-
-    # --- Integer value range tracking (bounds check / div-zero elision) ---
-    value_ranges: dict[str, 'ValueRange'] = field(default_factory=dict)
-
-    # --- Borrow tracking ---
-    borrow_tracker: BorrowTracker = field(default_factory=BorrowTracker)
-
-    # --- Expression type hint (for context-dependent functions like unsafe_cast) ---
+    # --- Expression type hint ---
     expr_type_hint: TpyType | None = None
 
     # --- Branch-declared variable tracking ---
-    # Variables first declared inside if-branches that need pre-declaration.
-    # Keyed by id(TpyIf), value is {var_name: var_type}.
     if_branch_decls: dict[int, dict[str, TpyType]] = field(default_factory=dict)
 
     # --- Extern symbol tracking ---
-    # Maps extern C/C++ symbol name -> Python function name (for duplicate detection)
     extern_symbols: dict[str, str] = field(default_factory=dict)
 
     # --- Diagnostics ---
     diagnostics: list[Diagnostic] = field(default_factory=list)
+
+    def __getattr__(self, name: str) -> object:
+        if name in _FUNC_STATE_FIELDS:
+            return getattr(self._func, name)
+        raise AttributeError(f"'{type(self).__name__}' has no attribute '{name}'")
+
+    def __setattr__(self, name: str, value: object) -> None:
+        if name in _FUNC_STATE_FIELDS:
+            setattr(self._func, name, value)
+        else:
+            super().__setattr__(name, value)
 
     def is_readonly_name(self, name: str) -> bool:
         """Check if a variable has readonly provenance in its declared scope type.
@@ -638,55 +640,16 @@ class SemanticContext:
         return self.default_int_type
 
     def reset_function_tracking(self) -> None:
-        """Reset per-function tracking state between function analyses."""
-        self.variable_to_literal.clear()
-        self.pending_resolutions.clear()
-        self.pre_analyzed_method_args.clear()
-        self.variable_to_dict_literal.clear()
-        self.pending_dict_resolutions.clear()
-        self.variable_to_set_literal.clear()
-        self.pending_set_resolutions.clear()
-        self.pending_generic_instances.clear()
-        self.variable_to_generic_instance.clear()
-        self.variable_to_str_var.clear()
-        self.str_source_borrows.clear()
-        self.pending_str_resolutions.clear()
-        self.super_init_call = None
-        self.super_del_call = None
-        self.pending_loop_vars.clear()
-        self.loop_vars.clear()
-        self.mutated_loop_vars.clear()
-        self.loop_var_iterable.clear()
-        self.var_scope_depth.clear()
-        self.hoisted_vars.clear()
-        self.rvalue_vars.clear()
-        self.move_through_vars.clear()
-        self.current_reassigned_vars.clear()
-        self.current_lvalue_reassigned.clear()
-        self.current_aug_assigned_vars.clear()
-        self.definitely_assigned.clear()
-        self.init_terminated = False
-        self.narrowed_types.clear()
-        self.literal_default_vars.clear()
-        self.literal_values.clear()
-        self.unresolved_none_vars.clear()
-        self.write_history.clear()
-        self.authoritative_types.clear()
-        self.global_declarations.clear()
-        self.param_provenance_vars.clear()
-        self.non_null_ptr_vars.clear()
-        self.consumed_vars.clear()
-        self.borrow_tracker.reset()
-        self.value_ranges.clear()
-        self.current_param_names.clear()
-        self.current_param_name_to_idx.clear()
-        self.current_mutated_param_names.clear()
-        self.current_rebound_params.clear()
-        self.current_call_edges.clear()
-        self.current_self_mutated = False
-        self.current_struct_mutated_param_names.clear()
-        self.current_returned_param_names.clear()
-        self.current_consumed_own_params.clear()
+        """Reset all per-function tracking state."""
+        self._func = FunctionTrackingState()
+
+    def save_function_state(self) -> FunctionTrackingState:
+        """Snapshot per-function state (for nested def isolation)."""
+        return deepcopy(self._func)
+
+    def restore_function_state(self, saved: FunctionTrackingState) -> None:
+        """Restore per-function state from a snapshot."""
+        self._func = saved
 
     def mark_loop_var_mutated(self, name: str) -> None:
         """Mark a for-each loop variable as mutated (prevents const-ref binding)."""

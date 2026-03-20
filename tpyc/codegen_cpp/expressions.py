@@ -1398,6 +1398,18 @@ class ExpressionGenerator:
                 if record_info := self.ctx.analyzer.registry.get_builtin_record(qname):
                     if record_info.get_method_overloads("__init__") and not record_info.type_params:
                         return self.builtins.gen_builtin_constructor(expr, record_info)
+        # Nested def local: call the lambda variable directly
+        if expr.func in self.ctx.nested_def_locals:
+            fi = expr.resolved_function_info
+            gen_args = []
+            if fi:
+                for arg, (_, ptype) in zip(expr.args, fi.params):
+                    gen_args.append(self.gen_call_arg(arg, ptype))
+            else:
+                for arg in expr.args:
+                    gen_args.append(self.gen_expr(arg))
+            return f"{escape_cpp_name(expr.func)}({', '.join(gen_args)})"
+
         # Check if this is a function call that needs argument conversion
         func_infos = self.ctx.analyzer.registry.get_function(expr.func)
         if func_infos:
@@ -3122,6 +3134,9 @@ class ExpressionGenerator:
 
     def _gen_function_ref(self, expr: TpyName) -> str:
         """Generate C++ code for a named function used as a value."""
+        # Nested def: just the local lambda variable name
+        if expr.name in self.ctx.nested_def_locals:
+            return escape_cpp_name(expr.name)
         fi = expr.function_ref_info
         # Build template args suffix for generic function refs
         targs = ""

@@ -6,6 +6,7 @@ Core expression analysis including literals, names, operators, field access, and
 
 from __future__ import annotations
 from contextlib import ExitStack
+from collections.abc import Callable as CallableFn
 from typing import Literal, TYPE_CHECKING
 
 from ..typesys import (
@@ -31,6 +32,8 @@ from ..parse import (
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr, TpyNamedExpr,
     TpyLambda,
+    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyForEach, TpyWith,
+    TpyNestedDef,
 )
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
@@ -73,6 +76,118 @@ def _collect_name_refs(expr: TpyExpr) -> set[str]:
         else:
             stack.extend(node.children())
     return names
+
+
+def _walk_body_stmts(
+    stmts: list[TpyStmt],
+    on_expr: CallableFn[[TpyExpr], None],
+    on_stmt: CallableFn[[TpyStmt], None],
+) -> None:
+    """Walk statements calling on_expr/on_stmt. Does NOT recurse into TpyNestedDef."""
+    # Explicit dispatch matching the pattern used by liveness.py and prescan.py.
+    # TODO: add children()/sub_bodies() to TpyStmt to eliminate this.
+    from ..parse import (
+        TpyVarDecl, TpyAssign, TpyTupleUnpack, TpyAugAssign,
+        TpyExprStmt, TpyReturn, TpyAssert, TpyIf, TpyWhile, TpyForEach,
+        TpyMatch, TpyTryExcept, TpyWith, TpyDelItem,
+    )
+    for stmt in stmts:
+        on_stmt(stmt)
+        if isinstance(stmt, TpyNestedDef):
+            pass  # separate scope
+        elif isinstance(stmt, TpyVarDecl):
+            if stmt.init:
+                on_expr(stmt.init)
+        elif isinstance(stmt, TpyAssign):
+            on_expr(stmt.value)
+            if isinstance(stmt.target, TpyExpr):
+                on_expr(stmt.target)
+        elif isinstance(stmt, TpyTupleUnpack):
+            on_expr(stmt.value)
+        elif isinstance(stmt, TpyAugAssign):
+            on_expr(stmt.value)
+            if isinstance(stmt.target, TpyExpr):
+                on_expr(stmt.target)
+        elif isinstance(stmt, TpyExprStmt):
+            on_expr(stmt.expr)
+        elif isinstance(stmt, TpyReturn):
+            if stmt.value:
+                on_expr(stmt.value)
+        elif isinstance(stmt, TpyAssert):
+            on_expr(stmt.condition)
+            if stmt.message:
+                on_expr(stmt.message)
+        elif isinstance(stmt, TpyIf):
+            on_expr(stmt.condition)
+            _walk_body_stmts(stmt.then_body, on_expr, on_stmt)
+            _walk_body_stmts(stmt.else_body, on_expr, on_stmt)
+        elif isinstance(stmt, TpyWhile):
+            on_expr(stmt.condition)
+            _walk_body_stmts(stmt.body, on_expr, on_stmt)
+            _walk_body_stmts(stmt.orelse, on_expr, on_stmt)
+        elif isinstance(stmt, TpyForEach):
+            on_expr(stmt.iterable)
+            _walk_body_stmts(stmt.body, on_expr, on_stmt)
+            _walk_body_stmts(stmt.orelse, on_expr, on_stmt)
+        elif isinstance(stmt, TpyMatch):
+            on_expr(stmt.subject)
+            for case in stmt.cases:
+                if case.guard is not None:
+                    on_expr(case.guard)
+                _walk_body_stmts(case.body, on_expr, on_stmt)
+        elif isinstance(stmt, TpyTryExcept):
+            _walk_body_stmts(stmt.try_body, on_expr, on_stmt)
+            _walk_body_stmts(stmt.except_body, on_expr, on_stmt)
+            _walk_body_stmts(stmt.else_body, on_expr, on_stmt)
+        elif isinstance(stmt, TpyWith):
+            for item in stmt.items:
+                on_expr(item.context_expr)
+            _walk_body_stmts(stmt.body, on_expr, on_stmt)
+        elif isinstance(stmt, TpyDelItem):
+            for sub in stmt.subscripts:
+                on_expr(sub)
+
+
+def _collect_body_name_refs(stmts: list[TpyStmt]) -> set[str]:
+    """Collect all name references from a list of statements.
+
+    Walks all expressions in statements to find free variable references.
+    Does NOT recurse into nested function definitions (separate scope).
+    """
+    names: set[str] = set()
+
+    def on_expr(expr: TpyExpr) -> None:
+        names.update(_collect_name_refs(expr))
+
+    _walk_body_stmts(stmts, on_expr, lambda s: None)
+    return names
+
+
+def _collect_body_local_defs(stmts: list[TpyStmt]) -> set[str]:
+    """Collect names defined locally in a statement body (not from enclosing scope)."""
+    defs: set[str] = set()
+
+    def on_stmt(stmt: TpyStmt) -> None:
+        if isinstance(stmt, TpyVarDecl):
+            defs.add(stmt.name)
+        elif isinstance(stmt, TpyAssign):
+            if isinstance(stmt.target, TpyName):
+                defs.add(stmt.target.name)
+        elif isinstance(stmt, TpyTupleUnpack):
+            for name in stmt.targets:
+                if name is not None:
+                    defs.add(name)
+        elif isinstance(stmt, TpyForEach):
+            defs.add(stmt.var)
+        elif isinstance(stmt, TpyWith):
+            for item in stmt.items:
+                if item.target is not None:
+                    defs.add(item.target)
+        elif isinstance(stmt, TpyNestedDef):
+            defs.add(stmt.func.name)
+
+    _walk_body_stmts(stmts, lambda e: None, on_stmt)
+    return defs
 
 
 class ExpressionAnalyzer:
@@ -2426,6 +2541,10 @@ class ExpressionAnalyzer:
                     if matched is not None:
                         expr.is_function_ref = True
                         expr.function_ref_info = matched
+                        # Escape tracking: passing nested def to Callable marks it as escaping
+                        if (isinstance(hint, CallableType)
+                                and expr.name in self.ctx.nested_def_names):
+                            self.ctx.nested_def_escapes.add(expr.name)
                         return hint
 
         # Check registry (covers imported functions not yet in namespace)

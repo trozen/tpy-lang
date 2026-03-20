@@ -61,6 +61,8 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - language restriction documentation
 
 ## Refactor
+- `_analyze_nested_def` duplicates `_analyze_function`: scope setup, prescan, liveness, body analysis are nearly identical. Extract a shared core that both call, with nested-def-specific parts (nonlocal, capture detection, FunctionInfo registration) as a wrapper.
+- Add `children()`/`sub_bodies()` to `TpyStmt`: expressions have `children()` for generic traversal, but statements don't. Every walker (liveness, prescan, capture analysis) manually enumerates statement types. A `TpyStmt.exprs()` + `TpyStmt.sub_bodies()` interface would eliminate this duplication.
 - `is_type_compatible` bool wrapper: currently wraps `check_type_compatible` in try/except. Refactor to separate compatibility logic from error reporting so the bool check doesn't need exception-based control flow.
 - Inplace operator C++ return type: `__iadd__`/`__ior__` etc. declare returning self type (Python semantics) but the C++ helpers (`list_extend`, `dict_update`) return `void`. Add thin wrappers that return `T&` (e.g. `list_extend_inplace`, `dict_update_inplace`) so the declared return type matches the C++ signature. Affects list and dict.
 - `tpy::ptr_variant<Ts...>` wrapper: replace `std::variant<Ts*...>` in param signatures with a thin wrapper that has an implicit converting constructor from `ptr_variant<T*...>` to `ptr_variant<const T*...>`. This would let deduced-const (non-mutated) params use deep const consistently with `@readonly`, without breaking callers. Currently deduced-const uses shallow const (`const variant<T*...>`) which doesn't prevent mutation through the pointer at the C++ level. Start with param signatures only; locals/fields/returns can stay `std::variant`.
