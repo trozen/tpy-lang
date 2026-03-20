@@ -36,10 +36,7 @@ def _fmt_ms(seconds: float) -> str:
     return f"{ms:.0f}ms"
 
 
-def get_runtime_dir() -> Path:
-    """Get the path to the runtime directory."""
-    package_root = Path(__file__).parent.parent
-    return package_root / "runtime"
+from . import get_runtime_dir
 
 
 class BackendResult:

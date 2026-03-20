@@ -30,18 +30,7 @@ from .codegen_cpp import CodeGenOptions, CodeGenError
 from .compiler import (
     Compiler, CompileError, BuildLayout, CppCompilerConfig, DEFAULT_INT_CHOICES
 )
-
-
-def get_runtime_dir() -> Path:
-    """Get the path to the runtime directory."""
-    package_root = Path(__file__).parent.parent
-    return package_root / "runtime"
-
-
-def get_lib_dir() -> Path:
-    """Get the path to the lib directory (tplib, stdlib search roots)."""
-    package_root = Path(__file__).parent.parent
-    return package_root / "lib"
+from . import get_runtime_dir, get_lib_dir
 
 
 def get_module_name(input_path: Path) -> str:

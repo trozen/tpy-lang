@@ -255,7 +255,7 @@ class TestSendSyncRecordDerivation:
             "    print(len(c.items))\n"
             "main()\n"
         )
-        from .cli import get_lib_dir
+        from . import get_lib_dir
         lib_dirs = [get_lib_dir() / "tpy"]
         compiler = Compiler.from_source(source, lib_dirs=lib_dirs)
         compiler.compile()
