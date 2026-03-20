@@ -428,7 +428,7 @@ struct native_iterator {
     Iter end_;
 
     std::expected<T, StopIteration> __next__() {
-        if (current_ == end_) return std::unexpected(StopIteration{});
+        if (current_ == end_) return tpy::make_unexpected(StopIteration{});
         return T{*current_++};
     }
 

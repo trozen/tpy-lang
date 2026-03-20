@@ -44,7 +44,7 @@ struct PairIter {
             return std::tuple<std::string, int32_t>{key, val};
         }
         // raise StopIteration
-        return std::unexpected(::tpy::StopIteration{});
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
 };
 

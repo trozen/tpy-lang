@@ -41,7 +41,7 @@ struct Counter {
             return result;
         }
         // raise StopIteration
-        return std::unexpected(::tpy::StopIteration{});
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
 };
 

@@ -17,7 +17,7 @@ std::expected<int32_t, NotFound> find(const std::vector<int32_t>& items, int32_t
         }
     }
     // raise NotFound
-    return std::unexpected(NotFound{});
+    return ::tpy::make_unexpected(NotFound{});
 }
 
 // def main() -> None:

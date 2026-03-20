@@ -381,7 +381,7 @@ class StatementGenerator:
             return ""  # No C++ output -- just a sema directive
         elif isinstance(stmt, TpyRaise):
             assert self.ctx.current_error_return is not None
-            return f"{indent}return std::unexpected({self.ctx.current_error_return}{{}});\n"
+            return f"{indent}return ::tpy::make_unexpected({self.ctx.current_error_return}{{}});\n"
         elif isinstance(stmt, TpyImport):
             # Only emit __tpy_init() for user modules that have runtime init.
             # Skip builtins (no .cpp) and native_module (binding-only, no .cpp).

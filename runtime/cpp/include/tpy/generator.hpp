@@ -27,7 +27,7 @@ public:
     std::expected<T, StopIteration> __next__() {
         auto opt = fn_();
         if (opt.has_value()) return *std::move(opt);
-        return std::unexpected(StopIteration{});
+        return tpy::make_unexpected(StopIteration{});
     }
 
     generator_wrapper& __iter__() { return *this; }

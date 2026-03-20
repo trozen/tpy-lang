@@ -38,7 +38,7 @@ struct Counter {
         // if self.value >= self.limit:
         if ((this->value >= this->limit)) {
             // raise StopIteration
-            return std::unexpected(::tpy::StopIteration{});
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         // v = self.value
         int32_t v = this->value;

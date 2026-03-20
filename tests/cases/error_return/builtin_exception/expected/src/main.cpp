@@ -13,7 +13,7 @@ std::expected<int32_t, ::tpy::Exception> parse_positive(std::string_view s) {
         return 2;
     }
     // raise Exception
-    return std::unexpected(::tpy::Exception{});
+    return ::tpy::make_unexpected(::tpy::Exception{});
 }
 
 // def main() -> None:

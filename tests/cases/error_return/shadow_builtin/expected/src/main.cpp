@@ -17,7 +17,7 @@ std::expected<int32_t, StopIteration> first_negative(const std::vector<int32_t>&
         }
     }
     // raise StopIteration
-    return std::unexpected(StopIteration{});
+    return ::tpy::make_unexpected(StopIteration{});
 }
 
 // def main() -> None:

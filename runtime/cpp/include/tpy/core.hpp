@@ -25,6 +25,28 @@ struct BaseException : std::exception {};
 struct Exception : BaseException {};
 struct StopIteration : Exception {};
 
+// Portable replacement for std::unexpected(). Some libc++ versions (e.g. zig's
+// bundled clang) expose both the deprecated std::unexpected() function and the
+// C++23 std::unexpected<E> class template, making the name ambiguous. This wrapper
+// avoids naming std::unexpected entirely by using std::unexpect tag construction.
+template<typename E>
+struct Unexpected {
+    E error;
+    template<typename T>
+    operator std::expected<T, E>() && {
+        return std::expected<T, E>{std::unexpect, std::move(error)};
+    }
+    template<typename T>
+    operator std::expected<T, E>() const& {
+        return std::expected<T, E>{std::unexpect, error};
+    }
+};
+
+template<typename E>
+Unexpected<std::remove_cvref_t<E>> make_unexpected(E&& e) {
+    return Unexpected<std::remove_cvref_t<E>>{std::forward<E>(e)};
+}
+
 // next(iterator) -- forwards __next__() result (std::expected<T, StopIteration>)
 template<typename Iter>
 auto next(Iter& it) -> decltype(it.__next__()) {

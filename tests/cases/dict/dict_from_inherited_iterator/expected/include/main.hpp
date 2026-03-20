@@ -43,7 +43,7 @@ struct PairIter {
             return std::tuple<std::string, int32_t>{::tpy::fixed_to_str<int32_t>(val), (::tpy::mul_check<int32_t>(val, 10))};
         }
         // raise StopIteration
-        return std::unexpected(::tpy::StopIteration{});
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
 };
 

@@ -32,7 +32,7 @@ struct SpanIter {
 
     // Iterator protocol
     std::expected<std::remove_const_t<T>, StopIteration> __next__() {
-        if (index_ >= span_.size()) return std::unexpected(StopIteration{});
+        if (index_ >= span_.size()) return tpy::make_unexpected(StopIteration{});
         return span_[index_++];
     }
 
