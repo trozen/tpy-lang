@@ -1496,6 +1496,15 @@ class ExpressionAnalyzer:
                         continue
                     if first_type.element_type == elem_type.element_type:
                         continue
+                # Tuples with same structure but different IntLiteralType values
+                if (isinstance(first_type, TupleType) and isinstance(elem_type, TupleType)
+                        and len(first_type.element_types) == len(elem_type.element_types)
+                        and all(
+                            a == b
+                            or (isinstance(a, IntLiteralType) and isinstance(b, IntLiteralType))
+                            or (isinstance(a, FloatLiteralType) and isinstance(b, FloatLiteralType))
+                            for a, b in zip(first_type.element_types, elem_type.element_types))):
+                    continue
                 if elem_type != first_type:
                     ft = self._user_type_name(first_type)
                     et = self._user_type_name(elem_type)
@@ -1985,8 +1994,10 @@ class ExpressionAnalyzer:
 
         if isinstance(result_elem_type, IntLiteralType):
             result_elem_type = self.ctx.default_int_type
-        if isinstance(result_elem_type, FloatLiteralType):
+        elif isinstance(result_elem_type, FloatLiteralType):
             result_elem_type = FLOAT
+        else:
+            result_elem_type = resolve_int_literals(result_elem_type, self.ctx.default_int_for_literal)
 
         expr.result_elem_type = result_elem_type
         return GenExprType(result_elem_type)

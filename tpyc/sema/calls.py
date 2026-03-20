@@ -25,7 +25,9 @@ from ..parse import (
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyNoneLiteral, TpyUnaryOp,
     TpyTypeParamConstruct,
+    TpyDictLiteral, TpySetLiteral,
 )
+from ..modules import extract_type_params
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from .context import PENDING_CONTAINER_TYPES, addr_taken_roots
@@ -407,9 +409,11 @@ class CallAnalyzer:
                     return self._analyze_record_constructor(expr, record)
                 # It's a builtin type instantiation -- validate constructor args
                 self._reject_kwargs_for_builtin(expr, expr.func)
-                # Pass call_type as hint so container literals get key/value/elem types
-                arg_types = [self.expr.analyze_expr_with_hint(arg, expr.call_type)
-                             for arg in expr.args]
+                # Derive per-arg hints from __init__ param types when possible.
+                # e.g. dict[str, str|Int32]([("a","b"), ("c",1)]) -> hint list[tuple[str, str|Int32]]
+                arg_hints = self._derive_ctor_arg_hints(expr)
+                arg_types = [self.expr.analyze_expr_with_hint(arg, hint)
+                             for arg, hint in zip(expr.args, arg_hints)]
                 if arg_types:
                     self._validate_generic_constructor(expr, arg_types)
                 if isinstance(expr.call_type, PtrType) and expr.args:
@@ -1092,6 +1096,72 @@ class CallAnalyzer:
             self.compat.check_own_consumption(arg)
         self._warn_unnecessary_copy(arg)
 
+    def _derive_ctor_arg_hints(self, expr: TpyCall) -> list[TpyType | None]:
+        """Derive per-argument type hints from __init__ param types.
+
+        For generic constructors like dict[str, str|Int32]([("a","b"), ("c",1)]),
+        resolves __init__ param types with the known type params to produce
+        concrete hints (e.g. list[tuple[str, str|Int32]]).  Falls back to
+        call_type when no __init__ overloads are found.
+        """
+        fallback = [expr.call_type] * len(expr.args)
+        if not expr.call_type or not expr.args:
+            return fallback
+
+        lookup = builtin_modules.lookup_generic_type(expr.func)
+        if lookup is None:
+            qname = expr.call_type.qualified_name()
+            if qname:
+                rec = self.ctx.registry.get_builtin_record(qname)
+                if rec and rec.type_params and rec.type_factory:
+                    lookup = builtin_modules.GenericTypeLookup(None, qname)
+        if lookup is None:
+            return fallback
+        record_info = self.ctx.registry.get_builtin_record(lookup.qualified_name)
+        if not record_info:
+            return fallback
+
+        inferred = extract_type_params(expr.call_type)
+        if not inferred:
+            return fallback
+
+        nargs = len(expr.args)
+        hints: list[TpyType | None] = []
+        for ctor in record_info.get_method_overloads("__init__"):
+            if len(ctor.params) != nargs:
+                continue
+            for p, arg in zip(ctor.params, expr.args):
+                resolved = self.type_ops.substitute_type_params(p.type, inferred)
+                hint = self._concrete_hint_from_param(resolved)
+                hints.append(hint if hint is not None else expr.call_type)
+            break
+        if not hints:
+            return fallback
+        # If the derived hint type doesn't match the arg expression
+        # (e.g. ListType hint for a dict literal arg), fall back to call_type
+        for i, (hint, arg) in enumerate(zip(hints, expr.args)):
+            if isinstance(hint, ListType) and isinstance(arg, (TpyDictLiteral, TpySetLiteral)):
+                hints[i] = expr.call_type
+        return hints
+
+    @staticmethod
+    def _concrete_hint_from_param(param_type: TpyType) -> TpyType | None:
+        """Extract a concrete ListType hint from a protocol param type.
+
+        analyze_expr_with_hint dispatches on isinstance(hint, ListType),
+        so protocol params like Iterable[Own[tuple[K,V]]] must be converted
+        to ListType(tuple[K,V]) for element-level hints to propagate.
+        """
+        if not is_protocol_type(param_type):
+            return None
+        elem = param_type.get_iteration_element_type()
+        if elem is None:
+            return None
+        # Unwrap Own -- container elements are owned by value
+        if isinstance(elem, OwnType):
+            elem = elem.wrapped
+        return ListType(elem)
+
     def _validate_generic_constructor(self, expr: TpyCall, arg_types: list[TpyType]) -> None:
         """Validate and resolve generic type constructor calls.
 
@@ -1115,6 +1185,8 @@ class CallAnalyzer:
         init_overloads = record_info.get_method_overloads("__init__")
         if not init_overloads:
             return
+        from ..modules import extract_type_params
+        inferred = extract_type_params(expr.call_type) if expr.call_type else {}
         for ctor in init_overloads:
             if len(ctor.params) != len(arg_types):
                 continue
@@ -1126,13 +1198,17 @@ class CallAnalyzer:
                         rejected = True
                         break
                     # Protocol matches structurally, but if it has type params
-                    # (e.g. Iterable[T]), verify element type compatibility
-                    # against the target type.
-                    if _has_type_param_ref(p.type) and expr.call_type:
-                        expected_elem = expr.call_type.get_element_type()
+                    # (e.g. Iterable[T]), verify element type compatibility.
+                    # Resolve param type params to get the actual expected
+                    # element (e.g. tuple[K,V] for dict, not just V).
+                    if _has_type_param_ref(p.type) and expr.call_type and inferred:
+                        resolved_param = self.type_ops.substitute_type_params(p.type, inferred)
+                        expected_elem = resolved_param.get_iteration_element_type()
+                        if isinstance(expected_elem, OwnType):
+                            expected_elem = expected_elem.wrapped
                         arg_elem = at.get_iteration_element_type()
                         if expected_elem is not None and arg_elem is not None:
-                            if not type_matches_numeric(arg_elem, expected_elem):
+                            if not self.compat.is_type_compatible(arg_elem, expected_elem):
                                 rejected = True
                                 break
                 elif _has_type_param_ref(p.type):

@@ -194,6 +194,28 @@ void main() {
         // print(v4)
         std::cout << __v4 << "\n";
     }
+    // # Constructor from list of tuples with union values
+    // d7 = dict[str, Int32 | str]([("x", "hello"), ("y", 1)])
+    ::tpy::ordered_map<std::string, std::variant<int32_t, std::string>> d7 = ::tpy::ordered_map<std::string, std::variant<int32_t, std::string>>({std::tuple<std::string, std::string>{"x", "hello"}, std::tuple<std::string, int32_t>{"y", 1}});
+    // v5 = d7["x"]
+    std::variant<int32_t, std::string> v5 = ::tpy::__getitem__(d7, "x");
+    // if isinstance(v5, str):
+    if (std::holds_alternative<std::string>(v5)) {
+        auto& __v5 = std::get<std::string>(v5);
+        // print(v5)
+        std::cout << __v5 << "\n";
+    }
+    // # Constructor from dict literal with union values
+    // d8 = dict[str, Int32 | str]({"p": "hi", "q": 99})
+    ::tpy::ordered_map<std::string, std::variant<int32_t, std::string>> d8 = ::tpy::ordered_map<std::string, std::variant<int32_t, std::string>>(::tpy::ordered_map<std::string, std::variant<int32_t, std::string>>({{"p", "hi"}, {"q", 99}}));
+    // v6 = d8["p"]
+    std::variant<int32_t, std::string> v6 = ::tpy::__getitem__(d8, "p");
+    // if isinstance(v6, str):
+    if (std::holds_alternative<std::string>(v6)) {
+        auto& __v6 = std::get<std::string>(v6);
+        // print(v6)
+        std::cout << __v6 << "\n";
+    }
     // # Printing containers with union elements
     // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";

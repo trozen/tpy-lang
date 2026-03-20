@@ -108,6 +108,18 @@ def main() -> None:
     if isinstance(v4, str):
         print(v4)
 
+    # Constructor from list of tuples with union values
+    d7 = dict[str, Int32 | str]([("x", "hello"), ("y", 1)])
+    v5 = d7["x"]
+    if isinstance(v5, str):
+        print(v5)
+
+    # Constructor from dict literal with union values
+    d8 = dict[str, Int32 | str]({"p": "hi", "q": 99})
+    v6 = d8["p"]
+    if isinstance(v6, str):
+        print(v6)
+
     # Printing containers with union elements
     print(d)
     print(lst)

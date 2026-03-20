@@ -43,6 +43,7 @@ from ..typesys import (
     STRVIEW,
     FLOAT,
     UnknownElementType,
+    resolve_int_literals,
 )
 from .context import PENDING_CONTAINER_TYPES
 from .diagnostics import SemanticError
@@ -51,6 +52,16 @@ from .numeric_lattice import merge_literal_seed_target, numeric_info, widen_nume
 if TYPE_CHECKING:
     from .compatibility import TypeCompatibility
     from .context import SemanticContext
+
+
+def _contains_literal_type(typ: TpyType) -> bool:
+    """Check if a composite type contains unresolved IntLiteralType/FloatLiteralType."""
+    if isinstance(typ, TupleType):
+        return any(
+            isinstance(e, (IntLiteralType, FloatLiteralType)) or _contains_literal_type(e)
+            for e in typ.element_types
+        )
+    return False
 
 
 def collect_pending_source_types(ctx: 'SemanticContext', expr: 'TpyExpr') -> 'list[TpyType]':
@@ -528,6 +539,8 @@ class LocalTypeDeduction:
             if isinstance(elem_type, IntLiteralType):
                 # Use configured integer default when no stronger context exists.
                 elem_type = self.ctx.default_int_for_literal(elem_type)
+            elif _contains_literal_type(elem_type):
+                elem_type = resolve_int_literals(elem_type, self.ctx.default_int_for_literal)
             if isinstance(elem_type, PendingStrType):
                 # Container elements are owned -- string_view can't be stored in a list.
                 elem_type = STR
