@@ -9,7 +9,7 @@ from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import (
     INT32, UINT64, BIGINT, FLOAT, FLOAT32, STR, STRING, STRVIEW, CHAR, VOID, BOOL, SELF,
     ALL_FIXED_INTS, FixedIntType,
-    ArrayType, SpanType, SpanIterType, ListType, TypeParamRef, PtrType, NamedType, OwnType,
+    SpanType, SpanIterType, ListType, TypeParamRef, PtrType, NamedType, OwnType,
 )
 
 # Shorthand for type parameter T
@@ -202,103 +202,6 @@ def init_module() -> BuiltinModule:
         "__hash__": [MethodDef(params=[], returns=UINT64, cpp="::tpy::__hash__({self})", is_readonly=True, is_pure=True)],
         "__lt__": [MethodDef(params=[ParamDef("other", FLOAT32)], returns=BOOL, cpp="{self} < {0}", is_readonly=True, is_pure=True)],
     }, extends=["Comparable", "Equatable"])
-
-    # Array[T, N]: Fixed-size array
-    module.type("Array", cpp_type="std::array<{T}, {N}>", type_params=["T", "N"],
-                param_kinds=[TypeParamKind.TYPE, TypeParamKind.INT],
-                type_factory=lambda t, n: ArrayType(t, n),
-                extends=["NativeIterable[T]", "ReadOnlySpanLike[T]", "Iterable[T]"],
-                methods={
-        "__iter__": [MethodDef(
-            params=[],
-            returns=NamedType("Iterator", (T,), is_protocol=True),
-            cpp="::tpy::__iter__({self})",
-            is_readonly=True, is_pure=True,
-        )],
-        "__len__": [MethodDef(
-            params=[],
-            returns=INT32,
-            cpp="static_cast<int32_t>({self}.size())",
-            is_readonly=True, is_pure=True,
-        )],
-        "unchecked_get": [MethodDef(
-            params=[ParamDef("index", INT32)],
-            returns=T,
-            cpp="{self}[{0}]",
-            is_readonly=True, is_pure=True,
-        )],
-        "__getitem__": [MethodDef(
-            params=[ParamDef("index", INT32)],
-            returns=T,
-            cpp="::tpy::__getitem__({self}, {0})",
-            is_readonly=True, is_pure=True,
-        )],
-        "__setitem__": [MethodDef(
-            params=[ParamDef("index", INT32), ParamDef("value", OwnType(T))],
-            returns=VOID,
-            cpp="::tpy::__setitem__({self}, {0}, {1})",
-        )],
-        "__span__": [MethodDef(
-            params=[], returns=SpanType(T, is_readonly=True),
-            cpp="::tpy::as_span({self})", is_readonly=True, is_pure=True,
-        )],
-    })
-
-    # Span[T]: Non-owning mutable view
-    module.type("Span", cpp_type="std::span<{T}>", type_params=["T"],
-                param_kinds=[TypeParamKind.TYPE],
-                type_factory=lambda t: SpanType(t),
-                extends=["NativeIterable[T]", "ReadOnlySpanLike[T]", "Iterable[T]"],
-                methods={
-        "__init__": [
-            MethodDef(params=[ParamDef("ptr", PtrType(T)), ParamDef("length", INT32)],
-                      returns=VOID,
-                      cpp="{cpp}({0}, static_cast<size_t>({1}))"),
-            MethodDef(params=[ParamDef("source", SpanType(T))],
-                      returns=VOID,
-                      cpp="{cpp}({0})"),
-        ],
-        "__iter__": [MethodDef(
-            params=[],
-            returns=NamedType("Iterator", (T,), is_protocol=True),
-            cpp="::tpy::__iter__({self})",
-            is_readonly=True, is_pure=True,
-        )],
-        "__len__": [MethodDef(
-            params=[],
-            returns=INT32,
-            cpp="static_cast<int32_t>({self}.size())",
-            is_readonly=True, is_pure=True,
-        )],
-        "unchecked_get": [MethodDef(
-            params=[ParamDef("index", INT32)],
-            returns=T,
-            cpp="{self}[{0}]",
-            is_readonly=True, is_pure=True,
-        )],
-        "__getitem__": [MethodDef(
-            params=[ParamDef("index", INT32)],
-            returns=T,
-            cpp="::tpy::__getitem__({self}, {0})",
-            is_readonly=True, is_pure=True,
-        )],
-        "__setitem__": [MethodDef(
-            params=[ParamDef("index", INT32), ParamDef("value", OwnType(T))],
-            returns=VOID,
-            cpp="::tpy::__setitem__({self}, {0}, {1})",
-        )],
-        "__span__": [MethodDef(
-            params=[], returns=SpanType(T, is_readonly=True),
-            cpp="::tpy::as_span({self})", is_readonly=True, is_pure=True,
-        )],
-        "sort": [MethodDef(
-            params=[],
-            returns=VOID,
-            cpp="std::stable_sort({self}.begin(), {self}.end())",  # stable to match Python
-            type_params=["T"],
-            type_param_bounds={"T": NamedType("Comparable", is_protocol=True)},
-        )],
-    })
 
     # SpanIter[T]: Lightweight iterator over a contiguous span
     module.type("SpanIter", cpp_type="::tpy::SpanIter<{T}>", type_params=["T"],

@@ -606,8 +606,12 @@ class Parser:
             elif isinstance(node, ast.ClassDef):
                 seen_non_import = True
                 # Warn if class shadows an imported parser keyword name
+                # (skip for @builtin_type classes -- shadow is intentional)
                 source = self._imports.get_import_source(node.name)
-                if source and is_parser_keyword_module(source[0]):
+                has_builtin_type = any(
+                    self._decorator_local_name(d) in ("builtin_type", "tpy.extern.builtin_type")
+                    for d in node.decorator_list)
+                if source and is_parser_keyword_module(source[0]) and not has_builtin_type:
                     self._warn(f"class '{node.name}' shadows import from '{source[0]}'", node)
                 result = self._parse_class(node)
                 if isinstance(result, TpyProtocol):

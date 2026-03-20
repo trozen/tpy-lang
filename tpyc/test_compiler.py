@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from . import get_lib_dir
 from .compiler import Compiler, BuildLayout
 from .sema.diagnostics import SemanticError
 from .typesys import (
@@ -75,13 +76,15 @@ class TestCompilerFromSource:
 
 
 class TestCodegenRegression:
-    def test_generic_ctor_invalid_arg_rejected(self):
+    def test_generic_ctor_invalid_arg_rejected(self, tmp_path):
         """Invalid generic constructor arg (Int32 for Span[T] param) must be rejected by sema."""
         source = (
             'from tpy import Span, Int32\n'
             'x: Span[Int32] = Span[Int32](Int32(1))\n'
         )
-        compiler = Compiler.from_source(source)
+        src_file = tmp_path / "test.py"
+        src_file.write_text(source)
+        compiler = Compiler(src_file, lib_dirs=[get_lib_dir() / "tpy"])
         with pytest.raises(SemanticError, match="cannot be constructed from"):
             compiler.compile()
 

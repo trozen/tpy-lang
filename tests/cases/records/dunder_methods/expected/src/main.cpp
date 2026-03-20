@@ -68,7 +68,7 @@ void __tpy_init() {
     arr = &__global_slot_3;
     // # Explicit __len__
     // print(arr.__len__())  # 3
-    std::cout << static_cast<int32_t>((*arr).size()) << "\n";
+    std::cout << ::tpy::__len__((*arr)) << "\n";
     // # Explicit __getitem__
     // print(arr.__getitem__(Int32(0)))  # 1
     std::cout << ::tpy::__getitem__((*arr), 0) << "\n";

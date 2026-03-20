@@ -377,7 +377,7 @@ class Compiler:
 
     # Stdlib modules that are always compiled (even without explicit import).
     # These provide protocol definitions used by builtins (e.g. Sized for len()).
-    _IMPLICIT_STDLIB = ["tpy", "typing", "builtins"]
+    _IMPLICIT_STDLIB = ["typing", "tpy", "builtins"]
 
     def _implicit_stdlib_set(self) -> set[str]:
         """Return the set of implicit stdlib modules including submodules."""
@@ -680,11 +680,19 @@ class Compiler:
             raise CompileError("Internal error: could not resolve module dependencies")
 
         # Move implicit stdlib modules (and their submodules) to the front
-        # so they're analyzed before any user code.
+        # so they're analyzed before any user code. Use _IMPLICIT_STDLIB order
+        # for top-level modules; insert submodules before their parent.
         implicit_set = self._implicit_stdlib_set()
         if implicit_set:
-            # Preserve topological order within the implicit set
-            implicit = [m for m in result if m in implicit_set]
+            implicit: list[str] = []
+            for top in self._IMPLICIT_STDLIB:
+                if top not in self.modules:
+                    continue
+                # Submodules before parent (parent may re-export from them)
+                for m in result:
+                    if m.startswith(top + ".") and m in implicit_set:
+                        implicit.append(m)
+                implicit.append(top)
             result = implicit + [m for m in result if m not in implicit_set]
         self.compile_order = result
 
@@ -725,10 +733,10 @@ class Compiler:
                 if transitive not in registered:
                     queue.append(transitive)
 
-        # Register implicit stdlib modules (typing, tpy) -- their protocols are
-        # needed for builtin type-checking, and their functions/types need to be
-        # available for import (e.g. from tpy import make_default).
-        for implicit_mod in self._IMPLICIT_STDLIB:
+        # Register implicit stdlib modules (typing, tpy, and their submodules) --
+        # their protocols are needed for builtin type-checking, and their
+        # functions/types need to be available for import.
+        for implicit_mod in self._implicit_stdlib_set():
             if implicit_mod not in registered and implicit_mod in self.modules:
                 dep_compiled = self.modules[implicit_mod]
                 module_info = self._exports_to_module_info(implicit_mod, dep_compiled.exports, dep_compiled)
