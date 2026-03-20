@@ -32,7 +32,7 @@ from ..parse import (
 )
 from ..coercions import CoercionContext
 from ..namespace import BindingKind
-from ..prescan import scan_reassigned_vars
+from ..prescan import ScanResult, scan_reassigned_vars
 from ..liveness import analyze_last_uses
 from ..parse.nodes import VarLinkage
 from .context import addr_taken_roots
@@ -1108,13 +1108,47 @@ class StatementAnalyzer:
                     stmt)
             self.ctx.current_nonlocal_names.add(name)
 
-    def _analyze_nested_def(self, stmt: TpyNestedDef) -> None:
-        """Analyze a nested function definition.
+    def _prescan_and_analyze_body(
+        self,
+        func: TpyFunction,
+        params: list[tuple[str, TpyType]],
+        scope: 'Scope',
+        ns: 'Namespace | None',
+    ) -> ScanResult:
+        """Shared function body analysis: bind params, prescan, analyze statements.
 
-        TODO: scope setup / prescan / liveness / body analysis here
-        duplicates _analyze_function in analyzer.py. Refactor to share
-        a common core.
+        Used by both _analyze_function (analyzer.py) and _analyze_nested_def.
+        Callers handle scope creation, type resolution, and post-processing.
         """
+        # Bind params to scope
+        param_names: set[str] = set()
+        for pname, ptype in params:
+            param_names.add(pname)
+            scope.define(pname, ptype)
+            self.ctx.var_scope_depth[pname] = scope.depth
+            self.ctx.definitely_assigned.add(pname)
+            if ns:
+                ns.bind_variable(pname, ptype)
+
+        # Param tracking for mutation analysis
+        self.ctx.current_param_names = param_names
+        self.ctx.current_param_name_to_idx = {p: i for i, (p, _) in enumerate(params)}
+
+        # Prescan for reassigned variables + last-use liveness
+        scan = scan_reassigned_vars(func.body, pre_declared=param_names)
+        self.ctx.all_last_uses |= analyze_last_uses(func.body, scan.alias_sources)
+        self.ctx.current_reassigned_vars = scan.reassigned.copy()
+        self.ctx.current_lvalue_reassigned = scan.lvalue_reassigned.copy()
+        self.ctx.current_aug_assigned_vars = scan.aug_assigned.copy()
+
+        # Analyze body
+        for stmt in func.body:
+            self.analyze_stmt(stmt)
+
+        return scan
+
+    def _analyze_nested_def(self, stmt: TpyNestedDef) -> None:
+        """Analyze a nested function definition."""
         from .expressions import _collect_body_name_refs, _collect_body_local_defs
 
         func = stmt.func
@@ -1132,48 +1166,25 @@ class StatementAnalyzer:
         nonlocal_names: set[str] = set()
         self._collect_nonlocal_names(func.body, nonlocal_names)
 
-        # Resolve param types
-        params: list[tuple[str, TpyType]] = []
-        for pname, ptype in func.params:
-            resolved = self.type_ops.resolve_type(ptype)
-            params.append((pname, resolved))
-        param_names = {pname for pname, _ in params}
-
-        # Resolve return type
+        # Resolve param and return types
+        params = [(p, self.type_ops.resolve_type(t)) for p, t in func.params]
+        param_names = {p for p, _ in params}
         return_type = self.type_ops.resolve_type(func.return_type)
 
         # Analyze body in isolated scope
         with self.scopes.nested_def_scope(func) as inner_scope:
             self.ctx.outer_scope_locals = outer_locals
 
-            # Run prescan on nested body
-            pre_declared = {pname for pname, _ in params}
-            scan = scan_reassigned_vars(func.body, pre_declared)
-            self.ctx.current_reassigned_vars = scan.reassigned
-            self.ctx.current_lvalue_reassigned = scan.lvalue_reassigned
-            self.ctx.current_aug_assigned_vars = scan.aug_assigned
-            self.ctx.all_last_uses |= analyze_last_uses(
-                func.body, scan.alias_sources)
-
-            # Add params to inner scope
-            for pname, ptype in params:
-                inner_scope.define(pname, ptype)
-                self.ctx.definitely_assigned.add(pname)
-                if self.ctx.current_ns:
-                    self.ctx.current_ns.bind_variable(pname, ptype)
-
             # Add nonlocal names to inner scope with types from outer
             for name in nonlocal_names:
-                outer_type = self.ctx.current_scope.parent.lookup(name) if self.ctx.current_scope.parent else None
+                outer_type = inner_scope.parent.lookup(name) if inner_scope.parent else None
                 if outer_type is not None:
                     inner_scope.define(name, outer_type)
                     self.ctx.definitely_assigned.add(name)
                     if self.ctx.current_ns:
                         self.ctx.current_ns.bind_variable(name, outer_type)
 
-            # Analyze body statements
-            for s in func.body:
-                self.analyze_stmt(s)
+            self._prescan_and_analyze_body(func, params, inner_scope, self.ctx.current_ns)
 
             # Use the authoritative nonlocal set from body analysis
             # (covers nonlocal declarations at any nesting depth)
@@ -1213,25 +1224,10 @@ class StatementAnalyzer:
         """Recursively collect nonlocal declarations from all nesting depths."""
         for s in stmts:
             if isinstance(s, TpyNonlocal):
-                for name in s.names:
-                    names.add(name)
-            elif isinstance(s, TpyIf):
-                self._collect_nonlocal_names(s.then_body, names)
-                self._collect_nonlocal_names(s.else_body, names)
-            elif isinstance(s, (TpyWhile, TpyForEach)):
-                self._collect_nonlocal_names(s.body, names)
-                if hasattr(s, 'orelse'):
-                    self._collect_nonlocal_names(s.orelse, names)
-            elif isinstance(s, TpyWith):
-                self._collect_nonlocal_names(s.body, names)
-            elif isinstance(s, TpyTryExcept):
-                self._collect_nonlocal_names(s.try_body, names)
-                self._collect_nonlocal_names(s.except_body, names)
-                self._collect_nonlocal_names(s.else_body, names)
-            elif isinstance(s, TpyMatch):
-                for case in s.cases:
-                    self._collect_nonlocal_names(case.body, names)
-            # Don't recurse into TpyNestedDef (separate scope)
+                names.update(s.names)
+            elif not isinstance(s, TpyNestedDef):
+                for body in s.sub_bodies():
+                    self._collect_nonlocal_names(body, names)
 
     def _resolve_literal_type(self, t: TpyType) -> TpyType:
         """Resolve IntLiteralType/FloatLiteralType to concrete types."""

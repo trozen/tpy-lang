@@ -438,6 +438,14 @@ class TpyStmt:
     """Base class for statements."""
     loc: SourceLocation | None = field(default=None, kw_only=True)
 
+    def exprs(self) -> list[TpyExpr]:
+        """Return direct child expressions for generic tree walking."""
+        return []
+
+    def sub_bodies(self) -> list[list[TpyStmt]]:
+        """Return sub-statement bodies for recursive walking."""
+        return []
+
 
 class VarLinkage(Enum):
     """Linkage mode for global variable imports."""
@@ -461,6 +469,9 @@ class TpyVarDecl(TpyStmt):
     # Set by sema: union assignment narrowing facts for codegen
     then_type_facts: dict[str, TpyType] = field(default_factory=dict)
 
+    def exprs(self) -> list[TpyExpr]:
+        return [self.init] if self.init else []
+
 
 @dataclass
 class TpyTupleUnpack(TpyStmt):
@@ -474,12 +485,18 @@ class TpyTupleUnpack(TpyStmt):
     is_ref: list[bool] = field(default_factory=list)
     is_const_ref: list[bool] = field(default_factory=list)
 
+    def exprs(self) -> list[TpyExpr]:
+        return [self.value]
+
 
 @dataclass
 class TpyAssign(TpyStmt):
     """Assignment to variable or field."""
     target: TpyExpr
     value: TpyExpr
+
+    def exprs(self) -> list[TpyExpr]:
+        return [self.target, self.value]
 
 
 @dataclass
@@ -491,17 +508,26 @@ class TpyAugAssign(TpyStmt):
     resolved_binop: 'ResolvedBinop | None' = None  # Set by sema for builtin ops
     resolved_inplace: 'ResolvedBinop | None' = None  # Set by sema for in-place ops (__iadd__, __ior__, etc.)
 
+    def exprs(self) -> list[TpyExpr]:
+        return [self.target, self.value]
+
 
 @dataclass
 class TpyDelItem(TpyStmt):
     """Delete statement: del obj[key], obj2[key2], ..."""
     targets: list[TpySubscript]
 
+    def exprs(self) -> list[TpyExpr]:
+        return list(self.targets)
+
 
 @dataclass
 class TpyExprStmt(TpyStmt):
     """Expression statement (e.g., function call)."""
     expr: TpyExpr
+
+    def exprs(self) -> list[TpyExpr]:
+        return [self.expr]
 
 
 @dataclass
@@ -511,6 +537,9 @@ class TpyReturn(TpyStmt):
     # Set by sema: the analyzed type of the return expression (before coercion)
     value_type: Optional['TpyType'] = None
 
+    def exprs(self) -> list[TpyExpr]:
+        return [self.value] if self.value else []
+
 
 @dataclass
 class TpyAssert(TpyStmt):
@@ -519,6 +548,12 @@ class TpyAssert(TpyStmt):
     message: TpyExpr | None = None
     # Set by sema: isinstance union narrowing facts that hold after a passing assert
     then_type_facts: dict[str, TpyType] = field(default_factory=dict)
+
+    def exprs(self) -> list[TpyExpr]:
+        result = [self.condition]
+        if self.message:
+            result.append(self.message)
+        return result
 
 
 @dataclass
@@ -531,6 +566,12 @@ class TpyIf(TpyStmt):
     then_type_facts: dict[str, TpyType] = field(default_factory=dict)
     else_type_facts: dict[str, TpyType] = field(default_factory=dict)
 
+    def exprs(self) -> list[TpyExpr]:
+        return [self.condition]
+
+    def sub_bodies(self) -> list[list[TpyStmt]]:
+        return [self.then_body, self.else_body]
+
 
 @dataclass
 class TpyWhile(TpyStmt):
@@ -540,6 +581,12 @@ class TpyWhile(TpyStmt):
     orelse: list[TpyStmt] = field(default_factory=list)
     # Set by sema: isinstance union narrowing facts for codegen
     then_type_facts: dict[str, TpyType] = field(default_factory=dict)
+
+    def exprs(self) -> list[TpyExpr]:
+        return [self.condition]
+
+    def sub_bodies(self) -> list[list[TpyStmt]]:
+        return [self.body, self.orelse]
 
 
 @dataclass
@@ -554,6 +601,12 @@ class TpyForEach(TpyStmt):
     is_tuple_unpack: bool = False  # set by parser: synthetic loop var for tuple destructuring
     const_loop_var: bool = False  # set by sema: loop var is never mutated, safe for const auto&
     hoist_loop_var: bool = False  # set by sema: loop var used after loop, needs pre-declaration
+
+    def exprs(self) -> list[TpyExpr]:
+        return [self.iterable]
+
+    def sub_bodies(self) -> list[list[TpyStmt]]:
+        return [self.body, self.orelse]
 
 
 @dataclass
@@ -600,6 +653,9 @@ class TpyTryExcept(TpyStmt):
     except_body: list[TpyStmt]
     else_body: list[TpyStmt]     # may be empty
 
+    def sub_bodies(self) -> list[list[TpyStmt]]:
+        return [self.try_body, self.except_body, self.else_body]
+
 
 @dataclass
 class TpyWithItem:
@@ -616,6 +672,12 @@ class TpyWith(TpyStmt):
     """with statement (context managers)."""
     items: list[TpyWithItem]
     body: list[TpyStmt]
+
+    def exprs(self) -> list[TpyExpr]:
+        return [item.context_expr for item in self.items]
+
+    def sub_bodies(self) -> list[list[TpyStmt]]:
+        return [self.body]
 
 
 @dataclass
@@ -705,6 +767,16 @@ class TpyMatch(TpyStmt):
     cases: list[TpyMatchCase]
     # Set by sema: resolved type of the subject expression
     subject_type: TpyType | None = None
+
+    def exprs(self) -> list[TpyExpr]:
+        result: list[TpyExpr] = [self.subject]
+        for case in self.cases:
+            if case.guard is not None:
+                result.append(case.guard)
+        return result
+
+    def sub_bodies(self) -> list[list[TpyStmt]]:
+        return [case.body for case in self.cases]
 
 
 @dataclass(frozen=True)

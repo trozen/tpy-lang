@@ -84,68 +84,14 @@ def _walk_body_stmts(
     on_stmt: CallableFn[[TpyStmt], None],
 ) -> None:
     """Walk statements calling on_expr/on_stmt. Does NOT recurse into TpyNestedDef."""
-    # Explicit dispatch matching the pattern used by liveness.py and prescan.py.
-    # TODO: add children()/sub_bodies() to TpyStmt to eliminate this.
-    from ..parse import (
-        TpyVarDecl, TpyAssign, TpyTupleUnpack, TpyAugAssign,
-        TpyExprStmt, TpyReturn, TpyAssert, TpyIf, TpyWhile, TpyForEach,
-        TpyMatch, TpyTryExcept, TpyWith, TpyDelItem,
-    )
     for stmt in stmts:
         on_stmt(stmt)
         if isinstance(stmt, TpyNestedDef):
-            pass  # separate scope
-        elif isinstance(stmt, TpyVarDecl):
-            if stmt.init:
-                on_expr(stmt.init)
-        elif isinstance(stmt, TpyAssign):
-            on_expr(stmt.value)
-            if isinstance(stmt.target, TpyExpr):
-                on_expr(stmt.target)
-        elif isinstance(stmt, TpyTupleUnpack):
-            on_expr(stmt.value)
-        elif isinstance(stmt, TpyAugAssign):
-            on_expr(stmt.value)
-            if isinstance(stmt.target, TpyExpr):
-                on_expr(stmt.target)
-        elif isinstance(stmt, TpyExprStmt):
-            on_expr(stmt.expr)
-        elif isinstance(stmt, TpyReturn):
-            if stmt.value:
-                on_expr(stmt.value)
-        elif isinstance(stmt, TpyAssert):
-            on_expr(stmt.condition)
-            if stmt.message:
-                on_expr(stmt.message)
-        elif isinstance(stmt, TpyIf):
-            on_expr(stmt.condition)
-            _walk_body_stmts(stmt.then_body, on_expr, on_stmt)
-            _walk_body_stmts(stmt.else_body, on_expr, on_stmt)
-        elif isinstance(stmt, TpyWhile):
-            on_expr(stmt.condition)
-            _walk_body_stmts(stmt.body, on_expr, on_stmt)
-            _walk_body_stmts(stmt.orelse, on_expr, on_stmt)
-        elif isinstance(stmt, TpyForEach):
-            on_expr(stmt.iterable)
-            _walk_body_stmts(stmt.body, on_expr, on_stmt)
-            _walk_body_stmts(stmt.orelse, on_expr, on_stmt)
-        elif isinstance(stmt, TpyMatch):
-            on_expr(stmt.subject)
-            for case in stmt.cases:
-                if case.guard is not None:
-                    on_expr(case.guard)
-                _walk_body_stmts(case.body, on_expr, on_stmt)
-        elif isinstance(stmt, TpyTryExcept):
-            _walk_body_stmts(stmt.try_body, on_expr, on_stmt)
-            _walk_body_stmts(stmt.except_body, on_expr, on_stmt)
-            _walk_body_stmts(stmt.else_body, on_expr, on_stmt)
-        elif isinstance(stmt, TpyWith):
-            for item in stmt.items:
-                on_expr(item.context_expr)
-            _walk_body_stmts(stmt.body, on_expr, on_stmt)
-        elif isinstance(stmt, TpyDelItem):
-            for sub in stmt.subscripts:
-                on_expr(sub)
+            continue  # separate scope
+        for expr in stmt.exprs():
+            on_expr(expr)
+        for body in stmt.sub_bodies():
+            _walk_body_stmts(body, on_expr, on_stmt)
 
 
 def _collect_body_name_refs(stmts: list[TpyStmt]) -> set[str]:

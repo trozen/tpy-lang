@@ -699,38 +699,22 @@ class SemanticAnalyzer:
         self.ctx.current_function = func
         # Resolve return type (sets is_protocol for cross-module imports)
         func.return_type = self.type_ops.resolve_type(func.return_type)
-        self.ctx.current_scope = Scope(parent=self.ctx.global_scope)
+        scope = Scope(parent=self.ctx.global_scope)
+        self.ctx.current_scope = scope
 
-        # Add parameters to scope and namespace. ReadonlyType is kept for
-        # type-based enforcement; @readonly wraps all non-value params.
+        # Resolve and normalize params (@readonly wraps all non-value params).
+        # Write back to AST so codegen sees ReadonlyType.
         local_ns = Namespace(parent=self.ctx.global_ns)
+        self.ctx.current_ns = local_ns
+        resolved_params: list[tuple[str, TpyType]] = []
         for i, (pname, ptype) in enumerate(func.params):
             resolved_ptype = self._normalize_param_type(
                 self.type_ops.resolve_type(ptype), func.is_readonly)
-            # Propagate resolved types to AST so codegen sees ReadonlyType on
-            # @readonly params. Idempotent: _normalize_param_type is a no-op on
-            # already-wrapped types.
             func.params[i] = (pname, resolved_ptype)
-            self.ctx.current_scope.define(pname, resolved_ptype)
-            self.ctx.var_scope_depth[pname] = self.ctx.current_scope.depth
-            self.ctx.definitely_assigned.add(pname)
-            local_ns.bind_variable(pname, resolved_ptype)
-        self.ctx.current_ns = local_ns
+            resolved_params.append((pname, resolved_ptype))
 
-        # Pre-scan for reassigned variables (shared with codegen)
-        param_names = {pname for pname, _ in func.params}
-        self.ctx.current_param_names = param_names
-        self.ctx.current_param_name_to_idx = {pname: i for i, (pname, _) in enumerate(func.params)}
-        scan = scan_reassigned_vars(func.body, pre_declared=param_names)
-        # Last-use analysis for auto-move (shared with codegen)
-        self.ctx.all_last_uses |= analyze_last_uses(func.body, scan.alias_sources)
-        self.ctx.current_reassigned_vars = scan.reassigned.copy()
-        self.ctx.current_lvalue_reassigned = scan.lvalue_reassigned.copy()
-        self.ctx.current_aug_assigned_vars = scan.aug_assigned.copy()
-
-        # Analyze body
-        for stmt in func.body:
-            self.stmts.analyze_stmt(stmt)
+        # Shared core: bind params, prescan, analyze body
+        scan = self.stmts._prescan_and_analyze_body(func, resolved_params, scope, local_ns)
         self.deduction.resolve_all()
 
         # Finalize nested def escape analysis
@@ -764,6 +748,14 @@ class SemanticAnalyzer:
             )
 
         self._warn_unconsumed_own_params(func)
+        self._store_analysis_results(func, scan)
+
+        self.ctx.current_function = None
+        self.ctx.current_scope = None
+        self.ctx.current_ns = None
+
+    def _store_analysis_results(self, func: TpyFunction, scan: ScanResult) -> None:
+        """Store prescan/liveness results for codegen consumption."""
         self.function_scan_results[id(func)] = scan
         if self.ctx.hoisted_vars:
             self.function_hoisted_vars[id(func)] = self.ctx.hoisted_vars.copy()
@@ -772,10 +764,6 @@ class SemanticAnalyzer:
         if self.ctx.global_declarations:
             self.function_global_decls[id(func)] = self.ctx.global_declarations.copy()
         self.if_branch_decls.update(self.ctx.if_branch_decls)
-
-        self.ctx.current_function = None
-        self.ctx.current_scope = None
-        self.ctx.current_ns = None
 
     def _finalize_nested_def_escapes(self) -> None:
         """Finalize escape analysis for nested defs after the enclosing function is analyzed."""
@@ -1108,28 +1096,27 @@ class SemanticAnalyzer:
             self.ctx.current_function = method
             # Resolve return type (sets is_protocol for cross-module imports)
             method.return_type = self.type_ops.resolve_type(method.return_type)
-            self.ctx.current_scope = Scope(parent=self.ctx.global_scope)
+            scope = Scope(parent=self.ctx.global_scope)
+            self.ctx.current_scope = scope
 
             local_ns = Namespace(parent=self.ctx.global_ns)
+            self.ctx.current_ns = local_ns
             if not method.is_staticmethod:
                 self_named = build_record_self_type(record)
                 self_type = self._normalize_param_type(self_named, method.is_readonly)
-                self.ctx.current_scope.define("self", self_type)
-                self.ctx.var_scope_depth["self"] = self.ctx.current_scope.depth
+                scope.define("self", self_type)
+                self.ctx.var_scope_depth["self"] = scope.depth
                 self.ctx.definitely_assigned.add("self")
                 local_ns.bind_variable("self", self_type)
 
+            # Resolve and normalize params (@readonly wraps all non-value params).
+            # Write back to AST so codegen sees ReadonlyType.
+            resolved_params: list[tuple[str, TpyType]] = []
             for i, (pname, ptype) in enumerate(method.params):
                 resolved_ptype = self._normalize_param_type(
                     self.type_ops.resolve_type(ptype), method.is_readonly)
-                # Propagate resolved types to AST so codegen sees ReadonlyType.
-                # Idempotent: _normalize_param_type is a no-op on already-wrapped types.
                 method.params[i] = (pname, resolved_ptype)
-                self.ctx.current_scope.define(pname, resolved_ptype)
-                self.ctx.var_scope_depth[pname] = self.ctx.current_scope.depth
-                self.ctx.definitely_assigned.add(pname)
-                local_ns.bind_variable(pname, resolved_ptype)
-            self.ctx.current_ns = local_ns
+                resolved_params.append((pname, resolved_ptype))
 
             # __next__ must have an explicit non-void return type annotation
             if method.name == "__next__" and isinstance(method.return_type, VoidType):
@@ -1138,20 +1125,8 @@ class SemanticAnalyzer:
                     method
                 )
 
-            # Pre-scan for reassigned variables (shared with codegen)
-            param_names = {pname for pname, _ in method.params}
-            self.ctx.current_param_names = param_names
-            self.ctx.current_param_name_to_idx = {pname: i for i, (pname, _) in enumerate(method.params)}
-            scan = scan_reassigned_vars(method.body, pre_declared=param_names)
-            # Last-use analysis for auto-move (shared with codegen)
-            self.ctx.all_last_uses |= analyze_last_uses(method.body, scan.alias_sources)
-            self.ctx.current_reassigned_vars = scan.reassigned.copy()
-            self.ctx.current_lvalue_reassigned = scan.lvalue_reassigned.copy()
-            self.ctx.current_aug_assigned_vars = scan.aug_assigned.copy()
-
-            # Analyze body
-            for stmt in method.body:
-                self.stmts.analyze_stmt(stmt)
+            # Shared core: bind params, prescan, analyze body
+            scan = self.stmts._prescan_and_analyze_body(method, resolved_params, scope, local_ns)
 
             # Warn if __next__ has no raise StopIteration (likely infinite loop)
             if method.name == "__next__" and not _body_has_raise(method.body, "builtins.StopIteration"):
@@ -1238,14 +1213,7 @@ class SemanticAnalyzer:
                     method_fi.return_borrows_from = returned
 
             self._warn_unconsumed_own_params(method)
-            self.function_scan_results[id(method)] = scan
-            if self.ctx.hoisted_vars:
-                self.function_hoisted_vars[id(method)] = self.ctx.hoisted_vars.copy()
-            if self.ctx.move_through_vars:
-                self.function_move_through_vars[id(method)] = self.ctx.move_through_vars.copy()
-            if self.ctx.global_declarations:
-                self.function_global_decls[id(method)] = self.ctx.global_declarations.copy()
-            self.if_branch_decls.update(self.ctx.if_branch_decls)
+            self._store_analysis_results(method, scan)
 
             self.ctx.current_scope = None
             self.ctx.current_function = None

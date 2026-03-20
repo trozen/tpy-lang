@@ -10,12 +10,12 @@ from dataclasses import dataclass, field, fields as dc_fields
 
 from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
-    TpyIf, TpyWhile, TpyForEach, TpyName, TpySubscript,
+    TpyForEach, TpyName, TpySubscript,
     TpyCall, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyMethodCall,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat,
     TpyCoerce, TpyFieldAccess, TpyIfExpr, TpyNamedExpr,
-    TpyExprStmt, TpyReturn, TpyAssert, TpyNestedDef,
+    TpyNestedDef,
     TpyFStringValue, TpyComprehensionGenerator,
     TpyDictLiteral, TpySetLiteral, TpyTupleLiteral, TpyFString,
 )
@@ -152,23 +152,8 @@ def _scan_walrus_in_expr(expr: TpyExpr | None, declared: set[str],
 def _scan_walrus_in_stmt(stmt: TpyStmt, declared: set[str],
                           result: ScanResult) -> None:
     """Scan expressions within a statement for walrus bindings."""
-    if isinstance(stmt, TpyIf):
-        _scan_walrus_in_expr(stmt.condition, declared, result)
-    elif isinstance(stmt, TpyWhile):
-        _scan_walrus_in_expr(stmt.condition, declared, result)
-    elif isinstance(stmt, TpyExprStmt):
-        _scan_walrus_in_expr(stmt.expr, declared, result)
-    elif isinstance(stmt, TpyVarDecl):
-        _scan_walrus_in_expr(stmt.init, declared, result)
-    elif isinstance(stmt, TpyAssign):
-        _scan_walrus_in_expr(stmt.value, declared, result)
-    elif isinstance(stmt, TpyReturn):
-        _scan_walrus_in_expr(stmt.value, declared, result)
-    elif isinstance(stmt, TpyAssert):
-        _scan_walrus_in_expr(stmt.condition, declared, result)
-        _scan_walrus_in_expr(stmt.message, declared, result)
-    elif isinstance(stmt, TpyAugAssign):
-        _scan_walrus_in_expr(stmt.value, declared, result)
+    for expr in stmt.exprs():
+        _scan_walrus_in_expr(expr, declared, result)
 
 
 def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
@@ -217,13 +202,8 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
             else:
                 declared.add(name)
             # Do NOT recurse into nested body (separate scope)
-        if isinstance(stmt, TpyIf):
-            _scan_stmts(stmt.then_body, declared, result)
-            _scan_stmts(stmt.else_body, declared, result)
-        elif isinstance(stmt, TpyForEach):
+        # Recurse into sub-bodies (if/while/for)
+        if isinstance(stmt, TpyForEach):
             declared.add(stmt.var)
-            _scan_stmts(stmt.body, declared, result)
-            _scan_stmts(stmt.orelse, declared, result)
-        elif isinstance(stmt, TpyWhile):
-            _scan_stmts(stmt.body, declared, result)
-            _scan_stmts(stmt.orelse, declared, result)
+        for body in stmt.sub_bodies():
+            _scan_stmts(body, declared, result)
