@@ -17,6 +17,7 @@ from .parse import (
     TpyCoerce, TpyFieldAccess, TpyIfExpr, TpyNamedExpr,
     TpyExprStmt, TpyReturn, TpyAssert,
     TpyFStringValue, TpyComprehensionGenerator,
+    TpyDictLiteral, TpySetLiteral, TpyTupleLiteral, TpyFString,
 )
 
 
@@ -109,6 +110,7 @@ def is_scan_rvalue(expr: TpyExpr | None) -> bool:
     return isinstance(expr, (TpyCall, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyMethodCall,
                              TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
                              TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat,
+                             TpyDictLiteral, TpySetLiteral, TpyTupleLiteral, TpyFString,
                              TpyIfExpr))
 
 

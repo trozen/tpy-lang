@@ -1616,50 +1616,77 @@ class ExpressionAnalyzer:
             value_types = [self.analyze_expr(v) for v in expr.values]
 
         # Unify key types
-        key_type = key_types[0]
-        for i, kt in enumerate(key_types[1:], 2):
-            if isinstance(key_type, IntLiteralType) and isinstance(kt, IntLiteralType):
-                continue
-            if isinstance(kt, IntLiteralType) and isinstance(key_type, (Int32Type, BigIntType)):
-                continue
-            if isinstance(key_type, IntLiteralType) and isinstance(kt, (Int32Type, BigIntType)):
-                key_type = kt
-                continue
-            if isinstance(key_type, FloatLiteralType) and isinstance(kt, FloatLiteralType):
-                continue
-            if isinstance(kt, FloatLiteralType) and isinstance(key_type, (FloatType, Float32Type)):
-                continue
-            if isinstance(key_type, FloatLiteralType) and isinstance(kt, (FloatType, Float32Type)):
-                key_type = kt
-                continue
-            if kt != key_type:
-                raise self.ctx.error(
-                    f"Dict has mixed key types: key {i} is {kt}, "
-                    f"but earlier keys are {key_type}", expr,
-                )
+        if isinstance(expected_key, (UnionType, OptionalType)):
+            key_type = expected_key
+            for i, kt in enumerate(key_types, 1):
+                if kt == expected_key:
+                    continue
+                try:
+                    self.compat.check_type_compatible(
+                        kt, expected_key, f"dict literal key {i}", expr.loc)
+                except SemanticError:
+                    raise self.ctx.error(
+                        f"Dict literal key {i} has type {kt}, "
+                        f"incompatible with annotated key type {expected_key}", expr)
+        else:
+            key_type = key_types[0]
+            for i, kt in enumerate(key_types[1:], 2):
+                if isinstance(key_type, IntLiteralType) and isinstance(kt, IntLiteralType):
+                    continue
+                if isinstance(kt, IntLiteralType) and isinstance(key_type, (Int32Type, BigIntType)):
+                    continue
+                if isinstance(key_type, IntLiteralType) and isinstance(kt, (Int32Type, BigIntType)):
+                    key_type = kt
+                    continue
+                if isinstance(key_type, FloatLiteralType) and isinstance(kt, FloatLiteralType):
+                    continue
+                if isinstance(kt, FloatLiteralType) and isinstance(key_type, (FloatType, Float32Type)):
+                    continue
+                if isinstance(key_type, FloatLiteralType) and isinstance(kt, (FloatType, Float32Type)):
+                    key_type = kt
+                    continue
+                if kt != key_type:
+                    raise self.ctx.error(
+                        f"Dict has mixed key types: key {i} is {kt}, "
+                        f"but earlier keys are {key_type}", expr,
+                    )
 
         # Unify value types
-        value_type = value_types[0]
-        for i, vt in enumerate(value_types[1:], 2):
-            if isinstance(value_type, IntLiteralType) and isinstance(vt, IntLiteralType):
-                continue
-            if isinstance(vt, IntLiteralType) and isinstance(value_type, (Int32Type, BigIntType)):
-                continue
-            if isinstance(value_type, IntLiteralType) and isinstance(vt, (Int32Type, BigIntType)):
-                value_type = vt
-                continue
-            if isinstance(value_type, FloatLiteralType) and isinstance(vt, FloatLiteralType):
-                continue
-            if isinstance(vt, FloatLiteralType) and isinstance(value_type, (FloatType, Float32Type)):
-                continue
-            if isinstance(value_type, FloatLiteralType) and isinstance(vt, (FloatType, Float32Type)):
-                value_type = vt
-                continue
-            if vt != value_type:
-                raise self.ctx.error(
-                    f"Dict has mixed value types: value {i} is {vt}, "
-                    f"but earlier values are {value_type}", expr,
-                )
+        if isinstance(expected_value, (UnionType, OptionalType)):
+            # Annotation provides a union/optional -- validate each value against it
+            value_type = expected_value
+            for i, vt in enumerate(value_types, 1):
+                if vt == expected_value:
+                    continue
+                try:
+                    self.compat.check_type_compatible(
+                        vt, expected_value, f"dict literal value {i}", expr.loc)
+                except SemanticError:
+                    raise self.ctx.error(
+                        f"Dict literal value {i} has type {vt}, "
+                        f"incompatible with annotated value type {expected_value}", expr)
+        else:
+            value_type = value_types[0]
+            for i, vt in enumerate(value_types[1:], 2):
+                if isinstance(value_type, IntLiteralType) and isinstance(vt, IntLiteralType):
+                    continue
+                if isinstance(vt, IntLiteralType) and isinstance(value_type, (Int32Type, BigIntType)):
+                    continue
+                if isinstance(value_type, IntLiteralType) and isinstance(vt, (Int32Type, BigIntType)):
+                    value_type = vt
+                    continue
+                if isinstance(value_type, FloatLiteralType) and isinstance(vt, FloatLiteralType):
+                    continue
+                if isinstance(vt, FloatLiteralType) and isinstance(value_type, (FloatType, Float32Type)):
+                    continue
+                if isinstance(value_type, FloatLiteralType) and isinstance(vt, (FloatType, Float32Type)):
+                    value_type = vt
+                    continue
+                if vt != value_type:
+                    raise self.ctx.error(
+                        f"Dict has mixed value types: value {i} is {vt}, "
+                        f"but earlier values are {value_type}", expr,
+                    )
 
         # Use annotation types when literal elements are IntLiteralType or FloatLiteralType
         if isinstance(key_type, IntLiteralType):
@@ -1696,27 +1723,41 @@ class ExpressionAnalyzer:
             elem_types = [self.analyze_expr(e) for e in expr.elements]
 
         # Unify element types
-        elem_type = elem_types[0]
-        for i, et in enumerate(elem_types[1:], 2):
-            if isinstance(elem_type, IntLiteralType) and isinstance(et, IntLiteralType):
-                continue
-            if isinstance(et, IntLiteralType) and isinstance(elem_type, (Int32Type, BigIntType)):
-                continue
-            if isinstance(elem_type, IntLiteralType) and isinstance(et, (Int32Type, BigIntType)):
-                elem_type = et
-                continue
-            if isinstance(elem_type, FloatLiteralType) and isinstance(et, FloatLiteralType):
-                continue
-            if isinstance(et, FloatLiteralType) and isinstance(elem_type, (FloatType, Float32Type)):
-                continue
-            if isinstance(elem_type, FloatLiteralType) and isinstance(et, (FloatType, Float32Type)):
-                elem_type = et
-                continue
-            if et != elem_type:
-                raise self.ctx.error(
-                    f"Set has mixed element types: element {i} is {et}, "
-                    f"but earlier elements are {elem_type}", expr,
-                )
+        if isinstance(expected_elem, (UnionType, OptionalType)):
+            elem_type = expected_elem
+            for i, et in enumerate(elem_types, 1):
+                if et == expected_elem:
+                    continue
+                try:
+                    self.compat.check_type_compatible(
+                        et, expected_elem, f"set literal element {i}", expr.loc)
+                except SemanticError:
+                    raise self.ctx.error(
+                        f"Set literal element {i} has type {et}, "
+                        f"incompatible with annotated element type {expected_elem}", expr,
+                    )
+        else:
+            elem_type = elem_types[0]
+            for i, et in enumerate(elem_types[1:], 2):
+                if isinstance(elem_type, IntLiteralType) and isinstance(et, IntLiteralType):
+                    continue
+                if isinstance(et, IntLiteralType) and isinstance(elem_type, (Int32Type, BigIntType)):
+                    continue
+                if isinstance(elem_type, IntLiteralType) and isinstance(et, (Int32Type, BigIntType)):
+                    elem_type = et
+                    continue
+                if isinstance(elem_type, FloatLiteralType) and isinstance(et, FloatLiteralType):
+                    continue
+                if isinstance(et, FloatLiteralType) and isinstance(elem_type, (FloatType, Float32Type)):
+                    continue
+                if isinstance(elem_type, FloatLiteralType) and isinstance(et, (FloatType, Float32Type)):
+                    elem_type = et
+                    continue
+                if et != elem_type:
+                    raise self.ctx.error(
+                        f"Set has mixed element types: element {i} is {et}, "
+                        f"but earlier elements are {elem_type}", expr,
+                    )
 
         if isinstance(elem_type, IntLiteralType):
             elem_type = expected_elem if expected_elem else self.ctx.default_int_for_literal(elem_type)
@@ -2088,19 +2129,22 @@ class ExpressionAnalyzer:
 
         obj_type = self.analyze_expr(expr.obj)
 
+        # Unwrap Own[T] -- ownership marker doesn't affect subscript behavior
+        inner_obj_type = obj_type.wrapped if isinstance(obj_type, OwnType) else obj_type
+
         # Tuple indexing: t[0], t[-1] -- compile-time constant index only
-        actual_for_tuple = unwrap_readonly(obj_type)
+        actual_for_tuple = unwrap_readonly(inner_obj_type)
         if isinstance(actual_for_tuple, TupleType):
             return self._analyze_tuple_subscript(expr, actual_for_tuple)
 
         # Slice: obj[start:stop]
         if isinstance(expr.index, TpySlice):
-            return self._analyze_slice(expr, obj_type)
+            return self._analyze_slice(expr, inner_obj_type)
 
         index_type = self.analyze_expr(expr.index)
 
         # Dict subscript: d[key] -> V (key can be non-integer)
-        actual_obj = unwrap_readonly(obj_type)
+        actual_obj = unwrap_readonly(inner_obj_type)
         if isinstance(actual_obj, PendingDictType):
             if not isinstance(actual_obj.key_type, UnknownElementType):
                 self.compat.check_type_compatible(
@@ -2124,8 +2168,8 @@ class ExpressionAnalyzer:
         self._check_subscript_bounds_safe(expr)
 
         # Unwrap ReadonlyType, remember the flag
-        is_readonly_obj = isinstance(obj_type, ReadonlyType)
-        actual_type = unwrap_readonly(obj_type)
+        is_readonly_obj = isinstance(inner_obj_type, ReadonlyType)
+        actual_type = unwrap_readonly(inner_obj_type)
 
         # Optional[T] index access uses runtime null checks for unproven access.
         if isinstance(actual_type, OptionalType):

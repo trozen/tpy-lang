@@ -1,0 +1,12 @@
+2
+Rex
+dog: Buddy
+cat: Mimi
+str: direct
+str: hello
+str: world
+str: direct
+own str: owned
+own list: own-hello
+hello
+hello

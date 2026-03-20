@@ -1,0 +1,1 @@
+main.py:3: error: Dict literal value 1 has type PendingList[IntLiteral(1), 2]#0, incompatible with annotated value type int | str
