@@ -43,8 +43,8 @@ void main() {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& __asdict_1 = *__beg_0;
-            __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __asdict_1.x}, {"y", __asdict_1.y}}));
+            const auto& __macro_1 = *__beg_0;
+            __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_1.x}, {"y", __macro_1.y}}));
         }
         return __result;
     }()}})) << "\n";
@@ -59,8 +59,8 @@ void main() {
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
-            const auto& __asdict_2 = *__beg_1;
-            __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __asdict_2.x}, {"y", __asdict_2.y}}));
+            const auto& __macro_2 = *__beg_1;
+            __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_2.x}, {"y", __macro_2.y}}));
         }
         return __result;
     }()}}))) << "\n";
@@ -85,8 +85,8 @@ void main() {
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
-            const auto& __asdict_3 = *__beg_2;
-            __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __asdict_3.x}, {"y", __asdict_3.y}}));
+            const auto& __macro_3 = *__beg_2;
+            __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_3.x}, {"y", __macro_3.y}}));
         }
         return __result;
     }()}})) << "\n";
@@ -101,11 +101,56 @@ void main() {
         auto __beg_3 = __obj_3.begin();
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
-            const auto& __asdict_4 = *__beg_3;
-            __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __asdict_4.x}, {"y", __asdict_4.y}}));
+            const auto& __macro_4 = *__beg_3;
+            __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_4.x}, {"y", __macro_4.y}}));
         }
         return __result;
     }()}, {"labels", ml.labels}}))) << "\n";
+    // # 11. Dict with dataclass values
+    // dd = DictOfDC({"origin": Point(Int32(0), Int32(0)), "end": Point(Int32(1), Int32(2))})
+    DictOfDC dd = DictOfDC(::tpy::ordered_map<std::string, Point>({{"origin", Point(0, 0)}, {"end", Point(1, 2)}}));
+    // print(asdict(dd))
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"items", [&]() {
+        ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>> __result;
+        auto __obj_4 = ::tpy::dict_items(dd.items);
+        auto __beg_4 = __obj_4.begin();
+        auto __end_4 = __obj_4.end();
+        for (; __beg_4 != __end_4; ++__beg_4) {
+            const auto& __tup_1 = *__beg_4;
+            std::string __macro_5 = std::get<0>(__tup_1);
+            const auto& __macro_6 = std::get<1>(__tup_1);
+            __result.insert_or_assign(__macro_5, ::tpy::ordered_map<std::string, int32_t>({{"x", __macro_6.x}, {"y", __macro_6.y}}));
+        }
+        return __result;
+    }()}})) << "\n";
+    // print(astuple(dd))
+    std::cout << ::tpy::TuplePrinter(std::tuple<::tpy::ordered_map<std::string, std::tuple<int32_t, int32_t>>>{[&]() {
+        ::tpy::ordered_map<std::string, std::tuple<int32_t, int32_t>> __result;
+        auto __obj_5 = ::tpy::dict_items(dd.items);
+        auto __beg_5 = __obj_5.begin();
+        auto __end_5 = __obj_5.end();
+        for (; __beg_5 != __end_5; ++__beg_5) {
+            const auto& __tup_2 = *__beg_5;
+            std::string __macro_7 = std::get<0>(__tup_2);
+            const auto& __macro_8 = std::get<1>(__tup_2);
+            __result.insert_or_assign(__macro_7, std::tuple<int32_t, int32_t>{__macro_8.x, __macro_8.y});
+        }
+        return __result;
+    }()}) << "\n";
+    // # 12. Tuple with mixed types (DC + scalar)
+    // tm = TupleMixed((Point(Int32(1), Int32(2)), Int32(42)))
+    TupleMixed tm = TupleMixed(std::tuple<Point, int32_t>{Point(1, 2), 42});
+    // print(asdict(tm))
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>>({{"pair", std::tuple<::tpy::ordered_map<std::string, int32_t>, int32_t>{::tpy::ordered_map<std::string, int32_t>({{"x", std::get<0>(tm.pair).x}, {"y", std::get<0>(tm.pair).y}}), std::get<1>(tm.pair)}}})) << "\n";
+    // print(astuple(tm))
+    std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<std::tuple<int32_t, int32_t>, int32_t>>{std::tuple<std::tuple<int32_t, int32_t>, int32_t>{std::tuple<int32_t, int32_t>{std::get<0>(tm.pair).x, std::get<0>(tm.pair).y}, std::get<1>(tm.pair)}}) << "\n";
+    // # 13. Tuple with all dataclass elements
+    // ta = TupleAllDC((Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))))
+    TupleAllDC ta = TupleAllDC(std::tuple<Point, Point>{Point(1, 2), Point(3, 4)});
+    // print(asdict(ta))
+    std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>>({{"pair", std::tuple<::tpy::ordered_map<std::string, int32_t>, ::tpy::ordered_map<std::string, int32_t>>{::tpy::ordered_map<std::string, int32_t>({{"x", std::get<0>(ta.pair).x}, {"y", std::get<0>(ta.pair).y}}), ::tpy::ordered_map<std::string, int32_t>({{"x", std::get<1>(ta.pair).x}, {"y", std::get<1>(ta.pair).y}})}}})) << "\n";
+    // print(astuple(ta))
+    std::cout << ::tpy::TuplePrinter(std::tuple<std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>>{std::tuple<std::tuple<int32_t, int32_t>, std::tuple<int32_t, int32_t>>{std::tuple<int32_t, int32_t>{std::get<0>(ta.pair).x, std::get<0>(ta.pair).y}, std::tuple<int32_t, int32_t>{std::get<1>(ta.pair).x, std::get<1>(ta.pair).y}}}) << "\n";
 }
 
 void __tpy_init() {
@@ -113,6 +158,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Fuzz-style coverage of asdict()/astuple() across nested, list, dict, and tuple field types
     // from dataclasses import dataclass, asdict, astuple
     // main()
     main();

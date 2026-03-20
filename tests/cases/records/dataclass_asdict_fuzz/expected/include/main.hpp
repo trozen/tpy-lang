@@ -18,6 +18,9 @@ struct Wrapper;
 struct MaybeNamed;
 struct Container;
 struct MultiList;
+struct DictOfDC;
+struct TupleMixed;
+struct TupleAllDC;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -367,6 +370,102 @@ struct MultiList {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MultiList& obj) {
+    os << obj.__repr__();
+    return os;
+}
+
+// # Dict with dataclass values
+// @dataclass
+// class DictOfDC:
+struct DictOfDC {
+    // items: dict[str, Point]
+    ::tpy::ordered_map<std::string, Point> items;
+
+    DictOfDC() = default;
+    explicit DictOfDC(::tpy::ordered_map<std::string, Point>&& items) : items(std::move(items)) {}
+
+    bool __eq__(const DictOfDC& other) const {
+        return (this->items == other.items);
+    }
+
+    friend bool operator==(const DictOfDC& lhs, const DictOfDC& other) {
+        return lhs.__eq__(other);
+    }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "DictOfDC("
+           << "items=" << ::tpy::DictPrinter(this->items)
+           << ")";
+        return __os.str();
+    }
+};
+
+inline std::ostream& operator<<(std::ostream& os, const DictOfDC& obj) {
+    os << obj.__repr__();
+    return os;
+}
+
+// # Tuple with dataclass element
+// @dataclass
+// class TupleMixed:
+struct TupleMixed {
+    // pair: tuple[Point, Int32]
+    std::tuple<Point, int32_t> pair;
+
+    TupleMixed() = default;
+    explicit TupleMixed(const std::tuple<const Point&, int32_t>& pair) : pair(pair) {}
+
+    bool __eq__(const TupleMixed& other) const {
+        return (this->pair == other.pair);
+    }
+
+    friend bool operator==(const TupleMixed& lhs, const TupleMixed& other) {
+        return lhs.__eq__(other);
+    }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "TupleMixed("
+           << "pair=" << ::tpy::TuplePrinter(this->pair)
+           << ")";
+        return __os.str();
+    }
+};
+
+inline std::ostream& operator<<(std::ostream& os, const TupleMixed& obj) {
+    os << obj.__repr__();
+    return os;
+}
+
+// # Tuple with all dataclass elements
+// @dataclass
+// class TupleAllDC:
+struct TupleAllDC {
+    // pair: tuple[Point, Point]
+    std::tuple<Point, Point> pair;
+
+    TupleAllDC() = default;
+    explicit TupleAllDC(const std::tuple<const Point&, const Point&>& pair) : pair(pair) {}
+
+    bool __eq__(const TupleAllDC& other) const {
+        return (this->pair == other.pair);
+    }
+
+    friend bool operator==(const TupleAllDC& lhs, const TupleAllDC& other) {
+        return lhs.__eq__(other);
+    }
+
+    std::string __repr__() const {
+        std::ostringstream __os;
+        __os << "TupleAllDC("
+           << "pair=" << ::tpy::TuplePrinter(this->pair)
+           << ")";
+        return __os.str();
+    }
+};
+
+inline std::ostream& operator<<(std::ostream& os, const TupleAllDC& obj) {
     os << obj.__repr__();
     return os;
 }

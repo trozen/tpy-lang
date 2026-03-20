@@ -11,12 +11,14 @@ from tpyc.macro_api import (
     build_init, build_eq, expr_to_cpp_default,
 )
 from tpyc.parse import (
-    TpyCall, TpyName, TpyExpr,
+    TpyCall, TpyName, TpyExpr, TpyMethodCall, TpyIntLiteral,
     TpyDictLiteral, TpyTupleLiteral, TpyFieldAccess, TpyStrLiteral,
     TpyListComprehension, TpyComprehensionGenerator,
-    TpyDictComprehension,
+    TpyDictComprehension, TpySubscript,
 )
-from tpyc.typesys import NamedType, BoolType, StrType, DictType, UnionType, UINT64
+from tpyc.typesys import (
+    NamedType, BoolType, StrType, DictType, UnionType, UINT64, ListType, TupleType,
+)
 
 _MISSING = object()
 
@@ -180,30 +182,96 @@ def asdict(ctx: CallMacroContext, obj: MacroArg) -> TpyExpr:
     return _build_asdict(ctx, obj.expr, obj.type)
 
 
-_asdict_var_counter = 0
+_macro_var_counter = 0
 
 
-def _asdict_var() -> str:
-    global _asdict_var_counter
-    _asdict_var_counter += 1
-    return f"__asdict_{_asdict_var_counter}"
+def _macro_var() -> str:
+    global _macro_var_counter
+    _macro_var_counter += 1
+    return f"__macro_{_macro_var_counter}"
 
 
-def _asdict_value(ctx: CallMacroContext, access: TpyExpr, fld_type: TypeInfo) -> TpyExpr:
-    """Build the value expression for a single field in asdict expansion."""
-    # Direct dataclass field: recurse
+def _has_dc(ctx: CallMacroContext, type_info: TypeInfo) -> bool:
+    """Check if a type contains dataclass instances needing recursion."""
+    if type_info.is_record and ctx.is_dataclass(type_info.name):
+        return True
+    # Check dict/tuple before iterable -- iterating a dict yields keys,
+    # which would incorrectly match dict[DC_Key, V] as list[DC_Key].
+    if type_info.is_dict and len(type_info.type_args) == 2:
+        return any(_has_dc(ctx, t) for t in type_info.type_args)
+    if type_info.is_tuple and type_info.type_args:
+        return any(_has_dc(ctx, t) for t in type_info.type_args)
+    elem = ctx.get_iterable_element_type(type_info)
+    if elem is not None and _has_dc(ctx, elem):
+        return True
+    return False
+
+
+def _value_transform(
+    ctx: CallMacroContext, access: TpyExpr, fld_type: TypeInfo,
+    dc_fn: 'Callable',
+    value_fn: 'Callable',
+) -> TpyExpr:
+    """Shared recursion for _asdict_value / _astuple_value.
+
+    dc_fn: called for direct dataclass fields (e.g. _build_asdict or _build_astuple)
+    value_fn: called recursively for nested elements (e.g. _asdict_value or _astuple_value)
+    """
     if fld_type.is_record and ctx.is_dataclass(fld_type.name):
-        return _build_asdict(ctx, access, fld_type)
-    # Iterable[Dataclass]: [asdict(item) for item in field]
+        return dc_fn(ctx, access, fld_type)
+    # dict/tuple before iterable (see _has_dc comment)
+    if fld_type.is_dict and len(fld_type.type_args) == 2:
+        key_type, val_type = fld_type.type_args
+        if _has_dc(ctx, key_type) or _has_dc(ctx, val_type):
+            return _build_dict_comprehension(ctx, access, key_type, val_type, value_fn)
+    if fld_type.is_tuple and fld_type.type_args:
+        if any(_has_dc(ctx, t) for t in fld_type.type_args):
+            return _build_tuple_expansion(ctx, access, fld_type.type_args, value_fn)
     elem = ctx.get_iterable_element_type(fld_type)
-    if elem is not None and elem.is_record and ctx.is_dataclass(elem.name):
-        var = _asdict_var()
+    if elem is not None and _has_dc(ctx, elem):
+        var = _macro_var()
         return TpyListComprehension(
-            element_expr=_build_asdict(ctx, TpyName(var), elem),
+            element_expr=value_fn(ctx, TpyName(var), elem),
             generator=TpyComprehensionGenerator(
                 var=var, iterable=access, conditions=[]),
         )
     return access
+
+
+def _build_dict_comprehension(
+    ctx: CallMacroContext, access: TpyExpr,
+    key_type: TypeInfo, val_type: TypeInfo,
+    value_fn: 'Callable',
+) -> TpyExpr:
+    """Expand dict field: {f(k): f(v) for k, v in field.items()}"""
+    k_var = _macro_var()
+    v_var = _macro_var()
+    items_call = TpyMethodCall(obj=access, method="items", args=[])
+    return TpyDictComprehension(
+        key_expr=value_fn(ctx, TpyName(k_var), key_type),
+        value_expr=value_fn(ctx, TpyName(v_var), val_type),
+        generator=TpyComprehensionGenerator(
+            var="__comp_tup", iterable=items_call,
+            conditions=[], unpack_vars=[k_var, v_var]),
+    )
+
+
+def _build_tuple_expansion(
+    ctx: CallMacroContext, access: TpyExpr,
+    elem_types: list[TypeInfo],
+    value_fn: 'Callable',
+) -> TpyExpr:
+    """Expand tuple field: (f(field[0]), f(field[1]), ...)"""
+    elements = []
+    for i, elem_type in enumerate(elem_types):
+        subscript = TpySubscript(obj=access, index=TpyIntLiteral(i))
+        elements.append(value_fn(ctx, subscript, elem_type))
+    return TpyTupleLiteral(elements=elements)
+
+
+def _asdict_value(ctx: CallMacroContext, access: TpyExpr, fld_type: TypeInfo) -> TpyExpr:
+    """Build the value expression for a single field in asdict expansion."""
+    return _value_transform(ctx, access, fld_type, _build_asdict, _asdict_value)
 
 
 def _build_asdict(ctx: CallMacroContext, expr: TpyExpr, type_info: TypeInfo) -> TpyExpr:
@@ -236,7 +304,6 @@ def _build_asdict(ctx: CallMacroContext, expr: TpyExpr, type_info: TypeInfo) -> 
 
 def _asdict_result_type(ctx: CallMacroContext, type_info: TypeInfo):
     """Compute the result type for a field in asdict expansion."""
-    from tpyc.typesys import ListType
     # Direct dataclass
     if type_info.is_record and ctx.is_dataclass(type_info.name):
         fields = ctx.get_record_fields(type_info.name)
@@ -247,9 +314,22 @@ def _asdict_result_type(ctx: CallMacroContext, type_info: TypeInfo):
         if len(unique) > 1:
             return DictType(StrType(), UnionType(tuple(value_types)))
         return DictType(StrType(), value_types[0])
-    # Iterable[Dataclass] -> list[dict[...]] (comprehension always produces list)
+    # dict/tuple before iterable (same ordering as _has_dc)
+    if type_info.is_dict and len(type_info.type_args) == 2:
+        key_type, val_type = type_info.type_args
+        if _has_dc(ctx, key_type) or _has_dc(ctx, val_type):
+            return DictType(
+                _asdict_result_type(ctx, key_type),
+                _asdict_result_type(ctx, val_type),
+            )
+    if type_info.is_tuple and type_info.type_args:
+        if any(_has_dc(ctx, t) for t in type_info.type_args):
+            return TupleType(tuple(
+                _asdict_result_type(ctx, t) for t in type_info.type_args
+            ))
+    # Iterable[Dataclass] -> list[dict[...]]
     elem = ctx.get_iterable_element_type(type_info)
-    if elem is not None and elem.is_record and ctx.is_dataclass(elem.name):
+    if elem is not None and _has_dc(ctx, elem):
         return ListType(_asdict_result_type(ctx, elem))
     return type_info._tpy_type
 
@@ -261,14 +341,18 @@ def astuple(ctx: CallMacroContext, obj: MacroArg) -> TpyExpr:
 
 
 def _build_astuple(ctx: CallMacroContext, expr: TpyExpr, type_info: TypeInfo) -> TpyExpr:
+    # Result type is inferred by sema from the element types;
+    # no explicit type annotation needed (unlike _build_asdict for mixed fields).
     fields = ctx.get_record_fields(type_info.name)
     if fields is None:
         raise MacroError(f"astuple() requires a @dataclass instance, got '{type_info.name}'")
     elements = []
     for fld in fields:
         access = TpyFieldAccess(obj=expr, field=fld.name)
-        if fld.type.is_record and ctx.is_dataclass(fld.type.name):
-            elements.append(_build_astuple(ctx, access, fld.type))
-        else:
-            elements.append(access)
+        elements.append(_astuple_value(ctx, access, fld.type))
     return TpyTupleLiteral(elements=elements)
+
+
+def _astuple_value(ctx: CallMacroContext, access: TpyExpr, fld_type: TypeInfo) -> TpyExpr:
+    """Build the value expression for a single field in astuple expansion."""
+    return _value_transform(ctx, access, fld_type, _build_astuple, _astuple_value)

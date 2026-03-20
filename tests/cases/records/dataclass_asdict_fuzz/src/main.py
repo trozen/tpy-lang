@@ -1,3 +1,4 @@
+# Fuzz-style coverage of asdict()/astuple() across nested, list, dict, and tuple field types
 from dataclasses import dataclass, asdict, astuple
 from tpy import Int32
 
@@ -58,6 +59,21 @@ class MultiList:
     points: list[Point]
     labels: list[str]
 
+# Dict with dataclass values
+@dataclass
+class DictOfDC:
+    items: dict[str, Point]
+
+# Tuple with dataclass element
+@dataclass
+class TupleMixed:
+    pair: tuple[Point, Int32]
+
+# Tuple with all dataclass elements
+@dataclass
+class TupleAllDC:
+    pair: tuple[Point, Point]
+
 def main() -> None:
     # 1. Flat homogeneous
     p = Point(Int32(1), Int32(2))
@@ -101,5 +117,20 @@ def main() -> None:
     # 10. Multiple list fields (mixed field types)
     ml = MultiList([Point(Int32(1), Int32(2))], ["a", "b"])
     print(asdict(ml))
+
+    # 11. Dict with dataclass values
+    dd = DictOfDC({"origin": Point(Int32(0), Int32(0)), "end": Point(Int32(1), Int32(2))})
+    print(asdict(dd))
+    print(astuple(dd))
+
+    # 12. Tuple with mixed types (DC + scalar)
+    tm = TupleMixed((Point(Int32(1), Int32(2)), Int32(42)))
+    print(asdict(tm))
+    print(astuple(tm))
+
+    # 13. Tuple with all dataclass elements
+    ta = TupleAllDC((Point(Int32(1), Int32(2)), Point(Int32(3), Int32(4))))
+    print(asdict(ta))
+    print(astuple(ta))
 
 main()

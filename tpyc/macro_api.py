@@ -151,11 +151,23 @@ class TypeInfo:
         from .typesys import is_any_str_type
         return self._tpy_type is not None and is_any_str_type(self._tpy_type)
 
+    @property
+    def is_dict(self) -> bool:
+        from .typesys import DictType
+        return isinstance(self._tpy_type, DictType)
+
+    @property
+    def is_tuple(self) -> bool:
+        from .typesys import TupleType
+        return isinstance(self._tpy_type, TupleType)
+
     @staticmethod
     def from_tpy_type(typ: TpyType) -> TypeInfo:
-        from .typesys import OptionalType, ListType, DictType, SetType, ArrayType
+        from .typesys import OptionalType, ListType, DictType, SetType, ArrayType, TupleType
         type_args: list[TypeInfo] = []
-        if isinstance(typ, NamedType) and typ.type_args:
+        if isinstance(typ, TupleType):
+            type_args = [TypeInfo.from_tpy_type(et) for et in typ.element_types]
+        elif isinstance(typ, NamedType) and typ.type_args:
             type_args = [TypeInfo.from_tpy_type(ta) for ta in typ.type_args]
         elif isinstance(typ, ListType):
             type_args = [TypeInfo.from_tpy_type(typ.element_type)]

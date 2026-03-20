@@ -4663,7 +4663,8 @@ Send/Sync rules for built-in types:
 - **Phase 2 done**: Call-site macros (`@call_macro`) expand at compile time
   - Macros receive `MacroArg` (AST + resolved type), return replacement `TpyExpr`
   - `dataclasses.asdict()` and `dataclasses.astuple()` as first use cases
-  - Supports nested dataclasses, qualified form (`dataclasses.asdict`)
+  - Recursion into nested dataclasses, `list[DC]`, `dict[K, DC]`, `tuple[DC, ...]`
+  - Qualified form (`dataclasses.asdict`), mixed-type dicts via `dict[str, A|B]`
   - Remaining: quote templates, hygiene, CPython compat
 
 ### Compile-Time Hooks (Extensible Metaprogramming -- Future Design)
