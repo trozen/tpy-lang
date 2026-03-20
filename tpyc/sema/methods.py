@@ -837,6 +837,13 @@ class MethodAnalyzer:
                 expr.resolved_function_info = temp_call.resolved_function_info
                 return result
 
+        # Check for call-site macro (e.g. dataclasses.asdict(...))
+        if self.ctx.macro_registry:
+            macro_fn = self.ctx.macro_registry.get_call_macro(module_name, expr.method)
+            if macro_fn is not None:
+                return self.calls._expand_call_macro_from_method(
+                    expr, macro_fn, module_name, expr.method)
+
         raise self.ctx.error(f"Module '{module_name}' has no function '{expr.method}'", expr)
 
     def _try_resolve_dotted_module(self, obj: TpyFieldAccess) -> str | None:

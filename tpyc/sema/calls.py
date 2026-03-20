@@ -6,7 +6,7 @@ Function and constructor call analysis.
 
 from __future__ import annotations
 from dataclasses import replace as dc_replace
-from typing import TYPE_CHECKING
+from typing import Callable, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingStrType,
@@ -31,6 +31,8 @@ from ..coercions import CoercionContext
 from .context import PENDING_CONTAINER_TYPES, addr_taken_roots
 from .diagnostics import SemanticError
 from .overloads import type_matches_numeric, resolve_overload
+from ..macro_api import MacroArg, CallMacroContext, TypeInfo
+from ..macro_loader import expand_call_macro
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -459,6 +461,11 @@ class CallAnalyzer:
                     return self._analyze_record_constructor(expr, binding.record_info)
                 elif binding.kind == BindingKind.IMPORTED_NAME:
                     module_name, func_name = binding.import_source
+                    # Check for call-site macro before other handling
+                    if self.ctx.macro_registry:
+                        macro_fn = self.ctx.macro_registry.get_call_macro(module_name, func_name)
+                        if macro_fn is not None:
+                            return self._expand_call_macro(expr, macro_fn, module_name, func_name)
                     qname = f"{module_name}.{func_name}"
                     # Special handling for functions with custom sema
                     if qname == "tpy.copy":
@@ -2279,3 +2286,49 @@ class CallAnalyzer:
             is_readonly=True,
         )
         return return_type
+
+    # -- Call-site macro expansion --
+
+    def _run_call_macro(
+        self,
+        args: list[TpyExpr],
+        kwargs: dict[str, TpyExpr],
+        macro_fn: Callable,
+        module_name: str,
+        func_name: str,
+        loc: object,
+    ) -> tuple[TpyExpr, TpyType]:
+        """Analyze args, call a @call_macro, analyze expansion. Returns (expansion, type)."""
+        macro_args = [
+            MacroArg(expr=a, type=TypeInfo.from_tpy_type(self.expr.analyze_expr(a)))
+            for a in args
+        ]
+        macro_kwargs = {
+            k: MacroArg(expr=v, type=TypeInfo.from_tpy_type(self.expr.analyze_expr(v)))
+            for k, v in kwargs.items()
+        }
+        ctx = CallMacroContext(self.ctx, loc=loc)
+        qname = f"{module_name}.{func_name}"
+        expansion = expand_call_macro(
+            macro_fn, ctx, macro_args, macro_kwargs, qname, loc)
+        return expansion, self.expr.analyze_expr(expansion)
+
+    def _expand_call_macro(
+        self, expr: TpyCall, macro_fn: Callable,
+        module_name: str, func_name: str,
+    ) -> TpyType:
+        """Expand a @call_macro on a TpyCall."""
+        expansion, typ = self._run_call_macro(
+            expr.args, expr.kwargs, macro_fn, module_name, func_name, expr.loc)
+        expr.macro_expansion = expansion
+        return typ
+
+    def _expand_call_macro_from_method(
+        self, expr: TpyMethodCall, macro_fn: Callable,
+        module_name: str, func_name: str,
+    ) -> TpyType:
+        """Expand a @call_macro on a module.func() TpyMethodCall."""
+        expansion, typ = self._run_call_macro(
+            expr.args, expr.kwargs, macro_fn, module_name, func_name, expr.loc)
+        expr.macro_expansion = expansion
+        return typ

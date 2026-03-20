@@ -6,10 +6,14 @@ It is loaded by the compiler via CPython (not compiled to C++).
 """
 
 from tpyc.macro_api import (
-    ClassInfo, FieldInfo, class_macro,
+    ClassInfo, FieldInfo, TypeInfo, CallMacroContext, MacroArg, MacroError,
+    class_macro, call_macro,
     build_init, build_eq, expr_to_cpp_default,
 )
-from tpyc.parse import TpyCall, TpyName
+from tpyc.parse import (
+    TpyCall, TpyName, TpyExpr,
+    TpyDictLiteral, TpyTupleLiteral, TpyFieldAccess, TpyStrLiteral,
+)
 from tpyc.typesys import NamedType, BoolType, StrType, UINT64
 
 _MISSING = object()
@@ -56,7 +60,7 @@ def dataclass(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> N
         )
     else:
         if not all_fields:
-            cls.error(
+            raise MacroError(
                 f"@dataclass class '{cls.name}' must have at least one field annotation"
             )
         _validate_field_order(cls, all_fields)
@@ -98,7 +102,7 @@ def _process_field_defaults(cls: ClassInfo) -> None:
             fld.set_default(spec.default, default_value=expr_to_cpp_default(spec.default))
         elif spec.default_factory is not _MISSING:
             if not isinstance(spec.default_factory, TpyName):
-                cls.error(
+                raise MacroError(
                     "default_factory must be a type name (e.g., list, dict, MyRecord)",
                     loc=fld.loc,
                 )
@@ -119,12 +123,12 @@ def _validate_frozen_consistency(cls: ClassInfo, frozen: bool) -> None:
         parent_info = cls._ctx.registry.get_record(base.name)
         if parent_info is not None and parent_info.is_dataclass:
             if parent_info.is_frozen and not frozen:
-                cls.error(
+                raise MacroError(
                     f"Cannot inherit non-frozen @dataclass '{cls.name}' "
                     f"from frozen @dataclass '{base.name}'"
                 )
             if not parent_info.is_frozen and frozen:
-                cls.error(
+                raise MacroError(
                     f"Cannot inherit frozen @dataclass '{cls.name}' "
                     f"from non-frozen @dataclass '{base.name}'"
                 )
@@ -138,7 +142,7 @@ def _validate_field_order(cls: ClassInfo, all_fields: list[FieldInfo]) -> None:
         if fld.has_default:
             seen_default = True
         elif seen_default:
-            cls.error(
+            raise MacroError(
                 f"Field '{fld.name}' without default follows field with default "
                 f"in @dataclass class '{cls.name}'",
                 loc=fld.loc,
@@ -150,7 +154,7 @@ def _synthesize_order_stubs(cls: ClassInfo) -> None:
     order_dunders = ("__lt__", "__le__", "__gt__", "__ge__")
     for dunder in order_dunders:
         if cls.has_method(dunder):
-            cls.error(
+            raise MacroError(
                 f"@dataclass(order=True) cannot overwrite '{dunder}' "
                 f"defined in class '{cls.name}'"
             )
@@ -162,3 +166,49 @@ def _synthesize_order_stubs(cls: ClassInfo) -> None:
             BoolType(),
             is_readonly=True,
         )
+
+
+# ---------------------------------------------------------------------------
+# Call-site macros: asdict, astuple
+# ---------------------------------------------------------------------------
+
+@call_macro
+def asdict(ctx: CallMacroContext, obj: MacroArg) -> TpyExpr:
+    """Convert a dataclass instance to a dict."""
+    return _build_asdict(ctx, obj.expr, obj.type)
+
+
+def _build_asdict(ctx: CallMacroContext, expr: TpyExpr, type_info: TypeInfo) -> TpyExpr:
+    fields = ctx.get_record_fields(type_info.name)
+    if fields is None:
+        raise MacroError(f"asdict() requires a @dataclass instance, got '{type_info.name}'")
+    keys = []
+    values = []
+    for fld in fields:
+        keys.append(TpyStrLiteral(value=fld.name))
+        access = TpyFieldAccess(obj=expr, field=fld.name)
+        if fld.type.is_record and ctx.is_dataclass(fld.type.name):
+            values.append(_build_asdict(ctx, access, fld.type))
+        else:
+            values.append(access)
+    return TpyDictLiteral(keys=keys, values=values)
+
+
+@call_macro
+def astuple(ctx: CallMacroContext, obj: MacroArg) -> TpyExpr:
+    """Convert a dataclass instance to a tuple."""
+    return _build_astuple(ctx, obj.expr, obj.type)
+
+
+def _build_astuple(ctx: CallMacroContext, expr: TpyExpr, type_info: TypeInfo) -> TpyExpr:
+    fields = ctx.get_record_fields(type_info.name)
+    if fields is None:
+        raise MacroError(f"astuple() requires a @dataclass instance, got '{type_info.name}'")
+    elements = []
+    for fld in fields:
+        access = TpyFieldAccess(obj=expr, field=fld.name)
+        if fld.type.is_record and ctx.is_dataclass(fld.type.name):
+            elements.append(_build_astuple(ctx, access, fld.type))
+        else:
+            elements.append(access)
+    return TpyTupleLiteral(elements=elements)

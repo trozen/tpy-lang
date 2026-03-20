@@ -1,0 +1,1 @@
+main.py:13: error: asdict() requires a @dataclass instance, got 'NotDataclass'

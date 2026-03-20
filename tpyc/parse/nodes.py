@@ -192,8 +192,11 @@ class TpyCall(TpyExpr):
     isinstance_var: str | None = None        # Set by sema: variable name being isinstance-checked
     isinstance_type: TpyType | None = None   # Set by sema: resolved type being checked for
     isinstance_is_protocol: bool = False     # Set by sema: protocol isinstance (if constexpr)
+    macro_expansion: 'TpyExpr | None' = None  # Set by sema: replacement expr from @call_macro
 
     def children(self) -> list[TpyExpr]:
+        if self.macro_expansion is not None:
+            return [self.macro_expansion]
         return list(self.args) + list(self.kwargs.values())
 
 
@@ -217,8 +220,11 @@ class TpyMethodCall(TpyExpr):
     deref_depth: int = 0  # Set by sema: number of __deref__ steps applied before method resolution
     ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr (or Ptr[readonly[T]])
     is_callable_field: bool = False  # Set by sema: method name is a Callable-typed field
+    macro_expansion: 'TpyExpr | None' = None  # Set by sema: replacement expr from @call_macro
 
     def children(self) -> list[TpyExpr]:
+        if self.macro_expansion is not None:
+            return [self.macro_expansion]
         return [self.obj] + list(self.args) + list(self.kwargs.values())
 
 

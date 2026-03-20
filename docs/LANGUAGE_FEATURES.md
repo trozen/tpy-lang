@@ -4643,7 +4643,11 @@ Send/Sync rules for built-in types:
   - `@dataclass` reimplemented as a class macro (`lib/tpy/dataclasses.py`)
   - `tpyc/macro_api.py` provides public API (`ClassInfo`, `FieldInfo`, `TypeInfo`)
   - `tpyc/macro_loader.py` loads macro modules via CPython `importlib`
-  - Remaining: call-site macros, quote templates, hygiene, CPython compat
+- **Phase 2 done**: Call-site macros (`@call_macro`) expand at compile time
+  - Macros receive `MacroArg` (AST + resolved type), return replacement `TpyExpr`
+  - `dataclasses.asdict()` and `dataclasses.astuple()` as first use cases
+  - Supports nested dataclasses, qualified form (`dataclasses.asdict`)
+  - Remaining: quote templates, hygiene, CPython compat
 
 ### Compile-Time Hooks (Extensible Metaprogramming -- Future Design)
 

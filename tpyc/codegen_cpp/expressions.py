@@ -548,9 +548,13 @@ class ExpressionGenerator:
             return self._gen_unaryop(expr, target_type)
 
         elif isinstance(expr, TpyCall):
+            if expr.macro_expansion is not None:
+                return self.gen_expr(expr.macro_expansion)
             return self._gen_call(expr)
 
         elif isinstance(expr, TpyMethodCall):
+            if expr.macro_expansion is not None:
+                return self.gen_expr(expr.macro_expansion)
             return self._gen_method_call(expr)
 
         elif isinstance(expr, TpyFieldAccess):

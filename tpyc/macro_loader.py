@@ -143,8 +143,12 @@ def validate_and_call_macro(
             )
 
     # Call the macro, wrapping unexpected exceptions
+    from .macro_api import MacroError
+
     try:
         macro_fn(cls_info, **kwargs)
+    except MacroError as e:
+        raise SemanticError(str(e), e.loc or loc) from e
     except SemanticError:
         raise
     except Exception as e:
@@ -152,6 +156,84 @@ def validate_and_call_macro(
             f"@{macro_name}: macro raised {type(e).__name__}: {e}",
             loc,
         ) from e
+
+
+_EXTRACTABLE_TYPES = (str, int, float, bool)
+
+
+def _extract_macro_arg_value(macro_arg: Any, expected_type: type, param_name: str,
+                              macro_name: str, loc: Any) -> Any:
+    """Extract a Python value from a MacroArg for simple-typed parameters."""
+    from .sema.diagnostics import SemanticError
+    from .parse import TpyStrLiteral, TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral
+
+    expr = macro_arg.expr
+    _LITERAL_MAP = {
+        str: (TpyStrLiteral, "a string literal"),
+        int: (TpyIntLiteral, "an integer literal"),
+        float: (TpyFloatLiteral, "a float literal"),
+        bool: (TpyBoolLiteral, "a boolean literal"),
+    }
+    literal_type, desc = _LITERAL_MAP[expected_type]
+    if not isinstance(expr, literal_type):
+        raise SemanticError(
+            f"{macro_name}(): '{param_name}' must be {desc}", loc)
+    return expr.value
+
+
+def expand_call_macro(
+    macro_fn: Callable,
+    ctx: Any,
+    macro_args: list,
+    macro_kwargs: dict,
+    macro_name: str,
+    loc: Any,
+) -> Any:
+    """Validate args and call a call-site macro, returning the replacement TpyExpr.
+
+    Kwargs annotated with simple types (str, int, float, bool) are extracted
+    from the MacroArg automatically. Wraps unexpected exceptions as SemanticError.
+    """
+    # Deferred: sema.registration imports macro_loader
+    from .sema.diagnostics import SemanticError
+    from .macro_api import MacroError
+
+    # Inspect signature: extract plain values for simple-typed kwargs
+    sig = inspect.signature(macro_fn)
+    params = list(sig.parameters.values())
+    resolved_kwargs: dict[str, Any] = {}
+    try:
+        hints = typing.get_type_hints(macro_fn)
+    except Exception:
+        hints = {}
+    for key, macro_arg in macro_kwargs.items():
+        ann = hints.get(key)
+        if isinstance(ann, type) and ann in _EXTRACTABLE_TYPES:
+            resolved_kwargs[key] = _extract_macro_arg_value(
+                macro_arg, ann, key, macro_name, loc)
+        else:
+            resolved_kwargs[key] = macro_arg
+
+    try:
+        result = macro_fn(ctx, *macro_args, **resolved_kwargs)
+    except MacroError as e:
+        raise SemanticError(str(e), e.loc or loc) from e
+    except SemanticError:
+        raise
+    except Exception as e:
+        raise SemanticError(
+            f"{macro_name}(): macro raised {type(e).__name__}: {e}",
+            loc,
+        ) from e
+
+    from .parse import TpyExpr
+    if not isinstance(result, TpyExpr):
+        raise SemanticError(
+            f"{macro_name}(): call macro must return a TpyExpr, "
+            f"got {type(result).__name__}",
+            loc,
+        )
+    return result
 
 
 class MacroRegistry:
@@ -163,6 +245,7 @@ class MacroRegistry:
 
     def __init__(self) -> None:
         self._macros: dict[tuple[str, str], Callable] = {}
+        self._call_macros: dict[tuple[str, str], Callable] = {}
         self._modules: dict[str, Any] = {}
         self._loaded_modules: set[str] = set()
 
@@ -171,6 +254,9 @@ class MacroRegistry:
 
     def get_macro(self, module: str, name: str) -> Callable | None:
         return self._macros.get((module, name))
+
+    def get_call_macro(self, module: str, name: str) -> Callable | None:
+        return self._call_macros.get((module, name))
 
     def get_export(self, module: str, name: str) -> Any | None:
         """Look up any exported name from a loaded macro module."""
@@ -213,10 +299,13 @@ class MacroRegistry:
 
         self._modules[module_name] = mod
 
-        # Scan for @class_macro decorated functions
+        # Scan for @class_macro and @call_macro decorated functions
         for attr_name in dir(mod):
             obj = getattr(mod, attr_name)
-            if callable(obj) and getattr(obj, '_is_class_macro', False):
-                self.register(module_name, attr_name, obj)
+            if callable(obj):
+                if getattr(obj, '_is_class_macro', False):
+                    self.register(module_name, attr_name, obj)
+                if getattr(obj, '_is_call_macro', False):
+                    self._call_macros[(module_name, attr_name)] = obj
 
         self._loaded_modules.add(module_name)

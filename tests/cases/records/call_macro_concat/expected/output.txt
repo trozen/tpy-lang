@@ -1,0 +1,4 @@
+hello world
+x=42
+a, b, c
+'hello', 'world'

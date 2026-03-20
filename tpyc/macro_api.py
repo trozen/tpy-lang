@@ -11,7 +11,7 @@ They are executed via CPython during compilation (not compiled to C++).
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, TYPE_CHECKING
+from typing import Any, Callable, NoReturn, TYPE_CHECKING
 
 from .typesys import (
     TpyType, NamedType, OwnType, VoidType, BoolType, StrType, FunctionInfo,
@@ -34,6 +34,22 @@ _FIXED_INT_NAMES: frozenset[str] = frozenset(str(t) for t in ALL_FIXED_INTS)
 
 
 # ---------------------------------------------------------------------------
+# MacroError -- raised by macros to report compile errors
+# ---------------------------------------------------------------------------
+
+class MacroError(Exception):
+    """Raised by macro code to report a compile error.
+
+    The macro infrastructure catches this and converts it to a SemanticError
+    with the appropriate source location. If ``loc`` is provided, it overrides
+    the default location (the decorator/call site).
+    """
+    def __init__(self, msg: str, loc: Any = None) -> None:
+        super().__init__(msg)
+        self.loc = loc
+
+
+# ---------------------------------------------------------------------------
 # Decorator for marking macro functions
 # ---------------------------------------------------------------------------
 
@@ -44,6 +60,60 @@ def class_macro(fn: Callable) -> Callable:
     """
     fn._is_class_macro = True
     return fn
+
+
+def call_macro(fn: Callable) -> Callable:
+    """Mark a function as a call-site macro.
+
+    Call macros receive a CallMacroContext + MacroArg per argument.
+    They return a replacement TpyExpr that sema analyzes.
+    """
+    fn._is_call_macro = True
+    return fn
+
+
+# ---------------------------------------------------------------------------
+# MacroArg -- argument wrapper for call-site macros
+# ---------------------------------------------------------------------------
+
+@dataclass
+class MacroArg:
+    """Argument passed to a call-site macro: the AST expression + resolved type."""
+    expr: TpyExpr
+    type: TypeInfo
+
+
+# ---------------------------------------------------------------------------
+# CallMacroContext -- context for call-site macros
+# ---------------------------------------------------------------------------
+
+class CallMacroContext:
+    """Context passed to call-site macros for type introspection and diagnostics."""
+
+    def __init__(self, ctx: SemanticContext, loc: Any = None) -> None:
+        self._ctx = ctx
+        self._loc = loc
+
+    def get_record_fields(self, name: str) -> list[FieldInfo] | None:
+        """Get dataclass fields for a record type, or None if not a dataclass."""
+        record_info = self._ctx.registry.get_record(name)
+        if record_info is None or not record_info.is_dataclass:
+            return None
+        return [FieldInfo.from_internal(f) for f in record_info.dataclass_fields]
+
+    def is_dataclass(self, name: str) -> bool:
+        """Check if a type name refers to a registered @dataclass."""
+        record_info = self._ctx.registry.get_record(name)
+        return record_info is not None and record_info.is_dataclass
+
+    def warning(self, msg: str, loc: Any = None) -> None:
+        """Emit a compiler warning."""
+        self._ctx.warning_from_loc(msg, loc or self._loc)
+
+    def error(self, msg: str, loc: Any = None) -> NoReturn:
+        """Raise a compile error."""
+        from .sema.diagnostics import SemanticError
+        raise SemanticError(msg, loc or self._loc)
 
 
 # ---------------------------------------------------------------------------
@@ -59,6 +129,12 @@ class TypeInfo:
     is_value_type: bool = True
     is_record: bool = False
     _tpy_type: TpyType | None = None
+
+    @property
+    def is_str(self) -> bool:
+        """True if this is any string type (str, String, StrView)."""
+        from .typesys import is_any_str_type
+        return self._tpy_type is not None and is_any_str_type(self._tpy_type)
 
     @staticmethod
     def from_tpy_type(typ: TpyType) -> TypeInfo:
@@ -309,7 +385,7 @@ class ClassInfo:
         """Emit a compiler warning."""
         self._ctx.warning_from_loc(msg, loc or self._record.loc)
 
-    def error(self, msg: str, loc: Any = None) -> None:
+    def error(self, msg: str, loc: Any = None) -> NoReturn:
         """Raise a compile error."""
         from .sema.diagnostics import SemanticError
         raise SemanticError(msg, loc or self._record.loc)
