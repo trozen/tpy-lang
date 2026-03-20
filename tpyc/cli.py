@@ -30,7 +30,97 @@ from .codegen_cpp import CodeGenOptions, CodeGenError
 from .compiler import (
     Compiler, CompileError, BuildLayout, CppCompilerConfig, DEFAULT_INT_CHOICES
 )
-from . import get_runtime_dir, get_lib_dir
+from . import __version__, get_runtime_dir, get_lib_dir
+
+
+def _fmt_ms(seconds: float) -> str:
+    """Format seconds as a human-readable duration."""
+    ms = seconds * 1000
+    if ms < 1000:
+        return f"{ms:.0f}ms"
+    return f"{ms / 1000:.1f}s"
+
+
+class ProgressPrinter:
+    """Prints compact progress to stderr, overwriting the current line."""
+
+    def __init__(self, enabled: bool = True):
+        self.enabled = enabled
+        self._isatty = sys.stderr.isatty()
+        self.n_py = 0
+        self.n_cpp = 0
+        self.n_obj = 0
+        self.total_py = 0
+        self.total_cpp = 0
+        self.total_obj = 0
+
+    def _write(self, msg: str) -> None:
+        if not self.enabled or not self._isatty:
+            return
+        sys.stderr.write(f"\r\033[K{msg}")
+        sys.stderr.flush()
+
+    def _progress_line(self, phase: str) -> str:
+        parts = [f"[{phase}]"]
+        parts.append(f"py: {self.n_py}/{self.total_py}")
+        if self.total_cpp > 0:
+            parts.append(f"c++: {self.n_cpp}/{self.total_cpp}")
+        if self.total_obj > 0:
+            parts.append(f"obj: {self.n_obj}/{self.total_obj}")
+        return "  ".join(parts)
+
+    def header(self, config: CppCompilerConfig, release: bool) -> None:
+        if not self.enabled:
+            return
+        variant = "release" if release else "debug"
+        cxx = config.compiler
+        if config.ccache:
+            cxx += " + ccache"
+        sys.stderr.write(f"TurboPython compiler v{__version__} ({cxx}, {variant})\n")
+        sys.stderr.flush()
+
+    def set_compile_total(self, total: int) -> None:
+        self.total_py = total
+
+    def compile_progress(self, i: int) -> None:
+        self.n_py = i
+        self._write(self._progress_line("compile"))
+
+    def set_codegen_total(self, total: int) -> None:
+        self.total_cpp = total
+
+    def codegen_progress(self, i: int) -> None:
+        self.n_cpp = i
+        self._write(self._progress_line("codegen"))
+
+    def set_build_total(self, total: int) -> None:
+        self.total_obj = total
+
+    def build_progress(self, i: int) -> None:
+        self.n_obj = i
+        self._write(self._progress_line("build"))
+
+    def summary(self, n_modules: int,
+                t_compile: float, t_codegen: float, t_build: float) -> None:
+        if not self.enabled:
+            return
+        self._clear()
+        total = t_compile + t_codegen + t_build
+        sys.stderr.write(
+            f"{n_modules} modules compiled in {_fmt_ms(total)}"
+            f" (py {_fmt_ms(t_compile)}, codegen {_fmt_ms(t_codegen)},"
+            f" build {_fmt_ms(t_build)})\n"
+        )
+        sys.stderr.flush()
+
+    def _clear(self) -> None:
+        if self._isatty:
+            sys.stderr.write("\r\033[K")
+            sys.stderr.flush()
+
+    def finish(self) -> None:
+        """Clear the progress line before program output."""
+        self._clear()
 
 
 def get_module_name(input_path: Path) -> str:
@@ -145,9 +235,19 @@ def main() -> int:
     if args.dump_code and (args.build or args.exec):
         parser.error("--dump-code cannot be combined with --build or --exec")
 
+    building = args.build or args.exec
+    quiet = args.dump_code
+    progress = ProgressPrinter(enabled=building and not quiet)
+
     try:
         options = CodeGenOptions(emit_source_comments=args.emit_source)
         all_cpp_paths = []
+
+        # Print header when building
+        cpp_config: CppCompilerConfig | None = None
+        if building:
+            cpp_config = CppCompilerConfig.from_env()
+            progress.header(cpp_config, args.release)
 
         # Create compiler (unified for both stdin and file input)
         t_compile_start = time.monotonic()
@@ -160,6 +260,10 @@ def main() -> int:
         compiled_modules = compiler.compile()
         t_compile = time.monotonic() - t_compile_start
 
+        n_py = len(compiled_modules)
+        progress.set_compile_total(n_py)
+        progress.compile_progress(n_py)
+
         has_errors = False
         for compiled in compiled_modules:
             source_name = "<stdin>" if reading_from_stdin else os.path.relpath(compiled.path)
@@ -167,6 +271,7 @@ def main() -> int:
             if compiled.analyzer:
                 for diag in compiled.analyzer.diagnostics:
                     if diag.level in (DiagnosticLevel.WARNING, DiagnosticLevel.ERROR):
+                        progress.finish()
                         print(diag.format(source_name), file=sys.stderr)
                     if diag.level == DiagnosticLevel.ERROR:
                         has_errors = True
@@ -174,8 +279,11 @@ def main() -> int:
         if has_errors:
             return 1
 
-        for compiled in compiled_modules:
+        progress.set_codegen_total(n_py)
+        t_codegen_start = time.monotonic()
+        for i, compiled in enumerate(compiled_modules, 1):
             source_name = "<stdin>" if reading_from_stdin else os.path.relpath(compiled.path)
+            progress.codegen_progress(i)
 
             if args.dump_code:
                 try:
@@ -214,23 +322,26 @@ def main() -> int:
             if cpp_path is not None:
                 all_cpp_paths.append(cpp_path)
 
-            if not (args.build or args.exec):
+            if not building:
                 print(f"Generated: {hpp_path}")
                 if cpp_path is not None:
                     print(f"Generated: {cpp_path}")
+        t_codegen = time.monotonic() - t_codegen_start
 
         if args.dump_code:
             return 0
 
+        n_cpp = len(all_cpp_paths)
+
         # Build if requested
-        if args.build or args.exec:
+        if building:
+            assert cpp_config is not None
             runtime_dir = get_runtime_dir()
             build_variant = "release" if args.release else "debug"
             layout = BuildLayout(output_dir, module_name, build_variant=build_variant)
             binary_path = layout.binary_path()
 
             opt_flags = ["-O3", "-DNDEBUG"] if args.release else ["-g", "-O0"]
-            cpp_config = CppCompilerConfig.from_env()
             cpp_config.link_flags = compiler.collect_link_flags()
             compile_cmds = layout.build_cpp_commands(
                 runtime_include_dir=runtime_dir / "cpp" / "include",
@@ -239,36 +350,36 @@ def main() -> int:
                 config=cpp_config,
             )
 
+            progress.set_build_total(len(compile_cmds))
             t_build_start = time.monotonic()
-            for cmd in compile_cmds:
+            for i, cmd in enumerate(compile_cmds, 1):
+                progress.build_progress(i)
                 if args.verbose >= 1:
-                    print(f"  $ {' '.join(cmd)}")
+                    progress.finish()
+                    print(f"  $ {' '.join(cmd)}", file=sys.stderr)
 
                 result = subprocess.run(cmd, capture_output=True, text=True)
                 if result.returncode != 0:
+                    progress.finish()
                     print(f"C++ compilation failed:", file=sys.stderr)
                     print(result.stderr, file=sys.stderr)
                     return 1
             t_build = time.monotonic() - t_build_start
 
+            progress.summary(n_py, t_compile, t_codegen, t_build)
+
             if not args.exec:
                 print(f"Built: {binary_path}")
 
-            if args.verbose >= 1:
-                print(f"  compile: {t_compile*1000:.0f}ms  build: {t_build*1000:.0f}ms")
-
             # Run if requested
             if args.exec:
-                if args.verbose:
-                    print("---")
-                    sys.stdout.flush()
-
                 t_run_start = time.monotonic()
                 result = subprocess.run([str(binary_path)])
                 t_run = time.monotonic() - t_run_start
 
                 if args.verbose >= 1:
-                    print(f"  run: {t_run*1000:.0f}ms  total: {(t_compile+t_build+t_run)*1000:.0f}ms")
+                    print(f"  run: {t_run*1000:.0f}ms  total: {(t_compile+t_codegen+t_build+t_run)*1000:.0f}ms",
+                          file=sys.stderr)
 
                 return result.returncode
 
