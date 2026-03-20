@@ -7,7 +7,7 @@ Defines functions like chr, print, len, etc.
 from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
 from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import (
-    INT32, UINT64, BIGINT, FLOAT, FLOAT32, CHAR, STR, STRING, STRVIEW, VOID, BOOL, RANGE, SLICE, RangeType, ListType,
+    INT32, UINT64, BIGINT, FLOAT, FLOAT32, CHAR, STR, STRING, STRVIEW, VOID, BOOL, SLICE, ListType,
     NamedType, TypeParamRef, OwnType, ALL_FIXED_INTS, FixedIntType,
 )
 
@@ -432,23 +432,6 @@ def init_module() -> BuiltinModule:
     # slice: built-in type for subscript ranges (start/stop are Optional[Int32])
     module.register_type(SLICE, cpp_type="::tpy::Slice", methods={})
 
-    # Range: lazy iterator returned by range()
-    RANGE_BIGINT = RangeType(BIGINT)
-
-    module.type("Range", cpp_type="::tpy::Range<{T}>", type_params=["T"],
-        param_kinds=[TypeParamKind.TYPE],
-        type_factory=lambda t: RangeType(t),
-        extends=["NativeIterable[T]", "Iterable[T]"],
-        methods={
-        "__iter__": [MethodDef(
-            params=[],
-            returns=NamedType("Iterator", (T,), is_protocol=True),
-            cpp="::tpy::__iter__({self})",
-            is_readonly=True, is_pure=True,
-        )],
-    },
-    )
-
     # print() - variadic print function
     # Signature: print(*args) -> None
     # Special handling in sema/ and codegen_cpp/ because:
@@ -460,23 +443,6 @@ def init_module() -> BuiltinModule:
     # Special handling in sema (validates union member, sets isinstance_var/isinstance_type)
     # and codegen (emits std::holds_alternative)
     module.function("isinstance", overloads=[], special_handling=True)
-
-    # range() - range iterator for for loops
-    range_overloads = []
-    for fixed_type in ALL_FIXED_INTS:
-        cpp_t = fixed_type.to_cpp()
-        rt = RangeType(fixed_type)
-        range_overloads += [
-            MethodDef(params=[ParamDef("stop", fixed_type)], returns=rt, cpp=f"::tpy::Range<{cpp_t}>({{0}})", is_readonly=True, is_pure=True),
-            MethodDef(params=[ParamDef("start", fixed_type), ParamDef("stop", fixed_type)], returns=rt, cpp=f"::tpy::Range<{cpp_t}>({{0}}, {{1}})", is_readonly=True, is_pure=True),
-            MethodDef(params=[ParamDef("start", fixed_type), ParamDef("stop", fixed_type), ParamDef("step", fixed_type)], returns=rt, cpp=f"::tpy::Range<{cpp_t}>({{0}}, {{1}}, {{2}})", is_readonly=True, is_pure=True),
-        ]
-    range_overloads += [
-        MethodDef(params=[ParamDef("stop", BIGINT)], returns=RANGE_BIGINT, cpp="::tpy::Range<::tpy::BigInt>({0})", is_readonly=True, is_pure=True),
-        MethodDef(params=[ParamDef("start", BIGINT), ParamDef("stop", BIGINT)], returns=RANGE_BIGINT, cpp="::tpy::Range<::tpy::BigInt>({0}, {1})", is_readonly=True, is_pure=True),
-        MethodDef(params=[ParamDef("start", BIGINT), ParamDef("stop", BIGINT), ParamDef("step", BIGINT)], returns=RANGE_BIGINT, cpp="::tpy::Range<::tpy::BigInt>({0}, {1}, {2})", is_readonly=True, is_pure=True),
-    ]
-    module.function("range", overloads=range_overloads)
 
     # iter(x) -- calls x.__iter__(), returns Iterator[T]
     # Stays hardcoded: return type is a protocol (not expressible in .py)

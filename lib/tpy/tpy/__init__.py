@@ -1,7 +1,7 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::tpy")
 from typing import overload, Protocol, Iterator, Iterable, Self
-from tpy import UInt64, Int32, Own, Span, Ptr, readonly, pure
+from tpy import UInt64, Int32, Own, Span, Ptr, readonly, pure, nocopy
 from tpy.extern import native, cpp_template, builtin_type
 
 
@@ -155,6 +155,36 @@ class Array[T, N: int](Iterable[T], NativeIterable[T], ReadOnlySpanLike[T]):
     @pure
     @readonly
     def __span__(self) -> Span[readonly[T]]: ...
+
+
+@builtin_type("tpy.Ptr")
+@native("{T}*")
+class Ptr[T](Deref[T]):
+    @cpp_template("nullptr")
+    def __init__(self) -> None: ...
+
+    @cpp_template("::tpy::deref_check({self})")
+    def __deref__(self) -> T: ...
+
+    @cpp_template("std::span({self}, static_cast<size_t>({0}))")
+    @readonly
+    @pure
+    def span(self, length: Int32) -> Span[T]: ...
+
+
+@builtin_type("tpy.SpanIter")
+@native("::tpy::SpanIter")
+@nocopy
+class SpanIter[T](NativeIterable[T], Iterable[T], Iterator[T]):
+    @cpp_template("{cpp}({0})")
+    def __init__(self, source: Span[T]) -> None: ...
+
+    @cpp_template("{self}.__next__()")
+    def __next__(self) -> T: ...
+
+    @cpp_template("{self}.__iter__()")
+    @readonly
+    def __iter__(self) -> Self: ...
 
 
 # --- Functions ---

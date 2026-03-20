@@ -9,13 +9,11 @@ from tpyc.modules.helpers import make_binop_methods
 from tpyc.typesys import (
     INT32, UINT64, BIGINT, FLOAT, FLOAT32, STR, STRING, STRVIEW, CHAR, VOID, BOOL, SELF,
     ALL_FIXED_INTS, FixedIntType,
-    SpanType, SpanIterType, ListType, TypeParamRef, PtrType, NamedType, OwnType,
+    ListType, TypeParamRef, PtrType, NamedType, OwnType,
 )
 
 # Shorthand for type parameter T
 T = TypeParamRef("T")
-# Full element/pointee type (preserves readonly) for span() / __span__() return types
-Tspan = TypeParamRef("Tspan")
 
 NAME = "tpy"
 
@@ -202,40 +200,6 @@ def init_module() -> BuiltinModule:
         "__hash__": [MethodDef(params=[], returns=UINT64, cpp="::tpy::__hash__({self})", is_readonly=True, is_pure=True)],
         "__lt__": [MethodDef(params=[ParamDef("other", FLOAT32)], returns=BOOL, cpp="{self} < {0}", is_readonly=True, is_pure=True)],
     }, extends=["Comparable", "Equatable"])
-
-    # SpanIter[T]: Lightweight iterator over a contiguous span
-    module.type("SpanIter", cpp_type="::tpy::SpanIter<{T}>", type_params=["T"],
-                param_kinds=[TypeParamKind.TYPE],
-                type_factory=lambda t: SpanIterType(t),
-                extends=["NativeIterable[T]", "Iterable[T]", "Iterator[T]"],
-                is_nocopy=True,
-                methods={
-        "__init__": [
-            MethodDef(params=[ParamDef("source", SpanType(T))],
-                      returns=VOID,
-                      cpp="{cpp}({0})"),
-        ],
-        "__iter__": [MethodDef(
-            params=[], returns=SELF,
-            cpp="{self}.__iter__()",
-            is_readonly=True,
-        )],
-    })
-
-    # Ptr[T]: Mutable pointer
-    module.type("Ptr", cpp_type="{T}*", type_params=["T"],
-                param_kinds=[TypeParamKind.TYPE],
-                type_factory=lambda t: PtrType(t),
-                extends=["Deref[T]"],
-                methods={
-                    "__init__": [
-                        MethodDef(params=[], returns=VOID, cpp="nullptr"),
-                    ],
-                    "__deref__": [MethodDef(params=[], returns=T, cpp="::tpy::deref_check({self})")],
-                    "span": [MethodDef(params=[ParamDef("length", INT32)], returns=SpanType(Tspan),
-                                       cpp="std::span({self}, static_cast<size_t>({0}))",
-                                       is_readonly=True, is_pure=True)],
-                })
 
     # take_ptr(x) - take address of a mutable lvalue, returns Ptr[T]
     module.function("take_ptr", overloads=[

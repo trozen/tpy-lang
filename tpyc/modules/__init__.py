@@ -611,11 +611,15 @@ def extract_type_params(tpy_type: "TpyType") -> dict[str, "TpyType"]:
     if isinstance(tpy_type, (DictType, DictKeysViewType, DictValuesViewType, DictItemsViewType)):
         return {"K": tpy_type.key_type, "V": tpy_type.value_type}
     # Pointer types store their type param as pointee (not via get_element_type,
-    # since pointers are not containers). Use inner_pointee so that Ptr[readonly[T]]
-    # returns {"T": T_element} not {"T": readonly[T_element]}.
-    # Tspan = full pointee (preserves readonly) for Ptr.span() return type.
+    # since pointers are not containers). Use inner_pointee so that
+    # Ptr[readonly[T]].__deref__() returns T (not readonly[T]) -- the auto-deref
+    # system needs the unwrapped type for field access.
+    # TODO: Ptr[readonly[T]].span() should return Span[readonly[T]] but currently
+    # returns Span[T] because the .py definition uses T (unwrapped). The old
+    # hardcoded Tspan param preserved the full pointee; needs a way to express
+    # this in .py.
     if isinstance(tpy_type, PtrType):
-        return {"T": tpy_type.inner_pointee, "Tspan": tpy_type.pointee}
+        return {"T": tpy_type.inner_pointee}
     if (elem_type := tpy_type.get_element_type()) is not None:
         return {"T": elem_type}
     return {}

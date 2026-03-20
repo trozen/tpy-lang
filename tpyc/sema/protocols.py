@@ -446,6 +446,13 @@ class ProtocolChecker:
         """
         if actual == expected:
             return True
+        # SelfType in actual matches when expected is the record type (Self -> MyType)
+        if isinstance(actual, SelfType) and isinstance(expected, NamedType):
+            return True
+        # Generic Self: MyType[T] matches bare MyType (unparameterized Self substitution)
+        if (isinstance(actual, NamedType) and isinstance(expected, NamedType)
+                and actual.name == expected.name and not expected.type_args):
+            return True
         # Unwrap ownership/const wrappers: Own[T] and readonly[T] both satisfy protocol -> T.
         # Const return types (readonly[T]) arise from the const clone of @auto_readonly
         # methods; the caller can read or copy the result, satisfying the protocol contract.

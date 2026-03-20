@@ -223,7 +223,7 @@ class TestSendSyncRecordDerivation:
         assert point_type.is_send()
         assert point_type.is_sync()
 
-    def test_record_with_ptr_field_not_send(self):
+    def test_record_with_ptr_field_not_send(self, tmp_path):
         source = (
             "from tpy import Ptr, Int32, take_ptr\n"
             "class Wrapper:\n"
@@ -240,7 +240,9 @@ class TestSendSyncRecordDerivation:
             "    print(h.p.x)\n"
             "main()\n"
         )
-        compiler = Compiler.from_source(source)
+        src_file = tmp_path / "test.py"
+        src_file.write_text(source)
+        compiler = Compiler(src_file, lib_dirs=[get_lib_dir() / "tpy"])
         compiler.compile()
         holder_type = NamedType("Holder")
         assert not holder_type.is_send()

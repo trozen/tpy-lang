@@ -2554,7 +2554,6 @@ FLOAT32 = Float32Type()
 
 BIGINT = BigIntType()
 NONE = NoneType()
-RANGE = RangeType(INT32)
 SLICE = SliceType()
 
 # Backward-compat range limits (use type.min_value / type.max_value instead)

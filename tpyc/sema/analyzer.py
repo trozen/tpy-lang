@@ -1129,7 +1129,9 @@ class SemanticAnalyzer:
             scan = self.stmts._prescan_and_analyze_body(method, resolved_params, scope, local_ns)
 
             # Warn if __next__ has no raise StopIteration (likely infinite loop)
-            if method.name == "__next__" and not _body_has_raise(method.body, "builtins.StopIteration"):
+            # Skip for native methods (cpp_template set) -- StopIteration handled in C++
+            if (method.name == "__next__" and not method.cpp_template
+                    and not _body_has_raise(method.body, "builtins.StopIteration")):
                 self.ctx.warning(
                     "__next__() has no 'raise StopIteration' -- "
                     "iterator will loop forever if caller exhausts it",
