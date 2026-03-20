@@ -1198,9 +1198,9 @@ class ExpressionAnalyzer:
                            f"no '{dunder}' method defined")
                 self.ctx.emit_error(msg, expr)
 
-    def get_deref_target_type(self, typ: TpyType) -> TpyType | None:
+    def get_deref_target_type(self, typ: TpyType, is_readonly: bool = False) -> TpyType | None:
         """If typ has __deref__(), return resolved return type. Else None."""
-        return self.type_ops.get_deref_target_type(typ)
+        return self.type_ops.get_deref_target_type(typ, is_readonly=is_readonly)
 
     def _try_find_field(self, typ: TpyType, expr: TpyFieldAccess) -> TpyType | None:
         """Try to find a field on typ. Returns field type or None."""
@@ -1330,9 +1330,15 @@ class ExpressionAnalyzer:
                         result = narrowed
                 return result
 
-            deref_target = self.get_deref_target_type(current_type)
+            deref_target = self.get_deref_target_type(
+                current_type, is_readonly=is_readonly_obj)
             if deref_target is None:
                 break
+            # __deref__() may return readonly[T]; unwrap and propagate
+            # readonly so field access enforces const semantics.
+            if isinstance(deref_target, ReadonlyType):
+                is_readonly_obj = True
+                deref_target = deref_target.wrapped
             current_type = deref_target
             deref_depth += 1
 

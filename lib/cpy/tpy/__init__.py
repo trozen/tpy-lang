@@ -118,11 +118,18 @@ class _Ptr(Generic[T]):
     def span(self, length):
         """Ptr[T].span(n) -> Span[T] over the first n elements of the storage."""
         n = int(length)
-        data = [self._obj._slots[i] for i in range(n)]
-        s = _make_span(data)
-        s._backing_slots = self._obj._slots
-        s._backing_len = n
-        return s
+        if hasattr(self._obj, '_slots'):
+            slots = self._obj._slots
+            if isinstance(slots, dict):
+                data = [slots[i] for i in range(n)]
+            else:
+                data = [slots[i] for i in range(n)]
+            s = _make_span(data)
+            s._backing_slots = slots
+            s._backing_len = n
+            return s
+        else:
+            return _make_span([self._obj])
 
     def __getattr__(self, name: str):
         return getattr(self._obj, name)

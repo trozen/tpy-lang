@@ -966,15 +966,19 @@ class TypeOperations:
             structural_mutated_params=method.structural_mutated_params,
         )
 
-    def get_deref_target_type(self, typ: TpyType) -> TpyType | None:
+    def get_deref_target_type(self, typ: TpyType, is_readonly: bool = False) -> TpyType | None:
         """If typ has __deref__(), return resolved return type. Else None."""
+        from .overloads import resolve_overload
         record_info = self.ctx.registry.get_record_for_type(typ)
         if not record_info:
             return None
         overloads = record_info.get_method_overloads("__deref__")
         if not overloads:
             return None
-        method = overloads[0]
+        method = resolve_overload(
+            overloads, [], is_readonly_receiver=is_readonly)
+        if method is None:
+            return None
         type_subst = self.build_type_substitution(typ)
         if type_subst:
             method = self.substitute_method_type_params(method, type_subst)
@@ -985,6 +989,14 @@ class TypeOperations:
 
         Like get_deref_target_type() but excludes Ptr[readonly[T]] -- record params
         are T& (mutable ref) but deref_check(const T*) returns const T&.
+
+        Note: does not pass is_readonly because ReadonlyType is already stripped
+        from the actual type before this is called (by check_type_compatible).
+        For user types with @auto_readonly __deref__, this means the mutable
+        overload is selected. This is correct for value types (copies) and
+        returns, but could be wrong for non-value deref targets in assignment
+        context. Low risk in practice since user deref types typically return
+        value types.
         """
         if is_readonly_ptr(typ):
             return None

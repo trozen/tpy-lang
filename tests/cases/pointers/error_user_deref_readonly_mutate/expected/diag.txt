@@ -1,0 +1,1 @@
+main.py:22: error: Cannot call non-readonly method 'set_x' on readonly reference

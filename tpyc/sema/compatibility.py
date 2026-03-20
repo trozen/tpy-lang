@@ -563,7 +563,7 @@ class TypeCompatibility:
                     # context where the callee may need a mutable reference.
                     if ctx != CoercionContext.ARG:
                         deref_target = self.type_ops.get_deref_target_type(actual)
-                if deref_target is not None and deref_target == expected:
+                if deref_target is not None and unwrap_readonly(deref_target) == expected:
                     from ..coercions import DEREF_COERCION
                     coercion = DEREF_COERCION
         if coercion is None:

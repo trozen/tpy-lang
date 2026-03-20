@@ -192,6 +192,7 @@ def resolve_overload(
     deref_checker: DerefChecker | None = None,
     default_int_type: TpyType | None = None,
     subclass_checker: SubclassChecker | None = None,
+    is_readonly_receiver: bool | None = None,
 ) -> FunctionInfo | None:
     """Two-pass overload resolution: exact match first, then with coercions.
 
@@ -204,10 +205,23 @@ def resolve_overload(
                        for Deref[T] coercion in overload matching.
         subclass_checker: Optional callback (child, parent) -> bool
                           for inheritance-based upcast matching.
+        is_readonly_receiver: If set, pre-filter auto_readonly clones --
+                              True prefers readonly overloads, False prefers mutable.
 
     Returns:
         The matching FunctionInfo, or None if no match found.
     """
+    # Pre-filter auto_readonly clones by receiver constness
+    if is_readonly_receiver is not None:
+        if is_readonly_receiver:
+            ro = [m for m in overloads if m.is_readonly]
+            if ro:
+                overloads = ro
+        else:
+            mut = [m for m in overloads if not m.is_readonly]
+            if mut:
+                overloads = mut
+
     # First pass: strict matching (exact types + protocols).
     # Generic overloads use structural matching (TypeParamRef as wildcard);
     # actual type param inference happens later in _analyze_generic_function_call.

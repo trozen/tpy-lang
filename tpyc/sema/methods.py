@@ -249,6 +249,7 @@ class MethodAnalyzer:
         self, expr: TpyMethodCall,
         overloads: list[FunctionInfo],
         type_subst: dict[str, TpyType | int],
+        is_readonly_receiver: bool = False,
     ) -> TpyType:
         """Resolve overloads, substitute type params, check arg count, and coerce args.
 
@@ -295,6 +296,7 @@ class MethodAnalyzer:
                 deref_checker=self.type_ops.get_deref_coercion_target,
                 default_int_type=self.ctx.default_int_type,
                 subclass_checker=self.ctx.registry.is_subclass_of,
+                is_readonly_receiver=is_readonly_receiver,
             )
             if resolved is None:
                 arg_strs = ", ".join(str(t) for t in arg_types)
@@ -613,9 +615,15 @@ class MethodAnalyzer:
                             self.ctx.mark_param_mutated("self")
                 return result
 
-            deref_target = self.expr.get_deref_target_type(current_type)
+            deref_target = self.expr.get_deref_target_type(
+                current_type, is_readonly=is_readonly_receiver)
             if deref_target is None:
                 break
+            # __deref__() may return readonly[T]; unwrap and propagate
+            # readonly so method calls enforce const semantics.
+            if isinstance(deref_target, ReadonlyType):
+                is_readonly_receiver = True
+                deref_target = deref_target.wrapped
             current_type = deref_target
             deref_depth += 1
 
@@ -1120,17 +1128,6 @@ class MethodAnalyzer:
         else:
             type_subst = instance_subst
 
-        # Tie-breaking for auto_readonly clones (mutable + const overload pair):
-        # readonly receiver prefers the readonly overload, mutable receiver prefers mutable.
-        if is_readonly_receiver:
-            ro = [m for m in overloads if m.is_readonly]
-            if ro:
-                overloads = ro
-        else:
-            mut = [m for m in overloads if not m.is_readonly]
-            if mut:
-                overloads = mut
-
         # Check if the method has its own type parameters (generic method).
         # Generic methods don't support multiple overloads; user-defined methods
         # always register a single overload per name (registration.py).
@@ -1142,7 +1139,8 @@ class MethodAnalyzer:
             return self._analyze_generic_method_call(
                 expr, method_info, record_info, type_subst)
 
-        return self._resolve_and_check_args(expr, overloads, type_subst)
+        return self._resolve_and_check_args(
+            expr, overloads, type_subst, is_readonly_receiver=is_readonly_receiver)
 
     def _analyze_generic_method_call(
         self, expr: TpyMethodCall, method_info: FunctionInfo,

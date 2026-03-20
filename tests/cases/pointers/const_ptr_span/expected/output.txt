@@ -1,0 +1,4 @@
+mutable ptr span:
+10
+const ptr span:
+20
