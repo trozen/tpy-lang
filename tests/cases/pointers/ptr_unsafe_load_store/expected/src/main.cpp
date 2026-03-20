@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void test_store_and_load() {
     // x: Int32 = Int32(5)
     int32_t x = 5;
-    // p: Ptr[Int32] = Ptr(x)
+    // p: Ptr[Int32] = take_ptr(x)
     int32_t* p = &x;
     // unsafe_store(p, UInt32(0), Int32(99))
     p[0] = 99;
@@ -24,7 +24,7 @@ void test_store_and_load() {
 void test_constptr_load() {
     // x: Int32 = Int32(42)
     int32_t x = 42;
-    // cp: Ptr[readonly[Int32]] = Ptr(x)
+    // cp: Ptr[readonly[Int32]] = take_ptr(x)
     const int32_t* cp = &x;
     // val: Int32 = unsafe_load(cp, UInt32(0))
     int32_t val = cp[0];

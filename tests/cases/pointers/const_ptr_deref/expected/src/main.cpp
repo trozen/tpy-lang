@@ -8,13 +8,13 @@ namespace tpyapp::main {
 void main() {
     // x: Int32 = 42
     int32_t x = 42;
-    // cp: Ptr[readonly[Int32]] = Ptr(x)
+    // cp: Ptr[readonly[Int32]] = take_ptr(x)
     const int32_t* cp = &x;
     // print(cp.__deref__())
     std::cout << ::tpy::deref_check(cp) << "\n";
     // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    // cpp: Ptr[readonly[Point]] = Ptr(pt)
+    // cpp: Ptr[readonly[Point]] = take_ptr(pt)
     const Point* cpp = &pt;
     // print(cpp.__deref__().x)
     std::cout << ::tpy::deref_check(cpp).x << "\n";

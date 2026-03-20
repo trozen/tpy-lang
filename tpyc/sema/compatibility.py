@@ -582,7 +582,7 @@ class TypeCompatibility:
                 loc
             )
 
-        if coercion.requires_mutable:
+        if coercion.requires_mutable_lvalue:
             if source_expr is None or not self.is_mutable_lvalue(source_expr):
                 raise SemanticError(
                     f"Cannot take mutable pointer to read-only or temporary value in {context}; "
@@ -936,6 +936,10 @@ class TypeCompatibility:
             if isinstance(expr.call_type, PtrType):
                 if not expr.args:
                     return False  # Ptr[T]() -> nullptr, always safe
+                return self.is_dangling_return(expr.args[0])
+
+            # take_ptr(x): dangling depends on x
+            if expr.func == "take_ptr" and expr.args:
                 return self.is_dangling_return(expr.args[0])
 
             # Generic type constructor creates a temporary

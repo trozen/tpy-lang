@@ -1,6 +1,6 @@
 # Ptr[T] field accessed through @readonly receiver becomes Ptr[readonly[T]],
 # enabling read-only deref while preventing mutation through the pointer.
-from tpy import Int32, Ptr, readonly
+from tpy import Int32, Ptr, readonly, take_ptr
 
 class Data:
     value: Int32
@@ -24,7 +24,7 @@ def read_through(c: readonly[Container]) -> Int32:
 def main() -> None:
     d = Data(Int32(42))
     c = Container()
-    c.ptr = Ptr(d)
+    c.ptr = take_ptr(d)
     print(c.read_value())
     print(read_through(c))
 

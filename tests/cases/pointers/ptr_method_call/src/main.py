@@ -1,4 +1,4 @@
-from tpy import Ptr, Int32
+from tpy import Ptr, Int32, take_ptr
 
 class Point:
     x: Int32
@@ -13,7 +13,7 @@ class Point:
 
 def main() -> None:
     pt: Point = Point(10, 20)
-    p: Ptr[Point] = Ptr(pt)
+    p: Ptr[Point] = take_ptr(pt)
     # Method call through Ptr auto-deref
     print(p.sum())
     print(p.describe())

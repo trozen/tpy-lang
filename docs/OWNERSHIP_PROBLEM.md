@@ -178,10 +178,10 @@ def find_max_idx(points: list[Point]) -> Int32:
 
 # Option 2: return pointer
 def find_max(points: list[Point]) -> Ptr[Point]:
-    best: Ptr[Point] = Ptr(points[0])
+    best: Ptr[Point] = take_ptr(points[0])
     for i in range(len(points)):
         if points[i].value > best.value:
-            best = Ptr(points[i])
+            best = take_ptr(points[i])
     return best
 ```
 

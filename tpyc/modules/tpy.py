@@ -230,13 +230,21 @@ def init_module() -> BuiltinModule:
                 methods={
                     "__init__": [
                         MethodDef(params=[], returns=VOID, cpp="nullptr"),
-                        MethodDef(params=[ParamDef("x", T, requires_mutable=True)], returns=T, cpp="&{0}"),
                     ],
                     "__deref__": [MethodDef(params=[], returns=T, cpp="::tpy::deref_check({self})")],
                     "span": [MethodDef(params=[ParamDef("length", INT32)], returns=SpanType(Tspan),
                                        cpp="std::span({self}, static_cast<size_t>({0}))",
                                        is_readonly=True, is_pure=True)],
                 })
+
+    # take_ptr(x) - take address of a mutable lvalue, returns Ptr[T]
+    module.function("take_ptr", overloads=[
+        MethodDef(
+            params=[ParamDef("x", T, requires_mutable_lvalue=True)],
+            returns=PtrType(T),
+            cpp="&{0}",
+        ),
+    ])
 
     # String: Explicit owned string type (std::string)
     module.register_type(STRING, cpp_type="std::string",

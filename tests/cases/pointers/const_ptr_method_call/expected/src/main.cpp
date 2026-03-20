@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // c: Counter = Counter(42)
     Counter c = Counter(42);
-    // cp: Ptr[readonly[Counter]] = Ptr(c)
+    // cp: Ptr[readonly[Counter]] = take_ptr(c)
     const Counter* cp = &c;
     // # Const-safe dunder method call through Ptr[readonly[...]] auto-deref
     // print(cp.__len__())

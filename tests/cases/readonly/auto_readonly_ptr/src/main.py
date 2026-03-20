@@ -1,6 +1,6 @@
 # @auto_readonly with Ptr[T] return: const overload returns Ptr[readonly[T]].
 # Uses explicit auto_readonly[T] annotation on the element type.
-from tpy import Int32, Ptr, readonly, auto_readonly
+from tpy import Int32, Ptr, readonly, auto_readonly, take_ptr
 
 class Node:
     value: Int32
@@ -28,14 +28,14 @@ def read_holder(h: readonly[NodeHolder]) -> None:
 def main() -> None:
     n = Node(Int32(7))
     h = NodeHolder()
-    h._node = Ptr(n)
+    h._node = take_ptr(n)
 
     p = h.get_node()  # tpyc: type(Ptr[Node])
     p.value = Int32(99)
     print(h.get_node().value)
 
     n2 = Node(Int32(42))
-    h._node = Ptr(n2)
+    h._node = take_ptr(n2)
     read_holder(h)
 
 

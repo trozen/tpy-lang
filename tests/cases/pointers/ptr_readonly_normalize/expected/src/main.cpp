@@ -14,7 +14,7 @@ int32_t read_via_ptr(const Data* p) {
 void main() {
     // d = Data(Int32(42))
     Data d = Data(42);
-    // p: Ptr[readonly[Data]] = Ptr(d)
+    // p: Ptr[readonly[Data]] = take_ptr(d)
     const Data* p = &d;
     // print(read_via_ptr(p))
     std::cout << read_via_ptr(p) << "\n";

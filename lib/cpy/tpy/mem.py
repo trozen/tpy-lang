@@ -91,8 +91,8 @@ class UninitArrayStorage(metaclass=_StorageMeta):
         return self._slots[index]
 
     def ptr(self):
-        from tpy import Ptr
-        return Ptr(self)
+        from tpy import take_ptr
+        return take_ptr(self)
 
 
 class UninitHeapStorage(metaclass=_StorageMeta):
@@ -150,5 +150,5 @@ class UninitHeapStorage(metaclass=_StorageMeta):
             self._slots[dst + i] = val
 
     def ptr(self):
-        from tpy import Ptr
-        return Ptr(self)
+        from tpy import take_ptr
+        return take_ptr(self)

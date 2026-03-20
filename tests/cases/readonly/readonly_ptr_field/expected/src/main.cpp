@@ -16,7 +16,7 @@ void main() {
     Data d = Data(42);
     // c = Container()
     Container c = Container();
-    // c.ptr = Ptr(d)
+    // c.ptr = take_ptr(d)
     c.ptr = &d;
     // print(c.read_value())
     std::cout << c.read_value() << "\n";

@@ -25,7 +25,7 @@ void test_iterable_params() {
     // print(sum_items(arr))
     std::cout << sum_items(arr) << "\n";
     // # Span (mutable, via Ptr)
-    // sp: Span[Int32] = Span(Ptr(arr[0]), 3)
+    // sp: Span[Int32] = Span(take_ptr(arr[0]), 3)
     std::span<int32_t> sp = std::span<int32_t>(&::tpy::__getitem__(arr, 0), static_cast<size_t>(3));
     // print(sum_items(sp))
     std::cout << sum_items(sp) << "\n";

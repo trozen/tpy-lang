@@ -6,7 +6,7 @@ the C++ pointer arithmetic that the compiler generates.
 """
 
 from __future__ import annotations
-from tpy import Ptr, _ConstPtr
+from tpy import Ptr, _ConstPtr, take_ptr
 
 
 # ---------------------------------------------------------------------------
@@ -128,10 +128,10 @@ def unsafe_ptr(container):
     if isinstance(container, str):
         return _ConstPtr(container)
     if isinstance(container, list):
-        return Ptr(container)
+        return take_ptr(container)
     if hasattr(container, '_data'):
-        return Ptr(container._data)
-    return Ptr(container)
+        return take_ptr(container._data)
+    return take_ptr(container)
 
 
 def unsafe_load(p, offset: int):
@@ -157,18 +157,18 @@ def unsafe_copy_n(dest, src, count: int) -> None:
 def unsafe_const_cast(p):
     """Remove const from a pointer (Ptr[readonly[T]] -> Ptr[T])."""
     obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
-    return Ptr(obj)
+    return take_ptr(obj)
 
 
 def unsafe_ptr_add(p, delta: int):
     """Advance a pointer by a signed element offset."""
     obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
     if isinstance(obj, _HeapArray):
-        return Ptr(_HeapArrayView(object.__getattribute__(obj, '_slots'), int(delta)))
+        return take_ptr(_HeapArrayView(object.__getattribute__(obj, '_slots'), int(delta)))
     if isinstance(obj, _HeapArrayView):
         slots = object.__getattribute__(obj, '_slots')
         off = object.__getattribute__(obj, '_offset')
-        return Ptr(_HeapArrayView(slots, off + int(delta)))
+        return take_ptr(_HeapArrayView(slots, off + int(delta)))
     return p
 
 
@@ -185,7 +185,7 @@ def unsafe_cast(p):
 class _SubscriptableAlloc:
     """Callable that also supports subscript syntax: unsafe_alloc[T]()."""
     def __call__(self):
-        return Ptr(_HeapSlot())
+        return take_ptr(_HeapSlot())
     def __getitem__(self, type_arg):
         return self
 
@@ -195,7 +195,7 @@ unsafe_alloc = _SubscriptableAlloc()
 class _SubscriptableAllocN:
     """Callable that also supports subscript syntax: unsafe_alloc_n[T](count)."""
     def __call__(self, count: int):
-        return Ptr(_HeapArray(int(count)))
+        return take_ptr(_HeapArray(int(count)))
     def __getitem__(self, type_arg):
         return self
 

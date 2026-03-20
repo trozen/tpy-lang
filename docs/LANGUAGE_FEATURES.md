@@ -144,7 +144,7 @@ def process(data: MyClass) -> None:  # data is passed by reference
     data.value = 42  # modifies original
 ```
 
-**Const reference optimization**: Record and container parameters that are never mutated (no field writes, no mutating method calls, no address-taking via `Ptr(param)`, no `Optional[T]` coercion, no mutable `Span` coercion) are automatically passed as `const T&` instead of `T&`. This applies transitively via call-graph propagation: if a wrapper only passes a parameter to a non-mutating callee, the wrapper parameter also becomes `const T&`. Protocol-typed parameters (both static template types and `@dynamic` base classes) receive the same optimization: a non-mutated protocol param emits `const T_x&` / `const Base&` instead of `T_x&` / `Base&`. For protocol params, a call to a non-`@readonly` protocol method counts as mutation of the receiver.
+**Const reference optimization**: Record and container parameters that are never mutated (no field writes, no mutating method calls, no address-taking via `take_ptr(param)`, no `Optional[T]` coercion, no mutable `Span` coercion) are automatically passed as `const T&` instead of `T&`. This applies transitively via call-graph propagation: if a wrapper only passes a parameter to a non-mutating callee, the wrapper parameter also becomes `const T&`. Protocol-typed parameters (both static template types and `@dynamic` base classes) receive the same optimization: a non-mutated protocol param emits `const T_x&` / `const Base&` instead of `T_x&` / `Base&`. For protocol params, a call to a non-`@readonly` protocol method counts as mutation of the receiver.
 
 **Element-ref deferral**: taking an element reference (`v = items[i]`) does not immediately mark `items` as mutated. The source container is only marked when the borrowed element is actually written through (field write, subscript write, or pass to mutating callee). This allows read-only element-ref patterns to preserve `const T&` for the container param:
 
@@ -711,42 +711,39 @@ def test() -> None:
     p: Ptr[None] = Ptr[None]()        # → nullptr
     q: Ptr[Int32] = Ptr[Int32]()      # → nullptr (typed null)
 
-    # Address-of with explicit type
+    # Address-of with take_ptr()
     x: Int32 = Int32(42)
-    px: Ptr[Int32] = Ptr[Int32](x)    # → &x
-
-    # Address-of with type inference
-    py: Ptr[Int32] = Ptr(x)           # → &x (infers Ptr[Int32])
-    cp: Ptr[readonly[Int32]] = Ptr(x) # → &x (infers Ptr[readonly[Int32]])
+    p: Ptr[Int32] = take_ptr(x)              # → &x
+    cp: Ptr[readonly[Int32]] = take_ptr(x)   # → &x (coerces to const)
 ```
+
+**`take_ptr(x)`** takes the address of a mutable lvalue, returning `Ptr[T]`. It can be coerced to `Ptr[readonly[T]]` at the assignment target.
 
 **`Ptr[readonly[T]]`** is the canonical form for read-only pointers. Both spellings are equivalent; `Ptr[readonly[T]]` is the canonical form:
 
 ```python
-from tpy import Ptr, readonly, Int32
+from tpy import Ptr, readonly, Int32, take_ptr
 
 x: Int32 = Int32(42)
-p: Ptr[readonly[Int32]] = Ptr(x)
+p: Ptr[readonly[Int32]] = take_ptr(x)
 ```
 
 **Safety rules:**
-- Argument must be an lvalue (`Ptr(Point(1,2))` rejected — temporary)
-- `Ptr[T]` requires a mutable lvalue; `Ptr[readonly[T]]` accepts any lvalue
-- `Ptr[None](arg)` rejected — void pointer with argument makes no sense
-- Dangling detection works through pointer constructors and intermediate variables:
+- Argument must be a mutable lvalue (`take_ptr(Point(1,2))` rejected -- temporary)
+- Dangling detection works through `take_ptr` and intermediate variables:
 
 ```python
 def bad() -> Ptr[Int32]:
     x: Int32 = Int32(1)
-    return Ptr(x)          # ERROR: returned pointer would dangle
+    return take_ptr(x)     # ERROR: returned pointer would dangle
 
 def also_bad() -> Ptr[Int32]:
     x: Int32 = Int32(1)
-    p: Ptr[Int32] = Ptr(x)
+    p: Ptr[Int32] = take_ptr(x)
     return p                # ERROR: returned pointer would dangle
 
 def ok(x: Int32) -> Ptr[Int32]:
-    return Ptr(x)           # OK: x is a parameter
+    return take_ptr(x)     # OK: x is a parameter
 ```
 
 #### Auto-Deref via `Deref[T]` Protocol (Working)
@@ -793,7 +790,7 @@ Multi-hop chains are supported — if `Box.__deref__() -> Ref` and `Ref.__deref_
 
 **Null-safety:** Auto-deref through `Ptr[T]`/`Ptr[readonly[T]]` is null-checked at runtime via `tpy::deref_check()`. A null pointer access panics with "null pointer dereference" instead of causing undefined behavior. Pointers with known non-null provenance skip the null check and use direct `->` access. Non-null provenance is established by:
 
-- Constructor: `p = Ptr(x)` (pointer to a local variable)
+- `take_ptr`: `p = take_ptr(x)` (pointer to a local variable)
 - Condition narrowing: `if p is not None:` / `if p is None: return` / `assert p is not None` / `while p is not None:`
 - Field-path narrowing: `if self.ptr_field is not None:` / `if obj.field is not None:` (dotted paths at any depth)
 - Assignment from a known non-null variable
@@ -3362,7 +3359,7 @@ def read_animal(p: Ptr[readonly[Animal]]) -> None:
 
 d = Dog("Rex", "Lab")
 read_animal(d)                    # Dog -> Ptr[readonly[Animal]]
-dp: Ptr[Dog] = Ptr(d)
+dp: Ptr[Dog] = take_ptr(d)
 ap: Ptr[Animal] = dp             # Ptr[Dog] -> Ptr[Animal]
 cap: Ptr[readonly[Animal]] = dp  # Ptr[Dog] -> Ptr[readonly[Animal]]
 ```
@@ -4934,14 +4931,14 @@ class Container:
         for p in self.items:
             self.items.append(Point(p.x, p.y))  # warning: Mutation of 'self.items' while iterating
 
-        ptr = Ptr(self.items[0])
+        ptr = take_ptr(self.items[0])
         self.items.append(Point(5, 6))  # warning: Mutation of 'self.items' while borrowed
 
         self.items += [Point(7, 8)]     # warning: Mutation of 'self.items' while borrowed
         self.items = [Point(9, 9)]      # warning: Mutation of 'self.items' while borrowed
 
 c = Container()
-ptr = Ptr(c.items[0])
+ptr = take_ptr(c.items[0])
 c.items.append(Point(7, 8))  # warning: Mutation of 'c.items' while borrowed
 ```
 

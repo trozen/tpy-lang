@@ -1,4 +1,4 @@
-from tpy import Ptr, Int32
+from tpy import Ptr, Int32, take_ptr
 
 class Point:
     x: Int32
@@ -8,6 +8,6 @@ class Point:
         self.y = y
 
 def test() -> None:
-    p: Ptr[Point] = Ptr(Point(1, 2))  # tpyc: error(/must be a mutable lvalue/)
+    p: Ptr[Point] = take_ptr(Point(1, 2))  # tpyc: error(/must be a mutable lvalue/)
 
 test()

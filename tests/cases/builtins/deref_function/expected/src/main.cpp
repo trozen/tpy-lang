@@ -8,24 +8,24 @@ namespace tpyapp::main {
 void main() {
     // x: Int32 = 42
     int32_t x = 42;
-    // p: Ptr[Int32] = Ptr(x)
+    // p: Ptr[Int32] = take_ptr(x)
     int32_t* p = &x;
     // print(deref(p))
     std::cout << ::tpy::deref_check(p) << "\n";
     // y: Int32 = 77
     int32_t y = 77;
-    // rp: Ptr[readonly[Int32]] = Ptr(y)
+    // rp: Ptr[readonly[Int32]] = take_ptr(y)
     const int32_t* rp = &y;
     // print(deref(rp))
     std::cout << ::tpy::deref_check(rp) << "\n";
     // z: Int32 = 99
     int32_t z = 99;
-    // print(deref_protocol(Ptr(z)))
+    // print(deref_protocol(take_ptr(z)))
     auto __tmp_1 = &z;
     std::cout << deref_protocol(__tmp_1) << "\n";
     // w: Int32 = 55
     int32_t w = 55;
-    // print(deref_protocol(Ptr(w)))
+    // print(deref_protocol(take_ptr(w)))
     auto __tmp_2 = &w;
     std::cout << deref_protocol(__tmp_2) << "\n";
     // # User-defined Deref type

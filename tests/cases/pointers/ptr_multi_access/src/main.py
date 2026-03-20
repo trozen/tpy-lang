@@ -1,4 +1,4 @@
-from tpy import Ptr, Int32
+from tpy import Ptr, Int32, take_ptr
 
 class Point:
     x: Int32
@@ -19,7 +19,7 @@ def use_methods(p: Ptr[Point]) -> None:
 
 def test() -> None:
     pt: Point = Point(3, 7)
-    p: Ptr[Point] = Ptr(pt)
+    p: Ptr[Point] = take_ptr(pt)
     use_fields(p)
     use_methods(p)
 

@@ -1,6 +1,6 @@
 # 8a.2: non-mutated record/container params get const T&; mutated ones stay T&.
-# Also tests Ptr(param) address-taking and Phase 2 call-graph propagation.
-from tpy import Int32, Ptr
+# Also tests take_ptr(param) address-taking and Phase 2 call-graph propagation.
+from tpy import Int32, Ptr, take_ptr
 from typing import Optional
 
 class Point:
@@ -19,13 +19,13 @@ def read_point(p: Point) -> Int32:
 def mutate_point(p: Point) -> None:
     p.x = Int32(99)
 
-# Ptr(param) address-taking: must stay Point& (not const Point&)
-def take_ptr(p: Point) -> Ptr[Point]:
-    return Ptr(p)
+# take_ptr(param) address-taking: must stay Point& (not const Point&)
+def get_ptr(p: Point) -> Ptr[Point]:
+    return take_ptr(p)
 
-# Ptr(items[i]) subscript address-taking: items must stay vector& (not const)
-def take_elem_ptr(items: list[Point], i: Int32) -> Ptr[Point]:
-    return Ptr(items[i])
+# take_ptr(items[i]) subscript address-taking: items must stay vector& (not const)
+def get_elem_ptr(items: list[Point], i: Int32) -> Ptr[Point]:
+    return take_ptr(items[i])
 
 # Optional[Point] coercion: &(p) taken -- must stay Point&
 def to_optional(p: Point) -> Optional[Point]:
@@ -53,7 +53,7 @@ def main() -> None:
     print(p.x)
 
     pts: list[Point] = [Point(Int32(10), Int32(20)), Point(Int32(30), Int32(40))]
-    ptr = take_elem_ptr(pts, Int32(0))
+    ptr = get_elem_ptr(pts, Int32(0))
     print(ptr.__deref__().x)
 
     nums: list[Int32] = [Int32(10), Int32(20)]

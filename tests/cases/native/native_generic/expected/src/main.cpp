@@ -10,7 +10,7 @@ void main() {
     std::vector<int32_t> items = {10, 20, 30};
     // print(my_len(items))
     std::cout << ::tpy::__len__(items) << "\n";
-    // p = Ptr[Int32](items[0])
+    // p = take_ptr(items[0])
     int32_t* p = &::tpy::__getitem__(items, 0);
     // print(load(p, UInt32(2)))
     std::cout << p[2] << "\n";

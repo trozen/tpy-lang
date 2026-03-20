@@ -1,5 +1,5 @@
 # Test __iter__/__next__ protocol on generic classes with Ptr-typed fields.
-from tpy import Int32, UInt32, Own, Ptr
+from tpy import Int32, UInt32, Own, Ptr, take_ptr
 from tpy.mem import UninitArrayStorage
 
 
@@ -38,7 +38,7 @@ class SimpleList[T, N: int]:
         self._size += 1
 
     def __iter__(self) -> Own[StorageIter[T, N]]:
-        return StorageIter[T, N](Ptr(self._storage), self._size)
+        return StorageIter[T, N](take_ptr(self._storage), self._size)
 
 
 def main() -> None:

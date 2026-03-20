@@ -174,7 +174,7 @@ void test_ptr_from_loop_var() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& p = *__beg_0;
-        // ptr: Ptr[Point] = Ptr(p)
+        // ptr: Ptr[Point] = take_ptr(p)
         Point* ptr = &p;
         // ptr.x = Int32(42)
         ptr->x = 42;

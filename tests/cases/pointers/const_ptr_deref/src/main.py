@@ -1,4 +1,4 @@
-from tpy import Ptr, Int32, readonly
+from tpy import Ptr, Int32, readonly, take_ptr
 
 class Point:
     x: Int32
@@ -9,11 +9,11 @@ class Point:
 
 def main() -> None:
     x: Int32 = 42
-    cp: Ptr[readonly[Int32]] = Ptr(x)
+    cp: Ptr[readonly[Int32]] = take_ptr(x)
     print(cp.__deref__())
 
     pt: Point = Point(10, 20)
-    cpp: Ptr[readonly[Point]] = Ptr(pt)
+    cpp: Ptr[readonly[Point]] = take_ptr(pt)
     print(cpp.__deref__().x)
     print(cpp.__deref__().y)
     # Field access through Ptr[readonly[Point]] auto-deref

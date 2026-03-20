@@ -21,7 +21,7 @@ void __tpy_init() {
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
     // x: Int32 = Int32(7)
     x = 7;
-    // p = Ptr(x)
+    // p = take_ptr(x)
     p = &x;
     // print(p is None)
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n";
@@ -35,7 +35,7 @@ void __tpy_init() {
     cp = nullptr;
     // print(cp is None)
     std::cout << ::tpy::print_bool((cp == nullptr)) << "\n";
-    // cp = Ptr(x)
+    // cp = take_ptr(x)
     cp = &x;
     // print(cp is None)
     std::cout << ::tpy::print_bool((cp == nullptr)) << "\n";

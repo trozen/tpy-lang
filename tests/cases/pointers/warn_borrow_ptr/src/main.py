@@ -1,5 +1,5 @@
 # Warn on mutation of storage while a pointer borrows into it
-from tpy import Int32, Ptr
+from tpy import Int32, Ptr, take_ptr
 
 class Point:
     x: Int32
@@ -11,21 +11,21 @@ class Point:
 def test_ptr_borrow_field_write() -> None:
     """Ptr borrow + field write on storage = warn."""
     p = Point(Int32(1), Int32(2))
-    ptr = Ptr(p)
+    ptr = take_ptr(p)
     p.x = Int32(10)  # tpyc: warning(/Mutation of 'p'.*field assignment/)
     print(p.x)
 
 def test_ptr_borrow_append() -> None:
     """Ptr into list element + structural mutation = warn."""
     items: list[Point] = [Point(Int32(1), Int32(2))]
-    ptr = Ptr(items[Int32(0)])
+    ptr = take_ptr(items[Int32(0)])
     items.append(Point(Int32(3), Int32(4)))  # tpyc: warning(/Mutation of 'items'.*'append'/)
     print(len(items))
 
 def test_ptr_borrow_subscript_assign() -> None:
     """Ptr into list element + subscript assign = ok (in-place, no reallocation, no dangling)."""
     items: list[Point] = [Point(Int32(1), Int32(2))]
-    ptr = Ptr(items[Int32(0)])
+    ptr = take_ptr(items[Int32(0)])
     items[Int32(0)] = Point(Int32(9), Int32(9))  # tpyc: ok
     print(items[Int32(0)].x)
 
@@ -33,8 +33,8 @@ def test_ptr_reassign_clears() -> None:
     """Reassigning the ptr variable clears the borrow."""
     p = Point(Int32(1), Int32(2))
     q = Point(Int32(3), Int32(4))
-    ptr = Ptr(p)
-    ptr = Ptr(q)
+    ptr = take_ptr(p)
+    ptr = take_ptr(q)
     p.x = Int32(10)  # tpyc: ok
     print(p.x)
 

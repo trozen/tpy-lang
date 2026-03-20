@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    // p: Ptr[Point] = Ptr(pt)
+    // p: Ptr[Point] = take_ptr(pt)
     Point* p = &pt;
     // # Method call through Ptr auto-deref
     // print(p.sum())

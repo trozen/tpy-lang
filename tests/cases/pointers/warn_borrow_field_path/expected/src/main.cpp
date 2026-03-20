@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void ptr_to_field() {
     // h = Holder(Point(1, 2))
     Holder h = Holder(Point(1, 2));
-    // ptr = Ptr(h.point)
+    // ptr = take_ptr(h.point)
     Point* ptr = &h.point;
     // h.point = Point(9, 9)  # tpyc: warning(/while borrowed/)
     h.point = Point(9, 9);
@@ -20,7 +20,7 @@ void ptr_to_field() {
 void ptr_to_field_no_conflict() {
     // h = Holder(Point(1, 2))
     Holder h = Holder(Point(1, 2));
-    // ptr = Ptr(h.point)
+    // ptr = take_ptr(h.point)
     Point* ptr = &h.point;
     // # Mutating h itself (not h.point) would warn because the borrow is on "h.point"
     // # but there's no mutation of h.point here, only a read.
@@ -32,7 +32,7 @@ void ptr_to_field_no_conflict() {
 void external_field_path() {
     // c = Container()
     Container c = Container();
-    // ptr = Ptr(c.items[0])
+    // ptr = take_ptr(c.items[0])
     Point* ptr = &::tpy::__getitem__(c.items, 0);
     // c.items.append(Point(7, 8))  # tpyc: warning(/'append'.*invalidate/)
     c.items.push_back(Point(7, 8));
@@ -46,7 +46,7 @@ void reassign_clears_borrow() {
     Container __slot_1 = Container();
     std::optional<Container> __slot_2;
     Container* c = &__slot_1;
-    // ptr = Ptr(c.items[0])
+    // ptr = take_ptr(c.items[0])
     Point* ptr = &::tpy::__getitem__(c->items, 0);
     // c = Container()
     c = &*(__slot_2 = Container());

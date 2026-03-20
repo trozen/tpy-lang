@@ -22,8 +22,7 @@ class ParamDef:
     """Parameter definition for a function/method."""
     name: str
     type: "TpyType"  # TpyType, use TypeParamRef("T") for type params
-    requires_lvalue: bool = False
-    requires_mutable: bool = False
+    requires_mutable_lvalue: bool = False
 
 
 @dataclass
@@ -352,7 +351,7 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
         methods[method_name] = [
             FunctionInfo(
                 name=method_name,
-                params=[ParamInfo(p.name, p.type, p.requires_lvalue, p.requires_mutable) for p in method.params],
+                params=[ParamInfo(p.name, p.type, requires_mutable_lvalue=p.requires_mutable_lvalue) for p in method.params],
                 return_type=method.returns,
                 is_method=not is_ctor,
                 is_staticmethod=method.is_static,
@@ -393,7 +392,7 @@ def builtin_function_to_info(fn_def: BuiltinFunctionDef, module_name: str = "") 
     for overload in fn_def.overloads:
         result.append(FunctionInfo(
             name=fn_def.name,
-            params=[ParamInfo(p.name, p.type, p.requires_lvalue, p.requires_mutable) for p in overload.params],
+            params=[ParamInfo(p.name, p.type, requires_mutable_lvalue=p.requires_mutable_lvalue) for p in overload.params],
             return_type=overload.returns,
             is_noalloc=overload.is_noalloc,
             is_readonly=overload.is_readonly,
@@ -676,7 +675,7 @@ def resolve_method(method: MethodDef, type_params: dict[str, "TpyType"]) -> Meth
     """
     resolved_params = [
         ParamDef(name=p.name, type=_resolve_type_or_param(p.type, type_params),
-                 requires_lvalue=p.requires_lvalue, requires_mutable=p.requires_mutable)
+                 requires_mutable_lvalue=p.requires_mutable_lvalue)
         for p in method.params
     ]
     resolved_returns = _resolve_type_or_param(method.returns, type_params)

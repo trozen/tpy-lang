@@ -18,7 +18,7 @@ void main() {
     // read_animal(d)
     read_animal(&d);
     // # Ptr[Dog] -> Ptr[Animal]
-    // dp: Ptr[Dog] = Ptr(d)
+    // dp: Ptr[Dog] = take_ptr(d)
     Dog* dp = &d;
     // ap: Ptr[Animal] = dp
     Animal* ap = dp;
@@ -30,7 +30,7 @@ void main() {
     // print(cap.name)
     std::cout << cap->name << "\n";
     // # Ptr[readonly[Dog]] -> Ptr[readonly[Animal]]
-    // cdp: Ptr[readonly[Dog]] = Ptr(d)
+    // cdp: Ptr[readonly[Dog]] = take_ptr(d)
     const Dog* cdp = &d;
     // cap2: Ptr[readonly[Animal]] = cdp
     const Animal* cap2 = cdp;

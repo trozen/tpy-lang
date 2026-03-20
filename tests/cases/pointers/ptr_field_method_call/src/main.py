@@ -1,5 +1,5 @@
 # Test calling builtin-type methods through Ptr-typed fields (-> vs . in C++).
-from tpy import Int32, UInt32, Ptr
+from tpy import Int32, UInt32, Ptr, take_ptr
 from tpy.mem import UninitHeapStorage
 
 
@@ -18,7 +18,7 @@ def main() -> None:
     storage.init(UInt32(0), 42)
     storage.init(UInt32(1), 99)
 
-    w = Wrapper[Int32](Ptr(storage))
+    w = Wrapper[Int32](take_ptr(storage))
     print(w.load_at(UInt32(0)))
     print(w.load_at(UInt32(1)))
 

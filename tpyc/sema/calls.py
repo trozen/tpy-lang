@@ -1184,26 +1184,22 @@ class CallAnalyzer:
             )
 
     def _validate_lvalue_params(self, expr: TpyCall) -> None:
-        """Validate requires_lvalue / requires_mutable constraints on resolved params."""
+        """Validate requires_mutable_lvalue constraints on resolved params."""
         fi = expr.resolved_function_info
         if fi is None:
             return
         for i, param in enumerate(fi.params):
             if i >= len(expr.args):
                 break
-            if param.requires_mutable:
+            if param.requires_mutable_lvalue:
                 if not self.compat.is_mutable_lvalue(expr.args[i]):
                     raise self.ctx.error(
                         f"argument '{param.name}' must be a mutable lvalue", expr)
-                # Address-taking (Ptr(param), Ptr(items[i]), &param coercions) requires T&.
-                # Use effective_storage to chase through pointer-alias rebinds.
+                # Address-taking requires T& -- mark params and loop vars as mutated.
                 for name in addr_taken_roots(expr.args[i]):
                     root = self.ctx.borrow_tracker.effective_storage(name)
                     self.ctx.mark_param_mutated(root)
-            elif param.requires_lvalue:
-                if not self.compat.is_lvalue(expr.args[i]):
-                    raise self.ctx.error(
-                        f"argument '{param.name}' must be an lvalue", expr)
+                    self.ctx.mark_loop_var_mutated(root)
 
     def _check_borrow_arg_conflicts(self, expr: TpyCall | TpyMethodCall) -> None:
         """Warn when a borrowed container is passed to a non-readonly parameter.
@@ -1528,6 +1524,7 @@ class CallAnalyzer:
                                        subclass_checker=self.ctx.registry.is_subclass_of)
             if matched is not None:
                 expr.resolved_function_info = matched
+                self._validate_lvalue_params(expr)
                 self._check_error_return_handled(expr, matched)
                 self._record_mutation_call_edges(expr)
                 for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, matched.params)):
@@ -1559,6 +1556,7 @@ class CallAnalyzer:
                                                protocol_checker, n_explicit)
                 resolved = self.type_ops.substitute_method_type_params(overload, type_subst)
                 expr.resolved_function_info = resolved
+                self._validate_lvalue_params(expr)
                 self._check_error_return_handled(expr, resolved)
                 self._record_mutation_call_edges(expr)
                 expr.inferred_type_args = tuple(type_subst[p] for p in overload.type_params)

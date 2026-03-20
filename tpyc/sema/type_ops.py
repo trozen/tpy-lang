@@ -929,7 +929,7 @@ class TypeOperations:
                 effective_subst[tp] = TypeParamRef(tp)
         substituted_params = [
             ParamInfo(p.name, self.substitute_type_params(p.type, effective_subst),
-                      p.requires_lvalue, p.requires_mutable, default_expr=p.default_expr)
+                      requires_mutable_lvalue=p.requires_mutable_lvalue, default_expr=p.default_expr)
             for p in method.params
         ]
         substituted_return = self.substitute_type_params(method.return_type, effective_subst)

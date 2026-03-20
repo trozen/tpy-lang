@@ -533,7 +533,7 @@ class TypeRegistrar:
                 for i, func_info in enumerate(method_list):
                     new_params = [
                         ParamInfo(p.name, attach_type_param_bounds(p.type, record.type_param_bounds),
-                                  p.requires_lvalue, p.requires_mutable, default_expr=p.default_expr)
+                                  requires_mutable_lvalue=p.requires_mutable_lvalue, default_expr=p.default_expr)
                         for p in func_info.params
                     ]
                     new_return = attach_type_param_bounds(func_info.return_type, record.type_param_bounds)

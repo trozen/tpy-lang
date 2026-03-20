@@ -106,7 +106,7 @@ struct SimpleList {
 
     // def __iter__(self) -> Own[StorageIter[T, N]]:
     StorageIter<T, N> __iter__() {
-        // return StorageIter[T, N](Ptr(self._storage), self._size)
+        // return StorageIter[T, N](take_ptr(self._storage), self._size)
         return StorageIter<T, N>(&this->_storage, this->_size);
     }
 };

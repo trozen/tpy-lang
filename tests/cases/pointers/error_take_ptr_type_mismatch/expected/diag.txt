@@ -1,0 +1,1 @@
+main.py:5: error: Type mismatch in variable 'p': expected Ptr[None], got Ptr[Int32]

@@ -90,7 +90,7 @@ class Coercion:
     type_match: Callable[[TpyType, TpyType], bool] = _match_any
     contexts: Optional[set[CoercionContext]] = None
     requires_lvalue: bool = False
-    requires_mutable: bool = False
+    requires_mutable_lvalue: bool = False
     forbid_return_local: bool = False
     # Lossless coercion safe for protocol return type matching.
     protocol_safe: bool = False
@@ -290,7 +290,7 @@ COERCIONS: list[Coercion] = [
             rec.is_user_record and isinstance(ptr, PtrType) and isinstance(ptr.pointee, NamedType) and ptr.pointee.is_user_record and rec.name == ptr.pointee.name
         ),
         requires_lvalue=True,
-        requires_mutable=True,
+        requires_mutable_lvalue=True,
         forbid_return_local=True,
         codegen=lambda e, _a, _b, _c: f"&{e}",
     ),
@@ -386,7 +386,7 @@ UPCAST_TO_PTR = Coercion(
     from_type=NamedType,
     to_type=PtrType,
     requires_lvalue=True,
-    requires_mutable=True,
+    requires_mutable_lvalue=True,
     forbid_return_local=True,
     codegen=lambda e, _a, _b, _c: f"&{e}",
 )

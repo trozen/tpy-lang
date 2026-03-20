@@ -225,7 +225,7 @@ class TestSendSyncRecordDerivation:
 
     def test_record_with_ptr_field_not_send(self):
         source = (
-            "from tpy import Ptr, Int32\n"
+            "from tpy import Ptr, Int32, take_ptr\n"
             "class Wrapper:\n"
             "    x: Int32\n"
             "    def __init__(self, x: Int32) -> None:\n"
@@ -236,7 +236,7 @@ class TestSendSyncRecordDerivation:
             "        self.p = p\n"
             "def main() -> None:\n"
             "    w = Wrapper(Int32(1))\n"
-            "    h = Holder(Ptr(w))\n"
+            "    h = Holder(take_ptr(w))\n"
             "    print(h.p.x)\n"
             "main()\n"
         )

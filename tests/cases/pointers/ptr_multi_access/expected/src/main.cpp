@@ -22,7 +22,7 @@ void use_methods(Point* p) {
 void test() {
     // pt: Point = Point(3, 7)
     Point pt = Point(3, 7);
-    // p: Ptr[Point] = Ptr(pt)
+    // p: Ptr[Point] = take_ptr(pt)
     Point* p = &pt;
     // use_fields(p)
     use_fields(p);

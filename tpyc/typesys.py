@@ -2702,8 +2702,7 @@ class ParamInfo:
     """
     name: str
     type: TpyType
-    requires_lvalue: bool = False
-    requires_mutable: bool = False
+    requires_mutable_lvalue: bool = False
     default_expr: 'Any | None' = None  # TpyExpr from parser; None = required param
 
     @property

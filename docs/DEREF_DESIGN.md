@@ -30,7 +30,7 @@ from tpy import Ptr, Int32
 
 # Built-in: Ptr[T] has __deref__() -> T
 x: Int32 = 42
-p: Ptr[Int32] = Ptr(x)
+p: Ptr[Int32] = take_ptr(x)
 p.__deref__()  # explicit deref, returns Int32
 
 # User-defined:
@@ -132,7 +132,7 @@ User-defined records with `__deref__()` now get `operator*()` generated in the C
 
 Added flow-tracked `non_null_ptr_vars` set to sema context (alongside existing `param_provenance_vars` and `narrowed_types`). The set tracks pointer variables with known non-null provenance through the same save/restore/merge infrastructure used by definite assignment and Optional narrowing.
 
-**Tracking**: When a variable is assigned from `Ptr(x)` or `Ptr[readonly[T]](x)` (constructor with an argument), it's marked non-null. Assignment from another known non-null variable propagates the fact. Reassignment to unknown source (function return, null constructor, etc.) clears it. Branch merges use intersection (conservative).
+**Tracking**: When a variable is assigned from `take_ptr(x)` (address-taking), it's marked non-null. Assignment from another known non-null variable propagates the fact. Reassignment to unknown source (function return, null constructor, etc.) clears it. Branch merges use intersection (conservative).
 
 **AST flag**: `ptr_non_null: bool` on `TpyFieldAccess` and `TpyMethodCall`, set by sema when the receiver is a `TpyName` in `non_null_ptr_vars` and the receiver type is `PtrType`.
 

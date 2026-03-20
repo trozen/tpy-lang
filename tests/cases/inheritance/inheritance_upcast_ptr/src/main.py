@@ -1,6 +1,6 @@
 # Pointer coercion: Dog -> Ptr[Animal], Ptr[Dog] -> Ptr[Animal], Ptr[readonly[...]] variants,
 # multi-level (Puppy -> Ptr[readonly[Animal]])
-from tpy import Ptr, readonly
+from tpy import Ptr, readonly, take_ptr
 
 class Animal:
     name: str
@@ -29,7 +29,7 @@ def main() -> None:
     read_animal(d)
 
     # Ptr[Dog] -> Ptr[Animal]
-    dp: Ptr[Dog] = Ptr(d)
+    dp: Ptr[Dog] = take_ptr(d)
     ap: Ptr[Animal] = dp
     print(ap.name)
 
@@ -38,7 +38,7 @@ def main() -> None:
     print(cap.name)
 
     # Ptr[readonly[Dog]] -> Ptr[readonly[Animal]]
-    cdp: Ptr[readonly[Dog]] = Ptr(d)
+    cdp: Ptr[readonly[Dog]] = take_ptr(d)
     cap2: Ptr[readonly[Animal]] = cdp
     print(cap2.name)
 

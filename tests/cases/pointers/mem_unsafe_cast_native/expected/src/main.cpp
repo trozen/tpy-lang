@@ -14,9 +14,9 @@ thing_t* get_thing(sector_t* sec) {
 void main() {
     // thing = ThingT(Int32(42))
     thing_t thing = thing_t{42};
-    // sec = SectorT(Int32(100), unsafe_cast[None](Ptr(thing)))
+    // sec = SectorT(Int32(100), unsafe_cast[None](take_ptr(thing)))
     sector_t sec = sector_t{100, reinterpret_cast<void*>(&thing)};
-    // p: Ptr[ThingT] = get_thing(Ptr(sec))
+    // p: Ptr[ThingT] = get_thing(take_ptr(sec))
     thing_t* p = get_thing(&sec);
     // print(p.id)
     std::cout << ::tpy::deref_check(p).id << "\n";

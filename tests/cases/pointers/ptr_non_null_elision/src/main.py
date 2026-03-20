@@ -1,4 +1,4 @@
-from tpy import Ptr, Int32, readonly
+from tpy import Ptr, Int32, readonly, take_ptr
 
 class Point:
     x: Int32
@@ -20,12 +20,12 @@ def read_via_param(p: Ptr[Point]) -> None:
 def main() -> None:
     pt: Point = Point(Int32(10), Int32(20))
     # Local Ptr from lvalue: provably non-null, skip null check
-    p: Ptr[Point] = Ptr(pt)
+    p: Ptr[Point] = take_ptr(pt)
     print(p.x)
     print(p.y)
     print(p.sum())
     # Local Ptr[readonly[...]] from lvalue: provably non-null, skip null check
-    cp: Ptr[readonly[Point]] = Ptr(pt)
+    cp: Ptr[readonly[Point]] = take_ptr(pt)
     print(cp.x)
     # Coercion: Ptr[T] -> Ptr[readonly[T]] preserves non-null provenance
     cp2: Ptr[readonly[Point]] = p
@@ -41,7 +41,7 @@ def main() -> None:
     print(p.x)
     # Re-establish provenance
     pt2: Point = Point(Int32(30), Int32(40))
-    p = Ptr(pt2)
+    p = take_ptr(pt2)
     print(p.x)
     # Pass to function (param has unknown provenance inside)
     read_via_param(p)

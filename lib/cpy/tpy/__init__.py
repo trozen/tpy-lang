@@ -206,10 +206,15 @@ class _PtrMeta(type):
 
 
 class Ptr(metaclass=_PtrMeta):
-    """Ptr[T] type - creates mutable pointer."""
+    """Ptr[T] type - null pointer constructor only."""
 
-    def __new__(cls, obj=None):
-        return _Ptr(obj)
+    def __new__(cls):
+        return _Ptr(None)
+
+
+def take_ptr(obj):
+    """Take a pointer to obj. CPython stub: wraps in _Ptr."""
+    return _Ptr(obj)
 
 
 class _OwnMeta(type):

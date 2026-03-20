@@ -1,4 +1,4 @@
-from tpy import Ptr, Int32, readonly
+from tpy import Ptr, Int32, readonly, take_ptr
 
 class Point:
     x: Int32
@@ -24,27 +24,27 @@ def test_null_constructors() -> None:
 
 def test_ptr_explicit() -> None:
     pt: Point = Point(10, 20)
-    pp: Ptr[Point] = Ptr[Point](pt)
+    pp: Ptr[Point] = take_ptr(pt)
     read_via_ptr(pp)
 
 def test_ptr_inferred() -> None:
     pt: Point = Point(30, 40)
-    pp: Ptr[Point] = Ptr(pt)
+    pp: Ptr[Point] = take_ptr(pt)
     read_via_ptr(pp)
 
 def test_constptr_explicit() -> None:
     pt: Point = Point(50, 60)
-    cp: Ptr[readonly[Point]] = Ptr[readonly[Point]](pt)
+    cp: Ptr[readonly[Point]] = take_ptr(pt)
     read_via_constptr(cp)
 
 def test_constptr_inferred() -> None:
     pt: Point = Point(70, 80)
-    cp: Ptr[readonly[Point]] = Ptr(pt)
+    cp: Ptr[readonly[Point]] = take_ptr(pt)
     read_via_constptr(cp)
 
 def test_ptr_write() -> None:
     pt: Point = Point(1, 2)
-    pp: Ptr[Point] = Ptr(pt)
+    pp: Ptr[Point] = take_ptr(pt)
     pp.x = Int32(99)
     print(pt.x)
 

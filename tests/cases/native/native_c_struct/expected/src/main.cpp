@@ -14,7 +14,7 @@ void main() {
     std::cout << p.x << "\n";
     // print(p.y)
     std::cout << p.y << "\n";
-    // print(point_sum(Ptr(p)))
+    // print(point_sum(take_ptr(p)))
     std::cout << point_sum(&p) << "\n";
     // print(p.manhattan())
     std::cout << p.manhattan() << "\n";
@@ -22,7 +22,7 @@ void main() {
     Rect r = Rect{0, 0, 800, 600};
     // print(r.w)
     std::cout << r.w << "\n";
-    // print(rect_area(Ptr(r)))
+    // print(rect_area(take_ptr(r)))
     std::cout << rect_area(&r) << "\n";
     // print(r.area())
     std::cout << r.area() << "\n";

@@ -10,7 +10,7 @@ void main() {
     c_rect r = c_rect{10, 20, 100, 50};
     // print(r.w)
     std::cout << r.w << "\n";
-    // print(rect_area(Ptr(r)))
+    // print(rect_area(take_ptr(r)))
     std::cout << rect_area(&r) << "\n";
 }
 

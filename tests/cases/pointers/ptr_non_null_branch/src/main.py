@@ -1,4 +1,4 @@
-from tpy import Ptr, Int32
+from tpy import Ptr, Int32, take_ptr
 
 class Point:
     x: Int32
@@ -15,16 +15,16 @@ def main() -> None:
     b: Point = Point(Int32(3), Int32(4))
 
     # --- Branch: both sides non-null → intersection keeps non-null ---
-    p: Ptr[Point] = Ptr(a)
+    p: Ptr[Point] = take_ptr(a)
     if a.x > Int32(0):
-        p = Ptr(b)
+        p = take_ptr(b)
     else:
-        p = Ptr(a)
-    # Both branches assign from Ptr(lvalue), so p is still non-null
+        p = take_ptr(a)
+    # Both branches assign from take_ptr(lvalue), so p is still non-null
     print(p.x)  # tpyc: ok
 
     # --- Branch: one side unknown → intersection clears ---
-    q: Ptr[Point] = Ptr(a)
+    q: Ptr[Point] = take_ptr(a)
     if a.x > Int32(0):
         q = get_ptr(q)
     # Then-branch: unknown. Else-branch (implicit): still non-null.
@@ -32,14 +32,14 @@ def main() -> None:
     print(q.x)  # tpyc: ok
 
     # --- Loop: non-null before loop, not reassigned inside → preserved ---
-    r: Ptr[Point] = Ptr(a)
+    r: Ptr[Point] = take_ptr(a)
     i: Int32 = Int32(0)
     while i < Int32(3):
         print(r.x)  # tpyc: ok
         i = i + Int32(1)
 
     # --- Loop: reassigned from unknown inside → cleared ---
-    s: Ptr[Point] = Ptr(a)
+    s: Ptr[Point] = take_ptr(a)
     j: Int32 = Int32(0)
     while j < Int32(3):
         print(s.x)  # tpyc: ok

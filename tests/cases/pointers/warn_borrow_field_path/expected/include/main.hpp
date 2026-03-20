@@ -66,7 +66,7 @@ struct Container {
 
     // def ptr_then_mutate(self) -> None:
     void ptr_then_mutate() {
-        // ptr = Ptr(self.items[0])
+        // ptr = take_ptr(self.items[0])
         Point* ptr = &::tpy::__getitem__(this->items, 0);
         // self.items.append(Point(5, 6))  # tpyc: warning(/'append'.*invalidate/)
         this->items.push_back(Point(5, 6));
@@ -76,7 +76,7 @@ struct Container {
 
     // def safe_subscript_assign(self) -> None:
     void safe_subscript_assign() {
-        // ptr = Ptr(self.items[0])
+        // ptr = take_ptr(self.items[0])
         Point* ptr = &::tpy::__getitem__(this->items, 0);
         // self.items[0] = Point(9, 9)  # tpyc: ok
         ::tpy::__setitem__(this->items, 0, Point(9, 9));
@@ -86,7 +86,7 @@ struct Container {
 
     // def aug_assign_field_container(self) -> None:
     void aug_assign_field_container() {
-        // ptr = Ptr(self.items[0])
+        // ptr = take_ptr(self.items[0])
         Point* ptr = &::tpy::__getitem__(this->items, 0);
         // self.items += [Point(5, 6)]  # tpyc: warning(/while borrowed/)
         ::tpy::list_extend(this->items, std::vector<Point>{Point(5, 6)});
@@ -96,7 +96,7 @@ struct Container {
 
     // def field_reassign_while_borrowed(self) -> None:
     void field_reassign_while_borrowed() {
-        // ptr = Ptr(self.items[0])
+        // ptr = take_ptr(self.items[0])
         Point* ptr = &::tpy::__getitem__(this->items, 0);
         // self.items = [Point(9, 9)]  # tpyc: warning(/while borrowed/)
         this->items = {Point(9, 9)};

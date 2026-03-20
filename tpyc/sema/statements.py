@@ -1932,15 +1932,16 @@ class StatementAnalyzer:
                     for alias_root in addr_taken_roots(stmt.init):
                         self.ctx.mark_param_mutated(alias_root)
             elif isinstance(var_type, PtrType):
-                # Ptr(x) borrows x's storage even though Ptr is a value type
+                # take_ptr(x) / Ptr(x) borrows x's storage even though Ptr is a value type
                 init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
-                if (isinstance(init_inner, TpyCall)
-                        and init_inner.call_type is not None
-                        and init_inner.call_type.is_pointer()
-                        and len(init_inner.args) > 0):
-                    root = _borrow_storage_root(init_inner.args[0])
-                    if root is not None:
-                        self.ctx.borrow_tracker.add_borrow(root, stmt.name, BorrowKind.PTR)
+                if isinstance(init_inner, TpyCall) and len(init_inner.args) > 0:
+                    is_ptr_ctor = (init_inner.call_type is not None
+                                   and init_inner.call_type.is_pointer())
+                    is_take_ptr = init_inner.func == "take_ptr"
+                    if is_ptr_ctor or is_take_ptr:
+                        root = _borrow_storage_root(init_inner.args[0])
+                        if root is not None:
+                            self.ctx.borrow_tracker.add_borrow(root, stmt.name, BorrowKind.PTR)
             elif isinstance(var_type, SpanType):
                 # Span from slicing borrows the source container
                 # (StrView excluded: str is immutable, no mutations to warn about)
@@ -2018,9 +2019,10 @@ class StatementAnalyzer:
             # Unwrap coercion (e.g. Ptr[T] -> Ptr[readonly[T]]) to find the source expression
             init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
             is_non_null = (isinstance(init_inner, TpyCall)
-                           and init_inner.call_type is not None
-                           and init_inner.call_type.is_pointer()
-                           and len(init_inner.args) > 0)
+                           and len(init_inner.args) > 0
+                           and ((init_inner.call_type is not None
+                                 and init_inner.call_type.is_pointer())
+                                or init_inner.func == "take_ptr"))
             if not is_non_null and isinstance(init_inner, TpyName):
                 is_non_null = init_inner.name in self.ctx.non_null_ptr_vars
             self.init.mark_non_null_ptr(stmt.name, is_non_null)
@@ -2427,9 +2429,10 @@ class StatementAnalyzer:
             # Unwrap coercion (e.g. Ptr[T] -> Ptr[readonly[T]]) to find the source expression
             val_inner = stmt.value.expr if isinstance(stmt.value, TpyCoerce) else stmt.value
             is_non_null = (isinstance(val_inner, TpyCall)
-                           and val_inner.call_type is not None
-                           and val_inner.call_type.is_pointer()
-                           and len(val_inner.args) > 0)
+                           and len(val_inner.args) > 0
+                           and ((val_inner.call_type is not None
+                                 and val_inner.call_type.is_pointer())
+                                or val_inner.func == "take_ptr"))
             if not is_non_null and isinstance(val_inner, TpyName):
                 is_non_null = val_inner.name in self.ctx.non_null_ptr_vars
             self.init.mark_non_null_ptr(stmt.target.name, is_non_null)

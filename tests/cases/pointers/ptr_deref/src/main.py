@@ -1,4 +1,4 @@
-from tpy import Ptr, Int32
+from tpy import Ptr, Int32, take_ptr
 
 class Point:
     x: Int32
@@ -9,11 +9,11 @@ class Point:
 
 def main() -> None:
     x: Int32 = 42
-    p: Ptr[Int32] = Ptr(x)
+    p: Ptr[Int32] = take_ptr(x)
     print(p.__deref__())
 
     pt: Point = Point(10, 20)
-    pp: Ptr[Point] = Ptr(pt)
+    pp: Ptr[Point] = take_ptr(pt)
     print(pp.__deref__().x)
     print(pp.__deref__().y)
 

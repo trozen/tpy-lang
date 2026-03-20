@@ -20,17 +20,17 @@ void mutate_point(Point& p) {
     p.x = 99;
 }
 
-// # Ptr(param) address-taking: must stay Point& (not const Point&)
-// def take_ptr(p: Point) -> Ptr[Point]:
-Point* take_ptr(Point& p) {
-    // return Ptr(p)
+// # take_ptr(param) address-taking: must stay Point& (not const Point&)
+// def get_ptr(p: Point) -> Ptr[Point]:
+Point* get_ptr(Point& p) {
+    // return take_ptr(p)
     return &p;
 }
 
-// # Ptr(items[i]) subscript address-taking: items must stay vector& (not const)
-// def take_elem_ptr(items: list[Point], i: Int32) -> Ptr[Point]:
-Point* take_elem_ptr(std::vector<Point>& items, int32_t i) {
-    // return Ptr(items[i])
+// # take_ptr(items[i]) subscript address-taking: items must stay vector& (not const)
+// def get_elem_ptr(items: list[Point], i: Int32) -> Ptr[Point]:
+Point* get_elem_ptr(std::vector<Point>& items, int32_t i) {
+    // return take_ptr(items[i])
     return &::tpy::__getitem__(items, i);
 }
 
@@ -85,8 +85,8 @@ void main() {
     std::cout << p.x << "\n";
     // pts: list[Point] = [Point(Int32(10), Int32(20)), Point(Int32(30), Int32(40))]
     std::vector<Point> pts = {Point(10, 20), Point(30, 40)};
-    // ptr = take_elem_ptr(pts, Int32(0))
-    Point* ptr = take_elem_ptr(pts, 0);
+    // ptr = get_elem_ptr(pts, Int32(0))
+    Point* ptr = get_elem_ptr(pts, 0);
     // print(ptr.__deref__().x)
     std::cout << ::tpy::deref_check(ptr).x << "\n";
     // nums: list[Int32] = [Int32(10), Int32(20)]

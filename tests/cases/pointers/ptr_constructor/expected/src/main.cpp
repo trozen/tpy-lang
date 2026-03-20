@@ -38,7 +38,7 @@ void test_null_constructors() {
 void test_ptr_explicit() {
     // pt: Point = Point(10, 20)
     Point pt = Point(10, 20);
-    // pp: Ptr[Point] = Ptr[Point](pt)
+    // pp: Ptr[Point] = take_ptr(pt)
     Point* pp = &pt;
     // read_via_ptr(pp)
     read_via_ptr(pp);
@@ -48,7 +48,7 @@ void test_ptr_explicit() {
 void test_ptr_inferred() {
     // pt: Point = Point(30, 40)
     Point pt = Point(30, 40);
-    // pp: Ptr[Point] = Ptr(pt)
+    // pp: Ptr[Point] = take_ptr(pt)
     Point* pp = &pt;
     // read_via_ptr(pp)
     read_via_ptr(pp);
@@ -58,7 +58,7 @@ void test_ptr_inferred() {
 void test_constptr_explicit() {
     // pt: Point = Point(50, 60)
     Point pt = Point(50, 60);
-    // cp: Ptr[readonly[Point]] = Ptr[readonly[Point]](pt)
+    // cp: Ptr[readonly[Point]] = take_ptr(pt)
     const Point* cp = &pt;
     // read_via_constptr(cp)
     read_via_constptr(cp);
@@ -68,7 +68,7 @@ void test_constptr_explicit() {
 void test_constptr_inferred() {
     // pt: Point = Point(70, 80)
     Point pt = Point(70, 80);
-    // cp: Ptr[readonly[Point]] = Ptr(pt)
+    // cp: Ptr[readonly[Point]] = take_ptr(pt)
     const Point* cp = &pt;
     // read_via_constptr(cp)
     read_via_constptr(cp);
@@ -78,7 +78,7 @@ void test_constptr_inferred() {
 void test_ptr_write() {
     // pt: Point = Point(1, 2)
     Point pt = Point(1, 2);
-    // pp: Ptr[Point] = Ptr(pt)
+    // pp: Ptr[Point] = take_ptr(pt)
     Point* pp = &pt;
     // pp.x = Int32(99)
     pp->x = 99;

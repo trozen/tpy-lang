@@ -1,7 +1,7 @@
 # Builtin types (list, str, Array, etc.) conform to Iterable[T]:
 # 1. Passed to Iterable[T] params  2. Explicit __iter__()  3. iter() builtin
 from typing import Iterable
-from tpy import Int32, Char, Array, Span, String, StrView, Ptr, readonly
+from tpy import Int32, Char, Array, Span, String, StrView, Ptr, readonly, take_ptr
 
 def sum_items(items: Iterable[Int32]) -> Int32:
     total: Int32 = 0
@@ -37,7 +37,7 @@ def test_iterable_params() -> None:
     print(sum_items(arr))
 
     # Span (mutable, via Ptr)
-    sp: Span[Int32] = Span(Ptr(arr[0]), 3)
+    sp: Span[Int32] = Span(take_ptr(arr[0]), 3)
     print(sum_items(sp))
 
     # Span[readonly[T]] (via Array.__span__())

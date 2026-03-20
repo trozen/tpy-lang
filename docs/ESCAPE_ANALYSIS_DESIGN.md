@@ -35,7 +35,7 @@
 |---|---------|--------|--------|---------|
 | 6.6 | Span/StrView slice borrow tracking | S | Done | [6](#6-intra-function-borrow-checking) |
 | 8a | Parameter mutation inference | M | Done | [8](#8-cross-function-borrow-inference) |
-| 8a.2 | Track address-taking (`Ptr(param)`) in Phase 1 -- enables `const T&` for record params | S | Done | [8](#8-cross-function-borrow-inference) |
+| 8a.2 | Track address-taking (`take_ptr(param)`) in Phase 1 -- enables `const T&` for record params | S | Done | [8](#8-cross-function-borrow-inference) |
 | 8a.3 | Track tuple ref packing (`return (x, param)` where tuple slot is `T&`) in Phase 1 -- same goal as 8a.2 | S | Done | [8](#8-cross-function-borrow-inference) |
 | 8a.4 | `const T&` for protocol-typed params: thread `mutated_params` through `gen_params_with_protocols` | S | Done | [8](#8-cross-function-borrow-inference) |
 | 8a.5 | Precise element-ref mutation: defer marking source container until borrower is actually written (currently conservative -- any element ref marks container as mutated) | M | Done | [8](#8-cross-function-borrow-inference) |
@@ -130,7 +130,7 @@ Safe sources:
 - `self` (receiver, caller manages lifetime)
 - `param_provenance_vars` (derived from parameter via assignment chain)
 - Field access / subscript on safe object (recursive check)
-- `Ptr(safe_expr)` (pointer to safe storage)
+- `take_ptr(safe_expr)` (pointer to safe storage)
 
 **Scope escape detection** (`check_escape`): When assigning to a variable at scope
 depth D from a source at scope depth D+N, the source may be freed before the target.
@@ -153,7 +153,7 @@ simple assignment chains but not through function calls or complex expressions.
 
 See `docs/DEREF_DESIGN.md` Stage 8 for full details.
 
-When a `Ptr[T]` variable is constructed from a local (`p = Ptr(x)`), the pointer is
+When a `Ptr[T]` variable is constructed from a local (`p = take_ptr(x)`), the pointer is
 provably non-null. The sema tracks this in `non_null_ptr_vars` and sets
 `ptr_non_null = True` on field access / method call AST nodes. Codegen emits direct
 `ptr->field` instead of `tpy::deref_check(ptr).field`.
@@ -248,7 +248,7 @@ In TPy's pointer-variable model:
 | Operation | Borrow created |
 |-----------|---------------|
 | `y = x` (non-value type) | Shared borrow of `x`'s storage by `y` |
-| `p = Ptr(x)` | Shared borrow of `x`'s storage by `p` |
+| `p = take_ptr(x)` | Shared borrow of `x`'s storage by `p` |
 | `for item in items` | Shared borrow of `items` for the loop body |
 | `v = obj.field` (non-value ref) | Shared borrow of `obj`'s storage by `v` |
 | `v = items[i]` (non-value ref) | Shared borrow of `items`'s storage by `v` |
@@ -272,7 +272,7 @@ The borrow rule is a **unifying principle** that replaces several ad-hoc analyse
 | Container mutation during iteration | Nothing | `for x in items` borrows `items` shared; `items.append()` is mutable access -> conflict |
 | String view dangling from containers | Allowlist in `is_view_compatible_source` | `v = arr[0]` borrows `arr` shared; `arr[0] = "new"` is mutable access -> conflict; so view is safe while borrow is live |
 | For-loop const-ref binding | Always copies | If loop var borrow is shared (no mutation), codegen emits `const auto&` |
-| Ptr dangling after container realloc | Nothing | `p = Ptr(items[0])` borrows `items`; `items.append()` -> conflict |
+| Ptr dangling after container realloc | Nothing | `p = take_ptr(items[0])` borrows `items`; `items.append()` -> conflict |
 | Iterator invalidation | Nothing | Same as container mutation |
 | Use-after-move | `consumed_vars` set | Move ends the borrow; subsequent use is a conflict |
 
@@ -345,7 +345,7 @@ Existing tests pass, no new behavior.
 is a lvalue alias (from prescan's `alias_sources`). Creates borrow
 `("x", "y")`. Removed on reassignment of `y`. This is the core new tracking.
 
-**Step 6.3: Ptr/subscript/field borrows.** Track `p = Ptr(x)` as `("x", "p")`,
+**Step 6.3: Ptr/subscript/field borrows.** Track `p = take_ptr(x)` as `("x", "p")`,
 `v = items[i]` as `("items", "v")`, and `v = obj.field` as `("obj", "v")` for
 non-value types.
 
@@ -577,7 +577,7 @@ propagation):
    - Plain name rebinding (`param = x`) is NOT mutation -- it just rebinds the local.
 
    **Additional patterns that require mutable ref (all now tracked)**:
-   - **Address-taking**: `Ptr(param)` and `Ptr(param.field)` / `Ptr(items[i])` require
+   - **Address-taking**: `take_ptr(param)` and `take_ptr(param.field)` / `take_ptr(items[i])` require
      `T&` because `&param` yields `T*`, not `const T*`. (8a.2 -- Done)
    - **Tuple ref packing**: `return (x, param)` where the tuple slot type is `T&`
      (e.g. `tuple[int, Point]` with a reference element) requires `T&` at the

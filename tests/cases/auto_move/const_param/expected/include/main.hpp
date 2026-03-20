@@ -14,8 +14,8 @@ inline constexpr std::string_view __name__ = "__main__";
 
 int32_t read_point(const Point& p);
 void mutate_point(Point& p);
-Point* take_ptr(Point& p);
-Point* take_elem_ptr(std::vector<Point>& items, int32_t i);
+Point* get_ptr(Point& p);
+Point* get_elem_ptr(std::vector<Point>& items, int32_t i);
 Point* to_optional(Point& p);
 int32_t sum_list(const std::vector<int32_t>& items);
 void append_item(std::vector<int32_t>& items, int32_t v);

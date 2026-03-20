@@ -1,5 +1,5 @@
 # Test tpy.deref(): dereference Ptr, Ptr[readonly[...]], user types, and Deref protocol params.
-from tpy import Int32, Ptr, Deref, deref, readonly
+from tpy import Int32, Ptr, Deref, deref, readonly, take_ptr
 
 class Box:
     _val: Int32
@@ -13,18 +13,18 @@ def deref_protocol(p: Deref[Int32]) -> Int32:
 
 def main() -> None:
     x: Int32 = 42
-    p: Ptr[Int32] = Ptr(x)
+    p: Ptr[Int32] = take_ptr(x)
     print(deref(p))
 
     y: Int32 = 77
-    rp: Ptr[readonly[Int32]] = Ptr(y)
+    rp: Ptr[readonly[Int32]] = take_ptr(y)
     print(deref(rp))
 
     z: Int32 = 99
-    print(deref_protocol(Ptr(z)))
+    print(deref_protocol(take_ptr(z)))
 
     w: Int32 = 55
-    print(deref_protocol(Ptr(w)))
+    print(deref_protocol(take_ptr(w)))
 
     # User-defined Deref type
     b = Box(33)

@@ -1,9 +1,9 @@
-from tpy import Ptr, Int32, UInt32, readonly
+from tpy import Ptr, Int32, UInt32, readonly, take_ptr
 from tpy.unsafe import unsafe_load, unsafe_store
 
 def test_store_and_load() -> None:
     x: Int32 = Int32(5)
-    p: Ptr[Int32] = Ptr(x)
+    p: Ptr[Int32] = take_ptr(x)
     unsafe_store(p, UInt32(0), Int32(99))
     val: Int32 = unsafe_load(p, UInt32(0))
     print(val)
@@ -11,7 +11,7 @@ def test_store_and_load() -> None:
 
 def test_constptr_load() -> None:
     x: Int32 = Int32(42)
-    cp: Ptr[readonly[Int32]] = Ptr(x)
+    cp: Ptr[readonly[Int32]] = take_ptr(x)
     val: Int32 = unsafe_load(cp, UInt32(0))
     print(val)
 
