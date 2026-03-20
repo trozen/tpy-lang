@@ -359,12 +359,15 @@ class Compiler:
         # 2. Compute compilation order (topological sort)
         self._compute_compile_order()
 
-        # 3. Build namespace and include path maps from # tpy: directives
+        # 3. Propagate native_module from package inits to child modules
+        self._propagate_package_directives()
+
+        # 4. Build namespace and include path maps from # tpy: directives
         ns_map = self._build_namespace_map()
         set_namespace_map(ns_map)
         set_include_path_map(self._build_include_path_map(ns_map))
 
-        # 4. Parse and analyze in dependency order
+        # 5. Parse and analyze in dependency order
         for module_name in self.compile_order:
             compiled = self.modules[module_name]
             self._analyze_module(compiled)
@@ -376,6 +379,12 @@ class Compiler:
     # These provide protocol definitions used by builtins (e.g. Sized for len()).
     _IMPLICIT_STDLIB = ["tpy", "typing", "builtins"]
 
+    def _implicit_stdlib_set(self) -> set[str]:
+        """Return the set of implicit stdlib modules including submodules."""
+        prefixes = tuple(f"{m}." for m in self._IMPLICIT_STDLIB)
+        return {m for m in self.modules
+                if m in self._IMPLICIT_STDLIB or m.startswith(prefixes)}
+
     def _discover_implicit_stdlib(self) -> None:
         """Discover implicit stdlib modules that builtins depend on."""
         if not self.resolver:
@@ -386,7 +395,8 @@ class Compiler:
             resolved = self.resolver.resolve(mod_name)
             if resolved is None:
                 continue  # not available (e.g. --no-stdlib)
-            self._discover_modules(resolved.canonical_name, resolved.path, [])
+            self._discover_modules(resolved.canonical_name, resolved.path, [],
+                                   is_package_init=resolved.is_package_init)
 
     def _discover_modules(self, module_name: str, path: Path, import_chain: list[str],
                           import_lineno: int | None = None, is_entry_point: bool = False,
@@ -669,11 +679,13 @@ class Compiler:
             # Should not happen since we check for cycles earlier
             raise CompileError("Internal error: could not resolve module dependencies")
 
-        # Move implicit stdlib modules to the front so they're analyzed
-        # before any user code (builtins like len() depend on their protocols).
-        implicit = [m for m in self._IMPLICIT_STDLIB if m in self.modules and m in result]
-        if implicit:
-            result = implicit + [m for m in result if m not in implicit]
+        # Move implicit stdlib modules (and their submodules) to the front
+        # so they're analyzed before any user code.
+        implicit_set = self._implicit_stdlib_set()
+        if implicit_set:
+            # Preserve topological order within the implicit set
+            implicit = [m for m in result if m in implicit_set]
+            result = implicit + [m for m in result if m not in implicit_set]
         self.compile_order = result
 
     def _analyze_module(self, compiled: CompiledModule) -> None:
@@ -727,7 +739,7 @@ class Compiler:
                 # Register records (e.g. exception classes) in the flat registry
                 # so get_record() finds them by bare name during inheritance checks.
                 for record in module_info.records.values():
-                    builtin_qname = f"{implicit_mod}.{record.name}"
+                    builtin_qname = record.builtin_type_key or f"{implicit_mod}.{record.name}"
                     builtin_rec = analyzer.registry.builtin_records.get(builtin_qname)
                     if builtin_rec is not None:
                         # Merge .py-defined methods into existing builtin RecordInfo.
@@ -1005,7 +1017,7 @@ class Compiler:
         codegen = CodeGenerator(compiled.analyzer, options)
         # Pass actual user modules (those in self.modules, not builtins without user files)
         actual_user_modules = set(self.modules.keys())
-        implicit_stdlib = set(m for m in self._IMPLICIT_STDLIB if m in self.modules)
+        implicit_stdlib = self._implicit_stdlib_set()
         hpp_code, cpp_code = codegen.generate(
             compiled.ast, mod_name,
             is_entry_point=compiled.is_entry_point,
@@ -1030,7 +1042,7 @@ class Compiler:
         self._check_no_errors(compiled)
         codegen = CodeGenerator(compiled.analyzer, options)
         actual_user_modules = set(self.modules.keys())
-        implicit_stdlib = set(m for m in self._IMPLICIT_STDLIB if m in self.modules)
+        implicit_stdlib = self._implicit_stdlib_set()
         return codegen.generate(
             compiled.ast, compiled.name,
             is_entry_point=compiled.is_entry_point,
@@ -1041,6 +1053,16 @@ class Compiler:
             reexported_variables=compiled.exports.reexported_variables,
             reexported_enums=compiled.exports.reexported_enums
         )
+
+    def _propagate_package_directives(self) -> None:
+        """Propagate native_module from package __init__ to child modules."""
+        for name, compiled in self.modules.items():
+            if '.' not in name:
+                continue
+            parent = name.rsplit('.', 1)[0]
+            parent_mod = self.modules.get(parent)
+            if parent_mod and parent_mod.is_package_init and parent_mod.ast.directives.native_module:
+                compiled.ast.directives.native_module = True
 
     def _build_namespace_map(self) -> dict[str, str]:
         """Build module_name -> C++ namespace mapping from # tpy: namespace directives.

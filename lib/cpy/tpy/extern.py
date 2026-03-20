@@ -44,3 +44,10 @@ def native_global(name: str = ""):
 def native_c_global_array(name: str = ""):
     """Declare a native C global array. No-op in CPython."""
     return None
+
+
+def builtin_type(key: str):
+    """Declare a class as a builtin type with the given qualified key. No-op in CPython."""
+    def decorator(cls):
+        return cls
+    return decorator

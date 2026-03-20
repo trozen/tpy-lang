@@ -2669,6 +2669,7 @@ class RecordInfo:
     is_value_type: bool = False   # True for ValueType marker protocol
     has_del: bool = False           # True if class declares __del__ (needs drop flag)
     has_copy: bool = False          # True if class defines __copy__ (custom copy semantics)
+    builtin_type_key: str | None = None  # e.g. "builtins.list" -- links .py class to type_factory
 
     def get_method(self, name: str) -> Optional['FunctionInfo']:
         """Get first overload of a method (for single-overload cases)."""

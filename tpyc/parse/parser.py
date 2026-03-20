@@ -328,6 +328,7 @@ _DECORATOR_ARG_SCHEMAS: dict[str, _DecoratorArgSchema] = {
     "tpy.extern.extern_c":    _DecoratorArgSchema(pos_type=str),
     # Required positional
     "tpy.extern.cpp_template": _DecoratorArgSchema(pos_type=str, pos_required=True),
+    "tpy.extern.builtin_type": _DecoratorArgSchema(pos_type=str, pos_required=True),
     "tpy.error_return":       _DecoratorArgSchema(pos_type=_NameArg, pos_required=True),
 }
 
@@ -925,6 +926,7 @@ class Parser:
         linkage = RecordLinkage.DEFAULT
         native_name: str | None = None
         is_nocopy = False
+        builtin_type_key: str | None = None
         pending_macros: list[tuple[str, dict[str, Any]]] = []
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"class '{node.name}'")
@@ -939,6 +941,9 @@ class Parser:
             elif qname == "tpy.nocopy":
                 self._validate_decorator_args(qname, arg, dec)
                 is_nocopy = True
+            elif qname == "tpy.extern.builtin_type":
+                pos, kw = self._validate_decorator_args(qname, arg, dec)
+                builtin_type_key = pos
             else:
                 # Treat as a macro decorator -- extract kwargs and store for later
                 macro_kwargs = self._extract_decorator_kwargs(dec, arg, node.name)
@@ -1065,7 +1070,7 @@ class Parser:
 
         # Restore the scope
         self._type_param_scope = old_scope
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, pending_macros=pending_macros, loc=self._loc(node))
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, pending_macros=pending_macros, loc=self._loc(node))
 
     def _auto_declare_fields_from_init(
         self,

@@ -611,6 +611,7 @@ class TypeRegistrar:
             is_ordered=record.is_ordered,
             has_del=record.del_method is not None,
             has_copy=has_copy,
+            builtin_type_key=record.builtin_type_key,
         )
         self.ctx.registry.register_record(info)
         self.ctx.global_ns.bind_record(info)

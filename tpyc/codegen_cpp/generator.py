@@ -646,15 +646,21 @@ class CodeGenerator:
                     hpp.write(f"inline auto& {local_name} = {qualified};\n")
             hpp.write("\n")
 
-        # Re-exported records
+        # Re-exported records (skip native records -- they map to existing C++ types)
         if self.ctx.reexported_records:
+            any_written = False
             for local_name, (source_module, original_name) in sorted(self.ctx.reexported_records.items()):
+                record_info = self.analyzer.registry.get_record(original_name)
+                if record_info and record_info.is_native:
+                    continue
                 qualified = qualified_cpp_name(source_module, original_name)
                 if local_name == original_name:
                     hpp.write(f"using {qualified};\n")
                 else:
                     hpp.write(f"using {local_name} = {qualified};\n")
-            hpp.write("\n")
+                any_written = True
+            if any_written:
+                hpp.write("\n")
 
         # Re-exported enums
         if self.ctx.reexported_enums:
@@ -852,27 +858,28 @@ class CodeGenerator:
                 else:
                     out.write(f'#include "{include_path}"\n')
             out.write('\n')
-        # Include implicit stdlib module headers (typing, tpy) -- they define
-        # protocols used by builtins and user code even without explicit import.
-        # Skip native_module modules: they only bind to existing C++ functions
-        # and generate no declarations that other modules need to include.
+        # Include implicit stdlib module headers (protocols, type declarations).
+        # Skip submodules whose parent package is also implicit (included transitively).
         included = set()
         for implicit_mod in sorted(self.ctx.implicit_stdlib_modules):
             if implicit_mod == self.ctx.module_name:
                 continue
-            mod_info = self.analyzer.registry.get_module(implicit_mod)
-            if mod_info and mod_info.is_native_module and not mod_info.protocols:
-                continue
+            if '.' in implicit_mod:
+                parent = implicit_mod.rsplit('.', 1)[0]
+                if parent in self.ctx.implicit_stdlib_modules:
+                    continue
             if implicit_mod in self.ctx.all_user_modules:
                 include_path = self._module_to_include_path(implicit_mod)
                 out.write(f'#include "{include_path}"\n')
                 included.add(implicit_mod)
         # Include user module headers (including parent packages for dotted imports)
-        # Skip builtin modules - they don't have separate header files
         for user_mod in sorted(self.ctx.user_module_imports):
             # Skip builtin modules - they don't generate separate headers
             module_info = self.analyzer.registry.get_module(user_mod)
             if module_info and module_info.is_builtin:
+                continue
+            # Skip implicit stdlib modules already included above
+            if user_mod in included:
                 continue
             # For dotted imports, include parent package headers first
             parts = user_mod.split('.')

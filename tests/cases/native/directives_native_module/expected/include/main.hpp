@@ -4,6 +4,7 @@
 #include <tpy/tpy.hpp>
 #include <SDL2/SDL.h>
 
+#include "tpystd/builtins.hpp"
 #include "tpystd/tpy.hpp"
 #include "tpystd/typing.hpp"
 
