@@ -11,9 +11,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Fuzzy Testing Findings (2026-03-12)
 
-### Compilation errors (valid Python that fails to build)
-- Printing containers with union element types: `print(d)` where `d: dict[str, int | str]` -- `print_element` in `printing.hpp` does `os << elem` which doesn't have an `operator<<` for `std::variant`. Needs a `std::visit` dispatch.
-
 ### Quality / optimization (correct output, but suboptimal codegen)
 - **[LOW]** None-seeded variable assigned in all branches stays `Optional[T]`: when `x = None` is followed by assignment in both the `if` and `else` branches (so every path guarantees a value), `x` is still typed `std::optional<T>` after the if/else block. Post-dominance analysis could demote it to `T` and skip the optional wrapper. Not a correctness issue -- output is identical -- but adds unnecessary runtime cost and less readable C++.
 

@@ -1,0 +1,10 @@
+{'a': 1, 'b': 'hello'}
+[1, 'two', 3]
+{'x': 42, 'y': None}
+['a', None, 'b']
+(1, 'hi')
+{'nums': [1, 2], 'tag': 'ok'}
+[[1, 2], None, [3]]
+{'p': Pt(1, 2), 'name': 'origin'}
+[('a', 1), ('b', 'two')]
+[1, 'two', None]

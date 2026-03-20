@@ -194,6 +194,15 @@ void main() {
         // print(v4)
         std::cout << __v4 << "\n";
     }
+    // # Printing containers with union elements
+    // print(d)
+    std::cout << ::tpy::DictPrinter(d) << "\n";
+    // print(lst)
+    std::cout << ::tpy::ListPrinter(lst) << "\n";
+    // d6: dict[str, Int32 | None] = {"x": 42, "y": None}
+    ::tpy::ordered_map<std::string, std::optional<int32_t>> d6 = ::tpy::ordered_map<std::string, std::optional<int32_t>>({{"x", 42}, {"y", std::nullopt}});
+    // print(d6)
+    std::cout << ::tpy::DictPrinter(d6) << "\n";
 }
 
 void __tpy_init() {

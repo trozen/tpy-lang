@@ -2045,6 +2045,10 @@ class ExpressionGenerator:
             if len(container_members) == 1:
                 union_prefix = self.types.type_to_cpp(container_members[0])
                 target_type = container_members[0]
+        elif (isinstance(target_type, OptionalType)
+              and isinstance(target_type.inner, (ListType, ArrayType))):
+            union_prefix = self.types.type_to_cpp(target_type.inner)
+            target_type = target_type.inner
         # Some types need explicit element targeting (Array, Span)
         # Others handle implicit conversions (list, etc.)
         elem_target = None

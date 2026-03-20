@@ -108,4 +108,10 @@ def main() -> None:
     if isinstance(v4, str):
         print(v4)
 
+    # Printing containers with union elements
+    print(d)
+    print(lst)
+    d6: dict[str, Int32 | None] = {"x": 42, "y": None}
+    print(d6)
+
 main()

@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
+#include <optional>
 #include <ranges>
 #include <span>
 #include <sstream>
@@ -17,6 +18,7 @@
 #include <string_view>
 #include <tuple>
 #include <type_traits>
+#include <variant>
 #include <vector>
 
 #include "bigint.hpp"
@@ -89,6 +91,13 @@ inline void print_element(std::ostream& os, const std::vector<bool>& elem) {
     os << ']';
 }
 
+// Forward declarations for variant/optional (defined after all other overloads)
+template <typename... Ts>
+void print_element(std::ostream& os, const std::variant<Ts...>& elem);
+template <typename T>
+void print_element(std::ostream& os, const std::optional<T>& elem);
+inline void print_element(std::ostream& os, std::monostate);
+
 // Overloads for nested containers
 template <typename T>
 void print_element(std::ostream& os, const std::vector<T>& elem) {
@@ -110,6 +119,26 @@ void print_list_contents(std::ostream& os, Iter begin, Iter end) {
         print_element(os, *it);
     }
     os << ']';
+}
+
+// Definitions for variant/optional/monostate (after all other print_element
+// overloads so std::visit can find container overloads during instantiation).
+template <typename... Ts>
+void print_element(std::ostream& os, const std::variant<Ts...>& elem) {
+    std::visit([&os](const auto& v) { print_element(os, v); }, elem);
+}
+
+inline void print_element(std::ostream& os, std::monostate) {
+    os << "None";
+}
+
+template <typename T>
+void print_element(std::ostream& os, const std::optional<T>& elem) {
+    if (elem.has_value()) {
+        print_element(os, *elem);
+    } else {
+        os << "None";
+    }
 }
 
 } // namespace detail
