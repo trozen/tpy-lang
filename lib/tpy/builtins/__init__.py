@@ -11,6 +11,7 @@ from tpy import error_return
 
 from ._list import list
 from ._dict import dict, dict_keys, dict_values, dict_items
+from ._set import set
 
 
 # Python exception hierarchy (maps to ::tpy:: runtime structs in core.hpp)

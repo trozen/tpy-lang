@@ -3768,7 +3768,7 @@ class Car(Vehicle, Printable, Measurable):
 
 ## Built-in Functions
 
-- **Working**: `print()`, `len()`, `hash()`, `range()`, `chr()`, `ord()`, `pow()`, `round()`, `divmod()`, `next()`, `copy()` -- most builtins (`len`, `repr`, `hash`, `chr`, `ord`, `abs`, `min`, `max`, `pow`, `divmod`, `next`) defined in `lib/tpy/builtins.py` via `@native`/`@cpp_template`
+- **Working**: `print()`, `len()`, `hash()`, `range()`, `chr()`, `ord()`, `pow()`, `round()`, `divmod()`, `next()`, `copy()` -- most builtins (`len`, `repr`, `hash`, `chr`, `ord`, `abs`, `min`, `max`, `pow`, `divmod`, `next`) defined in `lib/tpy/builtins/` via `@native`/`@cpp_template`
   - `print("x", end="")` supported (`end` must be a string literal; dynamic `end` not yet supported)
   - Container printing matches Python format: bools as `True`/`False`, floats with `.0`, strings in `'quotes'`
 - **Working**: `str()`, `repr()`, f-strings on containers (tuple, list, dict, Array, Span) -- uses runtime to_str helpers matching `print()` format
@@ -4518,7 +4518,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - Current limitation: assert message must be a string literal
 - **Working**: `@error_return(E)` -- zero-cost error returns via `std::expected<T, E>`
   - Error types inherit from `Exception` for CPython compatibility (`class MyError(Exception): pass`)
-  - `Exception`/`BaseException`/`StopIteration` defined as `@native` classes in `lib/tpy/builtins.py`, mapping to `::tpy::` runtime structs (inherit from `std::exception`)
+  - `Exception`/`BaseException`/`StopIteration` defined as `@native` classes in `lib/tpy/builtins/`, mapping to `::tpy::` runtime structs (inherit from `std::exception`)
   - Decorator on functions: `raise E` compiles to `return std::unexpected(E{})`
   - Callers must use `try/except E` -- compile error if unhandled
   - `try/except/else` supported

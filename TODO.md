@@ -3,7 +3,7 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
-- Continue moving builtins to .py: migrate set, Array, Span, Ptr, Range types (same pattern as list/dict -- move methods/extends/constructors to .py, remove BuiltinTypeDef, keep type_factory bridge)
+- Continue moving builtins to .py: migrate Array, Span, Ptr, Range types (same pattern as list/dict/set -- move methods/extends/constructors to .py, remove BuiltinTypeDef, keep type_factory bridge)
 - Eliminate concrete type classes (ListType, DictType, etc.): replace `isinstance(t, ListType)` checks with name-based or annotation-driven checks. ~60 references for ListType alone across type inference, codegen, and compatibility. Enables treating all types uniformly as NamedType + RecordInfo. Lower priority -- current type classes work fine, this is about uniformity.
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 

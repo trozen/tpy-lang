@@ -1,17 +1,8 @@
 """Tests for builtin type dump output."""
 
-from .dump_types import dump_builtin_types, _format_signature
+from .dump_types import _format_signature
 from .modules import MethodDef
 from .typesys import INT32
-
-
-def test_print_types_includes_readonly_annotations(capsys):
-    dump_builtin_types()
-    out = capsys.readouterr().out
-
-    # list/dict methods are now in .py, so check set methods (still hardcoded)
-    assert "`@pure __contains__(value: T) -> bool`" in out
-    assert "`add(value: Own[T]) -> None`" in out
 
 
 def test_format_signature_renders_all_supported_annotations():
