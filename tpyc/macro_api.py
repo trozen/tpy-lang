@@ -106,6 +106,20 @@ class CallMacroContext:
         record_info = self._ctx.registry.get_record(name)
         return record_info is not None and record_info.is_dataclass
 
+    def get_iterable_element_type(self, type_info: TypeInfo) -> TypeInfo | None:
+        """Get the element type of an iterable type, or None if not iterable.
+
+        Handles built-in containers, user types with __iter__, and protocols.
+        """
+        if type_info._tpy_type is None:
+            return None
+        from .sema.list_literals import IterableHelper
+        helper = IterableHelper(self._ctx)
+        elem = helper.get_iterable_element_type_or_none(type_info._tpy_type)
+        if elem is not None:
+            return TypeInfo.from_tpy_type(elem)
+        return None
+
     def warning(self, msg: str, loc: Any = None) -> None:
         """Emit a compiler warning."""
         self._ctx.warning_from_loc(msg, loc or self._loc)
@@ -129,6 +143,7 @@ class TypeInfo:
     is_value_type: bool = True
     is_record: bool = False
     _tpy_type: TpyType | None = None
+
 
     @property
     def is_str(self) -> bool:

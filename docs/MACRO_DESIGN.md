@@ -25,6 +25,7 @@
 | Macro ordering / composition | Multiple macros on one class, inner-to-outer application order |
 | FieldInfo.metadata | Typed metadata for macro-specific field annotations (e.g. `proto.Field`) |
 | Replace codegen special cases | Macros generate full `__repr__`/`__hash__`/ordering bodies as AST, not stubs. Requires `repr()` builtin that codegen maps to type-aware formatting |
+| `TpyBlockExpr` | Block expression: sequence of statements + result expression. Codegen hoists statements to enclosing scope. Enables `asdict` with mixed-type fields (typed dict creation + subscript assigns) |
 
 ---
 

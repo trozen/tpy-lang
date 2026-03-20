@@ -13,8 +13,10 @@ from tpyc.macro_api import (
 from tpyc.parse import (
     TpyCall, TpyName, TpyExpr,
     TpyDictLiteral, TpyTupleLiteral, TpyFieldAccess, TpyStrLiteral,
+    TpyListComprehension, TpyComprehensionGenerator,
+    TpyDictComprehension,
 )
-from tpyc.typesys import NamedType, BoolType, StrType, UINT64
+from tpyc.typesys import NamedType, BoolType, StrType, DictType, UnionType, UINT64
 
 _MISSING = object()
 
@@ -178,20 +180,78 @@ def asdict(ctx: CallMacroContext, obj: MacroArg) -> TpyExpr:
     return _build_asdict(ctx, obj.expr, obj.type)
 
 
+_asdict_var_counter = 0
+
+
+def _asdict_var() -> str:
+    global _asdict_var_counter
+    _asdict_var_counter += 1
+    return f"__asdict_{_asdict_var_counter}"
+
+
+def _asdict_value(ctx: CallMacroContext, access: TpyExpr, fld_type: TypeInfo) -> TpyExpr:
+    """Build the value expression for a single field in asdict expansion."""
+    # Direct dataclass field: recurse
+    if fld_type.is_record and ctx.is_dataclass(fld_type.name):
+        return _build_asdict(ctx, access, fld_type)
+    # Iterable[Dataclass]: [asdict(item) for item in field]
+    elem = ctx.get_iterable_element_type(fld_type)
+    if elem is not None and elem.is_record and ctx.is_dataclass(elem.name):
+        var = _asdict_var()
+        return TpyListComprehension(
+            element_expr=_build_asdict(ctx, TpyName(var), elem),
+            generator=TpyComprehensionGenerator(
+                var=var, iterable=access, conditions=[]),
+        )
+    return access
+
+
 def _build_asdict(ctx: CallMacroContext, expr: TpyExpr, type_info: TypeInfo) -> TpyExpr:
     fields = ctx.get_record_fields(type_info.name)
     if fields is None:
         raise MacroError(f"asdict() requires a @dataclass instance, got '{type_info.name}'")
     keys = []
     values = []
+    value_tpy_types = []
     for fld in fields:
         keys.append(TpyStrLiteral(value=fld.name))
         access = TpyFieldAccess(obj=expr, field=fld.name)
-        if fld.type.is_record and ctx.is_dataclass(fld.type.name):
-            values.append(_build_asdict(ctx, access, fld.type))
-        else:
-            values.append(access)
-    return TpyDictLiteral(keys=keys, values=values)
+        value = _asdict_value(ctx, access, fld.type)
+        values.append(value)
+        value_tpy_types.append(_asdict_result_type(ctx, fld.type))
+
+    dict_literal = TpyDictLiteral(keys=keys, values=values)
+
+    # For mixed-type fields, wrap in typed dict constructor: dict[str, A|B]({...})
+    unique = list(dict.fromkeys(str(t) for t in value_tpy_types))
+    if len(unique) > 1:
+        value_type = UnionType(tuple(value_tpy_types))
+        return TpyCall(
+            func="dict",
+            args=[dict_literal],
+            call_type=DictType(StrType(), value_type),
+        )
+    return dict_literal
+
+
+def _asdict_result_type(ctx: CallMacroContext, type_info: TypeInfo):
+    """Compute the result type for a field in asdict expansion."""
+    from tpyc.typesys import ListType
+    # Direct dataclass
+    if type_info.is_record and ctx.is_dataclass(type_info.name):
+        fields = ctx.get_record_fields(type_info.name)
+        if fields is None:
+            return type_info._tpy_type
+        value_types = [_asdict_result_type(ctx, fld.type) for fld in fields]
+        unique = list(dict.fromkeys(str(t) for t in value_types))
+        if len(unique) > 1:
+            return DictType(StrType(), UnionType(tuple(value_types)))
+        return DictType(StrType(), value_types[0])
+    # Iterable[Dataclass] -> list[dict[...]] (comprehension always produces list)
+    elem = ctx.get_iterable_element_type(type_info)
+    if elem is not None and elem.is_record and ctx.is_dataclass(elem.name):
+        return ListType(_asdict_result_type(ctx, elem))
+    return type_info._tpy_type
 
 
 @call_macro

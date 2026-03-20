@@ -1,0 +1,13 @@
+{'x': 1, 'y': 2}
+(1, 2)
+{'name': 'Alice', 'age': 30}
+('Alice', 30)
+{'start': {'x': 0, 'y': 0}, 'end': {'x': 1, 'y': 1}}
+((0, 0), (1, 1))
+{'name': 'origin', 'pos': {'x': 0, 'y': 0}}
+{'vertices': [{'x': 0, 'y': 0}, {'x': 1, 'y': 0}, {'x': 0, 'y': 1}]}
+{'title': 'sketch', 'shapes': [{'x': 1, 'y': 2}]}
+{'inner': {'name': 'deep', 'pos': {'x': 9, 'y': 8}}}
+{'name': 'test', 'value': 0}
+{'items': []}
+{'points': [{'x': 1, 'y': 2}], 'labels': ['a', 'b']}
