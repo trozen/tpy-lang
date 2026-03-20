@@ -172,6 +172,28 @@ void main() {
             std::cout << __item << "\n";
         }
     }
+    // # Container literal inside union value (brace-init needs explicit type)
+    // d5: dict[str, list[int] | str] = {"nums": [1, 2, 3], "label": "test"}
+    ::tpy::ordered_map<std::string, std::variant<std::vector<::tpy::BigInt>, std::string>> d5 = ::tpy::ordered_map<std::string, std::variant<std::vector<::tpy::BigInt>, std::string>>({{"nums", std::vector<::tpy::BigInt>{1, 2, 3}}, {"label", "test"}});
+    // v3 = d5["label"]
+    std::variant<std::vector<::tpy::BigInt>*, std::string*> v3 = ::tpy::to_ptr_variant(::tpy::__getitem__(d5, "label"));
+    // if isinstance(v3, str):
+    if (std::holds_alternative<std::string*>(v3)) {
+        auto& __v3 = *std::get<std::string*>(v3);
+        // print(v3)
+        std::cout << __v3 << "\n";
+    }
+    // # List of lists|str
+    // mixed: list[list[Int32] | str] = [[10, 20], "hi"]
+    std::vector<std::variant<std::vector<int32_t>, std::string>> mixed = {std::vector<int32_t>{10, 20}, "hi"};
+    // v4 = mixed[1]
+    std::variant<std::vector<int32_t>*, std::string*> v4 = ::tpy::to_ptr_variant(::tpy::__getitem__(mixed, 1));
+    // if isinstance(v4, str):
+    if (std::holds_alternative<std::string*>(v4)) {
+        auto& __v4 = *std::get<std::string*>(v4);
+        // print(v4)
+        std::cout << __v4 << "\n";
+    }
 }
 
 void __tpy_init() {

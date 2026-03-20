@@ -96,4 +96,16 @@ def main() -> None:
         if isinstance(item, str):
             print(item)
 
+    # Container literal inside union value (brace-init needs explicit type)
+    d5: dict[str, list[int] | str] = {"nums": [1, 2, 3], "label": "test"}
+    v3 = d5["label"]
+    if isinstance(v3, str):
+        print(v3)
+
+    # List of lists|str
+    mixed: list[list[Int32] | str] = [[10, 20], "hi"]
+    v4 = mixed[1]
+    if isinstance(v4, str):
+        print(v4)
+
 main()

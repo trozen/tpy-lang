@@ -10,3 +10,5 @@ own str: owned
 own list: own-hello
 hello
 hello
+test
+hi

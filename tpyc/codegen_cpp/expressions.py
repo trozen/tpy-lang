@@ -2028,6 +2028,19 @@ class ExpressionGenerator:
 
     def _gen_array_literal(self, expr: TpyArrayLiteral, target_type: TpyType | None) -> str:
         """Generate array literal code."""
+        # When the target is a union/optional, find the matching container member
+        # and use it as the effective target. The brace-init will be prefixed with
+        # the explicit C++ type so the variant can deduce the alternative.
+        union_prefix: str | None = None
+        if isinstance(target_type, UnionType):
+            # Find the unique list/array union member to use as the effective
+            # target.  If multiple container members exist (e.g. list[int] |
+            # list[str]), skip -- sema should have caught the ambiguity.
+            container_members = [m for m in target_type.members
+                                 if isinstance(m, (ListType, ArrayType))]
+            if len(container_members) == 1:
+                union_prefix = self.types.type_to_cpp(container_members[0])
+                target_type = container_members[0]
         # Some types need explicit element targeting (Array, Span)
         # Others handle implicit conversions (list, etc.)
         elem_target = None
@@ -2054,6 +2067,9 @@ class ExpressionGenerator:
         # Empty list needs explicit type to avoid ambiguity with T* assignment
         if not expr.elements and target_type and target_type.get_element_type() is not None:
             return f"{target_type.to_cpp()}{literal}"
+        # Prefix with explicit type when inside a variant
+        if union_prefix is not None:
+            return f"{union_prefix}{literal}"
         return literal
 
     def _gen_dict_literal(self, expr: TpyDictLiteral) -> str:
