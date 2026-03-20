@@ -1,1 +1,1 @@
-main.py:3: error: Dict has mixed value types: value 2 is str, but earlier values are IntLiteral(1)
+main.py:3: error: Dict has mixed value types: value 2 is str, but earlier values are Int32

@@ -1,1 +1,1 @@
-main.py:3: error: Set has mixed element types: element 2 is str, but earlier elements are IntLiteral(1)
+main.py:3: error: Set has mixed element types: element 2 is str, but earlier elements are Int32

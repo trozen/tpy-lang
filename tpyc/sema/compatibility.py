@@ -97,6 +97,18 @@ class TypeCompatibility:
         for r in addr_taken_roots(expr):
             self.ctx.mark_param_mutated(r)
 
+    def is_type_compatible(self, actual: TpyType, expected: TpyType) -> bool:
+        """Non-raising check: is actual assignable to expected?
+
+        TODO: refactor check_type_compatible to separate compatibility logic
+        from error reporting, so this doesn't need a try/except wrapper.
+        """
+        try:
+            self.check_type_compatible(actual, expected, "")
+            return True
+        except SemanticError:
+            return False
+
     def check_type_compatible(
         self, actual: TpyType, expected: TpyType, context: str,
         loc: SourceLocation | None = None,

@@ -98,6 +98,26 @@ class ExpressionAnalyzer:
         self.methods: MethodAnalyzer | None = None
         self.scopes: ScopeTracker | None = None
 
+    def _resolve_literal_type(self, t: TpyType) -> TpyType:
+        """Replace IntLiteralType/FloatLiteralType with concrete types for display."""
+        if isinstance(t, IntLiteralType):
+            return self.ctx.default_int_type
+        if isinstance(t, FloatLiteralType):
+            return FLOAT
+        if isinstance(t, TupleType):
+            resolved = tuple(self._resolve_literal_type(e) for e in t.element_types)
+            if resolved != t.element_types:
+                return TupleType(resolved)
+        if isinstance(t, PendingListType):
+            resolved_elem = self._resolve_literal_type(t.element_type)
+            if resolved_elem is not t.element_type:
+                return PendingListType(resolved_elem, t.size, t.literal_id)
+        return t
+
+    def _user_type_name(self, t: TpyType) -> str:
+        """User-facing type name for error messages (resolves literal types)."""
+        return str(self._resolve_literal_type(t))
+
     def set_cross_deps(self, calls: CallAnalyzer, methods: MethodAnalyzer,
                        scopes: ScopeTracker | None = None) -> None:
         """Wire circular dependencies (must be called before analyze_expr)."""
@@ -1362,10 +1382,12 @@ class ExpressionAnalyzer:
                     if first_type.element_type == elem_type.element_type:
                         continue
                 if elem_type != first_type:
+                    ft = self._user_type_name(first_type)
+                    et = self._user_type_name(elem_type)
                     raise self.ctx.error(
-                        f"List literal has mixed types: element {i} is {elem_type}, "
-                        f"but earlier elements are {first_type}. "
-                        f"Use a type annotation like list[{first_type} | {elem_type}]", expr
+                        f"List literal has mixed types: element {i} is {et}, "
+                        f"but earlier elements are {ft}. "
+                        f"Use a type annotation like list[{ft} | {et}]", expr
                     )
 
         size = len(expr.elements)
@@ -1647,8 +1669,8 @@ class ExpressionAnalyzer:
                     continue
                 if kt != key_type:
                     raise self.ctx.error(
-                        f"Dict has mixed key types: key {i} is {kt}, "
-                        f"but earlier keys are {key_type}", expr,
+                        f"Dict has mixed key types: key {i} is {self._user_type_name(kt)}, "
+                        f"but earlier keys are {self._user_type_name(key_type)}", expr,
                     )
 
         # Unify value types
@@ -1684,8 +1706,8 @@ class ExpressionAnalyzer:
                     continue
                 if vt != value_type:
                     raise self.ctx.error(
-                        f"Dict has mixed value types: value {i} is {vt}, "
-                        f"but earlier values are {value_type}", expr,
+                        f"Dict has mixed value types: value {i} is {self._user_type_name(vt)}, "
+                        f"but earlier values are {self._user_type_name(value_type)}", expr,
                     )
 
         # Use annotation types when literal elements are IntLiteralType or FloatLiteralType
@@ -1755,8 +1777,8 @@ class ExpressionAnalyzer:
                     continue
                 if et != elem_type:
                     raise self.ctx.error(
-                        f"Set has mixed element types: element {i} is {et}, "
-                        f"but earlier elements are {elem_type}", expr,
+                        f"Set has mixed element types: element {i} is {self._user_type_name(et)}, "
+                        f"but earlier elements are {self._user_type_name(elem_type)}", expr,
                     )
 
         if isinstance(elem_type, IntLiteralType):

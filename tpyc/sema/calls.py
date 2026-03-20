@@ -407,7 +407,9 @@ class CallAnalyzer:
                     return self._analyze_record_constructor(expr, record)
                 # It's a builtin type instantiation -- validate constructor args
                 self._reject_kwargs_for_builtin(expr, expr.func)
-                arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+                # Pass call_type as hint so container literals get key/value/elem types
+                arg_types = [self.expr.analyze_expr_with_hint(arg, expr.call_type)
+                             for arg in expr.args]
                 if arg_types:
                     self._validate_generic_constructor(expr, arg_types)
                 if isinstance(expr.call_type, PtrType) and expr.args:
@@ -1157,6 +1159,9 @@ class CallAnalyzer:
                 if fully_checked and ctor.cpp_template:
                     expr.resolved_function_info = ctor
                 return
+        # Arg type compatible with target (e.g. dict[K,V]({...}), list[T](other_list))
+        if len(arg_types) == 1 and self.compat.is_type_compatible(arg_types[0], expr.call_type):
+            return
         # No constructor matched -- emit error for single-arg case
         if len(arg_types) == 1:
             raise self.ctx.error(
