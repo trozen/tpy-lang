@@ -83,7 +83,9 @@ def _register_fixed_int(module: BuiltinModule, typ: FixedIntType) -> None:
     methods["__lt__"] = [MethodDef(params=[ParamDef("other", typ)], returns=BOOL, cpp="{self} < {0}", is_readonly=True, is_pure=True)]
     methods["__init__"] = constructors
 
-    module.register_type(typ, cpp_type=cpp_t, methods=methods, extends=["Comparable", "Equatable"])
+    sign_proto = "AnyFixedSigned" if typ.signed else "AnyFixedUnsigned"
+    module.register_type(typ, cpp_type=cpp_t, methods=methods,
+                         extends=["Comparable", "Equatable", "AnyFixedInt", sign_proto])
 
 
 def init_module() -> BuiltinModule:

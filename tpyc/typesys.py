@@ -668,6 +668,12 @@ class RangeType(TpyType):
     def is_value_type(self) -> bool:
         return True
 
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.elem,)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return RangeType(types[0])
+
 
 @dataclass(frozen=True)
 class SliceType(TpyType):

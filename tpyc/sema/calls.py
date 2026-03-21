@@ -1588,28 +1588,10 @@ class CallAnalyzer:
         arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
         protocol_checker = self.protocols.type_conforms_to_protocol
 
-        # Split overloads: non-generic use standard resolution, generic use inference
+        # Build unified candidate pool: resolve generics to concrete candidates
+        # so they compete with non-generic ones in the same scoring pool.
         non_generic = [o for o in overloads if not _has_type_param_ref_in_params(o)]
         generic = [o for o in overloads if _has_type_param_ref_in_params(o)]
-
-        # Try non-generic overloads first (standard two-pass resolution)
-        if non_generic:
-            matched = resolve_overload(non_generic, arg_types, protocol_checker,
-                                       deref_checker=self.type_ops.get_deref_coercion_target,
-                                       default_int_type=self.ctx.default_int_type,
-                                       subclass_checker=self.ctx.registry.is_subclass_of)
-            if matched is not None:
-                expr.resolved_function_info = matched
-                self._validate_lvalue_params(expr)
-                self._check_error_return_handled(expr, matched)
-                self._record_mutation_call_edges(expr)
-                for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, matched.params)):
-                    self.check_own_param(arg, arg_t, pname, ptype)
-                    if arg_t != ptype:
-                        expr.args[i] = self.compat.coerce_expr(arg, arg_t, ptype,
-                                                                f"argument '{pname}'",
-                                                                coercion_ctx=CoercionContext.ARG)
-                return matched.return_type
 
         # Validate explicit type args before generic inference
         if expr.type_args_parse_error:
@@ -1619,6 +1601,9 @@ class CallAnalyzer:
             max_tp = max(len(o.type_params) for o in generic)
             self._validate_explicit_type_args(expr, max_tp)
             explicit = expr.type_args
+
+        candidates = list(non_generic)
+        generic_originals: dict[int, tuple[FunctionInfo, dict[str, TpyType]]] = {}
         for overload in generic:
             type_subst = self.type_ops.infer_type_params_for_function(
                 overload, arg_types, protocol_checker,
@@ -1631,20 +1616,32 @@ class CallAnalyzer:
                     prefer_strview_for_literals(type_subst, overload, expr.args,
                                                protocol_checker, n_explicit)
                 resolved = self.type_ops.substitute_method_type_params(overload, type_subst)
-                expr.resolved_function_info = resolved
-                self._validate_lvalue_params(expr)
-                self._check_error_return_handled(expr, resolved)
-                self._record_mutation_call_edges(expr)
+                candidates.append(resolved)
+                generic_originals[id(resolved)] = (overload, type_subst)
+
+        # Unified resolution: score all candidates (non-generic + resolved generics)
+        matched = resolve_overload(candidates, arg_types, protocol_checker,
+                                   deref_checker=self.type_ops.get_deref_coercion_target,
+                                   default_int_type=self.ctx.default_int_type,
+                                   subclass_checker=self.ctx.registry.is_subclass_of)
+        if matched is not None:
+            expr.resolved_function_info = matched
+            self._validate_lvalue_params(expr)
+            self._check_error_return_handled(expr, matched)
+            self._record_mutation_call_edges(expr)
+            for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, matched.params)):
+                self.check_own_param(arg, arg_t, pname, ptype)
+                if arg_t != ptype:
+                    expr.args[i] = self.compat.coerce_expr(arg, arg_t, ptype,
+                                                            f"argument '{pname}'",
+                                                            coercion_ctx=CoercionContext.ARG)
+            generic_info = generic_originals.get(id(matched))
+            if generic_info is not None:
+                overload, type_subst = generic_info
                 expr.inferred_type_args = tuple(type_subst[p] for p in overload.type_params)
-                for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, resolved.params)):
-                    self.check_own_param(arg, arg_t, pname, ptype)
-                    if arg_t != ptype:
-                        expr.args[i] = self.compat.coerce_expr(arg, arg_t, ptype,
-                                                                f"argument '{pname}'",
-                                                                coercion_ctx=CoercionContext.ARG)
                 if isinstance(overload.return_type, UnionType):
                     orig_count = len(overload.return_type.members)
-                    resolved_ret = resolved.return_type
+                    resolved_ret = matched.return_type
                     resolved_count = len(resolved_ret.members) if isinstance(resolved_ret, UnionType) else 1
                     if resolved_count < orig_count:
                         raise self.ctx.error(
@@ -1652,13 +1649,12 @@ class CallAnalyzer:
                             f"members with these type arguments (resolves to '{resolved_ret}')",
                             expr,
                         )
-                ret = resolved.return_type
-                # Built-in generic functions (e.g. iter) delegate to
-                # concrete methods whose C++ returns std::optional<T>, not T*.
+                ret = matched.return_type
                 if (overload.is_builtin_function and overload.type_params
                         and isinstance(ret, OptionalType) and ret.force_pointer_repr):
                     ret = OptionalType(ret.inner)
                 return ret
+            return matched.return_type
 
         # repr(container) fallback: containers have runtime to_str helpers
         if expr.func == "repr" and len(arg_types) == 1:
@@ -1748,8 +1744,42 @@ class CallAnalyzer:
     ) -> TpyType:
         """Analyze a call to a user-defined function (single or @overload group)."""
         if len(func_infos) > 1:
-            # @overload group: resolve to the best stub
+            # @overload group: resolve generic overloads to concrete candidates
+            # so they compete with non-generic ones in the same scoring pool.
+            # This ensures IntLiteralType preference (default_int) works across
+            # generic and non-generic overloads.
             arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+
+            # Build candidate pool: non-generic originals + resolved generics
+            candidates = []
+            generic_originals: dict[int, FunctionInfo] = {}
+            for func in func_infos:
+                if func.is_generic():
+                    type_subst = self.type_ops.infer_type_params_for_function(
+                        func, arg_types, self.protocols.type_conforms_to_protocol,
+                        expected_return_type=self.ctx.expr_type_hint,
+                    )
+                    if type_subst is not None:
+                        resolved = self.type_ops.substitute_method_type_params(func, type_subst)
+                        candidates.append(resolved)
+                        generic_originals[id(resolved)] = func
+                else:
+                    candidates.append(func)
+
+            matched = resolve_overload(
+                candidates, arg_types,
+                protocol_checker=self.protocols.type_conforms_to_protocol,
+                default_int_type=self.ctx.default_int_type,
+                subclass_checker=self.ctx.registry.is_subclass_of,
+            )
+            if matched is not None:
+                original = generic_originals.get(id(matched))
+                if original is not None:
+                    return self._analyze_single_function_call(expr, original)
+                return self._analyze_single_function_call(expr, matched)
+
+            # No match in unified pool. Fall back to original resolution
+            # (structural matching for generics) to preserve error messages.
             matched = resolve_overload(
                 func_infos, arg_types,
                 protocol_checker=self.protocols.type_conforms_to_protocol,
@@ -1757,13 +1787,10 @@ class CallAnalyzer:
             )
             if matched is not None:
                 return self._analyze_single_function_call(expr, matched)
-            # Strict resolution failed -- try generic overloads via type inference.
-            # _analyze_single_function_call handles generic inference + coercion,
-            # which resolve_overload's structural matching can't do.
-            for overload in func_infos:
-                if overload.is_generic():
+            for func in func_infos:
+                if func.is_generic():
                     try:
-                        return self._analyze_single_function_call(expr, overload)
+                        return self._analyze_single_function_call(expr, func)
                     except SemanticError:
                         continue
             arg_type_strs = ", ".join(str(t) for t in arg_types)

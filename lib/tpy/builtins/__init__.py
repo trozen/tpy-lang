@@ -4,6 +4,7 @@ from typing import overload, Sized, Iterator, Iterable
 from tpy import (
     Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64,
     Char, String, StrView, Own, readonly, pure,
+    AnyFixedInt,
 )
 from tpy import Hashable, Representable, NativeIterable
 from tpy.extern import native, cpp_template, builtin_type
@@ -36,132 +37,20 @@ class Range[T](NativeIterable[T], Iterable[T]):
 
 
 @overload
-@cpp_template("::tpy::Range<int8_t>({0})")
+@cpp_template("::tpy::Range<{T}>({0})")
 @readonly
 @pure
-def range(stop: Int8) -> Range[Int8]: ...
+def range[T: AnyFixedInt](stop: T) -> Range[T]: ...
 @overload
-@cpp_template("::tpy::Range<int8_t>({0}, {1})")
+@cpp_template("::tpy::Range<{T}>({0}, {1})")
 @readonly
 @pure
-def range(start: Int8, stop: Int8) -> Range[Int8]: ...
+def range[T: AnyFixedInt](start: T, stop: T) -> Range[T]: ...
 @overload
-@cpp_template("::tpy::Range<int8_t>({0}, {1}, {2})")
+@cpp_template("::tpy::Range<{T}>({0}, {1}, {2})")
 @readonly
 @pure
-def range(start: Int8, stop: Int8, step: Int8) -> Range[Int8]: ...
-
-@overload
-@cpp_template("::tpy::Range<int16_t>({0})")
-@readonly
-@pure
-def range(stop: Int16) -> Range[Int16]: ...
-@overload
-@cpp_template("::tpy::Range<int16_t>({0}, {1})")
-@readonly
-@pure
-def range(start: Int16, stop: Int16) -> Range[Int16]: ...
-@overload
-@cpp_template("::tpy::Range<int16_t>({0}, {1}, {2})")
-@readonly
-@pure
-def range(start: Int16, stop: Int16, step: Int16) -> Range[Int16]: ...
-
-@overload
-@cpp_template("::tpy::Range<int32_t>({0})")
-@readonly
-@pure
-def range(stop: Int32) -> Range[Int32]: ...
-@overload
-@cpp_template("::tpy::Range<int32_t>({0}, {1})")
-@readonly
-@pure
-def range(start: Int32, stop: Int32) -> Range[Int32]: ...
-@overload
-@cpp_template("::tpy::Range<int32_t>({0}, {1}, {2})")
-@readonly
-@pure
-def range(start: Int32, stop: Int32, step: Int32) -> Range[Int32]: ...
-
-@overload
-@cpp_template("::tpy::Range<int64_t>({0})")
-@readonly
-@pure
-def range(stop: Int64) -> Range[Int64]: ...
-@overload
-@cpp_template("::tpy::Range<int64_t>({0}, {1})")
-@readonly
-@pure
-def range(start: Int64, stop: Int64) -> Range[Int64]: ...
-@overload
-@cpp_template("::tpy::Range<int64_t>({0}, {1}, {2})")
-@readonly
-@pure
-def range(start: Int64, stop: Int64, step: Int64) -> Range[Int64]: ...
-
-@overload
-@cpp_template("::tpy::Range<uint8_t>({0})")
-@readonly
-@pure
-def range(stop: UInt8) -> Range[UInt8]: ...
-@overload
-@cpp_template("::tpy::Range<uint8_t>({0}, {1})")
-@readonly
-@pure
-def range(start: UInt8, stop: UInt8) -> Range[UInt8]: ...
-@overload
-@cpp_template("::tpy::Range<uint8_t>({0}, {1}, {2})")
-@readonly
-@pure
-def range(start: UInt8, stop: UInt8, step: UInt8) -> Range[UInt8]: ...
-
-@overload
-@cpp_template("::tpy::Range<uint16_t>({0})")
-@readonly
-@pure
-def range(stop: UInt16) -> Range[UInt16]: ...
-@overload
-@cpp_template("::tpy::Range<uint16_t>({0}, {1})")
-@readonly
-@pure
-def range(start: UInt16, stop: UInt16) -> Range[UInt16]: ...
-@overload
-@cpp_template("::tpy::Range<uint16_t>({0}, {1}, {2})")
-@readonly
-@pure
-def range(start: UInt16, stop: UInt16, step: UInt16) -> Range[UInt16]: ...
-
-@overload
-@cpp_template("::tpy::Range<uint32_t>({0})")
-@readonly
-@pure
-def range(stop: UInt32) -> Range[UInt32]: ...
-@overload
-@cpp_template("::tpy::Range<uint32_t>({0}, {1})")
-@readonly
-@pure
-def range(start: UInt32, stop: UInt32) -> Range[UInt32]: ...
-@overload
-@cpp_template("::tpy::Range<uint32_t>({0}, {1}, {2})")
-@readonly
-@pure
-def range(start: UInt32, stop: UInt32, step: UInt32) -> Range[UInt32]: ...
-
-@overload
-@cpp_template("::tpy::Range<uint64_t>({0})")
-@readonly
-@pure
-def range(stop: UInt64) -> Range[UInt64]: ...
-@overload
-@cpp_template("::tpy::Range<uint64_t>({0}, {1})")
-@readonly
-@pure
-def range(start: UInt64, stop: UInt64) -> Range[UInt64]: ...
-@overload
-@cpp_template("::tpy::Range<uint64_t>({0}, {1}, {2})")
-@readonly
-@pure
-def range(start: UInt64, stop: UInt64, step: UInt64) -> Range[UInt64]: ...
+def range[T: AnyFixedInt](start: T, stop: T, step: T) -> Range[T]: ...
 
 @overload
 @cpp_template("::tpy::Range<::tpy::BigInt>({0})")
