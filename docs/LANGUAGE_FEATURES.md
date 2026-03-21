@@ -113,7 +113,7 @@ list[T]     → etl::vector<T, N>
 
 Usage:
 ```bash
-tpyc --backend=trading src/order_handler.py
+tpyc --cxx=trading src/order_handler.py
 ```
 
 This allows the same TurboPython source to target different environments without code changes.
@@ -4576,11 +4576,12 @@ Send/Sync rules for built-in types:
 - Expressions are evaluated and printed automatically
 - Multi-line input with automatic continuation detection (`if`/`else`/`elif`/`except`/`finally`)
 - Paste mode (`.paste` or `.p`) for multi-line blocks
-- Configurable backends via `--backend`:
+- Configurable C++ compiler via `--cxx`:
   - `clang-repl` -- incremental JIT, fastest for iteration (~20-80ms per expression); auto-restarts after JIT crashes
   - `clang` -- compile-and-run via clang++ with PCH caching
   - `gcc` -- compile-and-run via g++ with PCH caching
-  - `auto` (default) -- picks the highest-versioned available compiler (clang-repl > clang > gcc)
+  - `zig` -- compile-and-run via zig c++ (from system or bundled ziglang package)
+  - `auto` (default) -- picks the best available compiler (clang-repl > clang > gcc > zig)
 
 ---
 

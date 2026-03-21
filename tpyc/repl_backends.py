@@ -3,16 +3,15 @@ REPL Backend Abstraction
 
 Two backend types for executing compiled TurboPython code in the REPL:
 - ClangReplBackend: Incremental JIT via clang-repl (fastest for iteration)
-- CompileBackend: Traditional compile-and-run via g++ or clang++
+- CompileBackend: Traditional compile-and-run via any C++ compiler
   (with PCH caching and code-change detection)
 
-Auto-detection order: clang-repl -> clang++ -> g++
+Auto-detection order: clang-repl -> clang++ -> g++ -> zig c++
 """
 
 from __future__ import annotations
 import abc
 import difflib
-import glob
 import hashlib
 import os
 import re
@@ -98,9 +97,8 @@ class REPLBackend(abc.ABC):
 class CompileBackend(REPLBackend):
     """Traditional compile-and-run backend using g++ or clang++."""
 
-    def __init__(self, compiler: str, temp_dir: Path, module_name: str):
+    def __init__(self, compiler: list[str], temp_dir: Path, module_name: str):
         from .compiler import CppCompilerConfig
-        self._compiler = compiler
         self._temp_dir = temp_dir
         self._module_name = module_name
         self._config = CppCompilerConfig(compiler=compiler)
@@ -111,7 +109,7 @@ class CompileBackend(REPLBackend):
 
     @property
     def name(self) -> str:
-        return self._compiler
+        return self._config.compiler_name
 
     def startup(self) -> None:
         self._setup_pch()
@@ -135,7 +133,7 @@ class CompileBackend(REPLBackend):
             t_build_start = time.monotonic()
             runtime_dir = get_runtime_dir()
             compile_cmd = [
-                self._config.compiler, f"-std={self._config.std}",
+                *self._config.compiler, f"-std={self._config.std}",
                 *self._config.extra_flags,
                 "-I", str(runtime_dir / "cpp" / "include"),
                 "-I", str(self._temp_dir),
@@ -180,7 +178,7 @@ class CompileBackend(REPLBackend):
 
     def _get_pch_cache_dir(self) -> Path:
         runtime_dir = get_runtime_dir()
-        key_data = f"{self._config.compiler}:{self._config.std}:{runtime_dir}"
+        key_data = f"{self._config.compiler_name}:{self._config.std}:{runtime_dir}"
         key = hashlib.md5(key_data.encode()).hexdigest()[:12]
         cache_dir = Path.home() / ".cache" / "tpyc" / f"pch_{key}"
         cache_dir.mkdir(parents=True, exist_ok=True)
@@ -206,7 +204,7 @@ class CompileBackend(REPLBackend):
 
         pch_header.write_text('#include <tpy/tpy.hpp>\n')
         cmd = [
-            self._config.compiler, f"-std={self._config.std}",
+            *self._config.compiler, f"-std={self._config.std}",
             *self._config.extra_flags,
             "-I", str(runtime_dir / "cpp" / "include"),
             "-x", "c++-header",
@@ -680,96 +678,73 @@ class ClangReplBackend(REPLBackend):
 # Auto-detection
 # ---------------------------------------------------------------------------
 
-def _find_best_versioned(prefix: str) -> str | None:
-    """Find the highest-versioned binary matching prefix (e.g. 'clang-repl-')."""
-    # Check PATH directories for prefix-N binaries
-    best_ver = -1
-    best_name: str | None = None
-    for d in os.environ.get("PATH", "").split(os.pathsep):
-        for path in glob.glob(os.path.join(d, f"{prefix}-*")):
-            name = os.path.basename(path)
-            suffix = name[len(prefix) + 1:]
-            try:
-                ver = int(suffix)
-            except ValueError:
-                continue
-            if ver > best_ver and shutil.which(name):
-                best_ver = ver
-                best_name = name
-    # Also check unversioned
-    if best_name is None and shutil.which(prefix):
-        best_name = prefix
-    return best_name
-
-
 def detect_backend(
-    requested: str,
+    cxx: str,
     temp_dir: Path,
     module_name: str,
 ) -> REPLBackend:
-    """Create a backend based on user request or auto-detection.
+    """Create a backend based on --cxx value or auto-detection.
 
     Args:
-        requested: One of "auto", "clang-repl", "clang", "gcc".
+        cxx: Compiler selection from --cxx flag (e.g. "auto", "gcc", "clang-repl").
         temp_dir: Temp directory for build artifacts.
         module_name: Fixed module name for the REPL.
 
     Returns:
         An initialized (but not yet started) REPLBackend.
     """
-    if requested == "auto":
+    from .compiler import (
+        _find_best_versioned, _find_zig, _resolve_compiler,
+    )
+
+    if cxx == "auto":
         return _auto_detect(temp_dir, module_name)
 
-    if requested == "clang-repl":
-        binary = _find_best_versioned("clang-repl")
+    # clang-repl: JIT backend (specific or versioned, e.g. clang-repl-18)
+    if cxx == "clang-repl" or cxx.startswith("clang-repl-"):
+        binary = cxx if shutil.which(cxx) else _find_best_versioned("clang-repl")
         if not binary:
             print("Warning: clang-repl not found, falling back to auto-detect",
                   file=sys.stderr)
             return _auto_detect(temp_dir, module_name)
         return ClangReplBackend(binary, temp_dir, module_name)
 
-    if requested == "clang":
-        binary = _find_best_versioned("clang++")
-        if not binary:
-            print("Warning: clang++ not found, falling back to auto-detect",
-                  file=sys.stderr)
-            return _auto_detect(temp_dir, module_name)
-        return CompileBackend(binary, temp_dir, module_name)
-
-    if requested == "gcc":
-        binary = _find_best_versioned("g++")
-        if not binary:
-            print("Warning: g++ not found, falling back to auto-detect",
-                  file=sys.stderr)
-            return _auto_detect(temp_dir, module_name)
-        return CompileBackend(binary, temp_dir, module_name)
-
-    print(f"Warning: unknown backend '{requested}', falling back to auto-detect",
-          file=sys.stderr)
-    return _auto_detect(temp_dir, module_name)
+    # All other values: resolve via shared compiler detection
+    resolved = _resolve_compiler(cxx)
+    if resolved is None:
+        print(f"Warning: C++ compiler '{cxx}' not found, falling back to auto-detect",
+              file=sys.stderr)
+        return _auto_detect(temp_dir, module_name)
+    return CompileBackend(resolved, temp_dir, module_name)
 
 
 def _auto_detect(temp_dir: Path, module_name: str) -> REPLBackend:
     """Auto-detect the best available backend."""
+    from .compiler import _find_best_versioned, _find_zig
+
     # Prefer clang-repl for fastest incremental compilation
     clang_repl = _find_best_versioned("clang-repl")
     if clang_repl:
         return ClangReplBackend(clang_repl, temp_dir, module_name)
 
-    # Fall back to clang++
     clangpp = _find_best_versioned("clang++")
     if clangpp:
         print(f"Warning: clang-repl not found, using {clangpp} (slower)",
               file=sys.stderr)
-        return CompileBackend(clangpp, temp_dir, module_name)
+        return CompileBackend([clangpp], temp_dir, module_name)
 
-    # Fall back to g++
     gpp = _find_best_versioned("g++")
     if gpp:
         print(f"Warning: clang-repl not found, using {gpp} (slower)",
               file=sys.stderr)
-        return CompileBackend(gpp, temp_dir, module_name)
+        return CompileBackend([gpp], temp_dir, module_name)
 
-    print("Error: no C++ compiler found (tried clang-repl, clang, gcc)",
+    zig = _find_zig()
+    if zig:
+        print("Warning: no native C++ compiler found, using zig c++ (slower)",
+              file=sys.stderr)
+        return CompileBackend([zig, "c++"], temp_dir, module_name)
+
+    print("Error: no C++ compiler found (tried clang-repl, clang, gcc, zig)",
           file=sys.stderr)
     sys.exit(1)

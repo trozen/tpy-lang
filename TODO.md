@@ -3,9 +3,11 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
-- Zig bundled compiler integration: update `CppCompilerConfig` to auto-detect `zig c++` as fallback when no system compiler is found (handle two-word command, disable ccache for zig). Enables `pip install tpyc[bundled]` for zero-config C++ compilation via the `ziglang` PyPI package. Runtime portability fix already done (tpy::make_unexpected).
 - Eliminate concrete type classes (ListType, DictType, etc.): replace `isinstance(t, ListType)` checks with name-based or annotation-driven checks. ~60 references for ListType alone across type inference, codegen, and compatibility. Enables treating all types uniformly as NamedType + RecordInfo. Lower priority -- current type classes work fine, this is about uniformity.
 - `take_ptr()` as a regular .py function: add a function-level annotation (e.g. `@value_ptr_coercion` or `@ptr_args`) that extends the existing `T -> Ptr[T]` call-site coercion to value types. Currently this coercion only works for records. With the annotation, `take_ptr` becomes a regular generic function (`def take_ptr[T](p: Ptr[T]) -> Ptr[T]`) instead of a compiler builtin with `requires_mutable_lvalue`. The annotation maps to the existing `requires_mutable_lvalue` mechanism internally and is a no-op in CPython.
+- Skip .cpp generation for pure-native stub modules: `builtins._list`, `builtins._dict`, `builtins._set` etc. generate empty `__tpy_init()` bodies. Modules where every definition is `@native`/`@cpp_template` and there are no top-level statements should only emit `.hpp`, no `.cpp`. Saves unnecessary compilation units.
+- Build improvements: parallel compilation (run independent per-file compile steps concurrently), `--ccache` / `--no-ccache` flag to override auto-detection.
+- CMake integration: generate a `CMakeLists.txt` alongside the C++ output listing all generated source/header files, so tpyc output can be easily included in existing CMake projects.
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 
 ## Bugs
@@ -41,6 +43,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 ## Examples
 
 ## Investigate
+- CPython native (C) module for tpy stubs: the `lib/cpy/tpy/` stubs are pure Python. A C extension module could improve CPython performance for programs that use tpy types (Int32, Array, Span, etc.) heavily.
 - investigate rust like feature (borrowing, lifetimes etc) to make the language safe; however these should be softer restrictions than in rust
 - zig language: what it is, how is it different from C, what useful patterns can we learn
 - Distinct types (newtypes): `class Meters(Distinct[float]): pass` -- zero-cost wrapper that creates a nominally distinct type. Prevents mixing incompatible values of the same underlying type (units, IDs, currencies). C++ codegen: thin struct wrapper or strong typedef. Inspired by Nim's `distinct` keyword.

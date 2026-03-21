@@ -14,22 +14,51 @@ A proof-of-concept compiler (tpyc) that translates Python to C++.
 
 ## Dependencies
 
-No external C/C++ libraries are required by the runtime. A C++23 compiler is enough.
+- Python 3.12+
+- A C++23 compiler: g++ 14+, clang++ 18+, or zig (auto-detected)
+
+No external C/C++ libraries are required by the runtime.
+
+## Installation
+
+### For development
+
+```bash
+git clone https://github.com/trozen/tpy-poc.git && cd tpy-poc
+uv sync
+
+uv run tpyc -x examples/hello.py
+```
+
+### For use
+
+```bash
+# If you have g++ or clang++ installed:
+pip install git+https://github.com/trozen/tpy-poc.git
+
+# If you don't have a C++ compiler (bundles zig):
+pip install "tpy-poc[bundled] @ git+https://github.com/trozen/tpy-poc.git"
+
+# From a local clone:
+pip install /path/to/tpy-poc
+pip install "/path/to/tpy-poc[bundled]"
+```
+
+The `tpyc` command is available directly after pip install:
+
+```bash
+tpyc -x hello.py
+```
+
+The compiler auto-detects `CXX` env var > g++ > clang++ > zig c++.
 
 ## Quick Start
 
 ```bash
-# Install
-uv sync
-
-# Compile and run a program
-uv run tpyc -x examples/hello.py
-
-# Release build (optimized)
-uv run tpyc -xO examples/hello.py
-
-# Interactive REPL
-uv run tpyc -i
+tpyc -c "print(1 + 2)"          # run inline code
+tpyc -x examples/hello.py       # compile and run a file
+tpyc -xO examples/hello.py      # release build (optimized)
+tpyc -i                          # interactive REPL
 ```
 
 ## CLI Reference
@@ -38,6 +67,7 @@ uv run tpyc -i
 tpyc [options] <file.py>
 
 Options:
+  -c CMD            Run CMD as inline TurboPython code
   -x, --exec        Build and run the program
   -b, --build       Compile C++ to binary
   -O, --release     Build with optimizations (default: debug)
@@ -48,7 +78,7 @@ Options:
   --default-int     Default type for unannotated integer literals: Int32|Int64|BigInt (default: Int32)
   --emit-source     Embed Python source lines as comments in generated C++
   -L <path>         Extra library search path (can be repeated)
-  --backend <name>  REPL backend: auto|clang-repl|clang|gcc (default: auto)
+  --cxx <name>      C++ compiler: auto|list|gcc|gcc-14|clang|clang-18|zig|... (default: auto)
   --no-stdlib       Disable standard library
   -v                Verbose output
   -vv               Show compilation commands

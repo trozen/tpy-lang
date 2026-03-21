@@ -39,11 +39,14 @@ uv run tpyc examples/hello.py -o out/
 # Verbose mode (-v for commands+timing, -vv for generated C++)
 uv run tpyc -x examples/hello.py -vv
 
-# Interactive REPL (auto-detects best backend: clang-repl > clang > gcc)
+# Run inline code
+uv run tpyc -c "print(1 + 2)"
+
+# Interactive REPL (auto-detects best backend: clang-repl > clang > gcc > zig)
 uv run tpyc -i
 
-# Force a specific REPL backend
-uv run tpyc -i --backend gcc
+# Force a specific C++ compiler
+uv run tpyc -i --cxx gcc
 
 # Extra library search paths
 uv run tpyc -x -L /my/libs examples/main.py

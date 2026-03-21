@@ -9,7 +9,7 @@ Usage:
     tpyc --exec <<EOF          # Read from stdin, build, and run
     tpyc --dump-code <<EOF     # Print generated C++ to stdout
     tpyc --repl                # Start interactive REPL (auto-detect backend)
-    tpyc --repl --backend gcc  # Force gcc backend
+    tpyc --repl --cxx gcc      # Force gcc backend
     tpyc --repl file.py        # Load file then start REPL
     tpyc --repl -v             # REPL with timing
     tpyc --repl -vv            # REPL with timing + generated C++
@@ -28,7 +28,8 @@ from .parse import ParseError
 from .sema import SemanticError, DiagnosticLevel
 from .codegen_cpp import CodeGenOptions, CodeGenError
 from .compiler import (
-    Compiler, CompileError, BuildLayout, CppCompilerConfig, DEFAULT_INT_CHOICES
+    Compiler, CompileError, CompilerNotFoundError, BuildLayout, CppCompilerConfig,
+    DEFAULT_INT_CHOICES, list_compilers,
 )
 from . import __version__, get_runtime_dir, get_lib_dir
 
@@ -73,7 +74,7 @@ class ProgressPrinter:
         if not self.enabled:
             return
         variant = "release" if release else "debug"
-        cxx = config.compiler
+        cxx = config.compiler_name
         if config.ccache:
             cxx += " + ccache"
         sys.stderr.write(f"TurboPython compiler v{__version__} ({cxx}, {variant})\n")
@@ -137,6 +138,7 @@ def main() -> int:
         description="TurboPython Compiler - compiles TurboPython to C++"
     )
     parser.add_argument("input", nargs="?", help="Input TurboPython source file (.py)")
+    parser.add_argument("-c", dest="cmd", metavar="CMD", help="Execute CMD as a TurboPython program string")
     parser.add_argument("-o", "--output", help="Output directory (default: __tpyc__/ next to source)")
     parser.add_argument("-v", "--verbose", action="count", default=0, help="Verbose output (-v commands+timing, -vv +generated C++)")
     parser.add_argument("-b", "--build", action="store_true", help="Compile C++ to binary after generating")
@@ -161,10 +163,8 @@ def main() -> int:
         help="Disable standard library (tplib, stdlib modules, tpy protocols)",
     )
     parser.add_argument(
-        "--backend",
-        choices=["auto", "clang-repl", "clang", "gcc"],
-        default="auto",
-        help="REPL backend (default: auto = clang-repl -> clang -> gcc)",
+        "--cxx", default="auto",
+        help="C++ compiler: auto, list, gcc, gcc-14, clang, clang-18, zig, ... (default: auto)",
     )
 
     args = parser.parse_args()
@@ -177,6 +177,11 @@ def main() -> int:
     if not args.no_stdlib:
         lib_dirs.append(lib_dir / "tpy")
 
+    # Handle --cxx list
+    if args.cxx == "list":
+        list_compilers()
+        return 0
+
     # Handle REPL mode
     if args.repl:
         from .repl import REPLSession
@@ -185,7 +190,7 @@ def main() -> int:
             # Support multiple files separated by the input arg
             preload_files = [Path(args.input).resolve()]
         return REPLSession(verbose=args.verbose, preload_files=preload_files,
-                           lib_dirs=lib_dirs, backend=args.backend).run()
+                           lib_dirs=lib_dirs, cxx=args.cxx).run()
 
     # Handle --print-types
     if args.print_types:
@@ -193,22 +198,28 @@ def main() -> int:
         dump_builtin_types()
         return 0
 
+    # Handle -c: implies -x unless --dump-code or -b is set
+    if args.cmd is not None:
+        if args.input:
+            parser.error("-c cannot be combined with an input file")
+        if not args.dump_code and not args.build:
+            args.exec = True
+
     # Auto-detect stdin when no input file given and stdin is piped/heredoc
-    if not args.input and not sys.stdin.isatty():
+    if not args.cmd and not args.input and not sys.stdin.isatty():
         args.input = "-"
 
     # Require input file for non-REPL modes
-    if not args.input:
-        parser.error("the following arguments are required: input")
+    if not args.cmd and not args.input:
+        parser.error("the following arguments are required: input (or -c CMD)")
 
-    # Handle stdin input (specified as "-" or auto-detected)
-    reading_from_stdin = args.input == "-"
+    # Handle inline/stdin source
+    reading_from_stdin = args.cmd is not None or args.input == "-"
     temp_dir = None
 
     if reading_from_stdin:
-        source = sys.stdin.read()
+        source = args.cmd if args.cmd is not None else sys.stdin.read()
         module_name = "main"
-        # Use a temp directory for stdin input
         temp_dir = tempfile.mkdtemp(prefix="tpyc_")
         if args.output:
             output_dir = Path(args.output)
@@ -246,7 +257,7 @@ def main() -> int:
         # Print header when building
         cpp_config: CppCompilerConfig | None = None
         if building:
-            cpp_config = CppCompilerConfig.from_env()
+            cpp_config = CppCompilerConfig.from_env(cxx=args.cxx)
             progress.header(cpp_config, args.release)
 
         # Create compiler (unified for both stdin and file input)
@@ -385,6 +396,9 @@ def main() -> int:
 
         return 0
 
+    except CompilerNotFoundError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
     except CompileError as e:
         print(e.format(), file=sys.stderr)
         return 1

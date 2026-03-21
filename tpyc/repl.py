@@ -5,7 +5,7 @@ Provides an interactive Python-like experience with:
 - Multi-line input support (for function/class definitions)
 - Expression auto-printing (bare `5+3` prints the result)
 - Error/panic recovery (failed statements don't accumulate)
-- Configurable backends: clang-repl (default), clang++, g++
+- C++ compiler selection via --cxx: clang-repl (default), clang++, g++, zig
 - Verbose mode: -v for timing, -vv for generated C++
 - Trailing backslash continues to next line
 """
@@ -36,7 +36,7 @@ class REPLSession:
 
     def __init__(self, verbose: int = 0, preload_files: list[Path] | None = None,
                  lib_dirs: list[Path] | None = None,
-                 backend: str = "auto"):
+                 cxx: str = "auto"):
         self.accumulated_lines: list[str] = []
         self.verbose = verbose
         self.preload_files = preload_files or []
@@ -44,7 +44,7 @@ class REPLSession:
         self.temp_dir = Path(tempfile.mkdtemp(prefix="tpyc_repl_"))
         self.prev_cpp_lines: list[str] = []  # For verbose diff
         self._module_name = "repl"
-        self._backend_name = backend
+        self._cxx = cxx
         self._backend: REPLBackend | None = None
         atexit.register(self.cleanup)
 
@@ -128,7 +128,7 @@ class REPLSession:
         """Main REPL loop. Returns exit code."""
         # Detect and start backend
         self._backend = detect_backend(
-            self._backend_name, self.temp_dir, self._module_name
+            self._cxx, self.temp_dir, self._module_name
         )
         print(f"TurboPython REPL v0.1 (backend: {self._backend.name})")
         print("Variables, functions, and classes are remembered between inputs.")

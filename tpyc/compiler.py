@@ -9,6 +9,7 @@ Orchestrates compilation of multiple modules, handling:
 """
 
 from __future__ import annotations
+import glob
 import os
 import shutil
 import sys
@@ -50,20 +51,233 @@ def parse_default_int_type(name: str) -> TpyType:
     )
 
 
+class CompilerNotFoundError(Exception):
+    """Raised when a requested C++ compiler cannot be found."""
+    def __init__(self, cxx: str):
+        self.cxx = cxx
+        super().__init__(f"C++ compiler '{cxx}' not found")
+
+
+def _find_all_versioned(prefix: str) -> list[tuple[str, str, int]]:
+    """Find all versioned binaries matching prefix, sorted by version descending.
+
+    Returns list of (binary_name, path, version). Unversioned binary gets version -1.
+    """
+    seen: dict[str, tuple[str, int]] = {}
+    for d in os.environ.get("PATH", "").split(os.pathsep):
+        for fpath in glob.glob(os.path.join(d, f"{prefix}-*")):
+            name = os.path.basename(fpath)
+            suffix = name[len(prefix) + 1:]
+            try:
+                ver = int(suffix)
+            except ValueError:
+                continue
+            if name not in seen:
+                path = shutil.which(name)
+                if path:
+                    seen[name] = (path, ver)
+    # Unversioned
+    if prefix not in seen:
+        path = shutil.which(prefix)
+        if path:
+            seen[prefix] = (path, -1)
+    return [(name, path, ver) for name, (path, ver) in
+            sorted(seen.items(), key=lambda x: -x[1][1])]
+
+
+def _find_best_versioned(prefix: str) -> str | None:
+    """Find the highest-versioned binary matching prefix (e.g. 'g++' -> 'g++-14')."""
+    entries = _find_all_versioned(prefix)
+    return entries[0][0] if entries else None
+
+
+def _find_zig() -> str | None:
+    """Find the zig binary on PATH or inside the ziglang PyPI package."""
+    path = shutil.which("zig")
+    if path:
+        return path
+    try:
+        import ziglang
+        candidate = os.path.join(os.path.dirname(ziglang.__file__), "zig")
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    except ImportError:
+        pass
+    return None
+
+
+def _resolve_compiler(cxx: str) -> list[str] | None:
+    """Resolve a --cxx value to a compiler command list, or None if not found.
+
+    Accepted forms:
+      gcc, g++                -> best versioned g++
+      gcc-14, g++-14          -> specific version
+      clang, clang++          -> best versioned clang++
+      clang-18, clang++-18    -> specific version
+      zig                     -> zig c++
+      /path/to/compiler       -> literal path
+      any-binary-name         -> looked up on PATH
+    """
+    # Path (absolute or relative with /)
+    if "/" in cxx:
+        if os.path.isfile(cxx) and os.access(cxx, os.X_OK):
+            return [cxx]
+        return None
+
+    if cxx in ("gcc", "g++"):
+        name = _find_best_versioned("g++")
+        return [name] if name else None
+    if cxx in ("clang", "clang++"):
+        name = _find_best_versioned("clang++")
+        return [name] if name else None
+    if cxx == "zig":
+        zig = _find_zig()
+        return [zig, "c++"] if zig else None
+
+    # clang-repl is a REPL JIT backend, not a batch compiler
+    if cxx == "clang-repl" or cxx.startswith("clang-repl-"):
+        return None
+
+    # gcc-14 -> g++-14, clang-18 -> clang++-18
+    if cxx.startswith("gcc-"):
+        binary = "g++-" + cxx[4:]
+        if shutil.which(binary):
+            return [binary]
+        return None
+    if cxx.startswith("clang-"):
+        binary = "clang++-" + cxx[6:]
+        if shutil.which(binary):
+            return [binary]
+        return None
+
+    # Already a binary name (g++-14, clang++-18, etc.)
+    if shutil.which(cxx):
+        return [cxx]
+    return None
+
+
+def _auto_detect_compiler() -> list[str]:
+    """Auto-detect the best available C++ compiler for building."""
+    for prefix in ["g++", "clang++"]:
+        name = _find_best_versioned(prefix)
+        if name:
+            return [name]
+    zig = _find_zig()
+    if zig:
+        return [zig, "c++"]
+    return ["g++"]
+
+
+def _is_zig(compiler: list[str]) -> bool:
+    return "zig" in os.path.basename(compiler[0])
+
+
+def _cxx_aliases(binary: str, is_best: bool, family_prefix: str) -> list[str]:
+    """Compute --cxx aliases for a compiler binary.
+
+    E.g. g++-14 (best) -> gcc, gcc-14; g++-13 -> gcc-13
+    """
+    aliases: list[str] = []
+    # gcc/clang short alias only for the best version
+    if is_best:
+        if family_prefix == "g++":
+            aliases.append("gcc")
+        elif family_prefix == "clang++":
+            aliases.append("clang")
+    # Versioned alias: g++-14 -> gcc-14, clang++-18 -> clang-18
+    if "-" in binary:
+        ver = binary.split("-", 1)[1]
+        if family_prefix == "g++":
+            aliases.append(f"gcc-{ver}")
+        elif family_prefix == "clang++":
+            aliases.append(f"clang-{ver}")
+    # The binary name itself
+    aliases.append(binary)
+    return aliases
+
+
+def list_compilers() -> None:
+    """Print available C++ compilers to stdout."""
+    auto = _auto_detect_compiler()
+    auto_display = os.path.basename(auto[0])
+    if len(auto) > 1:
+        auto_display += " " + " ".join(auto[1:])
+
+    entries: list[tuple[str, str, list[str], str]] = []  # (binary, path, aliases, note)
+
+    for prefix in ["g++", "clang++"]:
+        all_vers = _find_all_versioned(prefix)
+        for i, (name, path, _ver) in enumerate(all_vers):
+            aliases = _cxx_aliases(name, is_best=(i == 0), family_prefix=prefix)
+            entries.append((name, path, aliases, ""))
+
+    for i, (name, path, _ver) in enumerate(_find_all_versioned("clang-repl")):
+        if i == 0:
+            aliases = ["clang-repl", name] if name != "clang-repl" else ["clang-repl"]
+        else:
+            aliases = [name]
+        entries.append((name, path, aliases, "REPL JIT"))
+
+    zig = _find_zig()
+    if zig:
+        entries.append(("zig c++", zig, ["zig"], ""))
+
+    if not entries:
+        print("No C++ compilers found.")
+        print("Install g++, clang++, or: pip install tpy-poc[bundled]")
+        return
+
+    name_width = max(len(b) for b, _, _, _ in entries)
+    print("Available C++ compilers:")
+    for binary, path, aliases, note in entries:
+        marker = "*" if binary == auto_display else " "
+        alias_str = ", ".join(aliases)
+        if note:
+            alias_str += f"  ({note})"
+        print(f"  {marker} {binary:<{name_width}}  --cxx {alias_str}")
+    print(f"\n  auto selects: {auto_display}")
+    print("  A path to any C++ compiler binary is also accepted.")
+
+
 @dataclass
 class CppCompilerConfig:
     """Configuration for the C++ compiler used to build generated code."""
-    compiler: str = "g++"
+    compiler: list[str] = field(default_factory=lambda: ["g++"])
     std: str = "c++23"
     extra_flags: list[str] = field(default_factory=list)
     link_flags: list[str] = field(default_factory=list)
     ccache: bool = False
 
+    @property
+    def compiler_name(self) -> str:
+        """Display name for the compiler (e.g. 'g++', 'zig c++')."""
+        parts = [os.path.basename(self.compiler[0])] + self.compiler[1:]
+        return " ".join(parts)
+
     @classmethod
-    def from_env(cls) -> CppCompilerConfig:
-        """Create config from environment variables. Respects CXX for compiler selection."""
-        compiler = os.environ.get("CXX", "g++")
-        ccache = shutil.which("ccache") is not None
+    def from_env(cls, cxx: str = "auto") -> CppCompilerConfig:
+        """Create config from --cxx flag value, CXX env var, or auto-detection.
+
+        Resolution order:
+        1. Explicit --cxx value (if not "auto")
+        2. CXX environment variable (if set)
+        3. Auto-detect: g++ > clang++ > zig c++
+        """
+        if cxx != "auto":
+            resolved = _resolve_compiler(cxx)
+            if resolved is None:
+                raise CompilerNotFoundError(cxx)
+            ccache = not _is_zig(resolved) and shutil.which("ccache") is not None
+            return cls(compiler=resolved, ccache=ccache)
+
+        env_cxx = os.environ.get("CXX", "")
+        if env_cxx:
+            compiler = env_cxx.split()
+            ccache = not _is_zig(compiler) and shutil.which("ccache") is not None
+            return cls(compiler=compiler, ccache=ccache)
+
+        compiler = _auto_detect_compiler()
+        ccache = not _is_zig(compiler) and shutil.which("ccache") is not None
         return cls(compiler=compiler, ccache=ccache)
 
 
@@ -160,7 +374,7 @@ class BuildLayout:
             extra_flags += ["-include", str(h)]
 
         common = [
-            config.compiler, f"-std={config.std}",
+            *config.compiler, f"-std={config.std}",
             *(opt_flags or []),
             *config.extra_flags,
             "-I", str(runtime_include_dir),
@@ -191,7 +405,7 @@ class BuildLayout:
                 "-c", "-o", str(obj), str(cpp),
             ])
         cmds.append([
-            config.compiler,
+            *config.compiler,
             "-o", str(output),
             *obj_files,
             *(extra_objects or []),
