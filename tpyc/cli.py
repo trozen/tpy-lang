@@ -17,6 +17,7 @@ Usage:
 
 from __future__ import annotations
 import argparse
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import subprocess
 import sys
@@ -166,6 +167,13 @@ def main() -> int:
         "--cxx", default="auto",
         help="C++ compiler: auto, list, gcc, gcc-14, clang, clang-18, zig, ... (default: auto)",
     )
+    ccache_group = parser.add_mutually_exclusive_group()
+    ccache_group.add_argument("--ccache", action="store_true", default=None,
+                              help="Force ccache usage")
+    ccache_group.add_argument("--no-ccache", dest="ccache", action="store_false",
+                              help="Disable ccache")
+    parser.add_argument("-j", "--jobs", type=int, default=None,
+                        help="Parallel compile jobs (default: number of CPUs)")
 
     args = parser.parse_args()
 
@@ -245,7 +253,8 @@ def main() -> int:
 
     if args.dump_code and (args.build or args.exec):
         parser.error("--dump-code cannot be combined with --build or --exec")
-
+    if args.jobs is not None and args.jobs < 1:
+        parser.error("-j/--jobs must be a positive integer")
     building = args.build or args.exec
     quiet = args.dump_code
     progress = ProgressPrinter(enabled=building and not quiet)
@@ -258,6 +267,8 @@ def main() -> int:
         cpp_config: CppCompilerConfig | None = None
         if building:
             cpp_config = CppCompilerConfig.from_env(cxx=args.cxx)
+            if args.ccache is not None:
+                cpp_config.ccache = args.ccache
             progress.header(cpp_config, args.release)
 
         # Create compiler (unified for both stdin and file input)
@@ -344,16 +355,25 @@ def main() -> int:
 
         n_cpp = len(all_cpp_paths)
 
+        # Generate sources.cmake for CMake integration
+        runtime_dir = get_runtime_dir()
+        link_flags = compiler.collect_link_flags()
+        cmake_layout = BuildLayout(output_dir, module_name)
+        cmake_layout.generate_cmake(
+            runtime_include_dir=runtime_dir / "cpp" / "include",
+            cpp_files=all_cpp_paths,
+            link_flags=link_flags,
+        )
+
         # Build if requested
         if building:
             assert cpp_config is not None
-            runtime_dir = get_runtime_dir()
             build_variant = "release" if args.release else "debug"
             layout = BuildLayout(output_dir, module_name, build_variant=build_variant)
             binary_path = layout.binary_path()
 
             opt_flags = ["-O3", "-DNDEBUG"] if args.release else ["-g", "-O0"]
-            cpp_config.link_flags = compiler.collect_link_flags()
+            cpp_config.link_flags = link_flags
             compile_cmds = layout.build_cpp_commands(
                 runtime_include_dir=runtime_dir / "cpp" / "include",
                 cpp_files=all_cpp_paths,
@@ -361,20 +381,61 @@ def main() -> int:
                 config=cpp_config,
             )
 
+            compile_steps = compile_cmds[:-1]
+            link_step = compile_cmds[-1]
+            n_jobs = args.jobs or os.cpu_count() or 1
+
             progress.set_build_total(len(compile_cmds))
             t_build_start = time.monotonic()
-            for i, cmd in enumerate(compile_cmds, 1):
-                progress.build_progress(i)
-                if args.verbose >= 1:
-                    progress.finish()
-                    print(f"  $ {' '.join(cmd)}", file=sys.stderr)
 
-                result = subprocess.run(cmd, capture_output=True, text=True)
-                if result.returncode != 0:
+            # Compile steps in parallel (or serial for single file / -j1)
+            if len(compile_steps) <= 1 or n_jobs <= 1:
+                for i, cmd in enumerate(compile_steps, 1):
+                    if args.verbose >= 1:
+                        progress.finish()
+                        print(f"  $ {' '.join(cmd)}", file=sys.stderr)
+                    progress.build_progress(i)
+                    result = subprocess.run(cmd, capture_output=True, text=True)
+                    if result.returncode != 0:
+                        progress.finish()
+                        print(f"C++ compilation failed:", file=sys.stderr)
+                        print(result.stderr, file=sys.stderr)
+                        return 1
+            else:
+                if args.verbose >= 1:
+                    for cmd in compile_steps:
+                        progress.finish()
+                        print(f"  $ {' '.join(cmd)}", file=sys.stderr)
+                completed = 0
+                failed_stderr = ""
+                with ThreadPoolExecutor(max_workers=n_jobs) as pool:
+                    futures = {
+                        pool.submit(subprocess.run, cmd, capture_output=True, text=True): cmd
+                        for cmd in compile_steps
+                    }
+                    for future in as_completed(futures):
+                        completed += 1
+                        progress.build_progress(completed)
+                        r = future.result()
+                        if r.returncode != 0 and not failed_stderr:
+                            failed_stderr = r.stderr
+                if failed_stderr:
                     progress.finish()
                     print(f"C++ compilation failed:", file=sys.stderr)
-                    print(result.stderr, file=sys.stderr)
+                    print(failed_stderr, file=sys.stderr)
                     return 1
+
+            # Link step
+            progress.build_progress(len(compile_cmds))
+            if args.verbose >= 1:
+                progress.finish()
+                print(f"  $ {' '.join(link_step)}", file=sys.stderr)
+            result = subprocess.run(link_step, capture_output=True, text=True)
+            if result.returncode != 0:
+                progress.finish()
+                print(f"C++ link failed:", file=sys.stderr)
+                print(result.stderr, file=sys.stderr)
+                return 1
             t_build = time.monotonic() - t_build_start
 
             progress.summary(n_py, t_compile, t_codegen, t_build)

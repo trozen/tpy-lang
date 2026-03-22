@@ -54,6 +54,10 @@ uv run tpyc -x -L /my/libs examples/main.py
 # Disable standard library
 uv run tpyc -x --no-stdlib examples/main.py
 
+# Build flags: ccache control, parallel jobs, CMake output
+uv run tpyc -x --no-ccache examples/hello.py
+uv run tpyc -x -j4 examples/hello.py
+
 # Install for development (uses uv package manager)
 uv sync
 ```

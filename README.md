@@ -86,6 +86,7 @@ tpyc -xO examples/hello.py      # release build (optimized)
 tpyc -i                          # interactive REPL
 tpyc --dump-code file.py         # inspect generated C++
 tpyc --cxx list                  # show available C++ compilers
+tpyc -x -j4 examples/hello.py   # parallel compilation (4 jobs)
 ```
 
 ## Dependencies

@@ -5,8 +5,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 ## Next
 - Eliminate concrete type classes (ListType, DictType, etc.): replace `isinstance(t, ListType)` checks with name-based or annotation-driven checks. ~60 references for ListType alone across type inference, codegen, and compatibility. Enables treating all types uniformly as NamedType + RecordInfo. Lower priority -- current type classes work fine, this is about uniformity.
 - Skip .cpp generation for pure-native stub modules: `builtins._list`, `builtins._dict`, `builtins._set` etc. generate empty `__tpy_init()` bodies. Modules where every definition is `@native`/`@cpp_template` and there are no top-level statements should only emit `.hpp`, no `.cpp`. Saves unnecessary compilation units.
-- Build improvements: parallel compilation (run independent per-file compile steps concurrently), `--ccache` / `--no-ccache` flag to override auto-detection.
-- CMake integration: generate a `CMakeLists.txt` alongside the C++ output listing all generated source/header files, so tpyc output can be easily included in existing CMake projects.
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 - drop builtin types, like RangeType
 - move decorators/annotations to lib
