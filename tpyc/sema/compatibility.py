@@ -16,6 +16,7 @@ from ..typesys import (
     NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
     is_protocol_type, unwrap_readonly, unwrap_optional_own, local_var_is_movable,
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
+    FnType, CallableType,
 )
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
@@ -283,6 +284,25 @@ class TypeCompatibility:
                 f"Type {actual} does not conform to protocol {expected} in {context}",
                 loc
             )
+
+        # Callable object -> Fn/Callable: record with __call__ matching the signature
+        if isinstance(actual, NamedType) and isinstance(expected, (FnType, CallableType)):
+            record = self.ctx.registry.get_record_for_type(actual)
+            if record:
+                overloads = self.ctx.registry.get_method_overloads_with_parents(record, "__call__")
+                if overloads:
+                    assert len(overloads) == 1, f"multiple __call__ overloads not supported"
+                    fi = overloads[0]
+                    if (len(fi.params) == len(expected.param_types)
+                            and all(p.type == e for (p, e) in zip(fi.params, expected.param_types))
+                            and (fi.return_type == expected.return_type
+                                 or isinstance(expected.return_type, VoidType))):
+                        return None
+                    raise SemanticError(
+                        f"'__call__' signature ({', '.join(str(p.type) for p in fi.params)}) -> {fi.return_type} "
+                        f"does not match {expected} in {context}",
+                        loc,
+                    )
 
         # Inheritance: Child -> Parent (implicit value upcast, C++ handles slicing/ref binding)
         if (isinstance(actual, NamedType) and actual.is_user_record

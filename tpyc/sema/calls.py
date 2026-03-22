@@ -460,7 +460,7 @@ class CallAnalyzer:
                     # Check for record type with __call__ method
                     if isinstance(binding.type, NamedType):
                         record = self.ctx.registry.get_record_for_type(binding.type)
-                        if record and record.get_method_overloads("__call__"):
+                        if record and self.ctx.registry.get_method_overloads_with_parents(record, "__call__"):
                             return self._analyze_dunder_call(expr)
                     raise self.ctx.error(f"'{expr.func}' is not callable", expr)
                 elif binding.kind == BindingKind.FUNCTION:
