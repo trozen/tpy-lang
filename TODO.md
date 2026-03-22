@@ -8,6 +8,10 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Build improvements: parallel compilation (run independent per-file compile steps concurrently), `--ccache` / `--no-ccache` flag to override auto-detection.
 - CMake integration: generate a `CMakeLists.txt` alongside the C++ output listing all generated source/header files, so tpyc output can be easily included in existing CMake projects.
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
+- drop builtin types, like RangeType
+- move decorators/annotations to lib
+- limit possible imports in macro modules
+- ContextManager[T] protocol
 
 ## Bugs
 
