@@ -646,6 +646,7 @@ class Compiler:
                 self._discover_imports(entry_name, ast, [entry_name])
                 self._discover_implicit_stdlib()
                 self._compute_compile_order()
+                self._propagate_package_directives()
             else:
                 self.compile_order = [entry_name]
 

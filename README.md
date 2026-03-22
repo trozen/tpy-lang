@@ -89,6 +89,15 @@ tpyc --cxx list                  # show available C++ compilers
 tpyc -x -j4 examples/hello.py   # parallel compilation (4 jobs)
 ```
 
+A `sources.cmake` file is generated alongside the C++ output for easy CMake integration:
+```cmake
+include(path/to/__tpyc__/myapp.d/sources.cmake)
+add_executable(myapp ${TPYC_SOURCES})
+target_include_directories(myapp PRIVATE ${TPYC_INCLUDE_DIRS})
+target_link_libraries(myapp PRIVATE ${TPYC_LIBRARIES})
+set_target_properties(myapp PROPERTIES CXX_STANDARD ${TPYC_CXX_STANDARD})
+```
+
 ## Dependencies
 
 - Python 3.12+

@@ -74,6 +74,17 @@ class TestCompilerFromSource:
         with pytest.raises(ValueError, match="Unsupported default int type"):
             Compiler.from_source("x = 1\n", default_int="Int128")
 
+    def test_native_module_propagation(self):
+        """builtins._list inherits native_module from builtins/__init__."""
+        lib_dir = get_lib_dir() / "tpy"
+        compiler = Compiler.from_source("x = [1]\n", lib_dirs=[lib_dir])
+        compiler.compile()
+        mod = compiler.modules.get("builtins._list")
+        if mod is not None:
+            assert mod.ast.directives.native_module
+            _, cpp = compiler.generate_code_to_strings(mod)
+            assert cpp == ""
+
 
 class TestCodegenRegression:
     def test_generic_ctor_invalid_arg_rejected(self, tmp_path):
