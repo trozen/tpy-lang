@@ -2729,7 +2729,7 @@ class StatementGenerator:
 
         # Handle protocol-typed iterables (Iterator[T], Iterable[T])
         if is_protocol_type(resolved_type) and resolved_type.qualified_name() in ("typing.Iterator", "typing.Iterable"):
-            elem_type = sema_elem or resolved_type.type_args[0]
+            elem_type = sema_elem
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
             if resolved_type.qualified_name() == "typing.Iterator":
                 self._gen_direct_next_loop(out, stmt, indent, iterable, elem_type,
@@ -2743,7 +2743,7 @@ class StatementGenerator:
 
         # Handle ReadOnlySpanLike[T] protocol-typed iterables (uses ::tpy::as_span)
         if is_protocol_type(resolved_type) and resolved_type.qualified_name() == "tpy.ReadOnlySpanLike":
-            elem_type = sema_elem or resolved_type.type_args[0]
+            elem_type = sema_elem
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
             self._gen_captured_call_loop(out, stmt, indent, iterable, elem_type,
                                          lambda src: f"::tpy::as_span({src})")
@@ -2751,7 +2751,7 @@ class StatementGenerator:
 
         # Optimize range() calls to C-style counter loops
         if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func == "range":
-            elem_type = sema_elem or iterable_type.get_element_type()
+            elem_type = sema_elem
             if elem_type and self._gen_range_counter_loop(out, stmt, indent, elem_type):
                 return
             # Counter optimization didn't apply; fall back to Range<T> begin/end
@@ -2774,7 +2774,7 @@ class StatementGenerator:
         iter_info = get_iter_info(iterable_type, registry=self.ctx.analyzer.registry)
         if iter_info is not None and iterable_type.get_iteration_element_type() is None:
             iterable = self.expressions.gen_expr_deref(stmt.iterable)
-            elem_type = sema_elem or iter_info.element_type
+            elem_type = sema_elem
             if iter_info.iter_is_native:
                 # NativeIterable iterator (e.g. SpanIter) -- call __iter__() and iterate directly
                 self._gen_captured_call_loop(out, stmt, indent, iterable, elem_type,
@@ -2793,36 +2793,12 @@ class StatementGenerator:
         if isinstance(stmt.iterable, TpyStrLiteral):
             iterable = f"std::string_view({iterable})"
 
-        # Determine element type
-        if sema_elem is not None:
-            elem_type = sema_elem
-        elif is_protocol_type(iterable_type):
-            if iterable_type.qualified_name() == "tpy.NativeIterable" and iterable_type.type_args:
-                elem_type = iterable_type.type_args[0]
-            else:
-                elem_type = None
-        else:
-            elem_type = iterable_type.get_iteration_element_type()
+        # Element type is always resolved by sema (stmt.elem_type)
+        assert sema_elem is not None, "sema should always resolve for-loop element type"
+        elem_type = sema_elem
 
         # Resolve IntLiteralType to configured default integer type.
         if isinstance(elem_type, IntLiteralType):
             elem_type = self.ctx.analyzer.ctx.default_int_type
 
-        if elem_type:
-            self._gen_begin_end_loop(out, stmt, indent, iterable, elem_type)
-        else:
-            # Fallback: use auto with begin/end
-            n = self.ctx.iter_counter
-            self.ctx.iter_counter += 1
-            obj_name = f"__obj_{n}"
-            beg_name = f"__beg_{n}"
-            end_name = f"__end_{n}"
-            obj_binding = "auto&" if self._is_lvalue_iterable(stmt.iterable) else "auto"
-            self.ctx.temps.flush(out, indent)
-            cpp_var = escape_cpp_name(stmt.var)
-            out.write(f"{indent}{obj_binding} {obj_name} = {iterable};\n")
-            out.write(f"{indent}auto {beg_name} = {obj_name}.begin();\n")
-            out.write(f"{indent}auto {end_name} = {obj_name}.end();\n")
-            out.write(f"{indent}for (; {beg_name} != {end_name}; ++{beg_name}) {{\n")
-            out.write(f"{indent}{INDENT}auto {cpp_var} = *{beg_name};\n")
-            self._gen_loop_body(out, stmt, indent, elem_type)
+        self._gen_begin_end_loop(out, stmt, indent, iterable, elem_type)
