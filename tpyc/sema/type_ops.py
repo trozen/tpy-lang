@@ -765,7 +765,12 @@ class TypeOperations:
                 if arg is not None:  # None = _ wildcard, skip
                     inferred[tp] = arg
         for (pname, ptype), arg_type in zip(func.params, arg_types):
-            if not self.match_type_with_inference(ptype, arg_type, inferred):
+            # @value_ptr_coercion: Ptr[T] params accept T values, so match
+            # the arg against the pointee type for inference purposes.
+            match_type = ptype
+            if func.value_ptr_coercion and isinstance(ptype, PtrType):
+                match_type = ptype.pointee
+            if not self.match_type_with_inference(match_type, arg_type, inferred):
                 return None
 
         # Fallback: infer remaining params from expected return type
@@ -957,6 +962,7 @@ class TypeOperations:
             native_function=method.native_function,
             native_preserves_refs=method.native_preserves_refs,
             cpp_template=method.cpp_template,
+            value_ptr_coercion=method.value_ptr_coercion,
             error_return_type=method.error_return_type,
             qualified_name=method.qualified_name,
             # Preserve analysis-derived facts -- indices are positional (unaffected by

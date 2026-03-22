@@ -328,6 +328,7 @@ _DECORATOR_ARG_SCHEMAS: dict[str, _DecoratorArgSchema] = {
     "tpy.extern.native_c":    _DecoratorArgSchema(pos_type=str),
     "tpy.extern.extern_c":    _DecoratorArgSchema(pos_type=str),
     # Required positional
+    "tpy.extern.value_ptr_coercion": _DecoratorArgSchema(),
     "tpy.extern.cpp_template": _DecoratorArgSchema(pos_type=str, pos_required=True),
     "tpy.extern.builtin_type": _DecoratorArgSchema(pos_type=str, pos_required=True),
     "tpy.error_return":       _DecoratorArgSchema(pos_type=_NameArg, pos_required=True),
@@ -1604,6 +1605,7 @@ class Parser:
         readonly_opt_out = False
         is_pure = False
         is_overload_stub = False
+        value_ptr_coercion = False
         error_return: str | None = None
         linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
@@ -1623,6 +1625,8 @@ class Parser:
                 is_overload_stub = True
             elif qname == "tpy.error_return":
                 error_return = pos.name
+            elif qname == "tpy.extern.value_ptr_coercion":
+                value_ptr_coercion = True
             elif qname == "tpy.extern.cpp_template":
                 cpp_template = pos
             elif qname in self._FUNCTION_LINKAGE_MAP:
@@ -1734,6 +1738,7 @@ class Parser:
             native_name=native_name,
             cpp_template=cpp_template,
             is_stub=is_overload_stub_body if is_overload_stub else is_stub,
+            value_ptr_coercion=value_ptr_coercion,
             type_params=type_params,
             type_param_bounds=type_param_bounds,
             defaults=defaults,

@@ -203,15 +203,6 @@ def init_module() -> BuiltinModule:
         "__lt__": [MethodDef(params=[ParamDef("other", FLOAT32)], returns=BOOL, cpp="{self} < {0}", is_readonly=True, is_pure=True)],
     }, extends=["Comparable", "Equatable"])
 
-    # take_ptr(x) - take address of a mutable lvalue, returns Ptr[T]
-    module.function("take_ptr", overloads=[
-        MethodDef(
-            params=[ParamDef("x", T, requires_mutable_lvalue=True)],
-            returns=PtrType(T),
-            cpp="&{0}",
-        ),
-    ])
-
     # String: Explicit owned string type (std::string)
     module.register_type(STRING, cpp_type="std::string",
         extends=["NativeIterable[Char]", "Iterable[Char]", "Equatable"],

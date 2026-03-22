@@ -938,8 +938,10 @@ class TypeCompatibility:
                     return False  # Ptr[T]() -> nullptr, always safe
                 return self.is_dangling_return(expr.args[0])
 
-            # take_ptr(x): dangling depends on x
-            if expr.func == "take_ptr" and expr.args:
+            # @value_ptr_coercion functions (e.g. take_ptr): result borrows
+            # from the arg value, so dangling depends on the arg.
+            fi = expr.resolved_function_info
+            if fi is not None and fi.value_ptr_coercion and expr.args:
                 return self.is_dangling_return(expr.args[0])
 
             # Generic type constructor creates a temporary

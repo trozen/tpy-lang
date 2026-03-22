@@ -46,6 +46,11 @@ def native_c_global_array(name: str = ""):
     return None
 
 
+def value_ptr_coercion(func):
+    """Enable T -> Ptr[T] coercion at call sites. No-op in CPython."""
+    return func
+
+
 def builtin_type(key: str):
     """Declare a class as a builtin type with the given qualified key. No-op in CPython."""
     def decorator(cls):

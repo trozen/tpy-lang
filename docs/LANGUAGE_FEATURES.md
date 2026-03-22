@@ -2841,6 +2841,12 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   - Heap allocation is permitted (not considered an observable side effect); `@noalloc` is orthogonal
   - Marked on built-in functions (`len`, `repr`, `hash`, `chr`, `ord`, `pow`, `round`, `divmod`, `abs`, `min`, `max`, `range`, `iter`), all `math.*` functions, and all readonly methods on builtin types
   - Supported on user functions and methods via `from tpy import pure`
+- **Working**: `@value_ptr_coercion` (`from tpy.extern import value_ptr_coercion`) -- enables `T -> Ptr[T]` call-site coercion for any type on `Ptr[T]` parameters. The compiler inserts address-of (`&`) automatically and enforces mutable lvalue. Used to define `take_ptr` in the stdlib:
+  ```python
+  @value_ptr_coercion
+  @cpp_template("{0}")
+  def take_ptr[T](p: Ptr[T]) -> Ptr[T]: ...
+  ```
 - **Open**: Custom decorators → compile-time transforms
 
 ### Type Polymorphism

@@ -1263,6 +1263,7 @@ class TypeRegistrar:
             linkage=fi_linkage,
             native_name=func.native_name,
             cpp_template=func.cpp_template,
+            value_ptr_coercion=func.value_ptr_coercion,
             type_params=func.type_params,
             type_param_bounds=type_param_bounds,
             error_return_type=(qualify_exception_name(func.error_return, self.ctx.registry)

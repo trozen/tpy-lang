@@ -2,7 +2,7 @@
 # tpy: cpp_namespace("tpystd::tpy")
 from typing import overload, Protocol, Iterator, Iterable, Self
 from tpy import UInt64, Int32, Own, Span, Ptr, readonly, pure, nocopy
-from tpy.extern import native, cpp_template, builtin_type
+from tpy.extern import native, cpp_template, builtin_type, value_ptr_coercion
 
 
 # --- Structural protocols (concept generated from method signatures) ---
@@ -198,6 +198,10 @@ def span[T](x: ReadOnlySpanLike[T]) -> Span[readonly[T]]: ...
 @readonly
 @native("tpy::deref_check")
 def deref[T](x: Deref[T]) -> T: ...
+
+@value_ptr_coercion
+@cpp_template("{0}")
+def take_ptr[T](p: Ptr[T]) -> Ptr[T]: ...
 
 @cpp_template("{T}{{}}")
 def make_default[T: Default]() -> Own[T]: ...

@@ -884,6 +884,7 @@ class TpyFunction:
     native_preserves_refs: bool = False
     cpp_template: str | None = None
     is_stub: bool = False
+    value_ptr_coercion: bool = False
     type_params: list[str] = field(default_factory=list)
     type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
     defaults: list['TpyExpr | None'] = field(default_factory=list)  # len == len(params); None = no default

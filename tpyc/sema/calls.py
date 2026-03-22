@@ -24,12 +24,12 @@ from ..typesys import (
 from ..parse import (
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyNoneLiteral, TpyUnaryOp,
-    TpyTypeParamConstruct,
+    TpyTypeParamConstruct, TpyCoerce,
     TpyDictLiteral, TpySetLiteral,
 )
 from ..modules import extract_type_params
 from ..namespace import BindingKind
-from ..coercions import CoercionContext
+from ..coercions import CoercionContext, VALUE_TO_PTR
 from .context import PENDING_CONTAINER_TYPES, addr_taken_roots
 from .diagnostics import SemanticError
 from .overloads import type_matches_numeric, resolve_overload
@@ -529,6 +529,8 @@ class CallAnalyzer:
                     if overloads := self._get_module_function_overloads(module_name, func_name):
                         if overloads[0].special_handling:
                             return self._analyze_special_builtin(expr, overloads)
+                        if overloads[0].value_ptr_coercion:
+                            return self._analyze_user_function_call(expr, overloads)
                         return self._analyze_builtin_function_overloads(expr, overloads)
                     # Check for type constructor (e.g., Int32 from tpy, int from builtins)
                     qname = f"{module_name}.{func_name}"
@@ -1904,6 +1906,13 @@ class CallAnalyzer:
 
     def _analyze_generic_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
         """Analyze a call to a generic function."""
+        # Skip re-analysis: when a call appears as an arg to an outer call,
+        # analyze_expr is called again. Args are already wrapped in coercions
+        # from the first analysis, so re-processing would corrupt them.
+        cached = self.ctx.get_expr_type(expr)
+        if cached is not None:
+            return cached
+
         # Check for invalid type arguments (e.g., first[123](x) or first[var](x))
         if expr.type_args_parse_error:
             raise self.ctx.error(expr.type_args_parse_error, expr)
@@ -1988,11 +1997,17 @@ class CallAnalyzer:
         expr.resolved_function_info = resolved_func
         for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
             resolved_ptype = self.type_ops.substitute_type_params(ptype, type_subst)
-            arg_type = self.expr.analyze_expr_with_hint(arg, resolved_ptype)
+
+            # @value_ptr_coercion: Ptr[T] params accept T values via address-of coercion.
+            # Type-check against the pointee type, then wrap in VALUE_TO_PTR coercion.
+            vpc_active = func.value_ptr_coercion and isinstance(resolved_ptype, PtrType)
+            check_ptype = resolved_ptype.pointee if vpc_active else resolved_ptype
+
+            arg_type = self.expr.analyze_expr_with_hint(arg, check_ptype)
             arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
 
             # Check for Own[T] passed directly to object type parameter
-            if isinstance(arg_type, OwnType) and not isinstance(resolved_ptype, OwnType) and not resolved_ptype.is_value_type():
+            if isinstance(arg_type, OwnType) and not isinstance(check_ptype, OwnType) and not check_ptype.is_value_type():
                 if isinstance(arg, TpyName):
                     hint = f"Declare the variable as '{arg_type.wrapped}' instead of 'Own[{arg_type.wrapped}]'"
                 else:
@@ -2003,14 +2018,38 @@ class CallAnalyzer:
                     arg
                 )
 
-            self.check_own_param(arg, arg_type, pname, resolved_ptype)
+            self.check_own_param(arg, arg_type, pname, check_ptype)
 
             # Special case: single-char string literal can be passed as Char
-            if not (isinstance(resolved_ptype, CharType) and is_any_str_type(arg_type) and
+            if not (isinstance(check_ptype, CharType) and is_any_str_type(arg_type) and
                     isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
-                coerced_arg = self.compat.coerce_expr(arg, arg_type, resolved_ptype, f"argument '{pname}'",
+                coerced_arg = self.compat.coerce_expr(arg, arg_type, check_ptype, f"argument '{pname}'",
                                                        coercion_ctx=CoercionContext.ARG)
                 expr.args[i] = coerced_arg
+
+            if vpc_active:
+                # Mutable lvalue check (can't take address of temporaries or readonly)
+                source = expr.args[i]
+                if not self.compat.is_mutable_lvalue(source):
+                    raise self.ctx.error(
+                        f"argument '{pname}' must be a mutable lvalue", expr)
+                for name in addr_taken_roots(source):
+                    root = self.ctx.borrow_tracker.effective_storage(name)
+                    self.ctx.mark_param_mutated(root)
+                    self.ctx.mark_loop_var_mutated(root)
+                # Wrap in address-of coercion
+                inner_type = self.ctx.get_expr_type(source)
+                vpc_node = TpyCoerce(
+                    expr=source,
+                    actual_type=inner_type,
+                    expected_type=resolved_ptype,
+                    coercion=VALUE_TO_PTR,
+                    context_kind=CoercionContext.ARG,
+                    context_msg=f"argument '{pname}'",
+                    loc=arg.loc,
+                )
+                self.ctx.set_expr_type(vpc_node, resolved_ptype)
+                expr.args[i] = vpc_node
 
             # Track parameter context for container/str inference
             if isinstance(arg_type, PENDING_CONTAINER_TYPES):

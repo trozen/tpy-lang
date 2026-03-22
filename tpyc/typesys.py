@@ -2759,6 +2759,7 @@ class FunctionInfo:
     type_param_bounds: dict[str, 'NamedType'] = field(default_factory=dict)
     type_param_defaults: dict[str, str] = field(default_factory=dict)  # e.g. {"T": "DEFAULT_INT"}
     cpp_template: Optional[str] = None  # For builtins: "{self}.push_back({0})"
+    value_ptr_coercion: bool = False  # @value_ptr_coercion: Ptr[T] params accept T values
     is_builtin_function: bool = False  # True for global builtins (len, chr, etc.)
     special_handling: bool = False  # True if sema/codegen handle specially
     error_return_type: Optional[str] = None  # @error_return(E) exception type name

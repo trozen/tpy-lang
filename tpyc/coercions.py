@@ -378,6 +378,18 @@ DEREF_COERCION = Coercion(
     codegen=_deref_codegen,
 )
 
+# @value_ptr_coercion: T -> Ptr[T] coercion for any type (not in COERCIONS list).
+# Applied explicitly by calls.py for functions with @value_ptr_coercion.
+VALUE_TO_PTR = Coercion(
+    name="value_to_ptr",
+    from_type=TpyType,
+    to_type=PtrType,
+    requires_lvalue=True,
+    requires_mutable_lvalue=True,
+    forbid_return_local=True,
+    codegen=lambda e, _a, _b, _c: f"&{e}",
+)
+
 # Pre-built coercions for inheritance-based upcasts (not in COERCIONS list --
 # requires TypeRegistry access that type_match lambdas don't have).
 # Used directly by compatibility.py.
