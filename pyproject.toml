@@ -31,6 +31,8 @@ extraPaths = ["lib/cpy"]
 
 [tool.pytest.ini_options]
 addopts = "-n auto"
+testpaths = ["tests", "tpyc"]
+norecursedirs = ["tests/cases", "__tpyc__"]
 
 [dependency-groups]
 dev = [

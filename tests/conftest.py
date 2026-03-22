@@ -2,6 +2,7 @@
 
 import dataclasses
 import difflib
+import functools
 import json
 import os
 import re
@@ -808,8 +809,15 @@ def _filter_lib_traceback(stderr: str) -> str:
 
 
 
+_SKIP_DIRS = {"__tpyc__", "expected", "__pycache__"}
+
+
 def _discover_from_dirs(base_dirs: list[Path]):
     """Discover test cases from the given directories.
+
+    Walks recursively looking for ``src/`` directories that contain ``.py``
+    files, but skips build artifact trees (__tpyc__, expected, __pycache__)
+    to avoid scanning thousands of irrelevant directories.
 
     Returns list of (name, case_dir, main_src) tuples.
     """
@@ -821,11 +829,17 @@ def _discover_from_dirs(base_dirs: list[Path]):
 
         prefix = base_dir.name
 
-        for src_dir in base_dir.rglob("src"):
-            if not src_dir.is_dir():
+        for dirpath, dirnames, _filenames in os.walk(base_dir):
+            dirnames[:] = [
+                d for d in dirnames if d not in _SKIP_DIRS
+            ]
+
+            cur = Path(dirpath)
+            if cur.name != "src":
                 continue
-            case_dir = src_dir.parent
-            src_files = list(src_dir.glob("*.py"))
+
+            case_dir = cur.parent
+            src_files = list(cur.glob("*.py"))
             if not src_files:
                 continue
 
@@ -845,10 +859,12 @@ def _discover_from_dirs(base_dirs: list[Path]):
     return cases
 
 
+@functools.cache
 def discover_cases():
     """Discover all test cases from cases/ directory.
 
     Returns list of (name, case_dir, main_src) tuples.
+    Cached because multiple test files call this during parametrization.
     """
     return _discover_from_dirs([CASES_DIR])
 
@@ -860,6 +876,6 @@ def discover_success_cases():
     """
     return [
         (name, case_dir, main_src)
-        for name, case_dir, main_src in _discover_from_dirs([CASES_DIR])
+        for name, case_dir, main_src in discover_cases()
         if not case_dir.name.startswith(("error_", "panic_"))
     ]
