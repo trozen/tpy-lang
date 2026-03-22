@@ -389,6 +389,9 @@ class RecordGenerator:
         # Generate size() from __len__ for STL compatibility
         self._gen_size_method(out, record)
 
+        # Generate operator() from __call__ (callable objects)
+        self._gen_call_operator(out, record)
+
         # Generate unary operators from dunder methods
         self._gen_unary_operators(out, record)
 
@@ -887,6 +890,25 @@ class RecordGenerator:
             # Using friend function allows symmetric operand handling
             out.write(f"\n{INDENT}friend {ret_cpp} operator{cpp_op}(const {escape_cpp_name(record.name)}& lhs, {param_cpp}) {{\n")
             out.write(f"{INDENT}{INDENT}return lhs.{method.name}({param_name});\n")
+            out.write(f"{INDENT}}}\n")
+
+    def _gen_call_operator(self, out: TextIO, record: TpyRecord) -> None:
+        """Generate operator() delegating to __call__ (callable objects).
+
+        Enables obj(args) syntax and std::invocable concept conformance.
+        """
+        for method in record.methods:
+            if method.name != "__call__":
+                continue
+            ret_cpp = method.return_type.to_cpp()
+            const_suffix = " const" if method.is_readonly else ""
+            params_cpp = ", ".join(
+                p_type.to_cpp_const_param(p_name)
+                for p_name, p_type in method.params
+            )
+            arg_names = ", ".join(p_name for p_name, _ in method.params)
+            out.write(f"\n{INDENT}{ret_cpp} operator()({params_cpp}){const_suffix} {{\n")
+            out.write(f"{INDENT}{INDENT}return __call__({arg_names});\n")
             out.write(f"{INDENT}}}\n")
 
     def _gen_deref_operators(self, out: TextIO, record: TpyRecord) -> None:

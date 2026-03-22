@@ -193,6 +193,7 @@ class TpyCall(TpyExpr):
     isinstance_type: TpyType | None = None   # Set by sema: resolved type being checked for
     isinstance_is_protocol: bool = False     # Set by sema: protocol isinstance (if constexpr)
     macro_expansion: 'TpyExpr | None' = None  # Set by sema: replacement expr from @call_macro
+    dunder_call: 'TpyMethodCall | None' = None  # Set by sema: obj(args) -> obj.__call__(args)
 
     def children(self) -> list[TpyExpr]:
         if self.macro_expansion is not None:

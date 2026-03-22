@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     from .compatibility import TypeCompatibility
     from .local_deduction import LocalTypeDeduction
     from .expressions import ExpressionAnalyzer
+    from .methods import MethodAnalyzer
     from ..parse.nodes import SourceLocation
 
 from tpyc import modules as builtin_modules
@@ -280,12 +281,14 @@ class CallAnalyzer:
         self.deduction = deduction
         # Set via set_cross_deps() to break circular dependency
         self.expr: ExpressionAnalyzer | None = None
+        self.methods: MethodAnalyzer | None = None
         # Pending borrow checks deferred until Phase 2 resolves mutated_params
         self.pending_borrow_checks: list[tuple[FunctionInfo, int, str, SourceLocation | None]] = []
 
-    def set_cross_deps(self, expr: ExpressionAnalyzer) -> None:
+    def set_cross_deps(self, expr: ExpressionAnalyzer, methods: MethodAnalyzer | None = None) -> None:
         """Wire circular dependencies (must be called before analyze_call)."""
         self.expr = expr
+        self.methods = methods
 
     def _restore_readonly_arg(self, arg: TpyExpr, arg_type: TpyType,
                               target_is_readonly: bool = False) -> TpyType:
@@ -454,6 +457,11 @@ class CallAnalyzer:
                         return self._analyze_fn_type_call(expr, binding.type)
                     if isinstance(binding.type, CallableType):
                         return self._analyze_callable_type_call(expr, binding.type)
+                    # Check for record type with __call__ method
+                    if isinstance(binding.type, NamedType):
+                        record = self.ctx.registry.get_record_for_type(binding.type)
+                        if record and record.get_method_overloads("__call__"):
+                            return self._analyze_dunder_call(expr)
                     raise self.ctx.error(f"'{expr.func}' is not callable", expr)
                 elif binding.kind == BindingKind.FUNCTION:
                     # Builtin-supplemented functions route through builtin path
@@ -2350,6 +2358,23 @@ class CallAnalyzer:
         self._check_loop_var_arg_mutation(expr)
         self._record_mutation_call_edges(expr)
         return func.return_type
+
+    def _analyze_dunder_call(self, expr: TpyCall) -> TpyType:
+        """Analyze obj(args) where obj has a __call__ method.
+
+        Creates a synthetic TpyMethodCall and delegates to method analysis.
+        """
+        synthetic = TpyMethodCall(
+            obj=TpyName(expr.func, loc=expr.loc),
+            method="__call__",
+            args=expr.args,
+            kwargs=expr.kwargs,
+            loc=expr.loc,
+        )
+        ret_type = self.methods.analyze_method_call(synthetic)
+        expr.dunder_call = synthetic
+        expr.resolved_function_info = synthetic.resolved_function_info
+        return ret_type
 
     def _analyze_fn_type_call(self, expr: TpyCall, fn_type: FnType) -> TpyType:
         """Analyze a call to a variable of Fn type."""

@@ -255,6 +255,13 @@ apply(Doubler(), 5)  # works -- Doubler has matching __call__
 In C++, the concept constraint (`std::invocable` / custom `requires`) already
 accepts any callable object, including structs with `operator()`.
 
+**Status**: Callable classes (`__call__` -> `operator()`) are implemented.
+Direct `obj(args)` invocation, `@readonly`, mutable state, and recursive
+`self(args)` all work. Passing callable objects to `Fn`/`Callable` parameters
+(Phase 2) is planned -- the C++ side already works (template deduction accepts
+`operator()`), but sema doesn't yet check `__call__` signature compatibility
+with Fn/Callable hints.
+
 ### Implicit `Fn` -> `Callable` Coercion
 
 A value accepted as `Fn` can be passed to a `Callable` parameter or stored in

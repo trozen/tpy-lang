@@ -3758,6 +3758,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `__del__` -- maps to C++ destructor `~ClassName()`. Parent destructors are called automatically after child body (no `super().__del__()` needed). If `super().__del__()` is written (Python style), it must be the last statement and is silently dropped in codegen. A warning is emitted when parent has `__del__` but child omits the call, since C++ always calls parent dtors automatically while Python requires an explicit call. Non-virtual; virtual dispatch is a separate feature. Classes with `__del__` get a hidden `__tpy_owned_` drop flag and custom move constructor/assignment to prevent double-drop after move -- the moved-from object's destructor skips its body.
 - **Working**: `__str__` -> `str(obj)`, `print(obj)`, `f"{obj}"` (via `Stringable` protocol / `tpy::__str__`)
 - **Working**: `__repr__` -> `repr(obj)`, `f"{obj!r}"` (via `Representable` protocol / `tpy::__repr__`)
+- **Working**: `__call__` → C++ `operator()` (callable objects). Classes with `__call__` can be invoked with `obj(args)` syntax. Supports `@readonly`, mutable state, and recursive `self(args)` calls. Phase 2 (passing callable objects to `Fn`/`Callable` params) is planned.
 - **Open**: `__setitem__` -> mutable `operator[]`
 - **Open**: `__enter__`, `__exit__` -> RAII wrapper
 
@@ -4633,6 +4634,17 @@ Send/Sync rules for built-in types:
       for item in items:
           accumulate(item)
       return total
+  ```
+- **Working**: Callable classes (`__call__`) -- classes with `__call__` method compile to C++ structs with `operator()`. Instances can be called with `obj(args)` syntax. Supports `@readonly`, mutable state (counter/accumulator patterns), and recursive `self(args)`. **Phase 2 planned**: passing callable objects to `Fn`/`Callable` parameters.
+  ```python
+  class Adder:
+      offset: Int32
+      def __init__(self, offset: Int32):
+          self.offset = offset
+      def __call__(self, x: Int32) -> Int32:
+          return x + self.offset
+  a = Adder(10)
+  print(a(5))  # 15
   ```
 - **Open**: Generator functions (`yield`) -- manual state machine transformation
 - See `docs/CLOSURES_CALLABLE_DESIGN.md` for full design and phasing.

@@ -1315,6 +1315,9 @@ class ExpressionGenerator:
 
     def _gen_call(self, expr: TpyCall) -> str:
         """Generate function call code."""
+        # __call__ dispatch: delegate to method call codegen
+        if expr.dunder_call is not None:
+            return self._gen_method_call(expr.dunder_call)
         # isinstance(x, Protocol) -> Concept<T_x>  (compile-time)
         if expr.isinstance_var is not None and expr.isinstance_is_protocol and expr.isinstance_type is not None:
             var_name = expr.isinstance_var

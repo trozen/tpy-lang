@@ -200,7 +200,7 @@ class SemanticAnalyzer:
 
         # Layer 4: Wire circular refs via explicit setters
         self.expr.set_cross_deps(self.calls, self.methods, self.stmts.scopes)
-        self.calls.set_cross_deps(self.expr)
+        self.calls.set_cross_deps(self.expr, self.methods)
         self.methods.set_cross_deps(self.expr, self.calls)
         self.stmts.set_cross_deps(self.expr)
         self.compat.set_methods(self.methods)
