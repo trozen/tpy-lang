@@ -25,9 +25,8 @@ Full diff vs master: !`git diff master --stat 2>/dev/null || echo "(none)"`
    - Add a body explaining what and why
    - Do NOT include Co-Authored-By or references to Claude/LLM
 4. Derive a branch name from the commit message (e.g. "sema: fix readonly deref" -> "fix-readonly-deref"). Keep it short.
-5. Show the draft branch name and commit message. Ask the user to confirm or edit.
-6. Create the new branch from master, apply the squashed diff, commit with current date.
-7. Show the final state: branch name, commit hash, diff stat.
+5. Create the new branch from master, apply the squashed diff, commit with current date.
+6. Show the final state: branch name, commit hash, diff stat.
 
 ## Important
 
