@@ -12,12 +12,41 @@ A proof-of-concept compiler (tpyc) that translates Python to C++.
 6. **Tooling-friendly** — Source files are valid Python, so existing IDEs, linters, type checkers, and LLMs work without special plugins.
 7. **Thread safety** — Unlike CPython (GIL), TurboPython targets multi-threaded, high-performance environments. The compiler should be thread-safe by default where possible without sacrificing performance, and give the user explicit control where trade-offs exist.
 
-## Dependencies
+## Example
 
-- Python 3.12+
-- A C++23 compiler: g++ 14+, clang++ 18+, or zig (auto-detected)
+```python
+# Regular Python -- also valid TurboPython
+def fib(n: int) -> int:
+    if n <= 1:
+        return n
+    return fib(n - 1) + fib(n - 2)
 
-No external C/C++ libraries are required by the runtime.
+for i in range(40):
+    print(fib(i))
+```
+
+```bash
+$ tpyc -xO fib.py        # compile to C++ and run (optimized)
+$ tpyc --dump-code fib.py # inspect generated C++
+```
+
+For performance-sensitive code, opt into fixed-width types:
+
+```python
+from tpy import Int32
+
+class Point:
+    x: Int32
+    y: Int32
+    def __init__(self, x: Int32, y: Int32) -> None:
+        self.x = x
+        self.y = y
+
+def manhattan(a: Point, b: Point) -> Int32:
+    return abs(a.x - b.x) + abs(a.y - b.y)
+```
+
+Source files are valid Python -- your IDE, linter, and type checker work as-is.
 
 ## Installation
 
@@ -33,24 +62,20 @@ uv run tpyc -x examples/hello.py
 ### For use
 
 ```bash
-# If you have g++ or clang++ installed:
-pip install git+https://github.com/trozen/tpy-poc.git
-
-# If you don't have a C++ compiler (bundles zig):
-pip install "tpy-poc[bundled] @ git+https://github.com/trozen/tpy-poc.git"
-
-# From a local clone:
-pip install /path/to/tpy-poc
-pip install "/path/to/tpy-poc[bundled]"
+git clone https://github.com/trozen/tpy-poc.git && cd tpy-poc
+uv tool install .
+uv tool install ".[bundled]"   # bundles zig as C++ compiler
 ```
 
-The `tpyc` command is available directly after pip install:
+Or with pip: `pip install .` / `pip install ".[bundled]"`
+
+The `tpyc` command is then available globally:
 
 ```bash
-tpyc -x hello.py
+tpyc -c "print(1 + 2)"
 ```
 
-The compiler auto-detects `CXX` env var > g++ > clang++ > zig c++.
+Use `tpyc --cxx list` to see available C++ compilers.
 
 ## Quick Start
 
@@ -59,45 +84,18 @@ tpyc -c "print(1 + 2)"          # run inline code
 tpyc -x examples/hello.py       # compile and run a file
 tpyc -xO examples/hello.py      # release build (optimized)
 tpyc -i                          # interactive REPL
+tpyc --dump-code file.py         # inspect generated C++
+tpyc --cxx list                  # show available C++ compilers
 ```
 
-## CLI Reference
+## Dependencies
 
-```
-tpyc [options] <file.py>
+- Python 3.12+
+- A C++23 compiler: g++ 14+, clang++ 18+, or zig (auto-detected)
 
-Options:
-  -c CMD            Run CMD as inline TurboPython code
-  -x, --exec        Build and run the program
-  -b, --build       Compile C++ to binary
-  -O, --release     Build with optimizations (default: debug)
-  -i, --repl        Start interactive REPL
-  -o <dir>          Output directory (default: __tpyc__/ next to source)
-  --dump-code       Print generated C++ to stdout (no build)
-  --print-types     Print built-in type documentation (pipe to `glow -p` for formatting)
-  --default-int     Default type for unannotated integer literals: Int32|Int64|BigInt (default: Int32)
-  --emit-source     Embed Python source lines as comments in generated C++
-  -L <path>         Extra library search path (can be repeated)
-  --cxx <name>      C++ compiler: auto|list|gcc|gcc-14|clang|clang-18|zig|... (default: auto)
-  --no-stdlib       Disable standard library
-  -v                Verbose output
-  -vv               Show compilation commands
-```
+No external C/C++ libraries are required by the runtime.
 
-Examples:
-
-```bash
-# Performance-first default (same as implicit default)
-uv run tpyc -x --default-int=Int32 examples/hello.py
-
-# CPython-like unbounded integer behavior for unannotated literals
-uv run tpyc -x --default-int=BigInt examples/hello.py
-
-# Extra library search paths
-uv run tpyc -x -L /my/libs examples/main.py
-```
-
-## Testing
+## Development
 
 ```bash
 # Run all tests
@@ -105,22 +103,10 @@ uv run pytest
 
 # Run tests for a specific case
 uv run pytest -k hello
-```
 
-## View library documentation
-
-For pretty printing:
-
-```
+# View built-in type documentation
 uv run tpyc --print-types | glow -p
 ```
 
-## Manual Build
-
-If you need to compile the generated C++ manually:
-
-```bash
-uv run tpyc examples/hello.py -o out/
-g++ -std=c++23 -I runtime/cpp/include -o out/hello.d/hello out/hello.d/src/hello.cpp
-./out/hello.d/hello
-```
+See `CLAUDE.md` for architecture, test structure, and development guidelines.
+See `docs/LANGUAGE_FEATURES.md` for comprehensive language documentation.

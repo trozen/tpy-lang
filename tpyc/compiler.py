@@ -93,17 +93,24 @@ def _find_best_versioned(prefix: str) -> str | None:
 
 def _find_zig() -> str | None:
     """Find the zig binary on PATH or inside the ziglang PyPI package."""
-    path = shutil.which("zig")
-    if path:
-        return path
+    system, bundled = _find_all_zig()
+    return system or bundled
+
+
+def _find_all_zig() -> tuple[str | None, str | None]:
+    """Find system and bundled zig binaries. Returns (system_path, bundled_path)."""
+    system = shutil.which("zig")
+    bundled = None
     try:
         import ziglang
         candidate = os.path.join(os.path.dirname(ziglang.__file__), "zig")
         if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
-            return candidate
+            # Don't count system zig as bundled
+            if candidate != system:
+                bundled = candidate
     except ImportError:
         pass
-    return None
+    return system, bundled
 
 
 def _resolve_compiler(cxx: str) -> list[str] | None:
@@ -133,6 +140,9 @@ def _resolve_compiler(cxx: str) -> list[str] | None:
     if cxx == "zig":
         zig = _find_zig()
         return [zig, "c++"] if zig else None
+    if cxx == "zig-bundled":
+        _, bundled = _find_all_zig()
+        return [bundled, "c++"] if bundled else None
 
     # clang-repl is a REPL JIT backend, not a batch compiler
     if cxx == "clang-repl" or cxx.startswith("clang-repl-"):
@@ -218,23 +228,29 @@ def list_compilers() -> None:
             aliases = [name]
         entries.append((name, path, aliases, "REPL JIT"))
 
-    zig = _find_zig()
-    if zig:
-        entries.append(("zig c++", zig, ["zig"], ""))
+    system_zig, bundled_zig = _find_all_zig()
+    if system_zig:
+        entries.append(("zig c++", system_zig, ["zig"], "system"))
+    if bundled_zig:
+        aliases = ["zig", "zig-bundled"] if not system_zig else ["zig-bundled"]
+        entries.append(("zig c++", bundled_zig, aliases, "bundled"))
 
     if not entries:
         print("No C++ compilers found.")
-        print("Install g++, clang++, or: pip install tpy-poc[bundled]")
+        print("Install g++, clang++, or: uv tool install \"tpy-poc[bundled]\"")
         return
 
     name_width = max(len(b) for b, _, _, _ in entries)
     print("Available C++ compilers:")
     for binary, path, aliases, note in entries:
         marker = "*" if binary == auto_display else " "
-        alias_str = ", ".join(aliases)
+        parts = []
+        if aliases:
+            parts.append("--cxx " + ", ".join(aliases))
         if note:
-            alias_str += f"  ({note})"
-        print(f"  {marker} {binary:<{name_width}}  --cxx {alias_str}")
+            parts.append(f"({note})")
+        detail = "  ".join(parts)
+        print(f"  {marker} {binary:<{name_width}}  {detail}")
     print(f"\n  auto selects: {auto_display}")
     print("  A path to any C++ compiler binary is also accepted.")
 
