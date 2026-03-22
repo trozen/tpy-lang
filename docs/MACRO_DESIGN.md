@@ -155,17 +155,115 @@ The `@model` macro inspects fields+types, generates `__init__`, `validate()`,
 `to_json()`, `from_json()`, `__eq__`, `__repr__`. Validation and serialization
 compile to efficient C++ with no runtime reflection.
 
-### 2. Protocol serializers (protobuf, FlatBuffers)
+### 2. Protobuf serialization (`tplib.protobuf`)
+
+Compile-time protobuf code generation via class macros. Messages are defined as
+Python classes with type annotations and `field(N)` descriptors. The macro
+generates `serialize()` and `parse()` methods that compile to efficient C++ with
+no runtime reflection.
+
+**Prior art**: betterproto (dataclass-based, generated from .proto files),
+pure-protobuf (pure Python, `Annotated[T, Field(N)]`), proto-plus (Google wrapper).
+Our API is closest to betterproto's ergonomics but with types from annotations
+and `field(N)` reusing the existing descriptor infrastructure.
+
+#### API
 
 ```python
-from tpy import proto
+from tplib.protobuf import Message, field
 
-@proto.message
-class TradeMessage:
-    id: Int64 = proto.Field(1)
-    symbol: FixStr[8] = proto.Field(2)
-    price: Float64 = proto.Field(3, optional=True)
+class Point(Message):
+    x: Float64 = field(1)
+    y: Float64 = field(2)
+
+class Trade(Message):
+    id: Int64 = field(1)
+    symbol: str = field(2)
+    price: Float64 = field(3)
+    tags: list[str] = field(4)
+    origin: Optional[Point] = field(5)
+
+# Serialize
+buf = t.encode()           # -> bytes / bytearray
+
+# Parse
+t2 = Trade.decode(buf)          # -> Trade
 ```
+
+#### Wire type mapping
+
+TPy types map to protobuf wire types:
+
+| TPy type | Proto wire type | Encoding |
+|----------|----------------|----------|
+| `bool` | varint | 0/1 |
+| `Int32`, `Int64` | varint | signed varint (zigzag) |
+| `UInt32`, `UInt64` | varint | unsigned varint |
+| `Float32` | fixed32 | IEEE 754 single |
+| `Float64` | fixed64 | IEEE 754 double |
+| `str` | length-delimited | UTF-8 bytes |
+| `bytes` | length-delimited | raw bytes |
+| `list[T]` | length-delimited (packed) | repeated, packed for scalars |
+| `Optional[T]` | same as T | presence tracked via field bitmask |
+| `Message` subclass | length-delimited | nested message |
+| `IntEnum` | varint | enum value |
+
+#### What the macro generates
+
+The `Message` class macro:
+- Validates field numbers (unique, positive)
+- Validates field types (must map to a wire type)
+- Generates `__init__` (via `build_init`, same as `@dataclass`)
+- Generates `__eq__` (via `build_eq`)
+- Generates `encode(self) -> bytearray` method (field-by-field serialization)
+- Generates `decode(cls, data: bytes) -> Self` classmethod (field-by-field parsing)
+- Sets `is_dataclass = True` so `asdict`/`astuple` work
+
+#### C++ runtime support
+
+Small runtime in `runtime/cpp/include/tpy/proto.hpp`:
+- `proto::encode_varint(buf, value)` / `proto::decode_varint(data, pos) -> (value, new_pos)`
+- `proto::encode_zigzag(value)` / `proto::decode_zigzag(encoded)`
+- `proto::encode_tag(field_number, wire_type)` / `proto::decode_tag(data, pos)`
+- `proto::encode_length_delimited(buf, bytes)` / `proto::decode_length_delimited(data, pos)`
+- `proto::encode_fixed32/64(buf, value)` / `proto::decode_fixed32/64(data, pos)`
+
+The macro generates method bodies that call these primitives directly -- no
+virtual dispatch, no reflection, no field table lookups at runtime.
+
+#### Implementation phases
+
+1. **Scalar fields**: `Int32`, `Int64`, `UInt32`, `UInt64`, `Float32`, `Float64`,
+   `bool`, `str` -- covers the core wire types
+2. **Nested messages**: `Message` subclass fields, recursive encode/decode
+3. **Repeated fields**: `list[T]` with packed encoding for scalars
+4. **Optional fields**: `Optional[T]` with presence bitmask
+5. **Enums**: `IntEnum` fields as varint
+6. **Maps**: `dict[K, V]` as repeated key-value pair messages (proto3 convention)
+7. **Oneof**: union fields (maps to TPy `A | B` union types)
+
+#### Infrastructure needed
+
+- `add_method_from_source` (Phase 4) or manual AST construction for
+  `encode()`/`decode()` bodies -- these are complex method bodies with loops
+  and conditional logic
+- `bytes` / `bytearray` type support in TPy (or `Span[UInt8]` as the buffer type)
+- C++ runtime header for protobuf encoding primitives
+
+#### Open questions
+
+- **Buffer type**: `bytearray` (Pythonic) vs `Span[UInt8]` (zero-copy, existing
+  TPy type) vs `list[UInt8]` (simple but slow). Probably `bytearray` as the
+  API type, backed by `std::vector<uint8_t>` in C++.
+- **Streaming**: should `encode()` accept an output buffer/writer for zero-copy
+  serialization, or always return a new buffer? Could offer both:
+  `encode() -> bytearray` and `encode_into(buf: Span[UInt8]) -> Int32` (returns
+  bytes written).
+- **Compatibility**: should we support reading proto2 messages (required fields,
+  groups)? Probably proto3-only for simplicity.
+- **`.proto` file import**: future extension via `static_read()` macro -- read
+  and parse `.proto` files at compile time to generate message classes
+  automatically.
 
 ### 3. Zero-alloc logging (call-site macro, Phase 2)
 
