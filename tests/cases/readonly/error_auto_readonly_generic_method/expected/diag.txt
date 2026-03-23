@@ -1,1 +1,1 @@
-main.py:7: error: @auto_readonly on methods with method-level type parameters is not yet supported ('find')
+main.py:7: error: auto_readonly on methods with method-level type parameters is not yet supported ('find')

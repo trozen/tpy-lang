@@ -1,0 +1,1 @@
+main.py:11: error: 'self: auto_readonly[Self]' cannot be combined with the @auto_readonly decorator on method 'get'

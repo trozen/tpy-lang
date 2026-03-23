@@ -1,0 +1,1 @@
+main.py:7: error: auto_readonly[Self] is not allowed on '__init__'

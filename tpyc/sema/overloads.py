@@ -64,33 +64,34 @@ def type_matches_strict(
 
     Used for first-pass overload resolution where no coercions are desired.
     """
-    # Unwrap ReadonlyType -- readonly values can match mutable params
-    # (type compatibility will catch unsafe cases separately)
+    # Unwrap ReadonlyType from both sides -- readonly values can match mutable
+    # params, and mutable values can match readonly params (const promotion).
     arg_inner = unwrap_readonly(arg_type)
-    if arg_inner == param_type:
+    param_inner = unwrap_readonly(param_type)
+    if arg_inner == param_inner:
         return True
     # PendingStrType (unresolved str local) matches str params
-    if isinstance(arg_inner, PendingStrType) and isinstance(param_type, StrType):
+    if isinstance(arg_inner, PendingStrType) and isinstance(param_inner, StrType):
         return True
-    if protocol_checker and is_protocol_type(param_type):
+    if protocol_checker and is_protocol_type(param_inner):
         # Unwrap Own[T] from arg -- copy()-wrapped return values should still match
         # plain protocol params (Own is a caller-side ownership marker, not a new type).
         check_arg = arg_inner.wrapped if isinstance(arg_inner, OwnType) else arg_inner
         # Strip Own[T] wrappers from protocol type args so that e.g.
         # list[Node] matches Iterable[Own[Node]] for protocol conformance.
-        check_param = param_type
-        if (isinstance(param_type, NamedType) and param_type.type_args
-                and any(isinstance(a, OwnType) for a in param_type.type_args)):
-            stripped = tuple(a.wrapped if isinstance(a, OwnType) else a for a in param_type.type_args)
-            check_param = dc_replace(param_type, type_args=stripped)
+        check_param = param_inner
+        if (isinstance(param_inner, NamedType) and param_inner.type_args
+                and any(isinstance(a, OwnType) for a in param_inner.type_args)):
+            stripped = tuple(a.wrapped if isinstance(a, OwnType) else a for a in param_inner.type_args)
+            check_param = dc_replace(param_inner, type_args=stripped)
         return protocol_checker(check_arg, check_param)
     # Non-protocol NamedType with Own[T] in type args: strip Own for overload matching.
     # Applies to any concrete container (e.g. dict[K, Own[V]]) not just DictType.
     # Copy warnings are emitted later by check_type_compatible.
-    if (isinstance(param_type, NamedType) and not is_protocol_type(param_type)
-            and any(isinstance(a, OwnType) for a in param_type.inner_types())):
-        stripped_inner = tuple(a.wrapped if isinstance(a, OwnType) else a for a in param_type.inner_types())
-        stripped_param = param_type.with_inner_types(stripped_inner)
+    if (isinstance(param_inner, NamedType) and not is_protocol_type(param_inner)
+            and any(isinstance(a, OwnType) for a in param_inner.inner_types())):
+        stripped_inner = tuple(a.wrapped if isinstance(a, OwnType) else a for a in param_inner.inner_types())
+        stripped_param = param_inner.with_inner_types(stripped_inner)
         return arg_inner == stripped_param
     return False
 
@@ -145,42 +146,45 @@ def type_matches_with_coercion(
 
     Used for overload resolution second pass and constructor matching.
     """
+    # Unwrap ReadonlyType from both sides -- mutable values match readonly
+    # params (const promotion) and readonly values match mutable params.
     arg_inner = unwrap_readonly(arg_type)
-    if type_matches_numeric(arg_inner, param_type):
+    param_inner = unwrap_readonly(param_type)
+    if type_matches_numeric(arg_inner, param_inner):
         return True
     # PendingStrType matches any string type (str, String, StrView)
-    if isinstance(arg_inner, PendingStrType) and isinstance(param_type, (StrType, StringType, StrViewType)):
+    if isinstance(arg_inner, PendingStrType) and isinstance(param_inner, (StrType, StringType, StrViewType)):
         return True
-    if protocol_checker and is_protocol_type(param_type):
-        return protocol_checker(arg_inner, param_type)
-    if resolve_coercion(arg_inner, param_type, CoercionContext.ARG) is not None:
+    if protocol_checker and is_protocol_type(param_inner):
+        return protocol_checker(arg_inner, param_inner)
+    if resolve_coercion(arg_inner, param_inner, CoercionContext.ARG) is not None:
         return True
     if deref_checker:
         deref_target = deref_checker(arg_inner)
-        if deref_target is not None and deref_target == param_type:
+        if deref_target is not None and deref_target == param_inner:
             return True
     # Inheritance: Child -> Parent (value upcast and pointer coercions)
     if subclass_checker:
         if isinstance(arg_inner, NamedType) and arg_inner.is_user_record:
-            if isinstance(param_type, NamedType) and param_type.is_user_record:
-                if subclass_checker(arg_inner, param_type):
+            if isinstance(param_inner, NamedType) and param_inner.is_user_record:
+                if subclass_checker(arg_inner, param_inner):
                     return True
-            pointee = getattr(param_type, 'pointee', None)
+            pointee = getattr(param_inner, 'pointee', None)
             if isinstance(pointee, NamedType) and pointee.is_user_record:
                 if subclass_checker(arg_inner, pointee):
                     return True
         if isinstance(arg_inner, PtrType) and isinstance(arg_inner.pointee, NamedType):
-            if isinstance(param_type, PtrType) and isinstance(param_type.pointee, NamedType):
+            if isinstance(param_inner, PtrType) and isinstance(param_inner.pointee, NamedType):
                 # Ptr[readonly[T]] cannot coerce to mutable Ptr (would drop const)
-                if not (arg_inner.is_readonly and not param_type.is_readonly):
-                    if subclass_checker(arg_inner.pointee, param_type.pointee):
+                if not (arg_inner.is_readonly and not param_inner.is_readonly):
+                    if subclass_checker(arg_inner.pointee, param_inner.pointee):
                         return True
     # Non-protocol NamedType with Own[T] in type args: strip Own for overload matching.
     # Symmetric with the same block in type_matches_strict.
-    if (isinstance(param_type, NamedType) and not is_protocol_type(param_type)
-            and any(isinstance(a, OwnType) for a in param_type.inner_types())):
-        stripped_inner = tuple(a.wrapped if isinstance(a, OwnType) else a for a in param_type.inner_types())
-        stripped_param = param_type.with_inner_types(stripped_inner)
+    if (isinstance(param_inner, NamedType) and not is_protocol_type(param_inner)
+            and any(isinstance(a, OwnType) for a in param_inner.inner_types())):
+        stripped_inner = tuple(a.wrapped if isinstance(a, OwnType) else a for a in param_inner.inner_types())
+        stripped_param = param_inner.with_inner_types(stripped_inner)
         return arg_inner == stripped_param
     return False
 

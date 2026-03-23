@@ -889,6 +889,10 @@ class TpyFunction:
     # Set on the mutable clone produced by _clone_auto_readonly.
     # Used instead of params-list identity to detect mutable+const clone pairs.
     is_auto_readonly_mutable_clone: bool = False
+    # Set on both clones after _clone_auto_readonly resolves AutoReadonlyType
+    # in params. Tells sema/codegen not to blanket-apply readonly to all params
+    # (each param already carries ReadonlyType or not from the clone).
+    auto_readonly_params_resolved: bool = False
     # Transient: True when self: auto_own[Self] is detected.
     # After _clone_auto_own runs, both clones have auto_own=False.
     auto_own: bool = False

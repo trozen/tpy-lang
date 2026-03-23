@@ -14,7 +14,7 @@ from typing import Any, NoReturn, Optional
 
 from ..typesys import (
     TpyType, NamedType, PtrType, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, FinalType, SelfType,
-    strip_auto_readonly, apply_auto_readonly, strip_auto_own, apply_auto_own, ensure_qualified,
+    strip_auto_readonly, apply_auto_readonly, has_auto_readonly, strip_auto_own, apply_auto_own, ensure_qualified,
     TypeParamRef, OptionalType, VoidType, make_union, EnumType, TupleType, FnType, CallableType,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BOOL, FLOAT, FLOAT32, BIGINT, SELF, SLICE, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo, TypeParamKind,
@@ -1490,8 +1490,8 @@ class Parser:
 
         if auto_readonly and method_type_params:
             raise ParseError(
-                f"@auto_readonly on methods with method-level type parameters is not yet supported ('{node.name}')",
-                auto_readonly_dec
+                f"auto_readonly on methods with method-level type parameters is not yet supported ('{node.name}')",
+                auto_readonly_dec or node,
             )
 
         # Merge class-level and method-level type param scopes
@@ -1540,9 +1540,28 @@ class Parser:
                                 node,
                             )
                         auto_own = True
+                    elif isinstance(self_ann, AutoReadonlyType) and isinstance(self_ann.wrapped, SelfType):
+                        if node.name in ("__init__", "__del__"):
+                            raise ParseError(
+                                f"auto_readonly[Self] is not allowed on '{node.name}'",
+                                node,
+                            )
+                        if is_readonly:
+                            raise ParseError(
+                                f"auto_readonly[Self] cannot be combined with @readonly on method '{node.name}'",
+                                node,
+                            )
+                        if auto_readonly_dec is not None:
+                            raise ParseError(
+                                f"'self: auto_readonly[Self]' cannot be combined with the "
+                                f"@auto_readonly decorator on method '{node.name}'",
+                                node,
+                            )
+                        auto_readonly = True
                     else:
                         raise ParseError(
-                            f"Only 'Own[Self]' or 'auto_own[Self]' is allowed as a type annotation for 'self', "
+                            f"Only 'Own[Self]', 'auto_own[Self]', or 'auto_readonly[Self]' "
+                            f"is allowed as a type annotation for 'self', "
                             f"got '{self_ann}'",
                             node,
                         )
@@ -1563,6 +1582,33 @@ class Parser:
             raise ParseError(
                 f"__exit__ must have 3 parameters: "
                 f"__exit__(self, exc_type, exc_val, exc_tb)",
+                node,
+            )
+
+        # @auto_readonly decorator: wrap all eligible params with AutoReadonlyType.
+        # This unifies with the per-param annotation path -- the decorator is just
+        # sugar for annotating every non-value, non-already-readonly param.
+        if auto_readonly and auto_readonly_dec is not None:
+            params = [
+                (n, AutoReadonlyType(t) if (not t.is_value_type()
+                     and not isinstance(t, (AutoReadonlyType, ReadonlyType)))
+                 else t)
+                for n, t in params
+            ]
+
+        # Detect per-param auto_readonly[T] (from explicit annotations, not decorator).
+        if not auto_readonly:
+            for _, ptype in params:
+                if has_auto_readonly(ptype):
+                    auto_readonly = True
+                    break
+
+        # Re-check type-param guard for annotation/per-param path (the earlier
+        # guard at decorator time only fires when auto_readonly_dec is set).
+        if auto_readonly and auto_readonly_dec is None and method_type_params:
+            raise ParseError(
+                f"auto_readonly on methods with method-level type parameters "
+                f"is not yet supported ('{node.name}')",
                 node,
             )
 
@@ -1625,32 +1671,38 @@ class Parser:
         return method
 
     def _clone_auto_readonly(self, method: TpyFunction) -> list[TpyFunction]:
-        """Expand a @auto_readonly method into two ordinary overloads.
+        """Expand an auto_readonly method into two ordinary overloads.
 
         Returns [mutable_overload, const_overload].
-        - Mutable: is_readonly=False, auto_readonly=False, return_type=strip_auto_readonly(original)
-        - Const:   is_readonly=True,  auto_readonly=False, return_type=apply_auto_readonly(original)
+        - Mutable: params/return stripped of auto_readonly, is_readonly=False
+        - Const:   params/return with auto_readonly -> readonly, is_readonly=True
 
-        auto_readonly[T] nodes in the return type annotation specify where readonly is applied
-        in the const overload. Parts of the type without auto_readonly[T] are unchanged.
-        For value types (copied on return) this is fine. For reference types (Span, Ptr, etc.)
-        the element type must be wrapped: Span[auto_readonly[T]], Ptr[auto_readonly[T]].
+        auto_readonly[T] nodes in params and return type specify where readonly
+        is applied in the const overload. The @auto_readonly decorator wraps all
+        eligible params before this runs, so both decorator and per-param
+        annotations go through the same code path.
         """
+        mutable_params = [(n, strip_auto_readonly(t)) for n, t in method.params]
+        const_params = [(n, apply_auto_readonly(t)) for n, t in method.params]
         mutable_return = strip_auto_readonly(method.return_type)
         const_return = apply_auto_readonly(method.return_type)
         mutable = dataclasses.replace(
             method,
+            params=mutable_params,
             return_type=mutable_return,
             is_readonly=False,
             auto_readonly=False,
+            auto_readonly_params_resolved=True,
             is_auto_readonly_mutable_clone=True,
         )
         const = dataclasses.replace(
             method,
+            params=const_params,
             return_type=const_return,
             body=copy.deepcopy(method.body),
             is_readonly=True,
             auto_readonly=False,
+            auto_readonly_params_resolved=True,
             defaults=copy.deepcopy(method.defaults),
         )
         return [mutable, const]

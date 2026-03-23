@@ -408,9 +408,8 @@ class TypeRegistrar:
             for pname, ptype in method_params:
                 if has_auto_readonly(ptype):
                     raise SemanticError(
-                        f"'auto_readonly[T]' is not allowed in parameter types "
-                        f"(parameter '{pname}' of '{record.name}.{method.name}'). "
-                        f"Only return types of @auto_readonly methods may use it.",
+                        f"Internal error: unresolved 'auto_readonly[T]' in parameter "
+                        f"'{pname}' of '{record.name}.{method.name}'",
                         method.loc or record.loc,
                     )
                 if not self.type_ops.is_type_param_ref(ptype):

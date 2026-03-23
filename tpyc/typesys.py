@@ -1211,14 +1211,15 @@ def unwrap_readonly(typ: 'TpyType') -> 'TpyType':
 
 @dataclass(frozen=True)
 class AutoReadonlyType(TpyType):
-    """Return-type annotation for @auto_readonly methods.
+    """Type annotation for auto_readonly methods.
 
-    auto_readonly[T] in a return type means:
+    auto_readonly[T] in a return type or parameter means:
     - mutable overload: strip to T        (via strip_auto_readonly)
     - const overload:   replace with readonly[T] (via apply_auto_readonly)
 
-    Only valid in return type annotations of @auto_readonly methods.
-    Stripped by registration before reaching sema body analysis or codegen.
+    Valid in return types and parameter types of auto_readonly methods,
+    and as self: auto_readonly[Self] to trigger per-param cloning.
+    Stripped by _clone_auto_readonly before reaching sema body analysis or codegen.
     """
     wrapped: TpyType
 

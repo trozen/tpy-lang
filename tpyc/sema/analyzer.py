@@ -1140,10 +1140,13 @@ class SemanticAnalyzer:
 
             # Resolve and normalize params (@readonly wraps all non-value params).
             # Write back to AST so codegen sees ReadonlyType.
+            # For auto_readonly_params_resolved methods, the parser clone already applied
+            # ReadonlyType to the params that need it -- skip blanket wrapping.
+            readonly_ctx = method.is_readonly and not method.auto_readonly_params_resolved
             resolved_params: list[tuple[str, TpyType]] = []
             for i, (pname, ptype) in enumerate(method.params):
                 resolved_ptype = self._normalize_param_type(
-                    self.type_ops.resolve_type(ptype), method.is_readonly)
+                    self.type_ops.resolve_type(ptype), readonly_ctx)
                 method.params[i] = (pname, resolved_ptype)
                 resolved_params.append((pname, resolved_ptype))
 

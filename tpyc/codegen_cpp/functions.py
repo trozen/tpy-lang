@@ -951,8 +951,11 @@ class FunctionGenerator:
                               for tp in (method.type_params or [])
                               if tp in class_type_params and tp in method.type_param_bounds}
 
-        # Inplace dunders (__iadd__ etc.) mutate self but take const params
-        use_const_params = const or method.name in CONST_PARAMS_METHODS
+        # Inplace dunders (__iadd__ etc.) mutate self but take const params.
+        # For auto_readonly_params_resolved, the params already carry ReadonlyType
+        # from the parser clone -- don't blanket-apply const.
+        use_const_params = ((const and not method.auto_readonly_params_resolved)
+                            or method.name in CONST_PARAMS_METHODS)
         rp = self._get_reassigned_params(method)
         mp = self._get_method_mutated_params(method, record_name)
         if use_protocol_params:
@@ -973,9 +976,10 @@ class FunctionGenerator:
                                          defaults=dfl, emit_defaults=True,
                                          class_type_params=ctp)
             else:
+                use_ro = const and not method.auto_readonly_params_resolved
                 params = self.gen_params(method.params, method.type_params,
                                          reassigned_params=rp, mutated_params=mp,
-                                         use_readonly_params=const,
+                                         use_readonly_params=use_ro,
                                          defaults=dfl, emit_defaults=True,
                                          class_type_params=ctp)
         const_suffix = " const" if const else ""
