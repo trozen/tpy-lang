@@ -397,6 +397,7 @@ class SemanticAnalyzer:
             if names == "*":
                 # "from tpy import *" - register all tpy exports
                 self.registrar.register_tpy_star_import()
+                self._register_all_tpy_type_aliases()
             elif isinstance(names, set):
                 # "from X import Y" or "from X import Y as Z"
                 # Stored as (original_name, local_name) tuples to support aliases
@@ -407,10 +408,17 @@ class SemanticAnalyzer:
                     # For user module imports, also register the items for type checking
                     if import_module_name in module.user_module_imports:
                         self._register_user_module_import(import_module_name, original_name, local_name)
+                    # Register tpy type aliases from .py stubs (no-op for non-alias names)
+                    elif import_module_name == "tpy":
+                        self._register_tpy_type_alias(original_name, local_name)
             elif names is None:
                 # "import X" for special modules (tpy, typing, etc.)
                 alias = module.module_aliases.get(import_module_name)
                 self.ctx.global_ns.bind_module(import_module_name, alias)
+                # Register tpy type aliases for qualified annotation resolution
+                # (e.g. import tpy; x: tpy.Float64)
+                if import_module_name == "tpy":
+                    self._register_all_tpy_type_aliases()
 
         # Bind modules for bare `import X` statements (user modules)
         for mod_name in module.bare_module_imports:
@@ -1466,6 +1474,29 @@ class SemanticAnalyzer:
     def get_expr_type(self, expr: TpyExpr) -> Optional[TpyType]:
         """Get the cached type of an expression."""
         return self.ctx.get_expr_type(expr)
+
+    def _register_tpy_type_alias(self, original_name: str, local_name: str) -> None:
+        """Register a single tpy type alias from the compiled tpy module_info."""
+        tpy_info = self.ctx.registry.get_module("tpy")
+        if not tpy_info or not tpy_info.type_aliases:
+            return
+        alias_type = tpy_info.type_aliases.get(original_name)
+        if alias_type is not None:
+            self.ctx.registry.register_type_alias(local_name, alias_type)
+            self.ctx.user_imported_type_aliases[local_name] = ("tpy", original_name)
+            # Also register under original name so _resolve_imported_aliases
+            # can substitute NamedType(original_name) nodes in the AST
+            if local_name != original_name:
+                self.ctx.registry.register_type_alias(original_name, alias_type)
+
+    def _register_all_tpy_type_aliases(self) -> None:
+        """Register all tpy type aliases (for bare 'import tpy' and star imports)."""
+        tpy_info = self.ctx.registry.get_module("tpy")
+        if not tpy_info or not tpy_info.type_aliases:
+            return
+        for name, alias_type in tpy_info.type_aliases.items():
+            self.ctx.registry.register_type_alias(name, alias_type)
+            self.ctx.user_imported_type_aliases[name] = ("tpy", name)
 
     def _register_user_module_import(self, module_name: str, original_name: str, local_name: str) -> None:
         """Register an imported item from a user module.

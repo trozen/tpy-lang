@@ -1364,51 +1364,7 @@ class Char(Sized, Equatable):
     def __len__(self) -> Int32: ...
 
 
-@builtin_type("tpy.Float64")
-@native("double")
-class Float64:
-    @overload
-    @cpp_template("0.0")
-    def __init__(self) -> None: ...
-    @overload
-    @cpp_template("{0}")
-    def __init__(self, x: float) -> None: ...
-    @overload
-    @cpp_template("static_cast<double>({0})")
-    def __init__(self, x: Float32) -> None: ...
-    @overload
-    @cpp_template("static_cast<double>({0})")
-    def __init__(self, x: int) -> None: ...
-    @overload
-    @cpp_template("static_cast<double>({0})")
-    def __init__(self, x: bool) -> None: ...
-    @overload
-    @cpp_template("::tpy::float_from_str({0})")
-    def __init__(self, x: str) -> None: ...
-    @overload
-    @cpp_template("static_cast<double>({0})")
-    def __init__(self, x: Int8) -> None: ...
-    @overload
-    @cpp_template("static_cast<double>({0})")
-    def __init__(self, x: Int16) -> None: ...
-    @overload
-    @cpp_template("static_cast<double>({0})")
-    def __init__(self, x: Int32) -> None: ...
-    @overload
-    @cpp_template("static_cast<double>({0})")
-    def __init__(self, x: Int64) -> None: ...
-    @overload
-    @cpp_template("static_cast<double>({0})")
-    def __init__(self, x: UInt8) -> None: ...
-    @overload
-    @cpp_template("static_cast<double>({0})")
-    def __init__(self, x: UInt16) -> None: ...
-    @overload
-    @cpp_template("static_cast<double>({0})")
-    def __init__(self, x: UInt32) -> None: ...
-    @overload
-    @cpp_template("static_cast<double>({0})")
-    def __init__(self, x: UInt64) -> None: ...
+type Float64 = float
 
 @builtin_type("tpy.String")
 @native("std::string")

@@ -389,10 +389,14 @@ class CallAnalyzer:
             from .methods import MethodAnalyzer
             return MethodAnalyzer._analyze_super_call_static(self.ctx, expr)
 
-        # Type aliases are not callable (matches CPython behavior)
+        # Type aliases: builtin type aliases (e.g. Float64 = float) resolve
+        # to the underlying type's constructor. Other aliases are not callable.
         if expr.call_type is None:
             alias_type = self.ctx.registry.get_type_alias(expr.func)
             if alias_type is not None:
+                record = self.ctx.registry.get_record_for_type(alias_type)
+                if record and record.builtin_type_key and record.get_method_overloads("__init__"):
+                    return self._analyze_record_constructor(expr, record)
                 raise self.ctx.error(
                     f"Type alias '{expr.func}' is not callable. "
                     f"Use {alias_type} directly, or let the type be inferred from an annotation",

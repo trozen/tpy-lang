@@ -148,7 +148,7 @@ void test_fstring() {
 
 // def test_float64_alias() -> None:
 void test_float64_alias() {
-    // # Float64 is an alias for float
+    // # Float64 is a type alias for float
     // x: Float64 = 3.14
     double x = 3.14;
     // y: Float64 = Float64(2.0)
@@ -159,6 +159,13 @@ void test_float64_alias() {
     std::cout << ::tpy::print_float(y) << "\n";
     // print(x + y)
     std::cout << ::tpy::print_float(((x) + (y))) << "\n";
+    // # Constructor from fixed-width int types
+    // print(Float64(Int32(42)))
+    std::cout << ::tpy::print_float(static_cast<double>(42)) << "\n";
+    // print(Float64(Int64(100)))
+    std::cout << ::tpy::print_float(static_cast<double>(100)) << "\n";
+    // print(Float64(UInt32(7)))
+    std::cout << ::tpy::print_float(static_cast<double>(7)) << "\n";
 }
 
 // def main() -> None:

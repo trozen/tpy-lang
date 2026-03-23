@@ -154,6 +154,15 @@ class TypeRegistrar:
             self.ctx.imported_names[name] = ("tpy", name)
             self.ctx.global_ns.bind_imported_name(name, "tpy", name)
 
+        # Bind type alias names for namespace resolution (e.g. Float64).
+        # Actual alias registration is handled by analyzer._register_all_tpy_type_aliases.
+        tpy_info = self.ctx.registry.get_module("tpy")
+        if tpy_info and tpy_info.type_aliases:
+            for name in tpy_info.type_aliases:
+                if name not in self.ctx.imported_names:
+                    self.ctx.imported_names[name] = ("tpy", name)
+                    self.ctx.global_ns.bind_imported_name(name, "tpy", name)
+
     def get_module_function_overloads(self, module_name: str, func_name: str) -> list[FunctionInfo] | None:
         """Look up function overloads in a module using the unified registry."""
         module_info = self.ctx.registry.get_module(module_name)

@@ -479,8 +479,6 @@ class Parser:
                 return CHAR
             elif original == "Float32":
                 return FLOAT32
-            elif original == "Float64":
-                return FLOAT
             elif original == "String":
                 return STRING
             elif original == "StrView":

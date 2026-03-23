@@ -22,7 +22,7 @@ PARSER_KEYWORDS: dict[str, frozenset[str] | None] = {
         # Types used in annotations at parse time
         "Int8", "Int16", "Int32", "Int64",
         "UInt8", "UInt16", "UInt32", "UInt64",
-        "Float32", "Float64",
+        "Float32",
         "Array", "Span", "SpanIter", "Ptr", "Own", "Char",
         "String", "StrView", "ReadOnlyPtr",
         # Callable types

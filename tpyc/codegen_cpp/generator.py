@@ -532,6 +532,11 @@ class CodeGenerator:
         # decls so signatures can reference alias names like Shape)
         emitted_imported_alias = False
         for local_name, (src_mod, original_name) in sorted(self.ctx.user_imported_type_aliases.items()):
+            # Skip aliases that resolve to primitive/builtin types -- only
+            # NamedType (records) and UnionType (variants) need a using-declaration
+            alias_type = self.analyzer.registry.get_type_alias(local_name)
+            if alias_type is not None and not isinstance(alias_type, (NamedType, UnionType)):
+                continue
             qualified = qualified_cpp_name(src_mod, original_name)
             if local_name == original_name:
                 hpp.write(f"using {qualified};\n")

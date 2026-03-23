@@ -1,5 +1,5 @@
 # Float32 (32-bit single precision) type and Float64 alias for float
-from tpy import Float32, Float64, Int32
+from tpy import Float32, Float64, Int32, Int64, UInt32
 
 def test_construction() -> None:
     a = Float32(3.14)  # tpyc: type(Float32)
@@ -79,12 +79,16 @@ def test_fstring() -> None:
     print(f"value={v}")
 
 def test_float64_alias() -> None:
-    # Float64 is an alias for float
+    # Float64 is a type alias for float
     x: Float64 = 3.14
     y: Float64 = Float64(2.0)
     print(x)
     print(y)
     print(x + y)
+    # Constructor from fixed-width int types
+    print(Float64(Int32(42)))
+    print(Float64(Int64(100)))
+    print(Float64(UInt32(7)))
 
 def main() -> None:
     test_construction()
