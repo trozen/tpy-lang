@@ -18,9 +18,7 @@ from ..parse import (
     TpyFieldAccess,
 )
 
-from .context import escape_cpp_string, CodeGenError, expand_cpp_template
-
-from .context import qualify_native_name
+from .context import escape_cpp_string, CodeGenError, expand_cpp_template, qualify_native_name
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -48,19 +46,40 @@ class BuiltinGenerator:
         self._get_cpp_declared_type = get_cpp_declared_type
 
     def gen_call_from_fi(self, fi: FunctionInfo, receiver: str | None,
-                         gen_args: list[str],
-                         self_type: TpyType | None = None) -> str:
+                         gen_args: list[str], *,
+                         self_type: TpyType | None = None,
+                         type_args: tuple[TpyType, ...] | None = None,
+                         type_subst: dict[str, TpyType] | None = None,
+                         result_type: TpyType | None = None) -> str:
         """Generate a call from a resolved FunctionInfo.
 
         Unified entry point for cpp_template, native_function, and native member calls.
         receiver is None for free function calls (no self).
-        self_type is the receiver's TpyType (for {cpp} expansion in templates).
+        self_type: receiver's TpyType (for {cpp} expansion in method templates).
+        type_args: inferred type arguments paired with fi.type_params by position.
+        type_subst: explicit name-to-type mapping (for class-level type params
+            where fi.type_params may be empty). Takes precedence over type_args.
+        result_type: concrete result type for {cpp} substitution in constructors.
         """
         if fi.cpp_template:
+            template = fi.cpp_template
+            if result_type is not None and "{cpp}" in template:
+                template = template.replace("{cpp}", result_type.to_cpp())
+            # Build effective type substitution
+            effective_subst: dict[str, TpyType] | None = None
+            if type_subst:
+                effective_subst = type_subst
+            elif type_args and fi.type_params:
+                effective_subst = dict(zip(fi.type_params, type_args))
+            if effective_subst:
+                for name, typ in effective_subst.items():
+                    placeholder = f"{{{name}}}"
+                    if placeholder in template and hasattr(typ, "to_cpp"):
+                        template = template.replace(placeholder, typ.to_cpp())
             if receiver is not None:
-                return expand_cpp_template(fi.cpp_template, receiver, *gen_args,
+                return expand_cpp_template(template, receiver, *gen_args,
                                            self_type=self_type)
-            return fi.cpp_template.format(*gen_args)
+            return template.format(*gen_args)
         if fi.native_function and fi.native_name:
             all_args = [receiver] + gen_args if receiver is not None else gen_args
             return f"{qualify_native_name(fi.native_name)}({', '.join(all_args)})"
@@ -112,17 +131,22 @@ class BuiltinGenerator:
                     for i, arg in enumerate(args)]
         return self.gen_call_from_fi(method, obj, gen_args)
 
-    def gen_builtin_constructor(self, expr: TpyCall, record_info: RecordInfo) -> str:
-        """Generate C++ code for a builtin type constructor using __init__ overloads."""
-        fi = expr.resolved_function_info
+    def gen_builtin_constructor(self, args: list[TpyExpr], record_info: RecordInfo, *,
+                                fi: FunctionInfo | None = None,
+                                result_type: TpyType | None = None,
+                                func_name: str = "") -> str:
+        """Generate C++ code for a builtin type constructor using __init__ overloads.
+
+        fi: sema-resolved constructor FunctionInfo (when available).
+        result_type: concrete result type for {cpp} substitution.
+        func_name: function name for error messages.
+        """
         if fi and fi.cpp_template:
             gen_args = [self._gen_expr_deref(arg, ptype)
-                        for arg, (_, ptype) in zip(expr.args, fi.params)]
-            result_type = self.ctx.get_expr_type(expr) or fi.return_type
-            return self.apply_cpp_template(fi.cpp_template, gen_args, {}, result_type)
+                        for arg, (_, ptype) in zip(args, fi.params)]
+            return self.gen_call_from_fi(fi, None, gen_args, result_type=result_type)
 
         # Fallback for synthetic calls (e.g. module-aliased constructors like t.Int32(42))
-        args = expr.args
         arg_types = [self.ctx.get_expr_type(arg) for arg in args]
         for ctor in record_info.get_method_overloads("__init__"):
             if len(ctor.params) != len(args):
@@ -130,36 +154,17 @@ class BuiltinGenerator:
             if all(self._builtin_codegen_type_matches(arg, arg_t, ptype)
                    for arg, arg_t, (_, ptype) in zip(args, arg_types, ctor.params)):
                 gen_args = [self._gen_expr_deref(arg, ptype) for arg, (_, ptype) in zip(args, ctor.params)]
-                return ctor.cpp_template.format(*gen_args)
+                return self.gen_call_from_fi(ctor, None, gen_args)
 
-        raise RuntimeError(f"No matching constructor for {expr.func}")
+        raise RuntimeError(f"No matching constructor for {func_name or '?'}")
 
 
-    def apply_cpp_template(
-        self, template: str, args: list[str], type_params: dict[str, TpyType], result_type: TpyType
-    ) -> str:
-        """Apply a cpp template with argument and type parameter substitution."""
-        result = template
-        # Substitute {cpp} with the result type's to_cpp() -- for constructors that need
-        # the fully-qualified type name (e.g. SpanIter<const T> vs SpanIter<T>).
-        # Must run before {0}/{T} substitutions so that to_cpp() output is not re-interpreted
-        # as a positional or type-param placeholder (C++ type names won't contain {0} etc. in practice).
-        result = result.replace("{cpp}", result_type.to_cpp())
-        # Substitute positional arguments {0}, {1}, etc.
-        for i, arg in enumerate(args):
-            result = result.replace(f"{{{i}}}", arg)
-        # Substitute type parameters {T}, etc.
-        for name, typ in type_params.items():
-            result = result.replace(f"{{{name}}}", typ.to_cpp())
-        return result
-
-    def _match_overload_args(self, expr: TpyCall,
+    def _match_overload_args(self, args: list[TpyExpr],
                              overloads: list[FunctionInfo]) -> tuple[FunctionInfo, list[str]]:
         """Match a builtin call to an overload and generate C++ arg expressions.
 
         Returns (matched_overload, gen_args). Raises RuntimeError if no match.
         """
-        args = expr.args
         arg_types = [self.ctx.get_expr_type(arg) for arg in args]
 
         for overload in overloads:
@@ -171,7 +176,7 @@ class BuiltinGenerator:
                             for arg, (_, ptype) in zip(args, overload.params)]
                 return overload, gen_args
 
-        raise RuntimeError(f"No matching overload for {expr.func}")
+        raise RuntimeError(f"No matching overload for {overloads[0].name if overloads else '?'}")
 
     def gen_range_args(self, expr: TpyCall) -> list[str]:
         """Generate individual C++ arg expressions for range().
@@ -184,36 +189,23 @@ class BuiltinGenerator:
         return [self._gen_expr_deref(arg, ptype)
                 for arg, (_, ptype) in zip(expr.args, fi.params)]
 
-    def gen_template_or_native_call(self, expr: TpyCall, overloads: list[FunctionInfo]) -> str:
+    def gen_template_or_native_call(self, args: list[TpyExpr],
+                                    overloads: list[FunctionInfo], *,
+                                    fi: FunctionInfo | None = None,
+                                    type_args: tuple[TpyType, ...] | None = None) -> str:
         """Generate C++ for a @cpp_template or @native function call.
 
-        Handles two kinds of calls:
-        - @cpp_template: expands the C++ expression template with positional args
-        - @native: generates a direct call to the named C++ function
+        Generates arg expressions, then delegates to gen_call_from_fi.
+        fi: resolved FunctionInfo (when available from sema).
+        type_args: inferred type arguments for generic calls.
         """
-        fi = expr.resolved_function_info
         if fi and (fi.cpp_template or fi.native_name):
             gen_args = [self._gen_expr_deref(arg, ptype)
-                        for arg, (_, ptype) in zip(expr.args, fi.params)]
-            if fi.cpp_template:
-                return self._expand_cpp_template(fi.cpp_template, gen_args, expr, fi)
-            return f"{qualify_native_name(fi.native_name)}({', '.join(gen_args)})"
+                        for arg, (_, ptype) in zip(args, fi.params)]
+            return self.gen_call_from_fi(fi, None, gen_args, type_args=type_args)
         # Fallback: re-resolve (shouldn't normally be needed)
-        overload, gen_args = self._match_overload_args(expr, overloads)
-        if overload.cpp_template:
-            return self._expand_cpp_template(overload.cpp_template, gen_args, expr, overload)
-        return f"{qualify_native_name(overload.native_name or overload.name)}({', '.join(gen_args)})"
-
-    @staticmethod
-    def _expand_cpp_template(template: str, gen_args: list[str],
-                             expr: TpyCall, fi: FunctionInfo) -> str:
-        """Expand a @cpp_template string, substituting type params and args."""
-        if expr.inferred_type_args and fi.type_params:
-            for name, typ in zip(fi.type_params, expr.inferred_type_args):
-                placeholder = f"{{{name}}}"
-                if placeholder in template and hasattr(typ, "to_cpp"):
-                    template = template.replace(placeholder, typ.to_cpp())
-        return template.format(*gen_args)
+        overload, gen_args = self._match_overload_args(args, overloads)
+        return self.gen_call_from_fi(overload, None, gen_args, type_args=type_args)
 
     def _builtin_codegen_type_matches(self, arg: TpyExpr, arg_type: TpyType, param_type: TpyType) -> bool:
         """Check if an argument matches a parameter type for codegen purposes."""
