@@ -536,7 +536,7 @@ class CallAnalyzer:
                     qname = f"{module_name}.{func_name}"
                     if record_info := self.ctx.registry.get_builtin_record(qname):
                         if record_info.get_method_overloads("__init__") and not record_info.type_params:
-                            return self._check_builtin_constructor(expr, record_info)
+                            return self._analyze_record_constructor(expr, record_info)
                     # Generic types (Array, list) - mark as found and fall through
                     if builtin_modules.lookup_generic_type_in_module(func_name, module_name):
                         imported_generic_name = func_name
@@ -1444,21 +1444,23 @@ class CallAnalyzer:
         if not expr.call_type.is_readonly and isinstance(arg, TpyName):
             self.ctx.mark_loop_var_mutated(arg.name)
 
-    def _check_builtin_constructor(self, expr: TpyCall, record_info: RecordInfo) -> TpyType:
-        """Check a builtin type constructor call using __init__ overloads."""
+    def _analyze_template_constructor(self, expr: TpyCall, record: RecordInfo,
+                                      init_overloads: list[FunctionInfo]) -> TpyType:
+        """Analyze a constructor call for types with @cpp_template __init__ overloads.
+
+        Matches args against __init__ overloads using numeric compatibility and
+        protocol-aware resolution. Handles special fallbacks for bool(__len__)
+        and str(container).
+        """
         self._reject_kwargs_for_builtin(expr, expr.func)
-        type_name = expr.func
         arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
 
-        # Resolve the record's type object. For .py-defined builtins, __init__
-        # returns None (Python convention) so we look up the actual type.
-        record_type = (
-            builtin_modules.get_builtin_type_obj(record_info.builtin_type_key)
-            if record_info.builtin_type_key else None
-        )
+        # Resolve the concrete type (e.g. Float32Type). __init__ returns None
+        # in Python, so we look up the actual type via the type factory.
+        record_type = builtin_modules.get_builtin_type_obj(record.builtin_type_key)
 
         # Find a matching constructor overload
-        for ctor in record_info.get_method_overloads("__init__"):
+        for ctor in init_overloads:
             if len(ctor.params) != len(arg_types):
                 continue
             if all(type_matches_numeric(arg_type, ptype)
@@ -1480,7 +1482,7 @@ class CallAnalyzer:
 
         # Fallback: try protocol-aware overload resolution (e.g. bool(obj) via Truthy)
         matched = resolve_overload(
-            record_info.get_method_overloads("__init__"), arg_types,
+            init_overloads, arg_types,
             protocol_checker=self.protocols.type_conforms_to_protocol,
             subclass_checker=self.ctx.registry.is_subclass_of,
         )
@@ -1491,7 +1493,7 @@ class CallAnalyzer:
             return ret
 
         # bool(obj) __len__ fallback: types with __len__ but no __bool__
-        if record_info.name == "bool" and len(arg_types) == 1:
+        if record.name == "bool" and len(arg_types) == 1:
             arg_type = arg_types[0]
             if isinstance(arg_type, NamedType):
                 arg_record = self.ctx.registry.get_record(arg_type.name)
@@ -1506,11 +1508,9 @@ class CallAnalyzer:
                     return BOOL
 
         # str(container) fallback: containers have runtime to_str helpers
-        if record_info.name == "str" and len(arg_types) == 1:
+        if record.name == "str" and len(arg_types) == 1:
             tmpl = container_to_str_template(unwrap_readonly(arg_types[0]))
             if tmpl is not None:
-                # is_builtin_function not needed: str() routes via gen_builtin_constructor
-                # which checks cpp_template directly
                 expr.resolved_function_info = FunctionInfo(
                     name="str",
                     params=[ParamInfo("x", arg_types[0])],
@@ -1521,7 +1521,8 @@ class CallAnalyzer:
                 return STR
 
         # No matching overload found
-        if not record_info.get_method_overloads("__init__"):
+        type_name = expr.func
+        if not init_overloads:
             raise self.ctx.error(f"{type_name}() is not callable", expr)
         elif len(arg_types) == 0:
             raise self.ctx.error(f"{type_name}() requires an argument", expr)
@@ -2104,6 +2105,12 @@ class CallAnalyzer:
 
     def _analyze_record_constructor(self, expr: TpyCall, record: RecordInfo) -> TpyType:
         """Analyze a call to a record constructor."""
+        # Types with overloaded @cpp_template __init__ (e.g. Int32, str, bool)
+        if record.builtin_type_key and not record.type_params:
+            init_overloads = record.get_method_overloads("__init__")
+            if init_overloads:
+                return self._analyze_template_constructor(expr, record, init_overloads)
+
         # Resolve kwargs for record constructors
         if expr.kwargs:
             if record.has_init:

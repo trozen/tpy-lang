@@ -2930,7 +2930,7 @@ class TypeRegistry:
 
     def __init__(self):
         self.records: dict[str, RecordInfo] = {}
-        self.builtin_records: dict[str, RecordInfo] = {}  # By qualified name (e.g., "builtins.list")
+        self._qname_index: dict[str, RecordInfo] = {}  # qualified name -> RecordInfo
         self.functions: dict[str, list[FunctionInfo]] = {}  # User-defined functions (single or @overload group)
         self.protocols: dict[str, ProtocolInfo] = {}
         self.modules: dict[str, ModuleInfo] = {}  # module_name -> ModuleInfo
@@ -2947,11 +2947,14 @@ class TypeRegistry:
             name: Optional name to register under (defaults to info.name).
                   Used for imported records that may have a local alias.
         """
-        self.records[name or info.name] = info
+        key = name or info.name
+        self.records[key] = info
+        if info.builtin_type_key:
+            self._qname_index[info.builtin_type_key] = info
 
     def register_builtin_record(self, qname: str, info: RecordInfo) -> None:
         """Register a builtin type's RecordInfo by its qualified name."""
-        self.builtin_records[qname] = info
+        self._qname_index[qname] = info
 
     def register_function(self, info: FunctionInfo, name: str | None = None) -> None:
         """Register a single function (wraps in a list)."""
@@ -3018,7 +3021,7 @@ class TypeRegistry:
 
     def get_builtin_record(self, qname: str) -> Optional[RecordInfo]:
         """Get a builtin record by qualified name."""
-        return self.builtin_records.get(qname)
+        return self._qname_index.get(qname)
 
     def is_subclass_of(self, child: 'TpyType', parent: 'TpyType') -> bool:
         """Check if child is a subclass of parent (walking the inheritance chain).
@@ -3064,26 +3067,13 @@ class TypeRegistry:
         """Unified lookup for any type's RecordInfo.
 
         For user records (NamedType with is_record), looks up by name in self.records.
-        For builtin types, looks up by qualified_name in self.builtin_records,
-        falling back to self.records by short name (for .py-defined builtin types
-        during their own module's analysis, before builtin_records is populated).
+        For builtin types, looks up by qualified name in the _qname_index.
         """
         if isinstance(tpy_type, NamedType) and tpy_type.is_user_record:
             return self.records.get(tpy_type.name)
         qname = tpy_type.qualified_name()
         if qname:
-            result = self.builtin_records.get(qname)
-            # During .py module self-analysis, the builtin_rec may be a minimal
-            # stub (no methods) while the .py record has all methods. Prefer
-            # the .py record when the builtin stub has no methods.
-            short_name = qname.rsplit(".", 1)[-1]
-            if result and not result.methods:
-                py_rec = self.records.get(short_name)
-                if py_rec and py_rec.methods:
-                    return py_rec
-            if result:
-                return result
-            return self.records.get(short_name)
+            return self.get_builtin_record(qname)
         return None
 
     def get_protocol(self, name: str) -> Optional[ProtocolInfo]:

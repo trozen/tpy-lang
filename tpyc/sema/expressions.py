@@ -304,10 +304,13 @@ class ExpressionAnalyzer:
                 return typ
 
         # Check for generic type constructor (list(), Container[T](), etc.)
+        _generic_lookup = (builtin_modules.lookup_generic_type(expr.func)
+                           if isinstance(expr, TpyCall) else None)
         is_generic_constructor = (isinstance(expr, TpyCall) and
                                   not expr.args and
                                   expr.call_type is None and
-                                  builtin_modules.lookup_generic_type(expr.func) is not None)
+                                  _generic_lookup is not None and
+                                  bool(_generic_lookup.type_def and _generic_lookup.type_def.type_params))
 
         # Check for empty list literal []
         is_empty_literal = isinstance(expr, TpyArrayLiteral) and not expr.elements

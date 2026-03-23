@@ -1657,10 +1657,13 @@ class StatementAnalyzer:
             # Note: [] * N is collapsed to [] in the parser
             is_empty_literal = isinstance(stmt.init, TpyArrayLiteral) and not stmt.init.elements
             is_empty_dict_literal = isinstance(stmt.init, TpyDictLiteral) and not stmt.init.keys
+            _generic_lookup = (builtin_modules.lookup_generic_type(stmt.init.func)
+                               if isinstance(stmt.init, TpyCall) else None)
             is_generic_constructor = (isinstance(stmt.init, TpyCall) and
                                       not stmt.init.args and
                                       stmt.init.call_type is None and
-                                      builtin_modules.lookup_generic_type(stmt.init.func) is not None)
+                                      _generic_lookup is not None and
+                                      bool(_generic_lookup.type_def and _generic_lookup.type_def.type_params))
 
             # Empty dict literal with annotation: d: dict[K, V] = {}
             if is_empty_dict_literal and stmt.type:

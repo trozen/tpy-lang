@@ -1046,11 +1046,7 @@ class TypeRegistrar:
         return []
 
     def _is_inheritable_builtin(self, typ: TpyType) -> bool:
-        """Check if a type is a builtin type that can be inherited from.
-
-        Returns True for module-defined types (like Array) that have
-        a registered RecordInfo in the builtin_records registry.
-        """
+        """Check if a type is a builtin type that can be inherited from."""
         qname = typ.qualified_name()
         if qname is None:
             return False

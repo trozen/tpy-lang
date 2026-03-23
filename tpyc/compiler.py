@@ -1037,7 +1037,7 @@ class Compiler:
             for proto in module_info.protocols.values():
                 if not proto.cpp_concept:
                     analyzer.registry.register_protocol(proto)
-            self._merge_builtin_type_methods(module_info, analyzer)
+            self._index_builtin_type_records(module_info, analyzer)
             # Enqueue transitive dependencies
             for transitive in self.modules[dep_name].ast.user_module_imports:
                 if transitive not in registered:
@@ -1054,12 +1054,9 @@ class Compiler:
                 analyzer.registry.register_module(module_info)
                 for proto in module_info.protocols.values():
                     analyzer.registry.register_protocol(proto)
-                # Merge .py-defined methods into builtin type records, then
-                # register records in the flat registry for inheritance checks.
-                self._merge_builtin_type_methods(module_info, analyzer)
+                self._index_builtin_type_records(module_info, analyzer)
                 for record in module_info.records.values():
-                    builtin_qname = record.builtin_type_key or f"{implicit_mod}.{record.name}"
-                    if not analyzer.registry.builtin_records.get(builtin_qname):
+                    if not record.builtin_type_key:
                         analyzer.registry.register_record(record)
 
         # Set module name for __name__
@@ -1271,28 +1268,26 @@ class Compiler:
             if protocol_info.name not in module_info.protocols:
                 module_info.protocols[protocol_info.name] = protocol_info
 
-    def _merge_builtin_type_methods(self, module_info: 'ModuleInfo',
+    def _index_builtin_type_records(self, module_info: 'ModuleInfo',
                                      analyzer: 'SemanticAnalyzer') -> None:
-        """Merge .py-defined methods into builtin type records.
+        """Index .py-defined builtin type records by qualified name.
 
-        When a .py module defines a @builtin_type class (e.g. Float32, Int32),
-        its methods need to be added to the existing builtin RecordInfo. If no
-        builtin record exists yet, the type factory path creates one.
+        Sets type_factory on records that need one, populates the qname index
+        so get_builtin_record can find these records, and ensures
+        extends_protocols includes implemented_protocols.
         """
         for record in module_info.records.values():
             builtin_qname = record.builtin_type_key or f"{module_info.name}.{record.name}"
-            builtin_rec = analyzer.registry.builtin_records.get(builtin_qname)
-            if builtin_rec is not None:
-                for method_name, overloads in record.methods.items():
-                    if method_name not in builtin_rec.methods:
-                        builtin_rec.methods[method_name] = overloads
-            elif (factory := _get_type_factory(builtin_qname)):
-                record.type_factory = factory
-                for proto in record.implemented_protocols:
-                    ext_str = str(proto)
-                    if ext_str not in record.extends_protocols:
-                        record.extends_protocols.append(ext_str)
-                analyzer.registry.register_builtin_record(builtin_qname, record)
+            if not record.type_factory:
+                factory = _get_type_factory(builtin_qname)
+                if factory:
+                    record.type_factory = factory
+            for proto in record.implemented_protocols:
+                ext_str = str(proto)
+                if ext_str not in record.extends_protocols:
+                    record.extends_protocols.append(ext_str)
+            if record.builtin_type_key:
+                analyzer.registry.register_builtin_record(record.builtin_type_key, record)
 
     def _check_no_errors(self, compiled: CompiledModule) -> None:
         """Raise if the module has any error-level diagnostics from analysis."""

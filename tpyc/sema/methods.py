@@ -841,7 +841,7 @@ class MethodAnalyzer:
             if record_info.get_method_overloads("__init__") and not record_info.type_params:
                 expr.builtin_module_call = module_name
                 temp_call = TpyCall(func=expr.method, args=expr.args, kwargs=expr.kwargs, loc=expr.loc)
-                result = self.calls._check_builtin_constructor(temp_call, record_info)
+                result = self.calls._analyze_record_constructor(temp_call, record_info)
                 expr.args = temp_call.args
                 expr.kwargs = temp_call.kwargs
                 expr.resolved_function_info = temp_call.resolved_function_info

@@ -6,6 +6,7 @@ Generates C++ code from TurboPython expressions.
 
 from __future__ import annotations
 import io
+import re
 from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
@@ -41,6 +42,7 @@ if TYPE_CHECKING:
     from .protocols import ProtocolGenerator
 
 from tpyc import modules as builtin_modules
+
 
 
 def _is_simple_lvalue(expr: TpyExpr) -> bool:
@@ -1371,15 +1373,17 @@ class ExpressionGenerator:
             cpp_type = enum_type.to_cpp()
             arg = self.gen_expr(expr.args[1])
             return f"::tpy::EnumUtil<{cpp_type}>::try_parse({arg})"
-        # Check if it's a builtin type constructor (e.g., int from builtins, Int32 from tpy)
-        for module_name in ["builtins", "tpy"]:
-            qname = f"{module_name}.{expr.func}"
-            if record_info := self.ctx.analyzer.registry.get_builtin_record(qname):
-                if record_info.get_method_overloads("__init__") and not record_info.type_params:
-                    result_type = self.ctx.get_expr_type(expr) or (expr.resolved_function_info.return_type if expr.resolved_function_info else None)
-                    return self.builtins.gen_builtin_constructor(
-                        expr.args, record_info, fi=expr.resolved_function_info,
-                        result_type=result_type, func_name=expr.func)
+        # Type constructor with @cpp_template (e.g. Int32(42), str(x), bool())
+        # Templates with type param placeholders ({T}, {K}) need type_subst
+        # resolution from the call_type block below -- skip those here.
+        fi = expr.resolved_function_info
+        if fi and fi.cpp_template and not re.search(r'\{[A-Z]', fi.cpp_template):
+            result_type = self.ctx.get_expr_type(expr) or fi.return_type
+            if result_type and result_type is not VOID:
+                gen_args = [self.builtins._gen_expr_deref(arg, ptype)
+                            for arg, (_, ptype) in zip(expr.args, fi.params)]
+                return self.builtins.gen_call_from_fi(
+                    fi, None, gen_args, result_type=result_type)
         # print() maps to std::printf
         if expr.func == "print":
             return self.builtins.gen_print(expr.args, expr.kwargs)
@@ -1401,14 +1405,6 @@ class ExpressionGenerator:
                     return self.builtins.gen_template_or_native_call(
                         expr.args, module_info.functions[func_name],
                         fi=expr.resolved_function_info, type_args=expr.inferred_type_args)
-                # Check for type constructor (e.g., Int32 from tpy, int from builtins)
-                qname = f"{module_name}.{func_name}"
-                if record_info := self.ctx.analyzer.registry.get_builtin_record(qname):
-                    if record_info.get_method_overloads("__init__") and not record_info.type_params:
-                        result_type = self.ctx.get_expr_type(expr) or (expr.resolved_function_info.return_type if expr.resolved_function_info else None)
-                        return self.builtins.gen_builtin_constructor(
-                            expr.args, record_info, fi=expr.resolved_function_info,
-                            result_type=result_type, func_name=expr.func)
         # Nested def local: call the lambda variable directly
         if expr.func in self.ctx.nested_def_locals:
             fi = expr.resolved_function_info
@@ -1741,12 +1737,13 @@ class ExpressionGenerator:
                 return self.builtins.gen_template_or_native_call(
                     expr.args, module_info.functions[expr.method],
                     fi=expr.resolved_function_info, type_args=expr.inferred_type_args)
-            # Check for type constructor (e.g., tpy.Int32)
-            qname = f"{module_name}.{expr.method}"
-            if record_info := self.ctx.analyzer.registry.get_builtin_record(qname):
-                if record_info.get_method_overloads("__init__") and not record_info.type_params:
-                    return self.builtins.gen_builtin_constructor(
-                        expr.args, record_info, func_name=expr.method)
+            # Type constructor with @cpp_template (e.g., tpy.Int32(42))
+            if fi and fi.cpp_template and not fi.type_params:
+                gen_args = [self.builtins._gen_expr_deref(arg, ptype)
+                            for arg, (_, ptype) in zip(expr.args, fi.params)]
+                result_type = self.ctx.get_expr_type(expr) or fi.return_type
+                return self.builtins.gen_call_from_fi(
+                    fi, None, gen_args, result_type=result_type)
 
         # Check for builtin method with native_function or cpp_template first
         # This must be checked before the self.method() shortcut because
