@@ -290,11 +290,6 @@ class GeneratorCodegen:
         def _scan(stmts: list[TpyStmt]) -> None:
             for stmt in stmts:
                 if isinstance(stmt, TpyForEach) and _for_body_contains_yield(stmt.body):
-                    if stmt.orelse:
-                        raise SemanticError(
-                            "for...else with yield is not yet supported in generators",
-                            stmt.loc,
-                        )
                     info = self._analyze_for_strategy(stmt, uid_counter[0])
                     if info is None:
                         raise SemanticError(

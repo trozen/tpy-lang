@@ -1289,9 +1289,12 @@ class StatementAnalyzer:
                                    inner_scope: 'Scope',
                                    elem_type: TpyType) -> None:
         """Store for-loop variable and body-declared variables as pending."""
-        # Loop variable (skip synthetic tuple-unpack vars)
+        # Loop variable (skip synthetic tuple-unpack vars in non-generators;
+        # generators need the synthetic var as a struct field)
         var_name = stmt.var
-        if (not stmt.is_tuple_unpack
+        is_generator = (isinstance(self.ctx.current_function, TpyFunction)
+                        and self.ctx.current_function.is_generator)
+        if ((not stmt.is_tuple_unpack or is_generator)
                 and var_name not in self.ctx.global_declarations):
             resolved = self._resolve_literal_type(elem_type)
             self.ctx.pending_loop_vars[var_name] = (resolved, stmt, stmt)

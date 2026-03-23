@@ -64,7 +64,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - list/container slicing (Phase 3: step)
 - properties
 - Generator: `yield from`, `send()`, `throw()`, `close()`
-- Generator: `for...else` with `yield`, tuple unpacking in for-loops with `yield`
 - Generator: protocol-typed params (`def gen(it: Iterator[T])`) -- needs template struct + factory
 - Generator: liveness optimization -- only promote yield-crossing variables to struct fields, keep others as stack locals in `__next__()` (currently all locals are promoted)
 - Generator: lifetime/borrow analysis for reference params -- generator structs store non-value params as references, which can dangle if the generator outlives the source. Extend existing borrow analysis to track generator lifetimes and warn on escaping generators.

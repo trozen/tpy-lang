@@ -2153,8 +2153,26 @@ class StatementGenerator:
             inner_ns.bind_variable(stmt.var, stmt.elem_type)
             self.ctx.current_ns = inner_ns
 
+        body = stmt.body
+        # Tuple unpack: first stmt is TpyTupleUnpack. Emit direct struct field
+        # assignments instead of declarations (goto would jump over them).
+        if stmt.is_tuple_unpack and body and isinstance(body[0], TpyTupleUnpack):
+            unpack = body[0]
+            inner = indent + INDENT
+            # stmt.var is the synthetic __for_tup_N struct field assigned by the loop prologue
+            loop_var = escape_cpp_name(stmt.var)
+            for i, name in enumerate(unpack.targets):
+                if name is None:
+                    continue
+                cpp_name = escape_cpp_name(name)
+                self.ctx.declared_vars.add(name)
+                self.ctx.local_scope_names.add(name)
+                self.ctx.var_types[name] = unpack.target_types[i]
+                out.write(f"{inner}{cpp_name} = std::get<{i}>({loop_var});\n")
+            body = body[1:]
+
         self.ctx.indent_level += 1
-        for s in stmt.body:
+        for s in body:
             self.gen_stmt(out, s)
         self.ctx.emit_block_trailing_comments(out, stmt.body, self.ctx.indent())
         self.ctx.indent_level -= 1
@@ -2936,7 +2954,26 @@ class StatementGenerator:
         """
         # Generator body: lower for-loops with yields to while-loops
         if self.ctx.in_generator_body and id(stmt) in self.ctx.generator_for_loop_info:
+            has_else = bool(stmt.orelse)
+            label = ""
+            if has_else:
+                label = f"__after_else_{self.ctx.iter_counter}"
+                self.ctx.iter_counter += 1
+            self.ctx.loop_else_labels.append(label)
+
             self._gen_generator_for_loop(out, stmt, indent)
+
+            self.ctx.loop_else_labels.pop()
+            if has_else:
+                self.ctx.emit_else_comment(out, stmt.orelse, indent)
+                out.write(f"{indent}{{\n")
+                self.ctx.indent_level += 1
+                for s in stmt.orelse:
+                    self.gen_stmt(out, s)
+                self.ctx.emit_block_trailing_comments(out, stmt.orelse, self.ctx.indent())
+                self.ctx.indent_level -= 1
+                out.write(f"{indent}}}\n")
+                out.write(f"{indent}{label}:;\n")
             return
 
         has_else = bool(stmt.orelse)
