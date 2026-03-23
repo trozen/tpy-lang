@@ -1,0 +1,1 @@
+main.py:7: error: Generator function 'bad' cannot use 'return' with a value

@@ -1224,14 +1224,38 @@ class TypeRegistrar:
 
         # Protocol types cannot be used as return types (but TypeParamRef is OK).
         # Exception: @dynamic protocols can be returned (lifetime-checked in sema).
+        # Exception: generator functions return Iterator[T] (codegen emits concrete struct).
         if is_protocol_type(resolved_return):
-            pi = self.ctx.registry.get_protocol(resolved_return.name)
-            if not (pi and pi.is_dynamic):
-                raise SemanticError(
-                    f"Protocol type '{resolved_return.name}' cannot be used as a return type. "
-                    f"Only @dynamic protocols can be used as return types",
-                    func.loc
-                )
+            if func.is_generator:
+                # Validate that it's Iterator[T]
+                if resolved_return.qualified_name() != "typing.Iterator":
+                    raise SemanticError(
+                        f"Generator function must have return type 'Iterator[T]', "
+                        f"got '{resolved_return}'",
+                        func.loc
+                    )
+                if not resolved_return.type_args:
+                    raise SemanticError(
+                        f"Iterator must have a type argument, e.g. Iterator[Int32]",
+                        func.loc
+                    )
+                func.generator_yield_type = resolved_return.type_args[0]
+            else:
+                pi = self.ctx.registry.get_protocol(resolved_return.name)
+                if not (pi and pi.is_dynamic):
+                    raise SemanticError(
+                        f"Protocol type '{resolved_return.name}' cannot be used as a return type. "
+                        f"Only @dynamic protocols can be used as return types",
+                        func.loc
+                    )
+
+        # Generator without Iterator[T] return type
+        if func.is_generator and not is_protocol_type(resolved_return):
+            raise SemanticError(
+                f"Generator function must have return type 'Iterator[T]', "
+                f"got '{resolved_return}'",
+                func.loc
+            )
 
         if contains_fn_type(resolved_return):
             raise SemanticError(

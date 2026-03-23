@@ -1,0 +1,1 @@
+main.py:6: error: 'yield' must have a value in TurboPython

@@ -377,7 +377,7 @@ Note: `@noalloc` is parsed but not yet enforced. See `docs/LANGUAGE_FEATURES.md`
 
 The compiler is a proof-of-concept. Not yet implemented:
 - General exception handling (`try`/`except`/`raise` with C++ exceptions). `@error_return(E)` provides zero-cost `try`/`except` for control-flow errors via `std::expected`.
-- `async`/`await`, `yield`
+- `async`/`await`
 - Slice step (`items[::2]`, `items[::-1]`)
 
 ## Type Mappings

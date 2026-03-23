@@ -2326,7 +2326,7 @@ for (;;) {
 | 5. `__span__` protocol | **Working** | `__span__() -> Span[T]` for implicit Span coercion; iteration requires `__iter__()` |
 | 5b. `ReadOnlySpanLike[T]` protocol | **Working** | Readonly protocol for types with `__span__()`, for-loop and ReadOnlySpan coercion |
 | 6. Generator expressions | **Working** | `(expr for x in iterable)` → lazy `make_generator` wrapper, satisfies `Iterable[T]` |
-| 7. Generator functions | Open | `yield` → state-machine class implementing `Iterator` |
+| 7. Generator functions | **Working** | `yield` → state-machine struct or lambda wrapper implementing `Iterator[T]`. Simple generators (single yield in while-loop) use `make_generator` + lambda; complex generators use struct with switch/goto dispatch |
 | 8. Iterator combinators | Open | `enumerate()`, `zip()`, `filter()`, `map()`, `reversed()` |
 
 See [docs/ITERATOR_DESIGN.md](ITERATOR_DESIGN.md) for the full iterator design document.
@@ -4571,8 +4571,8 @@ Send/Sync rules for built-in types:
 ## Generators
 
 - **Working**: Generator expressions `(expr for x in iterable if cond)` → `tpy::make_generator<T>(lambda)` wrapper satisfying `Iterable[T]`. Supports range sources, container sources, filter clauses, tuple unpacking, outer local capture. See [COMPREHENSION_DESIGN.md](COMPREHENSION_DESIGN.md#generator-expressions).
-- **Open**: `yield` → generator as state-machine class implementing `Iterator` (see iterator roadmap)
-- Could be zero-alloc if state machine is stack-allocated
+- **Working**: Generator functions with `yield` → `Iterator[T]`. Simple generators (single yield in while-loop) use `make_generator<T>` + lambda. Complex generators (multiple yields, conditionals, nested loops) use struct with `__state` + switch/goto dispatch in `__next__()`. All generators are stack-allocated (zero heap allocation, `@noalloc`-compatible).
+- **Open**: `yield from`, `send()`, `throw()`, `close()`, yield inside for-loops
 
 ---
 
@@ -4655,7 +4655,7 @@ Send/Sync rules for built-in types:
   print(a(5))         # 15 -- direct call
   print(apply(a, 5))  # 15 -- passed to Fn param
   ```
-- **Open**: Generator functions (`yield`) -- manual state machine transformation
+- **Working**: Generator functions (`yield`) -- manual state machine or lambda wrapper (see Generators section above)
 - See `docs/CLOSURES_CALLABLE_DESIGN.md` for full design and phasing.
 
 ---

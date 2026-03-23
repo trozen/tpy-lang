@@ -490,6 +490,10 @@ class SemanticContext:
     # --- Last-use tracking (shared with codegen, persists across functions) ---
     all_last_uses: set[int] = field(default_factory=set)
 
+    # --- Generator yield tracking (persists across functions) ---
+    _yield_counter: int = 0
+    generator_yield_states: dict[int, int] = field(default_factory=dict)  # id(TpyYield) -> state number
+
     # --- Expression type hint ---
     expr_type_hint: TpyType | None = None
 

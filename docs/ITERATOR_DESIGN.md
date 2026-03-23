@@ -22,7 +22,7 @@
 | `__reversed__` / `reversed()` | **Todo** | User-defined reverse iteration |
 | `__contains__` / `in` for user types | **Todo** | Currently `in` only works on built-in containers |
 | Iterator combinators | **Todo** | `enumerate()`, `zip()`, `filter()`, `map()` |
-| Generator functions (`yield`) | **Todo** | State-machine class implementing Iterator |
+| Generator functions (`yield`) | **Done** | State-machine struct or lambda wrapper implementing `Iterator[T]` |
 | `yield from` | **Todo** | Delegation to sub-generators |
 | Generator `send()`/`throw()`/`close()` | **Todo** | Coroutine protocol |
 | `StopIteration` with value | **Todo** | Generator return values via `raise StopIteration(value)` |

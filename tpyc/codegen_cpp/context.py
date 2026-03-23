@@ -208,6 +208,10 @@ def is_lvalue_iterable(
         if isinstance(expr, TpyCall) and get_record(expr.func):
             return False
         ret_type = get_type(expr)
+        # Protocol return types (e.g. Iterator[T] from generators) are
+        # value types in practice -- the C++ return is a concrete struct.
+        if is_protocol_type(ret_type):
+            return False
         return (not ret_type.is_value_type()
                 and not isinstance(ret_type, (OptionalType, UnionType)))
     return False
@@ -434,6 +438,10 @@ class CodeGenContext:
 
     # --- Match/case label counter (for goto-based guard fallthrough) ---
     match_counter: int = 0
+
+    # --- Generator function codegen ---
+    in_generator_body: bool = False
+    generator_field_names: set[str] = field(default_factory=set)
 
     # --- for/else, while/else label stack ---
     # When generating a loop with an else clause, the goto label name is

@@ -543,6 +543,15 @@ class TpyReturn(TpyStmt):
 
 
 @dataclass
+class TpyYield(TpyStmt):
+    """Yield statement in a generator function."""
+    value: TpyExpr
+
+    def exprs(self) -> list[TpyExpr]:
+        return [self.value]
+
+
+@dataclass
 class TpyAssert(TpyStmt):
     """Assert statement."""
     condition: TpyExpr
@@ -889,6 +898,9 @@ class TpyFunction:
     type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
     defaults: list['TpyExpr | None'] = field(default_factory=list)  # len == len(params); None = no default
     error_return: str | None = None  # @error_return(E) exception type name
+    is_generator: bool = False  # Set by parser: body contains yield
+    generator_yield_type: 'TpyType | None' = None  # Set by sema: T from Iterator[T]
+    generator_locals: 'list[tuple[str, TpyType]] | None' = None  # Set by sema: local vars for struct fields
     loc: SourceLocation | None = None
 
     @property

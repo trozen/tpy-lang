@@ -112,7 +112,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 |---|---------|--------|--------|---------|
 | F1 | Compile-time evaluation | XL | Not started | [V](#compile-time-evaluation-constexpr--comptime) |
 | F2 | Macro system | XL | Phase 2 done | [V](#macro-system--metaprogramming) |
-| F3 | Generators / yield | L-XL | Not started | [VI](#generators-yield) |
+| F3 | Generators / yield | L-XL | Done | [VI](#generators-yield) |
 | F4 | Typestate | XL | Research | [VIII](#typestate-object-lifecycle) |
 | F5 | Self-interpret (TPy eval in tpyc) | XL | Not started | [V](#self-interpret-tpy-eval-in-tpyc) |
 | F6 | Alternative backends | XL | Not started | [V](#alternative-backends) |

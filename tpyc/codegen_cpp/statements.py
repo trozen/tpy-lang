@@ -18,7 +18,7 @@ from ..typesys import (
     error_return_to_cpp,
 )
 from ..parse import (
-    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
+    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn, TpyYield,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyPassStmt,
     TpyRaise, TpyTryExcept, TpyWith,
     TpyGlobal, TpyNonlocal, TpyNestedDef,
@@ -232,6 +232,10 @@ class StatementGenerator:
             self.ctx.emit_source_comment(out, stmt.loc, indent)
             self.ctx.temps.flush(out, indent)
             self._gen_nested_def(out, stmt, indent)
+        elif isinstance(stmt, TpyYield):
+            self.ctx.emit_source_comment(out, stmt.loc, indent)
+            self.ctx.temps.flush(out, indent)
+            self._gen_yield(out, stmt, indent)
         else:
             # Simple statements - single flush point for all
             code = self._gen_simple_stmt(stmt, indent)
@@ -282,6 +286,9 @@ class StatementGenerator:
                             f"{indent}}}\n")
             return f"{indent}{self.expressions.gen_expr(stmt.expr)};\n"
         elif isinstance(stmt, TpyReturn):
+            if self.ctx.in_generator_body:
+                # Bare return in generator -> StopIteration
+                return f"{indent}goto __done;\n"
             if stmt.value:
                 ret_type = self.ctx.current_return_type
                 ret_value = stmt.value
@@ -1064,6 +1071,16 @@ class StatementGenerator:
             return None
         # Final globals are defined at namespace scope, skip in __tpy_init
         if stmt.is_final:
+            return None
+
+        # Generator body: variable is a struct field, emit assignment only
+        if self.ctx.in_generator_body and stmt.name in self.ctx.generator_field_names:
+            self.ctx.declared_vars.add(stmt.name)
+            self.ctx.local_scope_names.add(stmt.name)
+            if stmt.init:
+                cpp_name = escape_cpp_name(stmt.name)
+                init_expr = self.expressions.gen_expr(stmt.init)
+                return f"{indent}{cpp_name} = {init_expr};\n"
             return None
 
         cpp_name = escape_cpp_name(stmt.name)
@@ -1901,6 +1918,14 @@ class StatementGenerator:
         if fi and fi.error_return_type:
             return fi
         return None
+
+    def _gen_yield(self, out: TextIO, stmt: TpyYield, indent: str) -> None:
+        """Generate a yield statement in a generator function body."""
+        state_num = self.ctx.analyzer.ctx.generator_yield_states[id(stmt)]
+        yield_expr = self.expressions.gen_expr(stmt.value)
+        out.write(f"{indent}__state = {state_num};\n")
+        out.write(f"{indent}return {yield_expr};\n")
+        out.write(f"{indent}__resume_{state_num}:;\n")
 
     def _gen_assert(self, out: TextIO, stmt: TpyAssert, indent: str) -> None:
         """Generate an assert statement with optional isinstance union narrowing."""

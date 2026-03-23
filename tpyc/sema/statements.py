@@ -20,7 +20,7 @@ from ..typesys import (
 )
 from ..parse import (
     TpyExpr,
-    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
+    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn, TpyYield,
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert,
     TpyRaise, TpyTryExcept, TpyWith,
     TpyGlobal, TpyNonlocal, TpyNestedDef,
@@ -545,6 +545,8 @@ class StatementAnalyzer:
                                         self.ctx.mark_param_mutated(src)
                                     self.ctx.mark_param_returned(src)
             self.init.mark_terminated()
+        elif isinstance(stmt, TpyYield):
+            self._analyze_yield(stmt)
         elif isinstance(stmt, TpyIf):
             assigned_before_cond = frozenset(self.ctx.definitely_assigned)
             saved_sc_and = self.ctx.sc_and_walrus.copy()
@@ -1415,6 +1417,21 @@ class StatementAnalyzer:
             )
 
         return var_type
+
+    def _analyze_yield(self, stmt: TpyYield) -> None:
+        """Analyze a yield statement in a generator function."""
+        func = self.ctx.current_function
+        if func is None or not func.is_generator:
+            raise self.ctx.error("'yield' can only be used inside a generator function", stmt)
+        elem_type = func.generator_yield_type
+        assert elem_type is not None
+        yield_type = self.expr.analyze_expr_with_hint(stmt.value, elem_type)
+        stmt.value = self.compat.coerce_expr(
+            stmt.value, yield_type, elem_type, "yield value",
+            coercion_ctx=CoercionContext.RETURN)
+        # Assign a unique yield state number
+        self.ctx._yield_counter += 1
+        self.ctx.generator_yield_states[id(stmt)] = self.ctx._yield_counter
 
     def _analyze_var_decl(self, stmt: TpyVarDecl) -> None:
         """Analyze a variable declaration."""

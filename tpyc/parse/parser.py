@@ -31,7 +31,7 @@ from .nodes import (
     TpyComprehensionGenerator, TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression,
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr, TpyNamedExpr, TpyLambda,
-    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn,
+    TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn, TpyYield,
     TpyAssert, TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue,
     TpyPassStmt, TpyGlobal, TpyNonlocal, TpyRaise, TpyTryExcept, TpyWithItem, TpyWith,
     TpyNestedDef,
@@ -335,12 +335,61 @@ _DECORATOR_ARG_SCHEMAS: dict[str, _DecoratorArgSchema] = {
 }
 
 
+def _stmt_child_bodies(stmt: TpyStmt) -> list[list[TpyStmt]]:
+    """Return the child statement bodies of a compound statement (no nested defs)."""
+    if isinstance(stmt, TpyIf):
+        return [stmt.then_body, stmt.else_body]
+    elif isinstance(stmt, TpyWhile):
+        bodies = [stmt.body]
+        if stmt.orelse:
+            bodies.append(stmt.orelse)
+        return bodies
+    elif isinstance(stmt, TpyForEach):
+        bodies = [stmt.body]
+        if stmt.orelse:
+            bodies.append(stmt.orelse)
+        return bodies
+    elif isinstance(stmt, TpyWith):
+        return [stmt.body]
+    elif isinstance(stmt, TpyTryExcept):
+        return [stmt.try_body, stmt.except_body]
+    elif isinstance(stmt, TpyMatch):
+        return [case.body for case in stmt.cases]
+    return []
+
+
+def _body_contains_yield(stmts: list[TpyStmt]) -> bool:
+    """Check if a function body contains any yield statements (non-recursive into nested defs)."""
+    for stmt in stmts:
+        if isinstance(stmt, TpyYield):
+            return True
+        for child_body in _stmt_child_bodies(stmt):
+            if _body_contains_yield(child_body):
+                return True
+    return False
+
+
+def _check_no_return_value_in_generator(
+    stmts: list[TpyStmt], func_name: str,
+) -> None:
+    """Reject 'return value' inside a generator function body."""
+    for stmt in stmts:
+        if isinstance(stmt, TpyReturn) and stmt.value is not None:
+            # Create a minimal object with lineno for ParseError
+            err = ParseError(
+                f"Generator function '{func_name}' cannot use 'return' with a value")
+            if stmt.loc:
+                err.lineno = stmt.loc.line
+            raise err
+        for child_body in _stmt_child_bodies(stmt):
+            _check_no_return_value_in_generator(child_body, func_name)
+
+
 class Parser:
     """Parser for TurboPython source code."""
 
     FORBIDDEN_CONSTRUCTS = {
         "with", "async", "await",
-        "yield",
     }
 
     def __init__(self):
@@ -1724,6 +1773,11 @@ class Parser:
         # Restore the scope
         self._type_param_scope = old_scope
 
+        is_generator = _body_contains_yield(body)
+        if is_generator:
+            # Validate: no 'return value' inside generator
+            _check_no_return_value_in_generator(body, node.name)
+
         return TpyFunction(
             name=node.name,
             params=params,
@@ -1743,6 +1797,7 @@ class Parser:
             type_param_bounds=type_param_bounds,
             defaults=defaults,
             error_return=error_return,
+            is_generator=is_generator,
             loc=self._loc(node)
         )
 
@@ -2152,6 +2207,11 @@ class Parser:
             return TpyAugAssign(target, op, value, loc=loc)
 
         elif isinstance(node, ast.Expr):
+            if isinstance(node.value, ast.Yield):
+                if node.value.value is None:
+                    raise ParseError("'yield' must have a value in TurboPython", node)
+                value = self._parse_expr(node.value.value)
+                return TpyYield(value, loc=loc)
             return TpyExprStmt(self._parse_expr(node.value), loc=loc)
 
         elif isinstance(node, ast.Return):
@@ -2634,6 +2694,14 @@ class Parser:
             param_names = [arg.arg for arg in node.args.args]
             body = self._parse_expr(node.body)
             return TpyLambda(param_names=param_names, body=body, loc=loc)
+
+        elif isinstance(node, ast.Yield):
+            raise ParseError(
+                "'yield' is only allowed as a statement, not in expression context", node)
+
+        elif isinstance(node, ast.YieldFrom):
+            raise ParseError(
+                "'yield from' is not yet supported in TurboPython", node)
 
         else:
             raise ParseError(f"Unsupported expression: {type(node).__name__}", node)

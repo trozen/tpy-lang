@@ -69,6 +69,11 @@ class CodeGenerator:
         self.records.set_dependencies(self.expressions, self.functions)
         self.functions.set_statements(self.statements)
 
+        # Generator codegen (must be created after wiring since it uses statements/functions)
+        from .gen_generators import GeneratorCodegen
+        self.gen_generators = GeneratorCodegen(
+            self.ctx, self.types, self.expressions, self.statements, self.functions)
+
     def generate(self, module: TpyModule, module_name: str = "generated",
                  is_entry_point: bool = True,
                  actual_user_modules: set[str] | None = None,
@@ -227,6 +232,12 @@ class CodeGenerator:
 
         # Generate function definitions (skip template functions -- defined in header)
         for func in module.functions:
+            if func.is_generator:
+                if not self.gen_generators.is_simple_generator(func):
+                    self.gen_generators.gen_generator_factory(cpp, func)
+                    cpp.write("\n")
+                # Simple generators are defined inline in the header
+                continue
             if self.functions.is_template_function(func):
                 continue
             self.functions.gen_function_def(cpp, func)
@@ -528,11 +539,24 @@ class CodeGenerator:
         if emitted_imported_alias:
             hpp.write("\n")
 
+        # Generator struct definitions (before function forward decls,
+        # since factory forward decls reference the struct type).
+        # Simple generators skip the struct and are emitted inline later.
+        for func in module.functions:
+            if func.is_generator and not self.gen_generators.is_simple_generator(func):
+                self.gen_generators.gen_generator_struct(hpp, func)
+                hpp.write("\n")
+
         # Function forward declarations (before records, so inline
         # constructor/method bodies can call free functions)
         emitted_fwd_func = False
         for func in module.functions:
-            if self.functions.gen_function_forward_decl(hpp, func):
+            if func.is_generator:
+                if self.gen_generators.is_simple_generator(func):
+                    continue  # Simple generators are inline -- no forward decl
+                if self.gen_generators.gen_generator_factory_forward_decl(hpp, func):
+                    emitted_fwd_func = True
+            elif self.functions.gen_function_forward_decl(hpp, func):
                 emitted_fwd_func = True
         if emitted_fwd_func:
             hpp.write("\n")
@@ -611,6 +635,13 @@ class CodeGenerator:
         # non-template signatures are already forward-declared above)
         emitted_func_decl = False
         for func in module.functions:
+            if func.is_generator:
+                if self.gen_generators.is_simple_generator(func):
+                    # Simple generators: emit inline function definition in header
+                    self.gen_generators.gen_simple_generator_inline(hpp, func)
+                    hpp.write("\n")
+                    emitted_func_decl = True
+                continue  # Complex generators: factory emitted in source file
             if self.functions.gen_function_decl(hpp, func):
                 emitted_func_decl = True
 

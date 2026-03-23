@@ -61,7 +61,9 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - dynamic attributes
 - list/container slicing (Phase 3: step)
 - properties
-- yield/generator function
+- Generator: yield inside for-loops in complex (multi-yield) generators -- needs iterator hoisting to state machine struct fields
+- Generator: `yield from`, `send()`, `throw()`, `close()`
+- Generator: liveness optimization -- only promote yield-crossing variables to struct fields, keep others as stack locals in `__next__()` (currently all locals are promoted)
 - Protocol isinstance in ternary expressions: `x = a.foo() if isinstance(a, P1) else a.bar()` generates a runtime `?:` but both branches must be valid C++ at template instantiation time. Fix: generate an IIFE with `if constexpr` inside, e.g. `[&]() -> T { if constexpr (P1<T_a>) { return a.foo(); } else { return a.bar(); } }()`. This also enables single-line field init in `__init__` (goes into the C++ member initializer list instead of requiring unconditional pre-assignment + reassignment in branches).
 - Allow `@runtime_checkable` decorator on protocols (no-op in tpyc, enables CPython compatibility for isinstance checks on user-defined protocols)
 - `del x` (variable unbinding): complex in compiled context -- needs lifetime/scope analysis. Low priority.

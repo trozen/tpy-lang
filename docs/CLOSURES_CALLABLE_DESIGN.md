@@ -8,7 +8,7 @@
 | 1b | `Callable` type (`std::function`, type-erased callable) | Done |
 | 2 | Named function references as values (`apply(double, 42)`) | Done |
 | 3 | Nested `def` with captures, `nonlocal` keyword | Done |
-| 4 | Generator functions (`yield`) | Not started |
+| 4 | Generator functions (`yield`) | Done |
 | 5 | `@noalloc` enforcement, `FnOnce` semantics for `Own[T]` captures | Not started |
 
 ### Future Extensions
@@ -17,6 +17,8 @@
 |---------|-------|
 | `yield from` / delegating generators | Forward to sub-iterator; useful for recursive generators (tree traversal) |
 | `gen.send(value)` / `gen.throw(exc)` | Two-way generator communication; rarely used outside async frameworks |
+| Generator liveness optimization | Only promote yield-crossing variables to struct fields; keep others as stack locals in `__next__()`. Reduces struct size, no behavior change. |
+| Generator yield in for-loops (state machine) | Complex generators with yield inside for-loops need iterator hoisting to struct fields. Simple generators already handle for-loops via the lambda path. |
 | `async`/`await` | Reuses state machine infrastructure from generators |
 | Recursive closures | Closure calling itself -- needs `std::function` self-reference. Currently gives confusing "Unknown function" error; should have a dedicated diagnostic. |
 | Nested-in-nested `def` | `def` inside `def` inside `def`. Currently rejected. Requires saving/restoring more sema state in `nested_def_scope`. |
@@ -763,6 +765,10 @@ def gen() -> Iterator[Int32]:
 
 The compiler's existing liveness analysis (`liveness.py`) can be extended to
 identify yield-crossing variables.
+
+**Current status**: All locals are promoted to struct fields (no liveness optimization).
+This is correct but over-allocates. The optimization is deferred -- it doesn't change
+behavior, only reduces generator struct size.
 
 ### Control Flow Challenges
 
