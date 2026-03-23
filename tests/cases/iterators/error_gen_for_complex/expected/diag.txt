@@ -1,1 +1,0 @@
-main.py:8: error: yield inside for-loops is not yet supported in generators with multiple yield points or early returns. Use a while-loop instead, or restructure as a single-yield generator

@@ -300,6 +300,20 @@ Tests live in `tests/cases/iterators/`:
 | `for_iterator_subscript_consumption` | Consumption via `items[idx]` |
 | `for_iterator_method_consumption` | Consumption via `obj.method()` |
 | `native_iterable_str` | String iteration (`NativeIterable[Char]`) |
+| `gen_basic` | Simple while-loop generator |
+| `gen_sequential` | Multiple sequential yields |
+| `gen_conditional` | Yield in if/else |
+| `gen_fibonacci` | Mutable state generator (while-loop) |
+| `gen_early_return` | Bare return in generator |
+| `gen_nested_while` | Nested while-loops |
+| `gen_list_consume` | `list(gen())` consumption |
+| `gen_for_range` | Simple for-range generator (lambda path) |
+| `gen_for_container` | Simple for-container generator (lambda path) |
+| `gen_for_complex` | Complex generator with yield in for-loop over container |
+| `gen_for_range_complex` | Complex generator with yield in for-loop over range |
+| `gen_for_multi` | Multiple for-loops (container + range) in one generator |
+| `gen_for_user_iter` | For-loop over user `__iter__()` type in complex generator |
+| `gen_two_generators` | Two complex generators in same module |
 | `panic_direct_dunder_next` | `obj.__next__()` without try/except |
 | `panic_range_zero_step` | `range(0, 5, 0)` panics |
 | `panic_range_variable_zero_step` | Variable zero step panics |
@@ -329,5 +343,6 @@ Tests live in `tests/cases/iterators/`:
 | `tpyc/sema/list_literals.py` | `is_type_iterable()`, `get_iterable_element_type_or_none()` |
 | `tpyc/parse/parser.py` | `raise StopIteration` parsing |
 | `tpyc/parse/nodes.py` | `TpyRaise` node |
-| `tpyc/codegen_cpp/statements.py` | All for-loop codegen paths, `_is_lvalue_iterable()` |
+| `tpyc/codegen_cpp/statements.py` | All for-loop codegen paths, `_is_lvalue_iterable()`, generator for-loop lowering |
+| `tpyc/codegen_cpp/gen_generators.py` | Generator function codegen: state machine structs, lambda optimization, for-loop pre-scan |
 | `tpyc/codegen_cpp/functions.py` | `__next__` -> `std::expected` codegen |

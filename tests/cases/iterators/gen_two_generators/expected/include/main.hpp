@@ -10,31 +10,22 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_gen_a;
+struct __gen_gen_b;
+
+__gen_gen_a gen_a();
+__gen_gen_b gen_b();
+void main();
+
 // Generator: gen_a
 struct __gen_gen_a {
-    int __state = 0;
+    int __state;
+
+    __gen_gen_a()
+        : __state(0) {}
 
     __gen_gen_a& __iter__() { return *this; }
-
-    std::expected<int32_t, ::tpy::StopIteration> __next__() {
-        switch (__state) {
-            case 0: break;
-            case 1: goto __resume_1;
-            case 2: goto __resume_2;
-            default: goto __done;
-        }
-        // yield 1
-        __state = 1;
-        return 1;
-        __resume_1:;
-        // yield 2
-        __state = 2;
-        return 2;
-        __resume_2:;
-        __done:
-        __state = -1;
-        return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_gen_a&) {
         return os << "<generator gen_a>";
@@ -43,43 +34,18 @@ struct __gen_gen_a {
 
 // Generator: gen_b
 struct __gen_gen_b {
-    int __state = 0;
+    int __state;
+
+    __gen_gen_b()
+        : __state(0) {}
 
     __gen_gen_b& __iter__() { return *this; }
-
-    std::expected<int32_t, ::tpy::StopIteration> __next__() {
-        switch (__state) {
-            case 0: break;
-            case 1: goto __resume_1;
-            case 2: goto __resume_2;
-            case 3: goto __resume_3;
-            default: goto __done;
-        }
-        // yield 10
-        __state = 1;
-        return 10;
-        __resume_1:;
-        // yield 20
-        __state = 2;
-        return 20;
-        __resume_2:;
-        // yield 30
-        __state = 3;
-        return 30;
-        __resume_3:;
-        __done:
-        __state = -1;
-        return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_gen_b&) {
         return os << "<generator gen_b>";
     }
 };
-
-__gen_gen_a gen_a();
-__gen_gen_b gen_b();
-void main();
 
 void __tpy_init();
 } // namespace tpyapp::main

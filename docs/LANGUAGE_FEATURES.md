@@ -4571,8 +4571,8 @@ Send/Sync rules for built-in types:
 ## Generators
 
 - **Working**: Generator expressions `(expr for x in iterable if cond)` → `tpy::make_generator<T>(lambda)` wrapper satisfying `Iterable[T]`. Supports range sources, container sources, filter clauses, tuple unpacking, outer local capture. See [COMPREHENSION_DESIGN.md](COMPREHENSION_DESIGN.md#generator-expressions).
-- **Working**: Generator functions with `yield` → `Iterator[T]`. Simple generators (single yield in while-loop) use `make_generator<T>` + lambda. Complex generators (multiple yields, conditionals, nested loops) use struct with `__state` + switch/goto dispatch in `__next__()`. All generators are stack-allocated (zero heap allocation, `@noalloc`-compatible).
-- **Open**: `yield from`, `send()`, `throw()`, `close()`, yield inside for-loops
+- **Working**: Generator functions with `yield` → `Iterator[T]`. Simple generators (single yield in while/for-loop) use `make_generator<T>` + lambda. Complex generators (multiple yields, conditionals, nested loops, for-loops) use struct with `__state` + switch/goto dispatch in `__next__()`. For-loops with yields are lowered to while-loops with iterator state as struct fields (counter for range, begin/end for containers, `std::expected` for `__next__()` protocol). All generators are stack-allocated (zero heap allocation, `@noalloc`-compatible).
+- **Open**: `yield from`, `send()`, `throw()`, `close()`, `for...else` with `yield`, tuple unpacking in for-loops with `yield`, protocol-typed generator params (needs template structs)
 
 ---
 

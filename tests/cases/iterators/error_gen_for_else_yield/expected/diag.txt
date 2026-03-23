@@ -1,0 +1,1 @@
+main.py:7: error: for...else with yield is not yet supported in generators

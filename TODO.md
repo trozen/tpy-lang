@@ -3,6 +3,7 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
+- Add C++ `__iter__()` to builtin containers (list, dict, set, Array, Span, str) so `iter()` builtin and generator for-loops can use the TPy Iterator protocol uniformly instead of falling back to C++ begin/end. list/Array/Span/str can return `SpanIter<T>`, dict/set need new key/value iterator wrappers. Currently these containers declare `__iter__()` at the TPy level but have no C++ implementation -- causes `iter(d)` REPL error and forces begin/end codegen in generators.
 - Resolve class-level type params in cpp_template at sema time: when sema resolves a generic constructor like `list[Int32](range(10))`, substitute `{T}` -> `Int32` into the template and store a fully-resolved `cpp_template` on `resolved_function_info`. Codegen would then never see unresolved type params -- every template would only have `{0}`, `{1}`, `{cpp}`. Eliminates the `type_subst`/`extract_type_params` machinery in codegen's call_type block and the regex guard in `_gen_call`.
 - Eliminate concrete type classes (ListType, DictType, etc.): replace `isinstance(t, ListType)` checks with name-based or annotation-driven checks. ~60 references for ListType alone across type inference, codegen, and compatibility. Enables treating all types uniformly as NamedType + RecordInfo. Lower priority -- current type classes work fine, this is about uniformity.
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
@@ -62,9 +63,11 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - dynamic attributes
 - list/container slicing (Phase 3: step)
 - properties
-- Generator: yield inside for-loops in complex (multi-yield) generators -- needs iterator hoisting to state machine struct fields
 - Generator: `yield from`, `send()`, `throw()`, `close()`
+- Generator: `for...else` with `yield`, tuple unpacking in for-loops with `yield`
+- Generator: protocol-typed params (`def gen(it: Iterator[T])`) -- needs template struct + factory
 - Generator: liveness optimization -- only promote yield-crossing variables to struct fields, keep others as stack locals in `__next__()` (currently all locals are promoted)
+- Generator: lifetime/borrow analysis for reference params -- generator structs store non-value params as references, which can dangle if the generator outlives the source. Extend existing borrow analysis to track generator lifetimes and warn on escaping generators.
 - Protocol isinstance in ternary expressions: `x = a.foo() if isinstance(a, P1) else a.bar()` generates a runtime `?:` but both branches must be valid C++ at template instantiation time. Fix: generate an IIFE with `if constexpr` inside, e.g. `[&]() -> T { if constexpr (P1<T_a>) { return a.foo(); } else { return a.bar(); } }()`. This also enables single-line field init in `__init__` (goes into the C++ member initializer list instead of requiring unconditional pre-assignment + reassignment in branches).
 - Allow `@runtime_checkable` decorator on protocols (no-op in tpyc, enables CPython compatibility for isinstance checks on user-defined protocols)
 - `del x` (variable unbinding): complex in compiled context -- needs lifetime/scope analysis. Low priority.

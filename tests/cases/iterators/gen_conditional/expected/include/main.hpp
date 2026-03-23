@@ -10,46 +10,27 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_evens;
+
+__gen_evens evens(int32_t n);
+void main();
+
 // Generator: evens
 struct __gen_evens {
-    int __state = 0;
+    int __state;
     int32_t n;
-    int32_t i{};
+    int32_t i;
+
+    __gen_evens(int32_t n_)
+        : __state(0), n(n_) {}
 
     __gen_evens& __iter__() { return *this; }
-
-    std::expected<int32_t, ::tpy::StopIteration> __next__() {
-        switch (__state) {
-            case 0: break;
-            case 1: goto __resume_1;
-            default: goto __done;
-        }
-        // i: Int32 = 0
-        i = 0;
-        // while i < n:
-        while ((i < n)) {
-            // if i % 2 == 0:
-            if (((::tpy::mod_floor<int32_t>(i, 2)) == 0)) {
-                // yield i
-                __state = 1;
-                return i;
-                __resume_1:;
-            }
-            // i += 1
-            i = ::tpy::add_check<int32_t>(i, 1);
-        }
-        __done:
-        __state = -1;
-        return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_evens&) {
         return os << "<generator evens>";
     }
 };
-
-__gen_evens evens(int32_t n);
-void main();
 
 void __tpy_init();
 } // namespace tpyapp::main

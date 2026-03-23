@@ -538,6 +538,9 @@ class ExpressionGenerator:
                 source_module, original_name = self.ctx.user_imported_variables[expr.name]
                 return qualified_cpp_name(source_module, original_name)
             result = escape_cpp_name(expr.name)
+            # Generator body: optional-wrapped fields need dereference
+            if self.ctx.in_generator_body and expr.name in self.ctx.generator_optional_fields:
+                result = f"(*{result})"
             return self._maybe_convert_opt_str_param(expr.name, result, target_type)
 
         elif isinstance(expr, TpyBinOp):

@@ -10,48 +10,27 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_maybe_count;
+
+__gen_maybe_count maybe_count(int32_t n);
+void main();
+
 // Generator: maybe_count
 struct __gen_maybe_count {
-    int __state = 0;
+    int __state;
     int32_t n;
-    int32_t i{};
+    int32_t i;
+
+    __gen_maybe_count(int32_t n_)
+        : __state(0), n(n_) {}
 
     __gen_maybe_count& __iter__() { return *this; }
-
-    std::expected<int32_t, ::tpy::StopIteration> __next__() {
-        switch (__state) {
-            case 0: break;
-            case 1: goto __resume_1;
-            default: goto __done;
-        }
-        // if n <= 0:
-        if ((n <= 0)) {
-            // return
-            goto __done;
-        }
-        // i: Int32 = 0
-        i = 0;
-        // while i < n:
-        while ((i < n)) {
-            // yield i
-            __state = 1;
-            return i;
-            __resume_1:;
-            // i += 1
-            i = ::tpy::add_check<int32_t>(i, 1);
-        }
-        __done:
-        __state = -1;
-        return ::tpy::make_unexpected(::tpy::StopIteration{});
-    }
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_maybe_count&) {
         return os << "<generator maybe_count>";
     }
 };
-
-__gen_maybe_count maybe_count(int32_t n);
-void main();
 
 void __tpy_init();
 } // namespace tpyapp::main

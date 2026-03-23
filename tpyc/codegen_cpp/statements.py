@@ -1934,6 +1934,234 @@ class StatementGenerator:
         out.write(f"{indent}return {yield_expr};\n")
         out.write(f"{indent}__resume_{state_num}:;\n")
 
+    def _gen_generator_for_loop(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
+        """Generate a lowered for-loop inside a generator state machine body.
+
+        For-loops with yields are lowered to while-loops so that goto resume
+        labels can jump into the loop body (Duff's device pattern).
+        """
+        from .gen_generators import GeneratorForInfo
+        info: GeneratorForInfo = self.ctx.generator_for_loop_info[id(stmt)]
+
+        if info.strategy == "range":
+            self._gen_generator_for_range(out, stmt, indent, info)
+        elif info.strategy == "begin_end":
+            self._gen_generator_for_begin_end(out, stmt, indent, info)
+        elif info.strategy == "next":
+            self._gen_generator_for_next(out, stmt, indent, info)
+        elif info.strategy == "iter_next":
+            self._gen_generator_for_iter_next(out, stmt, indent, info)
+        elif info.strategy == "iter_begin_end":
+            self._gen_generator_for_iter_begin_end(out, stmt, indent, info)
+        else:
+            raise CodeGenError(f"unknown generator for-loop strategy: {info.strategy}")
+
+    def _gen_generator_for_range(self, out: TextIO, stmt: TpyForEach,
+                                  indent: str, info: 'GeneratorForInfo') -> None:
+        """Lowered range() for-loop: counter variables as struct fields."""
+        from ..typesys import IntLiteralType, BigIntType
+
+        uid = info.uid
+        # Synthetic fields are std::optional -- dereference with *
+        counter = f"*__for_i_{uid}"
+        stop = f"*__for_stop_{uid}"
+        counter_raw = f"__for_i_{uid}"
+        stop_raw = f"__for_stop_{uid}"
+
+        elem_type = stmt.elem_type
+        if elem_type and isinstance(elem_type, IntLiteralType):
+            elem_type = self.ctx.analyzer.ctx.default_int_type
+        cpp_elem = self.types.type_to_cpp(elem_type) if elem_type else "int32_t"
+        cpp_var = escape_cpp_name(stmt.var)
+
+        range_call = stmt.iterable
+        assert isinstance(range_call, TpyCall) and range_call.func == "range"
+        gen_args = self.builtins.gen_range_args(range_call)
+        nargs = len(gen_args)
+
+        self.ctx.temps.flush(out, indent)
+
+        # Initialize counter and stop (assign into optional)
+        if nargs == 1:
+            out.write(f"{indent}{counter_raw} = {cpp_elem}(0);\n")
+            out.write(f"{indent}{stop_raw} = static_cast<{cpp_elem}>({gen_args[0]});\n")
+        elif nargs >= 2:
+            out.write(f"{indent}{counter_raw} = static_cast<{cpp_elem}>({gen_args[0]});\n")
+            out.write(f"{indent}{stop_raw} = static_cast<{cpp_elem}>({gen_args[1]});\n")
+
+        if nargs == 3:
+            step_raw = f"__for_step_{uid}"
+            step = f"*{step_raw}"
+            step_lit = self._extract_int_literal(range_call.args[2])
+            out.write(f"{indent}{step_raw} = static_cast<{cpp_elem}>({gen_args[2]});\n")
+            if step_lit is None:
+                out.write(f'{indent}if ({step} == 0) '
+                          f'::tpy::tpy_panic("range() arg 3 must not be zero");\n')
+            if isinstance(elem_type, BigIntType):
+                pass  # BigInt uses += directly
+            else:
+                self._gen_range_overflow_check(out, indent, counter, stop, step, elem_type)
+            if step_lit is not None and step_lit > 0:
+                cmp = "<"
+            elif step_lit is not None and step_lit < 0:
+                cmp = ">"
+            else:
+                cmp = None
+
+            if cmp is not None:
+                out.write(f"{indent}while ({counter} {cmp} {stop}) {{\n")
+            else:
+                out.write(f"{indent}while ({step} > 0 ? {counter} < {stop} "
+                          f": {counter} > {stop}) {{\n")
+
+            inner = indent + INDENT
+            out.write(f"{inner}{cpp_var} = {counter};\n")
+            out.write(f"{inner}{counter} += {step};\n")
+        else:
+            # step = 1 (default)
+            out.write(f"{indent}while ({counter} < {stop}) {{\n")
+            inner = indent + INDENT
+            out.write(f"{inner}{cpp_var} = ({counter})++;\n")
+
+        self._gen_generator_loop_body(out, stmt, indent)
+
+    def _gen_generator_for_begin_end(self, out: TextIO, stmt: TpyForEach,
+                                      indent: str, info: 'GeneratorForInfo') -> None:
+        """Lowered NativeIterable for-loop: C++ begin/end iterators as struct fields."""
+        uid = info.uid
+        it_raw = f"__for_it_{uid}"
+        end_raw = f"__for_end_{uid}"
+        it = f"*{it_raw}"
+        end = f"*{end_raw}"
+        cpp_var = escape_cpp_name(stmt.var)
+
+        elem_type = stmt.elem_type
+        if elem_type:
+            from ..typesys import IntLiteralType
+            if isinstance(elem_type, IntLiteralType):
+                elem_type = self.ctx.analyzer.ctx.default_int_type
+
+        self.ctx.temps.flush(out, indent)
+
+        # Determine the source expression
+        has_src_field = any(fn.startswith(f"__for_src_{uid}") for fn, _ in info.fields)
+        if has_src_field:
+            src_raw = f"__for_src_{uid}"
+            iterable_code = self.expressions.gen_expr(stmt.iterable)
+            out.write(f"{indent}{src_raw} = {iterable_code};\n")
+            src_name = f"*{src_raw}"
+        else:
+            src_name = self.expressions.gen_expr(stmt.iterable)
+
+        out.write(f"{indent}{it_raw} = ({src_name}).begin();\n")
+        out.write(f"{indent}{end_raw} = ({src_name}).end();\n")
+        out.write(f"{indent}while ({it} != {end}) {{\n")
+
+        inner = indent + INDENT
+        out.write(f"{inner}{cpp_var} = *({it})++;\n")
+
+        self._gen_generator_loop_body(out, stmt, indent)
+
+    def _gen_generator_for_next(self, out: TextIO, stmt: TpyForEach,
+                                 indent: str, info: 'GeneratorForInfo') -> None:
+        """Lowered Iterator[T] for-loop: __next__() with std::expected struct field."""
+        uid = info.uid
+        r_raw = f"__for_r_{uid}"
+        r = f"*{r_raw}"
+        cpp_var = escape_cpp_name(stmt.var)
+
+        self.ctx.temps.flush(out, indent)
+
+        # Determine the iterator source (named field or stored expression)
+        has_src_field = any(fn.startswith(f"__for_src_{uid}") for fn, _ in info.fields)
+        if has_src_field:
+            src_raw = f"__for_src_{uid}"
+            iterable_code = self.expressions.gen_expr(stmt.iterable)
+            out.write(f"{indent}{src_raw} = {iterable_code};\n")
+            src_name = f"(*{src_raw})"
+        else:
+            src_name = self.expressions.gen_expr(stmt.iterable)
+
+        out.write(f"{indent}for (;;) {{\n")
+
+        inner = indent + INDENT
+        out.write(f"{inner}{r_raw} = {src_name}.__next__();\n")
+        out.write(f"{inner}if (!({r}).has_value()) break;\n")
+        out.write(f"{inner}{cpp_var} = *({r});\n")
+
+        self._gen_generator_loop_body(out, stmt, indent)
+
+    def _gen_generator_for_iter_next(self, out: TextIO, stmt: TpyForEach,
+                                      indent: str, info: 'GeneratorForInfo') -> None:
+        """Lowered __iter__() + __next__() for-loop for user types."""
+        uid = info.uid
+        itr_raw = f"__for_itr_{uid}"
+        itr = f"*{itr_raw}"
+        r_raw = f"__for_r_{uid}"
+        r = f"*{r_raw}"
+        cpp_var = escape_cpp_name(stmt.var)
+
+        self.ctx.temps.flush(out, indent)
+
+        iterable_code = self.expressions.gen_expr(stmt.iterable)
+        out.write(f"{indent}{itr_raw} = {iterable_code}.__iter__();\n")
+
+        out.write(f"{indent}for (;;) {{\n")
+        inner = indent + INDENT
+        out.write(f"{inner}{r_raw} = ({itr}).__next__();\n")
+        out.write(f"{inner}if (!({r}).has_value()) break;\n")
+        out.write(f"{inner}{cpp_var} = *({r});\n")
+
+        self._gen_generator_loop_body(out, stmt, indent)
+
+    def _gen_generator_for_iter_begin_end(self, out: TextIO, stmt: TpyForEach,
+                                           indent: str, info: 'GeneratorForInfo') -> None:
+        """Lowered __iter__() + begin/end for-loop for NativeIterable iterators."""
+        uid = info.uid
+        itr_raw = f"__for_itr_{uid}"
+        itr = f"*{itr_raw}"
+        it_raw = f"__for_it_{uid}"
+        it = f"*{it_raw}"
+        end_raw = f"__for_end_{uid}"
+        end = f"*{end_raw}"
+        cpp_var = escape_cpp_name(stmt.var)
+
+        self.ctx.temps.flush(out, indent)
+
+        iterable_code = self.expressions.gen_expr(stmt.iterable)
+        out.write(f"{indent}{itr_raw} = {iterable_code}.__iter__();\n")
+        out.write(f"{indent}{it_raw} = ({itr}).begin();\n")
+        out.write(f"{indent}{end_raw} = ({itr}).end();\n")
+        out.write(f"{indent}while ({it} != {end}) {{\n")
+
+        inner = indent + INDENT
+        out.write(f"{inner}{cpp_var} = *({it})++;\n")
+
+        self._gen_generator_loop_body(out, stmt, indent)
+
+    def _gen_generator_loop_body(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
+        """Generate the body of a lowered generator for-loop and close the while/for."""
+        # Register loop var as declared (it's a struct field, assigned above)
+        self.ctx.declared_vars.add(stmt.var)
+        self.ctx.local_scope_names.add(stmt.var)
+        if stmt.elem_type:
+            self.ctx.var_types[stmt.var] = stmt.elem_type
+
+        old_ns = self.ctx.current_ns
+        if self.ctx.current_ns and stmt.elem_type:
+            inner_ns = Namespace(parent=self.ctx.current_ns)
+            inner_ns.bind_variable(stmt.var, stmt.elem_type)
+            self.ctx.current_ns = inner_ns
+
+        self.ctx.indent_level += 1
+        for s in stmt.body:
+            self.gen_stmt(out, s)
+        self.ctx.emit_block_trailing_comments(out, stmt.body, self.ctx.indent())
+        self.ctx.indent_level -= 1
+
+        self.ctx.current_ns = old_ns
+        out.write(f"{indent}}}\n")
+
     def _gen_assert(self, out: TextIO, stmt: TpyAssert, indent: str) -> None:
         """Generate an assert statement with optional isinstance union narrowing."""
         # Constant-fold trivially-known assertions (no temps to flush).
@@ -2706,6 +2934,11 @@ class StatementGenerator:
         Dispatch is handled by _gen_for_each_loop; see its docstring for
         the full dispatch order.
         """
+        # Generator body: lower for-loops with yields to while-loops
+        if self.ctx.in_generator_body and id(stmt) in self.ctx.generator_for_loop_info:
+            self._gen_generator_for_loop(out, stmt, indent)
+            return
+
         has_else = bool(stmt.orelse)
         label = ""
         if has_else:

@@ -4,10 +4,33 @@
 namespace tpyapp::main {
 
 
+std::expected<int32_t, ::tpy::StopIteration> __gen_evens::__next__() {
+    switch (__state) {
+        case 0: break;
+        case 1: goto __resume_1;
+        default: goto __done;
+    }
+    // i: Int32 = 0
+    i = 0;
+    // while i < n:
+    while ((i < n)) {
+        // if i % 2 == 0:
+        if (((::tpy::mod_floor<int32_t>(i, 2)) == 0)) {
+            // yield i
+            __state = 1;
+            return i;
+            __resume_1:;
+        }
+        // i += 1
+        i = ::tpy::add_check<int32_t>(i, 1);
+    }
+    __done:
+    __state = -1;
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
 __gen_evens evens(int32_t n) {
-    __gen_evens __gen{};
-    __gen.n = n;
-    return __gen;
+    return __gen_evens(n);
 }
 
 // def main():

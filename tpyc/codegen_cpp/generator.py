@@ -234,6 +234,8 @@ class CodeGenerator:
         for func in module.functions:
             if func.is_generator:
                 if not self.gen_generators.is_simple_generator(func):
+                    self.gen_generators.gen_generator_next(cpp, func)
+                    cpp.write("\n")
                     self.gen_generators.gen_generator_factory(cpp, func)
                     cpp.write("\n")
                 # Simple generators are defined inline in the header
@@ -539,13 +541,15 @@ class CodeGenerator:
         if emitted_imported_alias:
             hpp.write("\n")
 
-        # Generator struct definitions (before function forward decls,
-        # since factory forward decls reference the struct type).
-        # Simple generators skip the struct and are emitted inline later.
+        # Generator struct forward declarations (so factory forward decls
+        # can reference the struct type name).
+        emitted_gen_fwd = False
         for func in module.functions:
             if func.is_generator and not self.gen_generators.is_simple_generator(func):
-                self.gen_generators.gen_generator_struct(hpp, func)
-                hpp.write("\n")
+                self.gen_generators.gen_generator_forward_decl(hpp, func)
+                emitted_gen_fwd = True
+        if emitted_gen_fwd:
+            hpp.write("\n")
 
         # Function forward declarations (before records, so inline
         # constructor/method bodies can call free functions)
@@ -570,6 +574,13 @@ class CodeGenerator:
                 continue
             self.records.gen_record_decl(hpp, record)
             hpp.write("\n")
+
+        # Generator struct full definitions (after records, so struct fields
+        # and inline __next__() can use fully-defined user types).
+        for func in module.functions:
+            if func.is_generator and not self.gen_generators.is_simple_generator(func):
+                self.gen_generators.gen_generator_struct(hpp, func)
+                hpp.write("\n")
 
         # ValueType specializations: exit namespace, emit, re-enter
         value_type_records = [

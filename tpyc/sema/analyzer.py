@@ -719,14 +719,19 @@ class SemanticAnalyzer:
         scan = self.stmts._prescan_and_analyze_body(func, resolved_params, scope, local_ns)
         self.deduction.resolve_all()
 
-        # Collect generator local variables for struct field generation
+        # Collect generator local variables for struct field generation.
+        # Include both function-level locals and pending loop vars (for-loop
+        # variables and body-declared vars that weren't used after the loop).
         if func.is_generator:
             param_names = {pname for pname, _ in func.params}
-            func.generator_locals = [
-                (name, binding.type)
-                for name, binding in local_ns.all_bindings().items()
-                if name not in param_names and binding.type is not None
-            ]
+            locals_dict: dict[str, 'TpyType'] = {}
+            for name, binding in local_ns.all_bindings().items():
+                if name not in param_names and binding.type is not None:
+                    locals_dict[name] = binding.type
+            for name, (vtype, _, _) in self.ctx.pending_loop_vars.items():
+                if name not in param_names and vtype is not None:
+                    locals_dict[name] = vtype
+            func.generator_locals = list(locals_dict.items())
 
         # Finalize nested def escape analysis
         self._finalize_nested_def_escapes()

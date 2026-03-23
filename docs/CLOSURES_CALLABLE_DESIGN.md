@@ -18,7 +18,7 @@
 | `yield from` / delegating generators | Forward to sub-iterator; useful for recursive generators (tree traversal) |
 | `gen.send(value)` / `gen.throw(exc)` | Two-way generator communication; rarely used outside async frameworks |
 | Generator liveness optimization | Only promote yield-crossing variables to struct fields; keep others as stack locals in `__next__()`. Reduces struct size, no behavior change. |
-| Generator yield in for-loops (state machine) | Complex generators with yield inside for-loops need iterator hoisting to struct fields. Simple generators already handle for-loops via the lambda path. |
+| ~~Generator yield in for-loops (state machine)~~ | **Done** -- for-loops with yields lowered to while-loops; iterator state (counters for range, begin/end for containers, `std::expected` for `__next__()`) hoisted to struct fields. |
 | `async`/`await` | Reuses state machine infrastructure from generators |
 | Recursive closures | Closure calling itself -- needs `std::function` self-reference. Currently gives confusing "Unknown function" error; should have a dedicated diagnostic. |
 | Nested-in-nested `def` | `def` inside `def` inside `def`. Currently rejected. Requires saving/restoring more sema state in `nested_def_scope`. |

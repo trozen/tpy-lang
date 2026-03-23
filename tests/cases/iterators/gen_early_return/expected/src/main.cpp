@@ -4,10 +4,35 @@
 namespace tpyapp::main {
 
 
+std::expected<int32_t, ::tpy::StopIteration> __gen_maybe_count::__next__() {
+    switch (__state) {
+        case 0: break;
+        case 1: goto __resume_1;
+        default: goto __done;
+    }
+    // if n <= 0:
+    if ((n <= 0)) {
+        // return
+        goto __done;
+    }
+    // i: Int32 = 0
+    i = 0;
+    // while i < n:
+    while ((i < n)) {
+        // yield i
+        __state = 1;
+        return i;
+        __resume_1:;
+        // i += 1
+        i = ::tpy::add_check<int32_t>(i, 1);
+    }
+    __done:
+    __state = -1;
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
 __gen_maybe_count maybe_count(int32_t n) {
-    __gen_maybe_count __gen{};
-    __gen.n = n;
-    return __gen;
+    return __gen_maybe_count(n);
 }
 
 // def main():

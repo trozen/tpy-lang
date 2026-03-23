@@ -1,14 +1,24 @@
 """Code generation for generator functions (yield -> state machine structs)."""
 from __future__ import annotations
 
+from dataclasses import dataclass
 from io import StringIO
 from typing import TYPE_CHECKING
 
 from ..parse.nodes import (
     TpyFunction, TpyYield, TpyStmt, TpyWhile, TpyForEach, TpyReturn, TpyVarDecl,
-    TpyCall,
+    TpyCall, TpyName, TpyExpr,
 )
+from ..typesys import is_protocol_type
 from .context import INDENT, escape_cpp_name
+
+
+@dataclass
+class GeneratorForInfo:
+    """Pre-scanned info about a for-loop containing yields in a state machine generator."""
+    uid: int
+    strategy: str  # "range" | "begin_end" | "next"
+    fields: list[tuple[str, str]]  # (field_name, cpp_type_string) for struct fields
 
 
 def _collect_yield_stmts(stmts: list[TpyStmt]) -> list[TpyYield]:
@@ -31,6 +41,18 @@ def _contains_return(stmts: list[TpyStmt]) -> bool:
             if _contains_return(body):
                 return True
     return False
+
+
+def _for_body_contains_yield(stmts: list[TpyStmt]) -> bool:
+    """Check if a statement list contains any TpyYield (recursive)."""
+    for stmt in stmts:
+        if isinstance(stmt, TpyYield):
+            return True
+        for body in stmt.sub_bodies():
+            if _for_body_contains_yield(body):
+                return True
+    return False
+
 
 if TYPE_CHECKING:
     from io import TextIO
@@ -212,7 +234,10 @@ class GeneratorCodegen:
             # Avoids dangling iterators when generator outlives the source.
             iterable_code = self.expressions.gen_expr(for_stmt.iterable)
 
-            base_captures = self._build_capture_list(func.params, init_stmts)
+            # Exclude iterable param from captures -- it's copied into __src
+            iterable_name = for_stmt.iterable.name if isinstance(for_stmt.iterable, TpyName) else None
+            base_captures = self._build_capture_list(
+                func.params, init_stmts, exclude={iterable_name} if iterable_name else set())
             src_capture = f"__src = {self.types.type_to_cpp(self.types.get_resolved_type(for_stmt.iterable))}({iterable_code})"
             idx_capture = "__i = size_t(0)"
             parts = [p for p in [base_captures, src_capture, idx_capture] if p]
@@ -251,29 +276,171 @@ class GeneratorCodegen:
                 return stmt, body[:i], body[i + 1:]
         raise AssertionError("no yield found in body")
 
-    @staticmethod
-    def _check_no_yield_in_for_loop(func: TpyFunction) -> None:
-        """Reject yield inside for-loops in complex (state machine) generators."""
-        from ..sema.diagnostics import SemanticError
+    def _prescan_for_loops(self, func: TpyFunction) -> dict[int, GeneratorForInfo]:
+        """Pre-scan for-loops containing yields to determine struct fields.
 
-        def _check(stmts: list[TpyStmt], in_for: bool) -> None:
+        Returns a dict keyed by id(TpyForEach) with field info for each loop.
+        """
+        from ..sema.diagnostics import SemanticError
+        from tpyc.modules import get_error_return_next_element_type
+
+        result: dict[int, GeneratorForInfo] = {}
+        uid_counter = [0]
+
+        def _scan(stmts: list[TpyStmt]) -> None:
             for stmt in stmts:
-                if isinstance(stmt, TpyYield) and in_for:
-                    raise SemanticError(
-                        "yield inside for-loops is not yet supported in generators "
-                        "with multiple yield points or early returns. "
-                        "Use a while-loop instead, or restructure as a single-yield generator",
-                        stmt.loc,
-                    )
-                if isinstance(stmt, TpyForEach):
-                    _check(stmt.body, in_for=True)
+                if isinstance(stmt, TpyForEach) and _for_body_contains_yield(stmt.body):
                     if stmt.orelse:
-                        _check(stmt.orelse, in_for)
+                        raise SemanticError(
+                            "for...else with yield is not yet supported in generators",
+                            stmt.loc,
+                        )
+                    info = self._analyze_for_strategy(stmt, uid_counter[0])
+                    if info is None:
+                        raise SemanticError(
+                            "yield inside this for-loop type is not yet supported "
+                            "in generators with multiple yield points. "
+                            "Use a while-loop instead",
+                            stmt.loc,
+                        )
+                    result[id(stmt)] = info
+                    uid_counter[0] += 1
+                    # Recurse into loop body for nested for-loops
+                    _scan(stmt.body)
                 else:
                     for body in stmt.sub_bodies():
-                        _check(body, in_for)
+                        _scan(body)
 
-        _check(func.body, in_for=False)
+        _scan(func.body)
+        return result
+
+    def _analyze_for_strategy(self, stmt: TpyForEach, uid: int) -> GeneratorForInfo | None:
+        """Determine the iteration strategy and struct fields for a for-loop with yield."""
+        from tpyc.modules import get_error_return_next_element_type
+        from ..typesys import IntLiteralType
+
+        elem_type = stmt.elem_type
+        if elem_type and isinstance(elem_type, IntLiteralType):
+            elem_type = self.ctx.analyzer.ctx.default_int_type
+        elem_cpp = self.types.type_to_cpp(elem_type) if elem_type else "int32_t"
+
+        # Range counter optimization
+        if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func == "range":
+            fields: list[tuple[str, str]] = [
+                (f"__for_i_{uid}", elem_cpp),
+                (f"__for_stop_{uid}", elem_cpp),
+            ]
+            nargs = len(stmt.iterable.args)
+            if nargs == 3:
+                fields.append((f"__for_step_{uid}", elem_cpp))
+            return GeneratorForInfo(uid=uid, strategy="range", fields=fields)
+
+        iterable_type = self.types.get_resolved_type(stmt.iterable)
+
+        # Iterator[T] protocol -- iterable already has __next__()
+        if is_protocol_type(iterable_type) and iterable_type.qualified_name() == "typing.Iterator":
+            result_type = f"std::expected<{elem_cpp}, ::tpy::StopIteration>"
+            fields: list[tuple[str, str]] = [(f"__for_r_{uid}", result_type)]
+            return GeneratorForInfo(uid=uid, strategy="next", fields=fields)
+
+        # error_return __next__ types (user iterators)
+        er_elem = get_error_return_next_element_type(
+            iterable_type, registry=self.ctx.analyzer.registry)
+        if er_elem is not None:
+            iter_cpp = self.types.type_to_cpp(iterable_type)
+            result_type = f"std::expected<{elem_cpp}, ::tpy::StopIteration>"
+            fields = []
+            if not self._is_named_generator_field(stmt.iterable):
+                fields.append((f"__for_src_{uid}", iter_cpp))
+            fields.append((f"__for_r_{uid}", result_type))
+            return GeneratorForInfo(uid=uid, strategy="next", fields=fields)
+
+        # NativeIterable containers (list, dict, set, Array, Span, str) -- begin/end
+        native_elem = iterable_type.get_iteration_element_type() if hasattr(iterable_type, 'get_iteration_element_type') else None
+        if native_elem is not None:
+            container_cpp = self.types.type_to_cpp(iterable_type)
+            iter_type = f"decltype(std::declval<{container_cpp}&>().begin())"
+            fields = [
+                (f"__for_it_{uid}", iter_type),
+                (f"__for_end_{uid}", iter_type),
+            ]
+            # If iterable is not a named variable (param or local), need a source field
+            if not self._is_named_generator_field(stmt.iterable):
+                fields.insert(0, (f"__for_src_{uid}", container_cpp))
+            return GeneratorForInfo(uid=uid, strategy="begin_end", fields=fields)
+
+        # __iter__()-based user types: call __iter__(), then use the result
+        from tpyc.modules import get_iter_info
+        iter_info = get_iter_info(iterable_type, registry=self.ctx.analyzer.registry)
+        if iter_info is not None:
+            iter_ret_type = self._get_iter_return_type(iterable_type)
+            if iter_ret_type is not None:
+                iter_ret_cpp = self.types.type_to_cpp(iter_ret_type)
+                result_type = f"std::expected<{elem_cpp}, ::tpy::StopIteration>"
+                if iter_info.iter_is_native:
+                    # __iter__() returns a NativeIterable (e.g. SpanIter) -- begin/end
+                    it_type = f"decltype(std::declval<{iter_ret_cpp}&>().begin())"
+                    fields = [
+                        (f"__for_itr_{uid}", iter_ret_cpp),
+                        (f"__for_it_{uid}", it_type),
+                        (f"__for_end_{uid}", it_type),
+                    ]
+                    return GeneratorForInfo(uid=uid, strategy="iter_begin_end", fields=fields)
+                else:
+                    # __iter__() returns an iterator with __next__()
+                    fields = [
+                        (f"__for_itr_{uid}", iter_ret_cpp),
+                        (f"__for_r_{uid}", result_type),
+                    ]
+                    return GeneratorForInfo(uid=uid, strategy="iter_next", fields=fields)
+
+        # Unsupported for-loop type
+        return None
+
+    def _is_named_generator_field(self, expr: TpyExpr) -> bool:
+        """Check if expression is a named variable that's stable across yields.
+
+        Returns True for named variables (params, locals, globals) since they
+        persist across __next__() calls. Returns False for expressions (calls,
+        constructors) that would need to be stored in a synthetic field.
+        """
+        return isinstance(expr, TpyName)
+
+    def _get_iter_return_type(self, iterable_type: 'TpyType') -> 'TpyType | None':
+        """Get the concrete return type of __iter__() on the given type."""
+        from ..typesys import NamedType, OwnType, TypeParamRef
+
+        registry = self.ctx.analyzer.registry
+        record = None
+        type_subst: dict[str, 'TpyType'] = {}
+
+        if isinstance(iterable_type, NamedType) and iterable_type.is_user_record:
+            record = registry.get_record(iterable_type.name)
+        else:
+            record = registry.get_record_for_type(iterable_type)
+
+        if record is None:
+            return None
+
+        if record.type_params and hasattr(iterable_type, 'type_args') and iterable_type.type_args:
+            type_subst = dict(zip(record.type_params, iterable_type.type_args))
+
+        # Walk parent chain for __iter__
+        while record is not None:
+            method = record.get_method("__iter__")
+            if method is not None:
+                ret = method.return_type
+                if isinstance(ret, TypeParamRef) and ret.name in type_subst:
+                    ret = type_subst[ret.name]
+                if isinstance(ret, OwnType):
+                    ret = ret.wrapped
+                return ret
+            # Check parent
+            if record.parent_name:
+                record = registry.get_record(record.parent_name)
+            else:
+                break
+        return None
 
     def _setup_body_scope(self, out: TextIO, func: TpyFunction, init_stmts: list[TpyStmt]) -> None:
         """Generate init stmts and set up codegen scope."""
@@ -287,11 +454,23 @@ class GeneratorCodegen:
         )
 
     @staticmethod
-    def _build_capture_list(params: list, init_stmts: list[TpyStmt]) -> str:
-        """Build lambda capture list from params + init-stmt locals."""
+    def _build_capture_list(params: list, init_stmts: list[TpyStmt],
+                            exclude: set[str] | None = None) -> str:
+        """Build lambda capture list from params + init-stmt locals.
+
+        Non-value types are captured by reference (&name) to preserve
+        Python's reference semantics. Names in `exclude` are skipped
+        (e.g. the iterable param when it's copied into __src).
+        """
         captures = []
-        for pname, _ in params:
-            captures.append(escape_cpp_name(pname))
+        for pname, ptype in params:
+            if exclude and pname in exclude:
+                continue
+            cpp_name = escape_cpp_name(pname)
+            if not ptype.is_value_type():
+                captures.append(f"&{cpp_name}")
+            else:
+                captures.append(cpp_name)
         for stmt in init_stmts:
             if isinstance(stmt, TpyVarDecl):
                 captures.append(escape_cpp_name(stmt.name))
@@ -299,8 +478,9 @@ class GeneratorCodegen:
 
     def gen_generator_struct(self, out: TextIO, func: TpyFunction) -> None:
         """Generate the state machine struct for a generator function."""
-        # Check for unsupported yield-inside-for-loop in complex generators
-        self._check_no_yield_in_for_loop(func)
+        # Pre-scan for-loops with yields to determine synthetic struct fields
+        for_loop_info = self._prescan_for_loops(func)
+        self.ctx.generator_for_loop_info = for_loop_info
 
         struct_name = f"__gen_{func.name}"
         elem_type = func.generator_yield_type
@@ -312,31 +492,92 @@ class GeneratorCodegen:
         func_yields = _collect_yield_stmts(func.body)
         func_state_nums = sorted(yield_states[id(y)] for y in func_yields)
 
+        # Classify params: value types by value, non-value types by reference
+        ctor_params: list[tuple[str, str, bool]] = []  # (cpp_name, cpp_type, is_ref)
+        for pname, ptype in func.params:
+            cpp_type = self.types.type_to_cpp(ptype)
+            cpp_name = escape_cpp_name(pname)
+            is_ref = not ptype.is_value_type()
+            ctor_params.append((cpp_name, cpp_type, is_ref))
+
         out.write(f"// Generator: {func.name}\n")
         out.write(f"struct {struct_name} {{\n")
 
         # __state field
-        out.write(f"{INDENT}int __state = 0;\n")
+        out.write(f"{INDENT}int __state;\n")
 
         # Parameter fields
-        for pname, ptype in func.params:
-            cpp_type = self.types.type_to_cpp(ptype)
-            out.write(f"{INDENT}{cpp_type} {escape_cpp_name(pname)};\n")
+        for cpp_name, cpp_type, is_ref in ctor_params:
+            if is_ref:
+                out.write(f"{INDENT}{cpp_type}& {cpp_name};\n")
+            else:
+                out.write(f"{INDENT}{cpp_type} {cpp_name};\n")
 
-        # Local variable fields (value-initialized)
+        # Local variable fields
         if func.generator_locals:
             for lname, ltype in func.generator_locals:
                 cpp_type = self.types.type_to_cpp(ltype)
-                out.write(f"{INDENT}{cpp_type} {escape_cpp_name(lname)}{{}};\n")
+                cpp_name = escape_cpp_name(lname)
+                if ltype.is_value_type():
+                    # Value types: leave uninitialized
+                    out.write(f"{INDENT}{cpp_type} {cpp_name};\n")
+                else:
+                    # Non-value types: std::optional (no premature construction)
+                    out.write(f"{INDENT}std::optional<{cpp_type}> {cpp_name};\n")
+
+        # Synthetic fields for for-loops containing yields (always optional)
+        if for_loop_info:
+            for info in for_loop_info.values():
+                for field_name, field_type in info.fields:
+                    out.write(f"{INDENT}std::optional<{field_type}> {field_name};\n")
 
         out.write(f"\n")
 
-        # __iter__() method
-        out.write(f"{INDENT}{struct_name}& __iter__() {{ return *this; }}\n\n")
+        # Constructor: initializes __state and reference params
+        ctor_param_list = ", ".join(
+            f"{cpp_type}& {cpp_name}" if is_ref else f"{cpp_type} {cpp_name}_"
+            for cpp_name, cpp_type, is_ref in ctor_params
+        )
+        init_parts = ["__state(0)"]
+        for cpp_name, _, is_ref in ctor_params:
+            if is_ref:
+                init_parts.append(f"{cpp_name}({cpp_name})")
+            else:
+                init_parts.append(f"{cpp_name}({cpp_name}_)")
+        init_list = ", ".join(init_parts)
+        out.write(f"{INDENT}{struct_name}({ctor_param_list})\n")
+        out.write(f"{INDENT}{INDENT}: {init_list} {{}}\n\n")
 
-        # __next__() method
-        out.write(f"{INDENT}std::expected<{cpp_elem}, ::tpy::StopIteration> __next__() {{\n")
-        inner = INDENT + INDENT
+        # __iter__() method (inline -- trivial)
+        out.write(f"{INDENT}{struct_name}& __iter__() {{ return *this; }}\n")
+        # __next__() declaration (body in .cpp)
+        out.write(f"{INDENT}std::expected<{cpp_elem}, ::tpy::StopIteration> __next__();\n\n")
+
+        # operator<< for printing
+        out.write(f"{INDENT}friend std::ostream& operator<<(std::ostream& os, const {struct_name}&) {{\n")
+        out.write(f"{INDENT}{INDENT}return os << \"<generator {func.name}>\";\n")
+        out.write(f"{INDENT}}}\n")
+
+        out.write(f"}};\n")
+
+    def gen_generator_next(self, out: TextIO, func: TpyFunction) -> None:
+        """Generate the out-of-line __next__() method body in the .cpp file."""
+        struct_name = f"__gen_{func.name}"
+        elem_type = func.generator_yield_type
+        assert elem_type is not None
+        cpp_elem = self.types.type_to_cpp(elem_type)
+
+        # Re-run prescan (needed for body codegen context)
+        for_loop_info = self._prescan_for_loops(func)
+        self.ctx.generator_for_loop_info = for_loop_info
+
+        # Collect yield state numbers for THIS function
+        yield_states = self.ctx.analyzer.ctx.generator_yield_states
+        func_yields = _collect_yield_stmts(func.body)
+        func_state_nums = sorted(yield_states[id(y)] for y in func_yields)
+
+        out.write(f"std::expected<{cpp_elem}, ::tpy::StopIteration> {struct_name}::__next__() {{\n")
+        inner = INDENT
 
         # Switch dispatch
         out.write(f"{inner}switch (__state) {{\n")
@@ -353,28 +594,31 @@ class GeneratorCodegen:
         out.write(f"{inner}__done:\n")
         out.write(f"{inner}__state = -1;\n")
         out.write(f"{inner}return ::tpy::make_unexpected(::tpy::StopIteration{{}});\n")
-        out.write(f"{INDENT}}}\n\n")
-
-        # operator<< for printing
-        out.write(f"{INDENT}friend std::ostream& operator<<(std::ostream& os, const {struct_name}&) {{\n")
-        out.write(f"{INDENT}{INDENT}return os << \"<generator {func.name}>\";\n")
-        out.write(f"{INDENT}}}\n")
-
-        out.write(f"}};\n")
+        out.write(f"}}\n")
 
     def _gen_generator_body(self, out: TextIO, func: TpyFunction, indent: str) -> None:
         """Generate the function body inside __next__() with generator context."""
         # Save and set generator context
         old_in_gen = self.ctx.in_generator_body
         old_field_names = self.ctx.generator_field_names
+        old_optional_fields = self.ctx.generator_optional_fields
+        old_for_info = self.ctx.generator_for_loop_info
 
         self.ctx.in_generator_body = True
         self.ctx.generator_field_names = set()
+        self.ctx.generator_optional_fields = set()
         for pname, _ in func.params:
             self.ctx.generator_field_names.add(pname)
         if func.generator_locals:
-            for lname, _ in func.generator_locals:
+            for lname, ltype in func.generator_locals:
                 self.ctx.generator_field_names.add(lname)
+                if not ltype.is_value_type():
+                    self.ctx.generator_optional_fields.add(lname)
+        # Add synthetic for-loop field names (all optional)
+        for info in self.ctx.generator_for_loop_info.values():
+            for field_name, _ in info.fields:
+                self.ctx.generator_field_names.add(field_name)
+                self.ctx.generator_optional_fields.add(field_name)
 
         # Set up codegen context for body generation
         from ..namespace import Namespace
@@ -384,12 +628,14 @@ class GeneratorCodegen:
 
         self.statements.gen_body(
             out, func.body, func.params, func.generator_yield_type,
-            func, local_ns, indent_level=2, is_method=False,
+            func, local_ns, indent_level=1, is_method=False,
         )
 
         # Restore context
         self.ctx.in_generator_body = old_in_gen
         self.ctx.generator_field_names = old_field_names
+        self.ctx.generator_optional_fields = old_optional_fields
+        self.ctx.generator_for_loop_info = old_for_info
 
     def gen_generator_factory(self, out: TextIO, func: TpyFunction) -> None:
         """Generate the factory function that creates a generator struct."""
@@ -400,15 +646,11 @@ class GeneratorCodegen:
         )
         out.write(f"{struct_name} {func.name}({params}) {{\n")
 
-        # Construct the struct with parameter values
         if func.params:
-            out.write(f"{INDENT}{struct_name} __gen{{}};\n")
-            for pname, ptype in func.params:
-                cpp_pname = escape_cpp_name(pname)
-                out.write(f"{INDENT}__gen.{cpp_pname} = {cpp_pname};\n")
-            out.write(f"{INDENT}return __gen;\n")
+            args = ", ".join(escape_cpp_name(pname) for pname, _ in func.params)
+            out.write(f"{INDENT}return {struct_name}({args});\n")
         else:
-            out.write(f"{INDENT}return {struct_name}{{}};\n")
+            out.write(f"{INDENT}return {struct_name}();\n")
 
         out.write(f"}}\n")
 

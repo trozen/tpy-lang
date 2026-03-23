@@ -451,6 +451,11 @@ class CodeGenContext:
     # --- Generator function codegen ---
     in_generator_body: bool = False
     generator_field_names: set[str] = field(default_factory=set)
+    # Fields stored as std::optional (non-value locals + synthetic for-loop fields)
+    generator_optional_fields: set[str] = field(default_factory=set)
+    # For-loops with yields in state machine generators: keyed by id(TpyForEach)
+    # Values are GeneratorForInfo (not imported here to avoid circular dep)
+    generator_for_loop_info: dict[int, object] = field(default_factory=dict)
 
     # --- for/else, while/else label stack ---
     # When generating a loop with an else clause, the goto label name is

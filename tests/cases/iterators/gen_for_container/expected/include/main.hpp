@@ -14,7 +14,7 @@ void main();
 
 inline auto doubled(std::vector<int32_t>& items) {
     return ::tpy::make_generator<int32_t>(
-        [items, __src = std::vector<int32_t>(items), __i = size_t(0)]() mutable -> std::optional<int32_t> {
+        [__src = std::vector<int32_t>(items), __i = size_t(0)]() mutable -> std::optional<int32_t> {
             if (__i < __src.size()) {
                 int32_t x = __src[__i++];
                 auto __val = (::tpy::mul_check<int32_t>(x, 2));
