@@ -1450,26 +1450,33 @@ class CallAnalyzer:
         type_name = expr.func
         arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
 
+        # Resolve the record's type object. For .py-defined builtins, __init__
+        # returns None (Python convention) so we look up the actual type.
+        record_type = (
+            builtin_modules.get_builtin_type_obj(record_info.builtin_type_key)
+            if record_info.builtin_type_key else None
+        )
+
         # Find a matching constructor overload
         for ctor in record_info.get_method_overloads("__init__"):
             if len(ctor.params) != len(arg_types):
                 continue
             if all(type_matches_numeric(arg_type, ptype)
                    for (pname, ptype), arg_type in zip(ctor.params, arg_types)):
+                ret = record_type or ctor.return_type
                 # Reject int literals that are out of range for the target fixed-int type
-                if (isinstance(ctor.return_type, FixedIntType) and len(arg_types) == 1
+                if (isinstance(ret, FixedIntType) and len(arg_types) == 1
                         and isinstance(arg_types[0], IntLiteralType)):
                     lit = arg_types[0]
-                    target = ctor.return_type
-                    if lit.value is not None and not (target.min_value <= lit.value <= target.max_value):
+                    if lit.value is not None and not (ret.min_value <= lit.value <= ret.max_value):
                         raise self.ctx.error(
-                            f"{target} overflow: {lit.value} is outside range "
-                            f"[{target.min_value}, {target.max_value}]",
+                            f"{ret} overflow: {lit.value} is outside range "
+                            f"[{ret.min_value}, {ret.max_value}]",
                             expr,
                         )
                 expr.resolved_function_info = ctor
-                self._check_cast_safe(expr, ctor, arg_types)
-                return ctor.return_type
+                self._check_cast_safe(expr, ctor, arg_types, ret)
+                return ret
 
         # Fallback: try protocol-aware overload resolution (e.g. bool(obj) via Truthy)
         matched = resolve_overload(
@@ -1479,7 +1486,9 @@ class CallAnalyzer:
         )
         if matched:
             expr.resolved_function_info = matched
-            return matched.return_type
+            ret = record_type or matched.return_type
+            self._check_cast_safe(expr, matched, arg_types, ret)
+            return ret
 
         # bool(obj) __len__ fallback: types with __len__ but no __bool__
         if record_info.name == "bool" and len(arg_types) == 1:
@@ -1521,7 +1530,8 @@ class CallAnalyzer:
         else:
             raise self.ctx.error(f"{type_name}() takes at most 1 argument, got {len(arg_types)}", expr)
 
-    def _check_cast_safe(self, expr: TpyCall, ctor: FunctionInfo, arg_types: list[TpyType]) -> None:
+    def _check_cast_safe(self, expr: TpyCall, ctor: FunctionInfo,
+                         arg_types: list[TpyType], target_type: TpyType | None = None) -> None:
         """Mark signed->unsigned casts as safe when value is provably non-negative.
 
         When the source is a signed int with lo >= 0 (from range tracking) and
@@ -1535,7 +1545,7 @@ class CallAnalyzer:
             return
         if "int_cast_check" not in ctor.cpp_template:
             return
-        target = ctor.return_type
+        target = target_type or ctor.return_type
         source = arg_types[0]
         if not isinstance(target, FixedIntType) or not isinstance(source, FixedIntType):
             return

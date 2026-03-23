@@ -31,7 +31,7 @@ void main() {
     // print(z)
     std::cout << z << "\n";
     // w = int(0)
-    ::tpy::BigInt w = ::tpy::BigInt(static_cast<int64_t>(0));
+    ::tpy::BigInt w = ::tpy::BigInt(0);
     // w += Int32(5)  # tpyc: ok
     w = (w) + (::tpy::BigInt(5));
     // print(w)

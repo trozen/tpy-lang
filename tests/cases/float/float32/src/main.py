@@ -2,11 +2,11 @@
 from tpy import Float32, Float64, Int32
 
 def test_construction() -> None:
-    a: Float32 = Float32(3.14)
-    b: Float32 = Float32(0.0)
-    c: Float32 = Float32(Int32(42))
-    d: Float32 = Float32(True)
-    e: Float32 = Float32("2.5")
+    a = Float32(3.14)  # tpyc: type(Float32)
+    b = Float32(0.0)  # tpyc: type(Float32)
+    c = Float32(Int32(42))  # tpyc: type(Float32)
+    d = Float32(True)  # tpyc: type(Float32)
+    e = Float32("2.5")  # tpyc: type(Float32)
     print(a)
     print(b)
     print(c)

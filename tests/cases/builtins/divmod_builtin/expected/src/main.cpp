@@ -26,7 +26,7 @@ void main() {
     std::cout << r2 << "\n";
     // # BigInt divmod
     // q3, r3 = divmod(int(100), int(7))
-    auto __tup_3 = ::tpy::divmod_bigint(::tpy::BigInt(static_cast<int64_t>(100)), ::tpy::BigInt(static_cast<int64_t>(7)));
+    auto __tup_3 = ::tpy::divmod_bigint(::tpy::BigInt(100), ::tpy::BigInt(7));
     const ::tpy::BigInt& q3 = std::get<0>(__tup_3);
     const ::tpy::BigInt& r3 = std::get<1>(__tup_3);
     // print(q3)

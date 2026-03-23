@@ -602,6 +602,7 @@ class CodeGenerator:
             if (info := self.analyzer.registry.get_record(r.name))
             and "__hash__" in info.methods
             and not r.type_params
+            and not r.builtin_type_key  # builtin types have their own hash
         ]
         if hashable_records:
             ns = module_to_cpp_namespace(self.ctx.module_name)

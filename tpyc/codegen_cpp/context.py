@@ -68,20 +68,29 @@ def escape_cpp_name(name: str) -> str:
     return name
 
 
-_TEMPLATE_PLACEHOLDER = re.compile(r"\{(self|\d+)\}")
+_TEMPLATE_PLACEHOLDER = re.compile(r"\{(self|cpp|\d+)\}")
 
 
-def expand_cpp_template(template: str, self_val: str, *args: str) -> str:
-    """Expand a C++ template, substituting {self} and positional {0}, {1}, etc."""
+def expand_cpp_template(template: str, self_val: str, *args: str,
+                        self_type: 'TpyType | None' = None) -> str:
+    """Expand a C++ template, substituting {self}, {cpp}, and positional {0}, {1}, etc.
+
+    {cpp} is replaced with self_type.to_cpp() when available -- used for
+    @builtin_type methods that reference their own C++ type name.
+    """
     # Validate before substitution: check that all placeholder indices are in range.
     # Post-substitution scanning would false-positive on C++ braces in values
     # (e.g. std::vector<int>{30} looks like {30} placeholder).
     for m in _TEMPLATE_PLACEHOLDER.finditer(template):
         token = m.group(1)
-        if token != "self" and int(token) >= len(args):
+        if token in ("self", "cpp"):
+            continue
+        if int(token) >= len(args):
             raise CodeGenError(
                 f"Unreplaced placeholder {m.group()} in C++ template: {template}"
             )
+    if self_type and "{cpp}" in template:
+        template = template.replace("{cpp}", self_type.to_cpp())
     result = template.replace("{self}", self_val)
     for i, arg in enumerate(args):
         result = result.replace(f"{{{i}}}", arg)

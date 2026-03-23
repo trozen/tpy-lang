@@ -17,11 +17,11 @@ void main() {
     std::cout << ::tpy::pow_check<int32_t>(-2, 3) << "\n";
     // # BigInt pow
     // b = pow(int(2), int(30))
-    ::tpy::BigInt b = (::tpy::BigInt(static_cast<int64_t>(2))).pow(::tpy::BigInt(static_cast<int64_t>(30)));
+    ::tpy::BigInt b = (::tpy::BigInt(2)).pow(::tpy::BigInt(30));
     // print(b)
     std::cout << b << "\n";
     // c = pow(int(10), int(3))
-    ::tpy::BigInt c = (::tpy::BigInt(static_cast<int64_t>(10))).pow(::tpy::BigInt(static_cast<int64_t>(3)));
+    ::tpy::BigInt c = (::tpy::BigInt(10)).pow(::tpy::BigInt(3));
     // print(c)
     std::cout << c << "\n";
     // # float pow

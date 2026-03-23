@@ -3,6 +3,7 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
+- Continue migrating builtin type methods to .py: remaining str, String, StrView (30+ string methods each). The dual-path infrastructure (builtin_records vs records, _check_builtin_constructor vs _analyze_record_constructor) still exists but can be eliminated once all types are migrated.
 - Eliminate concrete type classes (ListType, DictType, etc.): replace `isinstance(t, ListType)` checks with name-based or annotation-driven checks. ~60 references for ListType alone across type inference, codegen, and compatibility. Enables treating all types uniformly as NamedType + RecordInfo. Lower priority -- current type classes work fine, this is about uniformity.
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 - drop builtin types, like RangeType

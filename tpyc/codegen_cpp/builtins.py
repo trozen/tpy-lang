@@ -48,15 +48,18 @@ class BuiltinGenerator:
         self._get_cpp_declared_type = get_cpp_declared_type
 
     def gen_call_from_fi(self, fi: FunctionInfo, receiver: str | None,
-                         gen_args: list[str]) -> str:
+                         gen_args: list[str],
+                         self_type: TpyType | None = None) -> str:
         """Generate a call from a resolved FunctionInfo.
 
         Unified entry point for cpp_template, native_function, and native member calls.
         receiver is None for free function calls (no self).
+        self_type is the receiver's TpyType (for {cpp} expansion in templates).
         """
         if fi.cpp_template:
             if receiver is not None:
-                return expand_cpp_template(fi.cpp_template, receiver, *gen_args)
+                return expand_cpp_template(fi.cpp_template, receiver, *gen_args,
+                                           self_type=self_type)
             return fi.cpp_template.format(*gen_args)
         if fi.native_function and fi.native_name:
             all_args = [receiver] + gen_args if receiver is not None else gen_args
@@ -115,7 +118,8 @@ class BuiltinGenerator:
         if fi and fi.cpp_template:
             gen_args = [self._gen_expr_deref(arg, ptype)
                         for arg, (_, ptype) in zip(expr.args, fi.params)]
-            return fi.cpp_template.format(*gen_args)
+            result_type = self.ctx.get_expr_type(expr) or fi.return_type
+            return self.apply_cpp_template(fi.cpp_template, gen_args, {}, result_type)
 
         # Fallback for synthetic calls (e.g. module-aliased constructors like t.Int32(42))
         args = expr.args

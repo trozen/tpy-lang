@@ -227,6 +227,23 @@ def get_builtin_module_names() -> set[str]:
     return set(_MODULE_FACTORIES.keys())
 
 
+def get_builtin_type_obj(qname: str) -> "TpyType | None":
+    """Get the type object for a builtin type by qualified name (e.g. 'tpy.Float32').
+
+    Checks hardcoded module types first, then type factories for types
+    fully defined in .py.
+    """
+    module_name = qname.rsplit(".", 1)[0] if "." in qname else qname
+    module = get_module(module_name)
+    if module and qname in module.types:
+        return module.types[qname].type_obj
+    # Factory path: non-generic types fully defined in .py
+    entry = _get_type_factories().get(qname)
+    if entry and not entry[0]:  # no type params -> non-generic singleton
+        return entry[1]()
+    return None
+
+
 def get_builtins() -> BuiltinModule:
     """Get the builtins module."""
     result = get_module("builtins")
@@ -377,6 +394,7 @@ def builtin_type_to_record_info(qname: str, type_def: BuiltinTypeDef) -> "Record
         type_factory=type_def.type_factory,
         extends_protocols=type_def.extends,
         is_nocopy=type_def.is_nocopy,
+        builtin_type_key=qname,
     )
 
 
@@ -516,7 +534,8 @@ def _get_type_factories() -> dict[str, tuple[list[TypeParamKind], "Callable[...,
         from tpyc.typesys import (
             ListType, DictType, DictKeysViewType, DictValuesViewType,
             DictItemsViewType, SetType, ArrayType, SpanType, SpanIterType,
-            PtrType, RangeType,
+            PtrType, RangeType, FLOAT32, FLOAT, BIGINT, BOOL, CHAR,
+            ALL_FIXED_INTS,
         )
         TYPE = TypeParamKind.TYPE
         INT = TypeParamKind.INT
@@ -532,6 +551,13 @@ def _get_type_factories() -> dict[str, tuple[list[TypeParamKind], "Callable[...,
             "tpy.Span": ([TYPE], lambda t: SpanType(t)),
             "tpy.SpanIter": ([TYPE], lambda t: SpanIterType(t)),
             "tpy.Ptr": ([TYPE], lambda t: PtrType(t)),
+            "tpy.Float32": ([], lambda: FLOAT32),
+            "tpy.Char": ([], lambda: CHAR),
+            "tpy.Float64": ([], lambda: FLOAT),
+            "builtins.int": ([], lambda: BIGINT),
+            "builtins.float": ([], lambda: FLOAT),
+            "builtins.bool": ([], lambda: BOOL),
+            **{f"tpy.{t}": ([], (lambda typ: lambda: typ)(t)) for t in ALL_FIXED_INTS},
         }
     return _type_factories
 
@@ -540,6 +566,12 @@ def get_type_factory(qname: str) -> "Callable[..., TpyType] | None":
     """Get the type factory for a qualified type name."""
     entry = _get_type_factories().get(qname)
     return entry[1] if entry else None
+
+
+def get_type_factory_names(module_prefix: str) -> list[str]:
+    """Get qualified names of all type factories for a module prefix."""
+    prefix = f"{module_prefix}."
+    return [k for k in _get_type_factories() if k.startswith(prefix)]
 
 
 def _make_factory_type_def(param_kinds: list[TypeParamKind], factory: "Callable[..., TpyType]") -> BuiltinTypeDef:

@@ -767,6 +767,8 @@ class MethodAnalyzer:
             is_staticmethod=method.is_staticmethod,
             type_params=all_type_params,
             type_param_bounds=all_bounds,
+            cpp_template=method.cpp_template,
+            native_name=method.native_name,
         )
         temp_call = TpyCall(func=expr.method, args=expr.args,
                             kwargs=expr.kwargs,

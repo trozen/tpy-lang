@@ -6,15 +6,15 @@ namespace tpyapp::main {
 
 // def test_construction() -> None:
 void test_construction() {
-    // a: Float32 = Float32(3.14)
+    // a = Float32(3.14)  # tpyc: type(Float32)
     float a = 3.14f;
-    // b: Float32 = Float32(0.0)
+    // b = Float32(0.0)  # tpyc: type(Float32)
     float b = 0.0f;
-    // c: Float32 = Float32(Int32(42))
+    // c = Float32(Int32(42))  # tpyc: type(Float32)
     float c = static_cast<float>(42);
-    // d: Float32 = Float32(True)
+    // d = Float32(True)  # tpyc: type(Float32)
     float d = static_cast<float>(true);
-    // e: Float32 = Float32("2.5")
+    // e = Float32("2.5")  # tpyc: type(Float32)
     float e = ::tpy::float32_from_str("2.5");
     // print(a)
     std::cout << ::tpy::print_float(static_cast<double>(a)) << "\n";
@@ -152,7 +152,7 @@ void test_float64_alias() {
     // x: Float64 = 3.14
     double x = 3.14;
     // y: Float64 = Float64(2.0)
-    double y = static_cast<double>(2.0);
+    double y = 2.0;
     // print(x)
     std::cout << ::tpy::print_float(x) << "\n";
     // print(y)

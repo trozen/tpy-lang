@@ -133,11 +133,16 @@ class TypeRegistrar:
         tpy_module = builtin_modules.get_tpy()
 
         # Register all tpy types (Int32, Array, Span, etc.)
+        # Includes both hardcoded types and .py-defined types with factories.
         for qname, type_def in tpy_module.types.items():
-            # Extract simple name from qualified name (tpy.Int32 -> Int32)
             simple_name = qname.split(".")[-1]
             self.ctx.imported_names[simple_name] = ("tpy", simple_name)
             self.ctx.global_ns.bind_imported_name(simple_name, "tpy", simple_name)
+        for qname in builtin_modules.get_type_factory_names("tpy"):
+            simple_name = qname.split(".")[-1]
+            if simple_name not in self.ctx.imported_names:
+                self.ctx.imported_names[simple_name] = ("tpy", simple_name)
+                self.ctx.global_ns.bind_imported_name(simple_name, "tpy", simple_name)
 
         # Register all tpy functions (copy, etc.)
         for name, fn_def in tpy_module.functions.items():
@@ -770,8 +775,12 @@ class TypeRegistrar:
                     record.loc
                 )
 
-            # Check if record implements all protocol methods
-            record_type = NamedType(record.name)
+            # Check if record implements all protocol methods.
+            # For @builtin_type classes, use the concrete type (e.g. Float32Type)
+            # so Self-substitution in protocol signatures matches method param types.
+            record_type: TpyType = NamedType(record.name)
+            if record_info.builtin_type_key:
+                record_type = builtin_modules.get_builtin_type_obj(record_info.builtin_type_key) or record_type
             if not self.protocols.type_conforms_to_protocol(record_type, protocol):
                 # Generate helpful error message listing missing methods
                 missing = self.protocols.get_missing_protocol_methods(record_type, protocol)

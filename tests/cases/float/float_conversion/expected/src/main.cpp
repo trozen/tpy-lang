@@ -18,9 +18,9 @@ void __tpy_init() {
 
     // # Type conversions
     // a = float(5)
-    a = static_cast<double>(5);
+    a = 5;
     // b = float(3.14)
-    b = static_cast<double>(3.14);
+    b = 3.14;
     // c: float = 1.0
     c = 1.0;
     // print(a)

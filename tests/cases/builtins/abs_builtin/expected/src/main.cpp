@@ -39,7 +39,7 @@ void __tpy_init() {
     std::cout << ::std::abs(99) << "\n";
     // # Large BigInt
     // big = int(-1000000)
-    big = ::tpy::BigInt(static_cast<int64_t>(-1000000));
+    big = ::tpy::BigInt(-1000000);
     // print(abs(big))
     std::cout << ::tpy::BigInt::abs(big) << "\n";
     // # Test abs with float

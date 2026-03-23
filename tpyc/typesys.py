@@ -3064,13 +3064,26 @@ class TypeRegistry:
         """Unified lookup for any type's RecordInfo.
 
         For user records (NamedType with is_record), looks up by name in self.records.
-        For builtin types, looks up by qualified_name in self.builtin_records.
+        For builtin types, looks up by qualified_name in self.builtin_records,
+        falling back to self.records by short name (for .py-defined builtin types
+        during their own module's analysis, before builtin_records is populated).
         """
         if isinstance(tpy_type, NamedType) and tpy_type.is_user_record:
             return self.records.get(tpy_type.name)
         qname = tpy_type.qualified_name()
         if qname:
-            return self.builtin_records.get(qname)
+            result = self.builtin_records.get(qname)
+            # During .py module self-analysis, the builtin_rec may be a minimal
+            # stub (no methods) while the .py record has all methods. Prefer
+            # the .py record when the builtin stub has no methods.
+            short_name = qname.rsplit(".", 1)[-1]
+            if result and not result.methods:
+                py_rec = self.records.get(short_name)
+                if py_rec and py_rec.methods:
+                    return py_rec
+            if result:
+                return result
+            return self.records.get(short_name)
         return None
 
     def get_protocol(self, name: str) -> Optional[ProtocolInfo]:

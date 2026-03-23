@@ -60,9 +60,9 @@ void __tpy_init() {
     std::cout << ::std::max(x, y) << "\n";
     // # Use int() for large values to avoid literal issues
     // big1 = int(-1000000)
-    big1 = ::tpy::BigInt(static_cast<int64_t>(-1000000));
+    big1 = ::tpy::BigInt(-1000000);
     // big2 = int(1000000)
-    big2 = ::tpy::BigInt(static_cast<int64_t>(1000000));
+    big2 = ::tpy::BigInt(1000000);
     // print(min(big1, big2))
     std::cout << ::std::min(big1, big2) << "\n";
     // print(max(big1, big2))

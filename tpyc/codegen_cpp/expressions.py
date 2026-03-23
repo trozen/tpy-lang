@@ -1772,11 +1772,16 @@ class ExpressionGenerator:
             return f"{parent_cpp}::{template_kw}{expr.method}{method_targs}({args})"
         # Handle ClassName.staticmethod() -> ClassName::staticmethod()
         if expr.is_static_call and isinstance(expr.obj, TpyName):
+            # @cpp_template on static methods: expand the template directly
+            fi = expr.resolved_function_info
+            if fi and fi.cpp_template:
+                gen_args = [self.gen_expr(arg) for arg in expr.args]
+                return fi.cpp_template.format(*gen_args)
             # For native records, use the C++ class and method names
             record_info = self.ctx.analyzer.registry.get_record(expr.obj.name)
             if record_info and record_info.is_native:
                 cpp_class = record_info.native_name or expr.obj.name
-                cpp_method = expr.resolved_function_info.native_name if expr.resolved_function_info and expr.resolved_function_info.native_name else expr.method
+                cpp_method = fi.native_name if fi and fi.native_name else expr.method
                 return f"{cpp_class}::{cpp_method}({args})"
             class_name = expr.obj.name
             static_method_targs = ""

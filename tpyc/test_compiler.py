@@ -13,6 +13,9 @@ from .typesys import (
     TupleType, UnionType, OwnType, ReadonlyType, StrViewType, NamedType,
 )
 
+# Stdlib path needed for from_source when code uses primitive type methods
+_STDLIB_DIRS = [get_lib_dir() / "tpy"]
+
 
 class TestCompilerFromSource:
     def test_simple_program(self):
@@ -35,10 +38,10 @@ class TestCompilerFromSource:
         src_file = tmp_path / "check.py"
         src_file.write_text(source)
 
-        file_compiler = Compiler(src_file)
+        file_compiler = Compiler(src_file, lib_dirs=_STDLIB_DIRS)
         file_modules = file_compiler.compile()
 
-        source_compiler = Compiler.from_source(source)
+        source_compiler = Compiler.from_source(source, lib_dirs=_STDLIB_DIRS)
         source_modules = source_compiler.compile()
 
         assert len(file_modules) == len(source_modules)
@@ -65,9 +68,10 @@ class TestCompilerFromSource:
 
     def test_reassignment_from_bigint_widens_default_int(self):
         source = "x = 0\nx = int(5)\n"
-        compiler = Compiler.from_source(source, default_int="Int32")
+        compiler = Compiler.from_source(source, default_int="Int32", lib_dirs=_STDLIB_DIRS)
         modules = compiler.compile()
-        hpp, _ = compiler.generate_code_to_strings(modules[0])
+        entry = [m for m in modules if m.is_entry_point][0]
+        hpp, _ = compiler.generate_code_to_strings(entry)
         assert "extern ::tpy::BigInt x;" in hpp
 
     def test_invalid_default_int_setting_rejected(self):
@@ -228,7 +232,7 @@ class TestSendSyncRecordDerivation:
             "    print(p.x)\n"
             "main()\n"
         )
-        compiler = Compiler.from_source(source)
+        compiler = Compiler.from_source(source, lib_dirs=_STDLIB_DIRS)
         compiler.compile()
         point_type = NamedType("Point")
         assert point_type.is_send()

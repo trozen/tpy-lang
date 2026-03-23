@@ -39,7 +39,7 @@ void test_bigint_absorbs_fixedint() {
     // d = Int32(1)  # tpyc: type(int)
     ::tpy::BigInt d = 1;
     // d = int(2)  # tpyc: type(int)
-    d = ::tpy::BigInt(static_cast<int64_t>(2));
+    d = ::tpy::BigInt(2);
     // print(d)
     std::cout << d << "\n";
 }

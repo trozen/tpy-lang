@@ -18,7 +18,7 @@ void __tpy_init() {
     // x = Int32(10)  # tpyc: type(int)
     x = 10;
     // x = int(20)  # tpyc: type(int)
-    x = ::tpy::BigInt(static_cast<int64_t>(20));
+    x = ::tpy::BigInt(20);
     // print(x)
     std::cout << x << "\n";
     // f = 0  # tpyc: type(float)
