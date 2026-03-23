@@ -938,6 +938,32 @@ No warning is emitted for:
 - **`T: ValueType` bounded type params** -- the bound guarantees value semantics
 - **Rvalues** (constructor calls, function results) -- no existing owner
 - **`copy()` wrapped** -- intent already explicit
+- **`copy_iter()` wrapped** -- intent already explicit (element-by-element copy)
+- **Last use** -- source is dead after this point, no observable aliasing divergence
+
+#### `copy_iter()` for Bulk Operations (Working)
+
+`copy_iter(iterable)` explicitly acknowledges element-by-element copies for bulk
+operations like `extend()`, `list()`, `set()`. It wraps a borrowing iterator in
+a `CopyIter` adapter that copies each element directly into the destination:
+
+```python
+from tpy import copy_iter
+
+a: list[Node] = []
+b: list[Node] = [Node(1), Node(2)]
+
+a.extend(b)              # WARNING: copies Node elements
+a.extend(copy(b))        # OK: explicit copy of container
+a.extend(copy_iter(b))   # OK: explicit element-by-element copy (no intermediate container)
+```
+
+`copy_iter(b)` is more efficient than `copy(b)` for `extend` -- it copies each
+element directly into the destination without creating an intermediate container
+copy. The source `b` remains valid after the call.
+
+`copy_iter` borrows from its source -- mutating the source container while a
+`CopyIter` is live would invalidate the iterator (the borrow tracker warns).
 
 #### Scope Escape Detection (Working)
 
@@ -1882,6 +1908,60 @@ val = b.take()      # Moves out value, destroys box
 print(val)          # 42
 # b is consumed -- any further use is a compile error
 ```
+
+#### Working: `auto_own[Self]` -- Borrowing + Consuming Overloads
+
+`auto_own[Self]` on a method's `self` parameter generates two overloads from a
+single definition: a borrowing overload and a consuming overload. `auto_own[T]`
+in the return type becomes `T` in the borrowing clone and `Own[T]` in the
+consuming clone. This mirrors `auto_readonly` for const-vs-mutable overloads.
+
+```python
+from typing import Self
+from tpy import auto_own
+
+class Pair[T]:
+    first_val: T
+    second_val: T
+
+    def first(self: auto_own[Self]) -> auto_own[T]:
+        return self.first_val
+```
+
+The compiler clones this into:
+- Borrowing: `first(self) -> T` (returns reference to field)
+- Consuming: `first(self: Own[Self]) -> Own[T]` (moves field out of consumed struct)
+
+C++ generates `&`-qualified and `&&`-qualified overloads. Overload resolution
+selects consuming when the receiver is at its last use.
+
+In consuming method bodies, field access on `self` yields `Own[FieldType]`
+(ownership propagation through fields), allowing fields to be returned as
+owned values without explicit `copy()`.
+
+**Limitations**: `auto_own` on `__iter__` for user collections is not yet
+working end-to-end. See `docs/CONSUMING_ITERATION_DESIGN.md` for details.
+
+#### Working: Container-Level Move For-Loops
+
+When a `list[T]` with non-value elements is at its last use as a for-loop
+iterable, the compiler moves the vector into an `OwnIter` wrapper, freeing
+the source variable early:
+
+```python
+src: list[Node] = [Node(1), Node(2)]
+for x in src:       # src's vector moved into OwnIter
+    print(x.val)    # x references elements inside OwnIter
+# src is empty here (vector was moved)
+```
+
+This is a container-level optimization -- the vector storage is transferred,
+but individual elements are not yet moved into the loop variable (they are
+referenced in-place via `const auto&`). Element-level consuming iteration
+is planned.
+
+The consuming `__iter__` overload is selected automatically via liveness
+analysis. No annotation needed at the call site.
 
 #### Working: Regular Method Calls on Protocol Types
 

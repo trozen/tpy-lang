@@ -13,8 +13,8 @@ import re
 from typing import Any, NoReturn, Optional
 
 from ..typesys import (
-    TpyType, NamedType, PtrType, OwnType, ReadonlyType, AutoReadonlyType, FinalType, SelfType,
-    strip_auto_readonly, apply_auto_readonly, ensure_qualified,
+    TpyType, NamedType, PtrType, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, FinalType, SelfType,
+    strip_auto_readonly, apply_auto_readonly, strip_auto_own, apply_auto_own, ensure_qualified,
     TypeParamRef, OptionalType, VoidType, make_union, EnumType, TupleType, FnType, CallableType,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BOOL, FLOAT, FLOAT32, BIGINT, SELF, SLICE, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo, TypeParamKind,
@@ -1077,6 +1077,8 @@ class Parser:
                 parsed = self._parse_method(item, node.name, type_param_scope)
                 if parsed.auto_readonly:
                     methods.extend(self._clone_auto_readonly(parsed))
+                elif parsed.auto_own:
+                    methods.extend(self._clone_auto_own(parsed))
                 else:
                     methods.append(parsed)
             elif isinstance(item, ast.Pass):
@@ -1504,6 +1506,7 @@ class Parser:
         params = []
         has_self = not is_staticmethod
         is_consuming = False
+        auto_own = False
         # Count non-self params for __exit__ stripping check
         n_non_self = len(node.args.args) - (1 if has_self else 0)
         args_iter = iter(enumerate(node.args.args))
@@ -1512,7 +1515,7 @@ class Parser:
                 # Non-static methods must have 'self' as first parameter
                 if arg.arg != "self":
                     raise ParseError(f"First parameter of method '{node.name}' must be 'self'", node)
-                # Check for self: Own[Self] annotation (consuming method)
+                # Check for self: Own[Self] or self: auto_own[Self] annotation
                 if arg.annotation is not None:
                     self_ann = self._parse_type_annotation(arg.annotation, type_param_scope)
                     if isinstance(self_ann, OwnType) and isinstance(self_ann.wrapped, SelfType):
@@ -1527,9 +1530,21 @@ class Parser:
                                 node,
                             )
                         is_consuming = True
+                    elif isinstance(self_ann, AutoOwnType) and isinstance(self_ann.wrapped, SelfType):
+                        if node.name in ("__init__", "__del__"):
+                            raise ParseError(
+                                f"auto_own[Self] is not allowed on '{node.name}'",
+                                node,
+                            )
+                        if is_readonly:
+                            raise ParseError(
+                                f"auto_own[Self] cannot be combined with @readonly on method '{node.name}'",
+                                node,
+                            )
+                        auto_own = True
                     else:
                         raise ParseError(
-                            f"Only 'Own[Self]' is allowed as a type annotation for 'self', "
+                            f"Only 'Own[Self]' or 'auto_own[Self]' is allowed as a type annotation for 'self', "
                             f"got '{self_ann}'",
                             node,
                         )
@@ -1594,6 +1609,7 @@ class Parser:
             readonly_opt_out=readonly_opt_out,
             is_pure=is_pure,
             auto_readonly=auto_readonly,
+            auto_own=auto_own,
             is_override=is_override,
             is_overload_stub=is_overload_stub,
             is_stub=is_overload_stub_body if is_overload_stub else is_stub,
@@ -1640,6 +1656,35 @@ class Parser:
             defaults=copy.deepcopy(method.defaults),
         )
         return [mutable, const]
+
+    def _clone_auto_own(self, method: TpyFunction) -> list[TpyFunction]:
+        """Expand a self: auto_own[Self] method into two ordinary overloads.
+
+        Returns [borrowing_overload, consuming_overload].
+        - Borrowing: is_consuming=False, auto_own=False, return_type=strip_auto_own(original)
+        - Consuming: is_consuming=True,  auto_own=False, return_type=apply_auto_own(original)
+
+        auto_own[T] nodes in the return type specify where Own is applied
+        in the consuming overload. Parts without auto_own[T] are unchanged.
+        """
+        borrowing_return = strip_auto_own(method.return_type)
+        consuming_return = apply_auto_own(method.return_type)
+        borrowing = dataclasses.replace(
+            method,
+            return_type=borrowing_return,
+            is_consuming=False,
+            auto_own=False,
+            is_auto_own_borrowing_clone=True,
+        )
+        consuming = dataclasses.replace(
+            method,
+            return_type=consuming_return,
+            body=copy.deepcopy(method.body),
+            is_consuming=True,
+            auto_own=False,
+            defaults=copy.deepcopy(method.defaults),
+        )
+        return [borrowing, consuming]
 
     _FUNCTION_LINKAGE_MAP: dict[str, FunctionLinkage] = {
         "tpy.extern.native": FunctionLinkage.NATIVE,
@@ -1883,6 +1928,9 @@ class Parser:
                     elif original == "auto_readonly":
                         inner = self._parse_type_annotation(node.slice, type_param_scope)
                         return AutoReadonlyType(inner)
+                    elif original == "auto_own":
+                        inner = self._parse_type_annotation(node.slice, type_param_scope)
+                        return AutoOwnType(inner)
                     elif original == "Fn":
                         slices = _extract_subscript_slices(node)
                         if len(slices) != 2:

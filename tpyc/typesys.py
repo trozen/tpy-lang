@@ -1271,6 +1271,68 @@ def has_auto_readonly(t: 'TpyType') -> bool:
     return any(has_auto_readonly(i) for i in t.inner_types())
 
 
+@dataclass(frozen=True)
+class AutoOwnType(TpyType):
+    """Return-type annotation for auto_own methods.
+
+    auto_own[T] in a return type means:
+    - borrowing overload: strip to T     (via strip_auto_own)
+    - consuming overload: replace with Own[T] (via apply_auto_own)
+
+    Only valid in return type annotations of methods with self: auto_own[Self].
+    Stripped by registration before reaching sema body analysis or codegen.
+    """
+    wrapped: TpyType
+
+    def to_cpp(self) -> str:
+        raise RuntimeError("AutoOwnType must be stripped before codegen")
+
+    def is_value_type(self) -> bool:
+        return self.wrapped.is_value_type()
+
+    def __str__(self) -> str:
+        return f"auto_own[{self.wrapped}]"
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.wrapped,)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return AutoOwnType(types[0])
+
+
+def strip_auto_own(t: 'TpyType') -> 'TpyType':
+    """Replace AutoOwnType(X) -> X recursively (borrowing overload return type)."""
+    if isinstance(t, AutoOwnType):
+        return strip_auto_own(t.wrapped)
+    inner = t.inner_types()
+    if not inner:
+        return t
+    new_inner = tuple(strip_auto_own(i) for i in inner)
+    if all(n is o for n, o in zip(new_inner, inner)):
+        return t
+    return t.with_inner_types(new_inner)
+
+
+def apply_auto_own(t: 'TpyType') -> 'TpyType':
+    """Replace AutoOwnType(X) -> Own[X] recursively (consuming overload return type)."""
+    if isinstance(t, AutoOwnType):
+        return OwnType(apply_auto_own(t.wrapped))
+    inner = t.inner_types()
+    if not inner:
+        return t
+    new_inner = tuple(apply_auto_own(i) for i in inner)
+    if all(n is o for n, o in zip(new_inner, inner)):
+        return t
+    return t.with_inner_types(new_inner)
+
+
+def has_auto_own(t: 'TpyType') -> bool:
+    """Return True if t contains any AutoOwnType node."""
+    if isinstance(t, AutoOwnType):
+        return True
+    return any(has_auto_own(i) for i in t.inner_types())
+
+
 
 @dataclass(frozen=True)
 class FinalType(TpyType):

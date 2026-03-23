@@ -245,7 +245,7 @@ class TypeRegistrar:
         # @overload stubs are exempt -- multiple stubs + one implementation share the same name.
         # Parser-cloned @auto_readonly pairs are exempt -- the mutable clone is marked
         # is_auto_readonly_mutable_clone=True so only those pairs bypass the duplicate check.
-        propagate_clone_names: set[str] = {m.name for m in record.methods if m.is_auto_readonly_mutable_clone}
+        propagate_clone_names: set[str] = {m.name for m in record.methods if m.is_auto_readonly_mutable_clone or m.is_auto_own_borrowing_clone}
         overload_names: set[str] = {m.name for m in record.methods if m.is_overload_stub}
         seen_method_names: set[str] = set()
         for method in record.methods:
@@ -348,7 +348,8 @@ class TypeRegistrar:
         # Pre-compute ids of mutable clones from @auto_readonly (flagged by the parser).
         # Used below to prevent implicit_readonly from clobbering is_readonly=False on these
         # methods, which would break mutable-vs-const overload tie-breaking.
-        mutable_clone_ids: set[int] = {id(m) for m in record.methods if m.is_auto_readonly_mutable_clone}
+        mutable_clone_ids: set[int] = {id(m) for m in record.methods
+                                       if m.is_auto_readonly_mutable_clone or m.is_auto_own_borrowing_clone}
 
         # Resolve record-level type param bounds early so that
         # attach_type_param_bounds in the method loop below uses resolved versions
@@ -413,7 +414,10 @@ class TypeRegistrar:
             if is_protocol_type(method_return):
                 pi = self.ctx.registry.get_protocol(method_return.name)
                 is_native_stub = method.is_stub and (method.native_name or method.cpp_template)
-                if not (pi and pi.is_dynamic) and not is_native_stub:
+                # __iter__ returns Iterator[T] which is a protocol -- allow it since
+                # C++ codegen uses auto return type (deduced from body).
+                is_iter_method = method.name == "__iter__" and isinstance(method_return, NamedType) and method_return.name in ("Iterator", "Iterable")
+                if not (pi and pi.is_dynamic) and not is_native_stub and not is_iter_method:
                     raise SemanticError(
                         f"Protocol type '{method_return.name}' cannot be used as a return type in '{record.name}.{method.name}'. "
                         f"Only @dynamic protocols can be used as return types",

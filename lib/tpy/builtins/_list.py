@@ -1,4 +1,4 @@
-from typing import overload, Iterator, Iterable
+from typing import overload, Iterator, Iterable, Self
 from tpy import Int32, Own, Span, readonly, pure
 from tpy import Equatable, Comparable, NativeIterable, NativeRangeConstructible, ReadOnlySpanLike
 from tpy.extern import native, cpp_template, native_preserves_refs, builtin_type
@@ -19,10 +19,15 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], ReadO
     @cpp_template("::tpy::from_range<std::vector<{T}>>({0})")
     def __init__(self, x: Iterable[Own[T]]) -> None: ...
 
+    @overload
     @native("tpy::__iter__", function=True)
     @pure
     @readonly
     def __iter__(self) -> Iterator[T]: ...
+
+    @overload
+    @native("tpy::own_iter", function=True)
+    def __iter__(self: Own[Self]) -> Iterator[T]: ...
 
     @native("tpy::__len__", function=True)
     @pure

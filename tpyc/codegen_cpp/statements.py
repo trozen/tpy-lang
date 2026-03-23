@@ -2985,6 +2985,31 @@ class StatementGenerator:
         # Resolve sema-stored elem_type (handles PendingStrType -> concrete)
         sema_elem = self.types.resolve_type(stmt.elem_type) if stmt.elem_type else None
 
+        # Consuming iteration: iterable at last use with consuming __iter__
+        # overload. Generate the consuming call and iterate the result.
+        # TODO: _gen_begin_end_loop uses const auto& for const_loop_var, which
+        # prevents actual element moves from OwnIter's move iterators. Should
+        # force auto&& or auto (value) binding for consuming loops.
+        if stmt.consuming_iter:
+            iterable = self.expressions.gen_expr(stmt.iterable)
+            elem_type = sema_elem
+            assert elem_type is not None
+            fi = stmt.consuming_iter_fi
+            if fi and fi.native_function and fi.native_name:
+                # Builtin consuming __iter__: native function call with std::move
+                native = fi.native_name
+                if "::" not in native:
+                    native = f"::tpy::{native}"
+                else:
+                    native = f"::{native}"
+                self._gen_captured_call_loop(out, stmt, indent, iterable, elem_type,
+                                             lambda src, n=native: f"{n}(std::move({src}))")
+            else:
+                # User-defined consuming __iter__: call rvalue-qualified method
+                self._gen_captured_call_loop(out, stmt, indent, iterable, elem_type,
+                                             lambda src: f"std::move({src}).__iter__()")
+            return
+
         # Resolve TypeParamRef to its bound for protocol-based iteration
         resolved_type = iterable_type
         if isinstance(iterable_type, TypeParamRef):

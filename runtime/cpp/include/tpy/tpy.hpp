@@ -58,6 +58,12 @@
 // SpanIter: lightweight iterator over contiguous span (depends on <span>, error_return)
 #include "span_iter.hpp"
 
+// OwnIter: drain iterator for std::vector (depends on core)
+#include "own_iter.hpp"
+
+// CopyIter: copying iterator adapter (depends on dunder for __iter__)
+#include "copy_iter.hpp"
+
 // Non-range overloads for container ops (depends on dunder, container_ops)
 #include "iterable_ops.hpp"
 

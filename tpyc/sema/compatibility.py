@@ -246,6 +246,8 @@ class TypeCompatibility:
                         and not isinstance(actual, OwnType)
                         and self.is_lvalue(source_expr)
                         and not self.is_copy_call(source_expr)):
+                    # Suppress at last use: no observable semantic divergence from
+                    # CPython when the source is dead after this point (Framing A).
                     is_auto_moved = (isinstance(source_expr, TpyName)
                                      and id(source_expr) in self.ctx.all_last_uses
                                      and self._is_movable_var(source_expr.name))
@@ -259,13 +261,15 @@ class TypeCompatibility:
                             if _is_definitely_ref_type(elem_type):
                                 self.ctx.warning(
                                     f"copies {elem_type} elements; "
-                                    f"use copy() to make this explicit",
+                                    f"use copy_iter() to make this explicit"
+                                    f" (or copy() to copy the entire container)",
                                     source_expr,
                                 )
                             else:
                                 self.ctx.warning(
                                     f"may copy {elem_type} elements if not a value type; "
-                                    f"use copy() to make this explicit",
+                                    f"use copy_iter() to make this explicit"
+                                    f" (or copy() to copy the entire container)",
                                     source_expr,
                                 )
                 return None
@@ -278,10 +282,12 @@ class TypeCompatibility:
 
         # Protocol matching (structural subtyping)
         if is_protocol_type(expected):
-            if self.protocols and self.protocols.type_conforms_to_protocol(actual, expected):
+            # Own[T] conforms to any protocol that T conforms to
+            check_actual = actual.wrapped if isinstance(actual, OwnType) else actual
+            if self.protocols and self.protocols.type_conforms_to_protocol(check_actual, expected):
                 return None  # No coercion needed, structural match
             raise SemanticError(
-                f"Type {actual} does not conform to protocol {expected} in {context}",
+                f"Type {check_actual} does not conform to protocol {expected} in {context}",
                 loc
             )
 
@@ -726,15 +732,16 @@ class TypeCompatibility:
         return False
 
     def is_copy_call(self, expr: TpyExpr) -> bool:
-        """Check if expression is a copy() call from the tpy module."""
+        """Check if expression is a copy() or copy_iter() call from the tpy module."""
         if isinstance(expr, TpyCoerce):
             return self.is_copy_call(expr.expr)
         if not isinstance(expr, TpyCall):
             return False
-        # Check if this function name maps to tpy.copy (handles aliases like "from tpy import copy as c")
+        # Check if this function name maps to tpy.copy or tpy.copy_iter
+        # (handles aliases like "from tpy import copy as c")
         if expr.func in self.ctx.imported_names:
             module_name, func_name = self.ctx.imported_names[expr.func]
-            return module_name == "tpy" and func_name == "copy"
+            return module_name == "tpy" and func_name in ("copy", "copy_iter")
         return False
 
     def check_own_consumption(self, expr: TpyExpr) -> None:

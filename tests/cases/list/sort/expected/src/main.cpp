@@ -41,7 +41,8 @@ void test_user_type_sort() {
     // a.sort()
     std::stable_sort(a.begin(), a.end());
     // for p in a:
-    auto& __obj_0 = a;
+    auto& __src_0 = a;
+    auto __obj_0 = ::tpy::own_iter(std::move(__src_0));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -58,7 +59,8 @@ void test_stable_sort() {
     // a.sort()
     std::stable_sort(a.begin(), a.end());
     // for p in a:
-    auto& __obj_0 = a;
+    auto& __src_0 = a;
+    auto __obj_0 = ::tpy::own_iter(std::move(__src_0));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {

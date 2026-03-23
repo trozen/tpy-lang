@@ -29,7 +29,7 @@ PARSER_KEYWORDS: dict[str, frozenset[str] | None] = {
         "Fn",
         # Decorators/modifiers
         "readonly", "noalloc", "nocopy", "dynamic", "pure",
-        "auto_readonly", "error_return",
+        "auto_readonly", "auto_own", "error_return",
     }),
     "builtins": None,
     "__future__": None,  # no-op, never resolved as .py
@@ -57,7 +57,7 @@ PYTHON_BUILTINS = frozenset({"int", "float", "bool", "str", "None", "tuple", "sl
 TYPING_NAMES = frozenset({"Optional", "Protocol", "Self", "Sized", "Sequence", "MutableSequence", "Iterator", "Iterable", "Final", "override", "overload", "Callable"})
 
 # All tpy type names (union of TPY_TYPES + decorators/modifiers)
-TPY_TYPE_NAMES = TPY_TYPES | {"Char", "readonly", "noalloc", "nocopy", "dynamic", "pure", "auto_readonly", "error_return"}
+TPY_TYPE_NAMES = TPY_TYPES | {"Char", "readonly", "noalloc", "nocopy", "dynamic", "pure", "auto_readonly", "auto_own", "error_return"}
 
 
 def is_parser_keyword_module(module_name: str) -> bool:

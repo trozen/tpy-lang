@@ -484,6 +484,8 @@ class CallAnalyzer:
                     # Special handling for functions with custom sema
                     if qname == "tpy.copy":
                         return self._analyze_tpy_copy(expr)
+                    if qname == "tpy.copy_iter":
+                        return self._analyze_tpy_copy_iter(expr)
                     if qname == "tpy.try_parse":
                         return self._analyze_tpy_try_parse(expr)
                     if qname == "builtins.isinstance":
@@ -716,6 +718,8 @@ class CallAnalyzer:
         qname = overloads[0].qualified_name
         if qname == "tpy.copy":
             return self._analyze_tpy_copy(expr)
+        if qname == "tpy.copy_iter":
+            return self._analyze_tpy_copy_iter(expr)
         if qname == "tpy.try_parse":
             return self._analyze_tpy_try_parse(expr)
         if qname == "builtins.isinstance":
@@ -791,6 +795,32 @@ class CallAnalyzer:
             is_readonly=True,
             is_builtin_function=True,
             qualified_name="tpy.copy",
+        )
+        return OwnType(arg_type)
+
+    def _analyze_tpy_copy_iter(self, expr: TpyCall) -> TpyType:
+        """Analyze a call to tpy.copy_iter() - explicit element copy acknowledgment.
+
+        copy_iter(iterable) wraps an iterable and copies each element during
+        iteration. Suppresses the bulk copy warning on extend(), list(), etc.
+        TODO: sema returns Own[ContainerType] (e.g. Own[list[T]]) which is
+        a transitional mismatch -- the C++ codegen produces CopyIter, but sema
+        sees it as owning the whole container. Should return Iterator[Own[T]]
+        once the type system supports protocol return types for builtins.
+        """
+        self._reject_kwargs_for_builtin(expr, "copy_iter")
+        if len(expr.args) != 1:
+            raise self.ctx.error("copy_iter() takes exactly 1 argument", expr)
+        arg_type = self.expr.analyze_expr(expr.args[0])
+        if isinstance(arg_type, OwnType):
+            arg_type = arg_type.wrapped
+        expr.resolved_function_info = FunctionInfo(
+            name="copy_iter",
+            params=[ParamInfo("x", arg_type)],
+            return_type=OwnType(arg_type),
+            is_readonly=True,
+            is_builtin_function=True,
+            qualified_name="tpy.copy_iter",
         )
         return OwnType(arg_type)
 

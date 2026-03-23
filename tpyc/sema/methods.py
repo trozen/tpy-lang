@@ -250,6 +250,7 @@ class MethodAnalyzer:
         overloads: list[FunctionInfo],
         type_subst: dict[str, TpyType | int],
         is_readonly_receiver: bool = False,
+        is_consuming_receiver: bool = False,
     ) -> TpyType:
         """Resolve overloads, substitute type params, check arg count, and coerce args.
 
@@ -297,6 +298,7 @@ class MethodAnalyzer:
                 default_int_type=self.ctx.default_int_type,
                 subclass_checker=self.ctx.registry.is_subclass_of,
                 is_readonly_receiver=is_readonly_receiver,
+                is_consuming_receiver=is_consuming_receiver,
             )
             if resolved is None:
                 arg_strs = ", ".join(str(t) for t in arg_types)
@@ -359,9 +361,10 @@ class MethodAnalyzer:
         return SuperType(record_info.parent, ctx.record_ctx.record.name)
 
     def _try_resolve_method(self, expr: TpyMethodCall, obj_type: TpyType,
-                            is_readonly_receiver: bool = False) -> TpyType | None:
+                            is_readonly_receiver: bool = False,
+                            is_consuming_receiver: bool = False) -> TpyType | None:
         """Try to resolve method on obj_type. Returns return type or None."""
-        result = self._analyze_instance_method(expr, obj_type, is_readonly_receiver)
+        result = self._analyze_instance_method(expr, obj_type, is_readonly_receiver, is_consuming_receiver)
         if result is not None:
             return result
         result = self._analyze_protocol_or_bound_method(expr, obj_type)
@@ -496,6 +499,14 @@ class MethodAnalyzer:
         if isinstance(obj_type, ReadonlyType):
             obj_type = obj_type.wrapped
 
+        # Determine if receiver can be consumed (last use of a movable local).
+        # Used to select consuming __iter__ overloads.
+        is_consuming_receiver = False
+        if isinstance(expr.obj, TpyName):
+            _in_last = id(expr.obj) in self.ctx.all_last_uses
+            _movable = self.compat._is_movable_var(expr.obj.name)
+            is_consuming_receiver = _in_last and _movable
+
         if isinstance(obj_type, OwnType):
             obj_type = obj_type.wrapped
         elif isinstance(obj_type, OptionalType):
@@ -553,7 +564,7 @@ class MethodAnalyzer:
         current_type = obj_type
         deref_depth = 0
         while deref_depth <= 8:
-            result = self._try_resolve_method(expr, current_type, is_readonly_receiver)
+            result = self._try_resolve_method(expr, current_type, is_readonly_receiver, is_consuming_receiver)
             if result is not None:
                 expr.deref_depth = deref_depth
                 if deref_depth > 0 and isinstance(original_type, PtrType):
@@ -1110,7 +1121,8 @@ class MethodAnalyzer:
         return resolved_type
 
     def _analyze_instance_method(self, expr: TpyMethodCall, obj_type: TpyType,
-                                  is_readonly_receiver: bool = False) -> TpyType | None:
+                                  is_readonly_receiver: bool = False,
+                                  is_consuming_receiver: bool = False) -> TpyType | None:
         """Analyze instance method call on any type (builtin or user record)."""
         record_info = self.ctx.registry.get_record_for_type(obj_type)
         if not record_info:
@@ -1142,7 +1154,8 @@ class MethodAnalyzer:
                 expr, method_info, record_info, type_subst)
 
         return self._resolve_and_check_args(
-            expr, overloads, type_subst, is_readonly_receiver=is_readonly_receiver)
+            expr, overloads, type_subst, is_readonly_receiver=is_readonly_receiver,
+            is_consuming_receiver=is_consuming_receiver)
 
     def _analyze_generic_method_call(
         self, expr: TpyMethodCall, method_info: FunctionInfo,

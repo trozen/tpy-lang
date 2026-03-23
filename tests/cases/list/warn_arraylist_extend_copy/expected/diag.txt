@@ -1,0 +1,2 @@
+main.py:16: warning: copies Node elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:28: warning: copies Node elements; use copy_iter() to make this explicit (or copy() to copy the entire container)

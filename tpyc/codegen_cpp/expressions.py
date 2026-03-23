@@ -330,6 +330,20 @@ class ExpressionGenerator:
             return arg_expr
         return f"{arg_type.to_cpp()}({arg_expr})"
 
+    def _gen_copy_iter_expr(self, arg: TpyExpr) -> str:
+        """Generate a CopyIter wrapping for element-by-element copy."""
+        arg_type = self.ctx.get_expr_type(arg)
+        # Unwrap OwnType if present (copy_iter(copy(x)) edge case)
+        if isinstance(arg_type, OwnType):
+            arg_type = arg_type.wrapped
+        elem_type = arg_type.get_iteration_element_type()
+        if elem_type is None:
+            # Fallback: treat like copy() if we can't determine element type
+            return self._gen_copy_expr(arg)
+        elem_cpp = self.types.type_to_cpp(elem_type)
+        arg_expr = self.gen_expr(arg)
+        return f"::tpy::copy_iter<{elem_cpp}>({arg_expr})"
+
     def _maybe_move(self, expr: TpyExpr, gen_code: str) -> str:
         """Wrap in std::move() if expr is a last-use of a movable local."""
         inner = expr
@@ -1402,6 +1416,9 @@ class ExpressionGenerator:
                 # copy(x) from tpy - produce an explicit copy (rvalue) of x
                 if module_name == "tpy" and func_name == "copy":
                     return self._gen_copy_expr(expr.args[0])
+                # copy_iter(x) - wrap iterable in CopyIter for element-by-element copy
+                if module_name == "tpy" and func_name == "copy_iter":
+                    return self._gen_copy_iter_expr(expr.args[0])
                 # Check for module function
                 module_info = self.ctx.analyzer.registry.get_module(module_name)
                 if module_info and func_name in module_info.functions:
@@ -1726,9 +1743,12 @@ class ExpressionGenerator:
                 cpp_type = enum_type.to_cpp()
                 arg = self.gen_expr(expr.args[1])
                 return f"::tpy::EnumUtil<{cpp_type}>::try_parse({arg})"
-            # copy() from tpy -- produce an explicit copy (rvalue) of the argument
+            # copy() from tpy -- produce an explicit copy (rvalue)
             if module_name == "tpy" and expr.method == "copy":
                 return self._gen_copy_expr(expr.args[0])
+            # copy_iter() - wrap iterable in CopyIter
+            if module_name == "tpy" and expr.method == "copy_iter":
+                return self._gen_copy_iter_expr(expr.args[0])
             # Special-handling functions with cpp_template resolved by sema
             fi = expr.resolved_function_info
             if fi and fi.special_handling and fi.cpp_template:
@@ -1754,6 +1774,15 @@ class ExpressionGenerator:
         if expr.resolved_function_info:
             method_info = expr.resolved_function_info
             if method_info.native_function or method_info.cpp_template:
+                # Consuming native_function: wrap receiver in std::move for ownership transfer
+                if method_info.is_consuming and method_info.native_function and isinstance(expr.obj, TpyName):
+                    obj_expr = self.gen_expr(expr.obj)
+                    if self.ctx.is_indirect_name(expr.obj):
+                        obj_expr = f"std::move(*{obj_expr})"
+                    else:
+                        obj_expr = f"std::move({obj_expr})"
+                    gen_args = [self.gen_expr_deref(a) for a in expr.args]
+                    return self.builtins.gen_call_from_fi(method_info, obj_expr, gen_args)
                 receiver = self._gen_builtin_method_receiver(expr)
                 if expr.is_static_call and method_info.cpp_template:
                     gen_args = [self.builtins._gen_expr_deref(arg, ptype)
@@ -1829,6 +1858,12 @@ class ExpressionGenerator:
                 obj = f"std::move(*{obj})"
             else:
                 obj = f"std::move({obj})"
+            # For consuming native_function calls, obj is fully resolved (deref + move).
+            # Generate the call immediately to avoid double-deref in the general path.
+            method_info = expr.resolved_function_info
+            if method_info and method_info.native_function:
+                gen_args = [self.gen_expr_deref(a) for a in expr.args]
+                return self.builtins.gen_call_from_fi(method_info, obj, gen_args)
 
         # Unwrap OwnType for method lookup - Own[T] behaves as T for method calls
         if isinstance(obj_type, OwnType):

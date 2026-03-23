@@ -715,6 +715,10 @@ class SemanticAnalyzer:
             func.params[i] = (pname, resolved_ptype)
             resolved_params.append((pname, resolved_ptype))
 
+        # Track consuming method for ownership propagation through fields
+        prev_consuming = self.ctx.in_consuming_method
+        self.ctx.in_consuming_method = func.is_consuming
+
         # Shared core: bind params, prescan, analyze body
         scan = self.stmts._prescan_and_analyze_body(func, resolved_params, scope, local_ns)
         self.deduction.resolve_all()
@@ -766,6 +770,7 @@ class SemanticAnalyzer:
         self._warn_unconsumed_own_params(func)
         self._store_analysis_results(func, scan)
 
+        self.ctx.in_consuming_method = prev_consuming
         self.ctx.current_function = None
         self.ctx.current_scope = None
         self.ctx.current_ns = None
@@ -1141,8 +1146,14 @@ class SemanticAnalyzer:
                     method
                 )
 
+            # Track consuming method for ownership propagation through fields
+            prev_consuming = self.ctx.in_consuming_method
+            self.ctx.in_consuming_method = method.is_consuming
+
             # Shared core: bind params, prescan, analyze body
             scan = self.stmts._prescan_and_analyze_body(method, resolved_params, scope, local_ns)
+
+            self.ctx.in_consuming_method = prev_consuming
 
             # Warn if __next__ has no raise StopIteration (likely infinite loop)
             # Skip for native methods (cpp_template set) -- StopIteration handled in C++

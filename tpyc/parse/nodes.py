@@ -611,6 +611,8 @@ class TpyForEach(TpyStmt):
     is_tuple_unpack: bool = False  # set by parser: synthetic loop var for tuple destructuring
     const_loop_var: bool = False  # set by sema: loop var is never mutated, safe for const auto&
     hoist_loop_var: bool = False  # set by sema: loop var used after loop, needs pre-declaration
+    consuming_iter: bool = False  # set by sema: iterable at last use, use consuming __iter__
+    consuming_iter_fi: 'FunctionInfo | None' = None  # set by sema: consuming __iter__ overload for codegen
 
     def exprs(self) -> list[TpyExpr]:
         return [self.iterable]
@@ -887,6 +889,11 @@ class TpyFunction:
     # Set on the mutable clone produced by _clone_auto_readonly.
     # Used instead of params-list identity to detect mutable+const clone pairs.
     is_auto_readonly_mutable_clone: bool = False
+    # Transient: True when self: auto_own[Self] is detected.
+    # After _clone_auto_own runs, both clones have auto_own=False.
+    auto_own: bool = False
+    # Set on the borrowing clone produced by _clone_auto_own.
+    is_auto_own_borrowing_clone: bool = False
     linkage: FunctionLinkage = FunctionLinkage.DEFAULT
     native_name: str | None = None
     native_function: bool = False

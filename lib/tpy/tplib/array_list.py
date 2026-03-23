@@ -12,7 +12,7 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
     _storage: UninitArrayStorage[T, N]
     _size: Int32
 
-    def __init__(self, items: ReadOnlySpanLike[T] | Iterable[T] | None = None) -> None:
+    def __init__(self, items: ReadOnlySpanLike[T] | Iterable[Own[T]] | None = None) -> None:
         self._storage = UninitArrayStorage[T, N]()
         self._size = 0
         if items is not None:
@@ -164,7 +164,8 @@ class ArrayList[T, N: int](ReadOnlySpanLike[T], MutableSequence[T]):
     def __iter__(self) -> SpanIter[auto_readonly[T]]:
         return SpanIter(self.__span__())
 
-    def extend(self, items: ReadOnlySpanLike[T] | Iterable[T]) -> None:
+    def extend(self, items: ReadOnlySpanLike[T] | Iterable[Own[T]]) -> None:
+        # TODO: warn for ReadOnlySpanLike path too (also copies elements)
         if isinstance(items, ReadOnlySpanLike):
             items_span = span(items)
             size = len(items_span)

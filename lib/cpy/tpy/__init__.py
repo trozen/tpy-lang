@@ -472,6 +472,17 @@ class auto_readonly:
         return func
 
 
+class auto_own:
+    """Type modifier for auto_own[Self] / auto_own[T] methods.
+
+    self: auto_own[Self] on a method generates borrowing + consuming overloads.
+    auto_own[T] in a return type becomes T in the borrowing clone and Own[T]
+    in the consuming clone. In CPython, subscript returns the type unchanged.
+    """
+    def __class_getitem__(cls, item):
+        return item
+
+
 # ---------------------------------------------------------------------------
 # Functions
 # ---------------------------------------------------------------------------
@@ -485,6 +496,14 @@ def copy(obj):
     if hasattr(obj, '__copy__'):
         return obj.__copy__()
     return _copy_module.deepcopy(obj)
+
+def copy_iter(iterable):
+    """Explicit element-by-element copy acknowledgment for iterables.
+
+    In CPython, this is an identity function (CPython uses references).
+    In TurboPython, suppresses the bulk copy warning on extend(), list(), etc.
+    """
+    return iterable
 
 
 def try_parse(enum_cls, name: str):

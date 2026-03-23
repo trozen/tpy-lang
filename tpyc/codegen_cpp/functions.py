@@ -424,6 +424,9 @@ class FunctionGenerator:
                 if cpp_error:
                     return f"std::expected<{ret}, {cpp_error}>"
                 return ret
+            # Non-dynamic protocol return (e.g. Iterator[T] from __iter__):
+            # use auto, C++ deduces the type from the return expression.
+            return "auto"
         if const:
             ret = return_type.to_cpp_return_const()
         else:
@@ -976,6 +979,9 @@ class FunctionGenerator:
                                          defaults=dfl, emit_defaults=True,
                                          class_type_params=ctp)
         const_suffix = " const" if const else ""
+        # auto_own borrowing clone needs & qualifier so C++ can distinguish
+        # f() & from f() && (both must have ref-qualifiers or neither).
+        lvalue_suffix = " &" if method.is_auto_own_borrowing_clone else ""
         rvalue_suffix = " &&" if method.is_consuming else ""
         override_suffix = " override" if override else ""
         static_prefix = "static " if static else ""
@@ -1014,7 +1020,8 @@ class FunctionGenerator:
             else:
                 template_header = base_header
             out.write(f"{INDENT}{template_header}")
-        out.write(f"{INDENT}{static_prefix}{ret_type} {cpp_name}({params}){const_suffix}{rvalue_suffix}{override_suffix}{requires_clause} {{\n")
+        ref_suffix = rvalue_suffix or lvalue_suffix
+        out.write(f"{INDENT}{static_prefix}{ret_type} {cpp_name}({params}){const_suffix}{ref_suffix}{override_suffix}{requires_clause} {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         if not static:

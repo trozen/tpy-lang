@@ -193,6 +193,7 @@ def resolve_overload(
     default_int_type: TpyType | None = None,
     subclass_checker: SubclassChecker | None = None,
     is_readonly_receiver: bool | None = None,
+    is_consuming_receiver: bool | None = None,
 ) -> FunctionInfo | None:
     """Two-pass overload resolution: exact match first, then with coercions.
 
@@ -207,10 +208,26 @@ def resolve_overload(
                           for inheritance-based upcast matching.
         is_readonly_receiver: If set, pre-filter auto_readonly clones --
                               True prefers readonly overloads, False prefers mutable.
+        is_consuming_receiver: If set, pre-filter consuming vs borrowing overloads --
+                               True prefers is_consuming overloads, False prefers non-consuming.
 
     Returns:
         The matching FunctionInfo, or None if no match found.
     """
+    # Pre-filter consuming vs borrowing overloads by receiver ownership.
+    # Must run BEFORE readonly filter: consuming overloads are non-readonly,
+    # so the readonly filter would drop the borrowing (readonly) overload
+    # and leave only the consuming one for mutable receivers.
+    if is_consuming_receiver is not None and any(m.is_consuming for m in overloads):
+        if is_consuming_receiver:
+            consuming = [m for m in overloads if m.is_consuming]
+            if consuming:
+                overloads = consuming
+        else:
+            borrowing = [m for m in overloads if not m.is_consuming]
+            if borrowing:
+                overloads = borrowing
+
     # Pre-filter auto_readonly clones by receiver constness
     if is_readonly_receiver is not None:
         if is_readonly_receiver:

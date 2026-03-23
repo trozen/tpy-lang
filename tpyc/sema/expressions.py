@@ -1325,6 +1325,13 @@ class ExpressionAnalyzer:
                         result = result.as_const()
                     elif not result.is_value_type():
                         result = ReadonlyType(unwrap_readonly(result))
+                # Ownership propagation: in a consuming method (self: Own[Self]),
+                # self.field yields Own[FieldType] since the struct is being consumed.
+                if (self.ctx.in_consuming_method
+                        and not is_readonly_obj
+                        and isinstance(expr.obj, TpyName) and expr.obj.name == "self"
+                        and not result.is_value_type()):
+                    result = OwnType(result)
                 # Apply field path narrowing (e.g. after `if obj.field is not None:`)
                 field_key = _expr_to_narrowing_key(expr)
                 if field_key is not None:
