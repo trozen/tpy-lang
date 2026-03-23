@@ -774,7 +774,7 @@ class StatementGenerator:
         static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
         # Hoisted decls go to function scope -- use global_scope flag from slot state
         hoist_static_kw = "static " if self.ctx.slots.global_scope else ""
-        slot_opt_cpp = f"std::optional<{cpp_type}>"
+        slot_opt_cpp = "auto" if cpp_type == "auto" else f"std::optional<{cpp_type}>"
         target = f"{const_pfx}{cpp_type}* {name}"
         if self.ctx.is_rvalue_source(init):
             init_slot = self.ctx.slots.next_slot()
@@ -889,7 +889,7 @@ class StatementGenerator:
         is_hoisted = name in self.ctx.hoisted_vars
         static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
         hoist_static_kw = "static " if self.ctx.slots.global_scope else ""
-        slot_opt_cpp = f"std::optional<{cpp_type}>"
+        slot_opt_cpp = "auto" if cpp_type == "auto" else f"std::optional<{cpp_type}>"
         if self.ctx.is_rvalue_source(init):
             rebind_slot = self.ctx.rebind_slots.get(name)
             if rebind_slot:
@@ -1108,6 +1108,13 @@ class StatementGenerator:
                     if isinstance(var_type, OptionalType) and var_type.uses_pointer_repr():
                         resolve_type = var_type.inner
                     cpp_type = self.types.type_to_cpp(resolve_type) if resolve_type else "auto"
+                    # Structural protocol types map to C++ concepts which
+                    # cannot be used as variable types; use auto instead.
+                    # @dynamic protocols already have concrete base class
+                    # names, so only check for structural protocols here.
+                    if (resolve_type and isinstance(resolve_type, NamedType)
+                            and resolve_type.is_protocol and not resolve_type.is_dynamic_protocol):
+                        cpp_type = "auto"
                     return self._gen_pointer_local_rebind(stmt.name, cpp_type, stmt.init, var_type, indent)
                 # Pointer-variant union reassignment
                 if stmt.name in self.ctx.ptr_variant_locals:

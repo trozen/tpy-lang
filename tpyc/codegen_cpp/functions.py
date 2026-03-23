@@ -18,7 +18,7 @@ from ..typesys import (
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral,
-    TpyNoneLiteral, TpyUnaryOp, TpyTypeParamConstruct, TpyCall,
+    TpyNoneLiteral, TpyUnaryOp, TpyTypeParamConstruct, TpyCall, TpyName,
 )
 from ..namespace import Namespace
 from .context import INDENT, module_to_cpp_namespace, escape_cpp_name
@@ -1061,17 +1061,55 @@ class FunctionGenerator:
         var_type = resolve_int_literals(var_type, self.ctx.analyzer.ctx.default_int_for_literal)
         return var_type
 
-    def _global_cpp_type(self, var_type: TpyType) -> str:
+    def _global_cpp_type(self, var_type: TpyType, stmt: TpyVarDecl | None = None) -> str:
         """Map a global variable type to C++.
 
         @dynamic protocol types use the base class name instead of the concept
         template placeholder, since globals need a concrete pointer type.
+        Structural protocol types use decltype(init_expr) since they have no
+        concrete C++ type name (they map to C++ concepts).
         """
         if is_protocol_type(var_type) and isinstance(var_type, NamedType):
             pi = self.ctx.analyzer.registry.get_protocol(var_type.name)
             if pi and pi.is_dynamic:
                 return self.protocols.get_dynamic_base_name(var_type.name)
+            # Structural protocol: use decltype(init_expr) to let C++ deduce
+            if stmt and stmt.init:
+                dt = self._build_decltype_expr(stmt.init)
+                if dt is not None:
+                    return f"decltype({dt})"
+            from .context import CodeGenError
+            raise CodeGenError(
+                f"Cannot determine C++ type for global '{stmt.name if stmt else '?'}' "
+                f"with structural protocol type '{var_type}'",
+                loc=stmt.loc if stmt else None,
+            )
         return var_type.to_cpp()
+
+    def _build_decltype_expr(self, init: TpyExpr) -> str | None:
+        """Build a C++ expression for use inside decltype() from an init AST.
+
+        Handles simple function/builtin calls with name arguments.  Returns
+        None when the expression is too complex.
+        """
+        if not isinstance(init, TpyCall):
+            return None
+        fi = init.resolved_function_info
+        if fi is None or fi.cpp_template is None:
+            return None
+        arg_strs: list[str] = []
+        for arg in init.args:
+            if isinstance(arg, TpyName):
+                if arg.name in self.ctx.pointer_globals:
+                    arg_strs.append(f"(*{arg.name})")
+                else:
+                    arg_strs.append(arg.name)
+            else:
+                return None
+        try:
+            return fi.cpp_template.format(*arg_strs)
+        except (IndexError, KeyError):
+            return None
 
     def gen_global_decl(self, out: TextIO, stmt: TpyVarDecl) -> None:
         """Generate a global variable definition in source file.
@@ -1084,7 +1122,7 @@ class FunctionGenerator:
         self.ctx.emit_preceding_comments(out, stmt.loc)
         self.ctx.emit_source_comment(out, stmt.loc)
         var_type = self._resolve_global_type(stmt)
-        cpp_type = self._global_cpp_type(var_type)
+        cpp_type = self._global_cpp_type(var_type, stmt)
         if var_type.is_value_type():
             # C++ primitives need explicit zero-init; class types (BigInt, string_view) don't
             init = "{}" if isinstance(var_type, (Int32Type, BoolType, FloatType, Float32Type, CharType, PtrType)) else ""
@@ -1095,7 +1133,7 @@ class FunctionGenerator:
     def gen_global_extern(self, out: TextIO, stmt: TpyVarDecl) -> None:
         """Generate an extern declaration for a global variable in header file."""
         var_type = self._resolve_global_type(stmt)
-        cpp_type = self._global_cpp_type(var_type)
+        cpp_type = self._global_cpp_type(var_type, stmt)
         if var_type.is_value_type():
             out.write(f"extern {cpp_type} {stmt.name};\n")
         else:
