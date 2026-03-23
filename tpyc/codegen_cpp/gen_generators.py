@@ -230,28 +230,30 @@ class GeneratorCodegen:
             out.write(f"{ind1});\n")
             out.write(f"}}\n")
         else:
-            # Container iterable: copy into lambda, index-based iteration.
-            # Avoids dangling iterators when generator outlives the source.
+            # Container iterable: capture by reference, begin/end iteration.
+            # Matches CPython semantics (mutations visible during iteration)
+            # and complex generator path (T& struct fields). Borrow analysis
+            # protects against dangling references.
             iterable_code = self.expressions.gen_expr(for_stmt.iterable)
 
-            # Exclude iterable param from captures -- it's copied into __src
-            iterable_name = for_stmt.iterable.name if isinstance(for_stmt.iterable, TpyName) else None
-            base_captures = self._build_capture_list(
-                func.params, init_stmts, exclude={iterable_name} if iterable_name else set())
-            src_capture = f"__src = {self.types.type_to_cpp(self.types.get_resolved_type(for_stmt.iterable))}({iterable_code})"
-            idx_capture = "__i = size_t(0)"
-            parts = [p for p in [base_captures, src_capture, idx_capture] if p]
+            base_captures = self._build_capture_list(func.params, init_stmts)
+            iter_type = f"decltype(std::declval<{self.types.type_to_cpp(self.types.get_resolved_type(for_stmt.iterable))}&>().begin())"
+            beg_capture = f"__beg = {iter_type}()"
+            end_capture = f"__end = {iter_type}()"
+            init_flag = "__init = false"
+            parts = [p for p in [base_captures, beg_capture, end_capture, init_flag] if p]
             all_captures = ", ".join(parts)
 
             out.write(f"{ind1}return ::tpy::make_generator<{cpp_elem}>(\n")
             out.write(f"{ind2}[{all_captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
-            out.write(f"{ind3}if (__i < __src.size()) {{\n")
+            out.write(f"{ind3}if (!__init) {{ __beg = ({iterable_code}).begin(); __end = ({iterable_code}).end(); __init = true; }}\n")
+            out.write(f"{ind3}if (__beg != __end) {{\n")
 
             self.ctx.indent_level = 4
             if iter_elem and iter_elem.is_value_type():
-                out.write(f"{ind4}{cpp_iter_elem} {cpp_var} = __src[__i++];\n")
+                out.write(f"{ind4}{cpp_iter_elem} {cpp_var} = *__beg++;\n")
             else:
-                out.write(f"{ind4}auto&& {cpp_var} = __src[__i++];\n")
+                out.write(f"{ind4}auto&& {cpp_var} = *__beg++;\n")
 
             for stmt in pre_yield:
                 self.statements.gen_stmt(out, stmt)

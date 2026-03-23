@@ -987,6 +987,14 @@ class TypeCompatibility:
                 if fi and isinstance(fi.return_type, OwnType):
                     return True
 
+            # Function whose return borrows from args (e.g. generators storing
+            # non-value params as T& references): dangles if any borrowed arg dangles
+            if fi is not None and fi.return_borrows_from:
+                for idx in fi.return_borrows_from:
+                    if 0 <= idx < len(expr.args):
+                        if self.is_dangling_return(expr.args[idx]):
+                            return True
+
             # Regular function call - assume it returns something safe
             # (the callee is responsible for not returning dangling refs)
             return False

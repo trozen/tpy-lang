@@ -774,6 +774,16 @@ class SemanticAnalyzer:
                 i for i, pname in enumerate(param_list)
                 if pname in self.ctx.current_returned_param_names
             )
+            # Generator functions: the returned struct stores non-value params
+            # as T& references (or &ref lambda captures), so the result
+            # borrows from those params
+            if func.is_generator:
+                gen_borrows = frozenset(
+                    i for i, (_, ptype) in enumerate(func.params)
+                    if not ptype.is_value_type()
+                )
+                if gen_borrows:
+                    func_info.return_borrows_from = func_info.return_borrows_from | gen_borrows
 
         self._warn_unconsumed_own_params(func)
         self._store_analysis_results(func, scan)
