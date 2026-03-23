@@ -42,7 +42,7 @@ void main() {
     take_strview(s2);
     // # StrView -> String (allocates)
     // sv: StrView = StrView("view")
-    std::string_view sv = std::string_view("view");
+    std::string_view sv = "view";
     // take_string(sv)  # view
     take_string(std::string(sv));
     // # StrView -> str (allocates)

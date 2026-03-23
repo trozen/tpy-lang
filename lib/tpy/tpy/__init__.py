@@ -1409,3 +1409,464 @@ class Float64:
     @overload
     @cpp_template("static_cast<double>({0})")
     def __init__(self, x: UInt64) -> None: ...
+
+@builtin_type("tpy.String")
+@native("std::string")
+class String(NativeIterable[Char], Iterable[Char], Equatable):
+    @overload
+    @cpp_template("std::string()")
+    def __init__(self) -> None: ...
+    @overload
+    @cpp_template("std::string({0})")
+    def __init__(self, x: str) -> None: ...
+    @overload
+    @cpp_template("std::string({0})")
+    def __init__(self, x: String) -> None: ...
+    @overload
+    @cpp_template("std::string({0})")
+    def __init__(self, x: StrView) -> None: ...
+    @overload
+    @cpp_template("std::string(::tpy::bool_to_str({0}))")
+    def __init__(self, x: bool) -> None: ...
+    @overload
+    @cpp_template("std::string(::tpy::char_to_str({0}))")
+    def __init__(self, x: Char) -> None: ...
+    @overload
+    @cpp_template("::tpy::fixed_to_str<int8_t>({0})")
+    def __init__(self, x: Int8) -> None: ...
+    @overload
+    @cpp_template("::tpy::fixed_to_str<int16_t>({0})")
+    def __init__(self, x: Int16) -> None: ...
+    @overload
+    @cpp_template("::tpy::fixed_to_str<int32_t>({0})")
+    def __init__(self, x: Int32) -> None: ...
+    @overload
+    @cpp_template("::tpy::fixed_to_str<int64_t>({0})")
+    def __init__(self, x: Int64) -> None: ...
+    @overload
+    @cpp_template("::tpy::fixed_to_str<uint8_t>({0})")
+    def __init__(self, x: UInt8) -> None: ...
+    @overload
+    @cpp_template("::tpy::fixed_to_str<uint16_t>({0})")
+    def __init__(self, x: UInt16) -> None: ...
+    @overload
+    @cpp_template("::tpy::fixed_to_str<uint32_t>({0})")
+    def __init__(self, x: UInt32) -> None: ...
+    @overload
+    @cpp_template("::tpy::fixed_to_str<uint64_t>({0})")
+    def __init__(self, x: UInt64) -> None: ...
+    @overload
+    @cpp_template("({0}).to_string()")
+    def __init__(self, x: int) -> None: ...
+    @overload
+    @cpp_template("::tpy::float_to_str({0})")
+    def __init__(self, x: float) -> None: ...
+    @overload
+    @cpp_template("::tpy::float_to_str(static_cast<double>({0}))")
+    def __init__(self, x: Float32) -> None: ...
+
+    @cpp_template("::tpy::__iter__({self})")
+    @readonly
+    @pure
+    def __iter__(self) -> Iterator[Char]: ...
+
+    @cpp_template("static_cast<int32_t>({self}.size())")
+    @readonly
+    @pure
+    def __len__(self) -> Int32: ...
+
+    @cpp_template("::tpy::__getitem__({self}, {0})")
+    @readonly
+    @pure
+    def __getitem__(self, index: Int32) -> Char: ...
+
+    @overload
+    @cpp_template("::tpy::str_concat({self}, {0})")
+    def __add__(self, other: str) -> String: ...
+    @overload
+    @cpp_template("::tpy::str_concat({self}, {0})")
+    def __add__(self, other: String) -> String: ...
+    @overload
+    @cpp_template("::tpy::str_concat({self}, {0})")
+    def __add__(self, other: StrView) -> String: ...
+    @overload
+    @cpp_template("::tpy::str_concat({self}, ::tpy::char_to_str({0}))")
+    def __add__(self, other: Char) -> String: ...
+
+    @cpp_template("::tpy::str_repeat({self}, {0})")
+    @readonly
+    @pure
+    def __mul__(self, n: Int32) -> str: ...
+
+    @cpp_template("::tpy::str_repeat({self}, {0})")
+    @readonly
+    @pure
+    def __rmul__(self, n: Int32) -> str: ...
+
+    @overload
+    @cpp_template("::tpy::str_split_whitespace({self})")
+    @readonly
+    @pure
+    def split(self) -> Own[list[str]]: ...
+    @overload
+    @cpp_template("::tpy::str_split({self}, {0})")
+    @readonly
+    @pure
+    def split(self, sep: str) -> Own[list[str]]: ...
+    @overload
+    @cpp_template("::tpy::str_split({self}, {0}, {1})")
+    @readonly
+    @pure
+    def split(self, sep: str, maxsplit: Int32) -> Own[list[str]]: ...
+
+    @cpp_template("::tpy::str_join({self}, {0})")
+    @readonly
+    @pure
+    def join(self, items: Iterable[str]) -> str: ...
+
+    @cpp_template("::tpy::str_strip({self})")
+    @readonly
+    @pure
+    def strip(self) -> StrView: ...
+
+    @cpp_template("::tpy::str_lstrip({self})")
+    @readonly
+    @pure
+    def lstrip(self) -> StrView: ...
+
+    @cpp_template("::tpy::str_rstrip({self})")
+    @readonly
+    @pure
+    def rstrip(self) -> StrView: ...
+
+    @cpp_template("::tpy::str_replace({self}, {0}, {1})")
+    @readonly
+    @pure
+    def replace(self, old: str, new: str) -> str: ...
+
+    @cpp_template("::tpy::str_find({self}, {0})")
+    @readonly
+    @pure
+    def find(self, sub: str) -> Int32: ...
+
+    @cpp_template("::tpy::str_rfind({self}, {0})")
+    @readonly
+    @pure
+    def rfind(self, sub: str) -> Int32: ...
+
+    @cpp_template("::tpy::str_index({self}, {0})")
+    @readonly
+    @pure
+    def index(self, sub: str) -> Int32: ...
+
+    @cpp_template("::tpy::str_startswith({self}, {0})")
+    @readonly
+    @pure
+    def startswith(self, prefix: str) -> bool: ...
+
+    @cpp_template("::tpy::str_endswith({self}, {0})")
+    @readonly
+    @pure
+    def endswith(self, suffix: str) -> bool: ...
+
+    @cpp_template("::tpy::str_upper({self})")
+    @readonly
+    @pure
+    def upper(self) -> str: ...
+
+    @cpp_template("::tpy::str_lower({self})")
+    @readonly
+    @pure
+    def lower(self) -> str: ...
+
+    @cpp_template("::tpy::str_count({self}, {0})")
+    @readonly
+    @pure
+    def count(self, sub: str) -> Int32: ...
+
+    @cpp_template("::tpy::str_isdigit({self})")
+    @readonly
+    @pure
+    def isdigit(self) -> bool: ...
+
+    @cpp_template("::tpy::str_isalpha({self})")
+    @readonly
+    @pure
+    def isalpha(self) -> bool: ...
+
+    @cpp_template("::tpy::str_isalnum({self})")
+    @readonly
+    @pure
+    def isalnum(self) -> bool: ...
+
+    @cpp_template("::tpy::str_isspace({self})")
+    @readonly
+    @pure
+    def isspace(self) -> bool: ...
+
+    @cpp_template("::tpy::str_isupper({self})")
+    @readonly
+    @pure
+    def isupper(self) -> bool: ...
+
+    @cpp_template("::tpy::str_islower({self})")
+    @readonly
+    @pure
+    def islower(self) -> bool: ...
+
+    @cpp_template("::tpy::str_capitalize({self})")
+    @readonly
+    @pure
+    def capitalize(self) -> str: ...
+
+    @cpp_template("::tpy::str_title({self})")
+    @readonly
+    @pure
+    def title(self) -> str: ...
+
+    @cpp_template("::tpy::str_swapcase({self})")
+    @readonly
+    @pure
+    def swapcase(self) -> str: ...
+
+    @cpp_template("::tpy::str_removeprefix({self}, {0})")
+    @readonly
+    @pure
+    def removeprefix(self, prefix: str) -> StrView: ...
+
+    @cpp_template("::tpy::str_removesuffix({self}, {0})")
+    @readonly
+    @pure
+    def removesuffix(self, suffix: str) -> StrView: ...
+
+    @cpp_template("::tpy::str_rindex({self}, {0})")
+    @readonly
+    @pure
+    def rindex(self, sub: str) -> Int32: ...
+
+    @cpp_template("::tpy::str_splitlines({self})")
+    @readonly
+    @pure
+    def splitlines(self) -> Own[list[str]]: ...
+
+    @cpp_template("::tpy::__hash__({self})")
+    @readonly
+    @pure
+    def __hash__(self) -> UInt64: ...
+
+    @cpp_template("{self} == {0}")
+    @readonly
+    @pure
+    def __eq__(self, other: String) -> bool: ...
+
+
+
+@builtin_type("tpy.StrView")
+@native("std::string_view")
+class StrView(NativeIterable[Char], Iterable[Char], Equatable):
+    @overload
+    @cpp_template("std::string_view()")
+    def __init__(self) -> None: ...
+    @overload
+    @cpp_template("{0}")
+    def __init__(self, x: str) -> None: ...
+    @overload
+    @cpp_template("std::string_view({0})")
+    def __init__(self, x: String) -> None: ...
+    @overload
+    @cpp_template("{0}")
+    def __init__(self, x: StrView) -> None: ...
+
+    @cpp_template("::tpy::__iter__({self})")
+    @readonly
+    @pure
+    def __iter__(self) -> Iterator[Char]: ...
+
+    @cpp_template("static_cast<int32_t>({self}.size())")
+    @readonly
+    @pure
+    def __len__(self) -> Int32: ...
+
+    @cpp_template("::tpy::__getitem__({self}, {0})")
+    @readonly
+    @pure
+    def __getitem__(self, index: Int32) -> Char: ...
+
+    @overload
+    @cpp_template("::tpy::str_concat({self}, {0})")
+    def __add__(self, other: str) -> String: ...
+    @overload
+    @cpp_template("::tpy::str_concat({self}, {0})")
+    def __add__(self, other: String) -> String: ...
+    @overload
+    @cpp_template("::tpy::str_concat({self}, {0})")
+    def __add__(self, other: StrView) -> String: ...
+    @overload
+    @cpp_template("::tpy::str_concat({self}, ::tpy::char_to_str({0}))")
+    def __add__(self, other: Char) -> String: ...
+
+    @cpp_template("::tpy::str_repeat({self}, {0})")
+    @readonly
+    @pure
+    def __mul__(self, n: Int32) -> str: ...
+
+    @cpp_template("::tpy::str_repeat({self}, {0})")
+    @readonly
+    @pure
+    def __rmul__(self, n: Int32) -> str: ...
+
+    @overload
+    @cpp_template("::tpy::str_split_whitespace({self})")
+    @readonly
+    @pure
+    def split(self) -> Own[list[str]]: ...
+    @overload
+    @cpp_template("::tpy::str_split({self}, {0})")
+    @readonly
+    @pure
+    def split(self, sep: str) -> Own[list[str]]: ...
+    @overload
+    @cpp_template("::tpy::str_split({self}, {0}, {1})")
+    @readonly
+    @pure
+    def split(self, sep: str, maxsplit: Int32) -> Own[list[str]]: ...
+
+    @cpp_template("::tpy::str_join({self}, {0})")
+    @readonly
+    @pure
+    def join(self, items: Iterable[str]) -> str: ...
+
+    @cpp_template("::tpy::str_strip({self})")
+    @readonly
+    @pure
+    def strip(self) -> StrView: ...
+
+    @cpp_template("::tpy::str_lstrip({self})")
+    @readonly
+    @pure
+    def lstrip(self) -> StrView: ...
+
+    @cpp_template("::tpy::str_rstrip({self})")
+    @readonly
+    @pure
+    def rstrip(self) -> StrView: ...
+
+    @cpp_template("::tpy::str_replace({self}, {0}, {1})")
+    @readonly
+    @pure
+    def replace(self, old: str, new: str) -> str: ...
+
+    @cpp_template("::tpy::str_find({self}, {0})")
+    @readonly
+    @pure
+    def find(self, sub: str) -> Int32: ...
+
+    @cpp_template("::tpy::str_rfind({self}, {0})")
+    @readonly
+    @pure
+    def rfind(self, sub: str) -> Int32: ...
+
+    @cpp_template("::tpy::str_index({self}, {0})")
+    @readonly
+    @pure
+    def index(self, sub: str) -> Int32: ...
+
+    @cpp_template("::tpy::str_startswith({self}, {0})")
+    @readonly
+    @pure
+    def startswith(self, prefix: str) -> bool: ...
+
+    @cpp_template("::tpy::str_endswith({self}, {0})")
+    @readonly
+    @pure
+    def endswith(self, suffix: str) -> bool: ...
+
+    @cpp_template("::tpy::str_upper({self})")
+    @readonly
+    @pure
+    def upper(self) -> str: ...
+
+    @cpp_template("::tpy::str_lower({self})")
+    @readonly
+    @pure
+    def lower(self) -> str: ...
+
+    @cpp_template("::tpy::str_count({self}, {0})")
+    @readonly
+    @pure
+    def count(self, sub: str) -> Int32: ...
+
+    @cpp_template("::tpy::str_isdigit({self})")
+    @readonly
+    @pure
+    def isdigit(self) -> bool: ...
+
+    @cpp_template("::tpy::str_isalpha({self})")
+    @readonly
+    @pure
+    def isalpha(self) -> bool: ...
+
+    @cpp_template("::tpy::str_isalnum({self})")
+    @readonly
+    @pure
+    def isalnum(self) -> bool: ...
+
+    @cpp_template("::tpy::str_isspace({self})")
+    @readonly
+    @pure
+    def isspace(self) -> bool: ...
+
+    @cpp_template("::tpy::str_isupper({self})")
+    @readonly
+    @pure
+    def isupper(self) -> bool: ...
+
+    @cpp_template("::tpy::str_islower({self})")
+    @readonly
+    @pure
+    def islower(self) -> bool: ...
+
+    @cpp_template("::tpy::str_capitalize({self})")
+    @readonly
+    @pure
+    def capitalize(self) -> str: ...
+
+    @cpp_template("::tpy::str_title({self})")
+    @readonly
+    @pure
+    def title(self) -> str: ...
+
+    @cpp_template("::tpy::str_swapcase({self})")
+    @readonly
+    @pure
+    def swapcase(self) -> str: ...
+
+    @cpp_template("::tpy::str_removeprefix({self}, {0})")
+    @readonly
+    @pure
+    def removeprefix(self, prefix: str) -> StrView: ...
+
+    @cpp_template("::tpy::str_removesuffix({self}, {0})")
+    @readonly
+    @pure
+    def removesuffix(self, suffix: str) -> StrView: ...
+
+    @cpp_template("::tpy::str_rindex({self}, {0})")
+    @readonly
+    @pure
+    def rindex(self, sub: str) -> Int32: ...
+
+    @cpp_template("::tpy::str_splitlines({self})")
+    @readonly
+    @pure
+    def splitlines(self) -> Own[list[str]]: ...
+
+    @cpp_template("::tpy::__hash__({self})")
+    @readonly
+    @pure
+    def __hash__(self) -> UInt64: ...
+
+    @cpp_template("{self} == {0}")
+    @readonly
+    @pure
+    def __eq__(self, other: StrView) -> bool: ...

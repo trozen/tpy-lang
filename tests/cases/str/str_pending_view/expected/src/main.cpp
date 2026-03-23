@@ -25,7 +25,7 @@ void test_param(std::string_view msg) {
 // def test_strview_source() -> None:
 void test_strview_source() {
     // sv: StrView = StrView("view")
-    std::string_view sv = std::string_view("view");
+    std::string_view sv = "view";
     // s = sv  # tpyc: type(StrView)
     std::string_view s = sv;
     // print(s)

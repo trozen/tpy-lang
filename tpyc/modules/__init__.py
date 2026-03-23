@@ -534,7 +534,7 @@ def _get_type_factories() -> dict[str, tuple[list[TypeParamKind], "Callable[...,
         from tpyc.typesys import (
             ListType, DictType, DictKeysViewType, DictValuesViewType,
             DictItemsViewType, SetType, ArrayType, SpanType, SpanIterType,
-            PtrType, RangeType, FLOAT32, FLOAT, BIGINT, BOOL, CHAR,
+            PtrType, RangeType, FLOAT32, FLOAT, BIGINT, BOOL, CHAR, STR, STRING, STRVIEW,
             ALL_FIXED_INTS,
         )
         TYPE = TypeParamKind.TYPE
@@ -554,9 +554,12 @@ def _get_type_factories() -> dict[str, tuple[list[TypeParamKind], "Callable[...,
             "tpy.Float32": ([], lambda: FLOAT32),
             "tpy.Char": ([], lambda: CHAR),
             "tpy.Float64": ([], lambda: FLOAT),
+            "tpy.String": ([], lambda: STRING),
+            "tpy.StrView": ([], lambda: STRVIEW),
             "builtins.int": ([], lambda: BIGINT),
             "builtins.float": ([], lambda: FLOAT),
             "builtins.bool": ([], lambda: BOOL),
+            "builtins.str": ([], lambda: STR),
             **{f"tpy.{t}": ([], (lambda typ: lambda: typ)(t)) for t in ALL_FIXED_INTS},
         }
     return _type_factories

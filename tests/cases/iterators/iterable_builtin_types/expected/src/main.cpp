@@ -46,7 +46,7 @@ void test_iterable_params() {
     std::cout << count_chars(s) << "\n";
     // # StrView
     // sv: StrView = StrView("xyz")
-    std::string_view sv = std::string_view("xyz");
+    std::string_view sv = "xyz";
     // print(count_chars(sv))
     std::cout << count_chars(sv) << "\n";
     // # dict (iterates over keys)
