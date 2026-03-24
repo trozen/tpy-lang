@@ -457,13 +457,14 @@ class CallAnalyzer:
             binding = self.ctx.current_ns.lookup(expr.func)
             if binding:
                 if binding.kind == BindingKind.VARIABLE:
-                    if isinstance(binding.type, FnType):
-                        return self._analyze_fn_type_call(expr, binding.type)
-                    if isinstance(binding.type, CallableType):
-                        return self._analyze_callable_type_call(expr, binding.type)
+                    var_type = self.ctx.narrowed_types.get(expr.func, binding.type)
+                    if isinstance(var_type, FnType):
+                        return self._analyze_fn_type_call(expr, var_type)
+                    if isinstance(var_type, CallableType):
+                        return self._analyze_callable_type_call(expr, var_type)
                     # Check for record type with __call__ method
-                    if isinstance(binding.type, NamedType):
-                        record = self.ctx.registry.get_record_for_type(binding.type)
+                    if isinstance(var_type, NamedType):
+                        record = self.ctx.registry.get_record_for_type(var_type)
                         if record and self.ctx.registry.get_method_overloads_with_parents(record, "__call__"):
                             return self._analyze_dunder_call(expr)
                     raise self.ctx.error(f"'{expr.func}' is not callable", expr)

@@ -1644,8 +1644,24 @@ class ExpressionGenerator:
                 source_module, original_name = self.ctx.user_imported_records[expr.func]
                 return f"{qualified_cpp_name(source_module, original_name)}({args})"
             return f"{expr.func}({args})"
-        args = ", ".join(self.gen_expr(a) for a in expr.args)
-        return f"{expr.func}({args})"
+        # Callable variable call (possibly narrowed from Optional[Callable])
+        fi = expr.resolved_function_info
+        if fi:
+            gen_args = []
+            for arg, (_, ptype) in zip(expr.args, fi.params):
+                gen_args.append(self.gen_call_arg(arg, ptype))
+            args = ", ".join(gen_args)
+        else:
+            args = ", ".join(self.gen_expr(a) for a in expr.args)
+        func_name = escape_cpp_name(expr.func)
+        # Check if the declared type is Optional[Callable] -- needs .value() unwrap
+        declared = (self.ctx.current_func_params.get(expr.func)
+                    or self.ctx.var_types.get(expr.func))
+        if (declared is not None
+                and isinstance(declared, OptionalType)
+                and isinstance(declared.inner, CallableType)):
+            return f"{func_name}.value()({args})"
+        return f"{func_name}({args})"
 
     def _gen_method_call(self, expr: TpyMethodCall) -> str:
         """Generate method call code."""

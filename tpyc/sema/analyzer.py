@@ -9,7 +9,7 @@ import re
 from typing import Optional
 
 from ..typesys import (
-    TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, VoidType,
+    TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, StrType, StrViewType, VoidType,
     INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
     EnumType, is_any_str_type,
 )
@@ -783,12 +783,12 @@ class SemanticAnalyzer:
                 if pname in self.ctx.current_returned_param_names
             )
             # Generator functions: the returned struct stores non-value params
-            # as T& references (or &ref lambda captures), so the result
-            # borrows from those params
+            # as T& references (or &ref lambda captures), and str params as
+            # string_view, so the result borrows from those params
             if func.is_generator:
                 gen_borrows = frozenset(
                     i for i, (_, ptype) in enumerate(func.params)
-                    if not ptype.is_value_type()
+                    if not ptype.is_value_type() or isinstance(ptype, (StrType, StrViewType))
                 )
                 if gen_borrows:
                     func_info.return_borrows_from = func_info.return_borrows_from | gen_borrows

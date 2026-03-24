@@ -4653,7 +4653,7 @@ Send/Sync rules for built-in types:
 ## Generators
 
 - **Working**: Generator expressions `(expr for x in iterable if cond)` → `tpy::make_generator<T>(lambda)` wrapper satisfying `Iterable[T]`. Supports range sources, container sources, filter clauses, tuple unpacking, outer local capture. See [COMPREHENSION_DESIGN.md](COMPREHENSION_DESIGN.md#generator-expressions).
-- **Working**: Generator functions with `yield` → `Iterator[T]`. Simple generators (single yield in while/for-loop) use `make_generator<T>` + lambda. Complex generators (multiple yields, conditionals, nested loops, for-loops, for...else, tuple unpacking) use struct with `__state` + switch/goto dispatch in `__next__()`. For-loops with yields are lowered to while-loops with iterator state as struct fields (counter for range, begin/end for containers, `std::expected` for `__next__()` protocol). All generators are stack-allocated (zero heap allocation, `@noalloc`-compatible). Lifetime tracking: generators with non-value params set `return_borrows_from` so that mutation-during-iteration and transitive borrow propagation work correctly.
+- **Working**: Generator functions with `yield` → `Iterator[T]`. Simple generators (single yield in while/for-loop) use `make_generator<T>` + lambda. Complex generators (multiple yields, conditionals, nested loops, for-loops, for...else, tuple unpacking) use struct with `__state` + switch/goto dispatch in `__next__()`. For-loops with yields are lowered to while-loops with iterator state as struct fields (counter for range, begin/end for containers, `std::expected` for `__next__()` protocol). All generators are stack-allocated (zero heap allocation, `@noalloc`-compatible). Lifetime tracking: generators with non-value params and `str` params set `return_borrows_from` so that mutation-during-iteration and transitive borrow propagation work correctly. Complex generators store `str` params as `string_view` (zero-copy view, same lifetime semantics as container references).
 - **Open**: `yield from`, `send()`, `throw()`, `close()`, protocol-typed generator params (needs template structs)
 
 ---
@@ -4686,7 +4686,7 @@ Send/Sync rules for built-in types:
 - **Working**: Lambda expressions `lambda x: expr` -- parameter types inferred from `Fn` or `Callable` context via bidirectional inference. Non-capturing lambdas generate `[]`, capturing lambdas generate explicit capture lists (`[&var]` for `Fn`, `[var]` by value for `Callable`).
 - **Working**: Capturing lambdas -- `Fn` captures by reference (non-escaping, template-based), `Callable` captures by value (safe for escaping via `std::function`).
 - **Working**: `Fn` in method parameters -- generates per-method template with `requires` constraint.
-- **Working**: `Callable[[A, B], R]` type -- type-erased callable (`std::function`). Valid in all positions: params (`const std::function<...>&`), fields, returns, containers, locals. `Callable | None` maps to `std::optional<std::function<...>>`.
+- **Working**: `Callable[[A, B], R]` type -- type-erased callable (`std::function`). Valid in all positions: params (`const std::function<...>&`), fields, returns, containers, locals. `Callable | None` maps to `std::optional<std::function<...>>` with `is not None` narrowing for both fields and parameters.
   ```python
   from typing import Callable
   from tpy import Int32
@@ -4694,6 +4694,10 @@ Send/Sync rules for built-in types:
       return lambda x: x + n  # captures n by value
   class Button:
       on_click: Callable[[Int32], None]
+  def maybe_apply(f: Callable[[Int32], Int32] | None, x: Int32) -> Int32:
+      if f is not None:
+          return f(x)  # narrowed to Callable, emits .value()()
+      return x
   ```
 - **Working**: Named function references as callable values -- pass functions by name to `Fn`/`Callable` params or assign to `Callable` locals/fields. Overload resolution selects the matching signature. Cross-module functions use qualified C++ names. Generic functions are supported -- type parameters are inferred from the hint signature (e.g. `identity[T]` with `Fn[[Int32], Int32]` infers `T=Int32`); bounded type params are validated. **Limitation**: generic function refs with `str` type args are rejected because `str` uses `string_view` for params while generic functions use `const string&` via `param_val_or_ref_t<T>` -- use a lambda instead.
   ```python

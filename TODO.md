@@ -15,6 +15,15 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Bugs
 
+### Closures & Callable
+- `Fn | None` internal error: hits `FnType.to_cpp()` RuntimeError instead of a proper diagnostic. Should emit "Fn cannot be optional -- use Callable | None instead."
+- `Callable` field in auto-generated `operator<<`: records with `Callable` fields crash C++ compilation because `std::function` has no `operator<<`. Should print `<function>` or similar placeholder.
+- Recursive nested def diagnostic: gives generic "Unknown function" error. Should say "recursive nested defs are not supported."
+- Escape detection incomplete for field/container storage: `self.field = nested_func` and `container.append(nested_func)` don't trigger escape marking. Produces by-ref captures in a stored `std::function` (UB).
+
+### Generators
+- Generator methods not recognized: `_parse_method` (parser.py:1420) never calls `_body_contains_yield`, so `yield` inside methods (e.g. `__iter__`) gives "'yield' can only be used inside a generator function". Only top-level functions get the yield scan.
+
 ## Fuzzy Testing Findings (2026-03-12)
 
 ### Compilation errors (valid Python that fails to build)
@@ -37,6 +46,12 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - **[LOW]** `__param_` copy for reassigned parameters: when a parameter is reassigned in the function body, codegen takes it by `const&` then copies into a mutable local. For BigInt/string params, taking by value instead would let the caller move. Only helps when caller passes an rvalue; for lvalue calls it's worse (forces copy at call site vs zero-cost `const&`). Also changes ABI (not API).
 
 ## Safety
+
+### Borrow tracker gaps
+- Temporary passed to borrowing function: `g = greetings(make_name())` where `greetings` stores `str` param as `string_view` in a generator struct -- the temporary `std::string` from `make_name()` is destroyed at end-of-statement, `string_view` dangles (confirmed UAF: garbled output). Same pattern applies to Span params. The `return_borrows_from` fact exists; the checker needs to reject temporaries (rvalues) as arguments to borrow-returning functions, similar to how container temps are already caught ("Cannot return local or temporary as reference"). Containers are safe because they're non-value types (temp detection fires); `str` slips through because it's a value type.
+- Reassignment of borrowed variable doesn't warn: `remove_storage_borrows` silently clears active borrows on reassignment (`s = "other"`) without warning. Only mutation (`.append()`, `del`) triggers warnings. Affects all types but especially `str` in generators -- the only way to invalidate a `string_view` is reassignment/destruction, which is exactly the case the tracker misses.
+
+### Other safety issues
 - `Span[str]` subscript view: `SpanType.subscript_borrows()` is intentionally not overridden because `v = s[0]` registers `s` as the str-borrow source, but mutations to the backing container (`arr[0] = "x"` where `s = Span[str](arr)`) call `mark_str_borrowers_mutated("arr")` -- missing `s`. Fix requires `mark_str_borrowers_mutated` to chase the borrow tracker's alias chain so backing-container mutations also invalidate views borrowed through spans.
 - View type borrow tracking for user types: currently only built-in view types (Span, Ptr) are tracked as borrows. Likely needed when designing tpy stdlib types. See escape analysis design doc (Future Extensions) for field-level vs class-level annotation tradeoffs.
 - Hoisted non-value loop variable as view: `for s in items: ... print(s)` where `s` is `std::string_view` -- the hoisted `s` is a view into the container, not a copy. If the container is mutated between loop exit and use of `s`, the view dangles. Same concern exists with `const auto&` loop vars. Consider emitting a value copy for hoisted non-value loop variables.
@@ -65,8 +80,12 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - list/container slicing (Phase 3: step)
 - properties
 - Generator: `yield from`, `send()`, `throw()`, `close()`
-- Generator: protocol-typed params (`def gen(it: Iterator[T])`) -- needs template struct + factory
+- Generator: protocol-typed params (`def gen(it: Iterator[T])`) -- needs template struct + factory. Currently emits `T&` without `template<typename T>` and simple generator path tries `begin()/end()` instead of `__next__()`.
 - Generator: liveness optimization -- only promote yield-crossing variables to struct fields, keep others as stack locals in `__next__()` (currently all locals are promoted)
+- Closures: `std::move_only_function` for `Callable` with `Own[T]` params/returns (design doc says to use it, currently uses `std::function` with rvalue params which works but is incorrect per C++23 semantics)
+- Closures: `@noalloc` enforcement (Phase 5) -- `Callable` in `@noalloc` context should be rejected. Currently compiles without error.
+- Closures: escaping `str` param capture codegen fix -- warning is emitted but codegen still copies `string_view` (may dangle). Should emit `name = std::string(name)` for `str`-typed captures in escaping closures.
+- Closures: method references (`obj.method` as a value) -- needs partial application binding `self`. Currently gives "has no field" error.
 - Protocol isinstance in ternary expressions: `x = a.foo() if isinstance(a, P1) else a.bar()` generates a runtime `?:` but both branches must be valid C++ at template instantiation time. Fix: generate an IIFE with `if constexpr` inside, e.g. `[&]() -> T { if constexpr (P1<T_a>) { return a.foo(); } else { return a.bar(); } }()`. This also enables single-line field init in `__init__` (goes into the C++ member initializer list instead of requiring unconditional pre-assignment + reassignment in branches).
 - Allow `@runtime_checkable` decorator on protocols (no-op in tpyc, enables CPython compatibility for isinstance checks on user-defined protocols)
 - `del x` (variable unbinding): complex in compiled context -- needs lifetime/scope analysis. Low priority.

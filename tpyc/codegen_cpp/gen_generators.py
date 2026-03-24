@@ -9,7 +9,7 @@ from ..parse.nodes import (
     TpyFunction, TpyYield, TpyStmt, TpyWhile, TpyForEach, TpyReturn, TpyVarDecl,
     TpyCall, TpyName, TpyExpr,
 )
-from ..typesys import is_protocol_type
+from ..typesys import StrType, is_protocol_type
 from .context import INDENT, escape_cpp_name
 
 
@@ -489,13 +489,18 @@ class GeneratorCodegen:
         func_yields = _collect_yield_stmts(func.body)
         func_state_nums = sorted(yield_states[id(y)] for y in func_yields)
 
-        # Classify params: value types by value, non-value types by reference
+        # Classify params: value types by value, non-value types by reference.
+        # str params use string_view (the param type) -- the generator borrows
+        # from the caller's string, same as container refs. No hidden copy.
         ctor_params: list[tuple[str, str, bool]] = []  # (cpp_name, cpp_type, is_ref)
         for pname, ptype in func.params:
-            cpp_type = self.types.type_to_cpp(ptype)
             cpp_name = escape_cpp_name(pname)
-            is_ref = not ptype.is_value_type()
-            ctor_params.append((cpp_name, cpp_type, is_ref))
+            if isinstance(ptype, StrType):
+                ctor_params.append((cpp_name, "std::string_view", False))
+            else:
+                cpp_type = self.types.type_to_cpp(ptype)
+                is_ref = not ptype.is_value_type()
+                ctor_params.append((cpp_name, cpp_type, is_ref))
 
         out.write(f"// Generator: {func.name}\n")
         out.write(f"struct {struct_name} {{\n")
