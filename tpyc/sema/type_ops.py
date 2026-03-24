@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, TypeParamRef, NamedType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType,
-    ArrayType, SpanType, ListType, PendingListType, GenExprType, SelfType, OptionalType, UnionType,
+    ArrayType, SpanType, ListType, PendingListType, GenExprType, CopyIterType, OwnIterType, SelfType, OptionalType, UnionType,
     TupleType,
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
     NoneType, VoidType,
@@ -581,8 +581,10 @@ class TypeOperations:
         """Match a protocol with TypeParamRef type_args against arg_type (e.g., NativeIterable[T], Iterator[T])."""
         from tpyc import modules as builtin_modules
 
-        # GenExprType satisfies Iterable[T] and Iterator[T]
-        if isinstance(arg_type, GenExprType) and param_type.name in ("Iterable", "Iterator"):
+        # GenExprType satisfies Iterable[T] and Iterator[T];
+        # CopyIterType/OwnIterType satisfy Iterable[T] only.
+        if ((isinstance(arg_type, GenExprType) and param_type.name in ("Iterable", "Iterator"))
+                or (isinstance(arg_type, (CopyIterType, OwnIterType)) and param_type.name == "Iterable")):
             if len(param_type.type_args) == 1:
                 return self.match_type_with_inference(param_type.type_args[0], arg_type.element_type, inferred)
             return True

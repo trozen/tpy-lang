@@ -12,7 +12,8 @@ class Node:
 def test_extend_copy_iter_no_warn() -> None:
     a: list[Node] = []
     b: list[Node] = [Node(1), Node(2)]
-    a.extend(copy_iter(b))  # tpyc: ok
+    ci = copy_iter(b)  # tpyc: type(/CopyIter\[Node\]/)
+    a.extend(ci)  # tpyc: ok
     print(len(a))
     print(len(b))
 
@@ -41,8 +42,17 @@ def test_extend_no_copy_iter_warns() -> None:
     a.extend(b)  # tpyc: warning(/copies Node elements/)
     print(len(b))
 
+def test_for_loop_copy_iter() -> None:
+    b: list[Node] = [Node(10), Node(20)]
+    total: Int32 = 0
+    for x in copy_iter(b):
+        total += x.val
+    print(total)
+    print(len(b))
+
 test_extend_copy_iter_no_warn()
 test_extend_copy_iter_value_type()
 test_iadd_copy_iter_no_warn()
 test_list_ctor_copy_iter_no_warn()
 test_extend_no_copy_iter_warns()
+test_for_loop_copy_iter()

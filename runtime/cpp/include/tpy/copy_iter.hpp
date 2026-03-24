@@ -31,6 +31,29 @@ struct CopyIter {
 
     CopyIter& __iter__() { return *this; }
 
+    // Minimal input iterator for codegen begin/end loops and from_range.
+    // Not a formal std::input_iterator (no default ctor, no operator==).
+    struct Sentinel {};
+    struct Iterator {
+        CopyIter* parent;
+        std::optional<T> current;
+
+        Iterator& operator++() {
+            auto r = parent->__next__();
+            current = r.has_value() ? std::optional<T>(std::move(*r)) : std::nullopt;
+            return *this;
+        }
+        T& operator*() { return *current; }
+        bool operator!=(Sentinel) const { return current.has_value(); }
+    };
+
+    Iterator begin() {
+        Iterator it{this, std::nullopt};
+        ++it;  // prime with first element
+        return it;
+    }
+    Sentinel end() { return {}; }
+
     friend std::ostream& operator<<(std::ostream& os, const CopyIter&) {
         return os << "<copy_iter>";
     }

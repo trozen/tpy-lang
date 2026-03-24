@@ -9,7 +9,7 @@ from dataclasses import replace as dc_replace
 from typing import Callable, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingStrType,
+    TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingStrType, CopyIterType, OwnIterType,
     IntLiteralType, FloatType, Float32Type, BoolType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType, ReadonlyType,
@@ -490,6 +490,8 @@ class CallAnalyzer:
                         return self._analyze_tpy_copy(expr)
                     if qname == "tpy.copy_iter":
                         return self._analyze_tpy_copy_iter(expr)
+                    if qname == "tpy.own_iter":
+                        return self._analyze_tpy_own_iter(expr)
                     if qname == "tpy.try_parse":
                         return self._analyze_tpy_try_parse(expr)
                     if qname == "builtins.isinstance":
@@ -724,6 +726,8 @@ class CallAnalyzer:
             return self._analyze_tpy_copy(expr)
         if qname == "tpy.copy_iter":
             return self._analyze_tpy_copy_iter(expr)
+        if qname == "tpy.own_iter":
+            return self._analyze_tpy_own_iter(expr)
         if qname == "tpy.try_parse":
             return self._analyze_tpy_try_parse(expr)
         if qname == "builtins.isinstance":
@@ -806,11 +810,8 @@ class CallAnalyzer:
         """Analyze a call to tpy.copy_iter() - explicit element copy acknowledgment.
 
         copy_iter(iterable) wraps an iterable and copies each element during
-        iteration. Suppresses the bulk copy warning on extend(), list(), etc.
-        TODO: sema returns Own[ContainerType] (e.g. Own[list[T]]) which is
-        a transitional mismatch -- the C++ codegen produces CopyIter, but sema
-        sees it as owning the whole container. Should return Iterator[Own[T]]
-        once the type system supports protocol return types for builtins.
+        iteration. Returns CopyIter[T] where T is the element type.
+        Suppresses the bulk copy warning on extend(), list(), etc.
         """
         self._reject_kwargs_for_builtin(expr, "copy_iter")
         if len(expr.args) != 1:
@@ -818,15 +819,49 @@ class CallAnalyzer:
         arg_type = self.expr.analyze_expr(expr.args[0])
         if isinstance(arg_type, OwnType):
             arg_type = arg_type.wrapped
+        elem_type = arg_type.get_iteration_element_type()
+        if elem_type is None:
+            raise self.ctx.error(
+                f"copy_iter() argument must be iterable, got {arg_type}", expr)
+        result_type = CopyIterType(elem_type)
         expr.resolved_function_info = FunctionInfo(
             name="copy_iter",
             params=[ParamInfo("x", arg_type)],
-            return_type=OwnType(arg_type),
+            return_type=result_type,
             is_readonly=True,
             is_builtin_function=True,
             qualified_name="tpy.copy_iter",
+            return_borrows_from=frozenset({0}),
         )
-        return OwnType(arg_type)
+        return result_type
+
+    def _analyze_tpy_own_iter(self, expr: TpyCall) -> TpyType:
+        """Analyze a call to tpy.own_iter() - consuming iteration.
+
+        own_iter(container) moves the container into an OwnIter that
+        iterates with move semantics. Returns OwnIter[T].
+        """
+        self._reject_kwargs_for_builtin(expr, "own_iter")
+        if len(expr.args) != 1:
+            raise self.ctx.error("own_iter() takes exactly 1 argument", expr)
+        arg_type = self.expr.analyze_expr(expr.args[0])
+        if isinstance(arg_type, OwnType):
+            arg_type = arg_type.wrapped
+        if not isinstance(arg_type, ListType):
+            raise self.ctx.error(
+                f"own_iter() currently only supports list, got {arg_type}", expr)
+        elem_type = arg_type.get_iteration_element_type()
+        assert elem_type is not None
+        result_type = OwnIterType(elem_type)
+        expr.resolved_function_info = FunctionInfo(
+            name="own_iter",
+            params=[ParamInfo("x", arg_type)],
+            return_type=result_type,
+            is_readonly=True,
+            is_builtin_function=True,
+            qualified_name="tpy.own_iter",
+        )
+        return result_type
 
     def _analyze_tpy_try_parse(self, expr: TpyCall) -> TpyType:
         """Analyze try_parse(EnumType, str) -> Optional[EnumType]."""

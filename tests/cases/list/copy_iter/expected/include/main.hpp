@@ -17,6 +17,7 @@ void test_extend_copy_iter_value_type();
 void test_iadd_copy_iter_no_warn();
 void test_list_ctor_copy_iter_no_warn();
 void test_extend_no_copy_iter_warns();
+void test_for_loop_copy_iter();
 
 // class Node:
 struct Node {

@@ -172,14 +172,22 @@ def qualify_native_name(name: str) -> str:
 def loop_var_binding(
     elem_type: TpyType, cpp_var: str, deref_expr: str,
     const_loop_var: bool, hoisted: bool = False,
+    consuming: bool = False,
 ) -> str:
     """Return the C++ loop variable binding line (no trailing newline).
 
     Shared by for-loop and comprehension codegen to avoid duplicating the
     const_loop_var / value_type / auto&& decision tree.
+
+    consuming=True uses auto&& to bind into OwnIter's move-iterator
+    storage. Zero cost (no per-element move), but move-ready: codegen
+    can later emit std::move(var) for per-element ownership transfer.
     """
     if hoisted:
         return f"{cpp_var} = {deref_expr};"
+    if consuming:
+        # Forwarding ref into OwnIter storage: zero-cost, move-ready.
+        return f"auto&& {cpp_var} = {deref_expr};"
     if const_loop_var and elem_type.is_value_type():
         return f"const {elem_type.to_cpp()}& {cpp_var} = {deref_expr};"
     if const_loop_var:

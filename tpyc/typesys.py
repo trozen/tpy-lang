@@ -2003,6 +2003,88 @@ class SpanIterType(NamedType):
         return SpanIterType(types[0])
 
 
+class CopyIterType(NamedType):
+    """Iterator adapter that copies each element from a borrowing iterator.
+
+    CopyIter[T] -> tpy::CopyIter<T, Inner> at C++ level.
+    The Inner type is deduced by the C++ compiler; sema only tracks T.
+    """
+
+    def __init__(self, element_type: TpyType):
+        NamedType.__init__(self, name="CopyIter", type_args=(element_type,),
+                           _module_qname="tpy.CopyIter")
+
+    @property
+    def element_type(self) -> TpyType:
+        return self.type_args[0]
+
+    def to_cpp(self) -> str:
+        # Full C++ type requires the Inner param which is auto-deduced.
+        # Use auto for variable declarations; codegen produces the factory call.
+        return "auto"
+
+    def __str__(self) -> str:
+        return f"CopyIter[{self.element_type}]"
+
+    def qualified_name(self) -> Optional[str]:
+        return "tpy.CopyIter"
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def get_element_type(self) -> Optional[TpyType]:
+        return self.element_type
+
+    def get_iteration_element_type(self) -> Optional[TpyType]:
+        return self.element_type
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.element_type,)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return CopyIterType(types[0])
+
+
+class OwnIterType(NamedType):
+    """Consuming iterator that owns a moved container and iterates with moves.
+
+    OwnIter[T] -> tpy::OwnIter<T> at C++ level.
+    Created by own_iter(container) which moves the container into the iterator.
+    """
+
+    def __init__(self, element_type: TpyType):
+        NamedType.__init__(self, name="OwnIter", type_args=(element_type,),
+                           _module_qname="tpy.OwnIter")
+
+    @property
+    def element_type(self) -> TpyType:
+        return self.type_args[0]
+
+    def to_cpp(self) -> str:
+        return "auto"
+
+    def __str__(self) -> str:
+        return f"OwnIter[{self.element_type}]"
+
+    def qualified_name(self) -> Optional[str]:
+        return "tpy.OwnIter"
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def get_element_type(self) -> Optional[TpyType]:
+        return self.element_type
+
+    def get_iteration_element_type(self) -> Optional[TpyType]:
+        return self.element_type
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.element_type,)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return OwnIterType(types[0])
+
+
 def is_readonly_span(typ: 'TpyType') -> bool:
     """Check if a type is a read-only span (Span[readonly[T]])."""
     return isinstance(typ, SpanType) and typ.is_readonly

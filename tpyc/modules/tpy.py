@@ -31,10 +31,20 @@ def init_module() -> BuiltinModule:
     ], special_handling=True)
 
     # copy_iter() - explicit element-by-element copy acknowledgment for iterables.
-    # Parallel to copy() for single elements. Suppresses the bulk copy warning
-    # on extend(), list(), set() etc. Currently a sema-level no-op (same as copy);
-    # will be replaced with CopyIter codegen in a future phase.
+    # Stub only (return type placeholder); real sema in _analyze_tpy_copy_iter
+    # which returns CopyIterType(elem_type).
     module.function("copy_iter", overloads=[
+        MethodDef(
+            params=[ParamDef("x", T)],
+            returns=OwnType(T),
+            cpp="{0}",
+        ),
+    ], special_handling=True)
+
+    # own_iter() - consuming iteration: moves list into OwnIter.
+    # Stub only (return type placeholder); real sema in _analyze_tpy_own_iter
+    # which returns OwnIterType(elem_type).
+    module.function("own_iter", overloads=[
         MethodDef(
             params=[ParamDef("x", T)],
             returns=OwnType(T),

@@ -523,8 +523,10 @@ class TypeRegistrar:
                 methods.setdefault(method.name, []).append(func_info)
             elif (method.name in methods
                   and method.name not in overload_names
-                  and any(m.is_readonly != func_info.is_readonly for m in methods[method.name])):
-                # auto_readonly clone: add the complementary readonly/mutable overload
+                  and any(m.is_readonly != func_info.is_readonly
+                          or m.is_consuming != func_info.is_consuming
+                          for m in methods[method.name])):
+                # auto_readonly or auto_own clone: add the complementary overload
                 methods[method.name].append(func_info)
             elif method.name in methods:
                 # Implementation following stubs: stubs are the callable

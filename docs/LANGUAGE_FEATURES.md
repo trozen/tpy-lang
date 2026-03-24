@@ -1942,26 +1942,27 @@ owned values without explicit `copy()`.
 **Limitations**: `auto_own` on `__iter__` for user collections is not yet
 working end-to-end. See `docs/CONSUMING_ITERATION_DESIGN.md` for details.
 
-#### Working: Container-Level Move For-Loops
+#### Working: `own_iter()` for Consuming For-Loops
 
-When a `list[T]` with non-value elements is at its last use as a for-loop
-iterable, the compiler moves the vector into an `OwnIter` wrapper, freeing
-the source variable early:
+`own_iter(container)` explicitly moves a list into an `OwnIter` wrapper for
+consuming iteration. Elements are accessible via forwarding references
+(`auto&&`), ready for future per-element move support:
 
 ```python
+from tpy import own_iter
+
 src: list[Node] = [Node(1), Node(2)]
-for x in src:       # src's vector moved into OwnIter
-    print(x.val)    # x references elements inside OwnIter
-# src is empty here (vector was moved)
+for x in own_iter(src):  # src's vector moved into OwnIter
+    print(x.val)         # x references elements inside OwnIter
+# src is consumed here (vector was moved)
 ```
 
-This is a container-level optimization -- the vector storage is transferred,
-but individual elements are not yet moved into the loop variable (they are
-referenced in-place via `const auto&`). Element-level consuming iteration
+Without `own_iter()`, for-loops always use borrowing iteration (`const auto&`).
+`own_iter()` currently only supports `list[T]`; support for other containers
 is planned.
 
-The consuming `__iter__` overload is selected automatically via liveness
-analysis. No annotation needed at the call site.
+For-loops without `own_iter()` work the same as before -- the source container
+is borrowed, not consumed.
 
 #### Working: Regular Method Calls on Protocol Types
 

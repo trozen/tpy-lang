@@ -9,8 +9,7 @@ void main() {
     // pets: list[Dog | Cat] = [Dog("Rex"), Cat("Whiskers"), Dog("Buddy")]
     std::vector<std::variant<Cat, Dog>> pets = {Dog("Rex"), Cat("Whiskers"), Dog("Buddy")};
     // for p in pets:
-    auto& __src_0 = pets;
-    auto __obj_0 = ::tpy::own_iter(std::move(__src_0));
+    auto& __obj_0 = pets;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {

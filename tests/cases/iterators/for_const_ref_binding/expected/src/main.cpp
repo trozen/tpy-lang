@@ -27,8 +27,7 @@ void test_read_only_loop() {
     // total: Int32 = Int32(0)
     int32_t total = 0;
     // for p in items:
-    auto& __src_0 = items;
-    auto __obj_0 = ::tpy::own_iter(std::move(__src_0));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -99,8 +98,7 @@ void test_assign_to_local_loop() {
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
     // for p in items:
-    auto& __src_0 = items;
-    auto __obj_0 = ::tpy::own_iter(std::move(__src_0));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -154,8 +152,7 @@ void test_pass_to_readonly_func() {
     // total: Int32 = Int32(0)
     int32_t total = 0;
     // for p in items:
-    auto& __src_0 = items;
-    auto __obj_0 = ::tpy::own_iter(std::move(__src_0));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -221,8 +218,7 @@ void test_sequential_loops_same_var() {
     // total: Int32 = Int32(0)
     int32_t total = 0;
     // for p in items:
-    auto& __src_1 = items;
-    auto __obj_1 = ::tpy::own_iter(std::move(__src_1));
+    auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {

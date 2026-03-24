@@ -4,19 +4,20 @@
 namespace tpyapp::main {
 
 
-// def test_list_container_move_last_use() -> None:
-void test_list_container_move_last_use() {
+// def test_own_iter_explicit() -> None:
+void test_own_iter_explicit() {
     // src: list[Node] = [Node(1), Node(2), Node(3)]
     std::vector<Node> src = {Node(1), Node(2), Node(3)};
+    // oi = own_iter(src)  # tpyc: type(/OwnIter\[Node\]/)
+    auto oi = ::tpy::own_iter(std::move(src));
     // total: Int32 = 0
     int32_t total = 0;
-    // for x in src:
-    auto& __src_0 = src;
-    auto __obj_0 = ::tpy::own_iter(std::move(__src_0));
+    // for x in oi:
+    auto& __obj_0 = oi;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        const auto& x = *__beg_0;
+        auto&& x = *__beg_0;
         // total += x.val
         total = ::tpy::add_check<int32_t>(total, x.val);
     }
@@ -24,8 +25,27 @@ void test_list_container_move_last_use() {
     std::cout << total << "\n";
 }
 
-// def test_list_borrowing_not_last_use() -> None:
-void test_list_borrowing_not_last_use() {
+// def test_own_iter_value_type() -> None:
+void test_own_iter_value_type() {
+    // src: list[Int32] = [10, 20, 30]
+    std::vector<int32_t> src = {10, 20, 30};
+    // total: Int32 = 0
+    int32_t total = 0;
+    // for x in own_iter(src):
+    auto __obj_0 = ::tpy::own_iter(std::move(src));
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& x = *__beg_0;
+        // total += x
+        total = ::tpy::add_check<int32_t>(total, x);
+    }
+    // print(total)
+    std::cout << total << "\n";
+}
+
+// def test_borrowing_default() -> None:
+void test_borrowing_default() {
     // src: list[Node] = [Node(10), Node(20)]
     std::vector<Node> src = {Node(10), Node(20)};
     // total: Int32 = 0
@@ -45,8 +65,8 @@ void test_list_borrowing_not_last_use() {
     std::cout << ::tpy::__len__(src) << "\n";
 }
 
-// def test_value_type_no_consuming() -> None:
-void test_value_type_no_consuming() {
+// def test_value_type_borrowing() -> None:
+void test_value_type_borrowing() {
     // src: list[Int32] = [1, 2, 3]
     std::vector<int32_t> src = {1, 2, 3};
     // total: Int32 = 0
@@ -69,12 +89,14 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // test_list_container_move_last_use()
-    test_list_container_move_last_use();
-    // test_list_borrowing_not_last_use()
-    test_list_borrowing_not_last_use();
-    // test_value_type_no_consuming()
-    test_value_type_no_consuming();
+    // test_own_iter_explicit()
+    test_own_iter_explicit();
+    // test_own_iter_value_type()
+    test_own_iter_value_type();
+    // test_borrowing_default()
+    test_borrowing_default();
+    // test_value_type_borrowing()
+    test_value_type_borrowing();
 }
 
 } // namespace tpyapp::main

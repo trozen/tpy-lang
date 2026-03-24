@@ -739,22 +739,6 @@ class StatementAnalyzer:
                     line=(stmt.loc.line if stmt.loc else None),
                 )
                 stmt.elem_type = elem_type
-                # Check for consuming iteration: iterable at last use with
-                # non-value element type and a consuming __iter__ overload.
-                if (isinstance(stmt.iterable, TpyName)
-                        and id(stmt.iterable) in self.ctx.all_last_uses
-                        and self.compat._is_movable_var(stmt.iterable.name)
-                        and not elem_type.is_value_type()):
-                    record_info = self.ctx.registry.get_record_for_type(inner_iterable_type)
-                    if record_info:
-                        iter_overloads = record_info.get_method_overloads("__iter__")
-                        if any(m.is_consuming for m in iter_overloads):
-                            stmt.consuming_iter = True
-                            # Store the consuming overload for codegen
-                            for m in iter_overloads:
-                                if m.is_consuming:
-                                    stmt.consuming_iter_fi = m
-                                    break
                 is_direct_next_iter = builtin_modules.get_error_return_next_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
                 is_iter_based = builtin_modules.get_iter_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
                 is_protocol_iter = is_protocol_type(resolved_for_iter) and resolved_for_iter.qualified_name() in ("typing.Iterator", "typing.Iterable")

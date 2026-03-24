@@ -21,7 +21,7 @@ void test_consuming() {
     // p = Pair[Node](Node(30), Node(40))
     Pair<Node> p = Pair<Node>(Node(30), Node(40));
     // x = p.first()
-    Node& x = p.first();
+    Node x = std::move(p).first();
     // print(x.val)
     std::cout << x.val << "\n";
 }

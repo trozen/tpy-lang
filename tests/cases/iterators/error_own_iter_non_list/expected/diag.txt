@@ -1,0 +1,1 @@
+main.py:6: error: own_iter() currently only supports list, got dict[str, Int32]

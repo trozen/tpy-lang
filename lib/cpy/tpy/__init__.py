@@ -500,11 +500,19 @@ def copy(obj):
 def copy_iter(iterable):
     """Explicit element-by-element copy acknowledgment for iterables.
 
-    In CPython, this is an identity function (CPython uses references).
-    In TurboPython, suppresses the bulk copy warning on extend(), list(), etc.
+    In CPython, returns the iterable as-is (CPython uses references, no copy).
+    In TurboPython, wraps in CopyIter for element-by-element copy.
     """
     return iterable
 
+
+def own_iter(iterable):
+    """Consuming iteration: moves the container and iterates with moves.
+
+    In CPython, returns the iterable as-is (CPython uses references, no move).
+    In TurboPython, moves the container into OwnIter for zero-copy drain.
+    """
+    return iterable
 
 def try_parse(enum_cls, name: str):
     """Try to parse a string into an enum member. Returns None if not found."""

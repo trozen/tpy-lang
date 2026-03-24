@@ -2628,7 +2628,8 @@ class StatementGenerator:
 
     def _gen_begin_end_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
                             iterable_expr: str, elem_type: TpyType,
-                            is_lvalue: bool | None = None) -> None:
+                            is_lvalue: bool | None = None,
+                            consuming: bool = False) -> None:
         """Generate the canonical begin/end iterator loop.
 
         Produces:
@@ -2663,7 +2664,8 @@ class StatementGenerator:
         cpp_var = escape_cpp_name(stmt.var)
         hoisted = self._is_loop_var_hoisted(stmt)
         binding = loop_var_binding(elem_type, cpp_var, f"*{beg_name}",
-                                   stmt.const_loop_var, hoisted)
+                                   stmt.const_loop_var, hoisted,
+                                   consuming=consuming)
         out.write(f"{inner_indent}{binding}\n")
 
         self._gen_loop_body(out, stmt, indent, elem_type)
@@ -2748,7 +2750,8 @@ class StatementGenerator:
 
     def _gen_captured_call_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
                                 iterable_expr: str, elem_type: TpyType,
-                                make_call: "Callable[[str], str]") -> None:
+                                make_call: "Callable[[str], str]",
+                                consuming: bool = False) -> None:
         """Capture iterable, apply a method/function call, then begin/end loop.
 
         Used for __iter__() and ::tpy::as_span() where the container must
@@ -2767,7 +2770,8 @@ class StatementGenerator:
         self.ctx.temps.flush(out, indent)
         out.write(f"{indent}{src_binding} {src_name} = {iterable_expr};\n")
         call_expr = make_call(src_name)
-        self._gen_begin_end_loop(out, stmt, indent, call_expr, elem_type, is_lvalue=False)
+        self._gen_begin_end_loop(out, stmt, indent, call_expr, elem_type, is_lvalue=False,
+                                 consuming=consuming)
 
     @staticmethod
     def _unwrap_coerce(expr: TpyExpr) -> TpyExpr:
@@ -3022,29 +3026,17 @@ class StatementGenerator:
         # Resolve sema-stored elem_type (handles PendingStrType -> concrete)
         sema_elem = self.types.resolve_type(stmt.elem_type) if stmt.elem_type else None
 
-        # Consuming iteration: iterable at last use with consuming __iter__
-        # overload. Generate the consuming call and iterate the result.
-        # TODO: _gen_begin_end_loop uses const auto& for const_loop_var, which
-        # prevents actual element moves from OwnIter's move iterators. Should
-        # force auto&& or auto (value) binding for consuming loops.
-        if stmt.consuming_iter:
+        # OwnIterType / CopyIterType: explicit own_iter() / copy_iter() call.
+        # These have begin/end, so use standard begin/end loop.
+        # OwnIter uses auto&& binding (move-ready for future per-element moves).
+        from ..typesys import OwnIterType, CopyIterType
+        if isinstance(iterable_type, (OwnIterType, CopyIterType)):
             iterable = self.expressions.gen_expr(stmt.iterable)
             elem_type = sema_elem
             assert elem_type is not None
-            fi = stmt.consuming_iter_fi
-            if fi and fi.native_function and fi.native_name:
-                # Builtin consuming __iter__: native function call with std::move
-                native = fi.native_name
-                if "::" not in native:
-                    native = f"::tpy::{native}"
-                else:
-                    native = f"::{native}"
-                self._gen_captured_call_loop(out, stmt, indent, iterable, elem_type,
-                                             lambda src, n=native: f"{n}(std::move({src}))")
-            else:
-                # User-defined consuming __iter__: call rvalue-qualified method
-                self._gen_captured_call_loop(out, stmt, indent, iterable, elem_type,
-                                             lambda src: f"std::move({src}).__iter__()")
+            consuming = isinstance(iterable_type, OwnIterType)
+            self._gen_begin_end_loop(out, stmt, indent, iterable, elem_type,
+                                     consuming=consuming)
             return
 
         # Resolve TypeParamRef to its bound for protocol-based iteration

@@ -344,6 +344,11 @@ class ExpressionGenerator:
         arg_expr = self.gen_expr(arg)
         return f"::tpy::copy_iter<{elem_cpp}>({arg_expr})"
 
+    def _gen_own_iter_expr(self, arg: TpyExpr) -> str:
+        """Generate an OwnIter wrapping for consuming iteration."""
+        arg_expr = self.gen_expr(arg)
+        return f"::tpy::own_iter(std::move({arg_expr}))"
+
     def _maybe_move(self, expr: TpyExpr, gen_code: str) -> str:
         """Wrap in std::move() if expr is a last-use of a movable local."""
         inner = expr
@@ -1419,6 +1424,9 @@ class ExpressionGenerator:
                 # copy_iter(x) - wrap iterable in CopyIter for element-by-element copy
                 if module_name == "tpy" and func_name == "copy_iter":
                     return self._gen_copy_iter_expr(expr.args[0])
+                # own_iter(x) - move container into OwnIter for consuming iteration
+                if module_name == "tpy" and func_name == "own_iter":
+                    return self._gen_own_iter_expr(expr.args[0])
                 # Check for module function
                 module_info = self.ctx.analyzer.registry.get_module(module_name)
                 if module_info and func_name in module_info.functions:
@@ -1749,6 +1757,9 @@ class ExpressionGenerator:
             # copy_iter() - wrap iterable in CopyIter
             if module_name == "tpy" and expr.method == "copy_iter":
                 return self._gen_copy_iter_expr(expr.args[0])
+            # own_iter() - move container into OwnIter
+            if module_name == "tpy" and expr.method == "own_iter":
+                return self._gen_own_iter_expr(expr.args[0])
             # Special-handling functions with cpp_template resolved by sema
             fi = expr.resolved_function_info
             if fi and fi.special_handling and fi.cpp_template:

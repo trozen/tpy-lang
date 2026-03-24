@@ -4,22 +4,23 @@
 
 | Feature | Status |
 |---------|--------|
-| Copy warning: `Iterable[Own[T]]` param coercion with Own-stripping | Done (transitional) |
-| `copy_iter(x)` -- explicit element-by-element copy acknowledgment | Done (CopyIter codegen; sema type is transitional `Own[Container]`, see known gaps) |
+| Copy warning: `Iterable[Own[T]]` param coercion with Own-stripping | Done |
+| `copy_iter(x)` -- explicit element-by-element copy acknowledgment | Done (CopyIter codegen + CopyIterType sema type) |
+| `own_iter(x)` -- explicit consuming iteration | Done (list only; moves container into OwnIter) |
 | `OwnIter[T]` runtime type (list drain) | Done (vector only) |
-| `CopyIter[T]` runtime type (element-by-element copy adapter) | Done |
-| `__iter__(self: Own[Self]) -> Iterator[Own[T]]` overload for list | Done (container-level move; element-level move pending loop var binding fix) |
-| Container-level move for-loop (list at last use) | Done (moves vector into OwnIter; loop var still binds as const ref) |
+| `CopyIter[T]` runtime type (element-by-element copy adapter) | Done (with begin/end for for-loops) |
+| `CopyIterType` / `OwnIterType` as concrete sema types | Done |
+| `__iter__(self: Own[Self]) -> Iterator[Own[T]]` overload for list | Done (used by explicit `b.__iter__()` at last use) |
 | Consuming `__iter__` overload dispatch (method calls) | Done (overload resolution + codegen for native_function methods) |
 | `auto_own[Self]` / `auto_own[T]` -- auto-generate consuming overloads | Done (parser cloning + ownership propagation through fields) |
 | Ownership propagation through fields (`Own[S].field` -> `Own[T]`) | Done |
+| Per-element move in consuming for-loops | Planned (loop var uses `auto&&`, move-ready; needs per-element ownership transfer in codegen) |
+| `own_iter()` for set/dict | Planned (needs proper drain iterators) |
 | `Iterable[T]` -> `Iterator[T]` auto-coercion (calls `__iter__`) | Planned |
 | `auto_own` on `__iter__` for user collections | Blocked (needs `iter(Own[T])` generic builtin unwrap + protocol return type in for-loops) |
-| Set/dict consuming `__iter__` | Planned (needs proper drain iterators, not vector-copy) |
 | User-defined drain iterators (`ArrayListDrainIter`) | Planned |
-| Element-level move in consuming for-loops | Planned (loop var binding fix: `auto` instead of `const auto&`) |
-| `CopyIter[T]` as concrete sema type | Planned (currently modeled as `Own[Container]`, blocks standalone use) |
 | Borrow tracking for view-type drain iterators | Planned (depends on view type tracking) |
+| Unify container constructor overloads (Iterator/Iterable) | Planned (needs structural protocol-to-protocol conformance; see TODO.md) |
 
 ---
 
@@ -395,24 +396,20 @@ for x in span(b):    # always borrows, x is Node reference
 
 ### Known gaps
 
-- **Element-level move not yet implemented**: Consuming for-loops move the
-  container into OwnIter but the loop variable still binds as `const auto&`,
-  so individual elements are referenced in-place rather than moved. Fix:
-  override loop var binding to `auto` for consuming loops.
-- **`copy_iter` sema type mismatch**: Sema models `copy_iter(b)` as
-  `Own[list[T]]` but codegen emits `CopyIter<T, Inner>`. Works for inline
-  use but breaks standalone (storing in a variable, passing as Iterator).
-  Fix: register `CopyIter[T]` as a concrete sema type.
+- **Per-element move not yet implemented**: `own_iter()` for-loops use
+  `auto&&` binding (move-ready forwarding ref), but codegen doesn't yet
+  emit `std::move(x)` for ownership transfer in loop bodies. Elements are
+  referenced in-place; actual moves need per-element ownership tracking.
+- **`own_iter()` only supports list**: The C++ `own_iter()` factory only
+  accepts `std::vector<T>&&`. Set/dict need proper drain iterators.
 - **`auto_own` on `__iter__` blocked for user collections**: `iter(Own[list[T]])`
   fails because generic builtin type inference doesn't unwrap `Own[T]`.
   Also, protocol return types from user `__iter__` can't be iterated in
   for-loops.
-- **Set/dict consuming `__iter__` not implemented**: Removed because the
-  generic drain approach (copy into vector) defeats the purpose. Needs
-  proper drain iterators for each container type.
-- **`auto_own_basic` test misleading**: `test_consuming` doesn't trigger
-  the consuming overload (liveness sees borrow through field return).
-- **Diagnostics say "use copy()"**: Should mention `copy_iter()` too.
+- **Constructor overload design**: list/set/dict use `Iterator[T]` vs
+  `Iterable[Own[T]]` overloads to dispatch C++ codegen (collect vs from_range).
+  Should be unified with structural protocol-to-protocol conformance.
+  See TODO.md.
 
 ---
 
