@@ -34,7 +34,7 @@ std::string join_from(std::string_view sep, const T_items& items) {
 template<::tpystd::typing::Iterable<int32_t> T_items>
 std::vector<int32_t> list_from(const T_items& items) {
     // return list(items)
-    return ::tpy::from_range<std::vector<int32_t>>(items);
+    return ::tpy::construct<std::vector<int32_t>>(items);
 }
 
 void __tpy_init();

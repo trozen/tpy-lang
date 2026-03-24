@@ -317,7 +317,7 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `format.hpp` | Python-style printing (`print_bool`, `print_float`, `char_to_str`) |
 | `fixed_int.hpp` | Template-based checked arithmetic for all fixed-width integer types |
 | `type_traits.hpp` | `is_value_type` trait for value/reference semantics |
-| `ranges.hpp` | `repeat_range`, `to_vector`, `from_range` utilities |
+| `ranges.hpp` | `repeat_range`, `to_vector`, `from_range`, `collect`, `construct` utilities |
 | `range.hpp` | `Range<T>` Python-style range with upfront overflow checking |
 | `bigint.hpp` | `BigInt` arbitrary precision integer (custom runtime implementation) |
 | `container_ops.hpp` | Index normalization, `get_item`/`set_item`, list methods |

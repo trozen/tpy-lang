@@ -401,7 +401,8 @@ No runtime vtables or dynamic dispatch—everything resolves to direct method ca
      - Used by sema to validate subscript assignment (Span, str don't conform → read-only)
      - C++20 concept `tpy::MutableSequence<ElemT>`
    - `NativeRangeConstructible[T]` - types that can be constructed from a range
-     - Unified `tpy::from_range<Container>(range)` template using iterator-pair constructor
+     - Unified `tpy::construct<Container>(arg)` dispatches via `if constexpr`:
+     `from_range` (begin/end) for ranges, `collect` (__next__) for iterators
      - Reserves capacity if container supports `reserve()` and range has known size
      - C++20 concept `tpy::NativeRangeConstructible<ElemT>`
      - list extends this protocol

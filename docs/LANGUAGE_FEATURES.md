@@ -2623,6 +2623,8 @@ def sum_generic[T: Iterable[Int32]](items: T) -> Int32:
     return total
 ```
 
+**Structural protocol-to-protocol conformance**: `Iterator[T]` structurally satisfies `Iterable[T]` because Iterator's method set is a superset of Iterable's. This enables passing iterators where iterables are expected (e.g. `list(some_iterator)` matches the `Iterable[Own[T]]` constructor) without explicit inheritance declarations.
+
 **For-loop support**: `for x in expr` works when `expr` has type `Iterator[T]` (direct `for(;;)` loop calling `__next__()` and checking `has_value()`) or `Iterable[T]` (calls `__iter__()` first, then iterates the resulting iterator). All iterators use the direct `std::expected` loop path.
 
 #### Working: Span coercion via `ReadOnlySpanLike[T]`
@@ -3930,11 +3932,10 @@ Generated C++:
 // list([1, 2, 3]) - from literal
 std::vector<tpy::BigInt> x({1, 2, 3});
 
-// list(container) - from Iterable (range, array, list, etc.)
-auto y = tpy::from_range<std::vector<int32_t>>(tpy::Range<int32_t>(5));
-
-// list(iterator) - from Iterator (user-defined)
-auto z = tpy::collect<std::vector<int32_t>>(Counter(5));
+// list(iterable) - from any Iterable (range, array, list, iterator, etc.)
+// Dispatches at C++ level: begin/end for ranges, __next__() for iterators
+auto y = tpy::construct<std::vector<int32_t>>(tpy::Range<int32_t>(5));
+auto z = tpy::construct<std::vector<int32_t>>(Counter(5));
 ```
 
 **`int()` (Working)**:

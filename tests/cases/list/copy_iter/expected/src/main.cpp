@@ -51,7 +51,7 @@ void test_list_ctor_copy_iter_no_warn() {
     // b: list[Node] = [Node(4)]
     std::vector<Node> b = {Node(4)};
     // a = list(copy_iter(b))  # tpyc: ok
-    std::vector<Node> a = ::tpy::from_range<std::vector<Node>>(::tpy::copy_iter<Node>(b));
+    std::vector<Node> a = ::tpy::construct<std::vector<Node>>(::tpy::copy_iter<Node>(b));
     // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
     // print(len(b))

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main():
 void main() {
     // result = list(squares(5))
-    std::vector<int32_t> result = ::tpy::collect<std::vector<int32_t>>(squares(5));
+    std::vector<int32_t> result = ::tpy::construct<std::vector<int32_t>>(squares(5));
     // print(result)
     std::cout << ::tpy::ListPrinter(result) << "\n";
 }

@@ -9,15 +9,15 @@ void main() {
     // d: dict[str, Int32] = {"a": 1, "b": 2, "c": 3}
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}, {"b", 2}, {"c", 3}});
     // keys = list(d.keys())
-    std::vector<std::string> keys = ::tpy::from_range<std::vector<std::string>>(::tpy::dict_keys(d));
+    std::vector<std::string> keys = ::tpy::construct<std::vector<std::string>>(::tpy::dict_keys(d));
     // print(keys)
     std::cout << ::tpy::ListPrinter(keys) << "\n";
     // vals = list(d.values())
-    std::vector<int32_t> vals = ::tpy::from_range<std::vector<int32_t>>(::tpy::dict_values(d));
+    std::vector<int32_t> vals = ::tpy::construct<std::vector<int32_t>>(::tpy::dict_values(d));
     // print(vals)
     std::cout << ::tpy::ListPrinter(vals) << "\n";
     // items = list(d.items())
-    std::vector<std::tuple<std::string, int32_t>> items = ::tpy::from_range<std::vector<std::tuple<std::string, int32_t>>>(::tpy::dict_items(d));
+    std::vector<std::tuple<std::string, int32_t>> items = ::tpy::construct<std::vector<std::tuple<std::string, int32_t>>>(::tpy::dict_items(d));
     // print(len(items))
     std::cout << ::tpy::__len__(items) << "\n";
     // k, v = items[0]

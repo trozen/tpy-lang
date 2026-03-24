@@ -100,7 +100,7 @@ void __tpy_init() {
     r3 = &__global_slot_4;
     // # Generator expression
     // r4 = list(len(x) for x in ["a", "bb", "ccc"])
-    static std::vector<int32_t> __global_slot_5 = ::tpy::collect<std::vector<int32_t>>([&]() {
+    static std::vector<int32_t> __global_slot_5 = ::tpy::construct<std::vector<int32_t>>([&]() {
         auto __src = {"a", "bb", "ccc"};
         return ::tpy::make_generator<int32_t>(
             [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<int32_t> {

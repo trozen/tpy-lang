@@ -633,10 +633,22 @@ class TypeOperations:
         Uses match_type_with_inference to unify protocol method signatures
         (containing TypeParamRefs like T) against the record's concrete method
         signatures. Handles all compound return/param types (Span, Optional, etc.).
+
+        Also handles protocol-to-protocol inference: when arg_type is a protocol
+        (e.g. Iterator[Int32]) matching a different protocol (e.g. Iterable[T]),
+        looks up the arg protocol's method signatures and matches them.
         """
         protocol_info = self.ctx.registry.get_protocol(protocol_name)
         if protocol_info is None or not protocol_info.type_params:
             return None
+
+        # Protocol-to-protocol: arg is a protocol with concrete type args
+        if is_protocol_type(arg_type) and isinstance(arg_type, NamedType) and arg_type.type_args:
+            arg_protocol_info = self.ctx.registry.get_protocol(arg_type.name)
+            if arg_protocol_info is not None:
+                return self._infer_protocol_type_arg_from_protocol(
+                    arg_type, arg_protocol_info, protocol_info)
+
         record = self.ctx.registry.get_record_for_type(arg_type)
         if record is None:
             return None
@@ -665,6 +677,47 @@ class TypeOperations:
                 break
 
         first_param = protocol_info.type_params[0]
+        return inferred.get(first_param)
+
+    def _infer_protocol_type_arg_from_protocol(
+        self,
+        arg_type: NamedType,
+        arg_protocol: 'ProtocolInfo',
+        target_protocol: 'ProtocolInfo',
+    ) -> TpyType | None:
+        """Infer target protocol's type arg from an arg protocol's method signatures.
+
+        E.g. Iterator[Int32] matching Iterable[T]: looks up Iterator's __iter__
+        method (returns Self = Iterator[Int32]), matches against Iterable's
+        __iter__ (returns Iterator[T]) to infer T = Int32.
+        """
+        # Build substitution for arg protocol: resolve Self and type params
+        arg_subst: dict[str, TpyType] = {"Self": arg_type}
+        if arg_protocol.type_params and arg_type.type_args:
+            arg_subst.update(dict(zip(arg_protocol.type_params, arg_type.type_args)))
+
+        inferred: dict[str, TpyType] = {}
+        for target_method in target_protocol.methods:
+            for arg_method in arg_protocol.methods:
+                if arg_method.name != target_method.name:
+                    continue
+                if len(arg_method.params) != len(target_method.params):
+                    continue
+                # Substitute arg protocol's type params + Self
+                resolved_ret = self.substitute_types(arg_method.return_type, arg_subst)
+                self.match_type_with_inference(
+                    target_method.return_type, resolved_ret, inferred)
+                for (_, target_ptype), (_, arg_ptype) in zip(
+                    target_method.params, arg_method.params
+                ):
+                    resolved_ptype = self.substitute_types(arg_ptype, arg_subst)
+                    self.match_type_with_inference(
+                        target_ptype, resolved_ptype, inferred)
+                break
+
+        # Returns only the first type param -- callers handle multi-param
+        # protocols via match_type_with_inference on the full type_args tuple.
+        first_param = target_protocol.type_params[0]
         return inferred.get(first_param)
 
     def _match_array_with_inference(

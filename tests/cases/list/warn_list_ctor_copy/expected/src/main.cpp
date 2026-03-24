@@ -15,7 +15,7 @@ void test_list_ctor_ref_type_warns() {
     // b: list[Node] = [Node(Int32(1))]
     std::vector<Node> b = {Node(1)};
     // a = list(b)  # tpyc: warning(/copies Node elements/)
-    std::vector<Node> a = ::tpy::from_range<std::vector<Node>>(b);
+    std::vector<Node> a = ::tpy::construct<std::vector<Node>>(b);
     // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
@@ -25,7 +25,7 @@ void test_list_ctor_value_type_no_warn() {
     // b: list[Int32] = [Int32(1), Int32(2)]
     std::vector<int32_t> b = {1, 2};
     // a = list(b)  # tpyc: ok
-    std::vector<int32_t> a = ::tpy::from_range<std::vector<int32_t>>(b);
+    std::vector<int32_t> a = ::tpy::construct<std::vector<int32_t>>(b);
     // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }
@@ -35,7 +35,7 @@ void test_list_ctor_copy_no_warn() {
     // b: list[Node] = [Node(Int32(1))]
     std::vector<Node> b = {Node(1)};
     // a = list(copy(b))  # tpyc: ok
-    std::vector<Node> a = ::tpy::from_range<std::vector<Node>>(std::vector<Node>(b));
+    std::vector<Node> a = ::tpy::construct<std::vector<Node>>(std::vector<Node>(b));
     // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }
@@ -45,7 +45,7 @@ void test_list_ctor_last_use_no_warn() {
     // b: list[Node] = [Node(Int32(1))]
     std::vector<Node> b = {Node(1)};
     // a = list(b)  # tpyc: ok -- b's last use
-    std::vector<Node> a = ::tpy::from_range<std::vector<Node>>(b);
+    std::vector<Node> a = ::tpy::construct<std::vector<Node>>(b);
     // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }
@@ -53,7 +53,7 @@ void test_list_ctor_last_use_no_warn() {
 // def test_list_ctor_rvalue_no_warn() -> None:
 void test_list_ctor_rvalue_no_warn() {
     // a = list(make_nodes())  # tpyc: ok
-    std::vector<Node> a = ::tpy::from_range<std::vector<Node>>(make_nodes());
+    std::vector<Node> a = ::tpy::construct<std::vector<Node>>(make_nodes());
     // b = list([Node(Int32(2))])  # tpyc: ok
     std::vector<Node> b = std::vector<Node>({Node(2)});
     // print(len(a))

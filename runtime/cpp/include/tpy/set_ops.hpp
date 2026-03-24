@@ -42,6 +42,17 @@ ordered_set<T> set_collect(Iter&& iter) {
     return result;
 }
 
+// set_construct -- unified set construction from any iterable.
+// Uses begin/end for std::ranges::input_range, __next__() otherwise.
+template<typename T, typename Arg>
+ordered_set<T> set_construct(Arg&& arg) {
+    if constexpr (std::ranges::input_range<std::remove_cvref_t<Arg>>) {
+        return set_from_range<T>(std::forward<Arg>(arg));
+    } else {
+        return set_collect<T>(std::forward<Arg>(arg));
+    }
+}
+
 // -- Copy -------------------------------------------------------------------
 
 template<typename T>

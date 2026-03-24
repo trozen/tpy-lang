@@ -12,7 +12,7 @@ void __tpy_init() {
     initialized = true;
 
     // result = list(Counter(5))
-    static std::vector<int32_t> __global_slot_1 = ::tpy::collect<std::vector<int32_t>>(Counter(5));
+    static std::vector<int32_t> __global_slot_1 = ::tpy::construct<std::vector<int32_t>>(Counter(5));
     result = &__global_slot_1;
     // print(result)
     std::cout << ::tpy::ListPrinter((*result)) << "\n";

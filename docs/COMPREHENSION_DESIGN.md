@@ -533,7 +533,7 @@ Generator expressions produce rvalue temporaries. Two mechanisms handle this:
    `is_temporary_expr` recognizes `TpyGeneratorExpression`, triggering temp
    hoisting (`auto __tmp_N = make_generator<T>(...);`).
 
-2. **Runtime functions** (`str_join`, `list_extend`, `from_range`, `dict_from_pairs`):
+2. **Runtime functions** (`str_join`, `list_extend`, `construct`, `dict_construct`):
    Non-range overloads in `iterable_ops.hpp` use forwarding references
    (`Container&&`) to accept both lvalues and rvalue temporaries directly.
 

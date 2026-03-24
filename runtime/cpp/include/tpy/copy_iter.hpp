@@ -31,8 +31,10 @@ struct CopyIter {
 
     CopyIter& __iter__() { return *this; }
 
-    // Minimal input iterator for codegen begin/end loops and from_range.
-    // Not a formal std::input_iterator (no default ctor, no operator==).
+    // Minimal input iterator for codegen begin/end loops (for-each).
+    // Not a formal std::input_iterator (no default ctor, no operator==),
+    // so CopyIter does NOT satisfy std::ranges::input_range. When passed
+    // to tpy::construct(), it routes through the __next__() (collect) path.
     struct Sentinel {};
     struct Iterator {
         CopyIter* parent;

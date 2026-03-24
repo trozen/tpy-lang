@@ -16,10 +16,10 @@ void main() {
     std::cout << consume(__tmp_2) << "\n";
     // # list() from inherited iterator
     // print(list(DoubleCounter(2)))
-    std::cout << ::tpy::ListPrinter(::tpy::collect<std::vector<int32_t>>(DoubleCounter(2))) << "\n";
+    std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(DoubleCounter(2))) << "\n";
     // # set() from inherited iterator
     // s = set(DoubleCounter(2))
-    ::tpy::ordered_set<int32_t> s = ::tpy::set_collect<int32_t>(DoubleCounter(2));
+    ::tpy::ordered_set<int32_t> s = ::tpy::set_construct<int32_t>(DoubleCounter(2));
     // print(len(s))
     std::cout << ::tpy::__len__(s) << "\n";
 }

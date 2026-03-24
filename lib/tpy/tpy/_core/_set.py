@@ -1,5 +1,4 @@
 # tpy: cpp_namespace("tpystd::builtins")
-from typing import overload
 from ._typing import Iterator, Iterable
 from tpy import Int32, Own, readonly, pure
 from ._types import NativeIterable
@@ -9,16 +8,9 @@ from tpy.extern import native, cpp_template, builtin_type
 @builtin_type("builtins.set")
 @native("tpy::ordered_set")
 class set[T](Iterable[T], NativeIterable[T]):
-    @overload
     @pure
     @readonly
-    @cpp_template("::tpy::set_collect<{T}>({0})")
-    def __init__(self, x: Iterator[T]) -> None: ...
-
-    @overload
-    @pure
-    @readonly
-    @cpp_template("::tpy::set_from_range<{T}>({0})")
+    @cpp_template("::tpy::set_construct<{T}>({0})")
     def __init__(self, x: Iterable[Own[T]]) -> None: ...
 
     @native("tpy::__iter__", function=True)

@@ -20,7 +20,7 @@
 | `auto_own` on `__iter__` for user collections | Blocked (needs `iter(Own[T])` generic builtin unwrap + protocol return type in for-loops) |
 | User-defined drain iterators (`ArrayListDrainIter`) | Planned |
 | Borrow tracking for view-type drain iterators | Planned (depends on view type tracking) |
-| Unify container constructor overloads (Iterator/Iterable) | Planned (needs structural protocol-to-protocol conformance; see TODO.md) |
+| Unified container constructors (`Iterable[Own[T]]`) | Done -- single `Iterable[Own[T]]` overload, C++ `if constexpr` dispatch |
 
 ---
 
@@ -406,10 +406,9 @@ for x in span(b):    # always borrows, x is Node reference
   fails because generic builtin type inference doesn't unwrap `Own[T]`.
   Also, protocol return types from user `__iter__` can't be iterated in
   for-loops.
-- **Constructor overload design**: list/set/dict use `Iterator[T]` vs
-  `Iterable[Own[T]]` overloads to dispatch C++ codegen (collect vs from_range).
-  Should be unified with structural protocol-to-protocol conformance.
-  See TODO.md.
+- **Constructor overloads unified**: list/set/dict now use a single
+  `Iterable[Own[T]]` constructor with C++ `if constexpr` dispatch. Structural
+  protocol-to-protocol conformance allows Iterator[T] to match Iterable[T].
 
 ---
 

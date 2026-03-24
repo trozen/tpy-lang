@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // # list() from genexpr
     // squares: list[Int32] = list(x * x for x in range(5))
-    std::vector<int32_t> squares = ::tpy::collect<std::vector<int32_t>>(::tpy::make_generator<int32_t>(
+    std::vector<int32_t> squares = ::tpy::construct<std::vector<int32_t>>(::tpy::make_generator<int32_t>(
         [&, __i = int32_t(0), __stop = static_cast<int32_t>(5)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
                 int32_t x = __i++;
@@ -36,7 +36,7 @@ void main() {
     std::cout << ::tpy::ListPrinter(items) << "\n";
     // # set() from genexpr
     // mods: set[Int32] = set(x % 3 for x in range(10))
-    ::tpy::ordered_set<int32_t> mods = ::tpy::set_collect<int32_t>(::tpy::make_generator<int32_t>(
+    ::tpy::ordered_set<int32_t> mods = ::tpy::set_construct<int32_t>(::tpy::make_generator<int32_t>(
         [&, __i = int32_t(0), __stop = static_cast<int32_t>(10)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
                 int32_t x = __i++;
@@ -49,7 +49,7 @@ void main() {
     std::cout << ::tpy::SetPrinter(mods) << "\n";
     // # dict() from genexpr of tuples
     // d: dict[str, Int32] = dict((str(x), x * x) for x in range(4))
-    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_collect_pairs<std::string, int32_t>(::tpy::make_generator<std::tuple<std::string, int32_t>>(
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::make_generator<std::tuple<std::string, int32_t>>(
         [&, __i = int32_t(0), __stop = static_cast<int32_t>(4)]() mutable -> std::optional<std::tuple<std::string, int32_t>> {
             while (__i < __stop) {
                 int32_t x = __i++;

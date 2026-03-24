@@ -18,14 +18,14 @@ void main() {
     std::cout << ::tpy::TuplePrinter(::tpy::__getitem__(points, 0)) << "\n";
     // # Dict from annotated list of tuples via constructor
     // d = dict[str, Int32](pairs)
-    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_from_pairs<std::string, int32_t>(pairs);
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(pairs);
     // print(d["a"], d["c"])
     std::cout << ::tpy::__getitem__(d, "a") << " " << ::tpy::__getitem__(d, "c") << "\n";
     // # Unannotated list of tuples (IntLiteralType resolved inside tuples)
     // raw = [("x", 10), ("y", 20)]
     std::array<std::tuple<std::string, int32_t>, 2> raw = {std::tuple<std::string, int32_t>{"x", 10}, std::tuple<std::string, int32_t>{"y", 20}};
     // d2 = dict[str, Int32]((k, v) for k, v in raw)
-    ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::dict_collect_pairs<std::string, int32_t>([&]() {
+    ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::dict_construct<std::string, int32_t>([&]() {
         auto& __src = raw;
         return ::tpy::make_generator<std::tuple<std::string, int32_t>>(
             [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::tuple<std::string, int32_t>> {

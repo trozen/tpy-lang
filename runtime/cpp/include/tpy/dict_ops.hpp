@@ -49,6 +49,17 @@ ordered_map<K, V> dict_collect_pairs(Iter&& iter) {
     return result;
 }
 
+// dict_construct -- unified dict construction from any iterable of pairs.
+// Uses begin/end for std::ranges::input_range, __next__() otherwise.
+template<typename K, typename V, typename Arg>
+ordered_map<K, V> dict_construct(Arg&& arg) {
+    if constexpr (std::ranges::input_range<std::remove_cvref_t<Arg>>) {
+        return dict_from_pairs<K, V>(std::forward<Arg>(arg));
+    } else {
+        return dict_collect_pairs<K, V>(std::forward<Arg>(arg));
+    }
+}
+
 // -- Methods ----------------------------------------------------------------
 
 // d.get(key) -> V* (nullptr if missing, pointer into the map)

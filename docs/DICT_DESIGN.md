@@ -419,12 +419,14 @@ d = dict(pairs)              # from list of tuples
 d2 = dict(other.items())     # from items view
 ```
 
-Accepts any `NativeIterable[tuple[K, V]]` or `Iterator[tuple[K, V]]`.
-K and V are inferred from the element type of the iterable.
+Accepts any `Iterable[Own[tuple[K, V]]]` (including iterators, which
+structurally satisfy Iterable). K and V are inferred from the element type.
 
-C++ implementation: `dict_from_pairs` (range-based) and `dict_collect_pairs`
-(Iterator-based) in `dict_ops.hpp`. Uses `std::get<0>`/`std::get<1>` to
-destructure tuples, then `insert_or_assign` into the target `ordered_map`.
+C++ implementation: `dict_construct` in `dict_ops.hpp` dispatches at compile
+time via `if constexpr (std::ranges::input_range)` -- uses `dict_from_pairs`
+(begin/end) for ranges, `dict_collect_pairs` (__next__) for iterators. Both
+use `std::get<0>`/`std::get<1>` to destructure tuples, then
+`insert_or_assign` into the target `ordered_map`.
 
 Sema changes: `match_type_with_inference` now handles compound protocol type_args
 (e.g., `NativeIterable[tuple[K, V]]`) by recursively matching through TupleType.

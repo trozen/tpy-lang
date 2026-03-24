@@ -153,4 +153,22 @@ Container collect(Iter&& iter) {
     return result;
 }
 
+/**
+ * construct<Container> - Unified container construction from any iterable.
+ *
+ * Dispatches at compile time: uses begin/end iteration for types that
+ * satisfy std::ranges::input_range, falls back to __next__() protocol
+ * for user-defined iterators.
+ *
+ * Usage: tpy::construct<std::vector<int>>(some_iterable)
+ */
+template<typename Container, typename Arg>
+Container construct(Arg&& arg) {
+    if constexpr (std::ranges::input_range<std::remove_cvref_t<Arg>>) {
+        return from_range<Container>(std::forward<Arg>(arg));
+    } else {
+        return collect<Container>(std::forward<Arg>(arg));
+    }
+}
+
 } // namespace tpy

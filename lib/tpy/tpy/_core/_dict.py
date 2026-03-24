@@ -66,16 +66,9 @@ class dict_items[K, V](Iterable[tuple[K, V]], NativeIterable[tuple[K, V]]):
 @builtin_type("builtins.dict")
 @native("tpy::ordered_map")
 class dict[K, V](Iterable[K], NativeIterable[K]):
-    @overload
     @pure
     @readonly
-    @cpp_template("::tpy::dict_collect_pairs<{K}, {V}>({0})")
-    def __init__(self, x: Iterator[tuple[K, V]]) -> None: ...
-
-    @overload
-    @pure
-    @readonly
-    @cpp_template("::tpy::dict_from_pairs<{K}, {V}>({0})")
+    @cpp_template("::tpy::dict_construct<{K}, {V}>({0})")
     def __init__(self, x: Iterable[Own[tuple[K, V]]]) -> None: ...
 
     @native("tpy::__iter__", function=True)

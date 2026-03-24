@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 template<typename T>
 void test_list_ctor_generic_warns(const std::vector<T>& b) {
     // a = list(b)  # tpyc: warning(/may copy T elements/)
-    std::vector<T> a = ::tpy::from_range<std::vector<T>>(b);
+    std::vector<T> a = ::tpy::construct<std::vector<T>>(b);
     // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }

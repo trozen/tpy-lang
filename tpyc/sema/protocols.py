@@ -357,24 +357,30 @@ class ProtocolChecker:
             if protocol_info is None:
                 return False
 
-            # Build type substitution map for generic protocols
-            type_subst: dict[str, TpyType] = {}
+            # Build type substitution map for generic protocols.
+            # Include Self so that methods returning Self (e.g. Iterator.__iter__)
+            # resolve to the concrete protocol type (e.g. Iterator[Int32]).
+            type_subst: dict[str, TpyType] = {"Self": actual}
             if protocol_info.type_params and actual.type_args:
-                type_subst = dict(zip(protocol_info.type_params, actual.type_args))
+                type_subst.update(dict(zip(protocol_info.type_params, actual.type_args)))
 
             for method_sig in protocol_info.methods:
                 if method_sig.name == method_name:
                     if require_readonly and not (method_sig.is_readonly or protocol_info.is_readonly):
                         return False
                     # Resolve types with substitution
-                    resolved_return = self.type_ops.substitute_types(method_sig.return_type, type_subst) if type_subst else method_sig.return_type
-                    if resolved_return != expected_return:
+                    resolved_return = self.type_ops.substitute_types(method_sig.return_type, type_subst)
+                    if not self._protocol_type_matches(resolved_return, expected_return):
                         return False
                     if len(method_sig.params) != len(expected_params):
                         return False
                     for (_, actual_ptype), expected_ptype in zip(method_sig.params, expected_params):
-                        resolved_ptype = self.type_ops.substitute_types(actual_ptype, type_subst) if type_subst else actual_ptype
-                        if resolved_ptype != expected_ptype:
+                        resolved_ptype = self.type_ops.substitute_types(actual_ptype, type_subst)
+                        # Params use equality (not _protocol_type_matches which is
+                        # covariant). Only unwrap Own/Readonly wrappers.
+                        cmp_actual = resolved_ptype.wrapped if isinstance(resolved_ptype, (OwnType, ReadonlyType)) else resolved_ptype
+                        cmp_expected = expected_ptype.wrapped if isinstance(expected_ptype, (OwnType, ReadonlyType)) else expected_ptype
+                        if cmp_actual != cmp_expected:
                             return False
                     return True
             return False
