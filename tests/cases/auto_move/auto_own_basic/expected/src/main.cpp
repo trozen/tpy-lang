@@ -31,6 +31,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # auto_own[Self] generates borrowing + consuming overloads from a single method.
+    // # The consuming clone gets self: Own[Self] and auto_own[T] -> Own[T] in return type.
+    // # Ownership propagates through field access: self.field is Own[T] in the consuming clone.
+    // from typing import Self
     // test_borrowing()
     test_borrowing();
     // test_consuming()

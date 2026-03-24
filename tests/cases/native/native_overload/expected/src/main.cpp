@@ -19,6 +19,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # @overload + @native: stub-only overload groups with different C++ targets
+    // from typing import overload
     // from tpy.extern import native
     // main()
     main();

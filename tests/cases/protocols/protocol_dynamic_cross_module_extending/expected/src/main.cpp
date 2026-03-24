@@ -48,6 +48,7 @@ void __tpy_init() {
     // # Tests that NamedPet base class inherits from the qualified ::tpyapp::pet::Pet.
     // from pet import Pet
     ::tpyapp::pet::__tpy_init();
+    // from typing import Protocol
     // main()
     main();
 }

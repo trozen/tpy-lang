@@ -1,6 +1,5 @@
 # tpy: cpp_namespace("tpystd::builtins")
-from typing import overload
-from ._typing import Sized, Iterator, Iterable
+from ._typing import overload, Sized, Iterator, Iterable
 from tpy import Own
 from ._decorators import readonly, pure, error_return
 from ._types import (
@@ -8,7 +7,7 @@ from ._types import (
     Char, String, StrView, Float32, AnyFixedInt,
     Hashable, Representable, Stringable, NativeIterable, Truthy, Comparable, Equatable,
 )
-from tpy.extern import native, cpp_template, builtin_type
+from ._extern import native, cpp_template, builtin_type
 
 
 @pure

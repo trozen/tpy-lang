@@ -419,6 +419,7 @@ class Parser:
         """Resolve annotation name -> (module, original_name) or None.
 
         Checks imports first, then tpy star import, then Python builtins.
+        Falls back to @builtin_type registry for locally-defined stubs.
         """
         source = self._imports.get_import_source(local_name)
         if source:
@@ -429,6 +430,13 @@ class Parser:
 
         if local_name in PYTHON_BUILTINS:
             return ("builtins", local_name)
+
+        # Check for @builtin_type("module.Name") defined locally in this file
+        builtin_key = self.registry.get_builtin_type_key(local_name)
+        if builtin_key:
+            parts = builtin_key.rsplit(".", 1)
+            if len(parts) == 2:
+                return (parts[0], parts[1])
 
         return None
 
@@ -692,7 +700,8 @@ class Parser:
                     self.registry.register_record(RecordInfo(
                         name=result.name,
                         fields=result.fields,
-                        has_init=result.init_method is not None or result.is_dataclass
+                        has_init=result.init_method is not None or result.is_dataclass,
+                        builtin_type_key=result.builtin_type_key,
                     ))
             elif isinstance(node, ast.FunctionDef):
                 seen_non_import = True

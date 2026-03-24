@@ -1,11 +1,10 @@
 # tpy: cpp_namespace("tpystd::builtins")
-from typing import overload, Self
-from ._typing import Iterator, Iterable
+from ._typing import overload, Self, Iterator, Iterable
 from tpy import Own
 from ._decorators import readonly, pure
 from ._types import Int32, Equatable, Comparable, NativeIterable, NativeRangeConstructible, ReadOnlySpanLike
 from ._containers import Span
-from tpy.extern import native, cpp_template, native_preserves_refs, builtin_type
+from ._extern import native, cpp_template, native_preserves_refs, builtin_type
 
 
 @builtin_type("builtins.list")

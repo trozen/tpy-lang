@@ -1,10 +1,9 @@
 # tpy: cpp_namespace("tpystd::builtins")
-from typing import overload
-from ._typing import Iterator, Iterable
+from ._typing import overload, Iterator, Iterable
 from tpy import Own
 from ._decorators import readonly, pure
 from ._types import Int32, NativeIterable
-from tpy.extern import native, cpp_template, native_preserves_refs, builtin_type
+from ._extern import native, cpp_template, native_preserves_refs, builtin_type
 
 
 @builtin_type("builtins.dict_keys")

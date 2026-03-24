@@ -56,6 +56,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # @overload stubs with different return types per variant
+    // from typing import overload
     // main()
     main();
 }

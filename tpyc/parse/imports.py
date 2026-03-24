@@ -26,9 +26,27 @@ PARSER_KEYWORDS: dict[str, frozenset[str] | None] = {
         "readonly", "noalloc", "nocopy", "dynamic", "pure",
         "auto_readonly", "auto_own", "error_return",
     }),
+    # tpy.extern is NOT listed here to avoid changing import processing for user code.
+    # Extern keyword names are checked via _EXTERN_KEYWORDS in is_parser_keyword().
     "builtins": None,
     "__future__": None,  # no-op, never resolved as .py
-    "typing": frozenset({"Protocol", "Optional", "Final", "overload", "override", "Self", "Callable"}),
+    "typing": frozenset({"Optional", "Final", "Callable"}),
+}
+
+# Extern decorator names: parser keywords from tpy.extern.
+# Kept separate from PARSER_KEYWORDS to avoid changing import processing
+# behavior for user code that imports from tpy.extern.
+_EXTERN_KEYWORDS = frozenset({
+    "native", "native_c", "extern_c", "cpp_template",
+    "builtin_type", "value_ptr_coercion", "native_preserves_refs",
+})
+
+# Private submodule -> public module name overrides.
+# Used when public_module_name() can't derive the correct public name
+# (e.g. tpy._core._extern maps to tpy.extern, not tpy).
+_PRIVATE_MODULE_PUBLIC_NAMES: dict[str, str] = {
+    "tpy._core._extern": "tpy.extern",
+    "tpy._core._typing": "typing",
 }
 
 # Types from tpy that require explicit import (used for error messages)
@@ -75,9 +93,11 @@ def is_parser_keyword(module_name: str, name: str) -> bool:
         return True  # None means all names are keywords
     if kw is not None:
         return name in kw
-    # For private submodules, check the public parent module
+    # For private submodules, check the public module name
     if "._" in module_name:
-        pub = public_module_name(module_name)
+        pub = _PRIVATE_MODULE_PUBLIC_NAMES.get(module_name) or public_module_name(module_name)
+        if pub == "tpy.extern":
+            return name in _EXTERN_KEYWORDS
         if pub != module_name:
             return is_parser_keyword(pub, name)
     return False
@@ -118,7 +138,7 @@ class ImportProcessor:
             absolute = ".".join(parent_parts + [decoded.partial])
         else:
             absolute = ".".join(parent_parts)
-        return public_module_name(absolute)
+        return _PRIVATE_MODULE_PUBLIC_NAMES.get(absolute) or public_module_name(absolute)
 
     def get_import_source(self, local_name: str) -> tuple[str, str] | None:
         """Find source module and original name for an imported name.

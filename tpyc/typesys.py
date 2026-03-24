@@ -2849,6 +2849,15 @@ class RecordInfo:
     has_copy: bool = False          # True if class defines __copy__ (custom copy semantics)
     builtin_type_key: str | None = None  # e.g. "builtins.list" -- links .py class to type_factory
 
+    @property
+    def is_keyword_stub(self) -> bool:
+        """True for @builtin_type stubs with no methods or fields.
+
+        These exist only for parser/import resolution (e.g. typing.Protocol,
+        typing.overload) and should not generate C++ code.
+        """
+        return self.builtin_type_key is not None and not self.methods and not self.fields
+
     def get_method(self, name: str) -> Optional['FunctionInfo']:
         """Get first overload of a method (for single-overload cases)."""
         overloads = self.methods.get(name)
@@ -3128,6 +3137,11 @@ class TypeRegistry:
     def register_builtin_record(self, qname: str, info: RecordInfo) -> None:
         """Register a builtin type's RecordInfo by its qualified name."""
         self._qname_index[qname] = info
+
+    def get_builtin_type_key(self, name: str) -> str | None:
+        """Get the @builtin_type key for a locally-registered record, if any."""
+        record = self.records.get(name)
+        return record.builtin_type_key if record else None
 
     def register_function(self, info: FunctionInfo, name: str | None = None) -> None:
         """Register a single function (wraps in a list)."""

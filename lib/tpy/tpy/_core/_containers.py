@@ -1,9 +1,8 @@
 # tpy: cpp_namespace("tpystd::tpy")
-from typing import overload, Self
-from ._typing import Iterator, Iterable
+from ._typing import overload, Self, Iterator, Iterable
 from tpy import Own, Span, Ptr
 from ._decorators import readonly, pure, nocopy
-from tpy.extern import native, cpp_template, builtin_type
+from ._extern import native, cpp_template, builtin_type
 from ._types import Int32, Comparable, Deref, ReadOnlySpanLike, NativeIterable
 
 

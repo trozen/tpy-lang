@@ -116,6 +116,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # @overload return coercion: sema coerces against impl's union return type,
+    // # but codegen must strip wrong-target coercions for each stub.
+    // # Tests multiple numeric/string coercion paths.
+    // from typing import overload
     // main()
     main();
 }

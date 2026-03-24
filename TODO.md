@@ -9,7 +9,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 - drop builtin types, like RangeType
 - Move type resolution from parser to sema: parser still creates canonical types (FixedIntType etc.) via `_resolve_primitive_type` for `from tpy import` names. Future: sema resolution pass so parser only creates NamedType and sema resolves via @builtin_type factories. Blocked on types appearing everywhere in AST (expressions, constructor calls, etc.) -- needs comprehensive AST walker or lazy normalization.
-- Create `_core/_extern.py` stubs for native/cpp_template/builtin_type (currently still `from tpy.extern import`)
+- Define decorators as .py functions: readonly/noalloc/nocopy/pure/dynamic/error_return (tpy), native/cpp_template/builtin_type (tpy.extern), overload/override (typing) are currently parser keywords with empty stub files. Want them as real function definitions eventually so the parser doesn't need special handling. Blocked on: functions need type annotations to compile, and decorator signatures have no meaningful type (identity function over any callable).
 - limit possible imports in macro modules
 - ContextManager[T] protocol
 

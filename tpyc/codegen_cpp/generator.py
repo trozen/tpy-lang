@@ -97,6 +97,12 @@ class CodeGenerator:
         """
         self.ctx.module_name = module_name
         self.ctx.source_lines = module.source_lines
+        # Filter out keyword stubs (@builtin_type classes with no methods/fields
+        # that exist only for import resolution -- no C++ code needed).
+        module.records = [
+            r for r in module.records
+            if not (ri := self.analyzer.registry.get_record(r.name)) or not ri.is_keyword_stub
+        ]
         # Populate native C++ name mappings for this module's codegen.
         # Must include both own records and imported records so NamedType.to_cpp()
         # resolves correctly in all type positions (Ptr[Rect] -> SDL_Rect*, etc.)
@@ -134,7 +140,10 @@ class CodeGenerator:
             self.ctx.all_user_modules = set(module.user_module_imports.keys())
         self.ctx.implicit_stdlib_modules = implicit_stdlib_modules or set()
         self.ctx.user_imported_functions = dict(self.analyzer.ctx.user_imported_functions)
-        self.ctx.user_imported_records = dict(self.analyzer.ctx.user_imported_records)
+        self.ctx.user_imported_records = {
+            k: v for k, v in self.analyzer.ctx.user_imported_records.items()
+            if not (ri := self.analyzer.registry.get_record(k)) or not ri.is_keyword_stub
+        }
         self.ctx.user_imported_protocols = dict(self.analyzer.ctx.user_imported_protocols)
         self.ctx.user_imported_variables = dict(self.analyzer.ctx.user_imported_variables)
         self.ctx.user_imported_type_aliases = dict(self.analyzer.ctx.user_imported_type_aliases)
@@ -705,12 +714,12 @@ class CodeGenerator:
             if any_written:
                 hpp.write("\n")
 
-        # Re-exported records (skip native records -- they map to existing C++ types)
+        # Re-exported records (skip native records and @builtin_type stubs)
         if self.ctx.reexported_records:
             any_written = False
             for local_name, (source_module, original_name) in sorted(self.ctx.reexported_records.items()):
                 record_info = self.analyzer.registry.get_record(original_name)
-                if record_info and record_info.is_native:
+                if record_info and (record_info.is_native or record_info.is_keyword_stub):
                     continue
                 qualified = qualified_cpp_name(source_module, original_name)
                 if local_name == original_name:

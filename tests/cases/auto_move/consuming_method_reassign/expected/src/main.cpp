@@ -27,6 +27,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Test that reassigning a consumed variable revives it.
+    // from typing import Self
     // main()
     main();
 }

@@ -3,7 +3,7 @@ from ._typing import Iterator, Iterable
 from tpy import Own
 from ._decorators import readonly, pure
 from ._types import Int32, NativeIterable
-from tpy.extern import native, cpp_template, builtin_type
+from ._extern import native, cpp_template, builtin_type
 
 
 @builtin_type("builtins.set")

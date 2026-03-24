@@ -48,6 +48,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Custom covariant generic -- verifies converting move constructor generates
+    // # std::move on fields, and correct friend declaration for 2-type-param generic.
+    // from typing import Protocol
     // from tpy.unsafe import unsafe_alloc, unsafe_init, unsafe_drop, unsafe_free
     // main()
     main();

@@ -1,7 +1,20 @@
 # tpy: cpp_namespace("tpystd::typing")
-from typing import Protocol, Self
 from tpy import Int32
 from ._decorators import readonly
+from ._extern import builtin_type
+
+
+@builtin_type("typing.Protocol")
+class Protocol: ...
+
+@builtin_type("typing.Self")
+class Self: ...
+
+@builtin_type("typing.overload")
+class overload: ...
+
+@builtin_type("typing.override")
+class override: ...
 
 
 class Sized(Protocol):

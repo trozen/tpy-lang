@@ -48,6 +48,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Box[Child] -> Box[Parent] covariant coercion via Covariant[T] marker.
+    // # Tests: function arg, variable assignment, return value.
+    // from typing import Protocol
     // from tplib import Box
     ::tpystd::tplib::__tpy_init();
     // main()

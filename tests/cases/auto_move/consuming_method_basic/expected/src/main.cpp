@@ -22,6 +22,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Test consuming methods (self: Own[Self]) -- basic happy path.
+    // from typing import Self
     // main()
     main();
 }

@@ -43,6 +43,7 @@ void __tpy_init() {
     initialized = true;
 
   static std::optional<Cat> __global_slot_1;
+    // from typing import Protocol
     // global_pet: Pet = Cat()
     __global_slot_1.emplace(Cat());
     global_pet = &*__global_slot_1;
