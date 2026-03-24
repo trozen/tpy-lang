@@ -18,7 +18,7 @@ from ..typesys import (
     TypeParamRef, OptionalType, VoidType, make_union, EnumType, TupleType, FnType, CallableType,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BOOL, FLOAT, FLOAT32, BIGINT, SELF, SLICE, FieldInfo, RecordInfo, TypeRegistry,
     MethodSignature, ProtocolInfo, TypeParamKind,
-    INT8, INT16, INT64, UINT8, UINT16, UINT32, UINT64, ALL_FIXED_INTS,
+    ALL_FIXED_INTS, public_module_name,
 )
 from ..modules import lookup_generic_type, lookup_generic_type_in_module, lookup_protocol as lookup_builtin_protocol, BuiltinTypeDef
 from .nodes import (
@@ -46,7 +46,7 @@ from .imports import (
     PYTHON_BUILTINS, TYPING_NAMES, TPY_TYPE_NAMES, TPY_TYPES,
 )
 
-# Map of fixed-int type names to their singleton instances
+# Map of fixed-int type names to their singleton instances (used for expression inference)
 _FIXED_INT_MAP: dict[str, TpyType] = {str(t): t for t in ALL_FIXED_INTS}
 
 
@@ -526,6 +526,12 @@ class Parser:
         """Raise a helpful error for unresolved type names with import hints."""
         if raw_name in TYPING_NAMES:
             raise ParseError(f"'{raw_name}' requires: from typing import {raw_name}", node)
+        # In stdlib _core modules, unresolved uppercase names may be forward
+        # references to types defined later in the same file. Let them through.
+        mod = self._imports._module_name
+        if mod and "._" in mod and raw_name[0].isupper():
+            if public_module_name(mod) in PARSER_KEYWORDS:
+                return
         if raw_name in TPY_TYPES:
             raise ParseError(f"'{raw_name}' requires: from tpy import {raw_name}", node)
 
@@ -551,11 +557,11 @@ class Parser:
             return True
         return False
 
-    def parse(self, source: str) -> TpyModule:
+    def parse(self, source: str, module_name: str | None = None) -> TpyModule:
         """Parse TurboPython source code into a TpyModule."""
         self.source_lines = source.splitlines()
         self._warnings = []
-        self._imports = ImportProcessor(self._warn)
+        self._imports = ImportProcessor(self._warn, module_name=module_name)
         self._module_aliases = {}
         self._bare_module_imports = set()
         self._reverse_module_aliases = {}
@@ -576,9 +582,9 @@ class Parser:
         resolved = self._resolve_type_name(name)
         if resolved:
             original = resolved[1]
-            if original in self._BUILTIN_TYPE_NAMES or original in _FIXED_INT_MAP:
+            if original in self._BUILTIN_TYPE_NAMES or original in TPY_TYPES:
                 return True
-            if original == "Char" or original == "Self":
+            if original == "Self":
                 return True
         # Also check registry directly for user-defined types
         return self.registry.is_known_type(name)
@@ -1966,9 +1972,6 @@ class Parser:
                         if isinstance(inner, ReadonlyType):
                             return PtrType(inner.wrapped, is_readonly=True)
                         return PtrType(inner)
-                    elif original == "ReadOnlyPtr":
-                        inner = self._parse_type_annotation(node.slice, type_param_scope)
-                        return PtrType(inner, is_readonly=True)
                     elif original == "Own":
                         inner = self._parse_type_annotation(node.slice, type_param_scope)
                         return OwnType(inner)

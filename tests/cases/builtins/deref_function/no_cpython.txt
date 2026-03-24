@@ -1,1 +1,1 @@
-Ptr/ReadOnlyPtr are C++ pointer types
+Ptr are C++ pointer types

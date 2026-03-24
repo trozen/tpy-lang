@@ -1,1 +1,1 @@
-Uses Ptr/ReadOnlyPtr constructors with array element addresses
+Uses Ptr constructors with array element addresses

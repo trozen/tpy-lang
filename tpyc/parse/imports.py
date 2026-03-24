@@ -11,23 +11,18 @@ from .nodes import (
     ParseError, SourceLocation, RelativeImportKey,
     TpyImport, ParseWarning,
 )
+from ..typesys import public_module_name
 
 
 # Names that the parser must resolve during parsing (compiler intrinsics).
-# Other names from these modules can come from .py files via normal module resolution.
-# Modules not listed here are always resolved as user files.
+# Most tpy names are now defined in .py stubs and resolved via normal imports.
+# Only type constructors without .py definitions remain as parser keywords.
 PARSER_KEYWORDS: dict[str, frozenset[str] | None] = {
     # None means ALL names are parser keywords (module cannot be shadowed by .py)
     "tpy": frozenset({
-        # Types used in annotations at parse time
-        "Int8", "Int16", "Int32", "Int64",
-        "UInt8", "UInt16", "UInt32", "UInt64",
-        "Float32",
-        "Array", "Span", "SpanIter", "Ptr", "Own", "Char",
-        "String", "StrView", "ReadOnlyPtr",
-        # Callable types
-        "Fn",
-        # Decorators/modifiers
+        # Type constructors with special parser handling (no .py definitions)
+        "Own", "Fn",
+        # Decorators/type modifiers (consumed at parse time, not .py-defined types)
         "readonly", "noalloc", "nocopy", "dynamic", "pure",
         "auto_readonly", "auto_own", "error_return",
     }),
@@ -36,15 +31,14 @@ PARSER_KEYWORDS: dict[str, frozenset[str] | None] = {
     "typing": frozenset({"Protocol", "Optional", "Final", "overload", "override", "Self", "Callable"}),
 }
 
-# Types from tpy that require explicit import (not auto-available like Python builtins)
-# Python builtins (int, str, bool, list, float, None) remain auto-available
+# Types from tpy that require explicit import (used for error messages)
 TPY_TYPES = {
     "Int8", "Int16", "Int32", "Int64",  # Signed fixed-width integers
     "UInt8", "UInt16", "UInt32", "UInt64",  # Unsigned fixed-width integers
     "Float32", "Float64",  # Explicit-width float types
     "Char",  # Character type
     "Span", "Array",  # Container types
-    "Ptr", "ReadOnlyPtr", "Own",  # Pointer types (ReadOnlyPtr is a deprecated alias for Ptr[readonly[T]])
+    "Ptr", "Own",  # Pointer types
     "Fn",  # Callable types
     "Hashable", "Comparable", "Deref", "Default",  # Protocols (user-facing)
     "Truthy", "Stringable", "Representable",  # Protocols (less common)
@@ -56,8 +50,12 @@ PYTHON_BUILTINS = frozenset({"int", "float", "bool", "str", "None", "tuple", "sl
 # Names from typing that require explicit import
 TYPING_NAMES = frozenset({"Optional", "Protocol", "Self", "Sized", "Sequence", "MutableSequence", "Iterator", "Iterable", "Final", "override", "overload", "Callable"})
 
-# All tpy type names (union of TPY_TYPES + decorators/modifiers)
-TPY_TYPE_NAMES = TPY_TYPES | {"Char", "readonly", "noalloc", "nocopy", "dynamic", "pure", "auto_readonly", "auto_own", "error_return"}
+# All tpy type names available via `from tpy import *` (types + decorators/modifiers)
+TPY_TYPE_NAMES = TPY_TYPES | {
+    "String", "StrView", "SpanIter",
+    "readonly", "noalloc", "nocopy", "dynamic", "pure",
+    "auto_readonly", "auto_own", "error_return",
+}
 
 
 def is_parser_keyword_module(module_name: str) -> bool:
@@ -70,12 +68,18 @@ def is_parser_keyword(module_name: str, name: str) -> bool:
 
     Returns True if the name must be handled by the parser (not from .py files).
     For modules with PARSER_KEYWORDS[mod] = None, ALL names are keywords.
+    For private submodules (e.g. tpy._core._decorators), checks the public parent.
     """
     kw = PARSER_KEYWORDS.get(module_name)
     if kw is None and module_name in PARSER_KEYWORDS:
         return True  # None means all names are keywords
     if kw is not None:
         return name in kw
+    # For private submodules, check the public parent module
+    if "._" in module_name:
+        pub = public_module_name(module_name)
+        if pub != module_name:
+            return is_parser_keyword(pub, name)
     return False
 
 
@@ -86,20 +90,42 @@ class ImportProcessor:
     from pure syntax parsing.
     """
 
-    def __init__(self, warn_fn):
+    def __init__(self, warn_fn, module_name: str | None = None):
         self._warn = warn_fn
+        self._module_name = module_name
         self.tpy_import_aliases: dict[str, str] = {}
         self.tpy_star_import: bool = False
         # Reference to the module's imports dict, set during process_import_from.
         # Used by the parser for type resolution of imported builtin submodule types.
         self.imports: dict[str, set[tuple[str, str]] | None | str] | None = None
 
+    def _resolve_placeholder_module(self, key: str) -> str:
+        """Resolve a relative import placeholder to a public module name.
+
+        Uses the current module_name to compute the absolute path, then
+        applies public_module_name to map private submodules to public parents.
+        Falls back to the raw key if module_name is not set.
+        """
+        if not self._module_name:
+            return key
+        decoded = RelativeImportKey.decode(key)
+        parts = self._module_name.split(".")
+        # Go up 'level' directories from current module
+        if decoded.level > len(parts):
+            return key
+        parent_parts = parts[:-decoded.level]
+        if decoded.partial:
+            absolute = ".".join(parent_parts + [decoded.partial])
+        else:
+            absolute = ".".join(parent_parts)
+        return public_module_name(absolute)
+
     def get_import_source(self, local_name: str) -> tuple[str, str] | None:
         """Find source module and original name for an imported name.
 
         Returns (module_name, original_name) or None.
-        E.g. for 'from tpy.mem import UninitArrayStorage as U':
-            get_import_source('U') -> ('tpy.mem', 'UninitArrayStorage')
+        For relative imports from private submodules, the module name is
+        resolved to the public parent (e.g. tpy._core._types -> tpy).
         """
         if self.imports is None:
             return None
@@ -107,6 +133,9 @@ class ImportProcessor:
             if isinstance(names, set):
                 for original, local in names:
                     if local == local_name:
+                        if RelativeImportKey.is_placeholder(module_name):
+                            resolved = self._resolve_placeholder_module(module_name)
+                            return (resolved, original)
                         return (module_name, original)
         return None
 

@@ -1,6 +1,7 @@
 # tpy: cpp_namespace("tpystd::typing")
 from typing import Protocol, Self
-from tpy import Int32, readonly
+from tpy import Int32
+from ._decorators import readonly
 
 
 class Sized(Protocol):

@@ -1,7 +1,8 @@
 # tpy: cpp_namespace("tpystd::builtins")
 from ._typing import Iterator, Iterable
-from tpy import Int32, Own, readonly, pure
-from ._types import NativeIterable
+from tpy import Own
+from ._decorators import readonly, pure
+from ._types import Int32, NativeIterable
 from tpy.extern import native, cpp_template, builtin_type
 
 

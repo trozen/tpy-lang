@@ -18,6 +18,9 @@ from ._core import (
     Span, Array, Ptr, SpanIter,
     # Functions
     span, deref, take_ptr, make_default,
+    # Decorators / type modifiers
+    readonly, noalloc, nocopy, pure, dynamic,
+    auto_readonly, auto_own, error_return,
 )
 
 type Float64 = float

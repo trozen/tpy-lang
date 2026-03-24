@@ -1,1 +1,1 @@
-Ptr/ReadOnlyPtr constructors are not supported by CPython harness
+Ptr constructors are not supported by CPython harness

@@ -1,16 +1,14 @@
 # tpy: cpp_namespace("tpystd::builtins")
 from typing import overload
 from ._typing import Sized, Iterator, Iterable
-from tpy import (
-    Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64,
-    Char, String, StrView, Float32, Own, readonly, pure,
-)
+from tpy import Own
+from ._decorators import readonly, pure, error_return
 from ._types import (
-    AnyFixedInt,
+    Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64,
+    Char, String, StrView, Float32, AnyFixedInt,
     Hashable, Representable, Stringable, NativeIterable, Truthy, Comparable, Equatable,
 )
 from tpy.extern import native, cpp_template, builtin_type
-from tpy import error_return
 
 # Range type and range() function
 @builtin_type("builtins.Range")

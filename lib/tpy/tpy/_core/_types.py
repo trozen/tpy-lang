@@ -2,10 +2,12 @@
 from typing import overload, Protocol, Self
 from ._typing import Iterator, Iterable, Sized
 from tpy import (
-    UInt64, Int32, Own, Span, Ptr, readonly, pure, nocopy,
-    Float32, Int8, Int16, Int64, UInt8, UInt16, UInt32,
+    Own, Span, Ptr,
+    # Primitive types used in method signatures (forward references within this file)
+    UInt64, Int32, Float32, Int8, Int16, Int64, UInt8, UInt16, UInt32,
     Char, String, StrView,
 )
+from ._decorators import readonly, pure, nocopy
 from tpy.extern import native, cpp_template, builtin_type, value_ptr_coercion
 
 

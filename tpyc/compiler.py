@@ -632,7 +632,7 @@ class Compiler:
         if self._source_input is not None:
             source, entry_name = self._source_input
             parser = Parser()
-            ast = parser.parse(source)
+            ast = parser.parse(source, module_name=entry_name)
             self.modules[entry_name] = CompiledModule(
                 name=entry_name,
                 path=Path("<stdin>"),
@@ -744,7 +744,7 @@ class Compiler:
         # Parse the module
         parser = Parser()
         try:
-            ast = parser.parse(source)
+            ast = parser.parse(source, module_name=module_name)
         except ParseError as e:
             raise CompileError(e.message, module_name, path, lineno=e.lineno)
 
