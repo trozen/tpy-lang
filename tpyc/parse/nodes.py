@@ -611,6 +611,7 @@ class TpyForEach(TpyStmt):
     is_tuple_unpack: bool = False  # set by parser: synthetic loop var for tuple destructuring
     const_loop_var: bool = False  # set by sema: loop var is never mutated, safe for const auto&
     hoist_loop_var: bool = False  # set by sema: loop var used after loop, needs pre-declaration
+    consuming_iter_fi: 'FunctionInfo | None' = None  # set by sema: consuming __iter__ overload at last use
 
     def exprs(self) -> list[TpyExpr]:
         return [self.iterable]

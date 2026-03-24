@@ -29,7 +29,7 @@ void test_extend_value_type_no_warn() {
     // b: list[Int32] = [Int32(1)]
     std::vector<int32_t> b = {1};
     // a.extend(b)  # tpyc: ok
-    ::tpy::list_extend(a, b);
+    ::tpy::list_extend(a, tpy::own_iter(std::move(b)));
     // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }
@@ -53,7 +53,7 @@ void test_extend_last_use_no_warn() {
     // b: list[Node] = [Node(Int32(1))]
     std::vector<Node> b = {Node(1)};
     // a.extend(b)  # tpyc: ok -- b's last use
-    ::tpy::list_extend(a, b);
+    ::tpy::list_extend(a, tpy::own_iter(std::move(b)));
     // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }

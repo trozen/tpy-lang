@@ -19,11 +19,11 @@ void main() {
     // taken: list[Int32] = box_list.take()
     std::vector<int32_t> taken = box_list.take();
     // for x in taken:
-    auto& __obj_0 = taken;
+    auto __obj_0 = tpy::own_iter(std::move(taken));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        int32_t x = *__beg_0;
+        auto&& x = *__beg_0;
         // print(x)
         std::cout << x << "\n";
     }
@@ -36,11 +36,11 @@ void main() {
     // c.append(4)
     c.push_back(4);
     // for x in c:
-    auto& __obj_1 = c;
+    auto __obj_1 = tpy::own_iter(std::move(c));
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        int32_t x = *__beg_1;
+        auto&& x = *__beg_1;
         // print(x)
         std::cout << x << "\n";
     }

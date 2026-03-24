@@ -176,8 +176,8 @@ void list_remove(std::vector<T>& v, const T& value) {
  * Overloads handle both iterator-based containers and initializer_list.
  */
 template<typename T, typename Container>
-    requires std::ranges::input_range<const Container>
-void list_extend(std::vector<T>& v, const Container& other) {
+    requires std::ranges::input_range<std::remove_cvref_t<Container>>
+void list_extend(std::vector<T>& v, Container&& other) {
     v.insert(v.end(), other.begin(), other.end());
 }
 

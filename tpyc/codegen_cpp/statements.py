@@ -3039,6 +3039,20 @@ class StatementGenerator:
                                      consuming=consuming)
             return
 
+        # Auto-consuming iteration: iterable at last use with consuming __iter__.
+        # Uses shared _gen_consuming_iter (also used by call-site arg generation).
+        # Skip when loop var is hoisted (used after loop) -- the hoisted var may
+        # be a view (string_view) into the container, so the container must stay alive.
+        if stmt.consuming_iter_fi is not None and not stmt.hoist_loop_var:
+            iterable = self.expressions.gen_expr(stmt.iterable)
+            consuming_call = self.expressions._gen_consuming_iter(stmt.iterable, iterable)
+            if consuming_call is not None:
+                elem_type = sema_elem
+                assert elem_type is not None
+                self._gen_begin_end_loop(out, stmt, indent, consuming_call, elem_type,
+                                         consuming=True, is_lvalue=False)
+                return
+
         # Resolve TypeParamRef to its bound for protocol-based iteration
         resolved_type = iterable_type
         if isinstance(iterable_type, TypeParamRef):

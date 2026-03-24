@@ -25,7 +25,7 @@ void test_list_ctor_value_type_no_warn() {
     // b: list[Int32] = [Int32(1), Int32(2)]
     std::vector<int32_t> b = {1, 2};
     // a = list(b)  # tpyc: ok
-    std::vector<int32_t> a = ::tpy::construct<std::vector<int32_t>>(b);
+    std::vector<int32_t> a = ::tpy::construct<std::vector<int32_t>>(tpy::own_iter(std::move(b)));
     // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }
@@ -45,7 +45,7 @@ void test_list_ctor_last_use_no_warn() {
     // b: list[Node] = [Node(Int32(1))]
     std::vector<Node> b = {Node(1)};
     // a = list(b)  # tpyc: ok -- b's last use
-    std::vector<Node> a = ::tpy::construct<std::vector<Node>>(b);
+    std::vector<Node> a = ::tpy::construct<std::vector<Node>>(tpy::own_iter(std::move(b)));
     // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }

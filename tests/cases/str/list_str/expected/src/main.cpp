@@ -23,11 +23,11 @@ void main() {
     std::cout << ::tpy::__getitem__(words, 3) << "\n";
     // # Iterate over list of strings
     // for w in words:
-    auto& __obj_0 = words;
+    auto __obj_0 = tpy::own_iter(std::move(words));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view w = *__beg_0;
+        auto&& w = *__beg_0;
         // print(w)
         std::cout << w << "\n";
     }

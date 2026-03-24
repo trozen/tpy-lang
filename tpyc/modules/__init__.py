@@ -858,18 +858,21 @@ def get_iter_info(tpy_type: "TpyType", registry: "TypeRegistry") -> "IterInfo | 
     """If type has __iter__() returning a concrete iterator, return element type and dispatch info."""
     from tpyc.typesys import NamedType
 
-    # Try user records (walks parent chain)
+    # Try user records (walks parent chain).
+    # allow_protocol_return=True: user __iter__ returning Iterator[T] is recognized.
     if isinstance(tpy_type, NamedType) and tpy_type.is_user_record:
         record = registry.get_record(tpy_type.name)
         if record is not None:
             type_subst: dict[str, "TpyType"] = {}
             if record.type_params and tpy_type.type_args:
                 type_subst = dict(zip(record.type_params, tpy_type.type_args))
-            result = _find_record_iter_info(record, type_subst, registry)
+            result = _find_record_iter_info(record, type_subst, registry,
+                                            allow_protocol_return=True)
             if result is not None:
                 return result
 
-    # Try builtin types via registry
+    # Try builtin types via registry.
+    # allow_protocol_return=False: builtins use their own iteration dispatch.
     record = registry.get_record_for_type(tpy_type)
     if record is not None:
         type_subst_b: dict[str, "TpyType"] = {}
@@ -890,11 +893,13 @@ def get_iter_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "Tpy
 
 def _find_record_iter_info(
     record: "RecordInfo", type_subst: "dict[str, TpyType]", registry: "TypeRegistry",
+    *, allow_protocol_return: bool = False,
 ) -> "IterInfo | None":
     """Check if record (or its parents) has __iter__() returning a concrete iterator."""
     from tpyc.typesys import NamedType, TypeParamRef
 
-    result = _find_iter_method_info(record.get_method_overloads("__iter__"), type_subst, registry)
+    result = _find_iter_method_info(record.get_method_overloads("__iter__"), type_subst, registry,
+                                    allow_protocol_return=allow_protocol_return)
     if result is not None:
         return result
 
@@ -909,16 +914,18 @@ def _find_record_iter_info(
                         parent_subst[param_name] = type_subst[arg.name]
                     else:
                         parent_subst[param_name] = arg
-            return _find_record_iter_info(parent_info, parent_subst, registry)
+            return _find_record_iter_info(parent_info, parent_subst, registry,
+                                          allow_protocol_return=allow_protocol_return)
 
     return None
 
 
 def _find_iter_method_info(
     methods: "list[MethodDef | FunctionInfo]", type_subst: "dict[str, TpyType]", registry: "TypeRegistry",
+    *, allow_protocol_return: bool = False,
 ) -> "IterInfo | None":
     """Check __iter__() methods for a concrete iterator return type and extract element type."""
-    from tpyc.typesys import FunctionInfo, NamedType, OwnType, SpanIterType, TypeParamRef
+    from tpyc.typesys import FunctionInfo, NamedType, OwnType, SpanIterType, TypeParamRef, is_protocol_type
 
     for method in methods:
         if len(method.params) != 0:
@@ -938,6 +945,20 @@ def _find_iter_method_info(
             if isinstance(elem, TypeParamRef) and elem.name in type_subst:
                 elem = type_subst[elem.name]
             return IterInfo(elem, iter_is_native=True)
+
+        # Iterator[T] protocol return type (not Iterable -- codegen emits
+        # .__next__() directly, which requires Iterator, not Iterable).
+        # Only for user records -- builtin types have their own iteration
+        # handling (NativeIterable, get_iteration_element_type) that would
+        # be bypassed if we intercepted their __iter__ here.
+        if (allow_protocol_return
+                and is_protocol_type(ret) and isinstance(ret, NamedType)
+                and ret.qualified_name() == "typing.Iterator" and ret.type_args):
+            elem = ret.type_args[0]
+            if isinstance(elem, TypeParamRef) and elem.name in type_subst:
+                elem = type_subst[elem.name]
+            if not isinstance(elem, TypeParamRef):
+                return IterInfo(elem, iter_is_native=False)
 
         # User-defined iterator with error_return __next__
         if isinstance(ret, NamedType) and ret.is_user_record:

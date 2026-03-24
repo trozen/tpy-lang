@@ -124,11 +124,11 @@ void array_filter_fallback() {
         return __result;
     }();
     // for e in evens:
-    auto& __obj_1 = evens;
+    auto __obj_1 = tpy::own_iter(std::move(evens));
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        int32_t e = *__beg_1;
+        auto&& e = *__beg_1;
         // print(e)
         std::cout << e << "\n";
     }
@@ -261,11 +261,11 @@ void explicit_list_annotation() {
         return __result;
     }();
     // for i in items:
-    auto& __obj_1 = items;
+    auto __obj_1 = tpy::own_iter(std::move(items));
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        int32_t i = *__beg_1;
+        auto&& i = *__beg_1;
         // print(i)
         std::cout << i << "\n";
     }

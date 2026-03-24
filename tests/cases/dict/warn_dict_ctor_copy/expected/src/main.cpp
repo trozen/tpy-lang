@@ -25,7 +25,7 @@ void test_dict_ctor_value_types_no_warn() {
     // pairs: list[tuple[str, Int32]] = [("a", Int32(1))]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}};
     // d = dict(pairs)  # tpyc: ok
-    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(pairs);
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(tpy::own_iter(std::move(pairs)));
     // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
 }
@@ -45,7 +45,7 @@ void test_dict_ctor_last_use_no_warn() {
     // pairs: list[tuple[str, Node]] = [("a", Node(Int32(1)))]
     std::vector<std::tuple<std::string, Node>> pairs = {std::tuple<std::string, Node>{"a", Node(1)}};
     // d = dict(pairs)  # tpyc: ok -- pairs last use
-    ::tpy::ordered_map<std::string, Node> d = ::tpy::dict_construct<std::string, Node>(pairs);
+    ::tpy::ordered_map<std::string, Node> d = ::tpy::dict_construct<std::string, Node>(tpy::own_iter(std::move(pairs)));
     // print(len(d))
     std::cout << ::tpy::__len__(d) << "\n";
 }

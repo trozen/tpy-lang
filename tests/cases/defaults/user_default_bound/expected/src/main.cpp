@@ -19,11 +19,11 @@ void main() {
     // print(len(nums))
     std::cout << ::tpy::__len__(nums) << "\n";
     // for v in nums:
-    auto& __obj_0 = nums;
+    auto __obj_0 = tpy::own_iter(std::move(nums));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        int32_t v = *__beg_0;
+        auto&& v = *__beg_0;
         // print(v)
         std::cout << v << "\n";
     }

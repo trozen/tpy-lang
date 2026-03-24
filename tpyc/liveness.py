@@ -18,7 +18,7 @@ from __future__ import annotations
 from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
     TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyAssert, TpyRaise,
-    TpyExprStmt, TpyMatch, TpyNestedDef,
+    TpyExprStmt, TpyMatch, TpyNestedDef, TpyDelItem,
     TpyName, TpyFieldAccess, TpySubscript, TpyNamedExpr,
 )
 
@@ -265,6 +265,11 @@ def _analyze_stmt(
 
     elif isinstance(stmt, TpyExprStmt):
         _process_reads(stmt.expr, live, last_uses, source_aliases, detached_aliases)
+
+    elif isinstance(stmt, TpyDelItem):
+        for target in stmt.targets:
+            _process_reads(target.obj, live, last_uses, source_aliases, detached_aliases)
+            _process_reads(target.index, live, last_uses, source_aliases, detached_aliases)
 
     elif isinstance(stmt, TpyAssert):
         _process_reads(stmt.condition, live, last_uses, source_aliases, detached_aliases)
@@ -530,6 +535,13 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
     elif isinstance(stmt, TpyExprStmt):
         for node in _collect_reads_expr(stmt.expr):
             live.add(node.name)
+
+    elif isinstance(stmt, TpyDelItem):
+        for target in stmt.targets:
+            for node in _collect_reads_expr(target.obj):
+                live.add(node.name)
+            for node in _collect_reads_expr(target.index):
+                live.add(node.name)
 
     elif isinstance(stmt, TpyAssert):
         for node in _collect_reads_expr(stmt.condition):

@@ -360,6 +360,33 @@ class ExpressionGenerator:
             return f"std::move({gen_code})"
         return gen_code
 
+    def _gen_consuming_iter(self, expr: TpyExpr, gen_code: str) -> str | None:
+        """If expr is a last-use movable local with a consuming __iter__,
+        generate the consuming call. Returns None if not applicable.
+
+        Used by both for-loop codegen and call-site arg generation.
+        """
+        inner = expr
+        while isinstance(inner, TpyCoerce):
+            inner = inner.expr
+        if not (isinstance(inner, TpyName)
+                and inner.name in self.ctx.movable_locals
+                and id(inner) in self.ctx.analyzer.ctx.all_last_uses):
+            return None
+        arg_type = self.ctx.get_expr_type(expr)
+        if isinstance(arg_type, OwnType):
+            arg_type = arg_type.wrapped
+        record = self.ctx.analyzer.registry.get_record_for_type(arg_type)
+        if record is None:
+            return None
+        for fi in record.get_method_overloads("__iter__"):
+            if fi.is_consuming:
+                if fi.native_name:
+                    return f"{fi.native_name}(std::move({gen_code}))"
+                else:
+                    return f"std::move({gen_code}).__iter__()"
+        return None
+
     def _gen_dynamic_protocol_arg(self, arg: TpyExpr, ptype: TpyType) -> str | None:
         """If ptype is a @dynamic protocol, return the wrapped arg expression. Otherwise None."""
         unwrapped_ptype = unwrap_readonly(ptype)
@@ -426,6 +453,16 @@ class ExpressionGenerator:
         """
         gen_arg = self.gen_expr_deref(arg, ptype if target_type is _UNSET else target_type)
         if ptype is not None:
+            # Auto-consuming iteration: Iterable[Own[T]] param with last-use arg
+            # that has consuming __iter__. Generate consuming call instead of copy.
+            ptype_inner = unwrap_readonly(ptype)
+            if (is_protocol_type(ptype_inner) and isinstance(ptype_inner, NamedType)
+                    and ptype_inner.name == "Iterable"
+                    and ptype_inner.type_args
+                    and any(isinstance(a, OwnType) for a in ptype_inner.type_args)):
+                consuming = self._gen_consuming_iter(arg, gen_arg)
+                if consuming is not None:
+                    return consuming
             own = unwrap_optional_own(unwrap_readonly(ptype))
             if own is not None:
                 moved = self._maybe_move(arg, gen_arg)
@@ -1548,11 +1585,8 @@ class ExpressionGenerator:
                 ctor = expr.resolved_function_info
                 type_params = builtin_modules.extract_type_params(expr.call_type)
                 gen_args = []
-                for a in expr.args:
-                    gen = self.gen_expr(a, expr.call_type)
-                    if self.ctx.is_indirect_name(a):
-                        gen = f"(*{gen})"
-                    gen_args.append(gen)
+                for a, (_, ptype) in zip(expr.args, ctor.params):
+                    gen_args.append(self.gen_call_arg(a, ptype, inline_template=True))
                 return self.builtins.gen_call_from_fi(ctor, None, gen_args,
                                                        type_subst=type_params, result_type=expr.call_type)
             # Look up resolved init params for auto-move on Own[T] params

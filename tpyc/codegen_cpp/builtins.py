@@ -173,8 +173,15 @@ class BuiltinGenerator:
         type_args: inferred type arguments for generic calls.
         """
         if fi and (fi.cpp_template or fi.native_name):
-            gen_args = [self._gen_expr_deref(arg, ptype)
-                        for arg, (_, ptype) in zip(args, fi.params)]
+            if fi.cpp_template:
+                # Template strings handle move semantics themselves (may embed std::move)
+                gen_args = [self._gen_expr_deref(arg, ptype)
+                            for arg, (_, ptype) in zip(args, fi.params)]
+            else:
+                # Native functions: use gen_call_arg for auto-consuming
+                # Iterable[Own[T]] and auto-move on Own[T] params
+                gen_args = [self._gen_call_arg(arg, ptype)
+                            for arg, (_, ptype) in zip(args, fi.params)]
             return self.gen_call_from_fi(fi, None, gen_args, type_args=type_args)
         # Fallback: re-resolve (shouldn't normally be needed)
         overload, gen_args = self._match_overload_args(args, overloads)

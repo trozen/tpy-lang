@@ -156,7 +156,10 @@ def type_matches_with_coercion(
     if isinstance(arg_inner, PendingStrType) and isinstance(param_inner, (StrType, StringType, StrViewType)):
         return True
     if protocol_checker and is_protocol_type(param_inner):
-        return protocol_checker(arg_inner, param_inner)
+        # Unwrap Own[T] -- ownership marker, not a distinct type.
+        # Mirrors the unwrapping in type_matches_strict.
+        check_arg = arg_inner.wrapped if isinstance(arg_inner, OwnType) else arg_inner
+        return protocol_checker(check_arg, param_inner)
     if resolve_coercion(arg_inner, param_inner, CoercionContext.ARG) is not None:
         return True
     if deref_checker:

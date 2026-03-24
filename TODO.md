@@ -36,6 +36,14 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - **[LOW]** String concat chain produces N-1 intermediate allocations: `a + b + c + d` emits left-associative nested `str_concat` calls, each allocating a temporary `std::string`. A codegen optimization detecting a chain of `+` on string-view operands could emit a single `reserve` + N `append` calls.
 - **[LOW]** `__param_` copy for reassigned parameters: when a parameter is reassigned in the function body, codegen takes it by `const&` then copies into a mutable local. For BigInt/string params, taking by value instead would let the caller move. Only helps when caller passes an rvalue; for lvalue calls it's worse (forces copy at call site vs zero-cost `const&`). Also changes ABI (not API).
 
+## Ownership & Consuming Iteration
+- Consuming `__iter__` for set/dict: only list has a consuming overload (`tpy::own_iter`). Set/dict need drain iterators before auto-consuming at last use can work for them.
+- `auto_own __iter__` codegen bug: the consuming clone generates `T` as the C++ return type instead of the resolved type. Blocks user-defined consuming iteration via `auto_own`.
+- `own_iter()` is list-only: kept as explicit escape hatch for non-last-use consuming. Could be made generic (dispatch to consuming `__iter__` on any type).
+- `own()` builtin: explicit `T -> Own[T]` conversion (analogous to `span()` -> `Span[T]`).
+- User-defined drain iterators (e.g. `ArrayListDrainIter`): view types with borrow tracking. See `docs/CONSUMING_ITERATION_DESIGN.md`.
+- Per-element move in consuming for-loops: loop var uses `auto&&` (move-ready), but per-element ownership transfer not yet implemented.
+
 ## Safety
 
 ### Borrow tracker gaps
@@ -45,8 +53,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - `Span[str]` subscript view: `SpanType.subscript_borrows()` is intentionally not overridden because `v = s[0]` registers `s` as the str-borrow source, but mutations to the backing container (`arr[0] = "x"` where `s = Span[str](arr)`) call `mark_str_borrowers_mutated("arr")` -- missing `s`. Fix requires `mark_str_borrowers_mutated` to chase the borrow tracker's alias chain so backing-container mutations also invalidate views borrowed through spans.
 - View type borrow tracking for user types: currently only built-in view types (Span, Ptr) are tracked as borrows. Likely needed when designing tpy stdlib types. See escape analysis design doc (Future Extensions) for field-level vs class-level annotation tradeoffs.
 - Hoisted non-value loop variable as view: `for s in items: ... print(s)` where `s` is `std::string_view` -- the hoisted `s` is a view into the container, not a copy. If the container is mutated between loop exit and use of `s`, the view dangles. Same concern exists with `const auto&` loop vars. Consider emitting a value copy for hoisted non-value loop variables.
-- `own()` builtin: explicit `T -> Own[T]` conversion (analogous to `span()` -> `Span[T]`); near-term bridge until `__iter__(self: Own[Self])` auto-dispatch is implemented. See `docs/CONSUMING_ITERATION_DESIGN.md`.
-- Consuming iteration: `__iter__(self: Own[Self]) -> Iterator[Own[T]]` overload for zero-copy element moves; `OwnIter[T]` runtime type for list drain; user-defined drain iterators (e.g. `ArrayListDrainIter`) as view types with borrow tracking. See `docs/CONSUMING_ITERATION_DESIGN.md`.
 
 ## Examples
 

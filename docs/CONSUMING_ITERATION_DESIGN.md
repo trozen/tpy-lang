@@ -13,14 +13,34 @@
 | `__iter__(self: Own[Self]) -> Iterator[Own[T]]` overload for list | Done (used by explicit `b.__iter__()` at last use) |
 | Consuming `__iter__` overload dispatch (method calls) | Done (overload resolution + codegen for native_function methods) |
 | `auto_own[Self]` / `auto_own[T]` -- auto-generate consuming overloads | Done (parser cloning + ownership propagation through fields) |
-| Ownership propagation through fields (`Own[S].field` -> `Own[T]`) | Done |
+| Ownership propagation through fields (`Own[S].field` -> `Own[T]`) | Partial (sema types propagate; codegen does not yet emit `std::move` for owned fields) |
 | Per-element move in consuming for-loops | Planned (loop var uses `auto&&`, move-ready; needs per-element ownership transfer in codegen) |
 | `own_iter()` for set/dict | Planned (needs proper drain iterators) |
-| `Iterable[T]` -> `Iterator[T]` auto-coercion (calls `__iter__`) | Planned |
-| `auto_own` on `__iter__` for user collections | Blocked (needs `iter(Own[T])` generic builtin unwrap + protocol return type in for-loops) |
+| Auto-consuming at last use (for-loops, extend, constructors) | Done (list only; auto-selects consuming `__iter__` when iterable is at last use) |
+| `auto_own` on `__iter__` for user collections | Partially unblocked (`iter(Own[T])` + protocol return in for-loops fixed; consuming clone codegen has return type bug) |
 | User-defined drain iterators (`ArrayListDrainIter`) | Planned |
 | Borrow tracking for view-type drain iterators | Planned (depends on view type tracking) |
 | Unified container constructors (`Iterable[Own[T]]`) | Done -- single `Iterable[Own[T]]` overload, C++ `if constexpr` dispatch |
+
+---
+
+## Design philosophy
+
+`Own[T]` is a **copy-avoidance mechanism** -- it drives copy warnings and
+auto-move optimization, not a linear or affine ownership type system.
+
+- `Own[T]` is stripped during type matching; the type system does not enforce
+  unique ownership or prevent use-after-move.
+- Auto-move at last use is a heuristic based on liveness analysis, not an
+  affine type rule. A variable can still be read in a different branch after
+  its "last use" on another path.
+- Consuming `__iter__` dispatch and auto-consuming at last use are performance
+  optimizations: they avoid element copies when the source is no longer needed.
+  They do not guarantee that the source is inaccessible after consumption.
+
+This is a pragmatic design for a Python-like language: minimize copies with
+minimal user-facing restrictions, rather than enforce strict ownership like
+Rust's borrow checker.
 
 ---
 

@@ -18,7 +18,7 @@ void main() {
     std::cout << ::tpy::TuplePrinter(::tpy::__getitem__(points, 0)) << "\n";
     // # Dict from annotated list of tuples via constructor
     // d = dict[str, Int32](pairs)
-    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(pairs);
+    ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(tpy::own_iter(std::move(pairs)));
     // print(d["a"], d["c"])
     std::cout << ::tpy::__getitem__(d, "a") << " " << ::tpy::__getitem__(d, "c") << "\n";
     // # Unannotated list of tuples (IntLiteralType resolved inside tuples)

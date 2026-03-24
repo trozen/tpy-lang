@@ -25,7 +25,7 @@ void test_set_ctor_value_type_no_warn() {
     // b: list[Int32] = [Int32(1), Int32(2)]
     std::vector<int32_t> b = {1, 2};
     // a = set(b)  # tpyc: ok
-    ::tpy::ordered_set<int32_t> a = ::tpy::set_construct<int32_t>(b);
+    ::tpy::ordered_set<int32_t> a = ::tpy::set_construct<int32_t>(tpy::own_iter(std::move(b)));
     // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }
@@ -45,7 +45,7 @@ void test_set_ctor_last_use_no_warn() {
     // b: list[Node] = [Node(Int32(1))]
     std::vector<Node> b = {Node(1)};
     // a = set(b)  # tpyc: ok -- b's last use
-    ::tpy::ordered_set<Node> a = ::tpy::set_construct<Node>(b);
+    ::tpy::ordered_set<Node> a = ::tpy::set_construct<Node>(tpy::own_iter(std::move(b)));
     // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }
