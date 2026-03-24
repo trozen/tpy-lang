@@ -1,7 +1,6 @@
 # tpy: cpp_namespace("tpystd::builtins")
 from ._typing import overload, Sized, Iterator, Iterable
-from tpy import Own
-from ._decorators import readonly, pure, error_return
+from ._decorators import readonly, pure, error_return, Own
 from ._types import (
     Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64,
     Char, String, StrView, Float32, AnyFixedInt,

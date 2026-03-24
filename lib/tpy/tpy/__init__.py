@@ -21,6 +21,7 @@ from ._core import (
     # Decorators / type modifiers
     readonly, noalloc, nocopy, pure, dynamic,
     auto_readonly, auto_own, error_return,
+    Own, Fn,
 )
 
 type Float64 = float

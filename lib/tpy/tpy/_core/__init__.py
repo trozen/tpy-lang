@@ -27,4 +27,5 @@ from ._set import set
 from ._decorators import (
     readonly, noalloc, nocopy, pure, dynamic,
     auto_readonly, auto_own, error_return,
+    Own, Fn,
 )

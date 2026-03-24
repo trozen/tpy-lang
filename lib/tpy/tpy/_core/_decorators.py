@@ -1,5 +1,14 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::tpy")
-# Decorator names are parser keywords; this file exists only for import
-# resolution within _core submodules. No definitions needed -- the sema
-# skips parser keyword imports via is_parser_keyword().
+# Parser keyword stubs: decorators and type modifiers consumed at parse
+# time. This file exists for import resolution within _core submodules.
+# Decorator names are skipped by sema via is_parser_keyword().
+# Type modifier stubs use @builtin_type so the compiler knows their
+# qualified name (e.g. "tpy.Own"). Codegen skips them via is_keyword_stub.
+from ._extern import builtin_type
+
+@builtin_type("tpy.Own")
+class Own: ...
+
+@builtin_type("tpy.Fn")
+class Fn: ...

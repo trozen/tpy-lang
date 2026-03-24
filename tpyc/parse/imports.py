@@ -16,13 +16,11 @@ from ..typesys import public_module_name
 
 # Names that the parser must resolve during parsing (compiler intrinsics).
 # Most tpy names are now defined in .py stubs and resolved via normal imports.
-# Only type constructors without .py definitions remain as parser keywords.
+# Only decorator/modifier names consumed at parse time remain as parser keywords.
 PARSER_KEYWORDS: dict[str, frozenset[str] | None] = {
     # None means ALL names are parser keywords (module cannot be shadowed by .py)
     "tpy": frozenset({
-        # Type constructors with special parser handling (no .py definitions)
-        "Own", "Fn",
-        # Decorators/type modifiers (consumed at parse time, not .py-defined types)
+        # Decorators/type modifiers (consumed at parse time)
         "readonly", "noalloc", "nocopy", "dynamic", "pure",
         "auto_readonly", "auto_own", "error_return",
     }),
