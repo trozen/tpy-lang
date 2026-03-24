@@ -80,7 +80,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Generator: liveness optimization -- only promote yield-crossing variables to struct fields, keep others as stack locals in `__next__()` (currently all locals are promoted)
 - Closures: `std::move_only_function` for `Callable` with `Own[T]` params/returns (design doc says to use it, currently uses `std::function` with rvalue params which works but is incorrect per C++23 semantics)
 - Closures: `@noalloc` enforcement (Phase 5) -- `Callable` in `@noalloc` context should be rejected. Currently compiles without error.
-- Closures: escaping `str` param capture codegen fix -- warning is emitted but codegen still copies `string_view` (may dangle). Should emit `name = std::string(name)` for `str`-typed captures in escaping closures.
 - Closures: method references (`obj.method` as a value) -- needs partial application binding `self`. Currently gives "has no field" error.
 - Protocol isinstance in ternary expressions: `x = a.foo() if isinstance(a, P1) else a.bar()` generates a runtime `?:` but both branches must be valid C++ at template instantiation time. Fix: generate an IIFE with `if constexpr` inside, e.g. `[&]() -> T { if constexpr (P1<T_a>) { return a.foo(); } else { return a.bar(); } }()`. This also enables single-line field init in `__init__` (goes into the C++ member initializer list instead of requiring unconditional pre-assignment + reassignment in branches).
 - Allow `@runtime_checkable` decorator on protocols (no-op in tpyc, enables CPython compatibility for isinstance checks on user-defined protocols)

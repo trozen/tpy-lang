@@ -11,7 +11,7 @@ from typing import Optional
 from ..typesys import (
     TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, StrType, StrViewType, VoidType,
     INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
-    EnumType, is_any_str_type,
+    EnumType,
 )
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call
@@ -828,15 +828,16 @@ class SemanticAnalyzer:
                     f"nonlocal {nl_list} in escaping closure '{name}' is not supported"
                     f" (the closure is returned or stored; use a class instead)",
                     node)
-            # Warn about str parameter captures (string_view dangles after return)
+            # Reject str/StrView parameter captures (string_view dangles after return)
             for cap_name in node.captured_names:
                 if cap_name in outer_param_names:
                     cap_type = self.ctx.current_scope.lookup(cap_name) if self.ctx.current_scope else None
-                    if cap_type is not None and is_any_str_type(cap_type):
-                        self.ctx.warning(
+                    check_type = cap_type.inner if isinstance(cap_type, OptionalType) else cap_type
+                    if check_type is not None and isinstance(check_type, (StrType, StrViewType)):
+                        self.ctx.emit_error(
                             f"Escaping closure '{name}' captures str parameter"
-                            f" '{cap_name}' by value (string_view copy may dangle;"
-                            f" consider passing str as a local variable instead)",
+                            f" '{cap_name}' which would dangle (string_view into"
+                            f" caller's storage). Use String for owned capture",
                             node)
 
     def _collect_method_overload_groups(self, record: TpyRecord) -> None:

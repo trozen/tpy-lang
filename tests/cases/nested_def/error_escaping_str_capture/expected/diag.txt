@@ -1,0 +1,2 @@
+main.py:5: error: Escaping closure 'greet' captures str parameter 'name' which would dangle (string_view into caller's storage). Use String for owned capture
+main.py:10: error: Escaping closure 'greet' captures str parameter 'name' which would dangle (string_view into caller's storage). Use String for owned capture
