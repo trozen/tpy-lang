@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, NamedType, StrType, BoolType, FloatType, Float32Type, OptionalType, OwnType, ReadonlyType,
     TypeParamRef, TypeParamKind, RecordInfo, TupleType, DictType, SetType, UnionType,
     ListType, ArrayType, SpanType, SpanIterType, unwrap_readonly, unwrap_optional_own, is_any_str_type,
-    get_covariant_params, FixedIntType, BigIntType, EnumType, PtrType,
+    get_covariant_params, FixedIntType, BigIntType, EnumType, PtrType, CallableType,
 )
 from ..parse import (
     TpyRecord, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -1015,6 +1015,8 @@ class RecordGenerator:
                     out.write(f';\n{indent}if ({acc}.has_value()) {stream} << ::tpy::SetPrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
                 elif isinstance(inner, (ListType, ArrayType, SpanType)):
                     out.write(f';\n{indent}if ({acc}.has_value()) {stream} << ::tpy::ListPrinter({acc}.value()); else {stream} << "None";\n{indent}{stream}')
+                elif isinstance(inner, CallableType):
+                    out.write(f' << ({acc}.has_value() ? "<function>" : "None")')
                 else:
                     out.write(f' << ::tpy::print_optional_val({acc})')
             elif isinstance(fld.type, BoolType):
@@ -1041,6 +1043,8 @@ class RecordGenerator:
                               f' }}, {acc});\n{indent}{stream}')
                 else:
                     out.write(f';\n{indent}std::visit([&](const auto& __v) {{ {stream} << __v; }}, {acc});\n{indent}{stream}')
+            elif isinstance(fld.type, CallableType):
+                out.write(f' << "<function>"')
             elif isinstance(fld.type, NamedType) and (fld.type.is_module_type or self._is_native(fld.type)):
                 out.write(f' << "<{fld.type}>"')
             else:

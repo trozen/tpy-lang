@@ -16,9 +16,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 ## Bugs
 
 ### Closures & Callable
-- `Fn | None` internal error: hits `FnType.to_cpp()` RuntimeError instead of a proper diagnostic. Should emit "Fn cannot be optional -- use Callable | None instead."
-- `Callable` field in auto-generated `operator<<`: records with `Callable` fields crash C++ compilation because `std::function` has no `operator<<`. Should print `<function>` or similar placeholder.
-- Recursive nested def diagnostic: gives generic "Unknown function" error. Should say "recursive nested defs are not supported."
 - Escape detection incomplete for field/container storage: `self.field = nested_func` and `container.append(nested_func)` don't trigger escape marking. Produces by-ref captures in a stored `std::function` (UB).
 
 ### Generators

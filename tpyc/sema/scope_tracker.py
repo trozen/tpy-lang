@@ -88,6 +88,7 @@ class ScopeTracker:
         self.ctx.current_ns = inner_ns
         self.ctx.current_function = func_node
         self.ctx.in_nested_def = True
+        self.ctx.nested_def_name = func_node.name
         try:
             yield inner_scope
         finally:

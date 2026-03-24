@@ -376,6 +376,7 @@ class FunctionTrackingState:
 
     # --- Nested def tracking ---
     in_nested_def: bool = False
+    nested_def_name: str | None = None
     outer_scope_locals: set[str] = field(default_factory=set)
     current_nonlocal_names: set[str] = field(default_factory=set)
     nested_def_names: set[str] = field(default_factory=set)

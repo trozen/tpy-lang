@@ -716,6 +716,12 @@ class CallAnalyzer:
                 expr
             )
 
+        if self.ctx.in_nested_def and expr.func == self.ctx.nested_def_name:
+            raise self.ctx.error(
+                f"Recursive nested functions are not supported. "
+                f"'{expr.func}' cannot call itself",
+                expr,
+            )
         raise self.ctx.error(f"Unknown function or type: '{expr.func}'", expr)
 
     def _analyze_special_builtin(

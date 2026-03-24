@@ -1286,6 +1286,15 @@ class TypeRegistrar:
                 func.loc
             )
 
+        # Fn is valid as a bare param type but not nested inside Optional/Union
+        for pname, ptype in func.params:
+            if not isinstance(ptype, FnType) and contains_fn_type(ptype):
+                raise SemanticError(
+                    f"Fn type cannot be nested inside another type (Optional, Union, list, etc.). "
+                    f"Use Callable for parameter '{pname}' instead",
+                    func.loc
+                )
+
         type_param_bounds = self._resolve_type_param_bounds(
             func.type_param_bounds, func.loc)
         # Propagate resolved bounds back to AST so get_type_param_bound sees
