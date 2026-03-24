@@ -196,7 +196,7 @@ void main() {
     }
     // # Constructor from list of tuples with union values
     // d7 = dict[str, Int32 | str]([("x", "hello"), ("y", 1)])
-    ::tpy::ordered_map<std::string, std::variant<int32_t, std::string>> d7 = ::tpy::ordered_map<std::string, std::variant<int32_t, std::string>>({std::tuple<std::string, std::string>{"x", "hello"}, std::tuple<std::string, int32_t>{"y", 1}});
+    ::tpy::ordered_map<std::string, std::variant<int32_t, std::string>> d7 = ::tpy::ordered_map<std::string, std::variant<int32_t, std::string>>({std::tuple<std::string, std::variant<int32_t, std::string>>{"x", "hello"}, std::tuple<std::string, std::variant<int32_t, std::string>>{"y", 1}});
     // v5 = d7["x"]
     std::variant<int32_t, std::string> v5 = ::tpy::__getitem__(d7, "x");
     // if isinstance(v5, str):
@@ -216,6 +216,11 @@ void main() {
         // print(v6)
         std::cout << __v6 << "\n";
     }
+    // # Constructor from list of tuples with optional values
+    // d9 = dict[str, Int32 | None]([("a", 42), ("b", None)])
+    ::tpy::ordered_map<std::string, std::optional<int32_t>> d9 = ::tpy::ordered_map<std::string, std::optional<int32_t>>({std::tuple<std::string, std::optional<int32_t>>{"a", 42}, std::tuple<std::string, std::optional<int32_t>>{"b", std::nullopt}});
+    // print(d9)
+    std::cout << ::tpy::DictPrinter(d9) << "\n";
     // # Printing containers with union elements
     // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";

@@ -156,9 +156,9 @@ public:
 
     ordered_map() = default;
 
-    ordered_map(std::initializer_list<std::pair<K, V>> init) {
-        for (auto& [k, v] : init) {
-            insert_or_assign(k, v);
+    ordered_map(std::initializer_list<std::tuple<K, V>> init) {
+        for (auto& t : init) {
+            insert_or_assign(std::get<0>(t), std::get<1>(t));
         }
     }
 

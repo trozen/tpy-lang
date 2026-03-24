@@ -14,6 +14,7 @@ test
 hi
 hello
 hi
+{'a': 42, 'b': None}
 {'a': 1, 'b': 'hello'}
 [1, 'hello', 2, 'world']
 {'x': 42, 'y': None}

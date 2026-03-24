@@ -120,6 +120,10 @@ def main() -> None:
     if isinstance(v6, str):
         print(v6)
 
+    # Constructor from list of tuples with optional values
+    d9 = dict[str, Int32 | None]([("a", 42), ("b", None)])
+    print(d9)
+
     # Printing containers with union elements
     print(d)
     print(lst)

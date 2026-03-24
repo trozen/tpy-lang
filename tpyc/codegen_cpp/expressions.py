@@ -2141,10 +2141,15 @@ class ExpressionGenerator:
             elem_target = target_type.get_element_type()
         # For list literals with Optional/Union/Tuple element types, pass element target
         # so None generates std::nullopt, and tuple literals get expected types propagated.
+        # DictType target means elements are key-value tuples (e.g. dict[K,V]([tuples]));
+        # derive TupleType(key, value) so _gen_tuple_literal gets per-element targets.
         if elem_target is None and target_type:
-            et = target_type.get_element_type()
-            if isinstance(et, (OptionalType, UnionType, TupleType, StrType)):
-                elem_target = et
+            if isinstance(target_type, DictType):
+                elem_target = TupleType((target_type.key_type, target_type.value_type))
+            else:
+                et = target_type.get_element_type()
+                if isinstance(et, (OptionalType, UnionType, TupleType, StrType)):
+                    elem_target = et
         elements = []
         for e in expr.elements:
             # Use elem_target for generation (preserves old int-literal behavior, and for

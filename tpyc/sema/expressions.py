@@ -1391,8 +1391,11 @@ class ExpressionAnalyzer:
             self.ctx.pending_resolutions.append(literal_id)
             return PendingListType(UNKNOWN_ELEMENT, 0, literal_id)
 
-        # Analyze all elements first
-        elem_types = [self.analyze_expr(e) for e in expr.elements]
+        # Analyze all elements, propagating expected type as hint when available
+        if expected_elem is not None:
+            elem_types = [self.analyze_expr_with_hint(e, expected_elem) for e in expr.elements]
+        else:
+            elem_types = [self.analyze_expr(e) for e in expr.elements]
 
         if expected_elem is not None:
             # Contextual mode: check each element against expected element type
