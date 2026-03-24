@@ -42,7 +42,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 ## Safety
 
 ### Borrow tracker gaps
-- Temporary passed to borrowing function: `g = greetings(make_name())` where `greetings` stores `str` param as `string_view` in a generator struct -- the temporary `std::string` from `make_name()` is destroyed at end-of-statement, `string_view` dangles (confirmed UAF: garbled output). Same pattern applies to Span params. The `return_borrows_from` fact exists; the checker needs to reject temporaries (rvalues) as arguments to borrow-returning functions, similar to how container temps are already caught ("Cannot return local or temporary as reference"). Containers are safe because they're non-value types (temp detection fires); `str` slips through because it's a value type.
 - Reassignment of borrowed variable doesn't warn: `remove_storage_borrows` silently clears active borrows on reassignment (`s = "other"`) without warning. Only mutation (`.append()`, `del`) triggers warnings. Affects all types but especially `str` in generators -- the only way to invalidate a `string_view` is reassignment/destruction, which is exactly the case the tracker misses.
 
 ### Other safety issues

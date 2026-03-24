@@ -55,6 +55,24 @@ from .local_deduction import collect_pending_source_types
 from tpyc import modules as builtin_modules
 
 
+def _is_dangling_temporary_arg(expr: TpyExpr) -> bool:
+    """Check if an expression is a temporary whose storage won't survive.
+
+    Function calls and binary ops produce temporaries destroyed at
+    end-of-statement. Literals (string, int, array, etc.) are either
+    static or materialized by codegen into named locals. Names and field
+    accesses have addressable storage.
+    """
+    if isinstance(expr, TpyCoerce):
+        return _is_dangling_temporary_arg(expr.expr)
+    if isinstance(expr, (TpyCall, TpyMethodCall, TpyBinOp)):
+        return True
+    if isinstance(expr, TpyIfExpr):
+        return (_is_dangling_temporary_arg(expr.then_expr)
+                or _is_dangling_temporary_arg(expr.else_expr))
+    return False
+
+
 def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyExpr) -> None:
     """Register borrow from function call return value (8b).
 
@@ -77,15 +95,23 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
         if idx == -1 and obj is not None:
             root = _borrow_storage_root(obj)
             if root is not None:
-                # ELEMENT: structural_mutated_params now separates structural mutations
-                # from element-ref taking, so ELEMENT borrows here no longer cause
-                # false positives in _check_borrow_arg_conflicts.
                 ctx.borrow_tracker.add_borrow(root, borrower, BorrowKind.ELEMENT)
+            elif _is_dangling_temporary_arg(obj):
+                ctx.warning(
+                    f"Result borrows from temporary receiver object; "
+                    f"the temporary is destroyed at end-of-statement",
+                    expr,
+                )
         elif idx >= 0 and idx < len(args):
             root = _borrow_storage_root(args[idx])
             if root is not None:
                 ctx.borrow_tracker.add_borrow(root, borrower, BorrowKind.ELEMENT)
-
+            elif _is_dangling_temporary_arg(args[idx]):
+                ctx.warning(
+                    f"Result borrows from temporary argument '{fi.params[idx].name}'; "
+                    f"the temporary is destroyed at end-of-statement",
+                    expr,
+                )
 
 
 
@@ -772,15 +798,28 @@ class StatementAnalyzer:
                             call_args = stmt.iterable.args
                             call_obj = getattr(stmt.iterable, 'obj', None)
                             for idx in fi_iter.return_borrows_from:
+                                arg = None
                                 if idx == -1 and call_obj is not None:
                                     src = _borrow_storage_root(call_obj)
+                                    arg = call_obj
                                 elif idx >= 0 and idx < len(call_args):
                                     src = _borrow_storage_root(call_args[idx])
+                                    arg = call_args[idx]
                                 else:
                                     src = None
                                 if src is not None:
                                     self.ctx.borrow_tracker.add_borrow(src, "__for_iter", BorrowKind.ITER)
                                     self.ctx.loop_var_iterable[stmt.var] = src
+                                elif arg is not None and _is_dangling_temporary_arg(arg):
+                                    if idx == -1:
+                                        detail = "temporary receiver object"
+                                    else:
+                                        detail = f"temporary argument '{fi_iter.params[idx].name}'"
+                                    self.ctx.warning(
+                                        f"Iterator borrows from {detail}; "
+                                        f"the temporary is destroyed before iteration begins",
+                                        stmt.iterable,
+                                    )
                     if is_direct_next_iter or is_protocol_iter:
                         iter_depth = inner_scope.depth
                     elif is_iter_based:
