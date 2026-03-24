@@ -1,32 +1,3 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::typing")
-from typing import Protocol, Self
-from tpy import Int32, readonly
-
-
-class Sized(Protocol):
-    @readonly
-    def __len__(self) -> Int32: ...
-
-
-class Sequence[T](Protocol):
-    @readonly
-    def __len__(self) -> Int32: ...
-    @readonly
-    def __getitem__(self, index: Int32) -> T: ...
-
-
-class MutableSequence[T](Protocol):
-    @readonly
-    def __len__(self) -> Int32: ...
-    def __getitem__(self, index: Int32) -> T: ...
-    def __setitem__(self, index: Int32, value: T) -> None: ...
-
-
-class Iterator[T](Protocol):
-    def __next__(self) -> T: ...
-    def __iter__(self) -> Self: ...
-
-
-class Iterable[T](Protocol):
-    def __iter__(self) -> Iterator[T]: ...
+from tpy._core._typing import Sized, Sequence, MutableSequence, Iterator, Iterable

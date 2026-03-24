@@ -107,13 +107,41 @@ def register_sync_record(name: str) -> None:
     _sync_record_names.add(name)
 
 
+def public_module_name(module_name: str, cpp_namespace: str | None = None) -> str:
+    """Map a private submodule name to its public module identity.
+
+    e.g. "tpy._core._types" -> "tpy", "tpy._core._builtins._list" -> "tpy"
+
+    When cpp_namespace is provided (e.g. "tpystd::typing" for tpy._core._typing),
+    derives the public name from the namespace instead of the module path.
+    This handles cross-package implementations like typing protocols defined
+    in tpy._core._typing.
+    """
+    if cpp_namespace and "._" in module_name:
+        # Derive from namespace: "tpystd::typing" -> "typing", "tpystd::tpy" -> "tpy"
+        ns_parts = cpp_namespace.split("::")
+        # Skip the common prefix (e.g. "tpystd") and join the rest
+        if len(ns_parts) >= 2 and ns_parts[0] == "tpystd":
+            return ".".join(ns_parts[1:])
+    parts = module_name.split(".")
+    # Keep only parts up to (but not including) the first private component
+    public_parts = []
+    for part in parts:
+        if part.startswith("_"):
+            break
+        public_parts.append(part)
+    return ".".join(public_parts) if public_parts else module_name
+
+
 def register_protocol_module(protocol_name: str, module_name: str) -> None:
     """Register the module that defines a protocol, for qualified_name() lookups.
 
     Builtins are registered first and never overwritten by user protocols.
+    Private submodule paths are mapped to their public parent
+    (e.g. "tpy._core._types" -> "tpy").
     """
     if protocol_name not in _protocol_modules:
-        _protocol_modules[protocol_name] = module_name
+        _protocol_modules[protocol_name] = public_module_name(module_name)
 
 
 def get_protocol_qname(protocol_name: str) -> str | None:

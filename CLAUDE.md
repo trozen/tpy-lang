@@ -349,10 +349,11 @@ Library search roots and CPython stubs:
 | Directory | Purpose |
 |-----------|---------|
 | `tpy/` | Single search root for all library modules |
-| `tpy/tpy/` | TPy package: `__init__.py` defines protocols (`Comparable`, `Truthy`, `ValueType`, `AnyFixedInt`, etc.) and functions (`span`, `deref`, `make_default`). Implicitly compiled. |
+| `tpy/tpy/` | TPy package: `__init__.py` re-exports from `_core/` submodules. Implicitly compiled. |
+| `tpy/tpy/_core/` | Core definitions: `_types.py` (protocols, primitives), `_typing.py` (Sized, Iterator, Iterable), `_containers.py` (Span, Array, Ptr), `_functions.py` (span, deref), `_builtin_types.py` (bool, int, float, str), `_builtin_funcs.py` (len, hash, etc.), `_list.py`, `_dict.py`, `_set.py`, `_exceptions.py`, `_range.py` |
 | `tpy/tplib/` | TPy standard library: `Box[T]`, custom collections |
 | `tpy/typing.py` | `typing` protocols (`Sized`, `Sequence`, etc.). Implicitly compiled. |
-| `tpy/builtins.py` | Builtin functions (`len`, `repr`, `hash`, `chr`, `ord`, `abs`, `min`, `max`, `pow`, `divmod`, `next`) and exception classes (`BaseException`, `Exception`, `StopIteration`). Implicitly compiled. |
+| `tpy/builtins.py` | Re-export facade for `tpy._core`. Implicitly compiled. |
 | `tpy/math.py`, `time.py`, `sys.py`, `bisect.py` | Python stdlib analogs |
 | `cpy/tpy/` | CPython stubs ONLY (not seen by tpyc): `Int32`, `Ptr`, `Array`, decorators; submodules: `mem`, `unsafe` |
 | `cpy/tplib` | Symlink to `tpy/tplib/` so CPython tests can find tplib |

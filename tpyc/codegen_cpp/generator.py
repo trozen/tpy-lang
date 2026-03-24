@@ -679,6 +679,7 @@ class CodeGenerator:
 
         # Re-exported functions
         if self.ctx.reexported_functions:
+            any_written = False
             for local_name, (source_module, original_name) in sorted(self.ctx.reexported_functions.items()):
                 # For C-linkage functions, emit an extern "C" re-declaration.
                 # Using/alias re-exports don't work because the C++ name may
@@ -686,13 +687,23 @@ class CodeGenerator:
                 func_infos = self.ctx.analyzer.registry.get_function(local_name)
                 if func_infos and (func_infos[0].is_native_c or func_infos[0].is_extern_c):
                     self.functions.gen_extern_c_redecl(hpp, func_infos[0])
+                    any_written = True
+                    continue
+                # Skip native/template functions -- they don't generate C++
+                # function definitions (they inline via @native or @cpp_template)
+                if func_infos and all(
+                    fi.native_name or fi.cpp_template or fi.special_handling
+                    for fi in func_infos
+                ):
                     continue
                 qualified = qualified_cpp_name(source_module, original_name)
                 if local_name == original_name:
                     hpp.write(f"using {qualified};\n")
                 else:
                     hpp.write(f"inline auto& {local_name} = {qualified};\n")
-            hpp.write("\n")
+                any_written = True
+            if any_written:
+                hpp.write("\n")
 
         # Re-exported records (skip native records -- they map to existing C++ types)
         if self.ctx.reexported_records:

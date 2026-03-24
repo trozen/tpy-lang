@@ -17,6 +17,7 @@ from ..typesys import (
     has_auto_readonly,
     qualify_exception_name, ensure_qualified,
     FnType, contains_fn_type,
+    public_module_name,
 )
 from ..parse import (
     TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
@@ -709,9 +710,11 @@ class TypeRegistrar:
                 if isinstance(protocol_type, NamedType) and not protocol_type._module_qname:
                     proto_info = self.ctx.registry.get_protocol(base_name)
                     if proto_info and proto_info.module:
+                        # Use public module name for qualified_name() comparisons
+                        pub_module = public_module_name(proto_info.module)
                         protocol_type = NamedType(
                             protocol_type.name, protocol_type.type_args, True,
-                            f"{proto_info.module}.{protocol_type.name}",
+                            f"{pub_module}.{protocol_type.name}",
                             protocol_type.is_dynamic_protocol)
                 implemented_protocols.append(protocol_type)
             elif isinstance(base_type, NamedType) and base_type.is_user_record:
@@ -1088,7 +1091,7 @@ class TypeRegistrar:
             cpp_concept=protocol.cpp_concept,
             is_marker=protocol.cpp_concept is not None and len(resolved_methods) == 0,
             is_dynamic=protocol.is_dynamic,
-            module=self.ctx.module_name,
+            module=public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace),
         )
         self.ctx.registry.register_protocol(info)
 

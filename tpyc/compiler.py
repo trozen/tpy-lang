@@ -989,19 +989,13 @@ class Compiler:
             raise CompileError("Internal error: could not resolve module dependencies")
 
         # Move implicit stdlib modules (and their submodules) to the front
-        # so they're analyzed before any user code. Use _IMPLICIT_STDLIB order
-        # for top-level modules; insert submodules before their parent.
+        # so they're analyzed before any user code. The topological sort
+        # already respects inter-module dependencies (e.g. typing depending
+        # on tpy._core._typing), so we preserve that order -- just partition
+        # implicit modules to the front.
         implicit_set = self._implicit_stdlib_set()
         if implicit_set:
-            implicit: list[str] = []
-            for top in self._IMPLICIT_STDLIB:
-                if top not in self.modules:
-                    continue
-                # Submodules before parent (parent may re-export from them)
-                for m in result:
-                    if m.startswith(top + ".") and m in implicit_set:
-                        implicit.append(m)
-                implicit.append(top)
+            implicit = [m for m in result if m in implicit_set]
             result = implicit + [m for m in result if m not in implicit_set]
         self.compile_order = result
 
@@ -1102,6 +1096,11 @@ class Compiler:
             analyzer: The semantic analyzer with registered items.
         """
         exports = compiled.exports
+        # Package inits and implicit stdlib facade modules can re-export
+        # imported symbols (functions, records, protocols, enums) from other
+        # modules. The stdlib extension is safe because native re-exports are
+        # filtered out in codegen (no spurious using-declarations).
+        can_reexport = compiled.is_package_init or compiled.name in self._implicit_stdlib_set()
 
         # Export all user-defined functions
         exported_funcs: set[str] = set()
@@ -1121,8 +1120,8 @@ class Compiler:
                     exports.functions[func.name] = func_infos
                     exported_funcs.add(func.name)
 
-        # For __init__.py, also re-export imported functions from user modules
-        if compiled.is_package_init:
+        # Re-export imported functions from user modules
+        if can_reexport:
             for local_name, (source_module, original_name) in analyzer.ctx.user_imported_functions.items():
                 if local_name not in exports.functions:
                     # Get the function info from the source module
@@ -1140,8 +1139,8 @@ class Compiler:
             if record_info:
                 exports.records[record.name] = record_info
 
-        # For __init__.py, also re-export imported records from user modules
-        if compiled.is_package_init:
+        # Re-export imported records from user modules
+        if can_reexport:
             for local_name, (source_module, original_name) in analyzer.ctx.user_imported_records.items():
                 if local_name not in exports.records:
                     # Get the record info from the source module
@@ -1157,8 +1156,8 @@ class Compiler:
             if protocol_info:
                 exports.protocols[protocol.name] = protocol_info
 
-        # For __init__.py, also re-export imported protocols from user modules
-        if compiled.is_package_init:
+        # Re-export imported protocols from user modules
+        if can_reexport:
             for local_name, (source_module, original_name) in analyzer.ctx.user_imported_protocols.items():
                 if local_name not in exports.protocols:
                     # Get the protocol info from the source module
@@ -1172,8 +1171,8 @@ class Compiler:
             if enum_type:
                 exports.enums[enum.name] = enum_type
 
-        # For __init__.py, also re-export imported enums from user modules
-        if compiled.is_package_init:
+        # Re-export imported enums from user modules
+        if can_reexport:
             for local_name, (source_module, original_name) in analyzer.ctx.user_imported_enums.items():
                 if local_name not in exports.enums:
                     module_info = analyzer.registry.get_module(source_module)
@@ -1448,18 +1447,26 @@ class Compiler:
         """Build module_name -> include path mapping.
 
         For modules with cpp_include_path directive, uses the explicit value.
-        For modules with cpp_namespace override, derives from namespace
-        (e.g. "tpystd::tpy" -> "tpystd/tpy.hpp").
-        Modules without overrides use the default module-name-based path.
+        For modules with inherited cpp_namespace (from package parent), derives
+        from namespace (e.g. "tpystd::tpy" -> "tpystd/tpy.hpp").
+        Modules with explicit cpp_namespace but no cpp_include_path fall
+        through to the default module-name-based path in codegen.
         """
         ip_map: dict[str, str] = {}
         for name, compiled in self.modules.items():
-            # Explicit override takes priority
+            # Explicit include path override takes priority
             explicit = compiled.ast.directives.cpp_include_path
             if explicit is not None:
                 ip_map[name] = explicit
                 continue
-            # Derive from namespace if it differs from the default
+            # Private submodules with explicit cpp_namespace (sharing their
+            # parent's C++ namespace) use the default module-name-based include
+            # path, not the namespace-derived one (which would collide with the
+            # parent). Modules with inherited namespace (no directive, resolved
+            # via _build_namespace_map) still derive from namespace below.
+            if compiled.ast.directives.cpp_namespace is not None and "._" in name:
+                continue
+            # Derive from inherited namespace if it differs from the default.
             ns = ns_map[name]
             default_ns = f"tpyapp::{name.replace('.', '::')}"
             if ns != default_ns:

@@ -8,7 +8,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Eliminate concrete type classes (ListType, DictType, etc.): replace `isinstance(t, ListType)` checks with name-based or annotation-driven checks. ~60 references for ListType alone across type inference, codegen, and compatibility. Enables treating all types uniformly as NamedType + RecordInfo. Lower priority -- current type classes work fine, this is about uniformity.
 - Ptr null-provenance warning: consider warning when accessing through a Ptr with unknown provenance (similar to Optional access warnings). Design question: warn on all unknown-provenance access (noisy for function params) vs only when provenance is lost (was non-null, then reassigned from unknown source)?
 - drop builtin types, like RangeType
-- move decorators/annotations to lib
+- Unify parser keywords into .py stubs: (1) remove type names (Int32, Span, etc.) from PARSER_KEYWORDS -- parser creates NamedType, sema resolves via @builtin_type type factories. (2) Create `_core/_decorators.py` stubs for readonly/noalloc/nocopy/pure/dynamic/error_return and `_core/_extern.py` stubs for native/cpp_template/builtin_type. (3) Apply `public_module_name` in parser's `_resolve_type_name` so private import paths resolve to public qnames. Eliminates dual code paths (parser keywords vs .py imports), makes `_core` fully self-contained.
 - limit possible imports in macro modules
 - ContextManager[T] protocol
 

@@ -461,6 +461,7 @@ class SemanticContext:
 
     # --- Cross-module support ---
     module_name: str = "__main__"
+    module_cpp_namespace: str | None = None  # from # tpy: cpp_namespace directive
     user_imported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
     user_imported_protocols: dict[str, tuple[str, str]] = field(default_factory=dict)

@@ -14,6 +14,7 @@ from ..typesys import (
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
     NoneType, VoidType,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
+    public_module_name,
 )
 from ..coercions import resolve_coercion, CoercionContext
 from .diagnostics import SemanticError
@@ -82,7 +83,7 @@ class TypeOperations:
             # Set _module_qname for protocols from their ProtocolInfo.module
             resolved_qname = typ._module_qname
             if resolved_is_protocol and not resolved_qname and protocol_info and protocol_info.module:
-                resolved_qname = f"{protocol_info.module}.{typ.name}"
+                resolved_qname = f"{public_module_name(protocol_info.module)}.{typ.name}"
             needs_flag_update = (typ.is_protocol != resolved_is_protocol
                                  or typ.is_dynamic_protocol != resolved_is_dynamic
                                  or typ._module_qname != resolved_qname)

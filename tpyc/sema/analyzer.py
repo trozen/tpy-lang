@@ -385,6 +385,7 @@ class SemanticAnalyzer:
         """
         # Set module context
         self.ctx.module_name = module_name
+        self.ctx.module_cpp_namespace = getattr(module.directives, 'cpp_namespace', None) if hasattr(module, 'directives') else None
 
         # Convert parse warnings to diagnostics
         for warning in module.parse_warnings:
@@ -475,16 +476,23 @@ class SemanticAnalyzer:
         self._register_functions_with_overloads(module.functions)
 
         # Inject synthetic __name__: Final[str] before registration so it flows
-        # through the same path as user-defined Finals (single source of truth)
+        # through the same path as user-defined Finals (single source of truth).
+        # Skip for private submodules (containing "._") that may share their
+        # parent's C++ namespace -- they'd cause duplicate __name__ definitions.
+        # This applies to both stdlib (tpy._core._types) and user private
+        # submodules (myapp._internal), which is fine since __name__ is rarely
+        # needed in submodules compiled to C++.
         module_name = self.ctx.module_name
-        name_decl = TpyVarDecl(
-            name="__name__",
-            type=FinalType(STR),
-            init=TpyStrLiteral(value=module_name),
-        )
-        if module.top_level_stmts is None:
-            module.top_level_stmts = []
-        module.top_level_stmts.insert(0, name_decl)
+        is_private_submodule = "._" in module_name
+        if not is_private_submodule:
+            name_decl = TpyVarDecl(
+                name="__name__",
+                type=FinalType(STR),
+                init=TpyStrLiteral(value=module_name),
+            )
+            if module.top_level_stmts is None:
+                module.top_level_stmts = []
+            module.top_level_stmts.insert(0, name_decl)
 
         # Third pass: register top-level variable declarations (globals)
         self.registrar.register_globals(module.top_level_stmts)
