@@ -18,8 +18,9 @@ from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarD
 from .registration import build_record_self_type
 from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName, TpyCall,
-    TpyMethodCall, TpyExprStmt, TpyRaise, TpyTryExcept, TpyMatch,
+    TpyMethodCall, TpyExprStmt, TpyRaise, TpyTryExcept, TpyMatch, TpyNestedDef,
 )
+from .expressions import _collect_body_name_refs
 
 from .diagnostics import Scope, Diagnostic, SemanticError
 from .context import SemanticContext, RecordContext, MODULE_INIT_CONTEXT
@@ -814,8 +815,14 @@ class SemanticAnalyzer:
 
     def _finalize_nested_def_escapes(self) -> None:
         """Finalize escape analysis for nested defs after the enclosing function is analyzed."""
-        # Outer function's parameter names (str params use string_view)
-        outer_param_names = {pname for pname, _ in self.ctx.current_function.params} if self.ctx.current_function else set()
+        # Outer function's parameter names and types
+        outer_params: dict[str, TpyType] = {}
+        if self.ctx.current_function:
+            for pname, ptype in self.ctx.current_function.params:
+                outer_params[pname] = ptype
+        outer_param_names = set(outer_params.keys())
+        # Get the enclosing function body for "used after" analysis
+        body = self.ctx.current_function.body if self.ctx.current_function else []
         for name in self.ctx.nested_def_escapes:
             node = self.ctx.nested_def_nodes.get(name)
             if node is None:
@@ -828,17 +835,64 @@ class SemanticAnalyzer:
                     f"nonlocal {nl_list} in escaping closure '{name}' is not supported"
                     f" (the closure is returned or stored; use a class instead)",
                     node)
-            # Reject str/StrView parameter captures (string_view dangles after return)
+            # Collect names referenced after the nested def for move analysis
+            names_used_after = self._names_used_after(body, node)
+            # Per-capture analysis: determine ref vs value vs move capture mode
             for cap_name in node.captured_names:
+                cap_type = self.ctx.current_scope.lookup(cap_name) if self.ctx.current_scope else None
+                if cap_type is None:
+                    continue
+                raw_type = unwrap_readonly(cap_type)
+                is_own_param = isinstance(raw_type, OwnType)
+                if isinstance(raw_type, OwnType):
+                    raw_type = raw_type.wrapped
+                check_type = raw_type.inner if isinstance(raw_type, OptionalType) else raw_type
                 if cap_name in outer_param_names:
-                    cap_type = self.ctx.current_scope.lookup(cap_name) if self.ctx.current_scope else None
-                    check_type = cap_type.inner if isinstance(cap_type, OptionalType) else cap_type
-                    if check_type is not None and isinstance(check_type, (StrType, StrViewType)):
+                    # Reject str/StrView parameter captures (string_view dangles)
+                    if isinstance(check_type, (StrType, StrViewType)):
                         self.ctx.emit_error(
                             f"Escaping closure '{name}' captures str parameter"
                             f" '{cap_name}' which would dangle (string_view into"
                             f" caller's storage). Use String for owned capture",
                             node)
+                    elif not raw_type.is_value_type():
+                        if is_own_param:
+                            # Own[T] param is destroyed on return -- must move
+                            node.move_captures.add(cap_name)
+                            self.ctx.mark_own_param_consumed(cap_name)
+                        else:
+                            # Regular const-ref param: caller's object outlives closure
+                            node.ref_captures.add(cap_name)
+                else:
+                    # Local variable: must copy or move (local dies on return).
+                    if not raw_type.is_value_type():
+                        if cap_name not in names_used_after:
+                            # Last use -- move into the closure, no warning
+                            node.move_captures.add(cap_name)
+                        else:
+                            # Used after the closure -- must copy, warn
+                            self.ctx.warning(
+                                f"Escaping closure '{name}' copies local"
+                                f" '{cap_name}' by value (non-value type)."
+                                f" Consider using a class with explicit"
+                                f" fields instead",
+                                node)
+
+    @staticmethod
+    def _names_used_after(body: list[TpyStmt], nested_node: TpyNestedDef) -> set[str]:
+        """Collect names referenced in top-level statements after the nested def."""
+        found = False
+        after_stmts: list[TpyStmt] = []
+        target_name = nested_node.func.name
+        for stmt in body:
+            if found:
+                after_stmts.append(stmt)
+            elif isinstance(stmt, TpyNestedDef) and stmt.func.name == target_name:
+                found = True
+        if not found:
+            # Nested def not at top level of body -- conservatively assume all used
+            return set(nested_node.captured_names or [])
+        return _collect_body_name_refs(after_stmts)
 
     def _collect_method_overload_groups(self, record: TpyRecord) -> None:
         """Identify and validate @overload groups among a record's methods.
@@ -1189,6 +1243,9 @@ class SemanticAnalyzer:
 
             # Shared core: bind params, prescan, analyze body
             scan = self.stmts._prescan_and_analyze_body(method, resolved_params, scope, local_ns)
+
+            # Finalize nested def escape analysis (same as _analyze_function)
+            self._finalize_nested_def_escapes()
 
             self.ctx.in_consuming_method = prev_consuming
 

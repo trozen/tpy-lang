@@ -274,9 +274,11 @@ class ExpressionAnalyzer:
             self.ctx.set_expr_type(expr, typ)
             return typ
 
-        # Named function reference with Fn/Callable hint: resolve as function value
-        if isinstance(expr, TpyName) and isinstance(type_hint, (FnType, CallableType)):
-            result = self._try_resolve_function_ref(expr, type_hint)
+        # Named function reference with Fn/Callable hint: resolve as function value.
+        # Unwrap OwnType so that e.g. list.append(Own[Callable[...]]) works.
+        fn_hint = type_hint.wrapped if isinstance(type_hint, OwnType) else type_hint
+        if isinstance(expr, TpyName) and isinstance(fn_hint, (FnType, CallableType)):
+            result = self._try_resolve_function_ref(expr, fn_hint)
             if result is not None:
                 self.ctx.set_expr_type(expr, result)
                 return result

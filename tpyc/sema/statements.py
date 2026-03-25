@@ -2326,6 +2326,9 @@ class StatementAnalyzer:
             # Own[T] param stored in a field/container — mark as consumed
             if isinstance(stmt.value, TpyName) and stmt.value.name in self.ctx.current_param_names:
                 self.ctx.mark_own_param_consumed(stmt.value.name)
+            # Escape tracking: nested def stored in field/container escapes
+            if isinstance(stmt.value, TpyName) and stmt.value.name in self.ctx.nested_def_names:
+                self.ctx.nested_def_escapes.add(stmt.value.name)
         if isinstance(stmt.target, TpyName):
             # Track param rebinding (subsequent mutations target the new local, not the arg)
             if stmt.target.name in self.ctx.current_param_names:
