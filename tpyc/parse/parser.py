@@ -319,11 +319,10 @@ class _DecoratorArgSchema:
 # Argument schemas for all known decorators. Decorators not listed here
 # (macro decorators, etc.) are validated by their own paths.
 _DECORATOR_ARG_SCHEMAS: dict[str, _DecoratorArgSchema] = {
-    # Only decorators that aren't @builtin_decorator stubs need explicit schemas.
+    # Only decorators without @builtin_decorator stubs need explicit schemas.
     # All other schemas are derived from stub signatures in .py files
     # (see Parser._schema_from_stub and Parser._decorator_schemas).
-    qnames.AUTO_READONLY:     _DecoratorArgSchema(),
-    qnames.STATICMETHOD:      _DecoratorArgSchema(),
+    qnames.STATICMETHOD:      _DecoratorArgSchema(),  # Python builtin, no stub
 }
 
 
