@@ -6,8 +6,8 @@
 |---------|--------|
 | Copy warning: `Iterable[Own[T]]` param coercion with Own-stripping | Done |
 | `copy_iter(x)` -- explicit element-by-element copy acknowledgment | Done (CopyIter codegen + CopyIterType sema type) |
-| `own_iter(x)` -- explicit consuming iteration | Done (list only; moves container into OwnIter) |
-| `OwnIter[T]` runtime type (list drain) | Done (vector only) |
+| `own_iter(x)` -- explicit consuming iteration | Done (list via own_iter(); set/dict via auto-consuming __iter__) |
+| `OwnIter[T]` / `OwnIterSet[T]` / `OwnIterDict[K,V]` runtime types | Done (vector, ordered_set, ordered_map) |
 | `CopyIter[T]` runtime type (element-by-element copy adapter) | Done (with begin/end for for-loops) |
 | `CopyIterType` / `OwnIterType` as concrete sema types | Done |
 | `__iter__(self: Own[Self]) -> Iterator[Own[T]]` overload for list | Done (used by explicit `b.__iter__()` at last use) |
@@ -15,8 +15,9 @@
 | `auto_own[Self]` / `auto_own[T]` -- auto-generate consuming overloads | Done (parser cloning + ownership propagation through fields) |
 | Ownership propagation through fields (`Own[S].field` -> `Own[T]`) | Partial (sema types propagate; codegen does not yet emit `std::move` for owned fields) |
 | Per-element move in consuming for-loops | Planned (loop var uses `auto&&`, move-ready; needs per-element ownership transfer in codegen) |
-| `own_iter()` for set/dict | Planned (needs proper drain iterators) |
-| Auto-consuming at last use (for-loops, extend, constructors) | Done (list only; auto-selects consuming `__iter__` when iterable is at last use) |
+| `own_iter()` for set/dict | Done (OwnIterSet, OwnIterDict in ordered_set/map.hpp) |
+| Auto-consuming at last use (for-loops, extend, constructors) | Done (list, set, dict keys; auto-selects consuming `__iter__` when iterable is at last use) |
+| Consuming `dict.items()` | Blocked (Own[Self] overload changes return type, breaking non-iteration callers; needs for-loop-scoped dispatch) |
 | `auto_own` on `__iter__` for user collections | Done (return type + consuming loop codegen fixed) |
 | User-defined drain iterators (`ArrayListDrainIter`) | Planned |
 | Borrow tracking for view-type drain iterators | Planned (depends on view type tracking) |
@@ -420,12 +421,13 @@ for x in span(b):    # always borrows, x is Node reference
   `auto&&` binding (move-ready forwarding ref), but codegen doesn't yet
   emit `std::move(x)` for ownership transfer in loop bodies. Elements are
   referenced in-place; actual moves need per-element ownership tracking.
-- **`own_iter()` only supports list**: The C++ `own_iter()` factory only
-  accepts `std::vector<T>&&`. Set/dict need proper drain iterators.
-- **`auto_own` on `__iter__` blocked for user collections**: `iter(Own[list[T]])`
-  fails because generic builtin type inference doesn't unwrap `Own[T]`.
-  Also, protocol return types from user `__iter__` can't be iterated in
-  for-loops.
+- **Consuming `dict.items()` blocked**: `Own[Self]` overload on `items()`
+  changes return type from `dict_items` to `Iterator[tuple]`, breaking
+  callers like `len(d.items())`. Needs for-loop-scoped consuming dispatch.
+- **`own_iter()` builtin is list-only**: The explicit `own_iter()` function
+  only accepts `list[T]`. Set/dict use auto-consuming via `__iter__`
+  overloads. Could be generalized to dispatch to consuming `__iter__` on
+  any type.
 - **Constructor overloads unified**: list/set/dict now use a single
   `Iterable[Own[T]]` constructor with C++ `if constexpr` dispatch. Structural
   protocol-to-protocol conformance allows Iterator[T] to match Iterable[T].

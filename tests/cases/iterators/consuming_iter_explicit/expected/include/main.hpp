@@ -12,7 +12,7 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void test_consuming_last_use();
+void test_last_use();
 void test_borrowing_not_last_use();
 
 // class Node:

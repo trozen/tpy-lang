@@ -32,7 +32,7 @@ void main() {
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
-        const std::tuple<std::string, ::tpy::BigInt>& __for_tup_0 = *__beg_2;
+        const auto& __for_tup_0 = *__beg_2;
         // for k, v in d.items():
         const auto& __tup_1 = __for_tup_0;
         std::string_view k = std::get<0>(__tup_1);

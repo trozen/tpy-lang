@@ -217,11 +217,11 @@ void test_foreach_value_from_pointer_local() {
     // total: Int32 = 0
     int32_t total = 0;
     // for n in nums:
-    auto __obj_0 = tpy::own_iter(std::move(nums));
+    auto& __obj_0 = nums;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& n = *__beg_0;
+        int32_t n = *__beg_0;
         // total = total + n
         total = (::tpy::add_check<int32_t>(total, n));
     }

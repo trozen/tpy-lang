@@ -130,11 +130,11 @@ void loop_shadow_outer() {
     // x: Int32 = 99
     int32_t x = 99;
     // for x in items:
-    auto __obj_0 = tpy::own_iter(std::move(items));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& x = *__beg_0;
+        int32_t x = *__beg_0;
         // pass
     }
     // print(x)  # tpyc: ok

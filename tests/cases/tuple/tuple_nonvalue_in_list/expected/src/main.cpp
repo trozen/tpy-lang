@@ -9,11 +9,11 @@ void main() {
     // items: list[tuple[str, Point]] = [("a", Point(1, 2)), ("b", Point(3, 4))]
     std::vector<std::tuple<std::string, Point>> items = {std::tuple<std::string, Point>{"a", Point(1, 2)}, std::tuple<std::string, Point>{"b", Point(3, 4)}};
     // for item in items:
-    auto __obj_0 = tpy::own_iter(std::move(items));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& item = *__beg_0;
+        const auto& item = *__beg_0;
         // print(item)
         std::cout << ::tpy::TuplePrinter(item) << "\n";
     }

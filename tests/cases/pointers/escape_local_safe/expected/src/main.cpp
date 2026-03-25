@@ -47,7 +47,7 @@ void foreach_outer_container() {
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
     // for p in items:
-    auto __obj_0 = tpy::own_iter(std::move(items));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -92,7 +92,7 @@ void foreach_shadow_safe() {
         // pass
     }
     // for p in items:
-    auto __obj_1 = tpy::own_iter(std::move(items));
+    auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
@@ -114,7 +114,7 @@ void param_reused_as_loop_var(Point& p) {
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
     // for p in items:
-    auto __obj_0 = tpy::own_iter(std::move(items));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -142,15 +142,15 @@ void sequential_loops_same_var() {
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
     // for p in items1:
-    auto __obj_0 = tpy::own_iter(std::move(items1));
+    auto& __obj_0 = items1;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& p = *__beg_0;
+        const auto& p = *__beg_0;
         // pass
     }
     // for p in items2:
-    auto __obj_1 = tpy::own_iter(std::move(items2));
+    auto& __obj_1 = items2;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
@@ -183,11 +183,11 @@ void lvalue_init_rvalue_rebind() {
     std::optional<Point> __slot_1;
     Point* best = &(::tpy::__getitem__(items, 0));
     // for p in items:
-    auto __obj_0 = tpy::own_iter(std::move(items));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& p = *__beg_0;
+        const auto& p = *__beg_0;
         // if p.x > best.x:
         if ((p.x > best->x)) {
             // best = copy(p)  # tpyc: ok

@@ -139,11 +139,11 @@ void test_tuple_unpack() {
     // for i, s in items:
     ::tpy::BigInt i;
     std::string_view s;
-    auto __obj_0 = tpy::own_iter(std::move(items));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& __for_tup_0 = *__beg_0;
+        const auto& __for_tup_0 = *__beg_0;
         // for i, s in items:
         const auto& __tup_1 = __for_tup_0;
         i = std::get<0>(__tup_1);
@@ -162,11 +162,11 @@ void test_tuple_unpack_partial() {
     std::vector<std::tuple<::tpy::BigInt, std::string>> items = {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(1), "a"}, std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(2), "b"}};
     // for i, s in items:
     ::tpy::BigInt i;
-    auto __obj_0 = tpy::own_iter(std::move(items));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& __for_tup_1 = *__beg_0;
+        const auto& __for_tup_1 = *__beg_0;
         // for i, s in items:
         const auto& __tup_1 = __for_tup_1;
         i = std::get<0>(__tup_1);
@@ -184,11 +184,11 @@ void test_tuple_unpack_second_func() {
     // for i, s in items:
     ::tpy::BigInt i;
     std::string_view s;
-    auto __obj_0 = tpy::own_iter(std::move(items));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& __for_tup_2 = *__beg_0;
+        const auto& __for_tup_2 = *__beg_0;
         // for i, s in items:
         const auto& __tup_1 = __for_tup_2;
         i = std::get<0>(__tup_1);

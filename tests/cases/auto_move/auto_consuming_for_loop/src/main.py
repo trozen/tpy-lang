@@ -1,11 +1,10 @@
-# Auto-consuming for-loop: iterable at last use uses consuming __iter__.
-# The compiler detects list at last use and calls own_iter(std::move(items))
-# instead of borrowing __iter__.
+# For-loop iteration always borrows (consuming disabled until per-element move).
+# Verifies that last-use vs non-last-use both generate borrowing codegen.
 from tpy import Int32
 
 def sum_last_use() -> Int32:
     items: list[Int32] = [10, 20, 30]
-    # items is at last use -- auto-consumes
+    # items at last use -- still borrows (no per-element move yet)
     total: Int32 = 0
     for x in items:
         total += x

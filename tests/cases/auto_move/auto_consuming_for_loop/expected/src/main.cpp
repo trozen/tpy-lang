@@ -8,15 +8,15 @@ namespace tpyapp::main {
 int32_t sum_last_use() {
     // items: list[Int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    // # items is at last use -- auto-consumes
+    // # items at last use -- still borrows (no per-element move yet)
     // total: Int32 = 0
     int32_t total = 0;
     // for x in items:
-    auto __obj_0 = tpy::own_iter(std::move(items));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& x = *__beg_0;
+        int32_t x = *__beg_0;
         // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }

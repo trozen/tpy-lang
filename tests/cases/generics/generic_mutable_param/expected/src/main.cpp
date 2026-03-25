@@ -41,11 +41,11 @@ void main() {
     // modify_list(nums)
     modify_list(nums);
     // for x in nums:
-    auto __obj_1 = tpy::own_iter(std::move(nums));
+    auto& __obj_1 = nums;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        auto&& x = *__beg_1;
+        int32_t x = *__beg_1;
         // print(x)
         std::cout << x << "\n";
     }

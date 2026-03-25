@@ -483,6 +483,9 @@ class StatementAnalyzer:
     def _find_consuming_iter(self, iterable_type: TpyType) -> FunctionInfo | None:
         """Find the consuming __iter__ overload for a type, if any.
 
+        NOTE: Currently unused -- for-loop auto-consuming is disabled until
+        per-element move is implemented. Preserved for re-enabling. See TODO.md.
+
         Only matches concrete types (list, user records with auto_own __iter__).
         Skips pending/unresolved types to avoid mismatched codegen.
         """
@@ -788,14 +791,11 @@ class StatementAnalyzer:
                 )
                 stmt.elem_type = elem_type
 
-                # Auto-consuming iteration: if iterable is at last use and
-                # has a consuming __iter__ overload, use it for move semantics.
-                if (isinstance(stmt.iterable, TpyName)
-                        and id(stmt.iterable) in self.ctx.all_last_uses
-                        and self.compat._is_movable_var(stmt.iterable.name)):
-                    consuming_fi = self._find_consuming_iter(inner_iterable_type)
-                    if consuming_fi is not None:
-                        stmt.consuming_iter_fi = consuming_fi
+                # Auto-consuming iteration is disabled for for-loops until
+                # per-element move is implemented. Currently consuming only
+                # moves the container structure with no per-element benefit.
+                # Consuming iteration for Iterable[Own[T]] call-site args
+                # (constructors, extend) still works via _gen_consuming_iter.
 
                 is_direct_next_iter = builtin_modules.get_error_return_next_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
                 is_iter_based = builtin_modules.get_iter_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
@@ -2769,20 +2769,21 @@ class StatementAnalyzer:
                 f"Operator '{stmt.op}=' is not supported for {target_type}",
                 stmt,
             )
-        if is_numeric_target and not isinstance(value_type, (Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType)):
+        check_value_type = value_type.wrapped if isinstance(value_type, OwnType) else value_type
+        if is_numeric_target and not isinstance(check_value_type, (Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType)):
             raise self.ctx.error(
-                f"Augmented assignment value must be a numeric type, got {value_type}",
+                f"Augmented assignment value must be a numeric type, got {check_value_type}",
                 stmt,
             )
-        if is_str_target and not is_any_str_type(value_type):
+        if is_str_target and not is_any_str_type(check_value_type):
             raise self.ctx.error(
-                f"Augmented assignment value must be a string type, got {value_type}",
+                f"Augmented assignment value must be a string type, got {check_value_type}",
                 stmt,
             )
         # Special case: FixedInt += BigInt should use the target's ops (value gets converted)
         # This preserves checked arithmetic and avoids unnecessary promotion to BigInt
-        resolve_value_type = value_type
-        if isinstance(target_type, Int32Type) and isinstance(value_type, BigIntType):
+        resolve_value_type = check_value_type
+        if isinstance(target_type, Int32Type) and isinstance(check_value_type, BigIntType):
             resolve_value_type = target_type
         # Invalidate range facts for the target (value has changed)
         if isinstance(stmt.target, TpyName):

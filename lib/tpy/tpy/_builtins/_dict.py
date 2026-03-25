@@ -1,5 +1,5 @@
 # tpy: cpp_namespace("tpystd::builtins")
-from .._typing import overload, Iterator, Iterable
+from .._typing import overload, Self, Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure, Own
 from .._core._types import Int32, NativeIterable
 from .._bootstrap._extern import native, cpp_template, native_preserves_refs, builtin_type
@@ -70,10 +70,15 @@ class dict[K, V](Iterable[K], NativeIterable[K]):
     @cpp_template("::tpy::dict_construct<{K}, {V}>({0})")
     def __init__(self, x: Iterable[Own[tuple[K, V]]]) -> None: ...
 
+    @overload
     @native("tpy::__iter__", function=True)
     @pure
     @readonly
     def __iter__(self) -> Iterator[K]: ...
+
+    @overload
+    @native("tpy::own_iter_dict", function=True)
+    def __iter__(self: Own[Self]) -> Iterator[Own[K]]: ...
 
     @native("tpy::__len__", function=True)
     @pure

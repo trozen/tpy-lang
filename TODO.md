@@ -38,11 +38,11 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - **[LOW]** `__param_` copy for reassigned parameters: when a parameter is reassigned in the function body, codegen takes it by `const&` then copies into a mutable local. For BigInt/string params, taking by value instead would let the caller move. Only helps when caller passes an rvalue; for lvalue calls it's worse (forces copy at call site vs zero-cost `const&`). Also changes ABI (not API).
 
 ## Ownership & Consuming Iteration
-- Consuming `__iter__` for set/dict: only list has a consuming overload (`tpy::own_iter`). Set/dict need drain iterators before auto-consuming at last use can work for them.
+- Consuming `items()` for dict: consuming `__iter__` works for keys, but consuming `items()` can't use `@overload` with `Own[Self]` because the return type changes (`dict_items` -> `Iterator[tuple]`), breaking non-iteration callers like `len(d.items())`. Needs a mechanism that only selects consuming dispatch when used as a for-loop iterable.
 - `own_iter()` is list-only: kept as explicit escape hatch for non-last-use consuming. Could be made generic (dispatch to consuming `__iter__` on any type).
 - `own()` builtin: explicit `T -> Own[T]` conversion (analogous to `span()` -> `Span[T]`).
 - User-defined drain iterators (e.g. `ArrayListDrainIter`): view types with borrow tracking. See `docs/CONSUMING_ITERATION_DESIGN.md`.
-- Per-element move in consuming for-loops: loop var uses `auto&&` (move-ready), but per-element ownership transfer not yet implemented.
+- Per-element move in consuming for-loops: loop var uses `auto&&` (move-ready), but per-element ownership transfer not yet implemented. Until this lands, consuming iteration has no real benefit over borrowing (both access elements by reference). Once per-element move works, also add a value-type element check to `_find_consuming_iter` to skip consuming when moving is identical to copying (e.g. `list[Int32]`).
 
 ## Safety
 

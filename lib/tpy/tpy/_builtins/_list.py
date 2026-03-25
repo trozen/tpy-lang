@@ -22,7 +22,7 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], ReadO
 
     @overload
     @native("tpy::own_iter", function=True)
-    def __iter__(self: Own[Self]) -> Iterator[T]: ...
+    def __iter__(self: Own[Self]) -> Iterator[Own[T]]: ...
 
     @native("tpy::__len__", function=True)
     @pure

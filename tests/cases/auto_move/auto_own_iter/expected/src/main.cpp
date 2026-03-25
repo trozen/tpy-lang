@@ -8,12 +8,11 @@ namespace tpyapp::main {
 void main() {
     // s = Stack()
     Stack s = Stack();
-    // # Borrowing clone
+    // # Both calls use borrowing (consuming dispatch is for-loop only)
     // print(s.consume())
     std::cout << s.consume() << "\n";
-    // # Consuming clone (s at last use)
     // print(s.consume())
-    std::cout << std::move(s).consume() << "\n";
+    std::cout << s.consume() << "\n";
 }
 
 void __tpy_init() {

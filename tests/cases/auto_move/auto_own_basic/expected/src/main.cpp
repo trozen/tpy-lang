@@ -16,12 +16,12 @@ void test_borrowing() {
     std::cout << p.second_val.val << "\n";
 }
 
-// def test_consuming() -> None:
-void test_consuming() {
+// def test_last_use() -> None:
+void test_last_use() {
     // p = Pair[Node](Node(30), Node(40))
     Pair<Node> p = Pair<Node>(Node(30), Node(40));
-    // x = p.first()
-    Node x = std::move(p).first();
+    // x = p.first()  # borrowing even at last use (not __iter__)
+    Node& x = p.first();
     // print(x.val)
     std::cout << x.val << "\n";
 }
@@ -32,13 +32,13 @@ void __tpy_init() {
     initialized = true;
 
     // # auto_own[Self] generates borrowing + consuming overloads from a single method.
-    // # The consuming clone gets self: Own[Self] and auto_own[T] -> Own[T] in return type.
-    // # Ownership propagates through field access: self.field is Own[T] in the consuming clone.
+    // # Consuming dispatch only happens for __iter__ via for-loop detection;
+    // # general method calls always use the borrowing overload.
     // from typing import Self
     // test_borrowing()
     test_borrowing();
-    // test_consuming()
-    test_consuming();
+    // test_last_use()
+    test_last_use();
 }
 
 } // namespace tpyapp::main

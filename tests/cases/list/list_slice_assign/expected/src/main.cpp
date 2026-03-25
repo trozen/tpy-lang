@@ -41,11 +41,11 @@ void main() {
     // a[1:1] = [99, 98]
     ::tpy::list_set_slice(a, 1, 1, std::vector<int32_t>{99, 98});
     // for x in a:
-    auto __obj_2 = tpy::own_iter(std::move(a));
+    auto& __obj_2 = a;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
-        auto&& x = *__beg_2;
+        int32_t x = *__beg_2;
         // print(x)
         std::cout << x << "\n";
     }
@@ -55,11 +55,11 @@ void main() {
     // b[-2:] = [100, 200]
     ::tpy::list_set_slice(b, -2, ::tpy::SLICE_END, std::vector<int32_t>{100, 200});
     // for x in b:
-    auto __obj_3 = tpy::own_iter(std::move(b));
+    auto& __obj_3 = b;
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
-        auto&& x = *__beg_3;
+        int32_t x = *__beg_3;
         // print(x)
         std::cout << x << "\n";
     }
@@ -69,11 +69,11 @@ void main() {
     // c[:] = [10, 20]
     ::tpy::list_set_slice(c, 0, ::tpy::SLICE_END, std::vector<int32_t>{10, 20});
     // for x in c:
-    auto __obj_4 = tpy::own_iter(std::move(c));
+    auto& __obj_4 = c;
     auto __beg_4 = __obj_4.begin();
     auto __end_4 = __obj_4.end();
     for (; __beg_4 != __end_4; ++__beg_4) {
-        auto&& x = *__beg_4;
+        int32_t x = *__beg_4;
         // print(x)
         std::cout << x << "\n";
     }

@@ -55,7 +55,7 @@ void collect_pairs(T_items& items) {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        const std::tuple<std::string, int32_t>& pair = *__r_1;
+        const auto& pair = *__r_1;
         // k, v = pair
         const auto& __tup_1 = pair;
         std::string_view k = std::get<0>(__tup_1);

@@ -1,5 +1,5 @@
 # tpy: cpp_namespace("tpystd::builtins")
-from .._typing import Iterator, Iterable
+from .._typing import overload, Self, Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure, Own
 from .._core._types import Int32, NativeIterable
 from .._bootstrap._extern import native, cpp_template, builtin_type
@@ -13,10 +13,15 @@ class set[T](Iterable[T], NativeIterable[T]):
     @cpp_template("::tpy::set_construct<{T}>({0})")
     def __init__(self, x: Iterable[Own[T]]) -> None: ...
 
+    @overload
     @native("tpy::__iter__", function=True)
     @pure
     @readonly
     def __iter__(self) -> Iterator[T]: ...
+
+    @overload
+    @native("tpy::own_iter_set", function=True)
+    def __iter__(self: Own[Self]) -> Iterator[Own[T]]: ...
 
     @native("tpy::__len__", function=True)
     @pure

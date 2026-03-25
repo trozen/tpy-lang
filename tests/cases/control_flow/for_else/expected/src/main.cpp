@@ -48,11 +48,11 @@ void with_continue() {
     // items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
     // for x in items:
-    auto __obj_1 = tpy::own_iter(std::move(items));
+    auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        auto&& x = *__beg_1;
+        int32_t x = *__beg_1;
         // if x == Int32(2):
         if ((x == 2)) {
             // continue
@@ -149,11 +149,11 @@ void empty_iterable() {
     // items: list[Int32] = []
     std::vector<int32_t> items = std::vector<int32_t>{};
     // for x in items:
-    auto __obj_1 = tpy::own_iter(std::move(items));
+    auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        auto&& x = *__beg_1;
+        int32_t x = *__beg_1;
         // break
         goto __after_else_0;
     }
@@ -170,11 +170,11 @@ void var_decl_in_else() {
     // items: list[Int32] = [Int32(1), Int32(2), Int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
     // for item in items:
-    auto __obj_1 = tpy::own_iter(std::move(items));
+    auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        auto&& item = *__beg_1;
+        int32_t item = *__beg_1;
         // if item == Int32(99):
         if ((item == 99)) {
             // break

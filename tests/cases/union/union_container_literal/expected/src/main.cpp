@@ -23,7 +23,7 @@ void process_list(const std::vector<std::variant<int32_t, std::string>>& items) 
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::variant<int32_t, std::string> item = *__beg_0;
+        auto&& item = *__beg_0;
         // if isinstance(item, str):
         if (std::holds_alternative<std::string>(item)) {
             auto& __item = std::get<std::string>(item);
@@ -103,11 +103,11 @@ void main() {
     // animals: list[Dog | Cat] = [Dog("Buddy"), Cat("Mimi")]
     std::vector<std::variant<Cat, Dog>> animals = {Dog("Buddy"), Cat("Mimi")};
     // for a in animals:
-    auto __obj_0 = tpy::own_iter(std::move(animals));
+    auto& __obj_0 = animals;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& a = *__beg_0;
+        const auto& a = *__beg_0;
         // if isinstance(a, Dog):
         if (std::holds_alternative<Dog>(a)) {
             auto& __a = std::get<Dog>(a);
@@ -160,7 +160,7 @@ void main() {
     // items2 = make_list()
     std::vector<std::variant<int32_t, std::string>> items2 = make_list();
     // for item in items2:
-    auto __obj_1 = tpy::own_iter(std::move(items2));
+    auto& __obj_1 = items2;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {

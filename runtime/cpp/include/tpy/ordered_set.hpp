@@ -9,10 +9,13 @@
 #pragma once
 
 #include <cstdint>
+#include <expected>
 #include <functional>
 #include <initializer_list>
 #include <unordered_map>
 #include <utility>
+
+#include "core.hpp"
 
 namespace tpy {
 
@@ -245,9 +248,79 @@ private:
         }
     }
 
+    template<typename> friend struct OwnIterSet;
+
     std::unordered_map<T, Node*, std::hash<T>> table_;
     Node* head_ = nullptr;
     Node* tail_ = nullptr;
 };
+
+// ---------------------------------------------------------------------------
+// OwnIterSet -- drain iterator for ordered_set
+//
+// Owns a moved ordered_set and yields elements by move. O(1) construction
+// (hash table move is pointer swap). Implements both C++ range (begin/end
+// with move iterators) and the TurboPython Iterator protocol (__next__).
+// ---------------------------------------------------------------------------
+
+template<typename T>
+struct OwnIterSet {
+    ordered_set<T> data;
+    typename ordered_set<T>::Node* pos;
+
+    explicit OwnIterSet(ordered_set<T>&& s)
+        : data(std::move(s)), pos(data.head_) {}
+
+    OwnIterSet(const OwnIterSet&) = delete;
+    OwnIterSet& operator=(const OwnIterSet&) = delete;
+    OwnIterSet(OwnIterSet&&) = default;
+    OwnIterSet& operator=(OwnIterSet&&) = default;
+
+    // Move iterator: walks linked-list nodes, yields T&& (moved values).
+    // Single-pass: each dereference moves the value out of the node.
+    struct move_iter {
+        using Node = typename ordered_set<T>::Node;
+        Node* node_;
+
+        using iterator_category = std::input_iterator_tag;
+        using value_type = T;
+        using difference_type = std::ptrdiff_t;
+        using reference = T&&;
+
+        move_iter() : node_(nullptr) {}
+        explicit move_iter(Node* n) : node_(n) {}
+
+        T&& operator*() { return std::move(node_->value); }
+        move_iter& operator++() { node_ = node_->next; return *this; }
+        move_iter operator++(int) { auto tmp = *this; ++*this; return tmp; }
+        bool operator==(const move_iter& o) const { return node_ == o.node_; }
+        bool operator!=(const move_iter& o) const { return node_ != o.node_; }
+    };
+
+    // NativeIterable: range-based iteration with move semantics.
+    // Do not mix range-based (begin/end) and __next__-based iteration on the
+    // same instance -- both advance shared state and the result is undefined.
+    move_iter begin() { return move_iter(pos); }
+    move_iter end()   { return move_iter(nullptr); }
+
+    // TPy Iterator protocol
+    std::expected<T, StopIteration> __next__() {
+        if (pos == nullptr) return tpy::make_unexpected(StopIteration{});
+        T value = std::move(pos->value);
+        pos = pos->next;
+        return value;
+    }
+
+    OwnIterSet& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const OwnIterSet&) {
+        return os << "<own_iter_set>";
+    }
+};
+
+template<typename T>
+OwnIterSet<T> own_iter_set(ordered_set<T>&& s) {
+    return OwnIterSet<T>{std::move(s)};
+}
 
 }  // namespace tpy

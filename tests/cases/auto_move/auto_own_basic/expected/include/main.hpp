@@ -14,7 +14,7 @@ template<typename T> struct Pair;
 inline constexpr std::string_view __name__ = "__main__";
 
 void test_borrowing();
-void test_consuming();
+void test_last_use();
 
 // class Node:
 struct Node {

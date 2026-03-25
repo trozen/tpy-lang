@@ -10,7 +10,7 @@ void main() {
     // items: list[tuple[str, Point]] = [("a", Point(1, 2)), ("b", Point(3, 4))]
     std::vector<std::tuple<std::string, Point>> items = {std::tuple<std::string, Point>{"a", Point(1, 2)}, std::tuple<std::string, Point>{"b", Point(3, 4)}};
     // for name, pt in items:
-    auto __obj_0 = tpy::own_iter(std::move(items));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -26,7 +26,7 @@ void main() {
     // pairs: list[tuple[int, Point]] = [(1, Point(10, 20)), (2, Point(30, 40))]
     std::vector<std::tuple<::tpy::BigInt, Point>> pairs = {std::tuple<::tpy::BigInt, Point>{::tpy::BigInt(1), Point(10, 20)}, std::tuple<::tpy::BigInt, Point>{::tpy::BigInt(2), Point(30, 40)}};
     // for n, pt in pairs:
-    auto __obj_1 = tpy::own_iter(std::move(pairs));
+    auto& __obj_1 = pairs;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
@@ -42,7 +42,7 @@ void main() {
     // segments: list[tuple[Point, Point]] = [(Point(0, 0), Point(1, 1)), (Point(2, 2), Point(3, 3))]
     std::vector<std::tuple<Point, Point>> segments = {std::tuple<Point, Point>{Point(0, 0), Point(1, 1)}, std::tuple<Point, Point>{Point(2, 2), Point(3, 3)}};
     // for a, b in segments:
-    auto __obj_2 = tpy::own_iter(std::move(segments));
+    auto& __obj_2 = segments;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {

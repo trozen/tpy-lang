@@ -1939,30 +1939,30 @@ In consuming method bodies, field access on `self` yields `Own[FieldType]`
 (ownership propagation through fields), allowing fields to be returned as
 owned values without explicit `copy()`.
 
-**Limitations**: `auto_own` on `__iter__` for user collections is not yet
-working end-to-end. See `docs/CONSUMING_ITERATION_DESIGN.md` for details.
+#### Working: Auto-Consuming Iteration at Last Use
 
-#### Working: `own_iter()` for Consuming For-Loops
-
-`own_iter(container)` explicitly moves a list into an `OwnIter` wrapper for
-consuming iteration. Elements are accessible via forwarding references
-(`auto&&`), ready for future per-element move support:
+For-loops automatically use consuming iteration when the iterable is at its
+last use. This avoids element copies for `list`, `set`, and `dict` (keys):
 
 ```python
-from tpy import own_iter
+items: list[Node] = [Node(1), Node(2)]
+for x in items:  # items at last use -- auto-consumes (vector moved into OwnIter)
+    print(x.val)
 
-src: list[Node] = [Node(1), Node(2)]
-for x in own_iter(src):  # src's vector moved into OwnIter
-    print(x.val)         # x references elements inside OwnIter
-# src is consumed here (vector was moved)
+s: set[str] = {"a", "b"}
+for x in s:  # s at last use -- auto-consumes (set moved into OwnIterSet)
+    print(x)
 ```
 
-Without `own_iter()`, for-loops always use borrowing iteration (`const auto&`).
-`own_iter()` currently only supports `list[T]`; support for other containers
-is planned.
+When the container is still needed after the loop, borrowing iteration is used
+automatically. `own_iter(container)` is available as an explicit escape hatch
+for non-last-use consuming (list only).
 
-For-loops without `own_iter()` work the same as before -- the source container
-is borrowed, not consumed.
+User-defined types can opt in via `auto_own[Self]` on `__iter__`.
+
+**Limitations**: Consuming `dict.items()` is not yet supported -- the
+`Own[Self]` overload changes the return type, breaking non-iteration callers.
+See `docs/CONSUMING_ITERATION_DESIGN.md` for details.
 
 #### Working: Regular Method Calls on Protocol Types
 

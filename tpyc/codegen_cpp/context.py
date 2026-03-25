@@ -11,7 +11,7 @@ from typing import Callable, TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NamedType, SelfType,
-    BigIntType, BoolType, IntLiteralType, TypeParamRef, UnionType, FunctionInfo,
+    BigIntType, BoolType, IntLiteralType, TypeParamRef, UnionType, TupleType, FunctionInfo,
     is_protocol_type, unwrap_readonly, ensure_qualified,
 )
 from ..parse import (
@@ -194,10 +194,19 @@ def loop_var_binding(
     storage. Zero cost (no per-element move), but move-ready: codegen
     can later emit std::move(var) for per-element ownership transfer.
     """
+    # Own[T] from consuming iterators uses the same binding as T.
+    if isinstance(elem_type, OwnType):
+        elem_type = elem_type.wrapped
     if hoisted:
         return f"{cpp_var} = {deref_expr};"
     if consuming:
         # Forwarding ref into OwnIter storage: zero-cost, move-ready.
+        return f"auto&& {cpp_var} = {deref_expr};"
+    # Composite types (variants, tuples) use reference binding -- they may
+    # contain heap-allocated members, making copies expensive.
+    if isinstance(elem_type, (UnionType, TupleType)):
+        if const_loop_var:
+            return f"const auto& {cpp_var} = {deref_expr};"
         return f"auto&& {cpp_var} = {deref_expr};"
     if const_loop_var and elem_type.is_value_type():
         return f"const {elem_type.to_cpp()}& {cpp_var} = {deref_expr};"

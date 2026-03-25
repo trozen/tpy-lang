@@ -27,11 +27,11 @@ void test_read_only_loop() {
     // total: Int32 = Int32(0)
     int32_t total = 0;
     // for p in items:
-    auto __obj_0 = tpy::own_iter(std::move(items));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& p = *__beg_0;
+        const auto& p = *__beg_0;
         // total = total + p.value()
         total = (::tpy::add_check<int32_t>(total, p.value()));
     }
@@ -98,7 +98,7 @@ void test_assign_to_local_loop() {
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
     // for p in items:
-    auto __obj_0 = tpy::own_iter(std::move(items));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -152,11 +152,11 @@ void test_pass_to_readonly_func() {
     // total: Int32 = Int32(0)
     int32_t total = 0;
     // for p in items:
-    auto __obj_0 = tpy::own_iter(std::move(items));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& p = *__beg_0;
+        const auto& p = *__beg_0;
         // total = total + read_point(p)
         total = (::tpy::add_check<int32_t>(total, read_point(p)));
     }
@@ -190,11 +190,11 @@ void test_value_type_loop() {
     // total: Int32 = Int32(0)
     int32_t total = 0;
     // for n in items:
-    auto __obj_0 = tpy::own_iter(std::move(items));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& n = *__beg_0;
+        int32_t n = *__beg_0;
         // total = total + n
         total = (::tpy::add_check<int32_t>(total, n));
     }
@@ -218,11 +218,11 @@ void test_sequential_loops_same_var() {
     // total: Int32 = Int32(0)
     int32_t total = 0;
     // for p in items:
-    auto __obj_1 = tpy::own_iter(std::move(items));
+    auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        auto&& p = *__beg_1;
+        const auto& p = *__beg_1;
         // total = total + p.value()
         total = (::tpy::add_check<int32_t>(total, p.value()));
     }
@@ -237,11 +237,11 @@ void test_bigint_const_ref() {
     // total: int = 0
     ::tpy::BigInt total = ::tpy::BigInt(0);
     // for x in items:
-    auto __obj_0 = tpy::own_iter(std::move(items));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& x = *__beg_0;
+        const ::tpy::BigInt& x = *__beg_0;
         // total = total + x
         total = ((total) + (x));
     }
@@ -256,11 +256,11 @@ void test_bigint_mutated() {
     // total: int = 0
     ::tpy::BigInt total = ::tpy::BigInt(0);
     // for x in items:
-    auto __obj_0 = tpy::own_iter(std::move(items));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& x = *__beg_0;
+        ::tpy::BigInt x = *__beg_0;
         // x = x + 1
         x = ((x) + (::tpy::BigInt(1)));
         // total = total + x

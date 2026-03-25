@@ -499,13 +499,10 @@ class MethodAnalyzer:
         if isinstance(obj_type, ReadonlyType):
             obj_type = obj_type.wrapped
 
-        # Determine if receiver can be consumed (last use of a movable local).
-        # Used to select consuming __iter__ overloads.
+        # General method calls always prefer borrowing overloads.
+        # Consuming __iter__ overloads are selected at call-site by
+        # _gen_consuming_iter in codegen_cpp/expressions.py.
         is_consuming_receiver = False
-        if isinstance(expr.obj, TpyName):
-            _in_last = id(expr.obj) in self.ctx.all_last_uses
-            _movable = self.compat._is_movable_var(expr.obj.name)
-            is_consuming_receiver = _in_last and _movable
 
         if isinstance(obj_type, OwnType):
             obj_type = obj_type.wrapped

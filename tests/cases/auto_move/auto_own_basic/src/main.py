@@ -1,6 +1,6 @@
 # auto_own[Self] generates borrowing + consuming overloads from a single method.
-# The consuming clone gets self: Own[Self] and auto_own[T] -> Own[T] in return type.
-# Ownership propagates through field access: self.field is Own[T] in the consuming clone.
+# Consuming dispatch only happens for __iter__ via for-loop detection;
+# general method calls always use the borrowing overload.
 from typing import Self
 from tpy import Int32, auto_own, copy
 
@@ -25,10 +25,10 @@ def test_borrowing() -> None:
     print(x.val)
     print(p.second_val.val)
 
-def test_consuming() -> None:
+def test_last_use() -> None:
     p = Pair[Node](Node(30), Node(40))
-    x = p.first()
+    x = p.first()  # borrowing even at last use (not __iter__)
     print(x.val)
 
 test_borrowing()
-test_consuming()
+test_last_use()

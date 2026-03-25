@@ -12,11 +12,14 @@
 #pragma once
 
 #include <cstdint>
+#include <expected>
 #include <functional>
 #include <initializer_list>
 #include <tuple>
 #include <unordered_map>
 #include <utility>
+
+#include "core.hpp"
 
 namespace tpy {
 
@@ -352,9 +355,138 @@ private:
         }
     }
 
+    template<typename, typename> friend struct OwnIterDict;
+    template<typename, typename> friend struct OwnIterDictItems;
+
     std::unordered_map<K, Node*> table_;
     Node* head_ = nullptr;
     Node* tail_ = nullptr;
 };
+
+// ---------------------------------------------------------------------------
+// OwnIterDict -- drain iterator for ordered_map keys
+//
+// Owns a moved ordered_map and yields keys by move.
+// ---------------------------------------------------------------------------
+
+template<typename K, typename V>
+struct OwnIterDict {
+    ordered_map<K, V> data;
+    typename ordered_map<K, V>::Node* pos;
+
+    explicit OwnIterDict(ordered_map<K, V>&& m)
+        : data(std::move(m)), pos(data.head_) {}
+
+    OwnIterDict(const OwnIterDict&) = delete;
+    OwnIterDict& operator=(const OwnIterDict&) = delete;
+    OwnIterDict(OwnIterDict&&) = default;
+    OwnIterDict& operator=(OwnIterDict&&) = default;
+
+    struct move_iter {
+        using Node = typename ordered_map<K, V>::Node;
+        Node* node_;
+
+        using iterator_category = std::input_iterator_tag;
+        using value_type = K;
+        using difference_type = std::ptrdiff_t;
+        using reference = K&&;
+
+        move_iter() : node_(nullptr) {}
+        explicit move_iter(Node* n) : node_(n) {}
+
+        K&& operator*() { return std::move(node_->key); }
+        move_iter& operator++() { node_ = node_->next; return *this; }
+        move_iter operator++(int) { auto tmp = *this; ++*this; return tmp; }
+        bool operator==(const move_iter& o) const { return node_ == o.node_; }
+        bool operator!=(const move_iter& o) const { return node_ != o.node_; }
+    };
+
+    // Do not mix range-based (begin/end) and __next__-based iteration on the
+    // same instance -- both advance shared state and the result is undefined.
+    move_iter begin() { return move_iter(pos); }
+    move_iter end()   { return move_iter(nullptr); }
+
+    std::expected<K, StopIteration> __next__() {
+        if (pos == nullptr) return tpy::make_unexpected(StopIteration{});
+        K key = std::move(pos->key);
+        pos = pos->next;
+        return key;
+    }
+
+    OwnIterDict& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const OwnIterDict&) {
+        return os << "<own_iter_dict>";
+    }
+};
+
+template<typename K, typename V>
+OwnIterDict<K, V> own_iter_dict(ordered_map<K, V>&& m) {
+    return OwnIterDict<K, V>{std::move(m)};
+}
+
+// ---------------------------------------------------------------------------
+// OwnIterDictItems -- drain iterator for ordered_map items (key-value pairs)
+//
+// Owns a moved ordered_map and yields std::tuple<K, V> by move.
+// ---------------------------------------------------------------------------
+
+template<typename K, typename V>
+struct OwnIterDictItems {
+    ordered_map<K, V> data;
+    typename ordered_map<K, V>::Node* pos;
+
+    explicit OwnIterDictItems(ordered_map<K, V>&& m)
+        : data(std::move(m)), pos(data.head_) {}
+
+    OwnIterDictItems(const OwnIterDictItems&) = delete;
+    OwnIterDictItems& operator=(const OwnIterDictItems&) = delete;
+    OwnIterDictItems(OwnIterDictItems&&) = default;
+    OwnIterDictItems& operator=(OwnIterDictItems&&) = default;
+
+    struct move_iter {
+        using Node = typename ordered_map<K, V>::Node;
+        Node* node_;
+
+        using iterator_category = std::input_iterator_tag;
+        using value_type = std::tuple<K, V>;
+        using difference_type = std::ptrdiff_t;
+        using reference = std::tuple<K, V>;
+
+        move_iter() : node_(nullptr) {}
+        explicit move_iter(Node* n) : node_(n) {}
+
+        std::tuple<K, V> operator*() {
+            return std::tuple<K, V>(std::move(node_->key), std::move(node_->value));
+        }
+        move_iter& operator++() { node_ = node_->next; return *this; }
+        move_iter operator++(int) { auto tmp = *this; ++*this; return tmp; }
+        bool operator==(const move_iter& o) const { return node_ == o.node_; }
+        bool operator!=(const move_iter& o) const { return node_ != o.node_; }
+    };
+
+    // Do not mix range-based (begin/end) and __next__-based iteration on the
+    // same instance -- both advance shared state and the result is undefined.
+    move_iter begin() { return move_iter(pos); }
+    move_iter end()   { return move_iter(nullptr); }
+
+    std::expected<std::tuple<K, V>, StopIteration> __next__() {
+        if (pos == nullptr) return tpy::make_unexpected(StopIteration{});
+        auto item = std::tuple<K, V>(std::move(pos->key), std::move(pos->value));
+        pos = pos->next;
+        return item;
+    }
+
+    OwnIterDictItems& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const OwnIterDictItems&) {
+        return os << "<own_iter_dict_items>";
+    }
+};
+
+template<typename K, typename V>
+OwnIterDictItems<K, V> own_iter_dict_items(ordered_map<K, V>&& m) {
+    return OwnIterDictItems<K, V>{std::move(m)};
+}
 
 }  // namespace tpy

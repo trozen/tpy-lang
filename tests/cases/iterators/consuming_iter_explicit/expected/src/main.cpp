@@ -4,12 +4,12 @@
 namespace tpyapp::main {
 
 
-// def test_consuming_last_use() -> None:
-void test_consuming_last_use() {
+// def test_last_use() -> None:
+void test_last_use() {
     // b: list[Node] = [Node(1), Node(2)]
     std::vector<Node> b = {Node(1), Node(2)};
     // it = b.__iter__()
-    auto it = ::tpy::own_iter(std::move(b));
+    auto it = ::tpy::__iter__(b);
     // total: Int32 = 0
     int32_t total = 0;
     // for x in it:
@@ -53,8 +53,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // test_consuming_last_use()
-    test_consuming_last_use();
+    // test_last_use()
+    test_last_use();
     // test_borrowing_not_last_use()
     test_borrowing_not_last_use();
 }

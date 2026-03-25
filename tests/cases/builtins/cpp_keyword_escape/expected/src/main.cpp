@@ -34,11 +34,11 @@ void test_for_loop_keyword() {
     // items: list[Int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
     // for operator in items:
-    auto __obj_0 = tpy::own_iter(std::move(items));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& operator_ = *__beg_0;
+        int32_t operator_ = *__beg_0;
         // total = total + operator
         total = (::tpy::add_check<int32_t>(total, operator_));
     }

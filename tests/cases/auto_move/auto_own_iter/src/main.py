@@ -18,9 +18,8 @@ class Stack:
 
 def main() -> None:
     s = Stack()
-    # Borrowing clone
+    # Both calls use borrowing (consuming dispatch is for-loop only)
     print(s.consume())
-    # Consuming clone (s at last use)
     print(s.consume())
 
 main()

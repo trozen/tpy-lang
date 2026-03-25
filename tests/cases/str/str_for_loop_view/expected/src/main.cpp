@@ -11,11 +11,11 @@ void main() {
     std::vector<std::string> words = {"hello", "world", "foo"};
     // # Read-only iteration -> string_view
     // for w in words:
-    auto __obj_0 = tpy::own_iter(std::move(words));
+    auto& __obj_0 = words;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& w = *__beg_0;
+        std::string_view w = *__beg_0;
         // print(w)
         std::cout << w << "\n";
     }
@@ -37,7 +37,7 @@ void main() {
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
-        const std::tuple<std::string, ::tpy::BigInt>& __for_tup_0 = *__beg_2;
+        const auto& __for_tup_0 = *__beg_2;
         // # Dict items -> tuple unpack, str key is string_view
         // for k, v in d.items():
         const auto& __tup_1 = __for_tup_0;

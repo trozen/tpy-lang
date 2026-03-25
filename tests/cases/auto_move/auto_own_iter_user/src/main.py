@@ -19,7 +19,7 @@ def main() -> None:
     for x in xs:
         total += x
     print(total)
-    # Consuming iteration (xs at last use)
+    # xs at last use (borrowing -- for-loop consuming disabled)
     for x in xs:
         print(x)
 

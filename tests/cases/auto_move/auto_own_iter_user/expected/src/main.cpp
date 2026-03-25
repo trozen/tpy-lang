@@ -23,9 +23,10 @@ void main() {
     }
     // print(total)
     std::cout << total << "\n";
-    // # Consuming iteration (xs at last use)
+    // # xs at last use (borrowing -- for-loop consuming disabled)
     // for x in xs:
-    auto __itr_2 = std::move(xs).__iter__();
+    auto& __src_2 = xs;
+    auto __itr_2 = __src_2.__iter__();
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;

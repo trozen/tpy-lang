@@ -62,7 +62,7 @@ void test_manual_iter() {
     // nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
     // it = nums.__iter__()
-    auto it = ::tpy::own_iter(std::move(nums));
+    auto it = ::tpy::__iter__(nums);
     // total: Int32 = 0
     int32_t total = 0;
     // for x in it:
