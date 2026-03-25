@@ -52,7 +52,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from typing import Sequence
     // from tplib import ArrayList
     ::tpystd::tplib::__tpy_init();
     // main()

@@ -31,8 +31,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Test qualified typing access (typing.Optional, typing.Protocol)
-    // import typing
     // main()
     main();
 }

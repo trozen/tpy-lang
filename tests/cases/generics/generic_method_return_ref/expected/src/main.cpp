@@ -19,7 +19,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from typing import Protocol
     // from tplib import Box
     ::tpystd::tplib::__tpy_init();
     // test()

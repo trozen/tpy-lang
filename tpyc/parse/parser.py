@@ -42,10 +42,10 @@ from .nodes import (
     ModuleDirectives,
 )
 from .imports import (
-    ImportProcessor, PARSER_KEYWORDS, is_parser_keyword_module,
-    _EXTERN_KEYWORDS, _PRIVATE_MODULE_PUBLIC_NAMES,
-    PYTHON_BUILTINS, TYPING_NAMES, get_tpy_exports,
+    ImportProcessor, _PRIVATE_MODULE_PUBLIC_NAMES, _IMPLICIT_MODULES,
+    get_builtins_exports, get_typing_exports, get_tpy_exports,
 )
+from .. import qnames
 
 # Map of fixed-int type names to their singleton instances (used for expression inference)
 _FIXED_INT_MAP: dict[str, TpyType] = {str(t): t for t in ALL_FIXED_INTS}
@@ -322,8 +322,8 @@ _DECORATOR_ARG_SCHEMAS: dict[str, _DecoratorArgSchema] = {
     # Only decorators that aren't @builtin_decorator stubs need explicit schemas.
     # All other schemas are derived from stub signatures in .py files
     # (see Parser._schema_from_stub and Parser._decorator_schemas).
-    "tpy.auto_readonly":      _DecoratorArgSchema(),
-    "builtins.staticmethod":  _DecoratorArgSchema(),
+    qnames.AUTO_READONLY:     _DecoratorArgSchema(),
+    qnames.STATICMETHOD:      _DecoratorArgSchema(),
 }
 
 
@@ -420,7 +420,7 @@ class Parser:
         if source:
             return source
 
-        if local_name in PYTHON_BUILTINS:
+        if local_name in get_builtins_exports():
             return ("builtins", local_name)
 
         # Check for @builtin_type / @builtin_decorator defined locally in this file
@@ -430,8 +430,8 @@ class Parser:
             if len(parts) == 2:
                 return (parts[0], parts[1])
 
-        # Auto-resolve _EXTERN_KEYWORDS within tpy.extern's own module
-        if local_name in _EXTERN_KEYWORDS and self._imports._module_name:
+        # Auto-resolve builtin_decorator within tpy.extern's own module
+        if local_name == "builtin_decorator" and self._imports._module_name:
             pub = _PRIVATE_MODULE_PUBLIC_NAMES.get(self._imports._module_name) or public_module_name(self._imports._module_name)
             if pub == "tpy.extern":
                 return ("tpy.extern", local_name)
@@ -476,7 +476,7 @@ class Parser:
             elif original == "str": return STR
             elif original == "slice": return SLICE
             elif original == "None": return VOID
-            elif original == "type": return NamedType("type", _module_qname="builtins.type")
+            elif original == "type": return NamedType("type", _module_qname=qnames.TYPE)
             elif original == "tuple":
                 raise ParseError("tuple requires type arguments: tuple[T1, T2, ...]", node)
         elif module == "tpy":
@@ -531,13 +531,13 @@ class Parser:
 
     def _raise_unresolved_import_error(self, raw_name: str, node: ast.expr) -> None:
         """Raise a helpful error for unresolved type names with import hints."""
-        if raw_name in TYPING_NAMES:
+        if raw_name in get_typing_exports():
             raise ParseError(f"'{raw_name}' requires: from typing import {raw_name}", node)
         # In stdlib _core modules, unresolved uppercase names may be forward
         # references to types defined later in the same file. Let them through.
         mod = self._imports._module_name
         if mod and "._" in mod and raw_name[0].isupper():
-            if public_module_name(mod) in PARSER_KEYWORDS:
+            if public_module_name(mod) in _IMPLICIT_MODULES:
                 return
         if raw_name in get_tpy_exports():
             raise ParseError(f"'{raw_name}' requires: from tpy import {raw_name}", node)
@@ -548,7 +548,7 @@ class Parser:
             mod = node.value.id
             canonical = self._reverse_module_aliases.get(mod, mod)
             qualified = f"{mod}.{node.attr}"
-            if is_parser_keyword_module(canonical):
+            if canonical in _IMPLICIT_MODULES:
                 raise ParseError(f"'{qualified}' requires: import {canonical}", node)
 
     def _is_ignorable_for_import_order(self, node: ast.stmt) -> bool:
@@ -673,9 +673,9 @@ class Parser:
                 # (skip for @builtin_type classes -- shadow is intentional)
                 source = self._imports.get_import_source(node.name)
                 has_builtin_type = any(
-                    self._decorator_local_name(d) in ("builtin_type", "tpy.extern.builtin_type")
+                    self._decorator_local_name(d) in ("builtin_type", qnames.BUILTIN_TYPE)
                     for d in node.decorator_list)
-                if source and is_parser_keyword_module(source[0]) and not has_builtin_type:
+                if source and source[0] in _IMPLICIT_MODULES and not has_builtin_type:
                     self._warn(f"class '{node.name}' shadows import from '{source[0]}'", node)
                 result = self._parse_class(node)
                 if isinstance(result, TpyProtocol):
@@ -885,7 +885,7 @@ class Parser:
             match = _type_map.get(type(ptype))
             if match:
                 return match
-            if isinstance(ptype, NamedType) and ptype.qualified_name() == "builtins.type":
+            if isinstance(ptype, NamedType) and ptype.qualified_name() == qnames.TYPE:
                 return (_NameArg, "type name")
             return None
 
@@ -1063,10 +1063,10 @@ class Parser:
                         f"Class '{node.name}' cannot have both @{linkage.value} and @{new_linkage.value}", node)
                 linkage = new_linkage
                 native_name = pos
-            elif qname == "tpy.nocopy":
+            elif qname == qnames.NOCOPY:
                 self._validate_decorator_args(qname, arg, dec)
                 is_nocopy = True
-            elif qname == "tpy.extern.builtin_type":
+            elif qname == qnames.BUILTIN_TYPE:
                 pos, kw = self._validate_decorator_args(qname, arg, dec)
                 builtin_type_key = pos
             else:
@@ -1278,10 +1278,10 @@ class Parser:
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"protocol '{node.name}'")
             pos, kw = self._validate_decorator_args(qname, arg, dec)
-            if qname == "tpy.dynamic":
+            if qname == qnames.DYNAMIC:
                 is_dynamic = True
                 continue
-            if qname == "tpy.extern.native":
+            if qname == qnames.NATIVE:
                 if not isinstance(pos, str):
                     raise ParseError("@native on protocol requires a C++ concept name string argument", dec)
                 cpp_concept = ensure_qualified(pos)
@@ -1339,7 +1339,7 @@ class Parser:
                 for dec in item.decorator_list:
                     qname, arg = self._require_decorator(dec, f"protocol method '{item.name}'")
                     pos, kw = self._validate_decorator_args(qname, arg, dec)
-                    if qname == "tpy.readonly":
+                    if qname == qnames.READONLY:
                         is_readonly, readonly_opt_out = self._parse_readonly_arg(pos, dec)
                     else:
                         dec_name = self._decorator_local_name(dec) or "?"
@@ -1480,13 +1480,13 @@ class Parser:
         )
 
     _RECORD_LINKAGE_MAP: dict[str, RecordLinkage] = {
-        "tpy.extern.native": RecordLinkage.NATIVE,
-        "tpy.extern.native_c": RecordLinkage.NATIVE_C,
+        qnames.NATIVE: RecordLinkage.NATIVE,
+        qnames.NATIVE_C: RecordLinkage.NATIVE_C,
     }
 
     _METHOD_LINKAGE_MAP: dict[str, FunctionLinkage] = {
-        "tpy.extern.native": FunctionLinkage.NATIVE,
-        "tpy.extern.native_c": FunctionLinkage.NATIVE_C,
+        qnames.NATIVE: FunctionLinkage.NATIVE,
+        qnames.NATIVE_C: FunctionLinkage.NATIVE_C,
     }
 
     def _parse_method(self, node: ast.FunctionDef, class_name: str, type_param_scope: dict[str, TypeParamKind] | None = None) -> TpyFunction:
@@ -1509,24 +1509,24 @@ class Parser:
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"method '{node.name}'")
             pos, kw = self._validate_decorator_args(qname, arg, dec)
-            if qname == "builtins.staticmethod":
+            if qname == qnames.STATICMETHOD:
                 is_staticmethod = True
-            elif qname == "tpy.pure":
+            elif qname == qnames.PURE:
                 is_pure = True
-            elif qname == "typing.override":
+            elif qname == qnames.OVERRIDE:
                 is_override = True
-            elif qname == "typing.overload":
+            elif qname == qnames.OVERLOAD:
                 is_overload_stub = True
-            elif qname == "tpy.readonly":
+            elif qname == qnames.READONLY:
                 is_readonly, readonly_opt_out = self._parse_readonly_arg(pos, dec)
-            elif qname == "tpy.auto_readonly":
+            elif qname == qnames.AUTO_READONLY:
                 auto_readonly = True
                 auto_readonly_dec = dec
-            elif qname == "tpy.error_return":
+            elif qname == qnames.ERROR_RETURN:
                 error_return = pos.name
-            elif qname == "tpy.extern.cpp_template":
+            elif qname == qnames.CPP_TEMPLATE:
                 cpp_template = pos
-            elif qname == "tpy.extern.native_preserves_refs":
+            elif qname == qnames.NATIVE_PRESERVES_REFS:
                 native_preserves_refs = True
             elif qname in self._METHOD_LINKAGE_MAP:
                 method_linkage = self._METHOD_LINKAGE_MAP[qname]
@@ -1819,9 +1819,9 @@ class Parser:
         return [borrowing, consuming]
 
     _FUNCTION_LINKAGE_MAP: dict[str, FunctionLinkage] = {
-        "tpy.extern.native": FunctionLinkage.NATIVE,
-        "tpy.extern.native_c": FunctionLinkage.NATIVE_C,
-        "tpy.extern.extern_c": FunctionLinkage.EXTERN_C,
+        qnames.NATIVE: FunctionLinkage.NATIVE,
+        qnames.NATIVE_C: FunctionLinkage.NATIVE_C,
+        qnames.EXTERN_C: FunctionLinkage.EXTERN_C,
     }
 
     def _parse_function(self, node: ast.FunctionDef) -> TpyFunction:
@@ -1840,23 +1840,23 @@ class Parser:
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"function '{node.name}'")
             pos, kw = self._validate_decorator_args(qname, arg, dec)
-            if qname == "tpy.noalloc":
+            if qname == qnames.NOALLOC:
                 is_noalloc = True
-            elif qname == "tpy.pure":
+            elif qname == qnames.PURE:
                 is_pure = True
-            elif qname == "tpy.readonly":
+            elif qname == qnames.READONLY:
                 is_readonly, readonly_opt_out = self._parse_readonly_arg(pos, dec)
-            elif qname == "tpy.auto_readonly":
+            elif qname == qnames.AUTO_READONLY:
                 raise ParseError("@auto_readonly is only valid on methods, not free functions", dec)
-            elif qname == "typing.overload":
+            elif qname == qnames.OVERLOAD:
                 is_overload_stub = True
-            elif qname == "tpy.error_return":
+            elif qname == qnames.ERROR_RETURN:
                 error_return = pos.name
-            elif qname == "tpy.extern.value_ptr_coercion":
+            elif qname == qnames.VALUE_PTR_COERCION:
                 value_ptr_coercion = True
-            elif qname == "tpy.extern.cpp_template":
+            elif qname == qnames.CPP_TEMPLATE:
                 cpp_template = pos
-            elif qname == "tpy.extern.builtin_decorator":
+            elif qname == qnames.BUILTIN_DECORATOR:
                 builtin_decorator_key = pos
             elif qname in self._FUNCTION_LINKAGE_MAP:
                 new_linkage = self._FUNCTION_LINKAGE_MAP[qname]
@@ -2133,8 +2133,7 @@ class Parser:
                     return self._parse_generic_type(node, resolved_container, lookup.type_def, type_param_scope)
 
                 # Generic types from imported modules (user modules, builtin submodules, etc.)
-                # Skip modules where ALL names are parser keywords (fully hardcoded types).
-                if resolved and not (resolved[0] in PARSER_KEYWORDS and PARSER_KEYWORDS[resolved[0]] is None):
+                if resolved:
                     source_module, original_name = resolved
                     if lookup := lookup_generic_type_in_module(original_name, source_module):
                         return self._parse_generic_type(node, resolved_container, lookup.type_def, type_param_scope)

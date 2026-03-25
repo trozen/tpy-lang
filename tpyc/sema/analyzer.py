@@ -1694,10 +1694,13 @@ class SemanticAnalyzer:
             self.ctx.user_imported_variables[local_name] = (module_name, original_name)
             return
 
-        # Parser keywords (Protocol, Optional, etc.) are handled at parse time,
-        # not exported by .py files -- silently skip them here.
+        # @builtin_type/@builtin_decorator stubs and parser keywords are handled
+        # at parse time, not exported by .py files -- silently skip them here.
         from ..parse import is_parser_keyword
         if is_parser_keyword(module_name, original_name):
+            return
+        if (self.ctx.registry.get_builtin_type_key(original_name) or
+                self.ctx.registry.get_builtin_decorator_key(original_name)):
             return
 
         # If this module shadows a builtin, fall back to builtin handling

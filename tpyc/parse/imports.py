@@ -14,29 +14,9 @@ from .nodes import (
 from ..typesys import public_module_name
 
 
-# Names that the parser must resolve during parsing (compiler intrinsics).
-# Most tpy names are now defined in .py stubs and resolved via normal imports.
-# Only names that trigger AST cloning (auto_readonly, auto_own) remain here;
-# other decorators are resolved via @builtin_decorator stubs in _decorators.py.
-PARSER_KEYWORDS: dict[str, frozenset[str] | None] = {
-    # None means ALL names are parser keywords (module cannot be shadowed by .py)
-    "tpy": frozenset({
-        # Decorators that trigger method cloning at parse time
-        "auto_readonly", "auto_own",
-    }),
-    # tpy.extern is NOT listed here to avoid changing import processing for user code.
-    # Extern keyword names are checked via _EXTERN_KEYWORDS in is_parser_keyword().
-    "builtins": None,
-    "__future__": None,  # no-op, never resolved as .py
-    "typing": frozenset({"Optional", "Final", "Callable"}),
-}
-
-# Bootstrap primitive for tpy.extern: the one keyword that must be hardcoded
-# so that _extern.py can define all other decorators using @builtin_decorator.
-# All other extern decorator names are defined as @builtin_decorator stubs.
-_EXTERN_KEYWORDS = frozenset({
-    "builtin_decorator",
-})
+# Implicit stdlib modules -- always compiled by the compiler, so imports from
+# these modules don't need TpyImport nodes for __tpy_init() ordering.
+_IMPLICIT_MODULES = frozenset({"typing", "tpy", "builtins"})
 
 # Private submodule -> public module name overrides.
 # Used when public_module_name() can't derive the correct public name
@@ -46,21 +26,14 @@ _PRIVATE_MODULE_PUBLIC_NAMES: dict[str, str] = {
     "tpy._typing": "typing",
 }
 
-# Python builtins -- always available without import
-PYTHON_BUILTINS = frozenset({"int", "float", "bool", "str", "None", "tuple", "slice", "type", "Exception", "BaseException"})
-
-# Names from typing that require explicit import
-TYPING_NAMES = frozenset({"Optional", "Protocol", "Self", "Sized", "Sequence", "MutableSequence", "Iterator", "Iterable", "Final", "override", "overload", "Callable"})
-
-
-def _read_tpy_exports() -> frozenset[str]:
-    """Read __all__ from tpy/__init__.py to get star-import exports."""
+def _read_module_all(module_path: str) -> frozenset[str]:
+    """Read __all__ from a .py module file under lib/tpy/."""
     # Deferred: tpyc.__init__ imports tpyc.parse, so top-level would be circular.
     from tpyc import get_lib_dir
-    init_path = get_lib_dir() / "tpy" / "tpy" / "__init__.py"
-    if not init_path.exists():
+    path = get_lib_dir() / "tpy" / module_path
+    if not path.exists():
         return frozenset()
-    tree = ast.parse(init_path.read_text())
+    tree = ast.parse(path.read_text())
     for node in ast.iter_child_nodes(tree):
         if isinstance(node, ast.Assign):
             for target in node.targets:
@@ -69,41 +42,41 @@ def _read_tpy_exports() -> frozenset[str]:
     return frozenset()
 
 
-_tpy_exports: frozenset[str] | None = None
+_module_all_cache: dict[str, frozenset[str]] = {}
+
+
+def _get_module_all(module_path: str) -> frozenset[str]:
+    """Get __all__ from a module file (cached)."""
+    if module_path not in _module_all_cache:
+        _module_all_cache[module_path] = _read_module_all(module_path)
+    return _module_all_cache[module_path]
 
 
 def get_tpy_exports() -> frozenset[str]:
     """Get the set of names exported by 'from tpy import *' (cached)."""
-    global _tpy_exports
-    if _tpy_exports is None:
-        _tpy_exports = _read_tpy_exports()
-    return _tpy_exports
+    return _get_module_all("tpy/__init__.py")
 
 
-def is_parser_keyword_module(module_name: str) -> bool:
-    """Check if a module has any parser keyword handling."""
-    return module_name in PARSER_KEYWORDS
+def get_builtins_exports() -> frozenset[str]:
+    """Get the set of names exported by builtins (cached)."""
+    return _get_module_all("builtins.py")
+
+
+def get_typing_exports() -> frozenset[str]:
+    """Get the set of names exported by typing (cached)."""
+    return _get_module_all("typing.py")
 
 
 def is_parser_keyword(module_name: str, name: str) -> bool:
     """Check if a specific name from a module is a parser keyword.
 
-    Returns True if the name must be handled by the parser (not from .py files).
-    For modules with PARSER_KEYWORDS[mod] = None, ALL names are keywords.
-    For private submodules (e.g. tpy._bootstrap._decorators), checks the public parent.
+    Only one name remains hardcoded: tpy.extern.builtin_decorator, which
+    must be recognized before any .py stubs can be compiled (bootstrap).
     """
-    kw = PARSER_KEYWORDS.get(module_name)
-    if kw is None and module_name in PARSER_KEYWORDS:
-        return True  # None means all names are keywords
-    if kw is not None:
-        return name in kw
-    # For private submodules, check the public module name
     if "._" in module_name:
         pub = _PRIVATE_MODULE_PUBLIC_NAMES.get(module_name) or public_module_name(module_name)
         if pub == "tpy.extern":
-            return name in _EXTERN_KEYWORDS
-        if pub != module_name:
-            return is_parser_keyword(pub, name)
+            return name == "builtin_decorator"
     return False
 
 
@@ -179,25 +152,16 @@ class ImportProcessor:
         for alias in node.names:
             module_name = alias.name
             local_name = alias.asname or module_name
-            has_keywords = is_parser_keyword_module(module_name)
-            if has_keywords:
-                # Record for qualified keyword access (e.g. typing.Optional)
-                imports[module_name] = None
-            if not has_keywords or PARSER_KEYWORDS[module_name] is not None:
-                # Module may have .py file -- track for file resolution.
-                # Skipped only for modules where ALL names are keywords (None).
-                user_module_imports[module_name] = node.lineno
-                bare_module_imports.add(module_name)
-                if module_name not in imports:
-                    imports[module_name] = set()
-                if local_name != module_name:
-                    module_aliases[module_name] = local_name
-                if not has_keywords:
-                    if not any(isinstance(s, TpyImport) and s.module_name == module_name for s in top_level_stmts):
-                        import_alias = local_name if local_name != module_name else None
-                        top_level_stmts.append(TpyImport(module_name=module_name, alias=import_alias, loc=SourceLocation(node.lineno, node.col_offset)))
-            elif local_name != module_name:
+            user_module_imports[module_name] = node.lineno
+            bare_module_imports.add(module_name)
+            if module_name not in imports:
+                imports[module_name] = set()
+            if local_name != module_name:
                 module_aliases[module_name] = local_name
+            if module_name not in _IMPLICIT_MODULES:
+                if not any(isinstance(s, TpyImport) and s.module_name == module_name for s in top_level_stmts):
+                    import_alias = local_name if local_name != module_name else None
+                    top_level_stmts.append(TpyImport(module_name=module_name, alias=import_alias, loc=SourceLocation(node.lineno, node.col_offset)))
 
     def process_import_from(self, node: ast.ImportFrom, imports: dict, user_module_imports: dict,
                             top_level_stmts: list, module_aliases: dict) -> None:
@@ -238,8 +202,6 @@ class ImportProcessor:
         if module_name == "__future__":
             return
 
-        has_keywords = is_parser_keyword_module(module_name)
-
         # tpy has special star-import and alias tracking
         if module_name == "tpy":
             if any(alias.name == "*" for alias in node.names):
@@ -276,13 +238,9 @@ class ImportProcessor:
                 if not is_parser_keyword(module_name, alias.name):
                     has_non_keyword = True
 
-        # If any imported name is not a parser keyword, trigger file resolution.
-        # For non-keyword modules, all names trigger file resolution.
-        if not has_keywords or has_non_keyword:
+        # Trigger file resolution for any module with non-keyword names.
+        if has_non_keyword or not any(is_parser_keyword(module_name, a.name) for a in node.names):
             user_module_imports[module_name] = node.lineno
-            if not has_keywords:
-                # Pure user module -- emit TpyImport for __tpy_init() ordering.
-                # Parser-keyword modules get TpyImport injected by the compiler
-                # only when a .py file is actually found (avoids dead source comments).
+            if module_name not in _IMPLICIT_MODULES:
                 if not any(isinstance(s, TpyImport) and s.module_name == module_name for s in top_level_stmts):
                     top_level_stmts.append(TpyImport(module_name=module_name, loc=SourceLocation(node.lineno, node.col_offset)))

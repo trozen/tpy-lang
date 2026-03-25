@@ -19,8 +19,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # isinstance() on static protocols -- compile-time check via if constexpr
-    // from typing import Sized
     // main()
     main();
 }

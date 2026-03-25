@@ -65,9 +65,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # User-defined protocol with same name as builtin tpy.Comparable.
-    // # Verifies builtin protocol checks still work when the name is shadowed.
-    // from typing import Protocol
     // from enum import IntEnum
     // main()
     main();

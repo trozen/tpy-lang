@@ -131,8 +131,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Generator expressions: lazy iterators passed to functions accepting Iterable[T].
-    // from typing import Iterable
     // main()
     main();
 }

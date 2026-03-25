@@ -21,7 +21,6 @@ void __tpy_init() {
 
     // # @dataclass with user-defined __eq__ (user wins, no synthesis)
     // from dataclasses import dataclass
-    // from typing import Self
     // main()
     main();
 }

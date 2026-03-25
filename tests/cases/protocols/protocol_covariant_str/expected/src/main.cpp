@@ -22,8 +22,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Protocol -> str accepts implementations returning str, StrView, or String.
-    // from typing import Protocol
     // main()
     main();
 }

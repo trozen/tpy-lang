@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from .protocols import ProtocolChecker
 
 from tpyc import modules as builtin_modules
+from .. import qnames
 
 _LINKAGE_MAP = {
     'DEFAULT': FunctionLinkage.DEFAULT,
@@ -425,7 +426,7 @@ class TypeRegistrar:
                 is_native_stub = method.is_stub and (method.native_name or method.cpp_template)
                 # __iter__ returns Iterator[T] which is a protocol -- allow it since
                 # C++ codegen uses auto return type (deduced from body).
-                is_iter_method = method.name == "__iter__" and isinstance(method_return, NamedType) and method_return.name in ("Iterator", "Iterable")
+                is_iter_method = method.name == "__iter__" and isinstance(method_return, NamedType) and method_return.qualified_name() in (qnames.ITERATOR, qnames.ITERABLE)
                 if not (pi and pi.is_dynamic) and not is_native_stub and not is_iter_method and not method.is_generator:
                     raise SemanticError(
                         f"Protocol type '{method_return.name}' cannot be used as a return type in '{record.name}.{method.name}'. "

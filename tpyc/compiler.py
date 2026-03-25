@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .parse import Parser, ParseError, TpyModule, TpyImport, RelativeImportKey, SourceLocation, is_parser_keyword_module
+from .parse import Parser, ParseError, TpyModule, TpyImport, RelativeImportKey, SourceLocation
 from .sema import SemanticAnalyzer, SemanticError, DiagnosticLevel
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names, get_type_factory as _get_type_factory
@@ -899,20 +899,8 @@ class Compiler:
             if imported_name not in self.shadowed_builtins:
                 self.shadowed_builtins[imported_name] = set()
             self.shadowed_builtins[imported_name].add((module_name, import_lineno))
-        # Parser-keyword modules don't emit TpyImport at parse time (to avoid
-        # dead source comments when no .py file exists). Now that we've found a
-        # .py file, inject the TpyImport for __tpy_init() ordering.
-        # Insert at the position matching the original import line for correct
-        # init ordering relative to other statements.
-        if parent_ast is not None and is_parser_keyword_module(imported_name):
-            if not any(isinstance(s, TpyImport) and s.module_name == imported_name for s in parent_ast.top_level_stmts):
-                new_import = TpyImport(module_name=imported_name, loc=SourceLocation(import_lineno, 0))
-                insert_idx = len(parent_ast.top_level_stmts)
-                for i, s in enumerate(parent_ast.top_level_stmts):
-                    if hasattr(s, 'loc') and s.loc and s.loc.line > import_lineno:
-                        insert_idx = i
-                        break
-                parent_ast.top_level_stmts.insert(insert_idx, new_import)
+        # Note: TpyImport injection for parser-keyword modules was removed.
+        # All modules now emit TpyImport at parse time (except _IMPLICIT_MODULES).
         self._discover_package_inits(imported_name, new_chain, import_lineno)
         self._discover_modules(resolved.canonical_name, resolved.path, new_chain, import_lineno,
                                is_package_init=resolved.is_package_init)

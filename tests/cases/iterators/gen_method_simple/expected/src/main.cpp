@@ -25,8 +25,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Generator method: simple path (single yield in loop, lambda codegen)
-    // from typing import Iterator
     // main()
     main();
 }

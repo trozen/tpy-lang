@@ -25,6 +25,7 @@ if TYPE_CHECKING:
     from .type_ops import TypeOperations
 
 from tpyc import modules as builtin_modules
+from .. import qnames
 
 
 def record_extends_any(actual: TpyType, protocol_name: str, registry: 'TypeRegistry') -> bool:
@@ -102,7 +103,7 @@ class ProtocolChecker:
 
         # GenExprType: satisfies Iterable[T] and Iterator[T]
         if isinstance(actual, GenExprType):
-            if protocol.name in ("Iterable", "Iterator"):
+            if protocol.qualified_name() in (qnames.ITERABLE, qnames.ITERATOR):
                 if protocol.type_args and len(protocol.type_args) == 1:
                     return self.type_ops.types_match_for_inference(actual.element_type, protocol.type_args[0])
                 return True
@@ -112,7 +113,7 @@ class ProtocolChecker:
         # Both have C++ begin/end but are not exposed as Iterator to prevent
         # passing to functions that call __next__() after a for-loop consumes them.
         if isinstance(actual, (CopyIterType, OwnIterType)):
-            if protocol.name == "Iterable":
+            if protocol.qualified_name() == qnames.ITERABLE:
                 if protocol.type_args and len(protocol.type_args) == 1:
                     return self.type_ops.types_match_for_inference(actual.element_type, protocol.type_args[0])
                 return True
@@ -120,12 +121,12 @@ class ProtocolChecker:
 
         # Enum/IntEnum: hashable, comparable, and equatable at C++ level
         if isinstance(actual, (EnumType, IntEnumType)):
-            if protocol.qualified_name() in ("tpy.Hashable", "tpy.Comparable", "tpy.Equatable"):
+            if protocol.qualified_name() in (qnames.HASHABLE, qnames.COMPARABLE, qnames.EQUATABLE):
                 return True
 
         # Bounded type parameter: T: Sized conforms to Sized (and any protocol its bound conforms to)
         if isinstance(actual, TypeParamRef):
-            if protocol.name in ("Stringable", "Representable"):
+            if protocol.qualified_name() in (qnames.STRINGABLE, qnames.REPRESENTABLE):
                 return True
             bound = self.type_ops.get_type_param_bound(actual.name)
             if bound is not None and is_protocol_type(bound):

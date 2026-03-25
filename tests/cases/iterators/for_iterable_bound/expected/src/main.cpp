@@ -17,8 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Bounded type param T: Iterable[Int32], for-loop over T-typed param
-    // from typing import Iterable
     // main()
     main();
 }

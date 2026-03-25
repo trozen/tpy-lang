@@ -17,8 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Test that a class with __len__() -> int conforms to Sized protocol.
-    // from typing import Sized
     // main()
     main();
 }

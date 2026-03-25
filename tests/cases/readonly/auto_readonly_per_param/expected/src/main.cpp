@@ -37,9 +37,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Per-param auto_readonly: self: auto_readonly[Self] gives finer control
-    // # than @auto_readonly decorator -- only marked params become readonly in const overload.
-    // from typing import Self
     // main()
     main();
 }

@@ -20,9 +20,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Required protocol union (2 protocols): isinstance dispatch
-    // # on a param typed as a union of two static protocols.
-    // from typing import Protocol, Sized, Sequence
     // main()
     main();
 }

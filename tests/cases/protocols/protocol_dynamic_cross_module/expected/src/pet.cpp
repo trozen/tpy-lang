@@ -9,8 +9,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Defines a @dynamic protocol in a separate module for cross-module import testing.
-    // from typing import Protocol
 }
 
 } // namespace tpyapp::pet

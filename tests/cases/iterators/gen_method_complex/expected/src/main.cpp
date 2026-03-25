@@ -90,8 +90,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Generator method: complex path (multiple yields, struct codegen)
-    // from typing import Iterator
     // main()
     main();
 }

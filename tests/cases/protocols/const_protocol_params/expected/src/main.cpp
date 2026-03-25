@@ -36,7 +36,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from typing import Protocol
     // main()
     main();
 }

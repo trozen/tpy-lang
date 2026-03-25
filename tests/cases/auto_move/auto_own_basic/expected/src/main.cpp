@@ -31,10 +31,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # auto_own[Self] generates borrowing + consuming overloads from a single method.
-    // # Consuming dispatch only happens for __iter__ via for-loop detection;
-    // # general method calls always use the borrowing overload.
-    // from typing import Self
     // test_borrowing()
     test_borrowing();
     // test_last_use()

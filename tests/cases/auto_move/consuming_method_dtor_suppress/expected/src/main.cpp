@@ -24,10 +24,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Test that consuming methods on types with __del__ suppress the destructor,
-    // # preventing double-free. Without suppression, the moved-from object's dtor
-    // # would run unsafe_free on already-freed memory.
-    // from typing import Self
     // from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop, unsafe_move_out
     // main()
     main();
