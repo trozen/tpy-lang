@@ -25,6 +25,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # @overload on methods with isinstance dead branch elimination
+    // from typing import overload
     // main()
     main();
 }

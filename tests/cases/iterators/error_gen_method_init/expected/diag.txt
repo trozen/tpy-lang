@@ -1,0 +1,1 @@
+main.py:7: error: '__init__' cannot be a generator method

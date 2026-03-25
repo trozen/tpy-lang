@@ -1209,6 +1209,8 @@ class SemanticAnalyzer:
 
             self.ctx.reset_function_tracking()
             self.ctx.current_function = method
+            if method.is_generator:
+                self.ctx._yield_counter = 0
             # Resolve return type (sets is_protocol for cross-module imports)
             method.return_type = self.type_ops.resolve_type(method.return_type)
             scope = Scope(parent=self.ctx.global_scope)
@@ -1249,6 +1251,18 @@ class SemanticAnalyzer:
 
             # Shared core: bind params, prescan, analyze body
             scan = self.stmts._prescan_and_analyze_body(method, resolved_params, scope, local_ns)
+
+            # Collect generator local variables for struct field generation
+            if method.is_generator:
+                param_names = {pname for pname, _ in method.params}
+                locals_dict: dict[str, 'TpyType'] = {}
+                for name, binding in local_ns.all_bindings().items():
+                    if name not in param_names and name != "self" and binding.type is not None:
+                        locals_dict[name] = binding.type
+                for name, (vtype, _, _) in self.ctx.pending_loop_vars.items():
+                    if name not in param_names and name != "self" and vtype is not None:
+                        locals_dict[name] = vtype
+                method.generator_locals = list(locals_dict.items())
 
             # Finalize nested def escape analysis (same as _analyze_function)
             self._finalize_nested_def_escapes()

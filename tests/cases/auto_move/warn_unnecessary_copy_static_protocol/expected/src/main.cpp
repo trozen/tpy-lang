@@ -43,6 +43,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Test: unnecessary copy() warning for static method and protocol method Own[T] params
+    // from typing import Protocol
     // main()
     main();
 }

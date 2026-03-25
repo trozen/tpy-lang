@@ -28,7 +28,6 @@ from .diagnostics import SemanticError
 from .operators import DUNDER_CPP_TEMPLATES
 from ..macro_api import ClassInfo, expr_to_cpp_default
 from ..macro_loader import validate_and_call_macro, call_macro_field_function
-from .. import qnames
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -426,11 +425,32 @@ class TypeRegistrar:
                 is_native_stub = method.is_stub and (method.native_name or method.cpp_template)
                 # __iter__ returns Iterator[T] which is a protocol -- allow it since
                 # C++ codegen uses auto return type (deduced from body).
-                is_iter_method = method.name == "__iter__" and isinstance(method_return, NamedType) and method_return.qualified_name() in (qnames.ITERATOR, qnames.ITERABLE)
-                if not (pi and pi.is_dynamic) and not is_native_stub and not is_iter_method:
+                is_iter_method = method.name == "__iter__" and isinstance(method_return, NamedType) and method_return.name in ("Iterator", "Iterable")
+                if not (pi and pi.is_dynamic) and not is_native_stub and not is_iter_method and not method.is_generator:
                     raise SemanticError(
                         f"Protocol type '{method_return.name}' cannot be used as a return type in '{record.name}.{method.name}'. "
                         f"Only @dynamic protocols can be used as return types",
+                        method.loc or record.loc,
+                    )
+            # Generator method: extract yield type from Iterator[T] return type
+            if method.is_generator:
+                if not (is_protocol_type(method_return) and isinstance(method_return, NamedType)
+                        and method_return.qualified_name() == "typing.Iterator"):
+                    raise SemanticError(
+                        f"Generator method must have return type 'Iterator[T]', "
+                        f"got '{method_return}'",
+                        method.loc or record.loc,
+                    )
+                if not method_return.type_args:
+                    raise SemanticError(
+                        f"Iterator must have a type argument, e.g. Iterator[Int32]",
+                        method.loc or record.loc,
+                    )
+                method.generator_yield_type = method_return.type_args[0]
+                if record.type_params:
+                    raise SemanticError(
+                        f"Generator methods on generic classes are not yet supported "
+                        f"('{record.name}.{method.name}')",
                         method.loc or record.loc,
                     )
             # For the mutable clone of a auto_readonly pair, skip implicit_readonly so

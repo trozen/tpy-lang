@@ -50,6 +50,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Test iter() on Span/Span[readonly[T]]: manual iteration, Iterator[T] param, print.
+    // from typing import Iterator
     // main()
     main();
 }

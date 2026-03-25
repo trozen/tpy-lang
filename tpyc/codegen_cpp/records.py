@@ -46,6 +46,7 @@ class RecordGenerator:
         # Will be set after dependencies are created
         self.expressions: ExpressionGenerator | None = None
         self.functions: FunctionGenerator | None = None
+        self.gen_generators = None  # Set by CodeGenerator after init
 
     def set_dependencies(self, expressions: ExpressionGenerator, functions: FunctionGenerator):
         """Set expression and function generators (to break circular dependency)."""
@@ -350,6 +351,20 @@ class RecordGenerator:
                 continue
             # Skip @overload stubs -- the implementation emits all overloads
             if method.is_overload_stub:
+                continue
+            # Generator methods: emit inline (simple) or declaration-only (complex)
+            if method.is_generator:
+                from .gen_generators import GeneratorCodegen
+                if self.gen_generators.is_simple_generator(method):
+                    self.gen_generators.gen_simple_generator_inline(
+                        out, method, record_name=record.name)
+                else:
+                    # Declaration only -- body defined after generator struct
+                    struct_name = GeneratorCodegen.gen_struct_name(method, record.name)
+                    params = self.functions.gen_params(
+                        method.params, method, emit_defaults=True)
+                    const_suffix = " const" if method.is_readonly else ""
+                    out.write(f"\n{INDENT}{struct_name} {method.name}({params}){const_suffix};\n")
                 continue
             # Check if this is an @overload implementation
             overload_stubs = self.ctx.analyzer.overload_groups.get(id(method))

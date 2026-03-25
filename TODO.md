@@ -16,12 +16,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Bugs
 
-### Closures & Callable
-- Escape detection incomplete for field/container storage: `self.field = nested_func` and `container.append(nested_func)` don't trigger escape marking. Produces by-ref captures in a stored `std::function` (UB).
-
-### Generators
-- Generator methods not recognized: `_parse_method` (parser.py:1420) never calls `_body_contains_yield`, so `yield` inside methods (e.g. `__iter__`) gives "'yield' can only be used inside a generator function". Only top-level functions get the yield scan.
-
 ## Fuzzy Testing Findings (2026-03-12)
 
 ### Quality / optimization (correct output, but suboptimal codegen)

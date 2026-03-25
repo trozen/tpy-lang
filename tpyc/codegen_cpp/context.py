@@ -484,6 +484,8 @@ class CodeGenContext:
     # For-loops with yields in state machine generators: keyed by id(TpyForEach)
     # Values are GeneratorForInfo (not imported here to avoid circular dep)
     generator_for_loop_info: dict[int, object] = field(default_factory=dict)
+    # When generating a generator method's __next__() body, self -> __self
+    generator_self_ref: str | None = None
 
     # --- for/else, while/else label stack ---
     # When generating a loop with an else clause, the goto label name is

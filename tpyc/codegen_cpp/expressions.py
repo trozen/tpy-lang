@@ -569,6 +569,9 @@ class ExpressionGenerator:
             # Union type narrowing: use the std::get-extracted local
             if expr.name in self.ctx.narrowed_vars:
                 return self.ctx.narrowed_vars[expr.name]
+            # In generator method __next__(), self -> __self (struct reference field)
+            if expr.name == "self" and self.ctx.generator_self_ref is not None:
+                return self.ctx.generator_self_ref
             # self -> (*this) only in instance methods (self is implicit receiver, not a param)
             if expr.name == "self" and self.ctx.in_method and "self" not in self.ctx.current_func_params:
                 return "(*this)"
@@ -1858,6 +1861,8 @@ class ExpressionGenerator:
 
         # Handle self.method() -> just method() (inside method, implicit this)
         if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
+            if self.ctx.generator_self_ref is not None:
+                return f"{self.ctx.generator_self_ref}.{expr.method}{method_targs}({args})"
             return f"{expr.method}{method_targs}({args})"
         # Handle super().method() -> ParentClass::method(args)
         if expr.super_parent_type is not None:
@@ -2034,6 +2039,8 @@ class ExpressionGenerator:
     def _gen_builtin_method_receiver(self, expr: TpyMethodCall) -> str:
         """Generate the receiver expression for a builtin method call (cpp_template or native_function)."""
         if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
+            if self.ctx.generator_self_ref is not None:
+                return self.ctx.generator_self_ref
             return "(*this)"
         obj = self.gen_expr(expr.obj)
         obj, an = self._apply_assign_narrowing(expr.obj, obj)
@@ -2071,6 +2078,8 @@ class ExpressionGenerator:
         # Handle self.field -> this->field (inside method)
         # Using this-> avoids shadowing issues when field name matches parameter name
         if isinstance(expr.obj, TpyName) and expr.obj.name == "self":
+            if self.ctx.generator_self_ref is not None:
+                return f"{self.ctx.generator_self_ref}.{cpp_field}"
             return f"this->{cpp_field}"
 
         # Check for module variable access (e.g., sys.argv) and enum member access

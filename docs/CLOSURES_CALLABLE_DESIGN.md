@@ -20,9 +20,9 @@
 | Generator liveness optimization | Only promote yield-crossing variables to struct fields; keep others as stack locals in `__next__()`. Reduces struct size, no behavior change. |
 | ~~Generator yield in for-loops (state machine)~~ | **Done** -- for-loops with yields lowered to while-loops; iterator state (counters for range, begin/end for containers, `std::expected` for `__next__()`) hoisted to struct fields. |
 | `async`/`await` | Reuses state machine infrastructure from generators |
-| Recursive closures | Closure calling itself -- needs `std::function` self-reference. Currently gives confusing "Unknown function" error; should have a dedicated diagnostic. |
+| Recursive closures | Closure calling itself -- needs `std::function` self-reference. Currently rejected with dedicated diagnostic ("cannot call itself"). |
 | Nested-in-nested `def` | `def` inside `def` inside `def`. Currently rejected. Requires saving/restoring more sema state in `nested_def_scope`. |
-| Escaping `str` param capture fix | Escaping closure capturing a `str` parameter copies `string_view` (may dangle). Codegen should emit `name = std::string(name)` for `str`-typed captures. Currently emits a warning. |
+| ~~Escaping `str` param capture~~ | **By design** -- rejected with error (string_view dangles). Workaround: use `String` param or `name_copy = String(name)` local. Silent copy would violate no-implicit-copy principle. |
 | ~~Escape detection for field/container storage~~ | **Done** -- `self.field = nested_func`, `container.append(nested_func)`, and `return` from methods all trigger escape detection. Method escape finalization added; `OwnType` unwrapping for container element hints. |
 | Escaping `nonlocal` via `Rc[T]` | `Rc[T]` (`std::shared_ptr<T>`) would allow mutable shared state between closure and enclosing scope, enabling `nonlocal` in escaping closures. |
 | Variadic `Callable` | `Callable[..., R]` accepting any args -- needs `*args` (D17) |

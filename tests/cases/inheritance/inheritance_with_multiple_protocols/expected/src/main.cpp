@@ -12,6 +12,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // from typing import Protocol
     // # Test combined inheritance with multiple protocols
     // c = Car("Toyota", 2023, "Camry", 1500)
     static Car __global_slot_1 = Car("Toyota", 2023, "Camry", 1500);

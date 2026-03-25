@@ -11,6 +11,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // from typing import Sized
     // items: list[Int32] = []
     static std::vector<int32_t> __global_slot_1 = std::vector<int32_t>{};
     items = &__global_slot_1;

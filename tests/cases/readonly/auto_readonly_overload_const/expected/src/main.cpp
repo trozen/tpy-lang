@@ -45,6 +45,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # @overload + @auto_readonly called on a readonly[T] receiver.
+    // # Verifies that the implementation is not appended to the overload list
+    // # when stubs already have mixed is_readonly (mutable + const clones).
+    // from typing import overload
     // main()
     main();
 }

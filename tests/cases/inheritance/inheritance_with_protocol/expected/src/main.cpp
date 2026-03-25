@@ -12,6 +12,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // from typing import Protocol
     // # Test combined inheritance
     // p = Person("Alice", 42, 30)
     static Person __global_slot_1 = Person("Alice", 42, 30);

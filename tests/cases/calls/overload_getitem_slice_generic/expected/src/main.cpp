@@ -45,6 +45,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Generic record with @overload __getitem__ for both index and slice.
+    // # Tests type parameter substitution in slice return type.
+    // from typing import overload
     // main()
     main();
 }

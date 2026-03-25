@@ -62,6 +62,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Warning: generator borrows from temporary str (string_view into destroyed temp)
+    // from typing import Iterator
     // main()
     main();
 }

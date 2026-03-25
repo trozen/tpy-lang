@@ -23,6 +23,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Test that consuming methods on child classes correctly suppress the inherited
+    // # destructor. The child does not define __del__ itself but the parent does --
+    // # without parent-chain walking this would double-free.
+    // from typing import Self
     // from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop, unsafe_move_out
     // main()
     main();

@@ -25,6 +25,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Test bounded type parameters on a function
+    // # This tests that bounds are validated during type inference
+    // from typing import Sized
 }
 
 } // namespace tpyapp::main

@@ -80,6 +80,13 @@ class GeneratorCodegen:
         self.statements = statements
         self.functions = functions
 
+    @staticmethod
+    def gen_struct_name(func: TpyFunction, record_name: str | None = None) -> str:
+        """Compute the generator struct name."""
+        if record_name:
+            return f"__gen_{record_name}_{func.name}"
+        return f"__gen_{func.name}"
+
     def is_simple_generator(self, func: TpyFunction) -> bool:
         """Check if a generator can use the lightweight lambda/wrapper path.
 
@@ -106,15 +113,17 @@ class GeneratorCodegen:
                 return True
         return False
 
-    def gen_simple_generator_inline(self, out: TextIO, func: TpyFunction) -> None:
+    def gen_simple_generator_inline(self, out: TextIO, func: TpyFunction,
+                                    record_name: str | None = None) -> None:
         """Generate a simple generator as an inline function using make_generator + lambda."""
         last = func.body[-1]
         if isinstance(last, TpyForEach):
-            self._gen_simple_for_generator(out, func)
+            self._gen_simple_for_generator(out, func, record_name=record_name)
         else:
-            self._gen_simple_while_generator(out, func)
+            self._gen_simple_while_generator(out, func, record_name=record_name)
 
-    def _gen_simple_while_generator(self, out: TextIO, func: TpyFunction) -> None:
+    def _gen_simple_while_generator(self, out: TextIO, func: TpyFunction,
+                                    record_name: str | None = None) -> None:
         """Lambda codegen for: [init] while(cond): ... yield expr ..."""
         elem_type = func.generator_yield_type
         assert elem_type is not None
@@ -130,38 +139,56 @@ class GeneratorCodegen:
         ind3 = INDENT * 3
         ind4 = INDENT * 4
 
-        params = self.functions.gen_params(func.params, func, emit_defaults=True)
-        out.write(f"inline auto {escape_cpp_name(func.name)}({params}) {{\n")
+        extra = 1 if record_name else 0
+
+        if record_name:
+            const_suffix = " const" if func.is_readonly else ""
+            out.write(f"\n")
+            self.ctx.emit_source_comment(out, func.loc, indent=INDENT)
+            params = self.functions.gen_params(func.params, func, emit_defaults=True)
+            out.write(f"{ind1}auto {func.name}({params}){const_suffix} {{\n")
+        else:
+            params = self.functions.gen_params(func.params, func, emit_defaults=True)
+            out.write(f"inline auto {escape_cpp_name(func.name)}({params}) {{\n")
 
         # Generate init stmts and set up codegen scope
-        self._setup_body_scope(out, func, init_stmts)
+        old_self_ref = self.ctx.generator_self_ref
+        if record_name:
+            self.ctx.generator_self_ref = "(*this)"
+        self._setup_body_scope(out, func, init_stmts,
+                               indent_level=1 + extra)
 
         captures = self._build_capture_list(func.params, init_stmts)
-        out.write(f"{ind1}return ::tpy::make_generator<{cpp_elem}>(\n")
-        out.write(f"{ind2}[{captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
+        if record_name:
+            self_capture = "this"
+            captures = f"{self_capture}, {captures}" if captures else self_capture
+        out.write(f"{INDENT * (1 + extra)}return ::tpy::make_generator<{cpp_elem}>(\n")
+        out.write(f"{INDENT * (2 + extra)}[{captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
 
         old_indent = self.ctx.indent_level
-        self.ctx.indent_level = 3
+        self.ctx.indent_level = 3 + extra
         cond_code = self.expressions.gen_expr(while_stmt.condition)
-        out.write(f"{ind3}while ({cond_code}) {{\n")
-        self.ctx.indent_level = 4
+        out.write(f"{INDENT * (3 + extra)}while ({cond_code}) {{\n")
+        self.ctx.indent_level = 4 + extra
 
         for stmt in pre_yield:
             self.statements.gen_stmt(out, stmt)
         yield_expr = self.expressions.gen_expr(yield_stmt.value)
-        out.write(f"{ind4}auto __val = {yield_expr};\n")
+        out.write(f"{INDENT * (4 + extra)}auto __val = {yield_expr};\n")
         for stmt in post_yield:
             self.statements.gen_stmt(out, stmt)
 
-        out.write(f"{ind4}return std::optional<{cpp_elem}>(__val);\n")
-        out.write(f"{ind3}}}\n")
-        out.write(f"{ind3}return std::nullopt;\n")
-        out.write(f"{ind2}}}\n")
-        out.write(f"{ind1});\n")
-        out.write(f"}}\n")
+        out.write(f"{INDENT * (4 + extra)}return std::optional<{cpp_elem}>(__val);\n")
+        out.write(f"{INDENT * (3 + extra)}}}\n")
+        out.write(f"{INDENT * (3 + extra)}return std::nullopt;\n")
+        out.write(f"{INDENT * (2 + extra)}}}\n")
+        out.write(f"{INDENT * (1 + extra)});\n")
+        out.write(f"{INDENT if record_name else ''}}}\n")
         self.ctx.indent_level = old_indent
+        self.ctx.generator_self_ref = old_self_ref
 
-    def _gen_simple_for_generator(self, out: TextIO, func: TpyFunction) -> None:
+    def _gen_simple_for_generator(self, out: TextIO, func: TpyFunction,
+                                   record_name: str | None = None) -> None:
         """Lambda codegen for: [init] for x in iterable: ... yield expr ..."""
         from .context import is_lvalue_iterable
         from ..typesys import IntLiteralType, TupleType
@@ -180,13 +207,25 @@ class GeneratorCodegen:
         ind3 = INDENT * 3
         ind4 = INDENT * 4
 
-        params = self.functions.gen_params(func.params, func, emit_defaults=True)
-        out.write(f"inline auto {escape_cpp_name(func.name)}({params}) {{\n")
+        extra = 1 if record_name else 0
+        if record_name:
+            const_suffix = " const" if func.is_readonly else ""
+            out.write(f"\n")
+            self.ctx.emit_source_comment(out, func.loc, indent=INDENT)
+            params = self.functions.gen_params(func.params, func, emit_defaults=True)
+            out.write(f"{ind1}auto {func.name}({params}){const_suffix} {{\n")
+        else:
+            params = self.functions.gen_params(func.params, func, emit_defaults=True)
+            out.write(f"inline auto {escape_cpp_name(func.name)}({params}) {{\n")
 
-        self._setup_body_scope(out, func, init_stmts)
+        old_self_ref = self.ctx.generator_self_ref
+        if record_name:
+            self.ctx.generator_self_ref = "(*this)"
+        self._setup_body_scope(out, func, init_stmts,
+                               indent_level=1 + extra)
 
         old_indent = self.ctx.indent_level
-        self.ctx.indent_level = 2
+        self.ctx.indent_level = 2 + extra
 
         # Determine iteration strategy
         is_range = isinstance(for_stmt.iterable, TpyCall) and for_stmt.iterable.func == "range"
@@ -195,6 +234,15 @@ class GeneratorCodegen:
             iter_elem = self.ctx.analyzer.ctx.default_int_type
         cpp_iter_elem = self.types.type_to_cpp(iter_elem) if iter_elem else "auto"
         cpp_var = escape_cpp_name(for_stmt.var)
+
+        # Helper: prepend self capture for method generators
+        def _add_self_capture(captures: str) -> str:
+            if record_name:
+                return f"this, {captures}" if captures else "this"
+            return captures
+
+        # Indentation helpers adjusted for method nesting
+        I = lambda n: INDENT * (n + extra)
 
         if is_range and len(for_stmt.iterable.args) <= 2:
             # range(n) or range(start, stop): counter in lambda captures
@@ -210,25 +258,26 @@ class GeneratorCodegen:
 
             base_captures = self._build_capture_list(func.params, init_stmts)
             all_captures = f"{base_captures}, {extra_captures}" if base_captures else extra_captures
+            all_captures = _add_self_capture(all_captures)
 
-            out.write(f"{ind1}return ::tpy::make_generator<{cpp_elem}>(\n")
-            out.write(f"{ind2}[{all_captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
-            out.write(f"{ind3}while (__i < __stop) {{\n")
+            out.write(f"{I(1)}return ::tpy::make_generator<{cpp_elem}>(\n")
+            out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
+            out.write(f"{I(3)}while (__i < __stop) {{\n")
 
-            self.ctx.indent_level = 4
-            out.write(f"{ind4}{cpp_iter_elem} {cpp_var} = __i++;\n")
+            self.ctx.indent_level = 4 + extra
+            out.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = __i++;\n")
             for stmt in pre_yield:
                 self.statements.gen_stmt(out, stmt)
             yield_expr = self.expressions.gen_expr(yield_stmt.value)
-            out.write(f"{ind4}auto __val = {yield_expr};\n")
+            out.write(f"{I(4)}auto __val = {yield_expr};\n")
             for stmt in post_yield:
                 self.statements.gen_stmt(out, stmt)
-            out.write(f"{ind4}return std::optional<{cpp_elem}>(__val);\n")
-            out.write(f"{ind3}}}\n")
-            out.write(f"{ind3}return std::nullopt;\n")
-            out.write(f"{ind2}}}\n")
-            out.write(f"{ind1});\n")
-            out.write(f"}}\n")
+            out.write(f"{I(4)}return std::optional<{cpp_elem}>(__val);\n")
+            out.write(f"{I(3)}}}\n")
+            out.write(f"{I(3)}return std::nullopt;\n")
+            out.write(f"{I(2)}}}\n")
+            out.write(f"{I(1)});\n")
+            out.write(f"{I(0)}}}\n")
         else:
             # Container iterable: capture by reference, begin/end iteration.
             # Matches CPython semantics (mutations visible during iteration)
@@ -243,32 +292,34 @@ class GeneratorCodegen:
             init_flag = "__init = false"
             parts = [p for p in [base_captures, beg_capture, end_capture, init_flag] if p]
             all_captures = ", ".join(parts)
+            all_captures = _add_self_capture(all_captures)
 
-            out.write(f"{ind1}return ::tpy::make_generator<{cpp_elem}>(\n")
-            out.write(f"{ind2}[{all_captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
-            out.write(f"{ind3}if (!__init) {{ __beg = ({iterable_code}).begin(); __end = ({iterable_code}).end(); __init = true; }}\n")
-            out.write(f"{ind3}if (__beg != __end) {{\n")
+            out.write(f"{I(1)}return ::tpy::make_generator<{cpp_elem}>(\n")
+            out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
+            out.write(f"{I(3)}if (!__init) {{ __beg = ({iterable_code}).begin(); __end = ({iterable_code}).end(); __init = true; }}\n")
+            out.write(f"{I(3)}if (__beg != __end) {{\n")
 
-            self.ctx.indent_level = 4
+            self.ctx.indent_level = 4 + extra
             if iter_elem and iter_elem.is_value_type():
-                out.write(f"{ind4}{cpp_iter_elem} {cpp_var} = *__beg++;\n")
+                out.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = *__beg++;\n")
             else:
-                out.write(f"{ind4}auto&& {cpp_var} = *__beg++;\n")
+                out.write(f"{I(4)}auto&& {cpp_var} = *__beg++;\n")
 
             for stmt in pre_yield:
                 self.statements.gen_stmt(out, stmt)
             yield_expr = self.expressions.gen_expr(yield_stmt.value)
-            out.write(f"{ind4}auto __val = {yield_expr};\n")
+            out.write(f"{I(4)}auto __val = {yield_expr};\n")
             for stmt in post_yield:
                 self.statements.gen_stmt(out, stmt)
-            out.write(f"{ind4}return std::optional<{cpp_elem}>(__val);\n")
-            out.write(f"{ind3}}}\n")
-            out.write(f"{ind3}return std::nullopt;\n")
-            out.write(f"{ind2}}}\n")
-            out.write(f"{ind1});\n")
-            out.write(f"}}\n")
+            out.write(f"{I(4)}return std::optional<{cpp_elem}>(__val);\n")
+            out.write(f"{I(3)}}}\n")
+            out.write(f"{I(3)}return std::nullopt;\n")
+            out.write(f"{I(2)}}}\n")
+            out.write(f"{I(1)});\n")
+            out.write(f"{I(0)}}}\n")
 
         self.ctx.indent_level = old_indent
+        self.ctx.generator_self_ref = old_self_ref
 
     @staticmethod
     def _split_at_yield(body: list[TpyStmt]) -> tuple[TpyYield, list[TpyStmt], list[TpyStmt]]:
@@ -439,7 +490,8 @@ class GeneratorCodegen:
                 break
         return None
 
-    def _setup_body_scope(self, out: TextIO, func: TpyFunction, init_stmts: list[TpyStmt]) -> None:
+    def _setup_body_scope(self, out: TextIO, func: TpyFunction, init_stmts: list[TpyStmt],
+                          indent_level: int = 1) -> None:
         """Generate init stmts and set up codegen scope."""
         from ..namespace import Namespace
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
@@ -447,7 +499,7 @@ class GeneratorCodegen:
             local_ns.bind_variable(pname, ptype)
         self.statements.gen_body(
             out, init_stmts, func.params, func.generator_yield_type,
-            func, local_ns, indent_level=1, is_method=False,
+            func, local_ns, indent_level=indent_level, is_method=False,
         )
 
     @staticmethod
@@ -473,13 +525,14 @@ class GeneratorCodegen:
                 captures.append(escape_cpp_name(stmt.name))
         return ", ".join(captures)
 
-    def gen_generator_struct(self, out: TextIO, func: TpyFunction) -> None:
+    def gen_generator_struct(self, out: TextIO, func: TpyFunction,
+                             record_name: str | None = None) -> None:
         """Generate the state machine struct for a generator function."""
         # Pre-scan for-loops with yields to determine synthetic struct fields
         for_loop_info = self._prescan_for_loops(func)
         self.ctx.generator_for_loop_info = for_loop_info
 
-        struct_name = f"__gen_{func.name}"
+        struct_name = self.gen_struct_name(func, record_name)
         elem_type = func.generator_yield_type
         assert elem_type is not None
         cpp_elem = self.types.type_to_cpp(elem_type)
@@ -493,6 +546,11 @@ class GeneratorCodegen:
         # str params use string_view (the param type) -- the generator borrows
         # from the caller's string, same as container refs. No hidden copy.
         ctor_params: list[tuple[str, str, bool]] = []  # (cpp_name, cpp_type, is_ref)
+        # For methods, add __self as a reference to the record
+        if record_name:
+            cpp_record = escape_cpp_name(record_name)
+            const_prefix = "const " if func.is_readonly else ""
+            ctor_params.append(("__self", f"{const_prefix}{cpp_record}", True))
         for pname, ptype in func.params:
             cpp_name = escape_cpp_name(pname)
             if isinstance(ptype, StrType):
@@ -502,7 +560,8 @@ class GeneratorCodegen:
                 is_ref = not ptype.is_value_type()
                 ctor_params.append((cpp_name, cpp_type, is_ref))
 
-        out.write(f"// Generator: {func.name}\n")
+        label = f"{record_name}.{func.name}" if record_name else func.name
+        out.write(f"// Generator: {label}\n")
         out.write(f"struct {struct_name} {{\n")
 
         # __state field
@@ -557,14 +616,15 @@ class GeneratorCodegen:
 
         # operator<< for printing
         out.write(f"{INDENT}friend std::ostream& operator<<(std::ostream& os, const {struct_name}&) {{\n")
-        out.write(f"{INDENT}{INDENT}return os << \"<generator {func.name}>\";\n")
+        out.write(f"{INDENT}{INDENT}return os << \"<generator {label}>\";\n")
         out.write(f"{INDENT}}}\n")
 
         out.write(f"}};\n")
 
-    def gen_generator_next(self, out: TextIO, func: TpyFunction) -> None:
+    def gen_generator_next(self, out: TextIO, func: TpyFunction,
+                           record_name: str | None = None) -> None:
         """Generate the out-of-line __next__() method body in the .cpp file."""
-        struct_name = f"__gen_{func.name}"
+        struct_name = self.gen_struct_name(func, record_name)
         elem_type = func.generator_yield_type
         assert elem_type is not None
         cpp_elem = self.types.type_to_cpp(elem_type)
@@ -590,7 +650,7 @@ class GeneratorCodegen:
         out.write(f"{inner}}}\n")
 
         # Generate the function body with generator context
-        self._gen_generator_body(out, func, inner)
+        self._gen_generator_body(out, func, inner, record_name=record_name)
 
         # Exhaustion label
         out.write(f"{inner}__done:\n")
@@ -598,17 +658,22 @@ class GeneratorCodegen:
         out.write(f"{inner}return ::tpy::make_unexpected(::tpy::StopIteration{{}});\n")
         out.write(f"}}\n")
 
-    def _gen_generator_body(self, out: TextIO, func: TpyFunction, indent: str) -> None:
+    def _gen_generator_body(self, out: TextIO, func: TpyFunction, indent: str,
+                            record_name: str | None = None) -> None:
         """Generate the function body inside __next__() with generator context."""
         # Save and set generator context
         old_in_gen = self.ctx.in_generator_body
         old_field_names = self.ctx.generator_field_names
         old_optional_fields = self.ctx.generator_optional_fields
         old_for_info = self.ctx.generator_for_loop_info
+        old_self_ref = self.ctx.generator_self_ref
 
         self.ctx.in_generator_body = True
         self.ctx.generator_field_names = set()
         self.ctx.generator_optional_fields = set()
+        if record_name:
+            self.ctx.generator_self_ref = "__self"
+            self.ctx.generator_field_names.add("__self")
         for pname, _ in func.params:
             self.ctx.generator_field_names.add(pname)
         if func.generator_locals:
@@ -638,10 +703,11 @@ class GeneratorCodegen:
         self.ctx.generator_field_names = old_field_names
         self.ctx.generator_optional_fields = old_optional_fields
         self.ctx.generator_for_loop_info = old_for_info
+        self.ctx.generator_self_ref = old_self_ref
 
     def gen_generator_factory(self, out: TextIO, func: TpyFunction) -> None:
         """Generate the factory function that creates a generator struct."""
-        struct_name = f"__gen_{func.name}"
+        struct_name = self.gen_struct_name(func)
         params = self.functions.gen_params(
             func.params, func,
             emit_defaults=False,
@@ -656,19 +722,19 @@ class GeneratorCodegen:
 
         out.write(f"}}\n")
 
-    def gen_generator_forward_decl(self, out: TextIO, func: TpyFunction) -> bool:
-        """Generate forward declarations for a generator function.
+    def gen_generator_forward_decl(self, out: TextIO, func: TpyFunction,
+                                    record_name: str | None = None) -> bool:
+        """Generate forward declaration for a generator struct.
 
-        Emits struct forward declaration and factory function forward declaration.
         Returns True if anything was emitted.
         """
-        struct_name = f"__gen_{func.name}"
+        struct_name = self.gen_struct_name(func, record_name)
         out.write(f"struct {struct_name};\n")
         return True
 
     def gen_generator_factory_forward_decl(self, out: TextIO, func: TpyFunction) -> bool:
         """Generate forward declaration for the factory function."""
-        struct_name = f"__gen_{func.name}"
+        struct_name = self.gen_struct_name(func)
         params = self.functions.gen_params(
             func.params, func,
             emit_defaults=True,

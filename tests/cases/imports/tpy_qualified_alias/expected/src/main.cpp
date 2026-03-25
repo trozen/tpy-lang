@@ -25,6 +25,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Test qualified tpy access with alias (import tpy as tp)
+    // import tpy as tp
     // main()
     main();
 }

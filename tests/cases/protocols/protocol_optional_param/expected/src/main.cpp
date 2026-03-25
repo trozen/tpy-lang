@@ -91,6 +91,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Optional[StaticProtocol] parameter: pointer repr codegen with
+    // # if constexpr narrowing, explicit None, omitted optional args,
+    // # required+optional mix, and generic Optional[Protocol].
+    // from typing import Optional, Sized, Sequence
     // main()
     main();
 }

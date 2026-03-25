@@ -22,7 +22,6 @@ from ._core import (
 from ._bootstrap import (
     # Decorators / type modifiers
     readonly, noalloc, nocopy, pure, dynamic, error_return,
-    auto_readonly, auto_own,
     Own, Fn,
 )
 
@@ -40,7 +39,7 @@ __all__ = [
     "Own", "Fn",
     # Decorators / type modifiers
     "readonly", "noalloc", "nocopy", "pure", "dynamic", "error_return",
-    "auto_readonly", "auto_own",
+    "auto_readonly", "auto_own",  # parser keywords (no .py stub)
     # Structural protocols
     "Truthy", "Stringable", "Representable",
     "Hashable", "Comparable", "Equatable",

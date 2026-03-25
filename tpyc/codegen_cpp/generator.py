@@ -13,7 +13,7 @@ from ..typesys import TpyType, NamedType, UnionType, OwnType, PendingListType, L
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives
 
-from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace, qualified_cpp_name, escape_cpp_string, escape_cpp_char
+from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace, qualified_cpp_name, escape_cpp_string, escape_cpp_char, escape_cpp_name
 from .types import TypeResolver
 from .protocols import ProtocolGenerator
 from .builtins import BuiltinGenerator
@@ -73,6 +73,7 @@ class CodeGenerator:
         from .gen_generators import GeneratorCodegen
         self.gen_generators = GeneratorCodegen(
             self.ctx, self.types, self.expressions, self.statements, self.functions)
+        self.records.gen_generators = self.gen_generators
 
     def generate(self, module: TpyModule, module_name: str = "generated",
                  is_entry_point: bool = True,
@@ -275,6 +276,14 @@ class CodeGenerator:
                 continue
             self.functions.gen_function_def(cpp, func)
             cpp.write("\n")
+
+        # Method generator __next__() definitions
+        for record in module.records:
+            for method in record.methods:
+                if method.is_generator and not self.gen_generators.is_simple_generator(method):
+                    self.gen_generators.gen_generator_next(
+                        cpp, method, record_name=record.name)
+                    cpp.write("\n")
 
         # Generate module init function and main()
         # Always generate __tpy_init for global initialization (Python semantics)
@@ -584,6 +593,13 @@ class CodeGenerator:
             if func.is_generator and not self.gen_generators.is_simple_generator(func):
                 self.gen_generators.gen_generator_forward_decl(hpp, func)
                 emitted_gen_fwd = True
+        # Method generator struct forward declarations (before records)
+        for record in module.records:
+            for method in record.methods:
+                if method.is_generator and not self.gen_generators.is_simple_generator(method):
+                    self.gen_generators.gen_generator_forward_decl(
+                        hpp, method, record_name=record.name)
+                    emitted_gen_fwd = True
         if emitted_gen_fwd:
             hpp.write("\n")
 
@@ -617,6 +633,27 @@ class CodeGenerator:
             if func.is_generator and not self.gen_generators.is_simple_generator(func):
                 self.gen_generators.gen_generator_struct(hpp, func)
                 hpp.write("\n")
+        # Method generator struct definitions + out-of-line factory methods
+        for record in module.records:
+            for method in record.methods:
+                if method.is_generator and not self.gen_generators.is_simple_generator(method):
+                    self.gen_generators.gen_generator_struct(
+                        hpp, method, record_name=record.name)
+                    hpp.write("\n")
+                    # Inline factory method definition (now that struct is complete)
+                    from .gen_generators import GeneratorCodegen
+                    struct_name = GeneratorCodegen.gen_struct_name(method, record.name)
+                    cpp_record = escape_cpp_name(record.name)
+                    params = self.functions.gen_params(
+                        method.params, method, emit_defaults=False)
+                    if method.params:
+                        args = f"*this, {', '.join(escape_cpp_name(p) for p, _ in method.params)}"
+                    else:
+                        args = "*this"
+                    const_suffix = " const" if method.is_readonly else ""
+                    hpp.write(f"inline {struct_name} {cpp_record}::{method.name}({params}){const_suffix} {{\n")
+                    hpp.write(f"    return {struct_name}({args});\n")
+                    hpp.write(f"}}\n\n")
 
         # ValueType specializations: exit namespace, emit, re-enter
         value_type_records = [

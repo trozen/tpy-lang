@@ -26,6 +26,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Test that consuming in one branch does not affect the other branch.
+    // from typing import Self
     // test_branch(True)
     test_branch(true);
     // test_branch(False)

@@ -27,6 +27,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Test: protocol union as a method parameter on a class
+    // from typing import Protocol
     // main()
     main();
 }

@@ -18,7 +18,6 @@ from ..typesys import (
 )
 from ..coercions import resolve_coercion, CoercionContext
 from .diagnostics import SemanticError
-from .. import qnames
 
 if TYPE_CHECKING:
     from ..parse import SourceLocation
@@ -590,8 +589,8 @@ class TypeOperations:
 
         # GenExprType satisfies Iterable[T] and Iterator[T];
         # CopyIterType/OwnIterType satisfy Iterable[T] only.
-        if ((isinstance(arg_type, GenExprType) and param_type.qualified_name() in (qnames.ITERABLE, qnames.ITERATOR))
-                or (isinstance(arg_type, (CopyIterType, OwnIterType)) and param_type.qualified_name() == qnames.ITERABLE)):
+        if ((isinstance(arg_type, GenExprType) and param_type.name in ("Iterable", "Iterator"))
+                or (isinstance(arg_type, (CopyIterType, OwnIterType)) and param_type.name == "Iterable")):
             if len(param_type.type_args) == 1:
                 return self.match_type_with_inference(param_type.type_args[0], arg_type.element_type, inferred)
             return True

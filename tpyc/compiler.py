@@ -902,9 +902,9 @@ class Compiler:
         # Parser-keyword modules don't emit TpyImport at parse time (to avoid
         # dead source comments when no .py file exists). Now that we've found a
         # .py file, inject the TpyImport for __tpy_init() ordering.
-        # Skip for implicit stdlib (typing, tpy, builtins) -- their init ordering
-        # is already handled by _discover_implicit_stdlib.
-        if parent_ast is not None and is_parser_keyword_module(imported_name) and imported_name not in self._IMPLICIT_STDLIB:
+        # Insert at the position matching the original import line for correct
+        # init ordering relative to other statements.
+        if parent_ast is not None and is_parser_keyword_module(imported_name):
             if not any(isinstance(s, TpyImport) and s.module_name == imported_name for s in parent_ast.top_level_stmts):
                 new_import = TpyImport(module_name=imported_name, loc=SourceLocation(import_lineno, 0))
                 insert_idx = len(parent_ast.top_level_stmts)

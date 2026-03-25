@@ -6,6 +6,5 @@ from ._extern import (
 )
 from ._decorators import (
     readonly, noalloc, nocopy, pure, dynamic, error_return,
-    auto_readonly, auto_own,
     Own, Fn,
 )
