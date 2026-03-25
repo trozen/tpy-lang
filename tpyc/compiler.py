@@ -1250,13 +1250,18 @@ class Compiler:
 
         is_native = compiled.ast.directives.native_module if compiled else False
         # Native modules generate a header only if they define protocols (for
-        # C++ concepts), are forwarding, or carry include directives.
+        # C++ concepts) or are forwarding. Include directives are propagated
+        # to importing modules instead of generating a separate header.
         # Use AST protocols (own definitions), not exports (which include re-exports
         # and can change as later modules are analyzed).
         if is_native:
             is_forward = compiled.ast.directives.native_module_forward if compiled else False
             has_own_protocols = bool(compiled.ast.protocols) if compiled else False
-            gen_header = is_forward or has_own_protocols or bool(compiled.ast.directives.includes)
+            gen_header = is_forward or has_own_protocols
+            if not gen_header and compiled and compiled.ast.directives.includes:
+                warnings.warn(
+                    f"{compiled.path}: native_module has # tpy: include() directives "
+                    f"but no forward=True -- includes won't be emitted")
         else:
             gen_header = True
         return ModuleInfo(

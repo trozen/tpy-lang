@@ -5,6 +5,7 @@
 #include "tpystd/builtins.hpp"
 #include "tpystd/tpy.hpp"
 #include "tpystd/typing.hpp"
+#include "tpystd/math.hpp"
 
 namespace tpyapp::main {
 
