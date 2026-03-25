@@ -2945,6 +2945,7 @@ class FunctionInfo:
     is_builtin_function: bool = False  # True for global builtins (len, chr, etc.)
     special_handling: bool = False  # True if sema/codegen handle specially
     error_return_type: Optional[str] = None  # @error_return(E) exception type name
+    builtin_decorator_key: Optional[str] = None  # e.g. "tpy.readonly" -- links .py function to decorator semantics
     qualified_name: str = ""  # Full dotted path, e.g. "builtins.print", "tpy.copy", "__main__.foo"
     mutated_params: Optional[frozenset[int]] = None  # Param indices proven mutated; None = unknown (conservative)
     structural_mutated_params: Optional[frozenset[int]] = None
@@ -2963,6 +2964,11 @@ class FunctionInfo:
     # None = not yet analyzed; True/False = Phase 1 direct fact; finalized by Phase 2.
     direct_self_mutated: Optional[bool] = None
     self_mutated: bool = True  # conservative default until Phase 2 resolves
+
+    @property
+    def is_decorator_stub(self) -> bool:
+        """True for @builtin_decorator stubs (no C++ code needed)."""
+        return self.builtin_decorator_key is not None
 
     @property
     def is_native_import(self) -> bool:
@@ -3142,6 +3148,13 @@ class TypeRegistry:
         """Get the @builtin_type key for a locally-registered record, if any."""
         record = self.records.get(name)
         return record.builtin_type_key if record else None
+
+    def get_builtin_decorator_key(self, name: str) -> str | None:
+        """Get the @builtin_decorator key for a locally-registered function, if any."""
+        funcs = self.functions.get(name)
+        if funcs and len(funcs) == 1 and funcs[0].builtin_decorator_key:
+            return funcs[0].builtin_decorator_key
+        return None
 
     def register_function(self, info: FunctionInfo, name: str | None = None) -> None:
         """Register a single function (wraps in a list)."""

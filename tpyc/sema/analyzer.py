@@ -9,9 +9,9 @@ import re
 from typing import Optional
 
 from ..typesys import (
-    TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, StrType, StrViewType, VoidType,
+    TpyType, TypeRegistry, NamedType, UnionType, FinalType, STR, StrType, StrViewType, VoidType, VOID,
     INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
-    EnumType,
+    FunctionInfo, EnumType, is_any_str_type,
 )
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call
@@ -931,6 +931,13 @@ class SemanticAnalyzer:
         pending_stubs: dict[str, list[TpyFunction]] = {}
 
         for func in functions:
+            if func.builtin_decorator_key:
+                # Register minimal FunctionInfo so the key flows through exports
+                self.ctx.registry.register_function(FunctionInfo(
+                    name=func.name, params=[], return_type=VOID,
+                    builtin_decorator_key=func.builtin_decorator_key,
+                ))
+                continue
             if func.is_overload_stub:
                 pending_stubs.setdefault(func.name, []).append(func)
                 continue

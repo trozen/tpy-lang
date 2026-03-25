@@ -17,7 +17,7 @@ from ..typesys import (
     strip_auto_readonly, apply_auto_readonly, has_auto_readonly, strip_auto_own, apply_auto_own, ensure_qualified,
     TypeParamRef, OptionalType, VoidType, make_union, EnumType, TupleType, FnType, CallableType,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BOOL, FLOAT, FLOAT32, BIGINT, SELF, SLICE, FieldInfo, RecordInfo, TypeRegistry,
-    MethodSignature, ProtocolInfo, TypeParamKind,
+    FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, BoolType, StrType,
     ALL_FIXED_INTS, public_module_name,
 )
 from ..modules import lookup_generic_type, lookup_generic_type_in_module, lookup_protocol as lookup_builtin_protocol, BuiltinTypeDef
@@ -43,6 +43,7 @@ from .nodes import (
 )
 from .imports import (
     ImportProcessor, PARSER_KEYWORDS, is_parser_keyword_module,
+    _EXTERN_KEYWORDS, _PRIVATE_MODULE_PUBLIC_NAMES,
     PYTHON_BUILTINS, TYPING_NAMES, TPY_TYPE_NAMES, TPY_TYPES,
 )
 
@@ -302,36 +303,23 @@ class _DecoratorArgSchema:
 
     pos_type: expected type for the positional arg (str, bool, _NameArg), or None = bare only
     pos_required: whether the positional arg must be provided
+    pos_description: human-readable type description for error messages (e.g. "bool")
     kwargs: allowed keyword arg names -> expected types (None = no kwargs)
     """
     pos_type: type | None = None
     pos_required: bool = False
+    pos_description: str | None = None
     kwargs: dict[str, type] | None = None
 
 
 # Argument schemas for all known decorators. Decorators not listed here
 # (macro decorators, etc.) are validated by their own paths.
 _DECORATOR_ARG_SCHEMAS: dict[str, _DecoratorArgSchema] = {
-    # Bare-only (no arguments allowed)
-    "tpy.pure":               _DecoratorArgSchema(),
-    "tpy.noalloc":            _DecoratorArgSchema(),
-    "tpy.dynamic":            _DecoratorArgSchema(),
-    "tpy.nocopy":             _DecoratorArgSchema(),
+    # Only decorators that aren't @builtin_decorator stubs need explicit schemas.
+    # All other schemas are derived from stub signatures in .py files
+    # (see Parser._schema_from_stub and Parser._decorator_schemas).
     "tpy.auto_readonly":      _DecoratorArgSchema(),
-    "tpy.extern.native_preserves_refs": _DecoratorArgSchema(),
-    "typing.override":        _DecoratorArgSchema(),
-    "typing.overload":        _DecoratorArgSchema(),
     "builtins.staticmethod":  _DecoratorArgSchema(),
-    # Optional positional
-    # tpy.readonly is validated by _parse_readonly_arg (has custom semantics)
-    "tpy.extern.native":      _DecoratorArgSchema(pos_type=str, kwargs={"function": bool}),
-    "tpy.extern.native_c":    _DecoratorArgSchema(pos_type=str),
-    "tpy.extern.extern_c":    _DecoratorArgSchema(pos_type=str),
-    # Required positional
-    "tpy.extern.value_ptr_coercion": _DecoratorArgSchema(),
-    "tpy.extern.cpp_template": _DecoratorArgSchema(pos_type=str, pos_required=True),
-    "tpy.extern.builtin_type": _DecoratorArgSchema(pos_type=str, pos_required=True),
-    "tpy.error_return":       _DecoratorArgSchema(pos_type=_NameArg, pos_required=True),
 }
 
 
@@ -392,7 +380,7 @@ class Parser:
         "with", "async", "await",
     }
 
-    def __init__(self):
+    def __init__(self, decorator_schemas: dict[str, '_DecoratorArgSchema'] | None = None):
         self.registry = TypeRegistry()
         self.source_lines: list[str] = []
         self._type_param_scope: dict[str, TypeParamKind] | None = None
@@ -402,6 +390,9 @@ class Parser:
         self._bare_module_imports: set[str] = set()
         self._reverse_module_aliases: dict[str, str] = {}
         self._for_unpack_counter: int = 0
+        # Schemas derived from @builtin_decorator stubs (populated by compiler
+        # from previously-parsed modules, or from same-file definitions)
+        self._decorator_schemas: dict[str, _DecoratorArgSchema] = dict(decorator_schemas) if decorator_schemas else {}
 
     def _loc(self, node: ast.AST) -> SourceLocation | None:
         """Create a SourceLocation from an AST node."""
@@ -431,12 +422,18 @@ class Parser:
         if local_name in PYTHON_BUILTINS:
             return ("builtins", local_name)
 
-        # Check for @builtin_type("module.Name") defined locally in this file
-        builtin_key = self.registry.get_builtin_type_key(local_name)
+        # Check for @builtin_type / @builtin_decorator defined locally in this file
+        builtin_key = self.registry.get_builtin_type_key(local_name) or self.registry.get_builtin_decorator_key(local_name)
         if builtin_key:
             parts = builtin_key.rsplit(".", 1)
             if len(parts) == 2:
                 return (parts[0], parts[1])
+
+        # Auto-resolve _EXTERN_KEYWORDS within tpy.extern's own module
+        if local_name in _EXTERN_KEYWORDS and self._imports._module_name:
+            pub = _PRIVATE_MODULE_PUBLIC_NAMES.get(self._imports._module_name) or public_module_name(self._imports._module_name)
+            if pub == "tpy.extern":
+                return ("tpy.extern", local_name)
 
         return None
 
@@ -478,6 +475,7 @@ class Parser:
             elif original == "str": return STR
             elif original == "slice": return SLICE
             elif original == "None": return VOID
+            elif original == "type": return NamedType("type", _module_qname="builtins.type")
             elif original == "tuple":
                 raise ParseError("tuple requires type arguments: tuple[T1, T2, ...]", node)
         elif module == "tpy":
@@ -707,6 +705,16 @@ class Parser:
                 seen_non_import = True
                 func = self._parse_function(node)
                 functions.append(func)
+                if func.builtin_decorator_key:
+                    # Register for decorator resolution (like @builtin_type for records)
+                    self.registry.register_function(FunctionInfo(
+                        name=func.name, params=[], return_type=VOID,
+                        builtin_decorator_key=func.builtin_decorator_key,
+                    ))
+                    # Derive arg schema from stub signature
+                    schema = self._schema_from_stub(func)
+                    if schema is not None:
+                        self._decorator_schemas[func.builtin_decorator_key] = schema
             elif isinstance(node, ast.TypeAlias):
                 seen_non_import = True
                 self._register_type_alias(node.name.id, node.value, type_aliases)
@@ -847,12 +855,58 @@ class Parser:
         return f"{resolved[0]}.{resolved[1]}", resolved[2]
 
     def _parse_readonly_arg(self, arg: object, dec: ast.expr) -> tuple[bool, bool]:
-        """Parse @readonly arg value -> (is_readonly, readonly_opt_out)."""
+        """Parse @readonly validated arg -> (is_readonly, readonly_opt_out).
+
+        arg should be the validated positional value from _validate_decorator_args
+        (None for bare/@readonly(), bool for @readonly(True/False)).
+        """
         if arg is None:
             return (True, False)
         if isinstance(arg, bool):
             return (arg, not arg)
-        raise ParseError("@readonly() requires a single bool argument (True or False)", dec)
+        raise ParseError("@readonly() requires a bool argument", dec)
+
+    def _schema_from_stub(self, func: TpyFunction) -> _DecoratorArgSchema | None:
+        """Derive a _DecoratorArgSchema from a @builtin_decorator stub's signature.
+
+        Single param -> positional arg. Additional params with defaults -> kwargs.
+        Type mapping: bool->bool, str->str, type->_NameArg (type name reference).
+        """
+        if not func.params:
+            return _DecoratorArgSchema()  # bare only
+
+        _type_map: dict[type, tuple[type, str]] = {
+            BoolType: (bool, "bool"), StrType: (str, "str"),
+        }
+        def _map_type(ptype: TpyType) -> tuple[type, str] | None:
+            match = _type_map.get(type(ptype))
+            if match:
+                return match
+            if isinstance(ptype, NamedType) and ptype.qualified_name() == "builtins.type":
+                return (_NameArg, "type name")
+            return None
+
+        # First param -> positional
+        _, ptype = func.params[0]
+        match = _map_type(ptype)
+        if match is None:
+            return None
+        pos_type, pos_desc = match
+        has_default = func.defaults and func.defaults[0] is not None
+
+        # Additional params -> kwargs
+        kwargs: dict[str, type] | None = None
+        for i in range(1, len(func.params)):
+            pname, ptype = func.params[i]
+            match = _map_type(ptype)
+            if match is None:
+                return None
+            if kwargs is None:
+                kwargs = {}
+            kwargs[pname] = match[0]
+
+        return _DecoratorArgSchema(pos_type=pos_type, pos_required=not has_default,
+                                   pos_description=pos_desc, kwargs=kwargs)
 
     def _validate_decorator_args(
         self, qname: str, arg: object, dec: ast.expr,
@@ -863,7 +917,9 @@ class Parser:
         (both bare @name and empty @name() normalize to None for optional args).
         kwargs is a dict of validated keyword arg values (empty if none).
         """
-        schema = _DECORATOR_ARG_SCHEMAS.get(qname)
+        # Explicit schemas (for non-stub decorators like auto_readonly,
+        # staticmethod) take precedence; then schemas derived from stubs.
+        schema = _DECORATOR_ARG_SCHEMAS.get(qname) or self._decorator_schemas.get(qname)
         if schema is None:
             return (arg, {})
         dec_name = self._decorator_local_name(dec) or qname.rsplit(".", 1)[-1]
@@ -875,19 +931,17 @@ class Parser:
             pos_arg, raw_kwargs = arg
 
         # Validate positional arg
+        _fallback_desc = {str: "string", bool: "bool", _NameArg: "type name"}
+        desc = schema.pos_description or _fallback_desc.get(schema.pos_type, "valid")
         if schema.pos_type is None:
             if pos_arg is not None:
                 raise ParseError(f"@{dec_name} does not take arguments", dec)
         elif schema.pos_required:
             if not isinstance(pos_arg, schema.pos_type):
-                type_desc = {str: "a string", bool: "a bool", _NameArg: "a type name"}
-                expected = type_desc.get(schema.pos_type, "an argument")
-                raise ParseError(f"@{dec_name}() requires {expected} argument", dec)
+                raise ParseError(f"@{dec_name}() requires a {desc} argument", dec)
         else:
             if pos_arg is not None and pos_arg is not self._EMPTY_CALL and not isinstance(pos_arg, schema.pos_type):
-                type_desc = {str: "a single string", bool: "a single bool"}
-                expected = type_desc.get(schema.pos_type, "a valid")
-                raise ParseError(f"@{dec_name}() requires {expected} argument", dec)
+                raise ParseError(f"@{dec_name}() requires a {desc} argument", dec)
             if pos_arg is self._EMPTY_CALL:
                 pos_arg = None
 
@@ -1281,9 +1335,9 @@ class Parser:
                 readonly_opt_out = False
                 for dec in item.decorator_list:
                     qname, arg = self._require_decorator(dec, f"protocol method '{item.name}'")
-                    self._validate_decorator_args(qname, arg, dec)
+                    pos, kw = self._validate_decorator_args(qname, arg, dec)
                     if qname == "tpy.readonly":
-                        is_readonly, readonly_opt_out = self._parse_readonly_arg(arg, dec)
+                        is_readonly, readonly_opt_out = self._parse_readonly_arg(pos, dec)
                     else:
                         dec_name = self._decorator_local_name(dec) or "?"
                         raise ParseError(f"Unknown decorator '{dec_name}' on protocol method '{item.name}'", dec)
@@ -1461,7 +1515,7 @@ class Parser:
             elif qname == "typing.overload":
                 is_overload_stub = True
             elif qname == "tpy.readonly":
-                is_readonly, readonly_opt_out = self._parse_readonly_arg(arg, dec)
+                is_readonly, readonly_opt_out = self._parse_readonly_arg(pos, dec)
             elif qname == "tpy.auto_readonly":
                 auto_readonly = True
                 auto_readonly_dec = dec
@@ -1766,6 +1820,7 @@ class Parser:
         is_overload_stub = False
         value_ptr_coercion = False
         error_return: str | None = None
+        builtin_decorator_key: str | None = None
         linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
         cpp_template: str | None = None
@@ -1777,7 +1832,7 @@ class Parser:
             elif qname == "tpy.pure":
                 is_pure = True
             elif qname == "tpy.readonly":
-                is_readonly, readonly_opt_out = self._parse_readonly_arg(arg, dec)
+                is_readonly, readonly_opt_out = self._parse_readonly_arg(pos, dec)
             elif qname == "tpy.auto_readonly":
                 raise ParseError("@auto_readonly is only valid on methods, not free functions", dec)
             elif qname == "typing.overload":
@@ -1788,6 +1843,8 @@ class Parser:
                 value_ptr_coercion = True
             elif qname == "tpy.extern.cpp_template":
                 cpp_template = pos
+            elif qname == "tpy.extern.builtin_decorator":
+                builtin_decorator_key = pos
             elif qname in self._FUNCTION_LINKAGE_MAP:
                 new_linkage = self._FUNCTION_LINKAGE_MAP[qname]
                 if linkage != FunctionLinkage.DEFAULT:
@@ -1854,7 +1911,13 @@ class Parser:
         is_overload_stub_body = is_stub_body or self._is_pass_body(node.body)
         is_stub = False
 
-        if cpp_template is not None:
+        if builtin_decorator_key is not None:
+            if not self._is_stub_body(node.body):
+                raise ParseError(
+                    f"@builtin_decorator function '{node.name}' must have `...` body", node)
+            is_stub = True
+            body = []
+        elif cpp_template is not None:
             if not self._is_stub_body(node.body):
                 raise ParseError(
                     f"@cpp_template function '{node.name}' must have `...` body", node)
@@ -1907,6 +1970,7 @@ class Parser:
             type_param_bounds=type_param_bounds,
             defaults=defaults,
             error_return=error_return,
+            builtin_decorator_key=builtin_decorator_key,
             is_generator=is_generator,
             loc=self._loc(node)
         )

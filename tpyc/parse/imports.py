@@ -16,13 +16,13 @@ from ..typesys import public_module_name
 
 # Names that the parser must resolve during parsing (compiler intrinsics).
 # Most tpy names are now defined in .py stubs and resolved via normal imports.
-# Only decorator/modifier names consumed at parse time remain as parser keywords.
+# Only names that trigger AST cloning (auto_readonly, auto_own) remain here;
+# other decorators are resolved via @builtin_decorator stubs in _decorators.py.
 PARSER_KEYWORDS: dict[str, frozenset[str] | None] = {
     # None means ALL names are parser keywords (module cannot be shadowed by .py)
     "tpy": frozenset({
-        # Decorators/type modifiers (consumed at parse time)
-        "readonly", "noalloc", "nocopy", "dynamic", "pure",
-        "auto_readonly", "auto_own", "error_return",
+        # Decorators that trigger method cloning at parse time
+        "auto_readonly", "auto_own",
     }),
     # tpy.extern is NOT listed here to avoid changing import processing for user code.
     # Extern keyword names are checked via _EXTERN_KEYWORDS in is_parser_keyword().
@@ -31,12 +31,11 @@ PARSER_KEYWORDS: dict[str, frozenset[str] | None] = {
     "typing": frozenset({"Optional", "Final", "Callable"}),
 }
 
-# Extern decorator names: parser keywords from tpy.extern.
-# Kept separate from PARSER_KEYWORDS to avoid changing import processing
-# behavior for user code that imports from tpy.extern.
+# Bootstrap primitive for tpy.extern: the one keyword that must be hardcoded
+# so that _extern.py can define all other decorators using @builtin_decorator.
+# All other extern decorator names are defined as @builtin_decorator stubs.
 _EXTERN_KEYWORDS = frozenset({
-    "native", "native_c", "extern_c", "cpp_template",
-    "builtin_type", "value_ptr_coercion", "native_preserves_refs",
+    "builtin_decorator",
 })
 
 # Private submodule -> public module name overrides.
@@ -61,7 +60,7 @@ TPY_TYPES = {
 }
 
 # Python builtins -- always available without import
-PYTHON_BUILTINS = frozenset({"int", "float", "bool", "str", "None", "tuple", "slice", "Exception", "BaseException"})
+PYTHON_BUILTINS = frozenset({"int", "float", "bool", "str", "None", "tuple", "slice", "type", "Exception", "BaseException"})
 
 # Names from typing that require explicit import
 TYPING_NAMES = frozenset({"Optional", "Protocol", "Self", "Sized", "Sequence", "MutableSequence", "Iterator", "Iterable", "Final", "override", "overload", "Callable"})

@@ -97,11 +97,14 @@ class CodeGenerator:
         """
         self.ctx.module_name = module_name
         self.ctx.source_lines = module.source_lines
-        # Filter out keyword stubs (@builtin_type classes with no methods/fields
+        # Filter out keyword stubs (@builtin_type classes / @builtin_decorator functions
         # that exist only for import resolution -- no C++ code needed).
         module.records = [
             r for r in module.records
             if not (ri := self.analyzer.registry.get_record(r.name)) or not ri.is_keyword_stub
+        ]
+        module.functions = [
+            f for f in module.functions if not f.builtin_decorator_key
         ]
         # Populate native C++ name mappings for this module's codegen.
         # Must include both own records and imported records so NamedType.to_cpp()
@@ -139,7 +142,10 @@ class CodeGenerator:
             self.ctx.user_module_imports = module.user_module_imports
             self.ctx.all_user_modules = set(module.user_module_imports.keys())
         self.ctx.implicit_stdlib_modules = implicit_stdlib_modules or set()
-        self.ctx.user_imported_functions = dict(self.analyzer.ctx.user_imported_functions)
+        self.ctx.user_imported_functions = {
+            k: v for k, v in self.analyzer.ctx.user_imported_functions.items()
+            if not (fi := self.analyzer.registry.get_function(k)) or not any(f.is_decorator_stub for f in fi)
+        }
         self.ctx.user_imported_records = {
             k: v for k, v in self.analyzer.ctx.user_imported_records.items()
             if not (ri := self.analyzer.registry.get_record(k)) or not ri.is_keyword_stub
@@ -698,10 +704,9 @@ class CodeGenerator:
                     self.functions.gen_extern_c_redecl(hpp, func_infos[0])
                     any_written = True
                     continue
-                # Skip native/template functions -- they don't generate C++
-                # function definitions (they inline via @native or @cpp_template)
+                # Skip decorator stubs and native/template functions
                 if func_infos and all(
-                    fi.native_name or fi.cpp_template or fi.special_handling
+                    fi.is_decorator_stub or fi.native_name or fi.cpp_template or fi.special_handling
                     for fi in func_infos
                 ):
                     continue

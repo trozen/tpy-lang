@@ -908,6 +908,7 @@ class TpyFunction:
     type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
     defaults: list['TpyExpr | None'] = field(default_factory=list)  # len == len(params); None = no default
     error_return: str | None = None  # @error_return(E) exception type name
+    builtin_decorator_key: str | None = None  # @builtin_decorator("tpy.readonly")
     is_generator: bool = False  # Set by parser: body contains yield
     generator_yield_type: 'TpyType | None' = None  # Set by sema: T from Iterator[T]
     generator_locals: 'list[tuple[str, TpyType]] | None' = None  # Set by sema: local vars for struct fields

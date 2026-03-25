@@ -1,1 +1,1 @@
-main.py:10: error: @readonly() requires a single bool argument (True or False)
+main.py:10: error: @readonly() requires a bool argument

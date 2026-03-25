@@ -154,6 +154,8 @@ class TypeOperations:
                 raise SemanticError(f"Integer type parameter '{typ.name}' cannot be used as a type annotation", loc)
             return
         if isinstance(typ, NamedType) and typ.is_record:
+            if typ.qualified_name() == "builtins.type":
+                raise SemanticError("'type' cannot be used as a type annotation", loc)
             record_info = self.ctx.registry.get_record_for_type(typ)
             if not record_info:
                 if self.ctx.registry.get_enum(typ.name) is not None:

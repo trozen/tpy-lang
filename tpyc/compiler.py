@@ -594,6 +594,9 @@ class Compiler:
         self.shadowed_builtins: dict[str, set[tuple[str, int]]] = {}
         self._source_input: tuple[str, str] | None = None
         self._macro_registry = MacroRegistry()
+        # Decorator arg schemas derived from @builtin_decorator stubs,
+        # accumulated across parsed modules and passed to subsequent parsers.
+        self._decorator_schemas: dict = {}
 
     @classmethod
     def from_source(
@@ -631,8 +634,15 @@ class Compiler:
 
         if self._source_input is not None:
             source, entry_name = self._source_input
-            parser = Parser()
+
+            if self.resolver:
+                # Discover implicit stdlib first so @builtin_decorator schemas
+                # are available when parsing the entry module.
+                self._discover_implicit_stdlib()
+
+            parser = Parser(decorator_schemas=self._decorator_schemas)
             ast = parser.parse(source, module_name=entry_name)
+            self._decorator_schemas.update(parser._decorator_schemas)
             self.modules[entry_name] = CompiledModule(
                 name=entry_name,
                 path=Path("<stdin>"),
@@ -657,12 +667,16 @@ class Compiler:
                 self._analyze_module(self.modules[name])
             return [self.modules[name] for name in self.compile_order]
 
-        # 1. Discover all modules (starting from entry point)
+        # 1. Discover implicit stdlib first so @builtin_decorator schemas
+        # are available when parsing user modules.
+        self._discover_implicit_stdlib()
+
+        # 1b. Discover all modules (starting from entry point)
         # Entry point uses simple name (not dotted) since it's the root
         entry_name = ModuleResolver.get_module_name(self.entry_point)
         self._discover_modules(entry_name, self.entry_point, [], is_entry_point=True)
 
-        # 1b. Implicitly discover stdlib modules (typing, tpy)
+        # Rediscover in case user modules added new stdlib deps
         self._discover_implicit_stdlib()
 
         # 2. Compute compilation order (topological sort)
@@ -742,11 +756,12 @@ class Compiler:
             return
 
         # Parse the module
-        parser = Parser()
+        parser = Parser(decorator_schemas=self._decorator_schemas)
         try:
             ast = parser.parse(source, module_name=module_name)
         except ParseError as e:
             raise CompileError(e.message, module_name, path, lineno=e.lineno)
+        self._decorator_schemas.update(parser._decorator_schemas)
 
         self.modules[module_name] = CompiledModule(
             name=module_name,

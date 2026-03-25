@@ -7,7 +7,7 @@ class Bad:
     def __init__(self, x: Int32) -> None:
         self.x = x
 
-    @readonly(1)  # tpyc: error(/@readonly\(\) requires a single bool argument/)
+    @readonly(1)  # tpyc: error(/@readonly\(\) requires a bool argument/)
     def get_x(self) -> Int32:
         return self.x
 
