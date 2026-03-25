@@ -1545,6 +1545,12 @@ class SemanticAnalyzer:
         # Check for function (list of overloads in ModuleInfo)
         if module_info.functions and original_name in module_info.functions:
             func_infos = module_info.functions[original_name]
+            # Skip special_handling builtins merged from the builtin module
+            # (e.g. native_c_global in tpy.extern). Statement interception in
+            # statements.py looks up the IMPORTED_NAME binding's import_source;
+            # registering a function group here would clobber that binding.
+            if func_infos and func_infos[0].special_handling:
+                return
             self.ctx.registry.register_function_group(local_name, func_infos)
             if len(func_infos) > 1:
                 self.ctx.global_ns.bind(NameBinding(

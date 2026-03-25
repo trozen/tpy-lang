@@ -29,21 +29,4 @@ def init_module() -> BuiltinModule:
         MethodDef(params=[], returns=VOID, cpp=""),
     ], special_handling=True)
 
-    # Linkage decorators (validated by parser, not called at runtime)
-    module.function("native", overloads=[
-        MethodDef(params=[], returns=VOID, cpp=""),
-    ], special_handling=True)
-
-    module.function("native_c", overloads=[
-        MethodDef(params=[], returns=VOID, cpp=""),
-    ], special_handling=True)
-
-    module.function("extern_c", overloads=[
-        MethodDef(params=[], returns=VOID, cpp=""),
-    ], special_handling=True)
-
-    module.function("cpp_template", overloads=[
-        MethodDef(params=[], returns=VOID, cpp=""),
-    ], special_handling=True)
-
     return module

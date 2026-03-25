@@ -947,9 +947,10 @@ class CodeGenerator:
                 included.add(implicit_mod)
         # Include user module headers (including parent packages for dotted imports)
         for user_mod in sorted(self.ctx.user_module_imports):
-            # Skip builtin modules - they don't generate separate headers
+            # Skip builtin modules and builtin-supplemented facades --
+            # they don't generate C++ declarations that need separate includes
             module_info = self.analyzer.registry.get_module(user_mod)
-            if module_info and module_info.is_builtin:
+            if module_info and (module_info.is_builtin or module_info.has_builtin_fallback):
                 continue
             # Skip implicit stdlib modules already included above
             if user_mod in included:
