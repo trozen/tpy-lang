@@ -360,8 +360,14 @@ class FunctionGenerator:
             if self.protocols.is_static_protocol_param(ptype):
                 # Unified static protocol handling (single, optional, or union)
                 info = self._find_protocol_param_info(pname, ptype)
+                # Iterable[Own[T]] params use forwarding ref (T&&) to accept
+                # both lvalue containers and rvalue move-only OwnIter types.
+                has_own_arg = (isinstance(unwrapped, NamedType) and unwrapped.type_args
+                               and any(isinstance(a, OwnType) for a in unwrapped.type_args))
                 if info and info.has_none:
                     part = f"const T_{pname}* {cpp_pname}"
+                elif has_own_arg:
+                    part = f"T_{pname}&& {cpp_pname}"
                 elif (const_params or isinstance(ptype, ReadonlyType)
                         or self._all_protocols_readonly(info)
                         or (mutated_params is not None and i not in mutated_params)):

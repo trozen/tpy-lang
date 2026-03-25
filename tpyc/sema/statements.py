@@ -483,14 +483,16 @@ class StatementAnalyzer:
     def _find_consuming_iter(self, iterable_type: TpyType) -> FunctionInfo | None:
         """Find the consuming __iter__ overload for a type, if any.
 
-        NOTE: Currently unused -- for-loop auto-consuming is disabled until
-        per-element move is implemented. Preserved for re-enabling. See TODO.md.
-
         Only matches concrete types (list, user records with auto_own __iter__).
         Skips pending/unresolved types to avoid mismatched codegen.
         """
         # Only match concrete types, not pending/unresolved
         if isinstance(iterable_type, (PendingListType, PendingGenericInstanceType)):
+            return None
+        # Value-type elements: moving is identical to copying, so consuming
+        # the container's internal structure is pure overhead.
+        elem = iterable_type.get_iteration_element_type()
+        if elem is not None and elem.is_value_type():
             return None
         record_info = self.ctx.registry.get_record_for_type(iterable_type)
         if record_info is None:
@@ -791,11 +793,8 @@ class StatementAnalyzer:
                 )
                 stmt.elem_type = elem_type
 
-                # Auto-consuming iteration is disabled for for-loops until
-                # per-element move is implemented. Currently consuming only
-                # moves the container structure with no per-element benefit.
-                # Consuming iteration for Iterable[Own[T]] call-site args
-                # (constructors, extend) still works via _gen_consuming_iter.
+                # Auto-consuming decision is deferred until after body analysis
+                # (see below) so we know whether the loop var is mutated.
 
                 is_direct_next_iter = builtin_modules.get_error_return_next_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
                 is_iter_based = builtin_modules.get_iter_element_type(inner_iterable_type, registry=self.ctx.registry) is not None
@@ -908,6 +907,18 @@ class StatementAnalyzer:
                         and stmt.var not in self.ctx.mutated_loop_vars
                         and not needs_mut_unpack):
                     stmt.const_loop_var = True
+                # Auto-consuming iteration: use consuming __iter__ when the
+                # loop variable is mutated and the container is at last use.
+                # Read-only loop vars don't benefit from consuming since no
+                # per-element ownership transfer happens.
+                if (stmt.var in self.ctx.mutated_loop_vars
+                        and not stmt.hoist_loop_var
+                        and isinstance(stmt.iterable, TpyName)
+                        and id(stmt.iterable) in self.ctx.all_last_uses
+                        and self.compat._is_movable_var(stmt.iterable.name)):
+                    consuming_fi = self._find_consuming_iter(inner_iterable_type)
+                    if consuming_fi is not None:
+                        stmt.consuming_iter_fi = consuming_fi
                 body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
                 self.init.restore(before)
                 # Loop might not execute — consumption inside is not definite

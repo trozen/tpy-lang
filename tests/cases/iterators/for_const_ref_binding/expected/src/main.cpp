@@ -98,7 +98,7 @@ void test_assign_to_local_loop() {
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
     // for p in items:
-    auto& __obj_0 = items;
+    auto __obj_0 = tpy::own_iter(std::move(items));
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {

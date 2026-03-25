@@ -3,6 +3,7 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
+- Per-element move in consuming for-loops: loop var uses `auto&&` (move-ready), but explicit `std::move(x)` for passing to `Own[T]` params (e.g. `target.append(x)`) not yet emitted. Needs liveness analysis to track last-use of loop vars within the loop body.
 - Expression callees: `callbacks[0](5)`, `get_handler()(x)` etc. `TpyCall.func` is a `str`, so only simple name calls work. Change `TpyCall.func` from `str` to `TpyExpr` -- most callsites just need `isinstance(expr.func, TpyName)` guard + `.name` access (mechanical). Sema needs a new path for non-Name callees: evaluate callee expr, check it resolves to `CallableType`, generate the call. ~188 `.func` refs across 19 files but the migration is straightforward.
 - Add C++ `__iter__()` to builtin containers (list, dict, set, Array, Span, str) so `iter()` builtin and generator for-loops can use the TPy Iterator protocol uniformly instead of falling back to C++ begin/end. list/Array/Span/str can return `SpanIter<T>`, dict/set need new key/value iterator wrappers. Currently these containers declare `__iter__()` at the TPy level but have no C++ implementation -- causes `iter(d)` REPL error and forces begin/end codegen in generators.
 - Resolve class-level type params in cpp_template at sema time: when sema resolves a generic constructor like `list[Int32](range(10))`, substitute `{T}` -> `Int32` into the template and store a fully-resolved `cpp_template` on `resolved_function_info`. Codegen would then never see unresolved type params -- every template would only have `{0}`, `{1}`, `{cpp}`. Eliminates the `type_subst`/`extract_type_params` machinery in codegen's call_type block and the regex guard in `_gen_call`.
@@ -36,7 +37,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - `own_iter()` is list-only: kept as explicit escape hatch for non-last-use consuming. Could be made generic (dispatch to consuming `__iter__` on any type).
 - `own()` builtin: explicit `T -> Own[T]` conversion (analogous to `span()` -> `Span[T]`).
 - User-defined drain iterators (e.g. `ArrayListDrainIter`): view types with borrow tracking. See `docs/CONSUMING_ITERATION_DESIGN.md`.
-- Per-element move in consuming for-loops: loop var uses `auto&&` (move-ready), but per-element ownership transfer not yet implemented. Until this lands, consuming iteration has no real benefit over borrowing (both access elements by reference). Once per-element move works, also add a value-type element check to `_find_consuming_iter` to skip consuming when moving is identical to copying (e.g. `list[Int32]`).
 
 ## Safety
 

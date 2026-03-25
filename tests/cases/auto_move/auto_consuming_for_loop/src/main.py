@@ -1,10 +1,10 @@
-# For-loop iteration always borrows (consuming disabled until per-element move).
-# Verifies that last-use vs non-last-use both generate borrowing codegen.
+# For-loop consuming only triggers when the loop var is mutated.
+# Read-only loop vars always borrow, even when container is at last use.
 from tpy import Int32
 
 def sum_last_use() -> Int32:
     items: list[Int32] = [10, 20, 30]
-    # items at last use -- still borrows (no per-element move yet)
+    # items at last use but x is read-only -- borrows
     total: Int32 = 0
     for x in items:
         total += x

@@ -3051,8 +3051,7 @@ class StatementGenerator:
             return
 
         # Auto-consuming iteration: iterable at last use with consuming __iter__.
-        # NOTE: Currently unreachable -- for-loop auto-consuming is disabled
-        # until per-element move is implemented. Preserved for re-enabling.
+        # Only triggers when the loop variable is mutated (not const_loop_var).
         # Uses shared _gen_consuming_iter (also used by call-site arg generation).
         # Skip when loop var is hoisted (used after loop) -- the hoisted var may
         # be a view (string_view) into the container, so the container must stay alive.

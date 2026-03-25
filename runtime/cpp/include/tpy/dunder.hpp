@@ -494,16 +494,18 @@ auto __iter__(const T& x) {
 }
 
 // Default template: user types that define __iter__() method
+// decltype(auto) preserves reference returns (e.g. OwnIterSet& __iter__())
+// to avoid copying move-only iterator types.
 template<typename T>
     requires requires(T& t) { t.__iter__(); }
-auto __iter__(T& x) {
+decltype(auto) __iter__(T& x) {
     return x.__iter__();
 }
 
 // Const overload for user types
 template<typename T>
     requires requires(const T& t) { t.__iter__(); }
-auto __iter__(const T& x) {
+decltype(auto) __iter__(const T& x) {
     return x.__iter__();
 }
 

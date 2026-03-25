@@ -8,7 +8,7 @@ namespace tpyapp::main {
 int32_t sum_last_use() {
     // items: list[Int32] = [10, 20, 30]
     std::vector<int32_t> items = {10, 20, 30};
-    // # items at last use -- still borrows (no per-element move yet)
+    // # items at last use but x is read-only -- borrows
     // total: Int32 = 0
     int32_t total = 0;
     // for x in items:
