@@ -4708,13 +4708,10 @@ Send/Sync rules for built-in types:
   ```
 - **Working**: Nested `def` with captures and `nonlocal` keyword. Nested functions compile to
   C++ lambdas with auto-inferred captures. Non-escaping closures capture by reference;
-  escaping closures (returned as `Callable`, passed to `Callable` params, stored in fields
-  or containers) use per-capture mode: non-value parameters capture by reference (caller's
-  object outlives the closure, Python-like semantics), `Own[T]` parameters and last-use locals
-  are moved, remaining non-value locals are copied (with a warning suggesting `copy()` or a
-  class). `nonlocal` enables mutable captures (non-escaping only). Restrictions: no decorators,
+  escaping closures (returned as `Callable` or passed to `Callable` params) capture by value.
+  `nonlocal` enables mutable captures (non-escaping only). Restrictions: no decorators,
   no type parameters, no nested-in-nested, no recursive nested defs. Escaping closures that
-  capture `str` parameters are rejected (string_view would dangle).
+  capture `str` parameters emit a warning (string_view may dangle).
   ```python
   def make_adder(n: Int32) -> Callable[[Int32], Int32]:
       def add(x: Int32) -> Int32:

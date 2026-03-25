@@ -1,1 +1,0 @@
-main.py:8: error: Escaping closure 'make_greeting' captures str parameter 'prefix' which would dangle (string_view into caller's storage). Use String for owned capture

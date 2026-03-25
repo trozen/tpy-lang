@@ -130,6 +130,17 @@ def get_include_path(module_name: str) -> str | None:
     return _include_path_map.get(module_name)
 
 
+def module_to_include_path(module_name: str) -> str:
+    """Resolve include path for a module: override if set, else default from name."""
+    override = get_include_path(module_name)
+    if override is not None:
+        return override
+    parts = module_name.split('.')
+    if len(parts) == 1:
+        return f"{parts[0]}.hpp"
+    return '/'.join(parts[:-1]) + f"/{parts[-1]}.hpp"
+
+
 def clear_namespace_map() -> None:
     """Clear the namespace and include path maps (called between compilations)."""
     global _namespace_map, _include_path_map

@@ -154,7 +154,7 @@ _DIRECTIVE_LINE_RE = re.compile(r'^#\s*tpy:\s+(\w.+)$')
 # Schema: (positional arg types, allowed keyword arg types)
 # Keys are the known directive names; unknown names produce a warning.
 _DIRECTIVE_SPECS: dict[str, tuple[list[type], dict[str, type]]] = {
-    "native_module":    ([], {}),
+    "native_module":    ([], {"forward": bool}),
     "macro_module":     ([], {}),
     "include":          ([str], {}),
     "link":             ([str], {"platform": str}),
@@ -221,6 +221,7 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
     includes: list[str] = []
     link_libs: list[tuple[str, str | None]] = []
     native_module = False
+    native_module_forward = False
     cpp_namespace: str | None = None
     cpp_include_path: str | None = None
     warnings: list[ParseWarning] = []
@@ -257,6 +258,8 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
 
         if name == "native_module":
             native_module = True
+            if kwargs.get("forward"):
+                native_module_forward = True
         elif name == "include":
             includes.append(args[0])
         elif name == "link":
@@ -275,6 +278,7 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
             cpp_include_path = args[0]
 
     return ModuleDirectives(includes=includes, link_libs=link_libs, native_module=native_module,
+                            native_module_forward=native_module_forward,
                             cpp_namespace=cpp_namespace, cpp_include_path=cpp_include_path), warnings
 
 

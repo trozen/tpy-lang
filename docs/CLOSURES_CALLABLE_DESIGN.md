@@ -23,7 +23,7 @@
 | Recursive closures | Closure calling itself -- needs `std::function` self-reference. Currently gives confusing "Unknown function" error; should have a dedicated diagnostic. |
 | Nested-in-nested `def` | `def` inside `def` inside `def`. Currently rejected. Requires saving/restoring more sema state in `nested_def_scope`. |
 | Escaping `str` param capture fix | Escaping closure capturing a `str` parameter copies `string_view` (may dangle). Codegen should emit `name = std::string(name)` for `str`-typed captures. Currently emits a warning. |
-| ~~Escape detection for field/container storage~~ | **Done** -- `self.field = nested_func`, `container.append(nested_func)`, and `return` from methods all trigger escape detection. Method escape finalization added; `OwnType` unwrapping for container element hints. |
+| Escape detection for field/container storage | `self.field = nested_func` and `container.append(nested_func)` don't trigger escape detection. Only `return` and `Callable` param passing do. |
 | Escaping `nonlocal` via `Rc[T]` | `Rc[T]` (`std::shared_ptr<T>`) would allow mutable shared state between closure and enclosing scope, enabling `nonlocal` in escaping closures. |
 | Variadic `Callable` | `Callable[..., R]` accepting any args -- needs `*args` (D17) |
 | Method references | `obj.method` as a value -- partial application binding `self` |
@@ -613,9 +613,14 @@ std::function<int32_t(int32_t)> make_adder(int32_t n) {
   more thorough sema state isolation in `nested_def_scope`.
 - **No recursive nested defs**: The name is bound after the `def` statement, so the
   body cannot reference itself. Gives "Unknown function" error (should be improved).
-- **Escaping `str` parameter capture**: Escaping closures that capture a `str` or
-  `StrView` parameter are rejected with an error (string_view would dangle after
-  the enclosing function returns). Use `String` for owned capture.
+- **Escape detection is incomplete**: Only `return inner` and passing to `Callable`
+  params trigger escape marking. Storing in a field (`self.f = inner`) or appending
+  to a container does not. These cases produce by-ref captures in a stored
+  `std::function`, which is UB.
+- **Escaping `str` parameter capture**: An escaping closure that captures a `str`
+  function parameter copies the `string_view` (non-owning). After the enclosing
+  function returns, the view may dangle. A warning is emitted. Fix: codegen should
+  emit `name = std::string(name)` for `str`-typed captures in escaping closures.
 - **Codegen context sharing**: The nested def body reuses the outer function's
   codegen context (pointer_locals, reassigned_vars, etc.) rather than having its
   own isolated context. Works for simple cases but may cause issues with

@@ -3104,6 +3104,7 @@ class ModuleInfo:
     name: str
     is_builtin: bool = True  # True for hardcoded builtin modules (e.g. sys), False for user/.py modules
     is_native_module: bool = False  # True for # tpy: native_module (no __tpy_init, no .cpp)
+    generates_header: bool = True  # False for native_modules that produce no C++ output
     has_builtin_fallback: bool = False  # True when .py shadows a builtin (incremental migration)
     functions: dict[str, list[FunctionInfo]] = field(default_factory=dict)  # func_name -> overloads
     variables: dict[str, ModuleVarInfo] = field(default_factory=dict)  # var_name -> ModuleVarInfo

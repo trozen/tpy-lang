@@ -1,1 +1,0 @@
-main.py:15: warning: Escaping closure 'get_value' copies local 'cfg' by value (non-value type). Consider using a class with explicit fields instead

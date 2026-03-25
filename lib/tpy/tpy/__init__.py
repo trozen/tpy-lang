@@ -1,4 +1,4 @@
-# tpy: native_module
+# tpy: native_module(forward=True)
 # tpy: cpp_namespace("tpystd::tpy")
 from ._core import (
     # Structural protocols

@@ -1,5 +1,4 @@
-# tpy: native_module
-# tpy: cpp_namespace("tpystd::tpy")
+# tpy: native_module(forward=True)
 from ._core._extern import (
     builtin_decorator, builtin_type,
     native, native_c, extern_c, cpp_template,

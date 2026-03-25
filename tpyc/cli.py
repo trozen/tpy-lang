@@ -344,7 +344,7 @@ def main() -> int:
             if cpp_path is not None:
                 all_cpp_paths.append(cpp_path)
 
-            if not building:
+            if not building and hpp_path.exists():
                 print(f"Generated: {hpp_path}")
                 if cpp_path is not None:
                     print(f"Generated: {cpp_path}")

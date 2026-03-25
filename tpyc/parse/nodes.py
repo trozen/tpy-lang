@@ -703,11 +703,6 @@ class TpyNestedDef(TpyStmt):
     captured_names: list[str] = field(default_factory=list)
     nonlocal_names: set[str] = field(default_factory=set)
     escapes: bool = False
-    # Captures that should use by-reference even in escaping closures
-    # (non-value outer params whose original object outlives the closure)
-    ref_captures: set[str] = field(default_factory=set)
-    # Non-value locals to move into the closure (last use, no copy needed)
-    move_captures: set[str] = field(default_factory=set)
 
 
 # -- Pattern matching nodes --
@@ -1020,6 +1015,8 @@ class ModuleDirectives:
     # Each entry: (lib_name, platform_filter_or_None)
     link_libs: list[tuple[str, str | None]] = field(default_factory=list)
     native_module: bool = False
+    # If True, generate umbrella header with #includes for sub-modules
+    native_module_forward: bool = False
     # Override C++ namespace (replaces tpyapp::module_name)
     cpp_namespace: str | None = None
     # Override C++ include path (default: derived from cpp_namespace or module name)

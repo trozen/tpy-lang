@@ -22,7 +22,7 @@ from .sema import SemanticAnalyzer, SemanticError, DiagnosticLevel
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names, get_type_factory as _get_type_factory
 from .codegen_cpp import CodeGenerator, CodeGenOptions
-from .codegen_cpp.context import module_to_cpp_namespace, set_namespace_map, set_include_path_map, get_include_path, clear_namespace_map
+from .codegen_cpp.context import module_to_cpp_namespace, set_namespace_map, set_include_path_map, get_include_path, clear_namespace_map, module_to_include_path
 import warnings
 from .typesys import TpyType, INT32, INT64, BIGINT, clear_all_compilation_state
 from .macro_loader import MacroRegistry, is_macro_module_source
@@ -1249,10 +1249,21 @@ class Compiler:
             variables[k] = ModuleVarInfo(k, v, cpp_expr, is_pointer=is_ptr)
 
         is_native = compiled.ast.directives.native_module if compiled else False
+        # Native modules generate a header only if they define protocols (for
+        # C++ concepts), are forwarding, or carry include directives.
+        # Use AST protocols (own definitions), not exports (which include re-exports
+        # and can change as later modules are analyzed).
+        if is_native:
+            is_forward = compiled.ast.directives.native_module_forward if compiled else False
+            has_own_protocols = bool(compiled.ast.protocols) if compiled else False
+            gen_header = is_forward or has_own_protocols or bool(compiled.ast.directives.includes)
+        else:
+            gen_header = True
         return ModuleInfo(
             name=name,
             is_builtin=False,
             is_native_module=is_native,
+            generates_header=gen_header,
             functions=functions,
             variables=variables,
             records=exports.records,
@@ -1344,9 +1355,6 @@ class Compiler:
         hpp_path = layout.hpp_path(mod_name)
         cpp_path = layout.cpp_path(mod_name)
 
-        hpp_path.parent.mkdir(parents=True, exist_ok=True)
-        cpp_path.parent.mkdir(parents=True, exist_ok=True)
-
         codegen = CodeGenerator(compiled.analyzer, options)
         # Pass actual user modules (those in self.modules, not builtins without user files)
         actual_user_modules = set(self.modules.keys())
@@ -1362,9 +1370,14 @@ class Compiler:
             reexported_enums=compiled.exports.reexported_enums
         )
 
+        if not hpp_code:
+            # Pure native module with no output -- don't write files
+            return hpp_path, None
+        hpp_path.parent.mkdir(parents=True, exist_ok=True)
         hpp_path.write_text(hpp_code)
         if compiled.ast.directives.native_module:
             return hpp_path, None
+        cpp_path.parent.mkdir(parents=True, exist_ok=True)
         cpp_path.write_text(cpp_code)
 
         return hpp_path, cpp_path
@@ -1388,8 +1401,13 @@ class Compiler:
         )
 
     def _propagate_package_directives(self) -> None:
-        """Propagate native_module from package __init__ to child modules."""
-        for name, compiled in self.modules.items():
+        """Propagate native_module from package __init__ to child modules.
+
+        Processes modules sorted by depth so parents propagate before children
+        (e.g., tpy -> tpy._core -> tpy._core._types).
+        """
+        for name in sorted(self.modules, key=lambda n: n.count('.')):
+            compiled = self.modules[name]
             if '.' not in name:
                 continue
             parent = name.rsplit('.', 1)[0]
@@ -1475,17 +1493,31 @@ class Compiler:
                 ip_map[name] = explicit
                 continue
             # Private submodules with explicit cpp_namespace (sharing their
-            # parent's C++ namespace) use the default module-name-based include
-            # path, not the namespace-derived one (which would collide with the
-            # parent). Modules with inherited namespace (no directive, resolved
-            # via _build_namespace_map) still derive from namespace below.
-            if compiled.ast.directives.cpp_namespace is not None and "._" in name:
-                continue
+            # parent's C++ namespace) use namespace_dir/leaf_name.hpp to avoid
+            # colliding with the parent's header while staying in the same
+            # directory tree (e.g. tpystd::tpy + _types -> tpystd/tpy/_types.hpp).
+            if compiled.ast.directives.cpp_namespace is not None:
+                leaf = name.rsplit('.', 1)[-1]
+                if leaf.startswith('_'):
+                    ns = ns_map[name]
+                    ip_map[name] = ns.replace('::', '/') + '/' + leaf + '.hpp'
+                    continue
             # Derive from inherited namespace if it differs from the default.
             ns = ns_map[name]
             default_ns = f"tpyapp::{name.replace('.', '::')}"
             if ns != default_ns:
                 ip_map[name] = ns.replace('::', '/') + '.hpp'
+
+        # Check for include path collisions (different modules mapping to the
+        # same header would silently overwrite each other during codegen).
+        seen: dict[str, str] = {}
+        for name in self.modules:
+            path = ip_map.get(name) or module_to_include_path(name)
+            if path in seen:
+                warnings.warn(
+                    f"include path collision: '{name}' and '{seen[path]}' both map to '{path}'")
+            seen[path] = name
+
         return ip_map
 
     def collect_link_flags(self) -> list[str]:

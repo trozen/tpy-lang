@@ -5,7 +5,6 @@
 #include "tpystd/builtins.hpp"
 #include "tpystd/tpy.hpp"
 #include "tpystd/typing.hpp"
-#include "tpystd/tpy/unsafe.hpp"
 
 extern "C" int16_t g_scores[];
 extern "C" int32_t g_ids[];
