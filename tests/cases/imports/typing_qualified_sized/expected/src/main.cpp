@@ -17,9 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Test typing.Sized via qualified access (bare `import typing`)
-    // # Verifies same codegen as `from typing import Sized`
-    // import typing
     // main()
     main();
 }

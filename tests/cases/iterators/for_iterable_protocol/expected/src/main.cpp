@@ -21,8 +21,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Function taking Iterable[Int32] parameter, for-loop over protocol-typed param
-    // from typing import Iterable
     // main()
     main();
 }

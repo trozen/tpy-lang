@@ -19,7 +19,6 @@ void __tpy_init() {
   static std::optional<::tpy::Adapter<Pet, Cat>> __global_slot_2;
   static std::optional<::tpy::Adapter<Pet, Parrot>> __global_slot_3;
   static std::optional<Dog> __global_slot_4;
-    // from typing import Protocol
     // # Global init + reassign
     // pet: Pet = Dog()
     __global_slot_1.emplace(Dog());

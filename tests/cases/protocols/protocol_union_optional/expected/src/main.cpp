@@ -42,9 +42,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Nullable protocol union: `is not None` guard + isinstance dispatch,
-    // # else branch for None, and constexpr guard interaction with if/else.
-    // from typing import Sized, Sequence
     // main()
     main();
 }

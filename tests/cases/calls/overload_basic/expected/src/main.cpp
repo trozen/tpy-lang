@@ -40,8 +40,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # @overload dispatch with isinstance dead branch elimination
-    // from typing import overload
     // main()
     main();
 }

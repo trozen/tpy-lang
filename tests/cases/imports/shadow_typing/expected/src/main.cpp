@@ -17,8 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Test warning when user class shadows an imported typing name
-    // from typing import Sized
     // main()
     main();
 }

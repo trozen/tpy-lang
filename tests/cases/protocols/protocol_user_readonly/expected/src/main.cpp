@@ -11,7 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from typing import Protocol
     // g = GoodReader(42)
     static GoodReader __global_slot_1 = GoodReader(42);
     g = &__global_slot_1;

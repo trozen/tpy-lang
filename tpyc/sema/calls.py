@@ -35,6 +35,7 @@ from .diagnostics import SemanticError
 from .overloads import type_matches_numeric, resolve_overload
 from ..macro_api import MacroArg, CallMacroContext, TypeInfo
 from ..macro_loader import expand_call_macro
+from .. import qnames
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -1569,7 +1570,7 @@ class CallAnalyzer:
             return ret
 
         # bool(obj) __len__ fallback: types with __len__ but no __bool__
-        if record.name == "bool" and len(arg_types) == 1:
+        if record.builtin_type_key == qnames.BOOL and len(arg_types) == 1:
             arg_type = arg_types[0]
             if isinstance(arg_type, NamedType):
                 arg_record = self.ctx.registry.get_record(arg_type.name)
@@ -1584,7 +1585,7 @@ class CallAnalyzer:
                     return BOOL
 
         # str(container) fallback: containers have runtime to_str helpers
-        if record.name == "str" and len(arg_types) == 1:
+        if record.builtin_type_key == qnames.STR and len(arg_types) == 1:
             tmpl = container_to_str_template(unwrap_readonly(arg_types[0]))
             if tmpl is not None:
                 expr.resolved_function_info = FunctionInfo(

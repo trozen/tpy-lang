@@ -12,7 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from typing import Protocol
     // # Test explicit protocol implementation
     // p = Person("Alice", 30)
     static Person __global_slot_1 = Person("Alice", 30);

@@ -20,9 +20,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Test bounded generic function with user-defined type
-    // # The user type implements __len__ so satisfies Sized
-    // from typing import Sized
     // main()
     main();
 }

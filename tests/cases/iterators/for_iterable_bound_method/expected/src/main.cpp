@@ -19,8 +19,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # For-loop over T: Iterable[Int32] inside a generic class method
-    // from typing import Iterable
     // main()
     main();
 }

@@ -19,8 +19,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Protocol conformance when implementation has default params
-    // from typing import Protocol
     // main()
     main();
 }

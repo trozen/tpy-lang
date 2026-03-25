@@ -55,8 +55,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Self type in record methods: builder pattern, method chaining, generic classes, Optional[Self]
-    // from typing import Self, Optional
     // test_builder()
     test_builder();
     // test_generic()

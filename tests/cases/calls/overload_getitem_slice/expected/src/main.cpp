@@ -68,9 +68,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # User-type slicing via @overload __getitem__(slice).
-    // # Tests slice type in unions, isinstance dispatch, and operator[] codegen.
-    // from typing import overload
     // main()
     main();
 }

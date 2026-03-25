@@ -12,7 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from typing import Protocol
     // # Test multiple protocol implementation
     // b = Box(5, 3)
     static Box __global_slot_1 = Box(5, 3);

@@ -13,7 +13,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // import tpy as t
     // x = t.Int32(42)
     x = 42;
     // y = t.Int32(123)

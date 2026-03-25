@@ -11,7 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from typing import Protocol
     // obj = Impl(42)
     static Impl __global_slot_1 = Impl(42);
     obj = &__global_slot_1;

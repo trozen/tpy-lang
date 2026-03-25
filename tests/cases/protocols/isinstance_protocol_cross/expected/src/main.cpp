@@ -17,8 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # isinstance() checking a different protocol than the declared one
-    // from typing import Sequence
     // main()
     main();
 }

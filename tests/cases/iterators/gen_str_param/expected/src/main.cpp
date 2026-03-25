@@ -46,8 +46,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Test complex generator with str parameter (stored in struct as string_view)
-    // from typing import Iterator
     // main()
     main();
 }

@@ -28,8 +28,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Overloaded function in a separate module
-    // from typing import overload
 }
 
 } // namespace tpyapp::animals

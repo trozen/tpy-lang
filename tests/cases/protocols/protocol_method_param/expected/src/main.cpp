@@ -27,8 +27,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Static protocol types in method and constructor parameters
-    // from typing import Protocol
     // main()
     main();
 }

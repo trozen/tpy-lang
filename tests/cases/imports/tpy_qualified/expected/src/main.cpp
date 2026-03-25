@@ -25,8 +25,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Test qualified tpy type access in annotations (tpy.Int32, tpy.Char)
-    // import tpy
     // main()
     main();
 }

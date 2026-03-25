@@ -19,9 +19,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # @dynamic protocol type used as generic type argument in record field.
-    // # Verifies codegen emits the resolved type name, not literal "T".
-    // from typing import Protocol
     // main()
     main();
 }

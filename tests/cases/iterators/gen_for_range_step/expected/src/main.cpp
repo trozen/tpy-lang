@@ -55,7 +55,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from typing import Iterator
     // main()
     main();
 }

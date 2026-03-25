@@ -19,10 +19,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Test that consuming methods suppress destructors when both parent and child
-    // # have __del__. The __tpy_owned_ flag must be shared (not shadowed) so that
-    // # both destructors in the chain are skipped on the moved-from object.
-    // from typing import Self
     // from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop, unsafe_move_out
     // main()
     main();

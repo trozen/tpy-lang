@@ -145,8 +145,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Basic with statement: __enter__/__exit__ context manager protocol
-    // from typing import Self
     // test_basic()
     test_basic();
     // print("---")
