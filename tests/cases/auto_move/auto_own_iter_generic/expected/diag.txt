@@ -1,0 +1,1 @@
+main.py:10: warning: copies list[T] into field; use copy() to make this explicit
