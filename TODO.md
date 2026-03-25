@@ -38,7 +38,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Ownership & Consuming Iteration
 - Consuming `__iter__` for set/dict: only list has a consuming overload (`tpy::own_iter`). Set/dict need drain iterators before auto-consuming at last use can work for them.
-- `auto_own __iter__` codegen bug: the consuming clone generates `T` as the C++ return type instead of the resolved type. Blocks user-defined consuming iteration via `auto_own`.
 - `own_iter()` is list-only: kept as explicit escape hatch for non-last-use consuming. Could be made generic (dispatch to consuming `__iter__` on any type).
 - `own()` builtin: explicit `T -> Own[T]` conversion (analogous to `span()` -> `Span[T]`).
 - User-defined drain iterators (e.g. `ArrayListDrainIter`): view types with borrow tracking. See `docs/CONSUMING_ITERATION_DESIGN.md`.

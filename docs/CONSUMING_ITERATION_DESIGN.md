@@ -17,7 +17,7 @@
 | Per-element move in consuming for-loops | Planned (loop var uses `auto&&`, move-ready; needs per-element ownership transfer in codegen) |
 | `own_iter()` for set/dict | Planned (needs proper drain iterators) |
 | Auto-consuming at last use (for-loops, extend, constructors) | Done (list only; auto-selects consuming `__iter__` when iterable is at last use) |
-| `auto_own` on `__iter__` for user collections | Partially unblocked (`iter(Own[T])` + protocol return in for-loops fixed; consuming clone codegen has return type bug) |
+| `auto_own` on `__iter__` for user collections | Done (return type + consuming loop codegen fixed) |
 | User-defined drain iterators (`ArrayListDrainIter`) | Planned |
 | Borrow tracking for view-type drain iterators | Planned (depends on view type tracking) |
 | Unified container constructors (`Iterable[Own[T]]`) | Done -- single `Iterable[Own[T]]` overload, C++ `if constexpr` dispatch |

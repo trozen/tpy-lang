@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, TypeParamRef, NamedType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType,
+    TpyType, TypeParamRef, NamedType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType,
     ArrayType, SpanType, ListType, PendingListType, GenExprType, CopyIterType, OwnIterType, SelfType, OptionalType, UnionType,
     TupleType,
     Int32Type, BigIntType, IntLiteralType, TypeParamKind, BIGINT,
@@ -125,6 +125,10 @@ class TypeOperations:
             resolved_wrapped = self.resolve_type(typ.wrapped, protocols_only=protocols_only)
             if resolved_wrapped is not typ.wrapped:
                 return AutoReadonlyType(resolved_wrapped)
+        elif isinstance(typ, AutoOwnType):
+            resolved_wrapped = self.resolve_type(typ.wrapped, protocols_only=protocols_only)
+            if resolved_wrapped is not typ.wrapped:
+                return AutoOwnType(resolved_wrapped)
         elif isinstance(typ, OptionalType):
             resolved_inner = self.resolve_type(typ.inner, protocols_only=protocols_only)
             if resolved_inner is not typ.inner:

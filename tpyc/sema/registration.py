@@ -14,7 +14,7 @@ from ..typesys import (
     FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL, UINT64,
     register_value_type_record, register_send_record, register_sync_record,
     attach_type_param_bounds,
-    has_auto_readonly,
+    has_auto_readonly, has_auto_own,
     qualify_exception_name, ensure_qualified,
     FnType, contains_fn_type,
     public_module_name,
@@ -469,6 +469,12 @@ class TypeRegistrar:
                 raise SemanticError(
                     f"'auto_readonly[T]' in return type is only allowed on "
                     f"@auto_readonly methods ('{record.name}.{method.name}')",
+                    method.loc or record.loc,
+                )
+            if has_auto_own(method_return):
+                raise SemanticError(
+                    f"'auto_own[T]' in return type is only allowed on "
+                    f"auto_own[Self] methods ('{record.name}.{method.name}')",
                     method.loc or record.loc,
                 )
             method.params = method_params

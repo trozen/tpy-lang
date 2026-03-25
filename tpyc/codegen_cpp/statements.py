@@ -3049,8 +3049,19 @@ class StatementGenerator:
             if consuming_call is not None:
                 elem_type = sema_elem
                 assert elem_type is not None
-                self._gen_begin_end_loop(out, stmt, indent, consuming_call, elem_type,
-                                         consuming=True, is_lvalue=False)
+                if stmt.consuming_iter_fi.native_name:
+                    # Native consuming iter (e.g. tpy::own_iter) returns a C++ range
+                    self._gen_begin_end_loop(out, stmt, indent, consuming_call, elem_type,
+                                             consuming=True, is_lvalue=False)
+                else:
+                    # User-defined consuming __iter__ returns a TPy Iterator
+                    n = self.ctx.iter_counter
+                    self.ctx.iter_counter += 1
+                    iter_name = f"__itr_{n}"
+                    self.ctx.temps.flush(out, indent)
+                    out.write(f"{indent}auto {iter_name} = {consuming_call};\n")
+                    self._gen_direct_next_loop(out, stmt, indent, "", elem_type,
+                                               call=".__next__()", iter_name=iter_name)
                 return
 
         # Resolve TypeParamRef to its bound for protocol-based iteration
