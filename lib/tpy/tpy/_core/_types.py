@@ -1,13 +1,13 @@
 # tpy: cpp_namespace("tpystd::tpy")
-from ._typing import overload, Protocol, Self, Iterator, Iterable, Sized
+from .._typing import overload, Protocol, Self, Iterator, Iterable, Sized
 from tpy import (
     Span, Ptr,
     # Primitive types used in method signatures (forward references within this file)
     UInt64, Int32, Float32, Int8, Int16, Int64, UInt8, UInt16, UInt32,
     Char, String, StrView,
 )
-from ._decorators import readonly, pure, nocopy, Own
-from ._extern import native, cpp_template, builtin_type, value_ptr_coercion
+from .._bootstrap._decorators import readonly, pure, nocopy, Own
+from .._bootstrap._extern import native, cpp_template, builtin_type, value_ptr_coercion
 
 
 # --- Structural protocols (concept generated from method signatures) ---

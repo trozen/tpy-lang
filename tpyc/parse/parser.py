@@ -567,11 +567,13 @@ class Parser:
             return True
         return False
 
-    def parse(self, source: str, module_name: str | None = None) -> TpyModule:
+    def parse(self, source: str, module_name: str | None = None,
+              is_package_init: bool = False) -> TpyModule:
         """Parse TurboPython source code into a TpyModule."""
         self.source_lines = source.splitlines()
         self._warnings = []
-        self._imports = ImportProcessor(self._warn, module_name=module_name)
+        self._imports = ImportProcessor(self._warn, module_name=module_name,
+                                        is_package_init=is_package_init)
         self._module_aliases = {}
         self._bare_module_imports = set()
         self._reverse_module_aliases = {}

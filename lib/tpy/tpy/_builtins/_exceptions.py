@@ -1,5 +1,5 @@
 # tpy: cpp_namespace("tpystd::builtins")
-from ._extern import native
+from .._bootstrap._extern import native
 
 
 # Python exception hierarchy (maps to ::tpy:: runtime structs in core.hpp)

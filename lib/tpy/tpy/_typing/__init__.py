@@ -1,7 +1,7 @@
 # tpy: cpp_namespace("tpystd::typing")
 from tpy import Int32
-from ._decorators import readonly
-from ._extern import builtin_type, builtin_decorator
+from .._bootstrap._decorators import readonly
+from .._bootstrap._extern import builtin_type, builtin_decorator
 
 
 @builtin_type("typing.Protocol")

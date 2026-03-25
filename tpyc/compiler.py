@@ -758,7 +758,8 @@ class Compiler:
         # Parse the module
         parser = Parser(decorator_schemas=self._decorator_schemas)
         try:
-            ast = parser.parse(source, module_name=module_name)
+            ast = parser.parse(source, module_name=module_name,
+                               is_package_init=is_package_init)
         except ParseError as e:
             raise CompileError(e.message, module_name, path, lineno=e.lineno)
         self._decorator_schemas.update(parser._decorator_schemas)
@@ -1006,7 +1007,7 @@ class Compiler:
         # Move implicit stdlib modules (and their submodules) to the front
         # so they're analyzed before any user code. The topological sort
         # already respects inter-module dependencies (e.g. typing depending
-        # on tpy._core._typing), so we preserve that order -- just partition
+        # on tpy._typing), so we preserve that order -- just partition
         # implicit modules to the front.
         implicit_set = self._implicit_stdlib_set()
         if implicit_set:
@@ -1409,7 +1410,7 @@ class Compiler:
         """Propagate native_module from package __init__ to child modules.
 
         Processes modules sorted by depth so parents propagate before children
-        (e.g., tpy -> tpy._core -> tpy._core._types).
+        (e.g., tpy -> tpy._core -> tpy._core._types, tpy -> tpy._builtins -> tpy._builtins._list).
         """
         for name in sorted(self.modules, key=lambda n: n.count('.')):
             compiled = self.modules[name]

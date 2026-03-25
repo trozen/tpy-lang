@@ -40,10 +40,10 @@ _EXTERN_KEYWORDS = frozenset({
 
 # Private submodule -> public module name overrides.
 # Used when public_module_name() can't derive the correct public name
-# (e.g. tpy._core._extern maps to tpy.extern, not tpy).
+# (e.g. tpy._bootstrap._extern maps to tpy.extern, not tpy).
 _PRIVATE_MODULE_PUBLIC_NAMES: dict[str, str] = {
-    "tpy._core._extern": "tpy.extern",
-    "tpy._core._typing": "typing",
+    "tpy._bootstrap._extern": "tpy.extern",
+    "tpy._typing": "typing",
 }
 
 # Types from tpy that require explicit import (used for error messages)
@@ -83,7 +83,7 @@ def is_parser_keyword(module_name: str, name: str) -> bool:
 
     Returns True if the name must be handled by the parser (not from .py files).
     For modules with PARSER_KEYWORDS[mod] = None, ALL names are keywords.
-    For private submodules (e.g. tpy._core._decorators), checks the public parent.
+    For private submodules (e.g. tpy._bootstrap._decorators), checks the public parent.
     """
     kw = PARSER_KEYWORDS.get(module_name)
     if kw is None and module_name in PARSER_KEYWORDS:
@@ -107,9 +107,11 @@ class ImportProcessor:
     from pure syntax parsing.
     """
 
-    def __init__(self, warn_fn, module_name: str | None = None):
+    def __init__(self, warn_fn, module_name: str | None = None,
+                 is_package_init: bool = False):
         self._warn = warn_fn
         self._module_name = module_name
+        self._is_package_init = is_package_init
         self.tpy_import_aliases: dict[str, str] = {}
         self.tpy_star_import: bool = False
         # Reference to the module's imports dict, set during process_import_from.
@@ -122,19 +124,26 @@ class ImportProcessor:
         Uses the current module_name to compute the absolute path, then
         applies public_module_name to map private submodules to public parents.
         Falls back to the raw key if module_name is not set.
+
+        For package __init__.py files, the module name IS the package, so
+        level=1 means "within this package" (0 levels up from the package).
+        For regular files, the module name includes the filename, so level=1
+        means "same directory" (1 component stripped).
         """
         if not self._module_name:
             return key
         decoded = RelativeImportKey.decode(key)
         parts = self._module_name.split(".")
-        # Go up 'level' directories from current module
-        if decoded.level > len(parts):
+        # For __init__.py, package = module name; for regular files, package = parent
+        package_parts = parts if self._is_package_init else parts[:-1]
+        levels_up = decoded.level - 1
+        if levels_up > len(package_parts):
             return key
-        parent_parts = parts[:-decoded.level]
+        base_parts = package_parts[:len(package_parts) - levels_up]
         if decoded.partial:
-            absolute = ".".join(parent_parts + [decoded.partial])
+            absolute = ".".join(base_parts + [decoded.partial])
         else:
-            absolute = ".".join(parent_parts)
+            absolute = ".".join(base_parts)
         return _PRIVATE_MODULE_PUBLIC_NAMES.get(absolute) or public_module_name(absolute)
 
     def get_import_source(self, local_name: str) -> tuple[str, str] | None:
@@ -142,7 +151,7 @@ class ImportProcessor:
 
         Returns (module_name, original_name) or None.
         For relative imports from private submodules, the module name is
-        resolved to the public parent (e.g. tpy._core._types -> tpy).
+        resolved to the public parent (e.g. tpy._core._types -> tpy, tpy._builtins._list -> tpy).
         """
         if self.imports is None:
             return None

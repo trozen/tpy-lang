@@ -349,11 +349,14 @@ Library search roots and CPython stubs:
 | Directory | Purpose |
 |-----------|---------|
 | `tpy/` | Single search root for all library modules |
-| `tpy/tpy/` | TPy package: `__init__.py` re-exports from `_core/` submodules. Implicitly compiled. |
-| `tpy/tpy/_core/` | Core definitions: `_types.py` (protocols, primitives), `_typing.py` (Protocol, Self, Sized, Iterator, Iterable), `_containers.py` (Span, Array, Ptr), `_functions.py` (span, deref), `_decorators.py` (readonly, pure, etc. -- parser keyword stubs), `_extern.py` (native, cpp_template, etc. -- parser keyword stubs), `_builtin_types.py` (bool, int, float, str), `_builtin_funcs.py` (len, hash, etc.), `_list.py`, `_dict.py`, `_set.py`, `_exceptions.py`, `_range.py` |
+| `tpy/tpy/` | TPy package: `__init__.py` re-exports from `_core/` and `_bootstrap/`. Implicitly compiled. |
+| `tpy/tpy/_bootstrap/` | Bootstrap layer: `_extern.py` (native, cpp_template, etc. -- compiler intrinsic stubs), `_decorators.py` (readonly, pure, Own, etc. -- decorator stubs) |
+| `tpy/tpy/_typing/` | Typing layer: `__init__.py` (Protocol, Self, Sized, Sequence, Iterator, Iterable) |
+| `tpy/tpy/_core/` | Core types: `_types.py` (protocols, primitives), `_containers.py` (Span, Array, Ptr), `_functions.py` (span, deref) |
+| `tpy/tpy/_builtins/` | Builtin types and functions: `_types.py` (bool, int, float, str), `_funcs.py` (len, hash, etc.), `_list.py`, `_dict.py`, `_set.py`, `_range.py`, `_exceptions.py` |
 | `tpy/tplib/` | TPy standard library: `Box[T]`, custom collections |
-| `tpy/typing.py` | `typing` protocols (`Sized`, `Sequence`, etc.). Implicitly compiled. |
-| `tpy/builtins.py` | Re-export facade for `tpy._core`. Implicitly compiled. |
+| `tpy/typing.py` | `typing` protocols (`Sized`, `Sequence`, etc.). Re-exports from `tpy._typing`. Implicitly compiled. |
+| `tpy/builtins.py` | Re-export facade for `tpy._builtins`. Implicitly compiled. |
 | `tpy/math.py`, `time.py`, `sys.py`, `bisect.py` | Python stdlib analogs |
 | `cpy/tpy/` | CPython stubs ONLY (not seen by tpyc): `Int32`, `Ptr`, `Array`, decorators; submodules: `mem`, `unsafe` |
 | `cpy/tplib` | Symlink to `tpy/tplib/` so CPython tests can find tplib |

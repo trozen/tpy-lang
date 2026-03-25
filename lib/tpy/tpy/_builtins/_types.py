@@ -1,12 +1,12 @@
 # tpy: cpp_namespace("tpystd::builtins")
-from ._typing import overload, Sized, Iterator, Iterable
-from ._decorators import readonly, pure, error_return, Own
-from ._types import (
+from .._typing import overload, Sized, Iterator, Iterable
+from .._bootstrap._decorators import readonly, pure, error_return, Own
+from .._core._types import (
     Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64,
     Char, String, StrView, Float32, AnyFixedInt,
     Hashable, Representable, Stringable, NativeIterable, Truthy, Comparable, Equatable,
 )
-from ._extern import native, cpp_template, builtin_type
+from .._bootstrap._extern import native, cpp_template, builtin_type
 
 @builtin_type("builtins.bool")
 @native("bool")

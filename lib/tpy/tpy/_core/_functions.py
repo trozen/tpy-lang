@@ -1,7 +1,7 @@
 # tpy: cpp_namespace("tpystd::tpy")
 from tpy import Ptr
-from ._decorators import readonly, pure, Own
-from ._extern import native, cpp_template, value_ptr_coercion
+from .._bootstrap._decorators import readonly, pure, Own
+from .._bootstrap._extern import native, cpp_template, value_ptr_coercion
 from ._containers import Span
 from ._types import ReadOnlySpanLike, Deref, Default
 

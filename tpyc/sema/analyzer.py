@@ -479,7 +479,7 @@ class SemanticAnalyzer:
         # through the same path as user-defined Finals (single source of truth).
         # Skip for private submodules (containing "._") that may share their
         # parent's C++ namespace -- they'd cause duplicate __name__ definitions.
-        # This applies to both stdlib (tpy._core._types) and user private
+        # This applies to both stdlib (tpy._core._types, tpy._builtins._list) and user private
         # submodules (myapp._internal), which is fine since __name__ is rarely
         # needed in submodules compiled to C++.
         module_name = self.ctx.module_name
