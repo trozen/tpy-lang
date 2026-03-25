@@ -24,7 +24,31 @@ from ._bootstrap import (
     readonly, noalloc, nocopy, pure, dynamic, error_return,
     Own, Fn,
 )
-# auto_readonly, auto_own: parser keywords (no .py stub needed, resolved by
-# PARSER_KEYWORDS in imports.py before any file lookup)
 
 type Float64 = float
+
+__all__ = [
+    # Primitive types
+    "Int8", "Int16", "Int32", "Int64",
+    "UInt8", "UInt16", "UInt32", "UInt64",
+    "Float32", "Float64",
+    "Char", "String", "StrView",
+    # Container types
+    "Span", "Array", "Ptr", "SpanIter",
+    # Pointer / ownership
+    "Own", "Fn",
+    # Decorators / type modifiers
+    "readonly", "noalloc", "nocopy", "pure", "dynamic", "error_return",
+    "auto_readonly", "auto_own",  # parser keywords (no .py stub)
+    # Structural protocols
+    "Truthy", "Stringable", "Representable",
+    "Hashable", "Comparable", "Equatable",
+    "Deref", "ReadOnlySpanLike", "Default",
+    # Marker protocols
+    "NativeIterable", "NativeRangeConstructible",
+    "ValueType", "Send", "Sync", "Covariant",
+    # Fixed-width integer constraint protocols
+    "AnyFixedInt", "AnyFixedSigned", "AnyFixedUnsigned",
+    # Functions
+    "span", "deref", "take_ptr", "make_default",
+]

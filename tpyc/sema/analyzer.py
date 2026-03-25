@@ -395,12 +395,13 @@ class SemanticAnalyzer:
         # Process imports
         self.ctx.imports = module.imports
         self.ctx.bare_module_imports = module.bare_module_imports
+        if module.tpy_star_import:
+            self.registrar.register_tpy_star_import()
+            self._register_all_tpy_type_aliases()
         for import_module_name, names in self.ctx.imports.items():
-            if names == "*":
-                # "from tpy import *" - register all tpy exports
-                self.registrar.register_tpy_star_import()
-                self._register_all_tpy_type_aliases()
-            elif isinstance(names, set):
+            if isinstance(names, set):
+                if module.tpy_star_import and import_module_name == "tpy":
+                    continue  # already fully registered above
                 # "from X import Y" or "from X import Y as Z"
                 # Stored as (original_name, local_name) tuples to support aliases
                 for original_name, local_name in names:

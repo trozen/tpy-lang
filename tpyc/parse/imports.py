@@ -46,31 +46,38 @@ _PRIVATE_MODULE_PUBLIC_NAMES: dict[str, str] = {
     "tpy._typing": "typing",
 }
 
-# Types from tpy that require explicit import (used for error messages)
-TPY_TYPES = {
-    "Int8", "Int16", "Int32", "Int64",  # Signed fixed-width integers
-    "UInt8", "UInt16", "UInt32", "UInt64",  # Unsigned fixed-width integers
-    "Float32", "Float64",  # Explicit-width float types
-    "Char",  # Character type
-    "Span", "Array",  # Container types
-    "Ptr", "Own",  # Pointer types
-    "Fn",  # Callable types
-    "Hashable", "Comparable", "Deref", "Default",  # Protocols (user-facing)
-    "Truthy", "Stringable", "Representable",  # Protocols (less common)
-}
-
 # Python builtins -- always available without import
 PYTHON_BUILTINS = frozenset({"int", "float", "bool", "str", "None", "tuple", "slice", "type", "Exception", "BaseException"})
 
 # Names from typing that require explicit import
 TYPING_NAMES = frozenset({"Optional", "Protocol", "Self", "Sized", "Sequence", "MutableSequence", "Iterator", "Iterable", "Final", "override", "overload", "Callable"})
 
-# All tpy type names available via `from tpy import *` (types + decorators/modifiers)
-TPY_TYPE_NAMES = TPY_TYPES | {
-    "String", "StrView", "SpanIter",
-    "readonly", "noalloc", "nocopy", "dynamic", "pure",
-    "auto_readonly", "auto_own", "error_return",
-}
+
+def _read_tpy_exports() -> frozenset[str]:
+    """Read __all__ from tpy/__init__.py to get star-import exports."""
+    # Deferred: tpyc.__init__ imports tpyc.parse, so top-level would be circular.
+    from tpyc import get_lib_dir
+    init_path = get_lib_dir() / "tpy" / "tpy" / "__init__.py"
+    if not init_path.exists():
+        return frozenset()
+    tree = ast.parse(init_path.read_text())
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == "__all__":
+                    return frozenset(ast.literal_eval(node.value))
+    return frozenset()
+
+
+_tpy_exports: frozenset[str] | None = None
+
+
+def get_tpy_exports() -> frozenset[str]:
+    """Get the set of names exported by 'from tpy import *' (cached)."""
+    global _tpy_exports
+    if _tpy_exports is None:
+        _tpy_exports = _read_tpy_exports()
+    return _tpy_exports
 
 
 def is_parser_keyword_module(module_name: str) -> bool:
@@ -116,7 +123,9 @@ class ImportProcessor:
         self.tpy_star_import: bool = False
         # Reference to the module's imports dict, set during process_import_from.
         # Used by the parser for type resolution of imported builtin submodule types.
-        self.imports: dict[str, set[tuple[str, str]] | None | str] | None = None
+        self.imports: dict[str, set[tuple[str, str]] | None] | None = None
+        # Reverse index: local_name -> (module_name, original_name) for O(1) lookup
+        self._name_index: dict[str, tuple[str, str]] = {}
 
     def _resolve_placeholder_module(self, key: str) -> str:
         """Resolve a relative import placeholder to a public module name.
@@ -153,17 +162,15 @@ class ImportProcessor:
         For relative imports from private submodules, the module name is
         resolved to the public parent (e.g. tpy._core._types -> tpy, tpy._builtins._list -> tpy).
         """
-        if self.imports is None:
-            return None
-        for module_name, names in self.imports.items():
-            if isinstance(names, set):
-                for original, local in names:
-                    if local == local_name:
-                        if RelativeImportKey.is_placeholder(module_name):
-                            resolved = self._resolve_placeholder_module(module_name)
-                            return (resolved, original)
-                        return (module_name, original)
-        return None
+        return self._name_index.get(local_name)
+
+    def _index_import(self, module_name: str, original: str, local: str) -> None:
+        """Add a name to the reverse lookup index."""
+        if RelativeImportKey.is_placeholder(module_name):
+            resolved = self._resolve_placeholder_module(module_name)
+            self._name_index[local] = (resolved, original)
+        else:
+            self._name_index[local] = (module_name, original)
 
     def process_import(self, node: ast.Import, imports: dict, user_module_imports: dict,
                        top_level_stmts: list, module_aliases: dict,
@@ -213,6 +220,7 @@ class ImportProcessor:
                     raise ParseError("'from ... import *' not supported for relative imports", node)
                 local_name = alias.asname or alias.name
                 imports[placeholder].add((alias.name, local_name))
+                self._index_import(placeholder, alias.name, local_name)
 
             # Each relative import statement gets its own TpyImport
             top_level_stmts.append(TpyImport(
@@ -235,17 +243,21 @@ class ImportProcessor:
         # tpy has special star-import and alias tracking
         if module_name == "tpy":
             if any(alias.name == "*" for alias in node.names):
-                imports["tpy"] = "*"
+                exports = get_tpy_exports()
+                imports["tpy"] = {(name, name) for name in exports}
+                for name in exports:
+                    self._name_index[name] = ("tpy", name)
                 self.tpy_star_import = True
                 return
             if "tpy" not in imports:
                 imports["tpy"] = set()
             current = imports["tpy"]
-            if current is not None and current != "*":
+            if current is not None:
                 for alias in node.names:
                     original_name = alias.name
                     local_name = alias.asname if alias.asname else alias.name
                     current.add((original_name, local_name))
+                    self._index_import("tpy", original_name, local_name)
                     self.tpy_import_aliases[local_name] = original_name
             return
 
@@ -254,12 +266,13 @@ class ImportProcessor:
             imports[module_name] = set()
         current = imports[module_name]
         has_non_keyword = False
-        if current is not None and current != "*":
+        if current is not None:
             for alias in node.names:
                 if alias.name == "*":
                     raise ParseError(f"'from {module_name} import *' not supported", node)
                 local_name = alias.asname if alias.asname else alias.name
                 current.add((alias.name, local_name))
+                self._index_import(module_name, alias.name, local_name)
                 if not is_parser_keyword(module_name, alias.name):
                     has_non_keyword = True
 

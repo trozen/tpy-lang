@@ -44,7 +44,7 @@ from .nodes import (
 from .imports import (
     ImportProcessor, PARSER_KEYWORDS, is_parser_keyword_module,
     _EXTERN_KEYWORDS, _PRIVATE_MODULE_PUBLIC_NAMES,
-    PYTHON_BUILTINS, TYPING_NAMES, TPY_TYPE_NAMES, TPY_TYPES,
+    PYTHON_BUILTINS, TYPING_NAMES, get_tpy_exports,
 )
 
 # Map of fixed-int type names to their singleton instances (used for expression inference)
@@ -413,15 +413,12 @@ class Parser:
     def _resolve_type_name(self, local_name: str) -> tuple[str, str] | None:
         """Resolve annotation name -> (module, original_name) or None.
 
-        Checks imports first, then tpy star import, then Python builtins.
-        Falls back to @builtin_type registry for locally-defined stubs.
+        Checks explicit imports, then Python builtins, then local @builtin_type
+        definitions.
         """
         source = self._imports.get_import_source(local_name)
         if source:
             return source
-
-        if self._imports.tpy_star_import and local_name in TPY_TYPE_NAMES:
-            return ("tpy", local_name)
 
         if local_name in PYTHON_BUILTINS:
             return ("builtins", local_name)
@@ -542,7 +539,7 @@ class Parser:
         if mod and "._" in mod and raw_name[0].isupper():
             if public_module_name(mod) in PARSER_KEYWORDS:
                 return
-        if raw_name in TPY_TYPES:
+        if raw_name in get_tpy_exports():
             raise ParseError(f"'{raw_name}' requires: from tpy import {raw_name}", node)
 
     def _raise_unresolved_qualified_error(self, node: ast.expr) -> None:
@@ -594,7 +591,7 @@ class Parser:
         resolved = self._resolve_type_name(name)
         if resolved:
             original = resolved[1]
-            if original in self._BUILTIN_TYPE_NAMES or original in TPY_TYPES:
+            if original in self._BUILTIN_TYPE_NAMES or original in get_tpy_exports():
                 return True
             if original == "Self":
                 return True
@@ -734,7 +731,7 @@ class Parser:
                 # All other statements go through _parse_stmt (same as function bodies)
                 top_level_stmts.append(self._parse_stmt(node))
 
-        return TpyModule(records=records, functions=functions, protocols=protocols, enums=enums, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, type_aliases=type_aliases, parse_warnings=self._warnings)
+        return TpyModule(records=records, functions=functions, protocols=protocols, enums=enums, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, tpy_star_import=self._imports.tpy_star_import, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, type_aliases=type_aliases, parse_warnings=self._warnings)
 
     def _is_protocol_base(self, base: ast.expr) -> bool:
         """Check if a base class expression refers to typing.Protocol."""

@@ -31,7 +31,7 @@ from .nodes import (
 
 from .imports import (
     PARSER_KEYWORDS, is_parser_keyword_module, is_parser_keyword,
-    TPY_TYPES, PYTHON_BUILTINS, TYPING_NAMES, TPY_TYPE_NAMES,
+    PYTHON_BUILTINS, TYPING_NAMES, get_tpy_exports,
     ImportProcessor,
 )
 
@@ -62,7 +62,7 @@ __all__ = [
     "is_super_del_call",
     # imports
     "PARSER_KEYWORDS", "is_parser_keyword_module", "is_parser_keyword",
-    "TPY_TYPES", "PYTHON_BUILTINS", "TYPING_NAMES", "TPY_TYPE_NAMES",
+    "PYTHON_BUILTINS", "TYPING_NAMES", "get_tpy_exports",
     "ImportProcessor",
     # parser
     "Parser",

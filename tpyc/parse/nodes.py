@@ -1039,8 +1039,9 @@ class TpyModule:
     source_lines: list[str] = field(default_factory=list)  # Original source lines for source mapping
     # Import tracking: module_name -> set of (original_name, local_name) tuples (for "from X import Y as Z")
     #                  module_name -> None (for "import X")
-    #                  module_name -> "*" (for "from X import *")
-    imports: dict[str, set[tuple[str, str]] | None | str] = field(default_factory=dict)
+    imports: dict[str, set[tuple[str, str]] | None] = field(default_factory=dict)
+    # True when "from tpy import *" was used (triggers full tpy registration in sema)
+    tpy_star_import: bool = False
     # Modules to resolve as files: {module_name: line_number}
     user_module_imports: dict[str, int] = field(default_factory=dict)
     # Module aliases from "from . import submod" -> {canonical_name: local_name}
