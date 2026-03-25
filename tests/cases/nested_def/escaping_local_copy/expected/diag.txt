@@ -1,0 +1,1 @@
+main.py:15: warning: Escaping closure 'get_value' copies local 'cfg' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit

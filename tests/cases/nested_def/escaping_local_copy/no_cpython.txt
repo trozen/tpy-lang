@@ -1,0 +1,1 @@
+Copy capture: closure sees value at capture time, not later mutations

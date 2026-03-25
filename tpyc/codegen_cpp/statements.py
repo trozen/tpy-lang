@@ -1754,10 +1754,21 @@ class StatementGenerator:
         # Build capture list
         if stmt.captured_names:
             if stmt.escapes:
-                refs = ", ".join(escape_cpp_name(n) for n in stmt.captured_names)
+                # Mixed capture: ref for non-value outer params,
+                # move for last-use locals, value (copy) for the rest
+                parts = []
+                for n in stmt.captured_names:
+                    cpp_n = escape_cpp_name(n)
+                    if n in stmt.ref_captures:
+                        parts.append(f"&{cpp_n}")
+                    elif n in stmt.move_captures:
+                        parts.append(f"{cpp_n} = std::move({cpp_n})")
+                    else:
+                        parts.append(cpp_n)
+                capture = f"[{', '.join(parts)}]"
             else:
                 refs = ", ".join(f"&{escape_cpp_name(n)}" for n in stmt.captured_names)
-            capture = f"[{refs}]"
+                capture = f"[{refs}]"
         else:
             capture = "[]"
 

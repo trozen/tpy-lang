@@ -703,6 +703,11 @@ class TpyNestedDef(TpyStmt):
     captured_names: list[str] = field(default_factory=list)
     nonlocal_names: set[str] = field(default_factory=set)
     escapes: bool = False
+    # Captures that should use by-reference even in escaping closures
+    # (non-value outer params whose original object outlives the closure)
+    ref_captures: set[str] = field(default_factory=set)
+    # Non-value locals to move into the closure (last use, no copy needed)
+    move_captures: set[str] = field(default_factory=set)
 
 
 # -- Pattern matching nodes --

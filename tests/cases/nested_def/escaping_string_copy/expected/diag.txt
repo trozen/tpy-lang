@@ -1,0 +1,1 @@
+main.py:7: warning: Escaping closure 'greet' copies local 'owned_name' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit

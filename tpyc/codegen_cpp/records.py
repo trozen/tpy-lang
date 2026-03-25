@@ -16,7 +16,7 @@ from ..typesys import (
 )
 from ..parse import (
     TpyRecord, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
-    TpyMethodCall, TpyFieldAccess, TpyName, TpyCoerce, is_super_del_call,
+    TpyMethodCall, TpyFieldAccess, TpyName, TpyCoerce, TpyNestedDef, is_super_del_call,
 )
 from ..namespace import Namespace
 
@@ -619,6 +619,11 @@ class RecordGenerator:
             own = unwrap_optional_own(actual)
             if own is not None and not own.wrapped.is_value_type():
                 self.ctx.movable_locals.add(pname)
+        # Collect nested def names -- these are lambdas defined in the body,
+        # so field inits referencing them must go in the body, not the init list.
+        nested_def_names = {
+            s.func.name for s in init_method.body if isinstance(s, TpyNestedDef)
+        }
         try:
             inits = []
             for stmt in init_method.body:
@@ -626,6 +631,12 @@ class RecordGenerator:
                     if isinstance(stmt.target, TpyFieldAccess):
                         if isinstance(stmt.target.obj, TpyName) and stmt.target.obj.name == "self":
                             field_name = stmt.target.field
+                            # Skip if value is a nested def (lambda defined in body)
+                            source_expr = stmt.value
+                            while isinstance(source_expr, TpyCoerce):
+                                source_expr = source_expr.expr
+                            if isinstance(source_expr, TpyName) and source_expr.name in nested_def_names:
+                                continue
                             # Only add to member init list if it's this class's own field
                             if field_name in own_field_names:
                                 fld_type = field_types[field_name]
@@ -742,6 +753,10 @@ class RecordGenerator:
         """
         # Get the set of this record's own field names
         own_field_names = {fld.name for fld in record.fields}
+        # Nested def names -- field assignments referencing these go in the body
+        nested_def_names = {
+            s.func.name for s in init_method.body if isinstance(s, TpyNestedDef)
+        }
 
         non_init = []
         for stmt in init_method.body:
@@ -753,9 +768,13 @@ class RecordGenerator:
                 if isinstance(stmt.target, TpyFieldAccess):
                     if isinstance(stmt.target.obj, TpyName) and stmt.target.obj.name == "self":
                         field_name = stmt.target.field
-                        # Only skip if it's this class's own field
+                        # Only skip if it's this class's own field AND not a nested def ref
                         if field_name in own_field_names:
-                            is_own_field_init = True
+                            source_expr = stmt.value
+                            while isinstance(source_expr, TpyCoerce):
+                                source_expr = source_expr.expr
+                            if not (isinstance(source_expr, TpyName) and source_expr.name in nested_def_names):
+                                is_own_field_init = True
             if not is_own_field_init:
                 non_init.append(stmt)
         return non_init
