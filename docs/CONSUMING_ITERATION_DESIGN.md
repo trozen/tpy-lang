@@ -14,7 +14,7 @@
 | Consuming `__iter__` overload dispatch (method calls) | Done (overload resolution + codegen for native_function methods) |
 | `auto_own[Self]` / `auto_own[T]` -- auto-generate consuming overloads | Done (parser cloning + ownership propagation through fields) |
 | Ownership propagation through fields (`Own[S].field` -> `Own[T]`) | Partial (sema types propagate; codegen does not yet emit `std::move` for owned fields) |
-| Per-element move in consuming for-loops | Planned (loop var uses `auto&&`, move-ready; needs per-element ownership transfer in codegen) |
+| Per-element move in consuming for-loops | Done (consuming loop vars added to `movable_locals`; `std::move(x)` emitted at last use) |
 | `own_iter()` for set/dict | Done (OwnIterSet, OwnIterDict in ordered_set/map.hpp) |
 | Auto-consuming at last use (for-loops, extend, constructors) | Done (list, set, dict keys; auto-selects consuming `__iter__` when iterable is at last use) |
 | Consuming `dict.items()` | Blocked (Own[Self] overload changes return type, breaking non-iteration callers; needs for-loop-scoped dispatch) |
@@ -417,10 +417,6 @@ for x in span(b):    # always borrows, x is Node reference
 
 ### Known gaps
 
-- **Per-element move not yet implemented**: `own_iter()` for-loops use
-  `auto&&` binding (move-ready forwarding ref), but codegen doesn't yet
-  emit `std::move(x)` for ownership transfer in loop bodies. Elements are
-  referenced in-place; actual moves need per-element ownership tracking.
 - **Consuming `dict.items()` blocked**: `Own[Self]` overload on `items()`
   changes return type from `dict_items` to `Iterator[tuple]`, breaking
   callers like `len(d.items())`. Needs for-loop-scoped consuming dispatch.

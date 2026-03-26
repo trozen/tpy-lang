@@ -881,6 +881,7 @@ class StatementAnalyzer:
                     if track_loop_prov:
                         self.init.add_loop_var_provenance(stmt.var)
                     self.ctx.mutated_loop_vars.discard(stmt.var)
+                    self.ctx.consumed_loop_vars.discard(stmt.var)
                     with self.scopes.loop_var(inner_scope, stmt.var, elem_type, iter_depth, is_foreach=True):
                         for s in stmt.body:
                             self.analyze_stmt(s)
@@ -906,14 +907,22 @@ class StatementAnalyzer:
                         needs_mut_unpack = True
                 if (worth_const_ref
                         and stmt.var not in self.ctx.mutated_loop_vars
+                        and stmt.var not in self.ctx.consumed_loop_vars
                         and not needs_mut_unpack):
                     stmt.const_loop_var = True
                 # Auto-consuming iteration: use consuming __iter__ when the
-                # loop variable is mutated and the container is at last use.
-                # Read-only loop vars don't benefit from consuming since no
-                # per-element ownership transfer happens.
-                if (stmt.var in self.ctx.mutated_loop_vars
+                # container is at last use and elements are either mutated
+                # or consumed (copied into owned storage via Own[T] params,
+                # append, etc.). The container is dead after the loop, so
+                # moving it into OwnIter is free (pointer swap). Consumed
+                # elements become movable at last use, avoiding copies.
+                loop_var_needs_ownership = (
+                    stmt.var in self.ctx.mutated_loop_vars
+                    or stmt.var in self.ctx.consumed_loop_vars
+                )
+                if (loop_var_needs_ownership
                         and not stmt.hoist_loop_var
+                        and not unwrapped.is_value_type()
                         and isinstance(stmt.iterable, TpyName)
                         and id(stmt.iterable) in self.ctx.all_last_uses
                         and self.compat._is_movable_var(stmt.iterable.name)):

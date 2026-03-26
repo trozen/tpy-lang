@@ -352,6 +352,9 @@ class TypeCompatibility:
             if isinstance(source_expr, TpyName) and id(source_expr) in self.ctx.all_last_uses:
                 is_auto_moved = self._is_movable_var(source_expr.name)
             self.check_own_consumption(source_expr)
+            # Mark loop variables as consumed for auto-consuming heuristic
+            if isinstance(source_expr, TpyName):
+                self.ctx.mark_loop_var_consumed(source_expr.name)
             if (not is_return and source_expr is not None
                     and not expected.wrapped.is_value_type()
                     and not self._is_value_type_param(expected.wrapped)

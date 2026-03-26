@@ -350,6 +350,7 @@ class FunctionTrackingState:
     pending_loop_vars: dict[str, tuple[TpyType, TpyStmt, TpyStmt | None]] = field(default_factory=dict)
     loop_vars: set[str] = field(default_factory=set)
     mutated_loop_vars: set[str] = field(default_factory=set)
+    consumed_loop_vars: set[str] = field(default_factory=set)
     loop_var_iterable: dict[str, str] = field(default_factory=dict)
 
     # --- Scope escape tracking ---
@@ -672,6 +673,15 @@ class SemanticContext:
         """Mark a for-each loop variable as mutated (prevents const-ref binding)."""
         if name in self.loop_vars:
             self.mutated_loop_vars.add(name)
+
+    def mark_loop_var_consumed(self, name: str) -> None:
+        """Mark a for-each loop variable as consumed (copied into owned storage).
+
+        This triggers auto-consuming iteration when the container is at last
+        use, so elements are moved instead of copied.
+        """
+        if name in self.loop_vars:
+            self.consumed_loop_vars.add(name)
 
     def mark_param_mutated(self, name: str) -> None:
         """Mark a function parameter as directly mutated (Phase 1 of mutation inference).

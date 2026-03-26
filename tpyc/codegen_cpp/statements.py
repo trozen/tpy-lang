@@ -2612,7 +2612,8 @@ class StatementGenerator:
 
     def _gen_loop_body(self, out: TextIO, stmt: TpyForEach, indent: str,
                         elem_type: TpyType | None,
-                        range_counter: str | None = None) -> None:
+                        range_counter: str | None = None,
+                        consuming: bool = False) -> None:
         """Generate loop body statements with namespace/scope tracking.
 
         Shared by _gen_begin_end_loop, _gen_range_counter_loop, and _gen_for_each.
@@ -2622,12 +2623,22 @@ class StatementGenerator:
         range_counter: when the loop variable is hoisted, this is the hidden
         counter name; emit `var = counter;` at the start of the body so the
         user variable holds the current (not post-increment) value.
+
+        consuming: when True, the loop variable is bound via auto&& into owned
+        storage and can be moved at last use within the iteration body.
         """
         was_declared = stmt.var in self.ctx.declared_vars
         self.ctx.local_scope_names.add(stmt.var)
         self.ctx.declared_vars.add(stmt.var)
         if elem_type:
             self.ctx.var_types[stmt.var] = elem_type
+        # Consuming loop: the loop variable is bound via auto&& into owned
+        # storage (OwnIter), so it can be std::move'd at last use.
+        # Also applies when sema resolved the element type as Own[T] (e.g.
+        # iterating over Iterable[Own[T]] parameters).
+        is_consuming = consuming or isinstance(stmt.elem_type, OwnType)
+        if is_consuming and not stmt.hoist_loop_var:
+            self.ctx.movable_locals.add(stmt.var)
         old_ns = self.ctx.current_ns
         if self.ctx.current_ns and elem_type:
             inner_ns = Namespace(parent=self.ctx.current_ns)
@@ -2642,6 +2653,8 @@ class StatementGenerator:
         self.ctx.emit_block_trailing_comments(out, stmt.body, self.ctx.indent())
         self.ctx.indent_level -= 1
         self.ctx.local_scope_names.discard(stmt.var)
+        if is_consuming and not stmt.hoist_loop_var:
+            self.ctx.movable_locals.discard(stmt.var)
         self.ctx.current_ns = old_ns
 
         out.write(f"{indent}}}\n")
@@ -2696,12 +2709,13 @@ class StatementGenerator:
                                    consuming=consuming)
         out.write(f"{inner_indent}{binding}\n")
 
-        self._gen_loop_body(out, stmt, indent, elem_type)
+        self._gen_loop_body(out, stmt, indent, elem_type, consuming=consuming)
 
     def _gen_direct_next_loop(self, out: TextIO, stmt: TpyForEach, indent: str,
                                iterable_expr: str, elem_type: TpyType,
                                call: str = ".__next__()",
-                               iter_name: str | None = None) -> None:
+                               iter_name: str | None = None,
+                               consuming: bool = False) -> None:
         """Generate direct for(;;) loop calling a next-method.
 
         call is the method suffix appended to the iterator name, e.g.:
@@ -2744,12 +2758,13 @@ class StatementGenerator:
             binding = f"{cpp_var} = *{r_name};"
         elif elem_type:
             binding = loop_var_binding(elem_type, cpp_var, f"*{r_name}",
-                                       stmt.const_loop_var)
+                                       stmt.const_loop_var,
+                                       consuming=consuming)
         else:
             binding = f"auto {cpp_var} = *{r_name};"
         out.write(f"{inner_indent}{binding}\n")
 
-        self._gen_loop_body(out, stmt, indent, elem_type)
+        self._gen_loop_body(out, stmt, indent, elem_type, consuming=consuming)
 
     def _gen_direct_next_loop_with_iter(self, out: TextIO, stmt: TpyForEach, indent: str,
                                          iterable_expr: str, elem_type: TpyType,
@@ -3090,7 +3105,8 @@ class StatementGenerator:
                     self.ctx.temps.flush(out, indent)
                     out.write(f"{indent}auto {iter_name} = {consuming_call};\n")
                     self._gen_direct_next_loop(out, stmt, indent, "", elem_type,
-                                               call=".__next__()", iter_name=iter_name)
+                                               call=".__next__()", iter_name=iter_name,
+                                               consuming=True)
                 return
 
         # Resolve TypeParamRef to its bound for protocol-based iteration
