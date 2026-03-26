@@ -193,13 +193,11 @@ class BuiltinModule:
 # Import module definitions
 from tpyc.modules import builtins as _builtins_mod
 from tpyc.modules import tpy as _tpy_mod
-from tpyc.modules import extern as _extern_mod
 
 # Map module name -> factory function
 _MODULE_FACTORIES: dict[str, Callable[[], BuiltinModule]] = {
     _builtins_mod.NAME: _builtins_mod.init_module,
     _tpy_mod.NAME: _tpy_mod.init_module,
-    _extern_mod.NAME: _extern_mod.init_module,
 }
 
 # Cache for loaded modules

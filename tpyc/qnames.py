@@ -109,6 +109,7 @@ BUILTIN_DECORATOR = "tpy.extern.builtin_decorator"
 VALUE_PTR_COERCION = "tpy.extern.value_ptr_coercion"
 NATIVE_PRESERVES_REFS = "tpy.extern.native_preserves_refs"
 TYPE_PARAM_DEFAULT = "tpy.extern.type_param_default"
+BUILTIN_FUNCTION = "tpy.extern.builtin_function"
 DEFAULT_INT = "tpy.extern.DefaultInt"
 
 # -- enum --

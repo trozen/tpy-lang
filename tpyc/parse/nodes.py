@@ -921,6 +921,7 @@ class TpyFunction:
     defaults: list['TpyExpr | None'] = field(default_factory=list)  # len == len(params); None = no default
     error_return: str | None = None  # @error_return(E) exception type name
     builtin_decorator_key: str | None = None  # @builtin_decorator("tpy.readonly")
+    builtin_function_key: str | None = None  # @builtin_function("tpy.extern.native_c_global")
     is_generator: bool = False  # Set by parser: body contains yield
     generator_yield_type: 'TpyType | None' = None  # Set by sema: T from Iterator[T]
     generator_locals: 'list[tuple[str, TpyType]] | None' = None  # Set by sema: local vars for struct fields

@@ -1019,6 +1019,9 @@ class CodeGenerator:
             if module_info and (module_info.is_builtin or module_info.has_builtin_fallback
                                 or not module_info.generates_header):
                 continue
+            # Skip implicit stdlib native modules (decorator stubs, no C++ content)
+            if user_mod in self.ctx.implicit_stdlib_modules and module_info and module_info.is_native_module:
+                continue
             # Skip implicit stdlib modules already included above
             if user_mod in included:
                 continue

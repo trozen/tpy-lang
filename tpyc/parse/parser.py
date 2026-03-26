@@ -1870,6 +1870,7 @@ class Parser:
         value_ptr_coercion = False
         error_return: str | None = None
         builtin_decorator_key: str | None = None
+        builtin_function_key: str | None = None
         type_param_defaults: dict[str, str] = {}
         linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
@@ -1898,6 +1899,8 @@ class Parser:
                 cpp_template = pos
             elif qname == qnames.BUILTIN_DECORATOR:
                 builtin_decorator_key = pos
+            elif qname == qnames.BUILTIN_FUNCTION:
+                builtin_function_key = pos
             elif qname in self._FUNCTION_LINKAGE_MAP:
                 new_linkage = self._FUNCTION_LINKAGE_MAP[qname]
                 if linkage != FunctionLinkage.DEFAULT:
@@ -1970,6 +1973,9 @@ class Parser:
                     f"@builtin_decorator function '{node.name}' must have `...` body", node)
             is_stub = True
             body = []
+        elif builtin_function_key is not None:
+            is_stub = True
+            body = []
         elif cpp_template is not None:
             if not self._is_stub_body(node.body):
                 raise ParseError(
@@ -2025,6 +2031,7 @@ class Parser:
             defaults=defaults,
             error_return=error_return,
             builtin_decorator_key=builtin_decorator_key,
+            builtin_function_key=builtin_function_key,
             is_generator=is_generator,
             loc=self._loc(node)
         )

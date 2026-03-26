@@ -1134,8 +1134,11 @@ class Compiler:
                         func_infos = module_info.functions[original_name]
                         if func_infos:
                             exports.functions[local_name] = func_infos
-                            # Track re-export source for codegen
-                            exports.reexported_functions[local_name] = (source_module, original_name)
+                            # Track re-export source for codegen (skip special_handling
+                            # functions like native_c_global -- they're compiler directives,
+                            # not real functions that need C++ declarations)
+                            if not func_infos[0].special_handling:
+                                exports.reexported_functions[local_name] = (source_module, original_name)
 
         # Export all user-defined records
         for record in compiled.ast.records:

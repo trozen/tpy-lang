@@ -1352,6 +1352,7 @@ class TypeRegistrar:
             type_params=func.type_params,
             type_param_bounds=type_param_bounds,
             type_param_defaults=func.type_param_defaults,
+            special_handling=bool(func.builtin_function_key),
             error_return_type=(qualify_exception_name(func.error_return, self.ctx.registry)
                                if func.error_return else None),
             qualified_name=f"{self.ctx.module_name}.{func.name}",

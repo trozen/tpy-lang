@@ -116,7 +116,8 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - c++ generation profiles: utf8 strings vs char strings
 - static_cast<char> -- should rather use checked cast (policy based)
 - `Own[T]` for argument passing: callee takes ownership (how to pass an object from pointer? require explicit copy?)
-- extract built-in function defintions to separate files (len, print)
+- `DefaultInt` type alias: currently a sentinel class in `tpy.extern` used only by `@type_param_default`. Make it a real type alias with compiler support so it can be used in type annotations (e.g. `x: DefaultInt = 42`).
+- `iter()` non-native: currently `@native("tpy::__iter__")` because regular functions can't return protocol types (`Iterator[T]`). Relax the protocol return type restriction for generic functions so `iter()` can have a real body (`return x.__iter__()`).
 - update char semantics (e.g. passing str to a function accepting Char should throw if len != 1)
 - better class operator<< tests (but missing str formatting/concatenation)
 - formatting/linting like in genweb

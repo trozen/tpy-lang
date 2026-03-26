@@ -10,6 +10,9 @@ def builtin_decorator(key: str): ...
 @builtin_decorator("tpy.extern.builtin_type")
 def builtin_type(key: str): ...
 
+@builtin_decorator("tpy.extern.builtin_function")
+def builtin_function(key: str): ...
+
 @builtin_decorator("tpy.extern.native")
 def native(name: str = "", function: bool = False): ...
 
@@ -38,3 +41,16 @@ def type_param_default(): ...
 # support, so it can be used in type annotations beyond @type_param_default.
 @builtin_type("tpy.extern.DefaultInt")
 class DefaultInt: pass
+
+
+# Native global variable declarations for C/C++ interop.
+# TODO: design a macro function mechanism so these set variable properties
+# (linkage, extern name) through the macro system instead of special handling.
+@builtin_function("tpy.extern.native_c_global")
+def native_c_global(name: str = ""): ...
+
+@builtin_function("tpy.extern.native_global")
+def native_global(name: str = ""): ...
+
+@builtin_function("tpy.extern.native_c_global_array")
+def native_c_global_array(name: str = ""): ...
