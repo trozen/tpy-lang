@@ -330,13 +330,14 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 
 ### Built-in Modules (`tpyc/modules/`)
 
+All builtin types, functions, and protocols are defined in `.py` stubs under `lib/tpy/`. The `tpyc/modules/` package provides type factories, resolution helpers, and constant tables used by sema and codegen.
+
 | Module | Purpose |
 |--------|---------|
-| `builtins.py` | Built-in types (`list`, `dict`, `str`, `int`, etc.) and functions with special handling (`print`, `isinstance`, `round`, `range`, `iter`) |
+| `defs.py` | Data classes (`BuiltinTypeDef`, `ParamDef`, `MethodDef`), dunder C++ templates, operator-to-method tables |
+| `registry.py` | Builtin module name set, type object lookup from factories |
 | `resolver.py` | User module resolution |
-| `helpers.py` | Helper utilities for type definitions |
-| `tpy.py` | TurboPython-specific types (`Int32`, `Array`, `Span`, etc.) and `copy`/`try_parse` functions. Protocols and `span`/`deref`/`make_default` defined in `lib/tpy/tpy/__init__.py` |
-| `extern.py` | `tpy.extern` module -- native global variable declarations |
+| `type_resolution.py` | Type factories, generic type lookup, iteration/span helpers |
 
 ### Runtime (`runtime/`)
 
@@ -389,8 +390,8 @@ Library search roots and CPython stubs:
 | `tpy/tpy/` | TPy package: `__init__.py` re-exports from `_core/` and `_bootstrap/`. Implicitly compiled. |
 | `tpy/tpy/_bootstrap/` | Bootstrap layer: `_extern.py` (native, cpp_template, etc. -- compiler intrinsic stubs), `_decorators.py` (readonly, pure, Own, etc. -- decorator stubs) |
 | `tpy/tpy/_typing/` | Typing layer: `__init__.py` (Protocol, Self, Sized, Sequence, Iterator, Iterable) |
-| `tpy/tpy/_core/` | Core types: `_types.py` (protocols, primitives), `_containers.py` (Span, Array, Ptr), `_functions.py` (span, deref), `_bytes_view.py` (BytesView) |
-| `tpy/tpy/_builtins/` | Builtin types and functions: `_types.py` (bool, int, float, str), `_funcs.py` (len, hash, etc.), `_list.py`, `_dict.py`, `_set.py`, `_range.py`, `_bytes.py`, `_exceptions.py` |
+| `tpy/tpy/_core/` | Core types: `_types.py` (protocols, primitives), `_containers.py` (Span, Array, Ptr), `_functions.py` (span, deref, copy, copy_iter, own_iter, try_parse), `_bytes_view.py` (BytesView) |
+| `tpy/tpy/_builtins/` | Builtin types and functions: `_types.py` (bool, int, float, str), `_funcs.py` (len, hash, print, isinstance, etc.), `_list.py`, `_dict.py`, `_set.py`, `_range.py`, `_bytes.py`, `_exceptions.py` |
 | `tpy/tplib/` | TPy standard library: `Box[T]`, custom collections |
 | `tpy/typing.py` | `typing` protocols (`Sized`, `Sequence`, etc.). Re-exports from `tpy._typing`. Implicitly compiled. |
 | `tpy/builtins.py` | Re-export facade for `tpy._builtins`. Implicitly compiled. |
