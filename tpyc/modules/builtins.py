@@ -5,7 +5,7 @@ Special-handling builtins that can't be expressed as .py stubs.
 Most builtins are defined in lib/tpy/tpy/_builtins/.
 """
 
-from tpyc.modules import BuiltinModule, MethodDef, ParamDef
+from tpyc.modules.defs import BuiltinModule, MethodDef, ParamDef
 from tpyc.typesys import VOID, SLICE
 
 NAME = "builtins"

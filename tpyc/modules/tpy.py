@@ -1,16 +1,12 @@
 """
 TurboPython-specific types (tpy module).
 
-Defines types like Array, Span, Int32, etc.
+Special-handling functions that can't be expressed as .py stubs.
+Most tpy definitions are in lib/tpy/tpy/.
 """
 
-from tpyc.modules import BuiltinModule, MethodDef, ParamDef, TypeParamKind
-from tpyc.modules.helpers import make_binop_methods
-from tpyc.typesys import (
-    INT32, UINT64, BIGINT, FLOAT, FLOAT32, STR, STRING, STRVIEW, CHAR, VOID, BOOL, SELF,
-    ALL_FIXED_INTS, FixedIntType,
-    ListType, TypeParamRef, PtrType, NamedType, OwnType,
-)
+from tpyc.modules.defs import BuiltinModule, MethodDef, ParamDef
+from tpyc.typesys import TypeParamRef, OwnType
 
 # Shorthand for type parameter T
 T = TypeParamRef("T")
