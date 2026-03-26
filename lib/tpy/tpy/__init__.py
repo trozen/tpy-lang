@@ -1,5 +1,13 @@
 # tpy: native_module(forward=True)
 # tpy: cpp_namespace("tpystd::tpy")
+# _bootstrap must be imported before _core: _bootstrap._extern defines
+# @builtin_decorator stubs whose arg schemas are needed when parsing
+# decorator kwargs (e.g. @native(function=True)) in _core/_types.py.
+from ._bootstrap import (
+    # Decorators / type modifiers
+    readonly, noalloc, nocopy, pure, dynamic, error_return,
+    Own, Fn,
+)
 from ._core import (
     # Structural protocols
     Truthy, Stringable, Representable, Hashable, Comparable, Equatable,
@@ -19,11 +27,6 @@ from ._core import (
     # Functions
     span, deref, take_ptr, make_default,
     copy, copy_iter, own_iter, try_parse,
-)
-from ._bootstrap import (
-    # Decorators / type modifiers
-    readonly, noalloc, nocopy, pure, dynamic, error_return,
-    Own, Fn,
 )
 
 type Float64 = float

@@ -1558,6 +1558,11 @@ class Parser:
                 native_preserves_refs = True
             elif qname in self._METHOD_LINKAGE_MAP:
                 method_linkage = self._METHOD_LINKAGE_MAP[qname]
+                if isinstance(pos, tuple):
+                    raise ParseError(
+                        f"@{qname.rsplit('.', 1)[-1]}() decorator kwargs not parsed "
+                        f"(schema unavailable -- ensure _bootstrap._extern is imported "
+                        f"before modules that use decorator kwargs)", dec)
                 native_name = pos
                 native_function = kw.get("function", False)
             else:
@@ -1902,6 +1907,11 @@ class Parser:
                     dec_name = self._decorator_local_name(dec)
                     raise ParseError(f"@{dec_name}(function=...) is only valid on methods, not free functions", dec)
                 linkage = new_linkage
+                if isinstance(pos, tuple):
+                    raise ParseError(
+                        f"@{qname.rsplit('.', 1)[-1]}() decorator kwargs not parsed "
+                        f"(schema unavailable -- ensure _bootstrap._extern is imported "
+                        f"before modules that use decorator kwargs)", dec)
                 native_name = pos
             else:
                 dec_name = self._decorator_local_name(dec) or "?"

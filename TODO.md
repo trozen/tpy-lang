@@ -16,7 +16,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Deduplicate PendingStrType / PendingBytesType infrastructure: `_resolve_pending_str_types` and `_resolve_pending_bytes_types` are identical algorithms with different type names. Same for `mark_*_augassign`, `mark_*_param_context`, `mark_*_reassigned_from_owned`, `track_*_reassign_source`, and the `_infer_new_local_type` branches in statements.py. Refactor into a generic `ViewTypeFamily` parameterized by owned/view/pending types, with one shared implementation.
 
 ## Codegen
-- Sema generic type constructor path (`calls.py:629,642`) only sets `resolved_function_info` when `ctor.cpp_template` is truthy. A generic type with `@native(function=True)` on `__init__` would leave it unset, causing codegen to fall through to wrong path. No current type triggers this -- only matters if a future generic type uses `native_function` constructors. Fix: `if ctor.cpp_template or ctor.native_function:`.
 
 ## Bytes type follow-ups
 - `mark_bytes_borrowers_mutated` missing: `BytesVarInfo.source_mutated` is never set. If a bytearray is mutated after a BytesView borrows from it, the view won't be promoted to owned. Add mutation tracking at bytearray mutation sites (append, __setitem__, extend, pop, clear, insert, remove) mirroring `mark_str_borrowers_mutated`.

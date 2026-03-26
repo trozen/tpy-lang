@@ -432,7 +432,7 @@ class CallAnalyzer:
                         rec = self.ctx.registry.get_builtin_record(lookup.qualified_name)
                         if rec:
                             for ctor in rec.get_method_overloads("__init__"):
-                                if len(ctor.params) == len(expr.args) and ctor.cpp_template:
+                                if len(ctor.params) == len(expr.args) and (ctor.cpp_template or ctor.native_function):
                                     expr.resolved_function_info = ctor
                                     break
                     self._validate_lvalue_params(expr)
@@ -626,7 +626,7 @@ class CallAnalyzer:
                                 expr.call_type = result_type
                                 if isinstance(result_type, PtrType):
                                     self._validate_ptr_constructor(expr)
-                                if ctor.cpp_template:
+                                if ctor.cpp_template or ctor.native_function:
                                     expr.resolved_function_info = ctor
                                 self._validate_lvalue_params(expr)
                                 self._check_ctor_arg_compatibility(expr, ctor, arg_types, inferred_params)
@@ -639,7 +639,7 @@ class CallAnalyzer:
                                 hint = unwrap_readonly(hint)
                                 if hint.qualified_name() == lookup.qualified_name:
                                     expr.call_type = hint
-                                    if ctor.cpp_template:
+                                    if ctor.cpp_template or ctor.native_function:
                                         expr.resolved_function_info = ctor
                                     self._validate_lvalue_params(expr)
                                     self._check_ctor_arg_compatibility(expr, ctor, arg_types, inferred_params)
@@ -1336,7 +1336,7 @@ class CallAnalyzer:
                     rejected = True
                     break
             if not rejected:
-                if fully_checked and ctor.cpp_template:
+                if fully_checked and (ctor.cpp_template or ctor.native_function):
                     expr.resolved_function_info = ctor
                 return
         # Arg type compatible with target (e.g. dict[K,V]({...}), list[T](other_list))
@@ -1540,7 +1540,7 @@ class CallAnalyzer:
 
     def _analyze_template_constructor(self, expr: TpyCall, record: RecordInfo,
                                       init_overloads: list[FunctionInfo]) -> TpyType:
-        """Analyze a constructor call for types with @cpp_template __init__ overloads.
+        """Analyze a constructor call for types with @cpp_template or @native __init__ overloads.
 
         Matches args against __init__ overloads using numeric compatibility and
         protocol-aware resolution. Handles special fallbacks for bool(__len__)
@@ -2203,7 +2203,7 @@ class CallAnalyzer:
 
     def _analyze_record_constructor(self, expr: TpyCall, record: RecordInfo) -> TpyType:
         """Analyze a call to a record constructor."""
-        # Types with overloaded @cpp_template __init__ (e.g. Int32, str, bool)
+        # Types with overloaded @cpp_template/@native __init__ (e.g. Int32, str, bool)
         if record.builtin_type_key and not record.type_params:
             init_overloads = record.get_method_overloads("__init__")
             if init_overloads:

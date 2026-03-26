@@ -33,7 +33,7 @@ class bool(Equatable):
     @cpp_template("(std::string_view({0}).size() != 0)")
     def __init__(self, x: str) -> None: ...
     @overload
-    @cpp_template("::tpy::__bool__({0})")
+    @native("tpy::__bool__", function=True)
     @readonly
     @pure
     def __init__(self, x: Truthy) -> None: ...
@@ -84,10 +84,10 @@ class int(Comparable, Equatable):
     @cpp_template("::tpy::BigInt(static_cast<uint64_t>({0}))")
     def __init__(self, x: UInt64) -> None: ...
     @overload
-    @cpp_template("::tpy::BigInt::from_float({0})")
+    @native("tpy::BigInt::from_float", function=True)
     def __init__(self, x: float) -> None: ...
     @overload
-    @cpp_template("::tpy::BigInt::from_str({0})")
+    @native("tpy::BigInt::from_str", function=True)
     def __init__(self, x: str) -> None: ...
     @overload
     @cpp_template("::tpy::BigInt(static_cast<int32_t>({0}))")
@@ -206,7 +206,7 @@ class float(Comparable, Equatable):
     @cpp_template("static_cast<double>({0})")
     def __init__(self, x: UInt64) -> None: ...
     @overload
-    @cpp_template("::tpy::float_from_str({0})")
+    @native("tpy::float_from_str", function=True)
     def __init__(self, x: str) -> None: ...
     @overload
     @cpp_template("({self}) + ({0})")
@@ -393,7 +393,7 @@ class str(NativeIterable[Char], Iterable[Char], Equatable):
     @cpp_template("({0}).to_string()")
     def __init__(self, x: int) -> None: ...
     @overload
-    @cpp_template("::tpy::float_to_str({0})")
+    @native("tpy::float_to_str", function=True)
     def __init__(self, x: float) -> None: ...
     @overload
     @cpp_template("::tpy::float_to_str(static_cast<double>({0}))")

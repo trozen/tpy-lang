@@ -106,7 +106,7 @@ class Float32(Comparable, Equatable):
     @cpp_template("static_cast<float>({0})")
     def __init__(self, x: bool) -> None: ...
     @overload
-    @cpp_template("::tpy::float32_from_str({0})")
+    @native("tpy::float32_from_str", function=True)
     def __init__(self, x: str) -> None: ...
     @overload
     @cpp_template("static_cast<float>({0})")
@@ -1185,13 +1185,13 @@ class Char(Sized, Equatable):
     @cpp_template("static_cast<char>(({0}).to_fixed_check<int32_t>())")
     def __init__(self, x: int) -> None: ...
     @overload
-    @cpp_template("::tpy::char_from_str({0})")
+    @native("tpy::char_from_str", function=True)
     def __init__(self, x: str) -> None: ...
     @overload
-    @cpp_template("::tpy::char_from_str({0})")
+    @native("tpy::char_from_str", function=True)
     def __init__(self, x: String) -> None: ...
     @overload
-    @cpp_template("::tpy::char_from_str({0})")
+    @native("tpy::char_from_str", function=True)
     def __init__(self, x: StrView) -> None: ...
 
     @cpp_template("::tpy::__hash__({self})")
@@ -1287,7 +1287,7 @@ class String(NativeIterable[Char], Iterable[Char], Equatable):
     @cpp_template("({0}).to_string()")
     def __init__(self, x: int) -> None: ...
     @overload
-    @cpp_template("::tpy::float_to_str({0})")
+    @native("tpy::float_to_str", function=True)
     def __init__(self, x: float) -> None: ...
     @overload
     @cpp_template("::tpy::float_to_str(static_cast<double>({0}))")
