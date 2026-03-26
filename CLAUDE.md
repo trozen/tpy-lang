@@ -128,6 +128,9 @@ There are two kinds of tests:
 tpyc/
 ├── test_compiler.py              # Compiler.from_source, BuildLayout paths
 ├── test_parse.py                 # RelativeImportKey encode/decode
+├── test_dump_types.py            # Type documentation generation
+├── test_macro_loader.py          # Macro module loading
+├── test_union_types.py           # Union type handling
 └── codegen_cpp/
     └── test_context.py           # expand_cpp_template validation
 ```
@@ -141,13 +144,16 @@ tests/
 │   ├── assert/               # assert statements, narrowing integration
 │   ├── bool/                 # bool type and conversion
 │   ├── builtins/             # Built-in functions, stdlib modules
+│   ├── bytes/                # bytes, bytearray, BytesView types
 │   ├── calls/                # Function calls, argument passing, @overload dispatch
 │   ├── control_flow/         # if/else, for loops, break/continue, with statement
 │   ├── defaults/             # Default argument values
 │   ├── dict/                 # Dict type, subscript, methods
 │   ├── set/                  # Set type, methods, operators, algebra
 │   ├── enum/                 # Enum types, auto(), cross-module, comparison
+│   ├── error_return/         # @error_return(E) zero-cost error handling via std::expected
 │   ├── float/                # Float operations
+│   ├── generic_bounded_*/    # Bounded generics (basic, func_user_protocol, func_user_type, generic_protocol, nested_type, user_protocol)
 │   ├── generics/             # Generic types, functions, inference, bounds
 │   ├── globals/              # Global variables, name binding
 │   ├── imports/              # Imports, relative imports, packages, shadowing
@@ -158,6 +164,7 @@ tests/
 │   ├── iterators/            # Iterators, range, __iter__/__next__, NativeIterable
 │   ├── kwargs/               # Keyword arguments
 │   ├── list/                 # List, container methods
+│   ├── match/                # match/case pattern matching statements
 │   ├── native/               # Native C++ interop (@native decorator)
 │   ├── none_safety/          # Optional types, narrowing
 │   ├── operators/            # Operators, coercion, assignment, subscript
@@ -169,6 +176,7 @@ tests/
 │   ├── records/              # Class/record methods, dunder, staticmethod
 │   ├── returns/              # Return value semantics
 │   ├── str/                  # str, Char, string operations
+│   ├── tplib/                # TPy standard library modules (Box, etc.)
 │   ├── tuple/                # Tuple types, access, generics
 │   └── union/                # Union types (A | B), variant codegen
 │       ├── {name}/           # Success test
@@ -232,11 +240,25 @@ For test snippets (`tests/cases/*/src/main.py`):
 
 ## Architecture
 
-The compiler follows a 4-stage pipeline:
+The compiler follows a multi-stage pipeline:
 
 ```
-TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++ (.hpp/.cpp)
+TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++ (.hpp/.cpp) -> C++ Compiler -> Binary
 ```
+
+### Compilation Pipeline
+
+**Multi-module orchestration** (`compiler.py`): The compiler recursively discovers modules by following imports from the entry point, topologically sorts them (Kahn's algorithm), and processes each module through sema and codegen in dependency order. Implicit stdlib modules (`typing`, `tpy`, `builtins`) are always compiled first. Each module's exports (functions, records, protocols, enums, variables) are registered into a shared registry before analyzing downstream modules.
+
+**Parser** (`parse/parser.py`): Single-pass walk over Python's `ast` module output. Scans `# tpy:` directives, converts Python AST to TurboPython AST (`TpyModule`), collects imports, and resolves type annotations against local definitions. No cross-module resolution -- that's deferred to sema.
+
+**Semantic analysis** (`sema/analyzer.py:analyze()`): Two-phase design within each module:
+- *Phase 1 -- Registration then analysis*: Types must be registered before they can be referenced. The pass order is: imports -> records & enums -> protocols -> inheritance validation -> value-type validation -> type aliases -> functions -> globals -> top-level statements -> record method bodies -> function bodies. Each body-analysis pass (methods, functions) runs pre-scan for variable hoisting, then full type-checking.
+- *Phase 2 -- Call-graph fixpoint*: After all bodies are analyzed, mutation facts are propagated transitively through the intra-module call graph (`mutation_propagation.py`), `is_readonly` is inferred for methods, and deferred borrow checks are resolved.
+
+**Code generation** (`codegen_cpp/generator.py`): Single pass producing `.hpp` and `.cpp` with careful emit ordering to satisfy C++ forward-declaration constraints: concepts before records, forward decls before full definitions, templates inline in headers, non-template functions in `.cpp`.
+
+**C++ build** (`compiler.py` / `cli.py`): After codegen, the CLI generates a CMake sources file or invokes the C++ compiler directly. Object files are compiled in parallel (`-j`), then linked. Optional ccache integration.
 
 ### Core Modules (`tpyc/`)
 
@@ -244,7 +266,7 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 |--------|---------|
 | `cli.py` | CLI entry point, argument parsing, error handling |
 | `parse/` | Parser package: `parser.py` (AST builder using Python's `ast`), `nodes.py` (TurboPython AST node definitions), `imports.py` (import resolution helpers) |
-| `typesys.py` | Type definitions (Int32, BigInt, Float, bool, Void, Str, Char, Record, Ptr, Own, Optional, List, Array, Span, Tuple) and TypeRegistry |
+| `typesys.py` | Type definitions (Int32, BigInt, Float, bool, Void, Str, Char, Bytes, ByteArray, BytesView, Record, Ptr, Own, Optional, List, Array, Span, Tuple) and TypeRegistry |
 | `sema/` | Multi-pass semantic analysis (see below) |
 | `codegen_cpp/` | C++ code generation (see below) |
 | `compiler.py` | Multi-module orchestration: discovery, dependency resolution, compilation order |
@@ -255,6 +277,9 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | `prescan.py` | Pre-scan utilities for function bodies |
 | `dump_types.py` | Type documentation generation (`--print-types`) |
 | `repl.py` | Interactive REPL implementation |
+| `qnames.py` | Qualified name constants for compiler-known types, decorators, and protocols |
+| `macro_api.py` | Public API for compile-time macro modules to inspect/modify class definitions |
+| `macro_loader.py` | Discovers and loads `# tpy: macro_module` files via CPython at compile time |
 | `repl_backends.py` | REPL execution backends (clang-repl JIT, g++/clang++ compile) |
 
 ### Semantic Analysis (`tpyc/sema/`)
@@ -279,6 +304,10 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | `numeric_lattice.py` | Numeric type lattice for inference |
 | `narrowing.py` | Optional narrowing tracker (None-safety flow analysis) |
 | `protocols.py` | Protocol implementation checking |
+| `flow_facts.py` | Immutable flow-sensitive state snapshots (assignment, termination, narrowing, consumed vars) |
+| `match.py` | Semantic analysis for match/case statements and pattern matching |
+| `mutation_propagation.py` | Transitive parameter mutation inference through intra-module call graph |
+| `value_range.py` | Integer value-range tracking [lo, hi] for bounds-check and div-zero elision |
 | `diagnostics.py` | Error and warning message formatting |
 
 ### Code Generation (`tpyc/codegen_cpp/`)
@@ -295,6 +324,9 @@ TurboPython Source (.py) -> Parser -> Semantic Analyzer -> Code Generator -> C++
 | `builtins.py` | Built-in function codegen |
 | `types.py` | Type mapping (TurboPython -> C++) |
 | `type_resolution.py` | Runtime type resolution for generics |
+| `match.py` | C++ codegen for match/case statements |
+| `gen_generators.py` | Generator function codegen (yield -> state machine structs) |
+| `string_dispatch.py` | String dispatch optimization for match/case and enum lookup |
 
 ### Built-in Modules (`tpyc/modules/`)
 
@@ -339,6 +371,11 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `span_iter.hpp` | `tpy::SpanIter<T>` lightweight iterator over contiguous span |
 | `variant_ref.hpp` | `to_ptr_variant`, `to_const_ptr_variant`, `to_value_variant` for non-value union two-layer repr |
 | `with_guard.hpp` | `tpy::WithGuard<T>` RAII guard for `with` statement context managers |
+| `bytes_ops.hpp` | Python-style bytes operations: printing, encode/decode, search helpers |
+| `copy_iter.hpp` | `CopyIter<I>` iterator adapter that copies elements from a borrowing iterator |
+| `own_iter.hpp` | `OwnIter<C>` drain iterator for consuming iteration over heap-backed containers |
+| `slice.hpp` | Built-in slice type for user-defined `__getitem__` overloads |
+| `math_ops.hpp` | Wrapper for two-argument `math.log(x, base)` |
 
 Generated code requires C++23 (for `std::ranges` concepts).
 
@@ -352,12 +389,15 @@ Library search roots and CPython stubs:
 | `tpy/tpy/` | TPy package: `__init__.py` re-exports from `_core/` and `_bootstrap/`. Implicitly compiled. |
 | `tpy/tpy/_bootstrap/` | Bootstrap layer: `_extern.py` (native, cpp_template, etc. -- compiler intrinsic stubs), `_decorators.py` (readonly, pure, Own, etc. -- decorator stubs) |
 | `tpy/tpy/_typing/` | Typing layer: `__init__.py` (Protocol, Self, Sized, Sequence, Iterator, Iterable) |
-| `tpy/tpy/_core/` | Core types: `_types.py` (protocols, primitives), `_containers.py` (Span, Array, Ptr), `_functions.py` (span, deref) |
-| `tpy/tpy/_builtins/` | Builtin types and functions: `_types.py` (bool, int, float, str), `_funcs.py` (len, hash, etc.), `_list.py`, `_dict.py`, `_set.py`, `_range.py`, `_exceptions.py` |
+| `tpy/tpy/_core/` | Core types: `_types.py` (protocols, primitives), `_containers.py` (Span, Array, Ptr), `_functions.py` (span, deref), `_bytes_view.py` (BytesView) |
+| `tpy/tpy/_builtins/` | Builtin types and functions: `_types.py` (bool, int, float, str), `_funcs.py` (len, hash, etc.), `_list.py`, `_dict.py`, `_set.py`, `_range.py`, `_bytes.py`, `_exceptions.py` |
 | `tpy/tplib/` | TPy standard library: `Box[T]`, custom collections |
 | `tpy/typing.py` | `typing` protocols (`Sized`, `Sequence`, etc.). Re-exports from `tpy._typing`. Implicitly compiled. |
 | `tpy/builtins.py` | Re-export facade for `tpy._builtins`. Implicitly compiled. |
-| `tpy/math.py`, `time.py`, `sys.py`, `bisect.py` | Python stdlib analogs |
+| `tpy/tpy/extern.py` | Re-exports native, native_c, extern_c, cpp_template from `_bootstrap` |
+| `tpy/tpy/mem.py` | Memory management: `UninitArrayStorage[T, N]` inline uninitialized storage |
+| `tpy/tpy/unsafe.py` | Unsafe operations: `unsafe_ptr()`, `unsafe_cast()` |
+| `tpy/math.py`, `time.py`, `sys.py`, `bisect.py`, `dataclasses.py`, `enum.py` | Python stdlib analogs |
 | `cpy/tpy/` | CPython stubs ONLY (not seen by tpyc): `Int32`, `Ptr`, `Array`, decorators; submodules: `mem`, `unsafe` |
 | `cpy/tplib` | Symlink to `tpy/tplib/` so CPython tests can find tplib |
 
@@ -383,6 +423,12 @@ The compiler is a proof-of-concept. Not yet implemented:
 - General exception handling (`try`/`except`/`raise` with C++ exceptions). `@error_return(E)` provides zero-cost `try`/`except` for control-flow errors via `std::expected`.
 - `async`/`await`
 - Slice step (`items[::2]`, `items[::-1]`)
+
+Working but not previously listed:
+- `match`/`case` pattern matching (union, literal, record, optional, enum, guard, or-pattern, positional)
+- `bytes`/`bytearray`/`BytesView` types
+- Generator functions (yield -> state machine codegen)
+- Compile-time macro modules (`# tpy: macro_module`)
 
 ## Type Mappings
 
@@ -414,6 +460,9 @@ The compiler is a proof-of-concept. Not yet implemented:
 | `Ptr[T]` | `T*` |
 | `Ptr[readonly[T]]` | `const T*` |
 | `Own[T]` | `T` (by value, for returns/params) |
+| `bytes` | `std::vector<uint8_t>` |
+| `bytearray` | `std::vector<uint8_t>` (mutable) |
+| `BytesView` | `std::span<const uint8_t>` |
 
 ## Supported Language Features
 
