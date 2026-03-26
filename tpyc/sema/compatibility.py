@@ -372,6 +372,16 @@ class TypeCompatibility:
                         f"copies {value_type} into owned storage; use copy() to make this explicit",
                         source_expr
                     )
+                # For loop variables at last use, the consuming decision is
+                # made post-body. Record the diagnostic index so it can be
+                # suppressed if the loop activates consuming iteration
+                # (elements at last use will be moved, not copied).
+                if (isinstance(source_expr, TpyName)
+                        and source_expr.name in self.ctx.loop_vars
+                        and id(source_expr) in self.ctx.all_last_uses):
+                    diag_idx = len(self.ctx.diagnostics) - 1
+                    self.ctx.deferred_loop_copy_warnings.setdefault(
+                        source_expr.name, []).append(diag_idx)
             # Subclass coercion excluded: Child -> Own[Base] stores Child by value as
             # Base, silently slicing the object. Same invariance as container elements.
             # Only applies when record names differ (different types, not parametric covariance).

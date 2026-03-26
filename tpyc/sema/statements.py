@@ -882,6 +882,7 @@ class StatementAnalyzer:
                         self.init.add_loop_var_provenance(stmt.var)
                     self.ctx.mutated_loop_vars.discard(stmt.var)
                     self.ctx.consumed_loop_vars.discard(stmt.var)
+                    self.ctx.deferred_loop_copy_warnings.pop(stmt.var, None)
                     with self.scopes.loop_var(inner_scope, stmt.var, elem_type, iter_depth, is_foreach=True):
                         for s in stmt.body:
                             self.analyze_stmt(s)
@@ -929,6 +930,12 @@ class StatementAnalyzer:
                     consuming_fi = self._find_consuming_iter(inner_iterable_type)
                     if consuming_fi is not None:
                         stmt.consuming_iter_fi = consuming_fi
+                        # Suppress copy warnings for the loop variable --
+                        # elements will be moved, not copied.
+                        deferred = self.ctx.deferred_loop_copy_warnings.pop(stmt.var, None)
+                        if deferred:
+                            for idx in sorted(deferred, reverse=True):
+                                del self.ctx.diagnostics[idx]
                 body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
                 self.init.restore(before)
                 # Loop might not execute — consumption inside is not definite

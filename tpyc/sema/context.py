@@ -351,6 +351,7 @@ class FunctionTrackingState:
     loop_vars: set[str] = field(default_factory=set)
     mutated_loop_vars: set[str] = field(default_factory=set)
     consumed_loop_vars: set[str] = field(default_factory=set)
+    deferred_loop_copy_warnings: dict[str, list[int]] = field(default_factory=dict)
     loop_var_iterable: dict[str, str] = field(default_factory=dict)
 
     # --- Scope escape tracking ---
