@@ -3,7 +3,7 @@
 from tpy._builtins import (
     BaseException, Exception, StopIteration,
     Range, range,
-    len, repr, hash, chr, ord, abs, min, max, pow, divmod, next,
+    len, repr, hash, chr, ord, abs, min, max, pow, divmod, next, iter, round,
     bytes, bytearray,
     bool, int, float, str,
     list, dict, dict_keys, dict_values, dict_items,
@@ -18,6 +18,6 @@ __all__ = [
     # These require explicit import in user code
     "list", "dict", "dict_keys", "dict_values", "dict_items", "set",
     "Range", "range",
-    "len", "repr", "hash", "chr", "ord", "abs", "min", "max", "pow", "divmod", "next",
+    "len", "repr", "hash", "chr", "ord", "abs", "min", "max", "pow", "divmod", "next", "iter", "round",
     "StopIteration",
 ]

@@ -409,6 +409,11 @@ class Parser:
         loc = self._loc(node) if node else None
         self._warnings.append(ParseWarning(message, loc))
 
+    @staticmethod
+    def _qualify(resolved: tuple[str, str]) -> str:
+        """Join a (module, name) resolution to a qualified name string."""
+        return f"{resolved[0]}.{resolved[1]}"
+
     def _resolve_type_name(self, local_name: str) -> tuple[str, str] | None:
         """Resolve annotation name -> (module, original_name) or None.
 
@@ -810,6 +815,15 @@ class Parser:
                         if isinstance(kw.value, ast.Constant):
                             kw_dict[kw.arg] = kw.value.value
                     arg_value = (dec.args[0].value, kw_dict)
+                elif not dec.args:
+                    # @type_param_default(T=int) -- kwargs only
+                    kw_dict = {}
+                    for kw in dec.keywords:
+                        if isinstance(kw.value, ast.Constant):
+                            kw_dict[kw.arg] = kw.value.value
+                        elif isinstance(kw.value, ast.Name):
+                            kw_dict[kw.arg] = _NameArg(kw.value.id)
+                    arg_value = (None, kw_dict) if kw_dict else self._BAD_ARGS
                 else:
                     arg_value = self._BAD_ARGS
             elif not dec.args:
@@ -858,7 +872,23 @@ class Parser:
         if resolved is None:
             local_name = self._decorator_local_name(dec) or "?"
             raise ParseError(f"Unknown decorator '{local_name}' on {context}", dec)
-        return f"{resolved[0]}.{resolved[1]}", resolved[2]
+        return self._qualify(resolved), resolved[2]
+
+    def _parse_type_param_default(self, dec: ast.expr) -> dict[str, str]:
+        """Parse @type_param_default(T=DefaultInt) -> {"T": "tpy.extern.DefaultInt"}."""
+        if not isinstance(dec, ast.Call) or not dec.keywords:
+            raise ParseError("@type_param_default() requires keyword arguments, e.g. @type_param_default(T=DefaultInt)", dec)
+        result: dict[str, str] = {}
+        for kw in dec.keywords:
+            if not isinstance(kw.value, ast.Name):
+                raise ParseError(f"@type_param_default({kw.arg}=...) value must be a type name", dec)
+            name = kw.value.id
+            resolved = self._resolve_type_name(name)
+            if resolved is None:
+                raise ParseError(
+                    f"@type_param_default({kw.arg}={name}): unknown type '{name}'", dec)
+            result[kw.arg] = self._qualify(resolved)
+        return result
 
     def _parse_readonly_arg(self, arg: object, dec: ast.expr) -> tuple[bool, bool]:
         """Parse @readonly validated arg -> (is_readonly, readonly_opt_out).
@@ -973,6 +1003,9 @@ class Parser:
         """
         if arg is None or arg is self._EMPTY_CALL:
             return {}
+        # kwargs-only tuple from _resolve_decorator: (None, {k: v, ...})
+        if isinstance(arg, tuple) and len(arg) == 2 and arg[0] is None and isinstance(arg[1], dict):
+            return arg[1]
         if arg is not self._BAD_ARGS:
             dec_name = self._decorator_local_name(dec) or "?"
             raise ParseError(f"@{dec_name} does not take positional arguments", dec)
@@ -1837,11 +1870,15 @@ class Parser:
         value_ptr_coercion = False
         error_return: str | None = None
         builtin_decorator_key: str | None = None
+        type_param_defaults: dict[str, str] = {}
         linkage = FunctionLinkage.DEFAULT
         native_name: str | None = None
         cpp_template: str | None = None
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"function '{node.name}'")
+            if qname == qnames.TYPE_PARAM_DEFAULT:
+                type_param_defaults = self._parse_type_param_default(dec)
+                continue
             pos, kw = self._validate_decorator_args(qname, arg, dec)
             if qname == qnames.NOALLOC:
                 is_noalloc = True
@@ -1984,6 +2021,7 @@ class Parser:
             value_ptr_coercion=value_ptr_coercion,
             type_params=type_params,
             type_param_bounds=type_param_bounds,
+            type_param_defaults=type_param_defaults,
             defaults=defaults,
             error_return=error_return,
             builtin_decorator_key=builtin_decorator_key,

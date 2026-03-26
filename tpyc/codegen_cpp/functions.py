@@ -1116,7 +1116,12 @@ class FunctionGenerator:
         if not isinstance(init, TpyCall):
             return None
         fi = init.resolved_function_info
-        if fi is None or fi.cpp_template is None:
+        if fi is None:
+            return None
+        template = fi.cpp_template
+        if template is None and fi.native_name and not fi.native_function:
+            template = f"::{fi.native_name}({', '.join(f'{{{i}}}' for i in range(len(init.args)))})"
+        if template is None:
             return None
         arg_strs: list[str] = []
         for arg in init.args:
@@ -1128,7 +1133,7 @@ class FunctionGenerator:
             else:
                 return None
         try:
-            return fi.cpp_template.format(*arg_strs)
+            return template.format(*arg_strs)
         except (IndexError, KeyError):
             return None
 

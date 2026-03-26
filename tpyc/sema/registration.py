@@ -1275,6 +1275,7 @@ class TypeRegistrar:
         # Protocol types cannot be used as return types (but TypeParamRef is OK).
         # Exception: @dynamic protocols can be returned (lifetime-checked in sema).
         # Exception: generator functions return Iterator[T] (codegen emits concrete struct).
+        # Exception: @native/@cpp_template stubs (C++ handles the actual return type).
         if is_protocol_type(resolved_return):
             if func.is_generator:
                 # Validate that it's Iterator[T]
@@ -1292,7 +1293,8 @@ class TypeRegistrar:
                 func.generator_yield_type = resolved_return.type_args[0]
             else:
                 pi = self.ctx.registry.get_protocol(resolved_return.name)
-                if not (pi and pi.is_dynamic):
+                is_native_stub = func.is_stub and (func.native_name or func.cpp_template)
+                if not (pi and pi.is_dynamic) and not is_native_stub:
                     raise SemanticError(
                         f"Protocol type '{resolved_return.name}' cannot be used as a return type. "
                         f"Only @dynamic protocols can be used as return types",
@@ -1349,6 +1351,7 @@ class TypeRegistrar:
             value_ptr_coercion=func.value_ptr_coercion,
             type_params=func.type_params,
             type_param_bounds=type_param_bounds,
+            type_param_defaults=func.type_param_defaults,
             error_return_type=(qualify_exception_name(func.error_return, self.ctx.registry)
                                if func.error_return else None),
             qualified_name=f"{self.ctx.module_name}.{func.name}",
@@ -1421,6 +1424,7 @@ class TypeRegistrar:
                 cpp_template=func.cpp_template,
                 type_params=func.type_params,
                 type_param_bounds=type_param_bounds,
+                type_param_defaults=func.type_param_defaults,
                 qualified_name=f"{self.ctx.module_name}.{func.name}",
             )
             # Propagate resolved types back to AST (matches register_record behavior)

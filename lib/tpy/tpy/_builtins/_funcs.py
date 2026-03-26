@@ -6,7 +6,7 @@ from .._core._types import (
     Char, String, StrView, Float32, AnyFixedInt,
     Hashable, Representable, Stringable, NativeIterable, Truthy, Comparable, Equatable,
 )
-from .._bootstrap._extern import native, cpp_template, builtin_type
+from .._bootstrap._extern import native, cpp_template, builtin_type, type_param_default, DefaultInt
 
 
 @pure
@@ -282,3 +282,124 @@ def divmod(a: UInt64, b: UInt64) -> tuple[UInt64, UInt64]: ...
 @error_return(StopIteration)
 @native("tpy::next")
 def next[T](it: Iterator[T]) -> T: ...
+
+
+# TODO: make non-native once regular functions can return protocol types
+@readonly
+@native("tpy::__iter__")
+def iter[T](x: Iterable[T]) -> Iterator[T]: ...
+
+
+# round(): generic float->T with default T=DefaultInt (resolved via --default-int),
+# identity for integer types, and ndigits variants.
+@overload
+@type_param_default(T=DefaultInt)
+@pure
+@readonly
+@cpp_template("::tpy::round_to<{T}>({0})")
+def round[T](x: float) -> T: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::round_float")
+def round(x: float, ndigits: Int32) -> float: ...
+
+@overload
+@pure
+@readonly
+@cpp_template("({0})")
+def round(x: Int8) -> Int8: ...
+@overload
+@pure
+@readonly
+@native("tpy::round_fixed<int8_t>")
+def round(x: Int8, ndigits: Int32) -> Int8: ...
+
+@overload
+@pure
+@readonly
+@cpp_template("({0})")
+def round(x: Int16) -> Int16: ...
+@overload
+@pure
+@readonly
+@native("tpy::round_fixed<int16_t>")
+def round(x: Int16, ndigits: Int32) -> Int16: ...
+
+@overload
+@pure
+@readonly
+@cpp_template("({0})")
+def round(x: Int32) -> Int32: ...
+@overload
+@pure
+@readonly
+@native("tpy::round_fixed<int32_t>")
+def round(x: Int32, ndigits: Int32) -> Int32: ...
+
+@overload
+@pure
+@readonly
+@cpp_template("({0})")
+def round(x: Int64) -> Int64: ...
+@overload
+@pure
+@readonly
+@native("tpy::round_fixed<int64_t>")
+def round(x: Int64, ndigits: Int32) -> Int64: ...
+
+@overload
+@pure
+@readonly
+@cpp_template("({0})")
+def round(x: UInt8) -> UInt8: ...
+@overload
+@pure
+@readonly
+@native("tpy::round_fixed<uint8_t>")
+def round(x: UInt8, ndigits: Int32) -> UInt8: ...
+
+@overload
+@pure
+@readonly
+@cpp_template("({0})")
+def round(x: UInt16) -> UInt16: ...
+@overload
+@pure
+@readonly
+@native("tpy::round_fixed<uint16_t>")
+def round(x: UInt16, ndigits: Int32) -> UInt16: ...
+
+@overload
+@pure
+@readonly
+@cpp_template("({0})")
+def round(x: UInt32) -> UInt32: ...
+@overload
+@pure
+@readonly
+@native("tpy::round_fixed<uint32_t>")
+def round(x: UInt32, ndigits: Int32) -> UInt32: ...
+
+@overload
+@pure
+@readonly
+@cpp_template("({0})")
+def round(x: UInt64) -> UInt64: ...
+@overload
+@pure
+@readonly
+@native("tpy::round_fixed<uint64_t>")
+def round(x: UInt64, ndigits: Int32) -> UInt64: ...
+
+@overload
+@pure
+@readonly
+@cpp_template("({0})")
+def round(x: int) -> int: ...
+@overload
+@pure
+@readonly
+@native("tpy::round_bigint")
+def round(x: int, ndigits: Int32) -> int: ...

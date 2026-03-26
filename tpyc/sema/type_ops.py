@@ -860,7 +860,7 @@ class TypeOperations:
             for tp in func.type_params:
                 if tp not in inferred and tp in func.type_param_defaults:
                     sentinel = func.type_param_defaults[tp]
-                    if sentinel == "DEFAULT_INT":
+                    if sentinel == qnames.DEFAULT_INT:
                         inferred[tp] = self.ctx.default_int_type
                     else:
                         raise ValueError(f"Unknown type_param_default sentinel: {sentinel!r}")

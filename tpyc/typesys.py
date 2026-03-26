@@ -3099,7 +3099,7 @@ class FunctionInfo:
     native_preserves_refs: bool = False  # non-readonly but doesn't invalidate iterators/refs
     type_params: list[str] = field(default_factory=list)
     type_param_bounds: dict[str, 'NamedType'] = field(default_factory=dict)
-    type_param_defaults: dict[str, str] = field(default_factory=dict)  # e.g. {"T": "DEFAULT_INT"}
+    type_param_defaults: dict[str, str] = field(default_factory=dict)  # e.g. {"T": "tpy.extern.DefaultInt"}
     cpp_template: Optional[str] = None  # For builtins: "{self}.push_back({0})"
     value_ptr_coercion: bool = False  # @value_ptr_coercion: Ptr[T] params accept T values
     is_builtin_function: bool = False  # True for global builtins (len, chr, etc.)

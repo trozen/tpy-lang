@@ -47,7 +47,7 @@ class BuiltinFunctionDef:
     overloads: list[MethodDef]
     special_handling: bool = False  # True if sema/codegen handle this specially (skip overload matching)
     type_params: list[str] = field(default_factory=list)  # Generic type params (e.g., ["T"])
-    type_param_defaults: dict[str, str] = field(default_factory=dict)  # e.g. {"T": "DEFAULT_INT"}
+    type_param_defaults: dict[str, str] = field(default_factory=dict)  # e.g. {"T": "tpy.extern.DefaultInt"}
     type_param_bounds: dict[str, NamedType] = field(default_factory=dict)  # e.g. {"T": Default}
 
 
@@ -108,7 +108,7 @@ class BuiltinModule:
             overloads: List of overload signatures
             special_handling: If True, sema/codegen handle this specially (skip overload matching)
             type_params: Generic type parameter names (e.g., ["T"])
-            type_param_defaults: Default values for type params (e.g., {"T": "DEFAULT_INT"})
+            type_param_defaults: Default values for type params (e.g., {"T": "DefaultInt"})
             type_param_bounds: Bounds for type params (e.g., {"T": Default})
         """
         self.functions[name] = BuiltinFunctionDef(

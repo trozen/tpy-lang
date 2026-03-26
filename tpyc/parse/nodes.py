@@ -917,6 +917,7 @@ class TpyFunction:
     value_ptr_coercion: bool = False
     type_params: list[str] = field(default_factory=list)
     type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
+    type_param_defaults: dict[str, str] = field(default_factory=dict)  # e.g. {"T": "tpy.extern.DefaultInt"}
     defaults: list['TpyExpr | None'] = field(default_factory=list)  # len == len(params); None = no default
     error_return: str | None = None  # @error_return(E) exception type name
     builtin_decorator_key: str | None = None  # @builtin_decorator("tpy.readonly")
