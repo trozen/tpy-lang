@@ -19,6 +19,13 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 ## Codegen
 - Builtin type constructors ignore `native(function=True)`: the constructor codegen path (`expressions.py:1590-1599`) only checks `resolved_function_info.cpp_template`, not `native_function`. A `@native("tpy::bytes_copy", function=True)` on `__init__` emits `TypeName(args)` instead of `tpy::bytes_copy(args)`. Method calls handle `native_function` correctly (line 1845). Fix: extend the constructor path to also dispatch on `native_function`.
 
+## Bytes type follow-ups
+- `mark_bytes_borrowers_mutated` missing: `BytesVarInfo.source_mutated` is never set. If a bytearray is mutated after a BytesView borrows from it, the view won't be promoted to owned. Add mutation tracking at bytearray mutation sites (append, __setitem__, extend, pop, clear, insert, remove) mirroring `mark_str_borrowers_mutated`.
+- `bytes.__hash__` not implemented -- bytes can't be used as dict keys or in sets
+- Cross-type equality: `bytes == bytearray` not supported (Python returns True for equal content)
+- f-string with bytes produces invalid C++ silently -- add sema error or codegen support (`bytes_to_str` helper)
+- Update `docs/LANGUAGE_FEATURES.md` with bytes/bytearray/BytesView documentation
+
 ## Bugs
 
 ## Fuzzy Testing Findings (2026-03-12)
