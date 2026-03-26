@@ -27,6 +27,7 @@ from .nodes import (
     RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol, TpyEnum,
     ParseWarning, TpyModule,
     is_super_del_call,
+    collect_name_refs,
 )
 
 from .imports import (
@@ -60,6 +61,7 @@ __all__ = [
     "RelativeImportKey", "TpyImport", "TpyFunction", "TpyRecord", "TpyProtocol", "TpyEnum",
     "ParseWarning", "TpyModule",
     "is_super_del_call",
+    "collect_name_refs",
     # imports
     "is_parser_keyword", "_IMPLICIT_MODULES",
     "get_builtins_exports", "get_typing_exports", "get_tpy_exports",

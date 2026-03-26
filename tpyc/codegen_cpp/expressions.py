@@ -26,10 +26,11 @@ from ..parse import (
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess,
     TpyArrayLiteral, TpyTupleLiteral, TupleElemCapture, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
-    TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression,
+    TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression, TpyComprehensionGenerator,
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr, TpyNamedExpr,
     TpyLambda,
+    collect_name_refs,
 )
 from ..prescan import match_is_none
 from ..namespace import BindingKind
@@ -2472,14 +2473,9 @@ class ExpressionGenerator:
 
             is_range = isinstance(gen.iterable, TpyCall) and gen.iterable.func == "range"
 
-            # TODO: generator expression lambdas use [&] default capture for outer
-            # locals referenced in the yield/filter.  Switch to explicit captures
-            # (like nested_def codegen does) once we plumb variable-reference
-            # tracking through expression generation.
-
             # Range: counter state fits in lambda init-captures
             if is_range:
-                self._gen_genexpr_counter_lambda(buf, gen, sema_elem, cpp_var, cpp_elem,
+                self._gen_genexpr_counter_lambda(buf, expr, gen, sema_elem, cpp_var, cpp_elem,
                                                  yield_code, stmt_ind, ind1, ind2, ind3)
                 return buf.getvalue()
 
@@ -2488,7 +2484,12 @@ class ExpressionGenerator:
 
             if is_lvalue:
                 # Lvalue source outlives the generator -- IIFE with captured iterators.
-                buf.write(f"[&]() {{\n")
+                # The IIFE needs the iterable refs + any outer locals the inner
+                # lambda captures (so they are in scope for re-capture).
+                iter_refs = collect_name_refs(gen.iterable)
+                iife_captures = self._genexpr_outer_captures(expr, gen, iter_refs)
+                iife_str = iife_captures.removesuffix(", ") if iife_captures else ""
+                buf.write(f"[{iife_str}]() {{\n")
                 buf.write(f"{ind1}auto& __src = {iterable_code};\n")
                 buf.write(f"{ind1}return ::tpy::make_generator<{cpp_elem}>(\n")
                 lambda_ind = ind2
@@ -2504,12 +2505,13 @@ class ExpressionGenerator:
 
             ind2i = lambda_ind + INDENT
             ind3i = ind2i + INDENT
+            outer = self._genexpr_outer_captures(expr, gen)
 
             if is_lvalue:
-                buf.write(f"{lambda_ind}[&, __beg = __src.begin(), __end = __src.end()]"
+                buf.write(f"{lambda_ind}[{outer}__beg = __src.begin(), __end = __src.end()]"
                           f"() mutable -> std::optional<{cpp_elem}> {{\n")
             else:
-                buf.write(f"{lambda_ind}[&, __src = {cpp_iterable}({iterable_code}), "
+                buf.write(f"{lambda_ind}[{outer}__src = {cpp_iterable}({iterable_code}), "
                           f"__started = false, "
                           f"__beg = {cpp_iterable}::iterator(), "
                           f"__end = {cpp_iterable}::iterator()]"
@@ -2555,7 +2557,8 @@ class ExpressionGenerator:
             self._exit_comp_scope(comp_names)
 
     def _gen_genexpr_counter_lambda(
-        self, buf: io.StringIO, gen: TpyComprehensionGenerator,
+        self, buf: io.StringIO,
+        expr: TpyGeneratorExpression, gen: TpyComprehensionGenerator,
         elem_type: TpyType, cpp_var: str, cpp_elem: str,
         yield_code: str,
         stmt_ind: str, ind1: str, ind2: str, ind3: str,
@@ -2581,8 +2584,9 @@ class ExpressionGenerator:
                         f"__stop = static_cast<{cpp_iter}>({stop_code}), "
                         f"__step = static_cast<{cpp_iter}>({step_code})")
 
+        outer = self._genexpr_outer_captures(expr, gen)
         buf.write(f"::tpy::make_generator<{cpp_elem}>(\n")
-        buf.write(f"{ind1}[&, {captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
+        buf.write(f"{ind1}[{outer}{captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
 
         if nargs <= 2:
             buf.write(f"{ind2}while (__i < __stop) {{\n")
@@ -2792,6 +2796,42 @@ class ExpressionGenerator:
         return is_lvalue_iterable(
             expr, self.ctx.analyzer.registry.get_record,
             self.types.get_resolved_type)
+
+    def _genexpr_outer_captures(self, expr: TpyGeneratorExpression,
+                                gen: TpyComprehensionGenerator,
+                                extra_refs: set[str] | None = None) -> str:
+        """Build explicit capture prefix for outer locals referenced in a genexpr.
+
+        Collects names from the yield expression and filter conditions.
+        If *extra_refs* is given (e.g. iterable refs for an IIFE), they are
+        merged in.  References to ``self`` are translated to ``this``.
+
+        Returns a string like '&var1, &var2, ' (with trailing comma+space) if
+        there are captures, or '' if there are none.  The caller appends its
+        own init-captures (__i, __src, etc.) after this prefix.
+        """
+        refs = collect_name_refs(expr.element_expr)
+        for cond in gen.conditions:
+            refs |= collect_name_refs(cond)
+        if extra_refs:
+            refs |= extra_refs
+
+        # "self" maps to C++ "this", not a regular local
+        needs_this = "self" in refs and self.ctx.in_method
+        refs.discard("self")
+
+        # Keep only names that are function locals (not globals, not builtins,
+        # not the loop variable / unpack vars shadowed by comp scope).
+        locals_set = self.ctx.local_scope_names | self.ctx.nested_def_locals
+        parts: list[str] = []
+        if needs_this:
+            parts.append("this")
+        parts.extend(f"&{escape_cpp_name(n)}"
+                     for n in sorted((refs & locals_set) - self.ctx.comp_local_names))
+
+        if not parts:
+            return ""
+        return ", ".join(parts) + ", "
 
     @staticmethod
     def _is_sized_type(typ: TpyType) -> bool:

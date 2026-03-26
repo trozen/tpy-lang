@@ -9,7 +9,7 @@ void main() {
     // # Range source
     // print(sum_items(x * x for x in range(5)))
     auto __tmp_1 = ::tpy::make_generator<int32_t>(
-        [&, __i = int32_t(0), __stop = static_cast<int32_t>(5)]() mutable -> std::optional<int32_t> {
+        [__i = int32_t(0), __stop = static_cast<int32_t>(5)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
                 int32_t x = __i++;
                 return std::optional<int32_t>((::tpy::mul_check<int32_t>(x, x)));
@@ -22,10 +22,10 @@ void main() {
     // items: list[Int32] = [1, 2, 3, 4, 5]
     std::vector<int32_t> items = {1, 2, 3, 4, 5};
     // print(sum_items(x * 2 for x in items))
-    auto __tmp_2 = [&]() {
+    auto __tmp_2 = [&items]() {
         auto& __src = items;
         return ::tpy::make_generator<int32_t>(
-            [&, __beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<int32_t> {
+            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<int32_t> {
                 while (__beg != __end) {
                     int32_t x = *__beg++;
                     return std::optional<int32_t>((::tpy::mul_check<int32_t>(x, 2)));
@@ -38,7 +38,7 @@ void main() {
     // # Filter with if clause
     // print(sum_items(x for x in range(10) if x % 2 == 0))
     auto __tmp_3 = ::tpy::make_generator<int32_t>(
-        [&, __i = int32_t(0), __stop = static_cast<int32_t>(10)]() mutable -> std::optional<int32_t> {
+        [__i = int32_t(0), __stop = static_cast<int32_t>(10)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
                 int32_t x = __i++;
                 if (((::tpy::mod_floor<int32_t>(x, 2)) == 0)) {
@@ -52,7 +52,7 @@ void main() {
     // # 2-arg range
     // print(sum_items(x for x in range(5, 10)))
     auto __tmp_4 = ::tpy::make_generator<int32_t>(
-        [&, __i = static_cast<int32_t>(5), __stop = static_cast<int32_t>(10)]() mutable -> std::optional<int32_t> {
+        [__i = static_cast<int32_t>(5), __stop = static_cast<int32_t>(10)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
                 int32_t x = __i++;
                 return std::optional<int32_t>(x);
@@ -64,7 +64,7 @@ void main() {
     // # 3-arg range (positive step)
     // print(sum_items(x for x in range(0, 10, 2)))
     auto __tmp_5 = ::tpy::make_generator<int32_t>(
-        [&, __i = static_cast<int32_t>(0), __stop = static_cast<int32_t>(10), __step = static_cast<int32_t>(2)]() mutable -> std::optional<int32_t> {
+        [__i = static_cast<int32_t>(0), __stop = static_cast<int32_t>(10), __step = static_cast<int32_t>(2)]() mutable -> std::optional<int32_t> {
             if (__step == 0) ::tpy::tpy_panic("range() arg 3 must not be zero");
             ::tpy::range_check_overflow<int32_t>(__i, __stop, __step);
             while ((__step > 0) ? (__i < __stop) : (__i > __stop)) {
@@ -79,7 +79,7 @@ void main() {
     // # 3-arg range (negative step)
     // print(sum_items(x for x in range(10, 0, -2)))
     auto __tmp_6 = ::tpy::make_generator<int32_t>(
-        [&, __i = static_cast<int32_t>(10), __stop = static_cast<int32_t>(0), __step = static_cast<int32_t>(-2)]() mutable -> std::optional<int32_t> {
+        [__i = static_cast<int32_t>(10), __stop = static_cast<int32_t>(0), __step = static_cast<int32_t>(-2)]() mutable -> std::optional<int32_t> {
             if (__step == 0) ::tpy::tpy_panic("range() arg 3 must not be zero");
             ::tpy::range_check_overflow<int32_t>(__i, __stop, __step);
             while ((__step > 0) ? (__i < __stop) : (__i > __stop)) {
@@ -94,7 +94,7 @@ void main() {
     // # Literal list source (non-lvalue -- source must be owned by the generator)
     // print(sum_items(x for x in [10, 20, 30]))
     auto __tmp_7 = ::tpy::make_generator<int32_t>(
-        [&, __src = std::array<int32_t, 3>({10, 20, 30}), __started = false, __beg = std::array<int32_t, 3>::iterator(), __end = std::array<int32_t, 3>::iterator()]() mutable -> std::optional<int32_t> {
+        [__src = std::array<int32_t, 3>({10, 20, 30}), __started = false, __beg = std::array<int32_t, 3>::iterator(), __end = std::array<int32_t, 3>::iterator()]() mutable -> std::optional<int32_t> {
             if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
             while (__beg != __end) {
                 int32_t x = *__beg++;
@@ -107,7 +107,7 @@ void main() {
     // # Non-lvalue source with filter condition
     // print(sum_items(x for x in [1, 2, 3, 4, 5] if x > 2))
     auto __tmp_8 = ::tpy::make_generator<int32_t>(
-        [&, __src = std::array<int32_t, 5>({1, 2, 3, 4, 5}), __started = false, __beg = std::array<int32_t, 5>::iterator(), __end = std::array<int32_t, 5>::iterator()]() mutable -> std::optional<int32_t> {
+        [__src = std::array<int32_t, 5>({1, 2, 3, 4, 5}), __started = false, __beg = std::array<int32_t, 5>::iterator(), __end = std::array<int32_t, 5>::iterator()]() mutable -> std::optional<int32_t> {
             if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
             while (__beg != __end) {
                 int32_t x = *__beg++;
@@ -124,7 +124,7 @@ void main() {
     int32_t multiplier = 3;
     // print(sum_items(x * multiplier for x in range(5)))
     auto __tmp_9 = ::tpy::make_generator<int32_t>(
-        [&, __i = int32_t(0), __stop = static_cast<int32_t>(5)]() mutable -> std::optional<int32_t> {
+        [&multiplier, __i = int32_t(0), __stop = static_cast<int32_t>(5)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
                 int32_t x = __i++;
                 return std::optional<int32_t>((::tpy::mul_check<int32_t>(x, multiplier)));
@@ -133,12 +133,12 @@ void main() {
         }
     );
     std::cout << sum_items(__tmp_9) << "\n";
-    // # Lvalue source with outer local in yield -- exercises [&] on lvalue path
+    // # Lvalue source with outer local in yield -- exercises explicit capture on lvalue path
     // print(sum_items(x * multiplier for x in items))
-    auto __tmp_10 = [&]() {
+    auto __tmp_10 = [&items, &multiplier]() {
         auto& __src = items;
         return ::tpy::make_generator<int32_t>(
-            [&, __beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<int32_t> {
+            [&multiplier, __beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<int32_t> {
                 while (__beg != __end) {
                     int32_t x = *__beg++;
                     return std::optional<int32_t>((::tpy::mul_check<int32_t>(x, multiplier)));
@@ -148,14 +148,47 @@ void main() {
         );
     }();
     std::cout << sum_items(__tmp_10) << "\n";
+    // # Outer local referenced only in filter condition
+    // threshold: Int32 = 3
+    int32_t threshold = 3;
+    // print(sum_items(x for x in range(10) if x > threshold))
+    auto __tmp_11 = ::tpy::make_generator<int32_t>(
+        [&threshold, __i = int32_t(0), __stop = static_cast<int32_t>(10)]() mutable -> std::optional<int32_t> {
+            while (__i < __stop) {
+                int32_t x = __i++;
+                if ((x > threshold)) {
+                    return std::optional<int32_t>(x);
+                }
+            }
+            return std::nullopt;
+        }
+    );
+    std::cout << sum_items(__tmp_11) << "\n";
+    // # Lvalue source with outer local only in filter (exercises IIFE + inner capture)
+    // print(sum_items(x for x in items if x > threshold))
+    auto __tmp_12 = [&items, &threshold]() {
+        auto& __src = items;
+        return ::tpy::make_generator<int32_t>(
+            [&threshold, __beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<int32_t> {
+                while (__beg != __end) {
+                    int32_t x = *__beg++;
+                    if ((x > threshold)) {
+                        return std::optional<int32_t>(x);
+                    }
+                }
+                return std::nullopt;
+            }
+        );
+    }();
+    std::cout << sum_items(__tmp_12) << "\n";
     // # str.join with generator expression
     // nums: list[Int32] = [1, 2, 3]
     std::vector<int32_t> nums = {1, 2, 3};
     // print(", ".join(str(x) for x in nums))
-    std::cout << ::tpy::str_join(", ", [&]() {
+    std::cout << ::tpy::str_join(", ", [&nums]() {
         auto& __src = nums;
         return ::tpy::make_generator<std::string>(
-            [&, __beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::string> {
+            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::string> {
                 while (__beg != __end) {
                     int32_t x = *__beg++;
                     return std::optional<std::string>(::tpy::fixed_to_str<int32_t>(x));
@@ -168,10 +201,10 @@ void main() {
     // pairs: list[tuple[str, Int32]] = [("a", 1), ("b", 2), ("c", 3)]
     std::vector<std::tuple<std::string, int32_t>> pairs = {std::tuple<std::string, int32_t>{"a", 1}, std::tuple<std::string, int32_t>{"b", 2}, std::tuple<std::string, int32_t>{"c", 3}};
     // print(sum_items(v for _, v in pairs))
-    auto __tmp_11 = [&]() {
+    auto __tmp_13 = [&pairs]() {
         auto& __src = pairs;
         return ::tpy::make_generator<int32_t>(
-            [&, __beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<int32_t> {
+            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<int32_t> {
                 while (__beg != __end) {
                     const auto& __tup_1 = *__beg++;
                     int32_t v = std::get<1>(__tup_1);
@@ -181,7 +214,7 @@ void main() {
             }
         );
     }();
-    std::cout << sum_items(__tmp_11) << "\n";
+    std::cout << sum_items(__tmp_13) << "\n";
 }
 
 void __tpy_init() {

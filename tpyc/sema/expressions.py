@@ -36,6 +36,7 @@ from ..parse import (
     TpyLambda,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyForEach, TpyWith,
     TpyNestedDef,
+    collect_name_refs,
 )
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
@@ -57,27 +58,6 @@ if TYPE_CHECKING:
     from .scope_tracker import ScopeTracker
 
 from tpyc import modules as builtin_modules
-
-
-def _collect_name_refs(expr: TpyExpr) -> set[str]:
-    """Collect all name references in an expression tree.
-
-    Uses TpyExpr.children() for generic traversal. Also collects
-    TpyCall.func (a str, not a child TpyExpr) since callable variables
-    must be captured in lambda closures.
-    """
-    names: set[str] = set()
-    stack: list[TpyExpr] = [expr]
-    while stack:
-        node = stack.pop()
-        if isinstance(node, TpyName):
-            names.add(node.name)
-        elif isinstance(node, TpyCall):
-            names.add(node.func)
-            stack.extend(node.children())
-        else:
-            stack.extend(node.children())
-    return names
 
 
 def _walk_body_stmts(
@@ -105,7 +85,7 @@ def _collect_body_name_refs(stmts: list[TpyStmt]) -> set[str]:
     names: set[str] = set()
 
     def on_expr(expr: TpyExpr) -> None:
-        names.update(_collect_name_refs(expr))
+        names.update(collect_name_refs(expr))
 
     _walk_body_stmts(stmts, on_expr, lambda s: None)
     return names
@@ -2512,7 +2492,7 @@ class ExpressionAnalyzer:
         # Detect captures: names in body that are local variables from the outer scope
         # (not lambda params, not global functions, not builtins)
         param_set = set(expr.param_names)
-        free_names = _collect_name_refs(expr.body)
+        free_names = collect_name_refs(expr.body)
         captured = sorted((free_names - param_set) & outer_locals)
         expr.captured_names = captured
         # Callable context: captures must be by value (std::function can escape)

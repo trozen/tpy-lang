@@ -38,8 +38,15 @@ def main() -> None:
     multiplier: Int32 = 3
     print(sum_items(x * multiplier for x in range(5)))
 
-    # Lvalue source with outer local in yield -- exercises [&] on lvalue path
+    # Lvalue source with outer local in yield -- exercises explicit capture on lvalue path
     print(sum_items(x * multiplier for x in items))
+
+    # Outer local referenced only in filter condition
+    threshold: Int32 = 3
+    print(sum_items(x for x in range(10) if x > threshold))
+
+    # Lvalue source with outer local only in filter (exercises IIFE + inner capture)
+    print(sum_items(x for x in items if x > threshold))
 
     # str.join with generator expression
     nums: list[Int32] = [1, 2, 3]

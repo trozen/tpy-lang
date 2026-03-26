@@ -9,7 +9,7 @@ void main() {
     // # list() from genexpr
     // squares: list[Int32] = list(x * x for x in range(5))
     std::vector<int32_t> squares = ::tpy::construct<std::vector<int32_t>>(::tpy::make_generator<int32_t>(
-        [&, __i = int32_t(0), __stop = static_cast<int32_t>(5)]() mutable -> std::optional<int32_t> {
+        [__i = int32_t(0), __stop = static_cast<int32_t>(5)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
                 int32_t x = __i++;
                 return std::optional<int32_t>((::tpy::mul_check<int32_t>(x, x)));
@@ -24,7 +24,7 @@ void main() {
     std::vector<int32_t> items = {1, 2, 3};
     // items.extend(x * 10 for x in range(3))
     ::tpy::list_extend(items, ::tpy::make_generator<int32_t>(
-        [&, __i = int32_t(0), __stop = static_cast<int32_t>(3)]() mutable -> std::optional<int32_t> {
+        [__i = int32_t(0), __stop = static_cast<int32_t>(3)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
                 int32_t x = __i++;
                 return std::optional<int32_t>((::tpy::mul_check<int32_t>(x, 10)));
@@ -37,7 +37,7 @@ void main() {
     // # set() from genexpr
     // mods: set[Int32] = set(x % 3 for x in range(10))
     ::tpy::ordered_set<int32_t> mods = ::tpy::set_construct<int32_t>(::tpy::make_generator<int32_t>(
-        [&, __i = int32_t(0), __stop = static_cast<int32_t>(10)]() mutable -> std::optional<int32_t> {
+        [__i = int32_t(0), __stop = static_cast<int32_t>(10)]() mutable -> std::optional<int32_t> {
             while (__i < __stop) {
                 int32_t x = __i++;
                 return std::optional<int32_t>((::tpy::mod_floor<int32_t>(x, 3)));
@@ -50,7 +50,7 @@ void main() {
     // # dict() from genexpr of tuples
     // d: dict[str, Int32] = dict((str(x), x * x) for x in range(4))
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::dict_construct<std::string, int32_t>(::tpy::make_generator<std::tuple<std::string, int32_t>>(
-        [&, __i = int32_t(0), __stop = static_cast<int32_t>(4)]() mutable -> std::optional<std::tuple<std::string, int32_t>> {
+        [__i = int32_t(0), __stop = static_cast<int32_t>(4)]() mutable -> std::optional<std::tuple<std::string, int32_t>> {
             while (__i < __stop) {
                 int32_t x = __i++;
                 return std::optional<std::tuple<std::string, int32_t>>(std::tuple<std::string, int32_t>{::tpy::fixed_to_str<int32_t>(x), (::tpy::mul_check<int32_t>(x, x))});
@@ -64,10 +64,10 @@ void main() {
     // words: list[str] = ["hello", "world", "test"]
     std::vector<std::string> words = {"hello", "world", "test"};
     // print(" ".join(w.upper() for w in words))
-    std::cout << ::tpy::str_join(" ", [&]() {
+    std::cout << ::tpy::str_join(" ", [&words]() {
         auto& __src = words;
         return ::tpy::make_generator<std::string>(
-            [&, __beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::string> {
+            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::string> {
                 while (__beg != __end) {
                     std::string w = *__beg++;
                     return std::optional<std::string>(::tpy::str_upper(w));

@@ -25,10 +25,10 @@ void main() {
     // raw = [("x", 10), ("y", 20)]
     std::array<std::tuple<std::string, int32_t>, 2> raw = {std::tuple<std::string, int32_t>{"x", 10}, std::tuple<std::string, int32_t>{"y", 20}};
     // d2 = dict[str, Int32]((k, v) for k, v in raw)
-    ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::dict_construct<std::string, int32_t>([&]() {
+    ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::dict_construct<std::string, int32_t>([&raw]() {
         auto& __src = raw;
         return ::tpy::make_generator<std::tuple<std::string, int32_t>>(
-            [&, __beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::tuple<std::string, int32_t>> {
+            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::tuple<std::string, int32_t>> {
                 while (__beg != __end) {
                     const auto& __tup_1 = *__beg++;
                     std::string k = std::get<0>(__tup_1);

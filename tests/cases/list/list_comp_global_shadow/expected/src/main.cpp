@@ -101,7 +101,7 @@ void __tpy_init() {
     // # Generator expression
     // r4 = list(len(x) for x in ["a", "bb", "ccc"])
     static std::vector<int32_t> __global_slot_5 = ::tpy::construct<std::vector<int32_t>>(::tpy::make_generator<int32_t>(
-        [&, __src = std::vector<std::string>({"a", "bb", "ccc"}), __started = false, __beg = std::vector<std::string>::iterator(), __end = std::vector<std::string>::iterator()]() mutable -> std::optional<int32_t> {
+        [__src = std::vector<std::string>({"a", "bb", "ccc"}), __started = false, __beg = std::vector<std::string>::iterator(), __end = std::vector<std::string>::iterator()]() mutable -> std::optional<int32_t> {
             if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
             while (__beg != __end) {
                 std::string x = *__beg++;

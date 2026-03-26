@@ -1070,3 +1070,24 @@ def is_super_del_call(stmt: TpyStmt) -> bool:
         if isinstance(expr, TpyMethodCall) and expr.method == "__del__":
             return expr.super_parent_type is not None
     return False
+
+
+def collect_name_refs(expr: TpyExpr) -> set[str]:
+    """Collect all name references in an expression tree.
+
+    Uses TpyExpr.children() for generic traversal. Also collects
+    TpyCall.func (a str, not a child TpyExpr) since callable variables
+    must be captured in lambda closures.
+    """
+    names: set[str] = set()
+    stack: list[TpyExpr] = [expr]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, TpyName):
+            names.add(node.name)
+        elif isinstance(node, TpyCall):
+            names.add(node.func)
+            stack.extend(node.children())
+        else:
+            stack.extend(node.children())
+    return names
