@@ -28,7 +28,7 @@ void main() {
     ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::dict_construct<std::string, int32_t>([&]() {
         auto& __src = raw;
         return ::tpy::make_generator<std::tuple<std::string, int32_t>>(
-            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::tuple<std::string, int32_t>> {
+            [&, __beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::tuple<std::string, int32_t>> {
                 while (__beg != __end) {
                     const auto& __tup_1 = *__beg++;
                     std::string k = std::get<0>(__tup_1);

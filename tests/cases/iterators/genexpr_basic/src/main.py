@@ -22,12 +22,24 @@ def main() -> None:
     # 2-arg range
     print(sum_items(x for x in range(5, 10)))
 
-    # 3-arg range (step) -- exercises IIFE+Range codegen path
+    # 3-arg range (positive step)
     print(sum_items(x for x in range(0, 10, 2)))
+
+    # 3-arg range (negative step)
+    print(sum_items(x for x in range(10, 0, -2)))
+
+    # Literal list source (non-lvalue -- source must be owned by the generator)
+    print(sum_items(x for x in [10, 20, 30]))
+
+    # Non-lvalue source with filter condition
+    print(sum_items(x for x in [1, 2, 3, 4, 5] if x > 2))
 
     # Body referencing outer local -- exercises [&] capture
     multiplier: Int32 = 3
     print(sum_items(x * multiplier for x in range(5)))
+
+    # Lvalue source with outer local in yield -- exercises [&] on lvalue path
+    print(sum_items(x * multiplier for x in items))
 
     # str.join with generator expression
     nums: list[Int32] = [1, 2, 3]

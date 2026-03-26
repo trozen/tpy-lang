@@ -100,18 +100,16 @@ void __tpy_init() {
     r3 = &__global_slot_4;
     // # Generator expression
     // r4 = list(len(x) for x in ["a", "bb", "ccc"])
-    static std::vector<int32_t> __global_slot_5 = ::tpy::construct<std::vector<int32_t>>([&]() {
-        auto __src = {"a", "bb", "ccc"};
-        return ::tpy::make_generator<int32_t>(
-            [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<int32_t> {
-                while (__beg != __end) {
-                    std::string x = *__beg++;
-                    return std::optional<int32_t>(::tpy::__len__(x));
-                }
-                return std::nullopt;
+    static std::vector<int32_t> __global_slot_5 = ::tpy::construct<std::vector<int32_t>>(::tpy::make_generator<int32_t>(
+        [&, __src = std::vector<std::string>({"a", "bb", "ccc"}), __started = false, __beg = std::vector<std::string>::iterator(), __end = std::vector<std::string>::iterator()]() mutable -> std::optional<int32_t> {
+            if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
+            while (__beg != __end) {
+                std::string x = *__beg++;
+                return std::optional<int32_t>(::tpy::__len__(x));
             }
-        );
-    }());
+            return std::nullopt;
+        }
+    ));
     r4 = &__global_slot_5;
     // # With filter condition
     // r5 = [len(x) for x in ["a", "bb", "ccc", "dd"] if len(x) > 1]

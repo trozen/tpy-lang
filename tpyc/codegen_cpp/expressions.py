@@ -2471,38 +2471,51 @@ class ExpressionGenerator:
             buf = io.StringIO()
 
             is_range = isinstance(gen.iterable, TpyCall) and gen.iterable.func == "range"
-            nargs = len(gen.iterable.args) if is_range else 0
 
-            # Simple range (1 or 2 args): counter state fits in lambda init-captures
-            if is_range and nargs <= 2:
+            # TODO: generator expression lambdas use [&] default capture for outer
+            # locals referenced in the yield/filter.  Switch to explicit captures
+            # (like nested_def codegen does) once we plumb variable-reference
+            # tracking through expression generation.
+
+            # Range: counter state fits in lambda init-captures
+            if is_range:
                 self._gen_genexpr_counter_lambda(buf, gen, sema_elem, cpp_var, cpp_elem,
                                                  yield_code, stmt_ind, ind1, ind2, ind3)
                 return buf.getvalue()
 
-            # Begin/end sources (3-arg range, containers): wrap in IIFE so that
-            # begin/end iterators are computed before the lambda and captured by
-            # value into the lambda's init-capture list.
+            # Container iterables: capture begin/end iterators into the lambda.
             is_lvalue = self._comp_is_lvalue(gen.iterable)
-            buf.write(f"[&]() {{\n")
 
-            if is_range:
-                cpp_iter = sema_elem.to_cpp()
-                start_code = self.gen_expr_deref(gen.iterable.args[0], sema_elem)
-                stop_code = self.gen_expr_deref(gen.iterable.args[1], sema_elem)
-                step_code = self.gen_expr_deref(gen.iterable.args[2], sema_elem)
-                buf.write(f"{ind1}auto __src = ::tpy::Range<{cpp_iter}>({start_code}, {stop_code}, {step_code});\n")
-            elif is_lvalue:
+            if is_lvalue:
+                # Lvalue source outlives the generator -- IIFE with captured iterators.
+                buf.write(f"[&]() {{\n")
                 buf.write(f"{ind1}auto& __src = {iterable_code};\n")
+                buf.write(f"{ind1}return ::tpy::make_generator<{cpp_elem}>(\n")
+                lambda_ind = ind2
             else:
-                buf.write(f"{ind1}auto __src = {iterable_code};\n")
+                # Non-lvalue (literals, temporaries): move the source into the
+                # lambda so it outlives the generator.  Use the explicit C++
+                # container type instead of auto so that literal lists become
+                # std::vector (which owns data) rather than
+                # std::initializer_list (which does not).
+                cpp_iterable = self.types.type_to_cpp(iterable_type)
+                lambda_ind = ind1
+                buf.write(f"::tpy::make_generator<{cpp_elem}>(\n")
 
-            buf.write(f"{ind1}return ::tpy::make_generator<{cpp_elem}>(\n")
-
-            ind2i = ind2 + INDENT
+            ind2i = lambda_ind + INDENT
             ind3i = ind2i + INDENT
-            # Capture begin/end by value in the lambda's init-capture
-            buf.write(f"{ind2}[__beg = __src.begin(), __end = __src.end()]"
-                      f"() mutable -> std::optional<{cpp_elem}> {{\n")
+
+            if is_lvalue:
+                buf.write(f"{lambda_ind}[&, __beg = __src.begin(), __end = __src.end()]"
+                          f"() mutable -> std::optional<{cpp_elem}> {{\n")
+            else:
+                buf.write(f"{lambda_ind}[&, __src = {cpp_iterable}({iterable_code}), "
+                          f"__started = false, "
+                          f"__beg = {cpp_iterable}::iterator(), "
+                          f"__end = {cpp_iterable}::iterator()]"
+                          f"() mutable -> std::optional<{cpp_elem}> {{\n")
+                buf.write(f"{ind2i}if (!__started) {{ __beg = __src.begin(); __end = __src.end(); __started = true; }}\n")
+
             buf.write(f"{ind2i}while (__beg != __end) {{\n")
 
             if gen.unpack_vars is not None:
@@ -2529,9 +2542,14 @@ class ExpressionGenerator:
             self._gen_genexpr_yield(buf, gen, yield_code, cpp_elem, ind3i, ind3i + INDENT)
             buf.write(f"{ind2i}}}\n")
             buf.write(f"{ind2i}return std::nullopt;\n")
-            buf.write(f"{ind2}}}\n")
-            buf.write(f"{ind1});\n")
-            buf.write(f"{stmt_ind}}}()")
+            buf.write(f"{lambda_ind}}}\n")
+
+            if is_lvalue:
+                buf.write(f"{ind1});\n")
+                buf.write(f"{stmt_ind}}}()")
+            else:
+                buf.write(f"{stmt_ind})")
+
             return buf.getvalue()
         finally:
             self._exit_comp_scope(comp_names)
@@ -2542,7 +2560,7 @@ class ExpressionGenerator:
         yield_code: str,
         stmt_ind: str, ind1: str, ind2: str, ind3: str,
     ) -> None:
-        """Generate make_generator with counter-based lambda for range(N) or range(start, stop)."""
+        """Generate make_generator with counter-based lambda for range()."""
         range_call = gen.iterable
         assert isinstance(range_call, TpyCall)
         nargs = len(range_call.args)
@@ -2551,15 +2569,32 @@ class ExpressionGenerator:
         if nargs == 1:
             stop_code = self.gen_expr_deref(range_call.args[0], elem_type)
             captures = f"__i = {cpp_iter}(0), __stop = static_cast<{cpp_iter}>({stop_code})"
-        else:
+        elif nargs == 2:
             start_code = self.gen_expr_deref(range_call.args[0], elem_type)
             stop_code = self.gen_expr_deref(range_call.args[1], elem_type)
             captures = f"__i = static_cast<{cpp_iter}>({start_code}), __stop = static_cast<{cpp_iter}>({stop_code})"
+        else:
+            start_code = self.gen_expr_deref(range_call.args[0], elem_type)
+            stop_code = self.gen_expr_deref(range_call.args[1], elem_type)
+            step_code = self.gen_expr_deref(range_call.args[2], elem_type)
+            captures = (f"__i = static_cast<{cpp_iter}>({start_code}), "
+                        f"__stop = static_cast<{cpp_iter}>({stop_code}), "
+                        f"__step = static_cast<{cpp_iter}>({step_code})")
 
         buf.write(f"::tpy::make_generator<{cpp_elem}>(\n")
         buf.write(f"{ind1}[&, {captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
-        buf.write(f"{ind2}while (__i < __stop) {{\n")
-        buf.write(f"{ind3}{cpp_iter} {cpp_var} = __i++;\n")
+
+        if nargs <= 2:
+            buf.write(f"{ind2}while (__i < __stop) {{\n")
+            buf.write(f"{ind3}{cpp_iter} {cpp_var} = __i++;\n")
+        else:
+            buf.write(f'{ind2}if (__step == 0) ::tpy::tpy_panic("range() arg 3 must not be zero");\n')
+            if isinstance(elem_type, FixedIntType):
+                buf.write(f"{ind2}::tpy::range_check_overflow<{cpp_iter}>(__i, __stop, __step);\n")
+            buf.write(f"{ind2}while ((__step > 0) ? (__i < __stop) : (__i > __stop)) {{\n")
+            buf.write(f"{ind3}{cpp_iter} {cpp_var} = __i;\n")
+            buf.write(f"{ind3}__i += __step;\n")
+
         self._gen_genexpr_yield(buf, gen, yield_code, cpp_elem, ind3, ind3 + INDENT)
         buf.write(f"{ind2}}}\n")
         buf.write(f"{ind2}return std::nullopt;\n")
