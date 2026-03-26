@@ -5,22 +5,17 @@ Provides a registry for built-in functions and types that can be used
 by the semantic analyzer and code generator.
 """
 
-# --- Data classes, BuiltinModule, constants ---
+# --- Data classes, constants ---
 from tpyc.modules.defs import (  # noqa: F401
-    ParamDef, MethodDef, BuiltinFunctionDef, BuiltinTypeDef, ProtocolDef,
-    ModuleVarDef, BuiltinModule, GenericTypeLookup,
+    ParamDef, MethodDef, BuiltinTypeDef, GenericTypeLookup,
     DUNDER_CPP_TEMPLATES, get_dunder_cpp_template,
     BINOP_TO_METHOD, BINOP_TO_RMETHOD, AUGOP_TO_IMETHOD, UNARYOP_TO_METHOD,
     TypeParamKind,
 )
 
-# --- Module registry, protocol lookup, converters ---
+# --- Module registry ---
 from tpyc.modules.registry import (  # noqa: F401
-    get_module, get_builtin_module_names, get_builtin_type_obj,
-    get_builtins, get_tpy, get_all_modules, get_importable_modules,
-    lookup_protocol, get_all_protocols, protocol_def_to_info,
-    get_all_protocols_for_module,
-    builtin_type_to_record_info, builtin_function_to_info, builtin_module_to_info,
+    get_builtin_module_names, get_builtin_type_obj,
 )
 
 # --- Type factories, generic lookup, iteration helpers ---

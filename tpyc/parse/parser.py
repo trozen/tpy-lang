@@ -20,7 +20,7 @@ from ..typesys import (
     FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, BoolType, StrType,
     ALL_FIXED_INTS, public_module_name,
 )
-from ..modules import lookup_generic_type, lookup_generic_type_in_module, lookup_protocol as lookup_builtin_protocol, BuiltinTypeDef
+from ..modules import lookup_generic_type, lookup_generic_type_in_module, BuiltinTypeDef
 from .nodes import (
     ParseError, SourceLocation, ParseWarning, RecordLinkage, FunctionLinkage,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -523,14 +523,6 @@ class Parser:
             return enum_type
         elif (alias := self.registry.get_type_alias(name)) is not None:
             return alias
-        elif resolved and (protocol_def := lookup_builtin_protocol(name)) is not None:
-            if protocol_def.type_params:
-                raise ParseError(
-                    f"Generic protocol '{name}' requires type arguments: "
-                    f"{name}[{', '.join(protocol_def.type_params)}]",
-                    node
-                )
-            return NamedType(name, is_protocol=True)
         elif not resolved:
             self._raise_unresolved_import_error(name, node)
         if self.registry.is_known_type(name) or name[0].isupper():
@@ -1948,11 +1940,19 @@ class Parser:
         self._type_param_scope = type_param_scope
 
         params = []
-        for arg in node.args.args:
-            if arg.annotation is None:
-                raise ParseError(f"Parameter '{arg.arg}' must have type annotation", node)
-            param_type = self._parse_type_annotation(arg.annotation, type_param_scope)
-            params.append((arg.arg, param_type))
+        if builtin_function_key is not None:
+            # @builtin_function stubs: params are illustrative only,
+            # type annotations not required (sema handles everything)
+            for arg in node.args.args:
+                param_type = (self._parse_type_annotation(arg.annotation, type_param_scope)
+                              if arg.annotation else VOID)
+                params.append((arg.arg, param_type))
+        else:
+            for arg in node.args.args:
+                if arg.annotation is None:
+                    raise ParseError(f"Parameter '{arg.arg}' must have type annotation", node)
+                param_type = self._parse_type_annotation(arg.annotation, type_param_scope)
+                params.append((arg.arg, param_type))
 
         # Parse default parameter values
         defaults = self._parse_param_defaults(node, params, skip_self=False,
@@ -2167,12 +2167,6 @@ class Parser:
             resolved_container = resolved[1] if resolved else raw_name
 
             if resolved_container:
-                # Generic protocols (e.g., Sequence[Int32]) -- only when imported
-                if resolved and (protocol_def := lookup_builtin_protocol(resolved_container)):
-                    if protocol_def.type_params:
-                        type_args = self._parse_protocol_type_args(node, resolved_container, protocol_def.type_params, type_param_scope)
-                        return NamedType(resolved_container, type_args, is_protocol=True)
-
                 # Module-defined generic types (list, Array, Span, etc.)
                 if lookup := lookup_generic_type(resolved_container):
                     # tpy generic types require explicit import

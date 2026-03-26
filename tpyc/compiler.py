@@ -1026,12 +1026,9 @@ class Compiler:
             registered.add(dep_name)
             dep_compiled = self.modules[dep_name]
             module_info = self._exports_to_module_info(dep_name, dep_compiled.exports, dep_compiled)
-            self._merge_builtin_supplements(module_info)
             analyzer.registry.register_module(module_info)
             # Register .py-defined protocols so resolve_type can find them
             # for qualified access (e.g. typing.Sized via bare `import typing`).
-            # Only register protocols from .py files (no cpp_concept), not ones
-            # merged from builtins which are already registered at init.
             for proto in module_info.protocols.values():
                 if not proto.cpp_concept:
                     analyzer.registry.register_protocol(proto)
@@ -1048,7 +1045,6 @@ class Compiler:
             if implicit_mod not in registered and implicit_mod in self.modules:
                 dep_compiled = self.modules[implicit_mod]
                 module_info = self._exports_to_module_info(implicit_mod, dep_compiled.exports, dep_compiled)
-                self._merge_builtin_supplements(module_info)
                 analyzer.registry.register_module(module_info)
                 for proto in module_info.protocols.values():
                     analyzer.registry.register_protocol(proto)
@@ -1268,27 +1264,6 @@ class Compiler:
             type_aliases=exports.type_aliases,
             enums=exports.enums,
         )
-
-    def _merge_builtin_supplements(self, module_info: 'ModuleInfo') -> None:
-        """Supplement a .py module's exports with definitions from a same-named builtin.
-
-        Enables hybrid modules: .py defines most functions/protocols, builtin provides
-        definitions that need special compiler support. Only adds missing names --
-        .py definitions take precedence.
-        """
-        from .modules import get_module as get_builtin_module, builtin_function_to_info, get_all_protocols_for_module
-        builtin = get_builtin_module(module_info.name)
-        if builtin is None:
-            return
-        module_info.has_builtin_fallback = True
-        for func_name, fn_def in builtin.functions.items():
-            if func_name not in module_info.functions:
-                module_info.functions[func_name] = builtin_function_to_info(
-                    fn_def, module_info.name)
-        # Merge protocols from builtin (.py takes precedence)
-        for protocol_info in get_all_protocols_for_module(module_info.name):
-            if protocol_info.name not in module_info.protocols:
-                module_info.protocols[protocol_info.name] = protocol_info
 
     def _index_builtin_type_records(self, module_info: 'ModuleInfo',
                                      analyzer: 'SemanticAnalyzer') -> None:

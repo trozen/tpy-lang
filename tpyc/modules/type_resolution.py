@@ -160,14 +160,8 @@ def lookup_generic_type(name: str) -> GenericTypeLookup | None:
     Types from other modules (tpy.mem, tpy.unsafe, etc.) require explicit import
     and are resolved via lookup_generic_type_in_module() instead.
     """
-    from tpyc.modules.registry import _all_modules, get_module
-
-    for module in _all_modules():
-        qualified = f"{module.name}.{name}"
-        if typ := module.types.get(qualified):
-            if typ.type_params and typ.type_factory:
-                return GenericTypeLookup(typ, qualified)
-        # Check type factory mapping for types fully defined in .py
+    for module_name in ("builtins", "tpy"):
+        qualified = f"{module_name}.{name}"
         if entry := _get_type_factories().get(qualified):
             return GenericTypeLookup(_make_factory_type_def(*entry), qualified)
     return None
@@ -178,16 +172,7 @@ def lookup_generic_type_in_module(name: str, module_name: str) -> GenericTypeLoo
 
     Used when resolving imported names (e.g., 'from tpy.mem import UninitArrayStorage').
     """
-    from tpyc.modules.registry import get_module
-
-    module = get_module(module_name)
-    if module is None:
-        return None
-    qualified = f"{module.name}.{name}"
-    if typ := module.types.get(qualified):
-        if typ.type_params and typ.type_factory:
-            return GenericTypeLookup(typ, qualified)
-    # Check type factory mapping for types fully defined in .py
+    qualified = f"{module_name}.{name}"
     if entry := _get_type_factories().get(qualified):
         return GenericTypeLookup(_make_factory_type_def(*entry), qualified)
     return None

@@ -6,7 +6,7 @@ from .._core._types import (
     Char, String, StrView, Float32, AnyFixedInt,
     Hashable, Representable, Stringable, NativeIterable, Truthy, Comparable, Equatable,
 )
-from .._bootstrap._extern import native, cpp_template, builtin_type, type_param_default, DefaultInt
+from .._bootstrap._extern import native, cpp_template, builtin_type, builtin_function, type_param_default, DefaultInt
 
 
 @pure
@@ -403,3 +403,12 @@ def round(x: int) -> int: ...
 @readonly
 @native("tpy::round_bigint")
 def round(x: int, ndigits: Int32) -> int: ...
+
+
+# -- Special-handling builtins (custom sema/codegen, signatures are illustrative) --
+
+@builtin_function("builtins.print")
+def print(*args, sep: str = " ", end: str = "\n"): ...
+
+@builtin_function("builtins.isinstance")
+def isinstance(x, type_or_tuple) -> bool: ...

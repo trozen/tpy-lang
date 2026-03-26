@@ -5,7 +5,6 @@ Main orchestrator that wires all components together.
 """
 
 from __future__ import annotations
-import re
 from typing import Optional
 
 from ..typesys import (
@@ -42,33 +41,6 @@ from ..liveness import analyze_last_uses
 from .mutation_propagation import propagate_mutation_facts, infer_method_const
 from tpyc import modules as builtin_modules
 from ..typesys import TypeParamRef, TupleType
-
-
-def _parse_extends_type_args(
-    args_str: str, type_params: dict[str, TpyType],
-) -> tuple[TpyType, ...]:
-    """Parse extends type arg string into TpyType instances.
-
-    Resolves type parameter names ("T") and concrete type names ("Char")
-    via the module system. Handles tuple types ("tuple[K, V]").
-    """
-    args_str = args_str.strip()
-    resolve = builtin_modules._resolve_extends_type_arg
-    tuple_match = re.match(r"tuple\[(.+)\]$", args_str)
-    if tuple_match:
-        inner = tuple_match.group(1)
-        parts = [p.strip() for p in inner.split(",")]
-        resolved = []
-        for p in parts:
-            t = resolve(p, type_params)
-            resolved.append(t if t is not None else TypeParamRef(p))
-        return (TupleType(tuple(resolved)),)
-    results = []
-    for a in args_str.split(","):
-        a = a.strip()
-        t = resolve(a, type_params)
-        results.append(t if t is not None else TypeParamRef(a))
-    return tuple(results)
 
 
 def _is_stmt_super_init_call(stmt: TpyStmt) -> bool:
@@ -233,16 +205,6 @@ class SemanticAnalyzer:
         self.global_scope = self.ctx.global_scope
         self.diagnostics = self.ctx.diagnostics
 
-        # Register all builtins at init time, before user modules are registered
-        # User modules registered later (in Compiler._analyze_module) will overwrite
-        # builtins with the same name, allowing user code to shadow math/time/sys.
-        for protocol_def, module_name in builtin_modules.get_all_protocols():
-            info = builtin_modules.protocol_def_to_info(protocol_def, module_name)
-            self.ctx.registry.register_protocol(info)
-        self.registrar.register_builtin_types()
-        self.registrar.register_builtin_modules()
-        self._validate_builtin_extends()
-
         # Populate builtins_ns with Python builtins (always available without import)
         # These are like CPython's builtins module - int, str, list, len, print, etc.
         self._register_python_builtins()
@@ -291,62 +253,6 @@ class SemanticAnalyzer:
     def _warning(self, message: str, node: TpyExpr | TpyStmt | TpyRecord | None = None) -> None:
         """Record a warning diagnostic."""
         self.ctx.warning(message, node)
-
-    def _validate_builtin_extends(self) -> None:
-        """Validate that builtin types conform to their declared extends protocols.
-
-        Uses the same conformance checker as user classes (type_conforms_to_protocol).
-        Marker protocols (no methods) are skipped -- the extends declaration is
-        the entire conformance for those.
-        """
-        from ..typesys import TypeParamKind
-        for module in builtin_modules.get_all_modules():
-            for qname, type_def in module.types.items():
-                record_info = self.ctx.registry.get_builtin_record(qname)
-                if not record_info or not record_info.extends_protocols:
-                    continue
-                simple_name = qname.split(".")[-1]
-
-                # Build a TpyType for this builtin (with TypeParamRef args for generics)
-                if type_def.type_obj is not None:
-                    actual_type = type_def.type_obj
-                elif record_info.type_factory and record_info.type_params:
-                    args = []
-                    for tp, kind in zip(record_info.type_params, record_info.type_param_kinds):
-                        if kind == TypeParamKind.INT:
-                            args.append(1)  # placeholder int value
-                        else:
-                            args.append(TypeParamRef(tp))
-                    actual_type = record_info.type_factory(*args)
-                else:
-                    continue
-
-                # Build type_params dict for resolving extends args
-                tp_dict: dict[str, TpyType] = {}
-                if record_info.type_params:
-                    for tp, kind in zip(record_info.type_params, record_info.type_param_kinds):
-                        if kind != TypeParamKind.INT:
-                            tp_dict[tp] = TypeParamRef(tp)
-
-                for ext_str in record_info.extends_protocols:
-                    match = re.match(r"(\w+)(?:\[(.+)\])?", ext_str)
-                    if not match:
-                        continue
-                    proto_name = match.group(1)
-                    proto_info = self.ctx.registry.get_protocol(proto_name)
-                    if proto_info is None or proto_info.is_marker:
-                        continue
-                    # Build protocol NamedType with matching type args
-                    proto_args = _parse_extends_type_args(match.group(2), tp_dict) if match.group(2) else ()
-                    protocol = NamedType(proto_name, proto_args, is_protocol=True)
-
-                    if not self.protocols.type_conforms_to_protocol(actual_type, protocol):
-                        missing = self.protocols.get_missing_protocol_methods(actual_type, protocol)
-                        methods_str = ", ".join(missing) if missing else "unknown"
-                        raise ValueError(
-                            f"Builtin type '{simple_name}' extends '{proto_name}' "
-                            f"but does not conform: missing {methods_str}"
-                        )
 
     def _register_python_builtins(self) -> None:
         """Register Python builtins in builtins_ns (always available without import).
@@ -1708,12 +1614,4 @@ class SemanticAnalyzer:
                 self.ctx.registry.get_builtin_decorator_key(original_name)):
             return
 
-        # If this module shadows a builtin, fall back to builtin handling
-        # for names the .py file doesn't define (incremental migration support).
-        # Only allow names that actually exist in the builtin.
-        if module_info.has_builtin_fallback:
-            from ..modules import get_module as get_builtin_module
-            builtin = get_builtin_module(module_name)
-            if builtin and (original_name in builtin.functions or original_name in builtin.protocols):
-                return
         raise self._error(f"'{original_name}' not found in module '{module_name}'")

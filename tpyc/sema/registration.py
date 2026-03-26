@@ -104,66 +104,35 @@ class TypeRegistrar:
             resolved[param_name] = resolved_bound
         return resolved
 
-    def register_builtin_types(self) -> None:
-        """Register builtin types as RecordInfo for unified method lookup.
-
-        This converts BuiltinTypeDef entries from the module system into
-        RecordInfo entries, enabling unified method lookup for both
-        user-defined and builtin types.
-        """
-        for module in builtin_modules.get_all_modules():
-            for qname, type_def in module.types.items():
-                info = builtin_modules.builtin_type_to_record_info(qname, type_def)
-                self.ctx.registry.register_builtin_record(qname, info)
-
-    def register_builtin_modules(self) -> None:
-        """Register builtin modules for unified module lookup.
-
-        This converts BuiltinModule entries into ModuleInfo for the registry,
-        enabling unified lookup of module functions and variables.
-        """
-        for module in builtin_modules.get_importable_modules():
-            info = builtin_modules.builtin_module_to_info(module)
-            self.ctx.registry.register_module(info)
-
     def register_tpy_star_import(self) -> None:
         """Register all tpy exports for 'from tpy import *'.
 
         Registers all exported types and functions from the tpy module
         into the global namespace and imported_names tracking.
         """
-        tpy_module = builtin_modules.get_tpy()
-
-        # Register all tpy types (Int32, Array, Span, etc.)
-        # Includes both hardcoded types and .py-defined types with factories.
-        for qname, type_def in tpy_module.types.items():
-            simple_name = qname.split(".")[-1]
-            self.ctx.imported_names[simple_name] = ("tpy", simple_name)
-            self.ctx.global_ns.bind_imported_name(simple_name, "tpy", simple_name)
+        # Register tpy types from type factories (Int32, Array, Span, etc.)
         for qname in builtin_modules.get_type_factory_names("tpy"):
             simple_name = qname.split(".")[-1]
             if simple_name not in self.ctx.imported_names:
                 self.ctx.imported_names[simple_name] = ("tpy", simple_name)
                 self.ctx.global_ns.bind_imported_name(simple_name, "tpy", simple_name)
 
-        # Register all tpy functions (copy, etc.)
-        for name, fn_def in tpy_module.functions.items():
-            self.ctx.imported_names[name] = ("tpy", name)
-            self.ctx.global_ns.bind_imported_name(name, "tpy", name)
-
-        # Register protocols (Comparable, NativeIterable, etc.)
-        for name in tpy_module.protocols:
-            self.ctx.imported_names[name] = ("tpy", name)
-            self.ctx.global_ns.bind_imported_name(name, "tpy", name)
-
-        # Bind type alias names for namespace resolution (e.g. Float64).
-        # Actual alias registration is handled by analyzer._register_all_tpy_type_aliases.
+        # Register compiled tpy module exports (functions, protocols, type aliases)
         tpy_info = self.ctx.registry.get_module("tpy")
-        if tpy_info and tpy_info.type_aliases:
-            for name in tpy_info.type_aliases:
+        if tpy_info:
+            for name in tpy_info.functions:
                 if name not in self.ctx.imported_names:
                     self.ctx.imported_names[name] = ("tpy", name)
                     self.ctx.global_ns.bind_imported_name(name, "tpy", name)
+            for name in tpy_info.protocols:
+                if name not in self.ctx.imported_names:
+                    self.ctx.imported_names[name] = ("tpy", name)
+                    self.ctx.global_ns.bind_imported_name(name, "tpy", name)
+            if tpy_info.type_aliases:
+                for name in tpy_info.type_aliases:
+                    if name not in self.ctx.imported_names:
+                        self.ctx.imported_names[name] = ("tpy", name)
+                        self.ctx.global_ns.bind_imported_name(name, "tpy", name)
 
     def get_module_function_overloads(self, module_name: str, func_name: str) -> list[FunctionInfo] | None:
         """Look up function overloads in a module using the unified registry."""
@@ -1352,10 +1321,13 @@ class TypeRegistrar:
             type_params=func.type_params,
             type_param_bounds=type_param_bounds,
             type_param_defaults=func.type_param_defaults,
+            is_builtin_function=bool(func.builtin_function_key),
             special_handling=bool(func.builtin_function_key),
             error_return_type=(qualify_exception_name(func.error_return, self.ctx.registry)
                                if func.error_return else None),
-            qualified_name=f"{self.ctx.module_name}.{func.name}",
+            qualified_name=(func.builtin_function_key
+                            if func.builtin_function_key
+                            else f"{self.ctx.module_name}.{func.name}"),
         )
         # Propagate qualified name back to AST so codegen can use it directly
         if func.error_return:

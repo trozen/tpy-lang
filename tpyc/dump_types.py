@@ -2,7 +2,6 @@
 Dump documentation for builtin types in markdown format.
 """
 
-from .modules import get_all_modules
 from .modules import MethodDef
 
 
@@ -41,27 +40,13 @@ def _print_signature_item(name: str, overload: MethodDef) -> None:
 
 
 def dump_builtin_types() -> None:
-    """Dump documentation for all builtin types in markdown format."""
+    """Dump documentation for all builtin types in markdown format.
+
+    Note: builtin types and functions are now fully defined in .py stubs
+    under lib/tpy/. This function is a no-op placeholder.
+    """
     print("# TurboPython Builtin Types\n")
-
-    for module in get_all_modules():
-        has_content = module.types or module.functions or module.protocols
-        if not has_content:
-            continue
-
-        print(f"## Module: {module.name}\n")
-
-        # Types
-        for qname, type_def in module.types.items():
-            _print_type_doc(qname, type_def)
-
-        # Functions
-        for name, func_def in module.functions.items():
-            _print_function_doc(name, func_def)
-
-        # Protocols
-        for name, proto_def in module.protocols.items():
-            _print_protocol_doc(name, proto_def)
+    print("All types are defined in .py stubs under lib/tpy/.\n")
 
 
 def _print_type_doc(qname: str, type_def) -> None:

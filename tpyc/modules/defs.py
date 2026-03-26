@@ -1,5 +1,5 @@
 """
-Built-in module data classes, BuiltinModule container, and constant tables.
+Built-in module data classes and constant tables.
 """
 
 from __future__ import annotations
@@ -37,17 +37,6 @@ class MethodDef:
 
 
 @dataclass
-class BuiltinFunctionDef:
-    """Definition of a built-in function with its overloads."""
-    name: str
-    overloads: list[MethodDef]
-    special_handling: bool = False  # True if sema/codegen handle this specially (skip overload matching)
-    type_params: list[str] = field(default_factory=list)  # Generic type params (e.g., ["T"])
-    type_param_defaults: dict[str, str] = field(default_factory=dict)  # e.g. {"T": "tpy.extern.DefaultInt"}
-    type_param_bounds: dict[str, NamedType] = field(default_factory=dict)  # e.g. {"T": Default}
-
-
-@dataclass
 class BuiltinTypeDef:
     """Definition of a built-in type with its methods."""
     type_obj: "TpyType | None"  # The type object (e.g., INT32), None for parameterized types
@@ -58,132 +47,6 @@ class BuiltinTypeDef:
     type_factory: "Callable[..., TpyType] | None" = None  # Factory to create TpyType from params
     extends: list[str] = field(default_factory=list)  # Protocols: ["NativeIterable[T]"]
     is_nocopy: bool = False  # True for move-only types (copy deleted)
-
-
-@dataclass
-class ProtocolDef:
-    """Definition of a protocol (structural type) with required methods.
-
-    For generic protocols like Sequence[T]:
-    - type_params stores the type parameter names (e.g., ["T"])
-    - methods use TypeParamRef("T") for type parameter references
-    """
-    name: str
-    methods: dict[str, MethodDef]  # method_name -> signature
-    cpp_concept: str  # C++ concept name (e.g., "::tpy::Sized")
-    type_params: list[str] = field(default_factory=list)
-    is_readonly: bool = False  # All methods are read-only (safe for readonly[T] args)
-
-
-@dataclass
-class ModuleVarDef:
-    """Definition of a module-level variable."""
-    name: str
-    type: "TpyType"
-    cpp_expr: str  # C++ expression to access the variable
-
-
-class BuiltinModule:
-    """A module containing built-in functions and types."""
-
-    def __init__(self, name: str):
-        self.name = name
-        self.functions: dict[str, BuiltinFunctionDef] = {}
-        self.types: dict[str, BuiltinTypeDef] = {}  # keyed by qualified name
-        self.protocols: dict[str, ProtocolDef] = {}  # protocol_name -> ProtocolDef
-        self.variables: dict[str, ModuleVarDef] = {}  # var_name -> ModuleVarDef
-
-    def function(self, name: str, overloads: list[MethodDef], special_handling: bool = False,
-                 type_params: list[str] | None = None,
-                 type_param_defaults: dict[str, str] | None = None,
-                 type_param_bounds: dict[str, NamedType] | None = None):
-        """Register a built-in function.
-
-        Args:
-            name: Function name
-            overloads: List of overload signatures
-            special_handling: If True, sema/codegen handle this specially (skip overload matching)
-            type_params: Generic type parameter names (e.g., ["T"])
-            type_param_defaults: Default values for type params (e.g., {"T": "DefaultInt"})
-            type_param_bounds: Bounds for type params (e.g., {"T": Default})
-        """
-        self.functions[name] = BuiltinFunctionDef(
-            name=name, overloads=overloads, special_handling=special_handling,
-            type_params=type_params or [],
-            type_param_defaults=type_param_defaults or {},
-            type_param_bounds=type_param_bounds or {},
-        )
-
-    def protocol(self, name: str, methods: dict[str, MethodDef], cpp_concept: str = "",
-                 type_params: list[str] | None = None, is_readonly: bool = False):
-        """Register a protocol definition."""
-        self.protocols[name] = ProtocolDef(
-            name=name,
-            methods=methods,
-            cpp_concept=cpp_concept,
-            type_params=type_params or [],
-            is_readonly=is_readonly,
-        )
-
-    def variable(self, name: str, var_type: "TpyType", cpp_expr: str):
-        """Register a module-level variable."""
-        self.variables[name] = ModuleVarDef(name=name, type=var_type, cpp_expr=cpp_expr)
-
-    def register_type(self, type_obj: "TpyType", cpp_type: str,
-                      methods: dict[str, list[MethodDef]] | None = None,
-                      extends: list[str] | None = None,
-                      is_nocopy: bool = False):
-        """Register a built-in type using its type object. Preferred for non-parameterized types."""
-        qname = type_obj.qualified_name()
-        assert qname is not None, f"Type {type_obj} has no qualified_name"
-        self.types[qname] = BuiltinTypeDef(
-            type_obj=type_obj,
-            cpp_type=cpp_type,
-            methods=methods or {},
-            extends=extends or [],
-            is_nocopy=is_nocopy,
-        )
-
-    def type(self, name: str, cpp_type: str,
-             methods: dict[str, list[MethodDef]] | None = None,
-             type_params: list[str] | None = None,
-             param_kinds: list[TypeParamKind] | None = None,
-             type_factory: "Callable[..., TpyType] | None" = None,
-             extends: list[str] | None = None,
-             is_nocopy: bool = False,
-             ):
-        """Register a built-in type by name. Use for parameterized types (list, Array, etc.)."""
-        type_params = type_params or []
-        param_kinds = param_kinds or []
-
-        # Validate parameterized type configuration
-        if type_params:
-            if not param_kinds:
-                raise ValueError(f"Type '{name}' has type_params but no param_kinds")
-            if not type_factory:
-                raise ValueError(f"Type '{name}' has type_params but no type_factory")
-            if len(param_kinds) != len(type_params):
-                raise ValueError(
-                    f"Type '{name}': param_kinds length ({len(param_kinds)}) "
-                    f"!= type_params length ({len(type_params)})"
-                )
-        else:
-            if param_kinds:
-                raise ValueError(f"Type '{name}' has param_kinds but no type_params")
-            if type_factory:
-                raise ValueError(f"Type '{name}' has type_factory but no type_params")
-
-        qualified_name = f"{self.name}.{name}"
-        self.types[qualified_name] = BuiltinTypeDef(
-            type_obj=None,  # Parameterized type, no single instance
-            cpp_type=cpp_type,
-            methods=methods or {},
-            type_params=type_params,
-            param_kinds=param_kinds,
-            type_factory=type_factory,
-            extends=extends or [],
-            is_nocopy=is_nocopy,
-        )
 
 
 @dataclass

@@ -18,6 +18,7 @@ from ._core import (
     Span, Array, Ptr, SpanIter,
     # Functions
     span, deref, take_ptr, make_default,
+    copy, copy_iter, own_iter, try_parse,
 )
 from ._bootstrap import (
     # Decorators / type modifiers
@@ -51,4 +52,5 @@ __all__ = [
     "AnyFixedInt", "AnyFixedSigned", "AnyFixedUnsigned",
     # Functions
     "span", "deref", "take_ptr", "make_default",
+    "copy", "copy_iter", "own_iter", "try_parse",
 ]

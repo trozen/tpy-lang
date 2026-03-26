@@ -16,4 +16,4 @@ from ._types import (
 )
 from ._bytes_view import BytesView
 from ._containers import Span, Array, Ptr, SpanIter
-from ._functions import span, deref, take_ptr, make_default
+from ._functions import span, deref, take_ptr, make_default, copy, copy_iter, own_iter, try_parse

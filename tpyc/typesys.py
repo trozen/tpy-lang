@@ -3265,7 +3265,6 @@ class ModuleInfo:
     is_builtin: bool = True  # True for hardcoded builtin modules (e.g. sys), False for user/.py modules
     is_native_module: bool = False  # True for # tpy: native_module (no __tpy_init, no .cpp)
     generates_header: bool = True  # False for native_modules that produce no C++ output
-    has_builtin_fallback: bool = False  # True when .py shadows a builtin (incremental migration)
     functions: dict[str, list[FunctionInfo]] = field(default_factory=dict)  # func_name -> overloads
     variables: dict[str, ModuleVarInfo] = field(default_factory=dict)  # var_name -> ModuleVarInfo
     records: dict[str, RecordInfo] = field(default_factory=dict)  # type_name -> RecordInfo (exported types)
@@ -3449,11 +3448,10 @@ class TypeRegistry:
             return True
         if name in self.records or name in self.protocols or name in self.type_aliases or name in self.enums:
             return True
-        # Check module system for registered types and type factory mapping
-        from tpyc.modules import get_builtins, get_tpy, get_type_factory
-        for module in [get_builtins(), get_tpy()]:
-            qualified = f"{module.name}.{name}"
-            if qualified in module.types or get_type_factory(qualified) is not None:
+        # Check type factory mapping for builtin types defined in .py stubs
+        from tpyc.modules import get_type_factory
+        for module_name in ("builtins", "tpy"):
+            if get_type_factory(f"{module_name}.{name}") is not None:
                 return True
         return False
 
