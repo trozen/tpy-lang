@@ -9,19 +9,17 @@ from tpy import BytesView
 @builtin_type("builtins.bytes")
 @native("std::vector<uint8_t>")
 class bytes(NativeIterable[UInt8], Iterable[UInt8], Equatable):
-    # Constructors use cpp_template because builtin type constructor codegen
-    # does not dispatch on native_function (see TODO.md)
     @overload
     @cpp_template("std::vector<uint8_t>()")
     def __init__(self) -> None: ...
     @overload
-    @cpp_template("::tpy::bytes_copy({0})")
+    @native("tpy::bytes_copy", function=True)
     def __init__(self, x: bytes) -> None: ...
     @overload
-    @cpp_template("::tpy::bytes_copy({0})")
+    @native("tpy::bytes_copy", function=True)
     def __init__(self, x: BytesView) -> None: ...
     @overload
-    @cpp_template("::tpy::bytes_from_size({0})")
+    @native("tpy::bytes_from_size", function=True)
     def __init__(self, x: Int32) -> None: ...
 
     @native("tpy::__iter__", function=True)
@@ -141,21 +139,20 @@ class bytes(NativeIterable[UInt8], Iterable[UInt8], Equatable):
 @builtin_type("builtins.bytearray")
 @native("std::vector<uint8_t>")
 class bytearray(NativeIterable[UInt8], Iterable[UInt8], Equatable):
-    # Constructors use cpp_template (see TODO.md -- native_function on __init__)
     @overload
     @cpp_template("std::vector<uint8_t>()")
     def __init__(self) -> None: ...
     @overload
-    @cpp_template("::tpy::bytes_copy({0})")
+    @native("tpy::bytes_copy", function=True)
     def __init__(self, x: bytes) -> None: ...
     @overload
-    @cpp_template("::tpy::bytes_copy({0})")
+    @native("tpy::bytes_copy", function=True)
     def __init__(self, x: BytesView) -> None: ...
     @overload
-    @cpp_template("::tpy::bytes_copy({0})")
+    @native("tpy::bytes_copy", function=True)
     def __init__(self, x: bytearray) -> None: ...
     @overload
-    @cpp_template("::tpy::bytes_from_size({0})")
+    @native("tpy::bytes_from_size", function=True)
     def __init__(self, x: Int32) -> None: ...
 
     @native("tpy::__iter__", function=True)

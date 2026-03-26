@@ -1527,8 +1527,8 @@ class ExpressionGenerator:
             if func_info.is_generic() and expr.inferred_type_args:
                 type_subst = dict(zip(func_info.type_params, expr.inferred_type_args))
 
-            # @cpp_template functions: expand the C++ expression template directly
-            if func_info.cpp_template:
+            # @cpp_template / @native(function=True): dispatch via template or native call
+            if func_info.cpp_template or func_info.native_function:
                 return self.builtins.gen_template_or_native_call(
                     expr.args, [func_info],
                     fi=expr.resolved_function_info, type_args=expr.inferred_type_args)
@@ -1610,7 +1610,8 @@ class ExpressionGenerator:
             # Use sema-resolved constructor when available (e.g. list(iterable))
             if (expr.args and not isinstance(expr.args[0], TpyArrayLiteral)
                     and expr.resolved_function_info
-                    and expr.resolved_function_info.cpp_template):
+                    and (expr.resolved_function_info.cpp_template
+                         or expr.resolved_function_info.native_function)):
                 ctor = expr.resolved_function_info
                 type_params = builtin_modules.extract_type_params(expr.call_type)
                 gen_args = []
@@ -1709,6 +1710,10 @@ class ExpressionGenerator:
             return f"{expr.func}({args})"
         # Callable variable call (possibly narrowed from Optional[Callable])
         fi = expr.resolved_function_info
+        if fi and (fi.cpp_template or fi.native_function):
+            gen_args = [self.gen_call_arg(a, ptype)
+                        for a, (_, ptype) in zip(expr.args, fi.params)]
+            return self.builtins.gen_call_from_fi(fi, None, gen_args)
         if fi:
             gen_args = []
             for arg, (_, ptype) in zip(expr.args, fi.params):
