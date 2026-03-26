@@ -53,6 +53,9 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ### Borrow tracker gaps
 - Reassignment of borrowed variable doesn't warn: `remove_storage_borrows` silently clears active borrows on reassignment (`s = "other"`) without warning. Only mutation (`.append()`, `del`) triggers warnings. Affects all types but especially `str` in generators -- the only way to invalidate a `string_view` is reassignment/destruction, which is exactly the case the tracker misses.
+- Globals not tracked in borrow system: `mark_param_mutated` only checks `current_param_names` (`context.py:688`), so global variable mutations are invisible to the borrow tracker. `ref = g[0]; g.append(x)` produces no warning.
+- Nonlocal mutations invisible to outer scope: nested function analysis runs in isolated state (`save_function_state`/`reset_function_tracking`). Mutations to nonlocal variables inside closures don't propagate back to the outer function's borrow tracker.
+- User-type indirect structural mutation not detected: `_is_invalidating_method` uses `direct_structural_mutated_params` (Phase 1), so `add_twice()` calling `self.add()` which does `self._items.append()` is not caught. Phase 2 propagates `structural_mutated_params` transitively, but the borrow check runs during Phase 1. Fix: add deferred borrow checks after Phase 2, similar to `resolve_pending_borrow_checks`.
 
 ### Other safety issues
 - `Span[str]` subscript view: `SpanType.subscript_borrows()` is intentionally not overridden because `v = s[0]` registers `s` as the str-borrow source, but mutations to the backing container (`arr[0] = "x"` where `s = Span[str](arr)`) call `mark_str_borrowers_mutated("arr")` -- missing `s`. Fix requires `mark_str_borrowers_mutated` to chase the borrow tracker's alias chain so backing-container mutations also invalidate views borrowed through spans.

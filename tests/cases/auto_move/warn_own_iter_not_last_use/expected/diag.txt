@@ -1,0 +1,1 @@
+main.py:6: warning: own_iter() consumes 'items' -- using it afterwards is undefined behavior. Use a regular for-loop if the container is needed later.

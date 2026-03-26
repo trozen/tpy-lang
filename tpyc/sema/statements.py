@@ -2507,8 +2507,10 @@ class StatementAnalyzer:
         # Borrow conflict: field write on borrowed storage.
         # Resolves aliases so alias.field = val warns when the underlying storage
         # has field/element/ptr borrows.
-        # Subscript assignment (items[i] = val) is in-place and does NOT reallocate,
-        # so existing element/ptr borrows remain valid (no dangling). No warning needed.
+        # Subscript assignment (items[i] = val, d[k] = val) is in-place and does
+        # NOT invalidate element references: list element replacement doesn't
+        # reallocate, and ordered_map is node-based so insertion is stable
+        # (confirmed by @native_preserves_refs on dict.__setitem__).
         if isinstance(stmt.target, TpySubscript):
             storage = self._resolve_obj_storage(stmt.target.obj)
             if storage is not None:

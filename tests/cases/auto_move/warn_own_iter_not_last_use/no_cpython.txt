@@ -1,0 +1,3 @@
+own_iter() consumes the list in C++ (vector moved), so len(items) returns 0.
+In CPython the list is not consumed, so len(items) returns 3.
+This divergence is the reason for the warning.

@@ -1345,6 +1345,8 @@ class SemanticAnalyzer:
                         i for i, pname in enumerate(param_list)
                         if pname in self.ctx.current_struct_mutated_param_names
                     )
+                    if self.ctx.current_self_struct_mutated:
+                        direct_struct = direct_struct | frozenset({-1})
                     method_fi.direct_structural_mutated_params = direct_struct
                     method_fi.structural_mutated_params = direct_struct
                     # 8b: Return borrow facts

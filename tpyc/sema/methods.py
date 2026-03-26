@@ -137,22 +137,47 @@ class MethodAnalyzer:
         return bool(overloads) and all(m.is_readonly for m in overloads)
 
     def _is_invalidating_method(self, obj_type: TpyType, method_name: str) -> bool:
-        """Check if a method invalidates iterators/references on a builtin container.
+        """Check if a method invalidates iterators/references on a container.
 
-        A method invalidates if it is non-readonly AND not marked with
-        @native_preserves_refs. Only applies to builtin types (list, dict, set,
-        etc.) -- user types use the general mutation tracking in the deref chain.
+        For builtin types (list, dict, set, etc.): a method invalidates if it
+        is non-readonly AND not marked with @native_preserves_refs.
+        For user-defined types: fall back to treating any non-readonly method
+        as potentially invalidating, since we can't know if it reallocates.
         """
+        # Builtin types: precise check using native_preserves_refs
         qname = obj_type.qualified_name()
-        if not qname:
-            return False
-        record = self.ctx.registry.get_builtin_record(qname)
+        if qname:
+            builtin_record = self.ctx.registry.get_builtin_record(qname)
+            if builtin_record is not None:
+                overloads = builtin_record.get_method_overloads(method_name)
+                if not overloads:
+                    return False
+                return any(not m.is_readonly and not m.native_preserves_refs for m in overloads)
+        # User-defined types: use inferred direct_self_mutated from Phase 1
+        # mutation analysis. More precise than is_readonly -- a method that
+        # doesn't mutate self won't invalidate references even without
+        # @readonly annotation. None means not yet analyzed (forward ref);
+        # treat conservatively as potentially mutating.
+        record = self.ctx.registry.get_record_for_type(obj_type)
         if record is None:
             return False
         overloads = record.get_method_overloads(method_name)
         if not overloads:
             return False
-        return any(not m.is_readonly and not m.native_preserves_refs for m in overloads)
+        # Use inferred structural mutation: only methods that directly
+        # structurally mutate self (append/insert/del on self's fields) can
+        # invalidate references. Getters and field-only mutations are safe.
+        # None means not yet analyzed (forward ref) -> conservative.
+        # Note: indirect structural mutation through same-class method calls
+        # is not detected here (requires Phase 2 propagation, which runs
+        # after body analysis). This is a known limitation.
+        for m in overloads:
+            if m.is_readonly:
+                continue
+            smp = m.direct_structural_mutated_params
+            if smp is None or -1 in smp:
+                return True
+        return False
 
     def _infer_pending_container_element(
         self,

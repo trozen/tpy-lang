@@ -848,6 +848,8 @@ class CallAnalyzer:
 
         own_iter(container) moves the container into an OwnIter that
         iterates with move semantics. Returns OwnIter[T].
+        The argument must be at its last use (movable), since own_iter
+        takes ownership of the container via std::move.
         """
         self._reject_kwargs_for_builtin(expr, "own_iter")
         if len(expr.args) != 1:
@@ -858,6 +860,21 @@ class CallAnalyzer:
         if not isinstance(arg_type, ListType):
             raise self.ctx.error(
                 f"own_iter() currently only supports list, got {arg_type}", expr)
+        # Validate that the argument is at last use -- own_iter moves
+        # the container, so using it afterwards is use-after-move.
+        arg = expr.args[0]
+        if isinstance(arg, TpyName):
+            is_last_use = id(arg) in self.ctx.all_last_uses
+            is_movable = self.compat._is_movable_var(arg.name)
+            if not is_last_use or not is_movable:
+                self.ctx.warning(
+                    f"own_iter() consumes '{arg.name}' -- "
+                    f"using it afterwards is undefined behavior. "
+                    f"Use a regular for-loop if the container is needed later.",
+                    expr,
+                )
+            else:
+                self.compat.check_own_consumption(arg)
         elem_type = arg_type.get_iteration_element_type()
         assert elem_type is not None
         result_type = OwnIterType(elem_type)

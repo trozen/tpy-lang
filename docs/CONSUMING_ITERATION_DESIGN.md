@@ -428,6 +428,10 @@ for x in span(b):    # always borrows, x is Node reference
   only accepts `list[T]`. Set/dict use auto-consuming via `__iter__`
   overloads. Could be generalized to dispatch to consuming `__iter__` on
   any type.
+- **`own_iter()` validates last-use**: `own_iter(items)` warns when `items`
+  is not at its last use, since the container is moved and subsequent uses
+  are undefined behavior. When at last use, the argument is marked as
+  consumed via `check_own_consumption`.
 - **Constructor overloads unified**: list/set/dict now use a single
   `Iterable[Own[T]]` constructor with C++ `if constexpr` dispatch. Structural
   protocol-to-protocol conformance allows Iterator[T] to match Iterable[T].

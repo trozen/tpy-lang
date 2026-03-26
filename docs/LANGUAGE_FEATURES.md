@@ -1955,8 +1955,9 @@ for x in s:  # s at last use -- auto-consumes (set moved into OwnIterSet)
 ```
 
 When the container is still needed after the loop, borrowing iteration is used
-automatically. `own_iter(container)` is available as an explicit escape hatch
-for non-last-use consuming (list only).
+automatically. `own_iter(container)` forces consuming iteration (list only);
+the compiler warns if the container is not at its last use, since the
+underlying vector is moved and subsequent uses are undefined behavior.
 
 User-defined types can opt in via `auto_own[Self]` on `__iter__`.
 

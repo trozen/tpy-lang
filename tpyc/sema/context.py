@@ -408,6 +408,7 @@ class FunctionTrackingState:
     current_rebound_params: set[str] = field(default_factory=set)
     current_call_edges: list = field(default_factory=list)
     current_self_mutated: bool = False
+    current_self_struct_mutated: bool = False
     current_struct_mutated_param_names: set[str] = field(default_factory=set)
     current_returned_param_names: set[str] = field(default_factory=set)
     current_consumed_own_params: set[str] = field(default_factory=set)
@@ -709,7 +710,7 @@ class SemanticContext:
         Traces loop variables back to their source iterables transitively.
         """
         if name == "self":
-            # Self structural mutation is covered by self_mutated; no separate field needed.
+            self.current_self_struct_mutated = True
             return
         if name in self.current_param_names and name not in self.current_rebound_params:
             self.current_struct_mutated_param_names.add(name)

@@ -251,6 +251,8 @@ def _analyze_stmt(
         if isinstance(stmt.target, TpySubscript):
             _process_reads(stmt.target.obj, live, last_uses, source_aliases, detached_aliases)
             _process_reads(stmt.target.index, live, last_uses, source_aliases, detached_aliases)
+        elif isinstance(stmt.target, TpyFieldAccess):
+            _process_reads(stmt.target.obj, live, last_uses, source_aliases, detached_aliases)
         elif isinstance(stmt.target, TpyName):
             # x += val reads x, then writes x
             _process_reads(stmt.target, live, last_uses, source_aliases, detached_aliases)
@@ -522,6 +524,9 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
             for node in _collect_reads_expr(stmt.target.obj):
                 live.add(node.name)
             for node in _collect_reads_expr(stmt.target.index):
+                live.add(node.name)
+        elif isinstance(stmt.target, TpyFieldAccess):
+            for node in _collect_reads_expr(stmt.target.obj):
                 live.add(node.name)
         elif isinstance(stmt.target, TpyName):
             live.add(stmt.target.name)

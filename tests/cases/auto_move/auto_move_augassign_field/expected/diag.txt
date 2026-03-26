@@ -1,0 +1,1 @@
+main.py:11: warning: Own[Counter] param 'c' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
