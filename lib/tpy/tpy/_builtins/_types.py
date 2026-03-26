@@ -593,6 +593,11 @@ class str(NativeIterable[Char], Iterable[Char], Equatable):
     @pure
     def splitlines(self) -> Own[list[str]]: ...
 
+    @native("tpy::bytes_from_str", function=True)
+    @readonly
+    @pure
+    def encode(self) -> bytes: ...
+
     @cpp_template("::tpy::__hash__({self})")
     @readonly
     @pure

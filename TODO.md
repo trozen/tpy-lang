@@ -14,6 +14,10 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Define decorators as .py functions: readonly/noalloc/nocopy/pure/dynamic/error_return (tpy), native/cpp_template/builtin_type (tpy.extern), overload/override (typing) are currently parser keywords with empty stub files. Want them as real function definitions eventually so the parser doesn't need special handling. Blocked on: functions need type annotations to compile, and decorator signatures have no meaningful type (identity function over any callable).
 - limit possible imports in macro modules
 - ContextManager[T] protocol
+- Deduplicate PendingStrType / PendingBytesType infrastructure: `_resolve_pending_str_types` and `_resolve_pending_bytes_types` are identical algorithms with different type names. Same for `mark_*_augassign`, `mark_*_param_context`, `mark_*_reassigned_from_owned`, `track_*_reassign_source`, and the `_infer_new_local_type` branches in statements.py. Refactor into a generic `ViewTypeFamily` parameterized by owned/view/pending types, with one shared implementation.
+
+## Codegen
+- Builtin type constructors ignore `native(function=True)`: the constructor codegen path (`expressions.py:1590-1599`) only checks `resolved_function_info.cpp_template`, not `native_function`. A `@native("tpy::bytes_copy", function=True)` on `__init__` emits `TypeName(args)` instead of `tpy::bytes_copy(args)`. Method calls handle `native_function` correctly (line 1845). Fix: extend the constructor path to also dispatch on `native_function`.
 
 ## Bugs
 

@@ -10,11 +10,12 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, OwnType, ReadonlyType,
     FinalType, FixedIntType, BoolType, StrViewType, StringType,
-    ListType, DictType, ArrayType, SpanType, PendingListType, PendingDictType, PendingSetType, PendingStrType, NamedType, CharType, StrType, TypeParamRef,
-    ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, StrVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType, UnknownElementType,
-    EnumType, unwrap_readonly, is_any_str_type, TupleType,
+    ListType, DictType, ArrayType, SpanType, PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, NamedType, CharType, StrType, TypeParamRef,
+    ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, StrVarInfo, BytesVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType, UnknownElementType,
+    EnumType, unwrap_readonly, is_any_str_type, is_any_bytes_type, TupleType,
+    BytesType, ByteArrayType, BytesViewType,
     PendingGenericInstanceType, FnType, contains_fn_type,
-    INT32, VOID, BIGINT, FLOAT, STRVIEW, is_protocol_type, is_protocol_union,
+    INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, is_protocol_type, is_protocol_union,
     qualify_exception_name,
     FunctionInfo, ParamInfo,
 )
@@ -1500,6 +1501,45 @@ class StatementAnalyzer:
             self.ctx.variable_to_str_var[name] = str_var_id
             self.ctx.pending_str_resolutions.append(str_var_id)
             return PendingStrType(str_var_id)
+        elif isinstance(var_type, BytesType):
+            bytes_var_id = self.ctx.bytes_var_counter
+            self.ctx.bytes_var_counter += 1
+            if init_expr is not None:
+                is_owned = not self.deduction.is_view_compatible_source(init_expr, init_type)
+            else:
+                is_owned = False
+            source_storage: str | None = None
+            if not is_owned and init_expr is not None:
+                unwrapped_init = init_expr.expr if isinstance(init_expr, TpyCoerce) else init_expr
+                if isinstance(unwrapped_init, (TpySubscript, TpyFieldAccess)):
+                    root = _borrow_storage_root(unwrapped_init)
+                    if root is not None:
+                        source_storage = self.ctx.borrow_tracker.effective_storage(root)
+            bv_info = BytesVarInfo(bytes_var_id=bytes_var_id, variable_name=name,
+                                   decl_line=line,
+                                   initialized_from_owned=is_owned,
+                                   source_storage=source_storage)
+            self.ctx.bytes_vars[bytes_var_id] = bv_info
+            self.ctx.variable_to_bytes_var[name] = bytes_var_id
+            if source_storage is not None:
+                self.ctx.bytes_source_borrows.setdefault(source_storage, set()).add(bytes_var_id)
+            self.ctx.pending_bytes_resolutions.append(bytes_var_id)
+            return PendingBytesType(bytes_var_id)
+        elif isinstance(var_type, PendingBytesType):
+            bytes_var_id = self.ctx.bytes_var_counter
+            self.ctx.bytes_var_counter += 1
+            if init_expr is not None:
+                source_ids = [t.bytes_var_id for t in collect_pending_source_types(self.ctx, init_expr)
+                              if isinstance(t, PendingBytesType)]
+            else:
+                source_ids = [var_type.bytes_var_id]
+            bv_info = BytesVarInfo(bytes_var_id=bytes_var_id, variable_name=name,
+                                   decl_line=line,
+                                   source_bytes_var_ids=source_ids)
+            self.ctx.bytes_vars[bytes_var_id] = bv_info
+            self.ctx.variable_to_bytes_var[name] = bytes_var_id
+            self.ctx.pending_bytes_resolutions.append(bytes_var_id)
+            return PendingBytesType(bytes_var_id)
         elif (isinstance(var_type, PendingListType)
                 and init_expr is not None and isinstance(init_expr, TpyName)):
             return self.deduction.register_list_alias(
@@ -1903,6 +1943,14 @@ class StatementAnalyzer:
                         else:
                             self.deduction.track_str_reassign_source(stmt.name, inner_init)
                     var_type = existing_type
+                # PendingBytesType reassignment: track view-compatibility, keep pending
+                elif isinstance(inner_existing, PendingBytesType):
+                    if is_any_bytes_type(inner_init):
+                        if not self.deduction.is_view_compatible_source(stmt.init, inner_init):
+                            self.deduction.mark_bytes_reassigned_from_owned(stmt.name)
+                        else:
+                            self.deduction.track_bytes_reassign_source(stmt.name, inner_init)
+                    var_type = existing_type
                 else:
                     var_type = self.deduction.resolve_reassignment_target_type(
                         stmt.name, inner_existing, inner_init, init_expr=stmt.init
@@ -1982,7 +2030,7 @@ class StatementAnalyzer:
                 stmt.name, var_type, stmt.init, init_type,
                 line=(stmt.loc.line if stmt.loc else None),
             )
-            if isinstance(var_type, PendingStrType):
+            if isinstance(var_type, (PendingStrType, PendingBytesType)):
                 stmt.type = var_type
 
         if is_global_declared:
@@ -2243,7 +2291,7 @@ class StatementAnalyzer:
                     stmt.is_new[i]
                     and not stmt.is_ref[i]
                     and not stmt.is_owned[i]
-                    and not isinstance(target_type, PendingStrType)
+                    and not isinstance(target_type, (PendingStrType, PendingBytesType))
                     and target_type.is_value_type()
                     and target_type.is_expensive_copy()
                     and name not in self.ctx.current_reassigned_vars
@@ -2376,6 +2424,14 @@ class StatementAnalyzer:
                     else:
                         self.deduction.track_str_reassign_source(stmt.target.name, inner_value)
                 # target_type stays PendingStrType
+            # PendingBytesType reassignment: track view-compatibility, keep pending
+            elif isinstance(inner_target, PendingBytesType):
+                if is_any_bytes_type(inner_value):
+                    if not self.deduction.is_view_compatible_source(stmt.value, inner_value):
+                        self.deduction.mark_bytes_reassigned_from_owned(stmt.target.name)
+                    else:
+                        self.deduction.track_bytes_reassign_source(stmt.target.name, inner_value)
+                # target_type stays PendingBytesType
             else:
                 target_type = self.deduction.resolve_reassignment_target_type(
                     stmt.target.name, inner_target, inner_value, init_expr=stmt.value
@@ -2402,7 +2458,7 @@ class StatementAnalyzer:
                 self.ctx.current_ns.update_variable_type(stmt.target.name, target_type)
             self.ctx.set_expr_type(stmt.target, target_type)
             self.deduction.record_write(stmt.target.name, stmt.value, inner_value)
-            if not isinstance(inner_target, (*PENDING_CONTAINER_TYPES, PendingStrType)):
+            if not isinstance(inner_target, (*PENDING_CONTAINER_TYPES, PendingStrType, PendingBytesType)):
                 resolved = unwrap_readonly(target_type)
                 var_decl = self.ctx.var_decl_by_name.get(stmt.target.name)
                 if var_decl:
@@ -2743,14 +2799,23 @@ class StatementAnalyzer:
         # StrView is excluded -- it's non-owning, so += would dangle.
         is_numeric_target = isinstance(target_type, (Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type))
         is_str_target = isinstance(target_type, (StrType, StringType, PendingStrType))
+        is_bytes_target = isinstance(target_type, (BytesType, ByteArrayType, PendingBytesType))
         # PendingStrType += promotes to owned str
         if isinstance(target_type, PendingStrType) and isinstance(stmt.target, TpyName):
             self.deduction.mark_str_augassign(stmt.target.name)
-        if not is_numeric_target and not is_str_target:
-            # StrView += would dangle (result is a temporary string assigned to a view)
+        # PendingBytesType += promotes to owned bytes
+        if isinstance(target_type, PendingBytesType) and isinstance(stmt.target, TpyName):
+            self.deduction.mark_bytes_augassign(stmt.target.name)
+        if not is_numeric_target and not is_str_target and not is_bytes_target:
+            # StrView/BytesView += would dangle (result is a temporary assigned to a view)
             if isinstance(target_type, StrViewType):
                 raise self.ctx.error(
                     f"Augmented assignment is not supported for StrView (result would dangle)",
+                    stmt,
+                )
+            if isinstance(target_type, BytesViewType):
+                raise self.ctx.error(
+                    f"Augmented assignment is not supported for BytesView (result would dangle)",
                     stmt,
                 )
             # Try in-place method first (e.g. __iadd__, __ior__), then binary operator

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from ..macro_loader import MacroRegistry
 
 from ..typesys import (
-    TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, StrVarInfo, TypeParamKind, IntLiteralType,
+    TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, StrVarInfo, BytesVarInfo, TypeParamKind, IntLiteralType,
     FixedIntType, INT32, BIGINT, NamedType, ReadonlyType, OwnType, OptionalType,
     PendingListType, PendingDictType, PendingSetType,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
@@ -339,6 +339,11 @@ class FunctionTrackingState:
     str_source_borrows: dict[str, set[int]] = field(default_factory=dict)
     pending_str_resolutions: list[int] = field(default_factory=list)
 
+    # --- Bytes local tracking ---
+    variable_to_bytes_var: dict[str, int] = field(default_factory=dict)
+    bytes_source_borrows: dict[str, set[int]] = field(default_factory=dict)
+    pending_bytes_resolutions: list[int] = field(default_factory=list)
+
     # --- Control flow ---
     super_init_call: TpyMethodCall | None = None
     super_del_call: TpyMethodCall | None = None
@@ -447,6 +452,8 @@ class SemanticContext:
     pending_generic_counter: int = 0
     str_var_counter: int = 0
     str_vars: dict[int, StrVarInfo] = field(default_factory=dict)
+    bytes_var_counter: int = 0
+    bytes_vars: dict[int, BytesVarInfo] = field(default_factory=dict)
 
     # --- Test annotation facts (persist across functions) ---
     declared_var_types: dict[tuple[int, str], TpyType] = field(default_factory=dict)

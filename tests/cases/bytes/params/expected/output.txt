@@ -1,0 +1,6 @@
+5
+104
+False
+True
+b'hello'
+True

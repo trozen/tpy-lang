@@ -536,6 +536,113 @@ class CharType(TpyType):
 
 
 @dataclass(frozen=True)
+class BytesType(TpyType):
+    """Bytes type -- context-dependent C++ mapping.
+
+    Default (locals, fields, returns, type args): std::vector<uint8_t> (owned).
+    Parameters: std::span<const uint8_t> (zero-copy).
+    """
+
+    def to_cpp(self) -> str:
+        return "std::vector<uint8_t>"
+
+    def __str__(self) -> str:
+        return "bytes"
+
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.bytes"
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def is_expensive_copy(self) -> bool:
+        return True
+
+    def to_cpp_param_type(self) -> str:
+        return "std::span<const uint8_t>"
+
+    def to_cpp_param(self, name: str) -> str:
+        return f"std::span<const uint8_t> {name}"
+
+    def to_cpp_const_param(self, name: str) -> str:
+        return f"std::span<const uint8_t> {name}"
+
+    def param_needs_copy_for_reassign(self) -> bool:
+        return True
+
+    def get_element_type(self) -> Optional['TpyType']:
+        from tpyc.typesys import UINT8
+        return UINT8
+
+
+@dataclass(frozen=True)
+class ByteArrayType(TpyType):
+    """Explicit owned mutable bytes type: tpy.bytearray -> std::vector<uint8_t>."""
+
+    def to_cpp(self) -> str:
+        return "std::vector<uint8_t>"
+
+    def __str__(self) -> str:
+        return "bytearray"
+
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.bytearray"
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def is_expensive_copy(self) -> bool:
+        return True
+
+    def to_cpp_param_type(self) -> str:
+        return "const std::vector<uint8_t>&"
+
+    def to_cpp_param(self, name: str) -> str:
+        return f"const std::vector<uint8_t>& {name}"
+
+    def to_cpp_const_param(self, name: str) -> str:
+        return f"const std::vector<uint8_t>& {name}"
+
+    def param_needs_copy_for_reassign(self) -> bool:
+        return True
+
+    def get_element_type(self) -> Optional['TpyType']:
+        from tpyc.typesys import UINT8
+        return UINT8
+
+
+@dataclass(frozen=True)
+class BytesViewType(TpyType):
+    """Bytes view type: tpy.BytesView -> std::span<const uint8_t>.
+
+    Same C++ type as Span[readonly[UInt8]], but carries bytes semantics
+    (prints as b'...', has .decode()/.hex() methods).
+    """
+
+    def to_cpp(self) -> str:
+        return "std::span<const uint8_t>"
+
+    def __str__(self) -> str:
+        return "BytesView"
+
+    def qualified_name(self) -> Optional[str]:
+        return "tpy.BytesView"
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def is_send(self) -> bool:
+        return False
+
+    def is_sync(self) -> bool:
+        return True
+
+    def get_element_type(self) -> Optional['TpyType']:
+        from tpyc.typesys import UINT8
+        return UINT8
+
+
+@dataclass(frozen=True)
 class BoolType(TpyType):
     """Boolean type."""
 
@@ -1405,6 +1512,11 @@ def unwrap_final(typ: 'TpyType') -> 'TpyType':
 def is_any_str_type(typ: 'TpyType') -> bool:
     """Check if a type is any string type (str, String, StrView, PendingStr)."""
     return isinstance(typ, (StrType, StringType, StrViewType, PendingStrType))
+
+
+def is_any_bytes_type(typ: 'TpyType') -> bool:
+    """Check if a type is any bytes type (bytes, bytearray, BytesView, PendingBytes)."""
+    return isinstance(typ, (BytesType, ByteArrayType, BytesViewType, PendingBytesType))
 
 
 def is_constexpr_eligible(typ: 'TpyType') -> bool:
@@ -2711,6 +2823,51 @@ class StrVarInfo:
     resolved_type: Optional[TpyType] = None
 
 
+@dataclass(frozen=True)
+class PendingBytesType(TpyType):
+    """Unresolved bytes local -- becomes BytesView or bytes based on usage.
+
+    Assigned to bytes-typed locals in function contexts during the first
+    analysis phase. After the full function body is analyzed, resolved
+    based on collected usage (augmented assignment, owned source, etc.).
+    """
+    bytes_var_id: int
+
+    def to_cpp(self) -> str:
+        raise RuntimeError(
+            f"PendingBytesType should be resolved before codegen (bytes_var_id={self.bytes_var_id})"
+        )
+
+    def __str__(self) -> str:
+        return "bytes"
+
+    def qualified_name(self) -> Optional[str]:
+        return "builtins.bytes"
+
+    def is_value_type(self) -> bool:
+        return True
+
+    def get_element_type(self) -> Optional[TpyType]:
+        from tpyc.typesys import UINT8
+        return UINT8
+
+
+@dataclass
+class BytesVarInfo:
+    """Tracks usage of a bytes local to decide BytesView vs bytes."""
+    bytes_var_id: int
+    variable_name: str
+    decl_line: Optional[int] = None
+    initialized_from_owned: bool = False
+    used_in_augassign: bool = False
+    passed_to_bytearray_param: bool = False
+    reassigned_from_owned: bool = False
+    source_bytes_var_ids: list[int] = field(default_factory=list)
+    source_storage: Optional[str] = None
+    source_mutated: bool = False
+    resolved_type: Optional[TpyType] = None
+
+
 # Singleton instances for built-in types
 INT8 = FixedIntType(8, True)
 INT16 = FixedIntType(16, True)
@@ -2727,6 +2884,9 @@ STR = StrType()
 STRING = StringType()
 STRVIEW = StrViewType()
 CHAR = CharType()
+BYTES = BytesType()
+BYTEARRAY = ByteArrayType()
+BYTESVIEW = BytesViewType()
 BOOL = BoolType()
 FLOAT = FloatType()
 FLOAT32 = Float32Type()

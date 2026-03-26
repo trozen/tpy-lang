@@ -14,6 +14,7 @@ from ..typesys import (
     FloatType, Float32Type,
     TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
     PendingStrType, StrType, StringType, StrViewType,
+    PendingBytesType, BytesType, ByteArrayType, BytesViewType,
     NamedType, PtrType, OwnType,
 )
 from ..coercions import resolve_coercion, CoercionContext
@@ -72,6 +73,9 @@ def type_matches_strict(
         return True
     # PendingStrType (unresolved str local) matches str params
     if isinstance(arg_inner, PendingStrType) and isinstance(param_inner, StrType):
+        return True
+    # PendingBytesType (unresolved bytes local) matches bytes params
+    if isinstance(arg_inner, PendingBytesType) and isinstance(param_inner, BytesType):
         return True
     if protocol_checker and is_protocol_type(param_inner):
         # Unwrap Own[T] from arg -- copy()-wrapped return values should still match
@@ -154,6 +158,9 @@ def type_matches_with_coercion(
         return True
     # PendingStrType matches any string type (str, String, StrView)
     if isinstance(arg_inner, PendingStrType) and isinstance(param_inner, (StrType, StringType, StrViewType)):
+        return True
+    # PendingBytesType matches any bytes type (bytes, bytearray, BytesView)
+    if isinstance(arg_inner, PendingBytesType) and isinstance(param_inner, (BytesType, ByteArrayType, BytesViewType)):
         return True
     if protocol_checker and is_protocol_type(param_inner):
         # Unwrap Own[T] -- ownership marker, not a distinct type.

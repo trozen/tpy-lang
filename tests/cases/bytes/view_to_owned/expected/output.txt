@@ -1,0 +1,4 @@
+b'hello'
+b'hello!'
+b'world!'
+b'hello'

@@ -9,7 +9,7 @@ from dataclasses import replace as dc_replace
 from typing import Callable, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingStrType, CopyIterType, OwnIterType,
+    TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingStrType, PendingBytesType, CopyIterType, OwnIterType,
     IntLiteralType, FloatType, Float32Type, BoolType,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType, ReadonlyType,
@@ -1968,6 +1968,8 @@ class CallAnalyzer:
                 self.deduction.mark_container_param_context(arg, arg_type, ptype)
             if isinstance(arg_type, PendingStrType):
                 self.deduction.mark_str_param_context(arg, ptype)
+            if isinstance(arg_type, PendingBytesType):
+                self.deduction.mark_bytes_param_context(arg, ptype)
 
         self._check_borrow_arg_conflicts(expr)
         self._check_loop_var_arg_mutation(expr)
@@ -2144,6 +2146,8 @@ class CallAnalyzer:
                 self.deduction.mark_container_param_context(arg, arg_type, resolved_ptype)
             if isinstance(arg_type, PendingStrType):
                 self.deduction.mark_str_param_context(arg, resolved_ptype)
+            if isinstance(arg_type, PendingBytesType):
+                self.deduction.mark_bytes_param_context(arg, resolved_ptype)
 
         # Resolve return type
         resolved_return = self.type_ops.substitute_type_params(func.return_type, type_subst)
@@ -2486,6 +2490,8 @@ class CallAnalyzer:
                 self.deduction.mark_container_param_context(arg, arg_type, ptype)
             if isinstance(arg_type, PendingStrType):
                 self.deduction.mark_str_param_context(arg, ptype)
+            if isinstance(arg_type, PendingBytesType):
+                self.deduction.mark_bytes_param_context(arg, ptype)
 
         self._check_borrow_arg_conflicts(expr)
         self._check_loop_var_arg_mutation(expr)

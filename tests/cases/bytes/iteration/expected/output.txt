@@ -1,0 +1,10 @@
+65
+66
+67
+65
+67
+67
+True
+False
+b'hello world'
+b'hellohellohello'

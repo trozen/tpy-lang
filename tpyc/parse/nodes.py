@@ -79,6 +79,12 @@ class TpyStrLiteral(TpyExpr):
     value: str
 
 
+@dataclass
+class TpyBytesLiteral(TpyExpr):
+    """Bytes literal (b"...")."""
+    value: bytes
+
+
 # F-string conversion codes (from CPython's ast module)
 FSTRING_CONV_NONE = -1
 FSTRING_CONV_STR = 115    # !s

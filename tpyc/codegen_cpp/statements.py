@@ -11,7 +11,7 @@ from typing import Callable, TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, FloatLiteralType, BoolType,
     ArrayType, ListType, PendingListType, PendingDictType, PendingSetType, PendingStrType, OwnType, OptionalType,
-    NoneType, NamedType, StrType, StringType, StrViewType, STR, TupleType, VoidType,
+    NoneType, NamedType, StrType, StringType, StrViewType, BytesType, BytesViewType, PendingBytesType, STR, BYTES, TupleType, VoidType,
     INT32, BIGINT, FLOAT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType,
     local_var_is_movable, resolve_int_literals,
@@ -599,6 +599,9 @@ class StatementGenerator:
             elif isinstance(target_type, PendingStrType):
                 info = self.ctx.analyzer.ctx.str_vars.get(target_type.str_var_id)
                 target_type = info.resolved_type if info and info.resolved_type else STR
+            elif isinstance(target_type, PendingBytesType):
+                info = self.ctx.analyzer.ctx.bytes_vars.get(target_type.bytes_var_id)
+                target_type = info.resolved_type if info and info.resolved_type else BYTES
         return target_type
 
     def _resolve_pending_container(self, typ: TpyType) -> TpyType | None:
@@ -1251,6 +1254,10 @@ class StatementGenerator:
             elif isinstance(target_type, StrType):
                 if self._is_str_view_source(stmt.init):
                     init_expr = f"std::string({init_expr})"
+            # span -> vector init requires explicit conversion in C++.
+            elif isinstance(target_type, BytesType):
+                if self._is_bytes_view_source(stmt.init):
+                    init_expr = f"::tpy::bytes_copy({init_expr})"
             return f"{indent}{cpp_type} {cpp_name} = {init_expr};\n"
         else:
             return f"{indent}{cpp_type} {cpp_name};\n"
@@ -1515,6 +1522,16 @@ class StatementGenerator:
         # reachable in practice (Optional[str] coercions go through the
         # _is_optional_str_param / _expr_uses_optional_str_param guards instead).
         return self.expressions._is_str_view_at_runtime(expr)
+
+    def _is_bytes_view_source(self, expr: TpyExpr) -> bool:
+        """Check if expr produces std::span<const uint8_t> at C++ runtime.
+
+        Bytes literals are temporary vectors (not view-safe), so return False.
+        Bytes params are spans, so return True.
+        """
+        if isinstance(self.types.get_resolved_type(expr), BytesViewType):
+            return True
+        return self.expressions._is_bytes_view_at_runtime(expr)
 
     def _expr_uses_optional_str_param(self, expr: TpyExpr) -> bool:
         """Check if expr (e.g. ternary) dereferences an Optional[str] param."""

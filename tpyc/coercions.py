@@ -10,6 +10,7 @@ from .typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type,
     FloatLiteralType,
     NamedType, PtrType, is_readonly_ptr, CharType, StrType, StringType, StrViewType,
+    BytesType, ByteArrayType, BytesViewType,
     SpanType, is_readonly_span, PendingListType, TypeParamRef, TypeParamKind, ReadonlyType,
     ListType, ArrayType,
 )
@@ -278,6 +279,47 @@ COERCIONS: list[Coercion] = [
         from_type=StrViewType,
         to_type=StrType,
         codegen=lambda e, _a, _b, _c: f"std::string({e})",
+        protocol_safe=True,
+    ),
+
+    # bytearray <-> bytes identity coercions (both map to std::vector<uint8_t>)
+    Coercion(
+        name="bytearray_to_bytes",
+        from_type=ByteArrayType,
+        to_type=BytesType,
+        protocol_safe=True,
+    ),
+    Coercion(
+        name="bytes_to_bytearray",
+        from_type=BytesType,
+        to_type=ByteArrayType,
+    ),
+
+    # bytes/bytearray -> BytesView (safe implicit, vector -> span)
+    Coercion(
+        name="bytes_to_bytesview",
+        from_type=BytesType,
+        to_type=BytesViewType,
+    ),
+    Coercion(
+        name="bytearray_to_bytesview",
+        from_type=ByteArrayType,
+        to_type=BytesViewType,
+    ),
+
+    # BytesView -> bytes/bytearray (allocates)
+    Coercion(
+        name="bytesview_to_bytes",
+        from_type=BytesViewType,
+        to_type=BytesType,
+        codegen=lambda e, _a, _b, _c: f"std::vector<uint8_t>({e}.begin(), {e}.end())",
+        protocol_safe=True,
+    ),
+    Coercion(
+        name="bytesview_to_bytearray",
+        from_type=BytesViewType,
+        to_type=ByteArrayType,
+        codegen=lambda e, _a, _b, _c: f"std::vector<uint8_t>({e}.begin(), {e}.end())",
         protocol_safe=True,
     ),
 

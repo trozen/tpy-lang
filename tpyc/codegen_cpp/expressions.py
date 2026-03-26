@@ -10,17 +10,17 @@ import re
 from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, StrViewType, CharType,
+    TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, StrViewType, BytesType, BytesViewType, CharType,
     NamedType, PtrType, OwnType, OptionalType, NoneType, ArrayType, ListType, DictType, SetType,
     DictKeysViewType, DictValuesViewType, DictItemsViewType,
     PendingListType, ListRepeatType,
     SpanType, SpanIterType, TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     EnumType, IntEnumType, TupleType, FnType, CallableType,
-    INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, container_to_str_template,
+    INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params,
 )
 from ..parse import (
-    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
+    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_REPR, FSTRING_CONV_STR,
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
@@ -562,6 +562,12 @@ class ExpressionGenerator:
                 return f"'{escape_cpp_char(expr.value)}'"
             return f'"{escape_cpp_string(expr.value)}"'
 
+        elif isinstance(expr, TpyBytesLiteral):
+            if not expr.value:
+                return "std::vector<uint8_t>{}"
+            hex_bytes = ", ".join(f"0x{b:02x}" for b in expr.value)
+            return f"std::vector<uint8_t>{{{hex_bytes}}}"
+
         elif isinstance(expr, TpyName):
             # Function reference: generate qualified C++ function name
             if expr.is_function_ref and expr.function_ref_info is not None:
@@ -726,6 +732,8 @@ class ExpressionGenerator:
             return f"::tpy::is_truthy({rendered})"
         if is_any_str_type(var_type):
             return f"(!{rendered}.empty())"
+        if is_any_bytes_type(var_type):
+            return f"(!{rendered}.empty())"
         record = self.ctx.analyzer.registry.get_record_for_type(var_type)
         if record:
             if record.get_method_overloads("__bool__"):
@@ -763,6 +771,23 @@ class ExpressionGenerator:
             return (self._is_str_view_at_runtime(expr.then_expr)
                     and self._is_str_view_at_runtime(expr.else_expr))
         return isinstance(self.types.get_resolved_type(expr), StrViewType)
+
+    def _is_bytes_view_at_runtime(self, expr: TpyExpr) -> bool:
+        """True if this expression produces std::span<const uint8_t> at C++ runtime.
+
+        bytes params use span via to_cpp_param. Bytes literals are NOT views
+        (temporary vectors). BytesViewType locals are explicit views.
+        """
+        if isinstance(expr, TpyName):
+            return (isinstance(self.ctx.current_func_params.get(expr.name), BytesType)
+                    or isinstance(self.types.get_resolved_type(expr), BytesViewType))
+        if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
+            return (self._is_bytes_view_at_runtime(expr.left)
+                    and self._is_bytes_view_at_runtime(expr.right))
+        if isinstance(expr, TpyIfExpr):
+            return (self._is_bytes_view_at_runtime(expr.then_expr)
+                    and self._is_bytes_view_at_runtime(expr.else_expr))
+        return isinstance(self.types.get_resolved_type(expr), BytesViewType)
 
     def _gen_logical_value(self, expr: TpyBinOp, result_type: TpyType) -> str:
         """Generate and/or with Python operand semantics (returns operand, not bool).
@@ -2933,6 +2958,8 @@ class ExpressionGenerator:
                 obj_type = obj_type.inner
         if is_any_str_type(obj_type):
             return f"::tpy::str_slice({obj}, {start}, {stop})"
+        if is_any_bytes_type(obj_type):
+            return f"::tpy::bytes_slice({obj}, {start}, {stop})"
         return f"::tpy::list_slice({obj}, {start}, {stop})"
 
     def _gen_slice_bound(self, expr: TpyExpr) -> str:

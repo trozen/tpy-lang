@@ -4,6 +4,7 @@ from tpy._builtins import (
     BaseException, Exception, StopIteration,
     Range, range,
     len, repr, hash, chr, ord, abs, min, max, pow, divmod, next,
+    bytes, bytearray,
     bool, int, float, str,
     list, dict, dict_keys, dict_values, dict_items,
     set,
@@ -11,7 +12,7 @@ from tpy._builtins import (
 
 __all__ = [
     # Types (always available without import)
-    "int", "float", "bool", "str", "None",
+    "int", "float", "bool", "str", "bytes", "bytearray", "None",
     "tuple", "slice", "type",
     "Exception", "BaseException",
     # These require explicit import in user code

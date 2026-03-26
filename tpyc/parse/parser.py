@@ -16,14 +16,14 @@ from ..typesys import (
     TpyType, NamedType, PtrType, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, FinalType, SelfType,
     strip_auto_readonly, apply_auto_readonly, has_auto_readonly, strip_auto_own, apply_auto_own, ensure_qualified,
     TypeParamRef, OptionalType, VoidType, make_union, EnumType, TupleType, FnType, CallableType,
-    INT32, VOID, STR, STRING, STRVIEW, CHAR, BOOL, FLOAT, FLOAT32, BIGINT, SELF, SLICE, FieldInfo, RecordInfo, TypeRegistry,
+    INT32, VOID, STR, STRING, STRVIEW, CHAR, BYTES, BYTEARRAY, BYTESVIEW, BOOL, FLOAT, FLOAT32, BIGINT, SELF, SLICE, FieldInfo, RecordInfo, TypeRegistry,
     FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, BoolType, StrType,
     ALL_FIXED_INTS, public_module_name,
 )
 from ..modules import lookup_generic_type, lookup_generic_type_in_module, lookup_protocol as lookup_builtin_protocol, BuiltinTypeDef
 from .nodes import (
     ParseError, SourceLocation, ParseWarning, RecordLinkage, FunctionLinkage,
-    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
+    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_ASCII,
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct, TpyCall, TpyMethodCall,
@@ -473,6 +473,8 @@ class Parser:
             elif original == "float": return FLOAT
             elif original == "bool": return BOOL
             elif original == "str": return STR
+            elif original == "bytes": return BYTES
+            elif original == "bytearray": return BYTEARRAY
             elif original == "slice": return SLICE
             elif original == "None": return VOID
             elif original == "type": return NamedType("type", _module_qname=qnames.TYPE)
@@ -489,6 +491,8 @@ class Parser:
                 return STRING
             elif original == "StrView":
                 return STRVIEW
+            elif original == "BytesView":
+                return BYTESVIEW
         elif module == "typing":
             if original == "Self":
                 return SELF
@@ -2635,6 +2639,8 @@ class Parser:
                 return TpyFloatLiteral(node.value, loc=loc)
             elif isinstance(node.value, str):
                 return TpyStrLiteral(node.value, loc=loc)
+            elif isinstance(node.value, bytes):
+                return TpyBytesLiteral(node.value, loc=loc)
             elif node.value is None:
                 return TpyNoneLiteral(loc=loc)
             else:

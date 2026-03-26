@@ -14,15 +14,17 @@ from ..typesys import (
     NamedType, PtrType, OwnType, ListType, DictType, SetType, ArrayType, PendingListType, ListRepeatType, GenExprType, TupleType, SpanType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType, VoidType,
     ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
+    is_any_bytes_type, BytesType, ByteArrayType, BytesViewType, PendingBytesType,
     FixedIntType, StringType, StrViewType, make_union,
     ResolvedBinop, FunctionInfo, ParamInfo, UnknownElementType, UNKNOWN_ELEMENT,
     PendingDictType, PendingSetType, DictLiteralInfo,
     resolve_int_literals, FnType, CallableType,
-    INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, SLICE, is_protocol_type, container_to_str_template,
+    INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, SLICE, BYTES, BYTESVIEW, UINT8,
+    is_protocol_type, container_to_str_template,
     PendingGenericInstanceType, SliceType,
 )
 from ..parse import (
-    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
+    TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_REPR, FSTRING_CONV_STR,
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
@@ -197,6 +199,8 @@ class ExpressionAnalyzer:
             # String literals are always str type (including single-char)
             # Char type is only used when explicitly annotated or from string indexing
             typ = STR
+        elif isinstance(expr, TpyBytesLiteral):
+            typ = BYTES
         elif isinstance(expr, TpyBoolLiteral):
             typ = BOOL
         elif isinstance(expr, TpyNoneLiteral):
@@ -594,6 +598,13 @@ class ExpressionAnalyzer:
             left = STR
         if isinstance(right, PendingStrType):
             right = STR
+        # Same normalization for PendingBytesType
+        if isinstance(left, PendingBytesType) and isinstance(right, PendingBytesType):
+            return left
+        if isinstance(left, PendingBytesType):
+            left = BYTES
+        if isinstance(right, PendingBytesType):
+            right = BYTES
         # Normalize pending container types to concrete types for equality comparison.
         # Two PendingListType literals with the same element type (but different IDs
         # or different IntLiteralType values like 1 vs 3) are compatible.
@@ -835,10 +846,15 @@ class ExpressionAnalyzer:
                     param_type = method.params[0].type
                     if type_subst:
                         param_type = _substitute_type_params(param_type, type_subst)
-                    # Resolve IntLiteralType for compatibility check
+                    # Resolve IntLiteralType: use param type if the literal fits,
+                    # otherwise fall back to default int type
                     check_left = left_type
                     if isinstance(check_left, IntLiteralType):
-                        check_left = self.ctx.default_int_for_literal(check_left)
+                        if (isinstance(param_type, FixedIntType)
+                                and param_type.min_value <= check_left.value <= param_type.max_value):
+                            check_left = param_type
+                        else:
+                            check_left = self.ctx.default_int_for_literal(check_left)
                     if not isinstance(param_type, TypeParamRef):
                         self.compat.check_type_compatible(
                             check_left, param_type,
@@ -1512,7 +1528,7 @@ class ExpressionAnalyzer:
             return
         if isinstance(key_type, (EnumType, IntEnumType)):
             return
-        if isinstance(key_type, PendingStrType):
+        if isinstance(key_type, (PendingStrType, PendingBytesType)):
             return
         # User records: allow frozen dataclasses (have synthesized __hash__ + __eq__)
         if isinstance(key_type, NamedType) and key_type.is_user_record:
@@ -1545,6 +1561,8 @@ class ExpressionAnalyzer:
             resolved = FLOAT
         elif isinstance(resolved, PendingStrType):
             resolved = STR
+        elif isinstance(resolved, PendingBytesType):
+            resolved = BYTES
 
         # PEP 572: walrus in comprehension leaks to enclosing function scope
         target_scope = self.ctx.current_scope
@@ -1672,6 +1690,13 @@ class ExpressionAnalyzer:
             t = STR
         if isinstance(e, PendingStrType):
             e = STR
+        # Same for PendingBytesType
+        if isinstance(t, PendingBytesType) and isinstance(e, PendingBytesType):
+            return t
+        if isinstance(t, PendingBytesType):
+            t = BYTES
+        if isinstance(e, PendingBytesType):
+            e = BYTES
         # Normalize pending container types to concrete types for equality comparison,
         # resolving IntLiteralType elements so [1,2] and [3,4] both normalize to list[int].
         t = self._normalize_pending_container(t)
@@ -1815,6 +1840,10 @@ class ExpressionAnalyzer:
             key_type = STR
         if isinstance(value_type, PendingStrType):
             value_type = STR
+        if isinstance(key_type, PendingBytesType):
+            key_type = BYTES
+        if isinstance(value_type, PendingBytesType):
+            value_type = BYTES
 
         self._validate_dict_key_type(key_type, expr)
         return DictType(key_type, value_type)
@@ -1879,6 +1908,8 @@ class ExpressionAnalyzer:
         # Container elements must be owned -- SetType must record StrType, not PendingStrType.
         if isinstance(elem_type, PendingStrType):
             elem_type = STR
+        if isinstance(elem_type, PendingBytesType):
+            elem_type = BYTES
 
         self._validate_dict_key_type(elem_type, expr)
         return SetType(elem_type)
@@ -2328,6 +2359,7 @@ class ExpressionAnalyzer:
         raise self.ctx.error(f"Cannot index type {obj_type}", expr)
 
     _SLICEABLE_STR_TYPES = (StrType, StringType, StrViewType, PendingStrType)
+    _SLICEABLE_BYTES_TYPES = (BytesType, ByteArrayType, BytesViewType, PendingBytesType)
     _SLICEABLE_CONTAINER_TYPES = (ListType, PendingListType, ArrayType, SpanType)
 
     def _analyze_slice(self, expr: TpySubscript, obj_type: TpyType) -> TpyType:
@@ -2347,6 +2379,11 @@ class ExpressionAnalyzer:
         # String slicing -> StrView
         if isinstance(actual_type, self._SLICEABLE_STR_TYPES):
             return STRVIEW
+
+        # Bytes slicing -> owned bytes (not a view -- avoids dangling span
+        # since bytes literals are temporary vectors, not static storage)
+        if isinstance(actual_type, self._SLICEABLE_BYTES_TYPES):
+            return BYTES
 
         # Container slicing -> Span[T] or Span[readonly[T]]
         if isinstance(actual_type, self._SLICEABLE_CONTAINER_TYPES):

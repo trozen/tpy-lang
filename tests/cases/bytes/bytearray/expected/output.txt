@@ -1,0 +1,9 @@
+bytearray(b'\x01\x02\x03')
+3
+bytearray(b'\x01\x02\x03\x04')
+bytearray(b'\n\x02\x03\x04')
+4
+bytearray(b'\n\x02\x03')
+bytearray(b'\n\x14\x02\x03')
+bytearray(b'')
+0

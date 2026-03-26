@@ -31,6 +31,10 @@ from ..typesys import (
     PendingListType,
     PendingSetType,
     PendingStrType,
+    PendingBytesType,
+    BytesType,
+    ByteArrayType,
+    BytesViewType,
     SetLiteralInfo,
     SetType,
     SpanType,
@@ -41,6 +45,8 @@ from ..typesys import (
     TupleType,
     STR,
     STRVIEW,
+    BYTES,
+    BYTESVIEW,
     FLOAT,
     UnknownElementType,
     resolve_int_literals,
@@ -85,7 +91,7 @@ def collect_pending_source_types(ctx: 'SemanticContext', expr: 'TpyExpr') -> 'li
         return (collect_pending_source_types(ctx, expr.then_expr)
                 + collect_pending_source_types(ctx, expr.else_expr))
     t = ctx.get_expr_type(expr)
-    if isinstance(t, (PendingStrType, PendingListType, PendingDictType, PendingSetType)):
+    if isinstance(t, (PendingStrType, PendingBytesType, PendingListType, PendingDictType, PendingSetType)):
         return [t]
     return []
 
@@ -544,6 +550,8 @@ class LocalTypeDeduction:
             if isinstance(elem_type, PendingStrType):
                 # Container elements are owned -- string_view can't be stored in a list.
                 elem_type = STR
+            if isinstance(elem_type, PendingBytesType):
+                elem_type = BYTES
 
             # Determine resolved type
             is_repeat = isinstance(info.expr, TpyListRepeat)
@@ -678,6 +686,10 @@ class LocalTypeDeduction:
                 key_type = STR
             if isinstance(value_type, PendingStrType):
                 value_type = STR
+            if isinstance(key_type, PendingBytesType):
+                key_type = BYTES
+            if isinstance(value_type, PendingBytesType):
+                value_type = BYTES
 
             self._apply_container_resolution(info, DictType(key_type, value_type))
 
@@ -702,6 +714,8 @@ class LocalTypeDeduction:
                 elem_type = self.ctx.default_int_for_literal(elem_type)
             if isinstance(elem_type, PendingStrType):
                 elem_type = STR
+            if isinstance(elem_type, PendingBytesType):
+                elem_type = BYTES
 
             self._apply_container_resolution(info, SetType(elem_type))
 
@@ -729,48 +743,59 @@ class LocalTypeDeduction:
     # ------------------------------------------------------------------
 
     def is_view_compatible_source(self, init_expr: TpyExpr, init_type: TpyType) -> bool:
-        """Check if init_expr produces a view-safe value (no owned string needed).
+        """Check if init_expr produces a view-safe value (no owned copy needed).
 
         View-safe sources:
         - String literal (static lifetime)
-        - A str parameter (already string_view in C++)
-        - Another PendingStrType or StrViewType local
+        - A str/bytes parameter (already string_view/span in C++)
+        - Another PendingStrType/PendingBytesType or StrViewType/BytesViewType local
         - A Final[str] constant (constexpr string_view)
-        - A function returning StrView
+        - A function returning StrView/BytesView
         - Subscript on lvalue tuple (immutable, stable element storage)
+
+        Note: bytes literals are NOT view-safe (temporary vectors, unlike string
+        literals which have static storage).
         """
-        if not isinstance(init_type, (StrType, StrViewType, PendingStrType)):
+        is_str = isinstance(init_type, (StrType, StrViewType, PendingStrType))
+        is_bytes = isinstance(init_type, (BytesType, BytesViewType, PendingBytesType))
+        if not is_str and not is_bytes:
             return False
 
         if isinstance(init_expr, TpyCoerce):
             init_expr = init_expr.expr
 
         # String literal -> static lifetime, always view-safe
+        # (bytes literals are NOT -- they're temporary vectors)
         if isinstance(init_expr, TpyStrLiteral):
             return True
 
         # Named variable reference
         if isinstance(init_expr, TpyName):
             name = init_expr.name
-            # Check if it's a str parameter (C++ already passes as string_view)
+            # Check if it's a str/bytes parameter (C++ already passes as view)
             func = self.ctx.current_function
             if isinstance(func, TpyFunction):
                 for pname, ptype in func.params:
-                    if pname == name and isinstance(ptype, (StrType, StrViewType)):
-                        return True
+                    if pname == name:
+                        if is_str and isinstance(ptype, (StrType, StrViewType)):
+                            return True
+                        if is_bytes and isinstance(ptype, (BytesType, BytesViewType)):
+                            return True
 
-            # Another PendingStrType or StrViewType local
+            # Another pending or view local
             scope_type = self.ctx.current_scope.lookup(name) if self.ctx.current_scope else None
-            if isinstance(scope_type, (PendingStrType, StrViewType)):
+            if is_str and isinstance(scope_type, (PendingStrType, StrViewType)):
+                return True
+            if is_bytes and isinstance(scope_type, (PendingBytesType, BytesViewType)):
                 return True
 
             # Final[str] global constant
-            if name in self.ctx.final_globals:
+            if is_str and name in self.ctx.final_globals:
                 return True
 
-        # Function/method call returning StrView
+        # Function/method call returning a view type
         if isinstance(init_expr, (TpyCall, TpyMethodCall)):
-            if isinstance(init_type, StrViewType):
+            if isinstance(init_type, (StrViewType, BytesViewType)):
                 return True
 
         # Subscript on lvalue container -- source-mutation tracking
@@ -793,15 +818,15 @@ class LocalTypeDeduction:
             if isinstance(init_expr.obj, TpyName):
                 return True
 
-        # and/or (StrType operands, e.g. two str parameters): view-safe if both
-        # operands are view-safe. PendingStrType operands are excluded here
-        # because that case goes through _logical_op_result_type returning a
-        # chained PendingStrType, so _infer_new_local_type takes the
-        # elif-PendingStrType branch and never calls is_view_compatible_source.
+        # and/or: view-safe if both operands are view-safe. Pending operands
+        # are excluded because they go through the chained-pending branch in
+        # _infer_new_local_type and never reach is_view_compatible_source.
         if isinstance(init_expr, TpyBinOp) and init_expr.op in ("&&", "||"):
             left_type = self.ctx.get_expr_type(init_expr.left)
             right_type = self.ctx.get_expr_type(init_expr.right)
-            if isinstance(left_type, PendingStrType) or isinstance(right_type, PendingStrType):
+            if isinstance(left_type, (PendingStrType, PendingBytesType)):
+                return False
+            if isinstance(right_type, (PendingStrType, PendingBytesType)):
                 return False
             return (self.is_view_compatible_source(init_expr.left, left_type)
                     and self.is_view_compatible_source(init_expr.right, right_type))
@@ -810,7 +835,9 @@ class LocalTypeDeduction:
         if isinstance(init_expr, TpyIfExpr):
             then_type = self.ctx.get_expr_type(init_expr.then_expr)
             else_type = self.ctx.get_expr_type(init_expr.else_expr)
-            if isinstance(then_type, PendingStrType) or isinstance(else_type, PendingStrType):
+            if isinstance(then_type, (PendingStrType, PendingBytesType)):
+                return False
+            if isinstance(else_type, (PendingStrType, PendingBytesType)):
                 return False
             return (self.is_view_compatible_source(init_expr.then_expr, then_type)
                     and self.is_view_compatible_source(init_expr.else_expr, else_type))
@@ -849,6 +876,39 @@ class LocalTypeDeduction:
         str_var_id = self.ctx.variable_to_str_var.get(var_name)
         if str_var_id is not None and str_var_id in self.ctx.str_vars:
             self.ctx.str_vars[str_var_id].source_str_var_ids = [source_type.str_var_id]
+
+    # --- Bytes local tracking methods ---
+
+    def mark_bytes_augassign(self, var_name: str) -> None:
+        """Mark a PendingBytesType variable as used in augmented assignment (+=)."""
+        bytes_var_id = self.ctx.variable_to_bytes_var.get(var_name)
+        if bytes_var_id is not None and bytes_var_id in self.ctx.bytes_vars:
+            self.ctx.bytes_vars[bytes_var_id].used_in_augassign = True
+
+    def mark_bytes_param_context(self, arg_expr: TpyExpr, param_type: TpyType) -> None:
+        """Track when a PendingBytesType var is passed to a bytearray param."""
+        if not isinstance(param_type, ByteArrayType):
+            return
+        if isinstance(arg_expr, TpyCoerce):
+            arg_expr = arg_expr.expr
+        if isinstance(arg_expr, TpyName):
+            bytes_var_id = self.ctx.variable_to_bytes_var.get(arg_expr.name)
+            if bytes_var_id is not None and bytes_var_id in self.ctx.bytes_vars:
+                self.ctx.bytes_vars[bytes_var_id].passed_to_bytearray_param = True
+
+    def mark_bytes_reassigned_from_owned(self, var_name: str) -> None:
+        """Mark a PendingBytesType variable as reassigned from an owned source."""
+        bytes_var_id = self.ctx.variable_to_bytes_var.get(var_name)
+        if bytes_var_id is not None and bytes_var_id in self.ctx.bytes_vars:
+            self.ctx.bytes_vars[bytes_var_id].reassigned_from_owned = True
+
+    def track_bytes_reassign_source(self, var_name: str, source_type: TpyType) -> None:
+        """Track source relationship when reassigning from another PendingBytesType."""
+        if not isinstance(source_type, PendingBytesType):
+            return
+        bytes_var_id = self.ctx.variable_to_bytes_var.get(var_name)
+        if bytes_var_id is not None and bytes_var_id in self.ctx.bytes_vars:
+            self.ctx.bytes_vars[bytes_var_id].source_bytes_var_ids = [source_type.bytes_var_id]
 
     def _resolve_pending_str_types(self) -> None:
         """Resolve all pending str types after function analysis.
@@ -912,6 +972,62 @@ class LocalTypeDeduction:
             if info.decl_line is not None:
                 self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved
 
+    def _resolve_pending_bytes_types(self) -> None:
+        """Resolve all pending bytes types after function analysis.
+
+        Resolution rules mirror str resolution:
+        - Any owned flag set -> resolve to BYTES (std::vector<uint8_t>)
+        - Otherwise -> resolve to BYTESVIEW (std::span<const uint8_t>)
+        """
+        # First pass: resolve based on direct usage flags
+        for bytes_var_id in self.ctx.pending_bytes_resolutions:
+            info = self.ctx.bytes_vars.get(bytes_var_id)
+            if info is None:
+                continue
+
+            needs_owned = (
+                info.initialized_from_owned
+                or info.used_in_augassign
+                or info.passed_to_bytearray_param
+                or info.reassigned_from_owned
+                or info.source_mutated
+            )
+
+            info.resolved_type = BYTES if needs_owned else BYTESVIEW
+
+        # Second pass: promote aliases whose source resolved to BYTES
+        changed = True
+        while changed:
+            changed = False
+            for bytes_var_id in self.ctx.pending_bytes_resolutions:
+                info = self.ctx.bytes_vars.get(bytes_var_id)
+                if info is None or info.resolved_type != BYTESVIEW:
+                    continue
+                for src_id in info.source_bytes_var_ids:
+                    source = self.ctx.bytes_vars.get(src_id)
+                    if source and source.resolved_type == BYTES:
+                        info.resolved_type = BYTES
+                        changed = True
+                        break
+
+        # Update scope bindings and var_types
+        for bytes_var_id in self.ctx.pending_bytes_resolutions:
+            info = self.ctx.bytes_vars.get(bytes_var_id)
+            if info is None:
+                continue
+            resolved = info.resolved_type
+
+            if info.variable_name and self.ctx.current_scope:
+                current_type = self.ctx.current_scope.lookup(info.variable_name)
+                if isinstance(current_type, PendingBytesType):
+                    self.ctx.current_scope.define(info.variable_name, resolved)
+
+            var_decl = self.ctx.var_decl_by_name.get(info.variable_name)
+            if var_decl:
+                self.ctx.var_types[id(var_decl)] = resolved
+            if info.decl_line is not None:
+                self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved
+
     # ------------------------------------------------------------------
     # Unified resolution entry point
     # ------------------------------------------------------------------
@@ -963,4 +1079,5 @@ class LocalTypeDeduction:
         self._resolve_pending_list_types()
         self._resolve_pending_dict_and_set_types()
         self._resolve_pending_str_types()
+        self._resolve_pending_bytes_types()
         self._check_unresolved_pending_generics()

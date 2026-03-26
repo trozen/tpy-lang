@@ -10,8 +10,8 @@ from typing import TYPE_CHECKING, Optional
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, BigIntType, Int32Type, ArrayType, ListType, ListRepeatType, DictType, SetType,
-    PendingListType, PendingDictType, PendingSetType, PendingStrType, UnknownElementType,
-    SpanType, StrType, StringType, StrViewType, FloatType, Float32Type,
+    PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, UnknownElementType,
+    SpanType, StrType, StringType, StrViewType, BytesType, ByteArrayType, BytesViewType, FloatType, Float32Type,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
     NamedType, TypeParamRef, NoneType, OptionalType, UnionType,
     is_protocol_type, unwrap_readonly, unwrap_optional_own, local_var_is_movable,
@@ -545,6 +545,13 @@ class TypeCompatibility:
                 return None
         if isinstance(expected, PendingStrType):
             if isinstance(actual, (StrType, StringType, StrViewType)):
+                return None
+        # Allow PendingBytesType compatibility during first phase (before resolution)
+        if isinstance(actual, PendingBytesType):
+            if isinstance(expected, (BytesType, ByteArrayType, BytesViewType, PendingBytesType)):
+                return None
+        if isinstance(expected, PendingBytesType):
+            if isinstance(actual, (BytesType, ByteArrayType, BytesViewType)):
                 return None
 
         ctx = coercion_ctx or context

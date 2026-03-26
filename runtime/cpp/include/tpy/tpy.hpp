@@ -82,6 +82,9 @@
 // Set operations and printing (depends on ordered_set, core, printing)
 #include "set_ops.hpp"
 
+// Bytes operations and printing (depends on core, container_ops)
+#include "bytes_ops.hpp"
+
 // System utilities (depends on core)
 #include "system.hpp"
 

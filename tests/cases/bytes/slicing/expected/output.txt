@@ -1,0 +1,8 @@
+b'hello'
+b'world'
+b'world'
+b'hello'
+b''
+b'bcd'
+5
+b'hello'

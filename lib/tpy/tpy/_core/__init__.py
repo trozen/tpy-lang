@@ -14,5 +14,6 @@ from ._types import (
     UInt8, UInt16, UInt32, UInt64,
     Char, String, StrView,
 )
+from ._bytes_view import BytesView
 from ._containers import Span, Array, Ptr, SpanIter
 from ._functions import span, deref, take_ptr, make_default

@@ -13,7 +13,7 @@ from ._core import (
     Float32,
     Int8, Int16, Int32, Int64,
     UInt8, UInt16, UInt32, UInt64,
-    Char, String, StrView,
+    Char, String, StrView, BytesView,
     # Container types
     Span, Array, Ptr, SpanIter,
     # Functions
@@ -32,7 +32,7 @@ __all__ = [
     "Int8", "Int16", "Int32", "Int64",
     "UInt8", "UInt16", "UInt32", "UInt64",
     "Float32", "Float64",
-    "Char", "String", "StrView",
+    "Char", "String", "StrView", "BytesView",
     # Container types
     "Span", "Array", "Ptr", "SpanIter",
     # Pointer / ownership

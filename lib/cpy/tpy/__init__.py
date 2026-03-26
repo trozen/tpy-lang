@@ -19,6 +19,7 @@ T = TypeVar('T')
 Char = str
 String = str
 StrView = str
+BytesView = bytes
 
 
 # ---------------------------------------------------------------------------

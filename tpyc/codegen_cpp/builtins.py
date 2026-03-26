@@ -11,7 +11,8 @@ from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, BoolType, StrType, CharType,
     NamedType, OptionalType, NoneType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
     ListType, ListRepeatType, DictType, SetType, DictKeysViewType, DictValuesViewType, DictItemsViewType,
-    ArrayType, SpanType, TupleType, OwnType, is_protocol_type, unwrap_readonly, is_any_str_type,
+    ArrayType, SpanType, TupleType, OwnType, is_protocol_type, unwrap_readonly, is_any_str_type, is_any_bytes_type,
+    BytesType, ByteArrayType, BytesViewType, PendingBytesType,
 )
 from ..parse import (
     TpyExpr, TpyCall, TpyStrLiteral, TpyArrayLiteral, TpyNoneLiteral, TpyCoerce,
@@ -287,6 +288,10 @@ class BuiltinGenerator:
             elif is_any_str_type(arg_type):
                 # Strings print as-is (not using ListPrinter)
                 parts.append(self._gen_expr_deref(arg))
+            elif isinstance(arg_type, ByteArrayType):
+                parts.append(f'::tpy::ByteArrayPrinter({self._gen_expr_deref(arg)})')
+            elif is_any_bytes_type(arg_type):
+                parts.append(f'::tpy::BytesPrinter({self._gen_expr_deref(arg)})')
             elif isinstance(arg_type, DictType):
                 # Dict uses DictPrinter for {k: v, ...} formatting
                 parts.append(f'::tpy::DictPrinter({self._gen_expr_deref(arg)})')

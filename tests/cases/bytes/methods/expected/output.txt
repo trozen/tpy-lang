@@ -1,0 +1,13 @@
+68656c6c6f20776f726c64
+6
+-1
+9
+3
+True
+True
+False
+b'hello bytes'
+b'a'
+b'b'
+b'c'
+b'a, b, c'

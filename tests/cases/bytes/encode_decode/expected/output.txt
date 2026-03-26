@@ -1,0 +1,4 @@
+b'hello bytes'
+hello bytes
+True
+b'prefix:hello bytes'

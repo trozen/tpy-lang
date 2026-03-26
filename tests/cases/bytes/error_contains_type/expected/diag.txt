@@ -1,0 +1,1 @@
+main.py:4: error: Type mismatch in membership test (expected UInt8): expected UInt8, got str

@@ -1,0 +1,1 @@
+main.py:3: error: Type mismatch in variable 's': expected str, got bytes

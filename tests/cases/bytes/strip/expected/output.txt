@@ -1,0 +1,7 @@
+b'hello'
+b'hello  '
+b'  hello'
+b'hello'
+b'hello'
+b''
+b''
