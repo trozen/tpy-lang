@@ -1066,12 +1066,12 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 f"'raise {stmt.exception_type}' requires "
                 f"@error_return({stmt.exception_type}) on the enclosing function", stmt)
-        qualified_exc = qualify_exception_name(stmt.exception_type, self.ctx.registry)
+        qualified_exc = qualify_exception_name(stmt.exception_type, self.ctx.registry, self.ctx.module_name)
         if func.error_return != qualified_exc:
             raise self.ctx.error(
                 f"'raise {stmt.exception_type}' does not match "
                 f"@error_return({stmt.exception_type})", stmt)
-        if not self.ctx.registry.get_record(stmt.exception_type):
+        if not self.ctx.registry.find_record(stmt.exception_type):
             raise self.ctx.error(
                 f"Unknown error type '{stmt.exception_type}'", stmt)
         # Propagate qualified name to AST for consistency with TpyFunction.error_return
@@ -1101,7 +1101,7 @@ class StatementAnalyzer:
         )
 
         if not is_control_flow_catch_all:
-            if not self.ctx.registry.get_record(stmt.exception_type):
+            if not self.ctx.registry.find_record(stmt.exception_type):
                 raise self.ctx.error(
                     f"Unknown error type '{stmt.exception_type}'", stmt)
 
@@ -1112,7 +1112,7 @@ class StatementAnalyzer:
             self.ctx.try_except_error_type = "*"
         else:
             self.ctx.try_except_error_type = qualify_exception_name(
-                stmt.exception_type, self.ctx.registry)
+                stmt.exception_type, self.ctx.registry, self.ctx.module_name)
 
         # Analyze try body (success path)
         for s in stmt.try_body:

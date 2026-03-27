@@ -1,1 +1,1 @@
-TurboPython panic: json: missing required field 'color'
+TurboPython panic: json: parse error

@@ -27,6 +27,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - macros should work in cpython as well
 - all macro code (at least for json model) generated in headers
 - Macro-injected imports: class/call macros that generate code referencing external types (e.g. `@model` needs `JsonReader`, `JsonToken`, `JsonWriter`) require users to manually import those types. Macros should be able to declare import dependencies that are automatically added to the module's namespace.
+- Expression-level error_return unwrap: `print(reader.read_str())` fails because the `std::expected` result isn't unwrapped in sub-expression position. Auto-extract error_return calls in sub-expressions to temp variables with unwrap/propagation in codegen. Uses the existing temps system. Would eliminate the need for manual `v = reader.read_str(); print(v)` workarounds.
 - json: pretty printing
 - json: to/from file
 - json: better error message: show position

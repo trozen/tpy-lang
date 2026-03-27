@@ -12,11 +12,12 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void test_reader_standard();
-void test_reader_bf();
-void test_reader_unicode();
+std::expected<void, ::tpystd::tplib::json::JsonError> test_reader_standard();
+std::expected<void, ::tpystd::tplib::json::JsonError> test_reader_bf();
+std::expected<void, ::tpystd::tplib::json::JsonError> test_reader_unicode();
 void test_writer_control_chars();
-void test_roundtrip();
+std::expected<void, ::tpystd::tplib::json::JsonError> test_roundtrip();
+void main();
 
 void __tpy_init();
 } // namespace tpyapp::main

@@ -79,7 +79,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tplib.json import JsonReader, JsonToken, JsonWriter
+    // from tplib.json import JsonError, JsonReader, JsonToken, JsonWriter
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::json::__tpy_init();
     // from tplib.json.model import model

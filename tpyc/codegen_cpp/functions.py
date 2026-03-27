@@ -422,7 +422,7 @@ class FunctionGenerator:
 
         If error_return is set, wraps the return type in std::expected<T, E>.
         """
-        cpp_error = error_return_to_cpp(error_return) if error_return else None
+        cpp_error = error_return_to_cpp(error_return, self.ctx.analyzer.registry, self.ctx.module_name) if error_return else None
         unwrapped = unwrap_readonly(return_type)
         # Unwrap Own[Protocol] so consuming __iter__ returning Own[Iterator[T]]
         # is recognized as a protocol return and gets `auto` in C++.

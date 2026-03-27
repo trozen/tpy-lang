@@ -28,7 +28,8 @@ class TypeParamKind(Enum):
 BUILTIN_EXCEPTION_NAMES = frozenset({"BaseException", "Exception", "StopIteration"})
 
 
-def qualify_exception_name(name: str, registry: 'TypeRegistry') -> str:
+def qualify_exception_name(name: str, registry: 'TypeRegistry',
+                           current_module: str | None = None) -> str:
     """Qualify a bare exception name to avoid ambiguity.
 
     Built-in exceptions get a 'builtins.' prefix unless the user has
@@ -45,14 +46,29 @@ def qualify_exception_name(name: str, registry: 'TypeRegistry') -> str:
     return f"builtins.{name}"
 
 
-def error_return_to_cpp(name: str) -> str:
+def error_return_to_cpp(name: str, registry: 'TypeRegistry | None' = None,
+                        current_module: str | None = None) -> str:
     """Map a qualified exception name to C++.
 
     'builtins.X' -> '::tpy::X' (runtime-defined exceptions).
-    Bare names are emitted as-is (user-defined types in the local namespace).
+    User types: qualified with C++ namespace if defined in a different module.
     """
     if name.startswith("builtins."):
         return f"::tpy::{name[len('builtins.'):]}"
+    if registry is not None and current_module is not None:
+        # Check if the record is from a different (already-compiled) module
+        local_record = registry.get_record(name)
+        for mod_name, mod_info in registry.modules.items():
+            if name in mod_info.records:
+                # Same object as top-level → this module owns it
+                if local_record is mod_info.records[name]:
+                    # If this module IS the current module, it's local
+                    if mod_name == current_module:
+                        return name
+                    # Different module owns it → qualify
+                    from tpyc.codegen_cpp.context import qualified_cpp_name
+                    return qualified_cpp_name(mod_name, name)
+        # Not in any registered module → local (currently being compiled)
     return name
 
 

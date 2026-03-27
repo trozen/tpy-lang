@@ -132,7 +132,7 @@ void __tpy_init() {
     initialized = true;
 
     // from enum import Enum
-    // from tplib.json import JsonReader, JsonToken, JsonWriter
+    // from tplib.json import JsonError, JsonReader, JsonToken, JsonWriter
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::json::__tpy_init();
     // from tplib.json.model import model

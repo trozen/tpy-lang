@@ -12,6 +12,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+std::expected<void, ::tpystd::tplib::json::JsonError> parse_bad();
 void main();
 
 void __tpy_init();

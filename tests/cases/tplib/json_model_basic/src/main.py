@@ -1,6 +1,6 @@
 # Test @model macro: basic serialization/deserialization, round-trip, optionals.
 from tpy import Int32
-from tplib.json import JsonReader, JsonToken, JsonWriter
+from tplib.json import JsonError, JsonReader, JsonToken, JsonWriter
 from tplib.json.model import model
 
 @model

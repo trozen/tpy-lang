@@ -53,30 +53,79 @@ struct Item {
         return ((this->name == other.name) && (this->color == other.color));
     }
 
-    static Item _from_reader(::tpystd::tplib::json::JsonReader& __reader) {
-        __reader.read_object_start();
+    static std::expected<Item, ::tpystd::tplib::json::JsonError> _from_reader(::tpystd::tplib::json::JsonReader& __reader) {
+        {
+            auto __try_tmp_1 = __reader.read_object_start();
+            if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
+        }
         std::string name = "";
         std::optional<Color> color = std::nullopt;
         while (__reader.has_next()) {
-            std::string_view __key = __reader.read_key_raw();
+            std::string_view __key;
+            {
+                auto __try_tmp_2 = __reader.read_key_raw();
+                if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
+                __key = *__try_tmp_2;
+            }
             auto& __match_subject = __key;
             if (__match_subject == "name") {
-                name = __reader.read_str();
+                std::string __name_1;
+                {
+                    auto __try_tmp_3 = __reader.read_str();
+                    if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
+                    __name_1 = *__try_tmp_3;
+                }
+                name = __name_1;
             } else if (__match_subject == "color") {
-                std::optional<Color> __parsed_1 = ::tpy::EnumUtil<Color>::try_parse(__reader.read_str());
-                if (!((__parsed_1.has_value()))) ::tpy::tpy_panic("json: invalid enum value");
-                Color __color_2 = (*__parsed_1);
+                std::string __estr_3;
+                {
+                    auto __try_tmp_4 = __reader.read_str();
+                    if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
+                    __estr_3 = *__try_tmp_4;
+                }
+                std::optional<Color> __parsed_4 = ::tpy::EnumUtil<Color>::try_parse(__estr_3);
+                if ((!__parsed_4.has_value())) {
+                    return ::tpy::make_unexpected(::tpystd::tplib::json::JsonError{});
+                }
+                Color __color_2 = (*__parsed_4);
                 color = __color_2;
             } else {
-                __reader.skip_value();
+                {
+                    auto __try_tmp_5 = __reader.skip_value();
+                    if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
+                }
             }
         }
-        __reader.read_object_end();
-        if (!((color.has_value()))) ::tpy::tpy_panic("json: missing required field 'color'");
+        {
+            auto __try_tmp_6 = __reader.read_object_end();
+            if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
+        }
+        if ((!color.has_value())) {
+            return ::tpy::make_unexpected(::tpystd::tplib::json::JsonError{});
+        }
         return Item(name, (*color));
     }
 
     static Item from_json(std::string_view __s) {
+        ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
+        std::optional<Item> __result = std::nullopt;
+        {
+            {
+                auto __try_tmp_8 = Item::_from_reader(__reader);
+                if (!__try_tmp_8.has_value()) goto __except_7;
+                __result = *__try_tmp_8;
+            }
+            goto __after_try_7;
+            // except JsonError:
+            __except_7:;
+            ::tpy::tpy_panic("json: parse error");
+            __after_try_7:;
+        }
+        if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
+        return (*__result);
+    }
+
+    static std::expected<Item, ::tpystd::tplib::json::JsonError> try_from_json(std::string_view __s) {
         ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
         return Item::_from_reader(__reader);
     }

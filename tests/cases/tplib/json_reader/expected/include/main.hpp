@@ -12,14 +12,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void test_basic_object();
-void test_nested();
-void test_null_and_escape();
-void test_float();
-void test_skip();
-void test_empty_containers();
-void test_negative_int();
-void test_raw_methods();
+std::expected<void, ::tpystd::tplib::json::JsonError> test_basic_object();
+std::expected<void, ::tpystd::tplib::json::JsonError> test_nested();
+std::expected<void, ::tpystd::tplib::json::JsonError> test_null_and_escape();
+std::expected<void, ::tpystd::tplib::json::JsonError> test_float();
+std::expected<void, ::tpystd::tplib::json::JsonError> test_skip();
+std::expected<void, ::tpystd::tplib::json::JsonError> test_empty_containers();
+std::expected<void, ::tpystd::tplib::json::JsonError> test_negative_int();
+std::expected<void, ::tpystd::tplib::json::JsonError> test_raw_methods();
+void main();
 
 void __tpy_init();
 } // namespace tpyapp::main

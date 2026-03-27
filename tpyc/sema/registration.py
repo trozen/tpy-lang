@@ -510,20 +510,15 @@ class TypeRegistrar:
                              if not method.native_function else None),
                 type_params=list(method.type_params),
                 type_param_bounds=method_type_param_bounds,
-                error_return_type=(qualify_exception_name(method.error_return, self.ctx.registry)
+                error_return_type=(qualify_exception_name(method.error_return, self.ctx.registry, self.ctx.module_name)
                                    if method.error_return else None),
             )
-            # Propagate qualified name back to AST so codegen can use it directly
+            # Propagate qualified name back to AST so codegen can use it directly.
+            # ControlFlow validation is deferred to validate_method_error_returns()
+            # because the ControlFlow marker on exception records is set during
+            # validate_record_inheritance, which runs after register_record.
             if method.error_return:
-                orig_name = method.error_return
                 method.error_return = func_info.error_return_type
-                # @error_return(E) requires E to be a ControlFlow type
-                if not is_control_flow_exception(func_info.error_return_type):
-                    raise SemanticError(
-                        f"'{orig_name}' is not a ControlFlow type; "
-                        f"@error_return requires a ControlFlow exception",
-                        method.loc
-                    )
             if method.is_overload_stub:
                 # Accumulate overload stubs for this method name
                 methods.setdefault(method.name, []).append(func_info)
@@ -875,6 +870,20 @@ class TypeRegistrar:
             register_send_record(record.name)
         if is_sync:
             register_sync_record(record.name)
+
+    def validate_method_error_returns(self, record: TpyRecord) -> None:
+        """Validate @error_return(E) on methods references a ControlFlow type.
+
+        Deferred from register_record because ControlFlow markers are set
+        during validate_record_inheritance, which runs after register_record.
+        """
+        for method in record.methods:
+            if method.error_return and not is_control_flow_exception(method.error_return):
+                raise SemanticError(
+                    f"'{method.error_return}' is not a ControlFlow type; "
+                    f"@error_return requires a ControlFlow exception",
+                    method.loc
+                )
 
     def validate_value_type_fields(self, record: TpyRecord) -> None:
         """Validate that all fields of a ValueType record are themselves value types,
@@ -1338,7 +1347,7 @@ class TypeRegistrar:
             type_param_defaults=func.type_param_defaults,
             is_builtin_function=bool(func.builtin_function_key),
             special_handling=bool(func.builtin_function_key),
-            error_return_type=(qualify_exception_name(func.error_return, self.ctx.registry)
+            error_return_type=(qualify_exception_name(func.error_return, self.ctx.registry, self.ctx.module_name)
                                if func.error_return else None),
             qualified_name=(func.builtin_function_key
                             if func.builtin_function_key

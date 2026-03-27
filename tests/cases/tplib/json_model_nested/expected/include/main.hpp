@@ -57,26 +57,71 @@ struct Address {
         return ((this->street == other.street) && (this->city == other.city));
     }
 
-    static Address _from_reader(::tpystd::tplib::json::JsonReader& __reader) {
-        __reader.read_object_start();
+    static std::expected<Address, ::tpystd::tplib::json::JsonError> _from_reader(::tpystd::tplib::json::JsonReader& __reader) {
+        {
+            auto __try_tmp_1 = __reader.read_object_start();
+            if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
+        }
         std::string street = "";
         std::string city = "";
         while (__reader.has_next()) {
-            std::string_view __key = __reader.read_key_raw();
+            std::string_view __key;
+            {
+                auto __try_tmp_2 = __reader.read_key_raw();
+                if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
+                __key = *__try_tmp_2;
+            }
             auto& __match_subject = __key;
             if (__match_subject == "street") {
-                street = __reader.read_str();
+                std::string __street_1;
+                {
+                    auto __try_tmp_3 = __reader.read_str();
+                    if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
+                    __street_1 = *__try_tmp_3;
+                }
+                street = __street_1;
             } else if (__match_subject == "city") {
-                city = __reader.read_str();
+                std::string __city_2;
+                {
+                    auto __try_tmp_4 = __reader.read_str();
+                    if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
+                    __city_2 = *__try_tmp_4;
+                }
+                city = __city_2;
             } else {
-                __reader.skip_value();
+                {
+                    auto __try_tmp_5 = __reader.skip_value();
+                    if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
+                }
             }
         }
-        __reader.read_object_end();
+        {
+            auto __try_tmp_6 = __reader.read_object_end();
+            if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
+        }
         return Address(street, city);
     }
 
     static Address from_json(std::string_view __s) {
+        ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
+        std::optional<Address> __result = std::nullopt;
+        {
+            {
+                auto __try_tmp_8 = Address::_from_reader(__reader);
+                if (!__try_tmp_8.has_value()) goto __except_7;
+                __result = *__try_tmp_8;
+            }
+            goto __after_try_7;
+            // except JsonError:
+            __except_7:;
+            ::tpy::tpy_panic("json: parse error");
+            __after_try_7:;
+        }
+        if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
+        return (*__result);
+    }
+
+    static std::expected<Address, ::tpystd::tplib::json::JsonError> try_from_json(std::string_view __s) {
         ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
         return Address::_from_reader(__reader);
     }
@@ -163,8 +208,11 @@ struct Profile {
         return ((((((((((((((((((this->name == other.name) && (this->age == other.age)) && (this->score == other.score)) && (this->precision == other.precision)) && (this->active == other.active)) && (this->big_id == other.big_id)) && (this->role == other.role)) && (this->address == other.address)) && (this->tags == other.tags)) && (this->scores == other.scores)) && (this->friends == other.friends)) && (this->roles == other.roles)) && (this->metadata == other.metadata)) && (this->nested_map == other.nested_map)) && (this->coord == other.coord)) && (this->backup_role == other.backup_role)) && (this->alt_address == other.alt_address)) && (this->email == other.email));
     }
 
-    static Profile _from_reader(::tpystd::tplib::json::JsonReader& __reader) {
-        __reader.read_object_start();
+    static std::expected<Profile, ::tpystd::tplib::json::JsonError> _from_reader(::tpystd::tplib::json::JsonReader& __reader) {
+        {
+            auto __try_tmp_9 = __reader.read_object_start();
+            if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
+        }
         std::string name = "";
         int32_t age = 0;
         double score = 0.0;
@@ -172,8 +220,7 @@ struct Profile {
         bool active = false;
         ::tpy::BigInt big_id = ::tpy::BigInt(0);
         std::optional<Role> role = std::nullopt;
-        std::optional<Address> __slot_1;
-        Address* address = nullptr;
+        std::optional<Address> address = std::nullopt;
         std::vector<std::string> tags = std::vector<std::string>{};
         std::vector<int32_t> scores = std::vector<int32_t>{};
         std::vector<Address> friends = std::vector<Address>{};
@@ -182,35 +229,69 @@ struct Profile {
         ::tpy::ordered_map<std::string, std::vector<int32_t>> nested_map = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
         std::optional<std::tuple<int32_t, int32_t, std::string>> coord = std::nullopt;
         std::optional<Role> backup_role = std::nullopt;
-        std::optional<Address> __slot_2;
-        Address* alt_address = nullptr;
+        std::optional<Address> alt_address = std::nullopt;
         std::optional<std::string> email = std::nullopt;
         while (__reader.has_next()) {
-            std::string_view __key = __reader.read_key_raw();
+            std::string_view __key;
+            {
+                auto __try_tmp_10 = __reader.read_key_raw();
+                if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(__try_tmp_10.error());
+                __key = *__try_tmp_10;
+            }
             auto& __match_subject = __key;
             if (__match_subject.size() >= 2) {
                 switch (static_cast<unsigned char>(__match_subject[1])) {
                 case 'a': {
                     if (__match_subject == "name") {
-                        name = __reader.read_str();
+                        std::string __name_1;
+                        {
+                            auto __try_tmp_11 = __reader.read_str();
+                            if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
+                            __name_1 = *__try_tmp_11;
+                        }
+                        name = __name_1;
                         goto __match_end_1;
                     }
                     if (__match_subject == "tags") {
-                        __reader.read_array_start();
-                        while (__reader.has_next()) {
-                            tags.push_back(__reader.read_str());
+                        {
+                            auto __try_tmp_12 = __reader.read_array_start();
+                            if (!__try_tmp_12.has_value()) return ::tpy::make_unexpected(__try_tmp_12.error());
                         }
-                        __reader.read_array_end();
+                        while (__reader.has_next()) {
+                            std::string __elem_14;
+                            {
+                                auto __try_tmp_13 = __reader.read_str();
+                                if (!__try_tmp_13.has_value()) return ::tpy::make_unexpected(__try_tmp_13.error());
+                                __elem_14 = *__try_tmp_13;
+                            }
+                            std::string __tmp_1{__elem_14};
+                            tags.push_back(std::move(__tmp_1));
+                        }
+                        {
+                            auto __try_tmp_14 = __reader.read_array_end();
+                            if (!__try_tmp_14.has_value()) return ::tpy::make_unexpected(__try_tmp_14.error());
+                        }
                         goto __match_end_1;
                     }
                     if (__match_subject == "backup_role") {
                         if ((__reader.peek() == ::tpystd::tplib::json::JsonToken::NONE)) {
-                            __reader.read_null();
+                            {
+                                auto __try_tmp_15 = __reader.read_null();
+                                if (!__try_tmp_15.has_value()) return ::tpy::make_unexpected(__try_tmp_15.error());
+                            }
                         } else {
-                            std::optional<Role> __parsed_11 = ::tpy::EnumUtil<Role>::try_parse(__reader.read_str());
-                            if (!((__parsed_11.has_value()))) ::tpy::tpy_panic("json: invalid enum value");
-                            Role __backup_role_12 = (*__parsed_11);
-                            backup_role = __backup_role_12;
+                            std::string __estr_35;
+                            {
+                                auto __try_tmp_16 = __reader.read_str();
+                                if (!__try_tmp_16.has_value()) return ::tpy::make_unexpected(__try_tmp_16.error());
+                                __estr_35 = *__try_tmp_16;
+                            }
+                            std::optional<Role> __parsed_36 = ::tpy::EnumUtil<Role>::try_parse(__estr_35);
+                            if ((!__parsed_36.has_value())) {
+                                return ::tpy::make_unexpected(::tpystd::tplib::json::JsonError{});
+                            }
+                            Role __backup_role_34 = (*__parsed_36);
+                            backup_role = __backup_role_34;
                         }
                         goto __match_end_1;
                     }
@@ -218,67 +299,154 @@ struct Profile {
                 }
                 case 'c': {
                     if (__match_subject == "score") {
-                        score = __reader.read_float();
+                        double __score_4;
+                        {
+                            auto __try_tmp_17 = __reader.read_float();
+                            if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
+                            __score_4 = *__try_tmp_17;
+                        }
+                        score = __score_4;
                         goto __match_end_1;
                     }
                     if (__match_subject == "active") {
-                        active = __reader.read_bool();
+                        bool __active_7;
+                        {
+                            auto __try_tmp_18 = __reader.read_bool();
+                            if (!__try_tmp_18.has_value()) return ::tpy::make_unexpected(__try_tmp_18.error());
+                            __active_7 = *__try_tmp_18;
+                        }
+                        active = __active_7;
                         goto __match_end_1;
                     }
                     if (__match_subject == "scores") {
-                        __reader.read_array_start();
-                        while (__reader.has_next()) {
-                            scores.push_back(::tpy::int_cast_check<int32_t>(__reader.read_int()));
+                        {
+                            auto __try_tmp_19 = __reader.read_array_start();
+                            if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(__try_tmp_19.error());
                         }
-                        __reader.read_array_end();
+                        while (__reader.has_next()) {
+                            int64_t __raw_16;
+                            {
+                                auto __try_tmp_20 = __reader.read_int();
+                                if (!__try_tmp_20.has_value()) return ::tpy::make_unexpected(__try_tmp_20.error());
+                                __raw_16 = *__try_tmp_20;
+                            }
+                            int32_t __elem_15 = ::tpy::int_cast_check<int32_t>(__raw_16);
+                            scores.push_back(__elem_15);
+                        }
+                        {
+                            auto __try_tmp_21 = __reader.read_array_end();
+                            if (!__try_tmp_21.has_value()) return ::tpy::make_unexpected(__try_tmp_21.error());
+                        }
                         goto __match_end_1;
                     }
                     break;
                 }
                 case 'd': {
                     if (__match_subject == "address") {
-                        address = &*(__slot_1 = Address::_from_reader(__reader));
+                        Address __address_13;
+                        {
+                            auto __try_tmp_22 = Address::_from_reader(__reader);
+                            if (!__try_tmp_22.has_value()) return ::tpy::make_unexpected(__try_tmp_22.error());
+                            __address_13 = *__try_tmp_22;
+                        }
+                        address = __address_13;
                         goto __match_end_1;
                     }
                     break;
                 }
                 case 'e': {
                     if (__match_subject == "metadata") {
-                        __reader.read_object_start();
-                        while (__reader.has_next()) {
-                            std::string __dk_5 = __reader.read_key();
-                            ::tpy::__setitem__(metadata, __dk_5, ::tpy::int_cast_check<int32_t>(__reader.read_int()));
+                        {
+                            auto __try_tmp_23 = __reader.read_object_start();
+                            if (!__try_tmp_23.has_value()) return ::tpy::make_unexpected(__try_tmp_23.error());
                         }
-                        __reader.read_object_end();
+                        while (__reader.has_next()) {
+                            std::string __dk_21;
+                            {
+                                auto __try_tmp_24 = __reader.read_key();
+                                if (!__try_tmp_24.has_value()) return ::tpy::make_unexpected(__try_tmp_24.error());
+                                __dk_21 = *__try_tmp_24;
+                            }
+                            int64_t __raw_23;
+                            {
+                                auto __try_tmp_25 = __reader.read_int();
+                                if (!__try_tmp_25.has_value()) return ::tpy::make_unexpected(__try_tmp_25.error());
+                                __raw_23 = *__try_tmp_25;
+                            }
+                            int32_t __dv_22 = ::tpy::int_cast_check<int32_t>(__raw_23);
+                            ::tpy::__setitem__(metadata, __dk_21, __dv_22);
+                        }
+                        {
+                            auto __try_tmp_26 = __reader.read_object_end();
+                            if (!__try_tmp_26.has_value()) return ::tpy::make_unexpected(__try_tmp_26.error());
+                        }
                         goto __match_end_1;
                     }
                     if (__match_subject == "nested_map") {
-                        __reader.read_object_start();
-                        while (__reader.has_next()) {
-                            std::string __dk_6 = __reader.read_key();
-                            std::vector<int32_t> __dv_7 = std::vector<int32_t>{};
-                            __reader.read_array_start();
-                            while (__reader.has_next()) {
-                                __dv_7.push_back(::tpy::int_cast_check<int32_t>(__reader.read_int()));
-                            }
-                            __reader.read_array_end();
-                            ::tpy::__setitem__(nested_map, __dk_6, std::move(__dv_7));
+                        {
+                            auto __try_tmp_27 = __reader.read_object_start();
+                            if (!__try_tmp_27.has_value()) return ::tpy::make_unexpected(__try_tmp_27.error());
                         }
-                        __reader.read_object_end();
+                        while (__reader.has_next()) {
+                            std::string __dk_24;
+                            {
+                                auto __try_tmp_28 = __reader.read_key();
+                                if (!__try_tmp_28.has_value()) return ::tpy::make_unexpected(__try_tmp_28.error());
+                                __dk_24 = *__try_tmp_28;
+                            }
+                            std::vector<int32_t> __dv_26 = std::vector<int32_t>{};
+                            {
+                                auto __try_tmp_29 = __reader.read_array_start();
+                                if (!__try_tmp_29.has_value()) return ::tpy::make_unexpected(__try_tmp_29.error());
+                            }
+                            while (__reader.has_next()) {
+                                int64_t __raw_28;
+                                {
+                                    auto __try_tmp_30 = __reader.read_int();
+                                    if (!__try_tmp_30.has_value()) return ::tpy::make_unexpected(__try_tmp_30.error());
+                                    __raw_28 = *__try_tmp_30;
+                                }
+                                int32_t __elem_27 = ::tpy::int_cast_check<int32_t>(__raw_28);
+                                __dv_26.push_back(__elem_27);
+                            }
+                            {
+                                auto __try_tmp_31 = __reader.read_array_end();
+                                if (!__try_tmp_31.has_value()) return ::tpy::make_unexpected(__try_tmp_31.error());
+                            }
+                            ::tpy::__setitem__(nested_map, __dk_24, std::move(__dv_26));
+                        }
+                        {
+                            auto __try_tmp_32 = __reader.read_object_end();
+                            if (!__try_tmp_32.has_value()) return ::tpy::make_unexpected(__try_tmp_32.error());
+                        }
                         goto __match_end_1;
                     }
                     break;
                 }
                 case 'g': {
                     if (__match_subject == "age") {
-                        age = ::tpy::int_cast_check<int32_t>(__reader.read_int());
+                        int64_t __raw_3;
+                        {
+                            auto __try_tmp_33 = __reader.read_int();
+                            if (!__try_tmp_33.has_value()) return ::tpy::make_unexpected(__try_tmp_33.error());
+                            __raw_3 = *__try_tmp_33;
+                        }
+                        int32_t __age_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
+                        age = __age_2;
                         goto __match_end_1;
                     }
                     break;
                 }
                 case 'i': {
                     if (__match_subject == "big_id") {
-                        big_id = ::tpy::BigInt::from_str(__reader.read_str());
+                        std::string __raw_9;
+                        {
+                            auto __try_tmp_34 = __reader.read_str();
+                            if (!__try_tmp_34.has_value()) return ::tpy::make_unexpected(__try_tmp_34.error());
+                            __raw_9 = *__try_tmp_34;
+                        }
+                        ::tpy::BigInt __big_id_8 = ::tpy::BigInt::from_str(__raw_9);
+                        big_id = __big_id_8;
                         goto __match_end_1;
                     }
                     break;
@@ -286,9 +454,18 @@ struct Profile {
                 case 'l': {
                     if (__match_subject == "alt_address") {
                         if ((__reader.peek() == ::tpystd::tplib::json::JsonToken::NONE)) {
-                            __reader.read_null();
+                            {
+                                auto __try_tmp_35 = __reader.read_null();
+                                if (!__try_tmp_35.has_value()) return ::tpy::make_unexpected(__try_tmp_35.error());
+                            }
                         } else {
-                            alt_address = &*(__slot_2 = Address::_from_reader(__reader));
+                            Address __alt_address_37;
+                            {
+                                auto __try_tmp_36 = Address::_from_reader(__reader);
+                                if (!__try_tmp_36.has_value()) return ::tpy::make_unexpected(__try_tmp_36.error());
+                                __alt_address_37 = *__try_tmp_36;
+                            }
+                            alt_address = __alt_address_37;
                         }
                         goto __match_end_1;
                     }
@@ -297,9 +474,18 @@ struct Profile {
                 case 'm': {
                     if (__match_subject == "email") {
                         if ((__reader.peek() == ::tpystd::tplib::json::JsonToken::NONE)) {
-                            __reader.read_null();
+                            {
+                                auto __try_tmp_37 = __reader.read_null();
+                                if (!__try_tmp_37.has_value()) return ::tpy::make_unexpected(__try_tmp_37.error());
+                            }
                         } else {
-                            email = __reader.read_str();
+                            std::string __email_38;
+                            {
+                                auto __try_tmp_38 = __reader.read_str();
+                                if (!__try_tmp_38.has_value()) return ::tpy::make_unexpected(__try_tmp_38.error());
+                                __email_38 = *__try_tmp_38;
+                            }
+                            email = __email_38;
                         }
                         goto __match_end_1;
                     }
@@ -307,47 +493,115 @@ struct Profile {
                 }
                 case 'o': {
                     if (__match_subject == "role") {
-                        std::optional<Role> __parsed_1 = ::tpy::EnumUtil<Role>::try_parse(__reader.read_str());
-                        if (!((__parsed_1.has_value()))) ::tpy::tpy_panic("json: invalid enum value");
-                        Role __role_2 = (*__parsed_1);
-                        role = __role_2;
+                        std::string __estr_11;
+                        {
+                            auto __try_tmp_39 = __reader.read_str();
+                            if (!__try_tmp_39.has_value()) return ::tpy::make_unexpected(__try_tmp_39.error());
+                            __estr_11 = *__try_tmp_39;
+                        }
+                        std::optional<Role> __parsed_12 = ::tpy::EnumUtil<Role>::try_parse(__estr_11);
+                        if ((!__parsed_12.has_value())) {
+                            return ::tpy::make_unexpected(::tpystd::tplib::json::JsonError{});
+                        }
+                        Role __role_10 = (*__parsed_12);
+                        role = __role_10;
                         goto __match_end_1;
                     }
                     if (__match_subject == "roles") {
-                        __reader.read_array_start();
-                        while (__reader.has_next()) {
-                            std::optional<Role> __parsed_3 = ::tpy::EnumUtil<Role>::try_parse(__reader.read_str());
-                            if (!((__parsed_3.has_value()))) ::tpy::tpy_panic("json: invalid enum value");
-                            Role __elem_4 = (*__parsed_3);
-                            roles.push_back(__elem_4);
+                        {
+                            auto __try_tmp_40 = __reader.read_array_start();
+                            if (!__try_tmp_40.has_value()) return ::tpy::make_unexpected(__try_tmp_40.error());
                         }
-                        __reader.read_array_end();
+                        while (__reader.has_next()) {
+                            std::string __estr_19;
+                            {
+                                auto __try_tmp_41 = __reader.read_str();
+                                if (!__try_tmp_41.has_value()) return ::tpy::make_unexpected(__try_tmp_41.error());
+                                __estr_19 = *__try_tmp_41;
+                            }
+                            std::optional<Role> __parsed_20 = ::tpy::EnumUtil<Role>::try_parse(__estr_19);
+                            if ((!__parsed_20.has_value())) {
+                                return ::tpy::make_unexpected(::tpystd::tplib::json::JsonError{});
+                            }
+                            Role __elem_18 = (*__parsed_20);
+                            roles.push_back(__elem_18);
+                        }
+                        {
+                            auto __try_tmp_42 = __reader.read_array_end();
+                            if (!__try_tmp_42.has_value()) return ::tpy::make_unexpected(__try_tmp_42.error());
+                        }
                         goto __match_end_1;
                     }
                     if (__match_subject == "coord") {
-                        __reader.read_array_start();
-                        int32_t __t0_8 = ::tpy::int_cast_check<int32_t>(__reader.read_int());
-                        if (!(__reader.has_next())) ::tpy::tpy_panic("json: tuple expects 3 elements");
-                        int32_t __t1_9 = ::tpy::int_cast_check<int32_t>(__reader.read_int());
-                        if (!(__reader.has_next())) ::tpy::tpy_panic("json: tuple expects 3 elements");
-                        std::string __t2_10 = __reader.read_str();
-                        __reader.read_array_end();
-                        coord = std::tuple<int32_t, int32_t, std::string>{__t0_8, __t1_9, __t2_10};
+                        {
+                            auto __try_tmp_43 = __reader.read_array_start();
+                            if (!__try_tmp_43.has_value()) return ::tpy::make_unexpected(__try_tmp_43.error());
+                        }
+                        int64_t __raw_30;
+                        {
+                            auto __try_tmp_44 = __reader.read_int();
+                            if (!__try_tmp_44.has_value()) return ::tpy::make_unexpected(__try_tmp_44.error());
+                            __raw_30 = *__try_tmp_44;
+                        }
+                        int32_t __t0_29 = ::tpy::int_cast_check<int32_t>(__raw_30);
+                        if ((__reader.has_next() == false)) {
+                            return ::tpy::make_unexpected(::tpystd::tplib::json::JsonError{});
+                        }
+                        int64_t __raw_32;
+                        {
+                            auto __try_tmp_45 = __reader.read_int();
+                            if (!__try_tmp_45.has_value()) return ::tpy::make_unexpected(__try_tmp_45.error());
+                            __raw_32 = *__try_tmp_45;
+                        }
+                        int32_t __t1_31 = ::tpy::int_cast_check<int32_t>(__raw_32);
+                        if ((__reader.has_next() == false)) {
+                            return ::tpy::make_unexpected(::tpystd::tplib::json::JsonError{});
+                        }
+                        std::string __t2_33;
+                        {
+                            auto __try_tmp_46 = __reader.read_str();
+                            if (!__try_tmp_46.has_value()) return ::tpy::make_unexpected(__try_tmp_46.error());
+                            __t2_33 = *__try_tmp_46;
+                        }
+                        {
+                            auto __try_tmp_47 = __reader.read_array_end();
+                            if (!__try_tmp_47.has_value()) return ::tpy::make_unexpected(__try_tmp_47.error());
+                        }
+                        coord = std::tuple<int32_t, int32_t, std::string>{__t0_29, __t1_31, __t2_33};
                         goto __match_end_1;
                     }
                     break;
                 }
                 case 'r': {
                     if (__match_subject == "precision") {
-                        precision = static_cast<float>(__reader.read_float());
+                        double __raw_6;
+                        {
+                            auto __try_tmp_48 = __reader.read_float();
+                            if (!__try_tmp_48.has_value()) return ::tpy::make_unexpected(__try_tmp_48.error());
+                            __raw_6 = *__try_tmp_48;
+                        }
+                        float __precision_5 = static_cast<float>(__raw_6);
+                        precision = __precision_5;
                         goto __match_end_1;
                     }
                     if (__match_subject == "friends") {
-                        __reader.read_array_start();
-                        while (__reader.has_next()) {
-                            friends.push_back(Address::_from_reader(__reader));
+                        {
+                            auto __try_tmp_49 = __reader.read_array_start();
+                            if (!__try_tmp_49.has_value()) return ::tpy::make_unexpected(__try_tmp_49.error());
                         }
-                        __reader.read_array_end();
+                        while (__reader.has_next()) {
+                            Address __elem_17;
+                            {
+                                auto __try_tmp_50 = Address::_from_reader(__reader);
+                                if (!__try_tmp_50.has_value()) return ::tpy::make_unexpected(__try_tmp_50.error());
+                                __elem_17 = *__try_tmp_50;
+                            }
+                            friends.push_back(__elem_17);
+                        }
+                        {
+                            auto __try_tmp_51 = __reader.read_array_end();
+                            if (!__try_tmp_51.has_value()) return ::tpy::make_unexpected(__try_tmp_51.error());
+                        }
                         goto __match_end_1;
                     }
                     break;
@@ -355,18 +609,51 @@ struct Profile {
                 }
             }
             {
-                __reader.skip_value();
+                {
+                    auto __try_tmp_52 = __reader.skip_value();
+                    if (!__try_tmp_52.has_value()) return ::tpy::make_unexpected(__try_tmp_52.error());
+                }
             }
             __match_end_1:;
         }
-        __reader.read_object_end();
-        if (!((role.has_value()))) ::tpy::tpy_panic("json: missing required field 'role'");
-        if (!((address != nullptr))) ::tpy::tpy_panic("json: missing required field 'address'");
-        if (!((coord.has_value()))) ::tpy::tpy_panic("json: missing required field 'coord'");
-        return Profile(name, age, score, precision, active, big_id, (*role), std::move((*address)), std::move(tags), std::move(scores), std::move(friends), std::move(roles), std::move(metadata), std::move(nested_map), (*coord), backup_role, std::move(alt_address ? std::optional<Address>(std::move(*alt_address)) : std::nullopt), email);
+        {
+            auto __try_tmp_53 = __reader.read_object_end();
+            if (!__try_tmp_53.has_value()) return ::tpy::make_unexpected(__try_tmp_53.error());
+        }
+        if ((!role.has_value())) {
+            return ::tpy::make_unexpected(::tpystd::tplib::json::JsonError{});
+        }
+        if ((!address.has_value())) {
+            return ::tpy::make_unexpected(::tpystd::tplib::json::JsonError{});
+        }
+        if ((!coord.has_value())) {
+            return ::tpy::make_unexpected(::tpystd::tplib::json::JsonError{});
+        }
+        auto __tmp_2 = (*address);
+        auto __tmp_3 = alt_address;
+        return Profile(name, age, score, precision, active, big_id, (*role), std::move(__tmp_2), std::move(tags), std::move(scores), std::move(friends), std::move(roles), std::move(metadata), std::move(nested_map), (*coord), backup_role, std::move(__tmp_3), email);
     }
 
     static Profile from_json(std::string_view __s) {
+        ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
+        std::optional<Profile> __result = std::nullopt;
+        {
+            {
+                auto __try_tmp_55 = Profile::_from_reader(__reader);
+                if (!__try_tmp_55.has_value()) goto __except_54;
+                __result = *__try_tmp_55;
+            }
+            goto __after_try_54;
+            // except JsonError:
+            __except_54:;
+            ::tpy::tpy_panic("json: parse error");
+            __after_try_54:;
+        }
+        if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
+        return (*__result);
+    }
+
+    static std::expected<Profile, ::tpystd::tplib::json::JsonError> try_from_json(std::string_view __s) {
         ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
         return Profile::_from_reader(__reader);
     }
@@ -435,8 +722,8 @@ struct Profile {
         auto __beg_4 = __obj_4.begin();
         auto __end_4 = __obj_4.end();
         for (; __beg_4 != __end_4; ++__beg_4) {
-            const auto& __kv_13 = *__beg_4;
-            const auto& __tup_1 = __kv_13;
+            const auto& __kv_39 = *__beg_4;
+            const auto& __tup_1 = __kv_39;
             std::string_view __dk = std::get<0>(__tup_1);
             int32_t __dv = std::get<1>(__tup_1);
             __writer.key(__dk);
@@ -449,8 +736,8 @@ struct Profile {
         auto __beg_5 = __obj_5.begin();
         auto __end_5 = __obj_5.end();
         for (; __beg_5 != __end_5; ++__beg_5) {
-            auto&& __kv_14 = *__beg_5;
-            auto& __tup_2 = __kv_14;
+            auto&& __kv_40 = *__beg_5;
+            auto& __tup_2 = __kv_40;
             std::string_view __dk = std::get<0>(__tup_2);
             std::vector<int32_t>* __dv = &std::get<1>(__tup_2);
             __writer.key(__dk);

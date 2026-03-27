@@ -4,58 +4,98 @@
 namespace tpyapp::main {
 
 
+// @error_return(JsonError)
 // def test_reader_standard() -> None:
-void test_reader_standard() {
+std::expected<void, ::tpystd::tplib::json::JsonError> test_reader_standard() {
     // reader = JsonReader('["a\\nb", "c\\td", "e\\\\f", "g\\"h"]')
     ::tpystd::tplib::json::JsonReader reader = ::tpystd::tplib::json::JsonReader("[\"a\\nb\", \"c\\td\", \"e\\\\f\", \"g\\\"h\"]");
     // reader.read_array_start()
-    reader.read_array_start();
+    {
+        auto __try_tmp_1 = reader.read_array_start();
+        if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
+    }
     // while reader.has_next():
     while (reader.has_next()) {
         // s = reader.read_str()
-        std::string s = reader.read_str();
+        std::string s;
+        {
+            auto __try_tmp_2 = reader.read_str();
+            if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
+            s = *__try_tmp_2;
+        }
         // print(len(s))
         std::cout << ::tpy::__len__(s) << "\n";
         // print(s)
         std::cout << s << "\n";
     }
     // reader.read_array_end()
-    reader.read_array_end();
+    {
+        auto __try_tmp_3 = reader.read_array_end();
+        if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
+    }
+    return {};
 }
 
+// @error_return(JsonError)
 // def test_reader_bf() -> None:
-void test_reader_bf() {
+std::expected<void, ::tpystd::tplib::json::JsonError> test_reader_bf() {
     // reader = JsonReader('["x\\by", "x\\fy"]')
     ::tpystd::tplib::json::JsonReader reader = ::tpystd::tplib::json::JsonReader("[\"x\\by\", \"x\\fy\"]");
     // reader.read_array_start()
-    reader.read_array_start();
+    {
+        auto __try_tmp_4 = reader.read_array_start();
+        if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
+    }
     // while reader.has_next():
     while (reader.has_next()) {
         // s = reader.read_str()
-        std::string s = reader.read_str();
+        std::string s;
+        {
+            auto __try_tmp_5 = reader.read_str();
+            if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
+            s = *__try_tmp_5;
+        }
         // print(len(s))
         std::cout << ::tpy::__len__(s) << "\n";
-        // # Verify the middle char is the expected control char
         // print(ord(s[1]))
         std::cout << static_cast<int32_t>(static_cast<unsigned char>(::tpy::__getitem__(s, 1))) << "\n";
     }
     // reader.read_array_end()
-    reader.read_array_end();
+    {
+        auto __try_tmp_6 = reader.read_array_end();
+        if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
+    }
+    return {};
 }
 
+// @error_return(JsonError)
 // def test_reader_unicode() -> None:
-void test_reader_unicode() {
+std::expected<void, ::tpystd::tplib::json::JsonError> test_reader_unicode() {
     // reader = JsonReader('["\\u0041", "\\u004F\\u004B"]')
     ::tpystd::tplib::json::JsonReader reader = ::tpystd::tplib::json::JsonReader("[\"\\u0041\", \"\\u004F\\u004B\"]");
     // reader.read_array_start()
-    reader.read_array_start();
+    {
+        auto __try_tmp_7 = reader.read_array_start();
+        if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(__try_tmp_7.error());
+    }
     // while reader.has_next():
     while (reader.has_next()) {
-        // print(reader.read_str())
-        std::cout << reader.read_str() << "\n";
+        // s = reader.read_str()
+        std::string s;
+        {
+            auto __try_tmp_8 = reader.read_str();
+            if (!__try_tmp_8.has_value()) return ::tpy::make_unexpected(__try_tmp_8.error());
+            s = *__try_tmp_8;
+        }
+        // print(s)
+        std::cout << s << "\n";
     }
     // reader.read_array_end()
-    reader.read_array_end();
+    {
+        auto __try_tmp_9 = reader.read_array_end();
+        if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
+    }
+    return {};
 }
 
 // def test_writer_control_chars() -> None:
@@ -80,8 +120,9 @@ void test_writer_control_chars() {
     std::cout << w.finish() << "\n";
 }
 
+// @error_return(JsonError)
 // def test_roundtrip() -> None:
-void test_roundtrip() {
+std::expected<void, ::tpystd::tplib::json::JsonError> test_roundtrip() {
     // w = JsonWriter()
     ::tpystd::tplib::json::JsonWriter w = ::tpystd::tplib::json::JsonWriter();
     // w.array_start()
@@ -97,14 +138,90 @@ void test_roundtrip() {
     // reader = JsonReader(json)
     ::tpystd::tplib::json::JsonReader reader = ::tpystd::tplib::json::JsonReader(json);
     // reader.read_array_start()
-    reader.read_array_start();
+    {
+        auto __try_tmp_10 = reader.read_array_start();
+        if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(__try_tmp_10.error());
+    }
     // while reader.has_next():
     while (reader.has_next()) {
-        // print(reader.read_str())
-        std::cout << reader.read_str() << "\n";
+        // s = reader.read_str()
+        std::string s;
+        {
+            auto __try_tmp_11 = reader.read_str();
+            if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
+            s = *__try_tmp_11;
+        }
+        // print(s)
+        std::cout << s << "\n";
     }
     // reader.read_array_end()
-    reader.read_array_end();
+    {
+        auto __try_tmp_12 = reader.read_array_end();
+        if (!__try_tmp_12.has_value()) return ::tpy::make_unexpected(__try_tmp_12.error());
+    }
+    return {};
+}
+
+// def main() -> None:
+void main() {
+    // try:
+    {
+        // test_reader_standard()
+        {
+            auto __try_tmp_14 = test_reader_standard();
+            if (!__try_tmp_14.has_value()) goto __except_13;
+        }
+        goto __after_try_13;
+        // except JsonError:
+        __except_13:;
+        // print("ERROR")
+        std::cout << "ERROR" << "\n";
+        __after_try_13:;
+    }
+    // try:
+    {
+        // test_reader_bf()
+        {
+            auto __try_tmp_16 = test_reader_bf();
+            if (!__try_tmp_16.has_value()) goto __except_15;
+        }
+        goto __after_try_15;
+        // except JsonError:
+        __except_15:;
+        // print("ERROR")
+        std::cout << "ERROR" << "\n";
+        __after_try_15:;
+    }
+    // try:
+    {
+        // test_reader_unicode()
+        {
+            auto __try_tmp_18 = test_reader_unicode();
+            if (!__try_tmp_18.has_value()) goto __except_17;
+        }
+        goto __after_try_17;
+        // except JsonError:
+        __except_17:;
+        // print("ERROR")
+        std::cout << "ERROR" << "\n";
+        __after_try_17:;
+    }
+    // test_writer_control_chars()
+    test_writer_control_chars();
+    // try:
+    {
+        // test_roundtrip()
+        {
+            auto __try_tmp_20 = test_roundtrip();
+            if (!__try_tmp_20.has_value()) goto __except_19;
+        }
+        goto __after_try_19;
+        // except JsonError:
+        __except_19:;
+        // print("ERROR")
+        std::cout << "ERROR" << "\n";
+        __after_try_19:;
+    }
 }
 
 void __tpy_init() {
@@ -112,19 +229,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tplib.json import JsonReader, JsonWriter
+    // from tplib.json import JsonError, JsonReader, JsonWriter
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::json::__tpy_init();
-    // test_reader_standard()
-    test_reader_standard();
-    // test_reader_bf()
-    test_reader_bf();
-    // test_reader_unicode()
-    test_reader_unicode();
-    // test_writer_control_chars()
-    test_writer_control_chars();
-    // test_roundtrip()
-    test_roundtrip();
+    // main()
+    main();
 }
 
 } // namespace tpyapp::main

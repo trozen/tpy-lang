@@ -41,36 +41,97 @@ struct User {
         return ((((this->name == other.name) && (this->age == other.age)) && (this->active == other.active)) && (this->email == other.email));
     }
 
-    static User _from_reader(::tpystd::tplib::json::JsonReader& __reader) {
-        __reader.read_object_start();
+    static std::expected<User, ::tpystd::tplib::json::JsonError> _from_reader(::tpystd::tplib::json::JsonReader& __reader) {
+        {
+            auto __try_tmp_1 = __reader.read_object_start();
+            if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
+        }
         std::string name = "";
         int32_t age = 0;
         bool active = false;
         std::optional<std::string> email = std::nullopt;
         while (__reader.has_next()) {
-            std::string_view __key = __reader.read_key_raw();
+            std::string_view __key;
+            {
+                auto __try_tmp_2 = __reader.read_key_raw();
+                if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
+                __key = *__try_tmp_2;
+            }
             auto& __match_subject = __key;
             if (__match_subject == "name") {
-                name = __reader.read_str();
+                std::string __name_1;
+                {
+                    auto __try_tmp_3 = __reader.read_str();
+                    if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
+                    __name_1 = *__try_tmp_3;
+                }
+                name = __name_1;
             } else if (__match_subject == "age") {
-                age = ::tpy::int_cast_check<int32_t>(__reader.read_int());
+                int64_t __raw_3;
+                {
+                    auto __try_tmp_4 = __reader.read_int();
+                    if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
+                    __raw_3 = *__try_tmp_4;
+                }
+                int32_t __age_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
+                age = __age_2;
             } else if (__match_subject == "active") {
-                active = __reader.read_bool();
+                bool __active_4;
+                {
+                    auto __try_tmp_5 = __reader.read_bool();
+                    if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
+                    __active_4 = *__try_tmp_5;
+                }
+                active = __active_4;
             } else if (__match_subject == "email") {
                 if ((__reader.peek() == ::tpystd::tplib::json::JsonToken::NONE)) {
-                    __reader.read_null();
+                    {
+                        auto __try_tmp_6 = __reader.read_null();
+                        if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
+                    }
                 } else {
-                    email = __reader.read_str();
+                    std::string __email_5;
+                    {
+                        auto __try_tmp_7 = __reader.read_str();
+                        if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(__try_tmp_7.error());
+                        __email_5 = *__try_tmp_7;
+                    }
+                    email = __email_5;
                 }
             } else {
-                __reader.skip_value();
+                {
+                    auto __try_tmp_8 = __reader.skip_value();
+                    if (!__try_tmp_8.has_value()) return ::tpy::make_unexpected(__try_tmp_8.error());
+                }
             }
         }
-        __reader.read_object_end();
+        {
+            auto __try_tmp_9 = __reader.read_object_end();
+            if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
+        }
         return User(name, age, active, email);
     }
 
     static User from_json(std::string_view __s) {
+        ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
+        std::optional<User> __result = std::nullopt;
+        {
+            {
+                auto __try_tmp_11 = User::_from_reader(__reader);
+                if (!__try_tmp_11.has_value()) goto __except_10;
+                __result = *__try_tmp_11;
+            }
+            goto __after_try_10;
+            // except JsonError:
+            __except_10:;
+            ::tpy::tpy_panic("json: parse error");
+            __after_try_10:;
+        }
+        if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
+        return (*__result);
+    }
+
+    static std::expected<User, ::tpystd::tplib::json::JsonError> try_from_json(std::string_view __s) {
         ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
         return User::_from_reader(__reader);
     }

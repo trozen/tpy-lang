@@ -366,6 +366,10 @@ class SemanticAnalyzer:
         for record in module.records:
             self.registrar.validate_record_inheritance(record)
 
+        # Validate @error_return(E) on methods (ControlFlow markers are now set)
+        for record in module.records:
+            self.registrar.validate_method_error_returns(record)
+
         # Validate ValueType fields in a second pass (all ValueType flags are set now)
         for record in module.records:
             self.registrar.validate_value_type_fields(record)

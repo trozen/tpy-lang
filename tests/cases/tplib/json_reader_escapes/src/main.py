@@ -1,7 +1,8 @@
 # Test JSON escape handling: \b, \f, \uXXXX in reader; control char escaping in writer.
-from tpy import Int32
-from tplib.json import JsonReader, JsonWriter
+from tpy import Int32, error_return
+from tplib.json import JsonError, JsonReader, JsonWriter
 
+@error_return(JsonError)
 def test_reader_standard() -> None:
     reader = JsonReader('["a\\nb", "c\\td", "e\\\\f", "g\\"h"]')
     reader.read_array_start()
@@ -11,21 +12,23 @@ def test_reader_standard() -> None:
         print(s)
     reader.read_array_end()
 
+@error_return(JsonError)
 def test_reader_bf() -> None:
     reader = JsonReader('["x\\by", "x\\fy"]')
     reader.read_array_start()
     while reader.has_next():
         s = reader.read_str()
         print(len(s))
-        # Verify the middle char is the expected control char
         print(ord(s[1]))
     reader.read_array_end()
 
+@error_return(JsonError)
 def test_reader_unicode() -> None:
     reader = JsonReader('["\\u0041", "\\u004F\\u004B"]')
     reader.read_array_start()
     while reader.has_next():
-        print(reader.read_str())
+        s = reader.read_str()
+        print(s)
     reader.read_array_end()
 
 def test_writer_control_chars() -> None:
@@ -39,6 +42,7 @@ def test_writer_control_chars() -> None:
     w.array_end()
     print(w.finish())
 
+@error_return(JsonError)
 def test_roundtrip() -> None:
     w = JsonWriter()
     w.array_start()
@@ -49,11 +53,27 @@ def test_roundtrip() -> None:
     reader = JsonReader(json)
     reader.read_array_start()
     while reader.has_next():
-        print(reader.read_str())
+        s = reader.read_str()
+        print(s)
     reader.read_array_end()
 
-test_reader_standard()
-test_reader_bf()
-test_reader_unicode()
-test_writer_control_chars()
-test_roundtrip()
+def main() -> None:
+    try:
+        test_reader_standard()
+    except JsonError:
+        print("ERROR")
+    try:
+        test_reader_bf()
+    except JsonError:
+        print("ERROR")
+    try:
+        test_reader_unicode()
+    except JsonError:
+        print("ERROR")
+    test_writer_control_chars()
+    try:
+        test_roundtrip()
+    except JsonError:
+        print("ERROR")
+
+main()

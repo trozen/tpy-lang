@@ -2,7 +2,7 @@
 # A @model with field `color: str` must not shadow a `color: Color` parameter
 # in an unrelated method after an if-statement triggers _sync_promoted_var_types.
 from tpy import Int32, copy
-from tplib.json import JsonReader, JsonToken, JsonWriter
+from tplib.json import JsonError, JsonReader, JsonToken, JsonWriter
 from tplib.json.model import model
 from dataclasses import dataclass
 from enum import Enum, auto

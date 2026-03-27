@@ -159,7 +159,7 @@ class StatementGenerator:
         self.ctx.indent_level = indent_level
         self.ctx.current_return_type = return_type
         raw_error_return = getattr(func, 'error_return', None)
-        self.ctx.current_error_return = error_return_to_cpp(raw_error_return) if raw_error_return else None
+        self.ctx.current_error_return = error_return_to_cpp(raw_error_return, self.ctx.analyzer.registry, self.ctx.module_name) if raw_error_return else None
         self.ctx.current_func_params = {pname: ptype for pname, ptype in params}
         self.ctx.current_type_param_bounds = dict(record_type_param_bounds) if record_type_param_bounds else {}
         if func.type_param_bounds:
@@ -2011,6 +2011,51 @@ class StatementGenerator:
         out = f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += f"{indent}{INDENT}if (!{tmp}.has_value()) return ::tpy::make_unexpected({tmp}.error());\n"
+        out += f"{indent}{INDENT}{target_cpp} = *{tmp};\n"
+        out += f"{indent}}}\n"
+
+        return out
+
+    def _gen_error_return_unwrap_var_decl(self, stmt: TpyVarDecl, indent: str) -> str:
+        """Generate a variable declaration with panic-on-error unwrap (top-level)."""
+        assert stmt.init is not None
+
+        self.ctx.try_except_counter += 1
+        tmp = f"__try_tmp_{self.ctx.try_except_counter}"
+
+        call_cpp = self.expressions.gen_expr(stmt.init)
+        cpp_name = escape_cpp_name(stmt.name)
+
+        fi = self._get_error_return_fi(stmt.init)
+        var_type = fi.return_type if fi else stmt.type
+
+        is_new_var = stmt.name not in self.ctx.declared_vars
+        if is_new_var and var_type:
+            cpp_type = var_type.to_cpp()
+            out = f"{indent}{cpp_type} {cpp_name};\n"
+            self.ctx.declared_vars.add(stmt.name)
+        else:
+            out = ""
+
+        out += f"{indent}{{\n"
+        out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
+        out += f"{indent}{INDENT}if (!{tmp}.has_value()) ::tpy::tpy_panic(\"unhandled error return\");\n"
+        out += f"{indent}{INDENT}{cpp_name} = *{tmp};\n"
+        out += f"{indent}}}\n"
+
+        return out
+
+    def _gen_error_return_unwrap_assign(self, stmt: TpyAssign, indent: str) -> str:
+        """Generate an assignment with panic-on-error unwrap (top-level)."""
+        self.ctx.try_except_counter += 1
+        tmp = f"__try_tmp_{self.ctx.try_except_counter}"
+
+        call_cpp = self.expressions.gen_expr(stmt.value)
+        target_cpp = self.expressions.gen_expr(stmt.target)
+
+        out = f"{indent}{{\n"
+        out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
+        out += f"{indent}{INDENT}if (!{tmp}.has_value()) ::tpy::tpy_panic(\"unhandled error return\");\n"
         out += f"{indent}{INDENT}{target_cpp} = *{tmp};\n"
         out += f"{indent}}}\n"
 

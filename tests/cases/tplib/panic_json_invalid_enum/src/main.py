@@ -1,7 +1,7 @@
 # Test panic on invalid enum value in JSON.
 from tpy import Int32, try_parse
 from enum import Enum
-from tplib.json import JsonReader, JsonToken, JsonWriter
+from tplib.json import JsonError, JsonReader, JsonToken, JsonWriter
 from tplib.json.model import model
 
 class Color(Enum):

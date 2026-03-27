@@ -18,7 +18,7 @@ from tpyc.parse import (
     TpyIntLiteral, TpyFloatLiteral,
     TpyVarDecl, TpyTupleUnpack, TpyIf, TpyWhile, TpyAssert,
     TpySubscript, TpyTupleLiteral, TpyForEach,
-    TpyArrayLiteral, TpyDictLiteral,
+    TpyArrayLiteral, TpyDictLiteral, TpyUnaryOp, TpyRaise, TpyTryExcept,
     TpyMatch, TpyMatchCase, TpyLiteralPattern, TpyWildcardPattern,
 )
 from tpyc.typesys import (
@@ -118,6 +118,18 @@ def _expr_stmt(expr: TpyExpr) -> TpyExprStmt:
     return TpyExprStmt(expr=expr)
 
 
+_JSON_ERROR = "JsonError"
+
+
+def _raise_if(condition: TpyExpr) -> TpyIf:
+    """Build: if condition: raise JsonError"""
+    return TpyIf(
+        condition=condition,
+        then_body=[TpyRaise(exception_type=_JSON_ERROR)],
+        else_body=[],
+    )
+
+
 def _reader_name() -> TpyName:
     return _name("__reader")
 
@@ -136,25 +148,29 @@ def _build_read_into(fld_type: TypeInfo, reader: TpyExpr, hint: str = "v") -> tu
     Returns (statements, var_name). Works for all supported types
     including containers and enums.
     """
-    # Simple expression types -- single TpyVarDecl
-    expr = _try_build_read_expr(fld_type, reader)
-    if expr is not None:
-        tmp = _fresh_tmp(hint)
-        return ([TpyVarDecl(name=tmp, type=None, init=expr)], tmp)
+    # Simple types: reader call as standalone statement
+    tmp = _fresh_tmp(hint)
+    stmts = _try_build_read_stmts(fld_type, reader, tmp)
+    if stmts is not None:
+        return (stmts, tmp)
 
-    # Enum: try_parse returns Optional, unwrap with assert
+    # Model record: _from_reader call as standalone VarDecl
+    if _is_model_record(fld_type):
+        return ([TpyVarDecl(name=tmp, type=None,
+                            init=_method_call(_name(fld_type.name), "_from_reader", [reader]))], tmp)
+
+    # Enum: read_str first (auto-propagates), then try_parse + raise
     if _is_enum_type(fld_type):
+        raw_str = _fresh_tmp("estr")
         parsed = _fresh_tmp("parsed")
-        tmp = _fresh_tmp(hint)
         enum_name = fld_type._tpy_type.name
         return ([
+            TpyVarDecl(name=raw_str, type=None, init=_method_call(reader, "read_str")),
             TpyVarDecl(name=parsed, type=None,
-                       init=_call("try_parse", [_name(enum_name),
-                                                _method_call(reader, "read_str")])),
-            TpyAssert(
-                condition=TpyBinOp(left=_name(parsed), op="is not",
-                                   right=TpyNoneLiteral()),
-                message=_str_lit(f"json: invalid enum value"),
+                       init=_call("try_parse", [_name(enum_name), _name(raw_str)])),
+            _raise_if(
+                TpyBinOp(left=_name(parsed), op="is",
+                         right=TpyNoneLiteral()),
             ),
             TpyVarDecl(name=tmp, type=fld_type._tpy_type, init=_name(parsed)),
         ], tmp)
@@ -167,32 +183,46 @@ def _build_read_into(fld_type: TypeInfo, reader: TpyExpr, hint: str = "v") -> tu
     return (stmts, tmp)
 
 
-def _try_build_read_expr(fld_type: TypeInfo, reader: TpyExpr) -> TpyExpr | None:
-    """Try to build a single expression that reads a value. Returns None for
-    types that need multiple statements (enums, containers, tuples)."""
+def _try_build_read_stmts(fld_type: TypeInfo, reader: TpyExpr, var_name: str) -> list[TpyStmt] | None:
+    """Try to build statements that read a value into var_name.
+
+    Returns None for types that need container/tuple/enum handling.
+    Reader calls are always standalone statements so @error_return
+    auto-propagation works correctly.
+    """
     if _is_str_type(fld_type):
-        return _method_call(reader, "read_str")
+        return [TpyVarDecl(name=var_name, type=None, init=_method_call(reader, "read_str"))]
     if _is_bool_type(fld_type):
-        return _method_call(reader, "read_bool")
+        return [TpyVarDecl(name=var_name, type=None, init=_method_call(reader, "read_bool"))]
     if _is_float_type(fld_type):
-        read_call = _method_call(reader, "read_float")
         if isinstance(fld_type._tpy_type, Float32Type):
-            return TpyCall(func="Float32", args=[read_call])
-        return read_call
+            raw = _fresh_tmp("raw")
+            return [
+                TpyVarDecl(name=raw, type=None, init=_method_call(reader, "read_float")),
+                TpyVarDecl(name=var_name, type=None, init=TpyCall(func="Float32", args=[_name(raw)])),
+            ]
+        return [TpyVarDecl(name=var_name, type=None, init=_method_call(reader, "read_float"))]
     if _is_int_type(fld_type):
-        read_call = _method_call(reader, "read_int")
         type_name = str(fld_type._tpy_type)
         if type_name != "Int64":
-            return TpyCall(func=type_name, args=[read_call])
-        return read_call
+            raw = _fresh_tmp("raw")
+            return [
+                TpyVarDecl(name=raw, type=None, init=_method_call(reader, "read_int")),
+                TpyVarDecl(name=var_name, type=None, init=TpyCall(func=type_name, args=[_name(raw)])),
+            ]
+        return [TpyVarDecl(name=var_name, type=None, init=_method_call(reader, "read_int"))]
     if _is_bigint_type(fld_type):
-        # Read as string, parse via int()
-        return _call("int", [_method_call(reader, "read_str")])
+        raw = _fresh_tmp("raw")
+        return [
+            TpyVarDecl(name=raw, type=None, init=_method_call(reader, "read_str")),
+            TpyVarDecl(name=var_name, type=None, init=_call("int", [_name(raw)])),
+        ]
     if _is_model_record(fld_type):
-        # The record must also be a @model (have _from_reader).
-        # We can't check this at macro time since the other class may not
-        # be registered yet, but the C++ error will be clear enough.
-        return _method_call(_name(fld_type.name), "_from_reader", [reader])
+        # Model records use pointer-repr for Optional fields, so the
+        # _from_reader result must be assigned directly to the field
+        # (not via temp) to ensure the compiler manages slot storage.
+        # Return None to let the caller handle assignment.
+        return None
     return None
 
 
@@ -272,9 +302,9 @@ def _build_read_value_stmts(
             stmts.extend(es)
             elem_vars.append(ev)
             if i < len(elem_types) - 1:
-                stmts.append(TpyAssert(
-                    condition=_method_call(reader, "has_next"),
-                    message=_str_lit(f"json: tuple expects {len(elem_types)} elements"),
+                stmts.append(_raise_if(
+                    _eq(_method_call(reader, "has_next"),
+                        TpyBoolLiteral(value=False)),
                 ))
         stmts.append(_expr_stmt(_method_call(reader, "read_array_end")))
         stmts.append(TpyAssign(
@@ -288,21 +318,14 @@ def _build_read_value_stmts(
 
 
 def _read_and_assign(fld_name: str, fld_type: TypeInfo, reader: TpyExpr) -> list[TpyStmt]:
-    """Read a value and assign to fld_name. Uses direct expression when possible,
-    falls back to _build_read_into for complex types (enums, containers)."""
-    expr = _try_build_read_expr(fld_type, reader)
-    if expr is not None:
-        return [TpyAssign(target=_name(fld_name), value=expr)]
+    """Read a value and assign to fld_name via temp variable."""
     stmts, var = _build_read_into(fld_type, reader, fld_name)
     stmts.append(TpyAssign(target=_name(fld_name), value=_name(var)))
     return stmts
 
 
 def _read_and_append(target: TpyExpr, elem_type: TypeInfo, reader: TpyExpr) -> list[TpyStmt]:
-    """Read one element and append to target. Direct expression when possible."""
-    expr = _try_build_read_expr(elem_type, reader)
-    if expr is not None:
-        return [_expr_stmt(_method_call(target, "append", [expr]))]
+    """Read one element and append to target via temp variable."""
     stmts, var = _build_read_into(elem_type, reader, "elem")
     stmts.append(_expr_stmt(_method_call(target, "append", [_name(var)])))
     return stmts
@@ -311,13 +334,7 @@ def _read_and_append(target: TpyExpr, elem_type: TypeInfo, reader: TpyExpr) -> l
 def _read_and_assign_subscript(
     target: TpyExpr, key_var: str, val_type: TypeInfo, reader: TpyExpr,
 ) -> list[TpyStmt]:
-    """Read one value and assign to target[key_var]. Direct expression when possible."""
-    expr = _try_build_read_expr(val_type, reader)
-    if expr is not None:
-        return [TpyAssign(
-            target=TpySubscript(obj=target, index=_name(key_var)),
-            value=expr,
-        )]
+    """Read one value and assign to target[key_var] via temp variable."""
     stmts, var = _build_read_into(val_type, reader, "dv")
     stmts.append(TpyAssign(
         target=TpySubscript(obj=target, index=_name(key_var)),
@@ -361,12 +378,23 @@ def _build_from_reader(cls: ClassInfo, all_fields: list[FieldInfo]) -> TpyFuncti
     for fld in all_fields:
         default = _build_field_default(fld)
         if default is not None:
+            # For Optional[NonValueType] fields, use Optional[Own[T]] so the
+            # C++ repr is std::optional<T> (value) rather than T* (pointer).
+            fld_cpp_type = fld.type._tpy_type
+            if isinstance(fld_cpp_type, OptionalType) and not fld_cpp_type.inner.is_value_type():
+                fld_cpp_type = OptionalType(OwnType(fld_cpp_type.inner))
             body.append(TpyVarDecl(
-                name=fld.name, type=fld.type._tpy_type, init=default,
+                name=fld.name, type=fld_cpp_type, init=default,
             ))
         elif _is_model_record(fld.type) or _is_enum_type(fld.type) or _is_tuple_type(fld.type):
+            # Use Optional[Own[T]] for non-value types so the C++ repr is
+            # std::optional<T> (value semantics) rather than T* (pointer repr).
+            # This ensures error_return auto-propagation assigns correctly.
+            inner = fld.type._tpy_type
+            if not inner.is_value_type():
+                inner = OwnType(inner)
             body.append(TpyVarDecl(
-                name=fld.name, type=OptionalType(fld.type._tpy_type),
+                name=fld.name, type=OptionalType(inner),
                 init=TpyNoneLiteral(),
             ))
             required_fields.append(fld.name)
@@ -394,13 +422,10 @@ def _build_from_reader(cls: ClassInfo, all_fields: list[FieldInfo]) -> TpyFuncti
     # __reader.read_object_end()
     body.append(_expr_stmt(_method_call(reader, "read_object_end")))
 
-    # Assert required fields were seen (triggers narrowing for constructor)
+    # Raise if required fields were not seen (triggers narrowing for constructor)
     for req_name in required_fields:
-        body.append(TpyAssert(
-            condition=TpyBinOp(
-                left=_name(req_name), op="is not", right=TpyNoneLiteral(),
-            ),
-            message=_str_lit(f"json: missing required field '{req_name}'"),
+        body.append(_raise_if(
+            TpyBinOp(left=_name(req_name), op="is", right=TpyNoneLiteral()),
         ))
 
     # return ClassName(field1, field2, ...)
@@ -417,6 +442,7 @@ def _build_from_reader(cls: ClassInfo, all_fields: list[FieldInfo]) -> TpyFuncti
         body=body,
         is_method=True,
         is_staticmethod=True,
+        error_return=_JSON_ERROR,
     )
 
 
@@ -444,7 +470,62 @@ def _build_field_dispatch(fields: list[FieldInfo], reader: TpyExpr) -> TpyMatch:
 
 
 def _build_from_json(cls: ClassInfo) -> TpyFunction:
-    """Build from_json(s: str) -> Self static method (public entry point)."""
+    """Build from_json(s: str) -> Self static method (panics on error).
+
+    Wraps _from_reader in try/except and panics on parse errors.
+    For error-handling version, use try_from_json.
+    """
+    cls_type = NamedType(cls.name)
+    ret_type = cls_type if cls_type.is_value_type() else OwnType(cls_type)
+    # Use Optional[Own[T]] for the result variable to avoid pointer-repr
+    # issues and ensure the value is definitely available after try/except.
+    inner = cls_type
+    if not cls_type.is_value_type():
+        inner = OwnType(cls_type)
+    result_var = "__result"
+    body: list[TpyStmt] = [
+        TpyVarDecl(
+            name="__reader", type=NamedType("JsonReader"),
+            init=TpyCall(func="JsonReader", args=[_name("__s")]),
+        ),
+        TpyVarDecl(name=result_var, type=OptionalType(inner),
+                   init=TpyNoneLiteral()),
+        TpyTryExcept(
+            try_body=[
+                TpyAssign(target=_name(result_var),
+                          value=_method_call(_name(cls.name), "_from_reader",
+                                            [_name("__reader")])),
+            ],
+            exception_type=_JSON_ERROR,
+            except_body=[
+                TpyAssert(condition=TpyBoolLiteral(value=False),
+                          message=_str_lit("json: parse error")),
+            ],
+            else_body=[],
+        ),
+        TpyAssert(
+            condition=TpyBinOp(left=_name(result_var), op="is not",
+                               right=TpyNoneLiteral()),
+            message=_str_lit("json: unreachable"),
+        ),
+        TpyReturn(value=_name(result_var)),
+    ]
+    return TpyFunction(
+        name="from_json",
+        params=[("__s", StrType())],
+        return_type=ret_type,
+        body=body,
+        is_method=True,
+        is_staticmethod=True,
+    )
+
+
+def _build_try_from_json(cls: ClassInfo) -> TpyFunction:
+    """Build try_from_json(s: str) -> Self with @error_return(JsonError).
+
+    Calls _from_reader with auto-propagation. Callers handle with
+    try/except JsonError.
+    """
     cls_type = NamedType(cls.name)
     ret_type = cls_type if cls_type.is_value_type() else OwnType(cls_type)
     body: list[TpyStmt] = [
@@ -457,12 +538,13 @@ def _build_from_json(cls: ClassInfo) -> TpyFunction:
         ),
     ]
     return TpyFunction(
-        name="from_json",
+        name="try_from_json",
         params=[("__s", StrType())],
         return_type=ret_type,
         body=body,
         is_method=True,
         is_staticmethod=True,
+        error_return=_JSON_ERROR,
     )
 
 
@@ -685,5 +767,6 @@ def model(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> None:
     # Generate JSON methods
     cls.add_method(_build_from_reader(cls, all_fields))
     cls.add_method(_build_from_json(cls))
+    cls.add_method(_build_try_from_json(cls))
     cls.add_method(_build_to_writer(cls, all_fields))
     cls.add_method(_build_to_json(cls))

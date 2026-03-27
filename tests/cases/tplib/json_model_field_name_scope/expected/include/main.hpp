@@ -54,26 +54,72 @@ struct Msg {
         return ((this->color == other.color) && (this->value == other.value));
     }
 
-    static Msg _from_reader(::tpystd::tplib::json::JsonReader& __reader) {
-        __reader.read_object_start();
+    static std::expected<Msg, ::tpystd::tplib::json::JsonError> _from_reader(::tpystd::tplib::json::JsonReader& __reader) {
+        {
+            auto __try_tmp_1 = __reader.read_object_start();
+            if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
+        }
         std::string color = "";
         int32_t value = 0;
         while (__reader.has_next()) {
-            std::string_view __key = __reader.read_key_raw();
+            std::string_view __key;
+            {
+                auto __try_tmp_2 = __reader.read_key_raw();
+                if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
+                __key = *__try_tmp_2;
+            }
             auto& __match_subject = __key;
             if (__match_subject == "color") {
-                color = __reader.read_str();
+                std::string __color_1;
+                {
+                    auto __try_tmp_3 = __reader.read_str();
+                    if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
+                    __color_1 = *__try_tmp_3;
+                }
+                color = __color_1;
             } else if (__match_subject == "value") {
-                value = ::tpy::int_cast_check<int32_t>(__reader.read_int());
+                int64_t __raw_3;
+                {
+                    auto __try_tmp_4 = __reader.read_int();
+                    if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
+                    __raw_3 = *__try_tmp_4;
+                }
+                int32_t __value_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
+                value = __value_2;
             } else {
-                __reader.skip_value();
+                {
+                    auto __try_tmp_5 = __reader.skip_value();
+                    if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
+                }
             }
         }
-        __reader.read_object_end();
+        {
+            auto __try_tmp_6 = __reader.read_object_end();
+            if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
+        }
         return Msg(color, value);
     }
 
     static Msg from_json(std::string_view __s) {
+        ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
+        std::optional<Msg> __result = std::nullopt;
+        {
+            {
+                auto __try_tmp_8 = Msg::_from_reader(__reader);
+                if (!__try_tmp_8.has_value()) goto __except_7;
+                __result = *__try_tmp_8;
+            }
+            goto __after_try_7;
+            // except JsonError:
+            __except_7:;
+            ::tpy::tpy_panic("json: parse error");
+            __after_try_7:;
+        }
+        if (!((__result.has_value()))) ::tpy::tpy_panic("json: unreachable");
+        return (*__result);
+    }
+
+    static std::expected<Msg, ::tpystd::tplib::json::JsonError> try_from_json(std::string_view __s) {
         ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
         return Msg::_from_reader(__reader);
     }
