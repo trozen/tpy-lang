@@ -1,0 +1,69 @@
+# Test JsonWriter: objects, arrays, nesting, escapes, all value types.
+from tplib.json import JsonWriter
+
+def test_basic() -> None:
+    w = JsonWriter()
+    w.object_start()
+    w.key("name")
+    w.write_str("Alice")
+    w.key("age")
+    w.write_int(30)
+    w.key("active")
+    w.write_bool(True)
+    w.object_end()
+    print(w.finish())
+
+def test_nested() -> None:
+    w = JsonWriter()
+    w.object_start()
+    w.key("scores")
+    w.array_start()
+    w.write_int(1)
+    w.write_int(2)
+    w.write_int(3)
+    w.array_end()
+    w.key("addr")
+    w.object_start()
+    w.key("city")
+    w.write_str("NYC")
+    w.object_end()
+    w.key("x")
+    w.write_null()
+    w.object_end()
+    print(w.finish())
+
+def test_escape() -> None:
+    w = JsonWriter()
+    w.object_start()
+    w.key("msg")
+    w.write_str("hello\nworld")
+    w.key("path")
+    w.write_str("c:\\temp")
+    w.object_end()
+    print(w.finish())
+
+def test_float() -> None:
+    w = JsonWriter()
+    w.array_start()
+    w.write_float(3.14)
+    w.write_float(-0.5)
+    w.array_end()
+    print(w.finish())
+
+def test_empty() -> None:
+    w = JsonWriter()
+    w.object_start()
+    w.key("obj")
+    w.object_start()
+    w.object_end()
+    w.key("arr")
+    w.array_start()
+    w.array_end()
+    w.object_end()
+    print(w.finish())
+
+test_basic()
+test_nested()
+test_escape()
+test_float()
+test_empty()

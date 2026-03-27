@@ -176,7 +176,7 @@ tests/
 │   ├── records/              # Class/record methods, dunder, staticmethod
 │   ├── returns/              # Return value semantics
 │   ├── str/                  # str, Char, string operations
-│   ├── tplib/                # TPy standard library modules (Box, etc.)
+│   ├── tplib/                # TPy standard library modules (Box, JSON, etc.)
 │   ├── tuple/                # Tuple types, access, generics
 │   └── union/                # Union types (A | B), variant codegen
 │       ├── {name}/           # Success test
@@ -392,7 +392,8 @@ Library search roots and CPython stubs:
 | `tpy/tpy/_typing/` | Typing layer: `__init__.py` (Protocol, Self, Sized, Sequence, Iterator, Iterable) |
 | `tpy/tpy/_core/` | Core types: `_types.py` (protocols, primitives), `_containers.py` (Span, Array, Ptr), `_functions.py` (span, deref, copy, copy_iter, own_iter, try_parse), `_bytes_view.py` (BytesView) |
 | `tpy/tpy/_builtins/` | Builtin types and functions: `_types.py` (bool, int, float, str), `_funcs.py` (len, hash, print, isinstance, etc.), `_list.py`, `_dict.py`, `_set.py`, `_range.py`, `_bytes.py`, `_exceptions.py` |
-| `tpy/tplib/` | TPy standard library: `Box[T]`, custom collections |
+| `tpy/tplib/` | TPy standard library: `Box[T]`, custom collections, JSON library |
+| `tpy/tplib/json/` | JSON library: `parser.py` (JsonToken, JsonReader), `writer.py` (JsonWriter), `model.py` (@model macro -- compile-time only) |
 | `tpy/typing.py` | `typing` protocols (`Sized`, `Sequence`, etc.). Re-exports from `tpy._typing`. Implicitly compiled. |
 | `tpy/builtins.py` | Re-export facade for `tpy._builtins`. Implicitly compiled. |
 | `tpy/tpy/extern.py` | Re-exports native, native_c, extern_c, cpp_template from `_bootstrap` |
@@ -430,6 +431,7 @@ Working but not previously listed:
 - `bytes`/`bytearray`/`BytesView` types
 - Generator functions (yield -> state machine codegen)
 - Compile-time macro modules (`# tpy: macro_module`)
+- `tplib.json` -- JSON parsing/serialization library with `@model` macro for pydantic-style typed deserialization
 
 ## Type Mappings
 

@@ -1,0 +1,264 @@
+# JSON pull-parser: JsonToken enum and JsonReader class.
+from enum import Enum
+from tpy import Int32, Int64, Float64, Char, readonly
+
+class JsonToken(Enum):
+    OBJECT_START = 0
+    OBJECT_END = 1
+    ARRAY_START = 2
+    ARRAY_END = 3
+    STRING = 4
+    NUMBER = 5
+    TRUE = 6
+    FALSE = 7
+    NONE = 8
+    END = 9
+
+class JsonReader:
+    _data: str
+    _pos: Int32
+    _len: Int32
+
+    def __init__(self, data: str) -> None:
+        self._data = data
+        self._pos = 0
+        self._len = len(data)
+
+    def _skip_ws(self) -> None:
+        while self._pos < self._len:
+            c = self._data[self._pos]
+            if c != " " and c != "\t" and c != "\n" and c != "\r":
+                return
+            self._pos += 1
+
+    def peek(self) -> JsonToken:
+        self._skip_ws()
+        if self._pos >= self._len:
+            return JsonToken.END
+        c = self._data[self._pos]
+        if c == "{":
+            return JsonToken.OBJECT_START
+        if c == "}":
+            return JsonToken.OBJECT_END
+        if c == "[":
+            return JsonToken.ARRAY_START
+        if c == "]":
+            return JsonToken.ARRAY_END
+        if c == "\"":
+            return JsonToken.STRING
+        if c == "t":
+            return JsonToken.TRUE
+        if c == "f":
+            return JsonToken.FALSE
+        if c == "n":
+            return JsonToken.NONE
+        return JsonToken.NUMBER
+
+    def read_object_start(self) -> None:
+        self._skip_ws()
+        assert self._pos < self._len and self._data[self._pos] == "{", "json: expected '{'"
+        self._pos += 1
+
+    def read_object_end(self) -> None:
+        self._skip_ws()
+        assert self._pos < self._len and self._data[self._pos] == "}", "json: expected '}'"
+        self._pos += 1
+
+    def read_array_start(self) -> None:
+        self._skip_ws()
+        assert self._pos < self._len and self._data[self._pos] == "[", "json: expected '['"
+        self._pos += 1
+
+    def read_array_end(self) -> None:
+        self._skip_ws()
+        assert self._pos < self._len and self._data[self._pos] == "]", "json: expected ']'"
+        self._pos += 1
+
+    def has_next(self) -> bool:
+        self._skip_ws()
+        if self._pos >= self._len:
+            return False
+        c = self._data[self._pos]
+        if c == "}" or c == "]":
+            return False
+        if c == ",":
+            self._pos += 1
+        return True
+
+    def read_key(self) -> str:
+        result = self._read_raw_str()
+        self._skip_ws()
+        assert self._pos < self._len and self._data[self._pos] == ":", "json: expected ':'"
+        self._pos += 1
+        return result
+
+    def read_str(self) -> str:
+        return self._read_raw_str()
+
+    def read_int(self) -> Int64:
+        self._skip_ws()
+        neg = False
+        if self._pos < self._len and self._data[self._pos] == "-":
+            neg = True
+            self._pos += 1
+        result: Int64 = 0
+        start = self._pos
+        while self._pos < self._len:
+            c = self._data[self._pos]
+            if c < "0" or c > "9":
+                break
+            result = result * 10 + Int64(ord(c) - ord("0"))
+            self._pos += 1
+        assert self._pos > start, "json: expected digit"
+        if neg:
+            result = -result
+        return result
+
+    def read_float(self) -> Float64:
+        raw: str = self._read_number_raw()
+        return float(raw)
+
+    def read_bool(self) -> bool:
+        self._skip_ws()
+        if self._pos + 4 <= self._len and self._data[self._pos:self._pos + 4] == "true":
+            self._pos += 4
+            return True
+        if self._pos + 5 <= self._len and self._data[self._pos:self._pos + 5] == "false":
+            self._pos += 5
+            return False
+        assert False, "json: expected 'true' or 'false'"
+
+    def read_null(self) -> None:
+        self._skip_ws()
+        if self._pos + 4 <= self._len and self._data[self._pos:self._pos + 4] == "null":
+            self._pos += 4
+            return
+        assert False, "json: expected 'null'"
+
+    def skip_value(self) -> None:
+        tok = self.peek()
+        if tok == JsonToken.OBJECT_START:
+            self.read_object_start()
+            while self.has_next():
+                self.read_key()
+                self.skip_value()
+            self.read_object_end()
+        elif tok == JsonToken.ARRAY_START:
+            self.read_array_start()
+            while self.has_next():
+                self.skip_value()
+            self.read_array_end()
+        elif tok == JsonToken.STRING:
+            self.read_str()
+        elif tok == JsonToken.NUMBER:
+            self._read_number_raw()
+        elif tok == JsonToken.TRUE or tok == JsonToken.FALSE:
+            self.read_bool()
+        elif tok == JsonToken.NONE:
+            self.read_null()
+
+    # -- internal helpers --
+
+    def _read_raw_str(self) -> str:
+        self._skip_ws()
+        assert self._pos < self._len and self._data[self._pos] == "\"", "json: expected '\"'"
+        self._pos += 1
+        start = self._pos
+        has_escape = False
+        while self._pos < self._len:
+            c = self._data[self._pos]
+            if c == "\\":
+                has_escape = True
+                self._pos += 2
+            elif c == "\"":
+                break
+            else:
+                self._pos += 1
+        assert self._pos < self._len, "json: unterminated string"
+        end = self._pos
+        self._pos += 1
+        if not has_escape:
+            return self._data[start:end]
+        return self._unescape(start, end)
+
+    def _unescape(self, start: Int32, end: Int32) -> str:
+        result = ""
+        i = start
+        chunk_start = start
+        while i < end:
+            if self._data[i] == "\\":
+                if i > chunk_start:
+                    result = result + self._data[chunk_start:i]
+                i += 1
+                esc = self._data[i]
+                if esc == "\"":
+                    result = result + "\""
+                elif esc == "\\":
+                    result = result + "\\"
+                elif esc == "/":
+                    result = result + "/"
+                elif esc == "n":
+                    result = result + "\n"
+                elif esc == "r":
+                    result = result + "\r"
+                elif esc == "t":
+                    result = result + "\t"
+                elif esc == "b":
+                    result = result + chr(8)
+                elif esc == "f":
+                    result = result + chr(12)
+                elif esc == "u":
+                    # \uXXXX: parse 4 hex digits
+                    assert i + 4 < end, "json: incomplete \\u escape"
+                    code = self._parse_hex4(i + 1)
+                    result = result + chr(code)
+                    i += 4
+                else:
+                    result = result + "\\"
+                    result = result + esc
+                i += 1
+                chunk_start = i
+            else:
+                i += 1
+        if chunk_start < end:
+            result = result + self._data[chunk_start:end]
+        return result
+
+    def _parse_hex4(self, pos: Int32) -> Int32:
+        result: Int32 = 0
+        i: Int32 = 0
+        while i < 4:
+            c = self._data[pos + i]
+            if c >= "0" and c <= "9":
+                result = result * 16 + (ord(c) - ord("0"))
+            elif c >= "a" and c <= "f":
+                result = result * 16 + (ord(c) - ord("a") + 10)
+            elif c >= "A" and c <= "F":
+                result = result * 16 + (ord(c) - ord("A") + 10)
+            else:
+                assert False, "json: invalid \\u hex digit"
+            i += 1
+        return result
+
+    def _read_number_raw(self) -> str:
+        self._skip_ws()
+        start = self._pos
+        # Optional leading minus
+        if self._pos < self._len and self._data[self._pos] == "-":
+            self._pos += 1
+        # Digits, decimal point, exponent
+        while self._pos < self._len:
+            c = self._data[self._pos]
+            if c >= "0" and c <= "9":
+                self._pos += 1
+            elif c == ".":
+                self._pos += 1
+            elif c == "e" or c == "E":
+                self._pos += 1
+                # Optional +/- after exponent
+                if self._pos < self._len and (self._data[self._pos] == "+" or self._data[self._pos] == "-"):
+                    self._pos += 1
+            else:
+                break
+        assert self._pos > start, "json: expected number"
+        return self._data[start:self._pos]

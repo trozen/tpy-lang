@@ -1,0 +1,19 @@
+3
+a
+b
+3
+c	d
+3
+e\f
+3
+g"h
+3
+8
+3
+12
+A
+OK
+["a\tb", "c\nd", "\bx", "\fy", "\u0000z"]
+line1
+line2
+tab	here

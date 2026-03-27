@@ -1,0 +1,12 @@
+Alice
+30
+True
+a@b.com
+Bob
+None
+None
+{"name": "Alice", "age": 30, "active": true, "email": "a@b.com"}
+{"name": "Bob", "age": 25, "active": false, "email": null}
+True
+X
+1
