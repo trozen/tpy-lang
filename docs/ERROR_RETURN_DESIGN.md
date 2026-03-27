@@ -14,7 +14,6 @@ See [EXCEPTION_DESIGN.md](EXCEPTION_DESIGN.md) for the full two-tier exception m
 
 | Feature | Notes |
 |---------|-------|
-| Error forwarding | `@error_return(E)` caller can forward without try/except if it also `@error_return(E)`. Like Rust's `?` -- enables `next()` builtin and transitive error propagation without boilerplate |
 | Multiple exception types | `@error_return(E1, E2)` -- return `std::expected<T, std::variant<E1, E2>>` |
 | Exception types with data | `class ParseError(Exception, ControlFlow): line: Int32` -- non-empty error types |
 | `except E as e` binding | Bind exception value in catch block (needs data fields) |

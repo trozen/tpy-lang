@@ -1,0 +1,1 @@
+main.py:16: error: call to 'may_fail_a' may return 'ErrorA' which must be handled with try/except

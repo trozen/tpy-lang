@@ -261,10 +261,17 @@ class StatementGenerator:
             # Inside try/except: intercept error_return calls with goto dispatch
             if self.ctx.try_except_label and stmt.init and self._get_error_return_fi(stmt.init):
                 return self._gen_error_return_var_decl(stmt, indent)
+            # Auto-propagation: error_return call in @error_return function
+            if (not self.ctx.try_except_label and self.ctx.current_error_return
+                    and stmt.init and self._get_error_return_fi(stmt.init)):
+                return self._gen_error_return_propagate_var_decl(stmt, indent)
             return self._gen_var_decl_code(stmt, indent)
         elif isinstance(stmt, TpyAssign):
             if self.ctx.try_except_label and self._get_error_return_fi(stmt.value):
                 return self._gen_error_return_assign(stmt, indent)
+            if (not self.ctx.try_except_label and self.ctx.current_error_return
+                    and self._get_error_return_fi(stmt.value)):
+                return self._gen_error_return_propagate_assign(stmt, indent)
             return self._gen_assign_code(stmt, indent)
         elif isinstance(stmt, TpyAugAssign):
             return self._gen_aug_assign_code(stmt, indent)
@@ -273,9 +280,9 @@ class StatementGenerator:
         elif isinstance(stmt, TpyExprStmt):
             if isinstance(stmt.expr, TpyStrLiteral):
                 return None  # Skip docstrings
-            if self.ctx.try_except_label:
-                fi = self._get_error_return_fi(stmt.expr)
-                if fi:
+            fi = self._get_error_return_fi(stmt.expr)
+            if fi:
+                if self.ctx.try_except_label:
                     self.ctx.try_except_counter += 1
                     tmp = f"__try_tmp_{self.ctx.try_except_counter}"
                     call_cpp = self.expressions.gen_expr(stmt.expr)
@@ -283,6 +290,14 @@ class StatementGenerator:
                     return (f"{indent}{{\n"
                             f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
                             f"{indent}{INDENT}if (!{tmp}.has_value()) goto {label};\n"
+                            f"{indent}}}\n")
+                if self.ctx.current_error_return:
+                    self.ctx.try_except_counter += 1
+                    tmp = f"__try_tmp_{self.ctx.try_except_counter}"
+                    call_cpp = self.expressions.gen_expr(stmt.expr)
+                    return (f"{indent}{{\n"
+                            f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
+                            f"{indent}{INDENT}if (!{tmp}.has_value()) return ::tpy::make_unexpected({tmp}.error());\n"
                             f"{indent}}}\n")
             return f"{indent}{self.expressions.gen_expr(stmt.expr)};\n"
         elif isinstance(stmt, TpyReturn):
@@ -1943,10 +1958,62 @@ class StatementGenerator:
 
         return out
 
+    def _gen_error_return_propagate_var_decl(self, stmt: TpyVarDecl, indent: str) -> str:
+        """Generate a variable declaration with auto-propagation.
+
+        When an @error_return(E) function calls another @error_return(E) function
+        outside a try/except, errors propagate automatically via early return.
+        """
+        assert stmt.init is not None
+        assert self.ctx.current_error_return is not None
+
+        self.ctx.try_except_counter += 1
+        tmp = f"__try_tmp_{self.ctx.try_except_counter}"
+
+        call_cpp = self.expressions.gen_expr(stmt.init)
+        cpp_name = escape_cpp_name(stmt.name)
+
+        fi = self._get_error_return_fi(stmt.init)
+        var_type = fi.return_type if fi else stmt.type
+
+        is_new_var = stmt.name not in self.ctx.declared_vars
+        if is_new_var and var_type:
+            cpp_type = var_type.to_cpp()
+            out = f"{indent}{cpp_type} {cpp_name};\n"
+            self.ctx.declared_vars.add(stmt.name)
+        else:
+            out = ""
+
+        out += f"{indent}{{\n"
+        out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
+        out += f"{indent}{INDENT}if (!{tmp}.has_value()) return ::tpy::make_unexpected({tmp}.error());\n"
+        out += f"{indent}{INDENT}{cpp_name} = *{tmp};\n"
+        out += f"{indent}}}\n"
+
+        return out
+
+    def _gen_error_return_propagate_assign(self, stmt: TpyAssign, indent: str) -> str:
+        """Generate an assignment with auto-propagation."""
+        assert self.ctx.current_error_return is not None
+
+        self.ctx.try_except_counter += 1
+        tmp = f"__try_tmp_{self.ctx.try_except_counter}"
+
+        call_cpp = self.expressions.gen_expr(stmt.value)
+        target_cpp = self.expressions.gen_expr(stmt.target)
+
+        out = f"{indent}{{\n"
+        out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
+        out += f"{indent}{INDENT}if (!{tmp}.has_value()) return ::tpy::make_unexpected({tmp}.error());\n"
+        out += f"{indent}{INDENT}{target_cpp} = *{tmp};\n"
+        out += f"{indent}}}\n"
+
+        return out
+
     def _get_error_return_fi(self, expr: TpyExpr) -> 'FunctionInfo | None':
         """Return FunctionInfo if expr is an @error_return call, else None."""
         if isinstance(expr, TpyCoerce):
-            return self._get_error_return_fi(expr.inner)
+            return self._get_error_return_fi(expr.expr)
         fi = None
         if isinstance(expr, (TpyCall, TpyMethodCall)):
             fi = getattr(expr, 'resolved_function_info', None)

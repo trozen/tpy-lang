@@ -7,7 +7,7 @@
 | E1 | `@error_return(E)` mechanism: decorator, `raise E` codegen (`std::unexpected`), `try/except` caller enforcement, `std::expected<T,E>` return, `try/except/else` | Done (see [ERROR_RETURN_DESIGN.md](ERROR_RETURN_DESIGN.md)) |
 | E2 | Iterator migration: auto-add `@error_return(StopIteration)` on `__next__`, for-loop codegen via `std::expected` | Done |
 | E3 | `ControlFlow` marker protocol: split exception types into throw vs return categories, compiler enforcement | Done |
-| E4 | Auto-propagation: `@error_return(E)` functions auto-forward matching errors from callees without `try/except` | Todo |
+| E4 | Auto-propagation: `@error_return(E)` functions auto-forward matching errors from callees without `try/except` | Done |
 | E5 | `except ControlFlow` catch-all for return exceptions | Todo |
 | E6 | Exception types with data fields, `except E as e` binding | Todo |
 | E7 | General C++ exceptions: `try`/`except`/`finally`/`raise` with stack unwinding for non-control-flow errors | Todo |

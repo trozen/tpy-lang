@@ -4611,7 +4611,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - `StopIteration` is a built-in `ControlFlow` type; user-defined types opt in via `ControlFlow` marker
   - `Exception`/`BaseException`/`StopIteration` defined as `@native` classes in `lib/tpy/builtins/`, mapping to `::tpy::` runtime structs (inherit from `std::exception`)
   - Decorator on functions: `raise E` compiles to `return std::unexpected(E{})`
-  - Callers must use `try/except E` -- compile error if unhandled
+  - Callers must use `try/except E` or be `@error_return(E)` themselves (auto-propagation)
   - `try/except/else` supported
   - Goto-based dispatch: error_return calls inside nested if/for work correctly
   - Branch-aware flow analysis (narrowing, init tracking, variable hoisting)

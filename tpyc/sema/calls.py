@@ -2008,8 +2008,16 @@ class CallAnalyzer:
         """Check that calls to @error_return functions are inside matching try/except."""
         if func.error_return_type is None:
             return
+        # Inside matching try/except
         ctx_error_type = self.ctx.try_except_error_type
         if ctx_error_type == func.error_return_type:
+            return
+        # Auto-propagation: caller has matching @error_return(E), not inside a try/except
+        # (inside try/except, the goto-based dispatch handles it instead)
+        current = self.ctx.current_function
+        if (ctx_error_type is None
+                and isinstance(current, TpyFunction)
+                and current.error_return == func.error_return_type):
             return
         # Strip internal 'builtins.' prefix for user-facing message
         display_name = func.error_return_type
