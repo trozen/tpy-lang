@@ -14,7 +14,7 @@ void main();
 
 inline auto doubled(std::vector<int32_t>& items) {
     return ::tpy::make_generator<int32_t>(
-        [&items, __beg = decltype(std::declval<std::vector<int32_t>&>().begin())(), __end = decltype(std::declval<std::vector<int32_t>&>().begin())(), __init = false]() mutable -> std::optional<int32_t> {
+        [&items, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<int32_t> {
             if (!__init) { __beg = (items).begin(); __end = (items).end(); __init = true; }
             if (__beg != __end) {
                 int32_t x = *__beg++;

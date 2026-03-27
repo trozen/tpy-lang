@@ -9,7 +9,7 @@ from ..parse.nodes import (
     TpyFunction, TpyYield, TpyStmt, TpyWhile, TpyForEach, TpyReturn, TpyVarDecl,
     TpyCall, TpyName, TpyExpr,
 )
-from ..typesys import StrType, is_protocol_type
+from ..typesys import StrType, TypeParamRef, is_protocol_type
 from .context import INDENT, escape_cpp_name
 
 
@@ -80,6 +80,24 @@ class GeneratorCodegen:
         self.statements = statements
         self.functions = functions
 
+    def _gen_template_header(self, func: TpyFunction, indent: str = "") -> str:
+        """Generate template header for a generic generator function.
+
+        Returns empty string if the function is not generic and has no protocol params.
+        """
+        proto_params = self.functions.protocols.get_all_protocol_params(func.params)
+        return self.functions._gen_template_header_with_fn(func, proto_params, indent=indent)
+
+    def _gen_params(self, func: TpyFunction, *, emit_defaults: bool = False) -> str:
+        """Generate parameter list for a generator function, handling protocol params."""
+        proto_params = self.functions.protocols.get_all_protocol_params(func.params)
+        has_dynamic = self.functions._has_dynamic_protocol_params(func.params)
+        if proto_params or has_dynamic:
+            return self.functions.gen_params_with_protocols(
+                func.params, func.type_params, emit_defaults=emit_defaults)
+        return self.functions.gen_params(func.params, func.type_params,
+                                         emit_defaults=emit_defaults)
+
     @staticmethod
     def gen_struct_name(func: TpyFunction, record_name: str | None = None) -> str:
         """Compute the generator struct name."""
@@ -145,10 +163,16 @@ class GeneratorCodegen:
             const_suffix = " const" if func.is_readonly else ""
             out.write(f"\n")
             self.ctx.emit_source_comment(out, func.loc, indent=INDENT)
-            params = self.functions.gen_params(func.params, func, emit_defaults=True)
+            tpl_header = self._gen_template_header(func, indent=INDENT)
+            if tpl_header:
+                out.write(tpl_header)
+            params = self._gen_params(func, emit_defaults=True)
             out.write(f"{ind1}auto {func.name}({params}){const_suffix} {{\n")
         else:
-            params = self.functions.gen_params(func.params, func, emit_defaults=True)
+            tpl_header = self._gen_template_header(func)
+            if tpl_header:
+                out.write(tpl_header)
+            params = self._gen_params(func, emit_defaults=True)
             out.write(f"inline auto {escape_cpp_name(func.name)}({params}) {{\n")
 
         # Generate init stmts and set up codegen scope
@@ -212,10 +236,16 @@ class GeneratorCodegen:
             const_suffix = " const" if func.is_readonly else ""
             out.write(f"\n")
             self.ctx.emit_source_comment(out, func.loc, indent=INDENT)
-            params = self.functions.gen_params(func.params, func, emit_defaults=True)
+            tpl_header = self._gen_template_header(func, indent=INDENT)
+            if tpl_header:
+                out.write(tpl_header)
+            params = self._gen_params(func, emit_defaults=True)
             out.write(f"{ind1}auto {func.name}({params}){const_suffix} {{\n")
         else:
-            params = self.functions.gen_params(func.params, func, emit_defaults=True)
+            tpl_header = self._gen_template_header(func)
+            if tpl_header:
+                out.write(tpl_header)
+            params = self._gen_params(func, emit_defaults=True)
             out.write(f"inline auto {escape_cpp_name(func.name)}({params}) {{\n")
 
         old_self_ref = self.ctx.generator_self_ref
@@ -278,6 +308,55 @@ class GeneratorCodegen:
             out.write(f"{I(2)}}}\n")
             out.write(f"{I(1)});\n")
             out.write(f"{I(0)}}}\n")
+        elif self._is_protocol_iterable(for_stmt):
+            # Protocol-typed iterable (Iterator[T] or Iterable[T]):
+            # use __iter__()/__next__() instead of begin()/end().
+            iterable_code = self.expressions.gen_expr(for_stmt.iterable)
+            proto_qname = self._get_protocol_iterable_qname(for_stmt)
+
+            base_captures = self._build_capture_list(func.params, init_stmts)
+
+            if proto_qname == "typing.Iterator":
+                # Iterator[T]: the param IS the iterator, call __next__() directly
+                all_captures = _add_self_capture(base_captures)
+
+                out.write(f"{I(1)}return ::tpy::make_generator<{cpp_elem}>(\n")
+                out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
+                out.write(f"{I(3)}auto __r = ({iterable_code}).__next__();\n")
+                out.write(f"{I(3)}if (!__r.has_value()) return std::nullopt;\n")
+            else:
+                # Iterable[T]: call __iter__() first, then __next__()
+                iter_type = f"std::decay_t<decltype(::tpy::__iter__({iterable_code}))>"
+                iter_capture = f"__iter = std::optional<{iter_type}>()"
+                parts = [p for p in [base_captures, iter_capture] if p]
+                all_captures = ", ".join(parts)
+                all_captures = _add_self_capture(all_captures)
+
+                out.write(f"{I(1)}return ::tpy::make_generator<{cpp_elem}>(\n")
+                out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
+                out.write(f"{I(3)}if (!__iter) {{ __iter.emplace(::tpy::__iter__({iterable_code})); }}\n")
+                out.write(f"{I(3)}auto __r = (*__iter).__next__();\n")
+                out.write(f"{I(3)}if (!__r.has_value()) return std::nullopt;\n")
+
+            self.ctx.indent_level = 3 + extra
+            out.write(f"{I(3)}{{\n")
+            self.ctx.indent_level = 4 + extra
+            if iter_elem and iter_elem.is_value_type():
+                out.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = *__r;\n")
+            else:
+                out.write(f"{I(4)}auto&& {cpp_var} = *__r;\n")
+
+            for stmt in pre_yield:
+                self.statements.gen_stmt(out, stmt)
+            yield_expr = self.expressions.gen_expr(yield_stmt.value)
+            out.write(f"{I(4)}auto __val = {yield_expr};\n")
+            for stmt in post_yield:
+                self.statements.gen_stmt(out, stmt)
+            out.write(f"{I(4)}return std::optional<{cpp_elem}>(__val);\n")
+            out.write(f"{I(3)}}}\n")
+            out.write(f"{I(2)}}}\n")
+            out.write(f"{I(1)});\n")
+            out.write(f"{I(0)}}}\n")
         else:
             # Container iterable: capture by reference, begin/end iteration.
             # Matches CPython semantics (mutations visible during iteration)
@@ -286,7 +365,7 @@ class GeneratorCodegen:
             iterable_code = self.expressions.gen_expr(for_stmt.iterable)
 
             base_captures = self._build_capture_list(func.params, init_stmts)
-            iter_type = f"decltype(std::declval<{self.types.type_to_cpp(self.types.get_resolved_type(for_stmt.iterable))}&>().begin())"
+            iter_type = f"decltype(({iterable_code}).begin())"
             beg_capture = f"__beg = {iter_type}()"
             end_capture = f"__end = {iter_type}()"
             init_flag = "__init = false"
@@ -320,6 +399,25 @@ class GeneratorCodegen:
 
         self.ctx.indent_level = old_indent
         self.ctx.generator_self_ref = old_self_ref
+
+    def _resolve_iterable_type(self, for_stmt: TpyForEach):
+        """Resolve the iterable's type, following TypeParamRef bounds."""
+        resolved = self.types.get_resolved_type(for_stmt.iterable)
+        if isinstance(resolved, TypeParamRef):
+            bound = self.ctx.current_type_param_bounds.get(resolved.name)
+            if bound is not None and is_protocol_type(bound):
+                return bound
+        return resolved
+
+    def _is_protocol_iterable(self, for_stmt: TpyForEach) -> bool:
+        """Check if the for-loop iterates over a protocol-typed Iterator/Iterable."""
+        resolved = self._resolve_iterable_type(for_stmt)
+        return (is_protocol_type(resolved)
+                and resolved.qualified_name() in ("typing.Iterator", "typing.Iterable"))
+
+    def _get_protocol_iterable_qname(self, for_stmt: TpyForEach) -> str:
+        """Get the qualified name of the protocol iterable type."""
+        return self._resolve_iterable_type(for_stmt).qualified_name()
 
     @staticmethod
     def _split_at_yield(body: list[TpyStmt]) -> tuple[TpyYield, list[TpyStmt], list[TpyStmt]]:
@@ -528,6 +626,18 @@ class GeneratorCodegen:
     def gen_generator_struct(self, out: TextIO, func: TpyFunction,
                              record_name: str | None = None) -> None:
         """Generate the state machine struct for a generator function."""
+        # Generic generators with multiple yields (struct path) are not yet
+        # supported -- the out-of-line __next__() in .cpp won't link for
+        # template structs. Generic simple generators (single yield) work fine.
+        proto_params = self.functions.protocols.get_all_protocol_params(func.params)
+        if func.type_params or proto_params:
+            from ..sema.diagnostics import SemanticError
+            raise SemanticError(
+                "generic generator functions with multiple yield points "
+                "are not yet supported",
+                func.loc,
+            )
+
         # Pre-scan for-loops with yields to determine synthetic struct fields
         for_loop_info = self._prescan_for_loops(func)
         self.ctx.generator_for_loop_info = for_loop_info
@@ -562,6 +672,9 @@ class GeneratorCodegen:
 
         label = f"{record_name}.{func.name}" if record_name else func.name
         out.write(f"// Generator: {label}\n")
+        tpl_header = self._gen_template_header(func)
+        if tpl_header:
+            out.write(tpl_header)
         out.write(f"struct {struct_name} {{\n")
 
         # __state field
@@ -638,6 +751,9 @@ class GeneratorCodegen:
         func_yields = _collect_yield_stmts(func.body)
         func_state_nums = sorted(yield_states[id(y)] for y in func_yields)
 
+        tpl_header = self._gen_template_header(func)
+        if tpl_header:
+            out.write(tpl_header)
         out.write(f"std::expected<{cpp_elem}, ::tpy::StopIteration> {struct_name}::__next__() {{\n")
         inner = INDENT
 
@@ -708,10 +824,10 @@ class GeneratorCodegen:
     def gen_generator_factory(self, out: TextIO, func: TpyFunction) -> None:
         """Generate the factory function that creates a generator struct."""
         struct_name = self.gen_struct_name(func)
-        params = self.functions.gen_params(
-            func.params, func,
-            emit_defaults=False,
-        )
+        tpl_header = self._gen_template_header(func)
+        if tpl_header:
+            out.write(tpl_header)
+        params = self._gen_params(func, emit_defaults=False)
         out.write(f"{struct_name} {func.name}({params}) {{\n")
 
         if func.params:
@@ -729,15 +845,18 @@ class GeneratorCodegen:
         Returns True if anything was emitted.
         """
         struct_name = self.gen_struct_name(func, record_name)
+        tpl_header = self._gen_template_header(func)
+        if tpl_header:
+            out.write(tpl_header)
         out.write(f"struct {struct_name};\n")
         return True
 
     def gen_generator_factory_forward_decl(self, out: TextIO, func: TpyFunction) -> bool:
         """Generate forward declaration for the factory function."""
         struct_name = self.gen_struct_name(func)
-        params = self.functions.gen_params(
-            func.params, func,
-            emit_defaults=True,
-        )
+        tpl_header = self._gen_template_header(func)
+        if tpl_header:
+            out.write(tpl_header)
+        params = self._gen_params(func, emit_defaults=True)
         out.write(f"{struct_name} {func.name}({params});\n")
         return True

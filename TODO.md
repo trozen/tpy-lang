@@ -26,6 +26,8 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Update `docs/LANGUAGE_FEATURES.md` with bytes/bytearray/BytesView documentation
 
 ## Bugs
+- `list(iter)` fails when nested inside another generic call: `enumerate(list(repeat("x", 3)))` errors with "list() cannot be constructed from Iterator[StrView]", but `list(repeat("x", 3))` works standalone. The outer generic's type inference context interferes with the inner `list()` constructor resolution in `_match_protocol_type_args_with_inference`.
+- Generic generators with multiple yield points (struct-based codegen path) are not yet supported -- the out-of-line `__next__()` in .cpp won't link for template structs. Currently guarded with a sema error. Fix: emit struct + `__next__()` body into the header when the function has type params.
 
 ## Fuzzy Testing Findings (2026-03-12)
 

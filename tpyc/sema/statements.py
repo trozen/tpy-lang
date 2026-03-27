@@ -843,15 +843,27 @@ class StatementAnalyzer:
                                     self.ctx.borrow_tracker.add_borrow(src, "__for_iter", BorrowKind.ITER)
                                     self.ctx.loop_var_iterable[stmt.var] = src
                                 elif arg is not None and _is_dangling_temporary_arg(arg):
-                                    if idx == -1:
-                                        detail = "temporary receiver object"
-                                    else:
-                                        detail = f"temporary argument '{fi_iter.params[idx].name}'"
-                                    self.ctx.warning(
-                                        f"Iterator borrows from {detail}; "
-                                        f"the temporary is destroyed before iteration begins",
-                                        stmt.iterable,
-                                    )
+                                    # Call results returning non-value types are
+                                    # materialized into named variables by codegen
+                                    # (for by-reference passing), so they survive
+                                    # the for-loop. Only warn for value-type temporaries
+                                    # (e.g. str -> string_view conversion) where the
+                                    # underlying storage is truly destroyed.
+                                    is_materialized = False
+                                    if isinstance(arg, (TpyCall, TpyMethodCall)):
+                                        arg_fi = arg.resolved_function_info
+                                        if arg_fi is not None and not arg_fi.return_type.is_value_type():
+                                            is_materialized = True
+                                    if not is_materialized:
+                                        if idx == -1:
+                                            detail = "temporary receiver object"
+                                        else:
+                                            detail = f"temporary argument '{fi_iter.params[idx].name}'"
+                                        self.ctx.warning(
+                                            f"Iterator borrows from {detail}; "
+                                            f"the temporary is destroyed before iteration begins",
+                                            stmt.iterable,
+                                        )
                     if is_direct_next_iter or is_protocol_iter:
                         iter_depth = inner_scope.depth
                     elif is_iter_based:
