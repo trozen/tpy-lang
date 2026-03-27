@@ -19,6 +19,7 @@ void test_float();
 void test_skip();
 void test_empty_containers();
 void test_negative_int();
+void test_raw_methods();
 
 void __tpy_init();
 } // namespace tpyapp::main

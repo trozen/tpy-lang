@@ -18,3 +18,7 @@ empty_arr
 -42
 0
 100
+name
+Alice
+city
+NYC

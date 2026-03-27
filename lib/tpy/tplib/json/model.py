@@ -22,7 +22,8 @@ from tpyc.parse import (
     TpyMatch, TpyMatchCase, TpyLiteralPattern, TpyWildcardPattern,
 )
 from tpyc.typesys import (
-    NamedType, OwnType, VoidType, BoolType, StrType, FloatType, Float32Type,
+    NamedType, OwnType, VoidType, BoolType, StrType, StrViewType,
+    FloatType, Float32Type,
     FixedIntType, OptionalType, ListType, DictType, TupleType,
     EnumType, BigIntType,
     INT64, UINT64,
@@ -381,7 +382,7 @@ def _build_from_reader(cls: ClassInfo, all_fields: list[FieldInfo]) -> TpyFuncti
     if all_fields:
         dispatch = _build_field_dispatch(all_fields, reader)
         loop_body: list[TpyStmt] = [
-            TpyVarDecl(name=key_var, type=StrType(),
+            TpyVarDecl(name=key_var, type=StrViewType(),
                        init=_method_call(reader, "read_key_raw")),
             dispatch,
         ]

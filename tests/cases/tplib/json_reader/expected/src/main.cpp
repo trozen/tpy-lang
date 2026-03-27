@@ -196,6 +196,25 @@ void test_negative_int() {
     reader.read_array_end();
 }
 
+// def test_raw_methods() -> None:
+void test_raw_methods() {
+    // reader = JsonReader('{"name": "Alice", "city": "NYC"}')
+    ::tpystd::tplib::json::JsonReader reader = ::tpystd::tplib::json::JsonReader("{\"name\": \"Alice\", \"city\": \"NYC\"}");
+    // reader.read_object_start()
+    reader.read_object_start();
+    // while reader.has_next():
+    while (reader.has_next()) {
+        // key = reader.read_key_raw()
+        std::string_view key = reader.read_key_raw();
+        // print(key)
+        std::cout << key << "\n";
+        // print(reader.read_str_raw())
+        std::cout << reader.read_str_raw() << "\n";
+    }
+    // reader.read_object_end()
+    reader.read_object_end();
+}
+
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -219,6 +238,8 @@ void __tpy_init() {
     test_empty_containers();
     // test_negative_int()
     test_negative_int();
+    // test_raw_methods()
+    test_raw_methods();
 }
 
 } // namespace tpyapp::main

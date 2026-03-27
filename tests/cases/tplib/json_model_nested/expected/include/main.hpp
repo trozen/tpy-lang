@@ -62,7 +62,7 @@ struct Address {
         std::string street = "";
         std::string city = "";
         while (__reader.has_next()) {
-            std::string __key = __reader.read_key_raw();
+            std::string_view __key = __reader.read_key_raw();
             auto& __match_subject = __key;
             if (__match_subject == "street") {
                 street = __reader.read_str();
@@ -186,7 +186,7 @@ struct Profile {
         Address* alt_address = nullptr;
         std::optional<std::string> email = std::nullopt;
         while (__reader.has_next()) {
-            std::string __key = __reader.read_key_raw();
+            std::string_view __key = __reader.read_key_raw();
             auto& __match_subject = __key;
             if (__match_subject.size() >= 2) {
                 switch (static_cast<unsigned char>(__match_subject[1])) {

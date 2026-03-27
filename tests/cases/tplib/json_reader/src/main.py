@@ -89,6 +89,15 @@ def test_negative_int() -> None:
         print(reader.read_int())
     reader.read_array_end()
 
+def test_raw_methods() -> None:
+    reader = JsonReader('{"name": "Alice", "city": "NYC"}')
+    reader.read_object_start()
+    while reader.has_next():
+        key = reader.read_key_raw()
+        print(key)
+        print(reader.read_str_raw())
+    reader.read_object_end()
+
 test_basic_object()
 test_nested()
 test_null_and_escape()
@@ -96,3 +105,4 @@ test_float()
 test_skip()
 test_empty_containers()
 test_negative_int()
+test_raw_methods()

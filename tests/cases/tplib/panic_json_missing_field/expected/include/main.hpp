@@ -57,7 +57,7 @@ struct Item {
         std::string name = "";
         std::optional<Color> color = std::nullopt;
         while (__reader.has_next()) {
-            std::string __key = __reader.read_key_raw();
+            std::string_view __key = __reader.read_key_raw();
             auto& __match_subject = __key;
             if (__match_subject == "name") {
                 name = __reader.read_str();

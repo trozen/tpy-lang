@@ -1,6 +1,6 @@
 # JSON pull-parser: JsonToken enum and JsonReader class.
 from enum import Enum
-from tpy import Int32, Int64, Float64, Char, readonly
+from tpy import Int32, Int64, Float64, Char, StrView, readonly
 
 class JsonToken(Enum):
     OBJECT_START = 0
@@ -92,10 +92,11 @@ class JsonReader:
         self._pos += 1
         return result
 
-    def read_key_raw(self) -> str:
+    def read_key_raw(self) -> StrView:
         """Read an object key without processing escape sequences.
 
-        Faster than read_key() for keys that are plain identifiers.
+        Returns a view into the input data. Faster than read_key()
+        for keys that are plain identifiers (no allocation).
         """
         self._skip_ws()
         assert self._pos < self._len and self._data[self._pos] == "\"", "json: expected '\"'"
@@ -113,6 +114,23 @@ class JsonReader:
 
     def read_str(self) -> str:
         return self._read_raw_str()
+
+    def read_str_raw(self) -> StrView:
+        """Read a string value without processing escape sequences.
+
+        Returns a view into the input data. Use for values known to
+        be plain text (no allocation).
+        """
+        self._skip_ws()
+        assert self._pos < self._len and self._data[self._pos] == "\"", "json: expected '\"'"
+        self._pos += 1
+        start = self._pos
+        while self._pos < self._len and self._data[self._pos] != "\"":
+            self._pos += 1
+        assert self._pos < self._len, "json: unterminated string"
+        end = self._pos
+        self._pos += 1
+        return self._data[start:end]
 
     def read_int(self) -> Int64:
         self._skip_ws()
