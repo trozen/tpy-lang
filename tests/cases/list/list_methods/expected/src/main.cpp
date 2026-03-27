@@ -109,7 +109,7 @@ void test_extend() {
     std::vector<int32_t> nums = {1, 2, 3};
     // # Extend with array literal
     // nums.extend([4, 5, 6])
-    ::tpy::list_extend(nums, {4, 5, 6});
+    ::tpy::list_extend(nums, std::array<int32_t, 3>{4, 5, 6});
     // print_list(nums)
     print_list(nums);
     // # Extend with another list
@@ -144,7 +144,7 @@ void test_combined_operations() {
     // nums.insert(0, 1)
     ::tpy::list_insert(nums, 0, 1);
     // nums.extend([15, 20])
-    ::tpy::list_extend(nums, {15, 20});
+    ::tpy::list_extend(nums, std::array<int32_t, 2>{15, 20});
     // print_list(nums)
     print_list(nums);
     // nums.remove(10)

@@ -1,0 +1,7 @@
+True
+False
+False
+True
+10
+[1, 1, 3, 4, 5]
+a,b,c

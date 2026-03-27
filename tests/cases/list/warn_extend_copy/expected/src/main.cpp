@@ -65,7 +65,7 @@ void test_extend_rvalue_no_warn() {
     // a.extend(make_nodes())  # tpyc: ok
     ::tpy::list_extend(a, make_nodes());
     // a.extend([Node(Int32(2))])  # tpyc: ok
-    ::tpy::list_extend(a, {Node(2)});
+    ::tpy::list_extend(a, std::array<Node, 1>{Node(2)});
     // print(len(a))
     std::cout << ::tpy::__len__(a) << "\n";
 }

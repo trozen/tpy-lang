@@ -19,7 +19,7 @@ void main() {
     // nums2: list[Int32] = [10]
     std::vector<int32_t> nums2 = {10};
     // extend_from(nums2, [20, 30])
-    auto __tmp_1 = {20, 30};
+    auto __tmp_1 = std::array<int32_t, 2>{20, 30};
     extend_from(nums2, __tmp_1);
     // print(nums2)
     std::cout << ::tpy::ListPrinter(nums2) << "\n";
@@ -48,11 +48,11 @@ void main() {
     // direct: list[Int32] = [1]
     std::vector<int32_t> direct = {1};
     // direct.extend([2, 3])
-    ::tpy::list_extend(direct, {2, 3});
+    ::tpy::list_extend(direct, std::array<int32_t, 2>{2, 3});
     // print(direct)
     std::cout << ::tpy::ListPrinter(direct) << "\n";
     // print(",".join(["x", "y"]))
-    std::cout << ::tpy::str_join(",", {"x", "y"}) << "\n";
+    std::cout << ::tpy::str_join(",", std::array<std::string, 2>{"x", "y"}) << "\n";
 }
 
 void __tpy_init() {

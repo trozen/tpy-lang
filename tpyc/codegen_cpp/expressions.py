@@ -2282,6 +2282,14 @@ class ExpressionGenerator:
         # Prefix with explicit type when inside a variant
         if union_prefix is not None:
             return f"{union_prefix}{literal}"
+        # When the target is a protocol/generic param, C++ can't deduce the type
+        # from a bare brace-init-list. Emit a typed literal using the expression's
+        # own resolved type.
+        effective = target_type.wrapped if isinstance(target_type, OwnType) else target_type
+        if is_protocol_type(effective) or isinstance(effective, TypeParamRef):
+            expr_type = self.ctx.get_expr_type(expr)
+            if isinstance(expr_type, (ArrayType, ListType)):
+                return f"{expr_type.to_cpp()}{literal}"
         return literal
 
     def _gen_dict_literal(self, expr: TpyDictLiteral) -> str:

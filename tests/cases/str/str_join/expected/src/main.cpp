@@ -9,17 +9,17 @@ namespace tpyapp::main {
 void main() {
     // # Basic join
     // result = ",".join(["a", "b", "c"])
-    std::string result = ::tpy::str_join(",", {"a", "b", "c"});
+    std::string result = ::tpy::str_join(",", std::array<std::string, 3>{"a", "b", "c"});
     // print(result)
     std::cout << result << "\n";
     // # Empty separator
     // together = "".join(["a", "b", "c"])
-    std::string together = ::tpy::str_join("", {"a", "b", "c"});
+    std::string together = ::tpy::str_join("", std::array<std::string, 3>{"a", "b", "c"});
     // print(together)
     std::cout << together << "\n";
     // # Single element
     // single = ",".join(["only"])
-    std::string single = ::tpy::str_join(",", {"only"});
+    std::string single = ::tpy::str_join(",", std::array<std::string, 1>{"only"});
     // print(single)
     std::cout << single << "\n";
     // # Empty list
