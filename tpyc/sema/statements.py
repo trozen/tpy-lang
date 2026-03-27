@@ -2329,8 +2329,11 @@ class StatementAnalyzer:
                 f"Cannot unpack tuple of {n_elems} elements into "
                 f"{n_targets} targets", stmt)
 
+        # Per-element expressions for narrowing (range facts, etc.)
+        has_elem_exprs = isinstance(stmt.value, TpyTupleLiteral)
         for i, name in enumerate(stmt.targets):
             elem_type = rhs_type.element_types[i]
+            elem_expr = stmt.value.elements[i] if has_elem_exprs and i < len(stmt.value.elements) else None
             owned = isinstance(elem_type, OwnType)
             stmt.is_owned.append(owned)
             if owned:
@@ -2346,18 +2349,27 @@ class StatementAnalyzer:
                 continue
 
             if self.ctx.is_top_level:
+                # Block reassignment of Final globals at module level
+                if name in self.ctx.final_globals:
+                    raise self.ctx.error(
+                        f"Cannot reassign Final variable '{name}'",
+                        stmt)
                 # At module level, targets become globals with namespace-scope
                 # definitions. Mark is_new=False so codegen emits assignment
                 # (the declaration is handled by gen_global_decl).
                 self.ctx.global_scope.define(name, elem_type)
                 self.ctx.current_scope.define(name, elem_type)
                 self.init.mark_assigned(name)
+                self.narrowing.update_after_write(name, elem_type, elem_type, elem_expr)
                 if self.ctx.current_ns:
                     self.ctx.current_ns.bind_variable(name, elem_type)
                 decl_line = stmt.loc.line if stmt.loc else 0
                 if name not in self.ctx.top_level_decls:
                     self.ctx.top_level_decls[name] = decl_line
                 self._warn_all_caps_without_final(name, str(elem_type), stmt)
+                if stmt.loc:
+                    display_type = unwrap_own(elem_type) if elem_type else elem_type
+                    self.ctx.declared_var_types[(stmt.loc.line, name)] = display_type
                 stmt.is_new.append(False)
                 continue
 
@@ -2373,6 +2385,7 @@ class StatementAnalyzer:
                 self._check_nonvalue_rebinding(name, stmt)
                 self.compat.check_type_compatible(
                     elem_type, existing, "tuple unpacking", source_expr=stmt)
+                self.narrowing.update_after_write(name, existing, elem_type, elem_expr)
                 stmt.is_new.append(False)
             else:
                 elem_type = self._infer_new_local_type(
@@ -2382,7 +2395,11 @@ class StatementAnalyzer:
                 stmt.target_types[i] = elem_type
                 self.ctx.current_scope.define(name, elem_type)
                 self.init.mark_assigned(name)
+                self.narrowing.update_after_write(name, elem_type, elem_type, elem_expr)
                 stmt.is_new.append(True)
+            if stmt.loc:
+                display_type = unwrap_own(elem_type) if elem_type else elem_type
+                self.ctx.declared_var_types[(stmt.loc.line, name)] = display_type
 
         # Determine const-ref eligibility per element for expensive value types.
         # Safe because tuples are immutable -- no in-place mutation possible.
