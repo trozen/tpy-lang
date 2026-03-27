@@ -1,0 +1,7 @@
+fruit
+vegetable
+unknown: banana
+color
+animal
+animal
+other: xyz

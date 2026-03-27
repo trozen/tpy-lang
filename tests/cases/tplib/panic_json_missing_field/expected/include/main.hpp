@@ -57,18 +57,17 @@ struct Item {
         std::string name = "";
         std::optional<Color> color = std::nullopt;
         while (__reader.has_next()) {
-            std::string __key = __reader.read_key();
-            if ((__key == "name")) {
+            std::string __key = __reader.read_key_raw();
+            auto& __match_subject = __key;
+            if (__match_subject == "name") {
                 name = __reader.read_str();
+            } else if (__match_subject == "color") {
+                std::optional<Color> __parsed_1 = ::tpy::EnumUtil<Color>::try_parse(__reader.read_str());
+                if (!((__parsed_1.has_value()))) ::tpy::tpy_panic("json: invalid enum value");
+                Color __color_2 = (*__parsed_1);
+                color = __color_2;
             } else {
-                if ((__key == "color")) {
-                    std::optional<Color> __parsed_1 = ::tpy::EnumUtil<Color>::try_parse(__reader.read_str());
-                    if (!((__parsed_1.has_value()))) ::tpy::tpy_panic("json: invalid enum value");
-                    Color __color_2 = (*__parsed_1);
-                    color = __color_2;
-                } else {
-                    __reader.skip_value();
-                }
+                __reader.skip_value();
             }
         }
         __reader.read_object_end();

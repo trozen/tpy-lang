@@ -92,6 +92,25 @@ class JsonReader:
         self._pos += 1
         return result
 
+    def read_key_raw(self) -> str:
+        """Read an object key without processing escape sequences.
+
+        Faster than read_key() for keys that are plain identifiers.
+        """
+        self._skip_ws()
+        assert self._pos < self._len and self._data[self._pos] == "\"", "json: expected '\"'"
+        self._pos += 1
+        start = self._pos
+        while self._pos < self._len and self._data[self._pos] != "\"":
+            self._pos += 1
+        assert self._pos < self._len, "json: unterminated string"
+        end = self._pos
+        self._pos += 1
+        self._skip_ws()
+        assert self._pos < self._len and self._data[self._pos] == ":", "json: expected ':'"
+        self._pos += 1
+        return self._data[start:end]
+
     def read_str(self) -> str:
         return self._read_raw_str()
 

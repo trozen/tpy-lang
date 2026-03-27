@@ -19,6 +19,7 @@ from tpyc.parse import (
     TpyVarDecl, TpyTupleUnpack, TpyIf, TpyWhile, TpyAssert,
     TpySubscript, TpyTupleLiteral, TpyForEach,
     TpyArrayLiteral, TpyDictLiteral,
+    TpyMatch, TpyMatchCase, TpyLiteralPattern, TpyWildcardPattern,
 )
 from tpyc.typesys import (
     NamedType, OwnType, VoidType, BoolType, StrType, FloatType, Float32Type,
@@ -375,13 +376,13 @@ def _build_from_reader(cls: ClassInfo, all_fields: list[FieldInfo]) -> TpyFuncti
                 loc=fld.loc,
             )
 
-    # Build if/elif dispatch for field keys
+    # Build match/case dispatch for field keys
     key_var = "__key"
     if all_fields:
         dispatch = _build_field_dispatch(all_fields, reader)
         loop_body: list[TpyStmt] = [
             TpyVarDecl(name=key_var, type=StrType(),
-                       init=_method_call(reader, "read_key")),
+                       init=_method_call(reader, "read_key_raw")),
             dispatch,
         ]
         body.append(TpyWhile(
@@ -418,21 +419,27 @@ def _build_from_reader(cls: ClassInfo, all_fields: list[FieldInfo]) -> TpyFuncti
     )
 
 
-def _build_field_dispatch(fields: list[FieldInfo], reader: TpyExpr) -> TpyIf:
-    """Build nested if/elif chain for field name matching."""
+def _build_field_dispatch(fields: list[FieldInfo], reader: TpyExpr) -> TpyMatch:
+    """Build match/case dispatch for field name matching."""
     key = _name("__key")
-    else_body: list[TpyStmt] = [_expr_stmt(_method_call(reader, "skip_value"))]
+    cases: list[TpyMatchCase] = []
 
-    for fld in reversed(fields):
-        then_body = list(_build_read_value_stmts(fld.name, fld.type, reader))
-        node = TpyIf(
-            condition=_eq(key, _str_lit(fld.name)),
-            then_body=then_body,
-            else_body=else_body,
-        )
-        else_body = [node]
+    for fld in fields:
+        body = list(_build_read_value_stmts(fld.name, fld.type, reader))
+        cases.append(TpyMatchCase(
+            pattern=TpyLiteralPattern(value=fld.name),
+            guard=None,
+            body=body,
+        ))
 
-    return else_body[0]
+    # Default case: skip unknown fields
+    cases.append(TpyMatchCase(
+        pattern=TpyWildcardPattern(),
+        guard=None,
+        body=[_expr_stmt(_method_call(reader, "skip_value"))],
+    ))
+
+    return TpyMatch(subject=key, cases=cases)
 
 
 def _build_from_json(cls: ClassInfo) -> TpyFunction:

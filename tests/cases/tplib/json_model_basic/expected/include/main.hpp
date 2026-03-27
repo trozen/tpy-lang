@@ -48,27 +48,22 @@ struct User {
         bool active = false;
         std::optional<std::string> email = std::nullopt;
         while (__reader.has_next()) {
-            std::string __key = __reader.read_key();
-            if ((__key == "name")) {
+            std::string __key = __reader.read_key_raw();
+            auto& __match_subject = __key;
+            if (__match_subject == "name") {
                 name = __reader.read_str();
-            } else {
-                if ((__key == "age")) {
-                    age = ::tpy::int_cast_check<int32_t>(__reader.read_int());
+            } else if (__match_subject == "age") {
+                age = ::tpy::int_cast_check<int32_t>(__reader.read_int());
+            } else if (__match_subject == "active") {
+                active = __reader.read_bool();
+            } else if (__match_subject == "email") {
+                if ((__reader.peek() == ::tpystd::tplib::json::JsonToken::NONE)) {
+                    __reader.read_null();
                 } else {
-                    if ((__key == "active")) {
-                        active = __reader.read_bool();
-                    } else {
-                        if ((__key == "email")) {
-                            if ((__reader.peek() == ::tpystd::tplib::json::JsonToken::NONE)) {
-                                __reader.read_null();
-                            } else {
-                                email = __reader.read_str();
-                            }
-                        } else {
-                            __reader.skip_value();
-                        }
-                    }
+                    email = __reader.read_str();
                 }
+            } else {
+                __reader.skip_value();
             }
         }
         __reader.read_object_end();

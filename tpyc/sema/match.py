@@ -11,7 +11,8 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, FixedIntType, FloatType, Float32Type,
     BoolType, StrType, StrViewType, StringType, CharType, NamedType,
-    NoneType, OptionalType, UnionType, EnumType, unwrap_readonly,
+    NoneType, OptionalType, UnionType, EnumType, PendingStrType,
+    unwrap_readonly,
 )
 from ..parse import (
     TpyName, TpyFieldAccess,
@@ -59,6 +60,7 @@ class MatchAnalyzer:
         is_primitive = isinstance(effective_type, (
             Int32Type, BigIntType, FixedIntType, FloatType, Float32Type,
             BoolType, StrType, StrViewType, StringType, CharType,
+            PendingStrType,
         ))
         is_record = (
             isinstance(effective_type, NamedType)
@@ -653,7 +655,7 @@ class MatchAnalyzer:
                     pattern,
                 )
         elif isinstance(val, str):
-            if not isinstance(subject_type, (StrType, StrViewType, StringType)):
+            if not isinstance(subject_type, (StrType, StrViewType, StringType, PendingStrType)):
                 raise self.ctx.error(
                     f"str literal pattern not valid for subject type '{subject_type}'",
                     pattern,

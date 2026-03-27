@@ -62,15 +62,14 @@ struct Address {
         std::string street = "";
         std::string city = "";
         while (__reader.has_next()) {
-            std::string __key = __reader.read_key();
-            if ((__key == "street")) {
+            std::string __key = __reader.read_key_raw();
+            auto& __match_subject = __key;
+            if (__match_subject == "street") {
                 street = __reader.read_str();
+            } else if (__match_subject == "city") {
+                city = __reader.read_str();
             } else {
-                if ((__key == "city")) {
-                    city = __reader.read_str();
-                } else {
-                    __reader.skip_value();
-                }
+                __reader.skip_value();
             }
         }
         __reader.read_object_end();
@@ -187,140 +186,178 @@ struct Profile {
         Address* alt_address = nullptr;
         std::optional<std::string> email = std::nullopt;
         while (__reader.has_next()) {
-            std::string __key = __reader.read_key();
-            if ((__key == "name")) {
-                name = __reader.read_str();
-            } else {
-                if ((__key == "age")) {
-                    age = ::tpy::int_cast_check<int32_t>(__reader.read_int());
-                } else {
-                    if ((__key == "score")) {
-                        score = __reader.read_float();
-                    } else {
-                        if ((__key == "precision")) {
-                            precision = static_cast<float>(__reader.read_float());
-                        } else {
-                            if ((__key == "active")) {
-                                active = __reader.read_bool();
-                            } else {
-                                if ((__key == "big_id")) {
-                                    big_id = ::tpy::BigInt::from_str(__reader.read_str());
-                                } else {
-                                    if ((__key == "role")) {
-                                        std::optional<Role> __parsed_11 = ::tpy::EnumUtil<Role>::try_parse(__reader.read_str());
-                                        if (!((__parsed_11.has_value()))) ::tpy::tpy_panic("json: invalid enum value");
-                                        Role __role_12 = (*__parsed_11);
-                                        role = __role_12;
-                                    } else {
-                                        if ((__key == "address")) {
-                                            address = &*(__slot_1 = Address::_from_reader(__reader));
-                                        } else {
-                                            if ((__key == "tags")) {
-                                                __reader.read_array_start();
-                                                while (__reader.has_next()) {
-                                                    tags.push_back(__reader.read_str());
-                                                }
-                                                __reader.read_array_end();
-                                            } else {
-                                                if ((__key == "scores")) {
-                                                    __reader.read_array_start();
-                                                    while (__reader.has_next()) {
-                                                        scores.push_back(::tpy::int_cast_check<int32_t>(__reader.read_int()));
-                                                    }
-                                                    __reader.read_array_end();
-                                                } else {
-                                                    if ((__key == "friends")) {
-                                                        __reader.read_array_start();
-                                                        while (__reader.has_next()) {
-                                                            friends.push_back(Address::_from_reader(__reader));
-                                                        }
-                                                        __reader.read_array_end();
-                                                    } else {
-                                                        if ((__key == "roles")) {
-                                                            __reader.read_array_start();
-                                                            while (__reader.has_next()) {
-                                                                std::optional<Role> __parsed_9 = ::tpy::EnumUtil<Role>::try_parse(__reader.read_str());
-                                                                if (!((__parsed_9.has_value()))) ::tpy::tpy_panic("json: invalid enum value");
-                                                                Role __elem_10 = (*__parsed_9);
-                                                                roles.push_back(__elem_10);
-                                                            }
-                                                            __reader.read_array_end();
-                                                        } else {
-                                                            if ((__key == "metadata")) {
-                                                                __reader.read_object_start();
-                                                                while (__reader.has_next()) {
-                                                                    std::string __dk_8 = __reader.read_key();
-                                                                    ::tpy::__setitem__(metadata, __dk_8, ::tpy::int_cast_check<int32_t>(__reader.read_int()));
-                                                                }
-                                                                __reader.read_object_end();
-                                                            } else {
-                                                                if ((__key == "nested_map")) {
-                                                                    __reader.read_object_start();
-                                                                    while (__reader.has_next()) {
-                                                                        std::string __dk_6 = __reader.read_key();
-                                                                        std::vector<int32_t> __dv_7 = std::vector<int32_t>{};
-                                                                        __reader.read_array_start();
-                                                                        while (__reader.has_next()) {
-                                                                            __dv_7.push_back(::tpy::int_cast_check<int32_t>(__reader.read_int()));
-                                                                        }
-                                                                        __reader.read_array_end();
-                                                                        ::tpy::__setitem__(nested_map, __dk_6, std::move(__dv_7));
-                                                                    }
-                                                                    __reader.read_object_end();
-                                                                } else {
-                                                                    if ((__key == "coord")) {
-                                                                        __reader.read_array_start();
-                                                                        int32_t __t0_3 = ::tpy::int_cast_check<int32_t>(__reader.read_int());
-                                                                        if (!(__reader.has_next())) ::tpy::tpy_panic("json: tuple expects 3 elements");
-                                                                        int32_t __t1_4 = ::tpy::int_cast_check<int32_t>(__reader.read_int());
-                                                                        if (!(__reader.has_next())) ::tpy::tpy_panic("json: tuple expects 3 elements");
-                                                                        std::string __t2_5 = __reader.read_str();
-                                                                        __reader.read_array_end();
-                                                                        coord = std::tuple<int32_t, int32_t, std::string>{__t0_3, __t1_4, __t2_5};
-                                                                    } else {
-                                                                        if ((__key == "backup_role")) {
-                                                                            if ((__reader.peek() == ::tpystd::tplib::json::JsonToken::NONE)) {
-                                                                                __reader.read_null();
-                                                                            } else {
-                                                                                std::optional<Role> __parsed_1 = ::tpy::EnumUtil<Role>::try_parse(__reader.read_str());
-                                                                                if (!((__parsed_1.has_value()))) ::tpy::tpy_panic("json: invalid enum value");
-                                                                                Role __backup_role_2 = (*__parsed_1);
-                                                                                backup_role = __backup_role_2;
-                                                                            }
-                                                                        } else {
-                                                                            if ((__key == "alt_address")) {
-                                                                                if ((__reader.peek() == ::tpystd::tplib::json::JsonToken::NONE)) {
-                                                                                    __reader.read_null();
-                                                                                } else {
-                                                                                    alt_address = &*(__slot_2 = Address::_from_reader(__reader));
-                                                                                }
-                                                                            } else {
-                                                                                if ((__key == "email")) {
-                                                                                    if ((__reader.peek() == ::tpystd::tplib::json::JsonToken::NONE)) {
-                                                                                        __reader.read_null();
-                                                                                    } else {
-                                                                                        email = __reader.read_str();
-                                                                                    }
-                                                                                } else {
-                                                                                    __reader.skip_value();
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+            std::string __key = __reader.read_key_raw();
+            auto& __match_subject = __key;
+            if (__match_subject.size() >= 2) {
+                switch (static_cast<unsigned char>(__match_subject[1])) {
+                case 'a': {
+                    if (__match_subject == "name") {
+                        name = __reader.read_str();
+                        goto __match_end_1;
                     }
+                    if (__match_subject == "tags") {
+                        __reader.read_array_start();
+                        while (__reader.has_next()) {
+                            tags.push_back(__reader.read_str());
+                        }
+                        __reader.read_array_end();
+                        goto __match_end_1;
+                    }
+                    if (__match_subject == "backup_role") {
+                        if ((__reader.peek() == ::tpystd::tplib::json::JsonToken::NONE)) {
+                            __reader.read_null();
+                        } else {
+                            std::optional<Role> __parsed_11 = ::tpy::EnumUtil<Role>::try_parse(__reader.read_str());
+                            if (!((__parsed_11.has_value()))) ::tpy::tpy_panic("json: invalid enum value");
+                            Role __backup_role_12 = (*__parsed_11);
+                            backup_role = __backup_role_12;
+                        }
+                        goto __match_end_1;
+                    }
+                    break;
+                }
+                case 'c': {
+                    if (__match_subject == "score") {
+                        score = __reader.read_float();
+                        goto __match_end_1;
+                    }
+                    if (__match_subject == "active") {
+                        active = __reader.read_bool();
+                        goto __match_end_1;
+                    }
+                    if (__match_subject == "scores") {
+                        __reader.read_array_start();
+                        while (__reader.has_next()) {
+                            scores.push_back(::tpy::int_cast_check<int32_t>(__reader.read_int()));
+                        }
+                        __reader.read_array_end();
+                        goto __match_end_1;
+                    }
+                    break;
+                }
+                case 'd': {
+                    if (__match_subject == "address") {
+                        address = &*(__slot_1 = Address::_from_reader(__reader));
+                        goto __match_end_1;
+                    }
+                    break;
+                }
+                case 'e': {
+                    if (__match_subject == "metadata") {
+                        __reader.read_object_start();
+                        while (__reader.has_next()) {
+                            std::string __dk_5 = __reader.read_key();
+                            ::tpy::__setitem__(metadata, __dk_5, ::tpy::int_cast_check<int32_t>(__reader.read_int()));
+                        }
+                        __reader.read_object_end();
+                        goto __match_end_1;
+                    }
+                    if (__match_subject == "nested_map") {
+                        __reader.read_object_start();
+                        while (__reader.has_next()) {
+                            std::string __dk_6 = __reader.read_key();
+                            std::vector<int32_t> __dv_7 = std::vector<int32_t>{};
+                            __reader.read_array_start();
+                            while (__reader.has_next()) {
+                                __dv_7.push_back(::tpy::int_cast_check<int32_t>(__reader.read_int()));
+                            }
+                            __reader.read_array_end();
+                            ::tpy::__setitem__(nested_map, __dk_6, std::move(__dv_7));
+                        }
+                        __reader.read_object_end();
+                        goto __match_end_1;
+                    }
+                    break;
+                }
+                case 'g': {
+                    if (__match_subject == "age") {
+                        age = ::tpy::int_cast_check<int32_t>(__reader.read_int());
+                        goto __match_end_1;
+                    }
+                    break;
+                }
+                case 'i': {
+                    if (__match_subject == "big_id") {
+                        big_id = ::tpy::BigInt::from_str(__reader.read_str());
+                        goto __match_end_1;
+                    }
+                    break;
+                }
+                case 'l': {
+                    if (__match_subject == "alt_address") {
+                        if ((__reader.peek() == ::tpystd::tplib::json::JsonToken::NONE)) {
+                            __reader.read_null();
+                        } else {
+                            alt_address = &*(__slot_2 = Address::_from_reader(__reader));
+                        }
+                        goto __match_end_1;
+                    }
+                    break;
+                }
+                case 'm': {
+                    if (__match_subject == "email") {
+                        if ((__reader.peek() == ::tpystd::tplib::json::JsonToken::NONE)) {
+                            __reader.read_null();
+                        } else {
+                            email = __reader.read_str();
+                        }
+                        goto __match_end_1;
+                    }
+                    break;
+                }
+                case 'o': {
+                    if (__match_subject == "role") {
+                        std::optional<Role> __parsed_1 = ::tpy::EnumUtil<Role>::try_parse(__reader.read_str());
+                        if (!((__parsed_1.has_value()))) ::tpy::tpy_panic("json: invalid enum value");
+                        Role __role_2 = (*__parsed_1);
+                        role = __role_2;
+                        goto __match_end_1;
+                    }
+                    if (__match_subject == "roles") {
+                        __reader.read_array_start();
+                        while (__reader.has_next()) {
+                            std::optional<Role> __parsed_3 = ::tpy::EnumUtil<Role>::try_parse(__reader.read_str());
+                            if (!((__parsed_3.has_value()))) ::tpy::tpy_panic("json: invalid enum value");
+                            Role __elem_4 = (*__parsed_3);
+                            roles.push_back(__elem_4);
+                        }
+                        __reader.read_array_end();
+                        goto __match_end_1;
+                    }
+                    if (__match_subject == "coord") {
+                        __reader.read_array_start();
+                        int32_t __t0_8 = ::tpy::int_cast_check<int32_t>(__reader.read_int());
+                        if (!(__reader.has_next())) ::tpy::tpy_panic("json: tuple expects 3 elements");
+                        int32_t __t1_9 = ::tpy::int_cast_check<int32_t>(__reader.read_int());
+                        if (!(__reader.has_next())) ::tpy::tpy_panic("json: tuple expects 3 elements");
+                        std::string __t2_10 = __reader.read_str();
+                        __reader.read_array_end();
+                        coord = std::tuple<int32_t, int32_t, std::string>{__t0_8, __t1_9, __t2_10};
+                        goto __match_end_1;
+                    }
+                    break;
+                }
+                case 'r': {
+                    if (__match_subject == "precision") {
+                        precision = static_cast<float>(__reader.read_float());
+                        goto __match_end_1;
+                    }
+                    if (__match_subject == "friends") {
+                        __reader.read_array_start();
+                        while (__reader.has_next()) {
+                            friends.push_back(Address::_from_reader(__reader));
+                        }
+                        __reader.read_array_end();
+                        goto __match_end_1;
+                    }
+                    break;
+                }
                 }
             }
+            {
+                __reader.skip_value();
+            }
+            __match_end_1:;
         }
         __reader.read_object_end();
         if (!((role.has_value()))) ::tpy::tpy_panic("json: missing required field 'role'");

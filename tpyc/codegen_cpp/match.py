@@ -10,7 +10,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, BoolType, FixedIntType, NamedType, OptionalType,
-    StrType, StringType, StrViewType, UnionType, EnumType,
+    StrType, StringType, StrViewType, PendingStrType, UnionType, EnumType,
     unwrap_readonly,
 )
 from ..parse import (
@@ -93,7 +93,7 @@ class MatchGenerator:
                 )
             else:
                 self._gen_match_if_elif_optional(out, stmt, subject_type, indent)
-        elif isinstance(subject_type, (StrType, StringType, StrViewType)):
+        elif isinstance(subject_type, (StrType, StringType, StrViewType, PendingStrType)):
             if self._should_switch_str(stmt):
                 self._gen_match_switch_str(out, stmt, indent)
             else:
