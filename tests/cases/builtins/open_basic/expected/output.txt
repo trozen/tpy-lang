@@ -1,0 +1,12 @@
+alpha
+beta
+gamma
+3
+6 5 5
+alpha
+beta
+gamma
+alpha
+beta
+gamma
+delta

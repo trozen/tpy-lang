@@ -720,8 +720,8 @@ class TypeRegistrar:
                             f"{pub_module}.{protocol_type.name}",
                             protocol_type.is_dynamic_protocol)
                 implemented_protocols.append(protocol_type)
-            elif isinstance(base_type, NamedType) and base_type.is_user_record:
-                # It's a user-defined class - check for multiple inheritance
+            elif isinstance(base_type, NamedType) and base_type.is_record:
+                # It's a class (user-defined or builtin) - check for multiple inheritance
                 if parent is not None:
                     raise SemanticError(
                         f"Multiple class inheritance not allowed in '{record.name}'. "

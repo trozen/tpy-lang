@@ -882,15 +882,12 @@ class CodeGenContext:
             return False
         if obj is not None:
             # Methods on @native records have unknown C++ return convention.
-            # Instance calls: obj type is the record. Static calls: obj is the
-            # class name with no instance type set, so fall back to name lookup.
             obj_type = unwrap_readonly(self.analyzer.get_expr_type(obj))
-            obj_rec_name = (obj_type.name if isinstance(obj_type, NamedType)
-                            else (obj.name if isinstance(obj, TpyName) else None))
-            if obj_rec_name is not None:
-                rec = self.analyzer.registry.get_record(obj_rec_name)
-                if rec is not None and rec.is_native:
-                    return False
+            rec = self.analyzer.registry.get_record_for_type(obj_type) if obj_type else None
+            if rec is None and isinstance(obj, TpyName):
+                rec = self.analyzer.registry.get_record(obj.name)
+            if rec is not None and rec.is_native:
+                return False
         rt = fi.return_type
         return (rt is not None
                 and not rt.is_value_type()

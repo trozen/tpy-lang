@@ -1,0 +1,1 @@
+TurboPython panic: open(): unsupported mode 'rb'

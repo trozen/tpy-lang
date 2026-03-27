@@ -9,6 +9,7 @@ from tpy._builtins import (
     bool, int, float, str,
     list, dict, dict_keys, dict_values, dict_items,
     set,
+    TextIO, open,
 )
 
 __all__ = [
@@ -23,4 +24,5 @@ __all__ = [
     "print", "isinstance",
     "all", "any", "sum", "sorted", "bin", "hex", "oct", "enumerate", "reversed",
     "StopIteration",
+    "TextIO", "open",
 ]

@@ -129,6 +129,11 @@ class CodeGenerator:
             register_native_cpp_name(local_name, qualified)
             if local_name != original_name:
                 register_native_cpp_name(original_name, qualified)
+        # Register native names from builtin type records without type_factory
+        # (e.g. TextIO -> tpy::TextFile) so NamedType.to_cpp() resolves even
+        # when the type isn't explicitly imported
+        for record_info in self.analyzer.registry.get_native_builtin_records():
+            register_native_cpp_name(record_info.name, record_info.native_name)
         # Register imported union type aliases so UnionType.to_cpp() can use
         # the alias name instead of expanding to std::variant<...>
         for local_name, (_src_mod, original_name) in self.analyzer.ctx.user_imported_type_aliases.items():

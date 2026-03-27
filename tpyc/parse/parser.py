@@ -704,6 +704,16 @@ class Parser:
                         has_init=result.init_method is not None or result.is_dataclass,
                         builtin_type_key=result.builtin_type_key,
                     ))
+                    # Fix up method return types that reference the class by
+                    # name but were parsed before the class was registered
+                    if result.builtin_type_key:
+                        for method in result.methods:
+                            rt = method.return_type
+                            if (isinstance(rt, NamedType) and rt.name == result.name
+                                    and not rt._module_qname):
+                                method.return_type = NamedType(
+                                    rt.name, rt.type_args, rt.is_protocol,
+                                    result.builtin_type_key, rt.is_dynamic_protocol)
             elif isinstance(node, ast.FunctionDef):
                 seen_non_import = True
                 func = self._parse_function(node)
@@ -2092,6 +2102,20 @@ class Parser:
             resolved_name = resolved[1] if resolved else name
             registered = self._resolve_registered_type(resolved_name, node, resolved=bool(resolved))
             if registered is not None:
+                # Set _module_qname for @builtin_type records so cross-module
+                # lookups work (e.g. open() returning TextIO). Only for types
+                # with builtin_type_key -- regular records and aliases don't
+                # need this and would break if mis-tagged. The `resolved`
+                # guard ensures this only fires for names that went through
+                # _resolve_type_name (imports or builtins exports), not for
+                # unresolved forward references.
+                if (resolved and isinstance(registered, NamedType)
+                        and not registered.is_protocol and not registered._module_qname):
+                    btk = self.registry.get_builtin_type_key(registered.name)
+                    if btk:
+                        registered = NamedType(registered.name, registered.type_args,
+                                               registered.is_protocol, btk,
+                                               registered.is_dynamic_protocol)
                 return registered
             raise ParseError(f"Unknown type: {name}", node)
 

@@ -3894,6 +3894,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `int(str)` → string-to-int parsing (via `BigInt::from_str`)
 - **Working**: `iter(x)` → calls `x.__iter__()`, returns `Iterator[T]`
 - **Working**: `make_default[T]()` / `make_default()` → default-constructs `T` (maps to `T{}` in C++). Requires `T: Default`. Type can be explicit or inferred from context. Portable alternative to `T()`.
+- **Working**: `open(path)`, `open(path, mode)` → returns `TextIO` file handle. Supports text modes `"r"` (default), `"w"`, `"a"`. Methods: `read()`, `write()`, `readline()`, `readlines()`, `close()`. Context manager (`with open(...) as f:`). Panics on file-not-found or unsupported mode (no exceptions yet). `readline()`/`readlines()` preserve trailing newlines (Python compat). Binary mode not yet supported.
 - **Open**: `enumerate()` → returns `Iterator` (see iterator roadmap)
 - **Open**: `zip()` → returns `Iterator` (see iterator roadmap)
 

@@ -1,0 +1,1 @@
+CPython supports binary modes; TPy only supports text modes (r/w/a)

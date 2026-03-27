@@ -103,6 +103,9 @@
 // RAII guard for `with` statement context managers (no dependencies)
 #include "with_guard.hpp"
 
+// File I/O: TextFile for open() builtin (depends on core)
+#include "file.hpp"
+
 // Expose types in global namespace for TurboPython generated code
 using ::tpy::UninitArrayStorage;
 using ::tpy::UninitHeapStorage;

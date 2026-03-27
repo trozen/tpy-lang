@@ -3434,6 +3434,15 @@ class TypeRegistry:
         """Get a builtin record by qualified name."""
         return self._qname_index.get(qname)
 
+    def get_native_builtin_records(self) -> list[RecordInfo]:
+        """Return native @builtin_type records without a type_factory.
+
+        Used by codegen to register C++ name mappings for types that don't
+        have dedicated type classes (e.g. TextIO -> tpy::TextFile).
+        """
+        return [r for r in self._qname_index.values()
+                if r.is_native and r.native_name and not r.type_factory]
+
     def is_subclass_of(self, child: 'TpyType', parent: 'TpyType') -> bool:
         """Check if child is a subclass of parent (walking the inheritance chain).
 
@@ -3477,11 +3486,14 @@ class TypeRegistry:
     def get_record_for_type(self, tpy_type: 'TpyType') -> Optional[RecordInfo]:
         """Unified lookup for any type's RecordInfo.
 
-        For user records (NamedType with is_record), looks up by name in self.records.
-        For builtin types, looks up by qualified name in the _qname_index.
+        Tries local records by short name first, then _qname_index by
+        qualified name. This handles both user records and builtin types
+        whose NamedType may or may not have _module_qname set.
         """
-        if isinstance(tpy_type, NamedType) and tpy_type.is_user_record:
-            return self.records.get(tpy_type.name)
+        if isinstance(tpy_type, NamedType) and tpy_type.is_record:
+            result = self.records.get(tpy_type.name)
+            if result is not None:
+                return result
         qname = tpy_type.qualified_name()
         if qname:
             return self.get_builtin_record(qname)

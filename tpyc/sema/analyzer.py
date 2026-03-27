@@ -266,7 +266,8 @@ class SemanticAnalyzer:
         # inference code but need namespace entry to distinguish from tpy types
         python_builtin_types = ["int", "str", "bool", "float", "bytes", "bytearray",
                                 "list", "dict", "set",
-                                "BaseException", "Exception", "StopIteration"]
+                                "BaseException", "Exception", "StopIteration",
+                                "TextIO"]
         for name in python_builtin_types:
             self.ctx.builtins_ns.bind_imported_name(name, "builtins", name)
 
@@ -278,7 +279,8 @@ class SemanticAnalyzer:
                                     "next", "print", "range", "enumerate",
                                     "zip", "isinstance", "iter",
                                     "all", "any", "sum", "sorted",
-                                    "bin", "hex", "oct", "reversed"]
+                                    "bin", "hex", "oct", "reversed",
+                                    "open"]
         for name in python_builtin_functions:
             self.ctx.builtins_ns.bind_imported_name(name, "builtins", name)
             self.ctx.imported_names[name] = ("builtins", name)
