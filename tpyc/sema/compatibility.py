@@ -67,6 +67,19 @@ def _is_definitely_ref_type(t: TpyType) -> bool:
     return any(_is_definitely_ref_type(inner) for inner in t.inner_types())
 
 
+class CompatError:
+    """Type compatibility check failure (returned by _check_compat, not raised)."""
+    __slots__ = ('message', 'loc')
+
+    def __init__(self, message: str, loc: SourceLocation | None = None):
+        self.message = message
+        self.loc = loc
+
+
+# Result type for _check_compat: Coercion | None (compatible) or CompatError (incompatible)
+CompatResult = Coercion | CompatError | None
+
+
 if TYPE_CHECKING:
     from .context import SemanticContext
     from .type_ops import TypeOperations
@@ -99,16 +112,8 @@ class TypeCompatibility:
             self.ctx.mark_param_mutated(r)
 
     def is_type_compatible(self, actual: TpyType, expected: TpyType) -> bool:
-        """Non-raising check: is actual assignable to expected?
-
-        TODO: refactor check_type_compatible to separate compatibility logic
-        from error reporting, so this doesn't need a try/except wrapper.
-        """
-        try:
-            self.check_type_compatible(actual, expected, "")
-            return True
-        except SemanticError:
-            return False
+        """Non-raising check: is actual assignable to expected?"""
+        return not isinstance(self._check_compat(actual, expected, ""), CompatError)
 
     def check_type_compatible(
         self, actual: TpyType, expected: TpyType, context: str,
@@ -119,11 +124,25 @@ class TypeCompatibility:
     ) -> Optional[Coercion]:
         """Check if actual type is compatible with expected type.
 
-        Returns a Coercion if a conversion should be applied at codegen time.
+        Raises SemanticError on incompatible types.
+        Returns a Coercion if a conversion should be applied at codegen time,
+        or None if compatible with no coercion needed.
+        """
+        result = self._check_compat(actual, expected, context, loc, source_expr, is_return, coercion_ctx)
+        if isinstance(result, CompatError):
+            raise SemanticError(result.message, result.loc)
+        return result
 
-        Args:
-            source_expr: The expression being converted (for lvalue checks)
-            is_return: True if this is a return statement (affects lifetime checks)
+    def _check_compat(
+        self, actual: TpyType, expected: TpyType, context: str,
+        loc: SourceLocation | None = None,
+        source_expr: TpyExpr | None = None,
+        is_return: bool = False,
+        coercion_ctx: str | None = None
+    ) -> CompatResult:
+        """Core type compatibility check.
+
+        Returns Coercion or None on success, CompatError on failure.
         """
         if actual == expected:
             return None
@@ -136,10 +155,10 @@ class TypeCompatibility:
                 if resolved is not None:
                     if source_expr is not None:
                         self.ctx.set_expr_type(source_expr, resolved)
-                    return self.check_type_compatible(
+                    return self._check_compat(
                         resolved, expected, context, loc, source_expr,
                         is_return, coercion_ctx)
-            raise SemanticError(
+            return CompatError(
                 f"Type mismatch in {context}: '{actual.record_name}' has unresolved type "
                 f"arguments; call a constraining method first or add explicit type arguments",
                 loc,
@@ -149,7 +168,7 @@ class TypeCompatibility:
         # T -> readonly[T]: always OK (adding const is safe)
         if isinstance(expected, ReadonlyType):
             actual_inner = unwrap_readonly(actual)
-            return self.check_type_compatible(
+            return self._check_compat(
                 actual_inner, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx
             )
 
@@ -167,14 +186,14 @@ class TypeCompatibility:
                     if proto_info and self.protocols.is_all_readonly(proto_info):
                         allow = True
                 if not allow:
-                    raise SemanticError(
+                    return CompatError(
                         f"Cannot return readonly[{actual.wrapped}] as mutable {expected}; "
                         f"use Span[readonly[T]] or annotate return type with auto_readonly[T]"
                         if is_return else
                         f"Cannot pass readonly[{actual.wrapped}] as mutable {expected} in {context}",
                         loc,
                     )
-            return self.check_type_compatible(
+            return self._check_compat(
                 actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx
             )
 
@@ -185,17 +204,18 @@ class TypeCompatibility:
         # Union[A, B] -> Union[A, B, C]: each actual member must match some expected member
         if isinstance(actual, UnionType) and isinstance(expected, UnionType):
             for member in actual.members:
-                self.check_type_compatible(member, expected, context, loc, source_expr, is_return, coercion_ctx)
+                result = self._check_compat(member, expected, context, loc, source_expr, is_return, coercion_ctx)
+                if isinstance(result, CompatError):
+                    return result
             return None
 
         # T -> Union[T, ...]: actual must match at least one member
         if isinstance(expected, UnionType):
             for member in expected.members:
-                try:
-                    return self.check_type_compatible(actual, member, context, loc, source_expr, is_return, coercion_ctx)
-                except SemanticError:
-                    pass
-            raise SemanticError(f"Type mismatch in {context}: expected {expected}, got {actual}", loc)
+                result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx)
+                if not isinstance(result, CompatError):
+                    return result
+            return CompatError(f"Type mismatch in {context}: expected {expected}, got {actual}", loc)
 
         # T -> Optional[T]: implicit wrapping
         if isinstance(expected, OptionalType):
@@ -219,7 +239,7 @@ class TypeCompatibility:
                     and not actual_inner.is_value_type()
                     and not isinstance(actual_inner, (OptionalType, PtrType, NoneType))):
                 self._mark_addr_taken(source_expr)
-            return self.check_type_compatible(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx)
+            return self._check_compat(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx)
 
         # Optional[T] -> Optional[T] already handled by == check above
         # Optional[T] -> T: error (cannot implicitly unwrap)
@@ -274,7 +294,7 @@ class TypeCompatibility:
                                 )
                 return None
             if is_protocol_type(expected):
-                raise SemanticError(
+                return CompatError(
                     f"Type {actual_inner} does not conform to protocol {stripped_expected} in {context}",
                     source_expr.loc if source_expr is not None else loc
                 )
@@ -286,7 +306,7 @@ class TypeCompatibility:
             check_actual = actual.wrapped if isinstance(actual, OwnType) else actual
             if self.protocols and self.protocols.type_conforms_to_protocol(check_actual, expected):
                 return None  # No coercion needed, structural match
-            raise SemanticError(
+            return CompatError(
                 f"Type {check_actual} does not conform to protocol {expected} in {context}",
                 loc
             )
@@ -304,7 +324,7 @@ class TypeCompatibility:
                             and (fi.return_type == expected.return_type
                                  or isinstance(expected.return_type, VoidType))):
                         return None
-                    raise SemanticError(
+                    return CompatError(
                         f"'__call__' signature ({', '.join(str(p.type) for p in fi.params)}) -> {fi.return_type} "
                         f"does not match {expected} in {context}",
                         loc,
@@ -388,27 +408,29 @@ class TypeCompatibility:
             if (isinstance(actual, NamedType) and actual.is_user_record
                     and isinstance(expected.wrapped, NamedType) and expected.wrapped.is_user_record
                     and actual.name != expected.wrapped.name):
-                raise SemanticError(
+                return CompatError(
                     f"Type mismatch in {context}: expected {expected.wrapped}, got {actual}", loc)
-            return self.check_type_compatible(actual, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx)
+            return self._check_compat(actual, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx)
 
         # Allow Own[T] -> T coercion (receiving an owned value)
         if isinstance(actual, OwnType):
-            return self.check_type_compatible(actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx)
+            return self._check_compat(actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx)
 
         # Tuple-to-tuple: same length, element-wise compatible
         if isinstance(actual, TupleType) and isinstance(expected, TupleType):
             if len(actual.element_types) != len(expected.element_types):
-                raise SemanticError(
+                return CompatError(
                     f"Type mismatch in {context}: expected {expected}, got {actual} "
                     f"(different tuple lengths)", loc
                 )
             for i, (a, e) in enumerate(zip(actual.element_types, expected.element_types)):
-                self.check_type_compatible(
+                result = self._check_compat(
                     a, e, f"{context} (tuple element {i})", loc,
                     source_expr=source_expr, is_return=is_return,
                     coercion_ctx=coercion_ctx
                 )
+                if isinstance(result, CompatError):
+                    return result
             return None
 
         # IntLiteral can coerce to BigInt or stay unresolved
@@ -441,7 +463,7 @@ class TypeCompatibility:
                 if isinstance(source_expr, TpyListRepeat) and isinstance(source_expr.count, TpyIntLiteral):
                     repeat_size = len(source_expr.elements) * source_expr.count.value
                     if repeat_size != expected.size:
-                        raise SemanticError(
+                        return CompatError(
                             f"List repeat produces {repeat_size} elements but Array[..., {expected.size}] expects {expected.size}",
                             loc
                         )
@@ -467,18 +489,16 @@ class TypeCompatibility:
                 )
                 if both_records:
                     # Explicit error: avoid leaking PendingList internal repr in the generic message.
-                    raise SemanticError(
+                    return CompatError(
                         f"Type mismatch in {context}: expected {expected.element_type}, got {actual.element_type}", loc)
                 else:
                     # Element type widening (e.g. Int32 -> Int32|None, Int32 -> Int64)
-                    try:
-                        self.check_type_compatible(
-                            actual.element_type, expected.element_type,
-                            context, loc, source_expr, is_return, coercion_ctx
-                        )
-                        return None
-                    except SemanticError:
-                        pass
+                    result = self._check_compat(
+                        actual.element_type, expected.element_type,
+                        context, loc, source_expr, is_return, coercion_ctx
+                    )
+                    if not isinstance(result, CompatError):
+                        return None  # element coercion is a probe, not propagated
             # Compatible with Array[T, N] if element types and sizes match
             if isinstance(expected, ArrayType):
                 if self.type_ops and self.type_ops.pending_list_matches_array(actual, expected):
@@ -486,14 +506,14 @@ class TypeCompatibility:
                 # Specific error for list repeat size mismatch
                 if (isinstance(source_expr, TpyListRepeat)
                         and actual.size >= 0 and actual.size != expected.size):
-                    raise SemanticError(
+                    return CompatError(
                         f"List repeat produces {actual.size} elements but "
                         f"Array[..., {expected.size}] expects {expected.size}",
                         loc,
                     )
             # Inline repeat cannot be passed directly to Span -- assign to a variable first
             if isinstance(expected, SpanType) and isinstance(source_expr, TpyListRepeat):
-                raise SemanticError(
+                return CompatError(
                     f"Cannot pass list repeat directly to {expected}: "
                     f"assign to a variable first",
                     loc,
@@ -537,9 +557,9 @@ class TypeCompatibility:
             # Strip Own[V] from the message to avoid leaking implementation details.
             check_val = expected.value_type.wrapped if isinstance(expected.value_type, OwnType) else expected.value_type
             if not key_ok:
-                raise SemanticError(
+                return CompatError(
                     f"Type mismatch in {context}: expected {expected.key_type}, got {actual.key_type}", loc)
-            raise SemanticError(
+            return CompatError(
                 f"Type mismatch in {context}: expected {check_val}, got {actual.value_type}", loc)
 
         # SetType compatibility: element types must match exactly.
@@ -549,7 +569,7 @@ class TypeCompatibility:
             if _container_elem_matches(actual.element_type, expected.element_type):
                 return None
             check_elem = expected.element_type.wrapped if isinstance(expected.element_type, OwnType) else expected.element_type
-            raise SemanticError(
+            return CompatError(
                 f"Type mismatch in {context}: expected {check_elem}, got {actual.element_type}", loc)
 
         # Allow PendingStrType compatibility during first phase (before resolution)
@@ -613,7 +633,7 @@ class TypeCompatibility:
                     from ..coercions import DEREF_COERCION
                     coercion = DEREF_COERCION
         if coercion is None:
-            raise SemanticError(f"Type mismatch in {context}: expected {expected}, got {actual}", loc)
+            return CompatError(f"Type mismatch in {context}: expected {expected}, got {actual}", loc)
 
         if isinstance(actual, PendingListType) and isinstance(expected, SpanType):
             info = self.ctx.list_literals.get(actual.literal_id)
@@ -622,7 +642,7 @@ class TypeCompatibility:
                 info.passed_to_span_param = True
 
         if coercion.check_range and not coercion.check_range(actual, expected):
-            raise SemanticError(
+            return CompatError(
                 f"Integer literal {actual.value} is outside {expected} range "
                 f"[{expected.min_value}, {expected.max_value}] in {context}",
                 loc
@@ -630,7 +650,7 @@ class TypeCompatibility:
 
         if coercion.requires_mutable_lvalue:
             if source_expr is None or not self.is_mutable_lvalue(source_expr):
-                raise SemanticError(
+                return CompatError(
                     f"Cannot take mutable pointer to read-only or temporary value in {context}; "
                     f"use a read-only pointer for read-only access, or assign to a variable first",
                     loc
@@ -642,7 +662,7 @@ class TypeCompatibility:
                 self.ctx.mark_param_mutated(root)
         elif coercion.requires_lvalue:
             if source_expr is None or not self.is_lvalue(source_expr):
-                raise SemanticError(
+                return CompatError(
                     f"Cannot take address of temporary or rvalue in {context}; "
                     f"assign to a variable first",
                     loc
@@ -655,7 +675,7 @@ class TypeCompatibility:
 
         if coercion.forbid_return_local and is_return:
             if source_expr is not None and self.is_dangling_return(source_expr):
-                raise SemanticError(
+                return CompatError(
                     f"Cannot return local or temporary value; "
                     f"the returned pointer/reference would dangle",
                     loc
