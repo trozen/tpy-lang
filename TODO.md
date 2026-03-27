@@ -3,6 +3,7 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
+- star import from user modules, __all__ in user modules
 - Own[T] variable types cleanup: `rvalue_vars`, `consumed_loop_vars`, `move_through_vars`, and `local_var_is_movable()` are now redundant for Own[T] variables (movability is in the type). These side channels are still used by flow_facts, init_tracker, and scope_tracker for branch merging. Remove incrementally: replace `_is_movable_var` with scope type check, then simplify flow_facts save/restore, then remove `rvalue_vars`.
 - Expression callees: `callbacks[0](5)`, `get_handler()(x)` etc. `TpyCall.func` is a `str`, so only simple name calls work. Change `TpyCall.func` from `str` to `TpyExpr` -- most callsites just need `isinstance(expr.func, TpyName)` guard + `.name` access (mechanical). Sema needs a new path for non-Name callees: evaluate callee expr, check it resolves to `CallableType`, generate the call. ~188 `.func` refs across 19 files but the migration is straightforward.
 - Resolve class-level type params in cpp_template at sema time: when sema resolves a generic constructor like `list[Int32](range(10))`, substitute `{T}` -> `Int32` into the template and store a fully-resolved `cpp_template` on `resolved_function_info`. Codegen would then never see unresolved type params -- every template would only have `{0}`, `{1}`, `{cpp}`. Eliminates the `type_subst`/`extract_type_params` machinery in codegen's call_type block and the regex guard in `_gen_call`.
@@ -12,18 +13,8 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Move type resolution from parser to sema: parser still creates canonical types (FixedIntType etc.) via `_resolve_primitive_type` for `from tpy import` names. Future: sema resolution pass so parser only creates NamedType and sema resolves via @builtin_type factories. Blocked on types appearing everywhere in AST (expressions, constructor calls, etc.) -- needs comprehensive AST walker or lazy normalization.
 - Define decorators as .py functions: readonly/noalloc/nocopy/pure/dynamic/error_return (tpy), native/cpp_template/builtin_type (tpy.extern), overload/override (typing) are currently parser keywords with empty stub files. Want them as real function definitions eventually so the parser doesn't need special handling. Blocked on: functions need type annotations to compile, and decorator signatures have no meaningful type (identity function over any callable).
 - limit possible imports in macro modules
-- Macro-injected imports: class/call macros that generate code referencing external types (e.g. `@model` needs `JsonReader`, `JsonToken`, `JsonWriter`) require users to manually import those types. Macros should be able to declare import dependencies that are automatically added to the module's namespace.
 - ContextManager[T] protocol
 - Deduplicate PendingStrType / PendingBytesType infrastructure: `_resolve_pending_str_types` and `_resolve_pending_bytes_types` are identical algorithms with different type names. Same for `mark_*_augassign`, `mark_*_param_context`, `mark_*_reassigned_from_owned`, `track_*_reassign_source`, and the `_infer_new_local_type` branches in statements.py. Refactor into a generic `ViewTypeFamily` parameterized by owned/view/pending types, with one shared implementation.
-
-## Codegen
-
-## Bytes type follow-ups
-- `mark_bytes_borrowers_mutated` missing: `BytesVarInfo.source_mutated` is never set. If a bytearray is mutated after a BytesView borrows from it, the view won't be promoted to owned. Add mutation tracking at bytearray mutation sites (append, __setitem__, extend, pop, clear, insert, remove) mirroring `mark_str_borrowers_mutated`.
-- `bytes.__hash__` not implemented -- bytes can't be used as dict keys or in sets
-- Cross-type equality: `bytes == bytearray` not supported (Python returns True for equal content)
-- f-string with bytes produces invalid C++ silently -- add sema error or codegen support (`bytes_to_str` helper)
-- Update `docs/LANGUAGE_FEATURES.md` with bytes/bytearray/BytesView documentation
 
 ## Bugs
 - `list(iter)` fails when nested inside another generic call: `enumerate(list(repeat("x", 3)))` errors with "list() cannot be constructed from Iterator[StrView]", but `list(repeat("x", 3))` works standalone. The outer generic's type inference context interferes with the inner `list()` constructor resolution in `_match_protocol_type_args_with_inference`.
@@ -31,20 +22,24 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Non-native functions in builtin modules can't be called from user code: codegen emits unqualified names (e.g. bare `enumerate(...)` instead of `tpystd::builtins::enumerate(...)`). The `imported_names` path considers any registered function as "shadowing" the import. Blocks defining pure TPy generator builtins. Workaround: use `@cpp_template`/`@native` with C++ implementation instead.
 - Overload resolution: generic overloads with protocol params lose to concrete overloads with coercion. `sum[T: AnyFixedInt](Iterable[T])` doesn't match `list[Int32]` in pass 1 because `_structural_match` requires `type(arg) == type(param)` -- `ArrayType` != `NamedType("Iterable")`. The concrete `sum(Iterable[float])` then wins via coercion in pass 2. Fix: `_structural_match` should check protocol conformance when `param` is a protocol type, so generic overloads with protocol params match in pass 1. Workaround: add concrete overloads for common types (Int32, Int64) before the generic.
 
-## Fuzzy Testing Findings (2026-03-12)
+## Macros
+- limit imports from macro_modules (macro_api only?)
+- macros should work in cpython as well
+- all macro code (at least for json model) generated in headers
+- Macro-injected imports: class/call macros that generate code referencing external types (e.g. `@model` needs `JsonReader`, `JsonToken`, `JsonWriter`) require users to manually import those types. Macros should be able to declare import dependencies that are automatically added to the module's namespace.
+- json: pretty printing
+- json: to/from file
+- json: better error message: show position
+- json: model inheritance
+- json: field renaming
+- json: handle user types
 
-### Quality / optimization (correct output, but suboptimal codegen)
-- **[LOW]** None-seeded variable assigned in all branches stays `Optional[T]`: when `x = None` is followed by assignment in both the `if` and `else` branches (so every path guarantees a value), `x` is still typed `std::optional<T>` after the if/else block. Post-dominance analysis could demote it to `T` and skip the optional wrapper. Not a correctness issue -- output is identical -- but adds unnecessary runtime cost and less readable C++.
 
-## C++ Codegen Review Findings (2026-03-12, updated 2026-03-18)
-
-### Systematic suboptimalities
-- **[HIGH effort]** Double subscript in augmented assignment: `a[i] += v` emits `__setitem__(a, i, add_check(__getitem__(a, i), v))` -- two separate bounds checks + index normalization. Hand-written C++ would use a single indexed access. Fix needs a reference-based codegen path (e.g. `__getitem_ref__` or direct `operator[]`).
-- **[HIGH effort]** Inherited fields body-assigned instead of member initializer list: child constructors without `super()` assign inherited `std::string`/container fields in the body (default-construct then assign) instead of via MIL or base-class constructor delegation. Adds an extra default construction per non-trivial inherited field.
-- **[MED effort]** Double `__deref__()` call in auto-deref field access: `r.x + r.y` where `r` has user-defined `__deref__()` emits `r.__deref__().x + r.__deref__().y` -- two separate deref calls. Should generate a temporary for the deref result when multiple field/method accesses share the same deref base in one expression.
-### Missed optimizations
-- **[LOW]** String concat chain produces N-1 intermediate allocations: `a + b + c + d` emits left-associative nested `str_concat` calls, each allocating a temporary `std::string`. A codegen optimization detecting a chain of `+` on string-view operands could emit a single `reserve` + N `append` calls.
-- **[LOW]** `__param_` copy for reassigned parameters: when a parameter is reassigned in the function body, codegen takes it by `const&` then copies into a mutable local. For BigInt/string params, taking by value instead would let the caller move. Only helps when caller passes an rvalue; for lvalue calls it's worse (forces copy at call site vs zero-cost `const&`). Also changes ABI (not API).
+## Bytes type follow-ups
+- `mark_bytes_borrowers_mutated` missing: `BytesVarInfo.source_mutated` is never set. If a bytearray is mutated after a BytesView borrows from it, the view won't be promoted to owned. Add mutation tracking at bytearray mutation sites (append, __setitem__, extend, pop, clear, insert, remove) mirroring `mark_str_borrowers_mutated`.
+- `bytes.__hash__` not implemented -- bytes can't be used as dict keys or in sets
+- f-string with bytes produces invalid C++ silently -- add sema error or codegen support (`bytes_to_str` helper)
+- Update `docs/LANGUAGE_FEATURES.md` with bytes/bytearray/BytesView documentation
 
 ## Ownership & Consuming Iteration
 - Consuming `items()` for dict: consuming `__iter__` works for keys, but consuming `items()` can't use `@overload` with `Own[Self]` because the return type changes (`dict_items` -> `Iterator[tuple]`), breaking non-iteration callers like `len(d.items())`. Needs a mechanism that only selects consuming dispatch when used as a for-loop iterable.
@@ -53,19 +48,13 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - User-defined drain iterators (e.g. `ArrayListDrainIter`): view types with borrow tracking. See `docs/CONSUMING_ITERATION_DESIGN.md`.
 
 ## Safety
-
-### Borrow tracker gaps
 - Reassignment of borrowed variable doesn't warn: `remove_storage_borrows` silently clears active borrows on reassignment (`s = "other"`) without warning. Only mutation (`.append()`, `del`) triggers warnings. Affects all types but especially `str` in generators -- the only way to invalidate a `string_view` is reassignment/destruction, which is exactly the case the tracker misses.
 - Globals not tracked in borrow system: `mark_param_mutated` only checks `current_param_names` (`context.py:688`), so global variable mutations are invisible to the borrow tracker. `ref = g[0]; g.append(x)` produces no warning.
 - Nonlocal mutations invisible to outer scope: nested function analysis runs in isolated state (`save_function_state`/`reset_function_tracking`). Mutations to nonlocal variables inside closures don't propagate back to the outer function's borrow tracker.
 - User-type indirect structural mutation not detected: `_is_invalidating_method` uses `direct_structural_mutated_params` (Phase 1), so `add_twice()` calling `self.add()` which does `self._items.append()` is not caught. Phase 2 propagates `structural_mutated_params` transitively, but the borrow check runs during Phase 1. Fix: add deferred borrow checks after Phase 2, similar to `resolve_pending_borrow_checks`.
-
-### Other safety issues
 - `Span[str]` subscript view: `SpanType.subscript_borrows()` is intentionally not overridden because `v = s[0]` registers `s` as the str-borrow source, but mutations to the backing container (`arr[0] = "x"` where `s = Span[str](arr)`) call `mark_str_borrowers_mutated("arr")` -- missing `s`. Fix requires `mark_str_borrowers_mutated` to chase the borrow tracker's alias chain so backing-container mutations also invalidate views borrowed through spans.
 - View type borrow tracking for user types: currently only built-in view types (Span, Ptr) are tracked as borrows. Likely needed when designing tpy stdlib types. See escape analysis design doc (Future Extensions) for field-level vs class-level annotation tradeoffs.
 - Hoisted non-value loop variable as view: `for s in items: ... print(s)` where `s` is `std::string_view` -- the hoisted `s` is a view into the container, not a copy. If the container is mutated between loop exit and use of `s`, the view dangles. Same concern exists with `const auto&` loop vars. Consider emitting a value copy for hoisted non-value loop variables.
-
-## Examples
 
 ## Investigate
 - CPython native (C) module for tpy stubs: the `lib/cpy/tpy/` stubs are pure Python. A C extension module could improve CPython performance for programs that use tpy types (Int32, Array, Span, etc.) heavily.
@@ -107,6 +96,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Inline `and`/`or` chains for side-effect-free operands: `a or b or c` currently emits an intermediate temp (`auto&& __tmp = (a ? a : b); result = (__tmp ? __tmp : c)`) to avoid double-evaluation. When all operands are provably side-effect-free (variables, literals), the temp is unnecessary and the chain can be emitted as a single nested ternary (`!a.empty() ? a : !b.empty() ? b : c`), which is more readable.
 - `tpy::tpy_callable<F, R(Args...)>` concept: replace verbose `requires requires(__F0& __fn, ...) { { __fn(...) } -> std::convertible_to<R>; }` blocks with a compact `tpy::tpy_callable<__F0, R(Args...)>` concept in the runtime. Same `R(Args...)` notation as `std::function`. Needs a helper trait with partial specialization (`std::invocable` + `std::convertible_to` for return, void special case). Cosmetic improvement -- only worth prioritizing if it measurably speeds up C++ compilation for template-heavy Fn usage.
 - Unify rvalue materialization: two overlapping mechanisms exist for extending rvalue lifetimes -- the slot system (`std::optional<T>` slots in `_gen_pointer_local_init`, tied to var decl infrastructure) and TempState (`auto&&` temps, expression-level). Both solve the same problem at different abstraction levels. Consider exposing a lower-level "materialize this rvalue" API that both var decls and expression-level temps (e.g. `and`/`or` ternaries) can share.
+- `slice` type resolution: `slice` is special-cased in `_resolve_primitive_type` (parser.py) alongside `int`/`float`/`bool`/`str` because the fallback path in `_resolve_registered_type` uses `name[0].isupper()` to optimistically create NamedType for unresolved names. Lowercase builtin types like `slice` don't pass this heuristic, even though `is_known_type("slice")` returns True (the builtins module registers it). The deeper issue is that `_resolve_registered_type` returns `NamedType("slice")` instead of `SliceType`, causing type identity mismatches in union isinstance checks. Builtin types should resolve through the same path as user types instead of needing parser special cases.
 
 ## Random items
 - AddressSanitizer test mode: add `--asan` flag to compile exec tests with `-fsanitize=address` to detect memory leaks, double-free, and use-after-free. Important before serious usage of `__copy__` + `__del__` patterns (e.g. CopyableBox[T]).
@@ -138,7 +128,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - diagnostics: trace "float spill" origin across assignments/expressions (e.g. accidental `/` instead of `//`) and surface root cause in downstream type mismatch errors
 - extract c++ compiler interface
 - analysis: when an object is passed to a function by reference but then copied, should we suggest passing as Own[]?
-- Own[T] -- warn when type is large (always? or only in hot-path? noalloc?)
 - sizeof() function
 - logging, stream object printing, to log instead of __str__
 
@@ -148,11 +137,19 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Docstrings: silently skipped in codegen (harmless, but no introspection support)
 - make a doc with TPy vs Python differences
 
-## Refactoring
-- `slice` type resolution: `slice` is special-cased in `_resolve_primitive_type` (parser.py) alongside `int`/`float`/`bool`/`str` because the fallback path in `_resolve_registered_type` uses `name[0].isupper()` to optimistically create NamedType for unresolved names. Lowercase builtin types like `slice` don't pass this heuristic, even though `is_known_type("slice")` returns True (the builtins module registers it). The deeper issue is that `_resolve_registered_type` returns `NamedType("slice")` instead of `SliceType`, causing type identity mismatches in union isinstance checks. Builtin types should resolve through the same path as user types instead of needing parser special cases.
+## C++ Codegen Review Findings (2026-03-12, updated 2026-03-18)
+
+### Systematic suboptimalities
+- **[HIGH effort]** Double subscript in augmented assignment: `a[i] += v` emits `__setitem__(a, i, add_check(__getitem__(a, i), v))` -- two separate bounds checks + index normalization. Hand-written C++ would use a single indexed access. Fix needs a reference-based codegen path (e.g. `__getitem_ref__` or direct `operator[]`).
+- **[HIGH effort]** Inherited fields body-assigned instead of member initializer list: child constructors without `super()` assign inherited `std::string`/container fields in the body (default-construct then assign) instead of via MIL or base-class constructor delegation. Adds an extra default construction per non-trivial inherited field.
+- **[MED effort]** Double `__deref__()` call in auto-deref field access: `r.x + r.y` where `r` has user-defined `__deref__()` emits `r.__deref__().x + r.__deref__().y` -- two separate deref calls. Should generate a temporary for the deref result when multiple field/method accesses share the same deref base in one expression.
+### Missed optimizations
+- **[LOW]** String concat chain produces N-1 intermediate allocations: `a + b + c + d` emits left-associative nested `str_concat` calls, each allocating a temporary `std::string`. A codegen optimization detecting a chain of `+` on string-view operands could emit a single `reserve` + N `append` calls.
+- **[LOW]** `__param_` copy for reassigned parameters: when a parameter is reassigned in the function body, codegen takes it by `const&` then copies into a mutable local. For BigInt/string params, taking by value instead would let the caller move. Only helps when caller passes an rvalue; for lvalue calls it's worse (forces copy at call site vs zero-cost `const&`). Also changes ABI (not API).
 
 ## Low Priority
 - `= default` semantic gap: records with required `__init__` params currently emit `ClassName() = default;` if their C++ fields are all trivially constructible, bypassing the Python-level construction contract. Should emit `= delete` (or nothing) instead -- `std::optional<T>` and containers don't require default-constructibility, so the impact is limited to direct `T t;` / `T arr[N]` patterns which tpyc doesn't generate anyway. Fix: check `init_params` required count in `_fld_type_cpp_default_constructible` (same as `_is_default_constructible`). See `docs/CONSTRUCTOR_DESIGN.md` open question 4.
+- None-seeded variable assigned in all branches stays `Optional[T]`: when `x = None` is followed by assignment in both the `if` and `else` branches (so every path guarantees a value), `x` is still typed `std::optional<T>` after the if/else block. Post-dominance analysis could demote it to `T` and skip the optional wrapper. Not a correctness issue -- output is identical -- but adds unnecessary runtime cost and less readable C++.
 
 ## Known Limitations
 - Macro API: companion type creation: macros can add methods but not new types. `cls.add_companion_enum(name, members)` would let macros generate helper enums (e.g. key enums for JSON field dispatch via `try_parse` + `match`/`case`). Combined with string match or used standalone, this gives O(1) key dispatch.
