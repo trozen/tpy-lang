@@ -10,16 +10,18 @@
 
 ### Future Extensions
 
+See [EXCEPTION_DESIGN.md](EXCEPTION_DESIGN.md) for the full two-tier exception model design.
+
 | Feature | Notes |
 |---------|-------|
 | Error forwarding | `@error_return(E)` caller can forward without try/except if it also `@error_return(E)`. Like Rust's `?` -- enables `next()` builtin and transitive error propagation without boilerplate |
 | Multiple exception types | `@error_return(E1, E2)` -- return `std::expected<T, std::variant<E1, E2>>` |
-| Exception types with data | `class ValueError: message: str` -- non-empty error types |
+| Exception types with data | `class ParseError(Exception, ControlFlow): line: Int32` -- non-empty error types |
 | `except E as e` binding | Bind exception value in catch block (needs data fields) |
-| `try/except/finally` | Cleanup blocks -- may align with general exception model (C1/C2) |
-| `next()` builtin | `next(it)` -- implemented with explicit try/except initially; with forwarding, can be `@error_return(StopIteration)` itself |
-| `@error_type` marker | Mark error classes so they can only be used with `@error_return`, not with general exceptions. Prevents accidental use of control-flow error types (e.g. `StopIteration`) with the C++ exception mechanism, which would bypass the zero-cost return path |
-| General exception model | C++ exceptions for non-control-flow errors (separate design, C1/C2 in roadmap) |
+| `ControlFlow` marker protocol | Split exception types into return (`ControlFlow`) vs throw categories. `@error_return(E)` requires E to be `ControlFlow`. Prevents accidental use of control-flow types with C++ throw |
+| `except ControlFlow` catch-all | Catch any return exception regardless of concrete type (type-independent `has_value()` check) |
+| `next()` builtin | `next(it)` -- with forwarding, can be `@error_return(StopIteration)` itself |
+| General exception model | C++ exceptions for non-control-flow errors -- `try`/`except`/`finally`/`raise` with stack unwinding |
 
 ---
 
