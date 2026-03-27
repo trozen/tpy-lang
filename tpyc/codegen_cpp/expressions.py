@@ -285,6 +285,21 @@ class ExpressionGenerator:
             return self._resolve_field_declared_type(expr)
         return None
 
+    def _is_narrowed_value_optional(self, expr: TpyExpr) -> bool:
+        """True if expr is a value-optional whose sema type was narrowed to non-Optional.
+
+        The C++ variable is still std::optional<T> but sema proved it holds a value
+        (e.g. inside `if x is not None:`). Callers use this to pass target_type
+        to gen_expr_deref so it emits the (*x) unwrap.
+        """
+        cpp_type = self._get_cpp_declared_type(expr)
+        if (cpp_type is not None
+                and isinstance(cpp_type, OptionalType)
+                and not cpp_type.uses_pointer_repr()):
+            analyzed = self.ctx.get_expr_type(expr)
+            return analyzed is not None and not isinstance(analyzed, OptionalType)
+        return False
+
     def _maybe_unwrap_narrowed_optional(self, expr_obj: TpyExpr, obj: str, needs_deref: bool) -> str:
         """Unwrap narrowed value-Optional receivers.
 
@@ -2036,8 +2051,18 @@ class ExpressionGenerator:
                                                                     is_readonly_target=method_info.is_readonly)) is not None:
                                 gen_args.append(union_arg)
                             else:
-                                # None literals need target type to decide nullptr vs std::nullopt
-                                arg_target = rptype if isinstance(arg, TpyNoneLiteral) else None
+                                # target_type controls gen_expr_deref hints:
+                                # - None literals need it for nullptr vs std::nullopt
+                                # - Narrowed value-optionals need it for (*x) unwrap
+                                # - Other args: None to avoid unwanted literal coercion
+                                if isinstance(arg, TpyNoneLiteral):
+                                    arg_target = rptype
+                                elif (rptype is not None
+                                        and not isinstance(rptype, OptionalType)
+                                        and self._is_narrowed_value_optional(arg)):
+                                    arg_target = rptype
+                                else:
+                                    arg_target = None
                                 # @native stub methods: skip redundant copy-then-move
                                 is_native_stub = bool(method_info.native_name or method_info.cpp_template)
                                 gen_args.append(self.gen_call_arg(arg, rptype, target_type=arg_target,

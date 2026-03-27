@@ -160,7 +160,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Module-level tuple unpack: missing `declared_var_types` tracking (`# tpyc: type()` test annotations won't validate on unpack lines)
 
 ## Known Limitations
-- Optional narrowing not applied to method call arguments: `if x is not None: obj.method(x)` does not unwrap the optional for `x` when passed to a method call on another object. Free function calls like `func(x)` work correctly. Workaround: assign to a typed local first (`val: str = x; obj.method(val)`). Discovered while building `tplib.json` model macro.
 - Macro API: companion type creation: macros can add methods but not new types. `cls.add_companion_enum(name, members)` would let macros generate helper enums (e.g. key enums for JSON field dispatch via `try_parse` + `match`/`case`). Combined with string match or used standalone, this gives O(1) key dispatch.
 - User methods cannot return StrView: the borrow checker blocks returning `StrView` from user-defined methods (`Cannot return StrView referencing a local or temporary`), even when the view borrows from `self` fields that outlive the call. Builtin methods like `str.strip()` work because they're compiler-known stubs. Blocks zero-allocation JSON key/value reading in `JsonReader`. Needs either lifetime annotations on return types or a `@preserves_refs` style annotation for methods that return views into self.
 - Subscript narrowing: `if items[i] is not None:` does not narrow `items[i]`. Hard to make sound due to index aliasing and container mutation; would need invalidation on any container write.
