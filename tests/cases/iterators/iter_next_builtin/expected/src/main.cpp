@@ -47,6 +47,7 @@ void main() {
         // print(v)
         std::cout << v << "\n";
         goto __after_try_4;
+        // except StopIteration:
         __except_4:;
         // print("done")
         std::cout << "done" << "\n";

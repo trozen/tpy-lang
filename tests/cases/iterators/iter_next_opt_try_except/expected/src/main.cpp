@@ -20,6 +20,7 @@ void main() {
                 v = *__try_tmp_2;
             }
             goto __after_try_1;
+            // except StopIteration:
             __except_1:;
             // break
             break;
@@ -39,6 +40,7 @@ void main() {
             if (!__try_tmp_4.has_value()) goto __except_3;
         }
         goto __after_try_3;
+        // except StopIteration:
         __except_3:;
         // exhausted = True
         exhausted = true;

@@ -32,9 +32,11 @@ void main() {
             if (!__try_tmp_2.has_value()) goto __except_1;
             v = *__try_tmp_2;
         }
+        // else:
         // print(v)
         std::cout << v << "\n";
         goto __after_try_1;
+        // except StopIteration:
         __except_1:;
         // print("none")
         std::cout << "none" << "\n";
@@ -50,9 +52,11 @@ void main() {
             if (!__try_tmp_4.has_value()) goto __except_3;
             v2 = *__try_tmp_4;
         }
+        // else:
         // print(v2)
         std::cout << v2 << "\n";
         goto __after_try_3;
+        // except StopIteration:
         __except_3:;
         // print("none")
         std::cout << "none" << "\n";

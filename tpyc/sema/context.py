@@ -498,6 +498,8 @@ class SemanticContext:
     sc_or_walrus: set[str] = field(default_factory=set)
     try_except_error_type: str | None = None
     is_top_level: bool = False
+    # REPL mode: allow @error_return calls at top level (unwrap with panic)
+    allow_top_level_error_unwrap: bool = False
 
     # --- Last-use tracking (shared with codegen, persists across functions) ---
     all_last_uses: set[int] = field(default_factory=set)

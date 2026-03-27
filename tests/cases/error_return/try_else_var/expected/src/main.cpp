@@ -36,9 +36,11 @@ void main() {
         }
         // doubled = idx * 2
         doubled = (::tpy::mul_check<int32_t>(idx, 2));
+        // else:
         // print(doubled)
         std::cout << doubled << "\n";
         goto __after_try_1;
+        // except NotFound:
         __except_1:;
         // print("not found")
         std::cout << "not found" << "\n";

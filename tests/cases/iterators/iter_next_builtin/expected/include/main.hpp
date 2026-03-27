@@ -83,6 +83,7 @@ void consume_two(T_it& it) {
         // print(b)
         std::cout << b << "\n";
         goto __after_try_1;
+        // except StopIteration:
         __except_1:;
         // print("stopped early")
         std::cout << "stopped early" << "\n";

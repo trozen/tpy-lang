@@ -16,9 +16,11 @@ void main() {
             if (!__try_tmp_2.has_value()) goto __except_1;
             idx = *__try_tmp_2;
         }
+        // else:
         // print(idx)
         std::cout << idx << "\n";
         goto __after_try_1;
+        // except NotFound:
         __except_1:;
         // print("not found")
         std::cout << "not found" << "\n";
@@ -34,9 +36,11 @@ void main() {
             if (!__try_tmp_4.has_value()) goto __except_3;
             idx2 = *__try_tmp_4;
         }
+        // else:
         // print(idx2)
         std::cout << idx2 << "\n";
         goto __after_try_3;
+        // except NotFound:
         __except_3:;
         // print("not found")
         std::cout << "not found" << "\n";

@@ -597,6 +597,8 @@ class Compiler:
         # Decorator arg schemas derived from @builtin_decorator stubs,
         # accumulated across parsed modules and passed to subsequent parsers.
         self._decorator_schemas: dict = {}
+        # REPL mode: allow @error_return calls at top level (unwrap with panic)
+        self.allow_top_level_error_unwrap: bool = False
 
     @classmethod
     def from_source(
@@ -1012,6 +1014,7 @@ class Compiler:
         # Create analyzer
         analyzer = SemanticAnalyzer(default_int_type=self.default_int_type)
         analyzer.ctx.macro_registry = self._macro_registry
+        analyzer.ctx.allow_top_level_error_unwrap = self.allow_top_level_error_unwrap
 
         # Register already-analyzed user modules in this analyzer's registry
         # This must happen before analyze() so _register_user_module_import can find them

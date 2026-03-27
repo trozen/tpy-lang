@@ -21,7 +21,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from .parse import ParseError, TpyExprStmt
+from .parse import ParseError, TpyExprStmt, TpyCoerce
 from .sema import SemanticError, DiagnosticLevel
 from .typesys import VoidType, CharType, is_any_str_type
 from .compiler import Compiler
@@ -362,6 +362,7 @@ class REPLSession:
             compiler = Compiler.from_source(
                 combined, self._module_name, lib_dirs=self.lib_dirs
             )
+            compiler.allow_top_level_error_unwrap = True
             compiled_modules = compiler.compile()
         except ParseError as e:
             return False, source_output + f"Parse error: {e}\n"
@@ -391,14 +392,24 @@ class REPLSession:
                     # Track if we're printing a string/char for post-processing
                     is_str_or_char = is_any_str_type(expr_type) or isinstance(expr_type, CharType)
 
-                    # Re-compile with print wrapper
-                    wrapped_source = f"print({new_source.strip()})"
+                    # For @error_return calls, unwrap into a temp first
+                    # so the error check happens at statement level
+                    expr = user_stmt.expr
+                    while isinstance(expr, TpyCoerce):
+                        expr = expr.expr
+                    fi = getattr(expr, 'resolved_function_info', None)
+                    is_error_return = fi is not None and fi.error_return_type is not None
+                    if is_error_return:
+                        wrapped_source = f"__repl_val = {new_source.strip()}\nprint(__repl_val)"
+                    else:
+                        wrapped_source = f"print({new_source.strip()})"
                     combined = "\n".join(self.accumulated_lines + [wrapped_source])
                     combined += "\n0  # repl-noop"
                     try:
                         compiler = Compiler.from_source(
                             combined, self._module_name, lib_dirs=self.lib_dirs
                         )
+                        compiler.allow_top_level_error_unwrap = True
                         compiled_modules = compiler.compile()
                         entry_module = next(m for m in compiled_modules if m.is_entry_point)
                         module = entry_module.ast

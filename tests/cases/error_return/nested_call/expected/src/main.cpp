@@ -44,9 +44,11 @@ void main() {
                 idx = *__try_tmp_3;
             }
         }
+        // else:
         // print(idx)
         std::cout << idx << "\n";
         goto __after_try_1;
+        // except NotFound:
         __except_1:;
         // print("not found")
         std::cout << "not found" << "\n";

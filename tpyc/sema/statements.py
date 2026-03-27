@@ -54,6 +54,7 @@ if TYPE_CHECKING:
 from .context import BorrowKind, PENDING_CONTAINER_TYPES, _storage_key, _borrow_storage_root
 from .local_deduction import collect_pending_source_types
 from tpyc import modules as builtin_modules
+from tpyc import qnames
 
 
 def _is_dangling_temporary_arg(expr: TpyExpr) -> bool:
@@ -1092,15 +1093,26 @@ class StatementAnalyzer:
         bindings_before = dict(self.ctx.current_scope.bindings)
         ns_types_before = self._save_ns_var_types()
 
-        if not self.ctx.registry.get_record(stmt.exception_type):
-            raise self.ctx.error(
-                f"Unknown error type '{stmt.exception_type}'", stmt)
+        # except ControlFlow: catch-all for any @error_return call
+        proto = self.ctx.registry.get_protocol(stmt.exception_type)
+        is_control_flow_catch_all = (
+            proto is not None
+            and f"{proto.module}.{proto.name}" == qnames.CONTROL_FLOW
+        )
+
+        if not is_control_flow_catch_all:
+            if not self.ctx.registry.get_record(stmt.exception_type):
+                raise self.ctx.error(
+                    f"Unknown error type '{stmt.exception_type}'", stmt)
 
         # Set try context so call analysis can allow error_return calls.
-        # Qualify the name so it matches FunctionInfo.error_return_type.
+        # "*" is a sentinel that matches any ControlFlow error type.
         prev_try_error = self.ctx.try_except_error_type
-        self.ctx.try_except_error_type = qualify_exception_name(
-            stmt.exception_type, self.ctx.registry)
+        if is_control_flow_catch_all:
+            self.ctx.try_except_error_type = "*"
+        else:
+            self.ctx.try_except_error_type = qualify_exception_name(
+                stmt.exception_type, self.ctx.registry)
 
         # Analyze try body (success path)
         for s in stmt.try_body:

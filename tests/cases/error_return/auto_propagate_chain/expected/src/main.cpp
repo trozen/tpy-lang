@@ -81,9 +81,11 @@ void main() {
             if (!__try_tmp_5.has_value()) goto __except_4;
             v = *__try_tmp_5;
         }
+        // else:
         // print(v)
         std::cout << v << "\n";
         goto __after_try_4;
+        // except NotFound:
         __except_4:;
         // print("not found")
         std::cout << "not found" << "\n";
@@ -100,9 +102,11 @@ void main() {
             if (!__try_tmp_7.has_value()) goto __except_6;
             v2 = *__try_tmp_7;
         }
+        // else:
         // print(v2)
         std::cout << v2 << "\n";
         goto __after_try_6;
+        // except NotFound:
         __except_6:;
         // print("not found")
         std::cout << "not found" << "\n";

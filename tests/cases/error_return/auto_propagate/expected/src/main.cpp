@@ -69,9 +69,11 @@ void main() {
             if (!__try_tmp_5.has_value()) goto __except_4;
             v = *__try_tmp_5;
         }
+        // else:
         // print(v)
         std::cout << v << "\n";
         goto __after_try_4;
+        // except ParseError:
         __except_4:;
         // print("error")
         std::cout << "error" << "\n";
@@ -86,9 +88,11 @@ void main() {
             if (!__try_tmp_7.has_value()) goto __except_6;
             v2 = *__try_tmp_7;
         }
+        // else:
         // print(v2)
         std::cout << v2 << "\n";
         goto __after_try_6;
+        // except ParseError:
         __except_6:;
         // print("error")
         std::cout << "error" << "\n";
