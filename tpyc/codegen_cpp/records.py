@@ -668,15 +668,24 @@ class RecordGenerator:
                                         if pname == inner.name and isinstance(unwrap_readonly(ptype), OwnType):
                                             value = f"std::move({value})"
                                             break
-                                # T* sources need conversion to std::optional<T>; field access (std::optional<T>) doesn't
+                                # T* sources need conversion to std::optional<T>; field access (std::optional<T>) doesn't.
+                                # OwnType(OptionalType) params are std::optional<T>&& -- already optional, no conversion.
                                 if isinstance(fld_type, OptionalType) and fld_type.uses_pointer_repr():
-                                    raw_val_type = self.ctx.get_expr_type(stmt.value)
-                                    val_type = raw_val_type.wrapped if isinstance(raw_val_type, OwnType) else raw_val_type
+                                    # Check if the source param is Own[Optional[T]] -- then the C++ param
+                                    # is std::optional<T>&& and no ptr_to_optional is needed.
+                                    source_is_own_optional = False
                                     source = self.ctx.unwrap_copy(stmt.value)
-                                    if isinstance(val_type, OptionalType) and not isinstance(source, TpyFieldAccess):
-                                        # Own[T] | None is already std::optional<T>; T | None is T* needing conversion
-                                        if not (isinstance(val_type, OptionalType) and isinstance(val_type.inner, OwnType)):
-                                            value = f"::tpy::ptr_to_optional({value})"
+                                    if isinstance(source, TpyName):
+                                        for pname, ptype in init_method.params:
+                                            if pname == source.name and isinstance(ptype, OwnType):
+                                                source_is_own_optional = True
+                                                break
+                                    if not source_is_own_optional and not isinstance(source, TpyFieldAccess):
+                                        raw_val_type = self.ctx.get_expr_type(stmt.value)
+                                        val_type = raw_val_type.wrapped if isinstance(raw_val_type, OwnType) else raw_val_type
+                                        if isinstance(val_type, OptionalType):
+                                            if not (isinstance(val_type.inner, OwnType)):
+                                                value = f"::tpy::ptr_to_optional({value})"
                                 # Pointer-variant param -> value-variant field: deref+copy.
                                 # The param is variant<T*...> but the field stores variant<T...>.
                                 if isinstance(fld_type, UnionType) and fld_type.uses_pointer_repr():

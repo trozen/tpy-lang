@@ -211,7 +211,19 @@ class ExpressionGenerator:
         result = self.gen_expr(expr, target_type)
         is_narrowed = isinstance(expr, TpyName) and expr.name in self.ctx.narrowed_vars
         if self.ctx.is_indirect_name(expr) and not is_narrowed:
-            result = f"(*{result})"
+            # Pointer-repr Optional[T] (T*) passed to OwnType(OptionalType(T)):
+            # generate null-safe conversion instead of unconditional dereference.
+            eff = target_type.wrapped if isinstance(target_type, OwnType) else target_type
+            expr_type_for_check = self.types.get_resolved_type(expr)
+            if (isinstance(target_type, OwnType)
+                    and isinstance(eff, OptionalType)
+                    and isinstance(expr_type_for_check, OptionalType)
+                    and expr_type_for_check.uses_pointer_repr()):
+                inner_cpp = expr_type_for_check.inner.to_cpp()
+                result = (f"{result} ? std::optional<{inner_cpp}>"
+                          f"(std::move(*{result})) : std::nullopt")
+            else:
+                result = f"(*{result})"
         # Value optionals are represented as std::optional<T> and must be
         # unwrapped when a concrete value is required.
         expr_type = self.types.get_resolved_type(expr)

@@ -1,1 +1,0 @@
-main.py:11: error: @model: Optional[record] fields are not yet supported (field 'inner'). Use a required field instead.

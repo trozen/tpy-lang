@@ -152,14 +152,16 @@ struct Profile {
     std::tuple<int32_t, int32_t, std::string> coord;
     // backup_role: Role | None = None
     std::optional<Role> backup_role = std::nullopt;
+    // alt_address: Address | None = None
+    std::optional<Address> alt_address = std::nullopt;
     // email: str | None = None
     std::optional<std::string> email = std::nullopt;
 
     Profile() = default;
-    explicit Profile(std::string_view name, int32_t age, double score, float precision, bool active, const ::tpy::BigInt& big_id, Role role, Address&& address, std::vector<std::string>&& tags, std::vector<int32_t>&& scores, std::vector<Address>&& friends, std::vector<Role>&& roles, ::tpy::ordered_map<std::string, int32_t>&& metadata, ::tpy::ordered_map<std::string, std::vector<int32_t>>&& nested_map, const std::tuple<int32_t, int32_t, std::string>& coord, std::optional<Role> backup_role = std::nullopt, std::optional<std::string_view> email = std::nullopt) : name(name), age(age), score(score), precision(precision), active(active), big_id(big_id), role(role), address(std::move(address)), tags(std::move(tags)), scores(std::move(scores)), friends(std::move(friends)), roles(std::move(roles)), metadata(std::move(metadata)), nested_map(std::move(nested_map)), coord(coord), backup_role(backup_role), email(email ? std::make_optional(std::string(*email)) : std::nullopt) {}
+    explicit Profile(std::string_view name, int32_t age, double score, float precision, bool active, const ::tpy::BigInt& big_id, Role role, Address&& address, std::vector<std::string>&& tags, std::vector<int32_t>&& scores, std::vector<Address>&& friends, std::vector<Role>&& roles, ::tpy::ordered_map<std::string, int32_t>&& metadata, ::tpy::ordered_map<std::string, std::vector<int32_t>>&& nested_map, const std::tuple<int32_t, int32_t, std::string>& coord, std::optional<Role> backup_role = std::nullopt, std::optional<Address>&& alt_address = std::nullopt, std::optional<std::string_view> email = std::nullopt) : name(name), age(age), score(score), precision(precision), active(active), big_id(big_id), role(role), address(std::move(address)), tags(std::move(tags)), scores(std::move(scores)), friends(std::move(friends)), roles(std::move(roles)), metadata(std::move(metadata)), nested_map(std::move(nested_map)), coord(coord), backup_role(backup_role), alt_address(std::move(alt_address)), email(email ? std::make_optional(std::string(*email)) : std::nullopt) {}
 
     bool __eq__(const Profile& other) const {
-        return (((((((((((((((((this->name == other.name) && (this->age == other.age)) && (this->score == other.score)) && (this->precision == other.precision)) && (this->active == other.active)) && (this->big_id == other.big_id)) && (this->role == other.role)) && (this->address == other.address)) && (this->tags == other.tags)) && (this->scores == other.scores)) && (this->friends == other.friends)) && (this->roles == other.roles)) && (this->metadata == other.metadata)) && (this->nested_map == other.nested_map)) && (this->coord == other.coord)) && (this->backup_role == other.backup_role)) && (this->email == other.email));
+        return ((((((((((((((((((this->name == other.name) && (this->age == other.age)) && (this->score == other.score)) && (this->precision == other.precision)) && (this->active == other.active)) && (this->big_id == other.big_id)) && (this->role == other.role)) && (this->address == other.address)) && (this->tags == other.tags)) && (this->scores == other.scores)) && (this->friends == other.friends)) && (this->roles == other.roles)) && (this->metadata == other.metadata)) && (this->nested_map == other.nested_map)) && (this->coord == other.coord)) && (this->backup_role == other.backup_role)) && (this->alt_address == other.alt_address)) && (this->email == other.email));
     }
 
     static Profile _from_reader(::tpystd::tplib::json::JsonReader& __reader) {
@@ -181,6 +183,8 @@ struct Profile {
         ::tpy::ordered_map<std::string, std::vector<int32_t>> nested_map = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
         std::optional<std::tuple<int32_t, int32_t, std::string>> coord = std::nullopt;
         std::optional<Role> backup_role = std::nullopt;
+        std::optional<Address> __slot_2;
+        Address* alt_address = nullptr;
         std::optional<std::string> email = std::nullopt;
         while (__reader.has_next()) {
             std::string __key = __reader.read_key();
@@ -284,14 +288,22 @@ struct Profile {
                                                                                 backup_role = __backup_role_2;
                                                                             }
                                                                         } else {
-                                                                            if ((__key == "email")) {
+                                                                            if ((__key == "alt_address")) {
                                                                                 if ((__reader.peek() == ::tpystd::tplib::json::JsonToken::NONE)) {
                                                                                     __reader.read_null();
                                                                                 } else {
-                                                                                    email = __reader.read_str();
+                                                                                    alt_address = &*(__slot_2 = Address::_from_reader(__reader));
                                                                                 }
                                                                             } else {
-                                                                                __reader.skip_value();
+                                                                                if ((__key == "email")) {
+                                                                                    if ((__reader.peek() == ::tpystd::tplib::json::JsonToken::NONE)) {
+                                                                                        __reader.read_null();
+                                                                                    } else {
+                                                                                        email = __reader.read_str();
+                                                                                    }
+                                                                                } else {
+                                                                                    __reader.skip_value();
+                                                                                }
                                                                             }
                                                                         }
                                                                     }
@@ -314,7 +326,7 @@ struct Profile {
         if (!((role.has_value()))) ::tpy::tpy_panic("json: missing required field 'role'");
         if (!((address != nullptr))) ::tpy::tpy_panic("json: missing required field 'address'");
         if (!((coord.has_value()))) ::tpy::tpy_panic("json: missing required field 'coord'");
-        return Profile(name, age, score, precision, active, big_id, (*role), std::move((*address)), std::move(tags), std::move(scores), std::move(friends), std::move(roles), std::move(metadata), std::move(nested_map), (*coord), backup_role, email);
+        return Profile(name, age, score, precision, active, big_id, (*role), std::move((*address)), std::move(tags), std::move(scores), std::move(friends), std::move(roles), std::move(metadata), std::move(nested_map), (*coord), backup_role, std::move(alt_address ? std::optional<Address>(std::move(*alt_address)) : std::nullopt), email);
     }
 
     static Profile from_json(std::string_view __s) {
@@ -430,6 +442,14 @@ struct Profile {
         } else {
             __writer.write_null();
         }
+        __writer.key("alt_address");
+        Address* __opt_alt_address = ::tpy::optional_to_ptr(this->alt_address);
+        if ((__opt_alt_address != nullptr)) {
+            Address& __val_alt_address = (*__opt_alt_address);
+            __val_alt_address._to_writer(__writer);
+        } else {
+            __writer.write_null();
+        }
         __writer.key("email");
         std::optional<std::string> __opt_email = this->email;
         if ((__opt_email.has_value())) {
@@ -485,6 +505,8 @@ struct Profile {
            << "coord=" << ::tpy::TuplePrinter(this->coord)
            << ", "
            << "backup_role=" << ::tpy::print_optional_val(this->backup_role)
+           << ", "
+           << "alt_address=" << ::tpy::print_optional_val(this->alt_address)
            << ", "
            << "email=" << (this->email.has_value() ? std::string("'") + std::string(this->email.value()) + "'" : std::string("None"))
            << ")";

@@ -208,8 +208,13 @@ class FunctionGenerator:
                        .replace('\t', '\\t'))
             return f'"{escaped}"'
         if isinstance(expr, TpyNoneLiteral):
-            if isinstance(ptype, OptionalType) and not ptype.uses_pointer_repr():
-                return "std::nullopt"
+            # Unwrap OwnType to check the underlying Optional.
+            # OwnType(OptionalType) -> std::optional<T>&& param, needs std::nullopt.
+            # Bare OptionalType with pointer repr -> T* param, needs nullptr.
+            inner = ptype.wrapped if isinstance(ptype, OwnType) else ptype
+            if isinstance(inner, OptionalType):
+                if isinstance(ptype, OwnType) or not inner.uses_pointer_repr():
+                    return "std::nullopt"
             return "nullptr"
         if isinstance(expr, TpyUnaryOp) and expr.op == "-":
             inner = FunctionGenerator.default_to_cpp(expr.operand, ptype)

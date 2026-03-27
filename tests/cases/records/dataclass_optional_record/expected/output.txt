@@ -1,0 +1,6 @@
+Outer(name='a', inner=Inner(x=42))
+Outer(name='b', inner=None)
+Outer(name='c', inner=None)
+False
+False
+True

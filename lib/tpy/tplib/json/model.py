@@ -225,11 +225,6 @@ def _build_read_value_stmts(
     # Optional[T]: check for null, then read inner
     inner = _unwrap_optional(fld_type)
     if inner is not None:
-        if _is_model_record(inner):
-            raise MacroError(
-                f"@model: Optional[record] fields are not yet supported "
-                f"(field '{fld_name}'). Use a required field instead.",
-            )
         peek = _method_call(reader, "peek")
         none_token = TpyFieldAccess(obj=_name("JsonToken"), field="NONE")
         read_null = _expr_stmt(_method_call(reader, "read_null"))
