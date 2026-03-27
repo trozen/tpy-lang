@@ -28,6 +28,7 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - all macro code (at least for json model) generated in headers
 - Macro-injected imports: class/call macros that generate code referencing external types (e.g. `@model` needs `JsonReader`, `JsonToken`, `JsonWriter`) require users to manually import those types. Macros should be able to declare import dependencies that are automatically added to the module's namespace.
 - Expression-level error_return unwrap: `print(reader.read_str())` fails because the `std::expected` result isn't unwrapped in sub-expression position. Auto-extract error_return calls in sub-expressions to temp variables with unwrap/propagation in codegen. Uses the existing temps system. Would eliminate the need for manual `v = reader.read_str(); print(v)` workarounds.
+- `error_return_to_cpp` first-match ambiguity: when `local_record is None` (unimported type), the function qualifies with the first module in `registry.modules` that has a matching record name. If two modules define a record with the same name, the result depends on registration order. Low risk (macro error types are library-internal), but adding `source_module` to `RecordInfo` would make it deterministic.
 - json: pretty printing
 - json: to/from file
 - json: better error message: show position

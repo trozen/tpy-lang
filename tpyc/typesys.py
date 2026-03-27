@@ -60,15 +60,15 @@ def error_return_to_cpp(name: str, registry: 'TypeRegistry | None' = None,
         local_record = registry.get_record(name)
         for mod_name, mod_info in registry.modules.items():
             if name in mod_info.records:
-                # Same object as top-level → this module owns it
-                if local_record is mod_info.records[name]:
-                    # If this module IS the current module, it's local
-                    if mod_name == current_module:
-                        return name
-                    # Different module owns it → qualify
+                if mod_name == current_module:
+                    return name  # local
+                # Record owned by a different module -- check if it's the
+                # same object as the top-level record (imported) or not
+                # imported (local_record is None). Either way, qualify it.
+                if local_record is None or local_record is mod_info.records[name]:
                     from tpyc.codegen_cpp.context import qualified_cpp_name
                     return qualified_cpp_name(mod_name, name)
-        # Not in any registered module → local (currently being compiled)
+        # Not in any registered module -> local (currently being compiled)
     return name
 
 

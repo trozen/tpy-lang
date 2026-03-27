@@ -4,7 +4,7 @@
 # dict[str, list[T]].
 from tpy import Int32, Float32, try_parse
 from enum import Enum
-from tplib.json import JsonError, JsonReader, JsonToken, JsonWriter
+from tplib.json import JsonReader, JsonToken, JsonWriter
 from tplib.json.model import model
 
 class Role(Enum):
