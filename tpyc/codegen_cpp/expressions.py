@@ -762,6 +762,10 @@ class ExpressionGenerator:
             return f"(!{rendered}.empty())"
         if is_any_bytes_type(var_type):
             return f"(!{rendered}.empty())"
+        # Primitive types with implicit C++ bool conversion -- skip __bool__ dispatch.
+        if isinstance(var_type, (BoolType, Int32Type, FixedIntType, BigIntType,
+                                 FloatType, Float32Type, IntLiteralType, CharType)):
+            return rendered
         record = self.ctx.analyzer.registry.get_record_for_type(var_type)
         if record:
             if record.get_method_overloads("__bool__"):
@@ -769,10 +773,9 @@ class ExpressionGenerator:
             if record.get_method_overloads("__len__"):
                 return f"(::tpy::__len__({rendered}) != 0)"
             # User records without __bool__/__len__ are always truthy (Python default).
-            # Builtin types (int, float, etc.) have implicit C++ bool conversion.
             if isinstance(var_type, NamedType) and var_type.is_user_record:
                 return "true"
-        # Implicit bool conversion (int, float, ptr, etc.)
+        # Implicit bool conversion (ptr, etc.)
         return rendered
 
     def _is_str_view_at_runtime(self, expr: TpyExpr) -> bool:

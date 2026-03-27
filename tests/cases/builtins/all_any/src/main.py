@@ -34,4 +34,17 @@ def main() -> None:
     print(all(ints_with_zero))
     print(any(ints_with_zero))
 
+    # strings (truthy = non-empty)
+    strs = ["a", "b", "c"]
+    print(all(strs))
+    strs2 = ["a", "", "c"]
+    print(all(strs2))
+    print(any(strs2))
+
+    # floats (truthy = nonzero)
+    floats = [1.0, 2.0, 3.0]
+    print(all(floats))
+    floats2 = [1.0, 0.0, 3.0]
+    print(all(floats2))
+
 main()

@@ -38,6 +38,11 @@ class bool(Equatable):
     @pure
     def __init__(self, x: Truthy) -> None: ...
 
+    @cpp_template("{self}")
+    @readonly
+    @pure
+    def __bool__(self) -> bool: ...
+
     @cpp_template("{self} == {0}")
     @readonly
     @pure
@@ -149,6 +154,10 @@ class int(Comparable, Equatable):
     def __neg__(self) -> int: ...
     @cpp_template("~({self})")
     def __invert__(self) -> int: ...
+    @cpp_template("static_cast<bool>({self})")
+    @readonly
+    @pure
+    def __bool__(self) -> bool: ...
     @cpp_template("::tpy::__hash__({self})")
     @readonly
     @pure
@@ -338,6 +347,10 @@ class float(Comparable, Equatable):
     @overload
     @cpp_template("std::pow(static_cast<double>({0}), {self})")
     def __rpow__(self, other: Int32) -> float: ...
+    @cpp_template("({self} != 0.0)")
+    @readonly
+    @pure
+    def __bool__(self) -> bool: ...
     @cpp_template("::tpy::__hash__({self})")
     @readonly
     @pure
@@ -352,7 +365,7 @@ class float(Comparable, Equatable):
     def __lt__(self, other: float) -> bool: ...
 @builtin_type("builtins.str")
 @native("std::string")
-class str(NativeIterable[Char], Iterable[Char], Equatable):
+class str(NativeIterable[Char], Iterable[Char], Comparable, Equatable):
     @overload
     @cpp_template("std::string()")
     def __init__(self) -> None: ...
@@ -598,6 +611,11 @@ class str(NativeIterable[Char], Iterable[Char], Equatable):
     @pure
     def encode(self) -> bytes: ...
 
+    @cpp_template("(!{self}.empty())")
+    @readonly
+    @pure
+    def __bool__(self) -> bool: ...
+
     @cpp_template("::tpy::__hash__({self})")
     @readonly
     @pure
@@ -607,3 +625,8 @@ class str(NativeIterable[Char], Iterable[Char], Equatable):
     @readonly
     @pure
     def __eq__(self, other: str) -> bool: ...
+
+    @cpp_template("{self} < {0}")
+    @readonly
+    @pure
+    def __lt__(self, other: str) -> bool: ...

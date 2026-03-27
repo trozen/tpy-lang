@@ -1,0 +1,1 @@
+main.py:10: error: Type 'Point' does not satisfy 'Comparable' required by 'sorted'

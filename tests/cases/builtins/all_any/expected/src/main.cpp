@@ -104,6 +104,26 @@ void main() {
     std::cout << ::tpy::print_bool(::tpy::builtin_all(ints_with_zero)) << "\n";
     // print(any(ints_with_zero))
     std::cout << ::tpy::print_bool(::tpy::builtin_any(ints_with_zero)) << "\n";
+    // # strings (truthy = non-empty)
+    // strs = ["a", "b", "c"]
+    std::array<std::string, 3> strs = {"a", "b", "c"};
+    // print(all(strs))
+    std::cout << ::tpy::print_bool(::tpy::builtin_all(strs)) << "\n";
+    // strs2 = ["a", "", "c"]
+    std::array<std::string, 3> strs2 = {"a", "", "c"};
+    // print(all(strs2))
+    std::cout << ::tpy::print_bool(::tpy::builtin_all(strs2)) << "\n";
+    // print(any(strs2))
+    std::cout << ::tpy::print_bool(::tpy::builtin_any(strs2)) << "\n";
+    // # floats (truthy = nonzero)
+    // floats = [1.0, 2.0, 3.0]
+    std::array<double, 3> floats = {1.0, 2.0, 3.0};
+    // print(all(floats))
+    std::cout << ::tpy::print_bool(::tpy::builtin_all(floats)) << "\n";
+    // floats2 = [1.0, 0.0, 3.0]
+    std::array<double, 3> floats2 = {1.0, 0.0, 3.0};
+    // print(all(floats2))
+    std::cout << ::tpy::print_bool(::tpy::builtin_all(floats2)) << "\n";
 }
 
 void __tpy_init() {

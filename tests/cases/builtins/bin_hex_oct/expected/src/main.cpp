@@ -46,6 +46,19 @@ void main() {
     int64_t big = 1000000000000;
     // print(hex(big))
     std::cout << ::tpy::builtin_hex(big) << "\n";
+    // # BigInt (int)
+    // print(bin(2 ** 64 + 1))
+    std::cout << ::tpy::builtin_bin_bigint(((((::tpy::BigInt(2)).pow(::tpy::BigInt(64)))) + (::tpy::BigInt(1)))) << "\n";
+    // print(hex(2 ** 64 + 1))
+    std::cout << ::tpy::builtin_hex_bigint(((((::tpy::BigInt(2)).pow(::tpy::BigInt(64)))) + (::tpy::BigInt(1)))) << "\n";
+    // print(oct(2 ** 64 + 1))
+    std::cout << ::tpy::builtin_oct_bigint(((((::tpy::BigInt(2)).pow(::tpy::BigInt(64)))) + (::tpy::BigInt(1)))) << "\n";
+    // print(bin(-2 ** 64))
+    std::cout << ::tpy::builtin_bin_bigint(-(((::tpy::BigInt(2)).pow(::tpy::BigInt(64))))) << "\n";
+    // print(hex(-2 ** 64))
+    std::cout << ::tpy::builtin_hex_bigint(-(((::tpy::BigInt(2)).pow(::tpy::BigInt(64))))) << "\n";
+    // print(oct(-2 ** 64))
+    std::cout << ::tpy::builtin_oct_bigint(-(((::tpy::BigInt(2)).pow(::tpy::BigInt(64))))) << "\n";
 }
 
 void __tpy_init() {

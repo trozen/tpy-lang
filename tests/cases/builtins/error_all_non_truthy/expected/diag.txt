@@ -1,0 +1,1 @@
+main.py:9: error: Type 'Box' does not satisfy 'Truthy' required by 'all'

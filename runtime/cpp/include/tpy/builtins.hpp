@@ -8,9 +8,9 @@
 #pragma once
 
 #include <algorithm>
+#include <charconv>
 #include <cmath>
 #include <cstdint>
-#include <format>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -165,12 +165,31 @@ const T& max3(const T& a, const T& b, const T& c) {
     return m > c ? m : c;
 }
 
+// -- truthiness helper --
+
+// Priority: implicit/explicit bool conversion > .empty() > __bool__() method.
+// Primitives (int, bool, float, BigInt) match branch 1.
+// std::string/string_view match branch 2.
+// User records with __bool__() match branch 3.
+template<typename T>
+bool to_bool(const T& x) {
+    if constexpr (std::is_constructible_v<bool, T>) {
+        return static_cast<bool>(x);
+    } else if constexpr (requires { x.empty(); }) {
+        return !x.empty();
+    } else if constexpr (requires { x.__bool__(); }) {
+        return x.__bool__();
+    } else {
+        static_assert(false, "to_bool: type has no bool conversion, empty(), or __bool__()");
+    }
+}
+
 // -- all / any --
 
 template<typename Iter>
 bool builtin_all(Iter&& iterable) {
     for (auto&& elem : iterable) {
-        if (!static_cast<bool>(elem)) return false;
+        if (!to_bool(elem)) return false;
     }
     return true;
 }
@@ -178,7 +197,7 @@ bool builtin_all(Iter&& iterable) {
 template<typename Iter>
 bool builtin_any(Iter&& iterable) {
     for (auto&& elem : iterable) {
-        if (static_cast<bool>(elem)) return true;
+        if (to_bool(elem)) return true;
     }
     return false;
 }
@@ -265,10 +284,12 @@ inline std::string builtin_hex(int64_t x) {
     if (x == 0) return "0x0";
     bool negative = x < 0;
     uint64_t val = negative ? -static_cast<uint64_t>(x) : static_cast<uint64_t>(x);
+    char buf[16];
+    auto [ptr, ec] = std::to_chars(buf, buf + sizeof(buf), val, 16);
     std::string result;
     if (negative) result += '-';
     result += "0x";
-    result += std::format("{:x}", val);
+    result.append(buf, ptr);
     return result;
 }
 
@@ -276,11 +297,27 @@ inline std::string builtin_oct(int64_t x) {
     if (x == 0) return "0o0";
     bool negative = x < 0;
     uint64_t val = negative ? -static_cast<uint64_t>(x) : static_cast<uint64_t>(x);
+    char buf[22];
+    auto [ptr, ec] = std::to_chars(buf, buf + sizeof(buf), val, 8);
     std::string result;
     if (negative) result += '-';
     result += "0o";
-    result += std::format("{:o}", val);
+    result.append(buf, ptr);
     return result;
+}
+
+// -- bin / hex / oct for BigInt --
+
+inline std::string builtin_bin_bigint(const BigInt& x) {
+    return x.to_bin_string();
+}
+
+inline std::string builtin_hex_bigint(const BigInt& x) {
+    return x.to_hex_string();
+}
+
+inline std::string builtin_oct_bigint(const BigInt& x) {
+    return x.to_oct_string();
 }
 
 } // namespace tpy

@@ -410,12 +410,12 @@ def round(x: int, ndigits: Int32) -> int: ...
 @pure
 @readonly
 @native("tpy::builtin_all")
-def all[T](iterable: Iterable[T]) -> bool: ...
+def all[T: Truthy](iterable: Iterable[T]) -> bool: ...
 
 @pure
 @readonly
 @native("tpy::builtin_any")
-def any[T](iterable: Iterable[T]) -> bool: ...
+def any[T: Truthy](iterable: Iterable[T]) -> bool: ...
 
 
 # -- sum --
@@ -491,20 +491,43 @@ def sorted[T: Comparable](iterable: Iterable[T]) -> Own[list[T]]: ...
 
 # -- bin / hex / oct --
 
+@overload
 @pure
 @readonly
 @native("tpy::builtin_bin")
 def bin[T: AnyFixedInt](x: T) -> str: ...
 
+@overload
+@pure
+@readonly
+@native("tpy::builtin_bin_bigint")
+def bin(x: int) -> str: ...
+
+
+@overload
 @pure
 @readonly
 @native("tpy::builtin_hex")
 def hex[T: AnyFixedInt](x: T) -> str: ...
 
+@overload
+@pure
+@readonly
+@native("tpy::builtin_hex_bigint")
+def hex(x: int) -> str: ...
+
+
+@overload
 @pure
 @readonly
 @native("tpy::builtin_oct")
 def oct[T: AnyFixedInt](x: T) -> str: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::builtin_oct_bigint")
+def oct(x: int) -> str: ...
 
 
 # -- enumerate --

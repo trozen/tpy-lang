@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// # sorted() builtin on integer lists
+// # sorted() builtin on integer and string lists
 // def main() -> None:
 void main() {
     // a = [3, 1, 4, 1, 5, 9, 2, 6]
@@ -29,6 +29,15 @@ void main() {
     std::array<int32_t, 3> d = {1, 1, 1};
     // print(sorted(d))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(d)) << "\n";
+    // # strings
+    // words = ["banana", "apple", "cherry", "date"]
+    std::array<std::string, 4> words = {"banana", "apple", "cherry", "date"};
+    // print(sorted(words))
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(words)) << "\n";
+    // names = ["Charlie", "alice", "Bob"]
+    std::array<std::string, 3> names = {"Charlie", "alice", "Bob"};
+    // print(sorted(names))
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(names)) << "\n";
 }
 
 void __tpy_init() {

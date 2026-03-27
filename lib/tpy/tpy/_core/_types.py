@@ -332,6 +332,11 @@ class Float32(Comparable, Equatable):
     @pure
     def __hash__(self) -> UInt64: ...
 
+    @cpp_template("({self} != 0.0f)")
+    @readonly
+    @pure
+    def __bool__(self) -> bool: ...
+
     @cpp_template("{self} == {0}")
     @readonly
     @pure
@@ -434,6 +439,10 @@ class Int8(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
     def __pos__(self) -> Int8: ...
     @cpp_template("::tpy::neg_check<int8_t>({self})")
     def __neg__(self) -> Int8: ...
+    @cpp_template("({self} != 0)")
+    @readonly
+    @pure
+    def __bool__(self) -> bool: ...
     @cpp_template("{self} == {0}")
     @readonly
     @pure
@@ -539,6 +548,10 @@ class Int16(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
     def __pos__(self) -> Int16: ...
     @cpp_template("::tpy::neg_check<int16_t>({self})")
     def __neg__(self) -> Int16: ...
+    @cpp_template("({self} != 0)")
+    @readonly
+    @pure
+    def __bool__(self) -> bool: ...
     @cpp_template("{self} == {0}")
     @readonly
     @pure
@@ -644,6 +657,10 @@ class Int32(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
     def __pos__(self) -> Int32: ...
     @cpp_template("::tpy::neg_check<int32_t>({self})")
     def __neg__(self) -> Int32: ...
+    @cpp_template("({self} != 0)")
+    @readonly
+    @pure
+    def __bool__(self) -> bool: ...
     @cpp_template("{self} == {0}")
     @readonly
     @pure
@@ -749,6 +766,10 @@ class Int64(Comparable, Equatable, AnyFixedInt, AnyFixedSigned):
     def __pos__(self) -> Int64: ...
     @cpp_template("::tpy::neg_check<int64_t>({self})")
     def __neg__(self) -> Int64: ...
+    @cpp_template("({self} != 0)")
+    @readonly
+    @pure
+    def __bool__(self) -> bool: ...
     @cpp_template("{self} == {0}")
     @readonly
     @pure
@@ -852,6 +873,10 @@ class UInt8(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
     def __invert__(self) -> UInt8: ...
     @cpp_template("+{self}")
     def __pos__(self) -> UInt8: ...
+    @cpp_template("({self} != 0)")
+    @readonly
+    @pure
+    def __bool__(self) -> bool: ...
     @cpp_template("{self} == {0}")
     @readonly
     @pure
@@ -955,6 +980,10 @@ class UInt16(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
     def __invert__(self) -> UInt16: ...
     @cpp_template("+{self}")
     def __pos__(self) -> UInt16: ...
+    @cpp_template("({self} != 0)")
+    @readonly
+    @pure
+    def __bool__(self) -> bool: ...
     @cpp_template("{self} == {0}")
     @readonly
     @pure
@@ -1058,6 +1087,10 @@ class UInt32(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
     def __invert__(self) -> UInt32: ...
     @cpp_template("+{self}")
     def __pos__(self) -> UInt32: ...
+    @cpp_template("({self} != 0)")
+    @readonly
+    @pure
+    def __bool__(self) -> bool: ...
     @cpp_template("{self} == {0}")
     @readonly
     @pure
@@ -1161,6 +1194,10 @@ class UInt64(Comparable, Equatable, AnyFixedInt, AnyFixedUnsigned):
     def __invert__(self) -> UInt64: ...
     @cpp_template("+{self}")
     def __pos__(self) -> UInt64: ...
+    @cpp_template("({self} != 0)")
+    @readonly
+    @pure
+    def __bool__(self) -> bool: ...
     @cpp_template("{self} == {0}")
     @readonly
     @pure
@@ -1243,7 +1280,7 @@ class Char(Sized, Equatable):
 
 @builtin_type("tpy.String")
 @native("std::string")
-class String(NativeIterable[Char], Iterable[Char], Equatable):
+class String(NativeIterable[Char], Iterable[Char], Comparable, Equatable):
     @overload
     @cpp_template("std::string()")
     def __init__(self) -> None: ...
@@ -1480,6 +1517,11 @@ class String(NativeIterable[Char], Iterable[Char], Equatable):
     @pure
     def splitlines(self) -> Own[list[str]]: ...
 
+    @cpp_template("(!{self}.empty())")
+    @readonly
+    @pure
+    def __bool__(self) -> bool: ...
+
     @cpp_template("::tpy::__hash__({self})")
     @readonly
     @pure
@@ -1490,11 +1532,16 @@ class String(NativeIterable[Char], Iterable[Char], Equatable):
     @pure
     def __eq__(self, other: String) -> bool: ...
 
+    @cpp_template("{self} < {0}")
+    @readonly
+    @pure
+    def __lt__(self, other: String) -> bool: ...
+
 
 
 @builtin_type("tpy.StrView")
 @native("std::string_view")
-class StrView(NativeIterable[Char], Iterable[Char], Equatable):
+class StrView(NativeIterable[Char], Iterable[Char], Comparable, Equatable):
     @overload
     @cpp_template("std::string_view()")
     def __init__(self) -> None: ...
@@ -1692,6 +1739,11 @@ class StrView(NativeIterable[Char], Iterable[Char], Equatable):
     @pure
     def splitlines(self) -> Own[list[str]]: ...
 
+    @cpp_template("(!{self}.empty())")
+    @readonly
+    @pure
+    def __bool__(self) -> bool: ...
+
     @cpp_template("::tpy::__hash__({self})")
     @readonly
     @pure
@@ -1701,3 +1753,8 @@ class StrView(NativeIterable[Char], Iterable[Char], Equatable):
     @readonly
     @pure
     def __eq__(self, other: StrView) -> bool: ...
+
+    @cpp_template("{self} < {0}")
+    @readonly
+    @pure
+    def __lt__(self, other: StrView) -> bool: ...

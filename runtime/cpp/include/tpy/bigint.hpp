@@ -19,6 +19,7 @@
 
 #include <bit>
 #include <cctype>
+#include <charconv>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -451,6 +452,83 @@ public:
             out += pad9(chunks[idx]);
         }
         return out;
+    }
+
+    // Binary string (e.g. "0b101", "-0b11")
+    std::string to_bin_string() const {
+        int s = signum();
+        if (s == 0) return "0b0";
+        std::vector<uint64_t> limbs = abs_limbs();
+        std::string digits;
+        // Extract bits from least significant to most significant
+        for (size_t i = 0; i < limbs.size(); ++i) {
+            uint64_t w = limbs[i];
+            for (int b = 0; b < 64; ++b) {
+                digits.push_back('0' + static_cast<char>(w & 1));
+                w >>= 1;
+            }
+        }
+        // Trim trailing zeros (they're leading zeros in reversed form)
+        while (!digits.empty() && digits.back() == '0') digits.pop_back();
+        std::string result;
+        if (s < 0) result += '-';
+        result += "0b";
+        for (auto it = digits.rbegin(); it != digits.rend(); ++it) result += *it;
+        return result;
+    }
+
+    // Hex string (e.g. "0xff", "-0x1a")
+    std::string to_hex_string() const {
+        int s = signum();
+        if (s == 0) return "0x0";
+        std::vector<uint64_t> limbs = abs_limbs();
+        std::string result;
+        if (s < 0) result += '-';
+        result += "0x";
+        char buf[16];
+        // Most significant limb without leading zeros
+        auto [p1, e1] = std::to_chars(buf, buf + sizeof(buf), limbs.back(), 16);
+        result.append(buf, p1);
+        // Remaining limbs zero-padded to 16 hex digits
+        for (size_t i = limbs.size() - 1; i > 0; --i) {
+            auto [p, e] = std::to_chars(buf, buf + sizeof(buf), limbs[i - 1], 16);
+            size_t len = static_cast<size_t>(p - buf);
+            result.append(16 - len, '0');
+            result.append(buf, p);
+        }
+        return result;
+    }
+
+    // Octal string (e.g. "0o17", "-0o77")
+    std::string to_oct_string() const {
+        int s = signum();
+        if (s == 0) return "0o0";
+        std::vector<uint64_t> limbs = abs_limbs();
+        size_t total_bits = (limbs.size() - 1) * 64 +
+            (64 - std::countl_zero(limbs.back()));
+        std::string digits;
+        // Extract 3-bit groups across limb boundaries
+        for (size_t bit = 0; bit < total_bits; bit += 3) {
+            unsigned val = 0;
+            for (int k = 0; k < 3; ++k) {
+                size_t pos = bit + static_cast<size_t>(k);
+                if (pos < total_bits) {
+                    size_t limb_idx = pos / 64;
+                    int bit_idx = static_cast<int>(pos % 64);
+                    if ((limbs[limb_idx] >> bit_idx) & 1) {
+                        val |= (1u << k);
+                    }
+                }
+            }
+            digits.push_back('0' + static_cast<char>(val));
+        }
+        // Trim trailing zeros
+        while (!digits.empty() && digits.back() == '0') digits.pop_back();
+        std::string result;
+        if (s < 0) result += '-';
+        result += "0o";
+        for (auto it = digits.rbegin(); it != digits.rend(); ++it) result += *it;
+        return result;
     }
 
     // Absolute value (static method)
