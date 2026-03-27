@@ -79,10 +79,15 @@ class NarrowingTracker:
         effective = self.ctx.narrowed_types.get(name)
         if effective is None:
             effective = self.declared_type_for_name(name)
+        # Strip Own[T] -- narrowing operates on the underlying type
+        if isinstance(effective, OwnType):
+            effective = effective.wrapped
         if not isinstance(effective, UnionType):
             declared = self.declared_type_for_name(name)
             if declared is not None:
                 inner = unwrap_readonly(declared)
+                if isinstance(inner, OwnType):
+                    inner = inner.wrapped
                 if isinstance(inner, UnionType):
                     return inner
         return effective
@@ -191,9 +196,14 @@ class NarrowingTracker:
 
     @staticmethod
     def _optional_inner_type(typ: TpyType) -> TpyType:
-        """Extract inner type from Optional, preserving ReadonlyType wrapper."""
+        """Extract inner type from Optional, preserving ReadonlyType/OwnType wrappers."""
         if isinstance(typ, ReadonlyType):
             return ReadonlyType(typ.wrapped.inner)
+        if isinstance(typ, OwnType):
+            inner = typ.wrapped
+            if isinstance(inner, OptionalType):
+                return inner.inner
+            return inner
         return typ.inner
 
     def _effective_type_for_key(self, key: str) -> TpyType | None:
@@ -203,7 +213,11 @@ class NarrowingTracker:
             return effective
         if "." in key:
             return self._resolve_field_path_type(key)
-        return self.declared_type_for_name(key)
+        result = self.declared_type_for_name(key)
+        # Strip Own[T] -- narrowing operates on the underlying type
+        if isinstance(result, OwnType):
+            result = result.wrapped
+        return result
 
     # -- Type narrowing (isinstance, is None, truthiness) ---------------
 
@@ -545,6 +559,8 @@ class NarrowingTracker:
             self.ctx.value_ranges[name] = ValueRange.from_literal(rhs_inner.value)
         # For Optional targets, re-narrow if RHS is provably non-None
         inner_target = unwrap_readonly(target_type)
+        if isinstance(inner_target, OwnType):
+            inner_target = inner_target.wrapped
         if not isinstance(inner_target, OptionalType):
             return
         if isinstance(rhs_type, (NoneType, OptionalType)) or isinstance(rhs_expr, TpyNoneLiteral):

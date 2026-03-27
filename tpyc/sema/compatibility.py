@@ -862,8 +862,10 @@ class TypeCompatibility:
             )
         # Top-level: non-value-type vars become pointer-globals, can't be moved
         var_type = self.ctx.current_scope.lookup(name) if self.ctx.current_scope else None
-        if var_type and not var_type.is_value_type():
-            return False
+        if var_type:
+            inner = var_type.wrapped if isinstance(var_type, OwnType) else var_type
+            if not inner.is_value_type():
+                return False
         return True
 
     def is_param_derived_expr(self, expr: TpyExpr) -> bool:

@@ -471,7 +471,9 @@ class ExpressionAnalyzer:
             if binding:
                 if binding.kind == BindingKind.VARIABLE:
                     self._check_definitely_assigned(expr)
-                    return self.narrowing.narrow_name_type(expr.name, binding.type)
+                    result = self.narrowing.narrow_name_type(expr.name, binding.type)
+                    # Strip Own[T] -- see comment below at scope fallback path.
+                    return result.wrapped if isinstance(result, OwnType) else result
                 if binding.kind == BindingKind.BUILTIN:
                     return binding.type
                 # For other bindings (FUNCTION, RECORD, MODULE, IMPORTED_NAME),
@@ -492,7 +494,13 @@ class ExpressionAnalyzer:
             else:
                 raise self.ctx.error(f"Undefined variable: '{expr.name}'", expr)
         self._check_definitely_assigned(expr)
-        return self.narrowing.narrow_name_type(expr.name, typ)
+        result = self.narrowing.narrow_name_type(expr.name, typ)
+        # Strip Own[T] for expression type -- Own indicates the variable owns
+        # its storage (for movability), but the expression type is T (the
+        # variable is an lvalue when used in expressions).
+        if isinstance(result, OwnType):
+            result = result.wrapped
+        return result
 
     def _check_definitely_assigned(self, expr: TpyName) -> None:
         """Check that a local variable is definitely assigned before use."""
@@ -694,9 +702,13 @@ class ExpressionAnalyzer:
 
         # Identity operators (is / is not) -- only valid with None or enums
         if expr.op in ("is", "is not"):
-            # Unwrap ReadonlyType for nullable checks.
+            # Unwrap ReadonlyType and OwnType for nullable checks.
             left_check = unwrap_readonly(left_type)
+            if isinstance(left_check, OwnType):
+                left_check = left_check.wrapped
             right_check = unwrap_readonly(right_type)
+            if isinstance(right_check, OwnType):
+                right_check = right_check.wrapped
             # Enum identity: lower to ==/!=
             if isinstance(left_check, EnumType) and isinstance(right_check, EnumType):
                 if left_check.name == right_check.name:

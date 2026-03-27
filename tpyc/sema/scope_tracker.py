@@ -9,7 +9,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Iterator
 
-from ..typesys import TpyType
+from ..typesys import TpyType, OwnType
 from ..parse import TpyCoerce, TpyName, TpyFieldAccess, TpySubscript, TpyExpr
 from ..namespace import Namespace
 from .diagnostics import Scope
@@ -173,6 +173,12 @@ class ScopeTracker:
                 node
             )
             self.ctx.hoisted_vars.add(source_name)
+            # Hoisted vars become pointer-locals -- strip Own[T] wrapper
+            # since they can no longer own their storage.
+            if self.ctx.current_scope:
+                scope_type = self.ctx.current_scope.lookup(source_name)
+                if isinstance(scope_type, OwnType):
+                    self.ctx.current_scope.define(source_name, scope_type.wrapped)
 
     def _get_source_name(self, expr: TpyExpr) -> str:
         """Extract the root variable name from an expression for error messages."""

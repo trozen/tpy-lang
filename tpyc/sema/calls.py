@@ -14,7 +14,7 @@ from ..typesys import (
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType, ReadonlyType,
     UNKNOWN_ELEMENT, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
-    UnionType, EnumType, VOID, BIGINT, BOOL, STR, is_protocol_type, unwrap_readonly, unwrap_optional_own,
+    UnionType, EnumType, VOID, BIGINT, BOOL, STR, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own,
     is_any_str_type, container_to_str_template,
     is_protocol_union, protocol_union_protocols,
     StrViewType, STRVIEW, MutationCallEdge,
@@ -459,6 +459,9 @@ class CallAnalyzer:
             if binding:
                 if binding.kind == BindingKind.VARIABLE:
                     var_type = self.ctx.narrowed_types.get(expr.func, binding.type)
+                    # Strip Own[T] -- Own is a storage property, not a type distinction
+                    if isinstance(var_type, OwnType):
+                        var_type = var_type.wrapped
                     if isinstance(var_type, FnType):
                         return self._analyze_fn_type_call(expr, var_type)
                     if isinstance(var_type, CallableType):
@@ -988,6 +991,8 @@ class CallAnalyzer:
                 )
 
         effective_type = self.expr.narrowing.effective_union_type(first_arg.name)
+        if isinstance(effective_type, OwnType):
+            effective_type = effective_type.wrapped
 
         if not isinstance(effective_type, UnionType):
             raise self.ctx.error(
@@ -1786,7 +1791,7 @@ class CallAnalyzer:
                 return STR
 
         # No matching overload found - try to give a helpful error
-        arg_type_strs = ", ".join(str(t) for t in arg_types)
+        arg_type_strs = ", ".join(str(unwrap_own(t)) for t in arg_types)
 
         # For generic overloads, check for conflicting type parameter inference
         for overload in generic:
@@ -1908,7 +1913,7 @@ class CallAnalyzer:
                         return self._analyze_single_function_call(expr, func)
                     except SemanticError:
                         continue
-            arg_type_strs = ", ".join(str(t) for t in arg_types)
+            arg_type_strs = ", ".join(str(unwrap_own(t)) for t in arg_types)
             raise self.ctx.error(
                 f"No matching @overload for {expr.func}({arg_type_strs})", expr)
         return self._analyze_single_function_call(expr, func_infos[0])
@@ -1960,16 +1965,21 @@ class CallAnalyzer:
             arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
 
             # Check for Own[T] passed directly to object type parameter
-            if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType) and not ptype.is_value_type():
-                if isinstance(arg, TpyName):
-                    hint = f"Declare the variable as '{arg_type.wrapped}' instead of 'Own[{arg_type.wrapped}]'"
-                else:
-                    hint = "Assign to a variable first: x = func(); other_func(x)"
+            # Reject rvalue Own[T] passed directly to non-Own param (e.g.
+            # func(make_thing()) where param is T not Own[T]). Named variables
+            # with Own[T] type are fine -- they're lvalues passed by reference.
+            if (isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType)
+                    and not ptype.is_value_type() and not isinstance(arg, TpyName)):
+                hint = "Assign to a variable first: x = func(); other_func(x)"
                 raise self.ctx.error(
                     f"Cannot pass Own[{arg_type.wrapped}] directly to parameter '{pname}' "
                     f"(object types are passed by reference). {hint}",
                     arg
                 )
+            # Strip Own from arg_type for downstream matching -- Own[T] variables
+            # pass as T& (by reference), same as non-Own variables.
+            if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType):
+                arg_type = arg_type.wrapped
 
             self.check_own_param(arg, arg_type, pname, ptype)
 
@@ -2113,17 +2123,17 @@ class CallAnalyzer:
             arg_type = self.expr.analyze_expr_with_hint(arg, check_ptype)
             arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
 
-            # Check for Own[T] passed directly to object type parameter
-            if isinstance(arg_type, OwnType) and not isinstance(check_ptype, OwnType) and not check_ptype.is_value_type():
-                if isinstance(arg, TpyName):
-                    hint = f"Declare the variable as '{arg_type.wrapped}' instead of 'Own[{arg_type.wrapped}]'"
-                else:
-                    hint = "Assign to a variable first: x = func(); other_func(x)"
+            # Reject rvalue Own[T] passed directly to non-Own param
+            if (isinstance(arg_type, OwnType) and not isinstance(check_ptype, OwnType)
+                    and not check_ptype.is_value_type() and not isinstance(arg, TpyName)):
+                hint = "Assign to a variable first: x = func(); other_func(x)"
                 raise self.ctx.error(
                     f"Cannot pass Own[{arg_type.wrapped}] directly to parameter '{pname}' "
                     f"(object types are passed by reference). {hint}",
                     arg
                 )
+            if isinstance(arg_type, OwnType) and not isinstance(check_ptype, OwnType):
+                arg_type = arg_type.wrapped
 
             self.check_own_param(arg, arg_type, pname, check_ptype)
 
@@ -2480,17 +2490,17 @@ class CallAnalyzer:
             arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
             arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
 
-            # Check for Own[T] passed directly to object type parameter
-            if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType) and not ptype.is_value_type():
-                if isinstance(arg, TpyName):
-                    hint = f"Declare the variable as '{arg_type.wrapped}' instead of 'Own[{arg_type.wrapped}]'"
-                else:
-                    hint = "Assign to a variable first: x = func(); other_func(x)"
+            # Reject rvalue Own[T] passed directly to non-Own param
+            if (isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType)
+                    and not ptype.is_value_type() and not isinstance(arg, TpyName)):
+                hint = "Assign to a variable first: x = func(); other_func(x)"
                 raise self.ctx.error(
                     f"Cannot pass Own[{arg_type.wrapped}] directly to parameter '{pname}' "
                     f"(object types are passed by reference). {hint}",
                     arg
                 )
+            if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType):
+                arg_type = arg_type.wrapped
 
             # Check for T passed to Own[T] parameter - would be implicit copy
             self.check_own_param(arg, arg_type, pname, ptype)

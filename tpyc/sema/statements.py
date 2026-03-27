@@ -12,7 +12,7 @@ from ..typesys import (
     FinalType, FixedIntType, BoolType, StrViewType, StringType,
     ListType, DictType, ArrayType, SpanType, PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, NamedType, CharType, StrType, TypeParamRef,
     ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, StrVarInfo, BytesVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType, UnknownElementType,
-    EnumType, unwrap_readonly, is_any_str_type, is_any_bytes_type, TupleType,
+    EnumType, unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType,
     BytesType, ByteArrayType, BytesViewType,
     PendingGenericInstanceType, FnType, contains_fn_type,
     INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, is_protocol_type, is_protocol_union,
@@ -898,7 +898,7 @@ class StatementAnalyzer:
                 # For synthetic tuple-unpack loop vars, skip const binding when
                 # the unpack has elements that need mutable references --
                 # const tuple prevents T& bindings via std::get.
-                unwrapped = unwrap_readonly(elem_type)
+                unwrapped = unwrap_qualifiers(elem_type)
                 worth_const_ref = (not unwrapped.is_value_type()
                                    or unwrapped.is_expensive_copy())
                 needs_mut_unpack = False
@@ -936,6 +936,14 @@ class StatementAnalyzer:
                         if deferred:
                             for idx in sorted(deferred, reverse=True):
                                 del self.ctx.diagnostics[idx]
+                # Also suppress copy warnings when elem_type is Own[T]
+                # (e.g. Iterable[Own[T]] params) -- elements will be moved.
+                if (stmt.consuming_iter_fi is None
+                        and isinstance(elem_type, OwnType)):
+                    deferred = self.ctx.deferred_loop_copy_warnings.pop(stmt.var, None)
+                    if deferred:
+                        for idx in sorted(deferred, reverse=True):
+                            del self.ctx.diagnostics[idx]
                 body_end_nn_ptr = frozenset(self.ctx.non_null_ptr_vars)
                 self.init.restore(before)
                 # Loop might not execute — consumption inside is not definite
@@ -2007,9 +2015,17 @@ class StatementAnalyzer:
                     self.ctx.literal_default_vars.add(stmt.name)
                 elif isinstance(init_type, FloatLiteralType):
                     var_type = FLOAT  # float literals always default to float64
-                # Unwrap OwnType - Own[T] indicates ownership transfer, not variable type
+                # Preserve OwnType on variables -- Own[T] indicates the variable
+                # owns its storage and can be moved at last use.
+                # Exceptions: union types need the raw type for isinstance/
+                # narrowing codegen; optional pointer types use T* storage.
                 elif isinstance(init_type, OwnType):
-                    var_type = init_type.wrapped
+                    inner = init_type.wrapped
+                    if (isinstance(inner, UnionType)
+                            or (isinstance(inner, OptionalType) and inner.uses_pointer_repr())):
+                        var_type = inner
+                    else:
+                        var_type = init_type
                 # None literal without annotation -- can't infer the Optional type
                 elif isinstance(init_type, NoneType):
                     var_type = init_type
@@ -2182,6 +2198,29 @@ class StatementAnalyzer:
                     self.ctx.rvalue_vars.discard(stmt.name)
             else:
                 self.ctx.rvalue_vars.add(stmt.name)
+                # Wrap rvalue-init non-value types in Own[T] when the init
+                # expression is a constructor call or other value-creating
+                # expression (not a reference-returning function call).
+                # Uses init_type: if the function returned Own[T], var_type
+                # is already Own[T] from the preservation at line 2012.
+                # For constructors, init_type is T (not Own), so we wrap here.
+                if (existing_type is None
+                        and var_type is not None
+                        and not isinstance(var_type, OwnType)
+                        and not var_type.is_value_type()
+                        and not isinstance(var_type, (NoneType, ReadonlyType,
+                                                      PendingListType, PendingDictType, PendingSetType,
+                                                      PendingStrType, PendingBytesType))
+                        and not (isinstance(var_type, OptionalType) and var_type.uses_pointer_repr())
+                        and not isinstance(var_type, UnionType)
+                        and stmt.name not in self.ctx.hoisted_vars
+                        and stmt.name not in self.ctx.current_reassigned_vars
+                        and not is_global_declared
+                        and isinstance(self.ctx.current_function, TpyFunction)
+                        and not self._is_reference_returning_call(stmt.init)):
+                    var_type = OwnType(var_type)
+                    if self.ctx.current_scope:
+                        self.ctx.current_scope.define(stmt.name, var_type)
         # Track provenance for non-value types and pointer types
         # (pointers are value types but carry address provenance)
         if stmt.init and (not var_type.is_value_type() or isinstance(var_type, PtrType)):
@@ -2217,8 +2256,39 @@ class StatementAnalyzer:
         if existing_type is None:
             self.ctx.var_decl_by_name[stmt.name] = stmt
         # Record declared type for test type-annotation validation.
+        # Strip Own[T] for display -- Own is an internal property, not user-facing.
         if stmt.loc:
-            self.ctx.declared_var_types[(stmt.loc.line, stmt.name)] = var_type
+            display_type = unwrap_own(var_type) if var_type else var_type
+            self.ctx.declared_var_types[(stmt.loc.line, stmt.name)] = display_type
+
+    def _is_reference_returning_call(self, expr: TpyExpr | None) -> bool:
+        """Check if an expression is a function call that returns a reference.
+
+        Returns True for function/method calls that return non-Own non-value
+        types (i.e., they return references to existing storage).
+        Returns False for constructors, Own[T] returns, value returns, and
+        non-call expressions.
+        """
+        if expr is None:
+            return False
+        if isinstance(expr, TpyCoerce):
+            return self._is_reference_returning_call(expr.expr)
+        if isinstance(expr, (TpyCall, TpyMethodCall)):
+            # Constructor calls always create new values
+            if isinstance(expr, TpyCall) and expr.call_type is not None:
+                return False
+            fi = expr.resolved_function_info
+            if fi is not None and fi.return_type is not None:
+                rt = fi.return_type
+                # Own[T] returns are value-creating (ownership transfer)
+                if isinstance(rt, OwnType):
+                    return False
+                # Value types are always by-value
+                if rt.is_value_type():
+                    return False
+                # Non-Own non-value return = reference
+                return True
+        return False
 
     def _analyze_tuple_unpack(self, stmt: TpyTupleUnpack) -> None:
         """Analyze tuple unpacking: a, b = expr."""

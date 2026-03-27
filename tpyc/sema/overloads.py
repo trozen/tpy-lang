@@ -65,9 +65,11 @@ def type_matches_strict(
 
     Used for first-pass overload resolution where no coercions are desired.
     """
-    # Unwrap ReadonlyType from both sides -- readonly values can match mutable
-    # params, and mutable values can match readonly params (const promotion).
+    # Unwrap ReadonlyType and OwnType from args -- readonly values can match
+    # mutable params, and Own[T] variables match T params (passed by ref).
     arg_inner = unwrap_readonly(arg_type)
+    if isinstance(arg_inner, OwnType):
+        arg_inner = arg_inner.wrapped
     param_inner = unwrap_readonly(param_type)
     if arg_inner == param_inner:
         return True
@@ -150,9 +152,11 @@ def type_matches_with_coercion(
 
     Used for overload resolution second pass and constructor matching.
     """
-    # Unwrap ReadonlyType from both sides -- mutable values match readonly
-    # params (const promotion) and readonly values match mutable params.
+    # Unwrap ReadonlyType and OwnType from args -- mutable values match
+    # readonly params, and Own[T] variables match T params.
     arg_inner = unwrap_readonly(arg_type)
+    if isinstance(arg_inner, OwnType):
+        arg_inner = arg_inner.wrapped
     param_inner = unwrap_readonly(param_type)
     if type_matches_numeric(arg_inner, param_inner):
         return True

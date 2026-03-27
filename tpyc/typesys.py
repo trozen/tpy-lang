@@ -1344,6 +1344,22 @@ def unwrap_readonly(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
+def unwrap_own(typ: 'TpyType') -> 'TpyType':
+    """Strip OwnType wrapper if present, returning the inner type."""
+    if isinstance(typ, OwnType):
+        return typ.wrapped
+    return typ
+
+
+def unwrap_qualifiers(typ: 'TpyType') -> 'TpyType':
+    """Strip both ReadonlyType and OwnType wrappers."""
+    if isinstance(typ, ReadonlyType):
+        typ = typ.wrapped
+    if isinstance(typ, OwnType):
+        typ = typ.wrapped
+    return typ
+
+
 @dataclass(frozen=True)
 class AutoReadonlyType(TpyType):
     """Type annotation for auto_readonly methods.
