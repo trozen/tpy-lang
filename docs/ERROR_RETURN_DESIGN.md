@@ -18,7 +18,6 @@ See [EXCEPTION_DESIGN.md](EXCEPTION_DESIGN.md) for the full two-tier exception m
 | Multiple exception types | `@error_return(E1, E2)` -- return `std::expected<T, std::variant<E1, E2>>` |
 | Exception types with data | `class ParseError(Exception, ControlFlow): line: Int32` -- non-empty error types |
 | `except E as e` binding | Bind exception value in catch block (needs data fields) |
-| `ControlFlow` marker protocol | Split exception types into return (`ControlFlow`) vs throw categories. `@error_return(E)` requires E to be `ControlFlow`. Prevents accidental use of control-flow types with C++ throw |
 | `except ControlFlow` catch-all | Catch any return exception regardless of concrete type (type-independent `has_value()` check) |
 | `next()` builtin | `next(it)` -- with forwarding, can be `@error_return(StopIteration)` itself |
 | General exception model | C++ exceptions for non-control-flow errors -- `try`/`except`/`finally`/`raise` with stack unwinding |
@@ -32,9 +31,9 @@ control flow into a result-type return. `raise E` inside the function body compi
 to returning an error variant -- no C++ exceptions, no stack unwinding.
 
 ```python
-from tpy import Int32, error_return
+from tpy import Int32, error_return, ControlFlow
 
-class NotFound(Exception):
+class NotFound(Exception, ControlFlow):
     pass
 
 @error_return(NotFound)
@@ -87,10 +86,11 @@ search functions) and TPy's zero-cost compiled output.
 
 ### Exception Type
 
-Error types should inherit from `Exception` for CPython compatibility:
+Error types must inherit from `Exception` (for CPython compatibility) and `ControlFlow`
+(to mark them as return-only exceptions):
 
 ```python
-class NotFound(Exception):
+class NotFound(Exception, ControlFlow):
     pass
 ```
 

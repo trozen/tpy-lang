@@ -4,16 +4,21 @@
 namespace tpyapp::main {
 
 
-// @error_return(StopIteration)
-// def parse_positive(s: str) -> Int32:
-std::expected<int32_t, ::tpy::StopIteration> parse_positive(std::string_view s) {
-    // if s == "two":
-    if ((s == "two")) {
-        // return 2
-        return 2;
+// @error_return(ParseError)
+// def parse_digit(s: str) -> Int32:
+std::expected<int32_t, ParseError> parse_digit(std::string_view s) {
+    // if s == "0":
+    if ((s == "0")) {
+        // return 0
+        return 0;
     }
-    // raise StopIteration
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    // if s == "1":
+    if ((s == "1")) {
+        // return 1
+        return 1;
+    }
+    // raise ParseError
+    return ::tpy::make_unexpected(ParseError{});
 }
 
 // def main() -> None:
@@ -21,9 +26,9 @@ void main() {
     // try:
     int32_t v;
     {
-        // v = parse_positive("two")
+        // v = parse_digit("1")
         {
-            auto __try_tmp_2 = parse_positive("two");
+            auto __try_tmp_2 = parse_digit("1");
             if (!__try_tmp_2.has_value()) goto __except_1;
             v = *__try_tmp_2;
         }
@@ -38,9 +43,9 @@ void main() {
     // try:
     int32_t v2;
     {
-        // v2 = parse_positive("three")
+        // v2 = parse_digit("x")
         {
-            auto __try_tmp_4 = parse_positive("three");
+            auto __try_tmp_4 = parse_digit("x");
             if (!__try_tmp_4.has_value()) goto __except_3;
             v2 = *__try_tmp_4;
         }

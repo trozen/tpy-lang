@@ -107,6 +107,23 @@ def register_sync_record(name: str) -> None:
     _sync_record_names.add(name)
 
 
+# Builtins that are always ControlFlow. Pre-seeded because _funcs.py
+# (which uses @error_return(StopIteration)) may be compiled before
+# _exceptions.py registers StopIteration as ControlFlow.
+_BUILTIN_CONTROL_FLOW: frozenset[str] = frozenset({"builtins.StopIteration"})
+_control_flow_record_names: set[str] = set(_BUILTIN_CONTROL_FLOW)
+
+
+def register_control_flow_record(name: str) -> None:
+    """Register an exception type as ControlFlow (return-only, used with @error_return)."""
+    _control_flow_record_names.add(name)
+
+
+def is_control_flow_exception(name: str) -> bool:
+    """Check if an exception type name is registered as ControlFlow."""
+    return name in _control_flow_record_names
+
+
 def public_module_name(module_name: str, cpp_namespace: str | None = None) -> str:
     """Map a private submodule name to its public module identity.
 
@@ -191,6 +208,8 @@ def clear_all_compilation_state() -> None:
     _value_type_record_names.clear()
     _send_record_names.clear()
     _sync_record_names.clear()
+    _control_flow_record_names.clear()
+    _control_flow_record_names.update(_BUILTIN_CONTROL_FLOW)
     _protocol_modules.clear()
 
 

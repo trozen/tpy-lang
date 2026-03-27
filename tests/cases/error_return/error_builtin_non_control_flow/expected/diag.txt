@@ -1,0 +1,1 @@
+main.py:5: error: 'Exception' is not a ControlFlow type; @error_return requires a ControlFlow exception

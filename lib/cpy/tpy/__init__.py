@@ -594,6 +594,11 @@ class Sync(_Protocol):
     pass
 
 
+class ControlFlow(_Protocol):
+    """Marker for return exception types (used with @error_return, not C++ throw)."""
+    pass
+
+
 class Hashable(_Protocol):
     """Protocol for types supporting hash() via __hash__."""
     def __hash__(self) -> int: ...

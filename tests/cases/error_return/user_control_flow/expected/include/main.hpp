@@ -8,20 +8,20 @@
 
 namespace tpyapp::main {
 
-struct NotFound;
+struct ParseError;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::expected<int32_t, NotFound> find_index(const std::vector<int32_t>& items, int32_t target);
+std::expected<int32_t, ParseError> parse_digit(std::string_view s);
 void main();
 
-// class NotFound(Exception, ControlFlow):
-struct NotFound : Exception {
+// class ParseError(Exception, ControlFlow):
+struct ParseError : Exception {
 
 };
 
-inline std::ostream& operator<<(std::ostream& os, const NotFound& obj) {
-    os << "NotFound("
+inline std::ostream& operator<<(std::ostream& os, const ParseError& obj) {
+    os << "ParseError("
        << ")";
     return os;
 }

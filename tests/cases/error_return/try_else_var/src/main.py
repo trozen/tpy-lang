@@ -1,7 +1,7 @@
 # Variable declared after error_return call in try body, used in else
-from tpy import Int32, error_return
+from tpy import Int32, error_return, ControlFlow
 
-class NotFound(Exception):
+class NotFound(Exception, ControlFlow):
     pass
 
 @error_return(NotFound)

@@ -1,7 +1,7 @@
 # Error: calling @error_return function without try/except
-from tpy import Int32, error_return
+from tpy import Int32, error_return, ControlFlow
 
-class NotFound:
+class NotFound(Exception, ControlFlow):
     pass
 
 @error_return(NotFound)

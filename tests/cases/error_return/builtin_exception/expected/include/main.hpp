@@ -10,7 +10,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::expected<int32_t, ::tpy::Exception> parse_positive(std::string_view s);
+std::expected<int32_t, ::tpy::StopIteration> parse_positive(std::string_view s);
 void main();
 
 void __tpy_init();

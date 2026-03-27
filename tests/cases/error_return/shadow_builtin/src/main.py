@@ -1,7 +1,7 @@
 # User-defined class shadows builtin StopIteration -- should use the user's type, not ::tpy::StopIteration
-from tpy import Int32, error_return
+from tpy import Int32, error_return, ControlFlow
 
-class StopIteration(Exception):
+class StopIteration(Exception, ControlFlow):
     pass
 
 @error_return(StopIteration)

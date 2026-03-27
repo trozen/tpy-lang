@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 std::expected<int32_t, NotFound> find(const std::vector<int32_t>& items, int32_t target);
 void main();
 
-// class NotFound(Exception):
+// class NotFound(Exception, ControlFlow):
 struct NotFound : Exception {
 
 };

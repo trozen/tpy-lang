@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 std::expected<int32_t, StopIteration> first_negative(const std::vector<int32_t>& items);
 void main();
 
-// class StopIteration(Exception):
+// class StopIteration(Exception, ControlFlow):
 struct StopIteration : Exception {
 
 };

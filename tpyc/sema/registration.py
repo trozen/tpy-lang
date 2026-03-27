@@ -13,6 +13,7 @@ from ..typesys import (
     IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, EnumType, IntEnumType, BoolType, SpanIterType,
     FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL, UINT64,
     register_value_type_record, register_send_record, register_sync_record,
+    register_control_flow_record, is_control_flow_exception,
     attach_type_param_bounds,
     has_auto_readonly, has_auto_own,
     qualify_exception_name, ensure_qualified,
@@ -514,7 +515,15 @@ class TypeRegistrar:
             )
             # Propagate qualified name back to AST so codegen can use it directly
             if method.error_return:
+                orig_name = method.error_return
                 method.error_return = func_info.error_return_type
+                # @error_return(E) requires E to be a ControlFlow type
+                if not is_control_flow_exception(func_info.error_return_type):
+                    raise SemanticError(
+                        f"'{orig_name}' is not a ControlFlow type; "
+                        f"@error_return requires a ControlFlow exception",
+                        method.loc
+                    )
             if method.is_overload_stub:
                 # Accumulate overload stubs for this method name
                 methods.setdefault(method.name, []).append(func_info)
@@ -824,6 +833,12 @@ class TypeRegistrar:
                     )
                 record_info.is_value_type = True
                 register_value_type_record(record.name)
+                break
+
+        # ControlFlow marker: register exception type as return-only
+        for protocol in record_info.implemented_protocols:
+            if protocol.qualified_name() == qnames.CONTROL_FLOW:
+                register_control_flow_record(record.name)
                 break
 
         # Auto-derive NativeIterable[T] for types with __iter__() -> SpanIter[T].
@@ -1331,7 +1346,15 @@ class TypeRegistrar:
         )
         # Propagate qualified name back to AST so codegen can use it directly
         if func.error_return:
+            orig_name = func.error_return
             func.error_return = info.error_return_type
+            # @error_return(E) requires E to be a ControlFlow type
+            if not is_control_flow_exception(info.error_return_type):
+                raise SemanticError(
+                    f"'{orig_name}' is not a ControlFlow type; "
+                    f"@error_return requires a ControlFlow exception",
+                    func.loc
+                )
 
         # Check for duplicate extern symbol names
         if fi_linkage != FunctionLinkage.DEFAULT:

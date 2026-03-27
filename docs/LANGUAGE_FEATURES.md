@@ -4606,7 +4606,9 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - Contributes control-flow narrowing facts
   - Current limitation: assert message must be a string literal
 - **Working**: `@error_return(E)` -- zero-cost error returns via `std::expected<T, E>`
-  - Error types inherit from `Exception` for CPython compatibility (`class MyError(Exception): pass`)
+  - `@error_return(E)` requires E to be a `ControlFlow` type: `class MyError(Exception, ControlFlow): pass`
+  - `ControlFlow` is a marker protocol that splits exception types into return (zero-cost) vs throw (C++ exceptions) categories
+  - `StopIteration` is a built-in `ControlFlow` type; user-defined types opt in via `ControlFlow` marker
   - `Exception`/`BaseException`/`StopIteration` defined as `@native` classes in `lib/tpy/builtins/`, mapping to `::tpy::` runtime structs (inherit from `std::exception`)
   - Decorator on functions: `raise E` compiles to `return std::unexpected(E{})`
   - Callers must use `try/except E` -- compile error if unhandled
@@ -4615,7 +4617,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - Branch-aware flow analysis (narrowing, init tracking, variable hoisting)
   - `__next__` methods auto-apply `@error_return(StopIteration)` -- for-loops use direct `std::expected` check
   - Built-in exceptions (`StopIteration`, `Exception`, `BaseException`) emit as `::tpy::X` in C++ to avoid clashes with user-defined classes of the same name
-  - See `docs/ERROR_RETURN_DESIGN.md` for full design
+  - See `docs/ERROR_RETURN_DESIGN.md` and `docs/EXCEPTION_DESIGN.md` for full design
 - **Open**: General `try`/`except` for C++ exceptions (separate from `@error_return`)
 - **Open**: Warning when exceptions are used for control flow (e.g., `try: Color(99) except ValueError` to test validity) -- prefer safe alternatives like `try_parse()`
 
