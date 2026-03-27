@@ -397,6 +397,9 @@ class FunctionTrackingState:
     # --- Consumed variable tracking ---
     consumed_vars: set[str] = field(default_factory=set)
 
+    # --- Variable declaration tracking (per-function) ---
+    var_decl_by_name: dict[str, 'TpyVarDecl'] = field(default_factory=dict)
+
     # --- Integer value range tracking ---
     value_ranges: dict[str, 'ValueRange'] = field(default_factory=dict)
 
@@ -451,7 +454,6 @@ class SemanticContext:
     list_literals: dict[int, ListLiteralInfo] = field(default_factory=dict)
     dict_literals: dict[int, DictLiteralInfo] = field(default_factory=dict)
     set_literals: dict[int, SetLiteralInfo] = field(default_factory=dict)
-    var_decl_by_name: dict[str, TpyVarDecl] = field(default_factory=dict)
     pending_generic_counter: int = 0
     str_var_counter: int = 0
     str_vars: dict[int, StrVarInfo] = field(default_factory=dict)

@@ -1,0 +1,4 @@
+RED
+42
+BLUE
+BLUE
