@@ -1037,6 +1037,11 @@ class TypeCompatibility:
                         if self.is_dangling_return(expr.args[idx]):
                             return True
 
+            # A function returning owned str/String creates a temporary
+            # std::string that dangles if returned as StrView.
+            if fi is not None and isinstance(fi.return_type, (StrType, StringType)):
+                return True
+
             # Regular function call - assume it returns something safe
             # (the callee is responsible for not returning dangling refs)
             return False
@@ -1075,8 +1080,12 @@ class TypeCompatibility:
         if isinstance(expr, TpySubscript):
             return self.is_dangling_return(expr.obj)
 
-        # Method call - assume safe (callee's responsibility)
+        # Method call returning owned str/String creates a temporary
+        # std::string that dangles if returned as StrView.
         if isinstance(expr, TpyMethodCall):
+            fi = expr.resolved_function_info
+            if fi is not None and isinstance(fi.return_type, (StrType, StringType)):
+                return True
             return False
 
         # Ternary - dangles if either branch dangles
@@ -1113,7 +1122,9 @@ class TypeCompatibility:
         if isinstance(return_type, StrViewType):
             inner = expr.expr if isinstance(expr, TpyCoerce) else expr
             # StrView(x) constructor: check the wrapped argument
-            if isinstance(inner, TpyCall) and inner.args:
+            if (isinstance(inner, TpyCall) and inner.args
+                    and (inner.func == "StrView"
+                         or isinstance(getattr(inner, 'call_type', None), StrViewType))):
                 if self.is_dangling_return(inner.args[0]):
                     raise self.ctx.error(
                         "Cannot return StrView referencing a local or temporary; "
