@@ -1,5 +1,5 @@
 # tpy: cpp_namespace("tpystd::builtins")
-from .._typing import overload, Sized, Iterator, Iterable
+from .._typing import overload, Sized, Sequence, Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure, error_return, Own
 from .._core._types import (
     Int8, Int16, Int32, Int64, UInt8, UInt16, UInt32, UInt64,
@@ -403,6 +403,128 @@ def round(x: int) -> int: ...
 @readonly
 @native("tpy::round_bigint")
 def round(x: int, ndigits: Int32) -> int: ...
+
+
+# -- all / any --
+
+@pure
+@readonly
+@native("tpy::builtin_all")
+def all[T](iterable: Iterable[T]) -> bool: ...
+
+@pure
+@readonly
+@native("tpy::builtin_any")
+def any[T](iterable: Iterable[T]) -> bool: ...
+
+
+# -- sum --
+
+@overload
+@pure
+@readonly
+@native("tpy::builtin_sum<int32_t>")
+def sum(iterable: Iterable[Int32]) -> Int32: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::builtin_sum_start<int32_t>")
+def sum(iterable: Iterable[Int32], start: Int32) -> Int32: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::builtin_sum<int64_t>")
+def sum(iterable: Iterable[Int64]) -> Int64: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::builtin_sum_start<int64_t>")
+def sum(iterable: Iterable[Int64], start: Int64) -> Int64: ...
+
+@overload
+@pure
+@readonly
+@cpp_template("::tpy::builtin_sum<{T}>({0})")
+def sum[T: AnyFixedInt](iterable: Iterable[T]) -> T: ...
+
+@overload
+@pure
+@readonly
+@cpp_template("::tpy::builtin_sum_start<{T}>({0}, {1})")
+def sum[T: AnyFixedInt](iterable: Iterable[T], start: T) -> T: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::builtin_sum_bigint")
+def sum(iterable: Iterable[int]) -> int: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::builtin_sum_start_bigint")
+def sum(iterable: Iterable[int], start: int) -> int: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::builtin_sum_float")
+def sum(iterable: Iterable[float]) -> float: ...
+
+@overload
+@pure
+@readonly
+@native("tpy::builtin_sum_start_float")
+def sum(iterable: Iterable[float], start: float) -> float: ...
+
+
+# -- sorted --
+
+@pure
+@readonly
+@cpp_template("::tpy::builtin_sorted<{T}>({0})")
+def sorted[T: Comparable](iterable: Iterable[T]) -> Own[list[T]]: ...
+
+
+# -- bin / hex / oct --
+
+@pure
+@readonly
+@native("tpy::builtin_bin")
+def bin[T: AnyFixedInt](x: T) -> str: ...
+
+@pure
+@readonly
+@native("tpy::builtin_hex")
+def hex[T: AnyFixedInt](x: T) -> str: ...
+
+@pure
+@readonly
+@native("tpy::builtin_oct")
+def oct[T: AnyFixedInt](x: T) -> str: ...
+
+
+# -- enumerate --
+
+@overload
+@readonly
+@cpp_template("::tpy::builtin_enumerate<{T}>({0})")
+def enumerate[T](iterable: Iterable[T]) -> Iterator[tuple[Int32, T]]: ...
+
+@overload
+@readonly
+@cpp_template("::tpy::builtin_enumerate_start<{T}>({0}, {1})")
+def enumerate[T](iterable: Iterable[T], start: Int32) -> Iterator[tuple[Int32, T]]: ...
+
+
+# -- reversed --
+
+@readonly
+@cpp_template("::tpy::builtin_reversed<{T}>({0})")
+def reversed[T](seq: Sequence[T]) -> Iterator[T]: ...
 
 
 # -- Special-handling builtins (custom sema/codegen, signatures are illustrative) --

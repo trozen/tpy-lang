@@ -524,7 +524,7 @@ class CallAnalyzer:
                             qualified_name="builtins.print",
                         )
                         return VOID
-                    if func_name in ("enumerate", "zip"):
+                    if func_name == "zip":
                         raise SemanticError(f"{func_name}() is not yet implemented", expr.loc)
                     # Check for user module function (registered via _register_user_module_import)
                     if func_infos := self.ctx.registry.get_function(expr.func):

@@ -52,7 +52,10 @@
 // Protocols and concepts (depends on ranges)
 #include "protocols.hpp"
 
-// Generator expression wrapper (depends on <optional>, <expected>)
+// next_iter adapter: begin()/end() for __next__()-based iterators
+#include "next_iter.hpp"
+
+// Generator expression wrapper (depends on next_iter, <optional>, <expected>)
 #include "generator.hpp"
 
 // SpanIter: lightweight iterator over contiguous span (depends on <span>, error_return)
@@ -63,6 +66,9 @@
 
 // CopyIter: copying iterator adapter (depends on dunder for __iter__)
 #include "copy_iter.hpp"
+
+// Iterator builtins: enumerate, reversed (depends on next_iter, dunder)
+#include "itertools.hpp"
 
 // Non-range overloads for container ops (depends on dunder, container_ops)
 #include "iterable_ops.hpp"

@@ -10,6 +10,7 @@
 #pragma once
 
 #include "core.hpp"
+#include "next_iter.hpp"
 
 #include <expected>
 #include <optional>
@@ -18,8 +19,9 @@ namespace tpy {
 
 // Generator expression wrapper: stores a mutable callable returning optional<T>,
 // provides __next__() and __iter__() so it integrates with direct __next__() loops.
+// Inherits begin()/end() from next_iter_mixin so C++ range-for works too.
 template<typename T, typename F>
-class generator_wrapper {
+class generator_wrapper : public next_iter_mixin<generator_wrapper<T, F>, T> {
     F fn_;
 public:
     explicit generator_wrapper(F&& fn) : fn_(std::move(fn)) {}

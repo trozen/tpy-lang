@@ -7,11 +7,15 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <format>
+#include <string>
 #include <string_view>
 #include <tuple>
 #include <type_traits>
+#include <vector>
 
 namespace tpy {
 
@@ -159,6 +163,124 @@ template<typename T>
 const T& max3(const T& a, const T& b, const T& c) {
     const auto& m = a > b ? a : b;
     return m > c ? m : c;
+}
+
+// -- all / any --
+
+template<typename Iter>
+bool builtin_all(Iter&& iterable) {
+    for (auto&& elem : iterable) {
+        if (!static_cast<bool>(elem)) return false;
+    }
+    return true;
+}
+
+template<typename Iter>
+bool builtin_any(Iter&& iterable) {
+    for (auto&& elem : iterable) {
+        if (static_cast<bool>(elem)) return true;
+    }
+    return false;
+}
+
+// -- sum --
+
+template<typename T, typename Iter>
+T builtin_sum(Iter&& iterable) {
+    T result{};
+    for (auto&& elem : iterable) {
+        result = add_check<T>(result, static_cast<T>(elem));
+    }
+    return result;
+}
+
+template<typename T, typename Iter>
+T builtin_sum_start(Iter&& iterable, T start) {
+    for (auto&& elem : iterable) {
+        start = add_check<T>(start, static_cast<T>(elem));
+    }
+    return start;
+}
+
+// BigInt sum (no overflow checks needed)
+template<typename Iter>
+BigInt builtin_sum_bigint(Iter&& iterable) {
+    BigInt result(0);
+    for (auto&& elem : iterable) result = result + elem;
+    return result;
+}
+
+template<typename Iter>
+BigInt builtin_sum_start_bigint(Iter&& iterable, const BigInt& start) {
+    BigInt result = start;
+    for (auto&& elem : iterable) result = result + elem;
+    return result;
+}
+
+// float sum (no overflow checks)
+template<typename Iter>
+double builtin_sum_float(Iter&& iterable) {
+    double result = 0.0;
+    for (auto&& elem : iterable) result += static_cast<double>(elem);
+    return result;
+}
+
+template<typename Iter>
+double builtin_sum_start_float(Iter&& iterable, double start) {
+    for (auto&& elem : iterable) start += static_cast<double>(elem);
+    return start;
+}
+
+// -- sorted --
+
+template<typename T, typename Iter>
+std::vector<T> builtin_sorted(Iter&& iterable) {
+    std::vector<T> result;
+    for (auto&& elem : iterable) {
+        result.emplace_back(std::forward<decltype(elem)>(elem));
+    }
+    std::stable_sort(result.begin(), result.end());
+    return result;
+}
+
+// -- bin / hex / oct --
+
+inline std::string builtin_bin(int64_t x) {
+    if (x == 0) return "0b0";
+    std::string digits;
+    bool negative = x < 0;
+    uint64_t val = negative ? -static_cast<uint64_t>(x) : static_cast<uint64_t>(x);
+    while (val > 0) {
+        digits.push_back('0' + static_cast<char>(val & 1));
+        val >>= 1;
+    }
+    std::string result;
+    if (negative) result += '-';
+    result += "0b";
+    for (auto it = digits.rbegin(); it != digits.rend(); ++it) result += *it;
+    return result;
+}
+
+inline std::string builtin_hex(int64_t x) {
+    if (x == 0) return "0x0";
+    bool negative = x < 0;
+    uint64_t val = negative ? -static_cast<uint64_t>(x) : static_cast<uint64_t>(x);
+    std::string result;
+    if (negative) result += '-';
+    result += "0x";
+    result += std::format("{:x}", val);
+    return result;
+}
+
+inline std::string builtin_oct(int64_t x) {
+    if (x == 0) return "0o0";
+    bool negative = x < 0;
+    uint64_t val = negative ? -static_cast<uint64_t>(x) : static_cast<uint64_t>(x);
+    std::string result;
+    if (negative) result += '-';
+    result += "0o";
+    result += std::format("{:o}", val);
+    return result;
 }
 
 } // namespace tpy

@@ -26,6 +26,7 @@
 #include "bigint.hpp"
 #include "format.hpp"
 #include "container_ops.hpp"
+#include "next_iter.hpp"
 #include "ordered_map.hpp"
 #include "span_iter.hpp"
 
@@ -420,12 +421,16 @@ uint64_t hash_combine(uint64_t seed, const T& val, const Rest&... rest) {
 
 // =============================================
 // native_iterator: wraps C++ begin/end into __next__() / __iter__()
+// Inherits begin()/end() from next_iter_mixin so the result of
+// tpy::__iter__() can also be used in C++ range-for loops.
 // =============================================
 
 template<typename Iter, typename T>
-struct native_iterator {
+struct native_iterator : next_iter_mixin<native_iterator<Iter, T>, T> {
     Iter current_;
     Iter end_;
+
+    native_iterator(Iter begin, Iter end) : current_(begin), end_(end) {}
 
     std::expected<T, StopIteration> __next__() {
         if (current_ == end_) return tpy::make_unexpected(StopIteration{});
