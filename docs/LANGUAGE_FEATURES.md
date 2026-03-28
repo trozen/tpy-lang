@@ -2856,6 +2856,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   - RAII cleanup via `tpy::WithGuard<T>` -- `__exit__()` is called in the guard destructor, ensuring cleanup on early return or panic
   - `as`-variable is visible after the `with` block (matching CPython scoping)
   - Multiple context managers: `with a() as x, b() as y:` -- nested guards, inner exits first (LIFO)
+  - Name reuse: `with a() as f: ... with b() as f: ...` -- second block rebinds via pointer-local indirection
   - `with expr:` (no `as`) -- enter/exit without binding
 
 ### Other

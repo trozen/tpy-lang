@@ -1,4 +1,4 @@
-# Basic with statement: __enter__/__exit__ context manager protocol
+# with statement: __enter__/__exit__ protocol, multiple managers, name reuse, post-with visibility
 from typing import Self
 
 
@@ -92,6 +92,14 @@ def test_body_record_var_survives_scope() -> None:
     inner.log("after")
 
 
+def test_reuse_with_var_name() -> None:
+    with Logger("V1") as v:
+        v.log("first")
+    with Logger("V2") as v:
+        v.log("second")
+    v.log("after reuse")
+
+
 test_basic()
 print("---")
 test_no_as()
@@ -107,3 +115,5 @@ print("---")
 test_body_var_survives_scope()
 print("---")
 test_body_record_var_survives_scope()
+print("---")
+test_reuse_with_var_name()

@@ -140,6 +140,28 @@ void test_body_record_var_survives_scope() {
     inner.log("after");
 }
 
+// def test_reuse_with_var_name() -> None:
+void test_reuse_with_var_name() {
+    // with Logger("V1") as v:
+    auto __ctx_10 = Logger("V1");
+    Logger* v = &(__ctx_10.__enter__());
+    {
+        ::tpy::WithGuard __guard_10{__ctx_10};
+        // v.log("first")
+        v->log("first");
+    }
+    // with Logger("V2") as v:
+    auto __ctx_11 = Logger("V2");
+    v = &(__ctx_11.__enter__());
+    {
+        ::tpy::WithGuard __guard_11{__ctx_11};
+        // v.log("second")
+        v->log("second");
+    }
+    // v.log("after reuse")
+    v->log("after reuse");
+}
+
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -175,6 +197,10 @@ void __tpy_init() {
     std::cout << "---" << "\n";
     // test_body_record_var_survives_scope()
     test_body_record_var_survives_scope();
+    // print("---")
+    std::cout << "---" << "\n";
+    // test_reuse_with_var_name()
+    test_reuse_with_var_name();
 }
 
 } // namespace tpyapp::main

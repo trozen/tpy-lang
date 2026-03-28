@@ -10,7 +10,7 @@ from dataclasses import dataclass, field, fields as dc_fields
 
 from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
-    TpyForEach, TpyName, TpySubscript,
+    TpyForEach, TpyWith, TpyName, TpySubscript,
     TpyCall, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyMethodCall,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat,
@@ -202,8 +202,16 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
             else:
                 declared.add(name)
             # Do NOT recurse into nested body (separate scope)
-        # Recurse into sub-bodies (if/while/for)
+        # Recurse into sub-bodies (if/while/for/with)
         if isinstance(stmt, TpyForEach):
             declared.add(stmt.var)
+        if isinstance(stmt, TpyWith):
+            for item in stmt.items:
+                if item.target is not None:
+                    if item.target in declared:
+                        result.reassigned.add(item.target)
+                        result.rvalue_reassigned.add(item.target)
+                    else:
+                        declared.add(item.target)
         for body in stmt.sub_bodies():
             _scan_stmts(body, declared, result)

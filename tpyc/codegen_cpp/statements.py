@@ -1741,6 +1741,10 @@ class StatementGenerator:
                 <body>
             }
 
+        When the as-variable name is reused across multiple with blocks
+        (detected by prescan as reassigned), the variable is emitted as a
+        T* pointer-local so it can be rebound without C++ redeclaration.
+
         The ctx and as-variable are hoisted outside the guard scope so they
         remain visible after the with block (matching CPython semantics).
         Multiple context managers emit nested guards.
@@ -1759,10 +1763,32 @@ class StatementGenerator:
 
             if item.target is not None:
                 assert item.enter_type is not None
-                if item.enter_type.is_value_type():
-                    out.write(f"{indent}auto {item.target} = __ctx_{n}.__enter__();\n")
+                name = item.target
+                is_reassigned = name in self.ctx.reassigned_vars
+                already_declared = name in self.ctx.declared_vars
+
+                if is_reassigned and not item.enter_type.is_value_type():
+                    # Pointer-local: T* for rebindable non-value with-targets
+                    if not already_declared:
+                        cpp_type = self.types.type_to_cpp(item.enter_type)
+                        out.write(f"{indent}{cpp_type}* {name} = &(__ctx_{n}.__enter__());\n")
+                        self.ctx.pointer_locals.add(name)
+                    else:
+                        out.write(f"{indent}{name} = &(__ctx_{n}.__enter__());\n")
+                elif is_reassigned and already_declared:
+                    # Value type, subsequent occurrence: plain reassignment
+                    out.write(f"{indent}{name} = __ctx_{n}.__enter__();\n")
                 else:
-                    out.write(f"{indent}auto& {item.target} = __ctx_{n}.__enter__();\n")
+                    # Normal path: single-use or first-occurrence value type
+                    if item.enter_type.is_value_type():
+                        out.write(f"{indent}auto {name} = __ctx_{n}.__enter__();\n")
+                    else:
+                        out.write(f"{indent}auto& {name} = __ctx_{n}.__enter__();\n")
+
+                if not already_declared:
+                    self.ctx.declared_vars.add(name)
+                    self.ctx.local_scope_names.add(name)
+                    self.ctx.var_types[name] = item.enter_type
             else:
                 out.write(f"{indent}__ctx_{n}.__enter__();\n")
 

@@ -22,6 +22,7 @@ std::string early_return_helper();
 void test_early_return();
 void test_body_var_survives_scope();
 void test_body_record_var_survives_scope();
+void test_reuse_with_var_name();
 
 // class Logger:
 struct Logger {

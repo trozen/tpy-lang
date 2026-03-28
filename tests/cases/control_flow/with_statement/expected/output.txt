@@ -40,3 +40,11 @@ enter T
 [inner] inside
 exit T
 [inner] after
+---
+enter V1
+[V1] first
+exit V1
+enter V2
+[V2] second
+exit V2
+[V2] after reuse
