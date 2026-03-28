@@ -7,6 +7,8 @@
 #include "tpystd/typing.hpp"
 #include "tpystd/tplib.hpp"
 #include "tpystd/tplib/json.hpp"
+#include "tpystd/tplib/json/parser.hpp"
+#include "tpystd/tplib/json/writer.hpp"
 
 namespace tpyapp::main {
 
@@ -41,7 +43,7 @@ struct User {
         return ((((this->name == other.name) && (this->age == other.age)) && (this->active == other.active)) && (this->email == other.email));
     }
 
-    static std::expected<User, ::tpystd::tplib::json::JsonError> _from_reader(::tpystd::tplib::json::JsonReader& __reader) {
+    static std::expected<User, ::tpystd::tplib::json::parser::JsonError> _from_reader(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
             auto __try_tmp_1 = __reader.read_object_start();
             if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
@@ -84,7 +86,7 @@ struct User {
                 }
                 active = __active_4;
             } else if (__match_subject == "email") {
-                if ((__reader.peek() == ::tpystd::tplib::json::JsonToken::NONE)) {
+                if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
                     {
                         auto __try_tmp_6 = __reader.read_null();
                         if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
@@ -113,7 +115,7 @@ struct User {
     }
 
     static User from_json(std::string_view __s) {
-        ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
+        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<User> __result = std::nullopt;
         {
             {
@@ -122,7 +124,7 @@ struct User {
                 __result = *__try_tmp_11;
             }
             goto __after_try_10;
-            // except JsonError:
+            // except tplib.json.parser.JsonError:
             __except_10:;
             ::tpy::tpy_panic("json: parse error");
             __after_try_10:;
@@ -131,12 +133,12 @@ struct User {
         return (*__result);
     }
 
-    static std::expected<User, ::tpystd::tplib::json::JsonError> try_from_json(std::string_view __s) {
-        ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
+    static std::expected<User, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s) {
+        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         return User::_from_reader(__reader);
     }
 
-    void _to_writer(::tpystd::tplib::json::JsonWriter& __writer) {
+    void _to_writer(::tpystd::tplib::json::writer::JsonWriter& __writer) {
         __writer.object_start();
         __writer.key("name");
         __writer.write_str(this->name);
@@ -156,7 +158,7 @@ struct User {
     }
 
     std::string to_json() {
-        ::tpystd::tplib::json::JsonWriter __writer = ::tpystd::tplib::json::JsonWriter();
+        ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter();
         _to_writer(__writer);
         return __writer.finish();
     }

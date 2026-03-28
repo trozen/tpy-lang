@@ -431,11 +431,13 @@ class StatementGenerator:
                     parent_pkg = '.'.join(parts[:i])
                     if parent_pkg == self.ctx.module_name:
                         continue  # don't self-init
-                    if parent_pkg in self.ctx.all_user_modules:
+                    if parent_pkg in self.ctx.all_user_modules and parent_pkg not in self.ctx.emitted_tpy_inits:
                         result += f"{indent}{qualified_cpp_name(parent_pkg, '__tpy_init')}();\n"
+                        self.ctx.emitted_tpy_inits.add(parent_pkg)
                 # Then init the submodule itself (skip self-init)
-                if stmt.module_name != self.ctx.module_name:
+                if stmt.module_name != self.ctx.module_name and stmt.module_name not in self.ctx.emitted_tpy_inits:
                     result += f"{indent}{qualified_cpp_name(stmt.module_name, '__tpy_init')}();\n"
+                    self.ctx.emitted_tpy_inits.add(stmt.module_name)
                 return result
             return ""  # Builtin module - no init needed
         return None

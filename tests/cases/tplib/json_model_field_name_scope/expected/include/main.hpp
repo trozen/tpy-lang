@@ -7,6 +7,8 @@
 #include "tpystd/typing.hpp"
 #include "tpystd/tplib.hpp"
 #include "tpystd/tplib/json.hpp"
+#include "tpystd/tplib/json/parser.hpp"
+#include "tpystd/tplib/json/writer.hpp"
 
 namespace tpyapp::main {
 
@@ -54,7 +56,7 @@ struct Msg {
         return ((this->color == other.color) && (this->value == other.value));
     }
 
-    static std::expected<Msg, ::tpystd::tplib::json::JsonError> _from_reader(::tpystd::tplib::json::JsonReader& __reader) {
+    static std::expected<Msg, ::tpystd::tplib::json::parser::JsonError> _from_reader(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
             auto __try_tmp_1 = __reader.read_object_start();
             if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
@@ -101,7 +103,7 @@ struct Msg {
     }
 
     static Msg from_json(std::string_view __s) {
-        ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
+        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<Msg> __result = std::nullopt;
         {
             {
@@ -110,7 +112,7 @@ struct Msg {
                 __result = *__try_tmp_8;
             }
             goto __after_try_7;
-            // except JsonError:
+            // except tplib.json.parser.JsonError:
             __except_7:;
             ::tpy::tpy_panic("json: parse error");
             __after_try_7:;
@@ -119,12 +121,12 @@ struct Msg {
         return (*__result);
     }
 
-    static std::expected<Msg, ::tpystd::tplib::json::JsonError> try_from_json(std::string_view __s) {
-        ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
+    static std::expected<Msg, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s) {
+        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         return Msg::_from_reader(__reader);
     }
 
-    void _to_writer(::tpystd::tplib::json::JsonWriter& __writer) {
+    void _to_writer(::tpystd::tplib::json::writer::JsonWriter& __writer) {
         __writer.object_start();
         __writer.key("color");
         __writer.write_str(this->color);
@@ -134,7 +136,7 @@ struct Msg {
     }
 
     std::string to_json() {
-        ::tpystd::tplib::json::JsonWriter __writer = ::tpystd::tplib::json::JsonWriter();
+        ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter();
         _to_writer(__writer);
         return __writer.finish();
     }

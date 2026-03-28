@@ -7,6 +7,8 @@
 #include "tpystd/typing.hpp"
 #include "tpystd/tplib.hpp"
 #include "tpystd/tplib/json.hpp"
+#include "tpystd/tplib/json/parser.hpp"
+#include "tpystd/tplib/json/writer.hpp"
 
 namespace tpyapp::main {
 
@@ -57,7 +59,7 @@ struct Address {
         return ((this->street == other.street) && (this->city == other.city));
     }
 
-    static std::expected<Address, ::tpystd::tplib::json::JsonError> _from_reader(::tpystd::tplib::json::JsonReader& __reader) {
+    static std::expected<Address, ::tpystd::tplib::json::parser::JsonError> _from_reader(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
             auto __try_tmp_1 = __reader.read_object_start();
             if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
@@ -103,7 +105,7 @@ struct Address {
     }
 
     static Address from_json(std::string_view __s) {
-        ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
+        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<Address> __result = std::nullopt;
         {
             {
@@ -112,7 +114,7 @@ struct Address {
                 __result = *__try_tmp_8;
             }
             goto __after_try_7;
-            // except JsonError:
+            // except tplib.json.parser.JsonError:
             __except_7:;
             ::tpy::tpy_panic("json: parse error");
             __after_try_7:;
@@ -121,12 +123,12 @@ struct Address {
         return (*__result);
     }
 
-    static std::expected<Address, ::tpystd::tplib::json::JsonError> try_from_json(std::string_view __s) {
-        ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
+    static std::expected<Address, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s) {
+        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         return Address::_from_reader(__reader);
     }
 
-    void _to_writer(::tpystd::tplib::json::JsonWriter& __writer) {
+    void _to_writer(::tpystd::tplib::json::writer::JsonWriter& __writer) {
         __writer.object_start();
         __writer.key("street");
         __writer.write_str(this->street);
@@ -136,7 +138,7 @@ struct Address {
     }
 
     std::string to_json() {
-        ::tpystd::tplib::json::JsonWriter __writer = ::tpystd::tplib::json::JsonWriter();
+        ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter();
         _to_writer(__writer);
         return __writer.finish();
     }
@@ -208,7 +210,7 @@ struct Profile {
         return ((((((((((((((((((this->name == other.name) && (this->age == other.age)) && (this->score == other.score)) && (this->precision == other.precision)) && (this->active == other.active)) && (this->big_id == other.big_id)) && (this->role == other.role)) && (this->address == other.address)) && (this->tags == other.tags)) && (this->scores == other.scores)) && (this->friends == other.friends)) && (this->roles == other.roles)) && (this->metadata == other.metadata)) && (this->nested_map == other.nested_map)) && (this->coord == other.coord)) && (this->backup_role == other.backup_role)) && (this->alt_address == other.alt_address)) && (this->email == other.email));
     }
 
-    static std::expected<Profile, ::tpystd::tplib::json::JsonError> _from_reader(::tpystd::tplib::json::JsonReader& __reader) {
+    static std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> _from_reader(::tpystd::tplib::json::parser::JsonReader& __reader) {
         {
             auto __try_tmp_9 = __reader.read_object_start();
             if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
@@ -274,7 +276,7 @@ struct Profile {
                         goto __match_end_1;
                     }
                     if (__match_subject == "backup_role") {
-                        if ((__reader.peek() == ::tpystd::tplib::json::JsonToken::NONE)) {
+                        if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
                             {
                                 auto __try_tmp_15 = __reader.read_null();
                                 if (!__try_tmp_15.has_value()) return ::tpy::make_unexpected(__try_tmp_15.error());
@@ -288,7 +290,7 @@ struct Profile {
                             }
                             std::optional<Role> __parsed_36 = ::tpy::EnumUtil<Role>::try_parse(__estr_35);
                             if ((!__parsed_36.has_value())) {
-                                return ::tpy::make_unexpected(::tpystd::tplib::json::JsonError{});
+                                return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
                             }
                             Role __backup_role_34 = (*__parsed_36);
                             backup_role = __backup_role_34;
@@ -453,7 +455,7 @@ struct Profile {
                 }
                 case 'l': {
                     if (__match_subject == "alt_address") {
-                        if ((__reader.peek() == ::tpystd::tplib::json::JsonToken::NONE)) {
+                        if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
                             {
                                 auto __try_tmp_35 = __reader.read_null();
                                 if (!__try_tmp_35.has_value()) return ::tpy::make_unexpected(__try_tmp_35.error());
@@ -473,7 +475,7 @@ struct Profile {
                 }
                 case 'm': {
                     if (__match_subject == "email") {
-                        if ((__reader.peek() == ::tpystd::tplib::json::JsonToken::NONE)) {
+                        if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
                             {
                                 auto __try_tmp_37 = __reader.read_null();
                                 if (!__try_tmp_37.has_value()) return ::tpy::make_unexpected(__try_tmp_37.error());
@@ -501,7 +503,7 @@ struct Profile {
                         }
                         std::optional<Role> __parsed_12 = ::tpy::EnumUtil<Role>::try_parse(__estr_11);
                         if ((!__parsed_12.has_value())) {
-                            return ::tpy::make_unexpected(::tpystd::tplib::json::JsonError{});
+                            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
                         }
                         Role __role_10 = (*__parsed_12);
                         role = __role_10;
@@ -521,7 +523,7 @@ struct Profile {
                             }
                             std::optional<Role> __parsed_20 = ::tpy::EnumUtil<Role>::try_parse(__estr_19);
                             if ((!__parsed_20.has_value())) {
-                                return ::tpy::make_unexpected(::tpystd::tplib::json::JsonError{});
+                                return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
                             }
                             Role __elem_18 = (*__parsed_20);
                             roles.push_back(__elem_18);
@@ -545,7 +547,7 @@ struct Profile {
                         }
                         int32_t __t0_29 = ::tpy::int_cast_check<int32_t>(__raw_30);
                         if ((__reader.has_next() == false)) {
-                            return ::tpy::make_unexpected(::tpystd::tplib::json::JsonError{});
+                            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
                         }
                         int64_t __raw_32;
                         {
@@ -555,7 +557,7 @@ struct Profile {
                         }
                         int32_t __t1_31 = ::tpy::int_cast_check<int32_t>(__raw_32);
                         if ((__reader.has_next() == false)) {
-                            return ::tpy::make_unexpected(::tpystd::tplib::json::JsonError{});
+                            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
                         }
                         std::string __t2_33;
                         {
@@ -621,13 +623,13 @@ struct Profile {
             if (!__try_tmp_53.has_value()) return ::tpy::make_unexpected(__try_tmp_53.error());
         }
         if ((!role.has_value())) {
-            return ::tpy::make_unexpected(::tpystd::tplib::json::JsonError{});
+            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
         }
         if ((!address.has_value())) {
-            return ::tpy::make_unexpected(::tpystd::tplib::json::JsonError{});
+            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
         }
         if ((!coord.has_value())) {
-            return ::tpy::make_unexpected(::tpystd::tplib::json::JsonError{});
+            return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError{});
         }
         auto __tmp_2 = (*address);
         auto __tmp_3 = alt_address;
@@ -635,7 +637,7 @@ struct Profile {
     }
 
     static Profile from_json(std::string_view __s) {
-        ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
+        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         std::optional<Profile> __result = std::nullopt;
         {
             {
@@ -644,7 +646,7 @@ struct Profile {
                 __result = *__try_tmp_55;
             }
             goto __after_try_54;
-            // except JsonError:
+            // except tplib.json.parser.JsonError:
             __except_54:;
             ::tpy::tpy_panic("json: parse error");
             __after_try_54:;
@@ -653,12 +655,12 @@ struct Profile {
         return (*__result);
     }
 
-    static std::expected<Profile, ::tpystd::tplib::json::JsonError> try_from_json(std::string_view __s) {
-        ::tpystd::tplib::json::JsonReader __reader = ::tpystd::tplib::json::JsonReader(__s);
+    static std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> try_from_json(std::string_view __s) {
+        ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
         return Profile::_from_reader(__reader);
     }
 
-    void _to_writer(::tpystd::tplib::json::JsonWriter& __writer) {
+    void _to_writer(::tpystd::tplib::json::writer::JsonWriter& __writer) {
         __writer.object_start();
         __writer.key("name");
         __writer.write_str(this->name);
@@ -786,7 +788,7 @@ struct Profile {
     }
 
     std::string to_json() {
-        ::tpystd::tplib::json::JsonWriter __writer = ::tpystd::tplib::json::JsonWriter();
+        ::tpystd::tplib::json::writer::JsonWriter __writer = ::tpystd::tplib::json::writer::JsonWriter();
         _to_writer(__writer);
         return __writer.finish();
     }

@@ -1,7 +1,6 @@
 # Test panic on missing required field in @model deserialization.
 from tpy import Int32, try_parse
 from enum import Enum
-from tplib.json import JsonReader, JsonToken, JsonWriter
 from tplib.json.model import model
 
 class Color(Enum):

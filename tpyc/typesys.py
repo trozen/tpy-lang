@@ -38,6 +38,10 @@ def qualify_exception_name(name: str, registry: 'TypeRegistry',
     - Built-in exceptions: 'builtins.StopIteration'
     - User exceptions: 'mymodule.MyError' or 'tplib.json.parser.JsonError'
     """
+    # Already qualified -- only from macro-injected AST nodes, not user source
+    # (the parser only produces bare names for @error_return annotations).
+    if '.' in name:
+        return name
     if name in BUILTIN_EXCEPTION_NAMES:
         # Check if user shadowed the builtin by defining their own class
         builtins_mod = registry.get_module("builtins")

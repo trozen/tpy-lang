@@ -13,7 +13,6 @@ void __tpy_init() {
     ::tpyapp::pkg::__tpy_init();
     ::tpyapp::pkg::amod::__tpy_init();
     // from . import amod; from . import bmod
-    ::tpyapp::pkg::__tpy_init();
     ::tpyapp::pkg::bmod::__tpy_init();
     // print("consumer done")
     std::cout << "consumer done" << "\n";

@@ -49,10 +49,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from enum import Enum
-    // from tplib.json import JsonReader, JsonToken, JsonWriter
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::json::__tpy_init();
+    ::tpystd::tplib::json::writer::__tpy_init();
+    ::tpystd::tplib::json::parser::__tpy_init();
+    // from enum import Enum
     // from tplib.json.model import model
     // main()
     main();

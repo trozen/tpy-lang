@@ -493,7 +493,11 @@ class SemanticContext:
 
     # --- Namespace hierarchy (global/builtins persist) ---
     builtins_ns: Namespace | None = None
+    macro_ns: Namespace | None = None
     global_ns: Namespace | None = None
+
+    # --- Macro dep modules (populated after macros run) ---
+    macro_dep_modules: set[str] = field(default_factory=set)
 
     # --- Control flow (persistent) ---
     in_comprehension: int = 0

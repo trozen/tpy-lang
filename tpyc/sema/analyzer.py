@@ -135,9 +135,12 @@ class SemanticAnalyzer:
             global_scope=Scope(),
             default_int_type=default_int_type,
             builtins_ns=Namespace(),
+            macro_ns=None,  # Set below
             global_ns=None,  # Set below
         )
-        self.ctx.global_ns = Namespace(parent=self.ctx.builtins_ns)
+        # Chain: global_ns -> macro_ns -> builtins_ns
+        self.ctx.macro_ns = Namespace(parent=self.ctx.builtins_ns)
+        self.ctx.global_ns = Namespace(parent=self.ctx.macro_ns)
 
         # Layer 1: No dependencies on other analyzers
         self.type_ops = TypeOperations(self.ctx)
@@ -357,6 +360,11 @@ class SemanticAnalyzer:
             self.registrar.register_record(record)
         for enum in module.enums:
             self.registrar.register_enum(enum)
+
+        # Populate macro_ns with exports from macro dep modules.
+        # Macros have run during register_record, so we know which macro
+        # modules were used and can import their dependencies.
+        self._populate_macro_deps(module)
 
         # Register protocols (two phases to allow forward references)
         for protocol in module.protocols:
@@ -1623,3 +1631,74 @@ class SemanticAnalyzer:
             return
 
         raise self._error(f"'{original_name}' not found in module '{module_name}'")
+
+    def _populate_macro_deps(self, module: TpyModule) -> None:
+        """Populate macro_ns with exports from MACRO_DEPS of used macro modules.
+
+        Collects dependency modules from all macro modules referenced by records
+        in this module, then binds their public exports (records, functions,
+        enums) into macro_ns -- a shadow namespace below global_ns so user
+        bindings always take priority.
+        """
+        macro_reg = self.ctx.macro_registry
+        if macro_reg is None:
+            return
+
+        # Collect all macro dep modules from records that have macros.
+        # Maps dep_module -> name_filter (None = all exports, list = specific names).
+        dep_modules: dict[str, list[str] | None] = {}
+        for record in module.records:
+            if not record.pending_macros:
+                continue
+            for qname, _kwargs in record.pending_macros:
+                mod_name = qname.rsplit(".", 1)[0] if "." in qname else ""
+                for dep, names in macro_reg.get_deps(mod_name).items():
+                    if dep not in dep_modules:
+                        dep_modules[dep] = names
+                    elif dep_modules[dep] is None or names is None:
+                        dep_modules[dep] = None  # None wins (all exports)
+                    else:
+                        dep_modules[dep] = list(set(dep_modules[dep]) | set(names))
+
+        if not dep_modules:
+            return
+
+        self.ctx.macro_dep_modules = set(dep_modules.keys())
+
+        # Bind exports from each dep module into macro_ns
+        for dep_mod_name, name_filter in dep_modules.items():
+            module_info = self.ctx.registry.get_module(dep_mod_name)
+            if module_info is None:
+                continue
+
+            if module_info.records:
+                for name, record_info in module_info.records.items():
+                    if name_filter is not None and name not in name_filter:
+                        continue
+                    if self.ctx.registry.get_record(name) is None:
+                        self.ctx.registry.register_record(record_info, name)
+                    self.ctx.macro_ns.bind_imported_name(name, dep_mod_name, name)
+                    self.ctx.imported_names.setdefault(name, (dep_mod_name, name))
+                    self.ctx.user_imported_records.setdefault(name, (dep_mod_name, name))
+
+            if module_info.functions:
+                for name, func_infos in module_info.functions.items():
+                    if name_filter is not None and name not in name_filter:
+                        continue
+                    is_special = func_infos and func_infos[0].special_handling
+                    if not is_special:
+                        if self.ctx.registry.get_function(name) is None:
+                            self.ctx.registry.register_function_group(name, func_infos)
+                        self.ctx.user_imported_functions.setdefault(name, (dep_mod_name, name))
+                    self.ctx.macro_ns.bind_imported_name(name, dep_mod_name, name)
+                    self.ctx.imported_names.setdefault(name, (dep_mod_name, name))
+
+            if module_info.enums:
+                for name, enum_type in module_info.enums.items():
+                    if name_filter is not None and name not in name_filter:
+                        continue
+                    if self.ctx.registry.get_enum(name) is None:
+                        self.ctx.registry.register_enum(enum_type, name)
+                    self.ctx.macro_ns.bind_enum(enum_type, name=name)
+                    self.ctx.imported_names.setdefault(name, (dep_mod_name, name))
+                    self.ctx.user_imported_enums.setdefault(name, (dep_mod_name, name))

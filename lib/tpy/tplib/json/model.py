@@ -7,8 +7,14 @@ JSON serialization/deserialization via tplib.json.JsonReader/JsonWriter.
 
 from tpyc.macro_api import (
     ClassInfo, FieldInfo, TypeInfo, MacroError,
-    class_macro,
+    class_macro, macro_deps,
     build_init, build_eq,
+)
+
+macro_deps(
+    "tplib.json.parser",
+    "tplib.json.writer",
+    ("tpy", "try_parse"),
 )
 from tpyc.parse import (
     TpyFunction, TpyExpr, TpyStmt,
@@ -118,7 +124,7 @@ def _expr_stmt(expr: TpyExpr) -> TpyExprStmt:
     return TpyExprStmt(expr=expr)
 
 
-_JSON_ERROR = "JsonError"
+_JSON_ERROR = "tplib.json.parser.JsonError"
 
 
 def _raise_if(condition: TpyExpr) -> TpyIf:

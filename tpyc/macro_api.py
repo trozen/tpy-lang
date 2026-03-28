@@ -73,6 +73,49 @@ def call_macro(fn: Callable) -> Callable:
 
 
 # ---------------------------------------------------------------------------
+# Macro module dependency declaration
+# ---------------------------------------------------------------------------
+
+# Set by macro_deps(), read by MacroRegistry.load_module().
+_pending_macro_deps: dict[str, list[str] | None] | None = None
+
+
+def macro_deps(*args: str | tuple[str, ...]) -> None:
+    """Declare modules that macro-generated code depends on.
+
+    Called at module level in a macro module. Each argument is either:
+    - A module name string (all exports available): ``"tplib.json.parser"``
+    - A tuple of ``(module, name1, name2, ...)`` for specific names:
+      ``("tpy", "try_parse")``
+
+    Example::
+
+        macro_deps(
+            "tplib.json.parser",
+            "tplib.json.writer",
+            ("tpy", "try_parse"),
+        )
+    """
+    global _pending_macro_deps
+    if _pending_macro_deps is not None:
+        raise MacroError("macro_deps() called twice in the same module")
+    deps: dict[str, list[str] | None] = {}
+    for arg in args:
+        if isinstance(arg, str):
+            deps[arg] = None
+        else:
+            module = arg[0]
+            names = list(arg[1:])
+            if module in deps and deps[module] is None:
+                pass  # None (all exports) already set
+            elif module in deps and deps[module] is not None:
+                deps[module] = list(set(deps[module]) | set(names))
+            else:
+                deps[module] = names
+    _pending_macro_deps = deps
+
+
+# ---------------------------------------------------------------------------
 # MacroArg -- argument wrapper for call-site macros
 # ---------------------------------------------------------------------------
 

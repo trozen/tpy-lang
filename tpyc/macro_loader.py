@@ -16,6 +16,8 @@ import typing
 from pathlib import Path
 from typing import Any, Callable
 
+from . import macro_api as _macro_api
+
 
 _MACRO_MODULE_RE = re.compile(r'^\s*#\s*tpy:\s+macro_module\s*$')
 
@@ -248,6 +250,9 @@ class MacroRegistry:
         self._call_macros: dict[tuple[str, str], Callable] = {}
         self._modules: dict[str, Any] = {}
         self._loaded_modules: set[str] = set()
+        # module_name -> {dep_module: names_or_None}
+        # None means all exports, list means specific names only.
+        self._macro_deps: dict[str, dict[str, list[str] | None]] = {}
 
     def register(self, module: str, name: str, func: Callable) -> None:
         self._macros[(module, name)] = func
@@ -264,6 +269,14 @@ class MacroRegistry:
         if mod is None:
             return None
         return getattr(mod, name, None)
+
+    def get_deps(self, module_name: str) -> dict[str, list[str] | None]:
+        """Return MACRO_DEPS for a loaded macro module.
+
+        Returns dict mapping dep module name to list of specific names (or None
+        for all exports). Empty dict if no deps declared.
+        """
+        return self._macro_deps.get(module_name, {})
 
     def is_loaded(self, module_name: str) -> bool:
         return module_name in self._loaded_modules
@@ -293,11 +306,17 @@ class MacroRegistry:
         try:
             spec.loader.exec_module(mod)
         except Exception as e:
+            _macro_api._pending_macro_deps = None
             raise RuntimeError(
                 f"Error executing macro module '{module_name}' ({file_path}): {e}"
             ) from e
 
         self._modules[module_name] = mod
+
+        # Read deps registered via macro_deps() during module execution
+        if _macro_api._pending_macro_deps is not None:
+            self._macro_deps[module_name] = _macro_api._pending_macro_deps
+            _macro_api._pending_macro_deps = None
 
         # Scan for @class_macro and @call_macro decorated functions
         for attr_name in dir(mod):

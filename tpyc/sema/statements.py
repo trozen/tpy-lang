@@ -1084,7 +1084,8 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 f"'raise {stmt.exception_type}' does not match "
                 f"@error_return({stmt.exception_type})", stmt)
-        record = self.ctx.registry.find_record(stmt.exception_type)
+        bare_exc = stmt.exception_type.rsplit(".", 1)[-1] if "." in stmt.exception_type else stmt.exception_type
+        record = self.ctx.registry.find_record(bare_exc)
         if not record:
             raise self.ctx.error(
                 f"Unknown error type '{stmt.exception_type}'", stmt)
@@ -1146,7 +1147,8 @@ class StatementAnalyzer:
                 "'except ControlFlow as' binding is not supported", stmt)
 
         if not is_control_flow_catch_all:
-            if not self.ctx.registry.find_record(stmt.exception_type):
+            bare_exc = stmt.exception_type.rsplit(".", 1)[-1] if "." in stmt.exception_type else stmt.exception_type
+            if not self.ctx.registry.find_record(bare_exc):
                 raise self.ctx.error(
                     f"Unknown error type '{stmt.exception_type}'", stmt)
 

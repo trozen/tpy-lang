@@ -769,6 +769,28 @@ class Compiler:
         source = path.read_text()
         if is_macro_module_source(source):
             self._macro_registry.load_module(module_name, path)
+            # Discover MACRO_DEPS so they get compiled, and add them as
+            # dependencies of the importing module for correct compile order.
+            macro_deps = self._macro_registry.get_deps(module_name)
+            if macro_deps:
+                # The importing module (last in chain) needs the deps compiled first
+                importer = import_chain[-1] if import_chain else None
+                builtin_names = get_builtin_module_names()
+                for dep in macro_deps:
+                    # Skip modules that are already discovered (implicit stdlib)
+                    if dep not in self.modules:
+                        self._process_user_import(dep, None, module_name, path,
+                                                  builtin_names,
+                                                  import_chain + [module_name])
+                    if importer and importer in self.modules:
+                        importer_ast = self.modules[importer].ast
+                        # Add dependency edge so topological sort orders correctly
+                        importer_ast.user_module_imports.setdefault(dep, 0)
+                        # Inject TpyImport so codegen emits __tpy_init() calls
+                        # for macro dep modules (needed for their runtime globals).
+                        if not any(isinstance(s, TpyImport) and s.module_name == dep
+                                   for s in importer_ast.top_level_stmts):
+                            importer_ast.top_level_stmts.insert(0, TpyImport(module_name=dep))
             return
 
         # Parse the module

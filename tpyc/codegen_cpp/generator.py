@@ -165,6 +165,7 @@ class CodeGenerator:
         self.ctx.reexported_records = reexported_records or {}
         self.ctx.reexported_variables = reexported_variables or {}
         self.ctx.reexported_enums = reexported_enums or {}
+        self.ctx.macro_dep_modules = set(self.analyzer.ctx.macro_dep_modules)
         hpp = io.StringIO()
         cpp = io.StringIO()
 
@@ -1044,6 +1045,17 @@ class CodeGenerator:
                 include_path = self._module_to_include_path(user_mod)
                 out.write(f'#include "{include_path}"\n')
                 included.add(user_mod)
+        # Include macro dependency module headers (from MACRO_DEPS)
+        for dep_mod in sorted(self.ctx.macro_dep_modules):
+            if dep_mod in included or dep_mod == self.ctx.module_name:
+                continue
+            module_info = self.analyzer.registry.get_module(dep_mod)
+            if module_info and (module_info.is_builtin or not module_info.generates_header):
+                continue
+            if dep_mod in self.ctx.all_user_modules:
+                include_path = self._module_to_include_path(dep_mod)
+                out.write(f'#include "{include_path}"\n')
+                included.add(dep_mod)
         out.write("\n")
 
         # Native global extern declarations go before the tpyapp namespace
