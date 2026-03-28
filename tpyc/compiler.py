@@ -1055,7 +1055,10 @@ class Compiler:
         # Register already-analyzed user modules in this analyzer's registry
         # This must happen before analyze() so _register_user_module_import can find them
         # Also register transitive dependencies so types referenced in method signatures
-        # (e.g. iterator types) are visible even when not explicitly imported
+        # (e.g. iterator types) are visible even when not explicitly imported.
+        # Skip implicit stdlib modules here -- they're handled separately below
+        # with full protocol registration (including cpp_concept marker protocols).
+        implicit_set = self._implicit_stdlib_set()
         registered: set[str] = set()
         queue = list(compiled.ast.user_module_imports)
         while queue:
@@ -1063,6 +1066,8 @@ class Compiler:
             if dep_name in registered or dep_name not in self.modules:
                 continue
             registered.add(dep_name)
+            if dep_name in implicit_set:
+                continue
             dep_compiled = self.modules[dep_name]
             module_info = self._exports_to_module_info(dep_name, dep_compiled.exports, dep_compiled)
             analyzer.registry.register_module(module_info)
@@ -1080,8 +1085,11 @@ class Compiler:
         # Register implicit stdlib modules (typing, tpy, and their submodules) --
         # their protocols are needed for builtin type-checking, and their
         # functions/types need to be available for import.
-        for implicit_mod in self._implicit_stdlib_set():
-            if implicit_mod not in registered and implicit_mod in self.modules:
+        # Always process these even if already seen in the user deps loop above,
+        # because that loop filters out cpp_concept protocols (marker protocols
+        # like Default, ValueType, etc.) which the implicit stdlib loop must register.
+        for implicit_mod in implicit_set:
+            if implicit_mod in self.modules:
                 dep_compiled = self.modules[implicit_mod]
                 module_info = self._exports_to_module_info(implicit_mod, dep_compiled.exports, dep_compiled)
                 analyzer.registry.register_module(module_info)
