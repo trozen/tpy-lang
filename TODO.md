@@ -12,7 +12,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - drop builtin types, like RangeType
 - Move type resolution from parser to sema: parser still creates canonical types (FixedIntType etc.) via `_resolve_primitive_type` for `from tpy import` names. Future: sema resolution pass so parser only creates NamedType and sema resolves via @builtin_type factories. Blocked on types appearing everywhere in AST (expressions, constructor calls, etc.) -- needs comprehensive AST walker or lazy normalization.
 - Define decorators as .py functions: readonly/noalloc/nocopy/pure/dynamic/error_return (tpy), native/cpp_template/builtin_type (tpy.extern), overload/override (typing) are currently parser keywords with empty stub files. Want them as real function definitions eventually so the parser doesn't need special handling. Blocked on: functions need type annotations to compile, and decorator signatures have no meaningful type (identity function over any callable).
-- limit possible imports in macro modules
 - ContextManager[T] protocol
 - Deduplicate PendingStrType / PendingBytesType infrastructure: `_resolve_pending_str_types` and `_resolve_pending_bytes_types` are identical algorithms with different type names. Same for `mark_*_augassign`, `mark_*_param_context`, `mark_*_reassigned_from_owned`, `track_*_reassign_source`, and the `_infer_new_local_type` branches in statements.py. Refactor into a generic `ViewTypeFamily` parameterized by owned/view/pending types, with one shared implementation.
 
@@ -60,6 +59,10 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - `Span[str]` subscript view: `SpanType.subscript_borrows()` is intentionally not overridden because `v = s[0]` registers `s` as the str-borrow source, but mutations to the backing container (`arr[0] = "x"` where `s = Span[str](arr)`) call `mark_str_borrowers_mutated("arr")` -- missing `s`. Fix requires `mark_str_borrowers_mutated` to chase the borrow tracker's alias chain so backing-container mutations also invalidate views borrowed through spans.
 - View type borrow tracking for user types: currently only built-in view types (Span, Ptr) are tracked as borrows. Likely needed when designing tpy stdlib types. See escape analysis design doc (Future Extensions) for field-level vs class-level annotation tradeoffs.
 - Hoisted non-value loop variable as view: `for s in items: ... print(s)` where `s` is `std::string_view` -- the hoisted `s` is a view into the container, not a copy. If the container is mutated between loop exit and use of `s`, the view dangles. Same concern exists with `const auto&` loop vars. Consider emitting a value copy for hoisted non-value loop variables.
+
+## Build pipeline
+- when a module forwards imports only, those imports should not generate headers if the symbols are not used
+- do not compile .cpp files that are not needed, e.g. no function is called etc
 
 ## Investigate
 - CPython native (C) module for tpy stubs: the `lib/cpy/tpy/` stubs are pure Python. A C extension module could improve CPython performance for programs that use tpy types (Int32, Array, Span, etc.) heavily.

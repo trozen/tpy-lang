@@ -44,69 +44,56 @@ def _fmt_ms(seconds: float) -> str:
 
 
 class ProgressPrinter:
-    """Prints compact progress to stderr, overwriting the current line."""
+    """Prints build progress lines to stderr."""
 
     def __init__(self, enabled: bool = True):
         self.enabled = enabled
-        self._isatty = sys.stderr.isatty()
-        self.n_py = 0
-        self.n_cpp = 0
-        self.n_obj = 0
-        self.total_py = 0
-        self.total_cpp = 0
-        self.total_obj = 0
 
     def _write(self, msg: str) -> None:
-        if not self.enabled or not self._isatty:
+        if not self.enabled:
             return
-        sys.stderr.write(f"\r\033[K{msg}")
+        sys.stderr.write(msg)
         sys.stderr.flush()
 
-    def _progress_line(self, phase: str) -> str:
-        parts = [f"[{phase}]"]
-        parts.append(f"py: {self.n_py}/{self.total_py}")
-        if self.total_cpp > 0:
-            parts.append(f"c++: {self.n_cpp}/{self.total_cpp}")
-        if self.total_obj > 0:
-            parts.append(f"obj: {self.n_obj}/{self.total_obj}")
-        return "  ".join(parts)
-
-    def header(self, config: CppCompilerConfig, release: bool) -> None:
+    def header(self, config: CppCompilerConfig, release: bool, n_jobs: int) -> None:
         if not self.enabled:
             return
         variant = "release" if release else "debug"
         cxx = config.compiler_name
         if config.ccache:
             cxx += " + ccache"
-        sys.stderr.write(f"TurboPython compiler v{__version__} ({cxx}, {variant})\n")
+        job_s = "job" if n_jobs == 1 else "jobs"
+        sys.stderr.write(f"TurboPython compiler v{__version__} ({cxx}, {variant}, {n_jobs} {job_s})\n")
         sys.stderr.flush()
 
-    def set_compile_total(self, total: int) -> None:
-        self.total_py = total
+    def analyzed(self, user_modules: list[str], n_stdlib: int,
+                 n_warnings: int, elapsed: float) -> None:
+        n_total = len(user_modules) + n_stdlib
+        self._write(f"  analyzed {n_total} modules ({_fmt_ms(elapsed)})\n")
+        for i, name in enumerate(user_modules):
+            is_last = i == len(user_modules) - 1
+            suffix = f" (+ {n_stdlib} stdlib)\n" if is_last and n_stdlib else "\n"
+            self._write(f"    {name}.py{suffix}")
+        if n_warnings:
+            w = "warning" if n_warnings == 1 else "warnings"
+            self._write(f"    {n_warnings} {w}\n")
 
-    def compile_progress(self, i: int) -> None:
-        self.n_py = i
-        self._write(self._progress_line("compile"))
+    def translated(self, name: str, elapsed: float) -> None:
+        self._write(f"  translated {name}.py ({_fmt_ms(elapsed)})\n")
 
-    def set_codegen_total(self, total: int) -> None:
-        self.total_cpp = total
+    def compiled(self, name: str, elapsed: float) -> None:
+        self._write(f"  compiled {name} ({_fmt_ms(elapsed)})\n")
 
-    def codegen_progress(self, i: int) -> None:
-        self.n_cpp = i
-        self._write(self._progress_line("codegen"))
+    def linked(self, name: str, elapsed: float) -> None:
+        self._write(f"  linked {name} ({_fmt_ms(elapsed)})\n")
 
-    def set_build_total(self, total: int) -> None:
-        self.total_obj = total
-
-    def build_progress(self, i: int) -> None:
-        self.n_obj = i
-        self._write(self._progress_line("build"))
+    def separator(self) -> None:
+        self._write("-- \n")
 
     def summary(self, n_modules: int,
                 t_compile: float, t_codegen: float, t_build: float) -> None:
         if not self.enabled:
             return
-        self._clear()
         total = t_compile + t_codegen + t_build
         sys.stderr.write(
             f"{n_modules} modules compiled in {_fmt_ms(total)}"
@@ -115,14 +102,12 @@ class ProgressPrinter:
         )
         sys.stderr.flush()
 
-    def _clear(self) -> None:
-        if self._isatty:
-            sys.stderr.write("\r\033[K")
-            sys.stderr.flush()
 
-    def finish(self) -> None:
-        """Clear the progress line before program output."""
-        self._clear()
+def _timed_run(cmd: list[str]) -> tuple[subprocess.CompletedProcess[str], float]:
+    """Run a command and return (result, elapsed_seconds)."""
+    t = time.monotonic()
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    return r, time.monotonic() - t
 
 
 def get_module_name(input_path: Path) -> str:
@@ -174,6 +159,8 @@ def main() -> int:
                               help="Disable ccache")
     parser.add_argument("-j", "--jobs", type=int, default=None,
                         help="Parallel compile jobs (default: number of CPUs)")
+    parser.add_argument("-q", "--quiet", action="store_true",
+                        help="Suppress progress lines (show only errors and program output)")
 
     args = parser.parse_args()
 
@@ -256,7 +243,8 @@ def main() -> int:
     if args.jobs is not None and args.jobs < 1:
         parser.error("-j/--jobs must be a positive integer")
     building = args.build or args.exec
-    quiet = args.dump_code
+    quiet = args.dump_code or args.quiet
+    n_jobs = args.jobs or os.cpu_count() or 1
     progress = ProgressPrinter(enabled=building and not quiet)
 
     try:
@@ -269,7 +257,7 @@ def main() -> int:
             cpp_config = CppCompilerConfig.from_env(cxx=args.cxx)
             if args.ccache is not None:
                 cpp_config.ccache = args.ccache
-            progress.header(cpp_config, args.release)
+            progress.header(cpp_config, args.release, n_jobs)
 
         # Create compiler (unified for both stdin and file input)
         t_compile_start = time.monotonic()
@@ -283,29 +271,37 @@ def main() -> int:
         t_compile = time.monotonic() - t_compile_start
 
         n_py = len(compiled_modules)
-        progress.set_compile_total(n_py)
-        progress.compile_progress(n_py)
+        user_modules = [m.name for m in compiled_modules if compiler.is_user_module(m)]
+        n_stdlib = n_py - len(user_modules)
 
+        # Collect diagnostics: errors abort immediately, warnings are deferred
         has_errors = False
+        warning_messages: list[str] = []
+        n_warnings = 0
         for compiled in compiled_modules:
             source_name = "<stdin>" if reading_from_stdin else os.path.relpath(compiled.path)
-
             if compiled.analyzer:
                 for diag in compiled.analyzer.diagnostics:
-                    if diag.level in (DiagnosticLevel.WARNING, DiagnosticLevel.ERROR):
-                        progress.finish()
-                        print(diag.format(source_name), file=sys.stderr)
                     if diag.level == DiagnosticLevel.ERROR:
                         has_errors = True
+                        print(diag.format(source_name), file=sys.stderr)
+                    elif diag.level == DiagnosticLevel.WARNING:
+                        n_warnings += 1
+                        warning_messages.append(diag.format(source_name))
+
+        progress.analyzed(user_modules, n_stdlib, n_warnings, t_compile)
 
         if has_errors:
             return 1
 
-        progress.set_codegen_total(n_py)
+        # Print warnings immediately when not building (no summary to defer to)
+        if not building:
+            for msg in warning_messages:
+                print(msg, file=sys.stderr)
+
         t_codegen_start = time.monotonic()
         for i, compiled in enumerate(compiled_modules, 1):
             source_name = "<stdin>" if reading_from_stdin else os.path.relpath(compiled.path)
-            progress.codegen_progress(i)
 
             if args.dump_code:
                 try:
@@ -335,14 +331,17 @@ def main() -> int:
                     print(f"// === src/{compiled.name}.cpp ===")
                     print(cpp_code)
 
+            t_file_start = time.monotonic()
             try:
                 hpp_path, cpp_path = compiler.generate_code(compiled, output_dir, options=options)
             except CodeGenError as e:
                 if e.filename is None and not compiled.is_entry_point:
                     e.filename = source_name
                 raise
+            t_file = time.monotonic() - t_file_start
             if cpp_path is not None:
                 all_cpp_paths.append(cpp_path)
+                progress.translated(compiled.name, t_file)
 
             if not building and hpp_path.exists():
                 print(f"Generated: {hpp_path}")
@@ -383,68 +382,70 @@ def main() -> int:
 
             compile_steps = compile_cmds[:-1]
             link_step = compile_cmds[-1]
-            n_jobs = args.jobs or os.cpu_count() or 1
 
-            progress.set_build_total(len(compile_cmds))
             t_build_start = time.monotonic()
+
+            def _cpp_name(cmd: list[str]) -> str:
+                """Extract .cpp filename from a compile command."""
+                src = cmd[-1]
+                return os.path.basename(src)
 
             # Compile steps in parallel (or serial for single file / -j1)
             if len(compile_steps) <= 1 or n_jobs <= 1:
-                for i, cmd in enumerate(compile_steps, 1):
+                for cmd in compile_steps:
                     if args.verbose >= 1:
-                        progress.finish()
                         print(f"  $ {' '.join(cmd)}", file=sys.stderr)
-                    progress.build_progress(i)
+                    t_step = time.monotonic()
                     result = subprocess.run(cmd, capture_output=True, text=True)
                     if result.returncode != 0:
-                        progress.finish()
                         print(f"C++ compilation failed:", file=sys.stderr)
                         print(result.stderr, file=sys.stderr)
                         return 1
+                    progress.compiled(_cpp_name(cmd), time.monotonic() - t_step)
             else:
                 if args.verbose >= 1:
                     for cmd in compile_steps:
-                        progress.finish()
                         print(f"  $ {' '.join(cmd)}", file=sys.stderr)
-                completed = 0
                 failed_stderr = ""
                 with ThreadPoolExecutor(max_workers=n_jobs) as pool:
                     futures = {
-                        pool.submit(subprocess.run, cmd, capture_output=True, text=True): cmd
+                        pool.submit(_timed_run, cmd): cmd
                         for cmd in compile_steps
                     }
                     for future in as_completed(futures):
-                        completed += 1
-                        progress.build_progress(completed)
-                        r = future.result()
+                        r, elapsed = future.result()
                         if r.returncode != 0 and not failed_stderr:
                             failed_stderr = r.stderr
+                        else:
+                            progress.compiled(_cpp_name(futures[future]), elapsed)
                 if failed_stderr:
-                    progress.finish()
                     print(f"C++ compilation failed:", file=sys.stderr)
                     print(failed_stderr, file=sys.stderr)
                     return 1
 
             # Link step
-            progress.build_progress(len(compile_cmds))
             if args.verbose >= 1:
-                progress.finish()
                 print(f"  $ {' '.join(link_step)}", file=sys.stderr)
+            t_link = time.monotonic()
             result = subprocess.run(link_step, capture_output=True, text=True)
             if result.returncode != 0:
-                progress.finish()
                 print(f"C++ link failed:", file=sys.stderr)
                 print(result.stderr, file=sys.stderr)
                 return 1
+            progress.linked(module_name, time.monotonic() - t_link)
             t_build = time.monotonic() - t_build_start
 
             progress.summary(n_py, t_compile, t_codegen, t_build)
+
+            for msg in warning_messages:
+                print(msg, file=sys.stderr)
 
             if not args.exec:
                 print(f"Built: {binary_path}")
 
             # Run if requested
             if args.exec:
+                progress.separator()
                 t_run_start = time.monotonic()
                 result = subprocess.run([str(binary_path)])
                 t_run = time.monotonic() - t_run_start

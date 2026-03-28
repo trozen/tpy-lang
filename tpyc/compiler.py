@@ -706,9 +706,23 @@ class Compiler:
 
     def _implicit_stdlib_set(self) -> set[str]:
         """Return the set of implicit stdlib modules including submodules."""
-        prefixes = tuple(f"{m}." for m in self._IMPLICIT_STDLIB)
-        return {m for m in self.modules
-                if m in self._IMPLICIT_STDLIB or m.startswith(prefixes)}
+        return self._expand_implicit_prefixes(self.modules)
+
+    @classmethod
+    def _expand_implicit_prefixes(cls, names: dict[str, object] | set[str]) -> set[str]:
+        prefixes = tuple(f"{m}." for m in cls._IMPLICIT_STDLIB)
+        return {m for m in names
+                if m in cls._IMPLICIT_STDLIB or m.startswith(prefixes)}
+
+    def is_user_module(self, compiled: CompiledModule) -> bool:
+        """True if the module is user code (lives under the entry point directory)."""
+        if not self.resolver:
+            return True
+        try:
+            compiled.path.relative_to(self.resolver.base_dir)
+            return True
+        except ValueError:
+            return False
 
     def _discover_implicit_stdlib(self) -> None:
         """Discover implicit stdlib modules that builtins depend on."""
