@@ -30,45 +30,52 @@ BUILTIN_EXCEPTION_NAMES = frozenset({"BaseException", "Exception", "StopIteratio
 
 def qualify_exception_name(name: str, registry: 'TypeRegistry',
                            current_module: str | None = None) -> str:
-    """Qualify a bare exception name to avoid ambiguity.
+    """Qualify a bare exception name with its defining module.
 
-    Built-in exceptions get a 'builtins.' prefix unless the user has
-    defined a record with the same name (shadowing).
+    Returns 'module.Name' for all exception types so that error_return_to_cpp
+    can deterministically map to the correct C++ namespace.
+
+    - Built-in exceptions: 'builtins.StopIteration'
+    - User exceptions: 'mymodule.MyError' or 'tplib.json.parser.JsonError'
     """
-    if name not in BUILTIN_EXCEPTION_NAMES:
-        return name
-    # Check if user shadowed the builtin by defining their own class
-    builtins_mod = registry.get_module("builtins")
-    if builtins_mod and name in builtins_mod.records:
-        record = registry.get_record(name)
-        if record is not None and record is not builtins_mod.records[name]:
-            return name  # user-defined shadow
-    return f"builtins.{name}"
+    if name in BUILTIN_EXCEPTION_NAMES:
+        # Check if user shadowed the builtin by defining their own class
+        builtins_mod = registry.get_module("builtins")
+        if builtins_mod and name in builtins_mod.records:
+            record = registry.get_record(name)
+            if record is not None and record is not builtins_mod.records[name]:
+                return name  # user-defined shadow -- local bare name
+        # Builtin (or builtins not yet loaded) -- always qualify
+        return f"builtins.{name}"
+    # Find the defining module for deterministic qualification.
+    # Skip modules whose record is shadowed by a local definition.
+    local_record = registry.get_record(name)
+    for mod_name, mod_info in registry.modules.items():
+        if name in mod_info.records:
+            if local_record is not None and local_record is not mod_info.records[name]:
+                continue  # local record shadows this module's version
+            return f"{mod_name}.{name}"
+    # Not in any registered module -- local to the currently-compiling module.
+    # Return bare name (no prefix) since the codegen emits it in the local
+    # C++ namespace and the sema/codegen module names may differ for __main__.
+    return name
 
 
-def error_return_to_cpp(name: str, registry: 'TypeRegistry | None' = None,
-                        current_module: str | None = None) -> str:
-    """Map a qualified exception name to C++.
+def error_return_to_cpp(name: str, current_module: str | None = None) -> str:
+    """Map a module-qualified exception name to C++.
 
     'builtins.X' -> '::tpy::X' (runtime-defined exceptions).
-    User types: qualified with C++ namespace if defined in a different module.
+    'module.X' -> '::cpp_namespace::X' (cross-module user exceptions).
+    'current_module.X' -> 'X' (local, bare name).
     """
     if name.startswith("builtins."):
         return f"::tpy::{name[len('builtins.'):]}"
-    if registry is not None and current_module is not None:
-        # Check if the record is from a different (already-compiled) module
-        local_record = registry.get_record(name)
-        for mod_name, mod_info in registry.modules.items():
-            if name in mod_info.records:
-                if mod_name == current_module:
-                    return name  # local
-                # Record owned by a different module -- check if it's the
-                # same object as the top-level record (imported) or not
-                # imported (local_record is None). Either way, qualify it.
-                if local_record is None or local_record is mod_info.records[name]:
-                    from tpyc.codegen_cpp.context import qualified_cpp_name
-                    return qualified_cpp_name(mod_name, name)
-        # Not in any registered module -> local (currently being compiled)
+    if "." in name:
+        module_path, bare_name = name.rsplit(".", 1)
+        if module_path == current_module:
+            return bare_name
+        from tpyc.codegen_cpp.context import qualified_cpp_name
+        return qualified_cpp_name(module_path, bare_name)
     return name
 
 
@@ -126,7 +133,8 @@ def register_sync_record(name: str) -> None:
 # Builtins that are always ControlFlow. Pre-seeded because _funcs.py
 # (which uses @error_return(StopIteration)) may be compiled before
 # _exceptions.py registers StopIteration as ControlFlow.
-_BUILTIN_CONTROL_FLOW: frozenset[str] = frozenset({"builtins.StopIteration"})
+# Stored as bare names -- is_control_flow_exception strips module prefixes.
+_BUILTIN_CONTROL_FLOW: frozenset[str] = frozenset({"StopIteration"})
 _control_flow_record_names: set[str] = set(_BUILTIN_CONTROL_FLOW)
 
 
@@ -135,9 +143,29 @@ def register_control_flow_record(name: str) -> None:
     _control_flow_record_names.add(name)
 
 
+def error_return_matches(a: str | None, b: str | None) -> bool:
+    """Check if two module-qualified error_return type names refer to the same type.
+
+    Compares bare names since a type may be qualified via different modules
+    (e.g. 'tplib.json.JsonError' vs 'tplib.json.parser.JsonError' when
+    the package re-exports the type).
+    """
+    if a is None or b is None:
+        return a is b
+    bare_a = a.rsplit(".", 1)[-1] if "." in a else a
+    bare_b = b.rsplit(".", 1)[-1] if "." in b else b
+    return bare_a == bare_b
+
+
 def is_control_flow_exception(name: str) -> bool:
-    """Check if an exception type name is registered as ControlFlow."""
-    return name in _control_flow_record_names
+    """Check if an exception type name is registered as ControlFlow.
+
+    Accepts both bare ('JsonError') and module-qualified ('tplib.json.JsonError')
+    names -- extracts the bare name for matching since a ControlFlow type
+    is ControlFlow regardless of which module references it.
+    """
+    bare = name.rsplit(".", 1)[-1] if "." in name else name
+    return bare in _control_flow_record_names
 
 
 def public_module_name(module_name: str, cpp_namespace: str | None = None) -> str:

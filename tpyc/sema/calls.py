@@ -15,7 +15,7 @@ from ..typesys import (
     PtrType, is_readonly_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType, ReadonlyType,
     UNKNOWN_ELEMENT, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
     UnionType, EnumType, VOID, BIGINT, BOOL, STR, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own,
-    is_any_str_type, container_to_str_template,
+    is_any_str_type, container_to_str_template, error_return_matches,
     is_protocol_union, protocol_union_protocols,
     StrViewType, STRVIEW, MutationCallEdge,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
@@ -2010,22 +2010,22 @@ class CallAnalyzer:
             return
         # Inside matching try/except (or except ControlFlow catch-all)
         ctx_error_type = self.ctx.try_except_error_type
-        if ctx_error_type == func.error_return_type or ctx_error_type == "*":
+        if error_return_matches(ctx_error_type, func.error_return_type) or ctx_error_type == "*":
             return
         # Auto-propagation: caller has matching @error_return(E), not inside a try/except
         # (inside try/except, the goto-based dispatch handles it instead)
         current = self.ctx.current_function
         if (ctx_error_type is None
                 and isinstance(current, TpyFunction)
-                and current.error_return == func.error_return_type):
+                and error_return_matches(current.error_return, func.error_return_type)):
             return
         # REPL mode: allow error_return calls at top level (codegen panics on error)
         if self.ctx.is_top_level and self.ctx.allow_top_level_error_unwrap:
             return
-        # Strip internal 'builtins.' prefix for user-facing message
+        # Strip module prefix for user-facing message
         display_name = func.error_return_type
-        if display_name.startswith("builtins."):
-            display_name = display_name[len("builtins."):]
+        if "." in display_name:
+            display_name = display_name.rsplit(".", 1)[1]
         raise self.ctx.error(
             f"call to '{func.name}' may return '{display_name}' "
             f"which must be handled with try/except",

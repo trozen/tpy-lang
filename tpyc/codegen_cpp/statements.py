@@ -159,7 +159,7 @@ class StatementGenerator:
         self.ctx.indent_level = indent_level
         self.ctx.current_return_type = return_type
         raw_error_return = getattr(func, 'error_return', None)
-        self.ctx.current_error_return = error_return_to_cpp(raw_error_return, self.ctx.analyzer.registry, self.ctx.module_name) if raw_error_return else None
+        self.ctx.current_error_return = error_return_to_cpp(raw_error_return, self.ctx.module_name) if raw_error_return else None
         self.ctx.current_func_params = {pname: ptype for pname, ptype in params}
         self.ctx.current_type_param_bounds = dict(record_type_param_bounds) if record_type_param_bounds else {}
         if func.type_param_bounds:
