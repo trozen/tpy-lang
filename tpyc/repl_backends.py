@@ -6,11 +6,12 @@ Two backend types for executing compiled TurboPython code in the REPL:
 - CompileBackend: Traditional compile-and-run via any C++ compiler
   (with PCH caching and code-change detection)
 
-Auto-detection order: clang-repl -> clang++ -> g++ -> zig c++
+Auto-detection order: g++ -> clang++ -> zig (clang-repl via explicit --cxx only)
 """
 
 from __future__ import annotations
 import abc
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import difflib
 import hashlib
 import os
@@ -95,24 +96,92 @@ class REPLBackend(abc.ABC):
 # ---------------------------------------------------------------------------
 
 class CompileBackend(REPLBackend):
-    """Traditional compile-and-run backend using g++ or clang++."""
+    """Traditional compile-and-run backend using g++ or clang++.
 
-    def __init__(self, compiler: list[str], temp_dir: Path, module_name: str):
+    Uses incremental compilation: each .cpp is compiled to .o separately,
+    and only recompiled when its content changes. Stdlib modules are compiled
+    once on first execution (in parallel), then reused across REPL inputs.
+    """
+
+    # Extra flags used for both PCH and .o compilation (must match)
+    _OPT_FLAGS = ["-g0", "-pipe"]
+
+    def __init__(self, compiler: list[str], temp_dir: Path, module_name: str,
+                 verbose: int = 0):
         from .compiler import CppCompilerConfig
         self._temp_dir = temp_dir
         self._module_name = module_name
         self._config = CppCompilerConfig(compiler=compiler)
         self._pch_path: Path | None = None
-        self._prev_entry_hpp: str | None = None
-        self._prev_entry_cpp: str | None = None
+        self._pch_thread: threading.Thread | None = None
+        self._pch_build_time: float | None = None
+        self._pch_needs_build = False
         self._binary_path = temp_dir / module_name
+        self._build_dir = temp_dir / "build"
+        self._build_dir.mkdir(exist_ok=True)
+        self._verbose = verbose
+        # Track content of each .cpp to detect changes
+        self._cpp_hashes: dict[str, str] = {}
+        # Cached .o paths keyed by .cpp path string
+        self._obj_cache: dict[str, str] = {}
+        self._n_jobs = os.cpu_count() or 1
 
     @property
     def name(self) -> str:
         return self._config.compiler_name
 
+    @property
+    def pch_cache_dir(self) -> Path:
+        return self._get_pch_cache_dir()
+
     def startup(self) -> None:
-        self._setup_pch()
+        # Check if PCH needs building before spawning the thread,
+        # so we can print the message from the main thread cleanly
+        self._pch_needs_build = self._pch_is_stale()
+        if self._pch_needs_build:
+            print("Precompiling C++ headers in background...")
+        self._pch_thread = threading.Thread(target=self._setup_pch, daemon=True)
+        self._pch_thread.start()
+
+    def _wait_for_pch(self) -> None:
+        thread = self._pch_thread
+        if thread is not None:
+            self._pch_thread = None
+            thread.join()
+            t = self._pch_build_time
+            self._pch_build_time = None
+            if t is not None and t >= 0:
+                print(f"  [pch] precompiled tpy.hpp ({_fmt_ms(t)})",
+                      file=sys.stderr)
+            elif t is not None:
+                print("  [pch] failed, headers will be parsed each time",
+                      file=sys.stderr)
+
+    def _common_flags(self) -> list[str]:
+        runtime_dir = get_runtime_dir()
+        flags = [
+            *self._config.compiler, f"-std={self._config.std}",
+            *self._config.extra_flags,
+            *self._OPT_FLAGS,
+            "-I", str(runtime_dir / "cpp" / "include"),
+            "-I", str(self._temp_dir),
+        ]
+        if self._pch_path:
+            flags += ["-include", str(self._pch_path)]
+        return flags
+
+    def _obj_path(self, cpp_path: Path) -> Path:
+        try:
+            rel = cpp_path.relative_to(self._temp_dir)
+            obj_name = str(rel).replace(os.sep, "_").removesuffix(".cpp") + ".o"
+        except ValueError:
+            obj_name = cpp_path.stem + ".o"
+        return self._build_dir / obj_name
+
+    def _compile_one(self, cpp_path: Path) -> subprocess.CompletedProcess[str]:
+        obj = self._obj_path(cpp_path)
+        cmd = [*self._common_flags(), "-c", "-o", str(obj), str(cpp_path)]
+        return subprocess.run(cmd, capture_output=True, text=True)
 
     def execute(
         self,
@@ -121,42 +190,69 @@ class CompileBackend(REPLBackend):
         all_hpp_paths: list[Path],
         all_cpp_paths: list[Path],
     ) -> BackendResult:
-        entry_hpp = all_hpp_code[-1]
-        entry_cpp = all_cpp_code[-1]
-        cpp_changed = (
-            entry_hpp != self._prev_entry_hpp
-            or entry_cpp != self._prev_entry_cpp
-            or not self._binary_path.exists()
-        )
+        # Determine which .cpp files changed
+        changed: list[Path] = []
+        for cpp_path, cpp_code in zip(all_cpp_paths, all_cpp_code):
+            key = str(cpp_path)
+            if self._cpp_hashes.get(key) != cpp_code:
+                changed.append(cpp_path)
 
-        if cpp_changed:
-            t_build_start = time.monotonic()
-            runtime_dir = get_runtime_dir()
-            compile_cmd = [
-                *self._config.compiler, f"-std={self._config.std}",
-                *self._config.extra_flags,
-                "-I", str(runtime_dir / "cpp" / "include"),
-                "-I", str(self._temp_dir),
-            ]
-            if self._pch_path:
-                compile_cmd += ["-include", str(self._pch_path)]
-            compile_cmd += [
-                "-o", str(self._binary_path),
-                *[str(p) for p in all_cpp_paths],
-                *self._config.link_flags,
-            ]
-            result = subprocess.run(compile_cmd, capture_output=True, text=True)
-            t_build = time.monotonic() - t_build_start
+        if not changed and self._binary_path.exists():
+            # Nothing changed, reuse binary
+            return self._run_binary(0.0, build_cached=True)
 
-            if result.returncode != 0:
-                return BackendResult(False, stderr=f"C++ compilation failed:\n{result.stderr}",
-                                     t_build=t_build)
-            self._prev_entry_hpp = entry_hpp
-            self._prev_entry_cpp = entry_cpp
+        t_build_start = time.monotonic()
+        self._wait_for_pch()
+
+        # Compile changed .cpp files (parallel for multiple files)
+        if self._verbose >= 1 and changed:
+            names = [p.stem + ".cpp" for p in changed]
+            print(f"  [build] compiling {len(changed)} files: {', '.join(names)}",
+                  file=sys.stderr)
+
+        failed_stderr = ""
+        if len(changed) > 1 and self._n_jobs > 1:
+            with ThreadPoolExecutor(max_workers=self._n_jobs) as pool:
+                futures = {pool.submit(self._compile_one, p): p for p in changed}
+                for future in as_completed(futures):
+                    r = future.result()
+                    if r.returncode != 0 and not failed_stderr:
+                        failed_stderr = r.stderr
         else:
-            t_build = 0.0
+            for cpp_path in changed:
+                r = self._compile_one(cpp_path)
+                if r.returncode != 0:
+                    failed_stderr = r.stderr
+                    break
 
-        # Run
+        if failed_stderr:
+            return BackendResult(False, stderr=f"C++ compilation failed:\n{failed_stderr}",
+                                 t_build=time.monotonic() - t_build_start)
+
+        # Update hash cache for successfully compiled files
+        for cpp_path, cpp_code in zip(all_cpp_paths, all_cpp_code):
+            key = str(cpp_path)
+            self._cpp_hashes[key] = cpp_code
+            self._obj_cache[key] = str(self._obj_path(cpp_path))
+
+        # Link all .o files
+        all_objs = [self._obj_cache[str(p)] for p in all_cpp_paths]
+        link_cmd = [
+            *self._config.compiler,
+            "-o", str(self._binary_path),
+            *all_objs,
+            *self._config.link_flags,
+        ]
+        result = subprocess.run(link_cmd, capture_output=True, text=True)
+        t_build = time.monotonic() - t_build_start
+
+        if result.returncode != 0:
+            return BackendResult(False, stderr=f"C++ link failed:\n{result.stderr}",
+                                 t_build=t_build)
+
+        return self._run_binary(t_build, build_cached=False)
+
+    def _run_binary(self, t_build: float, build_cached: bool) -> BackendResult:
         t_run_start = time.monotonic()
         result = subprocess.run([str(self._binary_path)], capture_output=True, text=True)
         t_run = time.monotonic() - t_run_start
@@ -166,10 +262,10 @@ class CompileBackend(REPLBackend):
             if not output.strip():
                 output = f"Runtime error (exit code {result.returncode})\n"
             return BackendResult(False, stderr=output, t_build=t_build, t_run=t_run,
-                                 build_cached=not cpp_changed)
+                                 build_cached=build_cached)
 
         return BackendResult(True, stdout=result.stdout, t_build=t_build, t_run=t_run,
-                             build_cached=not cpp_changed)
+                             build_cached=build_cached)
 
     def cleanup(self) -> None:
         pass
@@ -178,11 +274,23 @@ class CompileBackend(REPLBackend):
 
     def _get_pch_cache_dir(self) -> Path:
         runtime_dir = get_runtime_dir()
-        key_data = f"{self._config.compiler_name}:{self._config.std}:{runtime_dir}"
+        opt = " ".join(self._OPT_FLAGS)
+        key_data = f"{self._config.compiler_name}:{self._config.std}:{opt}:{runtime_dir}"
         key = hashlib.md5(key_data.encode()).hexdigest()[:12]
         cache_dir = Path.home() / ".cache" / "tpyc" / f"pch_{key}"
         cache_dir.mkdir(parents=True, exist_ok=True)
         return cache_dir
+
+    def _pch_is_stale(self) -> bool:
+        cache_dir = self._get_pch_cache_dir()
+        pch_gch = cache_dir / "tpy_pch.hpp.gch"
+        if not pch_gch.exists():
+            return True
+        runtime_dir = get_runtime_dir()
+        runtime_include = runtime_dir / "cpp" / "include" / "tpy"
+        pch_mtime = pch_gch.stat().st_mtime
+        return any(h.stat().st_mtime > pch_mtime
+                   for h in runtime_include.glob("**/*.hpp"))
 
     def _setup_pch(self) -> None:
         runtime_dir = get_runtime_dir()
@@ -190,37 +298,29 @@ class CompileBackend(REPLBackend):
         pch_header = cache_dir / "tpy_pch.hpp"
         pch_gch = cache_dir / "tpy_pch.hpp.gch"
 
-        if pch_gch.exists():
-            pch_mtime = pch_gch.stat().st_mtime
-            runtime_include = runtime_dir / "cpp" / "include" / "tpy"
-            needs_rebuild = False
-            for header in runtime_include.glob("**/*.hpp"):
-                if header.stat().st_mtime > pch_mtime:
-                    needs_rebuild = True
-                    break
-            if not needs_rebuild:
-                self._pch_path = pch_header
-                return
+        if not self._pch_needs_build:
+            self._pch_path = pch_header
+            return
 
         pch_header.write_text('#include <tpy/tpy.hpp>\n')
         cmd = [
             *self._config.compiler, f"-std={self._config.std}",
             *self._config.extra_flags,
+            *self._OPT_FLAGS,
             "-I", str(runtime_dir / "cpp" / "include"),
             "-x", "c++-header",
             str(pch_header), "-o", str(pch_gch),
         ]
 
-        print("Precompiling C++ headers...", end="", flush=True)
         t0 = time.monotonic()
         result = subprocess.run(cmd, capture_output=True, text=True)
         elapsed = time.monotonic() - t0
 
         if result.returncode == 0:
             self._pch_path = pch_header
-            print(f" done ({_fmt_ms(elapsed)})")
+            self._pch_build_time = elapsed
         else:
-            print(f" failed, headers will be parsed each time")
+            self._pch_build_time = -1.0  # signal failure
 
 
 # ---------------------------------------------------------------------------
@@ -682,6 +782,7 @@ def detect_backend(
     cxx: str,
     temp_dir: Path,
     module_name: str,
+    verbose: int = 0,
 ) -> REPLBackend:
     """Create a backend based on --cxx value or auto-detection.
 
@@ -689,16 +790,17 @@ def detect_backend(
         cxx: Compiler selection from --cxx flag (e.g. "auto", "gcc", "clang-repl").
         temp_dir: Temp directory for build artifacts.
         module_name: Fixed module name for the REPL.
+        verbose: Verbosity level (0=quiet, 1=timing+build info, 2=+generated C++).
 
     Returns:
         An initialized (but not yet started) REPLBackend.
     """
     from .compiler import (
-        _find_best_versioned, _find_zig, _resolve_compiler,
+        _find_best_versioned, _resolve_compiler,
     )
 
     if cxx == "auto":
-        return _auto_detect(temp_dir, module_name)
+        return _auto_detect(temp_dir, module_name, verbose)
 
     # clang-repl: JIT backend (specific or versioned, e.g. clang-repl-18)
     if cxx == "clang-repl" or cxx.startswith("clang-repl-"):
@@ -706,7 +808,7 @@ def detect_backend(
         if not binary:
             print("Warning: clang-repl not found, falling back to auto-detect",
                   file=sys.stderr)
-            return _auto_detect(temp_dir, module_name)
+            return _auto_detect(temp_dir, module_name, verbose)
         return ClangReplBackend(binary, temp_dir, module_name)
 
     # All other values: resolve via shared compiler detection
@@ -714,37 +816,31 @@ def detect_backend(
     if resolved is None:
         print(f"Warning: C++ compiler '{cxx}' not found, falling back to auto-detect",
               file=sys.stderr)
-        return _auto_detect(temp_dir, module_name)
-    return CompileBackend(resolved, temp_dir, module_name)
+        return _auto_detect(temp_dir, module_name, verbose)
+    return CompileBackend(resolved, temp_dir, module_name, verbose=verbose)
 
 
-def _auto_detect(temp_dir: Path, module_name: str) -> REPLBackend:
-    """Auto-detect the best available backend."""
-    from .compiler import _find_best_versioned, _find_zig
+def _auto_detect(temp_dir: Path, module_name: str, verbose: int = 0) -> REPLBackend:
+    """Auto-detect the best available backend.
 
-    # Prefer clang-repl for fastest incremental compilation
-    clang_repl = _find_best_versioned("clang-repl")
-    if clang_repl:
-        return ClangReplBackend(clang_repl, temp_dir, module_name)
-
-    clangpp = _find_best_versioned("clang++")
-    if clangpp:
-        print(f"Warning: clang-repl not found, using {clangpp} (slower)",
-              file=sys.stderr)
-        return CompileBackend([clangpp], temp_dir, module_name)
+    Prefers g++ for incremental compile backend (fastest with PCH + split .o),
+    then clang++, then zig (system or bundled).
+    """
+    from .compiler import _find_best_versioned, _find_all_zig
 
     gpp = _find_best_versioned("g++")
     if gpp:
-        print(f"Warning: clang-repl not found, using {gpp} (slower)",
-              file=sys.stderr)
-        return CompileBackend([gpp], temp_dir, module_name)
+        return CompileBackend([gpp], temp_dir, module_name, verbose=verbose)
 
-    zig = _find_zig()
+    clangpp = _find_best_versioned("clang++")
+    if clangpp:
+        return CompileBackend([clangpp], temp_dir, module_name, verbose=verbose)
+
+    system_zig, bundled_zig = _find_all_zig()
+    zig = system_zig or bundled_zig
     if zig:
-        print("Warning: no native C++ compiler found, using zig c++ (slower)",
-              file=sys.stderr)
-        return CompileBackend([zig, "c++"], temp_dir, module_name)
+        return CompileBackend([zig, "c++"], temp_dir, module_name, verbose=verbose)
 
-    print("Error: no C++ compiler found (tried clang-repl, clang, gcc, zig)",
+    print("Error: no C++ compiler found (tried g++, clang++, zig)",
           file=sys.stderr)
     sys.exit(1)

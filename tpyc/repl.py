@@ -128,7 +128,7 @@ class REPLSession:
         """Main REPL loop. Returns exit code."""
         # Detect and start backend
         self._backend = detect_backend(
-            self._cxx, self.temp_dir, self._module_name
+            self._cxx, self.temp_dir, self._module_name, verbose=self.verbose,
         )
         print(f"TurboPython REPL v0.1 (backend: {self._backend.name})")
         print("Variables, functions, and classes are remembered between inputs.")
@@ -136,9 +136,10 @@ class REPLSession:
         print("Type .paste (or .p) for multiline input mode.")
 
         self._backend.startup()
-
-        if self.verbose >= 2:
-            print(f"[src] {self.temp_dir}/")
+        if self.verbose >= 1:
+            print(f"Build dir: {self.temp_dir}/")
+            if hasattr(self._backend, 'pch_cache_dir'):
+                print(f"PCH cache: {self._backend.pch_cache_dir}/")
 
         # Preload files if specified
         for filepath in self.preload_files:
