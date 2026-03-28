@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from ..typesys import PendingStrType, TpyType
+from ..typesys import PendingViewType, TpyType
 from ..sema.context import PENDING_CONTAINER_TYPES
 from ..parse import TpyVarDecl
 
 # Types that indicate an unresolved intermediate sema state.
-_PENDING_TYPES = (*PENDING_CONTAINER_TYPES, PendingStrType)
+_PENDING_TYPES = (*PENDING_CONTAINER_TYPES, PendingViewType)
 
 
 def resolve_stmt_binding_type(

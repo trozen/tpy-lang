@@ -10,8 +10,8 @@ from typing import Callable, TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, FloatLiteralType, BoolType,
-    ArrayType, ListType, PendingListType, PendingDictType, PendingSetType, PendingStrType, OwnType, OptionalType,
-    NoneType, NamedType, StrType, StringType, StrViewType, BytesType, BytesViewType, PendingBytesType, STR, BYTES, TupleType, VoidType,
+    ArrayType, ListType, PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingViewType, OwnType, OptionalType,
+    NoneType, NamedType, StrType, StringType, StrViewType, BytesType, BytesViewType, STR, BYTES, TupleType, VoidType,
     INT32, BIGINT, FLOAT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType,
     local_var_is_movable, resolve_int_literals,
@@ -618,12 +618,9 @@ class StatementGenerator:
             resolved = self._resolve_pending_container(target_type)
             if resolved is not None:
                 target_type = resolved
-            elif isinstance(target_type, PendingStrType):
-                info = self.ctx.analyzer.ctx.str_vars.get(target_type.str_var_id)
-                target_type = info.resolved_type if info and info.resolved_type else STR
-            elif isinstance(target_type, PendingBytesType):
-                info = self.ctx.analyzer.ctx.bytes_vars.get(target_type.bytes_var_id)
-                target_type = info.resolved_type if info and info.resolved_type else BYTES
+            elif isinstance(target_type, PendingViewType):
+                info = self.ctx.analyzer.ctx.view_vars(target_type.family).get(target_type.var_id)
+                target_type = info.resolved_type if info and info.resolved_type else target_type.family.owned_type
         return target_type
 
     def _resolve_pending_container(self, typ: TpyType) -> TpyType | None:
@@ -651,9 +648,9 @@ class StatementGenerator:
             elem = var_type.element_type
             if isinstance(elem, IntLiteralType):
                 var_type = ListType(resolve_lit(elem))
-        elif isinstance(var_type, PendingStrType):
-            info = self.ctx.analyzer.ctx.str_vars.get(var_type.str_var_id)
-            var_type = info.resolved_type if info and info.resolved_type else STR
+        elif isinstance(var_type, PendingViewType):
+            info = self.ctx.analyzer.ctx.view_vars(var_type.family).get(var_type.var_id)
+            var_type = info.resolved_type if info and info.resolved_type else var_type.family.owned_type
         # Resolve IntLiteralType in all composite types (tuples, arrays, lists)
         var_type = resolve_int_literals(var_type, resolve_lit)
         # Resolve FloatLiteralType to float64 (same as sema: float literals default to double)
@@ -683,7 +680,7 @@ class StatementGenerator:
                 self.ctx.analyzer,
                 include_global_binding=(self.ctx.current_ns is self.ctx.analyzer.global_ns),
             )
-            if resolved_type is None or isinstance(resolved_type, (*PENDING_CONTAINER_TYPES, PendingStrType)):
+            if resolved_type is None or isinstance(resolved_type, (*PENDING_CONTAINER_TYPES, PendingViewType)):
                 resolved_type = self.ctx.get_expr_type(stmt.init)
             if resolved_type is None:
                 raise CodeGenError(
@@ -2592,8 +2589,8 @@ class StatementGenerator:
         # Resolve pending types to concrete types
         if isinstance(value_type, IntLiteralType):
             value_type = BIGINT
-        elif isinstance(value_type, PendingStrType):
-            value_type = STR
+        elif isinstance(value_type, PendingViewType):
+            value_type = value_type.family.owned_type
         try:
             self.ctx.analyzer.compat.check_type_compatible(
                 value_type, stub_ret, "return value",
@@ -3272,7 +3269,7 @@ class StatementGenerator:
                                    get_error_return_next_element_type)
         iterable_type = self.types.get_resolved_type(stmt.iterable)
 
-        # Resolve sema-stored elem_type (handles PendingStrType -> concrete)
+        # Resolve sema-stored elem_type (handles PendingViewType -> concrete)
         sema_elem = self.types.resolve_type(stmt.elem_type) if stmt.elem_type else None
 
         # OwnIterType / CopyIterType: explicit own_iter() / copy_iter() call.

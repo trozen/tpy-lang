@@ -2858,90 +2858,83 @@ class PendingGenericInstanceInfo:
 
 
 @dataclass(frozen=True)
-class PendingStrType(TpyType):
-    """Unresolved string local -- becomes StrView or str based on usage.
+class ViewTypeFamily:
+    """Descriptor for a view-type family (str or bytes).
 
-    Assigned to str-typed locals in function contexts during the first
-    analysis phase. After the full function body is analyzed, resolved
-    based on collected usage (augmented assignment, owned source, etc.).
+    Parameterizes the shared pending-view-type infrastructure so that
+    str and bytes paths share one implementation.
     """
-    str_var_id: int
-
-    def to_cpp(self) -> str:
-        raise RuntimeError(
-            f"PendingStrType should be resolved before codegen (str_var_id={self.str_var_id})"
-        )
-
-    def __str__(self) -> str:
-        return "str"
-
-    def qualified_name(self) -> Optional[str]:
-        return "builtins.str"
-
-    def is_value_type(self) -> bool:
-        return True
-
-    def get_element_type(self) -> Optional[TpyType]:
-        from tpyc.typesys import CHAR
-        return CHAR
-
-
-@dataclass
-class StrVarInfo:
-    """Tracks usage of a string local to decide StrView vs str."""
-    str_var_id: int
-    variable_name: str
-    decl_line: Optional[int] = None
-    initialized_from_owned: bool = False
-    used_in_augassign: bool = False
-    passed_to_string_param: bool = False
-    reassigned_from_owned: bool = False
-    source_str_var_ids: list[int] = field(default_factory=list)  # PendingStrType locals this view borrows from
-    source_storage: Optional[str] = None  # variable whose storage this view borrows from
-    source_mutated: bool = False  # source storage was mutated; view would dangle
-    resolved_type: Optional[TpyType] = None
+    owned_type: TpyType
+    view_type: TpyType
+    promote_param_type: type  # isinstance target: StringType or ByteArrayType
+    pending_type_class: type  # PendingStrType or PendingBytesType
+    element_type: TpyType
+    display_name: str
+    qualified: str
 
 
 @dataclass(frozen=True)
-class PendingBytesType(TpyType):
-    """Unresolved bytes local -- becomes BytesView or bytes based on usage.
+class PendingViewType(TpyType):
+    """Base for unresolved view-type locals (str or bytes).
 
-    Assigned to bytes-typed locals in function contexts during the first
-    analysis phase. After the full function body is analyzed, resolved
-    based on collected usage (augmented assignment, owned source, etc.).
+    Assigned to str/bytes-typed locals in function contexts during the
+    first analysis phase. After the full function body is analyzed,
+    resolved based on collected usage (augmented assignment, owned
+    source, etc.).
     """
-    bytes_var_id: int
+    var_id: int
+
+    @property
+    def family(self) -> ViewTypeFamily:
+        raise NotImplementedError
 
     def to_cpp(self) -> str:
         raise RuntimeError(
-            f"PendingBytesType should be resolved before codegen (bytes_var_id={self.bytes_var_id})"
+            f"{type(self).__name__} should be resolved before codegen (var_id={self.var_id})"
         )
 
     def __str__(self) -> str:
-        return "bytes"
+        return self.family.display_name
 
     def qualified_name(self) -> Optional[str]:
-        return "builtins.bytes"
+        return self.family.qualified
 
     def is_value_type(self) -> bool:
         return True
 
     def get_element_type(self) -> Optional[TpyType]:
-        from tpyc.typesys import UINT8
-        return UINT8
+        return self.family.element_type
+
+
+@dataclass(frozen=True)
+class PendingStrType(PendingViewType):
+    """Unresolved string local -- becomes StrView or str based on usage."""
+
+    @property
+    def family(self) -> ViewTypeFamily:
+        return STR_FAMILY
+
+
+@dataclass(frozen=True)
+class PendingBytesType(PendingViewType):
+    """Unresolved bytes local -- becomes BytesView or bytes based on usage."""
+
+    @property
+    def family(self) -> ViewTypeFamily:
+        return BYTES_FAMILY
 
 
 @dataclass
-class BytesVarInfo:
-    """Tracks usage of a bytes local to decide BytesView vs bytes."""
-    bytes_var_id: int
+class ViewVarInfo:
+    """Tracks usage of a view-type local to decide view vs owned."""
+    var_id: int
     variable_name: str
     decl_line: Optional[int] = None
     initialized_from_owned: bool = False
     used_in_augassign: bool = False
-    passed_to_bytearray_param: bool = False
+    passed_to_promote_param: bool = False
     reassigned_from_owned: bool = False
-    source_bytes_var_ids: list[int] = field(default_factory=list)
+    source_var_ids: list[int] = field(default_factory=list)
     source_storage: Optional[str] = None
     source_mutated: bool = False
     resolved_type: Optional[TpyType] = None
@@ -2973,6 +2966,19 @@ FLOAT32 = Float32Type()
 BIGINT = BigIntType()
 NONE = NoneType()
 SLICE = SliceType()
+
+# View-type family descriptors (must follow singleton definitions)
+STR_FAMILY = ViewTypeFamily(
+    owned_type=STR, view_type=STRVIEW, promote_param_type=StringType,
+    pending_type_class=PendingStrType, element_type=CHAR,
+    display_name="str", qualified="builtins.str",
+)
+BYTES_FAMILY = ViewTypeFamily(
+    owned_type=BYTES, view_type=BYTESVIEW, promote_param_type=ByteArrayType,
+    pending_type_class=PendingBytesType, element_type=UINT8,
+    display_name="bytes", qualified="builtins.bytes",
+)
+VIEW_TYPE_FAMILIES = (STR_FAMILY, BYTES_FAMILY)
 
 # Backward-compat range limits (use type.min_value / type.max_value instead)
 INT32_MIN = INT32.min_value

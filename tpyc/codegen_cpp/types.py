@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, Int32Type, FixedIntType, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, BoolType,
-    PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, ListType, DictType, SetType, ArrayType, TypeParamRef, NamedType,
+    PendingListType, PendingDictType, PendingSetType, PendingViewType, ListType, DictType, SetType, ArrayType, TypeParamRef, NamedType,
     UnionType, NoneType, VoidType, EnumType, TupleType,
     unwrap_readonly, is_protocol_type, resolve_int_literals,
     INT32, BIGINT, FLOAT, FLOAT32, STR, BYTES,
@@ -62,13 +62,11 @@ class TypeResolver:
             else_resolved = self.get_resolved_type(expr.else_expr)
             if then_resolved == else_resolved:
                 return then_resolved
-            # Branches differ -- resolve PendingStrType so the string_view->string
+            # Branches differ -- resolve pending view types so the view->owned
             # wrapping check in statement codegen sees a concrete type.
             ret = unwrap_readonly(typ) if typ else typ
-            if isinstance(ret, PendingStrType):
-                ret = self._resolve_pending_str(ret)
-            if isinstance(ret, PendingBytesType):
-                ret = self._resolve_pending_bytes(ret)
+            if isinstance(ret, PendingViewType):
+                ret = self._resolve_pending_view(ret)
             return ret
 
         # For binary operations, compute type using resolved operand types
@@ -89,13 +87,11 @@ class TypeResolver:
                 if left_resolved == right_resolved:
                     return left_resolved
                 # Operands differ (e.g. one is string_view, other is string).
-                # Resolve PendingStrType so callers like the string_view->string
+                # Resolve pending view types so callers like the view->owned
                 # wrapping check in statement codegen see a concrete type.
                 ret = unwrap_readonly(typ) if typ else typ
-                if isinstance(ret, PendingStrType):
-                    ret = self._resolve_pending_str(ret)
-                if isinstance(ret, PendingBytesType):
-                    ret = self._resolve_pending_bytes(ret)
+                if isinstance(ret, PendingViewType):
+                    ret = self._resolve_pending_view(ret)
                 return ret
 
             # First pass without context to detect Int32 operands
@@ -167,10 +163,8 @@ class TypeResolver:
         resolved = self._resolve_pending_container(typ)
         if resolved is not None:
             return resolved
-        if isinstance(typ, PendingStrType):
-            return self._resolve_pending_str(typ)
-        if isinstance(typ, PendingBytesType):
-            return self._resolve_pending_bytes(typ)
+        if isinstance(typ, PendingViewType):
+            return self._resolve_pending_view(typ)
         # Resolve IntLiteralType based on context (FixedInt/BigInt if target, else
         # configured default int type).
         if isinstance(typ, IntLiteralType):
@@ -202,11 +196,8 @@ class TypeResolver:
                     else:
                         resolved_elems.append(resolve_lit(et))
                     changed = True
-                elif isinstance(et, PendingStrType):
-                    resolved_elems.append(self._resolve_pending_str(et))
-                    changed = True
-                elif isinstance(et, PendingBytesType):
-                    resolved_elems.append(self._resolve_pending_bytes(et))
+                elif isinstance(et, PendingViewType):
+                    resolved_elems.append(self._resolve_pending_view(et))
                     changed = True
                 else:
                     resolved = resolve_int_literals(et, resolve_lit)
@@ -217,15 +208,10 @@ class TypeResolver:
                 return TupleType(tuple(resolved_elems))
         return typ
 
-    def _resolve_pending_str(self, typ: PendingStrType) -> TpyType:
-        """Resolve a PendingStrType to its concrete type (STR or STRVIEW)."""
-        sv_info = self.ctx.analyzer.ctx.str_vars.get(typ.str_var_id)
-        return sv_info.resolved_type if sv_info and sv_info.resolved_type else STR
-
-    def _resolve_pending_bytes(self, typ: PendingBytesType) -> TpyType:
-        """Resolve a PendingBytesType to its concrete type (always BYTES)."""
-        bv_info = self.ctx.analyzer.ctx.bytes_vars.get(typ.bytes_var_id)
-        return bv_info.resolved_type if bv_info and bv_info.resolved_type else BYTES
+    def _resolve_pending_view(self, typ: PendingViewType) -> TpyType:
+        """Resolve a PendingViewType to its concrete type."""
+        info = self.ctx.analyzer.ctx.view_vars(typ.family).get(typ.var_id)
+        return info.resolved_type if info and info.resolved_type else typ.family.owned_type
 
     def _resolve_pending_container(self, typ: TpyType) -> TpyType | None:
         """Resolve a pending container type via unified lookup.
@@ -252,11 +238,9 @@ class TypeResolver:
         return None
 
     def resolve_type(self, typ: TpyType) -> TpyType:
-        """Resolve deferred types (PendingStrType, PendingBytesType, PendingListType, etc.) to concrete C++ types."""
-        if isinstance(typ, PendingStrType):
-            return self._resolve_pending_str(typ)
-        if isinstance(typ, PendingBytesType):
-            return self._resolve_pending_bytes(typ)
+        """Resolve deferred types (PendingViewType, PendingListType, etc.) to concrete C++ types."""
+        if isinstance(typ, PendingViewType):
+            return self._resolve_pending_view(typ)
         resolved = self._resolve_pending_container(typ)
         if resolved is not None:
             return resolved
@@ -362,11 +346,9 @@ class TypeResolver:
                 for m in typ.members
             ]
             return f"std::variant<{', '.join(cpp_members)}>"
-        # Resolve PendingStrType/PendingBytesType to concrete types before codegen
-        if isinstance(typ, PendingStrType):
-            return self._resolve_pending_str(typ).to_cpp()
-        if isinstance(typ, PendingBytesType):
-            return self._resolve_pending_bytes(typ).to_cpp()
+        # Resolve PendingViewType to concrete types before codegen
+        if isinstance(typ, PendingViewType):
+            return self._resolve_pending_view(typ).to_cpp()
         # For plain NamedType (not subclasses like ListType/ArrayType) with
         # type_args, recursively resolve args to handle @dynamic protocols
         if type(typ) is NamedType and typ.type_args:

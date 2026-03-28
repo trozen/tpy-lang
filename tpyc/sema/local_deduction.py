@@ -1,8 +1,8 @@
 """Unified local type deduction for TurboPython semantic analysis.
 
-Replaces the three separate trackers (ReassignmentInference, StrVarTracker,
-ListLiteralTracker deduction methods) with a single class that owns all
-post-body type resolution for function-local variables.
+Unified local type deduction: reassignment inference, view-type tracking
+(str/bytes), and list/dict/set literal tracking, with post-body resolution
+for function-local variables.
 """
 
 from __future__ import annotations
@@ -32,6 +32,10 @@ from ..typesys import (
     PendingSetType,
     PendingStrType,
     PendingBytesType,
+    PendingViewType,
+    ViewTypeFamily,
+    ViewVarInfo,
+    VIEW_TYPE_FAMILIES,
     BytesType,
     ByteArrayType,
     BytesViewType,
@@ -43,10 +47,6 @@ from ..typesys import (
     StrViewType,
     TpyType,
     TupleType,
-    STR,
-    STRVIEW,
-    BYTES,
-    BYTESVIEW,
     FLOAT,
     UnknownElementType,
     resolve_int_literals,
@@ -74,12 +74,12 @@ def collect_pending_source_types(ctx: 'SemanticContext', expr: 'TpyExpr') -> 'li
     """Collect all leaf pending-type nodes from a logical/ternary expression tree.
 
     Walks and/or (TpyBinOp &&/||) and ternary (TpyIfExpr) subtrees, returning
-    every leaf whose sema type is PendingStrType, PendingListType, PendingDictType,
+    every leaf whose sema type is PendingViewType, PendingListType, PendingDictType,
     or PendingSetType.  Callers filter by type for their specific purpose.
 
-    Returns type objects (PendingStrType / PendingListType / etc.), not IDs.
+    Returns type objects (PendingViewType / PendingListType / etc.), not IDs.
     Callers filter the returned list by type for their specific purpose:
-    - String tracking (statements.py): filter PendingStrType, read .str_var_id
+    - View tracking (statements.py): filter by family's pending_type_class, read .var_id
     - List type forcing (expressions.py): filter PendingListType, set .needs_list_type
     """
     if isinstance(expr, TpyCoerce):
@@ -91,7 +91,7 @@ def collect_pending_source_types(ctx: 'SemanticContext', expr: 'TpyExpr') -> 'li
         return (collect_pending_source_types(ctx, expr.then_expr)
                 + collect_pending_source_types(ctx, expr.else_expr))
     t = ctx.get_expr_type(expr)
-    if isinstance(t, (PendingStrType, PendingBytesType, PendingListType, PendingDictType, PendingSetType)):
+    if isinstance(t, (PendingViewType, PendingListType, PendingDictType, PendingSetType)):
         return [t]
     return []
 
@@ -547,11 +547,9 @@ class LocalTypeDeduction:
                 elem_type = self.ctx.default_int_for_literal(elem_type)
             elif _contains_literal_type(elem_type):
                 elem_type = resolve_int_literals(elem_type, self.ctx.default_int_for_literal)
-            if isinstance(elem_type, PendingStrType):
-                # Container elements are owned -- string_view can't be stored in a list.
-                elem_type = STR
-            if isinstance(elem_type, PendingBytesType):
-                elem_type = BYTES
+            if isinstance(elem_type, PendingViewType):
+                # Container elements are owned -- views can't be stored in a list.
+                elem_type = elem_type.family.owned_type
 
             # Determine resolved type
             is_repeat = isinstance(info.expr, TpyListRepeat)
@@ -682,14 +680,10 @@ class LocalTypeDeduction:
                 key_type = self.ctx.default_int_for_literal(key_type)
             if isinstance(value_type, IntLiteralType):
                 value_type = self.ctx.default_int_for_literal(value_type)
-            if isinstance(key_type, PendingStrType):
-                key_type = STR
-            if isinstance(value_type, PendingStrType):
-                value_type = STR
-            if isinstance(key_type, PendingBytesType):
-                key_type = BYTES
-            if isinstance(value_type, PendingBytesType):
-                value_type = BYTES
+            if isinstance(key_type, PendingViewType):
+                key_type = key_type.family.owned_type
+            if isinstance(value_type, PendingViewType):
+                value_type = value_type.family.owned_type
 
             self._apply_container_resolution(info, DictType(key_type, value_type))
 
@@ -712,10 +706,8 @@ class LocalTypeDeduction:
 
             if isinstance(elem_type, IntLiteralType):
                 elem_type = self.ctx.default_int_for_literal(elem_type)
-            if isinstance(elem_type, PendingStrType):
-                elem_type = STR
-            if isinstance(elem_type, PendingBytesType):
-                elem_type = BYTES
+            if isinstance(elem_type, PendingViewType):
+                elem_type = elem_type.family.owned_type
 
             self._apply_container_resolution(info, SetType(elem_type))
 
@@ -747,10 +739,10 @@ class LocalTypeDeduction:
 
         View-safe sources:
         - String literal (static lifetime)
-        - A str/bytes parameter (already string_view/span in C++)
-        - Another PendingStrType/PendingBytesType or StrViewType/BytesViewType local
+        - A str/bytes parameter (already view type in C++)
+        - Another PendingViewType or view-type local
         - A Final[str] constant (constexpr string_view)
-        - A function returning StrView/BytesView
+        - A function returning a view type
         - Subscript on lvalue tuple (immutable, stable element storage)
 
         Note: bytes literals are NOT view-safe (temporary vectors, unlike string
@@ -758,7 +750,7 @@ class LocalTypeDeduction:
         """
         is_str = isinstance(init_type, (StrType, StrViewType, PendingStrType))
         is_bytes = isinstance(init_type, (BytesType, BytesViewType, PendingBytesType))
-        if not is_str and not is_bytes:
+        if not (is_str or is_bytes):
             return False
 
         if isinstance(init_expr, TpyCoerce):
@@ -782,7 +774,7 @@ class LocalTypeDeduction:
                         if is_bytes and isinstance(ptype, (BytesType, BytesViewType)):
                             return True
 
-            # Another pending or view local
+            # Another pending or view local (must match the same family)
             scope_type = self.ctx.current_scope.lookup(name) if self.ctx.current_scope else None
             if is_str and isinstance(scope_type, (PendingStrType, StrViewType)):
                 return True
@@ -799,8 +791,8 @@ class LocalTypeDeduction:
                 return True
 
         # Subscript on lvalue container -- source-mutation tracking
-        # (source_mutated flag on StrVarInfo) falls back to std::string if
-        # the source is mutated, so view is safe while source is live.
+        # (source_mutated flag on ViewVarInfo) falls back to the owned type
+        # if the source is mutated, so view is safe while source is live.
         # Only single-level access (container[i] where container is a name)
         # to ensure _borrow_storage_root can track the source.
         if isinstance(init_expr, TpySubscript) and self.compat.is_lvalue(init_expr):
@@ -824,9 +816,9 @@ class LocalTypeDeduction:
         if isinstance(init_expr, TpyBinOp) and init_expr.op in ("&&", "||"):
             left_type = self.ctx.get_expr_type(init_expr.left)
             right_type = self.ctx.get_expr_type(init_expr.right)
-            if isinstance(left_type, (PendingStrType, PendingBytesType)):
+            if isinstance(left_type, PendingViewType):
                 return False
-            if isinstance(right_type, (PendingStrType, PendingBytesType)):
+            if isinstance(right_type, PendingViewType):
                 return False
             return (self.is_view_compatible_source(init_expr.left, left_type)
                     and self.is_view_compatible_source(init_expr.right, right_type))
@@ -835,191 +827,105 @@ class LocalTypeDeduction:
         if isinstance(init_expr, TpyIfExpr):
             then_type = self.ctx.get_expr_type(init_expr.then_expr)
             else_type = self.ctx.get_expr_type(init_expr.else_expr)
-            if isinstance(then_type, (PendingStrType, PendingBytesType)):
+            if isinstance(then_type, PendingViewType):
                 return False
-            if isinstance(else_type, (PendingStrType, PendingBytesType)):
+            if isinstance(else_type, PendingViewType):
                 return False
             return (self.is_view_compatible_source(init_expr.then_expr, then_type)
                     and self.is_view_compatible_source(init_expr.else_expr, else_type))
 
         return False
 
-    def mark_str_augassign(self, var_name: str) -> None:
-        """Mark a PendingStrType variable as used in augmented assignment (+=)."""
-        str_var_id = self.ctx.variable_to_str_var.get(var_name)
-        if str_var_id is not None and str_var_id in self.ctx.str_vars:
-            self.ctx.str_vars[str_var_id].used_in_augassign = True
+    # --- View-type local tracking (generic across str/bytes families) ---
 
-    def mark_str_param_context(self, arg_expr: TpyExpr, param_type: TpyType) -> None:
-        """Track when a PendingStrType var is passed to a String param."""
-        if not isinstance(param_type, StringType):
-            return
+    def mark_view_augassign(self, var_name: str, family: ViewTypeFamily) -> None:
+        """Mark a pending view-type variable as used in augmented assignment (+=)."""
+        var_id = self.ctx.view_var_map(family).get(var_name)
+        if var_id is not None and var_id in self.ctx.view_vars(family):
+            self.ctx.view_vars(family)[var_id].used_in_augassign = True
 
-        if isinstance(arg_expr, TpyCoerce):
-            arg_expr = arg_expr.expr
-
-        if isinstance(arg_expr, TpyName):
-            str_var_id = self.ctx.variable_to_str_var.get(arg_expr.name)
-            if str_var_id is not None and str_var_id in self.ctx.str_vars:
-                self.ctx.str_vars[str_var_id].passed_to_string_param = True
-
-    def mark_str_reassigned_from_owned(self, var_name: str) -> None:
-        """Mark a PendingStrType variable as reassigned from an owned source."""
-        str_var_id = self.ctx.variable_to_str_var.get(var_name)
-        if str_var_id is not None and str_var_id in self.ctx.str_vars:
-            self.ctx.str_vars[str_var_id].reassigned_from_owned = True
-
-    def track_str_reassign_source(self, var_name: str, source_type: TpyType) -> None:
-        """Track source relationship when reassigning from another PendingStrType."""
-        if not isinstance(source_type, PendingStrType):
-            return
-        str_var_id = self.ctx.variable_to_str_var.get(var_name)
-        if str_var_id is not None and str_var_id in self.ctx.str_vars:
-            self.ctx.str_vars[str_var_id].source_str_var_ids = [source_type.str_var_id]
-
-    # --- Bytes local tracking methods ---
-
-    def mark_bytes_augassign(self, var_name: str) -> None:
-        """Mark a PendingBytesType variable as used in augmented assignment (+=)."""
-        bytes_var_id = self.ctx.variable_to_bytes_var.get(var_name)
-        if bytes_var_id is not None and bytes_var_id in self.ctx.bytes_vars:
-            self.ctx.bytes_vars[bytes_var_id].used_in_augassign = True
-
-    def mark_bytes_param_context(self, arg_expr: TpyExpr, param_type: TpyType) -> None:
-        """Track when a PendingBytesType var is passed to a bytearray param."""
-        if not isinstance(param_type, ByteArrayType):
+    def mark_view_param_context(self, arg_expr: TpyExpr, param_type: TpyType, family: ViewTypeFamily) -> None:
+        """Track when a pending view-type var is passed to a promote-param type."""
+        if not isinstance(param_type, family.promote_param_type):
             return
         if isinstance(arg_expr, TpyCoerce):
             arg_expr = arg_expr.expr
         if isinstance(arg_expr, TpyName):
-            bytes_var_id = self.ctx.variable_to_bytes_var.get(arg_expr.name)
-            if bytes_var_id is not None and bytes_var_id in self.ctx.bytes_vars:
-                self.ctx.bytes_vars[bytes_var_id].passed_to_bytearray_param = True
+            var_id = self.ctx.view_var_map(family).get(arg_expr.name)
+            if var_id is not None and var_id in self.ctx.view_vars(family):
+                self.ctx.view_vars(family)[var_id].passed_to_promote_param = True
 
-    def mark_bytes_reassigned_from_owned(self, var_name: str) -> None:
-        """Mark a PendingBytesType variable as reassigned from an owned source."""
-        bytes_var_id = self.ctx.variable_to_bytes_var.get(var_name)
-        if bytes_var_id is not None and bytes_var_id in self.ctx.bytes_vars:
-            self.ctx.bytes_vars[bytes_var_id].reassigned_from_owned = True
+    def mark_view_reassigned_from_owned(self, var_name: str, family: ViewTypeFamily) -> None:
+        """Mark a pending view-type variable as reassigned from an owned source."""
+        var_id = self.ctx.view_var_map(family).get(var_name)
+        if var_id is not None and var_id in self.ctx.view_vars(family):
+            self.ctx.view_vars(family)[var_id].reassigned_from_owned = True
 
-    def track_bytes_reassign_source(self, var_name: str, source_type: TpyType) -> None:
-        """Track source relationship when reassigning from another PendingBytesType."""
-        if not isinstance(source_type, PendingBytesType):
+    def track_view_reassign_source(self, var_name: str, source_type: TpyType, family: ViewTypeFamily) -> None:
+        """Track source relationship when reassigning from another pending view-type."""
+        if not isinstance(source_type, family.pending_type_class):
             return
-        bytes_var_id = self.ctx.variable_to_bytes_var.get(var_name)
-        if bytes_var_id is not None and bytes_var_id in self.ctx.bytes_vars:
-            self.ctx.bytes_vars[bytes_var_id].source_bytes_var_ids = [source_type.bytes_var_id]
+        var_id = self.ctx.view_var_map(family).get(var_name)
+        if var_id is not None and var_id in self.ctx.view_vars(family):
+            self.ctx.view_vars(family)[var_id].source_var_ids = [source_type.var_id]
 
-    def _resolve_pending_str_types(self) -> None:
-        """Resolve all pending str types after function analysis.
+    def _resolve_pending_view_types(self, family: ViewTypeFamily) -> None:
+        """Resolve all pending view types for the given family.
 
         Resolution rules:
-        - Any owned flag set -> resolve to STR (std::string)
-        - Otherwise -> resolve to STRVIEW (std::string_view)
+        - Any owned flag set -> resolve to owned type (str / bytes)
+        - Otherwise -> resolve to view type (StrView / BytesView)
 
-        After the first pass, aliases whose source resolved to STR are
-        retroactively promoted (a string_view of a std::string that may
-        reallocate would dangle).
+        After the first pass, aliases whose source resolved to owned are
+        retroactively promoted (a view of a buffer that may reallocate
+        would dangle).
         """
+        pending = self.ctx.view_pending_resolutions(family)
+        vars_reg = self.ctx.view_vars(family)
+
         # First pass: resolve based on direct usage flags
-        for str_var_id in self.ctx.pending_str_resolutions:
-            info = self.ctx.str_vars.get(str_var_id)
+        for var_id in pending:
+            info = vars_reg.get(var_id)
             if info is None:
                 continue
 
             needs_owned = (
                 info.initialized_from_owned
                 or info.used_in_augassign
-                or info.passed_to_string_param
+                or info.passed_to_promote_param
                 or info.reassigned_from_owned
                 or info.source_mutated
             )
 
-            info.resolved_type = STR if needs_owned else STRVIEW
+            info.resolved_type = family.owned_type if needs_owned else family.view_type
 
-        # Second pass: promote aliases whose source resolved to STR.
+        # Second pass: promote aliases whose source resolved to owned.
         # An or/ternary result may have multiple sources; if ANY resolves to
-        # STR, the result must too (it might point to that buffer at runtime).
+        # owned, the result must too (it might point to that buffer at runtime).
         changed = True
         while changed:
             changed = False
-            for str_var_id in self.ctx.pending_str_resolutions:
-                info = self.ctx.str_vars.get(str_var_id)
-                if info is None or info.resolved_type != STRVIEW:
+            for var_id in pending:
+                info = vars_reg.get(var_id)
+                if info is None or info.resolved_type != family.view_type:
                     continue
-                for src_id in info.source_str_var_ids:
-                    source = self.ctx.str_vars.get(src_id)
-                    if source and source.resolved_type == STR:
-                        info.resolved_type = STR
+                for src_id in info.source_var_ids:
+                    source = vars_reg.get(src_id)
+                    if source and source.resolved_type == family.owned_type:
+                        info.resolved_type = family.owned_type
                         changed = True
                         break
 
         # Update scope bindings and var_types
-        for str_var_id in self.ctx.pending_str_resolutions:
-            info = self.ctx.str_vars.get(str_var_id)
+        for var_id in pending:
+            info = vars_reg.get(var_id)
             if info is None:
                 continue
             resolved = info.resolved_type
 
             if info.variable_name and self.ctx.current_scope:
                 current_type = self.ctx.current_scope.lookup(info.variable_name)
-                if isinstance(current_type, PendingStrType):
-                    self.ctx.current_scope.define(info.variable_name, resolved)
-
-            var_decl = self.ctx.var_decl_by_name.get(info.variable_name)
-            if var_decl:
-                self.ctx.var_types[id(var_decl)] = resolved
-            if info.decl_line is not None:
-                self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved
-
-    def _resolve_pending_bytes_types(self) -> None:
-        """Resolve all pending bytes types after function analysis.
-
-        Resolution rules mirror str resolution:
-        - Any owned flag set -> resolve to BYTES (std::vector<uint8_t>)
-        - Otherwise -> resolve to BYTESVIEW (std::span<const uint8_t>)
-        """
-        # First pass: resolve based on direct usage flags
-        for bytes_var_id in self.ctx.pending_bytes_resolutions:
-            info = self.ctx.bytes_vars.get(bytes_var_id)
-            if info is None:
-                continue
-
-            needs_owned = (
-                info.initialized_from_owned
-                or info.used_in_augassign
-                or info.passed_to_bytearray_param
-                or info.reassigned_from_owned
-                or info.source_mutated
-            )
-
-            info.resolved_type = BYTES if needs_owned else BYTESVIEW
-
-        # Second pass: promote aliases whose source resolved to BYTES
-        changed = True
-        while changed:
-            changed = False
-            for bytes_var_id in self.ctx.pending_bytes_resolutions:
-                info = self.ctx.bytes_vars.get(bytes_var_id)
-                if info is None or info.resolved_type != BYTESVIEW:
-                    continue
-                for src_id in info.source_bytes_var_ids:
-                    source = self.ctx.bytes_vars.get(src_id)
-                    if source and source.resolved_type == BYTES:
-                        info.resolved_type = BYTES
-                        changed = True
-                        break
-
-        # Update scope bindings and var_types
-        for bytes_var_id in self.ctx.pending_bytes_resolutions:
-            info = self.ctx.bytes_vars.get(bytes_var_id)
-            if info is None:
-                continue
-            resolved = info.resolved_type
-
-            if info.variable_name and self.ctx.current_scope:
-                current_type = self.ctx.current_scope.lookup(info.variable_name)
-                if isinstance(current_type, PendingBytesType):
+                if isinstance(current_type, family.pending_type_class):
                     self.ctx.current_scope.define(info.variable_name, resolved)
 
             var_decl = self.ctx.var_decl_by_name.get(info.variable_name)
@@ -1078,6 +984,6 @@ class LocalTypeDeduction:
         self._check_unresolved_none_inference()
         self._resolve_pending_list_types()
         self._resolve_pending_dict_and_set_types()
-        self._resolve_pending_str_types()
-        self._resolve_pending_bytes_types()
+        for family in VIEW_TYPE_FAMILIES:
+            self._resolve_pending_view_types(family)
         self._check_unresolved_pending_generics()

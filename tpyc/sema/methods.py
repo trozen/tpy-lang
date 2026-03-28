@@ -634,7 +634,7 @@ class MethodAnalyzer:
                             if self._is_invalidating_method(obj_type, expr.method):
                                 self.ctx.mark_param_structurally_mutated(obj_root)
                         storage = self.ctx.borrow_tracker.effective_storage(obj_root)
-                        self.ctx.mark_str_borrowers_mutated(storage)
+                        self.ctx.mark_all_view_borrowers_mutated(storage)
                     else:
                         # Check for chained method calls rooted at self:
                         # self.get_span().sort() -- sort() is non-readonly and

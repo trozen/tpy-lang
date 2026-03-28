@@ -10,10 +10,11 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, OwnType, ReadonlyType,
     FinalType, FixedIntType, BoolType, StrViewType, StringType,
-    ListType, DictType, ArrayType, SpanType, PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, NamedType, CharType, StrType, TypeParamRef,
-    ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, StrVarInfo, BytesVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType, UnknownElementType,
+    ListType, DictType, ArrayType, SpanType, PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NamedType, CharType, StrType, TypeParamRef,
+    ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, UnionType, UnknownElementType,
     EnumType, unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType,
     BytesType, ByteArrayType, BytesViewType,
+    ViewTypeFamily, VIEW_TYPE_FAMILIES, STR_FAMILY, BYTES_FAMILY,
     PendingGenericInstanceType, FnType, contains_fn_type,
     INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, is_protocol_type, is_protocol_union,
     qualify_exception_name,
@@ -140,6 +141,18 @@ def _root_name_of_expr(expr: TpyExpr) -> str | None:
     while isinstance(expr, (TpyFieldAccess, TpySubscript)):
         expr = expr.obj
     return expr.name if isinstance(expr, TpyName) else None
+
+
+# Map raw owned types and pending view types to their ViewTypeFamily.
+_VIEW_TYPE_TO_FAMILY: dict[type, ViewTypeFamily] = {}
+for _f in VIEW_TYPE_FAMILIES:
+    _VIEW_TYPE_TO_FAMILY[type(_f.owned_type)] = _f
+    _VIEW_TYPE_TO_FAMILY[_f.pending_type_class] = _f
+
+
+def _view_family_for_type(var_type: TpyType) -> ViewTypeFamily | None:
+    """Return the ViewTypeFamily for a str/bytes/pending-view type, or None."""
+    return _VIEW_TYPE_TO_FAMILY.get(type(var_type))
 
 
 class StatementAnalyzer:
@@ -1530,6 +1543,54 @@ class StatementAnalyzer:
                 node
             )
 
+    def _infer_new_local_view_type(
+        self, name: str, var_type: TpyType,
+        init_expr: TpyExpr | None, init_type: TpyType | None,
+        line: int | None, family: ViewTypeFamily,
+    ) -> TpyType:
+        """Create a pending view type for a new local of the given family."""
+        var_id = self.ctx.next_view_var_id(family)
+        vars_reg = self.ctx.view_vars(family)
+        var_map = self.ctx.view_var_map(family)
+
+        if isinstance(var_type, PendingViewType):
+            # Alias from another pending view type -- collect ALL leaf sources.
+            # For `x = a or b` both a and b are sources; if either resolves to
+            # owned, x must too (otherwise x would be a view into a
+            # potentially-reallocated buffer).
+            if init_expr is not None:
+                source_ids = [t.var_id for t in collect_pending_source_types(self.ctx, init_expr)
+                              if isinstance(t, family.pending_type_class)]
+            else:
+                source_ids = [var_type.var_id]
+            info = ViewVarInfo(var_id=var_id, variable_name=name,
+                               decl_line=line, source_var_ids=source_ids)
+        else:
+            # Fresh from owned type (StrType or BytesType)
+            if init_expr is not None:
+                is_owned = not self.deduction.is_view_compatible_source(init_expr, init_type)
+            else:
+                is_owned = False
+            # Track source storage for subscript/field views so that
+            # mutations on the source fall back to the owned type.
+            source_storage: str | None = None
+            if not is_owned and init_expr is not None:
+                unwrapped_init = init_expr.expr if isinstance(init_expr, TpyCoerce) else init_expr
+                if isinstance(unwrapped_init, (TpySubscript, TpyFieldAccess)):
+                    root = _borrow_storage_root(unwrapped_init)
+                    if root is not None:
+                        source_storage = self.ctx.borrow_tracker.effective_storage(root)
+            info = ViewVarInfo(var_id=var_id, variable_name=name,
+                               decl_line=line, initialized_from_owned=is_owned,
+                               source_storage=source_storage)
+            if source_storage is not None:
+                self.ctx.view_source_borrows_map(family).setdefault(source_storage, set()).add(var_id)
+
+        vars_reg[var_id] = info
+        var_map[name] = var_id
+        self.ctx.view_pending_resolutions(family).append(var_id)
+        return family.pending_type_class(var_id)
+
     def _infer_new_local_type(
         self, name: str, var_type: TpyType,
         init_expr: TpyExpr | None, init_type: TpyType | None,
@@ -1537,7 +1598,7 @@ class StatementAnalyzer:
     ) -> TpyType:
         """Apply deferred type inference for a new local variable.
 
-        Handles StrType -> PendingStrType, PendingStrType alias, and
+        Handles view-type families (str/bytes -> PendingViewType) and
         PendingListType alias logic.  Skipped at module top-level.
 
         When init_expr is None (for-loop var, tuple unpack), the source is
@@ -1550,90 +1611,10 @@ class StatementAnalyzer:
         if isinstance(var_type, FloatLiteralType):
             return FLOAT
 
-        if isinstance(var_type, StrType):
-            str_var_id = self.ctx.str_var_counter
-            self.ctx.str_var_counter += 1
-            if init_expr is not None:
-                is_owned = not self.deduction.is_view_compatible_source(init_expr, init_type)
-            else:
-                is_owned = False
-            # Track source storage for subscript/field views so that
-            # mutations on the source fall back to std::string.
-            source_storage: str | None = None
-            if not is_owned and init_expr is not None:
-                unwrapped_init = init_expr.expr if isinstance(init_expr, TpyCoerce) else init_expr
-                if isinstance(unwrapped_init, (TpySubscript, TpyFieldAccess)):
-                    root = _borrow_storage_root(unwrapped_init)
-                    if root is not None:
-                        source_storage = self.ctx.borrow_tracker.effective_storage(root)
-            sv_info = StrVarInfo(str_var_id=str_var_id, variable_name=name,
-                                decl_line=line,
-                                initialized_from_owned=is_owned,
-                                source_storage=source_storage)
-            self.ctx.str_vars[str_var_id] = sv_info
-            self.ctx.variable_to_str_var[name] = str_var_id
-            if source_storage is not None:
-                self.ctx.str_source_borrows.setdefault(source_storage, set()).add(str_var_id)
-            self.ctx.pending_str_resolutions.append(str_var_id)
-            return PendingStrType(str_var_id)
-        elif isinstance(var_type, PendingStrType):
-            str_var_id = self.ctx.str_var_counter
-            self.ctx.str_var_counter += 1
-            # Collect ALL leaf PendingStrType sources from the init expression.
-            # For `x = a or b` both a and b are sources; if either resolves to
-            # std::string, x must too (otherwise x would be a string_view into
-            # a potentially-reallocated buffer).
-            if init_expr is not None:
-                source_ids = [t.str_var_id for t in collect_pending_source_types(self.ctx, init_expr)
-                              if isinstance(t, PendingStrType)]
-            else:
-                source_ids = [var_type.str_var_id]
-            sv_info = StrVarInfo(str_var_id=str_var_id, variable_name=name,
-                                decl_line=line,
-                                source_str_var_ids=source_ids)
-            self.ctx.str_vars[str_var_id] = sv_info
-            self.ctx.variable_to_str_var[name] = str_var_id
-            self.ctx.pending_str_resolutions.append(str_var_id)
-            return PendingStrType(str_var_id)
-        elif isinstance(var_type, BytesType):
-            bytes_var_id = self.ctx.bytes_var_counter
-            self.ctx.bytes_var_counter += 1
-            if init_expr is not None:
-                is_owned = not self.deduction.is_view_compatible_source(init_expr, init_type)
-            else:
-                is_owned = False
-            source_storage: str | None = None
-            if not is_owned and init_expr is not None:
-                unwrapped_init = init_expr.expr if isinstance(init_expr, TpyCoerce) else init_expr
-                if isinstance(unwrapped_init, (TpySubscript, TpyFieldAccess)):
-                    root = _borrow_storage_root(unwrapped_init)
-                    if root is not None:
-                        source_storage = self.ctx.borrow_tracker.effective_storage(root)
-            bv_info = BytesVarInfo(bytes_var_id=bytes_var_id, variable_name=name,
-                                   decl_line=line,
-                                   initialized_from_owned=is_owned,
-                                   source_storage=source_storage)
-            self.ctx.bytes_vars[bytes_var_id] = bv_info
-            self.ctx.variable_to_bytes_var[name] = bytes_var_id
-            if source_storage is not None:
-                self.ctx.bytes_source_borrows.setdefault(source_storage, set()).add(bytes_var_id)
-            self.ctx.pending_bytes_resolutions.append(bytes_var_id)
-            return PendingBytesType(bytes_var_id)
-        elif isinstance(var_type, PendingBytesType):
-            bytes_var_id = self.ctx.bytes_var_counter
-            self.ctx.bytes_var_counter += 1
-            if init_expr is not None:
-                source_ids = [t.bytes_var_id for t in collect_pending_source_types(self.ctx, init_expr)
-                              if isinstance(t, PendingBytesType)]
-            else:
-                source_ids = [var_type.bytes_var_id]
-            bv_info = BytesVarInfo(bytes_var_id=bytes_var_id, variable_name=name,
-                                   decl_line=line,
-                                   source_bytes_var_ids=source_ids)
-            self.ctx.bytes_vars[bytes_var_id] = bv_info
-            self.ctx.variable_to_bytes_var[name] = bytes_var_id
-            self.ctx.pending_bytes_resolutions.append(bytes_var_id)
-            return PendingBytesType(bytes_var_id)
+        # View-type families (str/bytes): create pending view type for deferred resolution
+        family = _view_family_for_type(var_type)
+        if family is not None:
+            return self._infer_new_local_view_type(name, var_type, init_expr, init_type, line, family)
         elif (isinstance(var_type, PendingListType)
                 and init_expr is not None and isinstance(init_expr, TpyName)):
             return self.deduction.register_list_alias(
@@ -2029,21 +2010,15 @@ class StatementAnalyzer:
                         else:
                             self.deduction.link_list_literals(inner_existing.literal_id, inner_init.literal_id)
                     var_type = existing_type
-                # PendingStrType reassignment: track view-compatibility, keep pending
-                elif isinstance(inner_existing, PendingStrType):
-                    if is_any_str_type(inner_init):
+                # PendingViewType reassignment: track view-compatibility, keep pending
+                elif isinstance(inner_existing, PendingViewType):
+                    vf = inner_existing.family
+                    is_any_check = is_any_str_type if vf is STR_FAMILY else is_any_bytes_type
+                    if is_any_check(inner_init):
                         if not self.deduction.is_view_compatible_source(stmt.init, inner_init):
-                            self.deduction.mark_str_reassigned_from_owned(stmt.name)
+                            self.deduction.mark_view_reassigned_from_owned(stmt.name, vf)
                         else:
-                            self.deduction.track_str_reassign_source(stmt.name, inner_init)
-                    var_type = existing_type
-                # PendingBytesType reassignment: track view-compatibility, keep pending
-                elif isinstance(inner_existing, PendingBytesType):
-                    if is_any_bytes_type(inner_init):
-                        if not self.deduction.is_view_compatible_source(stmt.init, inner_init):
-                            self.deduction.mark_bytes_reassigned_from_owned(stmt.name)
-                        else:
-                            self.deduction.track_bytes_reassign_source(stmt.name, inner_init)
+                            self.deduction.track_view_reassign_source(stmt.name, inner_init, vf)
                     var_type = existing_type
                 else:
                     var_type = self.deduction.resolve_reassignment_target_type(
@@ -2126,13 +2101,13 @@ class StatementAnalyzer:
         else:
             raise self.ctx.error(f"Variable '{stmt.name}' has no type annotation and no initializer", stmt)
 
-        # Deferred type inference for new locals (PendingStrType, list alias, etc.)
+        # Deferred type inference for new locals (PendingViewType, list alias, etc.)
         if not is_global_declared and existing_type is None:
             var_type = self._infer_new_local_type(
                 stmt.name, var_type, stmt.init, init_type,
                 line=(stmt.loc.line if stmt.loc else None),
             )
-            if isinstance(var_type, (PendingStrType, PendingBytesType)):
+            if isinstance(var_type, PendingViewType):
                 stmt.type = var_type
 
         if is_global_declared:
@@ -2151,7 +2126,7 @@ class StatementAnalyzer:
                 and var_type is not None and not var_type.is_value_type()):
             self.ctx.mark_loop_var_mutated(stmt.init.name)
         # Borrow tracking: reassignment breaks aliases in both directions
-        self.ctx.mark_str_borrowers_mutated(stmt.name)
+        self.ctx.mark_all_view_borrowers_mutated(stmt.name)
         self.ctx.borrow_tracker.remove_borrower(stmt.name)
         self.ctx.borrow_tracker.remove_storage_borrows(stmt.name)
         # Create borrow when the target aliases another variable's storage.
@@ -2280,7 +2255,7 @@ class StatementAnalyzer:
                         and not var_type.is_value_type()
                         and not isinstance(var_type, (NoneType, ReadonlyType,
                                                       PendingListType, PendingDictType, PendingSetType,
-                                                      PendingStrType, PendingBytesType))
+                                                      PendingViewType))
                         and not (isinstance(var_type, OptionalType) and var_type.uses_pointer_repr())
                         and not isinstance(var_type, UnionType)
                         and stmt.name not in self.ctx.hoisted_vars
@@ -2464,7 +2439,7 @@ class StatementAnalyzer:
                     stmt.is_new[i]
                     and not stmt.is_ref[i]
                     and not stmt.is_owned[i]
-                    and not isinstance(target_type, (PendingStrType, PendingBytesType))
+                    and not isinstance(target_type, PendingViewType)
                     and target_type.is_value_type()
                     and target_type.is_expensive_copy()
                     and name not in self.ctx.current_reassigned_vars
@@ -2523,7 +2498,7 @@ class StatementAnalyzer:
                 self.ctx.warning(
                     f"Mutation of '{storage}' while borrowed"
                     " (slice assignment may invalidate references)", stmt)
-            self.ctx.mark_str_borrowers_mutated(storage)
+            self.ctx.mark_all_view_borrowers_mutated(storage)
 
     def _analyze_assign(self, stmt: TpyAssign) -> None:
         """Analyze an assignment."""
@@ -2589,22 +2564,16 @@ class StatementAnalyzer:
             # PendingDictType/PendingSetType reassignment: keep pending
             elif isinstance(inner_target, (PendingDictType, PendingSetType)):
                 pass  # target_type stays pending
-            # PendingStrType reassignment: track view-compatibility, keep pending
-            elif isinstance(inner_target, PendingStrType):
-                if is_any_str_type(inner_value):
+            # PendingViewType reassignment: track view-compatibility, keep pending
+            elif isinstance(inner_target, PendingViewType):
+                vf = inner_target.family
+                is_any_check = is_any_str_type if vf is STR_FAMILY else is_any_bytes_type
+                if is_any_check(inner_value):
                     if not self.deduction.is_view_compatible_source(stmt.value, inner_value):
-                        self.deduction.mark_str_reassigned_from_owned(stmt.target.name)
+                        self.deduction.mark_view_reassigned_from_owned(stmt.target.name, vf)
                     else:
-                        self.deduction.track_str_reassign_source(stmt.target.name, inner_value)
-                # target_type stays PendingStrType
-            # PendingBytesType reassignment: track view-compatibility, keep pending
-            elif isinstance(inner_target, PendingBytesType):
-                if is_any_bytes_type(inner_value):
-                    if not self.deduction.is_view_compatible_source(stmt.value, inner_value):
-                        self.deduction.mark_bytes_reassigned_from_owned(stmt.target.name)
-                    else:
-                        self.deduction.track_bytes_reassign_source(stmt.target.name, inner_value)
-                # target_type stays PendingBytesType
+                        self.deduction.track_view_reassign_source(stmt.target.name, inner_value, vf)
+                # target_type stays pending
             else:
                 target_type = self.deduction.resolve_reassignment_target_type(
                     stmt.target.name, inner_target, inner_value, init_expr=stmt.value
@@ -2619,7 +2588,7 @@ class StatementAnalyzer:
             # Note: borrow creation is skipped for reassigned vars (they use T*
             # pointer-locals in codegen); tracking borrows for them would require
             # pointer-alias analysis beyond the current design scope.
-            self.ctx.mark_str_borrowers_mutated(stmt.target.name)
+            self.ctx.mark_all_view_borrowers_mutated(stmt.target.name)
             self.ctx.borrow_tracker.remove_borrower(stmt.target.name)
             self.ctx.borrow_tracker.remove_storage_borrows(stmt.target.name)
             # Rebinding a non-value pointer-local generates local = &(source) in C++,
@@ -2631,7 +2600,7 @@ class StatementAnalyzer:
                 self.ctx.current_ns.update_variable_type(stmt.target.name, target_type)
             self.ctx.set_expr_type(stmt.target, target_type)
             self.deduction.record_write(stmt.target.name, stmt.value, inner_value)
-            if not isinstance(inner_target, (*PENDING_CONTAINER_TYPES, PendingStrType, PendingBytesType)):
+            if not isinstance(inner_target, (*PENDING_CONTAINER_TYPES, PendingViewType)):
                 resolved = unwrap_readonly(target_type)
                 var_decl = self.ctx.var_decl_by_name.get(stmt.target.name)
                 if var_decl:
@@ -2687,7 +2656,7 @@ class StatementAnalyzer:
         if isinstance(stmt.target, TpySubscript):
             storage = self._resolve_obj_storage(stmt.target.obj)
             if storage is not None:
-                self.ctx.mark_str_borrowers_mutated(storage)
+                self.ctx.mark_all_view_borrowers_mutated(storage)
         elif isinstance(stmt.target, TpyFieldAccess):
             storage = self._resolve_obj_storage(stmt.target.obj)
             # Also check the field-path key itself (e.g. "self.items" for self.items = [...])
@@ -2705,9 +2674,9 @@ class StatementAnalyzer:
                        " (field assignment may invalidate references)")
                 self.ctx.warning(msg, stmt)
             if storage is not None:
-                self.ctx.mark_str_borrowers_mutated(storage)
+                self.ctx.mark_all_view_borrowers_mutated(storage)
             if field_storage is not None and field_storage != storage:
-                self.ctx.mark_str_borrowers_mutated(field_storage)
+                self.ctx.mark_all_view_borrowers_mutated(field_storage)
 
         # PendingDictType subscript assignment: d[k] = v -- infer key/value types
         if isinstance(stmt.target, TpySubscript):
@@ -2809,7 +2778,7 @@ class StatementAnalyzer:
                         msg = (f"Mutation of '{storage}' while borrowed"
                                " ('del' may invalidate references)")
                     self.ctx.warning(msg, stmt)
-                self.ctx.mark_str_borrowers_mutated(storage)
+                self.ctx.mark_all_view_borrowers_mutated(storage)
             self._enforce_readonly_assignment_target(subscript)
             obj_type = self.ctx.get_expr_type(subscript.obj)
             actual = unwrap_readonly(obj_type)
@@ -2917,7 +2886,7 @@ class StatementAnalyzer:
         if isinstance(stmt.target, TpySubscript):
             storage = self._resolve_obj_storage(stmt.target.obj)
             if storage is not None:
-                self.ctx.mark_str_borrowers_mutated(storage)
+                self.ctx.mark_all_view_borrowers_mutated(storage)
         elif isinstance(stmt.target, TpyFieldAccess):
             storage = self._resolve_obj_storage(stmt.target.obj)
             field_storage = _storage_key(stmt.target)
@@ -2935,9 +2904,9 @@ class StatementAnalyzer:
                     stmt,
                 )
             if storage is not None:
-                self.ctx.mark_str_borrowers_mutated(storage)
+                self.ctx.mark_all_view_borrowers_mutated(storage)
             if field_storage is not None and field_storage != storage:
-                self.ctx.mark_str_borrowers_mutated(field_storage)
+                self.ctx.mark_all_view_borrowers_mutated(field_storage)
         # Borrow conflict: aug-assign on a name target that has element borrows.
         # Any structural aug-assign (list +=, set |=, user-defined __iadd__ that
         # reallocates) is a mutation -- check the borrow state, not the container type.
@@ -2956,7 +2925,7 @@ class StatementAnalyzer:
                         f" ('{stmt.op}=' may invalidate references)",
                         stmt,
                     )
-            self.ctx.mark_str_borrowers_mutated(storage)
+            self.ctx.mark_all_view_borrowers_mutated(storage)
         if (
             isinstance(stmt.target, TpyName)
             and isinstance(target_type, BigIntType)
@@ -2975,12 +2944,9 @@ class StatementAnalyzer:
         is_numeric_target = isinstance(target_type, (Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type))
         is_str_target = isinstance(target_type, (StrType, StringType, PendingStrType))
         is_bytes_target = isinstance(target_type, (BytesType, ByteArrayType, PendingBytesType))
-        # PendingStrType += promotes to owned str
-        if isinstance(target_type, PendingStrType) and isinstance(stmt.target, TpyName):
-            self.deduction.mark_str_augassign(stmt.target.name)
-        # PendingBytesType += promotes to owned bytes
-        if isinstance(target_type, PendingBytesType) and isinstance(stmt.target, TpyName):
-            self.deduction.mark_bytes_augassign(stmt.target.name)
+        # PendingViewType += promotes to owned
+        if isinstance(target_type, PendingViewType) and isinstance(stmt.target, TpyName):
+            self.deduction.mark_view_augassign(stmt.target.name, target_type.family)
         if not is_numeric_target and not is_str_target and not is_bytes_target:
             # StrView/BytesView += would dangle (result is a temporary assigned to a view)
             if isinstance(target_type, StrViewType):

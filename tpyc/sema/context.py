@@ -14,10 +14,11 @@ if TYPE_CHECKING:
     from ..macro_loader import MacroRegistry
 
 from ..typesys import (
-    TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, StrVarInfo, BytesVarInfo, TypeParamKind, IntLiteralType,
+    TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, TypeParamKind, IntLiteralType,
     FixedIntType, INT32, BIGINT, NamedType, ReadonlyType, OwnType, OptionalType,
     PendingListType, PendingDictType, PendingSetType,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
+    ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
     unwrap_readonly,
 )
 from ..namespace import Namespace
@@ -456,9 +457,9 @@ class SemanticContext:
     set_literals: dict[int, SetLiteralInfo] = field(default_factory=dict)
     pending_generic_counter: int = 0
     str_var_counter: int = 0
-    str_vars: dict[int, StrVarInfo] = field(default_factory=dict)
+    str_vars: dict[int, ViewVarInfo] = field(default_factory=dict)
     bytes_var_counter: int = 0
-    bytes_vars: dict[int, BytesVarInfo] = field(default_factory=dict)
+    bytes_vars: dict[int, ViewVarInfo] = field(default_factory=dict)
 
     # --- Test annotation facts (persist across functions) ---
     declared_var_types: dict[tuple[int, str], TpyType] = field(default_factory=dict)
@@ -757,28 +758,74 @@ class SemanticContext:
         if name in self.current_param_names:
             self.current_consumed_own_params.add(name)
 
-    def mark_str_borrowers_mutated(self, storage: str) -> None:
-        """Mark PendingStrType borrowers of storage as source-mutated.
+    # ------------------------------------------------------------------
+    # View-type family generic accessors
+    # ------------------------------------------------------------------
 
-        Called at mutation sites so that string view resolution falls
-        back to std::string when the view's source storage is mutated.
-        Uses str_source_borrows (separate from the main borrow system,
-        since PendingStrType is a value type and not tracked there).
+    def view_var_map(self, family: ViewTypeFamily) -> dict[str, int]:
+        """Variable-name -> var_id mapping for the given family."""
+        if family.pending_type_class is PendingStrType:
+            return self.variable_to_str_var
+        return self.variable_to_bytes_var
 
+    def view_source_borrows_map(self, family: ViewTypeFamily) -> dict[str, set[int]]:
+        """Source-storage -> set of borrowing var_ids for the given family."""
+        if family.pending_type_class is PendingStrType:
+            return self.str_source_borrows
+        return self.bytes_source_borrows
+
+    def view_pending_resolutions(self, family: ViewTypeFamily) -> list[int]:
+        """Pending resolution list for the given family."""
+        if family.pending_type_class is PendingStrType:
+            return self.pending_str_resolutions
+        return self.pending_bytes_resolutions
+
+    def view_vars(self, family: ViewTypeFamily) -> dict[int, ViewVarInfo]:
+        """Var-id -> ViewVarInfo registry for the given family."""
+        if family.pending_type_class is PendingStrType:
+            return self.str_vars
+        return self.bytes_vars
+
+    def next_view_var_id(self, family: ViewTypeFamily) -> int:
+        """Allocate and return the next var_id for the given family."""
+        if family.pending_type_class is PendingStrType:
+            vid = self.str_var_counter
+            self.str_var_counter += 1
+            return vid
+        vid = self.bytes_var_counter
+        self.bytes_var_counter += 1
+        return vid
+
+    # ------------------------------------------------------------------
+    # View-type mutation tracking
+    # ------------------------------------------------------------------
+
+    def mark_view_borrowers_mutated(self, storage: str, family: ViewTypeFamily) -> None:
+        """Mark pending view-type borrowers of storage as source-mutated.
+
+        Called at mutation sites so that view resolution falls back to
+        the owned type when the view's source storage is mutated.
         Also invalidates field-path borrows: mutating ``p`` invalidates
-        string views borrowed from ``p.name``, ``p.field``, etc.
+        views borrowed from ``p.name``, ``p.field``, etc.
         """
+        source_borrows = self.view_source_borrows_map(family)
+        vars_registry = self.view_vars(family)
         keys = [storage]
         prefix = storage + "."
-        keys.extend(k for k in self.str_source_borrows if k.startswith(prefix))
+        keys.extend(k for k in source_borrows if k.startswith(prefix))
         for key in keys:
-            str_var_ids = self.str_source_borrows.get(key)
-            if not str_var_ids:
+            var_ids = source_borrows.get(key)
+            if not var_ids:
                 continue
-            for str_var_id in str_var_ids:
-                info = self.str_vars.get(str_var_id)
+            for var_id in var_ids:
+                info = vars_registry.get(var_id)
                 if info is not None:
                     info.source_mutated = True
+
+    def mark_all_view_borrowers_mutated(self, storage: str) -> None:
+        """Mark borrowers across all view-type families as source-mutated."""
+        for family in VIEW_TYPE_FAMILIES:
+            self.mark_view_borrowers_mutated(storage, family)
 
     # ------------------------------------------------------------------
     # Unified container literal lookup

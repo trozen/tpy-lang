@@ -13,7 +13,7 @@ from ..typesys import (
     TpyType, Int32Type, BigIntType, IntLiteralType, FloatType, Float32Type, FloatLiteralType, BoolType, StrType, CharType,
     NamedType, PtrType, OwnType, ListType, DictType, SetType, ArrayType, PendingListType, ListRepeatType, GenExprType, TupleType, SpanType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, OptionalType, UnionType, VoidType,
-    ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType,
+    ReadonlyType, unwrap_readonly, EnumType, IntEnumType, is_any_str_type, PendingStrType, PendingViewType,
     is_any_bytes_type, BytesType, ByteArrayType, BytesViewType, PendingBytesType,
     FixedIntType, StringType, StrViewType, make_union,
     ResolvedBinop, FunctionInfo, ParamInfo, UnknownElementType, UNKNOWN_ELEMENT,
@@ -575,24 +575,15 @@ class ExpressionAnalyzer:
                 right = left
             else:
                 return BOOL
-        # Normalize PendingStrType to StrType for comparison; preserve the pending
-        # type when both sides are pending so string_view deduction can chain the
-        # result variable back to the operands' resolution.
-        # Return left's PendingStrType (arbitrary choice) -- the caller uses
-        # collect_pending_source_types to register BOTH branches in source_str_var_ids.
-        if isinstance(left, PendingStrType) and isinstance(right, PendingStrType):
+        # Normalize PendingViewType to its owned type for comparison; preserve
+        # the pending type when both sides are pending so view deduction can
+        # chain the result variable back to the operands' resolution.
+        if isinstance(left, PendingViewType) and isinstance(right, PendingViewType) and left.family is right.family:
             return left
-        if isinstance(left, PendingStrType):
-            left = STR
-        if isinstance(right, PendingStrType):
-            right = STR
-        # Same normalization for PendingBytesType
-        if isinstance(left, PendingBytesType) and isinstance(right, PendingBytesType):
-            return left
-        if isinstance(left, PendingBytesType):
-            left = BYTES
-        if isinstance(right, PendingBytesType):
-            right = BYTES
+        if isinstance(left, PendingViewType):
+            left = left.family.owned_type
+        if isinstance(right, PendingViewType):
+            right = right.family.owned_type
         # Normalize pending container types to concrete types for equality comparison.
         # Two PendingListType literals with the same element type (but different IDs
         # or different IntLiteralType values like 1 vs 3) are compatible.
@@ -1520,7 +1511,7 @@ class ExpressionAnalyzer:
             return
         if isinstance(key_type, (EnumType, IntEnumType)):
             return
-        if isinstance(key_type, (PendingStrType, PendingBytesType)):
+        if isinstance(key_type, PendingViewType):
             return
         # User records: allow frozen dataclasses (have synthesized __hash__ + __eq__)
         if isinstance(key_type, NamedType) and key_type.is_user_record:
@@ -1551,10 +1542,8 @@ class ExpressionAnalyzer:
             resolved = self.ctx.default_int_type
         elif isinstance(resolved, FloatLiteralType):
             resolved = FLOAT
-        elif isinstance(resolved, PendingStrType):
-            resolved = STR
-        elif isinstance(resolved, PendingBytesType):
-            resolved = BYTES
+        elif isinstance(resolved, PendingViewType):
+            resolved = resolved.family.owned_type
 
         # PEP 572: walrus in comprehension leaks to enclosing function scope
         target_scope = self.ctx.current_scope
@@ -1669,26 +1658,15 @@ class ExpressionAnalyzer:
                 return t
             e = FLOAT
 
-        # Normalize PendingStrType to StrType for comparison; preserve the pending
-        # type when both sides are pending so string_view deduction can chain the
-        # result variable back to the operands' resolution.
-        if isinstance(t, PendingStrType) and isinstance(e, PendingStrType):
-            # Return then-branch's PendingStrType so _infer_new_local_type takes
-            # the elif-PendingStrType path, which uses collect_pending_source_types
-            # to register BOTH branches in source_str_var_ids.  Arbitrary choice
-            # of t vs e -- the actual multi-source tracking happens in the caller.
+        # Normalize PendingViewType to its owned type for comparison; preserve
+        # the pending type when both sides are pending so view deduction can
+        # chain the result variable back to the operands' resolution.
+        if isinstance(t, PendingViewType) and isinstance(e, PendingViewType) and t.family is e.family:
             return t
-        if isinstance(t, PendingStrType):
-            t = STR
-        if isinstance(e, PendingStrType):
-            e = STR
-        # Same for PendingBytesType
-        if isinstance(t, PendingBytesType) and isinstance(e, PendingBytesType):
-            return t
-        if isinstance(t, PendingBytesType):
-            t = BYTES
-        if isinstance(e, PendingBytesType):
-            e = BYTES
+        if isinstance(t, PendingViewType):
+            t = t.family.owned_type
+        if isinstance(e, PendingViewType):
+            e = e.family.owned_type
         # Normalize pending container types to concrete types for equality comparison,
         # resolving IntLiteralType elements so [1,2] and [3,4] both normalize to list[int].
         t = self._normalize_pending_container(t)
@@ -1827,15 +1805,11 @@ class ExpressionAnalyzer:
             key_type = expected_key if isinstance(expected_key, (FloatType, Float32Type)) else FLOAT
         if isinstance(value_type, FloatLiteralType):
             value_type = expected_value if isinstance(expected_value, (FloatType, Float32Type)) else FLOAT
-        # Container elements must be owned -- DictType must record StrType, not PendingStrType.
-        if isinstance(key_type, PendingStrType):
-            key_type = STR
-        if isinstance(value_type, PendingStrType):
-            value_type = STR
-        if isinstance(key_type, PendingBytesType):
-            key_type = BYTES
-        if isinstance(value_type, PendingBytesType):
-            value_type = BYTES
+        # Container elements must be owned -- views can't be stored in a dict.
+        if isinstance(key_type, PendingViewType):
+            key_type = key_type.family.owned_type
+        if isinstance(value_type, PendingViewType):
+            value_type = value_type.family.owned_type
 
         self._validate_dict_key_type(key_type, expr)
         return DictType(key_type, value_type)
@@ -1897,11 +1871,9 @@ class ExpressionAnalyzer:
             elem_type = expected_elem if expected_elem else self.ctx.default_int_for_literal(elem_type)
         if isinstance(elem_type, FloatLiteralType):
             elem_type = expected_elem if isinstance(expected_elem, (FloatType, Float32Type)) else FLOAT
-        # Container elements must be owned -- SetType must record StrType, not PendingStrType.
-        if isinstance(elem_type, PendingStrType):
-            elem_type = STR
-        if isinstance(elem_type, PendingBytesType):
-            elem_type = BYTES
+        # Container elements must be owned -- views can't be stored in a set.
+        if isinstance(elem_type, PendingViewType):
+            elem_type = elem_type.family.owned_type
 
         self._validate_dict_key_type(elem_type, expr)
         return SetType(elem_type)
