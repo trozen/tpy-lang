@@ -2409,7 +2409,7 @@ for (;;) {
 | 5b. `ReadOnlySpanLike[T]` protocol | **Working** | Readonly protocol for types with `__span__()`, for-loop and ReadOnlySpan coercion |
 | 6. Generator expressions | **Working** | `(expr for x in iterable)` → lazy `make_generator` wrapper, satisfies `Iterable[T]` |
 | 7. Generator functions | **Working** | `yield` in functions and methods -> state-machine struct or lambda wrapper implementing `Iterator[T]`. Simple generators use `make_generator` + lambda; complex generators use struct with switch/goto dispatch. Generator methods supported (`__iter__`, custom methods). |
-| 8. Iterator combinators | Open | `enumerate()`, `zip()`, `filter()`, `map()`, `reversed()` |
+| 8. Iterator combinators | Partial | `enumerate()`, `zip()`, `reversed()` working; `filter()`, `map()` open |
 
 See [docs/ITERATOR_DESIGN.md](ITERATOR_DESIGN.md) for the full iterator design document.
 
@@ -3896,8 +3896,8 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `iter(x)` → calls `x.__iter__()`, returns `Iterator[T]`
 - **Working**: `make_default[T]()` / `make_default()` → default-constructs `T` (maps to `T{}` in C++). Requires `T: Default`. Type can be explicit or inferred from context. Portable alternative to `T()`.
 - **Working**: `open(path)`, `open(path, mode)` → returns `TextIO` file handle. Supports text modes `"r"` (default), `"w"`, `"a"`. Methods: `read()`, `write()`, `readline()`, `readlines()`, `close()`. Context manager (`with open(...) as f:`). Panics on file-not-found or unsupported mode (no exceptions yet). `readline()`/`readlines()` preserve trailing newlines (Python compat). Binary mode not yet supported.
-- **Open**: `enumerate()` → returns `Iterator` (see iterator roadmap)
-- **Open**: `zip()` → returns `Iterator` (see iterator roadmap)
+- **Working**: `enumerate(iterable)`, `enumerate(iterable, start)` → `Iterator[tuple[Int32, T]]`. Supports lvalue and rvalue iterables (owning iterator prevents dangling).
+- **Working**: `zip(iter1, iter2, ...)` → `Iterator[tuple[T1, T2, ...]]`. Overloads for 2-5 iterables. Stops at shortest. Supports lvalue and rvalue iterables.
 
 #### Type Conversion Functions
 

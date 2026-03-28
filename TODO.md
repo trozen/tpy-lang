@@ -15,6 +15,14 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - ContextManager[T] protocol
 - Deduplicate PendingStrType / PendingBytesType infrastructure: `_resolve_pending_str_types` and `_resolve_pending_bytes_types` are identical algorithms with different type names. Same for `mark_*_augassign`, `mark_*_param_context`, `mark_*_reassigned_from_owned`, `track_*_reassign_source`, and the `_infer_new_local_type` branches in statements.py. Refactor into a generic `ViewTypeFamily` parameterized by owned/view/pending types, with one shared implementation.
 
+## Iterator reference semantics
+- enumerate/zip/generators copy non-value elements instead of preserving references. `for i, p in enumerate(points): p.x = 99` modifies a copy, not the original. CPython gives a reference.
+- Root cause: `__next__()` returns `std::expected<T, StopIteration>` by value. The element is copied into the expected, and any reference in the yielded tuple points into a local that dies on return.
+- Fix for C++ builtins (enumerate/zip): store current inner `__next__()` result as a member field in the iterator class. Return `std::tuple<..., val_or_ref_t<T>>` from `__next__()` -- for value types this is `T` (no change), for non-value types this is `T&` pointing into the stored member. `std::expected<std::tuple<int, T&>, StopIteration>` is valid C++23 (verified).
+- Fix for generators: generator codegen (`gen_generators.py`) uses `type_to_cpp()` for the yield type, but `to_cpp_return()` already maps `tuple[Int32, T]` to `std::tuple<int32_t, T&>` for non-value T. Move the inner `__next__()` result from a lambda local to the generator state so the reference stays valid across the yield boundary. The tuple literal already captures by reference (`elem_capture` system works) -- the issue is only the return type forcing a copy.
+- `val_or_ref_t<T>` already exists in `runtime/cpp/include/tpy/type_traits.hpp` for this purpose.
+- `list(zip(...))` correctly copies into the list (list stores by value). The fix only affects iteration -- returned tuples hold references, stored tuples hold values.
+
 ## Bugs
 - Generic generators with multiple yield points (struct-based codegen path) are not yet supported -- the out-of-line `__next__()` in .cpp won't link for template structs. Currently guarded with a sema error. Fix: emit struct + `__next__()` body into the header when the function has type params.
 - Non-native functions in builtin modules can't be called from user code: codegen emits unqualified names (e.g. bare `enumerate(...)` instead of `tpystd::builtins::enumerate(...)`). The `imported_names` path considers any registered function as "shadowing" the import. Blocks defining pure TPy generator builtins. Workaround: use `@cpp_template`/`@native` with C++ implementation instead.

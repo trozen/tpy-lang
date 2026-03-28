@@ -550,6 +550,29 @@ def enumerate[T](iterable: Iterable[T], start: Int32) -> Iterator[tuple[Int32, T
 def reversed[T](seq: Sequence[T]) -> Iterator[T]: ...
 
 
+# -- zip --
+
+@overload
+@readonly
+@cpp_template("::tpy::builtin_zip<{T1}, {T2}>({0}, {1})")
+def zip[T1, T2](iter1: Iterable[T1], iter2: Iterable[T2]) -> Iterator[tuple[T1, T2]]: ...
+
+@overload
+@readonly
+@cpp_template("::tpy::builtin_zip<{T1}, {T2}, {T3}>({0}, {1}, {2})")
+def zip[T1, T2, T3](iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3]) -> Iterator[tuple[T1, T2, T3]]: ...
+
+@overload
+@readonly
+@cpp_template("::tpy::builtin_zip<{T1}, {T2}, {T3}, {T4}>({0}, {1}, {2}, {3})")
+def zip[T1, T2, T3, T4](iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], iter4: Iterable[T4]) -> Iterator[tuple[T1, T2, T3, T4]]: ...
+
+@overload
+@readonly
+@cpp_template("::tpy::builtin_zip<{T1}, {T2}, {T3}, {T4}, {T5}>({0}, {1}, {2}, {3}, {4})")
+def zip[T1, T2, T3, T4, T5](iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], iter4: Iterable[T4], iter5: Iterable[T5]) -> Iterator[tuple[T1, T2, T3, T4, T5]]: ...
+
+
 # -- Special-handling builtins (custom sema/codegen, signatures are illustrative) --
 
 @builtin_function("builtins.print")

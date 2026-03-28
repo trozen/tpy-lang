@@ -10,7 +10,7 @@ from typing import Callable, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NamedType, OwnType, OptionalType, ListType, PendingListType, PendingViewType, CopyIterType, OwnIterType,
-    IntLiteralType, FloatType, Float32Type, BoolType,
+    IntLiteralType, FloatType, Float32Type, BoolType, resolve_int_literals,
     StrType, CharType, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, SpanType, ParamInfo, FixedIntType, BigIntType, ReadonlyType,
     UNKNOWN_ELEMENT, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
@@ -346,6 +346,10 @@ class CallAnalyzer:
         )
         expr.kwargs = {}
 
+    def _resolve_inferred_type_arg(self, t: TpyType) -> TpyType:
+        """Resolve literal types in inferred type args before codegen."""
+        return resolve_int_literals(t, self.ctx.default_int_type)
+
     def _reject_kwargs_for_builtin(self, expr: TpyCall, name: str) -> None:
         """Reject kwargs on overloaded builtin functions."""
         if expr.kwargs:
@@ -524,8 +528,6 @@ class CallAnalyzer:
                             qualified_name="builtins.print",
                         )
                         return VOID
-                    if func_name == "zip":
-                        raise SemanticError(f"{func_name}() is not yet implemented", expr.loc)
                     # Check for user module function (registered via _register_user_module_import)
                     if func_infos := self.ctx.registry.get_function(expr.func):
                         # Builtin-supplemented functions route through builtin path
@@ -1758,7 +1760,9 @@ class CallAnalyzer:
             generic_info = generic_originals.get(id(matched))
             if generic_info is not None:
                 overload, type_subst = generic_info
-                expr.inferred_type_args = tuple(type_subst[p] for p in overload.type_params)
+                expr.inferred_type_args = tuple(
+                    self._resolve_inferred_type_arg(type_subst[p])
+                    for p in overload.type_params)
                 if isinstance(overload.return_type, UnionType):
                     orig_count = len(overload.return_type.members)
                     resolved_ret = matched.return_type

@@ -209,7 +209,9 @@ def loop_var_binding(
             return f"const auto& {cpp_var} = {deref_expr};"
         return f"auto&& {cpp_var} = {deref_expr};"
     if const_loop_var and elem_type.is_value_type():
-        return f"const {elem_type.to_cpp()}& {cpp_var} = {deref_expr};"
+        if elem_type.is_expensive_copy():
+            return f"const {elem_type.to_cpp()}& {cpp_var} = {deref_expr};"
+        return f"{elem_type.to_cpp()} {cpp_var} = {deref_expr};"
     if const_loop_var:
         return f"const auto& {cpp_var} = {deref_expr};"
     if elem_type.is_value_type():

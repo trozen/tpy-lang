@@ -1,0 +1,12 @@
+alice 30
+bob 25
+charlie 35
+1 x
+2 y
+1 a True
+2 b False
+3 c True
+1 a True 0.5
+2 b False 1.5
+1 a True 0.5 p
+2 b False 1.5 q
