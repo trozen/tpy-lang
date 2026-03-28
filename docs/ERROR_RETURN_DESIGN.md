@@ -15,9 +15,6 @@ See [EXCEPTION_DESIGN.md](EXCEPTION_DESIGN.md) for the full two-tier exception m
 | Feature | Notes |
 |---------|-------|
 | Multiple exception types | `@error_return(E1, E2)` -- return `std::expected<T, std::variant<E1, E2>>` |
-| Exception types with data | `class ParseError(Exception, ControlFlow): line: Int32` -- non-empty error types |
-| `except E as e` binding | Bind exception value in catch block (needs data fields) |
-| `except ControlFlow` catch-all | Catch any return exception regardless of concrete type (type-independent `has_value()` check) |
 | `next()` builtin | `next(it)` -- with forwarding, can be `@error_return(StopIteration)` itself |
 | General exception model | C++ exceptions for non-control-flow errors -- `try`/`except`/`finally`/`raise` with stack unwinding |
 
@@ -108,8 +105,8 @@ struct NotFound : Exception {};
 
 `StopIteration` is a built-in type in the runtime (`::tpy::StopIteration`).
 
-Future: exception types with fields (`class ValueError(Exception): message: str`).
-Not in Phase 1.
+Exception types can have data fields. `raise E(args)` passes constructor arguments,
+and `except E as e` binds the error value for field access. See `EXCEPTION_DESIGN.md` E6.
 
 ### `@error_return(E)` Decorator
 
@@ -248,7 +245,7 @@ else:
 Not supported in Phase 1:
 - `try/except/finally`
 - Multiple `except` clauses
-- `except E as e` (no binding -- E has no data anyway)
+- `except E as e` with throw-style exceptions (E7)
 - `try` without `except`
 - Nested `try`
 - `try` around multiple statements that each have different error_return types
@@ -469,7 +466,7 @@ never sees it -- no stub needed for that case.
 | `except WrongType` for the call | `'__next__' returns 'StopIteration', not 'ValueError'` |
 | `try/finally` (not yet supported) | `'finally' is not yet supported` |
 | Multiple except clauses | `only a single 'except' clause is supported` |
-| `except E as e` | `'as' binding is not yet supported (StopIteration has no data)` |
+| `except ControlFlow as e` | `'except ControlFlow as' binding is not supported` |
 
 ---
 

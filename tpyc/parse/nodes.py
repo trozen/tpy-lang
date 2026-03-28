@@ -658,8 +658,9 @@ class TpyNonlocal(TpyStmt):
 
 @dataclass
 class TpyRaise(TpyStmt):
-    """raise E -- returns error from @error_return function."""
+    """raise E or raise E(args) -- returns error from @error_return function."""
     exception_type: str  # e.g. "NotFound"
+    args: list[TpyExpr] = field(default_factory=list)  # constructor arguments
 
 
 @dataclass
@@ -669,6 +670,7 @@ class TpyTryExcept(TpyStmt):
     exception_type: str           # e.g. "StopIteration"
     except_body: list[TpyStmt]
     else_body: list[TpyStmt]     # may be empty
+    except_binding: str | None = None  # "as e" variable name
 
     def sub_bodies(self) -> list[list[TpyStmt]]:
         return [self.try_body, self.except_body, self.else_body]

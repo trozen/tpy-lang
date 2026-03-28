@@ -15,7 +15,7 @@ from ..typesys import (
     INT32, BIGINT, FLOAT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType,
     local_var_is_movable, resolve_int_literals,
-    error_return_to_cpp,
+    error_return_to_cpp, qualify_exception_name,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn, TpyYield,
@@ -288,9 +288,10 @@ class StatementGenerator:
                 call_cpp = self.expressions.gen_expr(stmt.expr)
                 if self.ctx.try_except_label:
                     label = self.ctx.try_except_label
+                    goto_line = self._gen_error_goto(f"{indent}{INDENT}", tmp, label)
                     return (f"{indent}{{\n"
                             f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
-                            f"{indent}{INDENT}if (!{tmp}.has_value()) goto {label};\n"
+                            f"{goto_line}"
                             f"{indent}}}\n")
                 if self.ctx.current_error_return:
                     return (f"{indent}{{\n"
@@ -412,6 +413,9 @@ class StatementGenerator:
             return ""  # No C++ output -- capture mode handles it
         elif isinstance(stmt, TpyRaise):
             assert self.ctx.current_error_return is not None
+            if stmt.args:
+                args = ", ".join(self.expressions.gen_expr(a) for a in stmt.args)
+                return f"{indent}return ::tpy::make_unexpected({self.ctx.current_error_return}({args}));\n"
             return f"{indent}return ::tpy::make_unexpected({self.ctx.current_error_return}{{}});\n"
         elif isinstance(stmt, TpyImport):
             # Only emit __tpy_init() for user modules that have runtime init.
@@ -1636,7 +1640,7 @@ class StatementGenerator:
             self.ctx.temps.flush(out, indent)
             out.write(f"{indent}{{\n")
             out.write(f"{indent}{INDENT}auto {try_tmp} = {call_cpp};\n")
-            out.write(f"{indent}{INDENT}if (!{try_tmp}.has_value()) goto {label};\n")
+            out.write(self._gen_error_goto(f"{indent}{INDENT}", try_tmp, label))
             out.write(f"{indent}}}\n")
             # Use unwrapped value for the rest of tuple unpacking
             unwrapped_tmp = f"(*{try_tmp})"
@@ -1857,6 +1861,9 @@ class StatementGenerator:
             var = *__tmp;
 
         The except body is emitted after the try body with the label.
+
+        When `except E as e` is used, an std::optional<E> captures the error
+        value before each goto (zero happy-path cost), and e aliases into it.
         """
         self.ctx.try_except_counter += 1
         n = self.ctx.try_except_counter
@@ -1866,6 +1873,22 @@ class StatementGenerator:
         out.write(f"{indent}{{\n")
         self.ctx.indent_level += 1
         inner = self.ctx.indent()
+
+        # Emit std::optional<E> for except binding
+        err_opt_var: str | None = None
+        prev_err_opt = self.ctx.try_except_err_opt
+        if stmt.except_binding:
+            err_opt_var = f"__err_opt_{n}"
+            # Use qualified name for cross-module exception types
+            if stmt.exception_type in self.ctx.user_imported_records:
+                src_mod, orig_name = self.ctx.user_imported_records[stmt.exception_type]
+                cpp_err_type = qualified_cpp_name(src_mod, orig_name)
+            else:
+                cpp_err_type = error_return_to_cpp(
+                    qualify_exception_name(stmt.exception_type,
+                                           self.ctx.analyzer.registry))
+            out.write(f"{inner}std::optional<{cpp_err_type}> {err_opt_var};\n")
+            self.ctx.try_except_err_opt = err_opt_var
 
         # Snapshot codegen scope so try body declarations don't bleed into except
         br_snap = self.ctx.snapshot_local_scope()
@@ -1879,6 +1902,7 @@ class StatementGenerator:
             self.gen_stmt(out, s)
 
         self.ctx.try_except_label = prev_label
+        self.ctx.try_except_err_opt = prev_err_opt
 
         # Emit else body (runs only if no error)
         if stmt.else_body:
@@ -1893,13 +1917,32 @@ class StatementGenerator:
         # Restore scope for except body (same scope as before try)
         self.ctx.restore_local_scope(br_snap)
 
-        # Emit except body
-        for s in stmt.except_body:
-            self.gen_stmt(out, s)
+        # Emit except body (wrapped in block when binding to avoid goto-crosses-init)
+        if stmt.except_binding and err_opt_var:
+            binding = escape_cpp_name(stmt.except_binding)
+            out.write(f"{inner}{{\n")
+            self.ctx.indent_level += 1
+            inner2 = self.ctx.indent()
+            out.write(f"{inner2}auto& {binding} = *{err_opt_var};\n")
+            for s in stmt.except_body:
+                self.gen_stmt(out, s)
+            self.ctx.indent_level -= 1
+            out.write(f"{inner}}}\n")
+        else:
+            for s in stmt.except_body:
+                self.gen_stmt(out, s)
 
         out.write(f"{inner}{after_label}:;\n")
         self.ctx.indent_level -= 1
         out.write(f"{indent}}}\n")
+
+    def _gen_error_goto(self, indent: str, tmp: str, label: str) -> str:
+        """Generate the if-not-has_value goto, with optional error capture for 'as e'."""
+        err_opt = self.ctx.try_except_err_opt
+        if err_opt:
+            return (f"{indent}if (!{tmp}.has_value()) "
+                    f"{{ {err_opt} = std::move({tmp}.error()); goto {label}; }}\n")
+        return f"{indent}if (!{tmp}.has_value()) goto {label};\n"
 
     def _gen_error_return_var_decl(self, stmt: TpyVarDecl, indent: str) -> str:
         """Generate a variable declaration where the init is an @error_return call.
@@ -1933,7 +1976,7 @@ class StatementGenerator:
 
         out += f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
-        out += f"{indent}{INDENT}if (!{tmp}.has_value()) goto {label};\n"
+        out += self._gen_error_goto(f"{indent}{INDENT}", tmp, label)
         out += f"{indent}{INDENT}{cpp_name} = *{tmp};\n"
         out += f"{indent}}}\n"
 
@@ -1958,7 +2001,7 @@ class StatementGenerator:
 
         out = f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
-        out += f"{indent}{INDENT}if (!{tmp}.has_value()) goto {label};\n"
+        out += self._gen_error_goto(f"{indent}{INDENT}", tmp, label)
         out += f"{indent}{INDENT}{target_cpp} = *{tmp};\n"
         out += f"{indent}}}\n"
 

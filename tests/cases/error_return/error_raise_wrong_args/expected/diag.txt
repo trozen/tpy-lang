@@ -1,0 +1,1 @@
+main.py:14: error: 'raise MyError()' expects 2 arguments, got 1

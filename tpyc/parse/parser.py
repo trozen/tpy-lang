@@ -2571,12 +2571,13 @@ class Parser:
         if isinstance(exc, ast.Name):
             name = exc.id
             return TpyRaise(exception_type=name, loc=loc)
-        # raise Name()
+        # raise Name() or raise Name(args...)
         if isinstance(exc, ast.Call) and isinstance(exc.func, ast.Name):
             name = exc.func.id
-            if exc.args or exc.keywords:
-                raise ParseError(f"'raise {name}' does not accept arguments", node)
-            return TpyRaise(exception_type=name, loc=loc)
+            if exc.keywords:
+                raise ParseError(f"'raise {name}' does not accept keyword arguments", node)
+            args = [self._parse_expr(a) for a in exc.args]
+            return TpyRaise(exception_type=name, args=args, loc=loc)
         raise ParseError("'raise' requires a simple name (e.g. 'raise MyError')", node)
 
     def _parse_try(self, node: ast.Try, loc: SourceLocation | None) -> TpyStmt:
@@ -2586,8 +2587,6 @@ class Parser:
         if len(node.handlers) != 1:
             raise ParseError("only a single 'except' clause is supported", node)
         handler = node.handlers[0]
-        if handler.name is not None:
-            raise ParseError("'except ... as' binding is not yet supported", node)
         if handler.type is None:
             raise ParseError("bare 'except:' is not supported; specify an error type", node)
         if not isinstance(handler.type, ast.Name):
@@ -2601,6 +2600,7 @@ class Parser:
             exception_type=exception_type,
             except_body=except_body,
             else_body=else_body,
+            except_binding=handler.name,
             loc=loc,
         )
 

@@ -467,6 +467,8 @@ class CodeGenContext:
     try_except_counter: int = 0
     # When set, we're inside a try body -- error_return calls should goto this label
     try_except_label: str | None = None
+    # When set (except E as e), error_return calls should move error into this var before goto
+    try_except_err_opt: str | None = None
 
     # --- with statement ---
     with_counter: int = 0

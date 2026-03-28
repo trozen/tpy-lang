@@ -1071,9 +1071,37 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 f"'raise {stmt.exception_type}' does not match "
                 f"@error_return({stmt.exception_type})", stmt)
-        if not self.ctx.registry.find_record(stmt.exception_type):
+        record = self.ctx.registry.find_record(stmt.exception_type)
+        if not record:
             raise self.ctx.error(
                 f"Unknown error type '{stmt.exception_type}'", stmt)
+        # Type-check constructor arguments against __init__ params
+        if stmt.args:
+            if record.has_init:
+                min_args = sum(1 for _, _, d in record.init_params if d is None)
+                max_args = len(record.init_params)
+                if len(stmt.args) < min_args or len(stmt.args) > max_args:
+                    expected = (f"{max_args}" if min_args == max_args
+                                else f"{min_args} to {max_args}")
+                    raise self.ctx.error(
+                        f"'raise {stmt.exception_type}()' expects "
+                        f"{expected} arguments, got {len(stmt.args)}",
+                        stmt)
+                for i, (arg, (pname, ptype, _)) in enumerate(
+                        zip(stmt.args, record.init_params)):
+                    arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
+                    stmt.args[i] = self.compat.coerce_expr(
+                        arg, arg_type, ptype, f"argument '{pname}'",
+                        coercion_ctx=CoercionContext.ARG)
+            elif record.fields:
+                raise self.ctx.error(
+                    f"'{stmt.exception_type}' has data fields but no __init__; "
+                    f"add __init__ to use 'raise {stmt.exception_type}(...)'",
+                    stmt)
+            else:
+                raise self.ctx.error(
+                    f"'raise {stmt.exception_type}()' does not accept arguments",
+                    stmt)
         # Propagate qualified name to AST for consistency with TpyFunction.error_return
         stmt.exception_type = qualified_exc
         self.init.mark_terminated()
@@ -1099,6 +1127,10 @@ class StatementAnalyzer:
             proto is not None
             and f"{proto.module}.{proto.name}" == qnames.CONTROL_FLOW
         )
+
+        if is_control_flow_catch_all and stmt.except_binding:
+            raise self.ctx.error(
+                "'except ControlFlow as' binding is not supported", stmt)
 
         if not is_control_flow_catch_all:
             if not self.ctx.registry.find_record(stmt.exception_type):
@@ -1134,9 +1166,20 @@ class StatementAnalyzer:
         self.init.restore(before)
         self.ctx.current_consumed_own_params = consumed_before.copy()
 
+        # Register except binding (e.g. "except E as e")
+        if stmt.except_binding:
+            exc_record = self.ctx.registry.find_record(stmt.exception_type)
+            if exc_record:
+                exc_type = NamedType(stmt.exception_type)
+                self.ctx.current_scope.bindings[stmt.except_binding] = exc_type
+                self.init.mark_assigned(stmt.except_binding)
+
         # Analyze except body (error path)
         for s in stmt.except_body:
             self.analyze_stmt(s)
+        # Python scopes except-binding to the except block only
+        if stmt.except_binding and stmt.except_binding in self.ctx.current_scope.bindings:
+            del self.ctx.current_scope.bindings[stmt.except_binding]
         else_state = self.init.save()
         consumed_after_else = self.ctx.current_consumed_own_params.copy()
         else_terminated = self.ctx.init_terminated
@@ -1162,6 +1205,9 @@ class StatementAnalyzer:
         all_bindings = dict(try_bindings)
         all_bindings.update(self.ctx.current_scope.bindings)
         branch_new = set(all_bindings.keys()) - scope_before
+        # Exclude except binding -- codegen creates it directly from the optional
+        if stmt.except_binding:
+            branch_new.discard(stmt.except_binding)
         predecl = branch_new - self.ctx.global_declarations
         if predecl:
             self.ctx.if_branch_decls[id(stmt)] = {

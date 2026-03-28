@@ -9,7 +9,7 @@
 | E3 | `ControlFlow` marker protocol: split exception types into throw vs return categories, compiler enforcement | Done |
 | E4 | Auto-propagation: `@error_return(E)` functions auto-forward matching errors from callees without `try/except` | Done |
 | E5 | `except ControlFlow` catch-all for return exceptions | Done |
-| E6 | Exception types with data fields, `except E as e` binding | Todo |
+| E6 | Exception types with data fields, `except E as e` binding | Done |
 | E7 | General C++ exceptions: `try`/`except`/`finally`/`raise` with stack unwinding for non-control-flow errors | Todo |
 | E8 | Multiple `except` handlers, bare `except:`, re-raise (`raise` with no argument) | Todo |
 
@@ -22,6 +22,7 @@
 | `except ControlFlow as e` | Bind catch-all value -- needs type-erased wrapper or variant; distant future |
 | `@noalloc` interaction | `@noalloc` functions can use `@error_return` (zero-cost) but cannot throw C++ exceptions |
 | Custom base exception classes | User-defined exception hierarchies with `except BaseClass` catching subclasses |
+| `raise <expr>` | `e = MyError(1, "msg"); raise e` -- raise a pre-constructed exception variable |
 
 ---
 

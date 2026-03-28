@@ -4611,10 +4611,12 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - `ControlFlow` is a marker protocol that splits exception types into return (zero-cost) vs throw (C++ exceptions) categories
   - `StopIteration` is a built-in `ControlFlow` type; user-defined types opt in via `ControlFlow` marker
   - `Exception`/`BaseException`/`StopIteration` defined as `@native` classes in `lib/tpy/builtins/`, mapping to `::tpy::` runtime structs (inherit from `std::exception`)
-  - Decorator on functions: `raise E` compiles to `return std::unexpected(E{})`
+  - Decorator on functions: `raise E` compiles to `return std::unexpected(E{})`; `raise E(args)` passes constructor arguments
   - Callers must use `try/except E` or be `@error_return(E)` themselves (auto-propagation)
-  - `try/except/else` supported
+  - `try/except/else` supported; `except E as e` binds the error value for field access
+  - Exception types can have data fields: `class ParseError(Exception, ControlFlow): line: Int32`
   - Goto-based dispatch: error_return calls inside nested if/for work correctly
+  - `except E as e` uses `std::optional<E>` for zero happy-path cost error capture
   - Branch-aware flow analysis (narrowing, init tracking, variable hoisting)
   - `__next__` methods auto-apply `@error_return(StopIteration)` -- for-loops use direct `std::expected` check
   - Built-in exceptions (`StopIteration`, `Exception`, `BaseException`) emit as `::tpy::X` in C++ to avoid clashes with user-defined classes of the same name
