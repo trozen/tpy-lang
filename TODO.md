@@ -3,6 +3,7 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
+- add Ref[T] type that would denote references, automatically added to function args/return in parser, so user doesn't need to see it; would it help in managig the pipeline?
 - star import from user modules, __all__ in user modules
 - Own[T] variable types cleanup: `rvalue_vars`, `consumed_loop_vars`, `move_through_vars`, and `local_var_is_movable()` are now redundant for Own[T] variables (movability is in the type). These side channels are still used by flow_facts, init_tracker, and scope_tracker for branch merging. Remove incrementally: replace `_is_movable_var` with scope type check, then simplify flow_facts save/restore, then remove `rvalue_vars`.
 - Expression callees: `callbacks[0](5)`, `get_handler()(x)` etc. `TpyCall.func` is a `str`, so only simple name calls work. Change `TpyCall.func` from `str` to `TpyExpr` -- most callsites just need `isinstance(expr.func, TpyName)` guard + `.name` access (mechanical). Sema needs a new path for non-Name callees: evaluate callee expr, check it resolves to `CallableType`, generate the call. ~188 `.func` refs across 19 files but the migration is straightforward.
@@ -46,7 +47,6 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 ## Bytes type follow-ups
 - `mark_bytes_borrowers_mutated` missing: `BytesVarInfo.source_mutated` is never set. If a bytearray is mutated after a BytesView borrows from it, the view won't be promoted to owned. Add mutation tracking at bytearray mutation sites (append, __setitem__, extend, pop, clear, insert, remove) mirroring `mark_str_borrowers_mutated`.
 - `bytes.__hash__` not implemented -- bytes can't be used as dict keys or in sets
-- f-string with bytes produces invalid C++ silently -- add sema error or codegen support (`bytes_to_str` helper)
 - Update `docs/LANGUAGE_FEATURES.md` with bytes/bytearray/BytesView documentation
 
 ## Ownership & Consuming Iteration
@@ -77,6 +77,8 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - Inline iterators: `@inline` on generator functions to unroll the loop body at the call site instead of creating a state machine. Zero overhead, important for hot paths. Generalizes what `range()` already does implicitly to user-defined iterators. Inspired by Nim's inline vs closure iterator distinction.
 
 ## Builtins
+- `sorted(key=)`, `min(key=)`, `max(key=)`: accept an optional `key` parameter (`Fn` or `Callable`). `sorted(items, key=lambda x: x.score)` is extremely common. The lambda/Fn infrastructure is already there -- just needs builtin signatures and codegen for comparison-via-key.
+- `map()` / `filter()` as builtins: return lazy iterators. `map(fn, iterable)` -> `Iterator[U]`, `filter(pred, iterable)` -> `Iterator[T]`. Comprehensions are a workaround but these are still widely used, especially when passing existing named functions. Generator infrastructure exists -- these are thin wrappers.
 - `open()` binary mode: needs string literal overload dispatch so `open(path, "rb")` returns `BinaryIO` while `open(path, "r")` returns `TextIO`. Requires compiler support for overload resolution based on literal argument values.
 - type(); (in future `T = type(x); z = T()`)
 - tpy.ctypes.CInt32

@@ -90,6 +90,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D19 | Recursive type aliases | M | Not started | [I](#recursive-type-aliases) |
 | D20 | Mutual recursion (cross-type cycles) | M-L | Not started | [I](#mutual-recursion) |
 | D21 | TypedDict | M | Not started | [VII](#typeddict) |
+| D22 | Multiple inheritance (mixins) | L | Not started | [VII](#multiple-inheritance) |
 
 ### Phase E: Advanced Safety
 
@@ -146,6 +147,8 @@ don't get lost.
 | `@contextmanager` decorator | D4 | `yield`-based context managers via `contextlib.contextmanager`. Blocked on generators (F3) |
 | `async with` | D4 | `__aenter__`/`__aexit__` async context managers. Blocked on async (G1) |
 | IIFE init-list for branching `__init__` | A8 | Generate `field([&]{ if (...) return x; else return y; }())` in member init-list, removing the need for helper functions. Handles all types including `@nocopy`/const fields. |
+| `type[T]` parameter type | -- | Compile-time-only phantom type representing a class. `type[T]` params generate no runtime code; `cls(args)` desugars to `T(args)`. Enables factory functions (`def create[T](cls: type[T], ...) -> T`), deserialization (`from_json(Point, data)`), and CPython-compatible patterns where classes are passed as values. |
+| `@classmethod` | above | Sugar on top of `type[T]`. `cls` parameter implicitly typed `type[Self]`. Desugars to `@staticmethod` with implicit `T: Self` type param. For CPython compatibility -- idiomatic TPy equivalent is `@staticmethod def create[T: MyClass](...) -> T`. |
 
 ---
 
@@ -2384,6 +2387,42 @@ class Partial(TypedDict, total=False):
 
 **Effort**: M (sema string-literal-dependent subscript resolution + struct codegen
 with dict-like API generation)
+
+### Multiple Inheritance
+
+```python
+class LoggingMixin:
+    def log(self, msg: str) -> None:
+        print(f"[{type(self).__name__}] {msg}")
+
+class Serializable:
+    def to_json(self) -> str: ...
+
+class Service(LoggingMixin, Serializable):
+    def run(self) -> None:
+        self.log("starting")
+```
+
+Multiple base classes, primarily for the mixin pattern. Python uses C3 linearization
+(MRO) to resolve method order; C++ uses virtual inheritance for diamond cases.
+
+**C++ mapping**: C++ natively supports multiple inheritance. The straightforward mapping
+is `class Service : public LoggingMixin, public Serializable { ... }`. Diamond inheritance
+requires `virtual` base classes. TPy should start with the simple non-diamond case
+(error on diamond) and add virtual inheritance later if needed.
+
+**Scope**: Mixin-style multiple inheritance where base classes provide independent
+functionality. Diamond inheritance (where two bases share a common grandparent) is
+a future extension. `super()` with MRO-aware dispatch is the hard part -- initial
+implementation can require explicit `Base.method(self)` calls for disambiguation.
+
+**Current state**: Not started. Single inheritance works. Protocols cover the
+interface-composition use case; multiple inheritance adds implementation reuse.
+
+**Dependencies**: None beyond existing single inheritance.
+
+**Effort**: L (MRO computation, C++ multiple base codegen, `super()` disambiguation,
+diamond detection/rejection, constructor ordering)
 
 ---
 
