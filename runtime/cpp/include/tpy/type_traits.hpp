@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <type_traits>
 #include <vector>
 
@@ -49,6 +50,9 @@ template<typename T> struct SpanIter;
 
 // SpanIter is a lightweight view (span + index), passed by value but borrows
 template<typename T> struct is_value_type<SpanIter<T>> : std::true_type {};
+
+// Tuples are value types (immutable in Python, always copied/moved)
+template<typename... Ts> struct is_value_type<std::tuple<Ts...>> : std::true_type {};
 
 // C++ concept for the ValueType marker protocol
 template<typename T>
@@ -143,5 +147,31 @@ using val_or_cref_t = std::conditional_t<is_value_type<T>::value, T, const T&>;
  */
 template<typename T>
 using param_val_or_ref_t = std::conditional_t<is_value_type<T>::value, const T&, T&>;
+
+/**
+ * val_or_ref<T> - Wrapper for iterator __next__() returns.
+ *
+ * Stores value types (int, str, tuple, ...) by value, non-value types
+ * (records, containers) by pointer. This lets __next__() return element
+ * references through std::expected (which cannot hold T&).
+ *
+ * T may be const-qualified (e.g. from a const_iterator). val_or_ref<const T>
+ * stores const T* and get() returns const T&.
+ */
+template<typename T>
+struct val_or_ref {
+    using is_val_or_ref_tag = void;
+    static constexpr bool is_val = is_value_type<std::remove_const_t<T>>::value;
+    using storage_t = std::conditional_t<is_val, std::remove_const_t<T>, T*>;
+    storage_t data_;
+
+    val_or_ref(const std::remove_const_t<T>& v) requires (is_val) : data_(v) {}
+    val_or_ref(T& ref) requires (!is_val) : data_(&ref) {}
+
+    decltype(auto) get() const {
+        if constexpr (is_val) return data_;
+        else return (*data_);
+    }
+};
 
 } // namespace tpy

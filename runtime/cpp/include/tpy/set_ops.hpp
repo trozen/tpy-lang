@@ -13,6 +13,7 @@
 #include <sstream>
 
 #include "core.hpp"
+#include "next_iter.hpp"
 #include "ordered_set.hpp"
 #include "printing.hpp"
 
@@ -37,7 +38,7 @@ ordered_set<T> set_collect(Iter&& iter) {
     for (;;) {
         auto __r = iter.__next__();
         if (!__r.has_value()) break;
-        result.insert(std::move(*__r));
+        result.insert(next_deref(*__r));
     }
     return result;
 }

@@ -43,7 +43,7 @@ void main() {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        std::string_view msg = *__r_0;
+        std::string_view msg = ::tpy::next_deref(*__r_0);
         // pass
     }
     // for msg in greetings("world"):  # tpyc: ok (string literal is static)
@@ -51,7 +51,7 @@ void main() {
     for (;;) {
         auto __r_1 = __iter_1.__next__();
         if (!__r_1.has_value()) break;
-        std::string_view msg = *__r_1;
+        std::string_view msg = ::tpy::next_deref(*__r_1);
         // print(msg)
         std::cout << msg << "\n";
     }

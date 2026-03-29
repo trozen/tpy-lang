@@ -423,18 +423,27 @@ uint64_t hash_combine(uint64_t seed, const T& val, const Rest&... rest) {
 // native_iterator: wraps C++ begin/end into __next__() / __iter__()
 // Inherits begin()/end() from next_iter_mixin so the result of
 // tpy::__iter__() can also be used in C++ range-for loops.
+//
+// __next__() returns val_or_ref<deref_type> to preserve reference
+// semantics: value types are copied, non-value types are returned
+// as pointers (transparent via .get()). This allows protocol-typed
+// iteration (Iterable[T], Iterator[T]) to mutate container elements.
 // =============================================
 
 template<typename Iter, typename T>
-struct native_iterator : next_iter_mixin<native_iterator<Iter, T>, T> {
+struct native_iterator
+    : next_iter_mixin<native_iterator<Iter, T>, val_or_ref<std::remove_reference_t<decltype(*std::declval<Iter&>())>>> {
+    using deref_type = std::remove_reference_t<decltype(*std::declval<Iter&>())>;
+    using next_type = val_or_ref<deref_type>;
+
     Iter current_;
     Iter end_;
 
     native_iterator(Iter begin, Iter end) : current_(begin), end_(end) {}
 
-    std::expected<T, StopIteration> __next__() {
+    std::expected<next_type, StopIteration> __next__() {
         if (current_ == end_) return tpy::make_unexpected(StopIteration{});
-        return T{*current_++};
+        return next_type(*current_++);
     }
 
     native_iterator& __iter__() { return *this; }
@@ -449,13 +458,25 @@ struct native_iterator : next_iter_mixin<native_iterator<Iter, T>, T> {
 // tpy::__iter__
 // =============================================
 
-// Overload: std::vector
+// Overload: std::vector (mutable -- preserves element references)
+template<typename T>
+auto __iter__(std::vector<T>& x) {
+    return native_iterator<typename std::vector<T>::iterator, T>{x.begin(), x.end()};
+}
+
+// Overload: std::vector (const)
 template<typename T>
 auto __iter__(const std::vector<T>& x) {
     return native_iterator<typename std::vector<T>::const_iterator, T>{x.begin(), x.end()};
 }
 
-// Overload: std::array
+// Overload: std::array (mutable)
+template<typename T, std::size_t N>
+auto __iter__(std::array<T, N>& x) {
+    return native_iterator<typename std::array<T, N>::iterator, T>{x.begin(), x.end()};
+}
+
+// Overload: std::array (const)
 template<typename T, std::size_t N>
 auto __iter__(const std::array<T, N>& x) {
     return native_iterator<typename std::array<T, N>::const_iterator, T>{x.begin(), x.end()};

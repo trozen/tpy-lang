@@ -16,11 +16,17 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - ContextManager[T] protocol
 - Deduplicate PendingStrType / PendingBytesType infrastructure: `_resolve_pending_str_types` and `_resolve_pending_bytes_types` are identical algorithms with different type names. Same for `mark_*_augassign`, `mark_*_param_context`, `mark_*_reassigned_from_owned`, `track_*_reassign_source`, and the `_infer_new_local_type` branches in statements.py. Refactor into a generic `ViewTypeFamily` parameterized by owned/view/pending types, with one shared implementation.
 
-## Iterator reference semantics (partially fixed)
-- Fixed: builtin enumerate/zip over containers use `enumerate_direct_iter`/`zip_direct_iter` with C++ begin/end -- references to original elements preserved.
-- Fixed: user-defined generators iterating concrete container types (`list[Point]`, not `Iterable[T]`) use `to_cpp_return()` for yield type with begin/end iteration -- references preserved.
-- Remaining: generators iterating protocol-typed params (`Iterable[T]`) still copy. The fix requires `native_iterator.__next__()` to return `T*` for non-value types (pointer to container element), but this interacts poorly with: (1) dict/set iteration yielding tuples by value (not stored in container), (2) range iteration yielding ints by value, (3) generic type params `T` where value-vs-ref is unknown at codegen time. A proper fix needs C++ `if constexpr` dispatch in the generated lambda based on whether the inner `__next__()` returns a pointer or value -- deferred to avoid complexity.
-- `list(zip(...))` correctly copies into the list (list stores by value). The fix only affects iteration -- returned tuples hold references, stored tuples hold values.
+## Ref[T] -- explicit reference semantics in the type system
+Currently the value/reference split for non-value types is implicit and scattered across codegen: `to_cpp()` vs `to_cpp_return()` vs `to_cpp_param_type()`, `val_or_ref_t<T>`, `val_or_ref<T>` wrapper, `loop_var_binding` decision tree, `next_deref`. Every context that wraps non-value types in a value container (`std::expected`, `std::tuple`, `std::optional`) independently solves "how to not lose the reference".
+
+Proposal: add `Ref[T]` as an internal type (auto-inserted by parser, user never writes it) that maps to `val_or_ref<T>` in C++. The type system carries reference intent explicitly:
+- `def foo(x: Point)` -> internally `x: Ref[Point]` -> C++ `val_or_ref<Point>` (holds `Point*`)
+- `-> tuple[Int32, T]` -> internally `tuple[Int32, Ref[T]]` -> C++ `std::tuple<int32_t, val_or_ref<T>>`
+- `@error_return(E) -> T` -> internally `-> Ref[T]` -> C++ `std::expected<val_or_ref<T>, E>`
+
+This unifies the current ad-hoc mechanisms into one concept. Codegen becomes type-directed instead of context-dependent. New features that wrap non-value types get reference preservation for free.
+
+Can be done incrementally: start where `val_or_ref<T>` already exists (iterator `__next__`, enumerate/zip tuples), extend to error_return, then to params/returns in general.
 
 ## Bugs
 - Generic generators with multiple yield points (struct-based codegen path) are not yet supported -- the out-of-line `__next__()` in .cpp won't link for template structs. Currently guarded with a sema error. Fix: emit struct + `__next__()` body into the header when the function has type params.

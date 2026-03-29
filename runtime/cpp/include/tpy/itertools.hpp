@@ -27,26 +27,11 @@ class enumerate_iter : public next_iter_mixin<enumerate_iter<T, Iter>, std::tupl
 public:
     enumerate_iter(Iter&& iter, int32_t start = 0) : iter_(std::move(iter)), index_(start) {}
 
-    auto __next__() {
+    std::expected<std::tuple<int32_t, T>, StopIteration> __next__() {
         auto r = iter_.__next__();
-        if (!r.has_value()) return decltype(this->_make_result(r))(tpy::make_unexpected(StopIteration{}));
-        return _make_result(r);
+        if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
+        return std::tuple<int32_t, T>{index_++, next_deref(*r)};
     }
-
-private:
-    template<typename R>
-    auto _make_result(R& r) {
-        if constexpr (std::is_pointer_v<typename R::value_type>) {
-            // Inner iterator returned a pointer -- dereference to get T&
-            return std::expected<std::tuple<int32_t, T&>, StopIteration>(
-                std::tuple<int32_t, T&>{index_++, *(*r)});
-        } else {
-            return std::expected<std::tuple<int32_t, T>, StopIteration>(
-                std::tuple<int32_t, T>{index_++, std::move(*r)});
-        }
-    }
-
-public:
 
     enumerate_iter& __iter__() { return *this; }
 
@@ -72,25 +57,12 @@ public:
     owning_enumerate_iter(owning_enumerate_iter&&) = delete;
     owning_enumerate_iter& operator=(owning_enumerate_iter&&) = delete;
 
-    auto __next__() {
+    std::expected<std::tuple<int32_t, T>, StopIteration> __next__() {
         auto r = iter_.__next__();
-        if (!r.has_value()) return decltype(this->_make_result(r))(tpy::make_unexpected(StopIteration{}));
-        return _make_result(r);
+        if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
+        return std::tuple<int32_t, T>{index_++, next_deref(*r)};
     }
 
-private:
-    template<typename R>
-    auto _make_result(R& r) {
-        if constexpr (std::is_pointer_v<typename R::value_type>) {
-            return std::expected<std::tuple<int32_t, T&>, StopIteration>(
-                std::tuple<int32_t, T&>{index_++, *(*r)});
-        } else {
-            return std::expected<std::tuple<int32_t, T>, StopIteration>(
-                std::tuple<int32_t, T>{index_++, std::move(*r)});
-        }
-    }
-
-public:
     owning_enumerate_iter& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const owning_enumerate_iter&) {
@@ -212,6 +184,7 @@ template<typename... Ts> struct zip_types {};
 namespace detail {
 
 // Advance all iterators into optionals; returns false if any is exhausted.
+// Uses next_deref() to unwrap val_or_ref from native_iterator __next__().
 template<typename Tuple, typename... Opts, std::size_t... Is>
 bool zip_advance(Tuple& iters, std::tuple<Opts...>& opts, std::index_sequence<Is...>) {
     bool ok = true;
@@ -220,7 +193,7 @@ bool zip_advance(Tuple& iters, std::tuple<Opts...>& opts, std::index_sequence<Is
     ((ok = ok && [&]{
         auto r = std::get<Is>(iters).__next__();
         if (!r.has_value()) return false;
-        std::get<Is>(opts).emplace(std::move(*r));
+        std::get<Is>(opts).emplace(tpy::next_deref(*r));
         return true;
     }()), ...);
     return ok;

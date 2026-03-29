@@ -27,7 +27,7 @@ void collect_items(T_items& items) {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        std::string_view x = *__r_1;
+        std::string_view x = ::tpy::next_deref(*__r_1);
         // print(x)
         std::cout << x << "\n";
     }
@@ -41,7 +41,7 @@ void collect_ints(T_items& items) {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        int32_t x = *__r_1;
+        int32_t x = ::tpy::next_deref(*__r_1);
         // print(x)
         std::cout << x << "\n";
     }
@@ -55,7 +55,7 @@ void collect_pairs(T_items& items) {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        const auto& pair = *__r_1;
+        const auto& pair = ::tpy::next_deref(*__r_1);
         // k, v = pair
         const auto& __tup_1 = pair;
         std::string_view k = std::get<0>(__tup_1);

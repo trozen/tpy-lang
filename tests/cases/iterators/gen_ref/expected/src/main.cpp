@@ -13,7 +13,7 @@ void main() {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        auto&& __for_tup_0 = *__r_0;
+        auto&& __for_tup_0 = ::tpy::next_deref(*__r_0);
         // for i, p in my_enumerate(points):
         auto& __tup_1 = __for_tup_0;
         int32_t i = std::get<0>(__tup_1);

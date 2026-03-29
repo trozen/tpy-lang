@@ -44,7 +44,7 @@ std::vector<Item> collect(T_source&& source) {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        auto&& x = *__r_1;
+        auto&& x = ::tpy::next_deref(*__r_1);
         // x.value += 10
         x.value = ::tpy::add_check<int32_t>(x.value, 10);
         // result.append(x)

@@ -35,7 +35,7 @@ void list_extend(std::vector<T>& v, Container&& other) {
     for (;;) {
         auto __r = __iter.__next__();
         if (!__r.has_value()) break;
-        v.push_back(std::move(*__r));
+        v.push_back(next_deref(*__r));
     }
 }
 
@@ -51,7 +51,7 @@ inline std::string str_join(std::string_view sep, Container&& items) {
         auto __r = __iter.__next__();
         if (!__r.has_value()) break;
         if (!first) result.append(sep);
-        result.append(std::string_view(*__r));
+        result.append(std::string_view(next_deref(*__r)));
         first = false;
     }
     return result;
@@ -67,7 +67,7 @@ Container from_range(Iterable&& iterable) {
     for (;;) {
         auto __r = __iter.__next__();
         if (!__r.has_value()) break;
-        result.push_back(std::move(*__r));
+        result.push_back(next_deref(*__r));
     }
     return result;
 }
@@ -82,7 +82,8 @@ ordered_map<K, V> dict_from_pairs(Iterable&& iterable) {
     for (;;) {
         auto __r = __iter.__next__();
         if (!__r.has_value()) break;
-        result.insert_or_assign(std::get<0>(*__r), std::get<1>(*__r));
+        auto&& __item = next_deref(*__r);
+        result.insert_or_assign(std::get<0>(__item), std::get<1>(__item));
     }
     return result;
 }

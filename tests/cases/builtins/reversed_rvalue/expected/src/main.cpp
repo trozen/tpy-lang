@@ -18,7 +18,7 @@ void main() {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        const ::tpy::BigInt& x = *__r_0;
+        const ::tpy::BigInt& x = ::tpy::next_deref(*__r_0);
         // print(x)
         std::cout << x << "\n";
     }
@@ -28,7 +28,7 @@ void main() {
     for (;;) {
         auto __r_1 = __iter_1.__next__();
         if (!__r_1.has_value()) break;
-        const ::tpy::BigInt& x = *__r_1;
+        const ::tpy::BigInt& x = ::tpy::next_deref(*__r_1);
         // print(x)
         std::cout << x << "\n";
     }

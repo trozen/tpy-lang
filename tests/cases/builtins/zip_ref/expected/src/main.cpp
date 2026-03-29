@@ -15,7 +15,7 @@ void main() {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        auto&& __for_tup_0 = *__r_0;
+        auto&& __for_tup_0 = ::tpy::next_deref(*__r_0);
         // for p, s in zip(points, scales):
         auto& __tup_1 = __for_tup_0;
         Point& p = std::get<0>(__tup_1);

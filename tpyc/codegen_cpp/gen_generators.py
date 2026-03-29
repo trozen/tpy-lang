@@ -344,10 +344,11 @@ class GeneratorCodegen:
             self.ctx.indent_level = 3 + extra
             out.write(f"{I(3)}{{\n")
             self.ctx.indent_level = 4 + extra
+            # native_iterator returns val_or_ref -- unwrap with next_deref
             if iter_elem and iter_elem.is_value_type():
-                out.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = *__r;\n")
+                out.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = ::tpy::next_deref(*__r);\n")
             else:
-                out.write(f"{I(4)}auto&& {cpp_var} = *__r;\n")
+                out.write(f"{I(4)}auto&& {cpp_var} = ::tpy::next_deref(*__r);\n")
 
             for stmt in pre_yield:
                 self.statements.gen_stmt(out, stmt)

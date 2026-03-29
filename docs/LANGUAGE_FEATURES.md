@@ -2626,7 +2626,7 @@ def sum_generic[T: Iterable[Int32]](items: T) -> Int32:
 
 **Structural protocol-to-protocol conformance**: `Iterator[T]` structurally satisfies `Iterable[T]` because Iterator's method set is a superset of Iterable's. This enables passing iterators where iterables are expected (e.g. `list(some_iterator)` matches the `Iterable[Own[T]]` constructor) without explicit inheritance declarations.
 
-**For-loop support**: `for x in expr` works when `expr` has type `Iterator[T]` (direct `for(;;)` loop calling `__next__()` and checking `has_value()`) or `Iterable[T]` (calls `__iter__()` first, then iterates the resulting iterator). All iterators use the direct `std::expected` loop path.
+**For-loop support**: `for x in expr` works when `expr` has type `Iterator[T]` (direct `for(;;)` loop calling `__next__()` and checking `has_value()`) or `Iterable[T]` (calls `__iter__()` first, then iterates the resulting iterator). All iterators use the direct `std::expected` loop path. **Reference semantics are preserved**: for non-value types (records, containers), the loop variable is a reference to the original container element, so mutations are visible in the container -- matching CPython behavior. This is implemented via `val_or_ref<T>` in `native_iterator.__next__()`, which stores non-value types by pointer and value types by value.
 
 #### Working: Span coercion via `ReadOnlySpanLike[T]`
 

@@ -23,7 +23,7 @@ void main() {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        const auto& __for_tup_0 = *__r_0;
+        const auto& __for_tup_0 = ::tpy::next_deref(*__r_0);
         // for name, score in zip(get_names(), get_scores()):
         const auto& __tup_1 = __for_tup_0;
         std::string_view name = std::get<0>(__tup_1);

@@ -2346,7 +2346,7 @@ class StatementGenerator:
         inner = indent + INDENT
         out.write(f"{inner}{r_raw} = {src_name}.__next__();\n")
         out.write(f"{inner}if (!({r}).has_value()) break;\n")
-        out.write(f"{inner}{cpp_var} = *({r});\n")
+        out.write(f"{inner}{cpp_var} = ::tpy::next_deref(*({r}));\n")
 
         self._gen_generator_loop_body(out, stmt, indent)
 
@@ -2369,7 +2369,7 @@ class StatementGenerator:
         inner = indent + INDENT
         out.write(f"{inner}{r_raw} = ({itr}).__next__();\n")
         out.write(f"{inner}if (!({r}).has_value()) break;\n")
-        out.write(f"{inner}{cpp_var} = *({r});\n")
+        out.write(f"{inner}{cpp_var} = ::tpy::next_deref(*({r}));\n")
 
         self._gen_generator_loop_body(out, stmt, indent)
 
@@ -2955,12 +2955,16 @@ class StatementGenerator:
         When iter_name is provided, the iterator variable is already allocated
         by the caller and no capture line is emitted.
 
+        Uses ::tpy::next_deref() to unwrap val_or_ref from native_iterator
+        __next__(). For user-defined iterators returning plain T, next_deref
+        is a transparent pass-through.
+
         Produces:
             auto& __iter_N = <expr>;   (skipped when iter_name is provided)
             for (;;) {
                 auto __r_N = <call>;
                 if (!__r_N.has_value()) break;
-                T x = *__r_N;
+                T x = ::tpy::next_deref(*__r_N);
                 // body
             }
         """
@@ -2984,15 +2988,16 @@ class StatementGenerator:
         out.write(f"{inner_indent}auto {r_name} = {iter_name}{call};\n")
         out.write(f"{inner_indent}if (!{r_name}.has_value()) break;\n")
 
+        deref = f"::tpy::next_deref(*{r_name})"
         hoisted = self._is_loop_var_hoisted(stmt)
         if hoisted:
-            binding = f"{cpp_var} = *{r_name};"
+            binding = f"{cpp_var} = {deref};"
         elif elem_type:
-            binding = loop_var_binding(elem_type, cpp_var, f"*{r_name}",
+            binding = loop_var_binding(elem_type, cpp_var, deref,
                                        stmt.const_loop_var,
                                        consuming=consuming)
         else:
-            binding = f"auto {cpp_var} = *{r_name};"
+            binding = f"auto {cpp_var} = {deref};"
         out.write(f"{inner_indent}{binding}\n")
 
         self._gen_loop_body(out, stmt, indent, elem_type, consuming=consuming)

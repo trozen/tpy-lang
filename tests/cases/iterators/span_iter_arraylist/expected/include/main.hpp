@@ -25,7 +25,7 @@ void consume(T_it& it) {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        int32_t x = *__r_1;
+        int32_t x = ::tpy::next_deref(*__r_1);
         // print(x)
         std::cout << x << "\n";
     }

@@ -15,6 +15,8 @@
 #include <type_traits>
 #include <vector>
 
+#include "next_iter.hpp"
+
 namespace tpy {
 
 /**
@@ -148,7 +150,7 @@ Container collect(Iter&& iter) {
     for (;;) {
         auto __r = iter.__next__();
         if (!__r.has_value()) break;
-        result.push_back(std::move(*__r));
+        result.push_back(next_deref(*__r));
     }
     return result;
 }

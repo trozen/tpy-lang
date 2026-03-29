@@ -98,7 +98,7 @@ int32_t consume(T_it& it) {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        int32_t x = *__r_0;
+        int32_t x = ::tpy::next_deref(*__r_0);
         // total += x
         total = ::tpy::add_check<int32_t>(total, x);
     }

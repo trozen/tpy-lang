@@ -35,7 +35,7 @@ void main() {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        std::string_view g = *__r_0;
+        std::string_view g = ::tpy::next_deref(*__r_0);
         // print(g)
         std::cout << g << "\n";
     }

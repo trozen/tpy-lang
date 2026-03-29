@@ -16,7 +16,7 @@ void main() {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        int32_t x = *__r_1;
+        int32_t x = ::tpy::next_deref(*__r_1);
         // print(x)
         std::cout << x << "\n";
     }
@@ -25,7 +25,7 @@ void main() {
     for (;;) {
         auto __r_2 = __iter_2.__next__();
         if (!__r_2.has_value()) break;
-        int32_t p = *__r_2;
+        int32_t p = ::tpy::next_deref(*__r_2);
         // print(p)
         std::cout << p << "\n";
     }

@@ -17,6 +17,16 @@
 
 namespace tpy {
 
+// Unwrap val_or_ref<T> via .get(), pass through plain T unchanged.
+template<typename T>
+decltype(auto) next_deref(T& v) {
+    if constexpr (requires { typename T::is_val_or_ref_tag; }) {
+        return v.get();
+    } else {
+        return (v);
+    }
+}
+
 struct NextSentinel {};
 
 template<typename Parent, typename T>
@@ -29,8 +39,8 @@ struct NextIterator {
         current = r.has_value() ? std::optional<T>(std::move(*r)) : std::nullopt;
         return *this;
     }
-    T& operator*() { return *current; }
-    const T& operator*() const { return *current; }
+    decltype(auto) operator*() { return next_deref(*current); }
+    decltype(auto) operator*() const { return next_deref(*current); }
     bool operator!=(NextSentinel) const { return current.has_value(); }
 };
 

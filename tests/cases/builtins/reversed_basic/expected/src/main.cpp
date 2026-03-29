@@ -13,7 +13,7 @@ void main() {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        int32_t x = *__r_0;
+        int32_t x = ::tpy::next_deref(*__r_0);
         // print(x)
         std::cout << x << "\n";
     }
@@ -25,7 +25,7 @@ void main() {
     for (;;) {
         auto __r_1 = __iter_1.__next__();
         if (!__r_1.has_value()) break;
-        std::string_view s = *__r_1;
+        std::string_view s = ::tpy::next_deref(*__r_1);
         // print(s)
         std::cout << s << "\n";
     }
@@ -37,7 +37,7 @@ void main() {
     for (;;) {
         auto __r_2 = __iter_2.__next__();
         if (!__r_2.has_value()) break;
-        int32_t x = *__r_2;
+        int32_t x = ::tpy::next_deref(*__r_2);
         // print(x)
         std::cout << x << "\n";
     }
@@ -49,7 +49,7 @@ void main() {
     for (;;) {
         auto __r_3 = __iter_3.__next__();
         if (!__r_3.has_value()) break;
-        int32_t x = *__r_3;
+        int32_t x = ::tpy::next_deref(*__r_3);
         // print(x)
         std::cout << x << "\n";
     }

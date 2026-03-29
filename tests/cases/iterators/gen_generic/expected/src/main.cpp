@@ -13,7 +13,7 @@ void main() {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        int32_t x = *__r_0;
+        int32_t x = ::tpy::next_deref(*__r_0);
         // print(x)
         std::cout << x << "\n";
     }
@@ -24,7 +24,7 @@ void main() {
     for (;;) {
         auto __r_1 = __iter_1.__next__();
         if (!__r_1.has_value()) break;
-        std::string_view s = *__r_1;
+        std::string_view s = ::tpy::next_deref(*__r_1);
         // print(s)
         std::cout << s << "\n";
     }
@@ -36,7 +36,7 @@ void main() {
     for (;;) {
         auto __r_2 = __iter_2.__next__();
         if (!__r_2.has_value()) break;
-        const auto& __for_tup_0 = *__r_2;
+        const auto& __for_tup_0 = ::tpy::next_deref(*__r_2);
         // for i, w in enumerate(words):
         const auto& __tup_1 = __for_tup_0;
         int32_t i = std::get<0>(__tup_1);
@@ -52,7 +52,7 @@ void main() {
     for (;;) {
         auto __r_3 = __iter_3.__next__();
         if (!__r_3.has_value()) break;
-        auto&& __for_tup_1 = *__r_3;
+        auto&& __for_tup_1 = ::tpy::next_deref(*__r_3);
         // for i, n in enumerate(nums):
         const auto& __tup_2 = __for_tup_1;
         int32_t i = std::get<0>(__tup_2);
@@ -68,7 +68,7 @@ void main() {
     for (;;) {
         auto __r_4 = __iter_4.__next__();
         if (!__r_4.has_value()) break;
-        auto&& __for_tup_2 = *__r_4;
+        auto&& __for_tup_2 = ::tpy::next_deref(*__r_4);
         // # compose: enumerate directly over repeat (generator over generator)
         // for i, s in enumerate(repeat("x", 3)):
         const auto& __tup_3 = __for_tup_2;

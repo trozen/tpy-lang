@@ -18,7 +18,7 @@ void main() {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        const auto& __for_tup_0 = *__r_0;
+        const auto& __for_tup_0 = ::tpy::next_deref(*__r_0);
         // # rvalue: function call result passed directly
         // for i, s in enumerate(make_words()):
         const auto& __tup_1 = __for_tup_0;
@@ -33,7 +33,7 @@ void main() {
     for (;;) {
         auto __r_1 = __iter_1.__next__();
         if (!__r_1.has_value()) break;
-        const auto& __for_tup_1 = *__r_1;
+        const auto& __for_tup_1 = ::tpy::next_deref(*__r_1);
         // # rvalue with start
         // for i, s in enumerate(make_words(), 10):
         const auto& __tup_2 = __for_tup_1;
@@ -61,7 +61,7 @@ void main() {
     for (;;) {
         auto __r_2 = __iter_2.__next__();
         if (!__r_2.has_value()) break;
-        const auto& __for_tup_2 = *__r_2;
+        const auto& __for_tup_2 = ::tpy::next_deref(*__r_2);
         // for i, s in enumerate(list(str(x) for x in nums)):
         const auto& __tup_3 = __for_tup_2;
         int32_t i = std::get<0>(__tup_3);

@@ -17,7 +17,7 @@ void main() {
     for (;;) {
         auto __r_0 = __iter_0.__next__();
         if (!__r_0.has_value()) break;
-        const auto& __for_tup_0 = *__r_0;
+        const auto& __for_tup_0 = ::tpy::next_deref(*__r_0);
         // for name, age in zip(names, ages):
         const auto& __tup_1 = __for_tup_0;
         std::string_view name = std::get<0>(__tup_1);
@@ -35,7 +35,7 @@ void main() {
     for (;;) {
         auto __r_1 = __iter_1.__next__();
         if (!__r_1.has_value()) break;
-        const auto& __for_tup_1 = *__r_1;
+        const auto& __for_tup_1 = ::tpy::next_deref(*__r_1);
         // for n, s in zip(long, short):
         const auto& __tup_2 = __for_tup_1;
         int32_t n = std::get<0>(__tup_2);
@@ -53,7 +53,7 @@ void main() {
     for (;;) {
         auto __r_2 = __iter_2.__next__();
         if (!__r_2.has_value()) break;
-        const auto& __for_tup_2 = *__r_2;
+        const auto& __for_tup_2 = ::tpy::next_deref(*__r_2);
         // for s, n in zip(empty, nums):
         const auto& __tup_3 = __for_tup_2;
         std::string_view s = std::get<0>(__tup_3);
@@ -73,7 +73,7 @@ void main() {
     for (;;) {
         auto __r_3 = __iter_3.__next__();
         if (!__r_3.has_value()) break;
-        const auto& __for_tup_3 = *__r_3;
+        const auto& __for_tup_3 = ::tpy::next_deref(*__r_3);
         // for x, y, z in zip(xs, ys, zs):
         const auto& __tup_4 = __for_tup_3;
         int32_t x = std::get<0>(__tup_4);
@@ -90,7 +90,7 @@ void main() {
     for (;;) {
         auto __r_4 = __iter_4.__next__();
         if (!__r_4.has_value()) break;
-        const auto& __for_tup_4 = *__r_4;
+        const auto& __for_tup_4 = ::tpy::next_deref(*__r_4);
         // for x, y, z, w in zip(xs, ys, zs, ws):
         const auto& __tup_5 = __for_tup_4;
         int32_t x = std::get<0>(__tup_5);
@@ -108,7 +108,7 @@ void main() {
     for (;;) {
         auto __r_5 = __iter_5.__next__();
         if (!__r_5.has_value()) break;
-        const auto& __for_tup_5 = *__r_5;
+        const auto& __for_tup_5 = ::tpy::next_deref(*__r_5);
         // for x, y, z, w, v in zip(xs, ys, zs, ws, vs):
         const auto& __tup_6 = __for_tup_5;
         int32_t x = std::get<0>(__tup_6);
