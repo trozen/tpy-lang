@@ -220,6 +220,9 @@ class GeneratorCodegen:
         elem_type = func.generator_yield_type
         assert elem_type is not None
         cpp_elem = self.types.type_to_cpp(elem_type)
+        # Return-type form: non-value tuple elements become references
+        # (e.g. tuple[Int32, T] -> std::tuple<int32_t, T&>).
+        cpp_elem_ref = elem_type.to_cpp_return()
 
         for_stmt = func.body[-1]
         assert isinstance(for_stmt, TpyForEach)
@@ -373,8 +376,8 @@ class GeneratorCodegen:
             all_captures = ", ".join(parts)
             all_captures = _add_self_capture(all_captures)
 
-            out.write(f"{I(1)}return ::tpy::make_generator<{cpp_elem}>(\n")
-            out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_elem}> {{\n")
+            out.write(f"{I(1)}return ::tpy::make_generator<{cpp_elem_ref}>(\n")
+            out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_elem_ref}> {{\n")
             out.write(f"{I(3)}if (!__init) {{ __beg = ({iterable_code}).begin(); __end = ({iterable_code}).end(); __init = true; }}\n")
             out.write(f"{I(3)}if (__beg != __end) {{\n")
 
@@ -390,7 +393,7 @@ class GeneratorCodegen:
             out.write(f"{I(4)}auto __val = {yield_expr};\n")
             for stmt in post_yield:
                 self.statements.gen_stmt(out, stmt)
-            out.write(f"{I(4)}return std::optional<{cpp_elem}>(__val);\n")
+            out.write(f"{I(4)}return std::optional<{cpp_elem_ref}>(__val);\n")
             out.write(f"{I(3)}}}\n")
             out.write(f"{I(3)}return std::nullopt;\n")
             out.write(f"{I(2)}}}\n")

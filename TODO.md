@@ -15,12 +15,10 @@ See docs/FEATURE_ROADMAP.md for bigger tasks
 - ContextManager[T] protocol
 - Deduplicate PendingStrType / PendingBytesType infrastructure: `_resolve_pending_str_types` and `_resolve_pending_bytes_types` are identical algorithms with different type names. Same for `mark_*_augassign`, `mark_*_param_context`, `mark_*_reassigned_from_owned`, `track_*_reassign_source`, and the `_infer_new_local_type` branches in statements.py. Refactor into a generic `ViewTypeFamily` parameterized by owned/view/pending types, with one shared implementation.
 
-## Iterator reference semantics
-- enumerate/zip/generators copy non-value elements instead of preserving references. `for i, p in enumerate(points): p.x = 99` modifies a copy, not the original. CPython gives a reference.
-- Root cause: `__next__()` returns `std::expected<T, StopIteration>` by value. The element is copied into the expected, and any reference in the yielded tuple points into a local that dies on return.
-- Fix for C++ builtins (enumerate/zip): store current inner `__next__()` result as a member field in the iterator class. Return `std::tuple<..., val_or_ref_t<T>>` from `__next__()` -- for value types this is `T` (no change), for non-value types this is `T&` pointing into the stored member. `std::expected<std::tuple<int, T&>, StopIteration>` is valid C++23 (verified).
-- Fix for generators: generator codegen (`gen_generators.py`) uses `type_to_cpp()` for the yield type, but `to_cpp_return()` already maps `tuple[Int32, T]` to `std::tuple<int32_t, T&>` for non-value T. Move the inner `__next__()` result from a lambda local to the generator state so the reference stays valid across the yield boundary. The tuple literal already captures by reference (`elem_capture` system works) -- the issue is only the return type forcing a copy.
-- `val_or_ref_t<T>` already exists in `runtime/cpp/include/tpy/type_traits.hpp` for this purpose.
+## Iterator reference semantics (partially fixed)
+- Fixed: builtin enumerate/zip over containers use `enumerate_direct_iter`/`zip_direct_iter` with C++ begin/end -- references to original elements preserved.
+- Fixed: user-defined generators iterating concrete container types (`list[Point]`, not `Iterable[T]`) use `to_cpp_return()` for yield type with begin/end iteration -- references preserved.
+- Remaining: generators iterating protocol-typed params (`Iterable[T]`) still copy. The fix requires `native_iterator.__next__()` to return `T*` for non-value types (pointer to container element), but this interacts poorly with: (1) dict/set iteration yielding tuples by value (not stored in container), (2) range iteration yielding ints by value, (3) generic type params `T` where value-vs-ref is unknown at codegen time. A proper fix needs C++ `if constexpr` dispatch in the generated lambda based on whether the inner `__next__()` returns a pointer or value -- deferred to avoid complexity.
 - `list(zip(...))` correctly copies into the list (list stores by value). The fix only affects iteration -- returned tuples hold references, stored tuples hold values.
 
 ## Bugs

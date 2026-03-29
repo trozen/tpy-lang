@@ -9,6 +9,7 @@
 
 #include "next_iter.hpp"
 #include "dunder.hpp"
+#include "type_traits.hpp"
 
 #include <cstdint>
 #include <expected>
@@ -26,11 +27,26 @@ class enumerate_iter : public next_iter_mixin<enumerate_iter<T, Iter>, std::tupl
 public:
     enumerate_iter(Iter&& iter, int32_t start = 0) : iter_(std::move(iter)), index_(start) {}
 
-    std::expected<std::tuple<int32_t, T>, StopIteration> __next__() {
+    auto __next__() {
         auto r = iter_.__next__();
-        if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
-        return std::tuple<int32_t, T>{index_++, std::move(*r)};
+        if (!r.has_value()) return decltype(this->_make_result(r))(tpy::make_unexpected(StopIteration{}));
+        return _make_result(r);
     }
+
+private:
+    template<typename R>
+    auto _make_result(R& r) {
+        if constexpr (std::is_pointer_v<typename R::value_type>) {
+            // Inner iterator returned a pointer -- dereference to get T&
+            return std::expected<std::tuple<int32_t, T&>, StopIteration>(
+                std::tuple<int32_t, T&>{index_++, *(*r)});
+        } else {
+            return std::expected<std::tuple<int32_t, T>, StopIteration>(
+                std::tuple<int32_t, T>{index_++, std::move(*r)});
+        }
+    }
+
+public:
 
     enumerate_iter& __iter__() { return *this; }
 
@@ -56,12 +72,25 @@ public:
     owning_enumerate_iter(owning_enumerate_iter&&) = delete;
     owning_enumerate_iter& operator=(owning_enumerate_iter&&) = delete;
 
-    std::expected<std::tuple<int32_t, T>, StopIteration> __next__() {
+    auto __next__() {
         auto r = iter_.__next__();
-        if (!r.has_value()) return tpy::make_unexpected(StopIteration{});
-        return std::tuple<int32_t, T>{index_++, std::move(*r)};
+        if (!r.has_value()) return decltype(this->_make_result(r))(tpy::make_unexpected(StopIteration{}));
+        return _make_result(r);
     }
 
+private:
+    template<typename R>
+    auto _make_result(R& r) {
+        if constexpr (std::is_pointer_v<typename R::value_type>) {
+            return std::expected<std::tuple<int32_t, T&>, StopIteration>(
+                std::tuple<int32_t, T&>{index_++, *(*r)});
+        } else {
+            return std::expected<std::tuple<int32_t, T>, StopIteration>(
+                std::tuple<int32_t, T>{index_++, std::move(*r)});
+        }
+    }
+
+public:
     owning_enumerate_iter& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const owning_enumerate_iter&) {
@@ -69,32 +98,110 @@ public:
     }
 };
 
-// lvalue: extract iterator (container outlives the loop)
+// Direct-iteration variant: uses C++ begin/end to get references to container
+// elements instead of going through __iter__/__next__() which copies.
+template<typename T, typename Container>
+class enumerate_direct_iter
+    : public next_iter_mixin<enumerate_direct_iter<T, Container>,
+                             std::tuple<int32_t, val_or_ref_t<T>>> {
+    using CppIter = decltype(std::declval<Container&>().begin());
+    Container& container_;
+    CppIter it_;
+    CppIter end_;
+    int32_t index_;
+public:
+    enumerate_direct_iter(Container& c, int32_t start = 0)
+        : container_(c), it_(c.begin()), end_(c.end()), index_(start) {}
+
+    std::expected<std::tuple<int32_t, val_or_ref_t<T>>, StopIteration> __next__() {
+        if (it_ == end_) return tpy::make_unexpected(StopIteration{});
+        return std::tuple<int32_t, val_or_ref_t<T>>{index_++, *it_++};
+    }
+
+    enumerate_direct_iter& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const enumerate_direct_iter&) {
+        return os << "<enumerate>";
+    }
+};
+
+// Owning direct-iteration variant for rvalue containers.
+template<typename T, typename Container>
+class owning_enumerate_direct_iter
+    : public next_iter_mixin<owning_enumerate_direct_iter<T, Container>,
+                             std::tuple<int32_t, val_or_ref_t<T>>> {
+    using CppIter = decltype(std::declval<Container&>().begin());
+    Container owned_;
+    CppIter it_;
+    CppIter end_;
+    int32_t index_;
+public:
+    owning_enumerate_direct_iter(Container&& c, int32_t start = 0)
+        : owned_(std::move(c)), it_(owned_.begin()), end_(owned_.end()), index_(start) {}
+
+    owning_enumerate_direct_iter(owning_enumerate_direct_iter&&) = delete;
+    owning_enumerate_direct_iter& operator=(owning_enumerate_direct_iter&&) = delete;
+
+    std::expected<std::tuple<int32_t, val_or_ref_t<T>>, StopIteration> __next__() {
+        if (it_ == end_) return tpy::make_unexpected(StopIteration{});
+        return std::tuple<int32_t, val_or_ref_t<T>>{index_++, *it_++};
+    }
+
+    owning_enumerate_direct_iter& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const owning_enumerate_direct_iter&) {
+        return os << "<enumerate>";
+    }
+};
+
+namespace detail {
+template<typename T>
+concept has_begin_end = requires(T& t) { t.begin(); t.end(); };
+}
+
+// lvalue: direct iteration for containers (preserves references),
+// __iter__/__next__() fallback for TPy iterators
 template<typename T, typename Iterable>
 auto builtin_enumerate(Iterable& iterable) {
-    auto iter = tpy::__iter__(iterable);
-    return enumerate_iter<T, decltype(iter)>(std::move(iter));
+    if constexpr (detail::has_begin_end<Iterable>) {
+        return enumerate_direct_iter<T, Iterable>(iterable);
+    } else {
+        auto iter = tpy::__iter__(iterable);
+        return enumerate_iter<T, decltype(iter)>(std::move(iter));
+    }
 }
 
 // rvalue: own the container to prevent dangling iterators
 template<typename T, typename Iterable>
     requires (!std::is_lvalue_reference_v<Iterable&&>)
 auto builtin_enumerate(Iterable&& iterable) {
-    return owning_enumerate_iter<T, std::remove_cvref_t<Iterable>>(std::move(iterable));
+    if constexpr (detail::has_begin_end<Iterable>) {
+        return owning_enumerate_direct_iter<T, std::remove_cvref_t<Iterable>>(std::move(iterable));
+    } else {
+        return owning_enumerate_iter<T, std::remove_cvref_t<Iterable>>(std::move(iterable));
+    }
 }
 
 // lvalue with start
 template<typename T, typename Iterable>
 auto builtin_enumerate_start(Iterable& iterable, int32_t start) {
-    auto iter = tpy::__iter__(iterable);
-    return enumerate_iter<T, decltype(iter)>(std::move(iter), start);
+    if constexpr (detail::has_begin_end<Iterable>) {
+        return enumerate_direct_iter<T, Iterable>(iterable, start);
+    } else {
+        auto iter = tpy::__iter__(iterable);
+        return enumerate_iter<T, decltype(iter)>(std::move(iter), start);
+    }
 }
 
 // rvalue with start
 template<typename T, typename Iterable>
     requires (!std::is_lvalue_reference_v<Iterable&&>)
 auto builtin_enumerate_start(Iterable&& iterable, int32_t start) {
-    return owning_enumerate_iter<T, std::remove_cvref_t<Iterable>>(std::move(iterable), start);
+    if constexpr (detail::has_begin_end<Iterable>) {
+        return owning_enumerate_direct_iter<T, std::remove_cvref_t<Iterable>>(std::move(iterable), start);
+    } else {
+        return owning_enumerate_iter<T, std::remove_cvref_t<Iterable>>(std::move(iterable), start);
+    }
 }
 
 // -- zip (variadic) --
@@ -189,10 +296,50 @@ public:
     }
 };
 
-// lvalue factory: extract iterators (containers outlive the loop)
+// Direct-iteration zip: uses C++ begin/end for reference-preserving iteration.
+template<typename TypeTag, typename... Containers>
+class zip_direct_iter;
+
+template<typename... Ts, typename... Containers>
+class zip_direct_iter<zip_types<Ts...>, Containers...>
+    : public next_iter_mixin<zip_direct_iter<zip_types<Ts...>, Containers...>,
+                             std::tuple<val_or_ref_t<Ts>...>> {
+    std::tuple<decltype(std::declval<Containers&>().begin())...> its_;
+    std::tuple<decltype(std::declval<Containers&>().end())...> ends_;
+
+    template<std::size_t... Is>
+    bool any_at_end(std::index_sequence<Is...>) const {
+        return ((std::get<Is>(its_) == std::get<Is>(ends_)) || ...);
+    }
+    template<std::size_t... Is>
+    std::tuple<val_or_ref_t<Ts>...> deref_and_advance(std::index_sequence<Is...>) {
+        return std::tuple<val_or_ref_t<Ts>...>{*std::get<Is>(its_)++...};
+    }
+public:
+    explicit zip_direct_iter(Containers&... cs)
+        : its_(cs.begin()...), ends_(cs.end()...) {}
+
+    std::expected<std::tuple<val_or_ref_t<Ts>...>, StopIteration> __next__() {
+        if (any_at_end(std::index_sequence_for<Containers...>{}))
+            return tpy::make_unexpected(StopIteration{});
+        return deref_and_advance(std::index_sequence_for<Containers...>{});
+    }
+
+    zip_direct_iter& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const zip_direct_iter&) {
+        return os << "<zip>";
+    }
+};
+
+// lvalue factory: direct iteration for containers, __iter__ fallback otherwise
 template<typename... Ts, typename... Cs>
 auto builtin_zip(Cs&... cs) {
-    return zip_iter<zip_types<Ts...>, decltype(tpy::__iter__(cs))...>(tpy::__iter__(cs)...);
+    if constexpr ((detail::has_begin_end<Cs> && ...)) {
+        return zip_direct_iter<zip_types<Ts...>, Cs...>(cs...);
+    } else {
+        return zip_iter<zip_types<Ts...>, decltype(tpy::__iter__(cs))...>(tpy::__iter__(cs)...);
+    }
 }
 
 // Mixed factory (at least one rvalue): per-arg own (rvalue) or borrow (lvalue).
