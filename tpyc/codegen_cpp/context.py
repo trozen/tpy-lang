@@ -407,6 +407,7 @@ class CodeGenContext:
     in_consuming_method: bool = False
     current_return_type: TpyType | None = None
     current_error_return: str | None = None
+    error_return_stmt_handled: bool = False
     current_func_params: dict[str, TpyType] = field(default_factory=dict)
     current_type_param_bounds: dict[str, TpyType] = field(default_factory=dict)
     const_ref_params: set[str] = field(default_factory=set)
@@ -548,6 +549,7 @@ class CodeGenContext:
         self.indent_level = 0
         self.current_return_type = None
         self.current_error_return = None
+        self.error_return_stmt_handled = False
         self.current_func_params = {}
         self.current_type_param_bounds = {}
         self.in_method = False

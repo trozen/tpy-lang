@@ -285,7 +285,7 @@ class StatementGenerator:
             if fi:
                 self.ctx.try_except_counter += 1
                 tmp = f"__try_tmp_{self.ctx.try_except_counter}"
-                call_cpp = self.expressions.gen_expr(stmt.expr)
+                call_cpp = self._gen_error_return_call(stmt.expr)
                 if self.ctx.try_except_label:
                     label = self.ctx.try_except_label
                     goto_line = self._gen_error_goto(f"{indent}{INDENT}", tmp, label)
@@ -357,6 +357,12 @@ class StatementGenerator:
                     # variant<T*...> construction
                     ret_expr = self.expressions.gen_expr(ret_value, ret_type)
                     return f"{indent}return &({ret_expr});\n"
+                # When returning an error_return call from a matching
+                # @error_return function, pass the std::expected through
+                # directly -- no unwrap+rewrap needed.
+                if self.ctx.current_error_return and self._get_error_return_fi(ret_value):
+                    ret_expr = self._gen_error_return_call(ret_value)
+                    return f"{indent}return {ret_expr};\n"
                 ret_expr = self.expressions.gen_expr(
                     ret_value, ret_type)
                 # Dereference pointer-locals/pointer-globals on return (T* -> T&)
@@ -1635,7 +1641,7 @@ class StatementGenerator:
             self.ctx.try_except_counter += 1
             try_tmp = f"__try_tmp_{self.ctx.try_except_counter}"
             label = self.ctx.try_except_label
-            call_cpp = self.expressions.gen_expr(stmt.value)
+            call_cpp = self._gen_error_return_call(stmt.value)
             self.ctx.temps.flush(out, indent)
             out.write(f"{indent}{{\n")
             out.write(f"{indent}{INDENT}auto {try_tmp} = {call_cpp};\n")
@@ -1984,7 +1990,7 @@ class StatementGenerator:
         tmp = f"__try_tmp_{self.ctx.try_except_counter}"
         label = self.ctx.try_except_label
 
-        call_cpp = self.expressions.gen_expr(stmt.init)
+        call_cpp = self._gen_error_return_call(stmt.init)
         cpp_name = escape_cpp_name(stmt.name)
 
         fi = self._get_error_return_fi(stmt.init)
@@ -2021,7 +2027,7 @@ class StatementGenerator:
         tmp = f"__try_tmp_{self.ctx.try_except_counter}"
         label = self.ctx.try_except_label
 
-        call_cpp = self.expressions.gen_expr(stmt.value)
+        call_cpp = self._gen_error_return_call(stmt.value)
         target_cpp = self.expressions.gen_expr(stmt.target)
 
         out = f"{indent}{{\n"
@@ -2044,7 +2050,7 @@ class StatementGenerator:
         self.ctx.try_except_counter += 1
         tmp = f"__try_tmp_{self.ctx.try_except_counter}"
 
-        call_cpp = self.expressions.gen_expr(stmt.init)
+        call_cpp = self._gen_error_return_call(stmt.init)
         cpp_name = escape_cpp_name(stmt.name)
 
         fi = self._get_error_return_fi(stmt.init)
@@ -2073,7 +2079,7 @@ class StatementGenerator:
         self.ctx.try_except_counter += 1
         tmp = f"__try_tmp_{self.ctx.try_except_counter}"
 
-        call_cpp = self.expressions.gen_expr(stmt.value)
+        call_cpp = self._gen_error_return_call(stmt.value)
         target_cpp = self.expressions.gen_expr(stmt.target)
 
         out = f"{indent}{{\n"
@@ -2091,7 +2097,7 @@ class StatementGenerator:
         self.ctx.try_except_counter += 1
         tmp = f"__try_tmp_{self.ctx.try_except_counter}"
 
-        call_cpp = self.expressions.gen_expr(stmt.init)
+        call_cpp = self._gen_error_return_call(stmt.init)
         cpp_name = escape_cpp_name(stmt.name)
 
         fi = self._get_error_return_fi(stmt.init)
@@ -2118,7 +2124,7 @@ class StatementGenerator:
         self.ctx.try_except_counter += 1
         tmp = f"__try_tmp_{self.ctx.try_except_counter}"
 
-        call_cpp = self.expressions.gen_expr(stmt.value)
+        call_cpp = self._gen_error_return_call(stmt.value)
         target_cpp = self.expressions.gen_expr(stmt.target)
 
         out = f"{indent}{{\n"
@@ -2136,7 +2142,7 @@ class StatementGenerator:
         self.ctx.try_except_counter += 1
         tmp = f"__try_tmp_{self.ctx.try_except_counter}"
 
-        call_cpp = self.expressions.gen_expr(stmt.init)
+        call_cpp = self._gen_error_return_call(stmt.init)
         cpp_name = escape_cpp_name(stmt.name)
 
         fi = self._get_error_return_fi(stmt.init)
@@ -2163,7 +2169,7 @@ class StatementGenerator:
         self.ctx.try_except_counter += 1
         tmp = f"__try_tmp_{self.ctx.try_except_counter}"
 
-        call_cpp = self.expressions.gen_expr(stmt.value)
+        call_cpp = self._gen_error_return_call(stmt.value)
         target_cpp = self.expressions.gen_expr(stmt.target)
 
         out = f"{indent}{{\n"
@@ -2173,6 +2179,17 @@ class StatementGenerator:
         out += f"{indent}}}\n"
 
         return out
+
+    def _gen_error_return_call(self, expr: TpyExpr) -> str:
+        """Generate an error_return call, suppressing expression-level unwrap.
+
+        Statement-level handlers call this instead of gen_expr() directly
+        so that the top-level call emits the raw std::expected (for the
+        handler to unwrap), while nested error_return calls in arguments
+        still get unwrapped via statement expressions.
+        """
+        self.ctx.error_return_stmt_handled = True
+        return self.expressions.gen_expr(expr)
 
     def _get_error_return_fi(self, expr: TpyExpr) -> 'FunctionInfo | None':
         """Return FunctionInfo if expr is an @error_return call, else None."""

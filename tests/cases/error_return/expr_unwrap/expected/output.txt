@@ -1,0 +1,11 @@
+30
+caught
+14
+5
+hello world
+caught str
+2
+3
+caught neg
+99
+caught direct

@@ -648,12 +648,14 @@ class ExpressionGenerator:
         elif isinstance(expr, TpyCall):
             if expr.macro_expansion is not None:
                 return self.gen_expr(expr.macro_expansion)
-            return self._gen_call(expr)
+            result = self._gen_call(expr)
+            return self._maybe_error_return_unwrap(expr, result)
 
         elif isinstance(expr, TpyMethodCall):
             if expr.macro_expansion is not None:
                 return self.gen_expr(expr.macro_expansion)
-            return self._gen_method_call(expr)
+            result = self._gen_method_call(expr)
+            return self._maybe_error_return_unwrap(expr, result)
 
         elif isinstance(expr, TpyFieldAccess):
             return self._gen_field_access(expr)
@@ -1432,6 +1434,48 @@ class ExpressionGenerator:
                 return f"::tpy::BigInt(static_cast<int64_t>({v}LL))"
             return f'::tpy::BigInt::from_str("{v}")'
         return str(v)
+
+    def _maybe_error_return_unwrap(self, expr: TpyCall | TpyMethodCall, call_cpp: str) -> str:
+        """Wrap an @error_return call in a statement expression that unwraps it.
+
+        Uses GCC/Clang statement expressions: ({ auto __t = call(); check; *__t; })
+        The check depends on context:
+        - Inside @error_return function: propagate via return
+        - Inside try/except: goto except label
+        - Top-level: panic
+        """
+        inner = expr
+        while isinstance(inner, TpyCoerce):
+            inner = inner.expr
+        fi = getattr(inner, 'resolved_function_info', None)
+        if not fi or not fi.error_return_type:
+            return call_cpp
+
+        # Skip if statement-level handlers will take care of this call.
+        # The flag is set for the direct (top-level) call only -- clear it
+        # so nested calls in arguments still get unwrapped.
+        if self.ctx.error_return_stmt_handled:
+            self.ctx.error_return_stmt_handled = False
+            return call_cpp
+
+        self.ctx.try_except_counter += 1
+        tmp = f"__er_{self.ctx.try_except_counter}"
+
+        if self.ctx.try_except_label:
+            label = self.ctx.try_except_label
+            err_opt = self.ctx.try_except_err_opt
+            if err_opt:
+                check = (f"if (!{tmp}.has_value()) {{ "
+                         f"{err_opt} = std::move({tmp}.error()); "
+                         f"goto {label}; }}")
+            else:
+                check = f"if (!{tmp}.has_value()) goto {label};"
+        elif self.ctx.current_error_return:
+            check = f"if (!{tmp}.has_value()) return ::tpy::make_unexpected({tmp}.error());"
+        else:
+            check = f'if (!{tmp}.has_value()) ::tpy::tpy_panic("unhandled error return");'
+
+        return f"({{ auto {tmp} = {call_cpp}; {check} std::move(*{tmp}); }})"
 
     def _gen_call(self, expr: TpyCall) -> str:
         """Generate function call code."""

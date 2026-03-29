@@ -3,6 +3,7 @@
 See docs/FEATURE_ROADMAP.md for bigger tasks
 
 ## Next
+- `@error_return` with non-value return types: `std::expected<T&, E>` is invalid C++ (`std::expected` can't hold references). Functions like `@error_return(E) def positive(p: Point) -> Point` fail to compile because the return type maps to `Point&`. Need to store the value inside the expected (e.g. `std::expected<T, E>` by value), which changes the semantics for non-value types -- `return p` would copy `p` into the expected instead of returning a reference. This also means `positive(p).updated()` would mutate a copy, diverging from CPython where it mutates the original.
 - add Ref[T] type that would denote references, automatically added to function args/return in parser, so user doesn't need to see it; would it help in managig the pipeline?
 - star import from user modules, __all__ in user modules
 - Own[T] variable types cleanup: `rvalue_vars`, `consumed_loop_vars`, `move_through_vars`, and `local_var_is_movable()` are now redundant for Own[T] variables (movability is in the type). These side channels are still used by flow_facts, init_tracker, and scope_tracker for branch merging. Remove incrementally: replace `_is_movable_var` with scope type check, then simplify flow_facts save/restore, then remove `rvalue_vars`.
@@ -39,7 +40,6 @@ Can be done incrementally: start where `val_or_ref<T>` already exists (iterator 
 - limit imports from macro_modules (macro_api only?)
 - macros should work in cpython as well
 - all macro code (at least for json model) generated in headers
-- Expression-level error_return unwrap: `print(reader.read_str())` fails because the `std::expected` result isn't unwrapped in sub-expression position. Auto-extract error_return calls in sub-expressions to temp variables with unwrap/propagation in codegen. Uses the existing temps system. Would eliminate the need for manual `v = reader.read_str(); print(v)` workarounds.
 - Macro-generated AST nodes missing source locations: `_build_from_reader` and other macro builders in `model.py` create `TpyCall`, `TpyVarDecl`, etc. without setting `loc`. Warnings emitted during analysis of these nodes (e.g. "copies X into owned storage") have no file:line, making them hard to diagnose. Fix: propagate the `@model` decorator's source location to generated nodes, or at minimum to the top-level statements in each generated method body.
 - `@model` copy warning for nested model fields: `Snapshot._from_reader` generates `return Snapshot(data)` where `data: SnapshotData` is a non-value local. This triggers "copies SnapshotData into owned storage" but the user can't suppress it since it's in generated code. The generated code should use `copy(data)` or the return should auto-move the last-use local.
 - json: pretty printing

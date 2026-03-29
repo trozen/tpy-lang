@@ -378,7 +378,7 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `slice.hpp` | Built-in slice type for user-defined `__getitem__` overloads |
 | `math_ops.hpp` | Wrapper for two-argument `math.log(x, base)` |
 
-Generated code requires C++23 (for `std::ranges` concepts).
+Generated code requires C++23 (for `std::ranges` concepts) and uses the GCC statement expression extension (`({ ... })`) for expression-level `@error_return` unwrapping. This extension is supported by GCC, Clang, and all LLVM-based compilers (Intel ICX, ARM armclang, IBM Open XL). It is not supported by MSVC.
 
 ### Libraries (`lib/`)
 
