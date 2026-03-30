@@ -298,6 +298,68 @@ void test_with_in_try_finally() {
     }
 }
 
+// def test_break_in_with() -> None:
+void test_break_in_with() {
+    // for i in range(5):
+    for (int32_t i = 0; i < 5; ++i) {
+        // with Logger("BK"):
+        auto __ctx_16 = Logger("BK");
+        __ctx_16.__enter__();
+        try {
+            // if i == 2:
+            if ((i == 2)) {
+                // break
+                goto __finally_break_18;
+            }
+            // print(i)
+            std::cout << i << "\n";
+        } catch (...) {
+            __ctx_16.__exit__();
+            throw;
+        }
+        __finally_18:;
+        __ctx_16.__exit__();
+        goto __after_finally_19;
+        __finally_break_18:;
+        __ctx_16.__exit__();
+        break;
+        __after_finally_19:;
+    }
+    // print("after break loop")
+    std::cout << "after break loop" << "\n";
+}
+
+// def test_continue_in_with() -> None:
+void test_continue_in_with() {
+    // for i in range(5):
+    for (int32_t i = 0; i < 5; ++i) {
+        // with Logger("CT"):
+        auto __ctx_17 = Logger("CT");
+        __ctx_17.__enter__();
+        try {
+            // if i == 2:
+            if ((i == 2)) {
+                // continue
+                goto __finally_continue_20;
+            }
+            // print(i)
+            std::cout << i << "\n";
+        } catch (...) {
+            __ctx_17.__exit__();
+            throw;
+        }
+        __finally_20:;
+        __ctx_17.__exit__();
+        goto __after_finally_21;
+        __finally_continue_20:;
+        __ctx_17.__exit__();
+        continue;
+        __after_finally_21:;
+    }
+    // print("after continue loop")
+    std::cout << "after continue loop" << "\n";
+}
+
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -349,6 +411,14 @@ void __tpy_init() {
     std::cout << "---" << "\n";
     // test_with_in_try_finally()
     test_with_in_try_finally();
+    // print("---")
+    std::cout << "---" << "\n";
+    // test_break_in_with()
+    test_break_in_with();
+    // print("---")
+    std::cout << "---" << "\n";
+    // test_continue_in_with()
+    test_continue_in_with();
 }
 
 } // namespace tpyapp::main

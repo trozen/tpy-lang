@@ -65,3 +65,29 @@ enter N
 inside with
 exit N
 outer finally
+---
+enter BK
+0
+exit BK
+enter BK
+1
+exit BK
+enter BK
+exit BK
+after break loop
+---
+enter CT
+0
+exit CT
+enter CT
+1
+exit CT
+enter CT
+exit CT
+enter CT
+3
+exit CT
+enter CT
+4
+exit CT
+after continue loop

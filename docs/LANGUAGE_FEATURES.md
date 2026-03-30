@@ -2852,10 +2852,10 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 ### `with` Statement (Context Managers)
 - **Working**: `with expr as var:` -- duck-typed context manager protocol via `__enter__`/`__exit__` methods
   - `__enter__(self) -> T` -- return type determines the `as`-variable type (can differ from the context manager type)
-  - `__exit__(self) -> None` (TPy-native) or `__exit__(self, exc_type, exc_val, exc_tb) -> None` (CPython-compatible; exception params are stripped at parse time since TPy has no general exceptions)
-  - Cleanup via try/catch duplication -- `__exit__()` runs on all paths (normal, exception, early return)
+  - `__exit__(self) -> None` (TPy-native) or `__exit__(self, exc_type, exc_val, exc_tb) -> None` (CPython-compatible; exception params stripped at parse time)
+  - Cleanup via try/catch duplication -- `__exit__()` runs on all paths (normal, exception, early return, break, continue)
   - `as`-variable is visible after the `with` block (matching CPython scoping)
-  - Multiple context managers: `with a() as x, b() as y:` -- nested guards, inner exits first (LIFO)
+  - Multiple context managers: `with a() as x, b() as y:` -- nested try/catch blocks, inner exits first (LIFO)
   - Name reuse: `with a() as f: ... with b() as f: ...` -- second block rebinds via pointer-local indirection
   - `with expr:` (no `as`) -- enter/exit without binding
 

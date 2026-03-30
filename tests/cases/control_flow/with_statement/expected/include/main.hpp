@@ -26,6 +26,8 @@ void test_reuse_with_var_name();
 void test_exception_in_body();
 void test_exception_multi();
 void test_with_in_try_finally();
+void test_break_in_with();
+void test_continue_in_with();
 
 // class Logger:
 struct Logger {

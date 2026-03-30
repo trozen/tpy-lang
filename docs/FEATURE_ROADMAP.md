@@ -57,8 +57,8 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
-| C1 | Exception model (design) | M | Not started | [III](#exception-model-tryexceptraise) |
-| C2 | Exception implementation | L | Not started | [III](#exception-model-tryexceptraise) |
+| C1 | Exception model (design) | M | Done | [III](#exception-model-tryexceptraise) |
+| C2 | Exception implementation | L | Done | [III](#exception-model-tryexceptraise) |
 | C3 | @noalloc enforcement | L | Parsed only | [IV](#noalloc-enforcement) |
 | C4 | Effect framework (@nothrow, @pure) | M-L | Not started | [IV](#effect-system-generalized) |
 | C5 | Cyclic dependency handling | L | Not started | [V](#cyclic-dependency-handling) |
@@ -143,7 +143,7 @@ don't get lost.
 | Final for non-primitive types | A1 | `Final[list[T]]` -- needs deep immutability |
 | Cross-module Final references | A1 | Use imported Finals in initializers |
 | Virtual methods in inheritance | B4 | `@dynamic` protocols cover the use case; class-based virtual dispatch is a distant future consideration |
-| `__exit__` exception args + return | D4 | Pass `(exc_type, exc_val, exc_tb)` to `__exit__`, return `True` to suppress. Blocked on general exceptions (C1/C2) |
+| `__exit__` exception args + return | D4 | Pass `(exc_type, exc_val, exc_tb)` to `__exit__`, return `True` to suppress. Exceptions are done (C1/C2); needs runtime type-info passing |
 | `@contextmanager` decorator | D4 | `yield`-based context managers via `contextlib.contextmanager`. Blocked on generators (F3) |
 | `async with` | D4 | `__aenter__`/`__aexit__` async context managers. Blocked on async (G1) |
 | IIFE init-list for branching `__init__` | A8 | Generate `field([&]{ if (...) return x; else return y; }())` in member init-list, removing the need for helper functions. Handles all types including `@nocopy`/const fields. |
@@ -1003,25 +1003,34 @@ except ValueError as e:
     print("bad data:", e.message)
 ```
 
-**Why it matters**: This is the most design-shaping decision remaining. Affects control flow,
-ownership (cleanup during unwinding), `@noalloc` (exceptions allocate), and Python compat.
-Currently `raise` and `try` are both blocked at the parser level.
+TurboPython uses a **two-tier exception model**:
 
-Design options:
-- **C++ exceptions**: natural mapping, but incompatible with `@noalloc`, hard cleanup
-- **`std::expected<T, E>` / Result types**: clean ownership, but breaks Python semantics
-- **Hybrid**: exceptions by default, `@nothrow` for constrained contexts
-- **Policy-based**: configurable per function/module (exception vs error code)
+1. **Return exceptions** (`@error_return`) -- zero-cost control-flow errors compiled to
+   `std::expected<T, E>`. For patterns where the "exception" is an expected outcome
+   (iterator exhaustion, lookup miss, parse failure). No stack unwinding, `@noalloc` compatible.
 
-The hybrid approach fits TPy's philosophy (unconstrained by default, opt-in constraints).
-`@nothrow` would be an effect annotation like `@noalloc` and `@readonly`.
+2. **Throw exceptions** (C++ exceptions) -- standard stack-unwinding exceptions for genuine
+   errors (I/O failures, invalid arguments, runtime violations). Same semantics as Python's
+   `raise`/`except` model.
 
-**Current state**: Not started. Only `raise StopIteration` in `__next__` is special-cased.
+Both tiers use the same Python syntax (`raise E`, `try`/`except`), but the compiler routes
+to different C++ mechanisms based on the `ReturnException` marker protocol.
 
-**Dependencies**: Blocks self-hosting (9 try/except blocks), `Iterable[T]` protocol,
-real-world programs. Interacts with `@noalloc` and effect system.
+**Current state**: Done. Full two-tier model implemented (phases E1-E8). See
+`docs/EXCEPTION_DESIGN.md` for comprehensive design documentation. Includes:
+- `@error_return(E)` with auto-propagation, `except ReturnException` catch-all
+- C++ `throw`/`catch` for non-ReturnException types
+- Exception types with data fields, `except E as e` binding
+- Multiple `except` handlers, bare `except:`, re-raise
+- `try`/`except`/`else`/`finally` with catch-all + duplication codegen
+- `raise`/`return`/`break`/`continue` inside `finally` blocks
+- `raise <expr>` (pre-constructed exception variables and function results)
+- Nested `try`/`finally` with correct propagation
 
-**Effort**: L-XL (design + implementation + ownership cleanup paths)
+**Future extensions** (low priority): mixed-tier `try`/`except`, multiple return exception
+types (`@error_return(E1, E2)`), custom base exception classes, exception chaining.
+
+**Effort**: M + L (complete)
 
 ---
 
@@ -1507,7 +1516,7 @@ Maps to C++ try/catch duplication -- `__exit__()` is emitted in both the catch h
 **Current state**: Done. Duck-typed `__enter__`/`__exit__` protocol. `__exit__` accepts
 0 params (TPy-native) or 3 params (CPython-compatible -- exception params stripped at
 parse time). `as`-variable visible after `with` block (CPython scoping). Multiple
-context managers (`with a() as x, b() as y:`) emit nested guards (LIFO exit order).
+context managers (`with a() as x, b() as y:`) emit nested try/catch blocks (LIFO exit order).
 `__enter__` return type determines the `as`-binding type (can differ from context manager
 type).
 

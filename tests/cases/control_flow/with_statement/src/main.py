@@ -129,6 +129,26 @@ def test_with_in_try_finally() -> None:
         print("outer finally")
 
 
+def test_break_in_with() -> None:
+    """break inside with body in a loop -- __exit__ fires before exiting."""
+    for i in range(5):
+        with Logger("BK"):
+            if i == 2:
+                break
+            print(i)
+    print("after break loop")
+
+
+def test_continue_in_with() -> None:
+    """continue inside with body in a loop -- __exit__ fires before next iteration."""
+    for i in range(5):
+        with Logger("CT"):
+            if i == 2:
+                continue
+            print(i)
+    print("after continue loop")
+
+
 test_basic()
 print("---")
 test_no_as()
@@ -152,3 +172,7 @@ print("---")
 test_exception_multi()
 print("---")
 test_with_in_try_finally()
+print("---")
+test_break_in_with()
+print("---")
+test_continue_in_with()
