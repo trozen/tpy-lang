@@ -73,12 +73,12 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D2 | Named function references as values | S | Done | [I](#callable--function-pointer-types) |
 | D3 | f-strings | M | Done | [VII](#f-strings) |
 | D4 | with statement | M | Done | [VI](#with-statement-context-managers) |
-| D5 | Nested `def` with captures, `nonlocal` | M-L | Not started | [VI](#closures--nested-functions) |
+| D5 | Nested `def` with captures, `nonlocal` | M-L | Done | [VI](#closures--nested-functions) |
 | D6 | Properties (@property) | M | Not started | [VII](#properties) |
 | D7 | String literal types (Literal[...]) | M | Not started | [III](#string-literal-types) |
 | D8 | `@override` decorator | S | Done | [VII](#override-decorator) |
 | D9 | set type | L | Done | [VII](#set-type) |
-| D10 | bytes type | M | Not started | [VII](#bytes-type) |
+| D10 | bytes type | M | Done | [VII](#bytes-type) |
 | D11 | Dict comprehension | S-M | Done | [VI](#dict-comprehension) |
 | D12 | Set comprehension | S | Done | [VI](#set-comprehension) |
 | D13 | Generator expressions | M | Done | [VI](#generator-expressions) |
@@ -105,7 +105,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | E7 | Error recovery / multi-error diagnostics | L | Not started | [VIII](#error-recovery--multi-error-diagnostics) |
 | E8a | Drop flag (`__tpy_owned_`) | S | Done | [IV](#move-safe-destructors) |
 | E8b | Sentinel field optimization (eliminate drop flag) | M | Not started | [IV](#move-safe-destructors) |
-| E9 | Integer range analysis / bounds check elision | M-L | Not started | [VIII](#integer-range-analysis--bounds-check-elision) |
+| E9 | Integer range analysis / bounds check elision | M-L | Partial | [VIII](#integer-range-analysis--bounds-check-elision) |
 
 ### Phase F: Compile-Time Power
 
@@ -144,7 +144,7 @@ don't get lost.
 | Cross-module Final references | A1 | Use imported Finals in initializers |
 | Virtual methods in inheritance | B4 | `@dynamic` protocols cover the use case; class-based virtual dispatch is a distant future consideration |
 | `__exit__` exception args + return | D4 | Pass `(exc_type, exc_val, exc_tb)` to `__exit__`, return `True` to suppress. Exceptions are done (C1/C2); needs runtime type-info passing |
-| `@contextmanager` decorator | D4 | `yield`-based context managers via `contextlib.contextmanager`. Blocked on generators (F3) |
+| `@contextmanager` decorator | D4 | `yield`-based context managers via `contextlib.contextmanager`. Generators done (F3); now implementable |
 | `async with` | D4 | `__aenter__`/`__aexit__` async context managers. Blocked on async (G1) |
 | IIFE init-list for branching `__init__` | A8 | Generate `field([&]{ if (...) return x; else return y; }())` in member init-list, removing the need for helper functions. Handles all types including `@nocopy`/const fields. |
 | `type[T]` parameter type | -- | Compile-time-only phantom type representing a class. `type[T]` params generate no runtime code; `cls(args)` desugars to `T(args)`. Enables factory functions (`def create[T](cls: type[T], ...) -> T`), deserialization (`from_json(Point, data)`), and CPython-compatible patterns where classes are passed as values. |
@@ -210,7 +210,8 @@ is a core Python pattern. Also needed for dict iteration (`for k, v in d.items()
 Maps to `std::tuple<T...>` in C++. Design questions: variadic type params, named tuples,
 interaction with ownership (move each element on destructure?).
 
-**Current state**: Partial. Core tuple type is working:
+**Current state**: Done (core). Tuple type, unpacking, and context-dependent reference
+elements are all working:
 - `tuple[T1, T2, ...]` annotations and type inference
 - Tuple literals `(a, b)`, single-element `(a,)`, nested tuples
 - Compile-time element access `t[0]`, `t[-1]` via `std::get<N>`
@@ -219,14 +220,12 @@ interaction with ownership (move each element on destructure?).
 - Equality comparison (`==`, `!=`) with element-wise type checking
 - Python-style printing `(1, 'hello')`, `(42,)` for single-element
 - Immutability enforced: `t[0] = x` is rejected by sema
-- Reference types require `Own[T]`: `tuple[Int32, Own[Point]]`
-- Not yet supported: `Optional`/`Union` elements, ordering comparisons (`<`, `>`)
+- Context-dependent reference elements (see below)
 - Tuple unpacking: `a, b = expr` with fresh vars, reassignment, and `_` discard
 - For-loop unpacking: `for a, b in items` (desugared at parse time)
-- Nested unpacking (`a, (b, c) = ...`) not yet supported
 
-**Remaining**: `Optional`/`Union` elements, reference elements without `Own[]` (design
-unresolved -- see below), nested unpacking.
+**Remaining**: `Optional`/`Union` elements, ordering comparisons (`<`, `>`),
+nested unpacking (`a, (b, c) = ...`).
 
 **Dependencies**: None (core tuple type and unpacking done). Dict iteration needs both
 tuple and dict.
@@ -488,14 +487,17 @@ Design space:
 - **`std::function<R(Args...)>`** -- supports closures, but allocates
 - **Template-based** (like protocol params) -- zero overhead, supports closures, monomorphizes
 
-Probably all three depending on context. The type system needs a new type kind.
-Variadic type params for argument types is a design question.
+Two type kinds implemented: `Fn` (template-based, zero overhead, monomorphized) and
+`Callable` (type-erased `std::function`). Named function references as values also work.
 
-**Current state**: Not started. No `CallableType` or `FunctionPointerType` anywhere.
+**Current state**: Done. `FnType` for zero-cost callable template params (monomorphized
+at each call site). `CallableType` for type-erased `std::function<R(Args...)>` (supports
+closures, storable in fields/containers). Named function references can be passed as
+values. Lambda expressions work as both `Fn` and `Callable`.
 
-**Dependencies**: Closures depend on this. `@noalloc` interaction needs effect system.
+**Dependencies**: Done.
 
-**Effort**: L (type system + multiple codegen strategies)
+**Effort**: L (done)
 
 ---
 
@@ -1258,7 +1260,7 @@ invalidations).
 
 Prevent double-drop when objects with `__del__` are moved.
 
-**E9a: Drop flag (`__tpy_owned_`) -- Done**
+**E8a: Drop flag (`__tpy_owned_`) -- Done**
 
 Classes with `__del__` get a hidden `bool __tpy_owned_ = true` field. The compiler
 generates custom move constructor (sets source flag to `false`), destroy-and-reconstruct
@@ -1270,7 +1272,7 @@ This handles all current cases: temporaries moved into functions, auto-move at l
 use, variable reassignment (including loops and conditionals), and inheritance chains
 where both parent and child have `__del__`.
 
-**E9b: Sentinel field optimization -- Not started**
+**E8b: Sentinel field optimization -- Not started**
 
 The drop flag adds a `bool` per object (often 8 bytes with padding). For classes
 where a field has a natural "empty" state after move, that field can serve as the
@@ -1292,11 +1294,11 @@ the sentinel field on the source. Classes with only value-type fields keep the f
 Most real-world RAII classes (owning a pointer/handle) would benefit. The `|None` case
 works because we control the move constructor and can emit explicit nullification.
 
-**Current state**: E9a done. E9b not started.
+**Current state**: E8a done. E8b not started.
 
 **Dependencies**: `__del__` support (done). Move semantics (done).
 
-**Effort**: E9a: S (done). E9b: M (sentinel detection, codegen changes for
+**Effort**: E8a: S (done). E8b: M (sentinel detection, codegen changes for
 per-field nullification, destructor guard rewriting)
 
 ---
@@ -1541,11 +1543,13 @@ reference, lifetime of captures, interaction with ownership model.
 
 Maps to C++ lambda or functor struct with captured fields.
 
-**Current state**: Not started.
+**Current state**: Done. Nested `def` with captures and `nonlocal` supported. Capture
+analysis infers which outer variables are referenced. Codegen emits C++ lambdas with
+appropriate capture lists. `nonlocal` declarations validated in sema.
 
-**Dependencies**: `Callable` type (the return type). Ownership model (capture semantics).
+**Dependencies**: Done.
 
-**Effort**: L (capture analysis, codegen for functor structs)
+**Effort**: L (done)
 
 ---
 
@@ -1584,14 +1588,19 @@ def fibonacci() -> Iterator[int]:
         a, b = b, a + b
 ```
 
-Maps to state-machine class implementing `Iterator`. Could be zero-alloc if
-state machine is stack-allocated.
+Maps to state-machine struct implementing `Iterator`. Stack-allocated for simple
+generators (single yield point); struct-based with `__next__()` for multiple yield points.
 
-**Current state**: Not started. `yield` is in the parser's unsupported keyword list.
+**Current state**: Done. Generator functions with `yield` are fully supported. Codegen
+transforms the function body into a state-machine struct with `__next__()` method.
+Simple generators (single yield in a loop) use an optimized inline path. See
+`codegen_cpp/gen_generators.py`. Known limitation: generic generators with multiple
+yield points are guarded with a sema error (template struct + out-of-line `__next__()`
+linkage issue).
 
 **Dependencies**: Iterator protocol (done). Tuple unpacking (done).
 
-**Effort**: L-XL (state machine transformation is non-trivial)
+**Effort**: L-XL (done)
 
 ---
 
@@ -1605,11 +1614,14 @@ result = map(lambda x: x * 2, values)
 Maps to C++ lambda expressions. Syntactic sugar over closures -- `lambda x: expr`
 is equivalent to a single-expression closure.
 
-**Current state**: Not started. `lambda` is in the parser's unsupported keyword list.
+**Current state**: Done. Lambda expressions are fully supported with type inference for
+parameters (from `Fn`/`Callable` context), capture analysis, and C++ lambda codegen.
+Works as arguments to higher-order functions, stored in variables, and in comprehension
+filters.
 
-**Dependencies**: Closures / nested functions (capture semantics). `Callable` type.
+**Dependencies**: Done.
 
-**Effort**: M (once closures are done, lambda is incremental)
+**Effort**: M (done)
 
 ---
 
@@ -2262,15 +2274,20 @@ data: bytes = b"hello"
 first_byte: Int32 = data[0]
 ```
 
-Maps to `std::vector<uint8_t>` or similar.
+Maps to `std::vector<uint8_t>`. `bytearray` is a mutable alias. `BytesView` maps to
+`std::span<const uint8_t>` for zero-copy views.
 
 **Why it matters**: Needed for binary I/O, network protocols, and file handling.
 
-**Current state**: Not started.
+**Current state**: Done. `bytes` (immutable), `bytearray` (mutable), and `BytesView`
+(zero-copy span view) types implemented. Literals (`b"hello"`), subscript, iteration,
+`len()`, `print()`, comparison, `encode()`/`decode()` conversions, search helpers.
+Context-dependent type resolution via `PendingBytesType`. See `TODO.md` for remaining
+follow-ups (mutation tracking for BytesView borrows, `__hash__`).
 
-**Dependencies**: None for basic form. Slicing for advanced usage.
+**Dependencies**: Done.
 
-**Effort**: M (type + literals + methods)
+**Effort**: M (done)
 
 ---
 
@@ -2495,13 +2512,16 @@ automatic elision is the goal.
 assignments, comparisons (branch narrowing), and arithmetic. Start with the simple
 case: loop counter bounded by `len()`. Full interval arithmetic is a larger effort.
 
-**Current state**: Not started. `unchecked_get()` on Array/Span/list provides a
-manual escape hatch.
+**Current state**: Partial. `ValueRange` class in `sema/value_range.py` tracks `[lo, hi]`
+intervals with symbolic `hi_len_of` bounds. Bounds check elision works for simple patterns
+(variable index with range provably in `[0, len(container))`). Flow facts integrate range
+tracking with control flow. `unchecked_get()` remains as a manual escape hatch. Not yet
+done: complex index expressions, overflow check elision, static OOB detection for Array.
 
 **Dependencies**: None for the basic loop pattern. Full interval arithmetic interacts
 with overflow checking.
 
-**Effort**: M for loop-bounded patterns, L for general interval arithmetic
+**Effort**: M for loop-bounded patterns (partial), L for general interval arithmetic
 
 ---
 
