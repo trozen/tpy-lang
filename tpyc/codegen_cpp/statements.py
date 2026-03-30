@@ -444,6 +444,22 @@ class StatementGenerator:
             return ""  # Builtin module - no init needed
         return None
 
+    @staticmethod
+    def _is_plain_nonvalue(t: TpyType) -> bool:
+        """True for non-value types that need indirection (list, dict, record, etc.).
+
+        Unwraps Own[T] and excludes pointer-repr Optional and Union which
+        have their own codegen paths.
+        """
+        check = t.wrapped if isinstance(t, OwnType) else t
+        if check.is_value_type():
+            return False
+        if isinstance(check, OptionalType) and check.uses_pointer_repr():
+            return False
+        if isinstance(check, UnionType) and check.uses_pointer_repr():
+            return False
+        return True
+
     def _needs_indirection(self, target_type: TpyType | None, name: str,
                             init: TpyExpr | None) -> bool:
         """Check if a variable needs indirection (T* pointer-local or T& reference).
@@ -457,10 +473,7 @@ class StatementGenerator:
         # Optional[T] for non-value T is always a pointer-local
         if isinstance(target_type, OptionalType) and target_type.uses_pointer_repr():
             return True
-        # Non-value unions use pointer-variant repr, not old T* indirection
-        if isinstance(target_type, UnionType) and target_type.uses_pointer_repr():
-            return False
-        if target_type.is_value_type():
+        if not self._is_plain_nonvalue(target_type):
             return False
         if name in self.ctx.move_through_vars:
             return False
@@ -744,7 +757,7 @@ class StatementGenerator:
                 hoist_static_kw = "static " if self.ctx.slots.global_scope else ""
                 slot_opt_cpp = f"std::optional<{cpp_type}>"
                 init_slot = self.ctx.slots.next_slot()
-                is_hoisted = name in self.ctx.hoisted_vars
+                is_hoisted = name in self.ctx.hoisted_vars or name in self.ctx.branch_hoisted_vars
                 if is_hoisted:
                     self.ctx.pending_hoist_decls.append(f"  {hoist_static_kw}{slot_opt_cpp} {init_slot};\n")
                     if name in self.ctx.rvalue_reassigned_vars:
@@ -796,7 +809,7 @@ class StatementGenerator:
 
         init_expr = self.expressions.gen_expr(init, target_type)
 
-        is_hoisted = name in self.ctx.hoisted_vars
+        is_hoisted = name in self.ctx.hoisted_vars or name in self.ctx.branch_hoisted_vars
         static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
         # Hoisted decls go to function scope -- use global_scope flag from slot state
         hoist_static_kw = "static " if self.ctx.slots.global_scope else ""
@@ -912,7 +925,7 @@ class StatementGenerator:
 
         init_expr = self.expressions.gen_expr(init, target_type)
 
-        is_hoisted = name in self.ctx.hoisted_vars
+        is_hoisted = name in self.ctx.hoisted_vars or name in self.ctx.branch_hoisted_vars
         static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
         hoist_static_kw = "static " if self.ctx.slots.global_scope else ""
         slot_opt_cpp = "auto" if cpp_type == "auto" else f"std::optional<{cpp_type}>"
@@ -1124,6 +1137,10 @@ class StatementGenerator:
         if stmt.name in self.ctx.declared_vars:
             if stmt.init:
                 var_type = self.ctx.var_types.get(stmt.name)
+                # Optional-local (hoisted, not reassigned): move-assign into optional
+                if stmt.name in self.ctx.optional_locals:
+                    init_expr = self.expressions.gen_expr(stmt.init, var_type)
+                    return f"{indent}{cpp_name} = {init_expr};\n"
                 # Pointer-local reassignment
                 if stmt.name in self.ctx.pointer_locals:
                     # @dynamic protocol reassignment: new adapter slot + rebind
@@ -1715,7 +1732,7 @@ class StatementGenerator:
                     else:
                         slot = self.ctx.slots.next_slot()
                         self.ctx.rebind_slots[name] = slot
-                        is_hoisted = name in self.ctx.hoisted_vars
+                        is_hoisted = name in self.ctx.hoisted_vars or name in self.ctx.branch_hoisted_vars
                         if is_hoisted:
                             hoist_kw = "static " if self.ctx.slots.global_scope else ""
                             slot_opt = f"std::optional<{cpp_type}>"
@@ -2903,8 +2920,21 @@ class StatementGenerator:
                 self.ctx.var_types[name] = var_type
                 if self.ctx.current_ns and var_type:
                     self.ctx.current_ns.bind_variable(name, var_type)
-                if self._needs_indirection(var_type, name, None):
+                if self._is_plain_nonvalue(var_type) and name not in self.ctx.reassigned_vars:
+                    # Non-value, not reassigned: std::optional<T> avoids
+                    # pointer indirection and unnecessary default construction.
                     self.ctx.pointer_locals.add(name)
+                    self.ctx.optional_locals.add(name)
+                    if is_const:
+                        self.ctx.const_indirect_locals.add(name)
+                    self.ctx.movable_locals.add(name)
+                    out.write(f"{indent}std::optional<{cpp_type}> {name};\n")
+                elif self._needs_indirection(var_type, name, None):
+                    # Reassigned non-value: T* pointer-local with slot storage.
+                    # Mark as branch-hoisted so _gen_pointer_local_rebind puts
+                    # rvalue slots into pending_hoist_decls (not block-scoped).
+                    self.ctx.pointer_locals.add(name)
+                    self.ctx.branch_hoisted_vars.add(name)
                     if is_const:
                         self.ctx.const_indirect_locals.add(name)
                     if local_var_is_movable(

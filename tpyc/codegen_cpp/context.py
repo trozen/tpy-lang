@@ -370,11 +370,16 @@ class LocalScopeSnap:
     bleed into sibling branches.
 
     If a new "what locals exist" field is added to CodeGenContext, add it here too.
+
+    Note: hoisted_vars and branch_hoisted_vars are NOT snapshotted -- they are
+    function-scoped accumulators. A stale entry from a prior branch's nested if
+    causes unnecessary hoisting but not incorrect code.
     """
     declared_vars: set[str]
     var_types: dict[str, TpyType]
     local_scope_names: set[str]
     pointer_locals: set[str]
+    optional_locals: set[str]
     ptr_variant_locals: set[str]
     const_indirect_locals: set[str]
     movable_locals: set[str]
@@ -420,6 +425,9 @@ class CodeGenContext:
 
     # --- Pointer-local tracking ---
     pointer_locals: set[str] = field(default_factory=set)
+    # Non-value hoisted vars that are not reassigned: std::optional<T> instead of T*+slot.
+    # Also in pointer_locals for dereference ((*name) works for both T* and optional<T>).
+    optional_locals: set[str] = field(default_factory=set)
     const_indirect_locals: set[str] = field(default_factory=set)
 
     # --- Pointer-variant locals (non-value union variables) ---
@@ -442,6 +450,9 @@ class CodeGenContext:
 
     # --- Hoisted variable tracking (scope escape phase 2) ---
     hoisted_vars: set[str] = field(default_factory=set)
+    # Branch-hoisted pointer-locals: declared by _emit_branch_decls for if/match/try.
+    # Rvalue slots for these vars must go to pending_hoist_decls, not block scope.
+    branch_hoisted_vars: set[str] = field(default_factory=set)
 
     # --- Comprehension-local variable names ---
     # Loop variables inside comprehensions shadow globals during element
@@ -533,6 +544,7 @@ class CodeGenContext:
         self.nested_def_locals = set()
         self.global_declared_vars = set()
         self.pointer_locals = set()
+        self.optional_locals = set()
         self.ptr_variant_locals = set()
         self.const_indirect_locals = set()
         self.slots.reset()
@@ -544,6 +556,7 @@ class CodeGenContext:
         self.movable_locals = set()
         self.move_through_vars = set()
         self.hoisted_vars = set()
+        self.branch_hoisted_vars = set()
         self.comp_local_names = set()
         self.pending_hoist_decls = []
         self.current_ns = None
@@ -576,6 +589,7 @@ class CodeGenContext:
             var_types=dict(self.var_types),
             local_scope_names=self.local_scope_names.copy(),
             pointer_locals=self.pointer_locals.copy(),
+            optional_locals=self.optional_locals.copy(),
             ptr_variant_locals=self.ptr_variant_locals.copy(),
             const_indirect_locals=self.const_indirect_locals.copy(),
             movable_locals=self.movable_locals.copy(),
@@ -590,6 +604,7 @@ class CodeGenContext:
         self.var_types = dict(snap.var_types)
         self.local_scope_names = snap.local_scope_names.copy()
         self.pointer_locals = snap.pointer_locals.copy()
+        self.optional_locals = snap.optional_locals.copy()
         self.ptr_variant_locals = snap.ptr_variant_locals.copy()
         self.const_indirect_locals = snap.const_indirect_locals.copy()
         self.movable_locals = snap.movable_locals.copy()

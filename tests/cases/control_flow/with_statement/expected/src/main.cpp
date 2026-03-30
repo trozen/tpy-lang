@@ -126,7 +126,7 @@ void test_body_var_survives_scope() {
 // def test_body_record_var_survives_scope() -> None:
 void test_body_record_var_survives_scope() {
     // with Logger("T") as t:
-    Logger inner;
+    std::optional<Logger> inner;
     auto __ctx_9 = Logger("T");
     auto& t = __ctx_9.__enter__();
     {
@@ -134,10 +134,10 @@ void test_body_record_var_survives_scope() {
         // inner = Logger("inner")
         inner = Logger("inner");
         // inner.log("inside")
-        inner.log("inside");
+        inner->log("inside");
     }
     // inner.log("after")
-    inner.log("after");
+    inner->log("after");
 }
 
 // def test_reuse_with_var_name() -> None:

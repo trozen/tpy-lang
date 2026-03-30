@@ -192,7 +192,7 @@ void main() {
     }
     // # Method chaining on unwrapped result
     // try:
-    Point v7;
+    std::optional<Point> v7;
     {
         // v7 = modify(1, 2)
         {
@@ -202,9 +202,9 @@ void main() {
         }
         // else:
         // print(v7.x)
-        std::cout << v7.x << "\n";
+        std::cout << v7->x << "\n";
         // print(v7.y)
-        std::cout << v7.y << "\n";
+        std::cout << v7->y << "\n";
         goto __after_try_21;
         // except E:
         __except_21:;
@@ -213,7 +213,7 @@ void main() {
         __after_try_21:;
     }
     // try:
-    Point v8;
+    std::optional<Point> v8;
     {
         // v8 = modify(-1, 2)
         {

@@ -483,6 +483,7 @@ When implementing new features:
 - Run `uv run pytest` to verify no regressions after changes
 - Update test snapshots with `uv run python tests/update_snapshots.py` when expected output changes intentionally
 - **Add tests** when adding new features or making changes that could affect generated code. If proper tests don't already exist or the functionality isn't covered, add tests that check the happy path, errors/warnings, edge cases, and prevent future regressions.
+- **Report pre-existing bugs** discovered during implementation. If you find a bug in adjacent code that is not caused by your changes, report it to the user. Do not silently ignore it.
 
 ### Key Documentation Files
 

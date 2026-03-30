@@ -48,11 +48,11 @@ void main() {
     }
     // # list (std::vector, non-value type)
     // try:
-    std::vector<int32_t> items;
+    std::optional<std::vector<int32_t>> items;
     {
         auto __finally_3 = ::tpy::FinallyGuard([&]() {
             // print(len(items))
-            std::cout << ::tpy::__len__(items) << "\n";
+            std::cout << ::tpy::__len__((*items)) << "\n";
         });
         // items = get_list()
         items = get_list();

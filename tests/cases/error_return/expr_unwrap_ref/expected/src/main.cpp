@@ -28,7 +28,7 @@ void main() {
     // p = Point(1, 2)
     Point p = Point(1, 2);
     // try:
-    Point result;
+    std::optional<Point> result;
     {
         // result = modify(p)
         {
@@ -38,9 +38,9 @@ void main() {
         }
         // else:
         // print(result.x)
-        std::cout << result.x << "\n";
+        std::cout << result->x << "\n";
         // print(result.y)
-        std::cout << result.y << "\n";
+        std::cout << result->y << "\n";
         goto __after_try_2;
         // except E:
         __except_2:;
