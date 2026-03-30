@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 std::expected<int32_t, MyError> fail();
 void main();
 
-// class MyError(Exception, ControlFlow):
+// class MyError(Exception, ReturnException):
 struct MyError : ::tpy::Exception {
     // code: Int32
     int32_t code;

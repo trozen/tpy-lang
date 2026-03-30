@@ -1,10 +1,10 @@
 # Expression-level error_return unwrap with reference semantics.
 # Tests that @error_return calls returning non-value types preserve
 # references: positive(p).updated() modifies the original p.
-from tpy import Int32, error_return, ControlFlow
+from tpy import Int32, error_return, ReturnException
 from typing import Self
 
-class E(Exception, ControlFlow):
+class E(Exception, ReturnException):
     pass
 
 class Point:

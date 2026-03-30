@@ -1,7 +1,7 @@
 # Auto-propagation through a chain of @error_return functions (3 levels deep)
-from tpy import Int32, error_return, ControlFlow
+from tpy import Int32, error_return, ReturnException
 
-class NotFound(Exception, ControlFlow):
+class NotFound(Exception, ReturnException):
     pass
 
 @error_return(NotFound)

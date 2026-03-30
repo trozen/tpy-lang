@@ -5,7 +5,7 @@ from ._types import (
     Deref, ReadOnlySpanLike,
     # Marker protocols
     NativeIterable, NativeRangeConstructible, ValueType, Send, Sync,
-    Default, Covariant, ControlFlow,
+    Default, Covariant, ReturnException,
     # Fixed-width integer constraint protocols
     AnyFixedInt, AnyFixedSigned, AnyFixedUnsigned,
     # Primitive types

@@ -396,7 +396,7 @@ class SemanticAnalyzer:
         for record in module.records:
             self.registrar.validate_record_inheritance(record)
 
-        # Validate @error_return(E) on methods (ControlFlow markers are now set)
+        # Validate @error_return(E) on methods (ReturnException markers are now set)
         for record in module.records:
             self.registrar.validate_method_error_returns(record)
 

@@ -1,7 +1,7 @@
 # Auto-propagation: @error_return(E) functions forward matching errors without try/except
-from tpy import Int32, error_return, ControlFlow
+from tpy import Int32, error_return, ReturnException
 
-class ParseError(Exception, ControlFlow):
+class ParseError(Exception, ReturnException):
     pass
 
 @error_return(ParseError)

@@ -1,0 +1,1 @@
+except ReturnException is a TPy compile-time feature (catches any @error_return); not valid in CPython

@@ -17,7 +17,7 @@ std::expected<int32_t, NotFound> lookup_twice(const std::vector<int32_t>& items,
 std::expected<int32_t, NotFound> lookup_sum(const std::vector<int32_t>& items, const std::vector<int32_t>& targets);
 void main();
 
-// class NotFound(Exception, ControlFlow):
+// class NotFound(Exception, ReturnException):
 struct NotFound : ::tpy::Exception {
 
 };

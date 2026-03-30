@@ -1,7 +1,7 @@
 # @error_return decorator: function returns error via std::expected, caller uses try/except
-from tpy import Int32, error_return, ControlFlow
+from tpy import Int32, error_return, ReturnException
 
-class NotFound(Exception, ControlFlow):
+class NotFound(Exception, ReturnException):
     pass
 
 @error_return(NotFound)

@@ -1,9 +1,9 @@
 # Expression-level error_return unwrap with @nocopy types.
 # Verifies move semantics: @nocopy types have deleted copy constructors,
 # so this only compiles if the unwrap uses std::move.
-from tpy import error_return, ControlFlow, nocopy, Own
+from tpy import error_return, ReturnException, nocopy, Own
 
-class E(Exception, ControlFlow):
+class E(Exception, ReturnException):
     pass
 
 @nocopy

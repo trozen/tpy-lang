@@ -2010,7 +2010,7 @@ class CallAnalyzer:
         """Check that calls to @error_return functions are inside matching try/except."""
         if func.error_return_type is None:
             return
-        # Inside matching try/except (or except ControlFlow catch-all)
+        # Inside matching try/except (or except ReturnException catch-all)
         ctx_error_type = self.ctx.try_except_error_type
         if error_return_matches(ctx_error_type, func.error_return_type) or ctx_error_type == "*":
             return

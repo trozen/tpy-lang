@@ -6,9 +6,9 @@
 |-------|-------------|--------|
 | E1 | `@error_return(E)` mechanism: decorator, `raise E` codegen (`std::unexpected`), `try/except` caller enforcement, `std::expected<T,E>` return, `try/except/else` | Done (see [ERROR_RETURN_DESIGN.md](ERROR_RETURN_DESIGN.md)) |
 | E2 | Iterator migration: auto-add `@error_return(StopIteration)` on `__next__`, for-loop codegen via `std::expected` | Done |
-| E3 | `ControlFlow` marker protocol: split exception types into throw vs return categories, compiler enforcement | Done |
+| E3 | `ReturnException` marker protocol: split exception types into throw vs return categories, compiler enforcement | Done |
 | E4 | Auto-propagation: `@error_return(E)` functions auto-forward matching errors from callees without `try/except` | Done |
-| E5 | `except ControlFlow` catch-all for return exceptions | Done |
+| E5 | `except ReturnException` catch-all for return exceptions | Done |
 | E6 | Exception types with data fields, `except E as e` binding | Done |
 | E7 | General C++ exceptions: `try`/`except`/`finally`/`raise` with stack unwinding for non-control-flow errors | Done |
 | E8 | Multiple `except` handlers, bare `except:`, re-raise (`raise` with no argument) | Done |
@@ -19,11 +19,11 @@
 |---------|-------|
 | Multiple return exception types | `@error_return(E1, E2)` -- `std::expected<T, std::variant<E1, E2>>` |
 | Exception chaining | `raise X from Y` -- low priority, niche use case |
-| `except ControlFlow as e` | Bind catch-all value -- needs type-erased wrapper or variant; distant future |
+| `except ReturnException as e` | Bind catch-all value -- needs type-erased wrapper or variant; distant future |
 | `@noalloc` interaction | `@noalloc` functions can use `@error_return` (zero-cost) but cannot throw C++ exceptions |
 | Custom base exception classes | User-defined exception hierarchies with `except BaseClass` catching subclasses |
 | `raise` inside `finally` | Currently rejected. Needs catch-all + goto codegen strategy instead of FinallyGuard RAII (destructors can't throw during unwinding). `return` inside try would need goto transformation. |
-| Mixed-tier `try`/`except` | Currently ControlFlow and non-ControlFlow handlers cannot be in the same `try` block. Wrap goto dispatch inside C++ `try`: return-tier gotos inside `try {}`, throw-tier in `catch` handlers. Would eliminate the nested-try workaround for functions that can both return errors and throw. |
+| Mixed-tier `try`/`except` | Currently ReturnException and non-ReturnException handlers cannot be in the same `try` block. Wrap goto dispatch inside C++ `try`: return-tier gotos inside `try {}`, throw-tier in `catch` handlers. Would eliminate the nested-try workaround for functions that can both return errors and throw. |
 
 ---
 
@@ -60,13 +60,13 @@ See [ERROR_RETURN_DESIGN.md](ERROR_RETURN_DESIGN.md) for the full existing desig
 - Callers must handle with `try`/`except` or auto-propagate (E4)
 - For-loops implicitly handle `StopIteration` from `__next__`
 
-### `ControlFlow` Marker Protocol (E3)
+### `ReturnException` Marker Protocol (E3)
 
 Exception types are split into two categories using a marker protocol:
 
 ```python
 # In tpy._typing or tpy._builtins._exceptions
-class ControlFlow(Protocol):
+class ReturnException(Protocol):
     """Marker for return exception types. These can only be used with @error_return,
     never with C++ throw."""
     ...
@@ -75,24 +75,24 @@ class ControlFlow(Protocol):
 Built-in control-flow exceptions:
 
 ```python
-class StopIteration(Exception, ControlFlow): ...
+class StopIteration(Exception, ReturnException): ...
 ```
 
 User-defined control-flow exceptions:
 
 ```python
-from tpy import ControlFlow
+from tpy import ReturnException
 
-class NotFound(Exception, ControlFlow):
+class NotFound(Exception, ReturnException):
     pass
 
-class ParseError(Exception, ControlFlow):
+class ParseError(Exception, ReturnException):
     pass
 ```
 
 **Compiler enforcement rules:**
 
-| Context | `ControlFlow` type | Non-`ControlFlow` type |
+| Context | `ReturnException` type | Non-`ReturnException` type |
 |---------|-------------------|----------------------|
 | `@error_return(E)` | Allowed | Compile error |
 | `raise E` in `@error_return` function | Allowed (returns `std::unexpected`) | Compile error |
@@ -146,16 +146,16 @@ Expr left = *__tmp;
 
 This gives the ergonomics of `throw` (exit from deeply nested calls) with the performance of `std::expected` (no stack unwinding), while keeping every function's error contract explicit in its signature.
 
-### `except ControlFlow` Catch-All (E5)
+### `except ReturnException` Catch-All (E5)
 
-A `try`/`except ControlFlow` block catches any return exception, regardless of concrete type:
+A `try`/`except ReturnException` block catches any return exception, regardless of concrete type:
 
 ```python
 def main() -> None:
     try:
         expr = parse_expr()     # @error_return(ParseError)
         value = lookup(expr)    # @error_return(NotFound)
-    except ControlFlow:
+    except ReturnException:
         print("something failed")
 ```
 
@@ -176,7 +176,7 @@ __after_try_1:;
 
 No type matching needed -- the `has_value()` check is type-independent.
 
-`except ControlFlow as e` is not supported initially (would require a type-erased wrapper or variant across different error types).
+`except ReturnException as e` is not supported initially (would require a type-erased wrapper or variant across different error types).
 
 ---
 
@@ -186,7 +186,7 @@ For genuine errors -- I/O failures, invalid arguments, runtime violations -- Tur
 
 ### Exception Hierarchy
 
-Non-`ControlFlow` exceptions map to C++ classes that inherit from `std::exception`:
+Non-`ReturnException` exceptions map to C++ classes that inherit from `std::exception`:
 
 ```python
 # Built-in (in tpy._builtins._exceptions)
@@ -245,7 +245,7 @@ raise make_error(42)       # raise function result
 raise factory.create()     # raise method result
 ```
 
-This compiles to `throw <expr>;` in C++. Only throw-tier (non-ControlFlow) exceptions are supported -- return-tier exceptions must use the direct `raise E(args)` form.
+This compiles to `throw <expr>;` in C++. Only throw-tier (non-ReturnException) exceptions are supported -- return-tier exceptions must use the direct `raise E(args)` form.
 
 ### `try`/`except`/`else`/`finally`
 
@@ -366,7 +366,7 @@ Exception classes can have fields, enabling `except E as e` to access error deta
 class ValueError(Exception):
     message: str
 
-class ParseError(Exception, ControlFlow):
+class ParseError(Exception, ReturnException):
     line: Int32
     column: Int32
     detail: str
@@ -449,16 +449,16 @@ Both tiers use standard Python syntax:
 - `raise ValueError("msg")` -- valid Python, valid TPy
 - `try`/`except`/`finally` -- valid Python, valid TPy
 - `@error_return(E)` -- no-op decorator stub in `lib/cpy/`
-- `ControlFlow` protocol -- no-op base in `lib/cpy/`
+- `ReturnException` protocol -- no-op base in `lib/cpy/`
 
 ```python
 # lib/cpy/tpy/__init__.py
-class ControlFlow:
-    """No-op in CPython -- ControlFlow is a TPy compile-time marker."""
+class ReturnException:
+    """No-op in CPython -- ReturnException is a TPy compile-time marker."""
     pass
 ```
 
-The key difference: in CPython, `ControlFlow` exceptions use real `throw`/`catch` (Python exceptions). In TPy, they compile to `std::expected`. Same source, different runtime cost.
+The key difference: in CPython, `ReturnException` exceptions use real `throw`/`catch` (Python exceptions). In TPy, they compile to `std::expected`. Same source, different runtime cost.
 
 ---
 
@@ -466,10 +466,10 @@ The key difference: in CPython, `ControlFlow` exceptions use real `throw`/`catch
 
 | Situation | Error |
 |-----------|-------|
-| `@error_return(E)` where E is not `ControlFlow` | `'ValueError' is not a ControlFlow type; @error_return requires a ControlFlow exception` |
-| `raise E` in `@error_return` function, E is not `ControlFlow` | `'raise ValueError' cannot be used in @error_return function; ValueError is not a ControlFlow type` |
-| `raise E` in regular function, E is `ControlFlow` | `'raise StopIteration' can only be used inside an @error_return function; StopIteration is a ControlFlow type` |
+| `@error_return(E)` where E is not `ReturnException` | `'ValueError' is not a ReturnException type; @error_return requires a ReturnException exception` |
+| `raise E` in `@error_return` function, E is not `ReturnException` | `'raise ValueError' cannot be used in @error_return function; ValueError is not a ReturnException type` |
+| `raise E` in regular function, E is `ReturnException` | `'raise StopIteration' can only be used inside an @error_return function; StopIteration is a ReturnException type` |
 | Unhandled `@error_return` call | `call to 'parse_expr' may return 'ParseError' which must be handled with try/except` |
 | `@error_return(E)` calling `@error_return(F)` without handling | `call to 'lookup' may return 'NotFound' which must be handled (current function returns 'ParseError')` |
-| `except ControlFlow` on throw-style try | `'except ControlFlow' can only catch @error_return calls, not thrown exceptions` |
+| `except ReturnException` on throw-style try | `'except ReturnException' can only catch @error_return calls, not thrown exceptions` |
 | `throw` in `@noalloc` function | `'raise ValueError' performs stack unwinding, which is not allowed in @noalloc functions` |

@@ -1,1 +1,0 @@
-main.py:8: error: 'MyError' is not a ControlFlow type; @error_return requires a ControlFlow exception

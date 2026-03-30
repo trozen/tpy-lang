@@ -17,7 +17,7 @@ from ..typesys import (
     ViewTypeFamily, VIEW_TYPE_FAMILIES, STR_FAMILY, BYTES_FAMILY,
     PendingGenericInstanceType, FnType, contains_fn_type,
     INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, is_protocol_type, is_protocol_union,
-    qualify_exception_name, is_control_flow_exception, is_exception_type,
+    qualify_exception_name, is_return_exception, is_exception_type,
     FunctionInfo, ParamInfo,
 )
 from ..parse import (
@@ -1107,7 +1107,7 @@ class StatementAnalyzer:
 
         qualified_exc = qualify_exception_name(
             stmt.exception_type, self.ctx.registry)
-        is_cf = is_control_flow_exception(qualified_exc)
+        is_cf = is_return_exception(qualified_exc)
 
         if is_cf:
             # Return-tier: must be inside @error_return(E) function with matching E
@@ -1167,10 +1167,10 @@ class StatementAnalyzer:
                 "'raise' can only be used inside a function", stmt)
         expr_type = self.expr.analyze_expr(stmt.raise_expr)
         type_name = self._raise_expr_type_name(expr_type, stmt)
-        if is_control_flow_exception(
+        if is_return_exception(
                 qualify_exception_name(type_name, self.ctx.registry)):
             raise self.ctx.error(
-                f"'raise <expr>' cannot be used with ControlFlow type "
+                f"'raise <expr>' cannot be used with ReturnException type "
                 f"'{type_name}'; use direct 'raise {type_name}' inside "
                 f"an @error_return function instead",
                 stmt)
@@ -1226,9 +1226,9 @@ class StatementAnalyzer:
             proto = self.ctx.registry.get_protocol(h.exception_type)
             is_cf_catch_all = (
                 proto is not None
-                and f"{proto.module}.{proto.name}" == qnames.CONTROL_FLOW
+                and f"{proto.module}.{proto.name}" == qnames.RETURN_EXCEPTION
             )
-            if is_cf_catch_all or is_control_flow_exception(
+            if is_cf_catch_all or is_return_exception(
                     qualify_exception_name(
                         h.exception_type, self.ctx.registry)):
                 has_cf = True
@@ -1237,11 +1237,11 @@ class StatementAnalyzer:
 
         if has_cf and has_throw:
             raise self.ctx.error(
-                "cannot mix ControlFlow and non-ControlFlow exception types "
+                "cannot mix ReturnException and non-ReturnException exception types "
                 "in the same try/except block", stmt)
         if has_cf and has_bare:
             raise self.ctx.error(
-                "bare 'except:' cannot be mixed with ControlFlow handlers", stmt)
+                "bare 'except:' cannot be mixed with ReturnException handlers", stmt)
 
         return "return" if has_cf else "throw"
 
@@ -1249,8 +1249,8 @@ class StatementAnalyzer:
         """Analyze a try/except/else/finally statement.
 
         Classifies the try block into tiers:
-        - 'return': ControlFlow handlers -> goto-based dispatch (existing)
-        - 'throw': non-ControlFlow handlers -> C++ try/catch
+        - 'return': ReturnException handlers -> goto-based dispatch (existing)
+        - 'throw': non-ReturnException handlers -> C++ try/catch
         - 'finally_only': no handlers, just finally cleanup
         """
         tier = self._classify_try_tier(stmt)
@@ -1287,11 +1287,11 @@ class StatementAnalyzer:
             self.ctx.hoisted_vars |= predecl
 
     def _analyze_try_return(self, stmt: TpyTry) -> None:
-        """Analyze return-tier try/except (ControlFlow, goto-based)."""
-        # Return tier supports single handler or ControlFlow catch-all
+        """Analyze return-tier try/except (ReturnException, goto-based)."""
+        # Return tier supports single handler or ReturnException catch-all
         if len(stmt.handlers) != 1:
             raise self.ctx.error(
-                "return-tier (ControlFlow) try/except supports only a single handler", stmt)
+                "return-tier (ReturnException) try/except supports only a single handler", stmt)
         handler = stmt.handlers[0]
 
         scope_before = set(self.ctx.current_scope.bindings.keys())
@@ -1300,18 +1300,18 @@ class StatementAnalyzer:
         bindings_before = dict(self.ctx.current_scope.bindings)
         ns_types_before = self._save_ns_var_types()
 
-        # Detect except ControlFlow catch-all
+        # Detect except ReturnException catch-all
         proto = self.ctx.registry.get_protocol(handler.exception_type)
-        is_control_flow_catch_all = (
+        is_return_exception_catch_all = (
             proto is not None
-            and f"{proto.module}.{proto.name}" == qnames.CONTROL_FLOW
+            and f"{proto.module}.{proto.name}" == qnames.RETURN_EXCEPTION
         )
 
-        if is_control_flow_catch_all and handler.binding:
+        if is_return_exception_catch_all and handler.binding:
             raise self.ctx.error(
-                "'except ControlFlow as' binding is not supported", stmt)
+                "'except ReturnException as' binding is not supported", stmt)
 
-        if not is_control_flow_catch_all:
+        if not is_return_exception_catch_all:
             bare_exc = handler.exception_type.rsplit(".", 1)[-1] if "." in handler.exception_type else handler.exception_type
             if not self.ctx.registry.find_record(bare_exc):
                 raise self.ctx.error(
@@ -1319,7 +1319,7 @@ class StatementAnalyzer:
 
         # Set try context so call analysis can allow error_return calls
         prev_try_error = self.ctx.try_except_error_type
-        if is_control_flow_catch_all:
+        if is_return_exception_catch_all:
             self.ctx.try_except_error_type = "*"
         else:
             self.ctx.try_except_error_type = qualify_exception_name(

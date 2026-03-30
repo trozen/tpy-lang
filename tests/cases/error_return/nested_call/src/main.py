@@ -1,7 +1,7 @@
 # @error_return call nested inside if/else within try body
-from tpy import Int32, error_return, ControlFlow
+from tpy import Int32, error_return, ReturnException
 
-class NotFound(Exception, ControlFlow):
+class NotFound(Exception, ReturnException):
     pass
 
 @error_return(NotFound)

@@ -3,11 +3,11 @@
 # binary operators) without needing explicit temp variables.
 # Also tests move semantics for non-trivial types (str) and
 # method chaining on unwrapped results.
-from tpy import error_return, ControlFlow, Own
+from tpy import error_return, ReturnException, Own
 from typing import Self
 from dataclasses import dataclass
 
-class E(Exception, ControlFlow):
+class E(Exception, ReturnException):
     pass
 
 @error_return(E)

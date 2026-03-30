@@ -13,7 +13,7 @@ from ..typesys import (
     IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, EnumType, IntEnumType, BoolType, SpanIterType,
     FixedIntType, StrType, StrViewType, STRVIEW, INT32, BIGINT, BOOL, UINT64,
     register_value_type_record, register_send_record, register_sync_record,
-    register_control_flow_record, is_control_flow_exception,
+    register_return_exception, is_return_exception,
     attach_type_param_bounds,
     has_auto_readonly, has_auto_own,
     qualify_exception_name, ensure_qualified,
@@ -514,8 +514,8 @@ class TypeRegistrar:
                                    if method.error_return else None),
             )
             # Propagate qualified name back to AST so codegen can use it directly.
-            # ControlFlow validation is deferred to validate_method_error_returns()
-            # because the ControlFlow marker on exception records is set during
+            # ReturnException validation is deferred to validate_method_error_returns()
+            # because the ReturnException marker on exception records is set during
             # validate_record_inheritance, which runs after register_record.
             if method.error_return:
                 method.error_return = func_info.error_return_type
@@ -830,10 +830,10 @@ class TypeRegistrar:
                 register_value_type_record(record.name)
                 break
 
-        # ControlFlow marker: register exception type as return-only
+        # ReturnException marker: register exception type as return-only
         for protocol in record_info.implemented_protocols:
-            if protocol.qualified_name() == qnames.CONTROL_FLOW:
-                register_control_flow_record(record.name)
+            if protocol.qualified_name() == qnames.RETURN_EXCEPTION:
+                register_return_exception(record.name)
                 break
 
         # Auto-derive NativeIterable[T] for types with __iter__() -> SpanIter[T].
@@ -872,16 +872,16 @@ class TypeRegistrar:
             register_sync_record(record.name)
 
     def validate_method_error_returns(self, record: TpyRecord) -> None:
-        """Validate @error_return(E) on methods references a ControlFlow type.
+        """Validate @error_return(E) on methods references a ReturnException type.
 
-        Deferred from register_record because ControlFlow markers are set
+        Deferred from register_record because ReturnException markers are set
         during validate_record_inheritance, which runs after register_record.
         """
         for method in record.methods:
-            if method.error_return and not is_control_flow_exception(method.error_return):
+            if method.error_return and not is_return_exception(method.error_return):
                 raise SemanticError(
-                    f"'{method.error_return}' is not a ControlFlow type; "
-                    f"@error_return requires a ControlFlow exception",
+                    f"'{method.error_return}' is not a ReturnException type; "
+                    f"@error_return requires a ReturnException exception",
                     method.loc
                 )
 
@@ -1357,11 +1357,11 @@ class TypeRegistrar:
         if func.error_return:
             orig_name = func.error_return
             func.error_return = info.error_return_type
-            # @error_return(E) requires E to be a ControlFlow type
-            if not is_control_flow_exception(info.error_return_type):
+            # @error_return(E) requires E to be a ReturnException type
+            if not is_return_exception(info.error_return_type):
                 raise SemanticError(
-                    f"'{orig_name}' is not a ControlFlow type; "
-                    f"@error_return requires a ControlFlow exception",
+                    f"'{orig_name}' is not a ReturnException type; "
+                    f"@error_return requires a ReturnException exception",
                     func.loc
                 )
 

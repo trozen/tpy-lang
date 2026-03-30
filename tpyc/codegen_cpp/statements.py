@@ -15,7 +15,7 @@ from ..typesys import (
     INT32, BIGINT, FLOAT, is_protocol_type, FixedIntType, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType,
     local_var_is_movable, resolve_int_literals,
-    error_return_to_cpp, qualify_exception_name, is_control_flow_exception,
+    error_return_to_cpp, qualify_exception_name, is_return_exception,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyExprStmt, TpyReturn, TpyYield,
@@ -1897,7 +1897,7 @@ class StatementGenerator:
             return f"{indent}throw {expr};\n"
 
         cpp_type = error_return_to_cpp(stmt.exception_type, self.ctx.module_name, self.ctx.analyzer.registry)
-        is_cf = is_control_flow_exception(stmt.exception_type)
+        is_cf = is_return_exception(stmt.exception_type)
 
         if is_cf:
             # Return-tier: return std::unexpected

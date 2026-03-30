@@ -1,8 +1,8 @@
 # Throw-tier exception inside an @error_return function
 # The error_return handles the expected failure; throw handles the unexpected
-from tpy import Int32, error_return, ControlFlow
+from tpy import Int32, error_return, ReturnException
 
-class NotFound(Exception, ControlFlow):
+class NotFound(Exception, ReturnException):
     pass
 
 class BadKey(Exception):

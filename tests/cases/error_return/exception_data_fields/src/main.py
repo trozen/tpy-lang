@@ -1,7 +1,7 @@
 # Exception types with data fields and except...as e binding
-from tpy import Int32, error_return, ControlFlow
+from tpy import Int32, error_return, ReturnException
 
-class ParseError(Exception, ControlFlow):
+class ParseError(Exception, ReturnException):
     line: Int32
     column: Int32
     detail: str

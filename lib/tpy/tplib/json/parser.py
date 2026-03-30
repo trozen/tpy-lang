@@ -1,9 +1,9 @@
 # JSON pull-parser: JsonToken enum and JsonReader class.
 from enum import Enum
-from tpy import Int32, Int64, Float64, Char, StrView, readonly, error_return, ControlFlow
+from tpy import Int32, Int64, Float64, Char, StrView, readonly, error_return, ReturnException
 
 
-class JsonError(Exception, ControlFlow):
+class JsonError(Exception, ReturnException):
     pass
 
 class JsonToken(Enum):

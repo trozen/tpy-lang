@@ -14,7 +14,7 @@ from ._core import (
     Deref, ReadOnlySpanLike,
     # Marker protocols
     NativeIterable, NativeRangeConstructible, ValueType, Send, Sync,
-    Default, Covariant, ControlFlow,
+    Default, Covariant, ReturnException,
     # Fixed-width integer constraint protocols
     AnyFixedInt, AnyFixedSigned, AnyFixedUnsigned,
     # Primitive types
@@ -50,7 +50,7 @@ __all__ = [
     "Deref", "ReadOnlySpanLike", "Default",
     # Marker protocols
     "NativeIterable", "NativeRangeConstructible",
-    "ValueType", "Send", "Sync", "Covariant", "ControlFlow",
+    "ValueType", "Send", "Sync", "Covariant", "ReturnException",
     # Fixed-width integer constraint protocols
     "AnyFixedInt", "AnyFixedSigned", "AnyFixedUnsigned",
     # Functions

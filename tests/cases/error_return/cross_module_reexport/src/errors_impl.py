@@ -1,7 +1,7 @@
 # Internal module defining the error type.
-from tpy import ControlFlow, error_return
+from tpy import ReturnException, error_return
 
-class ParseError(Exception, ControlFlow):
+class ParseError(Exception, ReturnException):
     pass
 
 @error_return(ParseError)

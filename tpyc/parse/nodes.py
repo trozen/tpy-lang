@@ -681,7 +681,7 @@ class TpyTry(TpyStmt):
     handlers: list[TpyExceptHandler]  # 0+ except clauses
     else_body: list[TpyStmt]         # may be empty
     finally_body: list[TpyStmt]      # may be empty
-    # Set by sema: "return" for ControlFlow goto-based, "throw" for C++ try/catch
+    # Set by sema: "return" for ReturnException goto-based, "throw" for C++ try/catch
     tier: Literal["return", "throw", "finally_only"] | None = None
 
     def sub_bodies(self) -> list[list[TpyStmt]]:

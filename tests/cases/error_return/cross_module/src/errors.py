@@ -1,7 +1,7 @@
 # Cross-module @error_return: function with error_return defined here, called from main
-from tpy import Int32, error_return, ControlFlow
+from tpy import Int32, error_return, ReturnException
 
-class NotFound(Exception, ControlFlow):
+class NotFound(Exception, ReturnException):
     pass
 
 @error_return(NotFound)

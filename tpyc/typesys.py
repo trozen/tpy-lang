@@ -124,17 +124,17 @@ def register_sync_record(name: str) -> None:
     _sync_record_names.add(name)
 
 
-# Builtins that are always ControlFlow. Pre-seeded because _funcs.py
+# Builtins that are always ReturnException. Pre-seeded because _funcs.py
 # (which uses @error_return(StopIteration)) may be compiled before
-# _exceptions.py registers StopIteration as ControlFlow.
-# Stored as bare names -- is_control_flow_exception strips module prefixes.
-_BUILTIN_CONTROL_FLOW: frozenset[str] = frozenset({"StopIteration"})
-_control_flow_record_names: set[str] = set(_BUILTIN_CONTROL_FLOW)
+# _exceptions.py registers StopIteration as ReturnException.
+# Stored as bare names -- is_return_exception strips module prefixes.
+_BUILTIN_RETURN_EXCEPTIONS: frozenset[str] = frozenset({"StopIteration"})
+_return_exception_names: set[str] = set(_BUILTIN_RETURN_EXCEPTIONS)
 
 
-def register_control_flow_record(name: str) -> None:
-    """Register an exception type as ControlFlow (return-only, used with @error_return)."""
-    _control_flow_record_names.add(name)
+def register_return_exception(name: str) -> None:
+    """Register an exception type as ReturnException (return-only, used with @error_return)."""
+    _return_exception_names.add(name)
 
 
 def error_return_matches(a: str | None, b: str | None) -> bool:
@@ -151,15 +151,15 @@ def error_return_matches(a: str | None, b: str | None) -> bool:
     return bare_a == bare_b
 
 
-def is_control_flow_exception(name: str) -> bool:
-    """Check if an exception type name is registered as ControlFlow.
+def is_return_exception(name: str) -> bool:
+    """Check if an exception type name is registered as ReturnException.
 
     Accepts both bare ('JsonError') and module-qualified ('tplib.json.JsonError')
-    names -- extracts the bare name for matching since a ControlFlow type
-    is ControlFlow regardless of which module references it.
+    names -- extracts the bare name for matching since a ReturnException type
+    is ReturnException regardless of which module references it.
     """
     bare = name.rsplit(".", 1)[-1] if "." in name else name
-    return bare in _control_flow_record_names
+    return bare in _return_exception_names
 
 
 def is_exception_type(name: str, registry: 'TypeRegistry') -> bool:
@@ -259,8 +259,8 @@ def clear_all_compilation_state() -> None:
     _value_type_record_names.clear()
     _send_record_names.clear()
     _sync_record_names.clear()
-    _control_flow_record_names.clear()
-    _control_flow_record_names.update(_BUILTIN_CONTROL_FLOW)
+    _return_exception_names.clear()
+    _return_exception_names.update(_BUILTIN_RETURN_EXCEPTIONS)
     _protocol_modules.clear()
 
 

@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 std::expected<int32_t, NotFound> lookup(std::string_view key);
 void main();
 
-// class NotFound(Exception, ControlFlow):
+// class NotFound(Exception, ReturnException):
 struct NotFound : ::tpy::Exception {
 
 };

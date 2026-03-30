@@ -17,7 +17,7 @@ std::expected<Data, E> make_data(const ::tpy::BigInt& v);
 std::expected<::tpy::BigInt, E> get_value(const ::tpy::BigInt& v);
 void main();
 
-// class E(Exception, ControlFlow):
+// class E(Exception, ReturnException):
 struct E : ::tpy::Exception {
 
 };

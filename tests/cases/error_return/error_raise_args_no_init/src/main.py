@@ -1,7 +1,7 @@
 # raise E(args) without __init__ is an error when E has data fields
-from tpy import Int32, error_return, ControlFlow
+from tpy import Int32, error_return, ReturnException
 
-class MyError(Exception, ControlFlow):
+class MyError(Exception, ReturnException):
     code: Int32
     message: str
 

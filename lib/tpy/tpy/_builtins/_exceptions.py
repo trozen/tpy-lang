@@ -1,6 +1,6 @@
 # tpy: cpp_namespace("tpystd::builtins")
 from .._bootstrap._extern import native
-from .._core._types import ControlFlow
+from .._core._types import ReturnException
 
 
 # Python exception hierarchy (maps to ::tpy:: runtime structs in core.hpp)
@@ -22,4 +22,4 @@ class ValueError(Exception):
     def __init__(self, message: str = "") -> None: ...
 
 @native("tpy::StopIteration")
-class StopIteration(Exception, ControlFlow): ...
+class StopIteration(Exception, ReturnException): ...

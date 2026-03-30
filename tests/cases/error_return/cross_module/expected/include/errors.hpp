@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "errors";
 
 std::expected<int32_t, NotFound> find(const std::vector<int32_t>& items, int32_t target);
 
-// class NotFound(Exception, ControlFlow):
+// class NotFound(Exception, ReturnException):
 struct NotFound : ::tpy::Exception {
 
 };

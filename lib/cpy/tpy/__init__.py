@@ -594,7 +594,7 @@ class Sync(_Protocol):
     pass
 
 
-class ControlFlow(_Protocol):
+class ReturnException(_Protocol):
     """Marker for return exception types (used with @error_return, not C++ throw)."""
     pass
 

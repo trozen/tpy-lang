@@ -1,7 +1,7 @@
 # Wrong number of arguments to raise
-from tpy import Int32, error_return, ControlFlow
+from tpy import Int32, error_return, ReturnException
 
-class MyError(Exception, ControlFlow):
+class MyError(Exception, ReturnException):
     code: Int32
     message: str
 

@@ -1,1 +1,1 @@
-main.py:12: error: cannot mix ControlFlow and non-ControlFlow exception types in the same try/except block
+main.py:12: error: cannot mix ReturnException and non-ReturnException exception types in the same try/except block

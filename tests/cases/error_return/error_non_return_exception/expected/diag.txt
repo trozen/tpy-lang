@@ -1,0 +1,1 @@
+main.py:8: error: 'MyError' is not a ReturnException type; @error_return requires a ReturnException exception

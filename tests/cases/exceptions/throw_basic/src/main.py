@@ -1,4 +1,4 @@
-# Basic throw/catch: raise non-ControlFlow exception, catch with try/except
+# Basic throw/catch: raise non-ReturnException exception, catch with try/except
 from tpy import Int32
 
 class MyError(Exception):

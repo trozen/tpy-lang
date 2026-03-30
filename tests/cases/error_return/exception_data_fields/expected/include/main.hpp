@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 std::expected<int32_t, ParseError> parse(std::string_view s);
 void main();
 
-// class ParseError(Exception, ControlFlow):
+// class ParseError(Exception, ReturnException):
 struct ParseError : ::tpy::Exception {
     // line: Int32
     int32_t line;

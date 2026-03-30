@@ -4612,14 +4612,14 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - Contributes control-flow narrowing facts
   - Current limitation: assert message must be a string literal
 - **Working**: `@error_return(E)` -- zero-cost error returns via `std::expected<T, E>`
-  - `@error_return(E)` requires E to be a `ControlFlow` type: `class MyError(Exception, ControlFlow): pass`
-  - `ControlFlow` is a marker protocol that splits exception types into return (zero-cost) vs throw (C++ exceptions) categories
-  - `StopIteration` is a built-in `ControlFlow` type; user-defined types opt in via `ControlFlow` marker
+  - `@error_return(E)` requires E to be a `ReturnException` type: `class MyError(Exception, ReturnException): pass`
+  - `ReturnException` is a marker protocol that splits exception types into return (zero-cost) vs throw (C++ exceptions) categories
+  - `StopIteration` is a built-in `ReturnException` type; user-defined types opt in via `ReturnException` marker
   - `Exception`/`BaseException`/`StopIteration` defined as `@native` classes in `lib/tpy/builtins/`, mapping to `::tpy::` runtime structs (inherit from `std::exception`)
   - Decorator on functions: `raise E` compiles to `return std::unexpected(E{})`; `raise E(args)` passes constructor arguments
   - Callers must use `try/except E` or be `@error_return(E)` themselves (auto-propagation)
   - `try/except/else` supported; `except E as e` binds the error value for field access
-  - Exception types can have data fields: `class ParseError(Exception, ControlFlow): line: Int32`
+  - Exception types can have data fields: `class ParseError(Exception, ReturnException): line: Int32`
   - Goto-based dispatch: error_return calls inside nested if/for work correctly
   - `except E as e` uses `std::optional<E>` for zero happy-path cost error capture
   - Branch-aware flow analysis (narrowing, init tracking, variable hoisting)
@@ -4628,7 +4628,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - `__next__` methods auto-apply `@error_return(StopIteration)` -- for-loops use direct `std::expected` check
   - Built-in exceptions (`StopIteration`, `Exception`, `BaseException`) emit as `::tpy::X` in C++ to avoid clashes with user-defined classes of the same name
   - See `docs/ERROR_RETURN_DESIGN.md` and `docs/EXCEPTION_DESIGN.md` for full design
-- **Working**: General C++ exceptions (`throw`/`catch`) for non-ControlFlow exception types
+- **Working**: General C++ exceptions (`throw`/`catch`) for non-ReturnException exception types
   - `raise E`, `raise E(args)`, or `raise <expr>` in non-`@error_return` functions compiles to C++ `throw`
   - `raise <expr>`: raise pre-constructed exception variables (`e = MyError(42); raise e`) or function/method results
   - `try`/`except E`/`else`/`finally` with C++ `try`/`catch` for throw-tier exceptions
@@ -4641,7 +4641,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - Throw-tier raises allowed inside `@error_return` functions (orthogonal to return-tier)
   - Built-in exceptions: `ValueError(message)` with `message: str` field
   - User-defined throw exceptions: `class MyError(Exception)` with optional `__init__` + data fields
-  - Tier separation enforced: ControlFlow and non-ControlFlow types cannot be mixed in same `try`/`except`
+  - Tier separation enforced: ReturnException and non-ReturnException types cannot be mixed in same `try`/`except`
 - **Open**: Warning when exceptions are used for control flow (e.g., `try: Color(99) except ValueError` to test validity) -- prefer safe alternatives like `try_parse()`
 
 ---

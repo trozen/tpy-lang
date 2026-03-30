@@ -1,1 +1,0 @@
-main.py:10: error: 'raise <expr>' cannot be used with ControlFlow type 'NotFound'; use direct 'raise NotFound' inside an @error_return function instead

@@ -17,7 +17,7 @@ std::expected<void, ParseError> validate(std::string_view s);
 std::expected<int32_t, ParseError> parse_two_digits(std::string_view a, std::string_view b);
 void main();
 
-// class ParseError(Exception, ControlFlow):
+// class ParseError(Exception, ReturnException):
 struct ParseError : ::tpy::Exception {
 
 };

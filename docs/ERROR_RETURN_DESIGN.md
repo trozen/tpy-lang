@@ -27,9 +27,9 @@ control flow into a result-type return. `raise E` inside the function body compi
 to returning an error variant -- no C++ exceptions, no stack unwinding.
 
 ```python
-from tpy import Int32, error_return, ControlFlow
+from tpy import Int32, error_return, ReturnException
 
-class NotFound(Exception, ControlFlow):
+class NotFound(Exception, ReturnException):
     pass
 
 @error_return(NotFound)
@@ -82,11 +82,11 @@ search functions) and TPy's zero-cost compiled output.
 
 ### Exception Type
 
-Error types must inherit from `Exception` (for CPython compatibility) and `ControlFlow`
+Error types must inherit from `Exception` (for CPython compatibility) and `ReturnException`
 (to mark them as return-only exceptions):
 
 ```python
-class NotFound(Exception, ControlFlow):
+class NotFound(Exception, ReturnException):
     pass
 ```
 
@@ -466,7 +466,7 @@ never sees it -- no stub needed for that case.
 | `except WrongType` for the call | `'__next__' returns 'StopIteration', not 'ValueError'` |
 | `try/finally` (not yet supported) | `'finally' is not yet supported` |
 | Multiple except clauses | `only a single 'except' clause is supported` |
-| `except ControlFlow as e` | `'except ControlFlow as' binding is not supported` |
+| `except ReturnException as e` | `'except ReturnException as' binding is not supported` |
 
 ---
 
