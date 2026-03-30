@@ -81,7 +81,7 @@ Motivating example: `map(identity, pts)` where `identity(p: Point) -> Point` ret
 
 ## Builtins
 - `sorted(key=)`, `min(key=)`, `max(key=)`: accept an optional `key` parameter (`Fn` or `Callable`). `sorted(items, key=lambda x: x.score)` is extremely common. The lambda/Fn infrastructure is already there -- just needs builtin signatures and codegen for comparison-via-key.
-- `map()` / `filter()` follow-ups: multi-iterable `map(fn, a, b)`, `filter(None, iterable)` for falsy filtering.
+- `map()` / `filter()`: reference preservation through iterator combinators needs `Ref[T]` design.
 - `open()` binary mode: needs string literal overload dispatch so `open(path, "rb")` returns `BinaryIO` while `open(path, "r")` returns `TextIO`. Requires compiler support for overload resolution based on literal argument values.
 - type(); (in future `T = type(x); z = T()`)
 - tpy.ctypes.CInt32

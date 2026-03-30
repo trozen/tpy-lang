@@ -1778,7 +1778,8 @@ class CallAnalyzer:
         # For generic overloads with Fn/Callable params, use two-phase arg analysis
         # so function refs and lambdas can be resolved with concrete type hints.
         fn_generic = next((o for o in generic
-                           if any(isinstance(p.type, (FnType, CallableType)) for p in o.params)),
+                           if any(isinstance(p.type, (FnType, CallableType)) for p in o.params)
+                           and len(expr.args) >= o.min_args and len(expr.args) <= o.max_args),
                           None)
         if fn_generic is not None:
             arg_types = self._infer_arg_types(expr, fn_generic)

@@ -15,7 +15,7 @@ from ..typesys import (
     TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
     PendingStrType, StrType, StringType, StrViewType,
     PendingBytesType, BytesType, ByteArrayType, BytesViewType,
-    NamedType, PtrType, OwnType, FnType, CallableType, VoidType,
+    NamedType, PtrType, OwnType, FnType, CallableType, VoidType, NoneType,
 )
 from ..coercions import resolve_coercion, CoercionContext
 
@@ -47,6 +47,9 @@ def _structural_match(arg: TpyType, param: TpyType) -> bool:
             return False
         return (all(_structural_match(a, p) for a, p in zip(arg.param_types, param.param_types))
                 and _structural_match(arg.return_type, param.return_type))
+    # None literal (NoneType) matches None annotation (VoidType)
+    if isinstance(arg, NoneType) and isinstance(param, VoidType):
+        return True
     if type(arg) != type(param):
         return False
     # PtrType: readonly arg cannot match mutable param (would drop const)
@@ -78,6 +81,9 @@ def type_matches_strict(
         arg_inner = arg_inner.wrapped
     param_inner = unwrap_readonly(param_type)
     if arg_inner == param_inner:
+        return True
+    # None literal (NoneType) matches None type annotation (VoidType)
+    if isinstance(arg_inner, NoneType) and isinstance(param_inner, VoidType):
         return True
     # Callable -> Fn: std::function satisfies template requires clauses
     if (isinstance(arg_inner, CallableType) and isinstance(param_inner, FnType)
@@ -276,12 +282,14 @@ def resolve_overload(
                 overloads = mut
 
     # First pass: strict matching (exact types + protocols).
-    # Generic overloads use structural matching (TypeParamRef as wildcard);
-    # actual type param inference happens later in _analyze_generic_function_call.
+    # Overloads with unresolved TypeParamRef in params use structural matching
+    # (TypeParamRef as wildcard); resolved generics use type_matches_strict.
     for overload in overloads:
         if len(arg_types) < overload.min_args or len(arg_types) > overload.max_args:
             continue
-        if overload.is_generic():
+        has_tpr = overload.is_generic() and any(
+            _contains_type_param_ref(p.type) for p in overload.params)
+        if has_tpr:
             if all(_structural_match(arg_t, ptype)
                    for arg_t, (_, ptype) in zip(arg_types, overload.params)):
                 return overload

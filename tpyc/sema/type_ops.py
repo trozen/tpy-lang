@@ -582,6 +582,10 @@ class TypeOperations:
                 param_type.wrapped, inner_arg, inferred
             )
 
+        # None literal (NoneType) matches None annotation (VoidType)
+        if isinstance(param_type, VoidType) and isinstance(arg_type, NoneType):
+            return True
+
         # Concrete type -- check compatibility
         if self.types_match_for_inference(param_type, arg_type):
             return True

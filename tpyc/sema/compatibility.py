@@ -146,6 +146,9 @@ class TypeCompatibility:
         """
         if actual == expected:
             return None
+        # None literal (NoneType) is compatible with None annotation (VoidType)
+        if isinstance(actual, NoneType) and isinstance(expected, VoidType):
+            return None
 
         # Pending generic instance: try to resolve from the expected type
         if isinstance(actual, PendingGenericInstanceType):

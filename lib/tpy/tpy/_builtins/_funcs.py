@@ -575,16 +575,43 @@ def zip[T1, T2, T3, T4, T5](iter1: Iterable[T1], iter2: Iterable[T2], iter3: Ite
 
 # -- map --
 
+@overload
 @readonly
 @cpp_template("::tpy::builtin_map<{T}, {U}>({0}, {1})")
 def map[T, U](fn: Fn[[T], U], iterable: Iterable[T]) -> Iterator[U]: ...
 
+@overload
+@readonly
+@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2})")
+def map[T1, T2, U](fn: Fn[[T1, T2], U], iter1: Iterable[T1], iter2: Iterable[T2]) -> Iterator[U]: ...
+
+@overload
+@readonly
+@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2}, {3})")
+def map[T1, T2, T3, U](fn: Fn[[T1, T2, T3], U], iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3]) -> Iterator[U]: ...
+
+@overload
+@readonly
+@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2}, {3}, {4})")
+def map[T1, T2, T3, T4, U](fn: Fn[[T1, T2, T3, T4], U], iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], iter4: Iterable[T4]) -> Iterator[U]: ...
+
+@overload
+@readonly
+@cpp_template("::tpy::builtin_map_n<{U}>({0}, {1}, {2}, {3}, {4}, {5})")
+def map[T1, T2, T3, T4, T5, U](fn: Fn[[T1, T2, T3, T4, T5], U], iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], iter4: Iterable[T4], iter5: Iterable[T5]) -> Iterator[U]: ...
+
 
 # -- filter --
 
+@overload
 @readonly
 @cpp_template("::tpy::builtin_filter<{T}>({0}, {1})")
 def filter[T](fn: Fn[[T], bool], iterable: Iterable[T]) -> Iterator[T]: ...
+
+@overload
+@readonly
+@cpp_template("::tpy::builtin_filter_truthy<{T}>({1})")
+def filter[T](fn: None, iterable: Iterable[T]) -> Iterator[T]: ...
 
 
 # -- Special-handling builtins (custom sema/codegen, signatures are illustrative) --

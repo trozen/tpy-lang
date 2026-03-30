@@ -457,6 +457,96 @@ auto builtin_map(Fn&& fn, Iterable&& iterable) {
 }
 
 
+// -- map_multi (N-iterable, variadic) --
+
+template<typename U, typename Fn, typename IterTuple>
+class map_multi_iter : public next_iter_mixin<map_multi_iter<U, Fn, IterTuple>, U> {
+    IterTuple iters_;
+    Fn fn_;
+
+    template<size_t... Is>
+    std::expected<U, StopIteration> call_next(std::index_sequence<Is...>) {
+        // Brace-init guarantees left-to-right evaluation order
+        auto results = std::tuple{std::get<Is>(iters_).__next__()...};
+        if ((!std::get<Is>(results).has_value() || ...))
+            return tpy::make_unexpected(StopIteration{});
+        return fn_(unwrap_ref(*std::get<Is>(results))...);
+    }
+
+public:
+    map_multi_iter(IterTuple&& iters, Fn fn)
+        : iters_(std::move(iters)), fn_(std::move(fn)) {}
+
+    std::expected<U, StopIteration> __next__() {
+        return call_next(std::make_index_sequence<std::tuple_size_v<IterTuple>>{});
+    }
+
+    map_multi_iter& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const map_multi_iter&) {
+        return os << "<map>";
+    }
+};
+
+template<typename U, typename Fn, typename... Containers>
+class owning_map_multi_iter
+    : public next_iter_mixin<owning_map_multi_iter<U, Fn, Containers...>, U> {
+    using IterTuple = std::tuple<decltype(tpy::__iter__(std::declval<Containers&>()))...>;
+    std::tuple<Containers...> owned_;
+    IterTuple iters_;
+    Fn fn_;
+
+    template<size_t... Is>
+    static IterTuple make_iters(std::tuple<Containers...>& owned, std::index_sequence<Is...>) {
+        return IterTuple{tpy::__iter__(std::get<Is>(owned))...};
+    }
+
+    template<size_t... Is>
+    std::expected<U, StopIteration> call_next(std::index_sequence<Is...>) {
+        auto results = std::tuple{std::get<Is>(iters_).__next__()...};
+        if ((!std::get<Is>(results).has_value() || ...))
+            return tpy::make_unexpected(StopIteration{});
+        return fn_(unwrap_ref(*std::get<Is>(results))...);
+    }
+
+public:
+    template<typename... CCs>
+    owning_map_multi_iter(Fn fn, CCs&&... cs)
+        : owned_{std::forward<CCs>(cs)...},
+          iters_(make_iters(owned_, std::index_sequence_for<Containers...>{})),
+          fn_(std::move(fn)) {}
+
+    owning_map_multi_iter(owning_map_multi_iter&&) = delete;
+    owning_map_multi_iter& operator=(owning_map_multi_iter&&) = delete;
+
+    std::expected<U, StopIteration> __next__() {
+        return call_next(std::index_sequence_for<Containers...>{});
+    }
+
+    owning_map_multi_iter& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const owning_map_multi_iter&) {
+        return os << "<map>";
+    }
+};
+
+// Variadic factory: lvalue (all iterables are lvalue references)
+template<typename U, typename Fn, typename... Its>
+auto builtin_map_n(Fn&& fn, Its&... its) {
+    auto iters = std::tuple{tpy::__iter__(its)...};
+    return map_multi_iter<U, std::decay_t<Fn>, decltype(iters)>(
+        std::move(iters), std::forward<Fn>(fn));
+}
+
+// Variadic factory: rvalue (at least one iterable is an rvalue)
+template<typename U, typename Fn, typename... Its>
+    requires ((!std::is_lvalue_reference_v<Its&&>) || ...)
+auto builtin_map_n(Fn&& fn, Its&&... its) {
+    return owning_map_multi_iter<U, std::decay_t<Fn>, std::remove_cvref_t<Its>...>(
+        std::forward<Fn>(fn), std::forward<Its>(its)...);
+}
+
+
 // -- filter --
 
 template<typename T, typename Iter, typename Fn>
@@ -611,6 +701,21 @@ auto builtin_filter(Fn&& fn, Iterable&& iterable) {
                                   std::decay_t<Fn>>(
             std::forward<Fn>(fn), std::move(iterable));
     }
+}
+
+// -- filter(None, ...) -- truthy filtering via to_bool
+
+template<typename T, typename Iterable>
+auto builtin_filter_truthy(Iterable& iterable) {
+    auto pred = [](const auto& x) -> bool { return to_bool(x); };
+    return builtin_filter<T>(pred, iterable);
+}
+
+template<typename T, typename Iterable>
+    requires (!std::is_lvalue_reference_v<Iterable&&>)
+auto builtin_filter_truthy(Iterable&& iterable) {
+    auto pred = [](const auto& x) -> bool { return to_bool(x); };
+    return builtin_filter<T>(pred, std::move(iterable));
 }
 
 } // namespace tpy
