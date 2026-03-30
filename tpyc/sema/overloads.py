@@ -15,7 +15,7 @@ from ..typesys import (
     TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
     PendingStrType, StrType, StringType, StrViewType,
     PendingBytesType, BytesType, ByteArrayType, BytesViewType,
-    NamedType, PtrType, OwnType,
+    NamedType, PtrType, OwnType, FnType, CallableType, VoidType,
 )
 from ..coercions import resolve_coercion, CoercionContext
 
@@ -41,6 +41,12 @@ def _structural_match(arg: TpyType, param: TpyType) -> bool:
     if isinstance(param, ReadonlyType):
         return _structural_match(unwrap_readonly(arg), param.wrapped)
     arg = unwrap_readonly(arg)
+    # Callable -> Fn: structurally compatible callable types
+    if isinstance(arg, CallableType) and isinstance(param, FnType):
+        if len(arg.param_types) != len(param.param_types):
+            return False
+        return (all(_structural_match(a, p) for a, p in zip(arg.param_types, param.param_types))
+                and _structural_match(arg.return_type, param.return_type))
     if type(arg) != type(param):
         return False
     # PtrType: readonly arg cannot match mutable param (would drop const)
@@ -72,6 +78,12 @@ def type_matches_strict(
         arg_inner = arg_inner.wrapped
     param_inner = unwrap_readonly(param_type)
     if arg_inner == param_inner:
+        return True
+    # Callable -> Fn: std::function satisfies template requires clauses
+    if (isinstance(arg_inner, CallableType) and isinstance(param_inner, FnType)
+            and arg_inner.param_types == param_inner.param_types
+            and (arg_inner.return_type == param_inner.return_type
+                 or isinstance(param_inner.return_type, VoidType))):
         return True
     # PendingStrType (unresolved str local) matches str params
     if isinstance(arg_inner, PendingStrType) and isinstance(param_inner, StrType):
@@ -171,6 +183,12 @@ def type_matches_with_coercion(
         # Mirrors the unwrapping in type_matches_strict.
         check_arg = arg_inner.wrapped if isinstance(arg_inner, OwnType) else arg_inner
         return protocol_checker(check_arg, param_inner)
+    # Callable -> Fn: std::function satisfies template requires clauses
+    if (isinstance(arg_inner, CallableType) and isinstance(param_inner, FnType)
+            and arg_inner.param_types == param_inner.param_types
+            and (arg_inner.return_type == param_inner.return_type
+                 or isinstance(param_inner.return_type, VoidType))):
+        return True
     if resolve_coercion(arg_inner, param_inner, CoercionContext.ARG) is not None:
         return True
     if deref_checker:

@@ -82,7 +82,6 @@ Motivating example: `map(identity, pts)` where `identity(p: Point) -> Point` ret
 ## Builtins
 - `sorted(key=)`, `min(key=)`, `max(key=)`: accept an optional `key` parameter (`Fn` or `Callable`). `sorted(items, key=lambda x: x.score)` is extremely common. The lambda/Fn infrastructure is already there -- just needs builtin signatures and codegen for comparison-via-key.
 - `map()` / `filter()` follow-ups: multi-iterable `map(fn, a, b)`, `filter(None, iterable)` for falsy filtering.
-- `Callable` -> `Fn` implicit coercion: allow passing a `Callable[[T], U]` value where an `Fn[[T], U]` parameter is expected. In C++ this works trivially (`std::function` satisfies template `requires` clauses), but sema has no compatibility rule for this conversion. Adding it in `compatibility.py` would make all `Fn`-taking functions (including `map`/`filter`) automatically accept `Callable` args.
 - `open()` binary mode: needs string literal overload dispatch so `open(path, "rb")` returns `BinaryIO` while `open(path, "r")` returns `TextIO`. Requires compiler support for overload resolution based on literal argument values.
 - type(); (in future `T = type(x); z = T()`)
 - tpy.ctypes.CInt32

@@ -330,6 +330,15 @@ class TypeCompatibility:
                         loc,
                     )
 
+        # Callable -> Fn: std::function satisfies template requires clauses in C++
+        if isinstance(actual, CallableType) and isinstance(expected, FnType):
+            if (len(actual.param_types) == len(expected.param_types)
+                    and all(self._check_compat(a, e, "param", loc) is None
+                            for a, e in zip(actual.param_types, expected.param_types))
+                    and (self._check_compat(actual.return_type, expected.return_type, "return", loc) is None
+                         or isinstance(expected.return_type, VoidType))):
+                return None
+
         # Inheritance: Child -> Parent (implicit value upcast, C++ handles slicing/ref binding)
         if (isinstance(actual, NamedType) and actual.is_user_record
                 and isinstance(expected, NamedType) and expected.is_user_record):
