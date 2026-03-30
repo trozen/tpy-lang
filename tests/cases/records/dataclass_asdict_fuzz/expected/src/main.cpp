@@ -59,8 +59,8 @@ void main() {
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
-            const auto& __macro_2 = *__beg_1;
-            __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_2.x}, {"y", __macro_2.y}}));
+            const auto& __macro_1 = *__beg_1;
+            __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_1.x}, {"y", __macro_1.y}}));
         }
         return __result;
     }()}}))) << "\n";
@@ -85,8 +85,8 @@ void main() {
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
-            const auto& __macro_3 = *__beg_2;
-            __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_3.x}, {"y", __macro_3.y}}));
+            const auto& __macro_1 = *__beg_2;
+            __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_1.x}, {"y", __macro_1.y}}));
         }
         return __result;
     }()}})) << "\n";
@@ -101,8 +101,8 @@ void main() {
         auto __beg_3 = __obj_3.begin();
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
-            const auto& __macro_4 = *__beg_3;
-            __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_4.x}, {"y", __macro_4.y}}));
+            const auto& __macro_1 = *__beg_3;
+            __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_1.x}, {"y", __macro_1.y}}));
         }
         return __result;
     }()}, {"labels", ml.labels}}))) << "\n";
@@ -117,9 +117,9 @@ void main() {
         auto __end_4 = __obj_4.end();
         for (; __beg_4 != __end_4; ++__beg_4) {
             const auto& __tup_1 = *__beg_4;
-            std::string __macro_5 = std::get<0>(__tup_1);
-            const auto& __macro_6 = std::get<1>(__tup_1);
-            __result.insert_or_assign(__macro_5, ::tpy::ordered_map<std::string, int32_t>({{"x", __macro_6.x}, {"y", __macro_6.y}}));
+            std::string __macro_1 = std::get<0>(__tup_1);
+            const auto& __macro_2 = std::get<1>(__tup_1);
+            __result.insert_or_assign(__macro_1, ::tpy::ordered_map<std::string, int32_t>({{"x", __macro_2.x}, {"y", __macro_2.y}}));
         }
         return __result;
     }()}})) << "\n";
@@ -131,9 +131,9 @@ void main() {
         auto __end_5 = __obj_5.end();
         for (; __beg_5 != __end_5; ++__beg_5) {
             const auto& __tup_2 = *__beg_5;
-            std::string __macro_7 = std::get<0>(__tup_2);
-            const auto& __macro_8 = std::get<1>(__tup_2);
-            __result.insert_or_assign(__macro_7, std::tuple<int32_t, int32_t>{__macro_8.x, __macro_8.y});
+            std::string __macro_1 = std::get<0>(__tup_2);
+            const auto& __macro_2 = std::get<1>(__tup_2);
+            __result.insert_or_assign(__macro_1, std::tuple<int32_t, int32_t>{__macro_2.x, __macro_2.y});
         }
         return __result;
     }()}) << "\n";

@@ -642,6 +642,11 @@ def build_eq(cls: ClassInfo, all_fields: list[FieldInfo]) -> Function:
         )
         for fld in all_fields
     ]
+    if not comparisons:  # zero-field class: all instances are equal
+        return ast.function(
+            "__eq__", [("other", other_type)], _BOOL, [ast.return_(ast.bool_lit(True))],
+            is_method=True,
+        )
     eq_expr: Expr = comparisons[0]
     for cmp in comparisons[1:]:
         eq_expr = ast.binop(eq_expr, "&&", cmp)

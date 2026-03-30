@@ -166,15 +166,6 @@ def asdict(ctx: CallMacroContext, obj: MacroArg) -> Expr:
     return _build_asdict(ctx, obj.expr, obj.type)
 
 
-_macro_var_counter = 0
-
-
-def _macro_var() -> str:
-    global _macro_var_counter
-    _macro_var_counter += 1
-    return f"__macro_{_macro_var_counter}"
-
-
 def _has_dc(ctx: CallMacroContext, type_info: TypeInfo) -> bool:
     """Check if a type contains dataclass instances needing recursion."""
     if type_info.is_record and ctx.is_dataclass(type_info.name):
@@ -213,7 +204,7 @@ def _value_transform(
             return _build_tuple_expansion(ctx, access, fld_type.type_args, value_fn)
     elem = ctx.get_iterable_element_type(fld_type)
     if elem is not None and _has_dc(ctx, elem):
-        var = _macro_var()
+        var = ast.fresh_tmp("macro")
         return ast.list_comprehension(
             value_fn(ctx, ast.name(var), elem),
             ast.comprehension_generator(var, access),
@@ -227,8 +218,8 @@ def _build_dict_comprehension(
     value_fn: 'Callable',
 ) -> Expr:
     """Expand dict field: {f(k): f(v) for k, v in field.items()}"""
-    k_var = _macro_var()
-    v_var = _macro_var()
+    k_var = ast.fresh_tmp("macro")
+    v_var = ast.fresh_tmp("macro")
     items_call = ast.method_call(access, "items")
     return ast.dict_comprehension(
         value_fn(ctx, ast.name(k_var), key_type),

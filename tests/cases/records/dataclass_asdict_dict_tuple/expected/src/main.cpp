@@ -44,9 +44,9 @@ void main() {
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             const auto& __tup_2 = *__beg_1;
-            std::string __macro_3 = std::get<0>(__tup_2);
-            const auto& __macro_4 = std::get<1>(__tup_2);
-            __result.insert_or_assign(__macro_3, std::tuple<int32_t, int32_t>{__macro_4.x, __macro_4.y});
+            std::string __macro_1 = std::get<0>(__tup_2);
+            const auto& __macro_2 = std::get<1>(__tup_2);
+            __result.insert_or_assign(__macro_1, std::tuple<int32_t, int32_t>{__macro_2.x, __macro_2.y});
         }
         return __result;
     }()}) << "\n";
