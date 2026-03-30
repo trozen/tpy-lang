@@ -22,7 +22,7 @@
 | `except ReturnException as e` | Bind catch-all value -- needs type-erased wrapper or variant; distant future |
 | `@noalloc` interaction | `@noalloc` functions can use `@error_return` (zero-cost) but cannot throw C++ exceptions |
 | Custom base exception classes | User-defined exception hierarchies with `except BaseClass` catching subclasses |
-| `raise` inside `finally` | Done. Uses catch-all + goto codegen strategy (replaced FinallyGuard RAII). `return`/`break`/`continue` in try-with-finally use goto transformation. Nested try/finally supported. |
+| `raise` inside `finally` | Done. Uses catch-all + duplication codegen. `return`/`break`/`continue` in try-with-finally use goto transformation. Nested try/finally supported. |
 | Mixed-tier `try`/`except` | Currently ReturnException and non-ReturnException handlers cannot be in the same `try` block. Wrap goto dispatch inside C++ `try`: return-tier gotos inside `try {}`, throw-tier in `catch` handlers. Would eliminate the nested-try workaround for functions that can both return errors and throw. |
 
 ---
@@ -435,7 +435,7 @@ For throw exceptions, `e` is the caught reference. For return exceptions, `e` is
 
 ### `with` Statement
 
-`finally`-style cleanup already has RAII support via `with`/`WithGuard`. The `finally` block in `try`/`except`/`finally` uses a catch-all + goto codegen pattern (not RAII).
+Both `with` and `finally` use the same catch-all + duplication codegen pattern for cleanup.
 
 ### For-Loops
 

@@ -9,11 +9,15 @@ void test_basic() {
     // with Logger("A") as a:
     auto __ctx_1 = Logger("A");
     auto& a = __ctx_1.__enter__();
-    {
-        ::tpy::WithGuard __guard_1{__ctx_1};
+    try {
         // a.log("hello")
         a.log("hello");
+    } catch (...) {
+        __ctx_1.__exit__();
+        throw;
     }
+    __finally_1:;
+    __ctx_1.__exit__();
     // print("after with")
     std::cout << "after with" << "\n";
 }
@@ -23,11 +27,15 @@ void test_no_as() {
     // with Logger("B"):
     auto __ctx_2 = Logger("B");
     __ctx_2.__enter__();
-    {
-        ::tpy::WithGuard __guard_2{__ctx_2};
+    try {
         // print("inside B")
         std::cout << "inside B" << "\n";
+    } catch (...) {
+        __ctx_2.__exit__();
+        throw;
     }
+    __finally_2:;
+    __ctx_2.__exit__();
     // print("after B")
     std::cout << "after B" << "\n";
 }
@@ -37,11 +45,15 @@ void test_enter_returns_different_type() {
     // with Connection() as session:
     auto __ctx_3 = Connection();
     auto session = __ctx_3.__enter__();
-    {
-        ::tpy::WithGuard __guard_3{__ctx_3};
+    try {
         // print(session)
         std::cout << session << "\n";
+    } catch (...) {
+        __ctx_3.__exit__();
+        throw;
     }
+    __finally_3:;
+    __ctx_3.__exit__();
     // print("after connection")
     std::cout << "after connection" << "\n";
 }
@@ -53,16 +65,24 @@ void test_multiple_ctx_managers() {
     auto& x = __ctx_4.__enter__();
     auto __ctx_5 = Logger("Y");
     auto& y = __ctx_5.__enter__();
-    {
-        ::tpy::WithGuard __guard_4{__ctx_4};
-        {
-            ::tpy::WithGuard __guard_5{__ctx_5};
+    try {
+        try {
             // x.log("first")
             x.log("first");
             // y.log("second")
             y.log("second");
+        } catch (...) {
+            __ctx_5.__exit__();
+            throw;
         }
+        __finally_5:;
+        __ctx_5.__exit__();
+    } catch (...) {
+        __ctx_4.__exit__();
+        throw;
     }
+    __finally_4:;
+    __ctx_4.__exit__();
     // print("after both")
     std::cout << "after both" << "\n";
 }
@@ -72,11 +92,15 @@ void test_variable_visible_after() {
     // with Logger("V") as v:
     auto __ctx_6 = Logger("V");
     auto& v = __ctx_6.__enter__();
-    {
-        ::tpy::WithGuard __guard_6{__ctx_6};
+    try {
         // v.log("inside")
         v.log("inside");
+    } catch (...) {
+        __ctx_6.__exit__();
+        throw;
     }
+    __finally_6:;
+    __ctx_6.__exit__();
     // v.log("after")
     v.log("after");
 }
@@ -86,13 +110,20 @@ std::string early_return_helper() {
     // with Logger("R") as r:
     auto __ctx_7 = Logger("R");
     auto& r = __ctx_7.__enter__();
-    {
-        ::tpy::WithGuard __guard_7{__ctx_7};
+    std::optional<std::string> __retval_8;
+    try {
         // r.log("before return")
         r.log("before return");
         // return "result"
-        return "result";
+        __retval_8 = "result";
+        goto __finally_7;
+    } catch (...) {
+        __ctx_7.__exit__();
+        throw;
     }
+    __finally_7:;
+    __ctx_7.__exit__();
+    if (__retval_8) return (*__retval_8);
 }
 
 // def test_early_return() -> None:
@@ -110,13 +141,17 @@ void test_body_var_survives_scope() {
     std::string_view y;
     auto __ctx_8 = Logger("S");
     auto& s = __ctx_8.__enter__();
-    {
-        ::tpy::WithGuard __guard_8{__ctx_8};
+    try {
         // x = 10
         x = 10;
         // y = "hello"
         y = "hello";
+    } catch (...) {
+        __ctx_8.__exit__();
+        throw;
     }
+    __finally_9:;
+    __ctx_8.__exit__();
     // print(x)
     std::cout << x << "\n";
     // print(y)
@@ -129,13 +164,17 @@ void test_body_record_var_survives_scope() {
     std::optional<Logger> inner;
     auto __ctx_9 = Logger("T");
     auto& t = __ctx_9.__enter__();
-    {
-        ::tpy::WithGuard __guard_9{__ctx_9};
+    try {
         // inner = Logger("inner")
         inner = Logger("inner");
         // inner.log("inside")
         inner->log("inside");
+    } catch (...) {
+        __ctx_9.__exit__();
+        throw;
     }
+    __finally_10:;
+    __ctx_9.__exit__();
     // inner.log("after")
     inner->log("after");
 }
@@ -145,21 +184,118 @@ void test_reuse_with_var_name() {
     // with Logger("V1") as v:
     auto __ctx_10 = Logger("V1");
     Logger* v = &(__ctx_10.__enter__());
-    {
-        ::tpy::WithGuard __guard_10{__ctx_10};
+    try {
         // v.log("first")
         v->log("first");
+    } catch (...) {
+        __ctx_10.__exit__();
+        throw;
     }
+    __finally_11:;
+    __ctx_10.__exit__();
     // with Logger("V2") as v:
     auto __ctx_11 = Logger("V2");
     v = &(__ctx_11.__enter__());
-    {
-        ::tpy::WithGuard __guard_11{__ctx_11};
+    try {
         // v.log("second")
         v->log("second");
+    } catch (...) {
+        __ctx_11.__exit__();
+        throw;
     }
+    __finally_12:;
+    __ctx_11.__exit__();
     // v.log("after reuse")
     v->log("after reuse");
+}
+
+// def test_exception_in_body() -> None:
+void test_exception_in_body() {
+    // try:
+    {
+        try {
+            // with Logger("E") as e:
+            auto __ctx_12 = Logger("E");
+            auto& e = __ctx_12.__enter__();
+            try {
+                // e.log("before throw")
+                e.log("before throw");
+                // raise ValueError("boom")
+                throw ::tpy::ValueError("boom");
+            } catch (...) {
+                __ctx_12.__exit__();
+                throw;
+            }
+            __finally_13:;
+            __ctx_12.__exit__();
+        } catch (const ::tpy::ValueError&) {
+            // print("caught")
+            std::cout << "caught" << "\n";
+        }
+    }
+}
+
+// def test_exception_multi() -> None:
+void test_exception_multi() {
+    // try:
+    {
+        try {
+            // with Logger("M1") as m1, Logger("M2") as m2:
+            auto __ctx_13 = Logger("M1");
+            auto& m1 = __ctx_13.__enter__();
+            auto __ctx_14 = Logger("M2");
+            auto& m2 = __ctx_14.__enter__();
+            try {
+                try {
+                    // m1.log("ok")
+                    m1.log("ok");
+                    // raise ValueError("multi")
+                    throw ::tpy::ValueError("multi");
+                } catch (...) {
+                    __ctx_14.__exit__();
+                    throw;
+                }
+                __finally_15:;
+                __ctx_14.__exit__();
+            } catch (...) {
+                __ctx_13.__exit__();
+                throw;
+            }
+            __finally_14:;
+            __ctx_13.__exit__();
+        } catch (const ::tpy::ValueError&) {
+            // print("caught multi")
+            std::cout << "caught multi" << "\n";
+        }
+    }
+}
+
+// def test_with_in_try_finally() -> None:
+void test_with_in_try_finally() {
+    // try:
+    {
+        try {
+            // with Logger("N"):
+            auto __ctx_15 = Logger("N");
+            __ctx_15.__enter__();
+            try {
+                // print("inside with")
+                std::cout << "inside with" << "\n";
+            } catch (...) {
+                __ctx_15.__exit__();
+                throw;
+            }
+            __finally_17:;
+            __ctx_15.__exit__();
+        } catch (...) {
+            // print("outer finally")
+            std::cout << "outer finally" << "\n";
+            throw;
+        }
+        __finally_16:;
+        // print("outer finally")
+        std::cout << "outer finally" << "\n";
+    }
 }
 
 void __tpy_init() {
@@ -201,6 +337,18 @@ void __tpy_init() {
     std::cout << "---" << "\n";
     // test_reuse_with_var_name()
     test_reuse_with_var_name();
+    // print("---")
+    std::cout << "---" << "\n";
+    // test_exception_in_body()
+    test_exception_in_body();
+    // print("---")
+    std::cout << "---" << "\n";
+    // test_exception_multi()
+    test_exception_multi();
+    // print("---")
+    std::cout << "---" << "\n";
+    // test_with_in_try_finally()
+    test_with_in_try_finally();
 }
 
 } // namespace tpyapp::main

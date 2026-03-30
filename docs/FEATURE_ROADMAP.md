@@ -1501,8 +1501,8 @@ with open(path) as f:
 # f.__exit__() called automatically
 ```
 
-Maps to C++ RAII via `tpy::WithGuard<T>` -- a guard struct whose destructor calls
-`__exit__()`, ensuring cleanup on early return or panic.
+Maps to C++ try/catch duplication -- `__exit__()` is emitted in both the catch handler
+(exception path) and the normal path, ensuring cleanup on early return, exception, or panic.
 
 **Current state**: Done. Duck-typed `__enter__`/`__exit__` protocol. `__exit__` accepts
 0 params (TPy-native) or 3 params (CPython-compatible -- exception params stripped at

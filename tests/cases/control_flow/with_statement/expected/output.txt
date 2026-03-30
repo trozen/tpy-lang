@@ -48,3 +48,20 @@ enter V2
 [V2] second
 exit V2
 [V2] after reuse
+---
+enter E
+[E] before throw
+exit E
+caught
+---
+enter M1
+enter M2
+[M1] ok
+exit M2
+exit M1
+caught multi
+---
+enter N
+inside with
+exit N
+outer finally

@@ -49,11 +49,15 @@ void main() {
     // with open(path) as f1:
     auto __ctx_1 = ::tpy::builtin_open(path);
     auto& f1 = __ctx_1.__enter__();
-    {
-        ::tpy::WithGuard __guard_1{__ctx_1};
+    try {
         // print(f1.read())
         std::cout << f1.read() << "\n";
+    } catch (...) {
+        __ctx_1.__exit__();
+        throw;
     }
+    __finally_1:;
+    __ctx_1.__exit__();
     // # Append mode
     // a = open(path, "a")
     ::tpy::TextFile a = ::tpy::builtin_open_mode(path, "a");
@@ -64,11 +68,15 @@ void main() {
     // with open(path) as f2:
     auto __ctx_2 = ::tpy::builtin_open(path);
     auto& f2 = __ctx_2.__enter__();
-    {
-        ::tpy::WithGuard __guard_2{__ctx_2};
+    try {
         // print(f2.read())
         std::cout << f2.read() << "\n";
+    } catch (...) {
+        __ctx_2.__exit__();
+        throw;
     }
+    __finally_2:;
+    __ctx_2.__exit__();
 }
 
 void __tpy_init() {

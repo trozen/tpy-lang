@@ -100,6 +100,35 @@ def test_reuse_with_var_name() -> None:
     v.log("after reuse")
 
 
+def test_exception_in_body() -> None:
+    """__exit__ must fire when an exception escapes the with body."""
+    try:
+        with Logger("E") as e:
+            e.log("before throw")
+            raise ValueError("boom")
+    except ValueError:
+        print("caught")
+
+
+def test_exception_multi() -> None:
+    """Multiple managers: LIFO exit on exception path."""
+    try:
+        with Logger("M1") as m1, Logger("M2") as m2:
+            m1.log("ok")
+            raise ValueError("multi")
+    except ValueError:
+        print("caught multi")
+
+
+def test_with_in_try_finally() -> None:
+    """with nested inside try/finally -- both cleanups run."""
+    try:
+        with Logger("N"):
+            print("inside with")
+    finally:
+        print("outer finally")
+
+
 test_basic()
 print("---")
 test_no_as()
@@ -117,3 +146,9 @@ print("---")
 test_body_record_var_survives_scope()
 print("---")
 test_reuse_with_var_name()
+print("---")
+test_exception_in_body()
+print("---")
+test_exception_multi()
+print("---")
+test_with_in_try_finally()

@@ -373,7 +373,6 @@ The C++ runtime is organized as a modular header library in `runtime/cpp/include
 | `next_iter.hpp` | `next_iter_mixin` CRTP adapter: adds `begin()`/`end()` to any `__next__()`-based iterator |
 | `span_iter.hpp` | `tpy::SpanIter<T>` lightweight iterator over contiguous span |
 | `variant_ref.hpp` | `to_ptr_variant`, `to_const_ptr_variant`, `to_value_variant` for non-value union two-layer repr |
-| `with_guard.hpp` | `tpy::WithGuard<T>` RAII guard for `with` statement context managers |
 | `bytes_ops.hpp` | Python-style bytes operations: printing, encode/decode, search helpers |
 | `copy_iter.hpp` | `CopyIter<I>` iterator adapter that copies elements from a borrowing iterator |
 | `own_iter.hpp` | `OwnIter<C>` drain iterator for consuming iteration over heap-backed containers |

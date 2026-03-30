@@ -1582,7 +1582,7 @@ class StatementAnalyzer:
             self.analyze_stmt(s)
 
         # All variables first declared inside the body need pre-declaration
-        # since codegen wraps the body in {} for WithGuard RAII.
+        # since codegen wraps the body in try {} for the with's cleanup pattern.
         branch_new = set(self.ctx.current_scope.bindings.keys()) - scope_before
         predecl = branch_new - self.ctx.global_declarations
         if predecl:

@@ -23,6 +23,9 @@ void test_early_return();
 void test_body_var_survives_scope();
 void test_body_record_var_survives_scope();
 void test_reuse_with_var_name();
+void test_exception_in_body();
+void test_exception_multi();
+void test_with_in_try_finally();
 
 // class Logger:
 struct Logger {
