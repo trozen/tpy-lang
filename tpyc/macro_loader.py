@@ -145,8 +145,9 @@ def validate_and_call_macro(
             )
 
     # Call the macro, wrapping unexpected exceptions
-    from .macro_api import MacroError
+    from .macro_api import MacroError, ast as _ast_builder
 
+    _ast_builder.reset_tmp_counter()
     try:
         macro_fn(cls_info, **kwargs)
     except MacroError as e:
@@ -198,7 +199,9 @@ def expand_call_macro(
     """
     # Deferred: sema.registration imports macro_loader
     from .sema.diagnostics import SemanticError
-    from .macro_api import MacroError
+    from .macro_api import MacroError, ast as _ast_builder
+
+    _ast_builder.reset_tmp_counter()
 
     # Inspect signature: extract plain values for simple-typed kwargs
     sig = inspect.signature(macro_fn)

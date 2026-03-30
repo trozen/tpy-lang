@@ -596,8 +596,6 @@ def model(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> None:
 
     cls.set_dataclass_fields(all_fields)
 
-    ast.reset_tmp_counter()
-
     # Generate JSON methods
     cls.add_method(_build_from_reader(cls, all_fields))
     cls.add_method(_build_from_json(cls))

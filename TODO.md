@@ -36,7 +36,6 @@ Motivating example: `map(identity, pts)` where `identity(p: Point) -> Point` ret
 - Overload resolution: generic overloads with protocol params lose to concrete overloads with coercion. `sum[T: AnyFixedInt](Iterable[T])` doesn't match `list[Int32]` in pass 1 because `_structural_match` requires `type(arg) == type(param)` -- `ArrayType` != `NamedType("Iterable")`. The concrete `sum(Iterable[float])` then wins via coercion in pass 2. Fix: `_structural_match` should check protocol conformance when `param` is a protocol type, so generic overloads with protocol params match in pass 1. Workaround: add concrete overloads for common types (Int32, Int64) before the generic.
 
 ## Macros
-- limit imports from macro_modules (macro_api only?)
 - macros should work in cpython as well
 - all macro code (at least for json model) generated in headers
 - json: pretty printing

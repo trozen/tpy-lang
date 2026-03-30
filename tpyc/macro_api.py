@@ -584,58 +584,50 @@ def build_init(
     cls: ClassInfo,
     parent_fields: list[FieldInfo],
     own_fields: list[FieldInfo],
-) -> TpyFunction:
+) -> Function:
     """Build a synthetic __init__ method from field lists.
 
     Mirrors the exact AST structure that the hardcoded @dataclass synthesis
     produced, ensuring identical C++ output.
     """
     params: list[tuple[str, TpyType]] = []
-    defaults: list[TpyExpr | None] = []
-    body: list[TpyStmt] = []
+    defaults: list[Expr | None] = []
+    body: list[Stmt] = []
 
     # Parent fields come first; forwarded via super().__init__()
     for fld in parent_fields:
-        assert fld.type._tpy_type is not None
-        param_type = fld.type._tpy_type
+        param_type = fld.type.raw_type
         if not param_type.is_value_type():
             param_type = OwnType(param_type)
         params.append((fld.name, param_type))
         defaults.append(fld.default_expr)
 
     if parent_fields:
-        super_args = [TpyName(fld.name) for fld in parent_fields]
-        super_call = TpyMethodCall(
-            obj=TpyCall(func=TpyName("super"), args=[]),
-            method="__init__",
-            args=super_args,
+        super_args = [ast.name(fld.name) for fld in parent_fields]
+        super_call = ast.method_call(
+            ast.call("super"), "__init__", super_args,
         )
-        body.append(TpyExprStmt(expr=super_call))
+        body.append(ast.expr_stmt(super_call))
 
     # Own fields
     for fld in own_fields:
-        assert fld.type._tpy_type is not None
-        param_type = fld.type._tpy_type
+        param_type = fld.type.raw_type
         if not param_type.is_value_type():
             param_type = OwnType(param_type)
         params.append((fld.name, param_type))
         defaults.append(fld.default_expr)
-        body.append(TpyAssign(
-            target=TpyFieldAccess(obj=TpyName("self"), field=fld.name),
-            value=TpyName(fld.name),
+        body.append(ast.assign(
+            ast.field_access(ast.name("self"), fld.name),
+            ast.name(fld.name),
         ))
 
-    return TpyFunction(
-        name="__init__",
-        params=params,
-        return_type=VoidType(),
-        body=body,
-        is_method=True,
-        defaults=defaults,
+    return ast.function(
+        "__init__", params, _VOID, body,
+        is_method=True, defaults=defaults,
     )
 
 
-def build_eq(cls: ClassInfo, all_fields: list[FieldInfo]) -> TpyFunction:
+def build_eq(cls: ClassInfo, all_fields: list[FieldInfo]) -> Function:
     """Build a synthetic __eq__ method from field list.
 
     Mirrors the exact AST structure that the hardcoded @dataclass synthesis
@@ -643,22 +635,19 @@ def build_eq(cls: ClassInfo, all_fields: list[FieldInfo]) -> TpyFunction:
     """
     other_type = NamedType(cls.name)
     comparisons = [
-        TpyBinOp(
-            left=TpyFieldAccess(obj=TpyName("self"), field=fld.name),
-            op="==",
-            right=TpyFieldAccess(obj=TpyName("other"), field=fld.name),
+        ast.binop(
+            ast.field_access(ast.name("self"), fld.name),
+            "==",
+            ast.field_access(ast.name("other"), fld.name),
         )
         for fld in all_fields
     ]
-    eq_expr: TpyExpr = comparisons[0]
+    eq_expr: Expr = comparisons[0]
     for cmp in comparisons[1:]:
-        eq_expr = TpyBinOp(left=eq_expr, op="&&", right=cmp)
+        eq_expr = ast.binop(eq_expr, "&&", cmp)
 
-    return TpyFunction(
-        name="__eq__",
-        params=[("other", other_type)],
-        return_type=BoolType(),
-        body=[TpyReturn(value=eq_expr)],
+    return ast.function(
+        "__eq__", [("other", other_type)], _BOOL, [ast.return_(eq_expr)],
         is_method=True,
     )
 
@@ -678,7 +667,7 @@ class AstBuilder:
         self._tmp_counter = 0
 
     def reset_tmp_counter(self) -> None:
-        """Reset the fresh-name counter (call at start of each macro expansion)."""
+        """Reset the fresh-name counter. Called automatically before each macro invocation."""
         self._tmp_counter = 0
 
     def fresh_tmp(self, hint: str = "v") -> str:
